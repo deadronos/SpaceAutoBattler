@@ -1,5 +1,6 @@
 import { srange, srangeInt } from './rng.js';
 import { Ship } from './entities.js';
+import { XP_PER_DAMAGE, KILL_XP_BASE, KILL_XP_PER_TARGET_LEVEL } from './progressionConfig.js';
 
 export function simulateStep(state, dt, bounds = { W: 800, H: 600 }) {
   // state: { ships: [], bullets: [], score: {red, blue}, particles: [] }
@@ -58,12 +59,37 @@ export function simulateStep(state, dt, bounds = { W: 800, H: 600 }) {
       const R = s.radius + b.radius;
       if (d2 < R * R) {
         // capture explosion info if any
-        const exp = s.damage(b.dmg);
+        const dmg = b.dmg;
+        // record shield and hp before damage so we can generate visuals for shield/hp hits
+        const prevShield = typeof s.shield === 'number' ? s.shield : 0;
+        const prevHp = typeof s.hp === 'number' ? s.hp : 0;
+        const exp = s.damage(dmg);
+        const shieldTaken = Math.max(0, prevShield - (typeof s.shield === 'number' ? s.shield : 0));
+        const hpTaken = Math.max(0, prevHp - (typeof s.hp === 'number' ? s.hp : 0));
+        if (shieldTaken > 0 && state && Array.isArray(state.shieldHits)) {
+          // include the bullet impact coordinates so renderer can draw an arc at the impact direction
+          state.shieldHits.push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: shieldTaken });
+        }
+        if (hpTaken > 0 && state && Array.isArray(state.healthHits)) {
+          state.healthHits.push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: hpTaken });
+        }
+        // Award XP to owner (damage-based) if owner present
+        if (b.ownerId != null) {
+          const owner = state.ships.find(x => x.id === b.ownerId);
+          if (owner) {
+            owner.gainXp(dmg * XP_PER_DAMAGE);
+          }
+        }
         state.bullets.splice(i, 1);
         if (exp && state.explosions) state.explosions.push(exp);
         if (!s.alive) {
           if (b.team === 0) state.score.red++;
           else state.score.blue++;
+          // kill XP bonus to owner
+          if (b.ownerId != null) {
+            const owner = state.ships.find(x => x.id === b.ownerId);
+            if (owner) owner.gainXp(KILL_XP_BASE + (s.level || 1) * KILL_XP_PER_TARGET_LEVEL);
+          }
         }
         break;
       }

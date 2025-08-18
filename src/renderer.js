@@ -47,6 +47,8 @@ class ShipV {
   draw(){
     const s = this.logic;
     if (!s.alive) return;
+  // compute whether this ship has a recent shield hit (look for flashes with shieldHit)
+  const recentShieldFlash = flashes.some(f => f.shieldHit && f.x === s.x && f.y === s.y && f.life > 0);
     // trails
     if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; particles.push(new Particle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a'))); }
 
@@ -83,18 +85,99 @@ class ShipV {
 
     ctx.restore();
 
-    // health and shield bars (scaled by radius)
-    const w = Math.max(16, r*3.2), h = Math.max(3, r*0.4);
-    const x = s.x - w/2, y = s.y - (r + 10);
-    // shield bar (above health) - bluish
+    // shimmering shield outline (subtle)
     if (typeof s.shield === 'number' && typeof s.shieldMax === 'number'){
       const sp = s.shieldMax > 0 ? Math.max(0, Math.min(1, s.shield / s.shieldMax)) : 0;
-      const sy = y - (h + 4);
-      ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x, sy, w, h);
-      ctx.fillStyle = 'rgba(80,160,255,.95)'; ctx.fillRect(x, sy, w * sp, h);
+      const outlineR = r + 4 + (1 - sp) * 2;
+      ctx.save();
+      // base full-outline shimmer
+      ctx.beginPath(); ctx.arc(s.x, s.y, outlineR, 0, TAU);
+      const g = ctx.createRadialGradient(s.x, s.y, outlineR*0.6, s.x, s.y, outlineR);
+      g.addColorStop(0, `rgba(140,200,255,${0.06})`);
+      g.addColorStop(1, `rgba(80,160,255,${0.02})`);
+      ctx.fillStyle = g; ctx.globalCompositeOperation = 'lighter'; ctx.fill();
+
+      // arc highlights for recent directional hits
+      for (const sf of shieldFlashes) {
+        if (sf.id !== s.id) continue;
+        const lifeFactor = Math.max(0, Math.min(1, sf.life / 0.22));
+        // amount-based scaling (normalize against ship shieldMax where possible)
+        const amtBase = (s.shieldMax && s.shieldMax > 0) ? (sf.amount / s.shieldMax) : Math.min(1, sf.amount / (s.hpMax * 0.6 || 1));
+        const amtFactor = Math.max(0.08, Math.min(1, amtBase));
+        // spread increases with hit strength and also animates as it ages
+        const baseSpread = Math.PI * 0.25 + Math.PI * 0.6 * (1 - lifeFactor);
+        const spread = baseSpread * (0.6 + 1.6 * amtFactor);
+        const start = sf.angle - spread/2;
+        const end = sf.angle + spread/2;
+        const radiusOffset = outlineR + 4 * (1 - lifeFactor) + 2 * amtFactor;
+        ctx.beginPath(); ctx.arc(s.x, s.y, radiusOffset, start, end);
+        // line width and alpha scale with amount and remaining life
+        ctx.lineWidth = (3 + 6 * lifeFactor) * (1 + 4 * amtFactor);
+        const alpha = Math.min(1, 0.25 + lifeFactor * (0.9 + 1.6 * amtFactor));
+        ctx.strokeStyle = `rgba(160,220,255,${alpha})`;
+        // add a soft glow proportional to amount
+        ctx.save(); ctx.shadowBlur = 12 * amtFactor; ctx.shadowColor = 'rgba(140,200,255,0.8)'; ctx.stroke(); ctx.restore();
+      }
+      ctx.restore();
     }
+
+    // health and shield bars (scaled by radius)
+    const w = Math.max(16, r*3.2), h = Math.max(3, r*0.4);
+    const x = s.x - w/2;
+    // shield bar above the ship (blue)
+    const shieldY = s.y - (r + 12);
+    if (typeof s.shield === 'number' && typeof s.shieldMax === 'number'){
+      const sp = s.shieldMax > 0 ? Math.max(0, Math.min(1, s.shield / s.shieldMax)) : 0;
+      ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x, shieldY, w, h);
+      ctx.fillStyle = 'rgba(80,160,255,.95)'; ctx.fillRect(x, shieldY, w * sp, h);
+    }
+    // health bar below the ship (green) with rounded corners
+    const healthY = s.y + (r + 8);
     const p = Math.max(0, Math.min(1, s.hp / s.hpMax));
-    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h); ctx.fillStyle = teamColor(s.team,.9); ctx.fillRect(x,y,w*p,h);
+    // background rounded
+    const radius = Math.min(6, h);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, healthY);
+    ctx.lineTo(x + w - radius, healthY);
+    ctx.quadraticCurveTo(x + w, healthY, x + w, healthY + radius);
+    ctx.lineTo(x + w, healthY + h - radius);
+    ctx.quadraticCurveTo(x + w, healthY + h, x + w - radius, healthY + h);
+    ctx.lineTo(x + radius, healthY + h);
+    ctx.quadraticCurveTo(x, healthY + h, x, healthY + h - radius);
+    ctx.lineTo(x, healthY + radius);
+    ctx.quadraticCurveTo(x, healthY, x + radius, healthY);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fill();
+
+    // determine if there's a recent health flash for this ship
+    const hf = healthFlashes.find(hf => hf.id === s.id && hf.life > 0);
+    let healthColor = `rgba(120,220,120,${0.95})`;
+    if (hf) {
+      // flash intensity based on remaining life and damage amount
+      const t = Math.max(0, Math.min(1, hf.life / 0.45));
+      const amtFactor = Math.min(1, hf.amount / (s.hpMax || 1));
+      // interpolate between red and green
+      const rCol = Math.floor(220 * (1 - amtFactor * t));
+      const gCol = Math.floor(60 + 160 * (1 - t * amtFactor));
+      healthColor = `rgba(${Math.min(255, rCol)},${Math.min(255, gCol)},60,${0.95})`;
+    }
+
+    // filled rounded clip
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x + radius, healthY);
+    ctx.lineTo(x + w - radius, healthY);
+    ctx.quadraticCurveTo(x + w, healthY, x + w, healthY + radius);
+    ctx.lineTo(x + w, healthY + h - radius);
+    ctx.quadraticCurveTo(x + w, healthY + h, x + w - radius, healthY + h);
+    ctx.lineTo(x + radius, healthY + h);
+    ctx.quadraticCurveTo(x, healthY + h, x, healthY + h - radius);
+    ctx.lineTo(x, healthY + radius);
+    ctx.quadraticCurveTo(x, healthY, x + radius, healthY);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = healthColor; ctx.fillRect(x, healthY, w * p, h);
+    ctx.restore();
 
     // level text above ship (small)
     if (typeof s.level === 'number' && s.level > 1){
@@ -104,7 +187,7 @@ class ShipV {
 }
 
 // --- Game State ---
-let ships = []; let bullets=[]; let particles=[]; let flashes=[];
+let ships = []; let bullets=[]; let particles=[]; let flashes=[]; let shieldFlashes = []; let healthFlashes = [];
 let shipsVMap = new Map(); // id -> ShipV visual wrappers for logic ships
 let running = false; let speed = 1; let showTrails = true; let lastTime = 0;
 const score = { red:0, blue:0 };
@@ -120,7 +203,8 @@ function simulate(dt){
 
   // Use simulateStep (shared logic) for collisions and scoring
   // Provide a place to collect explosion events
-  const state = { ships, bullets, score, particles, explosions: [] };
+  const shieldHits = [];
+  const state = { ships, bullets, score, particles, explosions: [], shieldHits };
   simulateStep(state, dt, { W, H });
   if (state.explosions && state.explosions.length){
     for (const e of state.explosions){ // e: {x,y,team}
@@ -128,9 +212,39 @@ function simulate(dt){
       for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); particles.push(new Particle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a'))); }
     }
   }
+  // handle shield hit visuals
+  if (Array.isArray(state.shieldHits) && state.shieldHits.length) {
+    for (const h of state.shieldHits) {
+      // find the ship so we can compute hit direction relative to ship center
+      const ship = ships.find(s => s.id === h.id);
+      const shipX = ship ? ship.x : h.hitX;
+      const shipY = ship ? ship.y : h.hitY;
+      // push a short bright ring centered on the ship (visual flash)
+      flashes.push({ x: shipX, y: shipY, r: 6 + Math.min(12, h.amount), life: 0.12, team: h.team, shieldHit: true });
+      // particles at exact impact point
+      for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); particles.push(new Particle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)')); }
+      // create an arc-highlight (shieldFlash) attached to ship id with angle from ship center to impact
+      if (ship) {
+        const ang = Math.atan2(h.hitY - shipY, h.hitX - shipX);
+        shieldFlashes.push({ id: ship.id, angle: ang, life: 0.22, amount: h.amount });
+      }
+    }
+  }
+  // handle health hit visuals (for health bar flashing)
+  if (Array.isArray(state.healthHits) && state.healthHits.length) {
+    for (const hh of state.healthHits) {
+      const ship = ships.find(s => s.id === hh.id);
+      if (ship) {
+        // create a health flash entry that renderer will use to animate the health bar color
+        healthFlashes.push({ id: ship.id, life: 0.45, amount: hh.amount });
+      }
+    }
+  }
 
   for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0) particles.splice(i,1); }
   for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
+  for (let i=shieldFlashes.length-1;i>=0;i--) { const sf = shieldFlashes[i]; sf.life -= dt; if (sf.life <= 0) shieldFlashes.splice(i,1); }
+  for (let i=healthFlashes.length-1;i>=0;i--) { const hf = healthFlashes[i]; hf.life -= dt; if (hf.life <= 0) healthFlashes.splice(i,1); }
 
   // sync visual wrappers (persist between frames)
   const aliveIds = new Set(ships.map(s => s.id));
