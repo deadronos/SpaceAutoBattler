@@ -83,9 +83,23 @@ class ShipV {
 
     ctx.restore();
 
-    // health bar (scaled by radius)
-    const w = Math.max(16, r*3.2), h = Math.max(3, r*0.4), p = s.hp/s.hpMax; const x = s.x - w/2, y = s.y - (r + 10);
+    // health and shield bars (scaled by radius)
+    const w = Math.max(16, r*3.2), h = Math.max(3, r*0.4);
+    const x = s.x - w/2, y = s.y - (r + 10);
+    // shield bar (above health) - bluish
+    if (typeof s.shield === 'number' && typeof s.shieldMax === 'number'){
+      const sp = s.shieldMax > 0 ? Math.max(0, Math.min(1, s.shield / s.shieldMax)) : 0;
+      const sy = y - (h + 4);
+      ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x, sy, w, h);
+      ctx.fillStyle = 'rgba(80,160,255,.95)'; ctx.fillRect(x, sy, w * sp, h);
+    }
+    const p = Math.max(0, Math.min(1, s.hp / s.hpMax));
     ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h); ctx.fillStyle = teamColor(s.team,.9); ctx.fillRect(x,y,w*p,h);
+
+    // level text above ship (small)
+    if (typeof s.level === 'number' && s.level > 1){
+      ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.font = '700 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`Lv ${s.level}`, s.x, s.y - (r + 18)); ctx.restore();
+    }
   }
 }
 

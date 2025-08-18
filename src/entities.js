@@ -35,6 +35,15 @@ export class Ship {
     this.hpMax = cfg.hp; this.hp = this.hpMax; this.cooldown = 0; this.reload = cfg.reload;
     this.vision = cfg.vision; this.range = cfg.range; this.id = Ship._id++;
     this.kills = 0; this.alive = true; this._exploded = false;
+  // Per-battle progression (default)
+  this.level = 1;
+
+  // Shields: secondary health that depletes before HP and regenerates over time
+  // Initialize shield as a fraction of hpMax (tweakable)
+  this.shieldMax = Math.round(this.hpMax * 0.6);
+  this.shield = this.shieldMax;
+  // shieldRegen is amount of shield restored per second (use percentage of shieldMax)
+  this.shieldRegen = Math.max(0.5, this.shieldMax * 0.06);
 
     if (type === 'carrier'){
       this.isCarrier = true;
@@ -97,10 +106,27 @@ export class Ship {
     // soft bounds handled by renderer if desired
 
   this.cooldown -= dt;
+  // Shield regeneration
+  if (this.shield < this.shieldMax) {
+    this.shield = Math.min(this.shieldMax, this.shield + this.shieldRegen * dt);
+  }
+
   // Carrier launch handling moved to simulateStep to centralize time-based events
   }
 
-  damage(d){ this.hp -= d; if (this.hp <= 0 && this.alive){ this.alive = false; this._exploded = true; return { x: this.x, y: this.y, team: this.team }; } return null; }
+  damage(d){
+    // Shields absorb damage first
+    if (this.shield > 0 && d > 0) {
+      const sTake = Math.min(this.shield, d);
+      this.shield -= sTake;
+      d -= sTake;
+    }
+    if (d > 0) {
+      this.hp -= d;
+    }
+    if (this.hp <= 0 && this.alive){ this.alive = false; this._exploded = true; return { x: this.x, y: this.y, team: this.team }; }
+    return null;
+  }
 }
 
 export function spawnFleet(team, n, x, y, spread = 80) {
