@@ -2,11 +2,39 @@ import { srand, srange, srangeInt, unseed } from './rng.js';
 import { simulateStep } from './simulate.js';
 import { Ship, Team, spawnFleet } from './entities.js';
 
-const canvas = document.getElementById('world');
-const ctx = canvas.getContext('2d');
-let W = canvas.width = window.innerWidth;
-let H = canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+let canvas, ctx, W, H;
+export function initRenderer() {
+  canvas = document.getElementById('world');
+  ctx = canvas.getContext('2d');
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+}
+
+// Helper to allow tests to inject a mock canvas context via global.ctx
+function ensureCtx() {
+  if ((typeof ctx === 'undefined' || ctx === undefined) && typeof globalThis !== 'undefined' && globalThis.ctx) {
+    ctx = globalThis.ctx;
+  }
+  return ctx;
+}
+
+// Renderer-global visual state (safe defaults so module can be imported in Node tests)
+export const particles = [];
+export const flashes = [];
+export const shieldFlashes = [];
+export const healthFlashes = [];
+export const shipsVMap = new Map();
+export let ships = [];
+export let bullets = [];
+export let lastTime = 0;
+export let running = false;
+export let speed = 1;
+export let showTrails = true;
+export const score = { red: 0, blue: 0 };
+
+// `state` is the simulation state object used by simulateStep; expose a simple wrapper
+export const state = { ships, bullets, score, particles, shieldHits: [], healthHits: [], explosions: [] };
 
 // --- Utilities ---
 const TAU = Math.PI * 2;
@@ -15,7 +43,7 @@ const rand = (min=0, max=1) => min + (max-min) * Math.random();
 const randInt = (min, max) => Math.floor(rand(min, max+1));
 
 // UI toast
-function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
+export function toast(msg) { if (!document) return; const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
 
 // Starfield background (parallax)
 const stars = [];
@@ -31,32 +59,33 @@ function initStars() {
 initStars();
 
 // --- Entities (renderer-local) ---
-const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
+export const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
 
-class Particle {
+export class Particle {
   constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
   update(dt){ this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=Math.pow(0.9,dt*60); this.vy*=Math.pow(0.9,dt*60); this.life-=dt; }
-  draw(){ if (this.life<=0) return; const a = this.life/this.max; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
+  draw(){ if (this.life<=0) return; const a = this.life/this.max; ensureCtx(); if (typeof ctx === 'undefined' || !ctx) return; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
 }
 
 // Keep Ship logic in entities.js, renderer keeps visual helpers and particle/flash handling.
 // Visual Ship wrapper to reference logic ship instance
-class ShipV {
+export class ShipV {
   constructor(shipLogic){ this.logic = shipLogic; this.id = shipLogic.id; this.team = shipLogic.team; this.x = shipLogic.x; this.y = shipLogic.y; this.type = shipLogic.type; }
   syncFromLogic(){ this.x = this.logic.x; this.y = this.logic.y; this.type = this.logic.type; this.alive = this.logic.alive; }
   draw(){
     const s = this.logic;
     if (!s.alive) return;
+  ensureCtx();
   // compute whether this ship has a recent shield hit (look for flashes with shieldHit)
   const recentShieldFlash = flashes.some(f => f.shieldHit && f.x === s.x && f.y === s.y && f.life > 0);
     // trails
     if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; particles.push(new Particle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a'))); }
 
     // Draw hull by type with scale from radius
-    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9);
+    if (typeof ctx !== 'undefined') { ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9); }
     const r = s.radius || 8;
     // base fill
-    ctx.fillStyle = teamColor(s.team, .96);
+    if (typeof ctx !== 'undefined') ctx.fillStyle = teamColor(s.team, .96);
 
     if (s.type === 'corvette') {
       // small arrow-like hull
@@ -83,19 +112,19 @@ class ShipV {
       ctx.beginPath(); ctx.moveTo(r*1.4,0); ctx.lineTo(-r, -r*0.8); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r, r*0.8); ctx.closePath(); ctx.fill();
     }
 
-    ctx.restore();
+    if (typeof ctx !== 'undefined') ctx.restore();
 
     // shimmering shield outline (subtle)
     if (typeof s.shield === 'number' && typeof s.shieldMax === 'number'){
       const sp = s.shieldMax > 0 ? Math.max(0, Math.min(1, s.shield / s.shieldMax)) : 0;
       const outlineR = r + 4 + (1 - sp) * 2;
-      ctx.save();
+      if (typeof ctx !== 'undefined') ctx.save();
       // base full-outline shimmer
       ctx.beginPath(); ctx.arc(s.x, s.y, outlineR, 0, TAU);
       const g = ctx.createRadialGradient(s.x, s.y, outlineR*0.6, s.x, s.y, outlineR);
       g.addColorStop(0, `rgba(140,200,255,${0.06})`);
       g.addColorStop(1, `rgba(80,160,255,${0.02})`);
-      ctx.fillStyle = g; ctx.globalCompositeOperation = 'lighter'; ctx.fill();
+      if (typeof ctx !== 'undefined') { ctx.fillStyle = g; ctx.globalCompositeOperation = 'lighter'; ctx.fill(); }
 
       // arc highlights for recent directional hits
       for (const sf of shieldFlashes) {
@@ -118,7 +147,7 @@ class ShipV {
         // add a soft glow proportional to amount
         ctx.save(); ctx.shadowBlur = 12 * amtFactor; ctx.shadowColor = 'rgba(140,200,255,0.8)'; ctx.stroke(); ctx.restore();
       }
-      ctx.restore();
+      if (typeof ctx !== 'undefined') ctx.restore();
     }
 
     // health and shield bars (scaled by radius)
@@ -128,26 +157,30 @@ class ShipV {
     const shieldY = s.y - (r + 12);
     if (typeof s.shield === 'number' && typeof s.shieldMax === 'number'){
       const sp = s.shieldMax > 0 ? Math.max(0, Math.min(1, s.shield / s.shieldMax)) : 0;
-      ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x, shieldY, w, h);
-      ctx.fillStyle = 'rgba(80,160,255,.95)'; ctx.fillRect(x, shieldY, w * sp, h);
+      if (typeof ctx !== 'undefined') {
+        ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x, shieldY, w, h);
+        ctx.fillStyle = 'rgba(80,160,255,.95)'; ctx.fillRect(x, shieldY, w * sp, h);
+      }
     }
     // health bar below the ship (green) with rounded corners
     const healthY = s.y + (r + 8);
     const p = Math.max(0, Math.min(1, s.hp / s.hpMax));
     // background rounded
     const radius = Math.min(6, h);
-    ctx.beginPath();
-    ctx.moveTo(x + radius, healthY);
-    ctx.lineTo(x + w - radius, healthY);
-    ctx.quadraticCurveTo(x + w, healthY, x + w, healthY + radius);
-    ctx.lineTo(x + w, healthY + h - radius);
-    ctx.quadraticCurveTo(x + w, healthY + h, x + w - radius, healthY + h);
-    ctx.lineTo(x + radius, healthY + h);
-    ctx.quadraticCurveTo(x, healthY + h, x, healthY + h - radius);
-    ctx.lineTo(x, healthY + radius);
-    ctx.quadraticCurveTo(x, healthY, x + radius, healthY);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fill();
+    if (typeof ctx !== 'undefined') {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, healthY);
+      ctx.lineTo(x + w - radius, healthY);
+      ctx.quadraticCurveTo(x + w, healthY, x + w, healthY + radius);
+      ctx.lineTo(x + w, healthY + h - radius);
+      ctx.quadraticCurveTo(x + w, healthY + h, x + w - radius, healthY + h);
+      ctx.lineTo(x + radius, healthY + h);
+      ctx.quadraticCurveTo(x, healthY + h, x, healthY + h - radius);
+      ctx.lineTo(x, healthY + radius);
+      ctx.quadraticCurveTo(x, healthY, x + radius, healthY);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fill();
+    }
 
     // determine if there's a recent health flash for this ship
     const hf = healthFlashes.find(hf => hf.id === s.id && hf.life > 0);
@@ -163,82 +196,69 @@ class ShipV {
     }
 
     // filled rounded clip
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x + radius, healthY);
-    ctx.lineTo(x + w - radius, healthY);
-    ctx.quadraticCurveTo(x + w, healthY, x + w, healthY + radius);
-    ctx.lineTo(x + w, healthY + h - radius);
-    ctx.quadraticCurveTo(x + w, healthY + h, x + w - radius, healthY + h);
-    ctx.lineTo(x + radius, healthY + h);
-    ctx.quadraticCurveTo(x, healthY + h, x, healthY + h - radius);
-    ctx.lineTo(x, healthY + radius);
-    ctx.quadraticCurveTo(x, healthY, x + radius, healthY);
-    ctx.closePath();
-    ctx.clip();
-    ctx.fillStyle = healthColor; ctx.fillRect(x, healthY, w * p, h);
-    ctx.restore();
-
-    // level text above ship (small)
-    if (typeof s.level === 'number' && s.level > 1){
-      ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.font = '700 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`Lv ${s.level}`, s.x, s.y - (r + 18)); ctx.restore();
+    if (typeof ctx !== 'undefined') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x + radius, healthY);
+      ctx.lineTo(x + w - radius, healthY);
+      ctx.quadraticCurveTo(x + w, healthY, x + w, healthY + radius);
+      ctx.lineTo(x + w, healthY + h - radius);
+      ctx.quadraticCurveTo(x + w, healthY + h, x + w - radius, healthY + h);
+      ctx.lineTo(x + radius, healthY + h);
+      ctx.quadraticCurveTo(x, healthY + h, x, healthY + h - radius);
+      ctx.lineTo(x, healthY + radius);
+      ctx.quadraticCurveTo(x, healthY, x + radius, healthY);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = healthColor; ctx.fillRect(x, healthY, w * p, h);
+      
+  // Note: the earlier implementation referenced out-of-scope variables (shipX, shipY, h).
+  // Health/shield impact visual creation is handled below in the per-frame processing
+  // which consumes entries from `state.healthHits` and `state.shieldHits` and pushes
+  // appropriate flashes/particles using well-scoped variables.
     }
   }
 }
+// safe no-op updateUI for headless/test environments (overridden by UI init)
+export function updateUI(){ /* no-op until UI is initialized */ }
 
-// --- Game State ---
-let ships = []; let bullets=[]; let particles=[]; let flashes=[]; let shieldFlashes = []; let healthFlashes = [];
-let shipsVMap = new Map(); // id -> ShipV visual wrappers for logic ships
-let running = false; let speed = 1; let showTrails = true; let lastTime = 0;
-const score = { red:0, blue:0 };
-
-// spawnFleet now lives in entities.js; renderer will call it and merge results
-
-function reset(seedValue=null){ ships.length=0; bullets.length=0; particles.length=0; flashes.length=0; score.red=0; score.blue=0; if (seedValue!==null){ srand(seedValue>>>0); toast(`Seed set to ${seedValue>>>0}`); } else { unseed(); } ships.push(...spawnFleet(Team.RED, 12, W*0.25, H*0.5)); ships.push(...spawnFleet(Team.BLUE,12, W*0.75, H*0.5)); }
-
-function simulate(dt){
-  for (const s of stars){ s.phase += dt * 0.8 * s.d; }
-  for (const s of ships){ s.update(dt, ships); }
-  for (let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.update(dt); if (!b.alive()){ bullets.splice(i,1); continue; } }
-
-  // Use simulateStep (shared logic) for collisions and scoring
-  // Provide a place to collect explosion events
-  const shieldHits = [];
-  const state = { ships, bullets, score, particles, explosions: [], shieldHits };
+// Exported simulate wrapper: run simulation step then update renderer visual state
+export function simulate(dt) {
+  // run core simulation step (mutates state.ships, state.bullets, and pushes hits)
   simulateStep(state, dt, { W, H });
-  if (state.explosions && state.explosions.length){
-    for (const e of state.explosions){ // e: {x,y,team}
-      flashes.push({ x: e.x, y: e.y, r: 2, life: .25, team: e.team });
-      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); particles.push(new Particle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a'))); }
-    }
-  }
-  // handle shield hit visuals
-  if (Array.isArray(state.shieldHits) && state.shieldHits.length) {
-    for (const h of state.shieldHits) {
-      // find the ship so we can compute hit direction relative to ship center
-      const ship = ships.find(s => s.id === h.id);
-      const shipX = ship ? ship.x : h.hitX;
-      const shipY = ship ? ship.y : h.hitY;
-      // push a short bright ring centered on the ship (visual flash)
-      flashes.push({ x: shipX, y: shipY, r: 6 + Math.min(12, h.amount), life: 0.12, team: h.team, shieldHit: true });
-      // particles at exact impact point
-      for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); particles.push(new Particle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)')); }
-      // create an arc-highlight (shieldFlash) attached to ship id with angle from ship center to impact
-      if (ship) {
-        const ang = Math.atan2(h.hitY - shipY, h.hitX - shipX);
-        shieldFlashes.push({ id: ship.id, angle: ang, life: 0.22, amount: h.amount });
-      }
-    }
-  }
+
   // handle health hit visuals (for health bar flashing)
   if (Array.isArray(state.healthHits) && state.healthHits.length) {
     for (const hh of state.healthHits) {
-      const ship = ships.find(s => s.id === hh.id);
-      if (ship) {
+      const shipHit = ships.find(s => s.id === hh.id);
+      if (shipHit) {
         // create a health flash entry that renderer will use to animate the health bar color
-        healthFlashes.push({ id: ship.id, life: 0.45, amount: hh.amount });
+        healthFlashes.push({ id: shipHit.id, life: 0.45, amount: hh.amount });
+        // create particles at impact point
+        for (let i=0;i<6;i++){
+          const a = srange(0,TAU);
+          const sp = srange(40,120);
+          particles.push(new Particle(hh.hitX, hh.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)'));
+        }
       }
     }
+    // clear processed healthHits so they are not re-processed next frame
+    state.healthHits.length = 0;
+  }
+
+  // handle shield hit visuals (arc highlights attached to ship id)
+  if (Array.isArray(state.shieldHits) && state.shieldHits.length) {
+    for (const sh of state.shieldHits) {
+      const shipHit = ships.find(s => s.id === sh.id);
+      if (shipHit) {
+        const ang = Math.atan2(sh.hitY - shipHit.y, sh.hitX - shipHit.x);
+        shieldFlashes.push({ id: shipHit.id, angle: ang, life: 0.22, amount: sh.amount });
+        // small bright flash at impact
+        flashes.push({ x: sh.hitX, y: sh.hitY, r: 6 + Math.min(12, sh.amount), life: 0.12, team: sh.team, shieldHit: true });
+      }
+    }
+    // clear processed shieldHits
+    state.shieldHits.length = 0;
   }
 
   for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0) particles.splice(i,1); }
@@ -262,7 +282,9 @@ function simulate(dt){
   }
 }
 
-function render(){
+export function render() {
+  ensureCtx();
+  if (typeof ctx === 'undefined' || !ctx) return;
   ctx.clearRect(0,0,W,H);
   const g = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H));
   g.addColorStop(0, 'rgba(60,80,140,0.10)'); g.addColorStop(1, 'rgba(10,12,20,0.0)'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
@@ -284,46 +306,45 @@ function render(){
 function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); requestAnimationFrame(loop); }
 
 // --- UI ---
-const startBtn = document.getElementById('startPause');
-const resetBtn = document.getElementById('reset');
-const addRedBtn = document.getElementById('addRed');
-const addBlueBtn = document.getElementById('addBlue');
-const trailsBtn = document.getElementById('toggleTrails');
-const speedBtn = document.getElementById('speed');
-const redBadge = document.getElementById('redScore');
-const blueBadge = document.getElementById('blueScore');
-const statsDiv = document.getElementById('stats');
-const seedBtn = document.getElementById('seedBtn');
-const formationBtn = document.getElementById('formationBtn');
+export function initRendererUI() {
+  if (typeof document === 'undefined') return;
+  const startBtn = document.getElementById('startPause');
+  const resetBtn = document.getElementById('reset');
+  const addRedBtn = document.getElementById('addRed');
+  const addBlueBtn = document.getElementById('addBlue');
+  const trailsBtn = document.getElementById('toggleTrails');
+  const speedBtn = document.getElementById('speed');
+  const redBadge = document.getElementById('redScore');
+  const blueBadge = document.getElementById('blueScore');
+  const statsDiv = document.getElementById('stats');
+  const seedBtn = document.getElementById('seedBtn');
+  const formationBtn = document.getElementById('formationBtn');
 
-function updateUI(){ redBadge.textContent = `Red ${score.red}`; blueBadge.textContent = `Blue ${score.blue}`; statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`; }
+  function updateUI(){ redBadge.textContent = `Red ${score.red}`; blueBadge.textContent = `Blue ${score.blue}`; statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`; }
 
-startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
+  startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
+  resetBtn.addEventListener('click', () => { reset(); });
+  addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
+  addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
+  trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+  speedBtn.addEventListener('click', () => {
+    const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
+  });
+  seedBtn.addEventListener('click', () => {
+    const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
+  });
+  formationBtn.addEventListener('click', () => {
+    const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
+    const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
+    const spaceY = 20; const cols=6;
+    aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    toast('Fleets re-formed');
+  });
+  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
 
-resetBtn.addEventListener('click', () => { reset(); });
-addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
-addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
-trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
-
-speedBtn.addEventListener('click', () => {
-  const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
-});
-
-seedBtn.addEventListener('click', () => {
-  const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
-});
-
-formationBtn.addEventListener('click', () => {
-  const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
-  const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
-  const spaceY = 20; const cols=6;
-  aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
-  aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
-  toast('Fleets re-formed');
-});
-
-canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
-
-// Init
-reset();
-requestAnimationFrame(loop);
+  // UI update loop
+  function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); requestAnimationFrame(loop); }
+  reset();
+  requestAnimationFrame(loop);
+}

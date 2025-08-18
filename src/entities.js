@@ -117,7 +117,10 @@ export class Ship {
           // Only push bullets if caller provided a bullets array as third argument
           if (arguments.length >= 3 && Array.isArray(arguments[2])) {
             const bullets = arguments[2];
-            bullets.push(new Bullet(this.x + bdx*12, this.y + bdy*12, bdx*spd + this.vx*0.2, bdy*spd + this.vy*0.2, this.team, this.id));
+            const bullet = new Bullet(this.x + bdx*12, this.y + bdy*12, bdx*spd + this.vx*0.2, bdy*spd + this.vy*0.2, this.team, this.id);
+            // Apply damage-scaling by level: bullet.dmg *= (1 + DMG_PERCENT_PER_LEVEL * (this.level - 1))
+            bullet.dmg *= (1 + DMG_PERCENT_PER_LEVEL * (this.level - 1));
+            bullets.push(bullet);
           }
           this.cooldown = this.reload;
         }
