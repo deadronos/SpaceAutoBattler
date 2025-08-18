@@ -68,19 +68,14 @@ describe('Add ship UI and deterministic ship type selection', () => {
       const _x = srange(40, W * 0.35);
       // eslint-disable-next-line no-unused-vars
       const _y = srange(80, H - 80);
-      // The Ship constructor evaluates the `classes` object which calls srange
-      // for every ship type when the constructor runs. That consumes a batch of
-      // srange calls (one per numeric field in each type's config). Counted
-      // manually this is 16 srange calls across the configs, plus 2 extra when
-      // the chosen type is 'carrier' (for launchCooldown and launchAmount).
-      // Consume the same number of RNG values here so the expected sequence
-      // matches the real UI flow.
-      for (let k = 0; k < 16; k++) srange(0, 1);
-      if (expected[i] === 'carrier') {
-        // carrier-specific additional srange calls
-        srange(0.8, 1.4);
-        srange(1, 3);
-      }
+  // The Ship constructor now only consumes RNG for the chosen type's
+  // numeric fields (previously it evaluated all types at once). For the
+  // current implementation this is 3 srange calls for most types, and 6
+  // total for 'carrier' (4 in config + 2 extra in constructor). Consume
+  // the same number of RNG values here so the expected sequence matches
+  // the real UI flow.
+  const callsForType = (t) => (t === 'carrier' ? 6 : 3);
+  for (let k = 0; k < callsForType(expected[i]); k++) srange(0, 1);
     }
 
     // now reseed and perform the same actions that the add buttons perform using

@@ -81,7 +81,7 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // UI toast
-export function toast(msg) { if (!document) return; const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
+export function toast(msg) { if (typeof document === 'undefined' || !document) return; const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
 
 // Starfield background (parallax)
 const stars = [];
@@ -100,10 +100,15 @@ initStars();
 export const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
 
 // Pick a random ship type (uses seeded srangeInt)
+// Ship types array (single module-level allocation)
+const SHIP_TYPES = ['corvette','frigate','destroyer','carrier','fighter'];
+
 export function randomShipType() {
-  const types = ['corvette','frigate','destroyer','carrier','fighter'];
-  const idx = srangeInt(0, types.length - 1);
-  return types[idx];
+  // defensive: ensure SHIP_TYPES is non-empty
+  if (!Array.isArray(SHIP_TYPES) || SHIP_TYPES.length === 0) return 'corvette';
+  // srangeInt is inclusive on both ends; compute index and clamp defensively
+  const idx = clamp(srangeInt(0, SHIP_TYPES.length - 1), 0, SHIP_TYPES.length - 1);
+  return SHIP_TYPES[idx];
 }
 
 // Test helper: perform the same actions as the UI add buttons. Exported so tests
@@ -111,16 +116,23 @@ export function randomShipType() {
 // identical to the UI.
 export function createShipFromUI(team) {
   const t = randomShipType();
+  // Use strict equality against Team constants; accept numeric Team enum values
   if (team === Team.RED) {
     const x = srange(40, W * 0.35);
     const y = srange(80, H - 80);
     ships.push(new Ship(Team.RED, x, y, t));
     if (typeof toast === 'function') toast(`+1 Red (${t})`);
-  } else {
+  } else if (team === Team.BLUE) {
     const x = srange(W * 0.65, W - 40);
     const y = srange(80, H - 80);
     ships.push(new Ship(Team.BLUE, x, y, t));
     if (typeof toast === 'function') toast(`+1 Blue (${t})`);
+  } else {
+    // fallback: if caller provided a non-standard team identifier, default to RED
+    const x = srange(40, W * 0.35);
+    const y = srange(80, H - 80);
+    ships.push(new Ship(Team.RED, x, y, t));
+    if (typeof toast === 'function') toast(`+1 Red (${t})`);
   }
 }
 

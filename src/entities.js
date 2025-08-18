@@ -24,15 +24,28 @@ export class Ship {
     this.team = team; this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.angle = 0;
     this.type = type; // 'corvette'|'frigate'|'destroyer'|'carrier'|'fighter'
 
-    const classes = {
-      corvette: { radius: 8, maxSpeed: srange(120,160), accel: 240, hp: srange(40,70), reload: srange(0.18,0.28), vision: 220, range: 140 },
-      frigate:  { radius: 10, maxSpeed: srange(90,120), accel: 200, hp: srange(80,120), reload: srange(0.24,0.4), vision: 280, range: 180 },
-      destroyer:{ radius: 14, maxSpeed: srange(60,90), accel: 150, hp: srange(150,220), reload: srange(0.4,0.7), vision: 320, range: 220 },
-      carrier:  { radius: 18, maxSpeed: srange(40,70), accel: 90, hp: srange(220,300), reload: srange(0.6,1.2), vision: 360, range: 260, launchBase: srange(3.5,6.0) },
-      fighter:  { radius: 6, maxSpeed: srange(160,220), accel: 300, hp: srange(18,32), reload: srange(0.12,0.22), vision: 180, range: 120 }
-    };
+    // Avoid consuming RNG for all types at once. Previously the `classes` object
+    // executed `srange` for every type on every Ship construction which advanced
+    // the seeded RNG even when only one type was needed. To make RNG usage
+    // predictable and local to the chosen type, compute the config only for
+    // the requested `type`.
+    function getClassConfig(t) {
+      switch (t) {
+        case 'frigate':
+          return { radius: 10, maxSpeed: srange(90,120), accel: 200, hp: srange(80,120), reload: srange(0.24,0.4), vision: 280, range: 180 };
+        case 'destroyer':
+          return { radius: 14, maxSpeed: srange(60,90), accel: 150, hp: srange(150,220), reload: srange(0.4,0.7), vision: 320, range: 220 };
+        case 'carrier':
+          return { radius: 18, maxSpeed: srange(40,70), accel: 90, hp: srange(220,300), reload: srange(0.6,1.2), vision: 360, range: 260, launchBase: srange(3.5,6.0) };
+        case 'fighter':
+          return { radius: 6, maxSpeed: srange(160,220), accel: 300, hp: srange(18,32), reload: srange(0.12,0.22), vision: 180, range: 120 };
+        case 'corvette':
+        default:
+          return { radius: 8, maxSpeed: srange(120,160), accel: 240, hp: srange(40,70), reload: srange(0.18,0.28), vision: 220, range: 140 };
+      }
+    }
 
-    const cfg = classes[type] || classes.corvette;
+    const cfg = getClassConfig(type || 'corvette');
     this.radius = cfg.radius; this.maxSpeed = cfg.maxSpeed; this.accel = cfg.accel; this.turn = 4.5;
     this.hpMax = cfg.hp; this.hp = this.hpMax; this.cooldown = 0; this.reload = cfg.reload;
     this.vision = cfg.vision; this.range = cfg.range; this.id = Ship._id++;
