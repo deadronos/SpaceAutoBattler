@@ -25,3 +25,8 @@ export function srangeInt(a, b) {
   // inclusive
   return Math.floor(srange(a, b + 1));
 }
+
+// Test helper: assert that RNG has been seeded. Throws if not.
+export function assertSeeded(msg = 'RNG must be seeded with srand(seed) for deterministic behavior') {
+  if (!_seeded) throw new Error(msg);
+}

@@ -50,3 +50,4 @@ describe('Renderer (pure parts)', () => {
     expect(() => initRendererUI()).not.toThrow();
   });
 });
+
