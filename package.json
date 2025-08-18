@@ -1,0 +1,11 @@
+{
+  "name": "space-autobattler",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}

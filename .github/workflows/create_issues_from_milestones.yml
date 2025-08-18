@@ -1,0 +1,65 @@
+name: Create Issues from Milestones
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create issues from milestones
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          OWNER=${REPO%%/*}
+          REPO_NAME=${REPO##*/}
+
+          echo "Fetching milestones..."
+          MILESTONES_JSON=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$REPO/milestones?state=all&per_page=100")
+
+          get_milestone_number() {
+            echo "$MILESTONES_JSON" | jq -r --arg title "$1" '.[] | select(.title==$title) | .number' || true
+          }
+
+          echo "Fetching existing issues (first 100)..."
+          EXISTING_ISSUES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$REPO/issues?state=all&per_page=100")
+
+          for f in milestones/*.md; do
+            [ -f "$f" ] || continue
+            title=$(sed -n '1s/^# //p' "$f" || true)
+            body=$(sed '1d' "$f" || true)
+            [ -n "$title" ] || { echo "Skipping $f, no title"; continue; }
+
+            # Check for existing issues with exact title in the fetched page
+            exists_num=$(echo "$EXISTING_ISSUES" | jq -r --arg t "$title" '.[] | select(.title==$t) | .number' || true)
+            if [ -n "$exists_num" ]; then
+              echo "Issue with title '$title' already exists (#$exists_num), skipping."
+              continue
+            fi
+
+            milestone_number=$(get_milestone_number "$title" || true)
+
+            # Build payload
+            if [ -n "$milestone_number" ] && [ "$milestone_number" != "null" ]; then
+              payload=$(jq -n --arg t "$title" --arg b "$body" --arg m "$milestone_number" '{title: $t, body: $b, labels: ["milestone"], milestone: ($m|tonumber)}')
+            else
+              payload=$(jq -n --arg t "$title" --arg b "$body" '{title: $t, body: $b, labels: ["milestone"]}')
+            fi
+
+            echo "Creating issue '$title'..."
+            resp=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" -d "$payload" "https://api.github.com/repos/$REPO/issues")
+            echo "$resp" | jq -r '.html_url'
+            sleep 1
+          done
