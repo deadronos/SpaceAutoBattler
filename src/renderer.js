@@ -1,5 +1,6 @@
 import { srand, srange, srangeInt, unseed } from './rng.js';
 import { simulateStep } from './simulate.js';
+import { Ship, Team, spawnFleet } from './entities.js';
 
 const canvas = document.getElementById('world');
 const ctx = canvas.getContext('2d');
@@ -30,17 +31,7 @@ function initStars() {
 initStars();
 
 // --- Entities (renderer-local) ---
-const Team = { RED: 0, BLUE: 1 };
 const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
-
-class Bullet {
-  constructor(x,y,vx,vy, team){
-    this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.team=team; this.life=2.5; this.radius=2.2; this.dmg= srange(8,14);
-  }
-  update(dt){ this.x += this.vx*dt; this.y += this.vy*dt; this.life -= dt; }
-  alive(){ return this.life>0 && this.x>-50 && this.x<W+50 && this.y>-50 && this.y<H+50; }
-  draw(){ ctx.save(); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(this.team, .9); ctx.fillStyle = teamColor(this.team, .95); ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,TAU); ctx.fill(); ctx.restore(); }
-}
 
 class Particle {
   constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
@@ -48,79 +39,65 @@ class Particle {
   draw(){ if (this.life<=0) return; const a = this.life/this.max; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
 }
 
-class Ship {
-  constructor(team, x, y){
-    this.team = team; this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=rand(0,TAU);
-    this.radius=10; this.maxSpeed= srange(70, 110); this.accel= 160; this.turn= 4.5;
-    this.hpMax = srange(70, 120); this.hp = this.hpMax; this.cooldown = 0; this.reload= srange(.28,.45);
-    this.vision = 300; this.range = 190; this.id = Ship._id++;
-    this.kills=0; this.alive=true;
-  }
-  pickTarget(ships){
-    let best=null, bd=1e9;
-    for (const s of ships){ if (!s.alive || s.team===this.team) continue; const dx=s.x-this.x, dy=s.y-this.y; const d2=dx*dx+dy*dy; if (d2 < this.vision*this.vision && d2<bd){ bd=d2; best=s; } }
-    return best;
-  }
-  update(dt, ships){
-    if (!this.alive) return;
-    const target = this.pickTarget(ships);
-    let ax=0, ay=0;
-    if (target){
-      const dx = target.x - this.x, dy = target.y - this.y; const dist = Math.hypot(dx,dy) || 1;
-      const lead = clamp(dist / 240, 0, 1.2);
-      const tx = target.x + target.vx*lead, ty = target.y + target.vy*lead;
-      const sx = tx - this.x, sy = ty - this.y; const sl = Math.hypot(sx,sy) || 1;
-      ax += (sx/sl) * this.accel; ay += (sy/sl) * this.accel;
-      if (dist < this.range){
-        const facing = ((this.vx||1)*dx + (this.vy||1)*dy) / (Math.hypot(this.vx,this.vy)+1);
-        if (this.cooldown<=0 && facing>0){
-          const spd = 300 + srange(-20,20);
-          const bdx = dx/dist, bdy = dy/dist;
-          bullets.push(new Bullet(this.x + bdx*12, this.y + bdy*12, bdx*spd + this.vx*0.2, bdy*spd + this.vy*0.2, this.team));
-          this.cooldown = this.reload;
-        }
-      }
-    } else {
-      ax += Math.cos(this.angle) * (this.accel*0.3);
-      ay += Math.sin(this.angle) * (this.accel*0.3);
-    }
-    let sx=0, sy=0, n=0; const sepR=26;
-    for (const s of ships){ if (!s.alive || s===this || s.team!==this.team) continue; const dx=this.x-s.x, dy=this.y-s.y; const d2=dx*dx+dy*dy; if (d2<sepR*sepR && d2>1){ const d=Math.sqrt(d2); sx += dx/d; sy += dy/d; n++; } }
-    if (n>0){ ax += (sx/n) * this.accel*0.9; ay += (sy/n) * this.accel*0.9; }
-    this.vx += ax*dt; this.vy += ay*dt;
-    const sp = Math.hypot(this.vx,this.vy);
-    if (sp>this.maxSpeed){ const k=this.maxSpeed/sp; this.vx*=k; this.vy*=k; }
-    this.x += this.vx*dt; this.y += this.vy*dt;
-    this.angle = Math.atan2(this.vy, this.vx);
-    if (this.x < 10 && this.vx<0) this.vx *= -0.7;
-    if (this.x > W-10 && this.vx>0) this.vx *= -0.7;
-    if (this.y < 10 && this.vy<0) this.vy *= -0.7;
-    if (this.y > H-10 && this.vy>0) this.vy *= -0.7;
-    this.cooldown -= dt;
-  }
-  damage(d){ this.hp -= d; if (this.hp<=0) { this.alive=false; this.explode(); } }
-  explode(){
-    for (let i=0;i<28;i++){ const a = srange(0,TAU); const sp = srange(40, 240); const vx = Math.cos(a)*sp, vy=Math.sin(a)*sp; const life = srange(.3, 1.2); particles.push(new Particle(this.x, this.y, vx, vy, life, teamColor(this.team, '$a'))); }
-    flashes.push({x:this.x,y:this.y,r:2,life:.25,team:this.team});
-  }
+// Keep Ship logic in entities.js, renderer keeps visual helpers and particle/flash handling.
+// Visual Ship wrapper to reference logic ship instance
+class ShipV {
+  constructor(shipLogic){ this.logic = shipLogic; this.id = shipLogic.id; this.team = shipLogic.team; this.x = shipLogic.x; this.y = shipLogic.y; this.type = shipLogic.type; }
+  syncFromLogic(){ this.x = this.logic.x; this.y = this.logic.y; this.type = this.logic.type; this.alive = this.logic.alive; }
   draw(){
-    if (!this.alive) return;
-    if (showTrails){ const tx = this.x - Math.cos(this.angle)*this.radius*1.2; const ty = this.y - Math.sin(this.angle)*this.radius*1.2; particles.push(new Particle(tx, ty, -this.vx*0.05 + srange(-10,10), -this.vy*0.05 + srange(-10,10), .25, teamColor(this.team, '$a'))); }
-    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(this.team,.9); ctx.fillStyle = teamColor(this.team,.95);
-    ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-10,-8); ctx.lineTo(-6,0); ctx.lineTo(-10,8); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(0,0,3.2,2.2,0,0,TAU); ctx.fill(); ctx.restore();
-    const w=22, h=3, p= this.hp/this.hpMax; const x=this.x-w/2, y=this.y-18; ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h); ctx.fillStyle=teamColor(this.team,.85); ctx.fillRect(x,y,w*p,h);
+    const s = this.logic;
+    if (!s.alive) return;
+    // trails
+    if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; particles.push(new Particle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a'))); }
+
+    // Draw hull by type with scale from radius
+    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9);
+    const r = s.radius || 8;
+    // base fill
+    ctx.fillStyle = teamColor(s.team, .96);
+
+    if (s.type === 'corvette') {
+      // small arrow-like hull
+      ctx.beginPath(); ctx.moveTo(r*1.5,0); ctx.lineTo(-r,-r*0.7); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r,r*0.7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(0,0,r*0.35,r*0.25,0,0,TAU); ctx.fill();
+    } else if (s.type === 'frigate') {
+      // sleeker hull with a small dorsal
+      ctx.beginPath(); ctx.moveTo(r*1.6,0); ctx.quadraticCurveTo(r*0.2,-r*1.1, -r*1.1, -r*0.6); ctx.lineTo(-r*0.6,0); ctx.lineTo(-r*1.1, r*0.6); ctx.quadraticCurveTo(r*0.2,r*1.1, r*1.6,0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-r*0.2, -r*0.25, r*0.6, r*0.5);
+    } else if (s.type === 'destroyer') {
+      // broad hull with angular plates
+      ctx.beginPath(); ctx.moveTo(r*1.9,0); ctx.lineTo(r*0.3, -r*1.1); ctx.lineTo(-r*1.4, -r*0.6); ctx.lineTo(-r*1.4, r*0.6); ctx.lineTo(r*0.3, r*1.1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-r*0.9, -r*0.18, r*1.2, r*0.36);
+    } else if (s.type === 'carrier') {
+      // larger carrier silhouette with hangar markings
+      ctx.beginPath(); ctx.ellipse(0, 0, r*1.6, r*1.0, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(-r*0.8, -r*0.25, r*1.6, r*0.5);
+    } else if (s.type === 'fighter') {
+      // tiny fast fighter
+      ctx.beginPath(); ctx.moveTo(r*1.2,0); ctx.lineTo(-r*0.6, -r*0.45); ctx.lineTo(-r*0.2, 0); ctx.lineTo(-r*0.6, r*0.45); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.ellipse(r*0.25,0,r*0.25,r*0.15,0,0,TAU); ctx.fill();
+    } else {
+      // fallback generic hull
+      ctx.beginPath(); ctx.moveTo(r*1.4,0); ctx.lineTo(-r, -r*0.8); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r, r*0.8); ctx.closePath(); ctx.fill();
+    }
+
+    ctx.restore();
+
+    // health bar (scaled by radius)
+    const w = Math.max(16, r*3.2), h = Math.max(3, r*0.4), p = s.hp/s.hpMax; const x = s.x - w/2, y = s.y - (r + 10);
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h); ctx.fillStyle = teamColor(s.team,.9); ctx.fillRect(x,y,w*p,h);
   }
 }
-Ship._id=1;
 
 // --- Game State ---
 let ships = []; let bullets=[]; let particles=[]; let flashes=[];
+let shipsVMap = new Map(); // id -> ShipV visual wrappers for logic ships
 let running = false; let speed = 1; let showTrails = true; let lastTime = 0;
 const score = { red:0, blue:0 };
 
-function spawnFleet(team, n, x, y){ for (let i=0;i<n;i++){ const ox = (i%6)*20 + srange(-10,10); const oy = Math.floor(i/6)*20 + srange(-10,10); ships.push(new Ship(team, x + (team===Team.RED? -ox: ox), y + oy)); } }
+// spawnFleet now lives in entities.js; renderer will call it and merge results
 
-function reset(seedValue=null){ ships.length=0; bullets.length=0; particles.length=0; flashes.length=0; score.red=0; score.blue=0; if (seedValue!==null){ srand(seedValue>>>0); toast(`Seed set to ${seedValue>>>0}`); } else { unseed(); } spawnFleet(Team.RED, 12, W*0.25, H*0.5); spawnFleet(Team.BLUE,12, W*0.75, H*0.5); }
+function reset(seedValue=null){ ships.length=0; bullets.length=0; particles.length=0; flashes.length=0; score.red=0; score.blue=0; if (seedValue!==null){ srand(seedValue>>>0); toast(`Seed set to ${seedValue>>>0}`); } else { unseed(); } ships.push(...spawnFleet(Team.RED, 12, W*0.25, H*0.5)); ships.push(...spawnFleet(Team.BLUE,12, W*0.75, H*0.5)); }
 
 function simulate(dt){
   for (const s of stars){ s.phase += dt * 0.8 * s.d; }
@@ -128,10 +105,33 @@ function simulate(dt){
   for (let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.update(dt); if (!b.alive()){ bullets.splice(i,1); continue; } }
 
   // Use simulateStep (shared logic) for collisions and scoring
-  simulateStep({ ships, bullets, score, particles }, dt, { W, H });
+  // Provide a place to collect explosion events
+  const state = { ships, bullets, score, particles, explosions: [] };
+  simulateStep(state, dt, { W, H });
+  if (state.explosions && state.explosions.length){
+    for (const e of state.explosions){ // e: {x,y,team}
+      flashes.push({ x: e.x, y: e.y, r: 2, life: .25, team: e.team });
+      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); particles.push(new Particle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a'))); }
+    }
+  }
 
   for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0) particles.splice(i,1); }
   for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
+
+  // sync visual wrappers (persist between frames)
+  const aliveIds = new Set(ships.map(s => s.id));
+  // add or update wrappers
+  for (const s of ships) {
+    if (shipsVMap.has(s.id)) {
+      shipsVMap.get(s.id).syncFromLogic();
+    } else {
+      shipsVMap.set(s.id, new ShipV(s));
+    }
+  }
+  // remove wrappers for ships that no longer exist
+  for (const id of Array.from(shipsVMap.keys())) {
+    if (!aliveIds.has(id)) shipsVMap.delete(id);
+  }
 }
 
 function render(){
@@ -141,9 +141,13 @@ function render(){
   for (const s of stars){ const tw = 0.6 + 0.4 * Math.sin(s.phase); ctx.globalAlpha = clamp(0.5*tw * (0.6 + 0.5*s.d), 0, 1); ctx.fillStyle = '#e9f2ff'; ctx.fillRect(s.x, s.y, s.r, s.r); }
   ctx.globalAlpha = 1;
   for (const f of flashes){ const a = clamp(f.life/0.25,0,1); ctx.strokeStyle = teamColor(f.team, a*0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,TAU); ctx.stroke(); }
-  for (const b of bullets){ b.draw(); }
+  for (const b of bullets){
+    // bullets are logic objects from entities.Bullet; draw them here
+    ctx.save(); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(b.team, .9); ctx.fillStyle = teamColor(b.team, .95);
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.radius || 2.2, 0, TAU); ctx.fill(); ctx.restore();
+  }
   for (const p of particles){ p.draw(); }
-  for (const s of ships){ s.draw(); }
+  for (const sv of shipsVMap.values()){ sv.draw(); }
   const redAlive = ships.some(s=>s.alive && s.team===Team.RED);
   const blueAlive = ships.some(s=>s.alive && s.team===Team.BLUE);
   if (!redAlive || !blueAlive){ ctx.save(); ctx.textAlign='center'; ctx.font = '700 36px Inter, system-ui, sans-serif'; const winner = redAlive? 'Red' : blueAlive? 'Blue' : 'Nobody'; const col = redAlive? teamColor(Team.RED, .95) : blueAlive? teamColor(Team.BLUE,.95) : 'rgba(255,255,255,.9)'; ctx.fillStyle = col; ctx.shadowBlur = 14; ctx.shadowColor = col; ctx.fillText(`${winner} Wins!`, W/2, 64); ctx.restore(); }

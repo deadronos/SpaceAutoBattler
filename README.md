@@ -14,6 +14,16 @@ npm test
 npx vitest --watch
 ```
 
+To view the game in a browser during development you can run a tiny static server and open the HTML file:
+
+```powershell
+# install the dev dependencies first (if not already installed)
+npm install
+# start a local server on http://localhost:8080
+npm run serve
+# then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html in your browser
+```
+
 Notes:
 - The visual renderer is in `src/renderer.js` and references the DOM canvas in the HTML.
 - Core logic suitable for unit testing is split into `src/rng.js`, `src/entities.js`, and `src/simulate.js`.
