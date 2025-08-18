@@ -8,6 +8,19 @@ export function simulateStep(state, dt, bounds = { W: 800, H: 600 }) {
     if (s.alive) s.update(dt, state.ships, state.bullets);
   }
 
+  // Wrap ships across screen boundaries so they reappear on the opposite side
+  if (bounds && typeof bounds.W === 'number' && typeof bounds.H === 'number') {
+    const W = bounds.W, H = bounds.H;
+    for (const s of state.ships) {
+      if (!s.alive) continue;
+      const r = s.radius || 0;
+      if (s.x < -r) s.x += (W + r * 2);
+      else if (s.x > W + r) s.x -= (W + r * 2);
+      if (s.y < -r) s.y += (H + r * 2);
+      else if (s.y > H + r) s.y -= (H + r * 2);
+    }
+  }
+
   // Carrier launches: centralize launch timing so simulation owns creation events
   for (const s of state.ships) {
     if (!s.alive || !s.isCarrier) continue;
