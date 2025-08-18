@@ -4,13 +4,15 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-  "serve": "http-server -c-1 -p 8080",
-  "build-standalone": "node ./scripts/build-standalone.mjs",
-  "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch"
+    "coverage": "vitest run --coverage",
+    "serve": "http-server -c-1 -p 8080",
+    "build-standalone": "node ./scripts/build-standalone.mjs",
+    "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch"
   },
   "devDependencies": {
-    "vitest": "^3.2.4",
-  "http-server": "^14.1.1",
-  "esbuild": "^0.18.22"
+    "@vitest/coverage-v8": "^3.2.4",
+    "esbuild": "^0.19.12",
+    "http-server": "^14.1.1",
+    "vitest": "^3.2.4"
   }
 }
