@@ -3,6 +3,8 @@ import { simulateStep } from './simulate.js';
 import { Ship, Team, spawnFleet } from './entities.js';
 
 let canvas, ctx, W, H;
+// (Removed duplicate export statement; exports are already declared at the top level)
+
 export function initRenderer() {
   canvas = document.getElementById('world');
   ctx = canvas.getContext('2d');
@@ -13,25 +15,44 @@ export function initRenderer() {
 
 // Helper to allow tests to inject a mock canvas context via global.ctx
 function ensureCtx() {
-  if ((typeof ctx === 'undefined' || ctx === undefined) && typeof globalThis !== 'undefined' && globalThis.ctx) {
+  // If a test injects a mock canvas context as global.ctx prefer that so tests can
+  // control drawing even if a real canvas context was previously assigned by initRenderer.
+  if (typeof globalThis !== 'undefined' && globalThis.ctx) {
+    ctx = globalThis.ctx;
+    return ctx;
+  }
+  // Treat undefined or null ctx as "not set" otherwise
+  if ((typeof ctx === 'undefined' || ctx === undefined || ctx === null) && typeof globalThis !== 'undefined' && globalThis.ctx) {
     ctx = globalThis.ctx;
   }
   return ctx;
 }
 
 // Renderer-global visual state (safe defaults so module can be imported in Node tests)
-export const particles = [];
-export const flashes = [];
-export const shieldFlashes = [];
-export const healthFlashes = [];
-export const shipsVMap = new Map();
-export let ships = [];
-export let bullets = [];
-export let lastTime = 0;
-export let running = false;
+const particles = [];
+const flashes = [];
+const shieldFlashes = [];
+const healthFlashes = [];
+/**
+ * Transient level-up animation entries.
+ * Each entry is an object: { id: <shipId>, life: <seconds remaining> }.
+ * Renderer uses these to animate (scale/glow) the level pill for a short time
+ * when a ship's `level` increments.
+ */
+const levelFlashes = [];
+const shipsVMap = new Map();
+let ships = [];
+let bullets = [];
+let lastTime = 0;
+let running = false;
 export let speed = 1;
-export let showTrails = true;
-export const score = { red: 0, blue: 0 };
+let showTrails = true;
+const score = { red: 0, blue: 0 };
+
+export { particles, flashes, shieldFlashes, healthFlashes, levelFlashes, shipsVMap, ships, bullets, lastTime, running, showTrails, score };
+
+// canonical speed steps for UI control (exported so tests can assert the real values)
+export const SPEED_STEPS = [0.5, 1, 2, 4];
 
 // `state` is the simulation state object used by simulateStep; expose a simple wrapper
 export const state = { ships, bullets, score, particles, shieldHits: [], healthHits: [], explosions: [] };
@@ -39,8 +60,25 @@ export const state = { ships, bullets, score, particles, shieldHits: [], healthH
 // --- Utilities ---
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const rand = (min=0, max=1) => min + (max-min) * Math.random();
-const randInt = (min, max) => Math.floor(rand(min, max+1));
+// Use seeded RNG helpers from rng.js so visual randomness can be controlled by srand(seed)
+const rand = (min=0, max=1) => srange(min, max);
+const randInt = (min, max) => srangeInt(min, max);
+
+// small helper to draw rounded rectangles (x, y, w, h, r)
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, h/2, w/2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
 
 // UI toast
 export function toast(msg) { if (!document) return; const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
@@ -60,6 +98,40 @@ initStars();
 
 // --- Entities (renderer-local) ---
 export const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
+
+// Pick a random ship type (uses seeded srangeInt)
+export function randomShipType() {
+  const types = ['corvette','frigate','destroyer','carrier','fighter'];
+  const idx = srangeInt(0, types.length - 1);
+  return types[idx];
+}
+
+// Test helper: perform the same actions as the UI add buttons. Exported so tests
+// can call this directly to avoid timing/RAF issues and to keep RNG consumption
+// identical to the UI.
+export function createShipFromUI(team) {
+  const t = randomShipType();
+  if (team === Team.RED) {
+    const x = srange(40, W * 0.35);
+    const y = srange(80, H - 80);
+    ships.push(new Ship(Team.RED, x, y, t));
+    if (typeof toast === 'function') toast(`+1 Red (${t})`);
+  } else {
+    const x = srange(W * 0.65, W - 40);
+    const y = srange(80, H - 80);
+    ships.push(new Ship(Team.BLUE, x, y, t));
+    if (typeof toast === 'function') toast(`+1 Blue (${t})`);
+  }
+}
+
+// Small testing-only API surface to group helpers used by tests. This keeps
+// test imports tidy and makes it clear these are testing utilities.
+export const testHelpers = {
+  createShipFromUI,
+  randomShipType,
+  ships,
+  state,
+};
 
 export class Particle {
   constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
@@ -167,6 +239,87 @@ export class ShipV {
     const p = Math.max(0, Math.min(1, s.hp / s.hpMax));
     // background rounded
     const radius = Math.min(6, h);
+    // draw level pill left of the health bar (animated on level-up)
+    if (typeof ctx !== 'undefined' && ctx && typeof ctx.measureText === 'function') {
+      try {
+        const lvlText = String(s.level || 1);
+  // choose a readable font size relative to ship size (bumped for visibility)
+  const FONT_SIZE_SCALE = 6; // scale factor for font size calculation
+  const fontSize = Math.max(12, Math.round(h * FONT_SIZE_SCALE));
+        ctx.save();
+        ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const textW = ctx.measureText(lvlText).width;
+  const padX = 8; // horizontal padding inside pill (increased)
+  const padY = Math.max(2, Math.round((fontSize - h) / 2));
+        const pillW = Math.max(18, textW + padX * 2);
+        const pillH = Math.max(h + 2, fontSize * 0.9);
+        const pillX = x - 8 - pillW; // 8px gap from health bar
+        const pillY = healthY + h/2 - pillH/2;
+        const pillR = pillH / 2;
+  // draw a subtle dark backdrop for contrast behind the pill
+  const backdropPad = 4;
+  const backdropX = pillX - backdropPad;
+  const backdropY = pillY - backdropPad;
+  const backdropW = pillW + backdropPad*2;
+  const backdropH = pillH + backdropPad*2;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(ctx, backdropX, backdropY, backdropW, backdropH, (backdropH)/2);
+  ctx.fill();
+  ctx.restore();
+
+  // check for level-up flash for this ship to animate the pill
+        const lf = levelFlashes.find(l => l.id === s.id && l.life > 0);
+        let scale = 1;
+        if (lf) {
+          // scale from 1.6 down to 1.0 over life (lf.life is in seconds)
+          const t = Math.max(0, Math.min(1, lf.life / 1.0));
+          scale = 1 + 0.6 * t; // larger when just leveled
+        }
+        const scaledPillW = pillW * scale;
+        const scaledPillH = pillH * scale;
+        // adjust pill position so scaling expands outward from center-left of health bar
+        const pillXScaled = pillX - (scaledPillW - pillW);
+        const pillYScaled = pillY - (scaledPillH - pillH) / 2;
+        const pillRScaled = scaledPillH / 2;
+        ctx.beginPath();
+        ctx.moveTo(pillXScaled + pillRScaled, pillYScaled);
+        ctx.lineTo(pillXScaled + scaledPillW - pillRScaled, pillYScaled);
+        ctx.quadraticCurveTo(pillXScaled + scaledPillW, pillYScaled, pillXScaled + scaledPillW, pillYScaled + pillRScaled);
+        ctx.lineTo(pillXScaled + scaledPillW, pillYScaled + scaledPillH - pillRScaled);
+        ctx.quadraticCurveTo(pillXScaled + scaledPillW, pillYScaled + scaledPillH, pillXScaled + scaledPillW - pillRScaled, pillYScaled + scaledPillH);
+        ctx.lineTo(pillXScaled + pillRScaled, pillYScaled + scaledPillH);
+        ctx.quadraticCurveTo(pillXScaled, pillYScaled + scaledPillH, pillXScaled, pillYScaled + scaledPillH - pillRScaled);
+        ctx.lineTo(pillXScaled, pillYScaled + pillRScaled);
+        ctx.quadraticCurveTo(pillXScaled, pillYScaled, pillXScaled + pillRScaled, pillYScaled);
+        ctx.closePath();
+        // when flashing, add a glow/stroke to emphasize
+        if (lf) {
+          const glow = Math.max(0.6, Math.min(1, lf.life));
+          ctx.save(); ctx.shadowBlur = 20 * glow; ctx.shadowColor = 'rgba(255,255,255,0.95)';
+          ctx.fillStyle = teamColor(s.team, 0.98);
+          ctx.fill(); ctx.restore();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = `rgba(255,255,255,${0.28 + 0.6 * glow})`;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = teamColor(s.team, 0.98);
+          ctx.fill();
+          ctx.lineWidth = 1.25;
+          ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+          ctx.stroke();
+        }
+        // draw text scaled centered in scaled pill (stronger contrast)
+        ctx.fillStyle = 'rgba(255,255,255,1)';
+        ctx.font = `700 ${Math.round(fontSize * scale)}px Inter, system-ui, sans-serif`;
+        ctx.fillText(lvlText, pillXScaled + scaledPillW/2, pillYScaled + scaledPillH/2 + 0.5);
+        ctx.restore();
+      } catch (e) {
+        // swallow any canvas measurement/draw errors in headless tests
+      }
+    }
     if (typeof ctx !== 'undefined') {
       ctx.beginPath();
       ctx.moveTo(x + radius, healthY);
@@ -265,15 +418,32 @@ export function simulate(dt) {
   for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
   for (let i=shieldFlashes.length-1;i>=0;i--) { const sf = shieldFlashes[i]; sf.life -= dt; if (sf.life <= 0) shieldFlashes.splice(i,1); }
   for (let i=healthFlashes.length-1;i>=0;i--) { const hf = healthFlashes[i]; hf.life -= dt; if (hf.life <= 0) healthFlashes.splice(i,1); }
+  for (let i=levelFlashes.length-1;i>=0;i--) { const lf = levelFlashes[i]; lf.life -= dt; if (lf.life <= 0) levelFlashes.splice(i,1); }
 
   // sync visual wrappers (persist between frames)
   const aliveIds = new Set(ships.map(s => s.id));
   // add or update wrappers
   for (const s of ships) {
     if (shipsVMap.has(s.id)) {
-      shipsVMap.get(s.id).syncFromLogic();
+      const sv = shipsVMap.get(s.id);
+      // detect level changes and trigger level flash animations
+      if (sv.level !== s.level) {
+        // push a level flash object with a short life
+        levelFlashes.push({ id: s.id, life: 1.0 });
+        // small particle burst to emphasize level-up
+        for (let i=0;i<18;i++){
+          const a = srange(0, TAU);
+          const sp = srange(60, 240);
+          particles.push(new Particle(s.x + Math.cos(a)*2, s.y + Math.sin(a)*2, Math.cos(a)*sp, Math.sin(a)*sp, srange(0.3, 0.9), 'rgba(200,255,220,$a)'));
+        }
+        sv.level = s.level;
+      }
+      sv.syncFromLogic();
     } else {
-      shipsVMap.set(s.id, new ShipV(s));
+      const newSv = new ShipV(s);
+      // initialize visual-level tracking
+      newSv.level = s.level;
+      shipsVMap.set(s.id, newSv);
     }
   }
   // remove wrappers for ships that no longer exist
@@ -308,32 +478,50 @@ function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; la
 // --- UI ---
 export function initRendererUI() {
   if (typeof document === 'undefined') return;
-  const startBtn = document.getElementById('startPause');
-  const resetBtn = document.getElementById('reset');
-  const addRedBtn = document.getElementById('addRed');
-  const addBlueBtn = document.getElementById('addBlue');
-  const trailsBtn = document.getElementById('toggleTrails');
-  const speedBtn = document.getElementById('speed');
-  const redBadge = document.getElementById('redScore');
-  const blueBadge = document.getElementById('blueScore');
-  const statsDiv = document.getElementById('stats');
-  const seedBtn = document.getElementById('seedBtn');
-  const formationBtn = document.getElementById('formationBtn');
+  const startBtn = document.getElementById && document.getElementById('startPause');
+  const resetBtn = document.getElementById && document.getElementById('reset');
+  const addRedBtn = document.getElementById && document.getElementById('addRed');
+  const addBlueBtn = document.getElementById && document.getElementById('addBlue');
+  const trailsBtn = document.getElementById && document.getElementById('toggleTrails');
+  const speedBtn = document.getElementById && document.getElementById('speed');
+  const redBadge = document.getElementById && document.getElementById('redScore');
+  const blueBadge = document.getElementById && document.getElementById('blueScore');
+  const statsDiv = document.getElementById && document.getElementById('stats');
+  const seedBtn = document.getElementById && document.getElementById('seedBtn');
+  const formationBtn = document.getElementById && document.getElementById('formationBtn');
 
-  function updateUI(){ redBadge.textContent = `Red ${score.red}`; blueBadge.textContent = `Blue ${score.blue}`; statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`; }
+  function updateUI(){
+    if (redBadge) redBadge.textContent = `Red ${score.red}`;
+    if (blueBadge) blueBadge.textContent = `Blue ${score.blue}`;
+    if (statsDiv) statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
+  }
 
-  startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
-  resetBtn.addEventListener('click', () => { reset(); });
-  addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
-  addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
-  trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
-  speedBtn.addEventListener('click', () => {
-    const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
+  if (startBtn && typeof startBtn.addEventListener === 'function') startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
+  if (resetBtn && typeof resetBtn.addEventListener === 'function') resetBtn.addEventListener('click', () => { reset(); });
+  
+  // (randomShipType is exported at module scope)
+
+  if (addRedBtn && typeof addRedBtn.addEventListener === 'function') addRedBtn.addEventListener('click', () => {
+  const t = randomShipType();
+  ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80, H-80), t));
+  toast(`+1 Red (${t})`);
   });
-  seedBtn.addEventListener('click', () => {
-    const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
+  if (addBlueBtn && typeof addBlueBtn.addEventListener === 'function') addBlueBtn.addEventListener('click', () => {
+  const t = randomShipType();
+  ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80, H-80), t));
+  toast(`+1 Blue (${t})`);
   });
-  formationBtn.addEventListener('click', () => {
+  if (trailsBtn && typeof trailsBtn.addEventListener === 'function') trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+  if (speedBtn && typeof speedBtn.addEventListener === 'function') speedBtn.addEventListener('click', () => {
+    const idx = (SPEED_STEPS.indexOf(speed) + 1) % SPEED_STEPS.length;
+    speed = SPEED_STEPS[idx];
+    speedBtn.textContent = `Speed: ${speed}×`;
+  });
+  if (seedBtn && typeof seedBtn.addEventListener === 'function') seedBtn.addEventListener('click', () => {
+    const defaultSeed = srangeInt(0, 0xFFFFFFFF);
+    const s = prompt('Enter numeric seed (32-bit):', defaultSeed); if (s!==null){ reset(Number(s)); }
+  });
+  if (formationBtn && typeof formationBtn.addEventListener === 'function') formationBtn.addEventListener('click', () => {
     const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
     const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
     const spaceY = 20; const cols=6;
@@ -341,10 +529,12 @@ export function initRendererUI() {
     aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
     toast('Fleets re-formed');
   });
-  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+  if (canvas && typeof canvas.addEventListener === 'function') canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+
+  // Test helper is defined at module scope below
 
   // UI update loop
-  function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); requestAnimationFrame(loop); }
-  reset();
-  requestAnimationFrame(loop);
+  function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(loop); }
+  if (typeof reset === 'function') reset();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(loop);
 }
