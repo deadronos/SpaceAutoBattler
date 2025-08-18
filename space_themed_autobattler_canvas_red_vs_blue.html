@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Space Autobattler – Red vs Blue</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: radial-gradient(1200px 800px at 50% 40%, #0b1220, #05070c); color: #eaeff8; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; }
+    #ui { position: fixed; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 10; background: rgba(10,12,20,0.5); border: 1px solid rgba(255,255,255,0.08); padding: 10px; border-radius: 14px; backdrop-filter: blur(6px); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .btn { cursor: pointer; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: linear-gradient(#1b2335,#141b2a); color: #eaeff8; font-weight: 600; letter-spacing: .2px; }
+    .btn:hover { filter: brightness(1.15); }
+    .btn:active { transform: translateY(1px); }
+    .badge { font-weight: 700; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); }
+    .red { color:#ffd1d1; background: linear-gradient(180deg, rgba(255,79,79,0.2), rgba(255,79,79,0.05)); border-color: rgba(255,79,79,0.35); }
+    .blue { color:#cfe0ff; background: linear-gradient(180deg, rgba(64,160,255,0.2), rgba(64,160,255,0.05)); border-color: rgba(64,160,255,0.35); }
+    #stats { margin-left: 8px; font-variant-numeric: tabular-nums; opacity:.95 }
+    #bottomRight { position: fixed; right: 12px; bottom: 12px; z-index: 10; display: flex; gap: 8px; align-items: center; background: rgba(10,12,20,0.5); border-radius: 14px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(6px); }
+    #world { position: fixed; inset: 0; display:block; }
+    #toast { position: fixed; top: 12px; right: 12px; background: rgba(15,18,30,.85); border: 1px solid rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 12px; opacity: 0; transform: translateY(-8px); transition: all .35s ease; pointer-events: none; }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    a { color: #9ecbff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <canvas id="world"></canvas>
+  <div id="ui">
+    <button id="startPause" class="btn">▶ Start</button>
+    <button id="reset" class="btn">↺ Reset</button>
+    <button id="addRed" class="btn" title="Add Red ship">+ Red</button>
+    <button id="addBlue" class="btn" title="Add Blue ship">+ Blue</button>
+    <button id="toggleTrails" class="btn">☄ Trails: On</button>
+    <div class="btn" id="speed">Speed: 1×</div>
+    <div class="badge red" id="redScore">Red 0</div>
+    <div class="badge blue" id="blueScore">Blue 0</div>
+    <div id="stats"></div>
+  </div>
+  <div id="bottomRight">
+    <button id="seedBtn" class="btn" title="Re-seed RNG for reproducible battles">🎲 Seed</button>
+    <button id="formationBtn" class="btn" title="Re-form fleets">🛰️ Form</button>
+    <span style="opacity:.7">Space Autobattler</span>
+  </div>
+  <div id="toast"></div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('world');
+  const ctx = canvas.getContext('2d');
+  let W = canvas.width = window.innerWidth;
+  let H = canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+
+  // --- Utilities ---
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rand = (min=0, max=1) => min + (max-min) * Math.random();
+  const randInt = (min, max) => Math.floor(rand(min, max+1));
+  const lerp = (a,b,t) => a + (b-a)*t;
+
+  // Deterministic RNG (LCG) for reproducible battles
+  let seeded = false; let seed = 123456789;
+  function srand(s) { seeded = true; seed = s>>>0; }
+  function srandom() { if (!seeded) return Math.random(); seed = (1664525*seed + 1013904223)>>>0; return (seed>>>0) / 4294967296; }
+  function srange(a=0,b=1){ return a + (b-a)*srandom(); }
+  function srangeInt(a,b){ return Math.floor(srange(a,b+1)); }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1400);
+  }
+
+  // Starfield background (parallax)
+  const stars = [];
+  function initStars() {
+    stars.length = 0;
+    const layers = [0.2, 0.5, 1.0];
+    for (const depth of layers) {
+      for (let i=0;i<120;i++) {
+        stars.push({ x: rand(0,W), y: rand(0,H), r: rand(0.3, 1.8) * depth, d: depth, tw: rand(0.4,1), phase: rand(0,TAU) });
+      }
+    }
+  }
+  initStars();
+
+  // --- Entities ---
+  const Team = { RED: 0, BLUE: 1 };
+  const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
+
+  class Bullet {
+    constructor(x,y,vx,vy, team){
+      this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.team=team; this.life=2.5; this.radius=2.2; this.dmg= srange(8,14);
+    }
+    update(dt){
+      this.x += this.vx*dt; this.y += this.vy*dt; this.life -= dt;
+    }
+    alive(){ return this.life>0 && this.x>-50 && this.x<W+50 && this.y>-50 && this.y<H+50; }
+    draw(){
+      ctx.save();
+      ctx.shadowBlur = 12; ctx.shadowColor = teamColor(this.team, .9);
+      ctx.fillStyle = teamColor(this.team, .95);
+      ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  class Particle {
+    constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
+    update(dt){ this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=Math.pow(0.9,dt*60); this.vy*=Math.pow(0.9,dt*60); this.life-=dt; }
+    draw(){ if (this.life<=0) return; const a = this.life/this.max; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
+  }
+
+  class Ship {
+    constructor(team, x, y){
+      this.team = team; this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=rand(0,TAU);
+      this.radius=10; this.maxSpeed= srange(70, 110); this.accel= 160; this.turn= 4.5;
+      this.hpMax = srange(70, 120); this.hp = this.hpMax; this.cooldown = 0; this.reload= srange(.28,.45);
+      this.vision = 300; this.range = 190; this.id = Ship._id++;
+      this.kills=0; this.alive=true;
+    }
+    pickTarget(ships){
+      let best=null, bd=1e9;
+      for (const s of ships){ if (!s.alive || s.team===this.team) continue; const dx=s.x-this.x, dy=s.y-this.y; const d2=dx*dx+dy*dy; if (d2 < this.vision*this.vision && d2<bd){ bd=d2; best=s; } }
+      return best;
+    }
+    update(dt, ships){
+      if (!this.alive) return;
+      // Acquire target
+      const target = this.pickTarget(ships);
+      // Steering: seek target, avoid allies (separation), mild randomness
+      let ax=0, ay=0;
+      if (target){
+        const dx = target.x - this.x, dy = target.y - this.y; const dist = Math.hypot(dx,dy) || 1;
+        // Predictive aim/seek
+        const lead = clamp(dist / 240, 0, 1.2);
+        const tx = target.x + target.vx*lead, ty = target.y + target.vy*lead;
+        const sx = tx - this.x, sy = ty - this.y; const sl = Math.hypot(sx,sy) || 1;
+        ax += (sx/sl) * this.accel;
+        ay += (sy/sl) * this.accel;
+        // Fire if in range & roughly facing
+        if (dist < this.range){
+          const facing = ((this.vx||1)*dx + (this.vy||1)*dy) / (Math.hypot(this.vx,this.vy)+1);
+          if (this.cooldown<=0 && facing>0){
+            const spd = 300 + srange(-20,20);
+            const bdx = dx/dist, bdy = dy/dist;
+            bullets.push(new Bullet(this.x + bdx*12, this.y + bdy*12, bdx*spd + this.vx*0.2, bdy*spd + this.vy*0.2, this.team));
+            this.cooldown = this.reload;
+          }
+        }
+      } else {
+        // roam
+        ax += Math.cos(this.angle) * (this.accel*0.3);
+        ay += Math.sin(this.angle) * (this.accel*0.3);
+      }
+
+      // Separation from allies
+      let sx=0, sy=0, n=0; const sepR=26;
+      for (const s of ships){
+        if (!s.alive || s===this || s.team!==this.team) continue; const dx=this.x-s.x, dy=this.y-s.y; const d2=dx*dx+dy*dy; if (d2<sepR*sepR && d2>1){ const d=Math.sqrt(d2); sx += dx/d; sy += dy/d; n++; }
+      }
+      if (n>0){ ax += (sx/n) * this.accel*0.9; ay += (sy/n) * this.accel*0.9; }
+
+      // Integrate
+      this.vx += ax*dt; this.vy += ay*dt;
+      const sp = Math.hypot(this.vx,this.vy);
+      if (sp>this.maxSpeed){ const k=this.maxSpeed/sp; this.vx*=k; this.vy*=k; }
+      this.x += this.vx*dt; this.y += this.vy*dt;
+      this.angle = Math.atan2(this.vy, this.vx);
+
+      // Soft bounds (bounce with damping)
+      if (this.x < 10 && this.vx<0) this.vx *= -0.7;
+      if (this.x > W-10 && this.vx>0) this.vx *= -0.7;
+      if (this.y < 10 && this.vy<0) this.vy *= -0.7;
+      if (this.y > H-10 && this.vy>0) this.vy *= -0.7;
+
+      this.cooldown -= dt;
+    }
+    damage(d){ this.hp -= d; if (this.hp<=0) { this.alive=false; this.explode(); } }
+    explode(){
+      // Particles
+      for (let i=0;i<28;i++){
+        const a = srange(0,TAU); const sp = srange(40, 240); const vx = Math.cos(a)*sp, vy=Math.sin(a)*sp; const life = srange(.3, 1.2);
+        particles.push(new Particle(this.x, this.y, vx, vy, life, teamColor(this.team, '$a')));
+      }
+      // Flash
+      flashes.push({x:this.x,y:this.y,r:2,life:.25,team:this.team});
+    }
+    draw(){
+      if (!this.alive) return;
+      // Engine trail
+      if (showTrails){
+        const tx = this.x - Math.cos(this.angle)*this.radius*1.2;
+        const ty = this.y - Math.sin(this.angle)*this.radius*1.2;
+        particles.push(new Particle(tx, ty, -this.vx*0.05 + srange(-10,10), -this.vy*0.05 + srange(-10,10), .25, teamColor(this.team, '$a')));
+      }
+      // Body
+      ctx.save();
+      ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+      ctx.shadowBlur = 12; ctx.shadowColor = teamColor(this.team,.9);
+      ctx.fillStyle = teamColor(this.team,.95);
+      ctx.beginPath();
+      ctx.moveTo(12,0); ctx.lineTo(-10,-8); ctx.lineTo(-6,0); ctx.lineTo(-10,8); ctx.closePath();
+      ctx.fill();
+      // Canopy
+      ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(0,0,3.2,2.2,0,0,TAU); ctx.fill();
+      ctx.restore();
+      // Health bar
+      const w=22, h=3, p= this.hp/this.hpMax; const x=this.x-w/2, y=this.y-18;
+      ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x,y,w,h);
+      ctx.fillStyle=teamColor(this.team,.85); ctx.fillRect(x,y,w*p,h);
+    }
+  }
+  Ship._id=1;
+
+  // --- Game State ---
+  let ships = []; let bullets=[]; let particles=[]; let flashes=[];
+  let running = false; let speed = 1; let showTrails = true; let lastTime = 0;
+  const score = { red:0, blue:0 };
+
+  function spawnFleet(team, n, x, y){
+    for (let i=0;i<n;i++){
+      const ox = (i%6)*20 + srange(-10,10); const oy = Math.floor(i/6)*20 + srange(-10,10);
+      ships.push(new Ship(team, x + (team===Team.RED? -ox: ox), y + oy));
+    }
+  }
+
+  function reset(seedValue=null){
+    ships.length=0; bullets.length=0; particles.length=0; flashes.length=0; score.red=0; score.blue=0;
+    if (seedValue!==null){ srand(seedValue>>>0); toast(`Seed set to ${seedValue>>>0}`); } else { seeded=false; }
+    spawnFleet(Team.RED, 12, W*0.25, H*0.5);
+    spawnFleet(Team.BLUE,12, W*0.75, H*0.5);
+  }
+
+  function simulate(dt){
+    // Update stars twinkle baseline
+    for (const s of stars){ s.phase += dt * 0.8 * s.d; }
+
+    // Ships
+    for (const s of ships){ s.update(dt, ships); }
+
+    // Bullets
+    for (let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.update(dt); if (!b.alive()){ bullets.splice(i,1); continue; } }
+
+    // Bullet collisions (naive)
+    for (let i=bullets.length-1;i>=0;i--){
+      const b=bullets[i];
+      for (const s of ships){ if (!s.alive || s.team===b.team) continue; const dx=s.x-b.x, dy=s.y-b.y; const d2=dx*dx+dy*dy; const R=(s.radius+3); if (d2<R*R){ s.damage(b.dmg); bullets.splice(i,1); if (!s.alive){ if (b.team===Team.RED) { score.red++; } else { score.blue++; } } break; } }
+    }
+
+    // Particles
+    for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0) particles.splice(i,1); }
+
+    // Flashes
+    for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
+  }
+
+  function render(){
+    // Space backdrop
+    ctx.clearRect(0,0,W,H);
+
+    // Subtle nebula gradient
+    const g = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H));
+    g.addColorStop(0, 'rgba(60,80,140,0.10)');
+    g.addColorStop(1, 'rgba(10,12,20,0.0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+    // Stars
+    for (const s of stars){
+      const tw = 0.6 + 0.4 * Math.sin(s.phase);
+      ctx.globalAlpha = clamp(0.5*tw * (0.6 + 0.5*s.d), 0, 1);
+      ctx.fillStyle = '#e9f2ff';
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    }
+    ctx.globalAlpha = 1;
+
+    // Flashes (explosions)
+    for (const f of flashes){
+      const a = clamp(f.life/0.25,0,1);
+      ctx.strokeStyle = teamColor(f.team, a*0.6);
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,TAU); ctx.stroke();
+    }
+
+    // Bullets
+    for (const b of bullets){ b.draw(); }
+
+    // Ships & particles
+    for (const p of particles){ p.draw(); }
+    for (const s of ships){ s.draw(); }
+
+    // Victory banner
+    const redAlive = ships.some(s=>s.alive && s.team===Team.RED);
+    const blueAlive = ships.some(s=>s.alive && s.team===Team.BLUE);
+    if (!redAlive || !blueAlive){
+      ctx.save();
+      ctx.textAlign='center'; ctx.font = '700 36px Inter, system-ui, sans-serif';
+      const winner = redAlive? 'Red' : blueAlive? 'Blue' : 'Nobody';
+      const col = redAlive? teamColor(Team.RED, .95) : blueAlive? teamColor(Team.BLUE,.95) : 'rgba(255,255,255,.9)';
+      ctx.fillStyle = col; ctx.shadowBlur = 14; ctx.shadowColor = col; ctx.fillText(`${winner} Wins!`, W/2, 64);
+      ctx.restore();
+    }
+  }
+
+  // --- Game Loop ---
+  function loop(t){
+    if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t;
+    const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); // clamp & pause aware
+    simulate(dt);
+    render();
+    updateUI();
+    requestAnimationFrame(loop);
+  }
+
+  // --- UI ---
+  const startBtn = document.getElementById('startPause');
+  const resetBtn = document.getElementById('reset');
+  const addRedBtn = document.getElementById('addRed');
+  const addBlueBtn = document.getElementById('addBlue');
+  const trailsBtn = document.getElementById('toggleTrails');
+  const speedBtn = document.getElementById('speed');
+  const redBadge = document.getElementById('redScore');
+  const blueBadge = document.getElementById('blueScore');
+  const statsDiv = document.getElementById('stats');
+  const seedBtn = document.getElementById('seedBtn');
+  const formationBtn = document.getElementById('formationBtn');
+
+  function updateUI(){
+    redBadge.textContent = `Red ${score.red}`;
+    blueBadge.textContent = `Blue ${score.blue}`;
+    statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
+  }
+
+  startBtn.addEventListener('click', () => {
+    running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start';
+  });
+
+  resetBtn.addEventListener('click', () => { reset(); });
+  addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
+  addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
+  trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+
+  speedBtn.addEventListener('click', () => {
+    const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
+  });
+
+  seedBtn.addEventListener('click', () => {
+    const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
+  });
+
+  formationBtn.addEventListener('click', () => {
+    const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
+    const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
+    const spaceY = 20; const cols=6;
+    aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    toast('Fleets re-formed');
+  });
+
+  // Click to spawn neutral explosions for fun
+  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+
+  // Init
+  reset();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
