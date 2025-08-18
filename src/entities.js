@@ -1,10 +1,12 @@
 import { srange, srangeInt } from './rng.js';
+import { XP_BASE, XP_GROWTH, HP_PERCENT_PER_LEVEL, DMG_PERCENT_PER_LEVEL, SHIELD_PERCENT_PER_LEVEL, SHIELD_REGEN_PERCENT, SHIELD_REGEN_MIN } from './progressionConfig.js';
 
 export const Team = { RED: 0, BLUE: 1 };
 
 export class Bullet {
-  constructor(x, y, vx, vy, team) {
+  constructor(x, y, vx, vy, team, ownerId = null) {
     this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.team = team;
+    this.ownerId = ownerId; // optional id of ship that fired
     this.life = 2.5; this.radius = 2.2; this.dmg = srange(8, 14);
   }
   update(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; }
@@ -35,6 +37,18 @@ export class Ship {
     this.hpMax = cfg.hp; this.hp = this.hpMax; this.cooldown = 0; this.reload = cfg.reload;
     this.vision = cfg.vision; this.range = cfg.range; this.id = Ship._id++;
     this.kills = 0; this.alive = true; this._exploded = false;
+  // Per-battle progression (default)
+  this.level = 1;
+  this.xp = 0;
+  this.baseHpMax = this.hpMax; // remember base for scaling
+  this.baseDmg = 10; // baseline bullet damage multiplier reference (bullets still pick own dmg)
+
+  // Shields: secondary health that depletes before HP and regenerates over time
+  // Initialize shield as a fraction of hpMax (tweakable)
+  this.shieldMax = Math.round(this.hpMax * 0.6);
+  this.shield = this.shieldMax;
+  // shieldRegen is amount of shield restored per second (use percentage of shieldMax)
+  this.shieldRegen = Math.max(SHIELD_REGEN_MIN, this.shieldMax * SHIELD_REGEN_PERCENT);
 
     if (type === 'carrier'){
       this.isCarrier = true;
@@ -43,6 +57,35 @@ export class Ship {
     } else {
       this.isCarrier = false;
       this.launchCooldown = 0;
+    }
+  }
+
+  xpToNext(base = XP_BASE, growth = XP_GROWTH) {
+    return Math.floor(base * Math.pow(growth, Math.max(0, this.level - 1)));
+  }
+
+  // Percent gains per level (multiplicative on base)
+  applyLevel() {
+  const dScale = DMG_PERCENT_PER_LEVEL; // damage per level
+  const hScale = HP_PERCENT_PER_LEVEL; // hp per level
+  const shScale = SHIELD_PERCENT_PER_LEVEL; // shield per level
+    // recompute hpMax and shieldMax based on base values
+    this.hpMax = Math.round(this.baseHpMax * (1 + hScale * (this.level - 1)));
+    // scale shield relative to baseHpMax as well
+    const baseShield = Math.round(this.baseHpMax * 0.6);
+    this.shieldMax = Math.round(baseShield * (1 + shScale * (this.level - 1)));
+    // ensure current hp/shield not exceed new max
+    this.hp = Math.min(this.hp, this.hpMax);
+    this.shield = Math.min(this.shield, this.shieldMax);
+  }
+
+  gainXp(amount) {
+    if (amount <= 0) return;
+    this.xp += amount;
+    while (this.xp >= this.xpToNext()) {
+      this.xp -= this.xpToNext();
+      this.level++;
+      this.applyLevel();
     }
   }
 
@@ -74,7 +117,7 @@ export class Ship {
           // Only push bullets if caller provided a bullets array as third argument
           if (arguments.length >= 3 && Array.isArray(arguments[2])) {
             const bullets = arguments[2];
-            bullets.push(new Bullet(this.x + bdx*12, this.y + bdy*12, bdx*spd + this.vx*0.2, bdy*spd + this.vy*0.2, this.team));
+            bullets.push(new Bullet(this.x + bdx*12, this.y + bdy*12, bdx*spd + this.vx*0.2, bdy*spd + this.vy*0.2, this.team, this.id));
           }
           this.cooldown = this.reload;
         }
@@ -97,10 +140,27 @@ export class Ship {
     // soft bounds handled by renderer if desired
 
   this.cooldown -= dt;
+  // Shield regeneration
+  if (this.shield < this.shieldMax) {
+    this.shield = Math.min(this.shieldMax, this.shield + this.shieldRegen * dt);
+  }
+
   // Carrier launch handling moved to simulateStep to centralize time-based events
   }
 
-  damage(d){ this.hp -= d; if (this.hp <= 0 && this.alive){ this.alive = false; this._exploded = true; return { x: this.x, y: this.y, team: this.team }; } return null; }
+  damage(d){
+    // Shields absorb damage first
+    if (this.shield > 0 && d > 0) {
+      const sTake = Math.min(this.shield, d);
+      this.shield -= sTake;
+      d -= sTake;
+    }
+    if (d > 0) {
+      this.hp -= d;
+    }
+    if (this.hp <= 0 && this.alive){ this.alive = false; this._exploded = true; return { x: this.x, y: this.y, team: this.team }; }
+    return null;
+  }
 }
 
 export function spawnFleet(team, n, x, y, spread = 80) {
