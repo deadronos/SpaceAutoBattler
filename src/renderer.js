@@ -384,3 +384,28 @@ if (!window.__uiHandlersInstalled) {
   if (ships.length === 0) reset();
   if (!lastTime) requestAnimationFrame(loop);
 }
+
+// Exports for unit tests: expose pure helpers and internal pools so tests can
+// validate cache/pool behavior without changing runtime logic.
+export {
+  clamp,
+  getHullPath,
+  recomputeBackgroundGradient,
+  acquireParticle,
+  releaseParticle,
+  Particle,
+  teamColor,
+  initStars,
+  // stateful internals (tests will snapshot/inspect then restore)
+  stars,
+  backgroundGradient,
+  hullPaths,
+  particlePool,
+  particles,
+  flashes,
+  shieldFlashes,
+  healthFlashes,
+  shipsVMap,
+  ships,
+  bullets,
+};

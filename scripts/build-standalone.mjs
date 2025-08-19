@@ -63,6 +63,37 @@ async function inlineBundle(){ const html = await fs.readFile(standaloneHtml, 'u
   console.log('Also updated', standaloneHtml);
 }
 
+// Helper that performs the same cleaning of HTML string content as inlineBundle
+// but does not read/write files. Useful for unit testing the idempotent cleaning logic.
+export function cleanHtmlContent(html, bundleCode){
+  const beginMarker = '<!-- BEGIN_INLINED_BUNDLE -->';
+  const endMarker = '<!-- END_INLINED_BUNDLE -->';
+  let cleaned = html;
+  const markerStart = cleaned.indexOf(beginMarker);
+  const markerEnd = cleaned.indexOf(endMarker);
+  if (markerStart !== -1 && markerEnd !== -1 && markerEnd > markerStart){
+    cleaned = cleaned.slice(0, markerStart) + cleaned.slice(markerEnd + endMarker.length);
+  }
+  const bundleSignature = 'var ut=Object.defineProperty';
+  cleaned = cleaned.replace(/<script\s+type=["']module["'][^>]*>[\s\S]*?<\/script>/gi, (match) => {
+    return match.indexOf(bundleSignature) !== -1 ? '' : match;
+  });
+  const importTag = '<script type="module" src="./src/renderer.js"></script>';
+  const inlined = `${beginMarker}\n<script type="module">\n${bundleCode}\n</script>\n${endMarker}`;
+  let newHtml;
+  if (cleaned.includes(importTag)){
+    newHtml = cleaned.replace(importTag, inlined);
+  } else if (cleaned.includes('</body>')){
+    newHtml = cleaned.replace('</body>', `${inlined}\n</body>`);
+  } else {
+    newHtml = cleaned + '\n' + inlined;
+  }
+  return newHtml;
+}
+
+// Export build utilities for tests
+export { buildBundle, inlineBundle };
+
 async function runOnce(){ console.log('Building bundle...'); await buildBundle(); console.log('Inlining bundle into standalone HTML...'); await inlineBundle(); console.log('Done. Output in ./dist'); }
 
 async function runWatch(){

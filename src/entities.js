@@ -61,6 +61,10 @@ export class Ship {
       this.isCarrier = true;
       this.launchCooldown = cfg.launchBase * srange(0.8, 1.4);
       this.launchAmount = Math.max(1, Math.floor(srange(1,3)));
+  // carrier-specific launch pool: maximum fighters it can have active at once
+  this.maxFighters = 6;
+  // track active fighter ids owned by this carrier
+  this.activeFighters = [];
     } else {
       this.isCarrier = false;
       this.launchCooldown = 0;
@@ -215,7 +219,14 @@ export class Ship {
     if (sTake > 0 || (origD > 0 && d > 0)) {
       this.recentHitTimer = Math.max(this.recentHitTimer, EVASIVE_DURATION);
     }
-    if (this.hp <= 0 && this.alive){ this.alive = false; this._exploded = true; return { x: this.x, y: this.y, team: this.team }; }
+    if (this.hp <= 0 && this.alive){
+      // if this is a fighter owned by a carrier, deregister from that carrier's active list
+      if (this.type === 'fighter' && typeof this.ownerCarrier === 'number') {
+        // find carrier in global scope not available here; simulateStep will handle cleaning when it detects dead ships
+        // mark ownerCarrier on the fighter so simulateStep can clean up owner state
+      }
+      this.alive = false; this._exploded = true; return { x: this.x, y: this.y, team: this.team, id: this.id, type: this.type, ownerCarrier: this.ownerCarrier };
+    }
     return null;
   }
 }
