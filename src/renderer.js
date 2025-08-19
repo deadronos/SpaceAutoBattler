@@ -2,11 +2,57 @@ import { srand, srange, srangeInt, unseed } from './rng.js';
 import { simulateStep } from './simulate.js';
 import { Ship, Team, spawnFleet } from './entities.js';
 
-const canvas = document.getElementById('world');
-const ctx = canvas.getContext('2d');
-let W = canvas.width = window.innerWidth;
-let H = canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; recomputeBackgroundGradient(); initStars(); });
+// Defensive DOM/canvas initialization so importing this module in tests or
+// headless environments doesn't throw if DOM elements or canvas are missing.
+let canvas = null;
+if (typeof document !== 'undefined') canvas = document.getElementById('world');
+if (!canvas && typeof document !== 'undefined') {
+  // create a lightweight canvas element so tests that import renderer at
+  // module-evaluation time don't crash. Tests may override getContext later.
+  canvas = document.createElement('canvas');
+  canvas.id = 'world';
+  // append if body exists
+  if (document.body) document.body.appendChild(canvas);
+}
+
+// Ensure a Path2D class exists (some test environments may not provide it yet)
+if (typeof globalThis.Path2D === 'undefined') {
+  // minimal no-op Path2D implementation used for shape construction in tests
+  class _Path2D {
+    constructor() { /* no-op */ }
+    moveTo() {}
+    lineTo() {}
+    quadraticCurveTo() {}
+    ellipse() {}
+    arc() {}
+    closePath() {}
+  }
+  globalThis.Path2D = _Path2D;
+}
+
+// Acquire a 2D rendering context; if unavailable, provide a no-op shim so
+// the renderer can still be imported and some pure helpers tested.
+let ctx = null;
+if (canvas && typeof canvas.getContext === 'function') {
+  try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
+}
+if (!ctx) {
+  const noop = () => {};
+  ctx = {
+    beginPath: noop, moveTo: noop, lineTo: noop, quadraticCurveTo: noop, arc: noop, ellipse: noop, fill: noop, stroke: noop, closePath: noop,
+    fillRect: noop, clearRect: noop, createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+    fillText: noop, measureText: () => ({ width: 0 }), setLineDash: noop, save: noop, restore: noop, translate: noop, rotate: noop, clip: noop,
+    // drawing properties
+    shadowBlur: 0, shadowColor: '', globalAlpha: 1, fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: 'start', globalCompositeOperation: 'source-over'
+  };
+  if (canvas) canvas.getContext = () => ctx;
+}
+
+let W = (canvas && canvas.width) ? (canvas.width = (typeof window !== 'undefined' ? window.innerWidth : 1024)) : 1024;
+let H = (canvas && canvas.height) ? (canvas.height = (typeof window !== 'undefined' ? window.innerHeight : 768)) : 768;
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; recomputeBackgroundGradient(); initStars(); });
+}
 
 // --- Utilities ---
 const TAU = Math.PI * 2;
