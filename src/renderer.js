@@ -538,20 +538,18 @@ export function initRendererUI() {
   // (randomShipType is exported at module scope)
 
   if (addRedBtn && typeof addRedBtn.addEventListener === 'function') addRedBtn.addEventListener('click', () => {
-  const t = randomShipType();
+  const { type, cfg } = chooseShipTypeAndCfg();
   const x = srange(40, W*0.35);
   const y = srange(80, H-80);
-  const cfg = getClassConfig(t);
-  ships.push(createShipWithConfig(Team.RED, x, y, t, cfg));
-  toast(`+1 Red (${t})`);
+  ships.push(createShipWithConfig(Team.RED, x, y, type, cfg));
+  toast(`+1 Red (${type})`);
   });
   if (addBlueBtn && typeof addBlueBtn.addEventListener === 'function') addBlueBtn.addEventListener('click', () => {
-  const t = randomShipType();
+  const { type, cfg } = chooseShipTypeAndCfg();
   const x = srange(W*0.65, W-40);
   const y = srange(80, H-80);
-  const cfg = getClassConfig(t);
-  ships.push(createShipWithConfig(Team.BLUE, x, y, t, cfg));
-  toast(`+1 Blue (${t})`);
+  ships.push(createShipWithConfig(Team.BLUE, x, y, type, cfg));
+  toast(`+1 Blue (${type})`);
   });
   if (trailsBtn && typeof trailsBtn.addEventListener === 'function') trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
   if (speedBtn && typeof speedBtn.addEventListener === 'function') speedBtn.addEventListener('click', () => {
