@@ -6,7 +6,7 @@ const canvas = document.getElementById('world');
 const ctx = canvas.getContext('2d');
 let W = canvas.width = window.innerWidth;
 let H = canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; recomputeBackgroundGradient(); initStars(); });
 
 // --- Utilities ---
 const TAU = Math.PI * 2;
@@ -30,6 +30,45 @@ function initStars() {
 }
 initStars();
 
+// --- Renderer caches & pools ---
+// Cache Path2D hull shapes per type using unit-radius = 1 coordinates
+const hullPaths = new Map();
+function getHullPath(type){
+  if (hullPaths.has(type)) return hullPaths.get(type);
+  const p = new Path2D();
+  // unit shapes (use radius = 1 as base scale)
+  if (type === 'corvette'){
+    p.moveTo(1.5,0); p.lineTo(-1,-0.7); p.lineTo(-0.4,0); p.lineTo(-1,0.7); p.closePath();
+    p.ellipse(0,0,0.35,0.25,0,0,TAU);
+  } else if (type === 'frigate'){
+    p.moveTo(1.6,0); p.quadraticCurveTo(0.2,-1.1, -1.1, -0.6); p.lineTo(-0.6,0); p.lineTo(-1.1,0.6); p.quadraticCurveTo(0.2,1.1,1.6,0); p.closePath();
+  } else if (type === 'destroyer'){
+    p.moveTo(1.9,0); p.lineTo(0.3,-1.1); p.lineTo(-1.4,-0.6); p.lineTo(-1.4,0.6); p.lineTo(0.3,1.1); p.closePath();
+  } else if (type === 'carrier'){
+    p.ellipse(0,0,1.6,1.0,0,0,TAU);
+  } else if (type === 'fighter'){
+    p.moveTo(1.2,0); p.lineTo(-0.6,-0.45); p.lineTo(-0.2,0); p.lineTo(-0.6,0.45); p.closePath();
+    p.ellipse(0.25,0,0.25,0.15,0,0,TAU);
+  } else {
+    p.moveTo(1.4,0); p.lineTo(-1,-0.8); p.lineTo(-0.4,0); p.lineTo(-1,0.8); p.closePath();
+  }
+  hullPaths.set(type, p);
+  return p;
+}
+
+// Background gradient cache (recomputed on resize)
+let backgroundGradient = null;
+function recomputeBackgroundGradient(){ backgroundGradient = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H)); backgroundGradient.addColorStop(0, 'rgba(60,80,140,0.10)'); backgroundGradient.addColorStop(1, 'rgba(10,12,20,0.0)'); }
+recomputeBackgroundGradient();
+
+// Particle pooling to reduce GC
+const particlePool = [];
+function acquireParticle(x,y,vx,vy,life,color){ let p; if (particlePool.length>0){ p = particlePool.pop(); p.x=x; p.y=y; p.vx=vx; p.vy=vy; p.life=life; p.max=life; p.color=color; } else { p = new Particle(x,y,vx,vy,life,color); } particles.push(p); return p; }
+function releaseParticle(p){ if (particlePool.length < 2000) particlePool.push(p); }
+
+// Gradient cache keyed by outline radius (created after translate so gradients can be reused)
+const radialGradientCache = new Map();
+
 // --- Entities (renderer-local) ---
 const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
 
@@ -49,8 +88,8 @@ class ShipV {
     if (!s.alive) return;
   // compute whether this ship has a recent shield hit (look for flashes with shieldHit)
   const recentShieldFlash = flashes.some(f => f.shieldHit && f.x === s.x && f.y === s.y && f.life > 0);
-    // trails
-    if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; particles.push(new Particle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a'))); }
+  // trails
+  if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; acquireParticle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a')); }
 
     // Draw hull by type with scale from radius
     ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9);
@@ -209,7 +248,7 @@ function simulate(dt){
   if (state.explosions && state.explosions.length){
     for (const e of state.explosions){ // e: {x,y,team}
       flashes.push({ x: e.x, y: e.y, r: 2, life: .25, team: e.team });
-      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); particles.push(new Particle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a'))); }
+      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); acquireParticle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a')); }
     }
   }
   // handle shield hit visuals
@@ -221,8 +260,8 @@ function simulate(dt){
       const shipY = ship ? ship.y : h.hitY;
       // push a short bright ring centered on the ship (visual flash)
       flashes.push({ x: shipX, y: shipY, r: 6 + Math.min(12, h.amount), life: 0.12, team: h.team, shieldHit: true });
-      // particles at exact impact point
-      for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); particles.push(new Particle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)')); }
+  // particles at exact impact point
+  for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); acquireParticle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)'); }
       // create an arc-highlight (shieldFlash) attached to ship id with angle from ship center to impact
       if (ship) {
         const ang = Math.atan2(h.hitY - shipY, h.hitX - shipX);
@@ -241,7 +280,7 @@ function simulate(dt){
     }
   }
 
-  for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0) particles.splice(i,1); }
+  for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0){ particles.splice(i,1); releaseParticle(p); } }
   for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
   for (let i=shieldFlashes.length-1;i>=0;i--) { const sf = shieldFlashes[i]; sf.life -= dt; if (sf.life <= 0) shieldFlashes.splice(i,1); }
   for (let i=healthFlashes.length-1;i>=0;i--) { const hf = healthFlashes[i]; hf.life -= dt; if (hf.life <= 0) healthFlashes.splice(i,1); }
@@ -334,7 +373,7 @@ if (!window.__uiHandlersInstalled) {
     toast('Fleets re-formed');
   });
 
-  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); acquireParticle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)'); } });
 
   // Init
   reset();
