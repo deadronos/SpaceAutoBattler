@@ -6,7 +6,7 @@ const canvas = document.getElementById('world');
 const ctx = canvas.getContext('2d');
 let W = canvas.width = window.innerWidth;
 let H = canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; recomputeBackgroundGradient(); initStars(); });
 
 // --- Utilities ---
 const TAU = Math.PI * 2;
@@ -30,6 +30,45 @@ function initStars() {
 }
 initStars();
 
+// --- Renderer caches & pools ---
+// Cache Path2D hull shapes per type using unit-radius = 1 coordinates
+const hullPaths = new Map();
+function getHullPath(type){
+  if (hullPaths.has(type)) return hullPaths.get(type);
+  const p = new Path2D();
+  // unit shapes (use radius = 1 as base scale)
+  if (type === 'corvette'){
+    p.moveTo(1.5,0); p.lineTo(-1,-0.7); p.lineTo(-0.4,0); p.lineTo(-1,0.7); p.closePath();
+    p.ellipse(0,0,0.35,0.25,0,0,TAU);
+  } else if (type === 'frigate'){
+    p.moveTo(1.6,0); p.quadraticCurveTo(0.2,-1.1, -1.1, -0.6); p.lineTo(-0.6,0); p.lineTo(-1.1,0.6); p.quadraticCurveTo(0.2,1.1,1.6,0); p.closePath();
+  } else if (type === 'destroyer'){
+    p.moveTo(1.9,0); p.lineTo(0.3,-1.1); p.lineTo(-1.4,-0.6); p.lineTo(-1.4,0.6); p.lineTo(0.3,1.1); p.closePath();
+  } else if (type === 'carrier'){
+    p.ellipse(0,0,1.6,1.0,0,0,TAU);
+  } else if (type === 'fighter'){
+    p.moveTo(1.2,0); p.lineTo(-0.6,-0.45); p.lineTo(-0.2,0); p.lineTo(-0.6,0.45); p.closePath();
+    p.ellipse(0.25,0,0.25,0.15,0,0,TAU);
+  } else {
+    p.moveTo(1.4,0); p.lineTo(-1,-0.8); p.lineTo(-0.4,0); p.lineTo(-1,0.8); p.closePath();
+  }
+  hullPaths.set(type, p);
+  return p;
+}
+
+// Background gradient cache (recomputed on resize)
+let backgroundGradient = null;
+function recomputeBackgroundGradient(){ backgroundGradient = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H)); backgroundGradient.addColorStop(0, 'rgba(60,80,140,0.10)'); backgroundGradient.addColorStop(1, 'rgba(10,12,20,0.0)'); }
+recomputeBackgroundGradient();
+
+// Particle pooling to reduce GC
+const particlePool = [];
+function acquireParticle(x,y,vx,vy,life,color){ let p; if (particlePool.length>0){ p = particlePool.pop(); p.x=x; p.y=y; p.vx=vx; p.vy=vy; p.life=life; p.max=life; p.color=color; } else { p = new Particle(x,y,vx,vy,life,color); } particles.push(p); return p; }
+function releaseParticle(p){ if (particlePool.length < 2000) particlePool.push(p); }
+
+// Gradient cache keyed by outline radius (created after translate so gradients can be reused)
+const radialGradientCache = new Map();
+
 // --- Entities (renderer-local) ---
 const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
 
@@ -49,8 +88,8 @@ class ShipV {
     if (!s.alive) return;
   // compute whether this ship has a recent shield hit (look for flashes with shieldHit)
   const recentShieldFlash = flashes.some(f => f.shieldHit && f.x === s.x && f.y === s.y && f.life > 0);
-    // trails
-    if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; particles.push(new Particle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a'))); }
+  // trails
+  if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; acquireParticle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a')); }
 
     // Draw hull by type with scale from radius
     ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9);
@@ -209,7 +248,7 @@ function simulate(dt){
   if (state.explosions && state.explosions.length){
     for (const e of state.explosions){ // e: {x,y,team}
       flashes.push({ x: e.x, y: e.y, r: 2, life: .25, team: e.team });
-      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); particles.push(new Particle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a'))); }
+      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); acquireParticle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a')); }
     }
   }
   // handle shield hit visuals
@@ -221,8 +260,8 @@ function simulate(dt){
       const shipY = ship ? ship.y : h.hitY;
       // push a short bright ring centered on the ship (visual flash)
       flashes.push({ x: shipX, y: shipY, r: 6 + Math.min(12, h.amount), life: 0.12, team: h.team, shieldHit: true });
-      // particles at exact impact point
-      for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); particles.push(new Particle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)')); }
+  // particles at exact impact point
+  for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); acquireParticle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)'); }
       // create an arc-highlight (shieldFlash) attached to ship id with angle from ship center to impact
       if (ship) {
         const ang = Math.atan2(h.hitY - shipY, h.hitX - shipX);
@@ -241,7 +280,11 @@ function simulate(dt){
     }
   }
 
-  for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0) particles.splice(i,1); }
+  // Reinforcement evaluation delegated to evaluateReinforcement so tests can
+  // step accumulators deterministically.
+  evaluateReinforcement(dt);
+
+  for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0){ particles.splice(i,1); releaseParticle(p); } }
   for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
   for (let i=shieldFlashes.length-1;i>=0;i--) { const sf = shieldFlashes[i]; sf.life -= dt; if (sf.life <= 0) shieldFlashes.splice(i,1); }
   for (let i=healthFlashes.length-1;i>=0;i--) { const hf = healthFlashes[i]; hf.life -= dt; if (hf.life <= 0) healthFlashes.splice(i,1); }
@@ -296,34 +339,177 @@ const statsDiv = document.getElementById('stats');
 const seedBtn = document.getElementById('seedBtn');
 const formationBtn = document.getElementById('formationBtn');
 
-function updateUI(){ redBadge.textContent = `Red ${score.red}`; blueBadge.textContent = `Blue ${score.blue}`; statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`; }
+// Continuous reinforcement checkbox: prefer a static element in the HTML
+// (we inject a static checkbox into the HTML templates). If it's missing
+// (e.g., tests or older pages), create a lightweight fallback element.
+let continuousCheckbox = document.getElementById('continuousCheckbox');
+if (!continuousCheckbox) {
+  continuousCheckbox = document.createElement('input');
+  continuousCheckbox.type = 'checkbox';
+  continuousCheckbox.id = 'continuousCheckbox';
+  // do not attach to DOM in headless/test environments
+}
+// so `updateUI()` exists regardless of whether handlers are installed already.
+function updateUI(){
+  redBadge.textContent = `Red ${score.red}`;
+  blueBadge.textContent = `Blue ${score.blue}`;
+  statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
+}
 
-startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
+// Install UI handlers idempotently to avoid duplicate listeners if the bundle
+// is accidentally inlined or executed more than once (defensive guard).
+// Reinforcement cooldowns per team to avoid spamming
+const reinforcementCooldowns = { [Team.RED]: 0, [Team.BLUE]: 0 };
+function resetReinforcementCooldowns(){ reinforcementCooldowns[Team.RED]=0; reinforcementCooldowns[Team.BLUE]=0; }
+// Reinforcement evaluation frequency (module-level state)
+// 0 => evaluate every simulation step; >0 => seconds between reinforcement checks
+let reinforcementIntervalSeconds = 0;
+// per-team accumulators to allow each team to be checked separately
+let reinforcementCheckAccumulator = { [Team.RED]: 0, [Team.BLUE]: 0 };
+function setReinforcementInterval(seconds){ reinforcementIntervalSeconds = Number(seconds) || 0; reinforcementCheckAccumulator[Team.RED] = 0; reinforcementCheckAccumulator[Team.BLUE] = 0; }
+function getReinforcementInterval(){ return reinforcementIntervalSeconds; }
+// evaluateReinforcement advances per-team accumulators and triggers handleReinforcement
+function evaluateReinforcement(dt){
+  if (reinforcementIntervalSeconds <= 0) {
+    // Every step
+    handleReinforcement(dt);
+    return;
+  }
+  reinforcementCheckAccumulator[Team.RED] += dt;
+  reinforcementCheckAccumulator[Team.BLUE] += dt;
+  if (reinforcementCheckAccumulator[Team.RED] >= reinforcementIntervalSeconds) {
+    handleReinforcement(reinforcementCheckAccumulator[Team.RED], Team.RED);
+    reinforcementCheckAccumulator[Team.RED] = 0;
+  }
+  if (reinforcementCheckAccumulator[Team.BLUE] >= reinforcementIntervalSeconds) {
+    handleReinforcement(reinforcementCheckAccumulator[Team.BLUE], Team.BLUE);
+    reinforcementCheckAccumulator[Team.BLUE] = 0;
+  }
+}
+// handleReinforcement(dt, team=null) -> if team provided, only evaluate that team
+function handleReinforcement(dt, team = null) {
+  // if static checkbox exists and is unchecked, don't reinforce; if it's a
+  // fallback element created for tests (not in DOM) it will be unchecked by default
+  if (!continuousCheckbox || !continuousCheckbox.checked) return;
 
-resetBtn.addEventListener('click', () => { reset(); });
-addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
-addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
-trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+  const lowThreshold = 2;
+  const types = ['frigate','corvette','destroyer','carrier'];
 
-speedBtn.addEventListener('click', () => {
-  const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
-});
+  // helper to spawn N random ships for a team in that team's half
+  const spawnFor = (team, n) => {
+    for (let i=0;i<n;i++){
+      const t = types[srangeInt(0, types.length - 1)];
+      const x = team === Team.RED ? srange(40, Math.max(120, W*0.35)) : srange(Math.max(W*0.65, W-240), W-40);
+      const y = srange(80, Math.max(120, H-80));
+      ships.push(new Ship(team, x, y, t));
+    }
+  };
 
-seedBtn.addEventListener('click', () => {
-  const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
-});
+  const evalTeam = (t) => {
+    const alive = ships.filter(s => s.alive && s.team === t).length;
+    if (alive < lowThreshold) {
+      reinforcementCooldowns[t] -= dt;
+      if (reinforcementCooldowns[t] <= 0) {
+        const count = srangeInt(1,6);
+        spawnFor(t, count);
+        reinforcementCooldowns[t] = srange(3,8);
+        toast(`Reinforcements: +${count} ${t===Team.RED? 'Red':'Blue'}`);
+      }
+    }
+  };
 
-formationBtn.addEventListener('click', () => {
-  const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
-  const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
-  const spaceY = 20; const cols=6;
-  aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
-  aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
-  toast('Fleets re-formed');
-});
+  if (team === null) {
+    evalTeam(Team.RED);
+    evalTeam(Team.BLUE);
+  } else {
+    evalTeam(team);
+  }
+}
+if (!window.__uiHandlersInstalled) {
+  // Mark installed (non-writable, non-configurable)
+  Object.defineProperty(window, '__uiHandlersInstalled', { value: true, configurable: false, writable: false });
 
-canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+  startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
 
-// Init
-reset();
-requestAnimationFrame(loop);
+  resetBtn.addEventListener('click', () => { reset(); });
+  addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
+  addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
+  trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+
+  speedBtn.addEventListener('click', () => {
+    const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
+  });
+
+  seedBtn.addEventListener('click', () => {
+    const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
+  });
+
+  formationBtn.addEventListener('click', () => {
+    const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
+    const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
+    const spaceY = 20; const cols=6;
+    aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    toast('Fleets re-formed');
+  });
+
+  // Optional: a small UI button to cycle reinforcement evaluation frequency (Off/0.5s/1s/2s)
+  // We'll look for an element with id `reinforceFreqBtn` and if present, attach handlers.
+  const reinforceFreqBtn = document.getElementById('reinforceFreqBtn');
+  const reinforcementFrequencyOptions = [0, 0.5, 1, 2]; // seconds; 0 == every step
+  if (reinforceFreqBtn) {
+    // display current value
+  reinforceFreqBtn.textContent = reinforcementIntervalSeconds > 0 ? `${reinforcementIntervalSeconds}s` : 'Every step';
+    reinforceFreqBtn.addEventListener('click', () => {
+      const idx = (reinforcementFrequencyOptions.indexOf(reinforcementIntervalSeconds) + 1) % reinforcementFrequencyOptions.length;
+      setReinforcementInterval(reinforcementFrequencyOptions[idx]);
+      reinforceFreqBtn.textContent = reinforcementIntervalSeconds > 0 ? `${reinforcementIntervalSeconds}s` : 'Every step';
+      toast(`Reinforcement check: ${reinforcementIntervalSeconds > 0 ? reinforcementIntervalSeconds + 's' : 'every step'}`);
+    });
+  }
+
+  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); acquireParticle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)'); } });
+
+  // Init
+  reset();
+  requestAnimationFrame(loop);
+} else {
+  // If handlers already installed, ensure the UI badges are kept up-to-date by
+  // performing minimal initialization (no duplicated event listeners).
+  if (ships.length === 0) reset();
+  if (!lastTime) requestAnimationFrame(loop);
+}
+
+// Exports for unit tests: expose pure helpers and internal pools so tests can
+// validate cache/pool behavior without changing runtime logic.
+export {
+  clamp,
+  getHullPath,
+  recomputeBackgroundGradient,
+  acquireParticle,
+  releaseParticle,
+  Particle,
+  teamColor,
+  initStars,
+  // stateful internals (tests will snapshot/inspect then restore)
+  stars,
+  backgroundGradient,
+  hullPaths,
+  particlePool,
+  particles,
+  flashes,
+  shieldFlashes,
+  healthFlashes,
+  shipsVMap,
+  ships,
+  bullets,
+  handleReinforcement,
+  resetReinforcementCooldowns,
+  evaluateReinforcement,
+  // reinforcement frequency control API
+  // setReinforcementInterval(seconds) - 0 means every step; >0 is seconds between checks
+  setReinforcementInterval,
+  getReinforcementInterval,
+  reinforcementIntervalSeconds,
+  reset,
+};
