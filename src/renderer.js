@@ -1,6 +1,6 @@
-import { srand, srange, srangeInt, unseed } from './rng.js';
-import { simulateStep } from './simulate.js';
-import { Ship, Team, spawnFleet } from './entities.js';
+import { srange, srangeInt } from './rng.js';
+import { Ship, Team } from './entities.js';
+import * as gm from './gamemanager.js';
 
 // Defensive DOM/canvas initialization so importing this module in tests or
 // headless environments doesn't throw if DOM elements or canvas are missing.
@@ -56,25 +56,15 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 
 // --- Utilities ---
 const TAU = Math.PI * 2;
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const rand = (min=0, max=1) => min + (max-min) * Math.random();
-const randInt = (min, max) => Math.floor(rand(min, max+1));
+const clamp = gm.clamp;
 
 // UI toast
 function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
 
-// Starfield background (parallax)
-const stars = [];
-function initStars() {
-  stars.length = 0;
-  const layers = [0.2, 0.5, 1.0];
-  for (const depth of layers) {
-    for (let i=0;i<120;i++) {
-      stars.push({ x: rand(0,W), y: rand(0,H), r: rand(0.3, 1.8) * depth, d: depth, tw: rand(0.4,1), phase: rand(0,TAU) });
-    }
-  }
-}
-initStars();
+// Starfield background (parallax) - delegated to gamemanager
+const stars = gm.stars;
+// initStars is provided by gamemanager
+const initStars = gm.initStars;
 
 // --- Renderer caches & pools ---
 // Cache Path2D hull shapes per type using unit-radius = 1 coordinates
@@ -107,10 +97,12 @@ let backgroundGradient = null;
 function recomputeBackgroundGradient(){ backgroundGradient = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H)); backgroundGradient.addColorStop(0, 'rgba(60,80,140,0.10)'); backgroundGradient.addColorStop(1, 'rgba(10,12,20,0.0)'); }
 recomputeBackgroundGradient();
 
-// Particle pooling to reduce GC
-const particlePool = [];
-function acquireParticle(x,y,vx,vy,life,color){ let p; if (particlePool.length>0){ p = particlePool.pop(); p.x=x; p.y=y; p.vx=vx; p.vy=vy; p.life=life; p.max=life; p.color=color; } else { p = new Particle(x,y,vx,vy,life,color); } particles.push(p); return p; }
-function releaseParticle(p){ if (particlePool.length < 2000) particlePool.push(p); }
+// Particle pooling is delegated to gamemanager
+const particlePool = gm.particlePool;
+const acquireParticle = gm.acquireParticle;
+const releaseParticle = gm.releaseParticle;
+// Particle class is provided by gamemanager for tests
+const Particle = gm.Particle;
 
 // Gradient cache keyed by outline radius (created after translate so gradients can be reused)
 const radialGradientCache = new Map();
@@ -118,11 +110,8 @@ const radialGradientCache = new Map();
 // --- Entities (renderer-local) ---
 const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
 
-class Particle {
-  constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
-  update(dt){ this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=Math.pow(0.9,dt*60); this.vy*=Math.pow(0.9,dt*60); this.life-=dt; }
-  draw(){ if (this.life<=0) return; const a = this.life/this.max; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
-}
+// Particle draw helper uses particles managed by gamemanager
+function drawParticle(p){ if (p.life<=0) return; const a = p.life / p.max; ctx.fillStyle = (p.color || '').replace ? p.color.replace('$a', a.toFixed(3)) : p.color; ctx.fillRect(p.x, p.y, 2,2); }
 
 // Keep Ship logic in entities.js, renderer keeps visual helpers and particle/flash handling.
 // Visual Ship wrapper to reference logic ship instance
@@ -272,72 +261,25 @@ class ShipV {
 }
 
 // --- Game State ---
-let ships = []; let bullets=[]; let particles=[]; let flashes=[]; let shieldFlashes = []; let healthFlashes = [];
+// Game state is owned by gamemanager; renderer imports and uses gm.* symbols
+let ships = gm.ships; let bullets = gm.bullets; let particles = gm.particles; let flashes = gm.flashes; let shieldFlashes = gm.shieldFlashes; let healthFlashes = gm.healthFlashes;
 let shipsVMap = new Map(); // id -> ShipV visual wrappers for logic ships
 let running = false; let speed = 1; let showTrails = true; let lastTime = 0;
-const score = { red:0, blue:0 };
 
-// spawnFleet now lives in entities.js; renderer will call it and merge results
-
-function reset(seedValue=null){ ships.length=0; bullets.length=0; particles.length=0; flashes.length=0; score.red=0; score.blue=0; if (seedValue!==null){ srand(seedValue>>>0); toast(`Seed set to ${seedValue>>>0}`); } else { unseed(); } ships.push(...spawnFleet(Team.RED, 12, W*0.25, H*0.5)); ships.push(...spawnFleet(Team.BLUE,12, W*0.75, H*0.5)); }
+// Delegate reset and simulate to gamemanager. gm.simulate returns the latest
+// state object which renderer uses for visuals. keep a local wrapper to call
+// gm.simulate to advance the world state and to sync renderer-only wrappers.
+function reset(seedValue=null){ return gm.reset(seedValue); }
 
 function simulate(dt){
-  for (const s of stars){ s.phase += dt * 0.8 * s.d; }
-  for (const s of ships){ s.update(dt, ships); }
-  for (let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.update(dt); if (!b.alive()){ bullets.splice(i,1); continue; } }
+  // Let gamemanager advance game logic and emit visual events
+  const state = gm.simulate(dt, W, H);
 
-  // Use simulateStep (shared logic) for collisions and scoring
-  // Provide a place to collect explosion events
-  const shieldHits = [];
-  const state = { ships, bullets, score, particles, explosions: [], shieldHits };
-  simulateStep(state, dt, { W, H });
-  if (state.explosions && state.explosions.length){
-    for (const e of state.explosions){ // e: {x,y,team}
-      flashes.push({ x: e.x, y: e.y, r: 2, life: .25, team: e.team });
-      for (let i=0;i<20;i++){ const a = srange(0,TAU); const sp = srange(40,220); acquireParticle(e.x, e.y, Math.cos(a)*sp, Math.sin(a)*sp, srange(.2,1), teamColor(e.team, '$a')); }
-    }
-  }
-  // handle shield hit visuals
-  if (Array.isArray(state.shieldHits) && state.shieldHits.length) {
-    for (const h of state.shieldHits) {
-      // find the ship so we can compute hit direction relative to ship center
-      const ship = ships.find(s => s.id === h.id);
-      const shipX = ship ? ship.x : h.hitX;
-      const shipY = ship ? ship.y : h.hitY;
-      // push a short bright ring centered on the ship (visual flash)
-      flashes.push({ x: shipX, y: shipY, r: 6 + Math.min(12, h.amount), life: 0.12, team: h.team, shieldHit: true });
-  // particles at exact impact point
-  for (let i=0;i<6;i++){ const a = srange(0,TAU); const sp = srange(40,120); acquireParticle(h.hitX, h.hitY, Math.cos(a)*sp, Math.sin(a)*sp, srange(.12,0.4), 'rgba(200,230,255,$a)'); }
-      // create an arc-highlight (shieldFlash) attached to ship id with angle from ship center to impact
-      if (ship) {
-        const ang = Math.atan2(h.hitY - shipY, h.hitX - shipX);
-        shieldFlashes.push({ id: ship.id, angle: ang, life: 0.22, amount: h.amount });
-      }
-    }
-  }
-  // handle health hit visuals (for health bar flashing)
-  if (Array.isArray(state.healthHits) && state.healthHits.length) {
-    for (const hh of state.healthHits) {
-      const ship = ships.find(s => s.id === hh.id);
-      if (ship) {
-        // create a health flash entry that renderer will use to animate the health bar color
-        healthFlashes.push({ id: ship.id, life: 0.45, amount: hh.amount });
-      }
-    }
-  }
+  // sync local references (they point to gm arrays but rebind for clarity)
+  ships = gm.ships; bullets = gm.bullets; particles = gm.particles; flashes = gm.flashes; shieldFlashes = gm.shieldFlashes; healthFlashes = gm.healthFlashes;
 
-  // Reinforcement evaluation delegated to evaluateReinforcement so tests can
-  // step accumulators deterministically.
-  evaluateReinforcement(dt);
-
-  for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0){ particles.splice(i,1); releaseParticle(p); } }
-  for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
-  for (let i=shieldFlashes.length-1;i>=0;i--) { const sf = shieldFlashes[i]; sf.life -= dt; if (sf.life <= 0) shieldFlashes.splice(i,1); }
-  for (let i=healthFlashes.length-1;i>=0;i--) { const hf = healthFlashes[i]; hf.life -= dt; if (hf.life <= 0) healthFlashes.splice(i,1); }
-
-  // sync visual wrappers (persist between frames)
+  // sync visual wrappers for ships
   const aliveIds = new Set(ships.map(s => s.id));
-  // add or update wrappers
   for (const s of ships) {
     if (shipsVMap.has(s.id)) {
       shipsVMap.get(s.id).syncFromLogic();
@@ -345,10 +287,7 @@ function simulate(dt){
       shipsVMap.set(s.id, new ShipV(s));
     }
   }
-  // remove wrappers for ships that no longer exist
-  for (const id of Array.from(shipsVMap.keys())) {
-    if (!aliveIds.has(id)) shipsVMap.delete(id);
-  }
+  for (const id of Array.from(shipsVMap.keys())) { if (!aliveIds.has(id)) shipsVMap.delete(id); }
 }
 
 function render(){
@@ -363,14 +302,35 @@ function render(){
     ctx.save(); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(b.team, .9); ctx.fillStyle = teamColor(b.team, .95);
     ctx.beginPath(); ctx.arc(b.x, b.y, b.radius || 2.2, 0, TAU); ctx.fill(); ctx.restore();
   }
-  for (const p of particles){ p.draw(); }
+  for (const p of particles){ drawParticle(p); }
   for (const sv of shipsVMap.values()){ sv.draw(); }
   const redAlive = ships.some(s=>s.alive && s.team===Team.RED);
   const blueAlive = ships.some(s=>s.alive && s.team===Team.BLUE);
   if (!redAlive || !blueAlive){ ctx.save(); ctx.textAlign='center'; ctx.font = '700 36px Inter, system-ui, sans-serif'; const winner = redAlive? 'Red' : blueAlive? 'Blue' : 'Nobody'; const col = redAlive? teamColor(Team.RED, .95) : blueAlive? teamColor(Team.BLUE,.95) : 'rgba(255,255,255,.9)'; ctx.fillStyle = col; ctx.shadowBlur = 14; ctx.shadowColor = col; ctx.fillText(`${winner} Wins!`, W/2, 64); ctx.restore(); }
 }
 
-function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); requestAnimationFrame(loop); }
+function loop(t){
+  if (!lastTime) lastTime=t;
+  const rawDt = (t-lastTime)/1000; lastTime = t;
+  const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0);
+  simulate(dt);
+
+  // If a WebGL renderer is active, delegate drawing to it. Otherwise use 2D canvas renderer.
+  if (runningRenderer && runningRenderer.type === 'webgl' && typeof runningRenderer.render === 'function') {
+    try {
+      runningRenderer.render({ W, H, ships, bullets, particles, flashes, stars, shipsVMap, score });
+    } catch (e) {
+      // If WebGL renderer throws, fall back to 2D canvas render to avoid stopping the loop
+      console.error('WebGL render error, falling back to 2D render', e);
+      render();
+    }
+  } else {
+    render();
+  }
+
+  updateUI();
+  requestAnimationFrame(loop);
+}
 
 // --- UI ---
 const startBtn = document.getElementById('startPause');
@@ -395,6 +355,8 @@ if (!continuousCheckbox) {
   continuousCheckbox.id = 'continuousCheckbox';
   // do not attach to DOM in headless/test environments
 }
+// Let gamemanager read the checkbox state for reinforcement decisions
+if (gm && typeof gm.setContinuousCheckbox === 'function') gm.setContinuousCheckbox(continuousCheckbox);
 // so `updateUI()` exists regardless of whether handlers are installed already.
 function updateUI(){
   redBadge.textContent = `Red ${score.red}`;
@@ -404,91 +366,29 @@ function updateUI(){
 
 // Install UI handlers idempotently to avoid duplicate listeners if the bundle
 // is accidentally inlined or executed more than once (defensive guard).
-// Reinforcement cooldowns per team to avoid spamming
-const reinforcementCooldowns = { [Team.RED]: 0, [Team.BLUE]: 0 };
-function resetReinforcementCooldowns(){ reinforcementCooldowns[Team.RED]=0; reinforcementCooldowns[Team.BLUE]=0; }
-// Reinforcement evaluation frequency (module-level state)
-// 0 => evaluate every simulation step; >0 => seconds between reinforcement checks
-let reinforcementIntervalSeconds = 0;
-// per-team accumulators to allow each team to be checked separately
-let reinforcementCheckAccumulator = { [Team.RED]: 0, [Team.BLUE]: 0 };
-function setReinforcementInterval(seconds){ reinforcementIntervalSeconds = Number(seconds) || 0; reinforcementCheckAccumulator[Team.RED] = 0; reinforcementCheckAccumulator[Team.BLUE] = 0; }
-function getReinforcementInterval(){ return reinforcementIntervalSeconds; }
-// evaluateReinforcement advances per-team accumulators and triggers handleReinforcement
-function evaluateReinforcement(dt){
-  if (reinforcementIntervalSeconds <= 0) {
-    // Every step
-    handleReinforcement(dt);
-    return;
-  }
-  reinforcementCheckAccumulator[Team.RED] += dt;
-  reinforcementCheckAccumulator[Team.BLUE] += dt;
-  if (reinforcementCheckAccumulator[Team.RED] >= reinforcementIntervalSeconds) {
-    handleReinforcement(reinforcementCheckAccumulator[Team.RED], Team.RED);
-    reinforcementCheckAccumulator[Team.RED] = 0;
-  }
-  if (reinforcementCheckAccumulator[Team.BLUE] >= reinforcementIntervalSeconds) {
-    handleReinforcement(reinforcementCheckAccumulator[Team.BLUE], Team.BLUE);
-    reinforcementCheckAccumulator[Team.BLUE] = 0;
-  }
-}
-// handleReinforcement(dt, team=null) -> if team provided, only evaluate that team
-function handleReinforcement(dt, team = null) {
-  // if static checkbox exists and is unchecked, don't reinforce; if it's a
-  // fallback element created for tests (not in DOM) it will be unchecked by default
-  if (!continuousCheckbox || !continuousCheckbox.checked) return;
-
-  const lowThreshold = 2;
-  const types = ['frigate','corvette','destroyer','carrier'];
-
-  // helper to spawn N random ships for a team in that team's half
-  const spawnFor = (team, n) => {
-    for (let i=0;i<n;i++){
-      const t = types[srangeInt(0, types.length - 1)];
-      const x = team === Team.RED ? srange(40, Math.max(120, W*0.35)) : srange(Math.max(W*0.65, W-240), W-40);
-      const y = srange(80, Math.max(120, H-80));
-      ships.push(new Ship(team, x, y, t));
-    }
-  };
-
-  const evalTeam = (t) => {
-    const alive = ships.filter(s => s.alive && s.team === t).length;
-    if (alive < lowThreshold) {
-      reinforcementCooldowns[t] -= dt;
-      if (reinforcementCooldowns[t] <= 0) {
-        const count = srangeInt(1,6);
-        spawnFor(t, count);
-        reinforcementCooldowns[t] = srange(3,8);
-        toast(`Reinforcements: +${count} ${t===Team.RED? 'Red':'Blue'}`);
-      }
-    }
-  };
-
-  if (team === null) {
-    evalTeam(Team.RED);
-    evalTeam(Team.BLUE);
-  } else {
-    evalTeam(team);
-  }
-}
-if (!window.__uiHandlersInstalled) {
-  // Mark installed (non-writable, non-configurable)
+// Reinforcement and evaluation are delegated to gamemanager
+const resetReinforcementCooldowns = gm.resetReinforcementCooldowns;
+function setReinforcementInterval(seconds){ return gm.setReinforcementInterval(seconds); }
+function getReinforcementInterval(){ return gm.getReinforcementInterval(); }
+const evaluateReinforcement = gm.evaluateReinforcement;
+const handleReinforcement = gm.handleReinforcement;
+// UI handler installation: call from initRenderer() to attach listeners and
+// start the animation loop. This keeps module import side-effects minimal so
+// tests can import renderer helpers without starting the app.
+function installUIHandlers() {
+  if (typeof window === 'undefined' || !document) return;
+  if (window.__uiHandlersInstalled) return;
   Object.defineProperty(window, '__uiHandlersInstalled', { value: true, configurable: false, writable: false });
 
   startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
-
   resetBtn.addEventListener('click', () => { reset(); });
   addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
   addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
   trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
 
-  speedBtn.addEventListener('click', () => {
-    const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
-  });
+  speedBtn.addEventListener('click', () => { const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`; });
 
-  seedBtn.addEventListener('click', () => {
-    const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
-  });
+  seedBtn.addEventListener('click', () => { const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); } });
 
   formationBtn.addEventListener('click', () => {
     const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
@@ -499,32 +399,70 @@ if (!window.__uiHandlersInstalled) {
     toast('Fleets re-formed');
   });
 
-  // Optional: a small UI button to cycle reinforcement evaluation frequency (Off/0.5s/1s/2s)
-  // We'll look for an element with id `reinforceFreqBtn` and if present, attach handlers.
   const reinforceFreqBtn = document.getElementById('reinforceFreqBtn');
-  const reinforcementFrequencyOptions = [0, 0.5, 1, 2]; // seconds; 0 == every step
+  const reinforcementFrequencyOptions = [0, 0.5, 1, 2];
   if (reinforceFreqBtn) {
-    // display current value
-  reinforceFreqBtn.textContent = reinforcementIntervalSeconds > 0 ? `${reinforcementIntervalSeconds}s` : 'Every step';
+    const _updateReinforceText = () => {
+      const v = getReinforcementInterval();
+      reinforceFreqBtn.textContent = v > 0 ? `${v}s` : 'Every step';
+    };
+    _updateReinforceText();
     reinforceFreqBtn.addEventListener('click', () => {
-      const idx = (reinforcementFrequencyOptions.indexOf(reinforcementIntervalSeconds) + 1) % reinforcementFrequencyOptions.length;
+      const cur = getReinforcementInterval();
+      const idx = (reinforcementFrequencyOptions.indexOf(cur) + 1) % reinforcementFrequencyOptions.length;
       setReinforcementInterval(reinforcementFrequencyOptions[idx]);
-      reinforceFreqBtn.textContent = reinforcementIntervalSeconds > 0 ? `${reinforcementIntervalSeconds}s` : 'Every step';
-      toast(`Reinforcement check: ${reinforcementIntervalSeconds > 0 ? reinforcementIntervalSeconds + 's' : 'every step'}`);
+      _updateReinforceText();
+      const v = getReinforcementInterval();
+      toast(`Reinforcement check: ${v > 0 ? v + 's' : 'every step'}`);
     });
   }
 
   canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); acquireParticle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)'); } });
-
-  // Init
-  reset();
-  requestAnimationFrame(loop);
-} else {
-  // If handlers already installed, ensure the UI badges are kept up-to-date by
-  // performing minimal initialization (no duplicated event listeners).
-  if (ships.length === 0) reset();
-  if (!lastTime) requestAnimationFrame(loop);
 }
+
+// Keep reset at module init so tests that import helpers still have a sane state.
+if (ships.length === 0) reset();
+
+// runtime renderer instance (either webgl or canvas loop)
+let runningRenderer = null;
+
+/**
+ * Initialize the renderer and start the animation loop.
+ * opts: { canvas?: HTMLCanvasElement, preferWebGL?: boolean }
+ */
+export async function initRenderer(opts = {}) {
+  const { canvas: canvasEl = canvas, preferWebGL = true, startLoop = true } = opts;
+  if (!canvasEl) throw new Error('No canvas available to initialize renderer');
+  installUIHandlers();
+
+  // prefer WebGL2 -> WebGL -> fallback
+  if (preferWebGL && canvasEl.getContext) {
+    const gl2 = canvasEl.getContext('webgl2');
+    const gl1 = !gl2 ? canvasEl.getContext('webgl') : null;
+    if (gl2 || gl1) {
+      try {
+          const { createWebGLRenderer } = await import('./webglRenderer.js');
+          runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2 });
+          runningRenderer.init();
+          if (startLoop) runningRenderer.start(() => { requestAnimationFrame(loop); });
+          return;
+        } catch (err) {
+          // fall through to 2D canvas
+          console.warn('WebGL init failed, falling back to 2D canvas renderer', err);
+        }
+    }
+  }
+
+  // start 2D canvas-driven loop
+  if (!runningRenderer) {
+    runningRenderer = { type: 'canvas' };
+    if (startLoop) requestAnimationFrame(loop);
+  }
+}
+
+export function getRendererType(){ return runningRenderer ? runningRenderer.type : null; }
+
+export function stopRenderer(){ if (runningRenderer && typeof runningRenderer.stop === 'function') runningRenderer.stop(); if (runningRenderer && typeof runningRenderer.destroy === 'function') runningRenderer.destroy(); runningRenderer = null; }
 
 // Exports for unit tests: expose pure helpers and internal pools so tests can
 // validate cache/pool behavior without changing runtime logic.
@@ -556,6 +494,6 @@ export {
   // setReinforcementInterval(seconds) - 0 means every step; >0 is seconds between checks
   setReinforcementInterval,
   getReinforcementInterval,
-  reinforcementIntervalSeconds,
+  // reset is provided by gamemanager
   reset,
 };

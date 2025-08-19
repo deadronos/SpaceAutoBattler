@@ -84,3 +84,19 @@ For larger design decisions consider adding a short Decision Record under `.gith
 License
 -------
 MIT
+
+<!-- markdownlint-disable-file -->
+
+## GameManager API
+
+A `src/gamemanager.js` module centralizes simulation and game state so renderers can remain visual-only. Publicly exported symbols include:
+
+- `reset(seed?)` — reset world state; optionally seed RNG for deterministic runs.
+- `simulate(dt, W, H)` — advance game state by dt; returns an object containing `{ ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars }`.
+- `ships, bullets, particles, stars, flashes, shieldFlashes, healthFlashes` — arrays containing live game objects and visual event lists.
+- `acquireParticle, releaseParticle, particlePool, Particle` — particle pool and helper for visual effects.
+- `initStars()` — regenerate the starfield.
+- `setReinforcementInterval(seconds), getReinforcementInterval()` — control reinforcement check timing.
+- `resetReinforcementCooldowns(), handleReinforcement(dt, team), evaluateReinforcement(dt)` — reinforcement helpers for tests.
+
+Prefer importing `src/gamemanager.js` directly in unit tests when you need to assert on simulation state without involving the renderer.

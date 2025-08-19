@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { srand } from '../src/rng.js';
 import { Ship, Bullet, Team, spawnFleet } from '../src/entities.js';
 import { simulateStep } from '../src/simulate.js';
+import * as gm from '../src/gamemanager.js';
 
 describe('Entities', () => {
   it('Ship.pickTarget finds nearest visible enemy', () => {
@@ -34,12 +35,15 @@ describe('Entities', () => {
   it('Carrier launches fighters when cooldown elapsed', () => {
     srand(303);
     const c = new Ship(Team.RED, 300, 300, 'carrier');
-    const state = { ships: [c], bullets: [], score: { red: 0, blue: 0 }, particles: [], explosions: [] };
-    // Force immediate launch
-    c.launchCooldown = 0;
-    const expected = Math.max(1, Math.floor(c.launchAmount));
-    simulateStep(state, 0.016, { W: 800, H: 600 });
-    const fighters = state.ships.filter(s => s.type === 'fighter');
+  // Use gm.ships (the manager-owned ships array) since gm.simulate operates on it
+  gm.reset();
+  gm.ships.length = 0; gm.ships.push(c);
+  // Force immediate launch
+  c.launchCooldown = 0;
+  const expected = Math.max(1, Math.floor(c.launchAmount));
+  // manager is responsible for carrier launch decisions
+  gm.simulate(0.016, 800, 600);
+  const fighters = gm.ships.filter(s => s.type === 'fighter');
     expect(fighters.length).toBe(expected);
     for (const f of fighters) { expect(f.team).toBe(Team.RED); expect(f.alive).toBe(true); expect(Math.hypot(f.vx, f.vy)).toBeGreaterThan(10); }
   });
