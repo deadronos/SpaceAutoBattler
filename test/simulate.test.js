@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { simulateStep } from '../src/simulate.js';
-import { Ship, Bullet, Team } from '../src/entities.js';
+import { Ship, Bullet, Team, getClassConfig, createShipWithConfig } from '../src/entities.js';
 import { srand } from '../src/rng.js';
 
 describe('Simulation step', () => {
   it('bullet collides and increments score', () => {
     srand(99);
-    const sEnemy = new Ship(Team.BLUE, 100, 100);
+  const sEnemy = createShipWithConfig(Team.BLUE, 100, 100, 'corvette', getClassConfig('corvette'));
     const shooterTeam = Team.RED;
     const bullet = new Bullet(90, 100, 100, 0, shooterTeam);
     bullet.dmg = 9999; // one-shot

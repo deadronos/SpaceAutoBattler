@@ -1,0 +1,61 @@
+# SpaceAutoBattler
+
+> A small deterministic 2D auto-battler engine (simulation + renderer) with seeded RNG for reproducible tests and a lightweight Canvas renderer. This repo separates a deterministic simulation (game logic) from visual rendering and provides tests and guidance for AI-assisted contributors.
+
+This file is optimized for LLM consumption: concise pointers to core docs, specifications, interfaces, tests, and developer guidance used to understand and modify the project.
+
+## Documentation
+
+- [README](README.md): Project overview, how to run the demo, build and serve instructions.
+- [Spec - Simulation](spec/spec-design-simulation.md): Machine-friendly contract for `simulateStep(state, dt, bounds)`, event shapes (explosions, shieldHits, healthHits), and determinism requirements.
+- [Spec - Renderer](spec/spec-design-renderer.md): Renderer/visual contract and guidance for consuming simulation events.
+- [.github/copilot-instructions.md](.github/copilot-instructions.md): Contributor & automated agent guidance (how automated agents should behave in this repo).
+
+## Core source files
+
+- [Simulation stepper](src/simulate.js): Deterministic simulation time-step implementation (mutates `state`).
+- [Entities & rules](src/entities.js): `Ship`, `Bullet`, `spawnFleet` and per-type configuration. Important: RNG draws for type-specific numeric fields are localized to the chosen type.
+- [Seeded RNG helpers](src/rng.js): `srand`, `srange`, `srangeInt`, `unseed`, and `assertSeeded` — use these for deterministic behavior in tests and simulation.
+- [Renderer & UI helpers](src/renderer.js): Visual layer, `randomShipType()`, `createShipFromUI()`, and test helpers used by UI tests.
+- [Progression constants](src/progressionConfig.js): XP/level scaling and per-level percentage constants.
+
+## Tests (Vitest)
+
+- [Test index](test): All unit and integration tests live here (Vitest).
+- [Determinism tests](test/simulate.determinism.test.js): Verifies seeded RNG determinism for the simulation.
+- [Integration UI/test helpers](test/add-ship.test.js): Tests UI helpers and deterministic ship creation.
+- [RNG usage guard test](test/entities.rng-usage.test.js): Small focused test ensuring `Ship` construction consumes a bounded number of seeded-RNG draws — protects against regressions that evaluate every type at construction.
+- [Microbenchmark (performance)](test/simulate.benchmark.test.js): Small performance benchmark stepping many entities to catch regressions.
+
+## Scripts & helpers
+
+- [scripts/check-rng-ui.js](scripts/check-rng-ui.js): Local reproduction helper that prints `randomShipType()` vs `createShipFromUI()` sequences for seeded runs.
+- [scripts/build-standalone.mjs](scripts/build-standalone.mjs): Bundles renderer into a standalone HTML for distribution (esbuild-based).
+
+## Configuration & CI
+
+- [package.json](package.json): Dependencies, scripts (`npm test`, build, serve).
+- [vitest.config.js](vitest.config.js): Test runner configuration used in CI/local runs.
+- [CI workflow - RNG guard](.github/workflows/rng-usage-check.yml): Runs the focused `entities.rng-usage.test.js` on push/PR to guard regressions.
+
+## Developer guidance & prompts
+
+- [.github/instructions/](.github/instructions/): Internal contributor rules and coding standards used by automated agents (spec-driven workflow, Playwright/Vitest guidance, performance notes).
+- [.github/prompts/](.github/prompts/): Repository-specific prompt templates to generate specs, tests, and PR-friendly content for AI assistants.
+- [Spec-driven workflow](.github/instructions/spec-driven-workflow-v1.instructions.md): How to analyze, design and implement changes with required artifacts (requirements.md, design.md, tasks.md).
+
+## Quick pointers for LLMs
+
+- Determinism: All gameplay randomness must use `src/rng.js` (seed via `srand(seed)`) — do not rely on `Math.random()` for logic.
+- Simulation contract: `simulateStep(state, dt, bounds)` must mutate `state` only and emit minimal numeric event objects into `state.explosions`, `state.shieldHits`, and `state.healthHits`.
+- When changing numeric behavior (XP, damage, shields), update `src/progressionConfig.js` and add tests under `test/` that seed the RNG to preserve deterministic outputs.
+
+## Optional / Background files (useful but not required for minimal understanding)
+
+- [dist/bundle.js](dist/bundle.js): Generated bundle for the standalone demo (ignore when editing source).
+- [.github/copilot-instructions.md](.github/copilot-instructions.md): Long-form instructions for automated agents — useful for behavior policies.
+
+
+---
+
+Updated: 2025-08-19 — reflects recent refactor localizing RNG draws to chosen ship types, new RNG-usage test, and a CI guard workflow. If you add or move major docs/specs, update this file to keep LLM navigation accurate.

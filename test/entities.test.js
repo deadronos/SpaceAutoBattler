@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { srand } from '../src/rng.js';
-import { Ship, Bullet, Team, spawnFleet } from '../src/entities.js';
+import { Ship, Bullet, Team, spawnFleet, getClassConfig, createShipWithConfig } from '../src/entities.js';
 import { simulateStep } from '../src/simulate.js';
 
 describe('Entities', () => {
   it('Ship.pickTarget finds nearest visible enemy', () => {
     srand(1);
-    const s1 = new Ship(Team.RED, 100, 100);
-    const s2 = new Ship(Team.BLUE, 150, 100); // 50 away
-    const s3 = new Ship(Team.BLUE, 400, 400); // far
+  const s1 = createShipWithConfig(Team.RED, 100, 100, 'corvette', getClassConfig('corvette'));
+  const s2 = createShipWithConfig(Team.BLUE, 150, 100, 'corvette', getClassConfig('corvette'));
+  const s3 = createShipWithConfig(Team.BLUE, 400, 400, 'corvette', getClassConfig('corvette'));
     const ships = [s1, s2, s3];
     const t = s1.pickTarget(ships);
     expect(t).toBe(s2);
@@ -23,17 +23,17 @@ describe('Entities', () => {
 
   it('Carrier properties are deterministic with seed', () => {
     srand(2025);
-    const c1 = new Ship(Team.RED, 200, 200, 'carrier');
+  const c1 = createShipWithConfig(Team.RED, 200, 200, 'carrier', getClassConfig('carrier'));
     const la1 = c1.launchAmount; const lc1 = c1.launchCooldown;
     srand(2025);
-    const c2 = new Ship(Team.RED, 200, 200, 'carrier');
+  const c2 = createShipWithConfig(Team.RED, 200, 200, 'carrier', getClassConfig('carrier'));
     expect(c2.launchAmount).toBe(la1);
     expect(c2.launchCooldown).toBeCloseTo(lc1);
   });
 
   it('Carrier launches fighters when cooldown elapsed', () => {
     srand(303);
-    const c = new Ship(Team.RED, 300, 300, 'carrier');
+  const c = createShipWithConfig(Team.RED, 300, 300, 'carrier', getClassConfig('carrier'));
     const state = { ships: [c], bullets: [], score: { red: 0, blue: 0 }, particles: [], explosions: [] };
     // Force immediate launch
     c.launchCooldown = 0;
