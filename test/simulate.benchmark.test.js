@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 import { simulateStep } from '../src/simulate.js';
-import { Ship, Bullet, Team } from '../src/entities.js';
+import { Ship, Bullet, Team, getClassConfig, createShipWithConfig } from '../src/entities.js';
 import { srand, srange } from '../src/rng.js';
 import { performance } from 'perf_hooks';
 
@@ -13,7 +13,9 @@ test('microbenchmark: 100 ships / 1000 bullets for 100 steps completes determini
   for (let i = 0; i < 100; i++) {
     const x = 50 + (i % 10) * 60;
     const y = 50 + Math.floor(i / 10) * 60;
-    ships.push(new Ship(i % 2 === 0 ? Team.RED : Team.BLUE, x, y));
+  const team = i % 2 === 0 ? Team.RED : Team.BLUE;
+  const type = 'corvette';
+  ships.push(createShipWithConfig(team, x, y, type, getClassConfig(type)));
   }
 
   const bullets = [];

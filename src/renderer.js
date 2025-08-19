@@ -1,6 +1,12 @@
+// Helper: choose a random ship type and precompute its config
+export function chooseShipTypeAndCfg() {
+  const type = randomShipType();
+  const cfg = getClassConfig(type);
+  return { type, cfg };
+}
 import { srange, srangeInt } from './rng.js';
 import { simulateStep } from './simulate.js';
-import { Ship, Team } from './entities.js';
+import { Ship, Team, getClassConfig, createShipWithConfig } from './entities.js';
 
 let canvas, ctx, W, H;
 // (Removed duplicate export statement; exports are already declared at the top level)
@@ -111,24 +117,22 @@ export function randomShipType() {
 // can call this directly to avoid timing/RAF issues and to keep RNG consumption
 // identical to the UI.
 export function createShipFromUI(team) {
-  const t = randomShipType();
-  // Use strict equality against Team constants; accept numeric Team enum values
+  const { type, cfg } = chooseShipTypeAndCfg();
   if (team === Team.RED) {
     const x = srange(40, W * 0.35);
     const y = srange(80, H - 80);
-    ships.push(new Ship(Team.RED, x, y, t));
-    if (typeof toast === 'function') toast(`+1 Red (${t})`);
+    ships.push(createShipWithConfig(Team.RED, x, y, type, cfg));
+    if (typeof toast === 'function') toast(`+1 Red (${type})`);
   } else if (team === Team.BLUE) {
     const x = srange(W * 0.65, W - 40);
     const y = srange(80, H - 80);
-    ships.push(new Ship(Team.BLUE, x, y, t));
-    if (typeof toast === 'function') toast(`+1 Blue (${t})`);
+    ships.push(createShipWithConfig(Team.BLUE, x, y, type, cfg));
+    if (typeof toast === 'function') toast(`+1 Blue (${type})`);
   } else {
-    // fallback: if caller provided a non-standard team identifier, default to RED
     const x = srange(40, W * 0.35);
     const y = srange(80, H - 80);
-    ships.push(new Ship(Team.RED, x, y, t));
-    if (typeof toast === 'function') toast(`+1 Red (${t})`);
+    ships.push(createShipWithConfig(Team.RED, x, y, type, cfg));
+    if (typeof toast === 'function') toast(`+1 Red (${type})`);
   }
 }
 
@@ -137,6 +141,7 @@ export function createShipFromUI(team) {
 export const testHelpers = {
   createShipFromUI,
   randomShipType,
+  chooseShipTypeAndCfg,
   ships,
   state,
 };
@@ -534,12 +539,18 @@ export function initRendererUI() {
 
   if (addRedBtn && typeof addRedBtn.addEventListener === 'function') addRedBtn.addEventListener('click', () => {
   const t = randomShipType();
-  ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80, H-80), t));
+  const x = srange(40, W*0.35);
+  const y = srange(80, H-80);
+  const cfg = getClassConfig(t);
+  ships.push(createShipWithConfig(Team.RED, x, y, t, cfg));
   toast(`+1 Red (${t})`);
   });
   if (addBlueBtn && typeof addBlueBtn.addEventListener === 'function') addBlueBtn.addEventListener('click', () => {
   const t = randomShipType();
-  ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80, H-80), t));
+  const x = srange(W*0.65, W-40);
+  const y = srange(80, H-80);
+  const cfg = getClassConfig(t);
+  ships.push(createShipWithConfig(Team.BLUE, x, y, t, cfg));
   toast(`+1 Blue (${t})`);
   });
   if (trailsBtn && typeof trailsBtn.addEventListener === 'function') trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });

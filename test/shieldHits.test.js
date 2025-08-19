@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { srand } from '../src/rng.js';
-import { Ship, Bullet, Team } from '../src/entities.js';
+import { Ship, Bullet, Team, getClassConfig, createShipWithConfig } from '../src/entities.js';
 import { simulateStep } from '../src/simulate.js';
 
 describe('simulateStep shieldHits events', () => {
   beforeEach(() => { srand(99); });
 
   it('emits shieldHits when shield is reduced by a hit', () => {
-    const attacker = new Ship(Team.RED, 100, 100, 'corvette');
-    const target = new Ship(Team.BLUE, 110, 100, 'corvette');
+  const attacker = createShipWithConfig(Team.RED, 100, 100, 'corvette', getClassConfig('corvette'));
+  const target = createShipWithConfig(Team.BLUE, 110, 100, 'corvette', getClassConfig('corvette'));
     // ensure target has shields
     expect(target.shield).toBeGreaterThan(0);
     const b = new Bullet(attacker.x, attacker.y, 10, 0, attacker.team, attacker.id);
@@ -26,8 +26,8 @@ describe('simulateStep shieldHits events', () => {
   });
 
   it('does not emit shieldHits when damage goes straight to HP (no shield)', () => {
-    const attacker = new Ship(Team.RED, 200, 200, 'destroyer');
-    const target = new Ship(Team.BLUE, 205, 200, 'fighter');
+  const attacker = createShipWithConfig(Team.RED, 200, 200, 'destroyer', getClassConfig('destroyer'));
+  const target = createShipWithConfig(Team.BLUE, 205, 200, 'fighter', getClassConfig('fighter'));
     // drain target shield
     target.shield = 0;
     const b = new Bullet(attacker.x, attacker.y, 10, 0, attacker.team, attacker.id);

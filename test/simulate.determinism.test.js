@@ -1,11 +1,11 @@
 import { test, expect } from 'vitest';
 import { simulateStep } from '../src/simulate.js';
-import { Ship, Bullet, Team } from '../src/entities.js';
+import { Ship, Bullet, Team, getClassConfig, createShipWithConfig } from '../src/entities.js';
 import { srand } from '../src/rng.js';
 
 function makeState() {
-  const s1 = new Ship(Team.RED, 100, 100);
-  const s2 = new Ship(Team.BLUE, 200, 100);
+  const s1 = createShipWithConfig(Team.RED, 100, 100, 'corvette', getClassConfig('corvette'));
+  const s2 = createShipWithConfig(Team.BLUE, 200, 100, 'corvette', getClassConfig('corvette'));
   // bullet fired from s1 toward s2
   const dx = s2.x - s1.x; const dy = s2.y - s1.y; const dist = Math.hypot(dx, dy) || 1;
   const bdx = dx / dist; const bdy = dy / dist; const spd = 300;

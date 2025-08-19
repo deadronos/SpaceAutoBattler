@@ -1,5 +1,5 @@
 import { srange, srangeInt } from './rng.js';
-import { Ship } from './entities.js';
+import { Ship, getClassConfig, createShipWithConfig } from './entities.js';
 import { XP_PER_DAMAGE, KILL_XP_BASE, KILL_XP_PER_TARGET_LEVEL } from './progressionConfig.js';
 
 export function simulateStep(state, dt, bounds = { W: 800, H: 600 }) {
@@ -40,7 +40,9 @@ export function simulateStep(state, dt, bounds = { W: 800, H: 600 }) {
         const dist = s.radius + 12 + srange(4, 12);
         const fx = s.x + Math.cos(a) * dist;
         const fy = s.y + Math.sin(a) * dist;
-        const f = new Ship(s.team, fx, fy, 'fighter');
+  // construct fighter with precomputed cfg to avoid hidden RNG draws
+  const cfg = getClassConfig('fighter');
+  const f = createShipWithConfig(s.team, fx, fy, 'fighter', cfg);
         const spd = srange(40, 120);
         f.vx = Math.cos(a) * spd + (s.vx || 0) * 0.2;
         f.vy = Math.sin(a) * spd + (s.vy || 0) * 0.2;

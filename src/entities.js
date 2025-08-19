@@ -14,9 +14,9 @@ export const Team = { RED: 0, BLUE: 1 };
 // Helper: build per-type numeric config only for the requested type.
 // This localizes seeded-RNG draws (srange) to the chosen type and avoids
 // advancing the RNG for every type on each Ship construction.
-function getClassConfig(t) {
+export function getClassConfig(t) {
   switch (t) {
-    case 'frigate':
+    case 'frigate': {
       return {
         radius: 10,
         maxSpeed: srange(90, 120),
@@ -26,6 +26,7 @@ function getClassConfig(t) {
         vision: 280,
         range: 180,
       };
+    }
     case 'destroyer':
       return {
         radius: 14,
@@ -37,16 +38,23 @@ function getClassConfig(t) {
         range: 220,
       };
     case 'carrier':
-      return {
-        radius: 18,
-        maxSpeed: srange(40, 70),
-        accel: 90,
-        hp: srange(220, 300),
-        reload: srange(0.6, 1.2),
-        vision: 360,
-        range: 260,
-        launchBase: srange(3.5, 6.0),
-      };
+      {
+        // precompute derived launch values so constructor doesn't call RNG
+        const launchBase = srange(3.5, 6.0);
+        const launchCooldown = launchBase * srange(0.8, 1.4);
+        const launchAmount = Math.max(1, Math.floor(srange(1, 3)));
+        return {
+          radius: 18,
+          maxSpeed: srange(40, 70),
+          accel: 90,
+          hp: srange(220, 300),
+          reload: srange(0.6, 1.2),
+          vision: 360,
+          range: 260,
+          launchCooldown,
+          launchAmount,
+        };
+      }
     case 'fighter':
       return {
         radius: 6,
@@ -58,8 +66,7 @@ function getClassConfig(t) {
         range: 120,
       };
     case 'corvette':
-    default:
-      return {
+    default:return {
         radius: 8,
         maxSpeed: srange(120, 160),
         accel: 240,
@@ -99,14 +106,13 @@ export class Bullet {
 
 export class Ship {
   static _id = 1;
-  constructor(team, x, y, type = 'corvette') {
+  // Require a precomputed numeric config (cfg). Callers must invoke
+  // getClassConfig(type) and pass the result. This prevents Ship from
+  // consuming RNG internally and makes creation deterministic.
+  constructor(team, x, y, type = 'corvette', cfg) {
+    if (!cfg) throw new Error('Ship constructor requires a precomputed cfg. Call getClassConfig(type) and pass it to the constructor or use createShipWithConfig.');
     this.team = team; this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.angle = 0;
     this.type = type; // 'corvette'|'frigate'|'destroyer'|'carrier'|'fighter'
-
-    // Use the module-level getClassConfig to compute numeric values only for
-    // the requested ship type. This ensures seeded RNG draws are localized
-    // and predictable.
-    const cfg = getClassConfig(type || 'corvette');
     this.radius = cfg.radius;
     this.maxSpeed = cfg.maxSpeed;
     this.accel = cfg.accel;
@@ -136,10 +142,11 @@ export class Ship {
     this.shield = this.shieldMax;
     this.shieldRegen = Math.max(SHIELD_REGEN_MIN, this.shieldMax * SHIELD_REGEN_PERCENT);
 
-    if (type === 'carrier') {
+  if (type === 'carrier') {
       this.isCarrier = true;
-      this.launchCooldown = cfg.launchBase * srange(0.8, 1.4);
-      this.launchAmount = Math.max(1, Math.floor(srange(1, 3)));
+      // use precomputed cfg values for carriers
+      this.launchCooldown = cfg.launchCooldown;
+      this.launchAmount = cfg.launchAmount;
     } else {
       this.isCarrier = false;
       this.launchCooldown = 0;
@@ -252,6 +259,11 @@ export class Ship {
   }
 }
 
+// Helper: construct a Ship when caller has precomputed numeric cfg values.
+export function createShipWithConfig(team, x, y, type = 'corvette', cfg) {
+  return new Ship(team, x, y, type, cfg);
+}
+
 export function spawnFleet(team, n, x, y, spread = 80) {
   const ships = [];
   for (let i = 0; i < n; i++) {
@@ -263,7 +275,8 @@ export function spawnFleet(team, n, x, y, spread = 80) {
     else if (r < 0.75) type = 'frigate';
     else if (r < 0.92) type = 'destroyer';
     else type = 'carrier';
-    ships.push(new Ship(team, x + (team === Team.RED ? -ox : ox), y + oy, type));
+  const cfg = getClassConfig(type);
+  ships.push(createShipWithConfig(team, x + (team === Team.RED ? -ox : ox), y + oy, type, cfg));
   }
   return ships;
 }

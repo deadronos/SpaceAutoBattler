@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { simulateStep } from '../src/simulate.js';
-import { Ship, Team } from '../src/entities.js';
+import { Ship, Team, getClassConfig, createShipWithConfig } from '../src/entities.js';
 
 describe('Screen wrapping in simulation', () => {
   it('wraps ships left->right and right->left', () => {
     const W = 200, H = 120;
-    const ship = new Ship(Team.RED, 0, 50, 'corvette');
+  const ship = createShipWithConfig(Team.RED, 0, 50, 'corvette', getClassConfig('corvette'));
     const r = ship.radius; // corvette radius is deterministic (8)
 
     // place slightly off the left edge
@@ -24,7 +24,7 @@ describe('Screen wrapping in simulation', () => {
 
   it('wraps ships top->bottom and bottom->top', () => {
     const W = 200, H = 120;
-    const ship = new Ship(Team.RED, 60, 0, 'corvette');
+  const ship = createShipWithConfig(Team.RED, 60, 0, 'corvette', getClassConfig('corvette'));
     const r = ship.radius;
 
     // slightly above top
