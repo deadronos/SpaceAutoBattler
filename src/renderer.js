@@ -1,6 +1,12 @@
-import { srand, srange, srangeInt, unseed } from './rng.js';
+// Helper: choose a random ship type and precompute its config
+export function chooseShipTypeAndCfg() {
+  const type = randomShipType();
+  const cfg = getClassConfig(type);
+  return { type, cfg };
+}
+import { srange, srangeInt } from './rng.js';
 import { simulateStep } from './simulate.js';
-import { Ship, Team, spawnFleet } from './entities.js';
+import { Ship, Team, getClassConfig, createShipWithConfig } from './entities.js';
 
 let canvas, ctx, W, H;
 // (Removed duplicate export statement; exports are already declared at the top level)
@@ -10,19 +16,14 @@ export function initRenderer() {
   ctx = canvas.getContext('2d');
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
+  initStars();
   window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
 }
 
 // Helper to allow tests to inject a mock canvas context via global.ctx
 function ensureCtx() {
-  // If a test injects a mock canvas context as global.ctx prefer that so tests can
-  // control drawing even if a real canvas context was previously assigned by initRenderer.
+  // Prefer a test-injected canvas context (globalThis.ctx) when available.
   if (typeof globalThis !== 'undefined' && globalThis.ctx) {
-    ctx = globalThis.ctx;
-    return ctx;
-  }
-  // Treat undefined or null ctx as "not set" otherwise
-  if ((typeof ctx === 'undefined' || ctx === undefined || ctx === null) && typeof globalThis !== 'undefined' && globalThis.ctx) {
     ctx = globalThis.ctx;
   }
   return ctx;
@@ -49,7 +50,7 @@ export let speed = 1;
 let showTrails = true;
 const score = { red: 0, blue: 0 };
 
-export { particles, flashes, shieldFlashes, healthFlashes, levelFlashes, shipsVMap, ships, bullets, lastTime, running, showTrails, score };
+export { particles, flashes, shieldFlashes, healthFlashes, levelFlashes, shipsVMap, ships, bullets, lastTime, running, showTrails, score, stars };
 
 // canonical speed steps for UI control (exported so tests can assert the real values)
 export const SPEED_STEPS = [0.5, 1, 2, 4];
@@ -81,46 +82,57 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // UI toast
-export function toast(msg) { if (!document) return; const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
+export function toast(msg) { if (typeof document === 'undefined' || !document) return; const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
 
 // Starfield background (parallax)
 const stars = [];
 function initStars() {
+  // Only populate the starfield when canvas dimensions are known.
+  if (!Number.isFinite(W) || !Number.isFinite(H)) return;
   stars.length = 0;
   const layers = [0.2, 0.5, 1.0];
   for (const depth of layers) {
-    for (let i=0;i<120;i++) {
-      stars.push({ x: rand(0,W), y: rand(0,H), r: rand(0.3, 1.8) * depth, d: depth, tw: rand(0.4,1), phase: rand(0,TAU) });
+    for (let i = 0; i < 120; i++) {
+      stars.push({ x: rand(0, W), y: rand(0, H), r: rand(0.3, 1.8) * depth, d: depth, tw: rand(0.4, 1), phase: rand(0, TAU) });
     }
   }
 }
-initStars();
 
 // --- Entities (renderer-local) ---
 export const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
 
 // Pick a random ship type (uses seeded srangeInt)
+// Ship types array (single module-level allocation)
+const SHIP_TYPES = ['corvette','frigate','destroyer','carrier','fighter'];
+
 export function randomShipType() {
-  const types = ['corvette','frigate','destroyer','carrier','fighter'];
-  const idx = srangeInt(0, types.length - 1);
-  return types[idx];
+  // defensive: ensure SHIP_TYPES is non-empty
+  if (!Array.isArray(SHIP_TYPES) || SHIP_TYPES.length === 0) return 'corvette';
+  // srangeInt is inclusive on both ends; compute index and clamp defensively
+  const idx = clamp(srangeInt(0, SHIP_TYPES.length - 1), 0, SHIP_TYPES.length - 1);
+  return SHIP_TYPES[idx];
 }
 
 // Test helper: perform the same actions as the UI add buttons. Exported so tests
 // can call this directly to avoid timing/RAF issues and to keep RNG consumption
 // identical to the UI.
 export function createShipFromUI(team) {
-  const t = randomShipType();
+  const { type, cfg } = chooseShipTypeAndCfg();
   if (team === Team.RED) {
     const x = srange(40, W * 0.35);
     const y = srange(80, H - 80);
-    ships.push(new Ship(Team.RED, x, y, t));
-    if (typeof toast === 'function') toast(`+1 Red (${t})`);
-  } else {
+    ships.push(createShipWithConfig(Team.RED, x, y, type, cfg));
+    if (typeof toast === 'function') toast(`+1 Red (${type})`);
+  } else if (team === Team.BLUE) {
     const x = srange(W * 0.65, W - 40);
     const y = srange(80, H - 80);
-    ships.push(new Ship(Team.BLUE, x, y, t));
-    if (typeof toast === 'function') toast(`+1 Blue (${t})`);
+    ships.push(createShipWithConfig(Team.BLUE, x, y, type, cfg));
+    if (typeof toast === 'function') toast(`+1 Blue (${type})`);
+  } else {
+    const x = srange(40, W * 0.35);
+    const y = srange(80, H - 80);
+    ships.push(createShipWithConfig(Team.RED, x, y, type, cfg));
+    if (typeof toast === 'function') toast(`+1 Red (${type})`);
   }
 }
 
@@ -129,14 +141,38 @@ export function createShipFromUI(team) {
 export const testHelpers = {
   createShipFromUI,
   randomShipType,
+  chooseShipTypeAndCfg,
   ships,
   state,
 };
 
 export class Particle {
-  constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
-  update(dt){ this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=Math.pow(0.9,dt*60); this.vy*=Math.pow(0.9,dt*60); this.life-=dt; }
-  draw(){ if (this.life<=0) return; const a = this.life/this.max; ensureCtx(); if (typeof ctx === 'undefined' || !ctx) return; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
+  constructor(x, y, vx, vy, life, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.life = life;
+    this.max = life;
+    this.color = color;
+  }
+
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vx *= Math.pow(0.9, dt * 60);
+    this.vy *= Math.pow(0.9, dt * 60);
+    this.life -= dt;
+  }
+
+  draw() {
+    if (this.life <= 0) return;
+    const a = this.life / this.max;
+    ensureCtx();
+    if (!ctx) return;
+    ctx.fillStyle = this.color.replace('$a', a.toFixed(3));
+    ctx.fillRect(this.x, this.y, 2, 2);
+  }
 }
 
 // Keep Ship logic in entities.js, renderer keeps visual helpers and particle/flash handling.
@@ -145,9 +181,10 @@ export class ShipV {
   constructor(shipLogic){ this.logic = shipLogic; this.id = shipLogic.id; this.team = shipLogic.team; this.x = shipLogic.x; this.y = shipLogic.y; this.type = shipLogic.type; }
   syncFromLogic(){ this.x = this.logic.x; this.y = this.logic.y; this.type = this.logic.type; this.alive = this.logic.alive; }
   draw(){
-    const s = this.logic;
-    if (!s.alive) return;
+  const s = this.logic;
+  if (!s.alive) return;
   ensureCtx();
+  if (!ctx) return;
   // compute whether this ship has a recent shield hit (look for flashes with shieldHit)
   const recentShieldFlash = flashes.some(f => f.shieldHit && f.x === s.x && f.y === s.y && f.life > 0);
     // trails
@@ -473,7 +510,6 @@ export function render() {
   if (!redAlive || !blueAlive){ ctx.save(); ctx.textAlign='center'; ctx.font = '700 36px Inter, system-ui, sans-serif'; const winner = redAlive? 'Red' : blueAlive? 'Blue' : 'Nobody'; const col = redAlive? teamColor(Team.RED, .95) : blueAlive? teamColor(Team.BLUE,.95) : 'rgba(255,255,255,.9)'; ctx.fillStyle = col; ctx.shadowBlur = 14; ctx.shadowColor = col; ctx.fillText(`${winner} Wins!`, W/2, 64); ctx.restore(); }
 }
 
-function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); requestAnimationFrame(loop); }
 
 // --- UI ---
 export function initRendererUI() {
@@ -503,12 +539,18 @@ export function initRendererUI() {
 
   if (addRedBtn && typeof addRedBtn.addEventListener === 'function') addRedBtn.addEventListener('click', () => {
   const t = randomShipType();
-  ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80, H-80), t));
+  const x = srange(40, W*0.35);
+  const y = srange(80, H-80);
+  const cfg = getClassConfig(t);
+  ships.push(createShipWithConfig(Team.RED, x, y, t, cfg));
   toast(`+1 Red (${t})`);
   });
   if (addBlueBtn && typeof addBlueBtn.addEventListener === 'function') addBlueBtn.addEventListener('click', () => {
   const t = randomShipType();
-  ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80, H-80), t));
+  const x = srange(W*0.65, W-40);
+  const y = srange(80, H-80);
+  const cfg = getClassConfig(t);
+  ships.push(createShipWithConfig(Team.BLUE, x, y, t, cfg));
   toast(`+1 Blue (${t})`);
   });
   if (trailsBtn && typeof trailsBtn.addEventListener === 'function') trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });

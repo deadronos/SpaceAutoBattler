@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { srand } from '../src/rng.js';
-import { Ship, Team } from '../src/entities.js';
+import { Ship, Team, getClassConfig, createShipWithConfig } from '../src/entities.js';
 import { DMG_PERCENT_PER_LEVEL } from '../src/progressionConfig.js';
 
 describe('Bullet damage scaling by ship level', () => {
   it('bullets fired after level-up have increased average damage', () => {
     srand(12345);
-    // Ship at level 1
-    const s1 = new Ship(Team.RED, 100, 100, 'corvette');
-    const dummy1 = new Ship(Team.BLUE, 120, 100, 'corvette');
+  // Ship at level 1
+  const s1Cfg = getClassConfig('corvette');
+  const dummy1Cfg = getClassConfig('corvette');
+  const s1 = createShipWithConfig(Team.RED, 100, 100, 'corvette', s1Cfg);
+  const dummy1 = createShipWithConfig(Team.BLUE, 120, 100, 'corvette', dummy1Cfg);
     const ships1 = [s1, dummy1];
     let dmgSum1 = 0;
     let n1 = 10;
@@ -26,9 +28,11 @@ describe('Bullet damage scaling by ship level', () => {
     const avgDmg1 = dmgSum1 / n1;
 
     // Ship at higher level
-    srand(12345);
-    const s2 = new Ship(Team.RED, 100, 100, 'corvette');
-    const dummy2 = new Ship(Team.BLUE, 120, 100, 'corvette');
+  srand(12345);
+  const s2Cfg = getClassConfig('corvette');
+  const dummy2Cfg = getClassConfig('corvette');
+  const s2 = createShipWithConfig(Team.RED, 100, 100, 'corvette', s2Cfg);
+  const dummy2 = createShipWithConfig(Team.BLUE, 120, 100, 'corvette', dummy2Cfg);
     const ships2 = [s2, dummy2];
     s2.gainXp(1000); // should level up several times
     let dmgSum2 = 0;
