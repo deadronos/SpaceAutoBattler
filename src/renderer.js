@@ -280,6 +280,10 @@ function simulate(dt){
     }
   }
 
+  // Reinforcement evaluation delegated to evaluateReinforcement so tests can
+  // step accumulators deterministically.
+  evaluateReinforcement(dt);
+
   for (let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.update(dt); if (p.life<=0){ particles.splice(i,1); releaseParticle(p); } }
   for (let i=flashes.length-1;i>=0;i--){ const f=flashes[i]; f.life -= dt; f.r += 600*dt; if (f.life<=0) flashes.splice(i,1); }
   for (let i=shieldFlashes.length-1;i>=0;i--) { const sf = shieldFlashes[i]; sf.life -= dt; if (sf.life <= 0) shieldFlashes.splice(i,1); }
@@ -335,7 +339,16 @@ const statsDiv = document.getElementById('stats');
 const seedBtn = document.getElementById('seedBtn');
 const formationBtn = document.getElementById('formationBtn');
 
-// Always-available UI updater used by the animation loop. Define at top-level
+// Continuous reinforcement checkbox: prefer a static element in the HTML
+// (we inject a static checkbox into the HTML templates). If it's missing
+// (e.g., tests or older pages), create a lightweight fallback element.
+let continuousCheckbox = document.getElementById('continuousCheckbox');
+if (!continuousCheckbox) {
+  continuousCheckbox = document.createElement('input');
+  continuousCheckbox.type = 'checkbox';
+  continuousCheckbox.id = 'continuousCheckbox';
+  // do not attach to DOM in headless/test environments
+}
 // so `updateUI()` exists regardless of whether handlers are installed already.
 function updateUI(){
   redBadge.textContent = `Red ${score.red}`;
@@ -345,6 +358,73 @@ function updateUI(){
 
 // Install UI handlers idempotently to avoid duplicate listeners if the bundle
 // is accidentally inlined or executed more than once (defensive guard).
+// Reinforcement cooldowns per team to avoid spamming
+const reinforcementCooldowns = { [Team.RED]: 0, [Team.BLUE]: 0 };
+function resetReinforcementCooldowns(){ reinforcementCooldowns[Team.RED]=0; reinforcementCooldowns[Team.BLUE]=0; }
+// Reinforcement evaluation frequency (module-level state)
+// 0 => evaluate every simulation step; >0 => seconds between reinforcement checks
+let reinforcementIntervalSeconds = 0;
+// per-team accumulators to allow each team to be checked separately
+let reinforcementCheckAccumulator = { [Team.RED]: 0, [Team.BLUE]: 0 };
+function setReinforcementInterval(seconds){ reinforcementIntervalSeconds = Number(seconds) || 0; reinforcementCheckAccumulator[Team.RED] = 0; reinforcementCheckAccumulator[Team.BLUE] = 0; }
+function getReinforcementInterval(){ return reinforcementIntervalSeconds; }
+// evaluateReinforcement advances per-team accumulators and triggers handleReinforcement
+function evaluateReinforcement(dt){
+  if (reinforcementIntervalSeconds <= 0) {
+    // Every step
+    handleReinforcement(dt);
+    return;
+  }
+  reinforcementCheckAccumulator[Team.RED] += dt;
+  reinforcementCheckAccumulator[Team.BLUE] += dt;
+  if (reinforcementCheckAccumulator[Team.RED] >= reinforcementIntervalSeconds) {
+    handleReinforcement(reinforcementCheckAccumulator[Team.RED], Team.RED);
+    reinforcementCheckAccumulator[Team.RED] = 0;
+  }
+  if (reinforcementCheckAccumulator[Team.BLUE] >= reinforcementIntervalSeconds) {
+    handleReinforcement(reinforcementCheckAccumulator[Team.BLUE], Team.BLUE);
+    reinforcementCheckAccumulator[Team.BLUE] = 0;
+  }
+}
+// handleReinforcement(dt, team=null) -> if team provided, only evaluate that team
+function handleReinforcement(dt, team = null) {
+  // if static checkbox exists and is unchecked, don't reinforce; if it's a
+  // fallback element created for tests (not in DOM) it will be unchecked by default
+  if (!continuousCheckbox || !continuousCheckbox.checked) return;
+
+  const lowThreshold = 2;
+  const types = ['frigate','corvette','destroyer','carrier'];
+
+  // helper to spawn N random ships for a team in that team's half
+  const spawnFor = (team, n) => {
+    for (let i=0;i<n;i++){
+      const t = types[srangeInt(0, types.length - 1)];
+      const x = team === Team.RED ? srange(40, Math.max(120, W*0.35)) : srange(Math.max(W*0.65, W-240), W-40);
+      const y = srange(80, Math.max(120, H-80));
+      ships.push(new Ship(team, x, y, t));
+    }
+  };
+
+  const evalTeam = (t) => {
+    const alive = ships.filter(s => s.alive && s.team === t).length;
+    if (alive < lowThreshold) {
+      reinforcementCooldowns[t] -= dt;
+      if (reinforcementCooldowns[t] <= 0) {
+        const count = srangeInt(1,6);
+        spawnFor(t, count);
+        reinforcementCooldowns[t] = srange(3,8);
+        toast(`Reinforcements: +${count} ${t===Team.RED? 'Red':'Blue'}`);
+      }
+    }
+  };
+
+  if (team === null) {
+    evalTeam(Team.RED);
+    evalTeam(Team.BLUE);
+  } else {
+    evalTeam(team);
+  }
+}
 if (!window.__uiHandlersInstalled) {
   // Mark installed (non-writable, non-configurable)
   Object.defineProperty(window, '__uiHandlersInstalled', { value: true, configurable: false, writable: false });
@@ -372,6 +452,21 @@ if (!window.__uiHandlersInstalled) {
     aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
     toast('Fleets re-formed');
   });
+
+  // Optional: a small UI button to cycle reinforcement evaluation frequency (Off/0.5s/1s/2s)
+  // We'll look for an element with id `reinforceFreqBtn` and if present, attach handlers.
+  const reinforceFreqBtn = document.getElementById('reinforceFreqBtn');
+  const reinforcementFrequencyOptions = [0, 0.5, 1, 2]; // seconds; 0 == every step
+  if (reinforceFreqBtn) {
+    // display current value
+  reinforceFreqBtn.textContent = reinforcementIntervalSeconds > 0 ? `${reinforcementIntervalSeconds}s` : 'Every step';
+    reinforceFreqBtn.addEventListener('click', () => {
+      const idx = (reinforcementFrequencyOptions.indexOf(reinforcementIntervalSeconds) + 1) % reinforcementFrequencyOptions.length;
+      setReinforcementInterval(reinforcementFrequencyOptions[idx]);
+      reinforceFreqBtn.textContent = reinforcementIntervalSeconds > 0 ? `${reinforcementIntervalSeconds}s` : 'Every step';
+      toast(`Reinforcement check: ${reinforcementIntervalSeconds > 0 ? reinforcementIntervalSeconds + 's' : 'every step'}`);
+    });
+  }
 
   canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); acquireParticle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)'); } });
 
@@ -408,4 +503,13 @@ export {
   shipsVMap,
   ships,
   bullets,
+  handleReinforcement,
+  resetReinforcementCooldowns,
+  evaluateReinforcement,
+  // reinforcement frequency control API
+  // setReinforcementInterval(seconds) - 0 means every step; >0 is seconds between checks
+  setReinforcementInterval,
+  getReinforcementInterval,
+  reinforcementIntervalSeconds,
+  reset,
 };
