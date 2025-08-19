@@ -78,6 +78,8 @@ State shape (partial, required fields for simulation contract):
   healthHits: Array,    // simulation may push { id, hitX, hitY, team, amount }
   // ...other engine fields (score, timers, rngState, etc.)
 }
+
+Note: `simulateStep` will create any missing event arrays (`explosions`, `shieldHits`, `healthHits`) and default `score` if the caller omits them. This makes `simulateStep` easier to call from tests or lightweight harnesses.
 ```
 
 Ship (required properties used by simulation):
@@ -160,6 +162,30 @@ Suggested test cases (minimum):
 ### RNG usage note
 
 - Implementation detail: to preserve determinism and make RNG usage predictable, the codebase uses a seeded RNG (`src/rng.js`) and tries to localize draws so only the code that needs randomness consumes it. In particular, `Ship` construction was refactored so that per-type numeric ranges are computed only for the chosen type; previously all types were evaluated on each construction which advanced the RNG unexpectedly. Tests and UI code should expect that `randomShipType()` performs one draw for the type index, `createShipFromUI()` performs position draws, and then the chosen ship type's specific numeric draws happen next. This reduces surprising cross-talk between unrelated RNG draws.
+
+Quick determinism note: For deterministic tests seed once with `srand(seed)` and mirror the real draw order when pre-consuming RNG values: type-index -> pos X -> pos Y -> per-type numeric draws (only for the selected type). Avoid relying on `Math.random()` for gameplay logic; use `srange`/`srangeInt` so tests remain reproducible.
+
+Strict seeded mode (CI enforcement)
+----------------------------------
+To help ensure test suites are fully deterministic, the RNG module supports a strict mode that requires explicit seeding before any RNG draw. Enable it by setting the environment variable `RNG_REQUIRE_SEEDED=1` in CI or locally. When enabled, calling `srandom()`/`srange()` without a prior `srand(seed)` will throw, causing tests to fail and surfacing accidental use of unseeded randomness.
+
+Ways to enable:
+
+- Environment variable (GitHub Actions):
+
+```yaml
+env:
+  RNG_REQUIRE_SEEDED: '1'
+```
+
+- Programmatic (test bootstrap):
+
+```js
+import { setRequireSeededMode } from '../src/rng.js';
+setRequireSeededMode(true);
+```
+
+Recommendation: Add a CI job that runs the test suite with `RNG_REQUIRE_SEEDED=1` so accidental unseeded RNG usage is caught early. If a test intentionally uses unseeded visual randomness, either mock or explicitly seed the RNG in the test setup.
 
 ### RNG draw-ordering example (UI flows)
 

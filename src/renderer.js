@@ -1,6 +1,6 @@
-import { srand, srange, srangeInt, unseed } from './rng.js';
+import { srange, srangeInt } from './rng.js';
 import { simulateStep } from './simulate.js';
-import { Ship, Team, spawnFleet } from './entities.js';
+import { Ship, Team } from './entities.js';
 
 let canvas, ctx, W, H;
 // (Removed duplicate export statement; exports are already declared at the top level)
@@ -10,19 +10,14 @@ export function initRenderer() {
   ctx = canvas.getContext('2d');
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
+  initStars();
   window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
 }
 
 // Helper to allow tests to inject a mock canvas context via global.ctx
 function ensureCtx() {
-  // If a test injects a mock canvas context as global.ctx prefer that so tests can
-  // control drawing even if a real canvas context was previously assigned by initRenderer.
+  // Prefer a test-injected canvas context (globalThis.ctx) when available.
   if (typeof globalThis !== 'undefined' && globalThis.ctx) {
-    ctx = globalThis.ctx;
-    return ctx;
-  }
-  // Treat undefined or null ctx as "not set" otherwise
-  if ((typeof ctx === 'undefined' || ctx === undefined || ctx === null) && typeof globalThis !== 'undefined' && globalThis.ctx) {
     ctx = globalThis.ctx;
   }
   return ctx;
@@ -49,7 +44,7 @@ export let speed = 1;
 let showTrails = true;
 const score = { red: 0, blue: 0 };
 
-export { particles, flashes, shieldFlashes, healthFlashes, levelFlashes, shipsVMap, ships, bullets, lastTime, running, showTrails, score };
+export { particles, flashes, shieldFlashes, healthFlashes, levelFlashes, shipsVMap, ships, bullets, lastTime, running, showTrails, score, stars };
 
 // canonical speed steps for UI control (exported so tests can assert the real values)
 export const SPEED_STEPS = [0.5, 1, 2, 4];
@@ -86,15 +81,16 @@ export function toast(msg) { if (typeof document === 'undefined' || !document) r
 // Starfield background (parallax)
 const stars = [];
 function initStars() {
+  // Only populate the starfield when canvas dimensions are known.
+  if (!Number.isFinite(W) || !Number.isFinite(H)) return;
   stars.length = 0;
   const layers = [0.2, 0.5, 1.0];
   for (const depth of layers) {
-    for (let i=0;i<120;i++) {
-      stars.push({ x: rand(0,W), y: rand(0,H), r: rand(0.3, 1.8) * depth, d: depth, tw: rand(0.4,1), phase: rand(0,TAU) });
+    for (let i = 0; i < 120; i++) {
+      stars.push({ x: rand(0, W), y: rand(0, H), r: rand(0.3, 1.8) * depth, d: depth, tw: rand(0.4, 1), phase: rand(0, TAU) });
     }
   }
 }
-initStars();
 
 // --- Entities (renderer-local) ---
 export const teamColor = (t, alpha=1) => t===Team.RED ? `rgba(255,90,90,${alpha})` : `rgba(80,160,255,${alpha})`;
@@ -146,9 +142,32 @@ export const testHelpers = {
 };
 
 export class Particle {
-  constructor(x,y,vx,vy,life,color){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.color=color; }
-  update(dt){ this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=Math.pow(0.9,dt*60); this.vy*=Math.pow(0.9,dt*60); this.life-=dt; }
-  draw(){ if (this.life<=0) return; const a = this.life/this.max; ensureCtx(); if (typeof ctx === 'undefined' || !ctx) return; ctx.fillStyle = this.color.replace('$a', a.toFixed(3)); ctx.fillRect(this.x, this.y, 2,2); }
+  constructor(x, y, vx, vy, life, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.life = life;
+    this.max = life;
+    this.color = color;
+  }
+
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vx *= Math.pow(0.9, dt * 60);
+    this.vy *= Math.pow(0.9, dt * 60);
+    this.life -= dt;
+  }
+
+  draw() {
+    if (this.life <= 0) return;
+    const a = this.life / this.max;
+    ensureCtx();
+    if (!ctx) return;
+    ctx.fillStyle = this.color.replace('$a', a.toFixed(3));
+    ctx.fillRect(this.x, this.y, 2, 2);
+  }
 }
 
 // Keep Ship logic in entities.js, renderer keeps visual helpers and particle/flash handling.
@@ -157,9 +176,10 @@ export class ShipV {
   constructor(shipLogic){ this.logic = shipLogic; this.id = shipLogic.id; this.team = shipLogic.team; this.x = shipLogic.x; this.y = shipLogic.y; this.type = shipLogic.type; }
   syncFromLogic(){ this.x = this.logic.x; this.y = this.logic.y; this.type = this.logic.type; this.alive = this.logic.alive; }
   draw(){
-    const s = this.logic;
-    if (!s.alive) return;
+  const s = this.logic;
+  if (!s.alive) return;
   ensureCtx();
+  if (!ctx) return;
   // compute whether this ship has a recent shield hit (look for flashes with shieldHit)
   const recentShieldFlash = flashes.some(f => f.shieldHit && f.x === s.x && f.y === s.y && f.life > 0);
     // trails
@@ -485,7 +505,6 @@ export function render() {
   if (!redAlive || !blueAlive){ ctx.save(); ctx.textAlign='center'; ctx.font = '700 36px Inter, system-ui, sans-serif'; const winner = redAlive? 'Red' : blueAlive? 'Blue' : 'Nobody'; const col = redAlive? teamColor(Team.RED, .95) : blueAlive? teamColor(Team.BLUE,.95) : 'rgba(255,255,255,.9)'; ctx.fillStyle = col; ctx.shadowBlur = 14; ctx.shadowColor = col; ctx.fillText(`${winner} Wins!`, W/2, 64); ctx.restore(); }
 }
 
-function loop(t){ if (!lastTime) lastTime=t; const rawDt = (t-lastTime)/1000; lastTime = t; const dt = clamp(rawDt, 0, 0.033) * (running? speed: 0); simulate(dt); render(); updateUI(); requestAnimationFrame(loop); }
 
 // --- UI ---
 export function initRendererUI() {
