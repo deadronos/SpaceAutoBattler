@@ -296,34 +296,52 @@ const statsDiv = document.getElementById('stats');
 const seedBtn = document.getElementById('seedBtn');
 const formationBtn = document.getElementById('formationBtn');
 
-function updateUI(){ redBadge.textContent = `Red ${score.red}`; blueBadge.textContent = `Blue ${score.blue}`; statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`; }
+// Always-available UI updater used by the animation loop. Define at top-level
+// so `updateUI()` exists regardless of whether handlers are installed already.
+function updateUI(){
+  redBadge.textContent = `Red ${score.red}`;
+  blueBadge.textContent = `Blue ${score.blue}`;
+  statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
+}
 
-startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
+// Install UI handlers idempotently to avoid duplicate listeners if the bundle
+// is accidentally inlined or executed more than once (defensive guard).
+if (!window.__uiHandlersInstalled) {
+  // Mark installed (non-writable, non-configurable)
+  Object.defineProperty(window, '__uiHandlersInstalled', { value: true, configurable: false, writable: false });
 
-resetBtn.addEventListener('click', () => { reset(); });
-addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
-addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
-trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+  startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
 
-speedBtn.addEventListener('click', () => {
-  const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
-});
+  resetBtn.addEventListener('click', () => { reset(); });
+  addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
+  addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
+  trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
 
-seedBtn.addEventListener('click', () => {
-  const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
-});
+  speedBtn.addEventListener('click', () => {
+    const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`;
+  });
 
-formationBtn.addEventListener('click', () => {
-  const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
-  const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
-  const spaceY = 20; const cols=6;
-  aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
-  aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
-  toast('Fleets re-formed');
-});
+  seedBtn.addEventListener('click', () => {
+    const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); }
+  });
 
-canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+  formationBtn.addEventListener('click', () => {
+    const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
+    const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
+    const spaceY = 20; const cols=6;
+    aliveR.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.25 - c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    aliveB.forEach((s,i)=>{ const c=i%cols, r=Math.floor(i/cols); s.x=W*0.75 + c*20; s.y=H*0.5 + (r-cols/2)*spaceY; s.vx=s.vy=0; });
+    toast('Fleets re-formed');
+  });
 
-// Init
-reset();
-requestAnimationFrame(loop);
+  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); particles.push(new Particle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)')); } });
+
+  // Init
+  reset();
+  requestAnimationFrame(loop);
+} else {
+  // If handlers already installed, ensure the UI badges are kept up-to-date by
+  // performing minimal initialization (no duplicated event listeners).
+  if (ships.length === 0) reset();
+  if (!lastTime) requestAnimationFrame(loop);
+}

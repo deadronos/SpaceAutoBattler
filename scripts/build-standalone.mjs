@@ -19,20 +19,41 @@ async function buildBundle(){
 }
 
 async function inlineBundle(){ const html = await fs.readFile(standaloneHtml, 'utf8');
- // Replace the module import or existing inline bundle placeholder with an inlined script tag
- // We'll look for a <script type="module" src="./src/renderer.js"></script> and replace it with inlined bundle
- const importTag = '<script type="module" src="./src/renderer.js"></script>';
- const bundleCode = await fs.readFile(outBundle, 'utf8');
-  const inlined = `<script type="module">\n${bundleCode}\n</script>`;
+  // Replace the module import or existing inline bundle placeholder with an inlined script tag.
+  // To avoid repeatedly inlining and duplicating bundles, remove prior inlined bundle markers
+  // and any previous inlined module script that contains the bundle signature.
+  const importTag = '<script type="module" src="./src/renderer.js"></script>';
+  const bundleCode = await fs.readFile(outBundle, 'utf8');
+  const beginMarker = '<!-- BEGIN_INLINED_BUNDLE -->';
+  const endMarker = '<!-- END_INLINED_BUNDLE -->';
+
+  // Remove any existing block between our markers (safe, idempotent)
+  let cleaned = html;
+  const markerStart = cleaned.indexOf(beginMarker);
+  const markerEnd = cleaned.indexOf(endMarker);
+  if (markerStart !== -1 && markerEnd !== -1 && markerEnd > markerStart){
+    cleaned = cleaned.slice(0, markerStart) + cleaned.slice(markerEnd + endMarker.length);
+  }
+
+  // Extra cleanup: some older standalone outputs in this repo previously inlined the bundle
+  // without markers. Remove any <script type="module">...</script> blocks whose content
+  // contains the bundle signature to avoid duplicate script blocks.
+  const bundleSignature = 'var ut=Object.defineProperty';
+  // simple regex to find module script blocks (non-greedy)
+  cleaned = cleaned.replace(/<script\s+type=["']module["'][^>]*>[\s\S]*?<\/script>/gi, (match) => {
+    return match.indexOf(bundleSignature) !== -1 ? '' : match;
+  });
+
+  const inlined = `${beginMarker}\n<script type="module">\n${bundleCode}\n</script>\n${endMarker}`;
   let newHtml;
-  if (html.includes(importTag)){
-    newHtml = html.replace(importTag, inlined);
-  } else if (html.includes('</body>')){
+  if (cleaned.includes(importTag)){
+    newHtml = cleaned.replace(importTag, inlined);
+  } else if (cleaned.includes('</body>')){
     // insert before closing body
-    newHtml = html.replace('</body>', `${inlined}\n</body>`);
+    newHtml = cleaned.replace('</body>', `${inlined}\n</body>`);
   } else {
     // append to end
-    newHtml = html + '\n' + inlined;
+    newHtml = cleaned + '\n' + inlined;
   }
   const outPath = path.join(outDir, path.basename(standaloneHtml));
   await fs.writeFile(outPath, newHtml, 'utf8');
