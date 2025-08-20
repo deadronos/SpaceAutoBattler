@@ -403,8 +403,13 @@ function simulate(dt){
 
 function render(){
   ctx.clearRect(0,0,W,H);
-  const g = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H));
-  g.addColorStop(0, 'rgba(60,80,140,0.10)'); g.addColorStop(1, 'rgba(10,12,20,0.0)'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  // Use cached background gradient when possible to avoid per-frame allocations
+  if (backgroundGradient) {
+    ctx.fillStyle = backgroundGradient; ctx.fillRect(0,0,W,H);
+  } else {
+    const g = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H));
+    g.addColorStop(0, 'rgba(60,80,140,0.10)'); g.addColorStop(1, 'rgba(10,12,20,0.0)'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  }
   for (const s of stars){ const tw = 0.6 + 0.4 * Math.sin(s.phase); ctx.globalAlpha = clamp(0.5*tw * (0.6 + 0.5*s.d), 0, 1); ctx.fillStyle = '#e9f2ff'; ctx.fillRect(s.x, s.y, s.r, s.r); }
   ctx.globalAlpha = 1;
   for (const f of flashes){ const a = clamp(f.life/0.25,0,1); ctx.strokeStyle = teamColor(f.team, a*0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,TAU); ctx.stroke(); }
@@ -470,9 +475,17 @@ if (!continuousCheckbox) {
 if (gm && typeof gm.setContinuousCheckbox === 'function') gm.setContinuousCheckbox(continuousCheckbox);
 // so `updateUI()` exists regardless of whether handlers are installed already.
 function updateUI(){
-  redBadge.textContent = `Red ${score.red}`;
-  blueBadge.textContent = `Blue ${score.blue}`;
-  statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
+  // Avoid DOM writes unless values actually changed to reduce rAF work
+  try {
+    const redText = `Red ${score.red}`;
+    const blueText = `Blue ${score.blue}`;
+    const statsText = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
+    if (redBadge.textContent !== redText) redBadge.textContent = redText;
+    if (blueBadge.textContent !== blueText) blueBadge.textContent = blueText;
+    if (statsDiv.textContent !== statsText) statsDiv.textContent = statsText;
+  } catch (e) {
+    // if UI elements missing or access fails, ignore
+  }
 }
 
 // --- Visible backend badge for demos ---
@@ -670,7 +683,7 @@ export async function initRenderer(opts = {}) {
   // can await the same work and we can set completion flags consistently.
   __initPromise = (async () => {
     const { canvas: canvasEl = canvas, preferWebGL = true, startLoop = true } = opts;
-    if (!canvasEl) throw new Error('No canvas available to initialize renderer');
+  if (!canvasEl) throw new Error('No canvas available to initialize renderer');
     installUIHandlers();
 
     // prefer WebGL2 -> WebGL -> fallback
@@ -722,6 +735,19 @@ export async function initRenderer(opts = {}) {
             const atlasAccessor = (type, radius) => getHullAtlasForRadius(type, radius, (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1));
             runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2, atlasAccessor, atlasLODs: DEFAULT_LODS });
             runningRenderer.init();
+            // Also ensure a module-level canvas and 2D ctx exist so if the WebGL
+            // renderer later throws we can fall back to the 2D canvas renderer
+            // without leaving `ctx` null. Do not acquire 2D context before the
+            // WebGL attempts earlier — only initialize here after WebGL succeeded.
+            try {
+              canvas = canvasEl;
+              if (typeof window !== 'undefined') { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+              ctx = (canvas && typeof canvas.getContext === 'function') ? (canvas.getContext('2d') || makeNoop2DContext()) : makeNoop2DContext();
+              recomputeBackgroundGradient();
+              if (typeof initStars === 'function') initStars();
+            } catch (e) {
+              ctx = ctx || makeNoop2DContext();
+            }
             if (startLoop) runningRenderer.start(() => { requestAnimationFrame(loop); });
             __rendererDiag.used = 'webgl';
             if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
@@ -749,6 +775,24 @@ export async function initRenderer(opts = {}) {
   if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
   console.info('Renderer: using Canvas 2D fallback');
   try { setBackendBadge('Canvas', __rendererDiag.importError || 'Using Canvas 2D fallback'); } catch(e){}
+      // Ensure the global canvas reference and 2D context are acquired here
+      // (do this only for the 2D fallback so we don't inadvertently grab a
+      //  2D context before attempting WebGL above).
+      try {
+        // bind the chosen canvas element to the module-level `canvas`
+        canvas = canvasEl;
+        // size canvas to window if available
+        if (typeof window !== 'undefined') { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        // acquire a 2D context, using a noop stub if getContext is unavailable
+        if (canvas && typeof canvas.getContext === 'function') ctx = canvas.getContext('2d') || makeNoop2DContext();
+        else ctx = makeNoop2DContext();
+        // recompute any gradient/stars caches that rely on a real ctx or sizes
+        recomputeBackgroundGradient();
+        if (typeof initStars === 'function') initStars();
+      } catch (e) {
+        // non-fatal: ensure ctx is at least a noop so render calls don't throw
+        ctx = ctx || makeNoop2DContext();
+      }
       if (startLoop) requestAnimationFrame(loop);
     }
 
