@@ -685,8 +685,8 @@ export function createWebGLRenderer(canvas, opts = {}){
       }
 
   // (Removed duplicate legacy SDF draw code - drawing is handled above per-primitive.)
-    },
-    destroy() {
+    }
+    destroy() 
       if (gl) {
         try {
           if (quadBuffer) gl.deleteBuffer(quadBuffer);
@@ -722,3 +722,4 @@ export function createWebGLRenderer(canvas, opts = {}){
 }
 
 export default { createWebGLRenderer };
+
