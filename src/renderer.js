@@ -1,3 +1,9 @@
+
+// Attach global export for robust auto-init in standalone/minified builds
+if (typeof window !== 'undefined') {
+  window.initRenderer = initRenderer;
+}
+
 import { srange, srangeInt } from './rng.js';
 import { Ship, Team } from './entities.js';
 import * as gm from './gamemanager.js';
@@ -263,6 +269,8 @@ class ShipV {
 // --- Game State ---
 // Game state is owned by gamemanager; renderer imports and uses gm.* symbols
 let ships = gm.ships; let bullets = gm.bullets; let particles = gm.particles; let flashes = gm.flashes; let shieldFlashes = gm.shieldFlashes; let healthFlashes = gm.healthFlashes;
+// score is maintained by gamemanager.simulate and used by updateUI/render
+let score = { red: 0, blue: 0 };
 let shipsVMap = new Map(); // id -> ShipV visual wrappers for logic ships
 let running = false; let speed = 1; let showTrails = true; let lastTime = 0;
 
@@ -274,6 +282,8 @@ function reset(seedValue=null){ return gm.reset(seedValue); }
 function simulate(dt){
   // Let gamemanager advance game logic and emit visual events
   const state = gm.simulate(dt, W, H);
+  // copy latest score for UI and render usage
+  if (state && state.score) score = state.score;
 
   // sync local references (they point to gm arrays but rebind for clarity)
   ships = gm.ships; bullets = gm.bullets; particles = gm.particles; flashes = gm.flashes; shieldFlashes = gm.shieldFlashes; healthFlashes = gm.healthFlashes;
@@ -318,7 +328,7 @@ function loop(t){
   // If a WebGL renderer is active, delegate drawing to it. Otherwise use 2D canvas renderer.
   if (runningRenderer && runningRenderer.type === 'webgl' && typeof runningRenderer.render === 'function') {
     try {
-      runningRenderer.render({ W, H, ships, bullets, particles, flashes, stars, shipsVMap, score });
+      runningRenderer.render({ W, H, ships, bullets, stars, particles, flashes, shipsVMap, score });
     } catch (e) {
       // If WebGL renderer throws, fall back to 2D canvas render to avoid stopping the loop
       console.error('WebGL render error, falling back to 2D render', e);
@@ -379,18 +389,30 @@ function installUIHandlers() {
   if (typeof window === 'undefined' || !document) return;
   if (window.__uiHandlersInstalled) return;
   Object.defineProperty(window, '__uiHandlersInstalled', { value: true, configurable: false, writable: false });
+  // Query elements at handler-install time and attach listeners only when present.
+  const _startBtn = document.getElementById('startPause');
+  if (_startBtn) _startBtn.addEventListener('click', () => { running = !running; _startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
 
-  startBtn.addEventListener('click', () => { running = !running; startBtn.textContent = running? '⏸ Pause' : '▶ Start'; });
-  resetBtn.addEventListener('click', () => { reset(); });
-  addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
-  addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
-  trailsBtn.addEventListener('click', () => { showTrails=!showTrails; trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+  const _resetBtn = document.getElementById('reset');
+  if (_resetBtn) _resetBtn.addEventListener('click', () => { reset(); });
 
-  speedBtn.addEventListener('click', () => { const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; speedBtn.textContent = `Speed: ${speed}×`; });
+  const _addRedBtn = document.getElementById('addRed');
+  if (_addRedBtn) _addRedBtn.addEventListener('click', () => { ships.push(new Ship(Team.RED, srange(40, W*0.35), srange(80,H-80))); toast('+1 Red'); });
 
-  seedBtn.addEventListener('click', () => { const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); } });
+  const _addBlueBtn = document.getElementById('addBlue');
+  if (_addBlueBtn) _addBlueBtn.addEventListener('click', () => { ships.push(new Ship(Team.BLUE, srange(W*0.65, W-40), srange(80,H-80))); toast('+1 Blue'); });
 
-  formationBtn.addEventListener('click', () => {
+  const _trailsBtn = document.getElementById('toggleTrails');
+  if (_trailsBtn) _trailsBtn.addEventListener('click', () => { showTrails=!showTrails; _trailsBtn.textContent = `☄ Trails: ${showTrails? 'On':'Off'}`; });
+
+  const _speedBtn = document.getElementById('speed');
+  if (_speedBtn) _speedBtn.addEventListener('click', () => { const steps=[0.5,1,2,4]; const idx = (steps.indexOf(speed)+1)%steps.length; speed=steps[idx]; _speedBtn.textContent = `Speed: ${speed}×`; });
+
+  const _seedBtn = document.getElementById('seedBtn');
+  if (_seedBtn) _seedBtn.addEventListener('click', () => { const s = prompt('Enter numeric seed (32-bit):', (Math.random()*1e9>>>0)); if (s!==null){ reset(Number(s)); } });
+
+  const _formationBtn = document.getElementById('formationBtn');
+  if (_formationBtn) _formationBtn.addEventListener('click', () => {
     const aliveR = ships.filter(s=>s.alive && s.team===Team.RED);
     const aliveB = ships.filter(s=>s.alive && s.team===Team.BLUE);
     const spaceY = 20; const cols=6;
@@ -417,7 +439,9 @@ function installUIHandlers() {
     });
   }
 
-  canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); acquireParticle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)'); } });
+  if (canvas && typeof canvas.addEventListener === 'function') {
+    canvas.addEventListener('click', (e)=>{ const r = 24; flashes.push({x:e.clientX,y:e.clientY,r,life:.25,team: srangeInt(0,1)}); for (let i=0;i<24;i++){ const a=srange(0,TAU), sp=srange(40,220); acquireParticle(e.clientX,e.clientY,Math.cos(a)*sp,Math.sin(a)*sp,srange(.2,1),'rgba(255,255,255,$a)'); } });
+  }
 }
 
 // Keep reset at module init so tests that import helpers still have a sane state.
@@ -426,43 +450,112 @@ if (ships.length === 0) reset();
 // runtime renderer instance (either webgl or canvas loop)
 let runningRenderer = null;
 
+// Init guards — make initRenderer idempotent and re-entrant-safe.
+// __initPromise: set while an initialization is in-flight so concurrent
+// callers can await the same promise. __initDone marks completion.
+let __initPromise = null;
+let __initDone = false;
+
 /**
  * Initialize the renderer and start the animation loop.
  * opts: { canvas?: HTMLCanvasElement, preferWebGL?: boolean }
  */
 export async function initRenderer(opts = {}) {
-  const { canvas: canvasEl = canvas, preferWebGL = true, startLoop = true } = opts;
-  if (!canvasEl) throw new Error('No canvas available to initialize renderer');
-  installUIHandlers();
-
-  // prefer WebGL2 -> WebGL -> fallback
-  if (preferWebGL && canvasEl.getContext) {
-    const gl2 = canvasEl.getContext('webgl2');
-    const gl1 = !gl2 ? canvasEl.getContext('webgl') : null;
-    if (gl2 || gl1) {
-      try {
-          const { createWebGLRenderer } = await import('./webglRenderer.js');
-          runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2 });
-          runningRenderer.init();
-          if (startLoop) runningRenderer.start(() => { requestAnimationFrame(loop); });
-          return;
-        } catch (err) {
-          // fall through to 2D canvas
-          console.warn('WebGL init failed, falling back to 2D canvas renderer', err);
-        }
+  // Expose a stable global initializer for robust auto-init in bundled builds.
+  if (typeof window !== 'undefined') window.initRenderer = initRenderer;
+  // Fast-path: if a previous initialization completed (or a global auto-init
+  // guard was set by the inlined bundle), return the existing renderer only
+  // when we actually have a running instance. If the global guard exists but
+  // no renderer instance is present (e.g. tests called stopRenderer), allow
+  // re-initialization.
+  if (typeof window !== 'undefined' && window.__autoRendererStarted) {
+    if (__initDone && runningRenderer) return runningRenderer;
+    if (__initPromise) {
+      await __initPromise;
+      return runningRenderer;
     }
   }
 
-  // start 2D canvas-driven loop
-  if (!runningRenderer) {
-    runningRenderer = { type: 'canvas' };
-    if (startLoop) requestAnimationFrame(loop);
+  // If this module previously finished init and a renderer instance still
+  // exists, return it immediately. If init finished but the renderer was
+  // stopped, allow re-initialization.
+  if (__initDone && runningRenderer) return runningRenderer;
+
+  // If an init is already in progress, await it and return the same renderer.
+  if (__initPromise) {
+    await __initPromise;
+    return runningRenderer;
+  }
+
+  // Mark global guard so other inlined bundles or code paths know initialization
+  // has at least started. This mirrors the standalone auto-init snippet.
+  if (typeof window !== 'undefined') window.__autoRendererStarted = true;
+
+  // Run the actual initialization inside a promise so concurrent callers
+  // can await the same work and we can set completion flags consistently.
+  __initPromise = (async () => {
+    const { canvas: canvasEl = canvas, preferWebGL = true, startLoop = true } = opts;
+    if (!canvasEl) throw new Error('No canvas available to initialize renderer');
+    installUIHandlers();
+
+    // prefer WebGL2 -> WebGL -> fallback
+    if (preferWebGL && canvasEl.getContext) {
+      const gl2 = canvasEl.getContext('webgl2');
+      const gl1 = !gl2 ? canvasEl.getContext('webgl') : null;
+      if (gl2 || gl1) {
+        try {
+            const { createWebGLRenderer } = await import('./webglRenderer.js');
+            runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2 });
+            runningRenderer.init();
+            if (startLoop) runningRenderer.start(() => { requestAnimationFrame(loop); });
+            return runningRenderer;
+          } catch (err) {
+            // fall through to 2D canvas
+            console.warn('WebGL init failed, falling back to 2D canvas renderer', err);
+          }
+      }
+    }
+
+    // start 2D canvas-driven loop
+    if (!runningRenderer) {
+      runningRenderer = { type: 'canvas' };
+      if (startLoop) requestAnimationFrame(loop);
+    }
+
+    return runningRenderer;
+  })();
+
+  try {
+    const res = await __initPromise;
+    __initDone = true;
+    return res;
+  } finally {
+    // clear in-flight promise if it still refers to this run (no-op if already cleared)
+    if (__initPromise) __initPromise = null;
   }
 }
 
 export function getRendererType(){ return runningRenderer ? runningRenderer.type : null; }
 
-export function stopRenderer(){ if (runningRenderer && typeof runningRenderer.stop === 'function') runningRenderer.stop(); if (runningRenderer && typeof runningRenderer.destroy === 'function') runningRenderer.destroy(); runningRenderer = null; }
+export function stopRenderer(){ if (runningRenderer && typeof runningRenderer.stop === 'function') runningRenderer.stop(); if (runningRenderer && typeof runningRenderer.destroy === 'function') runningRenderer.destroy(); runningRenderer = null; __initDone = false; __initPromise = null; if (typeof window !== 'undefined') try { delete window.__autoRendererStarted; } catch(e){} }
+// When tests call stopRenderer we also clear the init flags so a subsequent
+// initRenderer() call can re-create the renderer instance.
+export function stopRendererAndAllowReinit(){ stopRenderer(); __initDone = false; __initPromise = null; if (typeof window !== 'undefined') try { delete window.__autoRendererStarted; } catch(e){} }
+
+// When stopping the renderer, clear init-done flag so callers can re-init in tests
+// or in situations where the renderer was torn down and should be restarted.
+export function _internal_resetInitFlags(){ __initDone = false; __initPromise = null; if (typeof window !== 'undefined') try { delete window.__autoRendererStarted; } catch(e){} }
+
+// Expose simple global helpers so the standalone AUTO_INIT can reliably
+// toggle the simulation running flag even if UI handlers experience a race.
+if (typeof window !== 'undefined') {
+  window.startSimulation = function startSimulation() {
+    try { running = true; const b = document.getElementById('startPause'); if (b) b.textContent = '⏸ Pause'; } catch (e) {}
+  };
+  window.stopSimulation = function stopSimulation() {
+    try { running = false; const b = document.getElementById('startPause'); if (b) b.textContent = '▶ Start'; } catch (e) {}
+  };
+}
 
 // Exports for unit tests: expose pure helpers and internal pools so tests can
 // validate cache/pool behavior without changing runtime logic.
