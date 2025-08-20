@@ -38,8 +38,14 @@ export function createWebGLRenderer(canvas, opts = {}){
   canvas.width = Math.max(1, Math.floor((canvas.clientWidth || canvas.width) * pixelRatio));
   canvas.height = Math.max(1, Math.floor((canvas.clientHeight || canvas.height) * pixelRatio));
 
-        // Instanced quad shaders (WebGL1-compatible GLSL ES 1.00)
-        const vs = `
+  // Instanced quad shaders (WebGL1-compatible GLSL ES 1.00)
+  // For maximum compatibility avoid relying on standard derivatives (fwidth).
+  // Use a small pixel-based edge width computed from the reported radius so
+  // shaders compile across WebGL1 and WebGL2 targets. Keep the edge narrow
+  // for crisper circles.
+  const edgeExpr = 'clamp(max(0.5, v_radius * 0.01), 0.5, 3.0)';
+
+  const vs = `
           attribute vec2 a_quadPos; // -0.5..0.5 unit quad
           attribute vec2 a_instPos; // per-instance pixel center
           attribute vec3 a_instColor;
@@ -58,26 +64,27 @@ export function createWebGLRenderer(canvas, opts = {}){
               a_quadPos.x * c - a_quadPos.y * s,
               a_quadPos.x * s + a_quadPos.y * c
             );
-            vec2 pixelPos = a_instPos + rotated * a_instSize * 2.0; // diameter scaling
+              vec2 pixelPos = a_instPos + rotated * a_instSize * 2.0; // diameter scaling (vertex position)
             vec2 zeroToOne = pixelPos / u_resolution;
             vec2 clip = zeroToOne * 2.0 - 1.0;
             gl_Position = vec4(clip * vec2(1.0, -1.0), 0.0, 1.0);
             v_color = a_instColor;
-            v_local = rotated * a_instSize * 2.0; // used for circle SDF
+              // v_local should be in pixels from center to match v_radius (radius in pixels).
+              // Use scale = a_instSize (radius) so length(v_local) ranges ~0..v_radius.
+              v_local = rotated * a_instSize; // used for circle SDF (pixels)
             v_shield = a_instShield;
             v_radius = a_instSize;
           }
         `;
 
-        const fs = `
-          precision mediump float;
+    const fs = `precision mediump float;
           varying vec3 v_color;
           varying vec2 v_local;
           varying float v_shield;
           varying float v_radius; // true circle radius in pixels
           void main(){
             float d = length(v_local); // distance from center
-            float edge = fwidth(d) * 1.5; // widen edge slightly for smoother look
+            float edge = ${edgeExpr}; // widen edge slightly for smoother look
             float alpha = 1.0 - smoothstep(v_radius - edge, v_radius + edge, d);
             if (alpha <= 0.001) discard;
             vec3 base = v_color;
@@ -85,7 +92,7 @@ export function createWebGLRenderer(canvas, opts = {}){
             if (v_shield > 0.0) {
               float ringOuter = v_radius * 1.05; // just outside body
               float ringInner = v_radius * 0.90; // inside overlap
-              float ringEdge = fwidth(d)*1.5;
+              float ringEdge = ${edgeExpr};
               float ringMask = smoothstep(ringInner - ringEdge, ringInner + ringEdge, d) * (1.0 - smoothstep(ringOuter - ringEdge, ringOuter + ringEdge, d));
               // ring color blend (cyan-like) scaled by shield fraction
               vec3 ringColor = mix(base, vec3(0.3,0.9,1.0), 0.6 * v_shield);

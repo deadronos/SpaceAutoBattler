@@ -36,23 +36,12 @@ if (typeof globalThis.Path2D === 'undefined') {
   globalThis.Path2D = _Path2D;
 }
 
-// Acquire a 2D rendering context; if unavailable, provide a no-op shim so
-// the renderer can still be imported and some pure helpers tested.
+// Do not acquire a 2D context at module load time — doing so can prevent
+// later acquisition of a WebGL context on the same canvas in some browsers.
+// We'll lazily obtain a 2D context only if we fall back to the canvas
+// renderer inside initRenderer(). For now, set ctx to null and provide a
+// no-op shim only as a fallback (created when needed).
 let ctx = null;
-if (canvas && typeof canvas.getContext === 'function') {
-  try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
-}
-if (!ctx) {
-  const noop = () => {};
-  ctx = {
-    beginPath: noop, moveTo: noop, lineTo: noop, quadraticCurveTo: noop, arc: noop, ellipse: noop, fill: noop, stroke: noop, closePath: noop,
-    fillRect: noop, clearRect: noop, createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
-    fillText: noop, measureText: () => ({ width: 0 }), setLineDash: noop, save: noop, restore: noop, translate: noop, rotate: noop, clip: noop,
-    // drawing properties
-    shadowBlur: 0, shadowColor: '', globalAlpha: 1, fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: 'start', globalCompositeOperation: 'source-over'
-  };
-  if (canvas) canvas.getContext = () => ctx;
-}
 
 let W = (canvas && canvas.width) ? (canvas.width = (typeof window !== 'undefined' ? window.innerWidth : 1024)) : 1024;
 let H = (canvas && canvas.height) ? (canvas.height = (typeof window !== 'undefined' ? window.innerHeight : 768)) : 768;
@@ -100,7 +89,15 @@ function getHullPath(type){
 
 // Background gradient cache (recomputed on resize)
 let backgroundGradient = null;
-function recomputeBackgroundGradient(){ backgroundGradient = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H)); backgroundGradient.addColorStop(0, 'rgba(60,80,140,0.10)'); backgroundGradient.addColorStop(1, 'rgba(10,12,20,0.0)'); }
+function recomputeBackgroundGradient(){
+  if (!ctx || typeof ctx.createRadialGradient !== 'function') {
+    backgroundGradient = null;
+    return;
+  }
+  backgroundGradient = ctx.createRadialGradient(W*0.6, H*0.3, 50, W*0.6, H*0.3, Math.max(W,H));
+  backgroundGradient.addColorStop(0, 'rgba(60,80,140,0.10)');
+  backgroundGradient.addColorStop(1, 'rgba(10,12,20,0.0)');
+}
 recomputeBackgroundGradient();
 
 // Particle pooling is delegated to gamemanager
@@ -374,6 +371,38 @@ function updateUI(){
   statsDiv.textContent = `Ships: ${ships.filter(s=>s.alive).length}  Bullets: ${bullets.length}  Particles: ${particles.length}`;
 }
 
+// --- Visible backend badge for demos ---
+function ensureBackendBadge(){
+  if (typeof document === 'undefined') return null;
+  let b = document.getElementById('rendererBackendBadge');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'rendererBackendBadge';
+    b.style.position = 'fixed';
+    b.style.right = '12px';
+    b.style.top = '12px';
+    b.style.padding = '6px 10px';
+    b.style.background = 'rgba(0,0,0,0.6)';
+    b.style.color = '#fff';
+    b.style.fontFamily = 'system-ui,Segoe UI,Roboto,Arial';
+    b.style.fontSize = '12px';
+    b.style.borderRadius = '6px';
+    b.style.zIndex = '99999';
+    b.style.pointerEvents = 'auto';
+    b.style.cursor = 'default';
+    b.title = 'Renderer backend';
+    try { document.body.appendChild(b); } catch(e) {}
+  }
+  return b;
+}
+
+function setBackendBadge(text, details){
+  const b = ensureBackendBadge();
+  if (!b) return;
+  b.textContent = text;
+  if (details) b.title = details;
+}
+
 // Install UI handlers idempotently to avoid duplicate listeners if the bundle
 // is accidentally inlined or executed more than once (defensive guard).
 // Reinforcement and evaluation are delegated to gamemanager
@@ -449,6 +478,48 @@ if (ships.length === 0) reset();
 
 // runtime renderer instance (either webgl or canvas loop)
 let runningRenderer = null;
+// diagnostics captured during initRenderer so the page can report why a
+// particular backend (webgl vs canvas) was chosen. Exposed via
+// getRendererDiagnostics() and also written to window.__rendererDiag when
+// available for quick inspection from the console.
+let __rendererDiag = { triedWebGL: false, gl2: false, gl1: false, importError: null, used: null };
+
+// Temporary debug wrapper: wrap HTMLCanvasElement.prototype.getContext to
+// capture stack traces when getContext returns null or throws. This helps
+// diagnose cases where the browser refuses to provide a GL context for the
+// page (for example when an extension or origin policy interferes).
+try {
+  if (typeof window !== 'undefined' && typeof HTMLCanvasElement !== 'undefined' && !HTMLCanvasElement.prototype.__getContextWrapped) {
+    const _origGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, attrs) {
+      try {
+        const ctx = _origGetContext.call(this, type, attrs);
+        if (!ctx) {
+          try {
+            const stack = (new Error('getContext returned null for type ' + type)).stack;
+            __rendererDiag.getContextNullStacks = __rendererDiag.getContextNullStacks || [];
+            __rendererDiag.getContextNullStacks.push({ type, attrs, stack, time: Date.now() });
+            if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
+            console.warn('DEBUG: HTMLCanvasElement.getContext returned null for', type, attrs, '\nstack:', stack);
+          } catch (e) {}
+        }
+        return ctx;
+      } catch (err) {
+        try {
+          const stack = (new Error('getContext threw for type ' + type)).stack;
+          __rendererDiag.getContextThrowStacks = __rendererDiag.getContextThrowStacks || [];
+          __rendererDiag.getContextThrowStacks.push({ type, attrs, err: String(err), stack, time: Date.now() });
+          if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
+          console.warn('DEBUG: HTMLCanvasElement.getContext threw', err, '\nstack:', stack);
+        } catch (e) {}
+        throw err;
+      }
+    };
+    try { Object.defineProperty(HTMLCanvasElement.prototype, '__getContextWrapped', { value: true, configurable: false }); } catch(e) { HTMLCanvasElement.prototype.__getContextWrapped = true; }
+  }
+} catch (e) {
+  // non-fatal; in some test environments HTMLCanvasElement may not be writable
+}
 
 // Init guards — make initRenderer idempotent and re-entrant-safe.
 // __initPromise: set while an initialization is in-flight so concurrent
@@ -500,25 +571,76 @@ export async function initRenderer(opts = {}) {
 
     // prefer WebGL2 -> WebGL -> fallback
     if (preferWebGL && canvasEl.getContext) {
-      const gl2 = canvasEl.getContext('webgl2');
-      const gl1 = !gl2 ? canvasEl.getContext('webgl') : null;
+      __rendererDiag.triedWebGL = true;
+      // Try multiple attribute sets to maximize the chance a browser will
+      // provide a context. Some environments/flags disable antialiasing or
+      // enforce performance caveats that cause getContext to return null.
+      const tryAttrs = [
+        {},
+        { antialias: false },
+        { powerPreference: 'high-performance' },
+        { antialias: false, powerPreference: 'high-performance' },
+        { antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }
+      ];
+      const webgl2Attempts = [];
+      let gl2 = null;
+      for (const attrs of tryAttrs) {
+        try {
+          const g = canvasEl.getContext('webgl2', attrs);
+          webgl2Attempts.push({ attrs, ok: !!g });
+          if (g && !gl2) gl2 = g;
+        } catch (e) {
+          webgl2Attempts.push({ attrs, ok: false, err: String(e) });
+        }
+      }
+      const webglAttempts = [];
+      let gl1 = null;
+      if (!gl2) {
+        for (const attrs of tryAttrs) {
+          try {
+            const g = canvasEl.getContext('webgl', attrs);
+            webglAttempts.push({ attrs, ok: !!g });
+            if (g && !gl1) gl1 = g;
+          } catch (e) {
+            webglAttempts.push({ attrs, ok: false, err: String(e) });
+          }
+        }
+      }
+      __rendererDiag.attempts = { webgl2: webgl2Attempts, webgl: webglAttempts };
+      __rendererDiag.gl2 = !!gl2;
+      __rendererDiag.gl1 = !!gl1;
       if (gl2 || gl1) {
         try {
             const { createWebGLRenderer } = await import('./webglRenderer.js');
             runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2 });
             runningRenderer.init();
             if (startLoop) runningRenderer.start(() => { requestAnimationFrame(loop); });
+            __rendererDiag.used = 'webgl';
+            if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
+            console.info('Renderer: using WebGL', { webgl2: !!gl2 });
+            try { setBackendBadge('WebGL' + (gl2? '2':'1'), __rendererDiag.importError || 'Using GPU WebGL renderer'); } catch(e){}
             return runningRenderer;
           } catch (err) {
             // fall through to 2D canvas
-            console.warn('WebGL init failed, falling back to 2D canvas renderer', err);
+              __rendererDiag.importError = String(err && err.stack ? err.stack : err);
+              console.warn('WebGL init failed, falling back to 2D canvas renderer', err);
+              try { setBackendBadge('Canvas (WebGL failed)', __rendererDiag.importError); } catch(e){}
           }
+      } else {
+        // No GL contexts available
+    __rendererDiag.importError = 'No WebGL context (getContext returned null)';
+    console.info('Renderer: no WebGL context available; using Canvas 2D fallback');
+    try { setBackendBadge('Canvas (no WebGL)', __rendererDiag.importError); } catch(e){}
       }
     }
 
     // start 2D canvas-driven loop
     if (!runningRenderer) {
       runningRenderer = { type: 'canvas' };
+  __rendererDiag.used = 'canvas';
+  if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
+  console.info('Renderer: using Canvas 2D fallback');
+  try { setBackendBadge('Canvas', __rendererDiag.importError || 'Using Canvas 2D fallback'); } catch(e){}
       if (startLoop) requestAnimationFrame(loop);
     }
 
@@ -536,6 +658,8 @@ export async function initRenderer(opts = {}) {
 }
 
 export function getRendererType(){ return runningRenderer ? runningRenderer.type : null; }
+
+export function getRendererDiagnostics(){ return __rendererDiag; }
 
 export function stopRenderer(){ if (runningRenderer && typeof runningRenderer.stop === 'function') runningRenderer.stop(); if (runningRenderer && typeof runningRenderer.destroy === 'function') runningRenderer.destroy(); runningRenderer = null; __initDone = false; __initPromise = null; if (typeof window !== 'undefined') try { delete window.__autoRendererStarted; } catch(e){} }
 // When tests call stopRenderer we also clear the init flags so a subsequent
