@@ -46,6 +46,38 @@ html, body { height: 100%; margin: 0; background: radial-gradient(1200px 800px a
   <div id="toast"></div>
   
 <script type="module">
+var __defProp = Object.defineProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// src/gamemanager.js
+var gamemanager_exports = {};
+__export(gamemanager_exports, {
+  Particle: () => Particle,
+  acquireParticle: () => acquireParticle,
+  bullets: () => bullets,
+  config: () => config,
+  default: () => gamemanager_default,
+  evaluateReinforcement: () => evaluateReinforcement,
+  flashes: () => flashes,
+  getManagerConfig: () => getManagerConfig,
+  getReinforcementInterval: () => getReinforcementInterval,
+  healthFlashes: () => healthFlashes,
+  particlePool: () => particlePool,
+  particles: () => particles,
+  processStateEvents: () => processStateEvents,
+  releaseParticle: () => releaseParticle,
+  reset: () => reset,
+  setManagerConfig: () => setManagerConfig,
+  setReinforcementInterval: () => setReinforcementInterval,
+  shieldFlashes: () => shieldFlashes,
+  ships: () => ships,
+  simulate: () => simulate,
+  stars: () => stars
+});
+
 // src/rng.js
 var _state = null;
 function srand(seed) {
@@ -263,6 +295,14 @@ var config = {
   shield: { ttl: 0.4, particleCount: 6, particleTTL: 0.35, particleColor: "rgba(160,200,255,0.9)", particleSize: 2 },
   health: { ttl: 0.75, particleCount: 8, particleTTL: 0.6, particleColor: "rgba(255,120,80,0.95)", particleSize: 2 }
 };
+function setManagerConfig(newCfg = {}) {
+  for (const k of Object.keys(newCfg)) {
+    if (config[k]) Object.assign(config[k], newCfg[k]);
+  }
+}
+function getManagerConfig() {
+  return config;
+}
 var Particle = class {
   constructor(x = 0, y = 0, vx = 0, vy = 0, ttl = 1, color = "#fff", size = 2) {
     this.x = x;
@@ -331,6 +371,9 @@ function simulate(dt, W = 800, H = 600) {
   }
   return { ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars };
 }
+function processStateEvents(state, dt = 0) {
+  return state;
+}
 function evaluateReinforcement(dt) {
   _reinforcementAccumulator += dt;
   if (_reinforcementAccumulator >= _reinforcementInterval) {
@@ -339,6 +382,13 @@ function evaluateReinforcement(dt) {
     ships.push(createShip({ x: 700, y: 500, team: "blue" }));
   }
 }
+function setReinforcementInterval(seconds) {
+  _reinforcementInterval = seconds;
+}
+function getReinforcementInterval() {
+  return _reinforcementInterval;
+}
+var gamemanager_default = { reset, simulate, processStateEvents, evaluateReinforcement, ships, bullets };
 
 // src/renderer.js
 function createCanvasRenderer(canvas2) {
@@ -491,6 +541,8 @@ window.addEventListener("resize", fitCanvas);
 fitCanvas();
 var renderer = createCanvasRenderer(canvas);
 renderer.init();
+window.__GM = gamemanager_exports;
+window.__getGMShips = () => window.__GM && window.__GM.ships ? window.__GM.ships : [];
 var DEFAULT_SEED = 1;
 reset(DEFAULT_SEED);
 var startBtn = document.getElementById("startPause");

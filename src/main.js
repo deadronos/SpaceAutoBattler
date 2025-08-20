@@ -15,6 +15,12 @@ fitCanvas();
 const renderer = createCanvasRenderer(canvas);
 renderer.init();
 
+// Expose a test-friendly handle to the game manager so E2E tests can inspect state
+// (kept minimal: only exported object reference, no API additions)
+window.__GM = GM;
+// Test-only helper: return the live ships array (avoids issues with bundler export wrappers)
+window.__getGMShips = () => (window.__GM && window.__GM.ships) ? window.__GM.ships : [];
+
 // Default deterministic seed for simulation & visuals so runs are repeatable
 const DEFAULT_SEED = 1;
 GM.reset(DEFAULT_SEED);
