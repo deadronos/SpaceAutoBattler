@@ -1,8 +1,3 @@
-// Attach global export for robust auto-init in standalone/minified builds
-if (typeof window !== 'undefined') {
-  window.initRenderer = initRenderer;
-}
-
 import { srange, srangeInt } from './rng.js';
 import { Ship, Team } from './entities.js';
 import * as gm from './gamemanager.js';
@@ -734,6 +729,10 @@ export async function initRenderer(opts = {}) {
             // adapter that binds the devicePixelRatio used by the browser.
             const atlasAccessor = (type, radius) => getHullAtlasForRadius(type, radius, (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1));
             runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2, atlasAccessor, atlasLODs: DEFAULT_LODS });
+            // mark renderer instances created by this module so external
+            // callers (including the standalone AUTO_INIT) can detect them
+            // reliably instead of using heuristics.
+            try { runningRenderer.__isSpaceAutoRenderer = true; } catch (e) {}
             runningRenderer.init();
             // Also ensure a module-level canvas and 2D ctx exist so if the WebGL
             // renderer later throws we can fall back to the 2D canvas renderer
@@ -770,7 +769,19 @@ export async function initRenderer(opts = {}) {
 
     // start 2D canvas-driven loop
     if (!runningRenderer) {
-      runningRenderer = { type: 'canvas' };
+      // Create a minimal renderer-like object for the canvas fallback so
+      // callers can interact with it using a uniform API (start/stop/isRunning/destroy).
+      runningRenderer = (function(){
+        const api = {
+          type: 'canvas',
+          __isSpaceAutoRenderer: true,
+          start(cb) { try { running = true; if (typeof cb === 'function') { cb(); } } catch(e){} },
+          stop() { running = false; },
+          isRunning() { return !!running; },
+          destroy() { /* no-op for canvas fallback */ }
+        };
+        return api;
+      })();
   __rendererDiag.used = 'canvas';
   if (typeof window !== 'undefined') try { window.__rendererDiag = __rendererDiag; } catch(e){}
   console.info('Renderer: using Canvas 2D fallback');

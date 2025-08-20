@@ -21,11 +21,20 @@ async function buildBundle(){
 // Shared AUTO_INIT snippet used when inlining the bundle and in tests
 const AUTO_INIT_SNIPPET = `
 // AUTO_INIT_SNIPPET_START
+// Small compatibility alias: if the inlined bundle exposes the local initializer
+// as 'di' but no global 'window.initRenderer' exists (minifiers can mangle names),
+// create a safe alias so the auto-init heuristics can find it.
+try {
+  if (typeof window !== "undefined" && typeof window.initRenderer !== "function" && typeof di === "function") {
+    window.initRenderer = di;
+  }
+} catch (_) {}
 // Idempotent auto-init for standalone bundle: try common exported names safely.
-// This variant awaits the initializer (if it returns a promise) and then
-// retries clicking the start button until the UI toggles to "Pause" or
-// a timeout is reached. This is more robust against handler-installation
-// races caused by inlining/minification ordering.
+// This variant awaits the initializer (if it returns a promise), inspects the
+// resolved return value for the module fingerprint (__isSpaceAutoRenderer),
+// and then retries clicking the start button until the UI toggles to "Pause"
+// or a timeout is reached. This is more robust against handler-installation
+// races caused by inlining/minification ordering and avoids brittle heuristics.
 if (typeof window !== "undefined" && !window.__autoRendererStarted) {
   window.__autoRendererStarted = true;
   Promise.resolve().then(() => {
@@ -38,8 +47,23 @@ if (typeof window !== "undefined" && !window.__autoRendererStarted) {
       const attemptStartWith = (fn, label) => {
         try {
           const p = fn({ preferWebGL: true, startLoop: true });
-          // Ensure we handle both sync and promise returns
-          return Promise.resolve(p).then(() => {
+          // Ensure we handle both sync and promise returns and inspect
+          // the resolved return value. Prefer the explicit __isSpaceAutoRenderer
+          // fingerprint to detect module-created renderer instances instead
+          // of brittle heuristics.
+          return Promise.resolve(p).then((ret) => {
+            try {
+              if (ret && ret.__isSpaceAutoRenderer === true) {
+                // Safe to call .start() on the returned instance if provided.
+                if (typeof ret.start === 'function') {
+                  try {
+                    console.log('[AUTO_INIT] calling returned renderer.start() via fingerprint');
+                    ret.start && ret.start();
+                  } catch (__) { /* ignore */ }
+                }
+              }
+            } catch (__) {}
+
             // Retry clicking the start button until its text indicates running
             let attempts = 0;
             const maxAttempts = 12; // ~1 second with 80ms interval

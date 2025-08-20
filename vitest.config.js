@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
   include: ['test/**/*.js'],
-  exclude: ['test/setupTests.js'],
+  exclude: ['test/setupTests.js', 'test/playwright/**'],
     environment: 'jsdom',
     setupFiles: path.resolve(__dirname, 'test/setupTests.js'),
     globals: true,

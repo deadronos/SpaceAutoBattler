@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test": "vitest --environment jsdom",
-    "serve": "http-server -c-1 -p 8080",
-    "build-standalone": "node ./scripts/build-standalone.mjs",
-    "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch"
+  "test": "vitest --environment jsdom",
+  "serve": "http-server -c-1 -p 8080",
+  "build-standalone": "node ./scripts/build-standalone.mjs",
+  "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch",
+  "test:e2e": "playwright test",
+  "test:e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "esbuild": "^0.25.9",
     "http-server": "^14.1.1",
     "jsdom": "^22.1.0",

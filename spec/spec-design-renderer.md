@@ -34,7 +34,7 @@ Scope: `src/renderer.js`, `space_themed_autobattler_canvas_red_vs_blue.html` int
 
 - Entry points (visible behavior): `reset(seed?)`, internal `simulate(dt)`, `render()`.
 - Consumed simulation fields: `state.ships`, `state.bullets`, `state.explosions`, `state.shieldHits`, `state.healthHits`.
-- Event shapes: same as `spec/design-simulate.md` (Explosion, ShieldHit, HealthHit).
+ - Event shapes: same as `spec/spec-design-simulate.md` (Explosion, ShieldHit, HealthHit).
 
 ## 5. Acceptance Criteria
 

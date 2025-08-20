@@ -173,5 +173,5 @@ Edge cases:
 
 ## 11. Related Specifications / Further Reading
 
-- `spec/design-simulate.md` — simulation step contract and events.
-- `spec/design-rng.md` — seeded RNG contract and usage.
+ - `spec/spec-design-simulate.md` — simulation step contract and events.
+ - `spec/spec-design-rng.md` — seeded RNG contract and usage.

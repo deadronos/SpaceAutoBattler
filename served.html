@@ -5,8 +5,7 @@
 
 
 
-            
-<!-- BEGIN_INLINED_BUNDLE -->
+            <!-- BEGIN_INLINED_BUNDLE -->
 <script type="module">
 var Bt=Object.defineProperty;var gn=(n,e,s)=>e in n?Bt(n,e,{enumerable:!0,configurable:!0,writable:!0,value:s}):n[e]=s;var St=(n,e)=>()=>(n&&(e=n(n=0)),e);var Dt=(n,e)=>{for(var s in e)Bt(n,s,{get:e[s],enumerable:!0})};var Ut=(n,e,s)=>gn(n,typeof e!="symbol"?e+"":e,s);function Yt(n){if(!n)return!1;if(n instanceof WebGL2RenderingContext)return!0;try{return!!n.getExtension("OES_element_index_uint")}catch{return!1}}function qt(n,e=65535){if(n<=0)return[];let s=[],i=0;for(;n>0;){let l=Math.min(n,e);s.push({start:i,count:l}),i+=l,n-=l}return s}var $t=St(()=>{});var Kt={};Dt(Kt,{computeShipBatchRanges:()=>Sn,createWebGLRenderer:()=>Bn});function zt(n,e,s){let i=n.createShader(e);if(n.shaderSource(i,s),n.compileShader(i),!n.getShaderParameter(i,n.COMPILE_STATUS)){let l=n.getShaderInfoLog(i);throw n.deleteShader(i),new Error(`Shader compile error: ${l}`)}return i}function We(n,e,s){let i=zt(n,n.VERTEX_SHADER,e),l=zt(n,n.FRAGMENT_SHADER,s),o=n.createProgram();if(n.attachShader(o,i),n.attachShader(o,l),n.linkProgram(o),!n.getProgramParameter(o,n.LINK_STATUS)){let r=n.getProgramInfoLog(o);throw n.deleteProgram(o),new Error(`Program link error: ${r}`)}return o}function Bn(n,e={}){let{webgl2:s=!1,maxDevicePixelRatio:i=1.5,atlasAccessor:l=null,atlasLODs:o=[1],maxUploadsPerFrame:r=2,atlasUseMipmaps:d=!1,atlasMaxSize:f=2048}=e,t=n.getContext(s?"webgl2":"webgl");if(!t)return null;t.enable(t.BLEND),t.blendFunc(t.SRC_ALPHA,t.ONE_MINUS_SRC_ALPHA);let c={textured:We(t,`
       attribute vec2 a_pos;
