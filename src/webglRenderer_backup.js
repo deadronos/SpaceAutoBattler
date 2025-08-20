@@ -38,12 +38,7 @@ export function createWebGLRenderer(canvas, opts = {}) {
       try {
         gl = canvas.getContext(webgl2 ? 'webgl2' : 'webgl');
         if (!gl) return;
-        
-        // Basic GL setup
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        
-        console.log('WebGL renderer initialized successfully');
+        console.log('WebGL renderer initialized');
       } catch (e) {
         gl = null; 
         console.warn('WebGL init failed:', e.message || e);
@@ -61,23 +56,10 @@ export function createWebGLRenderer(canvas, opts = {}) {
     },
     render(state) {
       if (!gl) return;
-      
       // Basic render implementation
-      gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0.02, 0.02, 0.03, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      
-      // For now, just clear the screen - no actual rendering
-      // This ensures the WebGL context works but we fall back to 2D for actual drawing
     }
-  };
-
-  renderer.destroy = function() {
-    if (gl) {
-      // Cleanup GL resources
-      gl = null;
-    }
-    running = false;
   };
 
   return renderer;
