@@ -1,0 +1,477 @@
+// src/rng.js
+var _state = null;
+function srand(seed) {
+  _state = seed >>> 0 || 1;
+}
+function _next() {
+  _state = Math.imul(1664525, _state) + 1013904223 >>> 0;
+  return _state;
+}
+function srandom() {
+  if (_state === null) return Math.random();
+  const v = _next();
+  return v / 4294967296;
+}
+function srange(a = 0, b = 1) {
+  const r = srandom();
+  return a + r * (b - a);
+}
+
+// src/entities.js
+var _nextId = 1;
+function _genId() {
+  return _nextId++;
+}
+var Team = { RED: "red", BLUE: "blue" };
+function createShip(opts = {}) {
+  const id = opts.id == null ? _genId() : opts.id;
+  const hpMax = opts.maxHp != null ? opts.maxHp : opts.hp != null ? opts.hp : 50;
+  const shieldDefault = Math.round(hpMax * 0.6);
+  const ship = {
+    id,
+    team: opts.team || Team.RED,
+    type: opts.type || "corvette",
+    x: opts.x || 0,
+    y: opts.y || 0,
+    vx: opts.vx || 0,
+    vy: opts.vy || 0,
+    hp: opts.hp != null ? opts.hp : hpMax,
+    maxHp: hpMax,
+    armor: opts.armor != null ? opts.armor : 0,
+    shield: opts.shield != null ? opts.shield : shieldDefault,
+    maxShield: opts.maxShield != null ? opts.maxShield : shieldDefault,
+    shieldRegen: opts.shieldRegen != null ? opts.shieldRegen : 0.5,
+    dmg: opts.dmg != null ? opts.dmg : 5,
+    radius: opts.radius != null ? opts.radius : 8,
+    cannons: opts.cannons || [],
+    isCarrier: !!opts.isCarrier,
+    alive: true,
+    level: opts.level || 1,
+    xp: opts.xp || 0
+  };
+  ship.update = function(dt, state) {
+    if (!ship.alive) return;
+    ship.x += ship.vx * dt;
+    ship.y += ship.vy * dt;
+    if (ship.shield < ship.maxShield) {
+      ship.shield = Math.min(ship.maxShield, ship.shield + ship.shieldRegen * dt);
+    }
+  };
+  ship.pickTarget = function(ships2) {
+    let best = null;
+    let bestDist = Infinity;
+    for (const s of ships2) {
+      if (!s || s.team === ship.team || !s.alive) continue;
+      const dx = s.x - ship.x;
+      const dy = s.y - ship.y;
+      const d = Math.hypot(dx, dy);
+      if (d < bestDist) {
+        bestDist = d;
+        best = s;
+      }
+    }
+    return best;
+  };
+  ship.damage = function(amount, source) {
+    const result = { shield: 0, hp: 0, killed: false };
+    if (!ship.alive) return result;
+    const flat = Math.max(0, ship.armor || 0);
+    let afterArmor = Math.max(0, amount - flat);
+    const shieldAbsorb = Math.min(ship.shield, afterArmor);
+    ship.shield -= shieldAbsorb;
+    result.shield = shieldAbsorb;
+    const leftover = afterArmor - shieldAbsorb;
+    if (leftover > 0) {
+      const hpReduce = Math.min(ship.hp, leftover);
+      ship.hp -= hpReduce;
+      result.hp = hpReduce;
+      if (ship.hp <= 0) {
+        ship.alive = false;
+        result.killed = true;
+      }
+    }
+    return result;
+  };
+  ship.gainXp = function(amount) {
+    ship.xp += amount;
+    while (ship.xp >= 100) {
+      ship.xp -= 100;
+      ship.level += 1;
+      ship.maxHp += 10;
+      ship.hp = ship.maxHp;
+      ship.dmg += 1;
+      ship.maxShield += 2;
+      ship.shield = ship.maxShield;
+    }
+  };
+  ship.applyLevel = function(lvl) {
+    ship.level = lvl;
+    ship.maxHp = 50 + (lvl - 1) * 10;
+    ship.hp = ship.maxHp;
+    ship.dmg = 5 + (lvl - 1) * 1;
+    ship.maxShield = 10 + (lvl - 1) * 2;
+    ship.shield = ship.maxShield;
+  };
+  return ship;
+}
+function createBullet(opts = {}) {
+  const id = opts.id == null ? _genId() : opts.id;
+  const bullet = {
+    id,
+    x: opts.x || 0,
+    y: opts.y || 0,
+    vx: opts.vx || 0,
+    vy: opts.vy || 0,
+    dmg: opts.dmg != null ? opts.dmg : 6,
+    team: opts.team || "red",
+    ownerId: opts.ownerId || null,
+    ttl: opts.ttl != null ? opts.ttl : 2,
+    radius: opts.radius != null ? opts.radius : 2
+  };
+  bullet.update = function(dt) {
+    bullet.x += bullet.vx * dt;
+    bullet.y += bullet.vy * dt;
+    bullet.ttl -= dt;
+  };
+  bullet.alive = function(bounds) {
+    if (bullet.ttl <= 0) return false;
+    if (!bounds) return true;
+    if (bullet.x < 0 || bullet.x > bounds.W || bullet.y < 0 || bullet.y > bounds.H) return false;
+    return true;
+  };
+  return bullet;
+}
+
+// src/simulate.js
+function collides(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const r = (a.radius || 0) + (b.radius || 0);
+  return dx * dx + dy * dy <= r * r;
+}
+function simulateStep(state, dt, bounds) {
+  if (!dt || dt <= 0) return;
+  state.explosions = state.explosions || [];
+  state.shieldHits = state.shieldHits || [];
+  state.healthHits = state.healthHits || [];
+  for (let i = 0; i < state.ships.length; i++) {
+    const s = state.ships[i];
+    if (s.update) s.update(dt, state);
+    if (bounds) {
+      if (s.x < 0) s.x += bounds.W;
+      else if (s.x > bounds.W) s.x -= bounds.W;
+      if (s.y < 0) s.y += bounds.H;
+      else if (s.y > bounds.H) s.y -= bounds.H;
+    }
+    if (s.cannons && s.cannons.length && Math.random() < 0.01) {
+      const c = s.cannons[0];
+      const angle = srange(0, Math.PI * 2);
+      const speed = 200;
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed;
+      const b = createBullet({ x: s.x, y: s.y, vx, vy, team: s.team, dmg: c.damage || s.dmg, ownerId: s.id });
+      state.bullets.push(b);
+    }
+  }
+  for (let bi = state.bullets.length - 1; bi >= 0; bi--) {
+    const bullet = state.bullets[bi];
+    if (bullet.update) bullet.update(dt);
+    if (!bullet.alive(bounds)) {
+      state.bullets.splice(bi, 1);
+      continue;
+    }
+    for (let si = state.ships.length - 1; si >= 0; si--) {
+      const ship = state.ships[si];
+      if (!ship.alive || ship.team === bullet.team) continue;
+      if (collides(bullet, ship)) {
+        const hit = ship.damage(bullet.dmg, bullet);
+        if (hit.shield) state.shieldHits.push({ id: ship.id, hitX: bullet.x, hitY: bullet.y, team: ship.team, amount: hit.shield });
+        if (hit.hp) state.healthHits.push({ id: ship.id, hitX: bullet.x, hitY: bullet.y, team: ship.team, amount: hit.hp });
+        if (bullet.ownerId != null) {
+          const owner = state.ships.find((s) => s.id === bullet.ownerId);
+          if (owner && owner.gainXp) owner.gainXp(hit.shield + hit.hp);
+        }
+        state.bullets.splice(bi, 1);
+        if (!ship.alive) {
+          state.explosions.push({ x: ship.x, y: ship.y, team: ship.team });
+          state.ships.splice(si, 1);
+        }
+        break;
+      }
+    }
+  }
+}
+
+// src/gamemanager.js
+var ships = [];
+var bullets = [];
+var particles = [];
+var stars = [];
+var flashes = [];
+var shieldFlashes = [];
+var healthFlashes = [];
+var particlePool = [];
+var config = {
+  shield: { ttl: 0.4, particleCount: 6, particleTTL: 0.35, particleColor: "rgba(160,200,255,0.9)", particleSize: 2 },
+  health: { ttl: 0.75, particleCount: 8, particleTTL: 0.6, particleColor: "rgba(255,120,80,0.95)", particleSize: 2 }
+};
+var Particle = class {
+  constructor(x = 0, y = 0, vx = 0, vy = 0, ttl = 1, color = "#fff", size = 2) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.ttl = ttl;
+    this.life = ttl;
+    this.color = color;
+    this.size = size;
+    this.alive = true;
+  }
+};
+function acquireParticle(x, y, opts = {}) {
+  let p = null;
+  if (particlePool.length) {
+    p = particlePool.pop();
+    p.x = x;
+    p.y = y;
+    p.vx = opts.vx || 0;
+    p.vy = opts.vy || 0;
+    p.ttl = opts.ttl || 1;
+    p.life = p.ttl;
+    p.color = opts.color || "#fff";
+    p.size = opts.size || 2;
+    p.alive = true;
+  } else {
+    p = new Particle(x, y, opts.vx || 0, opts.vy || 0, opts.ttl || 1, opts.color || "#fff", opts.size || 2);
+  }
+  particles.push(p);
+  return p;
+}
+function releaseParticle(p) {
+  const i = particles.indexOf(p);
+  if (i !== -1) particles.splice(i, 1);
+  p.alive = false;
+  particlePool.push(p);
+}
+var _seed = null;
+var _reinforcementInterval = 5;
+var _reinforcementAccumulator = 0;
+function reset(seedValue = null) {
+  ships.length = 0;
+  bullets.length = 0;
+  particles.length = 0;
+  stars.length = 0;
+  flashes.length = 0;
+  shieldFlashes.length = 0;
+  healthFlashes.length = 0;
+  _reinforcementAccumulator = 0;
+  if (typeof seedValue === "number") {
+    _seed = seedValue >>> 0;
+    srand(_seed);
+  }
+}
+function simulate(dt, W = 800, H = 600) {
+  const state = { ships, bullets, particles, stars, explosions: [], shieldHits: [], healthHits: [] };
+  evaluateReinforcement(dt);
+  simulateStep(state, dt, { W, H });
+  flashes.push(...state.explosions);
+  for (const h of state.shieldHits) {
+    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: false }));
+  }
+  for (const h of state.healthHits) {
+    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: false }));
+  }
+  return { ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars };
+}
+function evaluateReinforcement(dt) {
+  _reinforcementAccumulator += dt;
+  if (_reinforcementAccumulator >= _reinforcementInterval) {
+    _reinforcementAccumulator = 0;
+    ships.push(createShip({ x: 100, y: 100, team: "red" }));
+    ships.push(createShip({ x: 700, y: 500, team: "blue" }));
+  }
+}
+
+// src/renderer.js
+function createCanvasRenderer(canvas2) {
+  const ctx = canvas2.getContext("2d");
+  let _running = false;
+  let _last = null;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const w = Math.floor(canvas2.clientWidth * dpr);
+    const h = Math.floor(canvas2.clientHeight * dpr);
+    if (canvas2.width !== w || canvas2.height !== h) {
+      canvas2.width = w;
+      canvas2.height = h;
+    }
+  }
+  function doRender(t) {
+    const now = t / 1e3;
+    const dt = _last ? Math.min(0.05, now - _last) : 1 / 60;
+    _last = now;
+    resize();
+    const W = canvas2.width;
+    const H = canvas2.height;
+    const state = simulate(dt, W, H);
+    ctx.clearRect(0, 0, canvas2.width, canvas2.height);
+    ctx.fillStyle = "#081018";
+    ctx.fillRect(0, 0, canvas2.width, canvas2.height);
+    for (const s of state.ships) {
+      ctx.beginPath();
+      ctx.fillStyle = s.team === "red" ? "#ff8080" : "#80b8ff";
+      ctx.arc(s.x, s.y, s.radius || 8, 0, Math.PI * 2);
+      ctx.fill();
+      if (s.shield > 0) {
+        ctx.strokeStyle = "rgba(160,200,255,0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, Math.max((s.radius || 8) + 3, (s.radius || 8) * 1.2), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    for (const b of state.bullets) {
+      ctx.fillStyle = "#ffd080";
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius || 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (let i = shieldFlashes.length - 1; i >= 0; i--) {
+      const ev = shieldFlashes[i];
+      if (!ev.spawned) {
+        ev.spawned = true;
+        const pc = config.shield.particleCount || 6;
+        for (let j = 0; j < pc; j++) {
+          const a = j / pc * Math.PI * 2;
+          const speed = 30 + j * 6;
+          acquireParticle(ev.hitX, ev.hitY, { vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, ttl: config.shield.particleTTL, color: config.shield.particleColor, size: config.shield.particleSize });
+        }
+      }
+      const t2 = Math.max(0, Math.min(1, ev.life / ev.ttl));
+      const radius = (ev.radius || 8) * (1 + (1 - t2) * 1.5);
+      ctx.strokeStyle = `rgba(160,200,255,${0.6 * t2})`;
+      ctx.lineWidth = 2 * t2;
+      ctx.beginPath();
+      ctx.arc(ev.hitX, ev.hitY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ev.life -= dt;
+      if (ev.life <= 0) shieldFlashes.splice(i, 1);
+    }
+    for (let i = healthFlashes.length - 1; i >= 0; i--) {
+      const ev = healthFlashes[i];
+      if (!ev.spawned) {
+        ev.spawned = true;
+        const pc = config.health.particleCount || 8;
+        for (let j = 0; j < pc; j++) {
+          const a = srandom() * Math.PI * 2;
+          const speed = 40 * srandom();
+          acquireParticle(ev.hitX, ev.hitY, { vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, ttl: config.health.particleTTL, color: config.health.particleColor, size: config.health.particleSize + srandom() * 2 });
+        }
+      }
+      const t2 = Math.max(0, Math.min(1, ev.life / ev.ttl));
+      const radius = (ev.radius || 8) * (1 + (1 - t2) * 2);
+      ctx.strokeStyle = `rgba(255,120,80,${0.7 * t2})`;
+      ctx.lineWidth = 2 * t2;
+      ctx.beginPath();
+      ctx.arc(ev.hitX, ev.hitY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ev.life -= dt;
+      if (ev.life <= 0) healthFlashes.splice(i, 1);
+    }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        releaseParticle(p);
+        continue;
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      const alpha = Math.max(0, p.life / p.ttl);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size || 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  function renderFrame(t) {
+    if (!_running) return;
+    doRender(t);
+    requestAnimationFrame(renderFrame);
+  }
+  function renderOnce(nowMs = performance.now()) {
+    doRender(nowMs);
+  }
+  return {
+    init() {
+      resize();
+      return true;
+    },
+    start() {
+      if (!_running) {
+        _running = true;
+        _last = null;
+        requestAnimationFrame(renderFrame);
+      }
+    },
+    stop() {
+      _running = false;
+    },
+    isRunning() {
+      return _running;
+    },
+    render() {
+    },
+    renderOnce,
+    destroy() {
+      this.stop();
+    }
+  };
+}
+
+// src/main.js
+var canvas = document.getElementById("world");
+function fitCanvas() {
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+window.addEventListener("resize", fitCanvas);
+fitCanvas();
+var renderer = createCanvasRenderer(canvas);
+renderer.init();
+var DEFAULT_SEED = 1;
+reset(DEFAULT_SEED);
+var startBtn = document.getElementById("startPause");
+var resetBtn = document.getElementById("reset");
+var addRed = document.getElementById("addRed");
+var addBlue = document.getElementById("addBlue");
+var seedBtn = document.getElementById("seedBtn");
+startBtn.addEventListener("click", () => {
+  if (!renderer.isRunning()) {
+    renderer.start();
+    startBtn.textContent = "\u23F8 Pause";
+  } else {
+    renderer.stop();
+    startBtn.textContent = "\u25B6 Start";
+  }
+});
+resetBtn.addEventListener("click", () => {
+  reset();
+});
+addRed.addEventListener("click", () => {
+  ships.push(createShip({ x: 100, y: 100, team: "red" }));
+});
+addBlue.addEventListener("click", () => {
+  ships.push(createShip({ x: 700, y: 500, team: "blue" }));
+});
+seedBtn.addEventListener("click", () => {
+  const s = Math.floor(srandom() * 4294967295);
+  srand(s);
+  reset(s);
+  alert("Seed: " + s);
+});
+renderer.start();

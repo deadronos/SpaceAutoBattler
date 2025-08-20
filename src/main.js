@@ -1,7 +1,7 @@
 import { createCanvasRenderer } from './renderer.js';
 import * as GM from './gamemanager.js';
 import { createShip } from './entities.js';
-import { srand } from './rng.js';
+import { srand, srandom } from './rng.js';
 
 const canvas = document.getElementById('world');
 function fitCanvas() {
@@ -14,6 +14,10 @@ fitCanvas();
 
 const renderer = createCanvasRenderer(canvas);
 renderer.init();
+
+// Default deterministic seed for simulation & visuals so runs are repeatable
+const DEFAULT_SEED = 1;
+GM.reset(DEFAULT_SEED);
 
 const startBtn = document.getElementById('startPause');
 const resetBtn = document.getElementById('reset');
@@ -28,7 +32,7 @@ startBtn.addEventListener('click', () => {
 resetBtn.addEventListener('click', () => { GM.reset(); });
 addRed.addEventListener('click', () => { GM.ships.push(createShip({ x:100, y:100, team:'red' })); });
 addBlue.addEventListener('click', () => { GM.ships.push(createShip({ x:700, y:500, team:'blue' })); });
-seedBtn.addEventListener('click', () => { const s = Math.floor(Math.random()*0xffffffff); srand(s); GM.reset(s); alert('Seed: '+s); });
+seedBtn.addEventListener('click', () => { const s = Math.floor(srandom()*0xffffffff); srand(s); GM.reset(s); alert('Seed: '+s); });
 
 // auto start
 renderer.start();

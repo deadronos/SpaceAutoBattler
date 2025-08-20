@@ -62,6 +62,43 @@ npm run serve
 # then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html
 ```
 
+Build & standalone workflow (new)
+--------------------------------
+
+This repository includes a small build helper that bundles the ES modules in `src/` and produces distributable files in `dist/`.
+
+- Build only the JS bundle (outputs `dist/bundle.js`):
+
+```powershell
+npm run build-bundle
+```
+
+- Build the JS bundle + `dist/index.html` (links the bundle) and a single-file `dist/standalone.html` that inlines the JS and CSS:
+
+```powershell
+npm run build-standalone
+```
+
+- Build and watch for changes (rebuilds on save):
+
+```powershell
+npm run build-standalone:watch
+```
+
+Outputs placed in `dist/`:
+
+- `dist/bundle.js` — ES module bundle of `src/main.js` and its imports.
+- `dist/bundle.css` — concatenated CSS extracted from `src/styles/`.
+- `dist/index.html` — a small HTML page that references `./bundle.css` and `./dist/bundle.js`.
+- `dist/standalone.html` — a single-file HTML with the CSS and JS inlined for easy distribution.
+
+To preview the built output locally, you can serve the `dist/` folder with a static server, e.g.:
+
+```powershell
+npx http-server ./dist -c-1 -p 8080
+# then open http://localhost:8080/index.html
+```
+
 Running the demo locally
 ------------------------
 1. Serve the repository or open `space_themed_autobattler_canvas_red_vs_blue.html` in a modern browser.

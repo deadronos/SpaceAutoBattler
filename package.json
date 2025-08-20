@@ -5,10 +5,12 @@
   "scripts": {
     "test": "vitest --environment jsdom",
     "serve": "http-server -c-1 -p 8080",
+    "build-bundle": "node ./scripts/build-standalone.mjs --bundle-only",
     "build-standalone": "node ./scripts/build-standalone.mjs",
     "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:playwright": "playwright test -c playwright.config.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

@@ -3,20 +3,25 @@ import { srange, srangeInt } from './rng.js';
 let _nextId = 1;
 function _genId() { return _nextId++; }
 
+export const Team = { RED: 'red', BLUE: 'blue' };
+
 export function createShip(opts = {}) {
   const id = opts.id == null ? _genId() : opts.id;
+  const hpMax = opts.maxHp != null ? opts.maxHp : (opts.hp != null ? opts.hp : 50);
+  const shieldDefault = Math.round(hpMax * 0.6);
   const ship = {
     id,
-    team: opts.team || 'red',
+    team: opts.team || Team.RED,
+    type: opts.type || 'corvette',
     x: opts.x || 0,
     y: opts.y || 0,
     vx: opts.vx || 0,
     vy: opts.vy || 0,
-    hp: opts.hp != null ? opts.hp : 50,
-    maxHp: opts.maxHp != null ? opts.maxHp : 50,
+    hp: opts.hp != null ? opts.hp : hpMax,
+    maxHp: hpMax,
     armor: opts.armor != null ? opts.armor : 0,
-    shield: opts.shield != null ? opts.shield : 10,
-    maxShield: opts.maxShield != null ? opts.maxShield : 10,
+    shield: opts.shield != null ? opts.shield : shieldDefault,
+    maxShield: opts.maxShield != null ? opts.maxShield : shieldDefault,
     shieldRegen: opts.shieldRegen != null ? opts.shieldRegen : 0.5,
     dmg: opts.dmg != null ? opts.dmg : 5,
     radius: opts.radius != null ? opts.radius : 8,
@@ -36,6 +41,17 @@ export function createShip(opts = {}) {
     if (ship.shield < ship.maxShield) {
       ship.shield = Math.min(ship.maxShield, ship.shield + ship.shieldRegen * dt);
     }
+  };
+
+  ship.pickTarget = function(ships) {
+    let best = null; let bestDist = Infinity;
+    for (const s of ships) {
+      if (!s || s.team === ship.team || !s.alive) continue;
+      const dx = s.x - ship.x; const dy = s.y - ship.y;
+      const d = Math.hypot(dx, dy);
+      if (d < bestDist) { bestDist = d; best = s; }
+    }
+    return best;
   };
 
   ship.damage = function(amount, source) {
@@ -118,4 +134,16 @@ export function createBullet(opts = {}) {
   return bullet;
 }
 
-export default { createShip, createBullet };
+export function spawnFleet(team, n, cx = 400, cy = 300) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const angle = srange(0, Math.PI * 2);
+    const r = 30 + srange(0, 100);
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    out.push(createShip({ team, x, y }));
+  }
+  return out;
+}
+
+export default { createShip, createBullet, spawnFleet, Team };
