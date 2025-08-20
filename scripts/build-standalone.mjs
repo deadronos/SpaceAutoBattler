@@ -170,7 +170,14 @@ async function inlineBundle(){ const html = await fs.readFile(standaloneHtml, 'u
 export function cleanHtmlContent(html, bundleCode){
   const beginMarker = '<!-- BEGIN_INLINED_BUNDLE -->';
   const endMarker = '<!-- END_INLINED_BUNDLE -->';
-  let cleaned = html;
+  // Remove any existing inlined bundle blocks (idempotent cleaning)
+  let cleaned = html.replace(/<!-- BEGIN_INLINED_BUNDLE -->[\s\S]*?<!-- END_INLINED_BUNDLE -->/g, '');
+  // Also remove any <script type="module">...</script> blocks whose content
+  // contains the bundle signature so older unmarked inlines are cleaned too.
+  const bundleSignature = 'var ut=Object.defineProperty';
+  cleaned = cleaned.replace(/<script\s+type=["']module["'][^>]*>[\s\S]*?<\/script>/gi, (match) => {
+    return match.includes(bundleSignature) ? '' : match;
+  });
   const markerStart = cleaned.indexOf(beginMarker);
   const markerEnd = cleaned.indexOf(endMarker);
   // (the cleaning above already removed markers and prior inlined bundles)

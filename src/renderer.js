@@ -87,6 +87,80 @@ function getHullPath(type){
   return p;
 }
 
+// --- Shape atlas (per-hull, multi-LOD) ---
+// Per-hull atlas map: Map<type, Map<lodKey, atlasObject>>
+const hullAtlases = new Map();
+// LODs measured as base pixel radius. We'll create a few canonical LODs and
+// choose the nearest one for a given ship radius and device pixel ratio.
+const DEFAULT_LODS = [12, 20, 36]; // small, medium, large base radii in pixels
+
+function createHullAtlasLOD(type, baseRadius){
+  // internal map per type
+  let typeMap = hullAtlases.get(type);
+  if (!typeMap) { typeMap = new Map(); hullAtlases.set(type, typeMap); }
+  if (typeMap.has(baseRadius)) return typeMap.get(baseRadius);
+
+  // estimate canvas size: shapes can extend up to ~2.2 units * baseRadius each side
+  const maxUnitExtent = 2.2;
+  const size = Math.ceil(baseRadius * maxUnitExtent * 2 + 8);
+  const c = typeof document !== 'undefined' ? document.createElement('canvas') : { width: size, height: size, getContext: () => null };
+  c.width = size; c.height = size;
+  const cc = c.getContext && c.getContext('2d');
+  if (!cc) {
+    const atlas = { canvas: c, size, baseRadius };
+    typeMap.set(baseRadius, atlas);
+    return atlas;
+  }
+
+  const cx = size/2;
+  cc.clearRect(0,0,size,size);
+  cc.save();
+  cc.translate(cx, cx);
+  cc.scale(baseRadius, baseRadius);
+  cc.fillStyle = 'white'; cc.strokeStyle = 'white'; cc.lineWidth = 0.02;
+  try { cc.fill(getHullPath(type)); } catch (e) { cc.beginPath(); cc.arc(0,0,1,0,TAU); cc.fill(); }
+
+  // accents (simple approximations)
+  cc.fillStyle = 'rgba(255,255,255,0.9)';
+  if (type === 'corvette' || type === 'fighter') cc.beginPath(), cc.ellipse(0.25,0,0.25,0.15,0,0,TAU), cc.fill();
+  else if (type === 'frigate') cc.fillRect(-0.2,-0.25,0.6,0.5);
+  else if (type === 'destroyer') cc.fillRect(-0.9,-0.18,1.2,0.36);
+  else if (type === 'carrier') cc.fillStyle = 'rgba(255,255,255,0.2)', cc.fillRect(-0.8,-0.25,1.6,0.5);
+
+  cc.restore();
+  const atlas = { canvas: c, size, baseRadius };
+  typeMap.set(baseRadius, atlas);
+  return atlas;
+}
+
+function ensureDefaultLODs(type){
+  for (const lod of DEFAULT_LODS) createHullAtlasLOD(type, lod);
+}
+
+function getHullAtlas(type, baseRadius = DEFAULT_LODS[1]){
+  const typeMap = hullAtlases.get(type);
+  if (typeMap && typeMap.has(baseRadius)) return typeMap.get(baseRadius);
+  return createHullAtlasLOD(type, baseRadius);
+}
+
+// Select best LOD entry for a requested radius (in CSS pixels) and devicePixelRatio
+function getHullAtlasForRadius(type, radius, devicePixelRatio = (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1)){
+  // target pixel radius multiplied by DPR to choose LOD
+  const pixelRadius = Math.max(1, Math.round(radius * devicePixelRatio));
+  // ensure default LODs exist for this type
+  ensureDefaultLODs(type);
+  const typeMap = hullAtlases.get(type) || new Map();
+  // find nearest baseRadius in typeMap
+  let best = null; let bestDiff = Infinity;
+  for (const [baseRadius, atlas] of typeMap.entries()){
+    const diff = Math.abs(baseRadius - pixelRadius);
+    if (diff < bestDiff) { bestDiff = diff; best = atlas; }
+  }
+  // If none found (shouldn't happen), create one at pixelRadius
+  if (!best) best = createHullAtlasLOD(type, pixelRadius);
+  return best;
+}
+
 // Background gradient cache (recomputed on resize)
 let backgroundGradient = null;
 function recomputeBackgroundGradient(){
@@ -129,38 +203,69 @@ class ShipV {
   // trails
   if (showTrails){ const tx = s.x - Math.cos(s.angle)*s.radius*1.2; const ty = s.y - Math.sin(s.angle)*s.radius*1.2; acquireParticle(tx, ty, -s.vx*0.05 + srange(-10,10), -s.vy*0.05 + srange(-10,10), .25, teamColor(s.team, '$a')); }
 
-    // Draw hull by type with scale from radius
-    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9);
+    // Draw hull by type with scale from radius - prefer atlas sampling
     const r = s.radius || 8;
-    // base fill
-    ctx.fillStyle = teamColor(s.team, .96);
+  const atlas = getHullAtlas(s.type);
+  // Prefer selecting an LOD based on ship radius and devicePixelRatio
+  const selectedAtlas = getHullAtlasForRadius(s.type, r, (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1));
+  if (selectedAtlas && selectedAtlas.canvas && ctx && typeof ctx.drawImage === 'function') {
+      // Tinting workflow: draw atlas to temp canvas with tint, then draw scaled
+      // However, creating a temp canvas per-ship per-frame is expensive. We'll
+      // use global composite operations to tint during draw: draw white mask,
+      // then use 'source-in' to colorize.
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.angle);
+      // shadow
+      ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team, .9);
 
-    if (s.type === 'corvette') {
-      // small arrow-like hull
-      ctx.beginPath(); ctx.moveTo(r*1.5,0); ctx.lineTo(-r,-r*0.7); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r,r*0.7); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(0,0,r*0.35,r*0.25,0,0,TAU); ctx.fill();
-    } else if (s.type === 'frigate') {
-      // sleeker hull with a small dorsal
-      ctx.beginPath(); ctx.moveTo(r*1.6,0); ctx.quadraticCurveTo(r*0.2,-r*1.1, -r*1.1, -r*0.6); ctx.lineTo(-r*0.6,0); ctx.lineTo(-r*1.1, r*0.6); ctx.quadraticCurveTo(r*0.2,r*1.1, r*1.6,0); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-r*0.2, -r*0.25, r*0.6, r*0.5);
-    } else if (s.type === 'destroyer') {
-      // broad hull with angular plates
-      ctx.beginPath(); ctx.moveTo(r*1.9,0); ctx.lineTo(r*0.3, -r*1.1); ctx.lineTo(-r*1.4, -r*0.6); ctx.lineTo(-r*1.4, r*0.6); ctx.lineTo(r*0.3, r*1.1); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-r*0.9, -r*0.18, r*1.2, r*0.36);
-    } else if (s.type === 'carrier') {
-      // larger carrier silhouette with hangar markings
-      ctx.beginPath(); ctx.ellipse(0, 0, r*1.6, r*1.0, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(-r*0.8, -r*0.25, r*1.6, r*0.5);
-    } else if (s.type === 'fighter') {
-      // tiny fast fighter
-      ctx.beginPath(); ctx.moveTo(r*1.2,0); ctx.lineTo(-r*0.6, -r*0.45); ctx.lineTo(-r*0.2, 0); ctx.lineTo(-r*0.6, r*0.45); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.ellipse(r*0.25,0,r*0.25,r*0.15,0,0,TAU); ctx.fill();
+  const size = selectedAtlas.size;
+      const scale = (r * 2) / (atlas.baseRadius * 2); // desired pixel scale
+  const drawW = size * scale, drawH = size * scale;
+      // draw mask
+      ctx.save();
+      // draw the white mask (atlas) centered at 0,0
+      ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(selectedAtlas.canvas, -drawW/2, -drawH/2, drawW, drawH);
+      // tint using source-in
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = teamColor(s.team, .96);
+      ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
+      ctx.restore();
+      ctx.restore();
     } else {
-      // fallback generic hull
-      ctx.beginPath(); ctx.moveTo(r*1.4,0); ctx.lineTo(-r, -r*0.8); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r, r*0.8); ctx.closePath(); ctx.fill();
-    }
+      // fallback to previous procedural drawing when atlas or ctx.drawImage is unavailable
+      ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowBlur = 12; ctx.shadowColor = teamColor(s.team,.9);
+      // base fill
+      ctx.fillStyle = teamColor(s.team, .96);
 
-    ctx.restore();
+      if (s.type === 'corvette') {
+        // small arrow-like hull
+        ctx.beginPath(); ctx.moveTo(r*1.5,0); ctx.lineTo(-r,-r*0.7); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r,r*0.7); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(0,0,r*0.35,r*0.25,0,0,TAU); ctx.fill();
+      } else if (s.type === 'frigate') {
+        // sleeker hull with a small dorsal
+        ctx.beginPath(); ctx.moveTo(r*1.6,0); ctx.quadraticCurveTo(r*0.2,-r*1.1, -r*1.1, -r*0.6); ctx.lineTo(-r*0.6,0); ctx.lineTo(-r*1.1, r*0.6); ctx.quadraticCurveTo(r*0.2,r*1.1, r*1.6,0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-r*0.2, -r*0.25, r*0.6, r*0.5);
+      } else if (s.type === 'destroyer') {
+        // broad hull with angular plates
+        ctx.beginPath(); ctx.moveTo(r*1.9,0); ctx.lineTo(r*0.3, -r*1.1); ctx.lineTo(-r*1.4, -r*0.6); ctx.lineTo(-r*1.4, r*0.6); ctx.lineTo(r*0.3, r*1.1); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-r*0.9, -r*0.18, r*1.2, r*0.36);
+      } else if (s.type === 'carrier') {
+        // larger carrier silhouette with hangar markings
+        ctx.beginPath(); ctx.ellipse(0, 0, r*1.6, r*1.0, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(-r*0.8, -r*0.25, r*1.6, r*0.5);
+      } else if (s.type === 'fighter') {
+        // tiny fast fighter
+        ctx.beginPath(); ctx.moveTo(r*1.2,0); ctx.lineTo(-r*0.6, -r*0.45); ctx.lineTo(-r*0.2, 0); ctx.lineTo(-r*0.6, r*0.45); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.ellipse(r*0.25,0,r*0.25,r*0.15,0,0,TAU); ctx.fill();
+      } else {
+        // fallback generic hull
+        ctx.beginPath(); ctx.moveTo(r*1.4,0); ctx.lineTo(-r, -r*0.8); ctx.lineTo(-r*0.4,0); ctx.lineTo(-r, r*0.8); ctx.closePath(); ctx.fill();
+      }
+
+      ctx.restore();
+    }
 
     // shimmering shield outline (subtle)
     if (typeof s.shield === 'number' && typeof s.shieldMax === 'number'){
@@ -612,7 +717,11 @@ export async function initRenderer(opts = {}) {
       if (gl2 || gl1) {
         try {
             const { createWebGLRenderer } = await import('./webglRenderer.js');
-            runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2 });
+            // Provide atlas accessor and desired LODs so the WebGL renderer can
+            // create GPU textures from the offscreen canvases. We pass a small
+            // adapter that binds the devicePixelRatio used by the browser.
+            const atlasAccessor = (type, radius) => getHullAtlasForRadius(type, radius, (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1));
+            runningRenderer = createWebGLRenderer(canvasEl, { webgl2: !!gl2, atlasAccessor, atlasLODs: DEFAULT_LODS });
             runningRenderer.init();
             if (startLoop) runningRenderer.start(() => { requestAnimationFrame(loop); });
             __rendererDiag.used = 'webgl';
@@ -704,6 +813,10 @@ export {
   shipsVMap,
   ships,
   bullets,
+  // atlas exports (for WebGL renderer to create textures)
+  hullAtlases,
+  getHullAtlas,
+  getHullAtlasForRadius,
   handleReinforcement,
   resetReinforcementCooldowns,
   evaluateReinforcement,
