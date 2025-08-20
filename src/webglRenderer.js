@@ -4,7 +4,6 @@
 // - Uploads per-frame ship positions and colors to a dynamic buffer
 // - Draws GL_POINTS (or instanced quads if available)
 // If WebGL isn't available, the renderer acts as a no-op but doesn't throw.
-
 function createShader(gl, type, source){ const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { const err = gl.getShaderInfoLog(s); gl.deleteShader(s); throw new Error('Shader compile error: '+err); } return s; }
 
 function createProgram(gl, vsSrc, fsSrc){ const vs = createShader(gl, gl.VERTEX_SHADER, vsSrc); const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSrc); const p = gl.createProgram(); gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { const err = gl.getProgramInfoLog(p); gl.deleteProgram(p); throw new Error('Program link error: '+err); } return p; }
@@ -36,7 +35,7 @@ export function createWebGLRenderer(canvas, opts = {}){
   let pixelRatio = 1;
   let handleResize = null;
 
-  return {
+  const renderer = {
     type: 'webgl',
     webgl2,
   init(){
@@ -644,7 +643,7 @@ export function createWebGLRenderer(canvas, opts = {}){
           if (this.a_instPos >= 0) gl.vertexAttribDivisor(this.a_instPos, 1);
           if (this.a_instColor >= 0) gl.vertexAttribDivisor(this.a_instColor, 1);
           if (this.a_instSize >= 0) gl.vertexAttribDivisor(this.a_instSize, 1);
-          if (this.a_instAngle >= 0) gl.vertexAttribDivisor(this.a_instAngle, 1);
+              if (this.a_instAngle >= 0) gl.vertexAttribDivisor(this.a_instAngle, 1);
           if (this.a_instShield >= 0) gl.vertexAttribDivisor(this.a_instShield, 1);
           if (this.a_instType >= 0) gl.vertexAttribDivisor(this.a_instType, 1);
           gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, nonShipCount2);
@@ -685,41 +684,44 @@ export function createWebGLRenderer(canvas, opts = {}){
       }
 
   // (Removed duplicate legacy SDF draw code - drawing is handled above per-primitive.)
-    }
-    destroy() 
-      if (gl) {
-        try {
-          if (quadBuffer) gl.deleteBuffer(quadBuffer);
-          if (shipPosBuffer) gl.deleteBuffer(shipPosBuffer);
-          if (shipColorBuffer) gl.deleteBuffer(shipColorBuffer);
-          if (shipSizeBuffer) gl.deleteBuffer(shipSizeBuffer);
-          if (shipAngleBuffer) gl.deleteBuffer(shipAngleBuffer);
-          if (shipShieldBuffer) gl.deleteBuffer(shipShieldBuffer);
-          if (nonShipPosBuffer) gl.deleteBuffer(nonShipPosBuffer);
-          if (nonShipColorBuffer) gl.deleteBuffer(nonShipColorBuffer);
-          if (nonShipSizeBuffer) gl.deleteBuffer(nonShipSizeBuffer);
-          if (nonShipAngleBuffer) gl.deleteBuffer(nonShipAngleBuffer);
-          if (nonShipShieldBuffer) gl.deleteBuffer(nonShipShieldBuffer);
-          if (nonShipTypeBuffer) gl.deleteBuffer(nonShipTypeBuffer);
-          if (program) gl.deleteProgram(program);
-          if (this._texturedProgram) gl.deleteProgram(this._texturedProgram);
-          if (this._atlasTextures) {
-            for (const t in this._atlasTextures) {
-              const bySize = this._atlasTextures[t];
-              for (const k in bySize) {
-                try { if (bySize[k] && bySize[k].tex) gl.deleteTexture(bySize[k].tex); } catch(e){}
-              }
+  };
+
+  // Attach destroy after the object to avoid any parser/listing edge-cases inside the literal
+  renderer.destroy = function() {
+    if (gl) {
+      try {
+        if (quadBuffer) gl.deleteBuffer(quadBuffer);
+        if (shipPosBuffer) gl.deleteBuffer(shipPosBuffer);
+        if (shipColorBuffer) gl.deleteBuffer(shipColorBuffer);
+        if (shipSizeBuffer) gl.deleteBuffer(shipSizeBuffer);
+        if (shipAngleBuffer) gl.deleteBuffer(shipAngleBuffer);
+        if (shipShieldBuffer) gl.deleteBuffer(shipShieldBuffer);
+        if (nonShipPosBuffer) gl.deleteBuffer(nonShipPosBuffer);
+        if (nonShipColorBuffer) gl.deleteBuffer(nonShipColorBuffer);
+        if (nonShipSizeBuffer) gl.deleteBuffer(nonShipSizeBuffer);
+        if (nonShipAngleBuffer) gl.deleteBuffer(nonShipAngleBuffer);
+        if (nonShipShieldBuffer) gl.deleteBuffer(nonShipShieldBuffer);
+        if (nonShipTypeBuffer) gl.deleteBuffer(nonShipTypeBuffer);
+        if (program) gl.deleteProgram(program);
+        if (renderer._texturedProgram) gl.deleteProgram(renderer._texturedProgram);
+        if (renderer._atlasTextures) {
+          for (const t in renderer._atlasTextures) {
+            const bySize = renderer._atlasTextures[t];
+            for (const k in bySize) {
+              try { if (bySize[k] && bySize[k].tex) gl.deleteTexture(bySize[k].tex); } catch(e){}
             }
           }
-          if (tex) gl.deleteTexture(tex);
-        } catch (e) {}
-        gl = null;
-      }
-      if (typeof window !== 'undefined' && handleResize) { window.removeEventListener('resize', handleResize); }
-      running = false;
+        }
+        if (tex) gl.deleteTexture(tex);
+      } catch (e) {}
+      gl = null;
     }
+    if (typeof window !== 'undefined' && handleResize) { window.removeEventListener('resize', handleResize); }
+    running = false;
   };
+
+  return renderer;
 }
 
-export default { createWebGLRenderer };
+// Ensure module ends with a single newline
 

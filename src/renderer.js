@@ -1,4 +1,3 @@
-
 // Attach global export for robust auto-init in standalone/minified builds
 if (typeof window !== 'undefined') {
   window.initRenderer = initRenderer;
@@ -827,3 +826,33 @@ export {
   // reset is provided by gamemanager
   reset,
 };
+
+// Helper: when getContext('2d') returns null (some browsers / contexts / envs),
+// provide a forgiving stub so renderer code doesn't throw and stop the app.
+function makeNoop2DContext() {
+  const noop = () => {};
+  const noopObj = new Proxy({}, {
+    get(target, prop) {
+      // Some commonly-used methods need to be functions.
+      if (prop === 'createRadialGradient') {
+        return () => ({ addColorStop: noop });
+      }
+      if (prop === 'measureText') {
+        return () => ({ width: 0 });
+      }
+      if (prop === 'getImageData') {
+        return () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 });
+      }
+      // return a noop function for methods
+      return noop;
+    },
+    set() { return true; }
+  });
+  // Provide default writable properties sometimes used by the renderer:
+  noopObj.fillStyle = '#000';
+  noopObj.strokeStyle = '#000';
+  noopObj.globalAlpha = 1;
+  noopObj.lineWidth = 1;
+  noopObj.font = '12px sans-serif';
+  return noopObj;
+}
