@@ -80,6 +80,27 @@ Use explicit requirement IDs for traceability.
 - **REQ-010**: Graceful degradation
   - If an instanced path or optimized shader fails, the renderer MUST fall back to a safe, functional drawing path that produces visually equivalent output.
 
+- **REQ-011**: Shader Precision
+  - All shaders MUST explicitly declare precision qualifiers. Fragment shaders SHOULD use `mediump` unless high precision is required for specific calculations.
+
+- **REQ-012**: Deterministic Rendering
+  - The renderer MUST NOT use `Math.random()`, `performance.now()`, or any other non-deterministic sources. All randomness and timings MUST come from the simulation event list.
+
+- **REQ-013**: Context Loss Handling
+  - The renderer MUST handle `webglcontextlost` and `webglcontextrestored` events. On context loss, it MUST prevent default behavior and reinitialize resources on restoration.
+
+- **REQ-014**: Alpha Blending
+  - The renderer MUST use premultiplied alpha blending. Textures and framebuffers MUST be configured with `UNPACK_PREMULTIPLY_ALPHA_WEBGL` and blending set to `blendFunc(ONE, ONE_MINUS_SRC_ALPHA)`.
+
+- **REQ-015**: Viewport and Pixel Ratio
+  - The renderer MUST update the canvas dimensions and call `gl.viewport` on resize events. It MUST scale the canvas dimensions by `devicePixelRatio` to ensure sharp rendering.
+
+- **REQ-016**: Material/Pass Concept
+  - The renderer MUST organize rendering into distinct passes (e.g., Background, Ships, Bullets, FX, UI) to minimize state changes and improve performance.
+
+- **REQ-017**: Testing Strategy
+  - The renderer MUST include headless WebGL tests for shader compilation, program linking, and golden-image tests using OffscreenCanvas. These tests MUST verify rendering correctness and performance thresholds.
+
 - **CON-001**: No DOM writes during render
   - The `render(state)` function MUST NOT perform DOM modifications (creating elements or adding listeners); UI updates belong to the higher-level module.
 
@@ -96,7 +117,8 @@ Public creator and renderer contract:
 - Signature: `createWebGLRenderer(canvas: HTMLCanvasElement, opts?: RendererOptions): Renderer | null`
 
 RendererOptions:
-```
+
+```javascript
 {
   webgl2?: boolean,                // request webgl2 if available
   maxDevicePixelRatio?: number,    // clamp for DPR (default 1.5)
@@ -109,17 +131,20 @@ RendererOptions:
 ```
 
 Atlas (pre-upload):
-```
+
+```javascript
 { canvas: HTMLCanvasElement, size: number, baseRadius: number }
 ```
 
 AtlasInfo (post-upload):
-```
+
+```javascript
 { tex: WebGLTexture, size: number, baseRadius: number, canvas: HTMLCanvasElement }
 ```
 
 Renderer object (returned):
-```
+
+```javascript
 {
   type: 'webgl',
   webgl2: boolean,
@@ -137,7 +162,8 @@ Renderer object (returned):
 ```
 
 RenderState (consumed by render): see REQ-003. Example minimal state:
-```
+
+```javascript
 {
   W: 800, H: 600,
   ships: [ { id:1, x:100, y:150, radius:8, angle:0, team:0, alive:true } ],
@@ -193,28 +219,34 @@ RenderState (consumed by render): see REQ-003. Example minimal state:
 ## 8. Dependencies & External Integrations
 
 ### External Systems
+
 - **EXT-001**: Browser environment - The renderer requires a browser or a WebGL-capable runtime to run.
 
 ### Third-Party Services
+
 - **SVC-001**: None required at runtime. Playwright or headless-gl may be used during testing.
 
 ### Infrastructure Dependencies
+
 - **INF-001**: CI runners with GPU-accelerated browsers for reliable WebGL E2E tests (optional but recommended).
 
 ### Data Dependencies
+
 - **DAT-001**: None external. All visual assets are generated at runtime by the renderer or simulation.
 
 ### Technology Platform Dependencies
+
 - **PLT-001**: Node.js for build tooling (esbuild) and Vitest for tests.
 
 ### Compliance Dependencies
+
 - **COM-001**: None.
 
 ## 9. Examples & Edge Cases
 
 Example: creating a renderer and rendering a simple state
 
-```js
+```javascript
 import { createWebGLRenderer } from '../src/webglRenderer.js';
 const canvas = document.getElementById('world');
 const renderer = createWebGLRenderer(canvas, { webgl2: true, maxDevicePixelRatio: 1.5 });
@@ -237,9 +269,9 @@ Edge cases:
 
 ## 11. Related Specifications / Further Reading
 
- - `spec/spec-design-renderer.md` (if present) - broader renderer and UI design.
- - MDN WebGL documentation - for WebGL API semantics.
- - Project `README.md` - build and run instructions.
+- `spec/spec-design-renderer.md` (if present) - broader renderer and UI design.
+- MDN WebGL documentation - for WebGL API semantics.
+- Project `README.md` - build and run instructions.
 
 ---
 

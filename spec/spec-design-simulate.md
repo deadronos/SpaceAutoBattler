@@ -32,6 +32,14 @@ Scope:
 - **REQ-SIM-002**: Create event sink arrays if absent: `explosions`, `shieldHits`, `healthHits`.
 - **REQ-SIM-003**: All gameplay randomness must use `src/rng.js` helpers. No `Math.random()` for game decisions.
 - **REQ-SIM-004**: Maintain deterministic iteration order and RNG consumption.
+- **REQ-SIM-005**: Parallel Simulation and Rendering
+  - The simulation step MUST emit events and update the state in a way that allows the rendering pipeline to process these updates in parallel without blocking.
+  - The simulation MUST NOT directly modify rendering-specific data structures; it only emits events consumed by the renderer.
+- **REQ-SIM-006**: Game Manager Ownership
+  - The Game Manager MUST own and manage the lifecycle of ships and bullets. The simulation step operates on these entities but does not create or destroy them directly.
+- **REQ-SIM-007**: Event-Driven Updates
+  - The simulation step MUST emit events for all state changes (e.g., ship destruction, bullet collisions) to ensure the renderer can update gracefully without direct coupling.
+
 - **CON-SIM-001**: Do not perform rendering or DOM operations.
 - **GUD-SIM-001**: Iterate backward when removing items from arrays to avoid index shifts.
 

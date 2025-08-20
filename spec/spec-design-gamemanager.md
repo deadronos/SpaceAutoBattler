@@ -84,6 +84,15 @@ Each requirement has an ID for traceability. NOTE: the project's `src/gamemanage
 - **REQ-008**: Error handling
   - The module MUST throw on programmer errors (invalid args) and must stop/return gracefully if `simulateStep` throws — callers should expect `simulate` to surface errors rather than silently swallowing them.
 
+- **REQ-GM-009**: Entity Management
+  - The Game Manager MUST own and manage the lifecycle of ships, bullets, and other entities. It initializes these entities and provides them to the simulation step for processing.
+
+- **REQ-GM-010**: Parallel Coordination
+  - The Game Manager MUST coordinate simulation and rendering steps to ensure they can operate in parallel. It provides a consistent state snapshot for rendering while the simulation updates the next state.
+
+- **REQ-GM-011**: Graceful Updates
+  - The Game Manager MUST ensure that state changes (e.g., entity creation, destruction) are reflected in a way that does not disrupt the rendering pipeline. This includes emitting events for all significant changes.
+
 - **CON-001**: Partial determinism
   - Because the current implementation mixes seeded RNG (`srange`, `srangeInt`) and `Math.random()` (via `randf`) for cosmetic effects, tests that assert full deep-equality across runs must seed and control which fields are compared (simulate-critical fields only).
 
@@ -248,9 +257,9 @@ Edge cases:
 
 ## 11. Related Specifications / Further Reading
 
- - `spec/spec-design-renderer.md` — renderer contract and visual integration (how GM state is consumed).
- - `spec/spec-design-webgl-renderer.md` — WebGL renderer performance and atlas handling.
- - `src/simulate.js` — deterministic simulateStep implementation contract.
+- `spec/spec-design-renderer.md` — renderer contract and visual integration (how GM state is consumed).
+- `spec/spec-design-webgl-renderer.md` — WebGL renderer performance and atlas handling.
+- `src/simulate.js` — deterministic simulateStep implementation contract.
 
 ---
 

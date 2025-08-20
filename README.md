@@ -100,3 +100,33 @@ A `src/gamemanager.js` module centralizes simulation and game state so renderers
 - `resetReinforcementCooldowns(), handleReinforcement(dt, team), evaluateReinforcement(dt)` — reinforcement helpers for tests.
 
 Prefer importing `src/gamemanager.js` directly in unit tests when you need to assert on simulation state without involving the renderer.
+
+## WebGL Renderer (Experimental)
+
+### Overview
+The WebGL renderer is an experimental feature designed to improve performance and visual fidelity. It uses instanced rendering and batching techniques to minimize draw calls and optimize GPU usage.
+
+### How to Start
+1. Ensure you have a local server running (`npm run serve`).
+2. Open `space_themed_autobattler_canvas_red_vs_blue_standalone.html` in your browser.
+
+### Key Files
+- `src/webglRenderer.js`: Core WebGL rendering logic.
+- `src/webgl_head.js`: Shader definitions and setup.
+
+### Additional WebGL files
+
+- `src/webglRenderer_HEAD.js` — renderer head / setup helpers.
+- `src/webglUtils.js` — utility helpers for GL (shader compile/link, buffer helpers, VAO helpers).
+
+### Start (development)
+
+```powershell
+npm run serve
+# then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html and choose the WebGL renderer if the UI exposes it
+```
+
+### Notes
+- The WebGL renderer adheres to the deterministic simulation contract.
+- All randomness is sourced from the simulation (`rng.js`).
+- Precision qualifiers (`mediump`, `highp`) are used in shaders for mobile compatibility.

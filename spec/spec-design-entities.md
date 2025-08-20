@@ -1,6 +1,6 @@
 ---
 title: Design - Entities (Ship & Bullet)
-version: 1.0
+version: 1.1
 date_created: 2025-08-20
 last_updated: 2025-08-20
 owner: SpaceAutoBattler Contributors
@@ -39,6 +39,15 @@ Scope:
 - **SEC-ENT-001**: Entities must not access DOM or networking. No external side-effects from entity methods.
 - **CON-ENT-001**: Entities must be deterministic when RNG is seeded and call-order is fixed.
 - **GUD-ENT-001**: Prefer plain serializable objects for state; attach small methods if needed but keep core state as POJOs for ease of testing.
+- **REQ-ENT-007**: Modularized Ship Components
+  - Ships MUST have modularized components for hull, armor, and shields. Each component MUST have independent stats and behavior.
+  - Hull: Base HP and structural integrity.
+  - Armor: Reduces incoming damage by a percentage or flat value.
+  - Shields: Absorb damage before armor and hull; regenerate over time.
+
+- **REQ-ENT-008**: Cannon System
+  - Ships MUST support multiple cannon types for firing bullets. Each cannon MUST have independent stats (reload time, range, damage).
+  - Bullets fired MUST include `ownerId` to tie them to the ship that fired them.
 
 ## 4. Interfaces & Data Contracts
 
@@ -58,7 +67,7 @@ Public factories and their expected shapes (recommended names):
 
 Data contract examples:
 
-Ship example JSON:
+Ship example JSON (expanded):
 
 ```json
 {
@@ -70,11 +79,16 @@ Ship example JSON:
   "vy": -0.2,
   "hp": 30,
   "maxHp": 50,
+  "armor": 10,
   "shield": 8,
   "maxShield": 10,
   "shieldRegen": 0.5,
   "dmg": 5,
   "radius": 8,
+  "cannons": [
+    { "type": "laser", "reload": 0.2, "range": 150, "damage": 10 },
+    { "type": "missile", "reload": 1.0, "range": 300, "damage": 25 }
+  ],
   "isCarrier": false,
   "alive": true,
   "level": 1,
@@ -173,5 +187,5 @@ Edge cases:
 
 ## 11. Related Specifications / Further Reading
 
- - `spec/spec-design-simulate.md` — simulation step contract and events.
- - `spec/spec-design-rng.md` — seeded RNG contract and usage.
+- `spec/spec-design-simulate.md` — simulation step contract and events.
+- `spec/spec-design-rng.md` — seeded RNG contract and usage.
