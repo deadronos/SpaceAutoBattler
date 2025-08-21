@@ -99,6 +99,81 @@ npx http-server ./dist -c-1 -p 8080
 # then open http://localhost:8080/index.html
 ```
 
+Render the architecture flowchart (Graphviz / DOT)
+-----------------------------------------------
+
+This repo includes a DOT source at `docs/flowchart.dot` (Graphviz). You can render it to SVG in two ways:
+
+- If you have Graphviz installed (native `dot` command):
+
+```powershell
+dot -Tsvg docs/flowchart.dot -o docs/flowchart.svg
+```
+
+- If you prefer a JS-only path (no native Graphviz), install `viz.js` and use the included helper:
+
+```powershell
+npm install --save-dev viz.js
+node tools/renderDot.cjs docs/flowchart.dot docs/flowchart.svg
+```
+
+The repository also contains `docs/flowchart.dot` (source). If you want me to run the render and commit the SVG for you, I can add `viz.js` as a devDependency and generate `docs/flowchart.svg` in the repo — tell me to proceed.
+
+## Migration: initStars and createStarCanvas API changes
+
+Recent changes made the `initStars` and `createStarCanvas` APIs explicit to improve determinism and testability.
+
+- Old (legacy) signatures:
+
+```js
+// legacy - ambiguous star source (removed)
+// initStars(W, H, count);
+// createStarCanvas(W, H, bg);
+```
+
+- New signatures (BREAKING change):
+
+```js
+// new - explicit state-first API
+// state must be an object containing `stars` array, e.g. { stars }
+initStars(state, W = 800, H = 600, count = 140);
+createStarCanvas(state, W = 800, H = 600, bg = '#041018');
+```
+
+Migration steps:
+
+1. Where you previously called `initStars(W, H, count)`, change it to:
+
+```js
+// assume you have `const stars = []` somewhere
+initStars({ stars }, W, H, count);
+// or pass your existing state object that contains a `stars` array
+initStars(state, W, H, count);
+```
+
+2. For `createStarCanvas`, prefer passing the same state object so the function reads the canonical star list:
+
+```js
+// recommended
+const canvas = createStarCanvas({ stars }, W, H, '#041018');
+
+// legacy form is still supported for now but will be removed in a future release
+// createStarCanvas(W, H, '#041018');
+```
+
+3. Ensure your code seeds the RNG before calling `initStars` if you expect deterministic results in tests:
+
+```js
+import { srand } from './src/rng.js';
+srand(12345);
+initStars(state, 800, 600, 140);
+```
+
+Rationale:
+- Passing `state` first makes the star helpers explicitly operate on the provided star array and avoids implicit global state usage. It also keeps RNG call order deterministic for tests.
+
+If you want help updating a specific file or test to the new API, tell me which file and I will update it.
+
 Running the demo locally
 ------------------------
 1. Serve the repository or open `space_themed_autobattler_canvas_red_vs_blue.html` in a modern browser.

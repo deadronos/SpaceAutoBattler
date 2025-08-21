@@ -1,0 +1,48 @@
+// Flowchart for SpaceAutoBattler architecture (Graphviz DOT)
+digraph SpaceAutoBattler {
+  rankdir=LR;
+  node [shape=record, fontname="Helvetica", fontsize=10];
+
+  bootstrap [label="Bootstrap\n(index / main)\n- find canvas\n- create renderer\n- seed RNG?\n- reset() / initStars()", shape=box];
+  loop [label="Game Loop\nrequestAnimationFrame / timer\n-> simulate(dt) -> render(state)", shape=oval];
+
+  subgraph cluster_sim {
+    label="Simulation";
+    style=rounded;
+    sim [label="simulate(dt, W,H)\n- build state object\n- call simulateStep(state, dt, bounds)\n- collect events: explosions, shieldHits, healthHits", shape=box];
+    rng [label="RNG (src/rng.js)\nsrand(seed)\n- deterministic randomness for simulation", shape=note];
+    sim -> rng [style=dashed];
+  }
+
+  subgraph cluster_renderer {
+    label="Renderer";
+    style=rounded;
+    renderer [label="renderer.js / webglRenderer.js\n- consume state & event arrays\n- draw ships, bullets, particles\n- visual-only effects (no game logic)", shape=box];
+    gl [label="WebGL path (instanced)\n- VBOs, instancing, diagnostics", shape=component];
+    canvas [label="Canvas2D fallback", shape=component];
+    renderer -> gl [label="prefer" ];
+    renderer -> canvas [label="fallback", style=dashed];
+  }
+
+  events [label="Event arrays in state\n- state.explosions[]\n- state.shieldHits[]\n- state.healthHits[]", shape=note];
+
+  assets [label="Assets / Starfield\ncreateStarCanvas(state)\n- cached offscreen canvas", shape=folder];
+
+  // Connections
+  bootstrap -> loop;
+  loop -> sim;
+  sim -> events;
+  events -> renderer [label="consumed each frame"];
+  loop -> renderer [style=dotted];
+  bootstrap -> assets;
+  renderer -> assets [label="draw starCanvas", style=dotted];
+
+  // Debug & tests
+  diag [label="Diagnostics & Tests\n- Vitest unit tests\n- Playwright E2E (opt-in)\n- renderer diagnostics exposed for tests", shape=note];
+  diag -> renderer [style=dashed];
+  diag -> sim [style=dashed];
+
+  // Layout hints
+  { rank=same; bootstrap; assets }
+  { rank=same; sim; renderer }
+}
