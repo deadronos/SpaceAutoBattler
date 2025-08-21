@@ -109,6 +109,16 @@ Testing & determinism
 - Tests are in `test/` and are written for Vitest.
 - Seed the RNG in tests for deterministic results: `srand(12345)`.
 
+Playwright (JS vs TS discovery)
+--------------------------------
+If Playwright's VS Code extension or test discovery doesn't show your Playwright tests, it may be configured to look for TypeScript tests by default. This repo uses JavaScript test files in `test/playwright/`.
+
+- Ensure the Playwright extension is pointed at the repo config (we set this in `.vscode/settings.json` via `"playwright.configPath": "playwright.config.cjs"`).
+- If the extension is configured for TypeScript projects, change the language/discovery option to JavaScript or set Playwright's init options to JavaScript so files like `test/playwright/*.test.js` are discovered.
+- Alternatively, use an explicit glob in your Test Explorer settings (see `.vscode/settings.json`) such as `test/**/*.test.js` or the explicit array of patterns to force discovery of `.js` tests.
+
+This project includes a `.vscode/settings.json` entry that helps both Playwright and Test Explorer locate JS tests.
+
 Contributing
 ------------
 Contributions welcome. When changing gameplay behavior:

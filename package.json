@@ -13,7 +13,8 @@
     "test:playwright": "playwright test -c playwright.config.cjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.35.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.3.0",
     "esbuild": "^0.25.9",
     "http-server": "^14.1.1",
     "jsdom": "^22.1.0",
