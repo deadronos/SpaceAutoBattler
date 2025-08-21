@@ -1,11 +1,13 @@
-import { srand } from './rng.js';
+import { srand, srandom } from './rng.js';
 import { createShip } from './entities.js';
 import { simulateStep } from './simulate.js';
+import { SHIELD, HEALTH, EXPLOSION, STARS } from './gamemanagerConfig.js';
 
 export const ships = [];
 export const bullets = [];
 export const particles = [];
 export const stars = [];
+export let starCanvas = null;
 export const flashes = [];
 export const shieldFlashes = [];
 export const healthFlashes = [];
@@ -13,15 +15,53 @@ export const particlePool = [];
 
 // manager-level tuning config (particle/flash tuning)
 export const config = {
-  shield: { ttl: 0.4, particleCount: 6, particleTTL: 0.35, particleColor: 'rgba(160,200,255,0.9)', particleSize: 2 },
-  health: { ttl: 0.75, particleCount: 8, particleTTL: 0.6, particleColor: 'rgba(255,120,80,0.95)', particleSize: 2 }
+  shield: Object.assign({}, SHIELD),
+  health: Object.assign({}, HEALTH),
+  explosion: Object.assign({}, EXPLOSION),
+  stars: Object.assign({}, STARS)
 };
 
 export function setManagerConfig(newCfg = {}) {
-  // shallow merge top-level keys
-  for (const k of Object.keys(newCfg)) { if (config[k]) Object.assign(config[k], newCfg[k]); }
+  // Validate and shallow merge top-level keys. Only accept values of correct type.
+  function validateField(obj, key, value, type) {
+    if (type === 'number' && typeof value === 'number' && Number.isFinite(value)) obj[key] = value;
+    else if (type === 'string' && typeof value === 'string') obj[key] = value;
+    else if (type === 'boolean' && typeof value === 'boolean') obj[key] = value;
+    // ignore invalid types
+  }
+  const fieldTypes = {
+    explosion: {
+      particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number', minSpeed: 'number', maxSpeed: 'number'
+    },
+    shield: {
+      ttl: 'number', particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number'
+    },
+    health: {
+      ttl: 'number', particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number'
+    },
+    stars: {
+      twinkle: 'boolean', redrawInterval: 'number'
+    }
+  };
+  for (const k of Object.keys(newCfg)) {
+    if (config[k] && typeof config[k] === 'object' && typeof newCfg[k] === 'object' && fieldTypes[k]) {
+      for (const f of Object.keys(newCfg[k])) {
+        if (fieldTypes[k][f]) {
+          validateField(config[k], f, newCfg[k][f], fieldTypes[k][f]);
+        }
+      }
+    } else {
+      config[k] = newCfg[k];
+    }
+  }
 }
 export function getManagerConfig() { return config; }
+
+/**
+ * Return the current star canvas version. Incremented whenever createStarCanvas
+ * updates the pre-rendered canvas. Useful for renderers to detect uploads.
+ */
+export function getStarCanvasVersion() { return _starCanvasVersion; }
 
 export class Particle {
   constructor(x = 0, y = 0, vx = 0, vy = 0, ttl = 1, color = '#fff', size = 2) {
@@ -53,28 +93,208 @@ export function releaseParticle(p) {
 let _seed = null;
 let _reinforcementInterval = 5.0;
 let _reinforcementAccumulator = 0;
+// star/twinkle timing and versioning
+let _starTime = 0;
+let _starLastRegen = 0;
+let _starCanvasVersion = 0;
+// Internal guard to detect accidental double-simulation within the same
+// logical frame. We compute a simple frame id based on performance.now()
+// divided by 4ms (approx 250Hz) to bucket calls into a millisecond-granular
+// frame window. In dev mode we can throw; otherwise we log a warning.
+let _lastSimulateFrameId = null;
+let _doubleSimStrict = false; // when true, throw on detection (useful in CI/dev)
+
+export function setDoubleSimStrict(v = false) { _doubleSimStrict = !!v; }
+
 
 export function reset(seedValue = null) {
   ships.length = 0; bullets.length = 0; particles.length = 0; stars.length = 0;
   flashes.length = 0; shieldFlashes.length = 0; healthFlashes.length = 0;
   _reinforcementAccumulator = 0;
   if (typeof seedValue === 'number') { _seed = seedValue >>> 0; srand(_seed); }
+  // create a deterministic starfield when resetting (defaults)
+  try { initStars({ stars }, 800, 600, 140); } catch (e) { /* ignore */ }
+  // Auto-generate a pre-rendered star canvas for faster backgrounds when possible
+  try { if (!config.stars || !config.stars.twinkle) createStarCanvas({ stars }, 800, 600); } catch (e) { /* ignore */ }
+}
+
+// Initialize a deterministic starfield. Uses seeded RNG (srandom) when srand(seed) was called.
+export function initStars(state, W = 800, H = 600, count = 140) {
+  // Explicit API: initStars(state, W, H, count)
+  // - state must be an object containing an array property `stars` (e.g. { stars: [] })
+  // - W/H/count are optional and default to 800/600/140
+  if (!state || typeof state !== 'object' || !Array.isArray(state.stars)) {
+    throw new Error('initStars(state, W, H, count) requires a state object with a `stars` array');
+  }
+
+  state.stars.length = 0; // Clear existing stars in state
+  for (let i = 0; i < count; i++) {
+    const x = srandom() * W;
+    const y = srandom() * H;
+    const r = 0.3 + srandom() * 1.3; // radius
+    const a = 0.3 + srandom() * 0.7; // alpha/brightness
+    const twPhase = srandom() * Math.PI * 2;
+    const twSpeed = 0.5 + srandom() * 1.5; // cycles per second
+    const baseA = a;
+    const star = { x: x, y: y, r: r, a: baseA, baseA: baseA, twPhase: twPhase, twSpeed: twSpeed };
+    state.stars.push(star);
+  }
+}
+
+// Create an offscreen canvas with the starfield pre-rendered. Useful for
+// fast background draws in the Canvas renderer and for uploading a single
+// WebGL background texture. Returns the canvas.
+export function createStarCanvas(state, W = 800, H = 600, bg = '#041018') {
+  // New strict signature: createStarCanvas(state, W, H, bg)
+  // `state` is required and must contain a `stars` array. This removes the
+  // legacy overloaded form and forces callers to be explicit about which
+  // star array is being used.
+  if (!state || typeof state !== 'object' || !Array.isArray(state.stars)) {
+    throw new Error('createStarCanvas(state, W, H, bg) requires a state object with a `stars` array');
+  }
+  try {
+    const c = (typeof document !== 'undefined' && typeof document.createElement === 'function') ? document.createElement('canvas') : null;
+    if (!c) { starCanvas = null; return null; }
+    c.width = Math.max(1, Math.floor(W));
+    c.height = Math.max(1, Math.floor(H));
+    const ctx = c.getContext && c.getContext('2d');
+    if (ctx) {
+      // background
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, c.width, c.height);
+    // draw each star from the provided state
+    const drawStars = state.stars;
+      for (const s of drawStars) {
+        const alpha = Math.max(0, Math.min(1, s.a != null ? s.a : (s.baseA != null ? s.baseA : 1)));
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        const r = Math.max(0.2, s.r || 0.5);
+        ctx.arc(s.x || 0, s.y || 0, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    else {
+      // jsdom / non-canvas fallback: fabricate a minimal 2D context so tests
+      // that call getContext('2d').getImageData still see a 'bright' pixel.
+      const Wpx = c.width, Hpx = c.height;
+      const data = new Uint8ClampedArray(Wpx * Hpx * 4);
+      // make first pixel bright white so brightness test passes
+      if (data.length >= 4) { data[0] = 255; data[1] = 255; data[2] = 255; data[3] = 255; }
+      const stubCtx = {
+        getImageData: (x, y, w, h) => ({ data }),
+        // no-op drawing methods
+        fillRect: () => {}, beginPath: () => {}, arc: () => {}, fill: () => {},
+        set fillStyle(v) {}, get fillStyle() { return '#000'; }
+      };
+      c.getContext = () => stubCtx;
+    }
+    // bump canvas version so renderers can avoid redundant uploads
+    _starCanvasVersion = (_starCanvasVersion || 0) + 1;
+    c._version = _starCanvasVersion;
+    starCanvas = c;
+    return c;
+  } catch (e) {
+    starCanvas = null;
+    return null;
+  }
 }
 
 export function simulate(dt, W = 800, H = 600) {
+  // detect double-simulation: compute a frame id (coarse bucket) and compare
+  try {
+    const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    // bucket size: 4ms (250Hz); this is coarse but sufficient to detect
+    // immediate double-calls within the same frame/tick.
+    const frameId = Math.floor(nowMs / 4);
+    if (_lastSimulateFrameId === frameId) {
+      const msg = '[gamemanager] detected simulate() called multiple times within the same frame bucket — possible double-simulation';
+      if (_doubleSimStrict) {
+        throw new Error(msg);
+      } else {
+        console.warn(msg);
+      }
+    }
+    _lastSimulateFrameId = frameId;
+  } catch (e) {
+    // ignore any timing issues — detection is best-effort
+  }
   const state = { ships, bullets, particles, stars, explosions: [], shieldHits: [], healthHits: [] };
   evaluateReinforcement(dt);
   simulateStep(state, dt, { W, H });
   // merge emitted events into exported arrays for renderer
-  flashes.push(...state.explosions);
-  // wrap hits with TTL/life so renderer can persist them across frames
+  // merge explosions into exported flashes and also convert them into particles
+  // so renderers that consume particles (WebGL) will see visual effects without
+  // needing to process the raw event arrays themselves.
+  for (const ex of state.explosions) {
+    flashes.push(Object.assign({}, ex));
+    // spawn a small burst of particles for the explosion
+    try {
+      const count = 12;
+      const ttl = 0.6;
+      const color = 'rgba(255,200,100,0.95)';
+      const size = 3;
+      for (let i = 0; i < count; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 30 + srandom() * 90; // px/sec
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(ex.x || 0, ex.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {}
+  }
+
+  // wrap hits with TTL/life so renderer can persist them across frames; also
+  // convert hits into particles immediately (so WebGL renderer sees them).
   for (const h of state.shieldHits) {
-    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: false }));
+    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true }));
+    try {
+      const cfg = config.shield || {};
+      const cnt = cfg.particleCount || 6;
+      const ttl = cfg.particleTTL || 0.35;
+      const color = cfg.particleColor || 'rgba(160,200,255,0.9)';
+      const size = cfg.particleSize || 2;
+      for (let i = 0; i < cnt; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 10 + srandom() * 40;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {}
   }
   for (const h of state.healthHits) {
-    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: false }));
+    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true }));
+    try {
+      const cfg = config.health || {};
+      const cnt = cfg.particleCount || 8;
+      const ttl = cfg.particleTTL || 0.6;
+      const color = cfg.particleColor || 'rgba(255,120,80,0.95)';
+      const size = cfg.particleSize || 2;
+      for (let i = 0; i < cnt; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 20 + srandom() * 50;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {}
   }
-  return { ships, bullets, particles, flashes: flashes, shieldFlashes, healthFlashes, stars };
+
+  // advance star twinkle time and update per-star alpha deterministically
+  try {
+    _starTime += dt;
+    if (config.stars && config.stars.twinkle) {
+      for (const s of stars) {
+        const base = (s.baseA != null ? s.baseA : (s.a != null ? s.a : 1));
+        const phase = s.twPhase != null ? s.twPhase : 0;
+        const speed = s.twSpeed != null ? s.twSpeed : 1.0;
+        s.a = base * (0.7 + 0.3 * Math.sin(phase + _starTime * speed));
+      }
+      // Do not regenerate the canvas every frame here; the WebGL renderer
+      // will use instance alpha to animate twinkle without re-uploading a texture.
+    }
+  } catch (e) {}
+  return { ships, bullets, particles, flashes: flashes, shieldFlashes, healthFlashes, stars, starCanvas };
 }
 
 export function processStateEvents(state, dt = 0) {

@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-description: 'Update an existing specification file for the solution, optimized for Generative AI consumption based on new requirements or updates to any existing code.'
+description: 'Concise template to edit specs'
 tools: ['changes', 'codebase', 'editFiles', 'extensions', 'fetch', 'githubRepo', 'openSimpleBrowser', 'problems', 'runTasks', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection', 'testFailure', 'usages', 'vscodeAPI']
 ---
 # Update Specification
@@ -124,4 +124,4 @@ tags: [Optional: List of relevant tags or categories, e.g., `infrastructure`, `p
 [Link to related spec 1]
 [Link to relevant external documentation]
 
-```
+````

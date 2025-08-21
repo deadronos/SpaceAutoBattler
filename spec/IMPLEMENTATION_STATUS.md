@@ -5,7 +5,8 @@ This file maps the design spec files in `spec/` to the current implementation un
 ## Overview
 
 - Core contract implemented: seeded RNG, deterministic simulation entry points, `simulateStep(state, dt, bounds)` event emission contract (explosions, shieldHits, healthHits), Canvas renderer that consumes numeric events and draws effects.
-- Major missing / partial items: full WebGL renderer, progressionConfig constants, advanced ship/cannon systems, gamemanager strategy hooks.
+- Recent work (this branch): deterministic star generation (seeded), programmatic starfield pre-render (offscreen `starCanvas` with `_version` guarding), WebGL streaming / instancing plumbing (partial), and Playwright global listeners that capture console/pageerror logs, screenshots and traces on failure.
+- Major missing / partial items: full WebGL renderer parity and polishing, progressionConfig wiring and tests, deterministic cannon system, gamemanager strategy hooks.
 
 ---
 
@@ -19,7 +20,7 @@ This file maps the design spec files in `spec/` to the current implementation un
 
   - Ship/Bullet factories, basic HP/shield/damage, pickTarget, spawnFleet present.
 
-  - Missing: detailed cannon subsystem, progressionConfig linkage, full carrier/fighter pooling.
+  - Missing: detailed cannon subsystem, progressionConfig linkage, full carrier/fighter pooling. Class-based exports (Ship/Bullet) are partially present; API parity still needs finishing.
 
 - spec/spec-design-simulate.md -> src/simulate.js — Done (core) / Partial (advanced)
 
@@ -29,17 +30,25 @@ This file maps the design spec files in `spec/` to the current implementation un
 
   - Manager arrays, reset(seed), simulate wrapper, particle pooling, event TTLs, config object implemented.
 
+  - Recent additions: deterministic `initStars()` (seeded), `createStarCanvas()` pre-render with version guard, and tie-ins so renderers can use the pre-rendered `state.starCanvas`.
+
   - Missing: strategy hooks, diagnostic hooks, configurable reinforcement strategies.
 
 - spec/spec-design-renderer.md -> src/renderer.js — Done (basic) / Partial (advanced)
 
   - Canvas renderer implemented, consumes flashes/particles, deterministic visuals, `renderOnce` exposed for tests.
 
-  - Missing: performance optimizations, atlas-based batching (optional).
+  - Recent work: canvas renderer will use `state.starCanvas` when available (faster draw), and twinkle metadata is updated deterministically in the simulation wrapper so visuals stay seed-deterministic.
 
-- spec/spec-design-webgl-renderer.md -> src/webglRenderer.js — Partial / Stub
+  - Missing: performance optimizations beyond current pre-rendering, atlas-based batching (optional).
 
-  - WebGL renderer currently a stub; spec-level instanced renderer and buffer streaming not implemented.
+- spec/spec-design-webgl-renderer.md -> src/webglRenderer.js — Partial / In-progress
+
+  - WebGL renderer has partial streaming-instancing implementation on branch `webgl-streaming-instancing`:
+    - Streaming instance buffer support, per-instance alpha written for twinkle animation.
+    - Guarded starfield texture uploads using pre-rendered canvas `_version` to avoid redundant uploads.
+    - Cached fullscreen quad VBO implemented.
+  - Remaining work: complete shader/uniform/attribute location caching, finish all instanced draw paths and fallback paths, add smoke tests to verify WebGL path in Playwright.
 
 ---
 
@@ -259,3 +268,37 @@ docs(spec): add implementation status and PR plan
 3. Iterate down the PR list, keeping PRs small and tested.
 
 If you want I can implement PR 1 now in this workspace and run the tests — say "Start PR 1" and I'll apply the changes and run the suite.
+
+---
+
+## Outstanding todos & verification
+
+The work in this branch has progressed beyond the original doc. Below are the current high-priority tasks, their purpose, and quick verification steps.
+
+- Diagnose missing crash-dumps (HIGH)
+  - Purpose: Ensure Playwright global listeners reliably persist crash dumps (logs, screenshots, traces) to `playwright-report/crash-dumps` (or a fallback) when a test fails or a page crashes.
+  - Status: In-progress. Instrumentation added to `test/playwright/playwright-global-listeners.js` to write verbose markers and fallback to `os.tmpdir()`.
+  - Verify: Run a single failing Playwright test and check for written files. Example command:
+
+```powershell
+npx playwright test test/playwright/temp.fail.test.js -c playwright.config.cjs --reporter=list -j 1
+Get-ChildItem -Path .\playwright-report\crash-dumps -File -Recurse -ErrorAction SilentlyContinue
+```
+
+- Remove temporary failing test (MEDIUM)
+  - Purpose: Cleanup once crash-dump persistence verified.
+  - Status: Not started. File: `test/playwright/temp.fail.test.js`.
+
+- Add twinkle determinism unit test (MEDIUM)
+  - Purpose: Prevent regressions to seeded star twinkle behavior.
+  - Suggested test: seed RNG, call `initStars()`, step `simulate` N frames, assert per-star alphas are identical on re-seed.
+
+- Sweep remaining Math.random() usages (LOW)
+  - Purpose: Complete PR 1 — ensure `srandom()` is used everywhere for determinism.
+  - Verify: `git grep "Math.random"` and replace relevants with `srandom()` or `srange()`.
+
+When the above are complete, remove debug marker writes from the global listener and verify the full test suite (`npm test` + `npx playwright test`) passes in CI.
+
+---
+
+If you'd like, I can run the failing Playwright test now and iterate until crash dumps are reliably produced; say "Run failing test" and I'll execute it and report the exact file paths and console logs.

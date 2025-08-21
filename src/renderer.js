@@ -2,10 +2,19 @@
 import { simulate, acquireParticle, releaseParticle, particles, shieldFlashes, healthFlashes, config } from './gamemanager.js';
 import { srandom } from './rng.js';
 
+/**
+ * Create a Canvas renderer for the game. This is a thin, visual-only layer
+ * that calls into `simulate()` to advance the deterministic simulation and
+ * renders the resulting state. The renderer keeps no authoritative state;
+ * it only consumes the manager exports.
+ *
+ * @param {HTMLCanvasElement} canvas target canvas
+ */
 export function createCanvasRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   let _running = false;
   let _last = null;
+
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const w = Math.floor(canvas.clientWidth * dpr);
@@ -15,30 +24,68 @@ export function createCanvasRenderer(canvas) {
 
   function doRender(t) {
     const now = t / 1000;
-    const dt = _last ? Math.min(0.05, now - _last) : 1/60;
+    const dt = _last ? Math.min(0.05, now - _last) : 1 / 60;
     _last = now;
     resize();
     const W = canvas.width; const H = canvas.height;
-    const state = simulate(dt, W, H);
+    let state;
+    try {
+      state = simulate(dt, W, H);
+    } catch (e) {
+      // Guard simulation call so renderer can't crash tests if simulate throws
+      // (simulation should be deterministic and not throw in normal cases).
+      console.error('simulate() failed in renderer:', e);
+      return;
+    }
+
     // clear
-    ctx.clearRect(0,0,canvas.width, canvas.height);
-    // background stars placeholder
-    ctx.fillStyle = '#081018'; ctx.fillRect(0,0,canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // background: prefer pre-rendered starCanvas (fast) otherwise draw individual stars
+    if (state.starCanvas) {
+      try {
+        ctx.drawImage(state.starCanvas, 0, 0, canvas.width, canvas.height);
+      } catch (e) {
+        // fallback to per-star drawing if drawImage fails
+        ctx.fillStyle = '#041018'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (state.stars && state.stars.length) {
+          for (const s of state.stars) {
+            ctx.globalAlpha = s.a != null ? s.a : 1.0;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.globalAlpha = 1.0;
+        }
+      }
+    } else {
+      // per-star fallback
+      if (state.stars && state.stars.length) {
+        ctx.fillStyle = '#041018'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // draw stars (cheap: 1-2px circles)
+        for (const s of state.stars) {
+          ctx.globalAlpha = s.a != null ? s.a : 1.0;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+      } else {
+        ctx.fillStyle = '#081018'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
     // draw ships
     for (const s of state.ships) {
       ctx.beginPath();
       ctx.fillStyle = s.team === 'red' ? '#ff8080' : '#80b8ff';
-      ctx.arc(s.x, s.y, s.radius || 8, 0, Math.PI*2);
+      ctx.arc(s.x, s.y, s.radius || 8, 0, Math.PI * 2);
       ctx.fill();
       // shield ring
       if (s.shield > 0) {
         ctx.strokeStyle = 'rgba(160,200,255,0.35)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(s.x, s.y, Math.max((s.radius||8)+3, (s.radius||8)*1.2), 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(s.x, s.y, Math.max((s.radius || 8) + 3, (s.radius || 8) * 1.2), 0, Math.PI * 2); ctx.stroke();
       }
     }
     // draw bullets
     for (const b of state.bullets) {
-      ctx.fillStyle = '#ffd080'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius||2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ffd080'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius || 2, 0, Math.PI * 2); ctx.fill();
     }
 
     // process shield/health flashes: persist events and spawn particles once
@@ -98,7 +145,7 @@ export function createCanvasRenderer(canvas) {
       const alpha = Math.max(0, p.life / p.ttl);
       ctx.fillStyle = p.color;
       ctx.globalAlpha = alpha;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size || 1, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size || 1, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1.0;
     }
   }
@@ -113,15 +160,20 @@ export function createCanvasRenderer(canvas) {
   function renderOnce(nowMs = performance.now()) {
     // pass a millisecond timestamp consistent with requestAnimationFrame
     doRender(nowMs);
+    return true;
   }
 
   return {
+    type: 'canvas',
+    providesOwnLoop: true,
     init() { resize(); return true; },
     start() { if (!_running) { _running = true; _last = null; requestAnimationFrame(renderFrame); } },
     stop() { _running = false; },
     isRunning() { return _running; },
-  render() { /* manual render placeholder */ },
-  renderOnce,
+    // expose resize so tests can force size updates
+    resize,
+    render() { /* manual render placeholder */ },
+    renderOnce,
     destroy() { this.stop(); }
   };
 }

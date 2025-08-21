@@ -1,0 +1,29 @@
+{
+  // Point Playwright extension to the repo's Playwright config
+  "playwright.configPath": "playwright.config.cjs",
+
+  // Test Explorer / Test Runner - prefer Vitest for unit tests
+  "testExplorer.codeLens": true,
+  "testExplorer.testFramework": "vitest",
+
+  // Discovery patterns (explicit array — some adapters don't support brace expansion)
+  // These globs include files under test/playwright as well as other common test patterns
+  "testExplorer.files.pattern": [
+    "test/**/*.test.js",
+    "test/**/*.spec.js",
+    "test/**/*.test.ts",
+    "test/**/*.spec.ts"
+  ],
+
+  // If you have a separate adapter that expects a Jest config setting, point it to the vitest config (optional)
+  "jest.pathToConfig": "./vitest.config.js",
+
+  // Enable detection of node_modules binaries (helps some extensions)
+  "nodejs.enableInsight": true,
+
+  // Editor conveniences
+  "editor.formatOnSave": false,
+  "editor.tabSize": 2,
+ 
+  }
+}

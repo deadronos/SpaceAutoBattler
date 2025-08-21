@@ -4,12 +4,17 @@ tools: ['githubRepo', 'github', 'get_me', 'get_pull_request', 'get_pull_request_
 description: 'List my pull requests in the current repository'
 ---
 
-Search the current repo (using #githubRepo for the repo info) and list any pull requests you find (using #list_pull_requests) that are assigned to me.
+Receipt: I'll list your open pull requests and their review status.
 
-Describe the purpose and details of each pull request.
+Plan:
+1) Fetch open PRs authored by you.
+2) For each, show Title, Branch, CI status, Review status, and next steps.
+3) Output as a short actionable list.
 
-If a PR is waiting for someone to review, highlight that in the response.
+Assumptions: Uses GitHub API.
 
-If there were any check failures on the PR, describe them and suggest possible fixes.
+Constraints: Limit to 10 PRs.
 
-If there was no review done by Copilot, offer to request one using #request_copilot_review.
+Output: Markdown list with PR links and concise next action per PR.
+
+Example: "#123 feat: add XP for bullets — CI: passing, Reviews: pending — Next: address review comments"

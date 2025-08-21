@@ -28,6 +28,7 @@ Important files
 - `src/renderer.js` — Visual layer (Canvas) that consumes `state` and event arrays.
 - `src/rng.js` — Seeded RNG used by the simulation.
 - `src/progressionConfig.js` — XP and progression constants.
+ - `src/gamemanagerConfig.js` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
 - `space_themed_autobattler_canvas_red_vs_blue.html` — Main page to open in a browser.
 - `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file exported build.
 - `scripts/build-standalone.mjs` — Bundles the renderer and inlines a standalone HTML in `./dist/`.
@@ -99,6 +100,97 @@ npx http-server ./dist -c-1 -p 8080
 # then open http://localhost:8080/index.html
 ```
 
+Render the architecture flowchart (Graphviz / DOT)
+-----------------------------------------------
+
+This repo includes a DOT source at `docs/flowchart.dot` (Graphviz). You can render it to SVG in two ways:
+
+- If you have Graphviz installed (native `dot` command):
+
+```powershell
+dot -Tsvg docs/flowchart.dot -o docs/flowchart.svg
+```
+
+- If you prefer a JS-only path (no native Graphviz), install `viz.js` and use the included helper:
+
+```powershell
+npm install --save-dev viz.js
+node tools/renderDot.cjs docs/flowchart.dot docs/flowchart.svg
+```
+
+The repository also contains `docs/flowchart.dot` (source). If you want me to run the render and commit the SVG for you, I can add `viz.js` as a devDependency and generate `docs/flowchart.svg` in the repo — tell me to proceed.
+
+## Migration: initStars and createStarCanvas API changes
+
+Recent changes made the `initStars` and `createStarCanvas` APIs explicit to improve determinism and testability.
+
+- Old (legacy) signatures:
+
+```js
+// legacy - ambiguous star source (removed)
+// initStars(W, H, count);
+// createStarCanvas(W, H, bg);
+```
+
+- New signatures (BREAKING change):
+
+```js
+// new - explicit state-first API
+// state must be an object containing `stars` array, e.g. { stars }
+initStars(state, W = 800, H = 600, count = 140);
+createStarCanvas(state, W = 800, H = 600, bg = '#041018');
+```
+
+Migration steps:
+
+1. Where you previously called `initStars(W, H, count)`, change it to:
+
+```js
+// assume you have `const stars = []` somewhere
+initStars({ stars }, W, H, count);
+// or pass your existing state object that contains a `stars` array
+initStars(state, W, H, count);
+```
+
+2. For `createStarCanvas`, prefer passing the same state object so the function reads the canonical star list:
+
+```js
+// recommended
+const canvas = createStarCanvas({ stars }, W, H, '#041018');
+
+// legacy form is still supported for now but will be removed in a future release
+// createStarCanvas(W, H, '#041018');
+```
+
+3. Ensure your code seeds the RNG before calling `initStars` if you expect deterministic results in tests:
+
+```js
+import { srand } from './src/rng.js';
+srand(12345);
+initStars(state, 800, 600, 140);
+```
+
+Rationale:
+- Passing `state` first makes the star helpers explicitly operate on the provided star array and avoids implicit global state usage. It also keeps RNG call order deterministic for tests.
+
+If you want help updating a specific file or test to the new API, tell me which file and I will update it.
+
+Gamemanager visual/config note
+------------------------------
+
+The file `src/gamemanagerConfig.js` centralizes visual tuning defaults for the game manager (matching the style of `behaviorConfig.js` and `progressionConfig.js`).
+
+- It exports named defaults: `SHIELD`, `HEALTH`, `EXPLOSION`, and `STARS`.
+- The runtime `src/gamemanager.js` copies these into a `config` object and exposes `setManagerConfig()` for shallow merging of runtime overrides.
+
+Example (change explosion particle count at runtime):
+
+```powershell
+node -e "const gm = require('./src/gamemanager.js'); gm.setManagerConfig({ explosion: { particleCount: 24 } }); console.log(gm.getManagerConfig().explosion.particleCount);"
+```
+
+`setManagerConfig` performs a shallow merge for top-level object keys, so partial updates only modify supplied fields.
+
 Running the demo locally
 ------------------------
 1. Serve the repository or open `space_themed_autobattler_canvas_red_vs_blue.html` in a modern browser.
@@ -108,6 +200,16 @@ Testing & determinism
 ---------------------
 - Tests are in `test/` and are written for Vitest.
 - Seed the RNG in tests for deterministic results: `srand(12345)`.
+
+Playwright (JS vs TS discovery)
+--------------------------------
+If Playwright's VS Code extension or test discovery doesn't show your Playwright tests, it may be configured to look for TypeScript tests by default. This repo uses JavaScript test files in `test/playwright/`.
+
+- Ensure the Playwright extension is pointed at the repo config (we set this in `.vscode/settings.json` via `"playwright.configPath": "playwright.config.cjs"`).
+- If the extension is configured for TypeScript projects, change the language/discovery option to JavaScript or set Playwright's init options to JavaScript so files like `test/playwright/*.test.js` are discovered.
+- Alternatively, use an explicit glob in your Test Explorer settings (see `.vscode/settings.json`) such as `test/**/*.test.js` or the explicit array of patterns to force discovery of `.js` tests.
+
+This project includes a `.vscode/settings.json` entry that helps both Playwright and Test Explorer locate JS tests.
 
 Contributing
 ------------

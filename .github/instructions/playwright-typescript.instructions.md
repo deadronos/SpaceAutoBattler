@@ -55,32 +55,44 @@ test.describe('Movie Search Feature', () => {
       await expect(page.getByRole('main')).toMatchAriaSnapshot(`
         - main:
           - heading "Garfield" [level=1]
-          - heading "search results" [level=2]
-          - list "movies":
-            - listitem "movie":
-              - link "poster of The Garfield Movie The Garfield Movie rating":
-                - /url: /playwright-movies-app/movie?id=tt5779228&page=1
-                - img "poster of The Garfield Movie"
-                - heading "The Garfield Movie" [level=2]
-      `);
-    });
-  });
-});
-```
+          ---
+          description: 'Playwright TS quick guide — one-line receipt, short plan, resilient locators, and a minimal example.'
+          applyTo: '**'
+          ---
 
-## Test Execution Strategy
+          # Playwright (TypeScript) — Quick Guide
 
-1. **Initial Run**: Execute tests with `npx playwright test --project=chromium`
-2. **Debug Failures**: Analyze test failures and identify root causes
-3. **Iterate**: Refine locators, assertions, or test logic as needed
-4. **Validate**: Ensure tests pass consistently and cover the intended functionality
-5. **Report**: Provide feedback on test results and any issues discovered
+          Receipt: "Write a resilient Playwright test for <feature> — plan: scenario, actions, expected assertions."
 
-## Quality Checklist
+          Plan (3 steps):
+          - 1) Declare scenario and page state (URL, auth). 2) Perform user actions using role-based locators. 3) Assert user-visible outcomes with web-first assertions.
 
-Before finalizing tests, ensure:
-- [ ] All locators are accessible and specific and avoid strict mode violations
-- [ ] Tests are grouped logically and follow a clear structure
-- [ ] Assertions are meaningful and reflect user expectations
-- [ ] Tests follow consistent naming conventions
-- [ ] Code is properly formatted and commented
+          Core rules (short):
+          - Prefer user-facing locators: getByRole/getByLabel/getByText.  
+          - Use await + auto-retrying assertions (toHaveText/toHaveURL/toHaveCount).  
+          - Group related interactions with test.step for clarity.  
+          - Avoid hard waits; prefer built-in waits and expect-based checks.
+
+          Minimal example:
+          import { test, expect } from '@playwright/test';
+
+          test('Feature - Search returns results', async ({ page }) => {
+            await page.goto('http://localhost:8080/');
+            await test.step('search for term', async () => {
+              await page.getByRole('search').click();
+              const input = page.getByRole('textbox', { name: 'Search Input' });
+              await input.fill('Garfield');
+              await input.press('Enter');
+            });
+            await expect(page.getByRole('main')).toContainText('Garfield');
+          });
+
+          Checklist before merge:
+          - [ ] Uses role-based locators where possible.  
+          - [ ] No fixed sleeps or flaky selectors.  
+          - [ ] Clear test title and steps.  
+          - [ ] Assertions reflect user-visible behaviour.
+
+          Run: `npx playwright test --project=chromium`
+
+          End.

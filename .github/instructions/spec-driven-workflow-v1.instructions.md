@@ -273,51 +273,36 @@ For use in pull request summaries or executive summaries.
 
 ```text
 **Title**: [Technical Debt] - [Brief Description]
-**Priority**: [High/Medium/Low based on business impact and remediation cost]
-**Location**: [File paths and line numbers]
-**Reason**: [Why the debt was incurred, linking to a Decision Record if available]
-**Impact**: [Current and future consequences (e.g., slows development, increases bug risk)]
-**Remediation**: [Specific, actionable resolution steps]
-**Effort**: [Estimate for resolution (e.g., T-shirt size: S, M, L)]
-```
+---
+description: 'Spec-driven workflow — condensed 6-phase checklist + PR/requirement templates (Cookbook style).'
+applyTo: '**'
+---
 
-### Remediation (Auto-Prioritized)
+# Spec-Driven Workflow — Quick Loop
 
-- Risk-based prioritization with dependency analysis.
-- Effort estimation to aid in future planning.
-- Propose migration strategies for large refactoring efforts.
+Receipt: "Follow a 6-phase spec-driven loop: Analyze → Design → Implement → Validate → Reflect → Handoff."
 
-## Quality Assurance (Automated)
+6-phase micro-plan (one sentence each):
+- Analyze: gather facts, write 2–5 EARS-style requirements.  
+- Design: write a short design (diagram + interfaces) and tasks list.  
+- Implement: small commits, tests, and update tasks.md as you go.  
+- Validate: run automated tests, manual checks, and performance verifications.  
+- Reflect: refactor, update docs, and record technical debt.  
+- Handoff: prepare PR with executive summary, changelog, tests, and artifacts.
 
-### Continuous Monitoring
+Quick templates
+- Requirement (EARS): WHEN <event>, THE SYSTEM SHALL <behavior> [Acceptance: how to test].
+- PR summary (3 lines): 1) Goal: <one-line> 2) Key changes: <files/functions> 3) Validation: <tests/metrics>. Attach decision records if any.
 
-- **Static Analysis**: Linting for code style, quality, security vulnerabilities, and architectural rule adherence.
-- **Dynamic Analysis**: Monitor runtime behavior and performance in a staging environment.
-- **Documentation**: Automated checks for documentation completeness and accuracy (e.g., linking, format).
+Minimal acceptance checklist before merge:
+- [ ] 2–5 testable requirements written.  
+- [ ] Design doc linked in PR.  
+- [ ] Tests for each requirement (unit/integration).  
+- [ ] Performance baseline if applicable.  
+- [ ] Decision records for non-trivial trade-offs.  
+- [ ] Exec summary and streamlined action log included.
 
-### Quality Metrics (Auto-Tracked)
+If blocked: re-run Analyze → adjust Confidence Score → pick PoC if medium/low confidence.
 
-- Code coverage percentage and gap analysis.
-- Cyclomatic complexity score per function/method.
-- Maintainability index assessment.
-- Technical debt ratio (e.g., estimated remediation time vs. development time).
-- Documentation coverage percentage (e.g., public methods with comments).
-
-## EARS Notation Reference
-
+End.
 **EARS (Easy Approach to Requirements Syntax)** - Standard format for requirements:
-
-- **Ubiquitous**: `THE SYSTEM SHALL [expected behavior]`
-- **Event-driven**: `WHEN [trigger event] THE SYSTEM SHALL [expected behavior]`
-- **State-driven**: `WHILE [in specific state] THE SYSTEM SHALL [expected behavior]`
-- **Unwanted behavior**: `IF [unwanted condition] THEN THE SYSTEM SHALL [required response]`
-- **Optional**: `WHERE [feature is included] THE SYSTEM SHALL [expected behavior]`
-- **Complex**: Combinations of the above patterns for sophisticated requirements
-
-Each requirement must be:
-
-- **Testable**: Can be verified through automated or manual testing
-- **Unambiguous**: Single interpretation possible
-- **Necessary**: Contributes to the system's purpose
-- **Feasible**: Can be implemented within constraints
-- **Traceable**: Linked to user needs and design elements
