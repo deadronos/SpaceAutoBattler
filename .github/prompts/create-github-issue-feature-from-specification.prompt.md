@@ -1,28 +1,19 @@
 ---
 mode: 'agent'
-description: 'Create GitHub Issue for feature request from specification file using feature_request.yml template.'
-tools: ['codebase', 'search', 'github', 'create_issue', 'search_issues', 'update_issue']
+description: 'Cookbook: create a concise GitHub feature issue from a spec file using the feature_request template.'
 ---
-# Create GitHub Issue from Specification
 
-Create GitHub Issue for the specification at `${file}`.
+Receipt: I'll convert the provided spec into 3 actionable GitHub issues with acceptance criteria.
 
-## Process
+Plan:
+1) Extract 3 distinct deliverables from the spec (smallest valuable increments).
+2) For each, provide a title, short description, acceptance criteria, and estimated difficulty (S/M/L).
+3) Output as Markdown ready to paste into GitHub issues.
 
-1. Analyze specification file to extract requirements
-2. Check existing issues using `search_issues`
-3. Create new issue using `create_issue` or update existing with `update_issue`
-4. Use `feature_request.yml` template (fallback to default)
+Assumptions: Spec is short (≤ 600 words). If longer, summarise first.
 
-## Requirements
+Constraints: Keep each issue to ≤ 6 lines.
 
-- Single issue for the complete specification
-- Clear title identifying the specification
-- Include only changes required by the specification
-- Verify against existing issues before creation
+Output: Markdown list of 3 issues with fields: Title, Description, Acceptance, Estimate.
 
-## Issue Content
-
-- Title: Feature name from specification
-- Description: Problem statement, proposed solution, and context
-- Labels: feature, enhancement (as appropriate)
+Example: Spec: 'Add shield regen' → Issues: design constants (S), implement regen logic (M), add tests (S).

@@ -1,0 +1,30 @@
+{
+  "versatile-toolset": {
+    "tools": [
+      "websearch",
+      "think",
+      "deepResearch",
+      "askAboutFile",
+      "create_or_update_file",
+      "create_or_update_file",
+      "add_observations",
+      "create_entities",
+      "create_relations",
+      "search_nodes",
+      "runCommands",
+      "runTests"
+    ],
+    "description": "A versatile agent toolset for web research, deep thinking, code reading/editing, and MCP memory operations.",
+    "icon": "tools"
+  },
+  "code-editing": {
+    "tools": ["askAboutFile","create_or_update_file","create_or_update_file","changes"],
+    "description": "Focused tools for reading and editing workspace files.",
+    "icon": "edit"
+  },
+  "research-and-thinking": {
+    "tools": ["websearch","search","think","deepResearch"],
+    "description": "Quick web research and deep analysis toolset.",
+    "icon": "search"
+  }
+}

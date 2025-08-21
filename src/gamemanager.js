@@ -1,6 +1,7 @@
 import { srand, srandom } from './rng.js';
 import { createShip } from './entities.js';
 import { simulateStep } from './simulate.js';
+import { SHIELD, HEALTH, EXPLOSION, STARS } from './gamemanagerConfig.js';
 
 export const ships = [];
 export const bullets = [];
@@ -14,22 +15,41 @@ export const particlePool = [];
 
 // manager-level tuning config (particle/flash tuning)
 export const config = {
-  shield: { ttl: 0.4, particleCount: 6, particleTTL: 0.35, particleColor: 'rgba(160,200,255,0.9)', particleSize: 2 },
-  health: { ttl: 0.75, particleCount: 8, particleTTL: 0.6, particleColor: 'rgba(255,120,80,0.95)', particleSize: 2 }
-};
-
-// starfield visual config
-config.stars = {
-  twinkle: false,
-  redrawInterval: 0.35 // seconds between canvas redraws when twinkling
+  shield: Object.assign({}, SHIELD),
+  health: Object.assign({}, HEALTH),
+  explosion: Object.assign({}, EXPLOSION),
+  stars: Object.assign({}, STARS)
 };
 
 export function setManagerConfig(newCfg = {}) {
-  // shallow merge top-level keys. If a key exists and is an object, merge
-  // into the existing object. If it doesn't exist, copy as-is.
+  // Validate and shallow merge top-level keys. Only accept values of correct type.
+  function validateField(obj, key, value, type) {
+    if (type === 'number' && typeof value === 'number' && Number.isFinite(value)) obj[key] = value;
+    else if (type === 'string' && typeof value === 'string') obj[key] = value;
+    else if (type === 'boolean' && typeof value === 'boolean') obj[key] = value;
+    // ignore invalid types
+  }
+  const fieldTypes = {
+    explosion: {
+      particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number', minSpeed: 'number', maxSpeed: 'number'
+    },
+    shield: {
+      ttl: 'number', particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number'
+    },
+    health: {
+      ttl: 'number', particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number'
+    },
+    stars: {
+      twinkle: 'boolean', redrawInterval: 'number'
+    }
+  };
   for (const k of Object.keys(newCfg)) {
-    if (config[k] && typeof config[k] === 'object' && typeof newCfg[k] === 'object') {
-      Object.assign(config[k], newCfg[k]);
+    if (config[k] && typeof config[k] === 'object' && typeof newCfg[k] === 'object' && fieldTypes[k]) {
+      for (const f of Object.keys(newCfg[k])) {
+        if (fieldTypes[k][f]) {
+          validateField(config[k], f, newCfg[k][f], fieldTypes[k][f]);
+        }
+      }
     } else {
       config[k] = newCfg[k];
     }
@@ -77,6 +97,15 @@ let _reinforcementAccumulator = 0;
 let _starTime = 0;
 let _starLastRegen = 0;
 let _starCanvasVersion = 0;
+// Internal guard to detect accidental double-simulation within the same
+// logical frame. We compute a simple frame id based on performance.now()
+// divided by 4ms (approx 250Hz) to bucket calls into a millisecond-granular
+// frame window. In dev mode we can throw; otherwise we log a warning.
+let _lastSimulateFrameId = null;
+let _doubleSimStrict = false; // when true, throw on detection (useful in CI/dev)
+
+export function setDoubleSimStrict(v = false) { _doubleSimStrict = !!v; }
+
 
 export function reset(seedValue = null) {
   ships.length = 0; bullets.length = 0; particles.length = 0; stars.length = 0;
@@ -171,17 +200,84 @@ export function createStarCanvas(state, W = 800, H = 600, bg = '#041018') {
 }
 
 export function simulate(dt, W = 800, H = 600) {
+  // detect double-simulation: compute a frame id (coarse bucket) and compare
+  try {
+    const nowMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    // bucket size: 4ms (250Hz); this is coarse but sufficient to detect
+    // immediate double-calls within the same frame/tick.
+    const frameId = Math.floor(nowMs / 4);
+    if (_lastSimulateFrameId === frameId) {
+      const msg = '[gamemanager] detected simulate() called multiple times within the same frame bucket — possible double-simulation';
+      if (_doubleSimStrict) {
+        throw new Error(msg);
+      } else {
+        console.warn(msg);
+      }
+    }
+    _lastSimulateFrameId = frameId;
+  } catch (e) {
+    // ignore any timing issues — detection is best-effort
+  }
   const state = { ships, bullets, particles, stars, explosions: [], shieldHits: [], healthHits: [] };
   evaluateReinforcement(dt);
   simulateStep(state, dt, { W, H });
   // merge emitted events into exported arrays for renderer
-  flashes.push(...state.explosions);
-  // wrap hits with TTL/life so renderer can persist them across frames
+  // merge explosions into exported flashes and also convert them into particles
+  // so renderers that consume particles (WebGL) will see visual effects without
+  // needing to process the raw event arrays themselves.
+  for (const ex of state.explosions) {
+    flashes.push(Object.assign({}, ex));
+    // spawn a small burst of particles for the explosion
+    try {
+      const count = 12;
+      const ttl = 0.6;
+      const color = 'rgba(255,200,100,0.95)';
+      const size = 3;
+      for (let i = 0; i < count; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 30 + srandom() * 90; // px/sec
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(ex.x || 0, ex.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {}
+  }
+
+  // wrap hits with TTL/life so renderer can persist them across frames; also
+  // convert hits into particles immediately (so WebGL renderer sees them).
   for (const h of state.shieldHits) {
-    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: false }));
+    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true }));
+    try {
+      const cfg = config.shield || {};
+      const cnt = cfg.particleCount || 6;
+      const ttl = cfg.particleTTL || 0.35;
+      const color = cfg.particleColor || 'rgba(160,200,255,0.9)';
+      const size = cfg.particleSize || 2;
+      for (let i = 0; i < cnt; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 10 + srandom() * 40;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {}
   }
   for (const h of state.healthHits) {
-    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: false }));
+    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true }));
+    try {
+      const cfg = config.health || {};
+      const cnt = cfg.particleCount || 8;
+      const ttl = cfg.particleTTL || 0.6;
+      const color = cfg.particleColor || 'rgba(255,120,80,0.95)';
+      const size = cfg.particleSize || 2;
+      for (let i = 0; i < cnt; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 20 + srandom() * 50;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {}
   }
 
   // advance star twinkle time and update per-star alpha deterministically

@@ -164,6 +164,8 @@ export function createCanvasRenderer(canvas) {
   }
 
   return {
+    type: 'canvas',
+    providesOwnLoop: true,
     init() { resize(); return true; },
     start() { if (!_running) { _running = true; _last = null; requestAnimationFrame(renderFrame); } },
     stop() { _running = false; },

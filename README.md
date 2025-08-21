@@ -28,6 +28,7 @@ Important files
 - `src/renderer.js` — Visual layer (Canvas) that consumes `state` and event arrays.
 - `src/rng.js` — Seeded RNG used by the simulation.
 - `src/progressionConfig.js` — XP and progression constants.
+ - `src/gamemanagerConfig.js` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
 - `space_themed_autobattler_canvas_red_vs_blue.html` — Main page to open in a browser.
 - `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file exported build.
 - `scripts/build-standalone.mjs` — Bundles the renderer and inlines a standalone HTML in `./dist/`.
@@ -173,6 +174,22 @@ Rationale:
 - Passing `state` first makes the star helpers explicitly operate on the provided star array and avoids implicit global state usage. It also keeps RNG call order deterministic for tests.
 
 If you want help updating a specific file or test to the new API, tell me which file and I will update it.
+
+Gamemanager visual/config note
+------------------------------
+
+The file `src/gamemanagerConfig.js` centralizes visual tuning defaults for the game manager (matching the style of `behaviorConfig.js` and `progressionConfig.js`).
+
+- It exports named defaults: `SHIELD`, `HEALTH`, `EXPLOSION`, and `STARS`.
+- The runtime `src/gamemanager.js` copies these into a `config` object and exposes `setManagerConfig()` for shallow merging of runtime overrides.
+
+Example (change explosion particle count at runtime):
+
+```powershell
+node -e "const gm = require('./src/gamemanager.js'); gm.setManagerConfig({ explosion: { particleCount: 24 } }); console.log(gm.getManagerConfig().explosion.particleCount);"
+```
+
+`setManagerConfig` performs a shallow merge for top-level object keys, so partial updates only modify supplied fields.
 
 Running the demo locally
 ------------------------

@@ -226,6 +226,37 @@ After **every** file modification, you MUST:
 
 ---
 
+## Cookbook Guidance (added from RESEARCH_GPT5_COOKBOOK.md)
+
+This section captures concise, practical prompting and tool-use patterns inspired by the GPT-5 Cookbook research notes stored in `docs/RESEARCH_GPT5_COOKBOOK.md`.
+
+- One-line receipt + tiny plan: Every task should start with a single-line receipt followed by a 1–3 step plan. Example:
+   - "Receipt: I'll update `src/gamemanager.js` to convert explosions into particles. Plan: 1) add particle spawn in simulate(); 2) extract explosion config; 3) add test coverage."
+
+- Make assumptions explicit: If required inputs are missing, state one reasonable assumption (and why) or ask one narrow clarifying question. Example:
+   - "Assumption: canvas size is 800x600 unless you provide a different value. If this is wrong, tell me the correct size."
+
+- Tool-call etiquette: Before calling a web or repo tool, state the purpose and expected outcome. After the call, report results concisely and next steps. Example:
+   - Before: "I'll fetch the OpenAI Cookbook GPT-5 prompting guide to confirm API guidance (expect: short recipes for planning, tool use etiquette)."
+   - After: "Fetched: OpenAI Cookbook — GPT-5 prompting guide (URL). Key takeaways: ..."
+
+- Test-first micro-iteration: Make small, testable edits. Pattern: add a focused unit test (happy path + 1 edge), run tests, iterate until green. Prefer running targeted tests for speed.
+
+- Short validation checklist for edits:
+   1) Add or update a focused test for the changed behavior
+   2) Run the related tests and fix failures
+   3) Commit with a descriptive message (e.g., "feat:")
+
+These rules are additive to the existing Strict QA Rule above and are intended to keep iterations fast, deterministic, and auditable.
+
+---
+
+## Changelog
+
+- 2025-08-21: Added "Cookbook Guidance" section (one-line receipt, assumptions, tool-call etiquette, test-first micro-iteration) based on `docs/RESEARCH_GPT5_COOKBOOK.md`.
+
+---
+
 ## System Context
 - **Environment**: VSCode workspace with integrated terminal
 - **Directory**: All paths relative to workspace root or absolute

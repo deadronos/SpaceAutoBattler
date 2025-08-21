@@ -248,6 +248,51 @@ function simulateStep(state, dt, bounds) {
   }
 }
 
+// src/gamemanagerConfig.js
+var SHIELD = {
+  // ttl: how long (seconds) the shield flash persists in the flash list
+  ttl: 0.4,
+  // particleCount: number of particles spawned for a shield hit
+  particleCount: 6,
+  // particleTTL: lifetime in seconds for each spawned particle
+  particleTTL: 0.35,
+  // particleColor: CSS color string used for spawned particles
+  particleColor: "rgba(160,200,255,0.9)",
+  // particleSize: nominal particle size in pixels
+  particleSize: 2
+};
+var HEALTH = {
+  // ttl: how long (seconds) the health hit flash persists in the flash list
+  ttl: 0.75,
+  // particleCount: number of particles spawned for a health hit
+  particleCount: 8,
+  // particleTTL: lifetime in seconds for each spawned particle
+  particleTTL: 0.6,
+  // particleColor: CSS color string used for spawned particles
+  particleColor: "rgba(255,120,80,0.95)",
+  // particleSize: nominal particle size in pixels
+  particleSize: 2
+};
+var EXPLOSION = {
+  // particleCount: number of particles to spawn for an explosion
+  particleCount: 12,
+  // particleTTL: lifetime in seconds for explosion particles
+  particleTTL: 0.6,
+  // particleColor: CSS color string for explosion particles
+  particleColor: "rgba(255,200,100,0.95)",
+  // particleSize: nominal particle size in pixels
+  particleSize: 3,
+  // minSpeed/maxSpeed: spawn velocity range in pixels/second for explosion particles
+  minSpeed: 30,
+  maxSpeed: 120
+};
+var STARS = {
+  // twinkle: enable per-star alpha twinkle (true = animate alpha over time)
+  twinkle: false,
+  // redrawInterval: when twinkle is enabled, how often (seconds) to regenerate star canvas
+  redrawInterval: 0.35
+};
+
 // src/gamemanager.js
 var ships = [];
 var bullets = [];
@@ -259,18 +304,52 @@ var shieldFlashes = [];
 var healthFlashes = [];
 var particlePool = [];
 var config = {
-  shield: { ttl: 0.4, particleCount: 6, particleTTL: 0.35, particleColor: "rgba(160,200,255,0.9)", particleSize: 2 },
-  health: { ttl: 0.75, particleCount: 8, particleTTL: 0.6, particleColor: "rgba(255,120,80,0.95)", particleSize: 2 }
-};
-config.stars = {
-  twinkle: false,
-  redrawInterval: 0.35
-  // seconds between canvas redraws when twinkling
+  shield: Object.assign({}, SHIELD),
+  health: Object.assign({}, HEALTH),
+  explosion: Object.assign({}, EXPLOSION),
+  stars: Object.assign({}, STARS)
 };
 function setManagerConfig(newCfg = {}) {
+  function validateField(obj, key, value, type) {
+    if (type === "number" && typeof value === "number" && Number.isFinite(value)) obj[key] = value;
+    else if (type === "string" && typeof value === "string") obj[key] = value;
+    else if (type === "boolean" && typeof value === "boolean") obj[key] = value;
+  }
+  const fieldTypes = {
+    explosion: {
+      particleCount: "number",
+      particleTTL: "number",
+      particleColor: "string",
+      particleSize: "number",
+      minSpeed: "number",
+      maxSpeed: "number"
+    },
+    shield: {
+      ttl: "number",
+      particleCount: "number",
+      particleTTL: "number",
+      particleColor: "string",
+      particleSize: "number"
+    },
+    health: {
+      ttl: "number",
+      particleCount: "number",
+      particleTTL: "number",
+      particleColor: "string",
+      particleSize: "number"
+    },
+    stars: {
+      twinkle: "boolean",
+      redrawInterval: "number"
+    }
+  };
   for (const k of Object.keys(newCfg)) {
-    if (config[k] && typeof config[k] === "object" && typeof newCfg[k] === "object") {
-      Object.assign(config[k], newCfg[k]);
+    if (config[k] && typeof config[k] === "object" && typeof newCfg[k] === "object" && fieldTypes[k]) {
+      for (const f of Object.keys(newCfg[k])) {
+        if (fieldTypes[k][f]) {
+          validateField(config[k], f, newCfg[k][f], fieldTypes[k][f]);
+        }
+      }
     } else {
       config[k] = newCfg[k];
     }
@@ -430,12 +509,58 @@ function simulate(dt, W = 800, H = 600) {
   const state = { ships, bullets, particles, stars, explosions: [], shieldHits: [], healthHits: [] };
   evaluateReinforcement(dt);
   simulateStep(state, dt, { W, H });
-  flashes.push(...state.explosions);
+  for (const ex of state.explosions) {
+    flashes.push(Object.assign({}, ex));
+    try {
+      const count = 12;
+      const ttl = 0.6;
+      const color = "rgba(255,200,100,0.95)";
+      const size = 3;
+      for (let i = 0; i < count; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 30 + srandom() * 90;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(ex.x || 0, ex.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {
+    }
+  }
   for (const h of state.shieldHits) {
-    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: false }));
+    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true }));
+    try {
+      const cfg = config.shield || {};
+      const cnt = cfg.particleCount || 6;
+      const ttl = cfg.particleTTL || 0.35;
+      const color = cfg.particleColor || "rgba(160,200,255,0.9)";
+      const size = cfg.particleSize || 2;
+      for (let i = 0; i < cnt; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 10 + srandom() * 40;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {
+    }
   }
   for (const h of state.healthHits) {
-    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: false }));
+    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true }));
+    try {
+      const cfg = config.health || {};
+      const cnt = cfg.particleCount || 8;
+      const ttl = cfg.particleTTL || 0.6;
+      const color = cfg.particleColor || "rgba(255,120,80,0.95)";
+      const size = cfg.particleSize || 2;
+      for (let i = 0; i < cnt; i++) {
+        const ang = srandom() * Math.PI * 2;
+        const sp = 20 + srandom() * 50;
+        const vx = Math.cos(ang) * sp;
+        const vy = Math.sin(ang) * sp;
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+      }
+    } catch (e) {
+    }
   }
   try {
     _starTime += dt;
@@ -653,7 +778,7 @@ function createCanvasRenderer(canvas2) {
 // src/webglRenderer.js
 function createWebGLRenderer(canvas2, opts = {}) {
   if (!canvas2) return null;
-  const defaults = { webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true };
+  const defaults = { webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true, vboPoolSize: 3 };
   const cfg = Object.assign({}, defaults, opts);
   let gl = null;
   let isWebGL2 = false;
@@ -822,11 +947,14 @@ function createWebGLRenderer(canvas2, opts = {}) {
     const s = gl.createShader(type);
     gl.shaderSource(s, src);
     gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      const info = gl.getShaderInfoLog(s);
+    const ok = gl.getShaderParameter(s, gl.COMPILE_STATUS);
+    const info = gl.getShaderInfoLog(s);
+    if (!ok) {
       debugLog("Shader compile failed", info, "\n", src.substring(0, 200));
       gl.deleteShader(s);
       throw new Error("Shader compile failed: " + info);
+    } else if (cfg.debug && info && info.length) {
+      debugLog("Shader compile info/warning", info);
     }
     return s;
   }
@@ -837,11 +965,14 @@ function createWebGLRenderer(canvas2, opts = {}) {
     if (isWebGL2) {
     }
     gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-      const info = gl.getProgramInfoLog(p);
+    const ok = gl.getProgramParameter(p, gl.LINK_STATUS);
+    const info = gl.getProgramInfoLog(p);
+    if (!ok) {
       debugLog("Program link failed", info);
       gl.deleteProgram(p);
       throw new Error("Program link failed: " + info);
+    } else if (cfg.debug && info && info.length) {
+      debugLog("Program link info/warning", info);
     }
     return p;
   }
@@ -890,20 +1021,34 @@ function createWebGLRenderer(canvas2, opts = {}) {
     }
   }
   function initBuffers() {
-    const quadVerts = new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]);
+    if (!resources._quadVerts) resources._quadVerts = new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]);
     resources.quadVBO = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, resources._quadVerts, gl.STATIC_DRAW);
     resources.instanceVBO = gl.createBuffer();
     resources.instanceVBO._size = 0;
-    resources.starInstanceVBO = gl.createBuffer();
-    resources.starInstanceVBO._size = 0;
-    resources.shipInstanceVBO = gl.createBuffer();
-    resources.shipInstanceVBO._size = 0;
-    resources.bulletInstanceVBO = gl.createBuffer();
-    resources.particleInstanceVBO = gl.createBuffer();
-    resources.bulletInstanceVBO._size = 0;
-    resources.particleInstanceVBO._size = 0;
+    const RING_BUFFERS = Math.max(2, Number(cfg.vboPoolSize) || 3);
+    function makePool() {
+      const arr = [];
+      for (let i = 0; i < RING_BUFFERS; i++) {
+        const b = gl.createBuffer();
+        b._size = 0;
+        arr.push(b);
+      }
+      return arr;
+    }
+    resources.starInstanceVBOs = makePool();
+    resources.shipInstanceVBOs = makePool();
+    resources.bulletInstanceVBOs = makePool();
+    resources.particleInstanceVBOs = makePool();
+    resources._starVBOIndex = 0;
+    resources._shipVBOIndex = 0;
+    resources._bulletVBOIndex = 0;
+    resources._particleVBOIndex = 0;
+    resources.starInstanceVBO = resources.starInstanceVBOs[0];
+    resources.shipInstanceVBO = resources.shipInstanceVBOs[0];
+    resources.bulletInstanceVBO = resources.bulletInstanceVBOs[0];
+    resources.particleInstanceVBO = resources.particleInstanceVBOs[0];
     if (isWebGL2 && gl.createVertexArray) {
       try {
         resources.vao = gl.createVertexArray();
@@ -974,7 +1119,11 @@ function createWebGLRenderer(canvas2, opts = {}) {
       const item = _pendingAtlasUploads.shift();
       const { key, atlas } = item;
       try {
-        let canvasSrc = atlas.canvas;
+        let canvasSrc = atlas && atlas.canvas;
+        if (!canvasSrc || !canvasSrc.width || !canvasSrc.height) {
+          if (cfg.debug) console.warn("Skipping atlas upload: invalid canvas for key", key);
+          continue;
+        }
         let size = atlas.size;
         if (cfg.atlasMaxSize && size > cfg.atlasMaxSize) {
           const scale = cfg.atlasMaxSize / size;
@@ -1006,7 +1155,10 @@ function createWebGLRenderer(canvas2, opts = {}) {
     }
   }
   function queueStarfieldUpload(canvasSrc) {
-    if (!canvasSrc) return;
+    if (!canvasSrc || !canvasSrc.width || !canvasSrc.height) {
+      if (cfg.debug) console.warn("queueStarfieldUpload: invalid canvas provided");
+      return;
+    }
     const key = "__starfield";
     queueAtlasUpload(key, { canvas: canvasSrc, size: Math.max(canvasSrc.width, canvasSrc.height), baseRadius: 0 });
   }
@@ -1074,13 +1226,31 @@ function createWebGLRenderer(canvas2, opts = {}) {
       _shipBuffer = new Float32Array(_shipCapacity);
     }
     _shipUsed = shipElems;
+    const prevMap = state && state._prevShipsMap ? state._prevShipsMap : null;
+    const alphaInterp = state && typeof state._alpha === "number" ? state._alpha : 0;
     for (let i = 0; i < n; i++) {
       const s = ships2[i];
       const base = i * elemsPer;
-      _shipBuffer[base + 0] = s.x || 0;
-      _shipBuffer[base + 1] = s.y || 0;
+      let px = s.x || 0;
+      let py = s.y || 0;
+      let pangle = s.angle || 0;
+      if (prevMap && s && s.id != null) {
+        const prev = prevMap.get(s.id);
+        if (prev) {
+          px = prev.x + (s.x - prev.x) * alphaInterp;
+          py = prev.y + (s.y - prev.y) * alphaInterp;
+          let a0 = prev.angle || 0;
+          let a1 = s.angle || 0;
+          let diff = a1 - a0;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          pangle = a0 + diff * alphaInterp;
+        }
+      }
+      _shipBuffer[base + 0] = px;
+      _shipBuffer[base + 1] = py;
       _shipBuffer[base + 2] = s.radius != null ? s.radius : 8;
-      _shipBuffer[base + 3] = s.angle != null ? s.angle : 0;
+      _shipBuffer[base + 3] = pangle;
       const color = teamToColor(s.team);
       _shipBuffer[base + 4] = color[0];
       _shipBuffer[base + 5] = color[1];
@@ -1153,10 +1323,18 @@ function createWebGLRenderer(canvas2, opts = {}) {
             } catch (ee) {
             }
           }
+        } else {
+          try {
+            gl.bufferData(gl.ARRAY_BUFFER, vbo._size, gl.DYNAMIC_DRAW);
+          } catch (e) {
+          }
         }
         if (usedElems > 0 && usedBuffer) {
           const view = usedBuffer.subarray(0, usedElems);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, view);
+          try {
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, view);
+          } catch (e) {
+          }
         }
         try {
           diag._instanceVBOCapacity = Math.max(diag._instanceVBOCapacity || 0, vbo._size || 0);
@@ -1214,21 +1392,36 @@ function createWebGLRenderer(canvas2, opts = {}) {
       } catch (e) {
       }
     }
-    if (_starUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
-      ensureVBO(resources.starInstanceVBO, _starUsed, _starBuffer);
-    }
-    if (_shipUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
-      ensureVBO(resources.shipInstanceVBO, _shipUsed, _shipBuffer);
-    }
-    if (_bulletUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
-      ensureVBO(resources.bulletInstanceVBO, _bulletUsed, _bulletBuffer);
-    }
-    if (_particleUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
-      ensureVBO(resources.particleInstanceVBO, _particleUsed, _particleBuffer);
+    try {
+      if (_starUsed > 0) {
+        resources._starVBOIndex = (resources._starVBOIndex + 1) % resources.starInstanceVBOs.length;
+        resources.starInstanceVBO = resources.starInstanceVBOs[resources._starVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
+        ensureVBO(resources.starInstanceVBO, _starUsed, _starBuffer);
+      }
+      if (_shipUsed > 0) {
+        resources._shipVBOIndex = (resources._shipVBOIndex + 1) % resources.shipInstanceVBOs.length;
+        resources.shipInstanceVBO = resources.shipInstanceVBOs[resources._shipVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+        ensureVBO(resources.shipInstanceVBO, _shipUsed, _shipBuffer);
+      }
+      if (_bulletUsed > 0) {
+        resources._bulletVBOIndex = (resources._bulletVBOIndex + 1) % resources.bulletInstanceVBOs.length;
+        resources.bulletInstanceVBO = resources.bulletInstanceVBOs[resources._bulletVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+        ensureVBO(resources.bulletInstanceVBO, _bulletUsed, _bulletBuffer);
+      }
+      if (_particleUsed > 0) {
+        resources._particleVBOIndex = (resources._particleVBOIndex + 1) % resources.particleInstanceVBOs.length;
+        resources.particleInstanceVBO = resources.particleInstanceVBOs[resources._particleVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+        ensureVBO(resources.particleInstanceVBO, _particleUsed, _particleBuffer);
+      }
+    } catch (e) {
+      try {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBOs[0]);
+      } catch (ee) {
+      }
     }
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1278,17 +1471,35 @@ function createWebGLRenderer(canvas2, opts = {}) {
         if (ures2) gl.uniform2f(ures2, canvas2.width || _lastW || canvas2.clientWidth, canvas2.height || _lastH || canvas2.clientHeight);
         if (!resources.fullscreenQuadVBO) {
           resources.fullscreenQuadVBO = gl.createBuffer();
+          if (!resources._fullscreenVerts || resources._fullscreenVerts.length < 8) resources._fullscreenVerts = new Float32Array(8);
           const Wpx = canvas2.width || _lastW || canvas2.clientWidth;
           const Hpx = canvas2.height || _lastH || canvas2.clientHeight;
-          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
+          const fv = resources._fullscreenVerts;
+          fv[0] = 0;
+          fv[1] = 0;
+          fv[2] = Wpx;
+          fv[3] = 0;
+          fv[4] = 0;
+          fv[5] = Hpx;
+          fv[6] = Wpx;
+          fv[7] = Hpx;
           gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
-          gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+          gl.bufferData(gl.ARRAY_BUFFER, fv, gl.DYNAMIC_DRAW);
         } else {
+          if (!resources._fullscreenVerts || resources._fullscreenVerts.length < 8) resources._fullscreenVerts = new Float32Array(8);
           const Wpx = canvas2.width || _lastW || canvas2.clientWidth;
           const Hpx = canvas2.height || _lastH || canvas2.clientHeight;
+          const fv = resources._fullscreenVerts;
+          fv[0] = 0;
+          fv[1] = 0;
+          fv[2] = Wpx;
+          fv[3] = 0;
+          fv[4] = 0;
+          fv[5] = Hpx;
+          fv[6] = Wpx;
+          fv[7] = Hpx;
           gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
-          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, fv);
         }
         gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
         const posLoc = locs2 && locs2.attribs && locs2.attribs.a_pos != null ? locs2.attribs.a_pos : gl.getAttribLocation(resources.programSimple, "a_pos");
@@ -1442,6 +1653,8 @@ function createWebGLRenderer(canvas2, opts = {}) {
   const renderer2 = {
     type: "webgl",
     webgl2: isWebGL2,
+    // indicate this renderer drives its own RAF-based simulation loop
+    providesOwnLoop: true,
     // cached debug resources to avoid per-call shader compiles
     _debug: { solidProgram: null, solidBuf: null, solidBufSize: 0, fbo: null, fboTex: null },
     // debug helper: draw a solid opaque rectangle to the default framebuffer
@@ -1472,7 +1685,16 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
           }
         }
         const x0 = x, y0 = y, x1 = x + w, y1 = y + h;
-        const verts = new Float32Array([x0, y0, x1, y0, x0, y1, x1, y1]);
+        if (!renderer2._debug.solidVerts) renderer2._debug.solidVerts = new Float32Array(8);
+        const verts = renderer2._debug.solidVerts;
+        verts[0] = x0;
+        verts[1] = y0;
+        verts[2] = x1;
+        verts[3] = y0;
+        verts[4] = x0;
+        verts[5] = y1;
+        verts[6] = x1;
+        verts[7] = y1;
         gl.bindBuffer(gl.ARRAY_BUFFER, buf);
         try {
           const byteLen = verts.byteLength;
@@ -1588,7 +1810,8 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
           gl.finish();
         } catch (e) {
         }
-        const buf = new Uint8Array(4);
+        if (!renderer2._debug._read1) renderer2._debug._read1 = new Uint8Array(4);
+        const buf = renderer2._debug._read1;
         gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
         try {
           gl.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
@@ -1713,8 +1936,63 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
       }
     },
     start(cb) {
+      if (_running) return;
       _running = true;
       if (cb) cb();
+      const FIXED_DT = 1 / 60;
+      const MAX_DELTA = 0.25;
+      let lastTime = null;
+      let accumulator = 0;
+      function frame(t) {
+        if (!_running) return;
+        const now = t === void 0 || t === null ? performance ? performance.now() / 1e3 : Date.now() / 1e3 : t / 1e3;
+        if (lastTime === null) lastTime = now;
+        let delta = now - lastTime;
+        lastTime = now;
+        if (!isFinite(delta) || delta <= 0) delta = FIXED_DT;
+        delta = Math.min(delta, MAX_DELTA);
+        accumulator += delta;
+        while (accumulator >= FIXED_DT) {
+          const prevShipsMap = /* @__PURE__ */ new Map();
+          try {
+            for (const s of Array.isArray && Array.isArray(window) ? [] : []) {
+            }
+          } catch (e) {
+          }
+          let state;
+          try {
+            state = simulate(FIXED_DT, canvas2.width, canvas2.height);
+          } catch (e) {
+            console.error("simulate() failed in webgl renderer", e);
+            _running = false;
+            return;
+          }
+          try {
+            if (renderer2._lastState && Array.isArray(renderer2._lastState.ships)) {
+              const m = /* @__PURE__ */ new Map();
+              for (const ps of renderer2._lastState.ships) {
+                if (ps && ps.id != null) m.set(ps.id, { x: ps.x, y: ps.y, angle: ps.angle });
+              }
+              state._prevShipsMap = m;
+            }
+          } catch (e) {
+          }
+          renderer2._lastState = state;
+          accumulator -= FIXED_DT;
+        }
+        const alpha = accumulator / FIXED_DT;
+        try {
+          if (renderer2._lastState) renderer2._lastState._alpha = alpha;
+        } catch (e) {
+        }
+        try {
+          renderer2.render(renderer2._lastState || {});
+        } catch (e) {
+          console.warn("renderer.render error", e);
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
     },
     stop() {
       _running = false;
@@ -1726,11 +2004,7 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
       if (!gl) return;
       if (state && state.starCanvas) {
         try {
-          const s = state.starCanvas;
-          const prev = resources.textures.get("__starfield");
-          const prevVersion = prev && prev.canvas && prev.canvas._version;
-          const curVersion = s && s._version;
-          if (!prev || prevVersion !== curVersion) queueStarfieldUpload(s);
+          queueStarfieldUpload(state.starCanvas);
         } catch (e) {
         }
       }
@@ -1759,11 +2033,27 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
           try {
             if (!v) continue;
             if (v instanceof WebGLTexture) gl.deleteTexture(v);
-            if (v instanceof WebGLBuffer) gl.deleteBuffer(v);
             if (v instanceof WebGLProgram) gl.deleteProgram(v);
             if (v instanceof WebGLVertexArrayObject) gl.deleteVertexArray(v);
           } catch (e) {
           }
+        }
+        try {
+          if (resources.quadVBO) gl.deleteBuffer(resources.quadVBO);
+          if (resources.fullscreenQuadVBO) gl.deleteBuffer(resources.fullscreenQuadVBO);
+          if (resources.instanceVBO) gl.deleteBuffer(resources.instanceVBO);
+          const pools = ["starInstanceVBOs", "shipInstanceVBOs", "bulletInstanceVBOs", "particleInstanceVBOs"];
+          for (const p of pools) {
+            if (Array.isArray(resources[p])) {
+              for (const b of resources[p]) {
+                try {
+                  if (b) gl.deleteBuffer(b);
+                } catch (ee) {
+                }
+              }
+            }
+          }
+        } catch (e) {
         }
         try {
           if (renderer2._debug) {
@@ -1839,7 +2129,8 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
           const sy = Math.max(1, Math.min(3, canvas2.height));
           const px = Math.max(0, cx - Math.floor(sx / 2));
           const py = Math.max(0, cy - Math.floor(sy / 2));
-          const read = new Uint8Array(sx * sy * 4);
+          if (!renderer2._debug._readBuf || renderer2._debug._readBuf.length < sx * sy * 4) renderer2._debug._readBuf = new Uint8Array(sx * sy * 4);
+          const read = renderer2._debug._readBuf;
           try {
             gl.finish();
           } catch (e) {
@@ -1966,10 +2257,15 @@ if (startBtn) {
   startBtn.addEventListener("click", () => {
     const running = typeof renderer.isRunning === "function" ? renderer.isRunning() : false;
     if (!running) {
+      try {
+        fitCanvas();
+      } catch (e) {
+      }
+      console.log("[main] Start button pressed - starting renderer", { providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
       renderer.start && renderer.start();
       startBtn.textContent = "\u23F8 Pause";
       _lastTime = null;
-      if (renderer && typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0) _rafId = requestAnimationFrame(webglLoop);
+      if (renderer && typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0 && !renderer.providesOwnLoop) _rafId = requestAnimationFrame(webglLoop);
     } else {
       renderer.stop && renderer.stop();
       startBtn.textContent = "\u25B6 Start";
@@ -1996,8 +2292,13 @@ if (seedBtn) seedBtn.addEventListener("click", () => {
   alert("Seed: " + s);
 });
 if (renderer) {
+  try {
+    fitCanvas();
+  } catch (e) {
+  }
+  console.log("[main] Auto-starting renderer", { type: renderer && renderer.type, providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
   renderer.start && renderer.start();
-  if (typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0) {
+  if (typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0 && !renderer.providesOwnLoop) {
     _rafId = requestAnimationFrame(webglLoop);
   }
 }

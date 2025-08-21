@@ -101,10 +101,31 @@ if (startBtn) {
   startBtn.addEventListener('click', () => {
     const running = typeof renderer.isRunning === 'function' ? renderer.isRunning() : false;
     if (!running) {
-      renderer.start && renderer.start();
+  // Ensure canvas sizing is up-to-date before starting the renderer
+  try { fitCanvas(); } catch (e) {}
+  console.log('[main] Start button pressed - starting renderer', { providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
+    renderer.start && renderer.start();
+        // Sanity checks: warn if renderer's reported providesOwnLoop disagrees with its run state
+        try {
+          const isRunningAfterStart = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : null;
+          if (renderer && renderer.providesOwnLoop && isRunningAfterStart === false) {
+            console.warn('[main] sanity: renderer.providesOwnLoop=true but renderer.isRunning() is false after start()');
+          }
+          if (renderer && !renderer.providesOwnLoop && isRunningAfterStart === true) {
+            console.warn('[main] sanity: renderer.providesOwnLoop=false but renderer.isRunning() returned true after start() (renderer may be running an internal loop)');
+          }
+        } catch (e) { /* ignore safety check errors */ }
       startBtn.textContent = '⏸ Pause';
       _lastTime = null;
-      if (renderer && typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0) _rafId = requestAnimationFrame(webglLoop);
+  // Only start the external webglLoop if the renderer does not provide its own RAF-driven loop
+    if (renderer && typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0 && !renderer.providesOwnLoop) {
+      // Defensive check: if the renderer reports being running already, warn about potential double-simulation
+      try {
+        const alreadyRunning = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : false;
+        if (alreadyRunning) console.warn('[main] sanity: starting external webglLoop while renderer.isRunning() === true; this may double-run simulation');
+      } catch (e) {}
+      _rafId = requestAnimationFrame(webglLoop);
+    }
     } else {
       renderer.stop && renderer.stop();
       startBtn.textContent = '▶ Start';
@@ -121,8 +142,25 @@ if (seedBtn) seedBtn.addEventListener('click', () => { const s = Math.floor(sran
 // auto start
 // Auto-start if renderer supports it. For WebGL we drive the RAF loop from here.
 if (renderer) {
+  // Ensure canvas sizing is correct before auto-start and log what we're doing.
+  try { fitCanvas(); } catch (e) {}
+  console.log('[main] Auto-starting renderer', { type: renderer && renderer.type, providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
   renderer.start && renderer.start();
-  if (typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0) {
+  // Sanity checks after auto-start
+  try {
+    const isRunningAfterStart = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : null;
+    if (renderer && renderer.providesOwnLoop && isRunningAfterStart === false) {
+      console.warn('[main] sanity: renderer.providesOwnLoop=true but renderer.isRunning() is false after auto-start()');
+    }
+    if (renderer && !renderer.providesOwnLoop && isRunningAfterStart === true) {
+      console.warn('[main] sanity: renderer.providesOwnLoop=false but renderer.isRunning() returned true after auto-start()');
+    }
+  } catch (e) {}
+  if (typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0 && !renderer.providesOwnLoop) {
+    try {
+      const alreadyRunning = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : false;
+      if (alreadyRunning) console.warn('[main] sanity: starting external webglLoop while renderer.isRunning() === true; this may double-run simulation');
+    } catch (e) {}
     _rafId = requestAnimationFrame(webglLoop);
   }
 }

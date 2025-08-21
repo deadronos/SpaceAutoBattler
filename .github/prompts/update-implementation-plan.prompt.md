@@ -154,4 +154,20 @@ tags: [Optional: List of relevant tags or categories, e.g., `feature`, `upgrade`
 
 [Link to related spec 1]
 [Link to relevant external documentation]
-```
+
+## 9. Concise Plan Template
+
+Receipt: I'll refine an implementation plan to be more actionable and break large steps into smaller PR-sized tasks.
+
+Plan:
+1) Convert large tasks into 3–6 PR-sized steps.
+2) For each step provide files to edit, tests, and acceptance criteria.
+3) Provide an estimated order and a quick rollback plan.
+
+Assumptions: Plan is provided as a list of tasks.
+
+Constraints: Output ≤ 6 steps; provide file path hints.
+
+Output: Numbered actionable steps with tests and file mappings.
+
+Example: Break 'Add WebGL instancing' into design (A), implement buffer pool (B), integrate instancing (C), tests (D), docs (E).

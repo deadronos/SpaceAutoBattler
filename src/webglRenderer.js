@@ -1,4 +1,5 @@
 // Minimal WebGL renderer stub implementing createWebGLRenderer per spec.
+import { simulate } from './gamemanager.js';
 // Lightweight WebGL renderer implementation following spec-design-webgl-renderer.md
 // This implementation focuses on correctness and graceful degradation.
 /**
@@ -13,7 +14,7 @@
 export function createWebGLRenderer(canvas, opts = {}) {
   if (!canvas) return null;
   // Options defaults - copy into a fresh object so we don't mutate caller opts
-  const defaults = { webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true };
+  const defaults = { webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true, vboPoolSize: 3 };
   const cfg = Object.assign({}, defaults, opts);
 
   let gl = null;
@@ -197,11 +198,15 @@ export function createWebGLRenderer(canvas, opts = {}) {
     const s = gl.createShader(type);
     gl.shaderSource(s, src);
     gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      const info = gl.getShaderInfoLog(s);
+    const ok = gl.getShaderParameter(s, gl.COMPILE_STATUS);
+    const info = gl.getShaderInfoLog(s);
+    if (!ok) {
       debugLog('Shader compile failed', info, '\n', src.substring(0, 200));
       gl.deleteShader(s);
       throw new Error('Shader compile failed: ' + info);
+    } else if (cfg.debug && info && info.length) {
+      // non-fatal compile warnings/info - log for diagnostics
+      debugLog('Shader compile info/warning', info);
     }
     return s;
   }
@@ -213,11 +218,15 @@ export function createWebGLRenderer(canvas, opts = {}) {
       // nothing special
     }
     gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-      const info = gl.getProgramInfoLog(p);
+    const ok = gl.getProgramParameter(p, gl.LINK_STATUS);
+    const info = gl.getProgramInfoLog(p);
+    if (!ok) {
       debugLog('Program link failed', info);
       gl.deleteProgram(p);
       throw new Error('Program link failed: ' + info);
+    } else if (cfg.debug && info && info.length) {
+      // non-fatal link warnings
+      debugLog('Program link info/warning', info);
     }
     return p;
   }
@@ -265,25 +274,40 @@ export function createWebGLRenderer(canvas, opts = {}) {
   // Create/ensure buffers and VAO
   function initBuffers() {
     // quad VBO: two triangles covering -0.5..0.5
-    const quadVerts = new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]);
-    resources.quadVBO = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
+      if (!resources._quadVerts) resources._quadVerts = new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]);
+      resources.quadVBO = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadVBO);
+      gl.bufferData(gl.ARRAY_BUFFER, resources._quadVerts, gl.STATIC_DRAW);
 
-  // instance VBO reserved; will be dynamic (ships)
-  resources.instanceVBO = gl.createBuffer();
-  resources.instanceVBO._size = 0;
-  // streaming VBOs per instance type
-  resources.starInstanceVBO = gl.createBuffer(); resources.starInstanceVBO._size = 0;
-  resources.shipInstanceVBO = gl.createBuffer(); resources.shipInstanceVBO._size = 0;
-
-  // no legacy single stream buffer — using per-type instance VBOs
-
-  // separate instance buffers for bullets and particles
-  resources.bulletInstanceVBO = gl.createBuffer();
-  resources.particleInstanceVBO = gl.createBuffer();
-  resources.bulletInstanceVBO._size = 0;
-  resources.particleInstanceVBO._size = 0;
+    // instance VBO reserved; will be dynamic (ships)
+    resources.instanceVBO = gl.createBuffer();
+    resources.instanceVBO._size = 0;
+    // Create small rotating pools of VBOs for streaming instance data to avoid
+    // implicit sync. Pool size is configurable via cfg.vboPoolSize.
+    const RING_BUFFERS = Math.max(2, Number(cfg.vboPoolSize) || 3);
+    function makePool() {
+      const arr = [];
+      for (let i = 0; i < RING_BUFFERS; i++) {
+        const b = gl.createBuffer();
+        b._size = 0;
+        arr.push(b);
+      }
+      return arr;
+    }
+    resources.starInstanceVBOs = makePool();
+    resources.shipInstanceVBOs = makePool();
+    resources.bulletInstanceVBOs = makePool();
+    resources.particleInstanceVBOs = makePool();
+    // indices for rotation
+    resources._starVBOIndex = 0;
+    resources._shipVBOIndex = 0;
+    resources._bulletVBOIndex = 0;
+    resources._particleVBOIndex = 0;
+    // expose current pointers for backward compatibility
+    resources.starInstanceVBO = resources.starInstanceVBOs[0];
+    resources.shipInstanceVBO = resources.shipInstanceVBOs[0];
+    resources.bulletInstanceVBO = resources.bulletInstanceVBOs[0];
+    resources.particleInstanceVBO = resources.particleInstanceVBOs[0];
 
   // VAO for WebGL2
   if (isWebGL2 && gl.createVertexArray) {
@@ -351,8 +375,12 @@ export function createWebGLRenderer(canvas, opts = {}) {
       const item = _pendingAtlasUploads.shift();
       const { key, atlas } = item;
       try {
-        // downscale if necessary
-        let canvasSrc = atlas.canvas;
+        // validate atlas canvas/source
+        let canvasSrc = atlas && atlas.canvas;
+        if (!canvasSrc || !canvasSrc.width || !canvasSrc.height) {
+          if (cfg.debug) console.warn('Skipping atlas upload: invalid canvas for key', key);
+          continue;
+        }
         let size = atlas.size;
         if (cfg.atlasMaxSize && size > cfg.atlasMaxSize) {
           const scale = cfg.atlasMaxSize / size;
@@ -380,14 +408,17 @@ export function createWebGLRenderer(canvas, opts = {}) {
         diag._uploadsThisFrame++;
       } catch (e) {
         // skip upload on error
-        console.warn('atlas upload failed', e);
+  console.warn('atlas upload failed', e);
       }
     }
   }
 
   // Helper to queue a starfield canvas as a single background texture
   function queueStarfieldUpload(canvasSrc) {
-    if (!canvasSrc) return;
+    if (!canvasSrc || !canvasSrc.width || !canvasSrc.height) {
+      if (cfg.debug) console.warn('queueStarfieldUpload: invalid canvas provided');
+      return;
+    }
     const key = '__starfield';
     // wrap into atlas-like object for upload pipeline
     queueAtlasUpload(key, { canvas: canvasSrc, size: Math.max(canvasSrc.width, canvasSrc.height), baseRadius: 0 });
@@ -475,13 +506,34 @@ export function createWebGLRenderer(canvas, opts = {}) {
     _shipBuffer = new Float32Array(_shipCapacity);
   }
   _shipUsed = shipElems;
+  // Support interpolation: if the state includes a _prevShipsMap and _alpha,
+  // interpolate positions/angles between previous and current simulation
+  // for smoother visuals when simulation uses a fixed timestep.
+  const prevMap = state && state._prevShipsMap ? state._prevShipsMap : null;
+  const alphaInterp = state && typeof state._alpha === 'number' ? state._alpha : 0;
   for (let i = 0; i < n; i++) {
     const s = ships[i];
     const base = i * elemsPer;
-    _shipBuffer[base + 0] = s.x || 0;
-    _shipBuffer[base + 1] = s.y || 0;
+    let px = s.x || 0; let py = s.y || 0; let pangle = s.angle || 0;
+    if (prevMap && s && s.id != null) {
+      const prev = prevMap.get(s.id);
+      if (prev) {
+        // linear interpolation
+        px = prev.x + (s.x - prev.x) * alphaInterp;
+        py = prev.y + (s.y - prev.y) * alphaInterp;
+        // angle interpolation (shortest path)
+        let a0 = prev.angle || 0;
+        let a1 = s.angle || 0;
+        let diff = a1 - a0;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        pangle = a0 + diff * alphaInterp;
+      }
+    }
+    _shipBuffer[base + 0] = px;
+    _shipBuffer[base + 1] = py;
     _shipBuffer[base + 2] = (s.radius != null ? s.radius : 8);
-    _shipBuffer[base + 3] = (s.angle != null ? s.angle : 0);
+    _shipBuffer[base + 3] = pangle;
     const color = teamToColor(s.team);
     _shipBuffer[base + 4] = color[0]; _shipBuffer[base + 5] = color[1]; _shipBuffer[base + 6] = color[2]; _shipBuffer[base + 7] = color[3];
   }
@@ -537,38 +589,37 @@ export function createWebGLRenderer(canvas, opts = {}) {
   const BYTES = Float32Array.BYTES_PER_ELEMENT || 4;
     // Ensure the currently bound ARRAY_BUFFER has at least usedElems floats worth
     // of storage allocated on the GPU. vbo._size is maintained in bytes.
+    // This helper now applies a buffer-orphaning pattern to avoid implicit
+    // GPU sync: we call gl.bufferData to (re)declare the backing store and
+    // then gl.bufferSubData to upload the active portion. We still grow the
+    // allocation by doubling to avoid pathological tiny reallocations.
     function ensureVBO(vbo, usedElems, usedBuffer) {
       try {
         const usedBytes = usedElems * BYTES;
         // prefer using the typed-array's byteLength when available for accuracy
         const srcByteLen = usedBuffer && usedBuffer.byteLength ? Math.min(usedBytes, usedBuffer.byteLength) : usedBytes;
-        // initialize _size if missing
         if (!vbo._size) vbo._size = 0;
+        // If needed, grow the GPU allocation (doubling strategy)
         if (vbo._size < srcByteLen) {
-          // grow by doubling until we satisfy required bytes (safe, avoids tiny allocations)
           let alloc = Math.max(vbo._size || 1, 1);
           while (alloc < srcByteLen) alloc *= 2;
           try {
-            // allocate 'alloc' bytes on the GPU
             gl.bufferData(gl.ARRAY_BUFFER, alloc, gl.DYNAMIC_DRAW);
             vbo._size = alloc;
           } catch (e) {
-            try {
-              // fallback: try exact size
-              gl.bufferData(gl.ARRAY_BUFFER, srcByteLen, gl.DYNAMIC_DRAW);
-              vbo._size = srcByteLen;
-            } catch (ee) {
-              // allocation failed; leave _size as-is and let caller handle
-            }
+            try { gl.bufferData(gl.ARRAY_BUFFER, srcByteLen, gl.DYNAMIC_DRAW); vbo._size = srcByteLen; } catch (ee) { }
           }
+        } else {
+          // Orphan the buffer by re-declaring it with the existing size. This
+          // lets the driver avoid waiting on pending GPU usage of the old store.
+          try { gl.bufferData(gl.ARRAY_BUFFER, vbo._size, gl.DYNAMIC_DRAW); } catch (e) { }
         }
+
         // upload used slice (only the portion that we actually filled)
         if (usedElems > 0 && usedBuffer) {
-          // use a typed-array view that covers exactly the floats we want to upload
           const view = usedBuffer.subarray(0, usedElems);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, view);
+          try { gl.bufferSubData(gl.ARRAY_BUFFER, 0, view); } catch (e) { }
         }
-        // record diagnostics
         try { diag._instanceVBOCapacity = Math.max(diag._instanceVBOCapacity || 0, vbo._size || 0); } catch (e) {}
       } catch (e) {
         // ignore upload errors here; we'll assert before draw
@@ -639,21 +690,35 @@ export function createWebGLRenderer(canvas, opts = {}) {
     }
 
     // Upload each buffer separately
-    if (_starUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
-      ensureVBO(resources.starInstanceVBO, _starUsed, _starBuffer);
-    }
-    if (_shipUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
-      ensureVBO(resources.shipInstanceVBO, _shipUsed, _shipBuffer);
-    }
-    if (_bulletUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
-      ensureVBO(resources.bulletInstanceVBO, _bulletUsed, _bulletBuffer);
-    }
-    if (_particleUsed > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
-      ensureVBO(resources.particleInstanceVBO, _particleUsed, _particleBuffer);
+    // Rotate per-type VBOs and upload into the currently selected buffer
+    try {
+      if (_starUsed > 0) {
+        resources._starVBOIndex = (resources._starVBOIndex + 1) % resources.starInstanceVBOs.length;
+        resources.starInstanceVBO = resources.starInstanceVBOs[resources._starVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
+        ensureVBO(resources.starInstanceVBO, _starUsed, _starBuffer);
+      }
+      if (_shipUsed > 0) {
+        resources._shipVBOIndex = (resources._shipVBOIndex + 1) % resources.shipInstanceVBOs.length;
+        resources.shipInstanceVBO = resources.shipInstanceVBOs[resources._shipVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+        ensureVBO(resources.shipInstanceVBO, _shipUsed, _shipBuffer);
+      }
+      if (_bulletUsed > 0) {
+        resources._bulletVBOIndex = (resources._bulletVBOIndex + 1) % resources.bulletInstanceVBOs.length;
+        resources.bulletInstanceVBO = resources.bulletInstanceVBOs[resources._bulletVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+        ensureVBO(resources.bulletInstanceVBO, _bulletUsed, _bulletBuffer);
+      }
+      if (_particleUsed > 0) {
+        resources._particleVBOIndex = (resources._particleVBOIndex + 1) % resources.particleInstanceVBOs.length;
+        resources.particleInstanceVBO = resources.particleInstanceVBOs[resources._particleVBOIndex];
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+        ensureVBO(resources.particleInstanceVBO, _particleUsed, _particleBuffer);
+      }
+    } catch (e) {
+      // If rotation or upload fails, fall back to binding the first buffer
+      try { gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBOs[0]); } catch (ee) {}
     }
 
     // Clear and draw
@@ -723,18 +788,23 @@ export function createWebGLRenderer(canvas, opts = {}) {
         // Create fullscreen quad VBO once (two triangles, pixel space)
         if (!resources.fullscreenQuadVBO) {
           resources.fullscreenQuadVBO = gl.createBuffer();
+          // allocate or reuse a small fullscreen verts buffer
+          if (!resources._fullscreenVerts || resources._fullscreenVerts.length < 8) resources._fullscreenVerts = new Float32Array(8);
           const Wpx = canvas.width || _lastW || canvas.clientWidth;
           const Hpx = canvas.height || _lastH || canvas.clientHeight;
-          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
+          const fv = resources._fullscreenVerts;
+          fv[0] = 0; fv[1] = 0; fv[2] = Wpx; fv[3] = 0; fv[4] = 0; fv[5] = Hpx; fv[6] = Wpx; fv[7] = Hpx;
           gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
-          gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+          gl.bufferData(gl.ARRAY_BUFFER, fv, gl.DYNAMIC_DRAW);
         } else {
-          // update size if canvas changed
+          // update size if canvas changed (reuse buffer)
+          if (!resources._fullscreenVerts || resources._fullscreenVerts.length < 8) resources._fullscreenVerts = new Float32Array(8);
           const Wpx = canvas.width || _lastW || canvas.clientWidth;
           const Hpx = canvas.height || _lastH || canvas.clientHeight;
+          const fv = resources._fullscreenVerts;
+          fv[0] = 0; fv[1] = 0; fv[2] = Wpx; fv[3] = 0; fv[4] = 0; fv[5] = Hpx; fv[6] = Wpx; fv[7] = Hpx;
           gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
-          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, fv);
         }
   gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
   const posLoc = locs2 && locs2.attribs && (locs2.attribs.a_pos != null) ? locs2.attribs.a_pos : gl.getAttribLocation(resources.programSimple, 'a_pos');
@@ -840,6 +910,8 @@ export function createWebGLRenderer(canvas, opts = {}) {
   const renderer = {
     type: 'webgl',
     webgl2: isWebGL2,
+  // indicate this renderer drives its own RAF-based simulation loop
+  providesOwnLoop: true,
   // cached debug resources to avoid per-call shader compiles
   _debug: { solidProgram: null, solidBuf: null, solidBufSize: 0, fbo: null, fboTex: null },
     // debug helper: draw a solid opaque rectangle to the default framebuffer
@@ -867,9 +939,11 @@ export function createWebGLRenderer(canvas, opts = {}) {
           try { dumpProgramInfo(p); } catch (e) {}
         }
 
-        // build vertex data for this rect and upload into cached buffer
+        // build vertex data for this rect and upload into cached buffer (reuse verts)
         const x0 = x, y0 = y, x1 = x + w, y1 = y + h;
-        const verts = new Float32Array([x0, y0, x1, y0, x0, y1, x1, y1]);
+        if (!renderer._debug.solidVerts) renderer._debug.solidVerts = new Float32Array(8);
+        const verts = renderer._debug.solidVerts;
+        verts[0] = x0; verts[1] = y0; verts[2] = x1; verts[3] = y0; verts[4] = x0; verts[5] = y1; verts[6] = x1; verts[7] = y1;
         gl.bindBuffer(gl.ARRAY_BUFFER, buf);
         try {
           const byteLen = verts.byteLength;
@@ -976,9 +1050,10 @@ export function createWebGLRenderer(canvas, opts = {}) {
         gl.clear(gl.COLOR_BUFFER_BIT);
         try { gl.finish(); } catch (e) {}
 
-        // read pixel from FBO
-        const buf = new Uint8Array(4);
-        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  // read pixel from FBO (reuse small 4-byte buffer)
+  if (!renderer._debug._read1) renderer._debug._read1 = new Uint8Array(4);
+  const buf = renderer._debug._read1;
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
 
         // restore viewport/blend
         try { gl.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); } catch (e) {}
@@ -1080,7 +1155,79 @@ export function createWebGLRenderer(canvas, opts = {}) {
         return { __error: String(e) };
       }
     },
-    start(cb) { _running = true; if (cb) cb(); },
+    start(cb) {
+      if (_running) return;
+      _running = true;
+      if (cb) cb();
+      // Fixed timestep accumulator (Gaffer on Games style)
+      // keep a small cap on maximum delta to avoid spiral of death
+      const FIXED_DT = 1 / 60; // 60Hz deterministic simulation step
+      const MAX_DELTA = 0.25; // clamp large frame deltas (seconds)
+      let lastTime = null;
+      let accumulator = 0;
+
+      // store a lightweight previous-ship map so render() can interpolate
+      // between the previous and current simulation states for smooth visuals.
+      function frame(t) {
+        if (!_running) return;
+        const now = (t === undefined || t === null) ? (performance ? performance.now() / 1000 : Date.now() / 1000) : t / 1000;
+        if (lastTime === null) lastTime = now;
+        let delta = now - lastTime;
+        lastTime = now;
+        if (!isFinite(delta) || delta <= 0) delta = FIXED_DT;
+        // clamp very large deltas (tab switched, debugging pause, etc.)
+        delta = Math.min(delta, MAX_DELTA);
+        accumulator += delta;
+
+        // run fixed-step updates; before each simulate step capture a shallow
+        // snapshot of ship positions so renderer can interpolate between steps.
+        while (accumulator >= FIXED_DT) {
+          // capture prev map
+          const prevShipsMap = new Map();
+          try {
+            for (const s of (Array.isArray && Array.isArray(window) ? [] : []) ) {}
+          } catch (e) {}
+          // we don't have easy access to global ships array here; instead,
+          // rely on simulate() to return the state and allow render to keep
+          // a copy. We'll call simulate with FIXED_DT and stash a prev map on
+          // the returned state after each step. The renderer.render will then
+          // use state._prevShipsMap (if present) and state._alpha for interpolation.
+          let state;
+          try {
+            state = simulate(FIXED_DT, canvas.width, canvas.height);
+          } catch (e) {
+            console.error('simulate() failed in webgl renderer', e);
+            _running = false;
+            return;
+          }
+          // move previous state into state._prevShipsMap if renderer has a lastState
+          try {
+            if (renderer._lastState && Array.isArray(renderer._lastState.ships)) {
+              const m = new Map();
+              for (const ps of renderer._lastState.ships) {
+                if (ps && ps.id != null) m.set(ps.id, { x: ps.x, y: ps.y, angle: ps.angle });
+              }
+              state._prevShipsMap = m;
+            }
+          } catch (e) {}
+          renderer._lastState = state;
+          accumulator -= FIXED_DT;
+        }
+
+        // compute alpha for interpolation between last completed step and next
+        const alpha = accumulator / FIXED_DT;
+        // attach alpha to the state for renderer to pick up
+        try {
+          if (renderer._lastState) renderer._lastState._alpha = alpha;
+        } catch (e) {}
+
+        // render the last simulated state (renderer.render will use _alpha)
+        try { renderer.render(renderer._lastState || {}); } catch (e) { console.warn('renderer.render error', e); }
+
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    },
     stop() { _running = false; },
     isRunning() { return _running; },
     render(state) {
@@ -1088,13 +1235,11 @@ export function createWebGLRenderer(canvas, opts = {}) {
       // if the state contains a pre-rendered starCanvas, queue it for upload as a background texture
       if (state && state.starCanvas) {
         try {
-          // only queue upload when version differs (avoid redundant re-uploads)
-          const s = state.starCanvas;
-          const prev = resources.textures.get('__starfield');
-          const prevVersion = prev && prev.canvas && prev.canvas._version;
-          const curVersion = s && s._version;
-          if (!prev || prevVersion !== curVersion) queueStarfieldUpload(s);
-        } catch (e) {}
+          // Always queue starCanvas for upload when provided; internal upload pipeline
+          // will dedupe or skip if the canvas is invalid. This is more robust when
+          // the producer frequently re-creates canvases.
+          queueStarfieldUpload(state.starCanvas);
+        } catch (e) { /* ignore */ }
       }
       // gather atlas uploads from atlasAccessor
       if (cfg.atlasAccessor && typeof cfg.atlasAccessor === 'function') {
@@ -1120,15 +1265,29 @@ export function createWebGLRenderer(canvas, opts = {}) {
         canvas.removeEventListener('webglcontextlost', onContextLost);
         canvas.removeEventListener('webglcontextrestored', onContextRestored);
         // free GL resources
+        // delete textures/programs/VAOs
         for (const v of Object.values(resources)) {
           try {
             if (!v) continue;
             if (v instanceof WebGLTexture) gl.deleteTexture(v);
-            if (v instanceof WebGLBuffer) gl.deleteBuffer(v);
             if (v instanceof WebGLProgram) gl.deleteProgram(v);
             if (v instanceof WebGLVertexArrayObject) gl.deleteVertexArray(v);
           } catch (e) {}
         }
+        // delete buffer pools (star/ship/bullet/particle and quad/fullscreen)
+        try {
+          if (resources.quadVBO) gl.deleteBuffer(resources.quadVBO);
+          if (resources.fullscreenQuadVBO) gl.deleteBuffer(resources.fullscreenQuadVBO);
+          if (resources.instanceVBO) gl.deleteBuffer(resources.instanceVBO);
+          const pools = ['starInstanceVBOs','shipInstanceVBOs','bulletInstanceVBOs','particleInstanceVBOs'];
+          for (const p of pools) {
+            if (Array.isArray(resources[p])) {
+              for (const b of resources[p]) {
+                try { if (b) gl.deleteBuffer(b); } catch (ee) {}
+              }
+            }
+          }
+        } catch (e) {}
         // free cached debug resources
         try {
           if (renderer._debug) {
@@ -1192,7 +1351,9 @@ export function createWebGLRenderer(canvas, opts = {}) {
           const sy = Math.max(1, Math.min(3, canvas.height));
           const px = Math.max(0, cx - Math.floor(sx / 2));
           const py = Math.max(0, cy - Math.floor(sy / 2));
-          const read = new Uint8Array(sx * sy * 4);
+          // reuse read buffer for diagnostics when possible
+          if (!renderer._debug._readBuf || renderer._debug._readBuf.length < sx * sy * 4) renderer._debug._readBuf = new Uint8Array(sx * sy * 4);
+          const read = renderer._debug._readBuf;
           // readPixels uses lower-left origin; ensure we flush and convert y
           try { gl.finish(); } catch (e) {}
           const glPy = Math.max(0, (canvas.height - 1) - py - (sy - 1));
