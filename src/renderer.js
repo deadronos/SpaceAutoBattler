@@ -22,8 +22,37 @@ export function createCanvasRenderer(canvas) {
     const state = simulate(dt, W, H);
     // clear
     ctx.clearRect(0,0,canvas.width, canvas.height);
-    // background stars placeholder
-    ctx.fillStyle = '#081018'; ctx.fillRect(0,0,canvas.width, canvas.height);
+    // background: prefer pre-rendered starCanvas (fast) otherwise draw individual stars
+    if (state.starCanvas) {
+      try {
+        ctx.drawImage(state.starCanvas, 0, 0, canvas.width, canvas.height);
+      } catch (e) {
+        // fallback to per-star drawing if drawImage fails
+        ctx.fillStyle = '#041018'; ctx.fillRect(0,0,canvas.width, canvas.height);
+        if (state.stars && state.stars.length) {
+          for (const s of state.stars) {
+            ctx.globalAlpha = s.a != null ? s.a : 1.0;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI*2); ctx.fill();
+          }
+          ctx.globalAlpha = 1.0;
+        }
+      }
+    } else {
+      // per-star fallback
+      if (state.stars && state.stars.length) {
+        ctx.fillStyle = '#041018'; ctx.fillRect(0,0,canvas.width, canvas.height);
+        // draw stars (cheap: 1-2px circles)
+        for (const s of state.stars) {
+          ctx.globalAlpha = s.a != null ? s.a : 1.0;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+      } else {
+        ctx.fillStyle = '#081018'; ctx.fillRect(0,0,canvas.width, canvas.height);
+      }
+    }
     // draw ships
     for (const s of state.ships) {
       ctx.beginPath();

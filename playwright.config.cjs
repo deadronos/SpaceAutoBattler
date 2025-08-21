@@ -5,6 +5,12 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 // Base URL may be overridden by E2E_BASE environment variable
+// load global Playwright listeners so page crash/close events are logged for all tests
+try {
+  require('./test/playwright/playwright-global-listeners.js');
+} catch (e) {
+  // best-effort; if the helper is missing we still run tests
+}
 const baseURL = process.env.E2E_BASE || 'http://localhost:8080/';
 
 module.exports = {

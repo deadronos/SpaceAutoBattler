@@ -16,9 +16,27 @@ fitCanvas();
 // Prefer WebGL renderer when available (helps reproduce WebGL runtime issues);
 // fall back to Canvas renderer for environments without WebGL.
 let renderer = null;
+// simple programmatic atlas accessor: creates a small canvas sprite for a given type/radius
+function makeSimpleAtlas(type, radius) {
+  const pad = 4;
+  const size = Math.max(8, Math.ceil(radius * 2 + pad * 2));
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  const cx = size / 2, cy = size / 2;
+  // base hull (white, to be tinted in shader)
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+  // accent
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath(); ctx.arc(cx - radius * 0.25, cy - radius * 0.25, Math.max(1, radius * 0.35), 0, Math.PI * 2); ctx.fill();
+  return { canvas: c, size, baseRadius: radius };
+}
+
 try {
   if (webglMod && typeof webglMod.createWebGLRenderer === 'function') {
-    const tryWebgl = webglMod.createWebGLRenderer(canvas, { webgl2: true });
+    const tryWebgl = webglMod.createWebGLRenderer(canvas, { webgl2: true, atlasAccessor: (type, radius) => makeSimpleAtlas(type, radius) });
     if (tryWebgl && tryWebgl.init && tryWebgl.init()) {
       renderer = tryWebgl;
       console.log('[main] using WebGL renderer');

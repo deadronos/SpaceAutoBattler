@@ -11,12 +11,14 @@ __export(gamemanager_exports, {
   acquireParticle: () => acquireParticle,
   bullets: () => bullets,
   config: () => config,
+  createStarCanvas: () => createStarCanvas,
   default: () => gamemanager_default,
   evaluateReinforcement: () => evaluateReinforcement,
   flashes: () => flashes,
   getManagerConfig: () => getManagerConfig,
   getReinforcementInterval: () => getReinforcementInterval,
   healthFlashes: () => healthFlashes,
+  initStars: () => initStars,
   particlePool: () => particlePool,
   particles: () => particles,
   processStateEvents: () => processStateEvents,
@@ -27,6 +29,7 @@ __export(gamemanager_exports, {
   shieldFlashes: () => shieldFlashes,
   ships: () => ships,
   simulate: () => simulate,
+  starCanvas: () => starCanvas,
   stars: () => stars
 });
 
@@ -239,6 +242,7 @@ var ships = [];
 var bullets = [];
 var particles = [];
 var stars = [];
+var starCanvas = null;
 var flashes = [];
 var shieldFlashes = [];
 var healthFlashes = [];
@@ -246,6 +250,11 @@ var particlePool = [];
 var config = {
   shield: { ttl: 0.4, particleCount: 6, particleTTL: 0.35, particleColor: "rgba(160,200,255,0.9)", particleSize: 2 },
   health: { ttl: 0.75, particleCount: 8, particleTTL: 0.6, particleColor: "rgba(255,120,80,0.95)", particleSize: 2 }
+};
+config.stars = {
+  twinkle: false,
+  redrawInterval: 0.35
+  // seconds between canvas redraws when twinkling
 };
 function setManagerConfig(newCfg = {}) {
   for (const k of Object.keys(newCfg)) {
@@ -296,6 +305,8 @@ function releaseParticle(p) {
 var _seed = null;
 var _reinforcementInterval = 5;
 var _reinforcementAccumulator = 0;
+var _starTime = 0;
+var _starCanvasVersion = 0;
 function reset(seedValue = null) {
   ships.length = 0;
   bullets.length = 0;
@@ -309,6 +320,88 @@ function reset(seedValue = null) {
     _seed = seedValue >>> 0;
     srand(_seed);
   }
+  try {
+    initStars(800, 600, 140);
+  } catch (e) {
+  }
+  try {
+    if (!config.stars || !config.stars.twinkle) createStarCanvas(800, 600);
+  } catch (e) {
+  }
+}
+function initStars(W = 800, H = 600, count = 140) {
+  stars.length = 0;
+  for (let i = 0; i < count; i++) {
+    const x = srandom() * W;
+    const y = srandom() * H;
+    const r = 0.3 + srandom() * 1.3;
+    const a = 0.3 + srandom() * 0.7;
+    const twPhase = srandom() * Math.PI * 2;
+    const twSpeed = 0.5 + srandom() * 1.5;
+    const baseA = a;
+    stars.push({ x, y, r, a: baseA, baseA, twPhase, twSpeed });
+  }
+}
+function createStarCanvas(W = 800, H = 600, bg = "#041018") {
+  try {
+    const c = typeof document !== "undefined" ? document.createElement("canvas") : null;
+    if (!c) {
+      starCanvas = null;
+      return null;
+    }
+    c.width = Math.max(1, Math.floor(W));
+    c.height = Math.max(1, Math.floor(H));
+    const ctx = c.getContext && c.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, c.width, c.height);
+      for (const s of stars) {
+        const alpha = Math.max(0, Math.min(1, s.a != null ? s.a : s.baseA != null ? s.baseA : 1));
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        const r = Math.max(0.2, s.r || 0.5);
+        ctx.arc(s.x || 0, s.y || 0, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      const Wpx = c.width, Hpx = c.height;
+      const data = new Uint8ClampedArray(Wpx * Hpx * 4);
+      if (data.length >= 4) {
+        data[0] = 255;
+        data[1] = 255;
+        data[2] = 255;
+        data[3] = 255;
+      }
+      const stubCtx = {
+        getImageData: (x, y, w, h) => ({ data }),
+        // no-op drawing methods
+        fillRect: () => {
+        },
+        beginPath: () => {
+        },
+        arc: () => {
+        },
+        fill: () => {
+        },
+        set fillStyle(v) {
+        },
+        get fillStyle() {
+          return "#000";
+        }
+      };
+      c.getContext = () => stubCtx;
+    }
+    try {
+      _starCanvasVersion = (_starCanvasVersion || 0) + 1;
+    } catch (e) {
+    }
+    c._version = _starCanvasVersion;
+    starCanvas = c;
+    return c;
+  } catch (e) {
+    starCanvas = null;
+    return null;
+  }
 }
 function simulate(dt, W = 800, H = 600) {
   const state = { ships, bullets, particles, stars, explosions: [], shieldHits: [], healthHits: [] };
@@ -321,7 +414,19 @@ function simulate(dt, W = 800, H = 600) {
   for (const h of state.healthHits) {
     healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: false }));
   }
-  return { ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars };
+  try {
+    _starTime += dt;
+    if (config.stars && config.stars.twinkle) {
+      for (const s of stars) {
+        const base = s.baseA != null ? s.baseA : s.a != null ? s.a : 1;
+        const phase = s.twPhase != null ? s.twPhase : 0;
+        const speed = s.twSpeed != null ? s.twSpeed : 1;
+        s.a = base * (0.7 + 0.3 * Math.sin(phase + _starTime * speed));
+      }
+    }
+  } catch (e) {
+  }
+  return { ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars, starCanvas };
 }
 function processStateEvents(state, dt = 0) {
   return state;
@@ -365,8 +470,40 @@ function createCanvasRenderer(canvas2) {
     const H = canvas2.height;
     const state = simulate(dt, W, H);
     ctx.clearRect(0, 0, canvas2.width, canvas2.height);
-    ctx.fillStyle = "#081018";
-    ctx.fillRect(0, 0, canvas2.width, canvas2.height);
+    if (state.starCanvas) {
+      try {
+        ctx.drawImage(state.starCanvas, 0, 0, canvas2.width, canvas2.height);
+      } catch (e) {
+        ctx.fillStyle = "#041018";
+        ctx.fillRect(0, 0, canvas2.width, canvas2.height);
+        if (state.stars && state.stars.length) {
+          for (const s of state.stars) {
+            ctx.globalAlpha = s.a != null ? s.a : 1;
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+    } else {
+      if (state.stars && state.stars.length) {
+        ctx.fillStyle = "#041018";
+        ctx.fillRect(0, 0, canvas2.width, canvas2.height);
+        for (const s of state.stars) {
+          ctx.globalAlpha = s.a != null ? s.a : 1;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = "#081018";
+        ctx.fillRect(0, 0, canvas2.width, canvas2.height);
+      }
+    }
     for (const s of state.ships) {
       ctx.beginPath();
       ctx.fillStyle = s.team === "red" ? "#ff8080" : "#80b8ff";
@@ -514,17 +651,28 @@ function createWebGLRenderer(canvas2, opts = {}) {
   const resources = {
     textures: /* @__PURE__ */ new Map(),
     quadVBO: null,
+    fullscreenQuadVBO: null,
     instanceVBO: null,
-    streamInstanceVBO: null,
     programInstanced: null,
     programSimple: null,
     vao: null
   };
+  const programLocations = /* @__PURE__ */ new Map();
   let _lastW = 0;
   let _lastH = 0;
   let _running = false;
-  let _streamBuffer = null;
-  let _streamCapacity = 0;
+  let _starBuffer = null;
+  let _starCapacity = 0;
+  let _starUsed = 0;
+  let _shipBuffer = null;
+  let _shipCapacity = 0;
+  let _shipUsed = 0;
+  let _bulletBuffer = null;
+  let _bulletCapacity = 0;
+  let _bulletUsed = 0;
+  let _particleBuffer = null;
+  let _particleCapacity = 0;
+  let _particleUsed = 0;
   const _pendingAtlasUploads = [];
   function debugLog(...args) {
     if (typeof console !== "undefined" && console.log) console.log("[webgl-debug]", ...args);
@@ -671,12 +819,38 @@ function createWebGLRenderer(canvas2, opts = {}) {
         dumpProgramInfo(resources.programInstanced);
       } catch (e) {
       }
+      try {
+        const map = { uniforms: {}, attribs: {} };
+        map.uniforms.u_resolution = gl.getUniformLocation(resources.programInstanced, "u_resolution");
+        map.uniforms.u_tex = gl.getUniformLocation(resources.programInstanced, "u_tex");
+        map.uniforms.u_useTex = gl.getUniformLocation(resources.programInstanced, "u_useTex");
+        map.attribs.a_quadPos = gl.getAttribLocation(resources.programInstanced, "a_quadPos");
+        map.attribs.a_pos = gl.getAttribLocation(resources.programInstanced, "a_pos");
+        map.attribs.a_scale = gl.getAttribLocation(resources.programInstanced, "a_scale");
+        map.attribs.a_angle = gl.getAttribLocation(resources.programInstanced, "a_angle");
+        map.attribs.a_color = gl.getAttribLocation(resources.programInstanced, "a_color");
+        programLocations.set(resources.programInstanced, map);
+      } catch (e) {
+      }
     }
     const vs2 = compileShader(isWebGL2 ? vsInstanced : vsSimple, gl.VERTEX_SHADER);
     const fs2 = compileShader(isWebGL2 ? fsInstanced : fsSimple, gl.FRAGMENT_SHADER);
     resources.programSimple = linkProgram(vs2, fs2);
     try {
       dumpProgramInfo(resources.programSimple);
+    } catch (e) {
+    }
+    try {
+      const map2 = { uniforms: {}, attribs: {} };
+      map2.uniforms.u_resolution = gl.getUniformLocation(resources.programSimple, "u_resolution");
+      map2.uniforms.u_tex = gl.getUniformLocation(resources.programSimple, "u_tex");
+      map2.uniforms.u_useTex = gl.getUniformLocation(resources.programSimple, "u_useTex");
+      map2.attribs.a_quadPos = gl.getAttribLocation(resources.programSimple, "a_quadPos");
+      map2.attribs.a_pos = gl.getAttribLocation(resources.programSimple, "a_pos");
+      map2.attribs.a_scale = gl.getAttribLocation(resources.programSimple, "a_scale");
+      map2.attribs.a_angle = gl.getAttribLocation(resources.programSimple, "a_angle");
+      map2.attribs.a_color = gl.getAttribLocation(resources.programSimple, "a_color");
+      programLocations.set(resources.programSimple, map2);
     } catch (e) {
     }
   }
@@ -687,10 +861,12 @@ function createWebGLRenderer(canvas2, opts = {}) {
     gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
     resources.instanceVBO = gl.createBuffer();
     resources.instanceVBO._size = 0;
-    resources.streamInstanceVBO = gl.createBuffer();
-    resources.streamInstanceVBO._size = 0;
-    if (!_streamBuffer) _streamBuffer = null;
-    if (!_streamCapacity) _streamCapacity = 0;
+    resources.starInstanceVBO = gl.createBuffer();
+    resources.starInstanceVBO._size = 0;
+    resources.shipInstanceVBO = gl.createBuffer();
+    resources.shipInstanceVBO._size = 0;
+    resources.shipInstanceVBO = gl.createBuffer();
+    resources.shipInstanceVBO._size = 0;
     resources.bulletInstanceVBO = gl.createBuffer();
     resources.particleInstanceVBO = gl.createBuffer();
     resources.bulletInstanceVBO._size = 0;
@@ -796,6 +972,11 @@ function createWebGLRenderer(canvas2, opts = {}) {
       }
     }
   }
+  function queueStarfieldUpload(canvasSrc) {
+    if (!canvasSrc) return;
+    const key = "__starfield";
+    queueAtlasUpload(key, { canvas: canvasSrc, size: Math.max(canvasSrc.width, canvasSrc.height), baseRadius: 0 });
+  }
   function isPowerOfTwo(v) {
     return (v & v - 1) === 0;
   }
@@ -820,115 +1001,178 @@ function createWebGLRenderer(canvas2, opts = {}) {
     const H = state.H || canvas2.clientHeight;
     const ships2 = state.ships || [];
     const n = ships2.length;
+    const stars2 = state.stars || [];
+    const sn = stars2.length;
     const elemsPer = 8;
     const bullets2 = state.bullets || [];
     const bn = bullets2.length;
     const particles2 = state.particles || [];
     const pn = particles2.length;
+    const starElems = sn * elemsPer;
     const shipElems = n * elemsPer;
     const bulletElems = bn * elemsPer;
     const particleElems = pn * elemsPer;
-    const totalElems = shipElems + bulletElems + particleElems;
-    if (_streamCapacity < totalElems) {
-      let cap = Math.max(4 * elemsPer, _streamCapacity || 0);
-      while (cap < totalElems) cap *= 2;
-      _streamCapacity = cap;
-      _streamBuffer = new Float32Array(_streamCapacity);
+    if (_starCapacity < starElems) {
+      let cap = Math.max(4 * elemsPer, _starCapacity || 0);
+      if (cap < 1) cap = elemsPer * 4;
+      while (cap < starElems) cap *= 2;
+      _starCapacity = cap;
+      _starBuffer = new Float32Array(_starCapacity);
     }
+    _starUsed = starElems;
+    for (let i = 0; i < sn; i++) {
+      const s = stars2[i];
+      const base = i * elemsPer;
+      _starBuffer[base + 0] = s.x || 0;
+      _starBuffer[base + 1] = s.y || 0;
+      _starBuffer[base + 2] = s.r != null ? s.r : 1;
+      _starBuffer[base + 3] = 0;
+      const a = s.a != null ? s.a : 1;
+      _starBuffer[base + 4] = 1;
+      _starBuffer[base + 5] = 1;
+      _starBuffer[base + 6] = 1;
+      _starBuffer[base + 7] = a;
+    }
+    if (_shipCapacity < shipElems) {
+      let cap = Math.max(4 * elemsPer, _shipCapacity || 0);
+      if (cap < 1) cap = elemsPer * 4;
+      while (cap < shipElems) cap *= 2;
+      _shipCapacity = cap;
+      _shipBuffer = new Float32Array(_shipCapacity);
+    }
+    _shipUsed = shipElems;
     for (let i = 0; i < n; i++) {
       const s = ships2[i];
       const base = i * elemsPer;
-      _streamBuffer[base + 0] = s.x || 0;
-      _streamBuffer[base + 1] = s.y || 0;
-      _streamBuffer[base + 2] = s.radius != null ? s.radius : 8;
-      _streamBuffer[base + 3] = s.angle != null ? s.angle : 0;
+      _shipBuffer[base + 0] = s.x || 0;
+      _shipBuffer[base + 1] = s.y || 0;
+      _shipBuffer[base + 2] = s.radius != null ? s.radius : 8;
+      _shipBuffer[base + 3] = s.angle != null ? s.angle : 0;
       const color = teamToColor(s.team);
-      _streamBuffer[base + 4] = color[0];
-      _streamBuffer[base + 5] = color[1];
-      _streamBuffer[base + 6] = color[2];
-      _streamBuffer[base + 7] = color[3];
+      _shipBuffer[base + 4] = color[0];
+      _shipBuffer[base + 5] = color[1];
+      _shipBuffer[base + 6] = color[2];
+      _shipBuffer[base + 7] = color[3];
     }
-    let offset = shipElems;
+    if (_bulletCapacity < bulletElems) {
+      let cap = Math.max(4 * elemsPer, _bulletCapacity || 0);
+      if (cap < 1) cap = elemsPer * 4;
+      while (cap < bulletElems) cap *= 2;
+      _bulletCapacity = cap;
+      _bulletBuffer = new Float32Array(_bulletCapacity);
+    }
+    _bulletUsed = bulletElems;
     for (let i = 0; i < bn; i++) {
       const b = bullets2[i];
-      const base = offset + i * elemsPer;
-      _streamBuffer[base + 0] = b.x || 0;
-      _streamBuffer[base + 1] = b.y || 0;
-      _streamBuffer[base + 2] = b.radius != null ? b.radius : 2;
-      _streamBuffer[base + 3] = 0;
-      _streamBuffer[base + 4] = 1;
-      _streamBuffer[base + 5] = 0.85;
-      _streamBuffer[base + 6] = 0.5;
-      _streamBuffer[base + 7] = 1;
+      const base = i * elemsPer;
+      _bulletBuffer[base + 0] = b.x || 0;
+      _bulletBuffer[base + 1] = b.y || 0;
+      _bulletBuffer[base + 2] = b.radius != null ? b.radius : 2;
+      _bulletBuffer[base + 3] = 0;
+      _bulletBuffer[base + 4] = 1;
+      _bulletBuffer[base + 5] = 0.85;
+      _bulletBuffer[base + 6] = 0.5;
+      _bulletBuffer[base + 7] = 1;
     }
-    offset = shipElems + bulletElems;
+    if (_particleCapacity < particleElems) {
+      let cap = Math.max(4 * elemsPer, _particleCapacity || 0);
+      if (cap < 1) cap = elemsPer * 4;
+      while (cap < particleElems) cap *= 2;
+      _particleCapacity = cap;
+      _particleBuffer = new Float32Array(_particleCapacity);
+    }
+    _particleUsed = particleElems;
     for (let i = 0; i < pn; i++) {
       const p = particles2[i];
-      const base = offset + i * elemsPer;
-      _streamBuffer[base + 0] = p.x || 0;
-      _streamBuffer[base + 1] = p.y || 0;
-      _streamBuffer[base + 2] = p.size != null ? p.size : 1;
-      _streamBuffer[base + 3] = 0;
+      const base = i * elemsPer;
+      _particleBuffer[base + 0] = p.x || 0;
+      _particleBuffer[base + 1] = p.y || 0;
+      _particleBuffer[base + 2] = p.size != null ? p.size : 1;
+      _particleBuffer[base + 3] = 0;
       const col = parseColor(p.color || "#ffffff");
-      _streamBuffer[base + 4] = col[0];
-      _streamBuffer[base + 5] = col[1];
-      _streamBuffer[base + 6] = col[2];
-      _streamBuffer[base + 7] = Math.max(0.2, col[3]);
+      _particleBuffer[base + 4] = col[0];
+      _particleBuffer[base + 5] = col[1];
+      _particleBuffer[base + 6] = col[2];
+      _particleBuffer[base + 7] = Math.max(0.2, col[3]);
     }
+    const totalElems = starElems + shipElems + bulletElems + particleElems;
     if (totalElems === 0) {
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       return;
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER, resources.streamInstanceVBO);
     const BYTES = Float32Array.BYTES_PER_ELEMENT || 4;
-    const requiredBytes = totalElems * BYTES;
-    if (!resources.streamInstanceVBO._size || resources.streamInstanceVBO._size < requiredBytes) {
-      gl.bufferData(gl.ARRAY_BUFFER, requiredBytes, gl.DYNAMIC_DRAW);
-      resources.streamInstanceVBO._size = requiredBytes;
+    function ensureVBO(vbo, usedElems, usedBuffer) {
+      try {
+        const requiredBytes = usedElems * BYTES;
+        if (!vbo._size || vbo._size < requiredBytes) {
+          let alloc = Math.max(vbo._size || 1, 1);
+          while (alloc < requiredBytes) alloc *= 2;
+          try {
+            gl.bufferData(gl.ARRAY_BUFFER, alloc, gl.DYNAMIC_DRAW);
+            vbo._size = alloc;
+          } catch (e) {
+            try {
+              gl.bufferData(gl.ARRAY_BUFFER, requiredBytes, gl.DYNAMIC_DRAW);
+              vbo._size = requiredBytes;
+            } catch (ee) {
+            }
+          }
+        }
+        if (usedElems > 0) gl.bufferSubData(gl.ARRAY_BUFFER, 0, usedBuffer.subarray(0, usedElems));
+      } catch (e) {
+      }
     }
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, _streamBuffer.subarray(0, totalElems));
+    if (cfg.debug) {
+      try {
+        if (_starBuffer && _starUsed > _starBuffer.length) debugLog("star buffer used exceeds capacity", _starUsed, _starBuffer.length);
+        if (_shipBuffer && _shipUsed > _shipBuffer.length) debugLog("ship buffer used exceeds capacity", _shipUsed, _shipBuffer.length);
+        if (_bulletBuffer && _bulletUsed > _bulletBuffer.length) debugLog("bullet buffer used exceeds capacity", _bulletUsed, _bulletBuffer.length);
+        if (_particleBuffer && _particleUsed > _particleBuffer.length) debugLog("particle buffer used exceeds capacity", _particleUsed, _particleBuffer.length);
+        try {
+          if (renderer2 && renderer2._test_forceBufferMismatch) debugLog("forced buffer mismatch (test hook)");
+        } catch (e) {
+        }
+      } catch (e) {
+      }
+    }
+    if (_starUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
+      ensureVBO(resources.starInstanceVBO, _starUsed, _starBuffer);
+    }
+    if (_shipUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+      ensureVBO(resources.shipInstanceVBO, _shipUsed, _shipBuffer);
+    }
+    if (_bulletUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+      ensureVBO(resources.bulletInstanceVBO, _bulletUsed, _bulletBuffer);
+    }
+    if (_particleUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+      ensureVBO(resources.particleInstanceVBO, _particleUsed, _particleBuffer);
+    }
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     const useInstanced = isWebGL2 && resources.programInstanced;
     const program = useInstanced ? resources.programInstanced : resources.programSimple;
     gl.useProgram(program);
-    const ures = gl.getUniformLocation(program, "u_resolution");
-    if (ures) gl.uniform2f(ures, canvas2.width || _lastW || canvas2.clientWidth, canvas2.height || _lastH || canvas2.clientHeight);
+    const locs = programLocations.get(program) || null;
+    const uresLoc = locs && locs.uniforms && locs.uniforms.u_resolution ? locs.uniforms.u_resolution : gl.getUniformLocation(program, "u_resolution");
+    if (uresLoc) gl.uniform2f(uresLoc, canvas2.width || _lastW || canvas2.clientWidth, canvas2.height || _lastH || canvas2.clientHeight);
     gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadVBO);
-    const aQuad = gl.getAttribLocation(program, "a_quadPos");
-    if (aQuad >= 0) {
-      gl.enableVertexAttribArray(aQuad);
-      gl.vertexAttribPointer(aQuad, 2, gl.FLOAT, false, 0, 0);
-      if (isWebGL2) gl.vertexAttribDivisor(aQuad, 0);
+    const aQuadLoc = locs && locs.attribs && locs.attribs.a_quadPos != null ? locs.attribs.a_quadPos : gl.getAttribLocation(program, "a_quadPos");
+    if (aQuadLoc >= 0) {
+      gl.enableVertexAttribArray(aQuadLoc);
+      gl.vertexAttribPointer(aQuadLoc, 2, gl.FLOAT, false, 0, 0);
+      if (isWebGL2) gl.vertexAttribDivisor(aQuadLoc, 0);
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER, resources.streamInstanceVBO);
-    const attrPos = gl.getAttribLocation(program, "a_pos");
-    const attrScale = gl.getAttribLocation(program, "a_scale");
-    const attrAngle = gl.getAttribLocation(program, "a_angle");
-    const attrColor = gl.getAttribLocation(program, "a_color");
-    if (attrPos >= 0) {
-      gl.enableVertexAttribArray(attrPos);
-      gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0);
-      if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1);
-    }
-    if (attrScale >= 0) {
-      gl.enableVertexAttribArray(attrScale);
-      gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4);
-      if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1);
-    }
-    if (attrAngle >= 0) {
-      gl.enableVertexAttribArray(attrAngle);
-      gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4);
-      if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1);
-    }
-    if (attrColor >= 0) {
-      gl.enableVertexAttribArray(attrColor);
-      gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
-      if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
-    }
-    const useTexLoc = gl.getUniformLocation(program, "u_useTex");
-    const texLoc = gl.getUniformLocation(program, "u_tex");
+    const attrPos = locs && locs.attribs && locs.attribs.a_pos != null ? locs.attribs.a_pos : gl.getAttribLocation(program, "a_pos");
+    const attrScale = locs && locs.attribs && locs.attribs.a_scale != null ? locs.attribs.a_scale : gl.getAttribLocation(program, "a_scale");
+    const attrAngle = locs && locs.attribs && locs.attribs.a_angle != null ? locs.attribs.a_angle : gl.getAttribLocation(program, "a_angle");
+    const attrColor = locs && locs.attribs && locs.attribs.a_color != null ? locs.attribs.a_color : gl.getAttribLocation(program, "a_color");
+    const useTexLoc = locs && locs.uniforms && locs.uniforms.u_useTex != null ? locs.uniforms.u_useTex : gl.getUniformLocation(program, "u_useTex");
+    const texLoc = locs && locs.uniforms && locs.uniforms.u_tex != null ? locs.uniforms.u_tex : gl.getUniformLocation(program, "u_tex");
     let anyTex = resources.textures.size > 0;
     if (useTexLoc) gl.uniform1i(useTexLoc, anyTex ? 1 : 0);
     if (texLoc && anyTex) {
@@ -937,58 +1181,165 @@ function createWebGLRenderer(canvas2, opts = {}) {
       gl.bindTexture(gl.TEXTURE_2D, first.tex);
       gl.uniform1i(texLoc, 0);
     }
-    if (useInstanced) {
-      if (n > 0) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n);
-      let shipElemsCount = n;
-      let bulletElemsCount = bn;
-      let particleElemsCount = pn;
-      const shipByteOffset = 0;
-      const bulletByteOffset = shipElemsCount * elemsPer * 4;
-      const particleByteOffset = (shipElemsCount + bulletElemsCount) * elemsPer * 4;
-      if (bulletElemsCount > 0) {
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 0);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 2 * 4);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 3 * 4);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 4 * 4);
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, bulletElemsCount);
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 0);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 2 * 4);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 3 * 4);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 4 * 4);
+    if (resources.textures.has("__starfield")) {
+      try {
+        const s = resources.textures.get("__starfield");
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, s.tex);
+        gl.useProgram(resources.programSimple);
+        const locs2 = programLocations.get(resources.programSimple) || null;
+        const useTexLoc2 = locs2 && locs2.uniforms && locs2.uniforms.u_useTex != null ? locs2.uniforms.u_useTex : gl.getUniformLocation(resources.programSimple, "u_useTex");
+        const texLoc2 = locs2 && locs2.uniforms && locs2.uniforms.u_tex != null ? locs2.uniforms.u_tex : gl.getUniformLocation(resources.programSimple, "u_tex");
+        if (useTexLoc2) gl.uniform1i(useTexLoc2, 1);
+        if (texLoc2) {
+          gl.activeTexture(gl.TEXTURE1);
+          gl.uniform1i(texLoc2, 1);
+        }
+        const prevProg = program;
+        const ures2 = locs2 && locs2.uniforms && locs2.uniforms.u_resolution ? locs2.uniforms.u_resolution : gl.getUniformLocation(resources.programSimple, "u_resolution");
+        if (ures2) gl.uniform2f(ures2, canvas2.width || _lastW || canvas2.clientWidth, canvas2.height || _lastH || canvas2.clientHeight);
+        if (!resources.fullscreenQuadVBO) {
+          resources.fullscreenQuadVBO = gl.createBuffer();
+          const Wpx = canvas2.width || _lastW || canvas2.clientWidth;
+          const Hpx = canvas2.height || _lastH || canvas2.clientHeight;
+          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
+          gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
+          gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+        } else {
+          const Wpx = canvas2.width || _lastW || canvas2.clientWidth;
+          const Hpx = canvas2.height || _lastH || canvas2.clientHeight;
+          gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
+          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
+        const posLoc = locs2 && locs2.attribs && locs2.attribs.a_pos != null ? locs2.attribs.a_pos : gl.getAttribLocation(resources.programSimple, "a_pos");
+        if (posLoc >= 0) {
+          gl.enableVertexAttribArray(posLoc);
+          gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+        }
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.useProgram(prevProg);
+      } catch (e) {
       }
-      if (particleElemsCount > 0) {
-        const pb = particleByteOffset;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, pb + 0);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, pb + 2 * 4);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, pb + 4 * 4);
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, particleElemsCount);
+    }
+    if (useInstanced) {
+      if (sn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
+        if (attrPos >= 0) {
+          gl.enableVertexAttribArray(attrPos);
+          gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0);
+          if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1);
+        }
+        if (attrScale >= 0) {
+          gl.enableVertexAttribArray(attrScale);
+          gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1);
+        }
+        if (attrAngle >= 0) {
+          gl.enableVertexAttribArray(attrAngle);
+          gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1);
+        }
+        if (attrColor >= 0) {
+          gl.enableVertexAttribArray(attrColor);
+          gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
+        }
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, sn);
+      }
+      if (n > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+        if (attrPos >= 0) {
+          gl.enableVertexAttribArray(attrPos);
+          gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0);
+          if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1);
+        }
+        if (attrScale >= 0) {
+          gl.enableVertexAttribArray(attrScale);
+          gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1);
+        }
+        if (attrAngle >= 0) {
+          gl.enableVertexAttribArray(attrAngle);
+          gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1);
+        }
+        if (attrColor >= 0) {
+          gl.enableVertexAttribArray(attrColor);
+          gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
+        }
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n);
+      }
+      if (bn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+        if (attrPos >= 0) {
+          gl.enableVertexAttribArray(attrPos);
+          gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0);
+          if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1);
+        }
+        if (attrScale >= 0) {
+          gl.enableVertexAttribArray(attrScale);
+          gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1);
+        }
+        if (attrAngle >= 0) {
+          gl.enableVertexAttribArray(attrAngle);
+          gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1);
+        }
+        if (attrColor >= 0) {
+          gl.enableVertexAttribArray(attrColor);
+          gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
+        }
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, bn);
+      }
+      if (pn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+        if (attrPos >= 0) {
+          gl.enableVertexAttribArray(attrPos);
+          gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0);
+          if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1);
+        }
+        if (attrScale >= 0) {
+          gl.enableVertexAttribArray(attrScale);
+          gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1);
+        }
+        if (attrColor >= 0) {
+          gl.enableVertexAttribArray(attrColor);
+          gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
+          if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
+        }
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, pn);
       }
     } else {
       for (let i = 0; i < n; i++) {
         const byteOffset = i * elemsPer * 4;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0 + byteOffset);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4 + byteOffset);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4 + byteOffset);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4 + byteOffset);
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, byteOffset + 0);
+        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 2 * 4);
+        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 3 * 4);
+        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, byteOffset + 4 * 4);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
-      const shipElemsCount = n;
       for (let bi = 0; bi < bn; bi++) {
-        const idx = shipElemsCount + bi;
-        const byteOffset = idx * elemsPer * 4;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0 + byteOffset);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4 + byteOffset);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4 + byteOffset);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4 + byteOffset);
+        const byteOffset = bi * elemsPer * 4;
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, byteOffset + 0);
+        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 2 * 4);
+        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 3 * 4);
+        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, byteOffset + 4 * 4);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
-      const particleBase = n + bn;
       for (let pi = 0; pi < pn; pi++) {
-        const idx = particleBase + pi;
-        const byteOffset = idx * elemsPer * 4;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0 + byteOffset);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4 + byteOffset);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4 + byteOffset);
+        const byteOffset = pi * elemsPer * 4;
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, byteOffset + 0);
+        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 2 * 4);
+        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, byteOffset + 4 * 4);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
     }
@@ -1295,6 +1646,16 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
     },
     render(state) {
       if (!gl) return;
+      if (state && state.starCanvas) {
+        try {
+          const s = state.starCanvas;
+          const prev = resources.textures.get("__starfield");
+          const prevVersion = prev && prev.canvas && prev.canvas._version;
+          const curVersion = s && s._version;
+          if (!prev || prevVersion !== curVersion) queueStarfieldUpload(s);
+        } catch (e) {
+        }
+      }
       if (cfg.atlasAccessor && typeof cfg.atlasAccessor === "function") {
         const ships2 = state && state.ships || [];
         for (const s of ships2) {
@@ -1357,16 +1718,40 @@ precision mediump float; out vec4 o; uniform vec4 u_color; void main(){ o = u_co
     },
     // diagnostics accessor (include some resource counts)
     getRendererDiagnostics() {
-      const bufLen = _streamBuffer ? _streamBuffer.length : 0;
-      const sampleLen = Math.min(bufLen, 64);
+      const starLen = _starBuffer ? _starBuffer.length : 0;
+      const shipLen = _shipBuffer ? _shipBuffer.length : 0;
+      const bulletLen = _bulletBuffer ? _bulletBuffer.length : 0;
+      const particleLen = _particleBuffer ? _particleBuffer.length : 0;
+      const starSampleLen = Math.min(starLen, 32);
+      const shipSampleLen = Math.min(shipLen, 32);
+      const bulletSampleLen = Math.min(bulletLen, 32);
+      const particleSampleLen = Math.min(particleLen, 32);
       const base = Object.assign({}, diag, {
-        streamCapacity: _streamCapacity,
-        streamBufferLength: bufLen,
-        streamVBOSize: resources.streamInstanceVBO ? resources.streamInstanceVBO._size : 0,
-        // include a small snapshot of the stream buffer (first 64 floats) to help debug instance contents
-        streamSample: _streamBuffer ? Array.from(_streamBuffer.subarray(0, sampleLen)) : [],
-        // approximate instance count assuming 8 floats per instance
-        approxInstances: Math.floor(bufLen / 8)
+        // per-type buffer capacities (floats)
+        starCapacity: _starCapacity,
+        shipCapacity: _shipCapacity,
+        bulletCapacity: _bulletCapacity,
+        particleCapacity: _particleCapacity,
+        // used element counts
+        starUsed: _starUsed,
+        shipUsed: _shipUsed,
+        bulletUsed: _bulletUsed,
+        particleUsed: _particleUsed,
+        // per-VBO allocated byte sizes
+        starVBOSize: resources.starInstanceVBO ? resources.starInstanceVBO._size : 0,
+        shipVBOSize: resources.shipInstanceVBO ? resources.shipInstanceVBO._size : 0,
+        bulletVBOSize: resources.bulletInstanceVBO ? resources.bulletInstanceVBO._size : 0,
+        particleVBOSize: resources.particleInstanceVBO ? resources.particleInstanceVBO._size : 0,
+        // include small samples to help debug instance contents
+        starSample: _starBuffer ? Array.from(_starBuffer.subarray(0, starSampleLen)) : [],
+        shipSample: _shipBuffer ? Array.from(_shipBuffer.subarray(0, shipSampleLen)) : [],
+        bulletSample: _bulletBuffer ? Array.from(_bulletBuffer.subarray(0, bulletSampleLen)) : [],
+        particleSample: _particleBuffer ? Array.from(_particleBuffer.subarray(0, particleSampleLen)) : [],
+        // approximate instance counts assuming 8 floats per instance
+        approxStarInstances: Math.floor(starLen / 8),
+        approxShipInstances: Math.floor(shipLen / 8),
+        approxBulletInstances: Math.floor(bulletLen / 8),
+        approxParticleInstances: Math.floor(particleLen / 8)
       });
       try {
         if (gl && canvas2 && canvas2.width && canvas2.height) {
@@ -1428,9 +1813,27 @@ function fitCanvas() {
 window.addEventListener("resize", fitCanvas);
 fitCanvas();
 var renderer = null;
+function makeSimpleAtlas(type, radius) {
+  const pad = 4;
+  const size = Math.max(8, Math.ceil(radius * 2 + pad * 2));
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, size, size);
+  const cx = size / 2, cy = size / 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.beginPath();
+  ctx.arc(cx - radius * 0.25, cy - radius * 0.25, Math.max(1, radius * 0.35), 0, Math.PI * 2);
+  ctx.fill();
+  return { canvas: c, size, baseRadius: radius };
+}
 try {
   if (webglRenderer_default && typeof webglRenderer_default.createWebGLRenderer === "function") {
-    const tryWebgl = webglRenderer_default.createWebGLRenderer(canvas, { webgl2: true });
+    const tryWebgl = webglRenderer_default.createWebGLRenderer(canvas, { webgl2: true, atlasAccessor: (type, radius) => makeSimpleAtlas(type, radius) });
     if (tryWebgl && tryWebgl.init && tryWebgl.init()) {
       renderer = tryWebgl;
       console.log("[main] using WebGL renderer");

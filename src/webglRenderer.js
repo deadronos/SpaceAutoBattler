@@ -40,18 +40,23 @@ export function createWebGLRenderer(canvas, opts = {}) {
   const resources = {
     textures: new Map(),
     quadVBO: null,
-    instanceVBO: null,
-    streamInstanceVBO: null,
+  fullscreenQuadVBO: null,
+  instanceVBO: null,
     programInstanced: null,
     programSimple: null,
     vao: null
   };
+  // cache for program uniform/attrib locations
+  const programLocations = new Map();
 
   let _lastW = 0;
   let _lastH = 0;
   let _running = false;
-  let _streamBuffer = null;
-  let _streamCapacity = 0;
+  // Per-type streaming buffers (floats) and capacities (elements)
+  let _starBuffer = null; let _starCapacity = 0; let _starUsed = 0;
+  let _shipBuffer = null; let _shipCapacity = 0; let _shipUsed = 0;
+  let _bulletBuffer = null; let _bulletCapacity = 0; let _bulletUsed = 0;
+  let _particleBuffer = null; let _particleCapacity = 0; let _particleUsed = 0;
   const _pendingAtlasUploads = [];
 
   // lightweight logging/check helpers (no-op when console missing)
@@ -211,13 +216,38 @@ export function createWebGLRenderer(canvas, opts = {}) {
       const vs = compileShader(vsInstanced, gl.VERTEX_SHADER);
       const fs = compileShader(fsInstanced, gl.FRAGMENT_SHADER);
       resources.programInstanced = linkProgram(vs, fs);
-      try { dumpProgramInfo(resources.programInstanced); } catch (e) {}
+        try { dumpProgramInfo(resources.programInstanced); } catch (e) {}
+        // cache some locations for instanced program
+        try {
+          const map = { uniforms: {}, attribs: {} };
+          map.uniforms.u_resolution = gl.getUniformLocation(resources.programInstanced, 'u_resolution');
+          map.uniforms.u_tex = gl.getUniformLocation(resources.programInstanced, 'u_tex');
+          map.uniforms.u_useTex = gl.getUniformLocation(resources.programInstanced, 'u_useTex');
+          map.attribs.a_quadPos = gl.getAttribLocation(resources.programInstanced, 'a_quadPos');
+          map.attribs.a_pos = gl.getAttribLocation(resources.programInstanced, 'a_pos');
+          map.attribs.a_scale = gl.getAttribLocation(resources.programInstanced, 'a_scale');
+          map.attribs.a_angle = gl.getAttribLocation(resources.programInstanced, 'a_angle');
+          map.attribs.a_color = gl.getAttribLocation(resources.programInstanced, 'a_color');
+          programLocations.set(resources.programInstanced, map);
+        } catch (e) {}
     }
     // simple program (works on WebGL1 and WebGL2)
     const vs2 = compileShader(isWebGL2 ? vsInstanced : vsSimple, gl.VERTEX_SHADER);
     const fs2 = compileShader(isWebGL2 ? fsInstanced : fsSimple, gl.FRAGMENT_SHADER);
     resources.programSimple = linkProgram(vs2, fs2);
     try { dumpProgramInfo(resources.programSimple); } catch (e) {}
+    try {
+      const map2 = { uniforms: {}, attribs: {} };
+      map2.uniforms.u_resolution = gl.getUniformLocation(resources.programSimple, 'u_resolution');
+      map2.uniforms.u_tex = gl.getUniformLocation(resources.programSimple, 'u_tex');
+      map2.uniforms.u_useTex = gl.getUniformLocation(resources.programSimple, 'u_useTex');
+      map2.attribs.a_quadPos = gl.getAttribLocation(resources.programSimple, 'a_quadPos');
+      map2.attribs.a_pos = gl.getAttribLocation(resources.programSimple, 'a_pos');
+      map2.attribs.a_scale = gl.getAttribLocation(resources.programSimple, 'a_scale');
+      map2.attribs.a_angle = gl.getAttribLocation(resources.programSimple, 'a_angle');
+      map2.attribs.a_color = gl.getAttribLocation(resources.programSimple, 'a_color');
+      programLocations.set(resources.programSimple, map2);
+    } catch (e) {}
   }
 
   // Create/ensure buffers and VAO
@@ -231,12 +261,11 @@ export function createWebGLRenderer(canvas, opts = {}) {
   // instance VBO reserved; will be dynamic (ships)
   resources.instanceVBO = gl.createBuffer();
   resources.instanceVBO._size = 0;
-  resources.streamInstanceVBO = gl.createBuffer();
-  resources.streamInstanceVBO._size = 0;
+  // streaming VBOs per instance type
+  resources.starInstanceVBO = gl.createBuffer(); resources.starInstanceVBO._size = 0;
+  resources.shipInstanceVBO = gl.createBuffer(); resources.shipInstanceVBO._size = 0;
 
-  // ensure stream capacity vars exist
-  if (!_streamBuffer) _streamBuffer = null;
-  if (!_streamCapacity) _streamCapacity = 0;
+  // no legacy single stream buffer — using per-type instance VBOs
 
   // separate instance buffers for bullets and particles
   resources.bulletInstanceVBO = gl.createBuffer();
@@ -344,6 +373,14 @@ export function createWebGLRenderer(canvas, opts = {}) {
     }
   }
 
+  // Helper to queue a starfield canvas as a single background texture
+  function queueStarfieldUpload(canvasSrc) {
+    if (!canvasSrc) return;
+    const key = '__starfield';
+    // wrap into atlas-like object for upload pipeline
+    queueAtlasUpload(key, { canvas: canvasSrc, size: Math.max(canvasSrc.width, canvasSrc.height), baseRadius: 0 });
+  }
+
   function isPowerOfTwo(v) { return (v & (v - 1)) === 0; }
 
   // Initialize GL state and programs
@@ -373,92 +410,239 @@ export function createWebGLRenderer(canvas, opts = {}) {
     const W = state.W || canvas.clientWidth;
     const H = state.H || canvas.clientHeight;
 
-  // Prepare ships
+  // Prepare ships and stars
   const ships = state.ships || [];
   const n = ships.length;
+  const stars = state.stars || [];
+  const sn = stars.length;
 
   // Build instance buffer: per-instance: x,y,scale,angle,r,g,b,a
   const elemsPer = 8; // vec2 + scale + angle + vec4 color
   // We no longer build a separate _instanceBuffer for ships; ships will be written
   // directly into the streaming buffer below to avoid an extra copy.
 
-    // We'll build a single streaming buffer for ships, bullets, and particles contiguously
+  // We'll build a single streaming buffer for stars, ships, bullets, and particles contiguously
     const bullets = state.bullets || [];
     const bn = bullets.length;
     const particles = state.particles || [];
     const pn = particles.length;
 
-    const shipElems = n * elemsPer;
-    const bulletElems = bn * elemsPer;
-    const particleElems = pn * elemsPer;
-    const totalElems = shipElems + bulletElems + particleElems;
+  // Per-type element counts and ensure typed arrays
+  const starElems = sn * elemsPer;
+  const shipElems = n * elemsPer;
+  const bulletElems = bn * elemsPer;
+  const particleElems = pn * elemsPer;
 
-    if (_streamCapacity < totalElems) {
-      // grow capacity (elements)
-      let cap = Math.max(4 * elemsPer, _streamCapacity || 0);
-      while (cap < totalElems) cap *= 2;
-      _streamCapacity = cap;
-      _streamBuffer = new Float32Array(_streamCapacity);
-    }
+  // Ensure star buffer
+  if (_starCapacity < starElems) {
+    let cap = Math.max(4 * elemsPer, _starCapacity || 0);
+    if (cap < 1) cap = elemsPer * 4;
+    while (cap < starElems) cap *= 2;
+    _starCapacity = cap;
+    _starBuffer = new Float32Array(_starCapacity);
+  }
+  // Fill stars
+  _starUsed = starElems;
+  for (let i = 0; i < sn; i++) {
+    const s = stars[i];
+    const base = i * elemsPer;
+    _starBuffer[base + 0] = s.x || 0;
+    _starBuffer[base + 1] = s.y || 0;
+    _starBuffer[base + 2] = (s.r != null ? s.r : 1);
+    _starBuffer[base + 3] = 0;
+    const a = s.a != null ? s.a : 1.0;
+    _starBuffer[base + 4] = 1.0; _starBuffer[base + 5] = 1.0; _starBuffer[base + 6] = 1.0; _starBuffer[base + 7] = a;
+  }
 
-    // write ships directly into stream buffer at offset 0
-    for (let i = 0; i < n; i++) {
-      const s = ships[i];
-      const base = i * elemsPer;
-      _streamBuffer[base + 0] = s.x || 0;
-      _streamBuffer[base + 1] = s.y || 0;
-      _streamBuffer[base + 2] = (s.radius != null ? s.radius : 8);
-      _streamBuffer[base + 3] = (s.angle != null ? s.angle : 0);
-      const color = teamToColor(s.team);
-      _streamBuffer[base + 4] = color[0];
-      _streamBuffer[base + 5] = color[1];
-      _streamBuffer[base + 6] = color[2];
-      _streamBuffer[base + 7] = color[3];
-    }
+  // Ensure ship buffer
+  if (_shipCapacity < shipElems) {
+    let cap = Math.max(4 * elemsPer, _shipCapacity || 0);
+    if (cap < 1) cap = elemsPer * 4;
+    while (cap < shipElems) cap *= 2;
+    _shipCapacity = cap;
+    _shipBuffer = new Float32Array(_shipCapacity);
+  }
+  _shipUsed = shipElems;
+  for (let i = 0; i < n; i++) {
+    const s = ships[i];
+    const base = i * elemsPer;
+    _shipBuffer[base + 0] = s.x || 0;
+    _shipBuffer[base + 1] = s.y || 0;
+    _shipBuffer[base + 2] = (s.radius != null ? s.radius : 8);
+    _shipBuffer[base + 3] = (s.angle != null ? s.angle : 0);
+    const color = teamToColor(s.team);
+    _shipBuffer[base + 4] = color[0]; _shipBuffer[base + 5] = color[1]; _shipBuffer[base + 6] = color[2]; _shipBuffer[base + 7] = color[3];
+  }
 
-    // fill bullets directly into stream buffer after ships
-    let offset = shipElems;
-    for (let i = 0; i < bn; i++) {
-      const b = bullets[i];
-      const base = offset + i * elemsPer;
-      _streamBuffer[base + 0] = b.x || 0;
-      _streamBuffer[base + 1] = b.y || 0;
-      _streamBuffer[base + 2] = (b.radius != null ? b.radius : 2);
-      _streamBuffer[base + 3] = 0;
-      _streamBuffer[base + 4] = 1.0; _streamBuffer[base + 5] = 0.85; _streamBuffer[base + 6] = 0.5; _streamBuffer[base + 7] = 1.0;
-    }
+  // Ensure bullet buffer
+  if (_bulletCapacity < bulletElems) {
+    let cap = Math.max(4 * elemsPer, _bulletCapacity || 0);
+    if (cap < 1) cap = elemsPer * 4;
+    while (cap < bulletElems) cap *= 2;
+    _bulletCapacity = cap;
+    _bulletBuffer = new Float32Array(_bulletCapacity);
+  }
+  _bulletUsed = bulletElems;
+  for (let i = 0; i < bn; i++) {
+    const b = bullets[i];
+    const base = i * elemsPer;
+    _bulletBuffer[base + 0] = b.x || 0;
+    _bulletBuffer[base + 1] = b.y || 0;
+    _bulletBuffer[base + 2] = (b.radius != null ? b.radius : 2);
+    _bulletBuffer[base + 3] = 0;
+    _bulletBuffer[base + 4] = 1.0; _bulletBuffer[base + 5] = 0.85; _bulletBuffer[base + 6] = 0.5; _bulletBuffer[base + 7] = 1.0;
+  }
 
-    // fill particles into stream buffer after bullets
-    offset = shipElems + bulletElems;
-    for (let i = 0; i < pn; i++) {
-      const p = particles[i];
-      const base = offset + i * elemsPer;
-      _streamBuffer[base + 0] = p.x || 0;
-      _streamBuffer[base + 1] = p.y || 0;
-      _streamBuffer[base + 2] = (p.size != null ? p.size : 1);
-      _streamBuffer[base + 3] = 0;
-      const col = parseColor(p.color || '#ffffff');
-      _streamBuffer[base + 4] = col[0]; _streamBuffer[base + 5] = col[1]; _streamBuffer[base + 6] = col[2]; _streamBuffer[base + 7] = Math.max(0.2, col[3]);
-    }
+  // Ensure particle buffer
+  if (_particleCapacity < particleElems) {
+    let cap = Math.max(4 * elemsPer, _particleCapacity || 0);
+    if (cap < 1) cap = elemsPer * 4;
+    while (cap < particleElems) cap *= 2;
+    _particleCapacity = cap;
+    _particleBuffer = new Float32Array(_particleCapacity);
+  }
+  _particleUsed = particleElems;
+  for (let i = 0; i < pn; i++) {
+    const p = particles[i];
+    const base = i * elemsPer;
+    _particleBuffer[base + 0] = p.x || 0;
+    _particleBuffer[base + 1] = p.y || 0;
+    _particleBuffer[base + 2] = (p.size != null ? p.size : 1);
+    _particleBuffer[base + 3] = 0;
+    const col = parseColor(p.color || '#ffffff');
+    _particleBuffer[base + 4] = col[0]; _particleBuffer[base + 5] = col[1]; _particleBuffer[base + 6] = col[2]; _particleBuffer[base + 7] = Math.max(0.2, col[3]);
+  }
 
-    // If there are no instances to draw, just clear and skip buffer uploads
-    if (totalElems === 0) {
+  // If there are no instances to draw, just clear and skip buffer uploads
+  const totalElems = starElems + shipElems + bulletElems + particleElems;
+  if (totalElems === 0) {
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       return;
     }
 
-    // Upload single stream buffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, resources.streamInstanceVBO);
-    const BYTES = Float32Array.BYTES_PER_ELEMENT || 4;
-    const requiredBytes = totalElems * BYTES;
-    if (!resources.streamInstanceVBO._size || resources.streamInstanceVBO._size < requiredBytes) {
-      // allocate required bytes (driver-friendly)
-      gl.bufferData(gl.ARRAY_BUFFER, requiredBytes, gl.DYNAMIC_DRAW);
-      resources.streamInstanceVBO._size = requiredBytes;
+  // Upload per-type buffers to their VBOs
+  const BYTES = Float32Array.BYTES_PER_ELEMENT || 4;
+    // Ensure the currently bound ARRAY_BUFFER has at least usedElems floats worth
+    // of storage allocated on the GPU. vbo._size is maintained in bytes.
+    function ensureVBO(vbo, usedElems, usedBuffer) {
+      try {
+        const usedBytes = usedElems * BYTES;
+        // prefer using the typed-array's byteLength when available for accuracy
+        const srcByteLen = usedBuffer && usedBuffer.byteLength ? Math.min(usedBytes, usedBuffer.byteLength) : usedBytes;
+        // initialize _size if missing
+        if (!vbo._size) vbo._size = 0;
+        if (vbo._size < srcByteLen) {
+          // grow by doubling until we satisfy required bytes (safe, avoids tiny allocations)
+          let alloc = Math.max(vbo._size || 1, 1);
+          while (alloc < srcByteLen) alloc *= 2;
+          try {
+            // allocate 'alloc' bytes on the GPU
+            gl.bufferData(gl.ARRAY_BUFFER, alloc, gl.DYNAMIC_DRAW);
+            vbo._size = alloc;
+          } catch (e) {
+            try {
+              // fallback: try exact size
+              gl.bufferData(gl.ARRAY_BUFFER, srcByteLen, gl.DYNAMIC_DRAW);
+              vbo._size = srcByteLen;
+            } catch (ee) {
+              // allocation failed; leave _size as-is and let caller handle
+            }
+          }
+        }
+        // upload used slice (only the portion that we actually filled)
+        if (usedElems > 0 && usedBuffer) {
+          // use a typed-array view that covers exactly the floats we want to upload
+          const view = usedBuffer.subarray(0, usedElems);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, view);
+        }
+        // record diagnostics
+        try { diag._instanceVBOCapacity = Math.max(diag._instanceVBOCapacity || 0, vbo._size || 0); } catch (e) {}
+      } catch (e) {
+        // ignore upload errors here; we'll assert before draw
+      }
     }
-    // upload the exact typed-array slice we need
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, _streamBuffer.subarray(0, totalElems));
+
+    // Helper: perform an instanced draw but pre-check the bound VBO capacity
+    // and split into batches if the GPU buffer is too small for the whole draw.
+    function safeDrawInstanced(boundVBO, vertsPerInstance, instanceCount, elemsPerInstance) {
+      try {
+        if (!boundVBO) return;
+        const strideBytes = elemsPerInstance * BYTES;
+        const requiredBytes = instanceCount * strideBytes;
+        const vboSize = boundVBO._size || 0;
+        // if buffer is large enough, draw in one call
+        if (vboSize >= requiredBytes) {
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, instanceCount);
+          return;
+        }
+        // try to reallocate the buffer to fit the request (attempt a single grow)
+        // NOTE: ensureVBO must be called while that buffer is bound
+        try {
+          // propose a new allocation at least requiredBytes
+          let alloc = Math.max(vboSize || 1, 1);
+          while (alloc < requiredBytes) alloc *= 2;
+          gl.bufferData(gl.ARRAY_BUFFER, alloc, gl.DYNAMIC_DRAW);
+          boundVBO._size = alloc;
+        } catch (e) {
+          // allocation failed or not possible; fall back to chunked draws
+        }
+        const finalSize = boundVBO._size || 0;
+        if (finalSize >= requiredBytes) {
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, instanceCount);
+          return;
+        }
+        // Chunked draw: compute how many instances fit in current VBO
+        const maxInstances = Math.max(1, Math.floor((finalSize) / strideBytes));
+        if (maxInstances <= 0) {
+          // Nothing fits: skip draw (shouldn't happen) and log
+          debugLog('safeDrawInstanced: VBO too small for even one instance', finalSize, strideBytes);
+          return;
+        }
+        // draw in multiple chunks
+        let offsetInstances = 0;
+        while (offsetInstances < instanceCount) {
+          const chunk = Math.min(maxInstances, instanceCount - offsetInstances);
+          // For chunked draws we rely on the instance data already being uploaded
+          // into the buffer at byte offset 0..finalSize. We set an appropriate
+          // vertexAttribDivisor and then draw the chunk.
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, chunk);
+          offsetInstances += chunk;
+        }
+      } catch (e) {
+        // if something goes wrong, attempt the draw once (let the driver error if needed)
+        try { gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, instanceCount); } catch (ee) {}
+      }
+    }
+
+    // Debug assertions: ensure buffers have sufficient length for used elems
+    if (cfg.debug) {
+      try {
+        if (_starBuffer && _starUsed > _starBuffer.length) debugLog('star buffer used exceeds capacity', _starUsed, _starBuffer.length);
+        if (_shipBuffer && _shipUsed > _shipBuffer.length) debugLog('ship buffer used exceeds capacity', _shipUsed, _shipBuffer.length);
+        if (_bulletBuffer && _bulletUsed > _bulletBuffer.length) debugLog('bullet buffer used exceeds capacity', _bulletUsed, _bulletBuffer.length);
+        if (_particleBuffer && _particleUsed > _particleBuffer.length) debugLog('particle buffer used exceeds capacity', _particleUsed, _particleBuffer.length);
+        // removed test-only hook here to avoid test-only side-effects in production code
+      } catch (e) {}
+    }
+
+    // Upload each buffer separately
+    if (_starUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
+      ensureVBO(resources.starInstanceVBO, _starUsed, _starBuffer);
+    }
+    if (_shipUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+      ensureVBO(resources.shipInstanceVBO, _shipUsed, _shipBuffer);
+    }
+    if (_bulletUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+      ensureVBO(resources.bulletInstanceVBO, _bulletUsed, _bulletBuffer);
+    }
+    if (_particleUsed > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+      ensureVBO(resources.particleInstanceVBO, _particleUsed, _particleBuffer);
+    }
 
     // Clear and draw
     gl.clearColor(0, 0, 0, 0);
@@ -470,48 +654,29 @@ export function createWebGLRenderer(canvas, opts = {}) {
     gl.useProgram(program);
 
     // Set resolution uniform (both shader styles)
-  const ures = gl.getUniformLocation(program, 'u_resolution');
-  if (ures) gl.uniform2f(ures, canvas.width || _lastW || canvas.clientWidth, canvas.height || _lastH || canvas.clientHeight);
+  // use cached location if available
+  const locs = programLocations.get(program) || null;
+  const uresLoc = locs && locs.uniforms && locs.uniforms.u_resolution ? locs.uniforms.u_resolution : gl.getUniformLocation(program, 'u_resolution');
+  if (uresLoc) gl.uniform2f(uresLoc, canvas.width || _lastW || canvas.clientWidth, canvas.height || _lastH || canvas.clientHeight);
 
-    // bind quad buffer to attribute
+    // bind quad buffer to attribute (use cached locations)
     gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadVBO);
-    const aQuad = gl.getAttribLocation(program, 'a_quadPos');
-    if (aQuad >= 0) {
-      gl.enableVertexAttribArray(aQuad);
-      gl.vertexAttribPointer(aQuad, 2, gl.FLOAT, false, 0, 0);
-      if (isWebGL2) gl.vertexAttribDivisor(aQuad, 0);
+    const aQuadLoc = locs && locs.attribs && (locs.attribs.a_quadPos != null) ? locs.attribs.a_quadPos : gl.getAttribLocation(program, 'a_quadPos');
+    if (aQuadLoc >= 0) {
+      gl.enableVertexAttribArray(aQuadLoc);
+      gl.vertexAttribPointer(aQuadLoc, 2, gl.FLOAT, false, 0, 0);
+      if (isWebGL2) gl.vertexAttribDivisor(aQuadLoc, 0);
     }
 
-    // Bind streaming instance buffer attributes (single buffer containing ships, bullets, particles)
-    gl.bindBuffer(gl.ARRAY_BUFFER, resources.streamInstanceVBO);
-    const attrPos = gl.getAttribLocation(program, 'a_pos');
-    const attrScale = gl.getAttribLocation(program, 'a_scale');
-    const attrAngle = gl.getAttribLocation(program, 'a_angle');
-    const attrColor = gl.getAttribLocation(program, 'a_color');
-    if (attrPos >= 0) {
-      gl.enableVertexAttribArray(attrPos);
-      gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0);
-      if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1);
-    }
-    if (attrScale >= 0) {
-      gl.enableVertexAttribArray(attrScale);
-      gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4);
-      if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1);
-    }
-    if (attrAngle >= 0) {
-      gl.enableVertexAttribArray(attrAngle);
-      gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4);
-      if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1);
-    }
-    if (attrColor >= 0) {
-      gl.enableVertexAttribArray(attrColor);
-      gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
-      if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
-    }
+    // Get attribute locations once
+  const attrPos = locs && locs.attribs && (locs.attribs.a_pos != null) ? locs.attribs.a_pos : gl.getAttribLocation(program, 'a_pos');
+  const attrScale = locs && locs.attribs && (locs.attribs.a_scale != null) ? locs.attribs.a_scale : gl.getAttribLocation(program, 'a_scale');
+  const attrAngle = locs && locs.attribs && (locs.attribs.a_angle != null) ? locs.attribs.a_angle : gl.getAttribLocation(program, 'a_angle');
+  const attrColor = locs && locs.attribs && (locs.attribs.a_color != null) ? locs.attribs.a_color : gl.getAttribLocation(program, 'a_color');
 
     // Texture binding: if atlasAccessor present and any texture exists, use first texture
-    const useTexLoc = gl.getUniformLocation(program, 'u_useTex');
-    const texLoc = gl.getUniformLocation(program, 'u_tex');
+  const useTexLoc = locs && locs.uniforms && (locs.uniforms.u_useTex != null) ? locs.uniforms.u_useTex : gl.getUniformLocation(program, 'u_useTex');
+  const texLoc = locs && locs.uniforms && (locs.uniforms.u_tex != null) ? locs.uniforms.u_tex : gl.getUniformLocation(program, 'u_tex');
     let anyTex = resources.textures.size > 0;
     if (useTexLoc) gl.uniform1i(useTexLoc, anyTex ? 1 : 0);
     if (texLoc && anyTex) {
@@ -522,69 +687,121 @@ export function createWebGLRenderer(canvas, opts = {}) {
       gl.uniform1i(texLoc, 0);
     }
 
+    // If a starfield texture exists, draw it as a fullscreen textured quad behind instances
+    if (resources.textures.has('__starfield')) {
+      try {
+        // bind starfield texture to unit 1, draw a full-screen quad using debug shader
+        const s = resources.textures.get('__starfield');
+        // Use the existing debug solid program path but with texture; fallback to simple textured draw
+        // Bind texture unit 1
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, s.tex);
+        // Use programSimple (it supports u_useTex + u_tex)
+        gl.useProgram(resources.programSimple);
+  const locs2 = programLocations.get(resources.programSimple) || null;
+  const useTexLoc2 = locs2 && locs2.uniforms && (locs2.uniforms.u_useTex != null) ? locs2.uniforms.u_useTex : gl.getUniformLocation(resources.programSimple, 'u_useTex');
+  const texLoc2 = locs2 && locs2.uniforms && (locs2.uniforms.u_tex != null) ? locs2.uniforms.u_tex : gl.getUniformLocation(resources.programSimple, 'u_tex');
+  if (useTexLoc2) gl.uniform1i(useTexLoc2, 1);
+  if (texLoc2) { gl.activeTexture(gl.TEXTURE1); gl.uniform1i(texLoc2, 1); }
+
+  // Setup a full-screen quad in pixel coordinates
+  const prevProg = program;
+  const ures2 = locs2 && locs2.uniforms && locs2.uniforms.u_resolution ? locs2.uniforms.u_resolution : gl.getUniformLocation(resources.programSimple, 'u_resolution');
+  if (ures2) gl.uniform2f(ures2, canvas.width || _lastW || canvas.clientWidth, canvas.height || _lastH || canvas.clientHeight);
+        // Create fullscreen quad VBO once (two triangles, pixel space)
+        if (!resources.fullscreenQuadVBO) {
+          resources.fullscreenQuadVBO = gl.createBuffer();
+          const Wpx = canvas.width || _lastW || canvas.clientWidth;
+          const Hpx = canvas.height || _lastH || canvas.clientHeight;
+          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
+          gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
+          gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+        } else {
+          // update size if canvas changed
+          const Wpx = canvas.width || _lastW || canvas.clientWidth;
+          const Hpx = canvas.height || _lastH || canvas.clientHeight;
+          gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
+          const verts = new Float32Array([0, 0, Wpx, 0, 0, Hpx, Wpx, Hpx]);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+        }
+  gl.bindBuffer(gl.ARRAY_BUFFER, resources.fullscreenQuadVBO);
+  const posLoc = locs2 && locs2.attribs && (locs2.attribs.a_pos != null) ? locs2.attribs.a_pos : gl.getAttribLocation(resources.programSimple, 'a_pos');
+        if (posLoc >= 0) {
+          gl.enableVertexAttribArray(posLoc);
+          gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+        }
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        // restore original program (program variable) for instanced draws
+        gl.useProgram(prevProg);
+      } catch (e) {
+        // ignore starfield draw errors
+      }
+    }
+
     // draw ships / bullets / particles using the stream buffer
     if (useInstanced) {
-      // draw ships (first range)
-      if (n > 0) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n);
-      // bullets: offset in elements -> convert to bytes for attribute pointers by using vertexAttribPointer offsets via binding buffer with base offset using vertexAttribPointer's offset param
-      let shipElemsCount = n;
-      let bulletElemsCount = bn;
-      let particleElemsCount = pn;
-      // To draw bullets, we need to point attributes at buffer region after ships.
-      const shipByteOffset = 0;
-      const bulletByteOffset = shipElemsCount * elemsPer * 4;
-      const particleByteOffset = (shipElemsCount + bulletElemsCount) * elemsPer * 4;
-      if (bulletElemsCount > 0) {
-        // re-specify attribute pointers with byte offsets for bullets
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 0);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 2 * 4);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 3 * 4);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, bulletByteOffset + 4 * 4);
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, bulletElemsCount);
-        // restore ships pointers
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 0);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 2 * 4);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 3 * 4);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, shipByteOffset + 4 * 4);
+      // draw stars first (background) using per-type VBO
+      if (sn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.starInstanceVBO);
+        if (attrPos >= 0) { gl.enableVertexAttribArray(attrPos); gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0); if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1); }
+        if (attrScale >= 0) { gl.enableVertexAttribArray(attrScale); gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1); }
+        if (attrAngle >= 0) { gl.enableVertexAttribArray(attrAngle); gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1); }
+        if (attrColor >= 0) { gl.enableVertexAttribArray(attrColor); gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1); }
+  // use safe draw to avoid GPU errors if buffer allocation lags
+  safeDrawInstanced(resources.starInstanceVBO, 4, sn, elemsPer);
       }
-      if (particleElemsCount > 0) {
-        const pb = particleByteOffset;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, pb + 0);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, pb + 2 * 4);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, pb + 4 * 4);
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, particleElemsCount);
-        // restore ships pointers (already restored after bullets)
+      // draw ships (next)
+      if (n > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+        if (attrPos >= 0) { gl.enableVertexAttribArray(attrPos); gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0); if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1); }
+        if (attrScale >= 0) { gl.enableVertexAttribArray(attrScale); gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1); }
+        if (attrAngle >= 0) { gl.enableVertexAttribArray(attrAngle); gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1); }
+        if (attrColor >= 0) { gl.enableVertexAttribArray(attrColor); gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1); }
+  safeDrawInstanced(resources.shipInstanceVBO, 4, n, elemsPer);
+      }
+      // bullets
+      if (bn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+        if (attrPos >= 0) { gl.enableVertexAttribArray(attrPos); gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0); if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1); }
+        if (attrScale >= 0) { gl.enableVertexAttribArray(attrScale); gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1); }
+        if (attrAngle >= 0) { gl.enableVertexAttribArray(attrAngle); gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrAngle, 1); }
+        if (attrColor >= 0) { gl.enableVertexAttribArray(attrColor); gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1); }
+  safeDrawInstanced(resources.bulletInstanceVBO, 4, bn, elemsPer);
+      }
+      // particles
+      if (pn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+        if (attrPos >= 0) { gl.enableVertexAttribArray(attrPos); gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0); if (isWebGL2) gl.vertexAttribDivisor(attrPos, 1); }
+        if (attrScale >= 0) { gl.enableVertexAttribArray(attrScale); gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrScale, 1); }
+        if (attrColor >= 0) { gl.enableVertexAttribArray(attrColor); gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4); if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1); }
+  safeDrawInstanced(resources.particleInstanceVBO, 4, pn, elemsPer);
       }
     } else {
-      // fallback: issue n drawArrays calls (could be optimized)
+      // fallback: draw each instance individually using per-type VBOs
       for (let i = 0; i < n; i++) {
-        // set vertex attribs to point to i-th instance via offset
         const byteOffset = i * elemsPer * 4;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0 + byteOffset);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4 + byteOffset);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4 + byteOffset);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4 + byteOffset);
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
+        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, byteOffset + 0);
+        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 2 * 4);
+        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 3 * 4);
+        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, byteOffset + 4 * 4);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
-      // draw bullets fallback: bullets begin after ships in stream buffer
-      const shipElemsCount = n;
       for (let bi = 0; bi < bn; bi++) {
-        const idx = shipElemsCount + bi;
-        const byteOffset = idx * elemsPer * 4;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0 + byteOffset);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4 + byteOffset);
-        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, 3 * 4 + byteOffset);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4 + byteOffset);
+        const byteOffset = bi * elemsPer * 4;
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
+        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, byteOffset + 0);
+        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 2 * 4);
+        if (attrAngle >= 0) gl.vertexAttribPointer(attrAngle, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 3 * 4);
+        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, byteOffset + 4 * 4);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
-      // draw particles fallback: particles begin after ships+bullets
-      const particleBase = n + bn;
       for (let pi = 0; pi < pn; pi++) {
-        const idx = particleBase + pi;
-        const byteOffset = idx * elemsPer * 4;
-        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, 0 + byteOffset);
-        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, 2 * 4 + byteOffset);
-        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4 + byteOffset);
+        const byteOffset = pi * elemsPer * 4;
+        gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
+        if (attrPos >= 0) gl.vertexAttribPointer(attrPos, 2, gl.FLOAT, false, elemsPer * 4, byteOffset + 0);
+        if (attrScale >= 0) gl.vertexAttribPointer(attrScale, 1, gl.FLOAT, false, elemsPer * 4, byteOffset + 2 * 4);
+        if (attrColor >= 0) gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, byteOffset + 4 * 4);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
     }
@@ -856,6 +1073,17 @@ export function createWebGLRenderer(canvas, opts = {}) {
     isRunning() { return _running; },
     render(state) {
       if (!gl) return;
+      // if the state contains a pre-rendered starCanvas, queue it for upload as a background texture
+      if (state && state.starCanvas) {
+        try {
+          // only queue upload when version differs (avoid redundant re-uploads)
+          const s = state.starCanvas;
+          const prev = resources.textures.get('__starfield');
+          const prevVersion = prev && prev.canvas && prev.canvas._version;
+          const curVersion = s && s._version;
+          if (!prev || prevVersion !== curVersion) queueStarfieldUpload(s);
+        } catch (e) {}
+      }
       // gather atlas uploads from atlasAccessor
       if (cfg.atlasAccessor && typeof cfg.atlasAccessor === 'function') {
         const ships = (state && state.ships) || [];
@@ -907,16 +1135,40 @@ export function createWebGLRenderer(canvas, opts = {}) {
     },
     // diagnostics accessor (include some resource counts)
     getRendererDiagnostics() {
-      const bufLen = _streamBuffer ? _streamBuffer.length : 0;
-      const sampleLen = Math.min(bufLen, 64);
+      const starLen = _starBuffer ? _starBuffer.length : 0;
+      const shipLen = _shipBuffer ? _shipBuffer.length : 0;
+      const bulletLen = _bulletBuffer ? _bulletBuffer.length : 0;
+      const particleLen = _particleBuffer ? _particleBuffer.length : 0;
+      const starSampleLen = Math.min(starLen, 32);
+      const shipSampleLen = Math.min(shipLen, 32);
+      const bulletSampleLen = Math.min(bulletLen, 32);
+      const particleSampleLen = Math.min(particleLen, 32);
       const base = Object.assign({}, diag, {
-        streamCapacity: _streamCapacity,
-        streamBufferLength: bufLen,
-        streamVBOSize: resources.streamInstanceVBO ? resources.streamInstanceVBO._size : 0,
-        // include a small snapshot of the stream buffer (first 64 floats) to help debug instance contents
-        streamSample: _streamBuffer ? Array.from(_streamBuffer.subarray(0, sampleLen)) : [],
-        // approximate instance count assuming 8 floats per instance
-        approxInstances: Math.floor(bufLen / 8)
+        // per-type buffer capacities (floats)
+        starCapacity: _starCapacity,
+        shipCapacity: _shipCapacity,
+        bulletCapacity: _bulletCapacity,
+        particleCapacity: _particleCapacity,
+        // used element counts
+        starUsed: _starUsed,
+        shipUsed: _shipUsed,
+        bulletUsed: _bulletUsed,
+        particleUsed: _particleUsed,
+        // per-VBO allocated byte sizes
+        starVBOSize: resources.starInstanceVBO ? resources.starInstanceVBO._size : 0,
+        shipVBOSize: resources.shipInstanceVBO ? resources.shipInstanceVBO._size : 0,
+        bulletVBOSize: resources.bulletInstanceVBO ? resources.bulletInstanceVBO._size : 0,
+        particleVBOSize: resources.particleInstanceVBO ? resources.particleInstanceVBO._size : 0,
+        // include small samples to help debug instance contents
+        starSample: _starBuffer ? Array.from(_starBuffer.subarray(0, starSampleLen)) : [],
+        shipSample: _shipBuffer ? Array.from(_shipBuffer.subarray(0, shipSampleLen)) : [],
+        bulletSample: _bulletBuffer ? Array.from(_bulletBuffer.subarray(0, bulletSampleLen)) : [],
+        particleSample: _particleBuffer ? Array.from(_particleBuffer.subarray(0, particleSampleLen)) : [],
+        // approximate instance counts assuming 8 floats per instance
+        approxStarInstances: Math.floor(starLen / 8),
+        approxShipInstances: Math.floor(shipLen / 8),
+        approxBulletInstances: Math.floor(bulletLen / 8),
+        approxParticleInstances: Math.floor(particleLen / 8)
       });
 
       // add a small center-area GL sample (3x3) if GL context is available

@@ -3,6 +3,9 @@ import path from 'path';
 import { capturePageDiagnostics } from './helpers/captureHelper.js';
 
 test('header capture: standalone page console + screenshot (chromium)', async ({ page }) => {
+  // add page crash/close handlers to improve diagnostics in CI
+  page.on('crash', () => console.warn('[playwright] page crashed'));
+  page.on('close', () => console.warn('[playwright] page closed unexpectedly'));
   const rootHtml = path.resolve(process.cwd(), 'space_themed_autobattler_canvas_red_vs_blue_standalone.html');
   const url = 'file://' + rootHtml.replace(/\\/g, '/');
   await page.goto(url, { waitUntil: 'load' });

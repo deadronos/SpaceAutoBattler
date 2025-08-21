@@ -20,7 +20,8 @@ export async function capturePageDiagnostics(page, outDir = 'playwright-report/d
 
   // Wait for potential renderer hook and call diagnostics
   try {
-    await page.waitForFunction(() => typeof window !== 'undefined' && !!window.__getRendererDiagnostics, { timeout: 2000 }).catch(() => {});
+  // allow more time for renderer hooks to initialize in slower CI environments
+  await page.waitForFunction(() => typeof window !== 'undefined' && !!window.__getRendererDiagnostics, { timeout: 5000 }).catch(() => {});
     const diag = await page.evaluate(() => { try { return window.__getRendererDiagnostics ? window.__getRendererDiagnostics() : null } catch (e) { return { __diag_err: String(e) } } });
     logs.push('[diag] ' + JSON.stringify(diag));
     try {
