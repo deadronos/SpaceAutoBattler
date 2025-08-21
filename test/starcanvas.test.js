@@ -8,7 +8,7 @@ test('createStarCanvas returns canvas of expected size and non-empty starfield',
   const W = 320, H = 180;
   srand(999);
   initStars({ stars }, W, H, 50);
-  const canvas = createStarCanvas(W, H);
+  const canvas = createStarCanvas({ stars }, W, H);
   expect(canvas).toBeTruthy();
   expect(canvas.width).toBe(W);
   expect(canvas.height).toBe(H);

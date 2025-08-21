@@ -25,10 +25,23 @@ config.stars = {
 };
 
 export function setManagerConfig(newCfg = {}) {
-  // shallow merge top-level keys
-  for (const k of Object.keys(newCfg)) { if (config[k]) Object.assign(config[k], newCfg[k]); }
+  // shallow merge top-level keys. If a key exists and is an object, merge
+  // into the existing object. If it doesn't exist, copy as-is.
+  for (const k of Object.keys(newCfg)) {
+    if (config[k] && typeof config[k] === 'object' && typeof newCfg[k] === 'object') {
+      Object.assign(config[k], newCfg[k]);
+    } else {
+      config[k] = newCfg[k];
+    }
+  }
 }
 export function getManagerConfig() { return config; }
+
+/**
+ * Return the current star canvas version. Incremented whenever createStarCanvas
+ * updates the pre-rendered canvas. Useful for renderers to detect uploads.
+ */
+export function getStarCanvasVersion() { return _starCanvasVersion; }
 
 export class Particle {
   constructor(x = 0, y = 0, vx = 0, vy = 0, ttl = 1, color = '#fff', size = 2) {
@@ -102,20 +115,16 @@ export function initStars(state, W = 800, H = 600, count = 140) {
 // Create an offscreen canvas with the starfield pre-rendered. Useful for
 // fast background draws in the Canvas renderer and for uploading a single
 // WebGL background texture. Returns the canvas.
-export function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg = '#041018') {
-  // Signature (backwards-compatible):
-  // - createStarCanvas(state, W, H, bg)
-  // - createStarCanvas(W, H, bg)  // legacy
-  let state = null;
-  let W = 800, H = 600;
-  if (stateOrW && typeof stateOrW === 'object' && Array.isArray(stateOrW.stars)) {
-    state = stateOrW; W = typeof maybeW === 'number' ? maybeW : 800; H = typeof maybeH === 'number' ? maybeH : 600;
-  } else {
-    // legacy call: first arg is W
-    W = stateOrW || 800; H = maybeW || 600;
+export function createStarCanvas(state, W = 800, H = 600, bg = '#041018') {
+  // New strict signature: createStarCanvas(state, W, H, bg)
+  // `state` is required and must contain a `stars` array. This removes the
+  // legacy overloaded form and forces callers to be explicit about which
+  // star array is being used.
+  if (!state || typeof state !== 'object' || !Array.isArray(state.stars)) {
+    throw new Error('createStarCanvas(state, W, H, bg) requires a state object with a `stars` array');
   }
   try {
-    const c = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    const c = (typeof document !== 'undefined' && typeof document.createElement === 'function') ? document.createElement('canvas') : null;
     if (!c) { starCanvas = null; return null; }
     c.width = Math.max(1, Math.floor(W));
     c.height = Math.max(1, Math.floor(H));
@@ -124,8 +133,8 @@ export function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg 
       // background
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, c.width, c.height);
-      // draw each star from the provided state (or fall back to exported stars[])
-      const drawStars = (state && state.stars) ? state.stars : stars;
+    // draw each star from the provided state
+    const drawStars = state.stars;
       for (const s of drawStars) {
         const alpha = Math.max(0, Math.min(1, s.a != null ? s.a : (s.baseA != null ? s.baseA : 1)));
         ctx.beginPath();
@@ -150,11 +159,11 @@ export function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg 
       };
       c.getContext = () => stubCtx;
     }
-  // bump canvas version so renderers can avoid redundant uploads
-  try { _starCanvasVersion = (_starCanvasVersion || 0) + 1; } catch (e) { /* ignore */ }
-  c._version = _starCanvasVersion;
-  starCanvas = c;
-  return c;
+    // bump canvas version so renderers can avoid redundant uploads
+    _starCanvasVersion = (_starCanvasVersion || 0) + 1;
+    c._version = _starCanvasVersion;
+    starCanvas = c;
+    return c;
   } catch (e) {
     starCanvas = null;
     return null;

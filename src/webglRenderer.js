@@ -1,9 +1,20 @@
 // Minimal WebGL renderer stub implementing createWebGLRenderer per spec.
 // Lightweight WebGL renderer implementation following spec-design-webgl-renderer.md
 // This implementation focuses on correctness and graceful degradation.
+/**
+ * Create a lightweight WebGL renderer capable of drawing instanced sprites.
+ * This function prefers WebGL2 when available and gracefully degrades to
+ * WebGL1. The renderer is conservative about allocations and performs
+ * diagnostic logging only when cfg.debug is true.
+ *
+ * @param {HTMLCanvasElement} canvas target canvas element
+ * @param {Object} opts options (webgl2, maxDevicePixelRatio, maxUploadsPerFrame, atlasUseMipmaps, atlasMaxSize, debug)
+ */
 export function createWebGLRenderer(canvas, opts = {}) {
-  // Options defaults
-  const cfg = Object.assign({ webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true }, opts);
+  if (!canvas) return null;
+  // Options defaults - copy into a fresh object so we don't mutate caller opts
+  const defaults = { webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true };
+  const cfg = Object.assign({}, defaults, opts);
 
   let gl = null;
   let isWebGL2 = false;
@@ -61,6 +72,7 @@ export function createWebGLRenderer(canvas, opts = {}) {
 
   // lightweight logging/check helpers (no-op when console missing)
   function debugLog(...args) {
+    if (!cfg.debug) return;
     if (typeof console !== 'undefined' && console.log) console.log('[webgl-debug]', ...args);
   }
   function checkGLError(where) {

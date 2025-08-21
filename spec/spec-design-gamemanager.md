@@ -118,7 +118,17 @@ export function setToast(fn)
 export function setContinuousCheckbox(el)
 export function setReinforcementInterval(seconds)
 export function getReinforcementInterval()
-export function initStars()
+// Star helpers
+export function initStars(state, W = 800, H = 600, count = 140)
+
+// New explicit form: populate `state.stars` with descriptors
+// Each star descriptor: { x, y, r, a, baseA, twPhase, twSpeed }
+
+// Migration guidance
+// - Seed the RNG before calling `initStars` in tests: `srand(seed)`.
+// - Pass the same `state` object to `initStars` and `createStarCanvas` to avoid RNG call-order differences.
+// - Replace legacy calls `initStars(W,H,count)` with `initStars(state,W,H,count)`.
+// - Replace legacy `createStarCanvas(W,H,bg)` with `createStarCanvas(state,W,H,bg)`.
 
 // exported live arrays / objects
 export const ships = [];

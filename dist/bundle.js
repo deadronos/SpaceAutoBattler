@@ -17,6 +17,7 @@ __export(gamemanager_exports, {
   flashes: () => flashes,
   getManagerConfig: () => getManagerConfig,
   getReinforcementInterval: () => getReinforcementInterval,
+  getStarCanvasVersion: () => getStarCanvasVersion,
   healthFlashes: () => healthFlashes,
   initStars: () => initStars,
   particlePool: () => particlePool,
@@ -45,8 +46,7 @@ function _next() {
 function srandom() {
   if (_state === null) return Math.random();
   const v = _next();
-  const result = v / 4294967296;
-  return result;
+  return v / 4294967296;
 }
 function srange(a = 0, b = 1) {
   const r = srandom();
@@ -188,9 +188,9 @@ function simulateStep(state, dt, bounds) {
   state.explosions = state.explosions || [];
   state.shieldHits = state.shieldHits || [];
   state.healthHits = state.healthHits || [];
-  if (!state.stars) {
-    state.stars = [];
-  }
+  state.stars = state.stars || [];
+  state.ships = state.ships || [];
+  state.bullets = state.bullets || [];
   for (let i = 0; i < state.stars.length; i++) {
     const star = state.stars[i];
     star.a = srange(0.1, 1);
@@ -198,19 +198,19 @@ function simulateStep(state, dt, bounds) {
   for (let i = 0; i < state.ships.length; i++) {
     const s = state.ships[i];
     if (s.update) s.update(dt, state);
-    if (bounds) {
+    if (bounds && typeof bounds.W === "number" && typeof bounds.H === "number") {
       if (s.x < 0) s.x += bounds.W;
       else if (s.x > bounds.W) s.x -= bounds.W;
       if (s.y < 0) s.y += bounds.H;
       else if (s.y > bounds.H) s.y -= bounds.H;
     }
-    if (s.cannons && s.cannons.length && Math.random() < 0.01) {
+    if (s.cannons && s.cannons.length && srange(0, 1) < 0.01) {
       const c = s.cannons[0];
       const angle = srange(0, Math.PI * 2);
       const speed = 200;
       const vx = Math.cos(angle) * speed;
       const vy = Math.sin(angle) * speed;
-      const b = createBullet({ x: s.x, y: s.y, vx, vy, team: s.team, dmg: c.damage || s.dmg, ownerId: s.id });
+      const b = createBullet({ x: s.x, y: s.y, vx, vy, team: s.team, dmg: c && c.damage || s.dmg, ownerId: s.id });
       state.bullets.push(b);
     }
   }
@@ -225,12 +225,17 @@ function simulateStep(state, dt, bounds) {
       const ship = state.ships[si];
       if (!ship.alive || ship.team === bullet.team) continue;
       if (collides(bullet, ship)) {
-        const hit = ship.damage(bullet.dmg, bullet);
+        const hit = ship.damage(bullet.dmg, bullet) || { shield: 0, hp: 0 };
         if (hit.shield) state.shieldHits.push({ id: ship.id, hitX: bullet.x, hitY: bullet.y, team: ship.team, amount: hit.shield });
         if (hit.hp) state.healthHits.push({ id: ship.id, hitX: bullet.x, hitY: bullet.y, team: ship.team, amount: hit.hp });
         if (bullet.ownerId != null) {
-          const owner = state.ships.find((s) => s.id === bullet.ownerId);
-          if (owner && owner.gainXp) owner.gainXp(hit.shield + hit.hp);
+          for (let oi = 0; oi < state.ships.length; oi++) {
+            const owner = state.ships[oi];
+            if (owner && owner.id === bullet.ownerId && owner.gainXp) {
+              owner.gainXp((hit.shield || 0) + (hit.hp || 0));
+              break;
+            }
+          }
         }
         state.bullets.splice(bi, 1);
         if (!ship.alive) {
@@ -264,11 +269,18 @@ config.stars = {
 };
 function setManagerConfig(newCfg = {}) {
   for (const k of Object.keys(newCfg)) {
-    if (config[k]) Object.assign(config[k], newCfg[k]);
+    if (config[k] && typeof config[k] === "object" && typeof newCfg[k] === "object") {
+      Object.assign(config[k], newCfg[k]);
+    } else {
+      config[k] = newCfg[k];
+    }
   }
 }
 function getManagerConfig() {
   return config;
+}
+function getStarCanvasVersion() {
+  return _starCanvasVersion;
 }
 var Particle = class {
   constructor(x = 0, y = 0, vx = 0, vy = 0, ttl = 1, color = "#fff", size = 2) {
@@ -352,19 +364,12 @@ function initStars(state, W = 800, H = 600, count = 140) {
     state.stars.push(star);
   }
 }
-function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg = "#041018") {
-  let state = null;
-  let W = 800, H = 600;
-  if (stateOrW && typeof stateOrW === "object" && Array.isArray(stateOrW.stars)) {
-    state = stateOrW;
-    W = typeof maybeW === "number" ? maybeW : 800;
-    H = typeof maybeH === "number" ? maybeH : 600;
-  } else {
-    W = stateOrW || 800;
-    H = maybeW || 600;
+function createStarCanvas(state, W = 800, H = 600, bg = "#041018") {
+  if (!state || typeof state !== "object" || !Array.isArray(state.stars)) {
+    throw new Error("createStarCanvas(state, W, H, bg) requires a state object with a `stars` array");
   }
   try {
-    const c = typeof document !== "undefined" ? document.createElement("canvas") : null;
+    const c = typeof document !== "undefined" && typeof document.createElement === "function" ? document.createElement("canvas") : null;
     if (!c) {
       starCanvas = null;
       return null;
@@ -375,7 +380,7 @@ function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg = "#041
     if (ctx) {
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, c.width, c.height);
-      const drawStars = state && state.stars ? state.stars : stars;
+      const drawStars = state.stars;
       for (const s of drawStars) {
         const alpha = Math.max(0, Math.min(1, s.a != null ? s.a : s.baseA != null ? s.baseA : 1));
         ctx.beginPath();
@@ -412,10 +417,7 @@ function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg = "#041
       };
       c.getContext = () => stubCtx;
     }
-    try {
-      _starCanvasVersion = (_starCanvasVersion || 0) + 1;
-    } catch (e) {
-    }
+    _starCanvasVersion = (_starCanvasVersion || 0) + 1;
     c._version = _starCanvasVersion;
     starCanvas = c;
     return c;
@@ -489,7 +491,13 @@ function createCanvasRenderer(canvas2) {
     resize();
     const W = canvas2.width;
     const H = canvas2.height;
-    const state = simulate(dt, W, H);
+    let state;
+    try {
+      state = simulate(dt, W, H);
+    } catch (e) {
+      console.error("simulate() failed in renderer:", e);
+      return;
+    }
     ctx.clearRect(0, 0, canvas2.width, canvas2.height);
     if (state.starCanvas) {
       try {
@@ -611,6 +619,7 @@ function createCanvasRenderer(canvas2) {
   }
   function renderOnce(nowMs = performance.now()) {
     doRender(nowMs);
+    return true;
   }
   return {
     init() {
@@ -630,6 +639,8 @@ function createCanvasRenderer(canvas2) {
     isRunning() {
       return _running;
     },
+    // expose resize so tests can force size updates
+    resize,
     render() {
     },
     renderOnce,
@@ -641,7 +652,9 @@ function createCanvasRenderer(canvas2) {
 
 // src/webglRenderer.js
 function createWebGLRenderer(canvas2, opts = {}) {
-  const cfg = Object.assign({ webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true }, opts);
+  if (!canvas2) return null;
+  const defaults = { webgl2: true, maxDevicePixelRatio: 1.5, maxUploadsPerFrame: 2, atlasUseMipmaps: false, atlasMaxSize: 2048, debug: true };
+  const cfg = Object.assign({}, defaults, opts);
   let gl = null;
   let isWebGL2 = false;
   try {
@@ -696,6 +709,7 @@ function createWebGLRenderer(canvas2, opts = {}) {
   let _particleUsed = 0;
   const _pendingAtlasUploads = [];
   function debugLog(...args) {
+    if (!cfg.debug) return;
     if (typeof console !== "undefined" && console.log) console.log("[webgl-debug]", ...args);
   }
   function checkGLError(where) {
