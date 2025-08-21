@@ -1,0 +1,23 @@
+flowchart TD
+  A[Page load / Bootstrap (main.js)] --> B{Choose renderer}
+  B --> |WebGL2| C[createWebGLRenderer]
+  B --> |WebGL1/Canvas2D| C1[createCanvasRenderer]
+  C --> D[Initialize state & UI wiring]
+  C1 --> D
+  D --> E[Start game loop (RAF)]
+  E --> F[Compute dt & bounds]
+  F --> G[Manager.simulate(dt, W,H)]
+  G --> H[simulateStep(state, dt, bounds)]
+  H --> I[Emit events: explosions, shieldHits, healthHits]
+  G --> J[Translate events to persistent flashes]
+  E --> K[Renderer.draw() reads ships, bullets, particles, stars, flashes]
+  K --> L[WebGL: build typed arrays -> ensureVBO -> safeDrawInstanced]
+  L --> M[Frame presented]
+  M --> E
+  subgraph RNG
+    S[srand(seed) / unseed()] --> H
+  end
+  subgraph UI
+    U[Buttons / Input] --> D
+    U --> G
+  end

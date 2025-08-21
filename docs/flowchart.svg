@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
+  <style>text{font-family: monospace; font-size:12px; white-space:pre;}</style>
+  <rect width="100%" height="100%" fill="#fff" />
+  <foreignObject x="10" y="10" width="1180" height="780">
+    <div xmlns="http://www.w3.org/1999/xhtml">
+      <pre>
+flowchart TD
+  A[Page load / Bootstrap (main.js)] --&gt; B{Choose renderer}
+  B --&gt; |WebGL2| C[createWebGLRenderer]
+  B --&gt; |WebGL1/Canvas2D| C1[createCanvasRenderer]
+  C --&gt; D[Initialize state & UI wiring]
+  C1 --&gt; D
+  D --&gt; E[Start game loop (RAF)]
+  E --&gt; F[Compute dt & bounds]
+  F --&gt; G[Manager.simulate(dt, W,H)]
+  G --&gt; H[simulateStep(state, dt, bounds)]
+  H --&gt; I[Emit events: explosions, shieldHits, healthHits]
+  G --&gt; J[Translate events to persistent flashes]
+  E --&gt; K[Renderer.draw() reads ships, bullets, particles, stars, flashes]
+  K --&gt; L[WebGL: build typed arrays -&gt; ensureVBO -&gt; safeDrawInstanced]
+  L --&gt; M[Frame presented]
+  M --&gt; E
+  subgraph RNG
+    S[srand(seed) / unseed()] --&gt; H
+  end
+  subgraph UI
+    U[Buttons / Input] --&gt; D
+    U --&gt; G
+  end
+      </pre>
+    </div>
+  </foreignObject>
+</svg>
