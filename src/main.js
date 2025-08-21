@@ -4,13 +4,30 @@ import * as GM from './gamemanager.js';
 import { createShip } from './entities.js';
 import { srand, srandom } from './rng.js';
 
-const canvas = document.getElementById('world');
-function fitCanvas() {
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
-  canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+// Ensure a canvas with id 'world' exists so the app can boot in tests/environments
+let canvas = document.getElementById('world');
+if (!canvas) {
+  canvas = document.createElement('canvas');
+  canvas.id = 'world';
+  // put it before the end of body so styles/defaults apply
+  (document.body || document.documentElement).appendChild(canvas);
 }
-window.addEventListener('resize', fitCanvas);
+
+function fitCanvas() {
+  if (!canvas) return;
+  try {
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    // use client size if available, otherwise fallback to current size
+    const w = Math.max(1, canvas.clientWidth || canvas.width || 1);
+    const h = Math.max(1, canvas.clientHeight || canvas.height || 1);
+    canvas.width = w;
+    canvas.height = h;
+  } catch (e) {
+    // defensive: ignore sizing errors (e.g., detached DOM in some test runners)
+  }
+}
+window.addEventListener && window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
 // Prefer WebGL renderer when available (helps reproduce WebGL runtime issues);
@@ -47,7 +64,7 @@ try {
 }
 if (!renderer) {
   renderer = createCanvasRenderer(canvas);
-  renderer.init();
+  if (renderer && renderer.init) renderer.init();
 }
 
 // Expose a test-friendly handle to the game manager so E2E tests can inspect state
@@ -71,37 +88,41 @@ const seedBtn = document.getElementById('seedBtn');
 let _rafId = null;
 let _lastTime = null;
 function webglLoop(nowMs) {
-  if (!renderer || !renderer.isRunning()) { _rafId = null; return; }
+  if (!renderer || (typeof renderer.isRunning === 'function' && !renderer.isRunning())) { _rafId = null; return; }
   const now = nowMs / 1000;
   const dt = _lastTime ? Math.min(0.05, now - _lastTime) : 1/60;
   _lastTime = now;
   const state = GM.simulate(dt, canvas.width, canvas.height);
-  try { renderer.render(state); } catch (e) { console.warn('renderer.render error', e); }
+  try { renderer && renderer.render && renderer.render(state); } catch (e) { console.warn('renderer.render error', e); }
   _rafId = requestAnimationFrame(webglLoop);
 }
 
-startBtn.addEventListener('click', () => {
-  if (!renderer.isRunning()) {
-    renderer.start();
-    startBtn.textContent = '⏸ Pause';
-    _lastTime = null;
-    if (renderer.type === 'webgl') _rafId = requestAnimationFrame(webglLoop);
-  } else {
-    renderer.stop();
-    startBtn.textContent = '▶ Start';
-    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
-  }
-});
+if (startBtn) {
+  startBtn.addEventListener('click', () => {
+    const running = typeof renderer.isRunning === 'function' ? renderer.isRunning() : false;
+    if (!running) {
+      renderer.start && renderer.start();
+      startBtn.textContent = '⏸ Pause';
+      _lastTime = null;
+      if (renderer && typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0) _rafId = requestAnimationFrame(webglLoop);
+    } else {
+      renderer.stop && renderer.stop();
+      startBtn.textContent = '▶ Start';
+      if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    }
+  });
+}
 
-resetBtn.addEventListener('click', () => { GM.reset(); });
-addRed.addEventListener('click', () => { GM.ships.push(createShip({ x:100, y:100, team:'red' })); });
-addBlue.addEventListener('click', () => { GM.ships.push(createShip({ x:700, y:500, team:'blue' })); });
-seedBtn.addEventListener('click', () => { const s = Math.floor(srandom()*0xffffffff); srand(s); GM.reset(s); alert('Seed: '+s); });
+if (resetBtn) resetBtn.addEventListener('click', () => { GM.reset(); });
+if (addRed) addRed.addEventListener('click', () => { GM.ships.push(createShip({ x:100, y:100, team:'red' })); });
+if (addBlue) addBlue.addEventListener('click', () => { GM.ships.push(createShip({ x:700, y:500, team:'blue' })); });
+if (seedBtn) seedBtn.addEventListener('click', () => { const s = Math.floor(srandom()*0xffffffff); srand(s); GM.reset(s); alert('Seed: '+s); });
 
 // auto start
-if (renderer.type === 'webgl') {
-  renderer.start();
-  _rafId = requestAnimationFrame(webglLoop);
-} else {
-  renderer.start();
+// Auto-start if renderer supports it. For WebGL we drive the RAF loop from here.
+if (renderer) {
+  renderer.start && renderer.start();
+  if (typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0) {
+    _rafId = requestAnimationFrame(webglLoop);
+  }
 }

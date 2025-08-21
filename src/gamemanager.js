@@ -71,33 +71,49 @@ export function reset(seedValue = null) {
   _reinforcementAccumulator = 0;
   if (typeof seedValue === 'number') { _seed = seedValue >>> 0; srand(_seed); }
   // create a deterministic starfield when resetting (defaults)
-  try { initStars(800, 600, 140); } catch (e) { /* ignore */ }
+  try { initStars({ stars }, 800, 600, 140); } catch (e) { /* ignore */ }
   // Auto-generate a pre-rendered star canvas for faster backgrounds when possible
-  try { if (!config.stars || !config.stars.twinkle) createStarCanvas(800, 600); } catch (e) { /* ignore */ }
+  try { if (!config.stars || !config.stars.twinkle) createStarCanvas({ stars }, 800, 600); } catch (e) { /* ignore */ }
 }
 
 // Initialize a deterministic starfield. Uses seeded RNG (srandom) when srand(seed) was called.
-export function initStars(W = 800, H = 600, count = 140) {
-  stars.length = 0;
+export function initStars(state, W = 800, H = 600, count = 140) {
+  // Explicit API: initStars(state, W, H, count)
+  // - state must be an object containing an array property `stars` (e.g. { stars: [] })
+  // - W/H/count are optional and default to 800/600/140
+  if (!state || typeof state !== 'object' || !Array.isArray(state.stars)) {
+    throw new Error('initStars(state, W, H, count) requires a state object with a `stars` array');
+  }
+
+  state.stars.length = 0; // Clear existing stars in state
   for (let i = 0; i < count; i++) {
     const x = srandom() * W;
     const y = srandom() * H;
-    // radius small 0.3..1.6
-    const r = 0.3 + srandom() * 1.3;
-    // alpha/brightness 0.3..1.0
-  const a = 0.3 + srandom() * 0.7;
-  // twinkle metadata (deterministic per-star)
-  const twPhase = srandom() * Math.PI * 2;
-  const twSpeed = 0.5 + srandom() * 1.5; // cycles per second-ish
-  const baseA = a;
-  stars.push({ x: x, y: y, r: r, a: baseA, baseA: baseA, twPhase: twPhase, twSpeed: twSpeed });
+    const r = 0.3 + srandom() * 1.3; // radius
+    const a = 0.3 + srandom() * 0.7; // alpha/brightness
+    const twPhase = srandom() * Math.PI * 2;
+    const twSpeed = 0.5 + srandom() * 1.5; // cycles per second
+    const baseA = a;
+    const star = { x: x, y: y, r: r, a: baseA, baseA: baseA, twPhase: twPhase, twSpeed: twSpeed };
+    state.stars.push(star);
   }
 }
 
 // Create an offscreen canvas with the starfield pre-rendered. Useful for
 // fast background draws in the Canvas renderer and for uploading a single
 // WebGL background texture. Returns the canvas.
-export function createStarCanvas(W = 800, H = 600, bg = '#041018') {
+export function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg = '#041018') {
+  // Signature (backwards-compatible):
+  // - createStarCanvas(state, W, H, bg)
+  // - createStarCanvas(W, H, bg)  // legacy
+  let state = null;
+  let W = 800, H = 600;
+  if (stateOrW && typeof stateOrW === 'object' && Array.isArray(stateOrW.stars)) {
+    state = stateOrW; W = typeof maybeW === 'number' ? maybeW : 800; H = typeof maybeH === 'number' ? maybeH : 600;
+  } else {
+    // legacy call: first arg is W
+    W = stateOrW || 800; H = maybeW || 600;
+  }
   try {
     const c = typeof document !== 'undefined' ? document.createElement('canvas') : null;
     if (!c) { starCanvas = null; return null; }
@@ -108,8 +124,9 @@ export function createStarCanvas(W = 800, H = 600, bg = '#041018') {
       // background
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, c.width, c.height);
-      // draw each star from stars[]
-      for (const s of stars) {
+      // draw each star from the provided state (or fall back to exported stars[])
+      const drawStars = (state && state.stars) ? state.stars : stars;
+      for (const s of drawStars) {
         const alpha = Math.max(0, Math.min(1, s.a != null ? s.a : (s.baseA != null ? s.baseA : 1)));
         ctx.beginPath();
         ctx.fillStyle = `rgba(255,255,255,${alpha})`;

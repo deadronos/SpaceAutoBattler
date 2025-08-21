@@ -1,10 +1,14 @@
 import { srange, srangeInt } from './rng.js';
 
 let _nextId = 1;
-function _genId() { return _nextId++; }
+const _genId = () => _nextId++;
 
 export const Team = { RED: 'red', BLUE: 'blue' };
 
+/**
+ * Create a ship (POJO) with gameplay defaults and attached helper methods.
+ * @param {Object} opts optional overrides
+ */
 export function createShip(opts = {}) {
   const id = opts.id == null ? _genId() : opts.id;
   const hpMax = opts.maxHp != null ? opts.maxHp : (opts.hp != null ? opts.hp : 50);
@@ -33,7 +37,7 @@ export function createShip(opts = {}) {
   };
 
   // Methods attached as closures to keep POJO core state
-  ship.update = function(dt, state) {
+  ship.update = (dt, state) => {
     if (!ship.alive) return;
     ship.x += ship.vx * dt;
     ship.y += ship.vy * dt;
@@ -43,7 +47,7 @@ export function createShip(opts = {}) {
     }
   };
 
-  ship.pickTarget = function(ships) {
+  ship.pickTarget = (ships) => {
     let best = null; let bestDist = Infinity;
     for (const s of ships) {
       if (!s || s.team === ship.team || !s.alive) continue;
@@ -54,12 +58,12 @@ export function createShip(opts = {}) {
     return best;
   };
 
-  ship.damage = function(amount, source) {
+  ship.damage = (amount, source) => {
     const result = { shield: 0, hp: 0, killed: false };
     if (!ship.alive) return result;
     // Simple armor reduction: apply flat reduction then percent
     const flat = Math.max(0, ship.armor || 0);
-    let afterArmor = Math.max(0, amount - flat);
+    const afterArmor = Math.max(0, amount - flat);
     // no percent armor implemented yet; keep deterministic
     const shieldAbsorb = Math.min(ship.shield, afterArmor);
     ship.shield -= shieldAbsorb;
@@ -77,7 +81,7 @@ export function createShip(opts = {}) {
     return result;
   };
 
-  ship.gainXp = function(amount) {
+  ship.gainXp = (amount) => {
     ship.xp += amount;
     // simple level up: 100 xp per level
     while (ship.xp >= 100) {
@@ -91,7 +95,7 @@ export function createShip(opts = {}) {
     }
   };
 
-  ship.applyLevel = function(lvl) {
+  ship.applyLevel = (lvl) => {
     ship.level = lvl;
     ship.maxHp = 50 + (lvl - 1) * 10;
     ship.hp = ship.maxHp;
@@ -103,6 +107,9 @@ export function createShip(opts = {}) {
   return ship;
 }
 
+/**
+ * Create a simple bullet object with update and alive checks.
+ */
 export function createBullet(opts = {}) {
   const id = opts.id == null ? _genId() : opts.id;
   const bullet = {
@@ -118,13 +125,13 @@ export function createBullet(opts = {}) {
     radius: opts.radius != null ? opts.radius : 2,
   };
 
-  bullet.update = function(dt) {
+  bullet.update = (dt) => {
     bullet.x += bullet.vx * dt;
     bullet.y += bullet.vy * dt;
     bullet.ttl -= dt;
   };
 
-  bullet.alive = function(bounds) {
+  bullet.alive = (bounds) => {
     if (bullet.ttl <= 0) return false;
     if (!bounds) return true;
     if (bullet.x < 0 || bullet.x > bounds.W || bullet.y < 0 || bullet.y > bounds.H) return false;
@@ -134,6 +141,9 @@ export function createBullet(opts = {}) {
   return bullet;
 }
 
+/**
+ * Spawn a simple fleet of ships using the seeded RNG.
+ */
 export function spawnFleet(team, n, cx = 400, cy = 300) {
   const out = [];
   for (let i = 0; i < n; i++) {

@@ -7,7 +7,7 @@ import { initStars, createStarCanvas, stars } from '../src/gamemanager.js';
 test('createStarCanvas returns canvas of expected size and non-empty starfield', () => {
   const W = 320, H = 180;
   srand(999);
-  initStars(W, H, 50);
+  initStars({ stars }, W, H, 50);
   const canvas = createStarCanvas(W, H);
   expect(canvas).toBeTruthy();
   expect(canvas.width).toBe(W);

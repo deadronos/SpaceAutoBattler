@@ -45,7 +45,8 @@ function _next() {
 function srandom() {
   if (_state === null) return Math.random();
   const v = _next();
-  return v / 4294967296;
+  const result = v / 4294967296;
+  return result;
 }
 function srange(a = 0, b = 1) {
   const r = srandom();
@@ -54,9 +55,7 @@ function srange(a = 0, b = 1) {
 
 // src/entities.js
 var _nextId = 1;
-function _genId() {
-  return _nextId++;
-}
+var _genId = () => _nextId++;
 var Team = { RED: "red", BLUE: "blue" };
 function createShip(opts = {}) {
   const id = opts.id == null ? _genId() : opts.id;
@@ -84,7 +83,7 @@ function createShip(opts = {}) {
     level: opts.level || 1,
     xp: opts.xp || 0
   };
-  ship.update = function(dt, state) {
+  ship.update = (dt, state) => {
     if (!ship.alive) return;
     ship.x += ship.vx * dt;
     ship.y += ship.vy * dt;
@@ -92,7 +91,7 @@ function createShip(opts = {}) {
       ship.shield = Math.min(ship.maxShield, ship.shield + ship.shieldRegen * dt);
     }
   };
-  ship.pickTarget = function(ships2) {
+  ship.pickTarget = (ships2) => {
     let best = null;
     let bestDist = Infinity;
     for (const s of ships2) {
@@ -107,11 +106,11 @@ function createShip(opts = {}) {
     }
     return best;
   };
-  ship.damage = function(amount, source) {
+  ship.damage = (amount, source) => {
     const result = { shield: 0, hp: 0, killed: false };
     if (!ship.alive) return result;
     const flat = Math.max(0, ship.armor || 0);
-    let afterArmor = Math.max(0, amount - flat);
+    const afterArmor = Math.max(0, amount - flat);
     const shieldAbsorb = Math.min(ship.shield, afterArmor);
     ship.shield -= shieldAbsorb;
     result.shield = shieldAbsorb;
@@ -127,7 +126,7 @@ function createShip(opts = {}) {
     }
     return result;
   };
-  ship.gainXp = function(amount) {
+  ship.gainXp = (amount) => {
     ship.xp += amount;
     while (ship.xp >= 100) {
       ship.xp -= 100;
@@ -139,7 +138,7 @@ function createShip(opts = {}) {
       ship.shield = ship.maxShield;
     }
   };
-  ship.applyLevel = function(lvl) {
+  ship.applyLevel = (lvl) => {
     ship.level = lvl;
     ship.maxHp = 50 + (lvl - 1) * 10;
     ship.hp = ship.maxHp;
@@ -163,12 +162,12 @@ function createBullet(opts = {}) {
     ttl: opts.ttl != null ? opts.ttl : 2,
     radius: opts.radius != null ? opts.radius : 2
   };
-  bullet.update = function(dt) {
+  bullet.update = (dt) => {
     bullet.x += bullet.vx * dt;
     bullet.y += bullet.vy * dt;
     bullet.ttl -= dt;
   };
-  bullet.alive = function(bounds) {
+  bullet.alive = (bounds) => {
     if (bullet.ttl <= 0) return false;
     if (!bounds) return true;
     if (bullet.x < 0 || bullet.x > bounds.W || bullet.y < 0 || bullet.y > bounds.H) return false;
@@ -189,6 +188,13 @@ function simulateStep(state, dt, bounds) {
   state.explosions = state.explosions || [];
   state.shieldHits = state.shieldHits || [];
   state.healthHits = state.healthHits || [];
+  if (!state.stars) {
+    state.stars = [];
+  }
+  for (let i = 0; i < state.stars.length; i++) {
+    const star = state.stars[i];
+    star.a = srange(0.1, 1);
+  }
   for (let i = 0; i < state.ships.length; i++) {
     const s = state.ships[i];
     if (s.update) s.update(dt, state);
@@ -321,16 +327,19 @@ function reset(seedValue = null) {
     srand(_seed);
   }
   try {
-    initStars(800, 600, 140);
+    initStars({ stars }, 800, 600, 140);
   } catch (e) {
   }
   try {
-    if (!config.stars || !config.stars.twinkle) createStarCanvas(800, 600);
+    if (!config.stars || !config.stars.twinkle) createStarCanvas({ stars }, 800, 600);
   } catch (e) {
   }
 }
-function initStars(W = 800, H = 600, count = 140) {
-  stars.length = 0;
+function initStars(state, W = 800, H = 600, count = 140) {
+  if (!state || typeof state !== "object" || !Array.isArray(state.stars)) {
+    throw new Error("initStars(state, W, H, count) requires a state object with a `stars` array");
+  }
+  state.stars.length = 0;
   for (let i = 0; i < count; i++) {
     const x = srandom() * W;
     const y = srandom() * H;
@@ -339,10 +348,21 @@ function initStars(W = 800, H = 600, count = 140) {
     const twPhase = srandom() * Math.PI * 2;
     const twSpeed = 0.5 + srandom() * 1.5;
     const baseA = a;
-    stars.push({ x, y, r, a: baseA, baseA, twPhase, twSpeed });
+    const star = { x, y, r, a: baseA, baseA, twPhase, twSpeed };
+    state.stars.push(star);
   }
 }
-function createStarCanvas(W = 800, H = 600, bg = "#041018") {
+function createStarCanvas(stateOrW = 800, maybeW = 800, maybeH = 600, bg = "#041018") {
+  let state = null;
+  let W = 800, H = 600;
+  if (stateOrW && typeof stateOrW === "object" && Array.isArray(stateOrW.stars)) {
+    state = stateOrW;
+    W = typeof maybeW === "number" ? maybeW : 800;
+    H = typeof maybeH === "number" ? maybeH : 600;
+  } else {
+    W = stateOrW || 800;
+    H = maybeW || 600;
+  }
   try {
     const c = typeof document !== "undefined" ? document.createElement("canvas") : null;
     if (!c) {
@@ -355,7 +375,8 @@ function createStarCanvas(W = 800, H = 600, bg = "#041018") {
     if (ctx) {
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, c.width, c.height);
-      for (const s of stars) {
+      const drawStars = state && state.stars ? state.stars : stars;
+      for (const s of drawStars) {
         const alpha = Math.max(0, Math.min(1, s.a != null ? s.a : s.baseA != null ? s.baseA : 1));
         ctx.beginPath();
         ctx.fillStyle = `rgba(255,255,255,${alpha})`;
@@ -865,8 +886,6 @@ function createWebGLRenderer(canvas2, opts = {}) {
     resources.starInstanceVBO._size = 0;
     resources.shipInstanceVBO = gl.createBuffer();
     resources.shipInstanceVBO._size = 0;
-    resources.shipInstanceVBO = gl.createBuffer();
-    resources.shipInstanceVBO._size = 0;
     resources.bulletInstanceVBO = gl.createBuffer();
     resources.particleInstanceVBO = gl.createBuffer();
     resources.bulletInstanceVBO._size = 0;
@@ -1104,23 +1123,72 @@ function createWebGLRenderer(canvas2, opts = {}) {
     const BYTES = Float32Array.BYTES_PER_ELEMENT || 4;
     function ensureVBO(vbo, usedElems, usedBuffer) {
       try {
-        const requiredBytes = usedElems * BYTES;
-        if (!vbo._size || vbo._size < requiredBytes) {
+        const usedBytes = usedElems * BYTES;
+        const srcByteLen = usedBuffer && usedBuffer.byteLength ? Math.min(usedBytes, usedBuffer.byteLength) : usedBytes;
+        if (!vbo._size) vbo._size = 0;
+        if (vbo._size < srcByteLen) {
           let alloc = Math.max(vbo._size || 1, 1);
-          while (alloc < requiredBytes) alloc *= 2;
+          while (alloc < srcByteLen) alloc *= 2;
           try {
             gl.bufferData(gl.ARRAY_BUFFER, alloc, gl.DYNAMIC_DRAW);
             vbo._size = alloc;
           } catch (e) {
             try {
-              gl.bufferData(gl.ARRAY_BUFFER, requiredBytes, gl.DYNAMIC_DRAW);
-              vbo._size = requiredBytes;
+              gl.bufferData(gl.ARRAY_BUFFER, srcByteLen, gl.DYNAMIC_DRAW);
+              vbo._size = srcByteLen;
             } catch (ee) {
             }
           }
         }
-        if (usedElems > 0) gl.bufferSubData(gl.ARRAY_BUFFER, 0, usedBuffer.subarray(0, usedElems));
+        if (usedElems > 0 && usedBuffer) {
+          const view = usedBuffer.subarray(0, usedElems);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, view);
+        }
+        try {
+          diag._instanceVBOCapacity = Math.max(diag._instanceVBOCapacity || 0, vbo._size || 0);
+        } catch (e) {
+        }
       } catch (e) {
+      }
+    }
+    function safeDrawInstanced(boundVBO, vertsPerInstance, instanceCount, elemsPerInstance) {
+      try {
+        if (!boundVBO) return;
+        const strideBytes = elemsPerInstance * BYTES;
+        const requiredBytes = instanceCount * strideBytes;
+        const vboSize = boundVBO._size || 0;
+        if (vboSize >= requiredBytes) {
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, instanceCount);
+          return;
+        }
+        try {
+          let alloc = Math.max(vboSize || 1, 1);
+          while (alloc < requiredBytes) alloc *= 2;
+          gl.bufferData(gl.ARRAY_BUFFER, alloc, gl.DYNAMIC_DRAW);
+          boundVBO._size = alloc;
+        } catch (e) {
+        }
+        const finalSize = boundVBO._size || 0;
+        if (finalSize >= requiredBytes) {
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, instanceCount);
+          return;
+        }
+        const maxInstances = Math.max(1, Math.floor(finalSize / strideBytes));
+        if (maxInstances <= 0) {
+          debugLog("safeDrawInstanced: VBO too small for even one instance", finalSize, strideBytes);
+          return;
+        }
+        let offsetInstances = 0;
+        while (offsetInstances < instanceCount) {
+          const chunk = Math.min(maxInstances, instanceCount - offsetInstances);
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, chunk);
+          offsetInstances += chunk;
+        }
+      } catch (e) {
+        try {
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, vertsPerInstance, instanceCount);
+        } catch (ee) {
+        }
       }
     }
     if (cfg.debug) {
@@ -1129,10 +1197,6 @@ function createWebGLRenderer(canvas2, opts = {}) {
         if (_shipBuffer && _shipUsed > _shipBuffer.length) debugLog("ship buffer used exceeds capacity", _shipUsed, _shipBuffer.length);
         if (_bulletBuffer && _bulletUsed > _bulletBuffer.length) debugLog("bullet buffer used exceeds capacity", _bulletUsed, _bulletBuffer.length);
         if (_particleBuffer && _particleUsed > _particleBuffer.length) debugLog("particle buffer used exceeds capacity", _particleUsed, _particleBuffer.length);
-        try {
-          if (renderer2 && renderer2._test_forceBufferMismatch) debugLog("forced buffer mismatch (test hook)");
-        } catch (e) {
-        }
       } catch (e) {
       }
     }
@@ -1246,7 +1310,7 @@ function createWebGLRenderer(canvas2, opts = {}) {
           gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
           if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
         }
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, sn);
+        safeDrawInstanced(resources.starInstanceVBO, 4, sn, elemsPer);
       }
       if (n > 0) {
         gl.bindBuffer(gl.ARRAY_BUFFER, resources.shipInstanceVBO);
@@ -1270,7 +1334,7 @@ function createWebGLRenderer(canvas2, opts = {}) {
           gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
           if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
         }
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n);
+        safeDrawInstanced(resources.shipInstanceVBO, 4, n, elemsPer);
       }
       if (bn > 0) {
         gl.bindBuffer(gl.ARRAY_BUFFER, resources.bulletInstanceVBO);
@@ -1294,7 +1358,7 @@ function createWebGLRenderer(canvas2, opts = {}) {
           gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
           if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
         }
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, bn);
+        safeDrawInstanced(resources.bulletInstanceVBO, 4, bn, elemsPer);
       }
       if (pn > 0) {
         gl.bindBuffer(gl.ARRAY_BUFFER, resources.particleInstanceVBO);
@@ -1313,7 +1377,7 @@ function createWebGLRenderer(canvas2, opts = {}) {
           gl.vertexAttribPointer(attrColor, 4, gl.FLOAT, false, elemsPer * 4, 4 * 4);
           if (isWebGL2) gl.vertexAttribDivisor(attrColor, 1);
         }
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, pn);
+        safeDrawInstanced(resources.particleInstanceVBO, 4, pn, elemsPer);
       }
     } else {
       for (let i = 0; i < n; i++) {
@@ -1804,13 +1868,24 @@ var webglRenderer_default = { createWebGLRenderer };
 
 // src/main.js
 var canvas = document.getElementById("world");
-function fitCanvas() {
-  canvas.style.width = "100%";
-  canvas.style.height = "100%";
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+if (!canvas) {
+  canvas = document.createElement("canvas");
+  canvas.id = "world";
+  (document.body || document.documentElement).appendChild(canvas);
 }
-window.addEventListener("resize", fitCanvas);
+function fitCanvas() {
+  if (!canvas) return;
+  try {
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    const w = Math.max(1, canvas.clientWidth || canvas.width || 1);
+    const h = Math.max(1, canvas.clientHeight || canvas.height || 1);
+    canvas.width = w;
+    canvas.height = h;
+  } catch (e) {
+  }
+}
+window.addEventListener && window.addEventListener("resize", fitCanvas);
 fitCanvas();
 var renderer = null;
 function makeSimpleAtlas(type, radius) {
@@ -1844,7 +1919,7 @@ try {
 }
 if (!renderer) {
   renderer = createCanvasRenderer(canvas);
-  renderer.init();
+  if (renderer && renderer.init) renderer.init();
 }
 window.__GM = gamemanager_exports;
 window.__getGMShips = () => window.__GM && window.__GM.ships ? window.__GM.ships : [];
@@ -1858,7 +1933,7 @@ var seedBtn = document.getElementById("seedBtn");
 var _rafId = null;
 var _lastTime = null;
 function webglLoop(nowMs) {
-  if (!renderer || !renderer.isRunning()) {
+  if (!renderer || typeof renderer.isRunning === "function" && !renderer.isRunning()) {
     _rafId = null;
     return;
   }
@@ -1867,45 +1942,48 @@ function webglLoop(nowMs) {
   _lastTime = now;
   const state = simulate(dt, canvas.width, canvas.height);
   try {
-    renderer.render(state);
+    renderer && renderer.render && renderer.render(state);
   } catch (e) {
     console.warn("renderer.render error", e);
   }
   _rafId = requestAnimationFrame(webglLoop);
 }
-startBtn.addEventListener("click", () => {
-  if (!renderer.isRunning()) {
-    renderer.start();
-    startBtn.textContent = "\u23F8 Pause";
-    _lastTime = null;
-    if (renderer.type === "webgl") _rafId = requestAnimationFrame(webglLoop);
-  } else {
-    renderer.stop();
-    startBtn.textContent = "\u25B6 Start";
-    if (_rafId) {
-      cancelAnimationFrame(_rafId);
-      _rafId = null;
+if (startBtn) {
+  startBtn.addEventListener("click", () => {
+    const running = typeof renderer.isRunning === "function" ? renderer.isRunning() : false;
+    if (!running) {
+      renderer.start && renderer.start();
+      startBtn.textContent = "\u23F8 Pause";
+      _lastTime = null;
+      if (renderer && typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0) _rafId = requestAnimationFrame(webglLoop);
+    } else {
+      renderer.stop && renderer.stop();
+      startBtn.textContent = "\u25B6 Start";
+      if (_rafId) {
+        cancelAnimationFrame(_rafId);
+        _rafId = null;
+      }
     }
-  }
-});
-resetBtn.addEventListener("click", () => {
+  });
+}
+if (resetBtn) resetBtn.addEventListener("click", () => {
   reset();
 });
-addRed.addEventListener("click", () => {
+if (addRed) addRed.addEventListener("click", () => {
   ships.push(createShip({ x: 100, y: 100, team: "red" }));
 });
-addBlue.addEventListener("click", () => {
+if (addBlue) addBlue.addEventListener("click", () => {
   ships.push(createShip({ x: 700, y: 500, team: "blue" }));
 });
-seedBtn.addEventListener("click", () => {
+if (seedBtn) seedBtn.addEventListener("click", () => {
   const s = Math.floor(srandom() * 4294967295);
   srand(s);
   reset(s);
   alert("Seed: " + s);
 });
-if (renderer.type === "webgl") {
-  renderer.start();
-  _rafId = requestAnimationFrame(webglLoop);
-} else {
-  renderer.start();
+if (renderer) {
+  renderer.start && renderer.start();
+  if (typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0) {
+    _rafId = requestAnimationFrame(webglLoop);
+  }
 }

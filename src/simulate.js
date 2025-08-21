@@ -15,6 +15,17 @@ export function simulateStep(state, dt, bounds) {
   state.shieldHits = state.shieldHits || [];
   state.healthHits = state.healthHits || [];
 
+  // Ensure state.stars is initialized
+  if (!state.stars) {
+    state.stars = [];
+  }
+
+  // Update stars (twinkle progression)
+  for (let i = 0; i < state.stars.length; i++) {
+    const star = state.stars[i];
+  star.a = srange(0.1, 1.0); // Update twinkle value deterministically
+  }
+
   // Update ships
   for (let i = 0; i < state.ships.length; i++) {
     const s = state.ships[i];

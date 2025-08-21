@@ -20,7 +20,8 @@ function _next() {
 export function srandom() {
   if (_state === null) return Math.random();
   const v = _next();
-  return v / 0x100000000; // [0,1)
+  const result = v / 0x100000000; // [0,1)
+  return result;
 }
 
 export function srange(a = 0, b = 1) {
