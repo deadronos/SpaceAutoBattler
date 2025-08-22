@@ -1,166 +1,78 @@
-import { createCanvasRenderer } from './renderer.js';
-import webglMod from './webglRenderer.js';
-import * as GM from './gamemanager.js';
-import { createShip } from './entities.js';
-import { srand, srandom } from './rng.js';
+// Minimal main.js - bundler-friendly entry that wires UI to game manager and renderer
+import { createGameManager } from './gamemanager.js';
+import { CanvasRenderer } from './canvasrenderer.js';
+import { WebGLRenderer } from './webglrenderer.js';
+import { getDefaultBounds } from './config/displayConfig.js';
 
-// Ensure a canvas with id 'world' exists so the app can boot in tests/environments
-let canvas = document.getElementById('world');
-if (!canvas) {
-  canvas = document.createElement('canvas');
-  canvas.id = 'world';
-  // put it before the end of body so styles/defaults apply
-  (document.body || document.documentElement).appendChild(canvas);
-}
+export async function startApp(rootDocument = document) {
+  const canvas = rootDocument.getElementById('world');
+  const ui = {
+    startPause: rootDocument.getElementById('startPause'),
+    reset: rootDocument.getElementById('reset'),
+    addRed: rootDocument.getElementById('addRed'),
+    addBlue: rootDocument.getElementById('addBlue'),
+    toggleTrails: rootDocument.getElementById('toggleTrails'),
+    speed: rootDocument.getElementById('speed'),
+    redScore: rootDocument.getElementById('redScore'),
+    blueScore: rootDocument.getElementById('blueScore'),
+    stats: rootDocument.getElementById('stats'),
+    continuousCheckbox: rootDocument.getElementById('continuousCheckbox'),
+    seedBtn: rootDocument.getElementById('seedBtn'),
+    formationBtn: rootDocument.getElementById('formationBtn'),
+  };
 
-function fitCanvas() {
-  if (!canvas) return;
+  function fitCanvasToWindow() {
+    const dpr = window.devicePixelRatio || 1;
+    const bounds = getDefaultBounds();
+    canvas.style.width = `${bounds.W}px`;
+    canvas.style.height = `${bounds.H}px`;
+    canvas.width = Math.round(bounds.W * dpr);
+    canvas.height = Math.round(bounds.H * dpr);
+  }
+
+  fitCanvasToWindow();
+  window.addEventListener('resize', fitCanvasToWindow);
+
+  // Choose renderer (prefer WebGL if available)
+  let renderer;
   try {
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    // use client size if available, otherwise fallback to current size
-    const w = Math.max(1, canvas.clientWidth || canvas.width || 1);
-    const h = Math.max(1, canvas.clientHeight || canvas.height || 1);
-    canvas.width = w;
-    canvas.height = h;
+    renderer = new WebGLRenderer(canvas);
+    if (!renderer.init()) throw new Error('webgl init failed');
   } catch (e) {
-    // defensive: ignore sizing errors (e.g., detached DOM in some test runners)
+    console.warn('WebGL renderer not available, falling back to Canvas2D', e);
+    renderer = new CanvasRenderer(canvas);
+    renderer.init();
   }
-}
-window.addEventListener && window.addEventListener('resize', fitCanvas);
-fitCanvas();
 
-// Prefer WebGL renderer when available (helps reproduce WebGL runtime issues);
-// fall back to Canvas renderer for environments without WebGL.
-let renderer = null;
-// simple programmatic atlas accessor: creates a small canvas sprite for a given type/radius
-function makeSimpleAtlas(type, radius) {
-  const pad = 4;
-  const size = Math.max(8, Math.ceil(radius * 2 + pad * 2));
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, size, size);
-  const cx = size / 2, cy = size / 2;
-  // base hull (white, to be tinted in shader)
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
-  // accent
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
-  ctx.beginPath(); ctx.arc(cx - radius * 0.25, cy - radius * 0.25, Math.max(1, radius * 0.35), 0, Math.PI * 2); ctx.fill();
-  return { canvas: c, size, baseRadius: radius };
-}
+  const gm = createGameManager({ renderer, canvas });
 
-try {
-  if (webglMod && typeof webglMod.createWebGLRenderer === 'function') {
-    const tryWebgl = webglMod.createWebGLRenderer(canvas, { webgl2: true, atlasAccessor: (type, radius) => makeSimpleAtlas(type, radius) });
-    if (tryWebgl && tryWebgl.init && tryWebgl.init()) {
-      renderer = tryWebgl;
-      console.log('[main] using WebGL renderer');
-    }
-  }
-} catch (e) {
-  console.warn('WebGL renderer init failed, falling back to canvas renderer', e);
-}
-if (!renderer) {
-  renderer = createCanvasRenderer(canvas);
-  if (renderer && renderer.init) renderer.init();
-}
-
-// Expose a test-friendly handle to the game manager so E2E tests can inspect state
-// (kept minimal: only exported object reference, no API additions)
-window.__GM = GM;
-// Test-only helper: return the live ships array (avoids issues with bundler export wrappers)
-window.__getGMShips = () => (window.__GM && window.__GM.ships) ? window.__GM.ships : [];
-
-// Default deterministic seed for simulation & visuals so runs are repeatable
-const DEFAULT_SEED = 1;
-GM.reset(DEFAULT_SEED);
-
-const startBtn = document.getElementById('startPause');
-const resetBtn = document.getElementById('reset');
-const addRed = document.getElementById('addRed');
-const addBlue = document.getElementById('addBlue');
-const seedBtn = document.getElementById('seedBtn');
-
-// For WebGL renderer we run a separate RAF loop that drives the simulation and
-// calls renderer.render(state). Canvas renderer manages its own loop internally.
-let _rafId = null;
-let _lastTime = null;
-function webglLoop(nowMs) {
-  if (!renderer || (typeof renderer.isRunning === 'function' && !renderer.isRunning())) { _rafId = null; return; }
-  const now = nowMs / 1000;
-  const dt = _lastTime ? Math.min(0.05, now - _lastTime) : 1/60;
-  _lastTime = now;
-  const state = GM.simulate(dt, canvas.width, canvas.height);
-  try { renderer && renderer.render && renderer.render(state); } catch (e) { console.warn('renderer.render error', e); }
-  _rafId = requestAnimationFrame(webglLoop);
-}
-
-if (startBtn) {
-  startBtn.addEventListener('click', () => {
-    const running = typeof renderer.isRunning === 'function' ? renderer.isRunning() : false;
-    if (!running) {
-  // Ensure canvas sizing is up-to-date before starting the renderer
-  try { fitCanvas(); } catch (e) {}
-  console.log('[main] Start button pressed - starting renderer', { providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
-    renderer.start && renderer.start();
-        // Sanity checks: warn if renderer's reported providesOwnLoop disagrees with its run state
-        try {
-          const isRunningAfterStart = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : null;
-          if (renderer && renderer.providesOwnLoop && isRunningAfterStart === false) {
-            console.warn('[main] sanity: renderer.providesOwnLoop=true but renderer.isRunning() is false after start()');
-          }
-          if (renderer && !renderer.providesOwnLoop && isRunningAfterStart === true) {
-            console.warn('[main] sanity: renderer.providesOwnLoop=false but renderer.isRunning() returned true after start() (renderer may be running an internal loop)');
-          }
-        } catch (e) { /* ignore safety check errors */ }
-      startBtn.textContent = '⏸ Pause';
-      _lastTime = null;
-  // Only start the external webglLoop if the renderer does not provide its own RAF-driven loop
-    if (renderer && typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0 && !renderer.providesOwnLoop) {
-      // Defensive check: if the renderer reports being running already, warn about potential double-simulation
-      try {
-        const alreadyRunning = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : false;
-        if (alreadyRunning) console.warn('[main] sanity: starting external webglLoop while renderer.isRunning() === true; this may double-run simulation');
-      } catch (e) {}
-      _rafId = requestAnimationFrame(webglLoop);
-    }
-    } else {
-      renderer.stop && renderer.stop();
-      startBtn.textContent = '▶ Start';
-      if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
-    }
+  ui.startPause.addEventListener('click', () => {
+    if (gm.isRunning()) { gm.pause(); ui.startPause.textContent = '▶ Start'; }
+    else { gm.start(); ui.startPause.textContent = '⏸ Pause'; }
   });
-}
+  ui.reset.addEventListener('click', () => gm.reset());
+  ui.addRed.addEventListener('click', () => gm.spawnShip('red'));
+  ui.addBlue.addEventListener('click', () => gm.spawnShip('blue'));
+  ui.seedBtn.addEventListener('click', () => gm.reseed());
+  ui.formationBtn.addEventListener('click', () => gm.formFleets());
 
-if (resetBtn) resetBtn.addEventListener('click', () => { GM.reset(); });
-if (addRed) addRed.addEventListener('click', () => { GM.ships.push(createShip({ x:100, y:100, team:'red' })); });
-if (addBlue) addBlue.addEventListener('click', () => { GM.ships.push(createShip({ x:700, y:500, team:'blue' })); });
-if (seedBtn) seedBtn.addEventListener('click', () => { const s = Math.floor(srandom()*0xffffffff); srand(s); GM.reset(s); alert('Seed: '+s); });
-
-// auto start
-// Auto-start if renderer supports it. For WebGL we drive the RAF loop from here.
-if (renderer) {
-  // Ensure canvas sizing is correct before auto-start and log what we're doing.
-  try { fitCanvas(); } catch (e) {}
-  console.log('[main] Auto-starting renderer', { type: renderer && renderer.type, providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
-  renderer.start && renderer.start();
-  // Sanity checks after auto-start
-  try {
-    const isRunningAfterStart = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : null;
-    if (renderer && renderer.providesOwnLoop && isRunningAfterStart === false) {
-      console.warn('[main] sanity: renderer.providesOwnLoop=true but renderer.isRunning() is false after auto-start()');
-    }
-    if (renderer && !renderer.providesOwnLoop && isRunningAfterStart === true) {
-      console.warn('[main] sanity: renderer.providesOwnLoop=false but renderer.isRunning() returned true after auto-start()');
-    }
-  } catch (e) {}
-  if (typeof renderer.type === 'string' && renderer.type.indexOf('webgl') === 0 && !renderer.providesOwnLoop) {
-    try {
-      const alreadyRunning = (typeof renderer.isRunning === 'function') ? !!renderer.isRunning() : false;
-      if (alreadyRunning) console.warn('[main] sanity: starting external webglLoop while renderer.isRunning() === true; this may double-run simulation');
-    } catch (e) {}
-    _rafId = requestAnimationFrame(webglLoop);
+  // basic UI update loop
+  function uiTick() {
+    const s = gm.snapshot();
+    ui.redScore.textContent = `Red ${gm.score.red}`;
+    ui.blueScore.textContent = `Blue ${gm.score.blue}`;
+    ui.stats.textContent = `Ships: ${s.ships.length} Bullets: ${s.bullets.length}`;
+    requestAnimationFrame(uiTick);
   }
+  requestAnimationFrame(uiTick);
+
+  return { gm, renderer };
 }
+
+// Start automatically when running in a browser with DOM ready
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => startApp(document));
+  else startApp(document);
+}
+
+export default startApp;

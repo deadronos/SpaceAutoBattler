@@ -73,6 +73,7 @@ __export(gamemanager_exports, {
   processStateEvents: () => processStateEvents,
   releaseParticle: () => releaseParticle,
   reset: () => reset,
+  setDoubleSimStrict: () => setDoubleSimStrict,
   setManagerConfig: () => setManagerConfig,
   setReinforcementInterval: () => setReinforcementInterval,
   shieldFlashes: () => shieldFlashes,
@@ -452,6 +453,11 @@ var _reinforcementInterval = 5;
 var _reinforcementAccumulator = 0;
 var _starTime = 0;
 var _starCanvasVersion = 0;
+var _lastSimulateFrameId = null;
+var _doubleSimStrict = false;
+function setDoubleSimStrict(v = false) {
+  _doubleSimStrict = !!v;
+}
 function reset(seedValue = null) {
   ships.length = 0;
   bullets.length = 0;
@@ -554,6 +560,20 @@ function createStarCanvas(state, W = 800, H = 600, bg = "#041018") {
   }
 }
 function simulate(dt, W = 800, H = 600) {
+  try {
+    const nowMs = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const frameId = Math.floor(nowMs / 4);
+    if (_lastSimulateFrameId === frameId) {
+      const msg = "[gamemanager] detected simulate() called multiple times within the same frame bucket \u2014 possible double-simulation";
+      if (_doubleSimStrict) {
+        throw new Error(msg);
+      } else {
+        console.warn(msg);
+      }
+    }
+    _lastSimulateFrameId = frameId;
+  } catch (e) {
+  }
   const state = { ships, bullets, particles, stars, explosions: [], shieldHits: [], healthHits: [] };
   evaluateReinforcement(dt);
   simulateStep(state, dt, { W, H });
@@ -795,6 +815,8 @@ function createCanvasRenderer(canvas2) {
     return true;
   }
   return {
+    type: "canvas",
+    providesOwnLoop: true,
     init() {
       resize();
       return true;
@@ -2311,9 +2333,26 @@ if (startBtn) {
       }
       console.log("[main] Start button pressed - starting renderer", { providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
       renderer.start && renderer.start();
+      try {
+        const isRunningAfterStart = typeof renderer.isRunning === "function" ? !!renderer.isRunning() : null;
+        if (renderer && renderer.providesOwnLoop && isRunningAfterStart === false) {
+          console.warn("[main] sanity: renderer.providesOwnLoop=true but renderer.isRunning() is false after start()");
+        }
+        if (renderer && !renderer.providesOwnLoop && isRunningAfterStart === true) {
+          console.warn("[main] sanity: renderer.providesOwnLoop=false but renderer.isRunning() returned true after start() (renderer may be running an internal loop)");
+        }
+      } catch (e) {
+      }
       startBtn.textContent = "\u23F8 Pause";
       _lastTime = null;
-      if (renderer && typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0 && !renderer.providesOwnLoop) _rafId = requestAnimationFrame(webglLoop);
+      if (renderer && typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0 && !renderer.providesOwnLoop) {
+        try {
+          const alreadyRunning = typeof renderer.isRunning === "function" ? !!renderer.isRunning() : false;
+          if (alreadyRunning) console.warn("[main] sanity: starting external webglLoop while renderer.isRunning() === true; this may double-run simulation");
+        } catch (e) {
+        }
+        _rafId = requestAnimationFrame(webglLoop);
+      }
     } else {
       renderer.stop && renderer.stop();
       startBtn.textContent = "\u25B6 Start";
@@ -2346,7 +2385,22 @@ if (renderer) {
   }
   console.log("[main] Auto-starting renderer", { type: renderer && renderer.type, providesOwnLoop: !!(renderer && renderer.providesOwnLoop) });
   renderer.start && renderer.start();
+  try {
+    const isRunningAfterStart = typeof renderer.isRunning === "function" ? !!renderer.isRunning() : null;
+    if (renderer && renderer.providesOwnLoop && isRunningAfterStart === false) {
+      console.warn("[main] sanity: renderer.providesOwnLoop=true but renderer.isRunning() is false after auto-start()");
+    }
+    if (renderer && !renderer.providesOwnLoop && isRunningAfterStart === true) {
+      console.warn("[main] sanity: renderer.providesOwnLoop=false but renderer.isRunning() returned true after auto-start()");
+    }
+  } catch (e) {
+  }
   if (typeof renderer.type === "string" && renderer.type.indexOf("webgl") === 0 && !renderer.providesOwnLoop) {
+    try {
+      const alreadyRunning = typeof renderer.isRunning === "function" ? !!renderer.isRunning() : false;
+      if (alreadyRunning) console.warn("[main] sanity: starting external webglLoop while renderer.isRunning() === true; this may double-run simulation");
+    } catch (e) {
+    }
     _rafId = requestAnimationFrame(webglLoop);
   }
 }

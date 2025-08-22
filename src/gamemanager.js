@@ -1,7 +1,100 @@
+// gamemanager.js - orchestrates simulateStep, simple behavior, and exposes API
+import { makeInitialState, createShip, createBullet } from './entities.js';
+import { simulateStep, SIM_DT_MS } from './simulate.js';
+import { srand, srange } from './rng.js';
+import { getDefaultBounds } from './config/displayConfig.js';
+import { createSimWorker } from './createSimWorker.js';
+
+export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
+  let state = makeInitialState();
+  let running = false;
+  let score = { red: 0, blue: 0 };
+  const bounds = getDefaultBounds();
+  srand(seed);
+  // Try to run simulation in a worker when available
+  let simWorker = null;
+  try {
+    simWorker = createSimWorker(new URL('./simWorker.js', import.meta.url).href);
+    simWorker.on('ready', () => console.log('sim worker ready'));
+    simWorker.on('snapshot', (m) => {
+      // replace authoritative local state with worker snapshot for rendering
+      if (m && m.state) state = m.state;
+    });
+    simWorker.on('error', (m) => console.error('sim worker error', m));
+    // initialize worker
+    simWorker.post({ type: 'init', seed, bounds, simDtMs: SIM_DT_MS, state });
+  } catch (e) {
+    simWorker = null; // fallback to main-thread sim
+  }
+
+  function step(dtSeconds) {
+    // basic AI: randomly fire bullets from ships occasionally
+    for (const s of state.ships) {
+      // random small thrust for demo (renderer-level randomness ok)
+      s.vx += (srange(-1, 1) * 10) * dtSeconds;
+      s.vy += (srange(-1, 1) * 10) * dtSeconds;
+      // occasional fire (use main-thread randomness to decide firing; bullets created locally or via command)
+      if (Math.random() < 0.01) {
+        const b = createBullet(s.x, s.y, (Math.random()-0.5)*200, (Math.random()-0.5)*200, s.team, s.id, s.cannons?.[0]?.damage || 3, 2.0);
+        if (simWorker) simWorker.post({ type: 'command', cmd: 'spawnShipBullet', args: { bullet: b } });
+        else state.bullets.push(b);
+      }
+    }
+
+    if (simWorker) {
+      // worker is authoritative — ask for one snapshot after letting the worker run
+      simWorker.post({ type: 'snapshotRequest' });
+    } else {
+      simulateStep(state, dtSeconds, bounds);
+    }
+    // reconciliate events for score
+    while (state.explosions.length) {
+      const e = state.explosions.shift();
+      if (e.team === 'red') score.blue++;
+      else score.red++;
+    }
+    // push snapshot to renderer
+  if (renderer && typeof renderer.renderState === 'function') renderer.renderState(state);
+  }
+
+  // run loop (main-thread) -----------------
+  let acc = 0; let last = performance.now();
+  function runLoop() {
+    if (!running) return;
+    const now = performance.now();
+    acc += now - last; last = now;
+    if (acc > 250) acc = 250; // clamp
+    while (acc >= SIM_DT_MS) {
+      step(SIM_DT_MS / 1000);
+      acc -= SIM_DT_MS;
+    }
+    requestAnimationFrame(runLoop);
+  }
+
+  return {
+    start() { if (!running) { running = true; last = performance.now(); runLoop(); } },
+    pause() { running = false; },
+    reset() { state = makeInitialState(); score = { red: 0, blue: 0 }; },
+    isRunning() { return running; },
+    spawnShip(color = 'red') { const x = Math.random()*bounds.W; const y = Math.random()*bounds.H; state.ships.push(createShip('fighter', x, y, color)); },
+    reseed(newSeed = Math.floor(Math.random()*0xffffffff)) { srand(newSeed); },
+    formFleets() { // create a small fleet each side
+      for (let i = 0; i < 5; i++) {
+        state.ships.push(createShip('fighter', 100 + i*20, 100 + i*10, 'red'));
+        state.ships.push(createShip('fighter', bounds.W - 100 - i*20, bounds.H - 100 - i*10, 'blue'));
+      }
+    },
+    snapshot() { return { ships: state.ships.slice(), bullets: state.bullets.slice(), t: state.t }; },
+    score,
+    _internal: { state, bounds }
+  };
+}
+
 import { srand, srandom } from './rng.js';
 import { createShip } from './entities.js';
+import { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
 import { simulateStep } from './simulate.js';
-import { SHIELD, HEALTH, EXPLOSION, STARS } from './gamemanagerConfig.js';
+import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js';
 
 export const ships = [];
 export const bullets = [];
@@ -314,5 +407,9 @@ export function evaluateReinforcement(dt) {
 
 export function setReinforcementInterval(seconds) { _reinforcementInterval = seconds; }
 export function getReinforcementInterval() { return _reinforcementInterval; }
+
+// Re-export ShipConfig runtime helpers for convenience so callers can tune ship
+// defaults at runtime through the gamemanager API.
+export { setShipConfig, getShipConfig };
 
 export default { reset, simulate, processStateEvents, evaluateReinforcement, ships, bullets };
