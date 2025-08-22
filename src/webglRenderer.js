@@ -16,6 +16,14 @@ export class WebGLRenderer {
       return true;
     } catch (e) { return false; }
   }
+  updateScale() {
+    // Update viewport to match backing store size which may have changed
+    // when the application adjusts canvas.width/height (e.g. DPR * scale)
+    if (!this.gl) return;
+    try {
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    } catch (e) { /* ignore */ }
+  }
   isRunning() { return false; }
   renderState(state, interpolation = 0) {
     if (!this.gl) return;

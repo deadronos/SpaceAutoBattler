@@ -117,6 +117,22 @@ body {
   inset: 0;
   display: block;
 }
+#devControls {
+  position: fixed;
+  left: 12px;
+  bottom: 80px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  z-index: 11;
+}
+#devControls input[type=range] {
+  width: 180px;
+  display: block;
+  margin-top: 6px;
+}
 
 /* src/styles/bundle.css */
 /*# sourceMappingURL=bundled.css.map */
@@ -135,6 +151,11 @@ body {
     <div class="badge red" id="redScore">Red 0</div>
     <div class="badge blue" id="blueScore">Blue 0</div>
     <div id="stats"></div>
+  </div>
+  <!-- Developer control: renderer scale slider (dev-only) -->
+  <div id="devControls" style="position:fixed;left:12px;bottom:80px;background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;color:#fff;font-size:13px;">
+    <label for="rendererScaleRange">Renderer scale: <span id="rendererScaleValue">1.00</span></label>
+    <input id="rendererScaleRange" type="range" min="0.5" max="2.0" step="0.01" value="1.0" style="width:180px;display:block;margin-top:6px;" />
   </div>
   <div id="bottomRight">
     <input id="continuousCheckbox" type="checkbox" />
@@ -1160,6 +1181,27 @@ var config = {
 
 // src/canvasrenderer.js
 init_teamsConfig();
+
+// src/config/rendererConfig.js
+var RendererConfig = {
+  preferred: "canvas",
+  allowUrlOverride: true,
+  allowWebGL: true
+};
+RendererConfig.rendererScale = 1;
+function getPreferredRenderer() {
+  try {
+    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
+      const p = new URLSearchParams(window.location.search);
+      const r = p.get("renderer");
+      if (r === "canvas" || r === "webgl") return r;
+    }
+  } catch (e) {
+  }
+  return RendererConfig.preferred;
+}
+
+// src/canvasrenderer.js
 var CanvasRenderer = class {
   constructor(canvas) {
     this.canvas = canvas;
@@ -1169,7 +1211,9 @@ var CanvasRenderer = class {
   init() {
     this.ctx = this.canvas.getContext("2d");
     if (!this.ctx) return false;
-    this.dpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    this.dpr = baseDpr * cfgScale;
     try {
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     } catch (e) {
@@ -1183,7 +1227,9 @@ var CanvasRenderer = class {
   renderState(state, interpolation = 0) {
     const ctx = this.ctx;
     if (!ctx) return;
-    const dpr = typeof this.dpr === "number" && this.dpr > 0 ? this.dpr : typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const cfgScale = typeof RendererConfig !== "undefined" && RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const dpr = baseDpr * cfgScale;
     try {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     } catch (e) {
@@ -1354,24 +1400,6 @@ var WebGLRenderer = class {
   }
 };
 
-// src/config/rendererConfig.js
-var RendererConfig = {
-  preferred: "canvas",
-  allowUrlOverride: true,
-  allowWebGL: true
-};
-function getPreferredRenderer() {
-  try {
-    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
-      const p = new URLSearchParams(window.location.search);
-      const r = p.get("renderer");
-      if (r === "canvas" || r === "webgl") return r;
-    }
-  } catch (e) {
-  }
-  return RendererConfig.preferred;
-}
-
 // src/main.js
 async function startApp(rootDocument = document) {
   const canvas = rootDocument.getElementById("world");
@@ -1390,7 +1418,9 @@ async function startApp(rootDocument = document) {
     formationBtn: rootDocument.getElementById("formationBtn")
   };
   function fitCanvasToWindow() {
-    const dpr = window.devicePixelRatio || 1;
+    const baseDpr = window.devicePixelRatio || 1;
+    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const dpr = baseDpr * cfgScale;
     const bounds = getDefaultBounds();
     canvas.style.width = `${bounds.W}px`;
     canvas.style.height = `${bounds.H}px`;
@@ -1399,6 +1429,28 @@ async function startApp(rootDocument = document) {
   }
   fitCanvasToWindow();
   window.addEventListener("resize", fitCanvasToWindow);
+  try {
+    const scaleRange = document.getElementById("rendererScaleRange");
+    const scaleValue = document.getElementById("rendererScaleValue");
+    if (scaleRange && scaleValue) {
+      scaleValue.textContent = String((RendererConfig.rendererScale || 1).toFixed(2));
+      scaleRange.value = String(RendererConfig.rendererScale || 1);
+      scaleRange.addEventListener("input", (ev) => {
+        const v = parseFloat(ev.target.value || "1");
+        RendererConfig.rendererScale = v;
+        scaleValue.textContent = v.toFixed(2);
+        try {
+          fitCanvasToWindow();
+        } catch (e) {
+        }
+        try {
+          if (renderer && typeof renderer.init === "function") renderer.init();
+        } catch (e) {
+        }
+      });
+    }
+  } catch (e) {
+  }
   let renderer;
   const pref = getPreferredRenderer();
   if (pref === "webgl") {

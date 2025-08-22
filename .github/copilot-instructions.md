@@ -33,39 +33,26 @@ Project summary
 
 Tech stack & runtime
 --------------------
-- Browser-side game: Vanilla ES modules and Canvas 2D API.
-- Node.js used only for dev tooling (build helpers) and tests.
-- Testing: Vitest (npm script `test`).
-- Bundling/inlining: `scripts/build-standalone.mjs` (esbuild JS API) produces
-	an inlined standalone HTML into `./dist/` and (optionally) overwrites the
-	repo-root standalone file.
-- Seeded RNG for deterministic simulation: `src/rng.js` (srand, unseed,
-	srandom, srange, srangeInt). The renderer may use `Math.random()` for purely
-	cosmetic effects.
+- Browser-side game: Vanilla ES modules with TypeScript source files (see `src/*.ts`) that compile to JS for the browser. Both a Canvas 2D renderer and a WebGL renderer are supported (see `src/canvasrenderer.ts` and `src/webglrenderer.ts`).
+- Node.js used for dev tooling (build helpers) and tests.
+- Testing: Vitest for unit tests (run with npm script `test`), and Playwright for end-to-end / visual browser tests (tests live under `test/playwright/`).
+- Bundling/inlining: `scripts/build-standalone.mjs` (esbuild JS API) produces an inlined standalone HTML into `./dist/` and (optionally) overwrites the repo-root standalone file.
+- Seeded RNG for deterministic simulation: `src/rng.ts` / `src/rng.js` (srand, unseed, srandom, srange, srangeInt). The simulation must use the seeded RNG; the renderer may use `Math.random()` for purely cosmetic (non-deterministic) effects.
 
 Key files (what to edit for each concern)
 ----------------------------------------
-- `src/entities.js` — Core gameplay objects and rules. Ship and Bullet
-	definitions, damage and shield handling, XP/level code (Ship.gainXp,
-	Ship.applyLevel). When modifying gameplay balance or mechanics, start here.
-- `src/simulate.js` — The deterministic time-step: `simulateStep(state, dt, bounds)`.
-	Responsibilities: advance ships & bullets, resolve collisions, award XP,
-	and push small event objects into `state.explosions`, `state.shieldHits`,
-	and `state.healthHits`. Do not perform rendering here.
-- `src/renderer.js` — Visual layer. Consumes simulation state and events and
-	draws to Canvas. All visual-only effects (particles, flashes, arcs) should
-	be created here.
-- `src/rng.js` — Seeded RNG used by the simulation. Always use this for logic
-	randomness to remain deterministic across runs/tests.
-- `src/progressionConfig.js` — All XP and per-level scaling constants.
-- `space_themed_autobattler_canvas_red_vs_blue.html` — Main page, imports
-	`./src/renderer.js` as a module.
-- `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file
-	exported inlined build (created by `scripts/build-standalone.mjs`).
-- `scripts/build-standalone.mjs` — Bundles `src/renderer.js` and inlines the
-	result into an HTML file for distribution. Supports a watch mode.
-- `test/` — Vitest tests verifying deterministic simulation and unit tests
-	for `Ship`, `Bullet`, and `simulateStep` behaviors.
+- `src/entities.ts` / `src/entities.js` — Core gameplay objects and rules. Ship and Bullet definitions, damage and shield handling, XP/level code (Ship.gainXp, Ship.applyLevel). When modifying gameplay balance or mechanics, start here.
+- `src/simulate.ts` / `src/simulate.js` — The deterministic time-step: `simulateStep(state, dt, bounds)`. Responsibilities: advance ships & bullets, resolve collisions, award XP, and push small event objects into `state.explosions`, `state.shieldHits`, and `state.healthHits`. Do not perform rendering here.
+- `src/canvasrenderer.ts` — Canvas 2D renderer implementation. Draws ships, bullets, particles and handles DPR/backing-store transforms. When fixing visual issues related to scale or crispness, look here.
+- `src/webglrenderer.ts` — WebGL renderer implementation (WebGL2 then fallback to WebGL1). Contains viewport and scale handling; currently a minimal drawing path—contributions to fully implement ship rendering here are welcome but non-trivial.
+- `src/rng.ts` / `src/rng.js` — Seeded RNG used by the simulation. Always use this for logic randomness to remain deterministic across runs/tests.
+- `src/progressionConfig.ts` / `src/progressionConfig.js` — All XP and per-level scaling constants.
+- `src/main.ts` / `src/main.js` — App bootstrap: canvas setup, renderer selection, and dev UI hooks (including the renderer scale slider). Contains `fitCanvasToWindow()` which computes backing-store size using `devicePixelRatio * RendererConfig.rendererScale`.
+- `space_themed_autobattler_canvas_red_vs_blue.html` — Main page, imports the compiled renderer as a module.
+- `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file exported inlined build (created by `scripts/build-standalone.mjs`).
+- `scripts/build-standalone.mjs` — Bundles renderer code (from `src/`) and inlines the result into HTML for distribution. Supports a watch mode.
+- `test/vitest/` — Unit tests (Vitest) verifying deterministic simulation and unit behaviors (e.g., `simulate.spec.ts`, `entities.spec.ts`, `rng.spec.ts`).
+- `test/playwright/` — Playwright end-to-end and visual tests (e.g., checks that `dist/` builds produce expected visuals). Follow the project's Playwright guidelines in `.github/instructions/playwright-typescript.instructions.md`.
 
 Simulation & renderer contract (must be preserved)
 -----------------------------------------------

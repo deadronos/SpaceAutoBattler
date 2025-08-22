@@ -2,6 +2,7 @@
 import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig.js';
 import { VisualMappingConfig, bulletKindForRadius } from './config/entitiesConfig.js';
+import { RendererConfig } from './config/rendererConfig.js';
 
 export class CanvasRenderer {
   constructor(canvas) {
@@ -17,23 +18,20 @@ export class CanvasRenderer {
     // The main entry sets canvas.width/height = bounds * devicePixelRatio
     // and canvas.style.width/height = bounds in CSS pixels. Scale the
     // 2D context by the DPR so drawing coordinates match CSS pixels.
-    this.dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-    try {
-      // Use setTransform to reset any existing transform then apply DPR scale
-      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    } catch (e) {
-      // Older browsers may not support setTransform with these args; fall back to scale
-      this.ctx.scale(this.dpr, this.dpr);
-    }
+    // devicePixelRatio multiplied by an optional rendererScale allows us to
+    // make the entire scene larger or smaller while preserving crispness on
+    // high-DPI screens. rendererScale defaults to 1.
+    // initialize scale, but allow runtime updates via updateScale()
+    this.updateScale();
     return true;
   }
   isRunning() { return false; }
   renderState(state, interpolation = 0) {
     const ctx = this.ctx; if (!ctx) return;
     // The canvas' drawing context is reset when canvas.width/height changes
-    // (which happens on window resize). Re-apply the DPR transform here so
-    // simulation coordinates (which are in logical/CSS pixels) map to the
-    // visible canvas correctly each frame.
+    // (which happens on window resize). Re-apply the last-computed transform
+    // so simulation coordinates map correctly. updateScale() should be called
+    // when the rendererScale changes to refresh this.dpr and reapply transforms.
     const dpr = (typeof this.dpr === 'number' && this.dpr > 0) ? this.dpr : ((typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1);
     try {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -41,6 +39,9 @@ export class CanvasRenderer {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
     }
+    // Compute logical (CSS) width/height from the canvas backing store size
+    // divided by the applied dpr. This ensures clearRect operates in logical
+    // pixels that match simulation coordinates.
     const w = Math.round(this.canvas.width / dpr);
     const h = Math.round(this.canvas.height / dpr);
     ctx.clearRect(0, 0, w, h);
@@ -175,6 +176,23 @@ export class CanvasRenderer {
     }
 
     ctx.restore();
+  }
+
+  // Recompute combined DPR (devicePixelRatio * rendererScale) and apply the
+  // transform to the context. Call this when RendererConfig.rendererScale
+  // changes (e.g., user moved the dev slider) or when window.devicePixelRatio
+  // changes.
+  updateScale() {
+    if (!this.ctx) this.ctx = this.canvas.getContext('2d');
+    const baseDpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    const cfgScale = (typeof RendererConfig !== 'undefined' && RendererConfig && typeof RendererConfig.rendererScale === 'number') ? RendererConfig.rendererScale : 1;
+    this.dpr = baseDpr * cfgScale;
+    try {
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    } catch (e) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.scale(this.dpr, this.dpr);
+    }
   }
 }
 

@@ -13,6 +13,8 @@ export class CanvasRenderer {
   ctx: CanvasRenderingContext2D | null = null;
   providesOwnLoop = false;
   type = 'canvas';
+  // ratio between backing store pixels and CSS (logical) pixels
+  pixelRatio = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -21,6 +23,22 @@ export class CanvasRenderer {
   init(): boolean {
     this.ctx = this.canvas.getContext('2d');
     if (!this.ctx) return false;
+    // compute pixelRatio from backing store vs CSS size so logical coordinates
+    // (ships.x / ships.y are in CSS pixels) map correctly to the backing store.
+    try {
+      const cssW = this.canvas.clientWidth || this.canvas.width || 1;
+      this.pixelRatio = (this.canvas.width || cssW) / cssW;
+      // reset any previous transforms and set a scale so the renderer can draw
+      // using logical (CSS) pixels. This lets main.fitCanvasToWindow change
+      // the backing store size (dpr * rendererScale) and the renderer will
+      // automatically render at the correct scale.
+      this.ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+      // smoothing can be toggled if desired; keep enabled for nicer visuals
+      this.ctx.imageSmoothingEnabled = true;
+    } catch (e) {
+      // ignore and fall back to defaults
+      this.pixelRatio = 1;
+    }
     return true;
   }
 
@@ -29,7 +47,13 @@ export class CanvasRenderer {
   renderState(state: AnyState, interpolation = 0): void {
   const ctx = this.ctx!;
   if (!ctx) return;
-    const w = this.canvas.width; const h = this.canvas.height;
+    // Use CSS (logical) pixel dimensions for layout/drawing now that we
+    // applied a transform in init(). This keeps the scene size stable when
+    // the backing store (canvas.width/height) is scaled by devicePixelRatio
+    // and RendererConfig.rendererScale.
+    const w = this.canvas.clientWidth || Math.round(this.canvas.width / this.pixelRatio);
+    const h = this.canvas.clientHeight || Math.round(this.canvas.height / this.pixelRatio);
+    // clear logical area
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     ctx.fillStyle = '#0b1220';
@@ -50,6 +74,7 @@ export class CanvasRenderer {
       try {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
+        // drawImage will scale to logical size because we've set the transform
         ctx.drawImage(state.starCanvas, 0, 0, w, h);
         ctx.restore();
       } catch (e) { /* ignore draw errors */ }

@@ -3,7 +3,7 @@ import { createGameManager } from './gamemanager.js';
 import { CanvasRenderer } from './canvasrenderer.js';
 import { WebGLRenderer } from './webglrenderer.js';
 import { getDefaultBounds } from './config/displayConfig.js';
-import { getPreferredRenderer } from './config/rendererConfig.js';
+import { getPreferredRenderer, RendererConfig } from './config/rendererConfig.js';
 
 export async function startApp(rootDocument = document) {
   const canvas = rootDocument.getElementById('world');
@@ -23,7 +23,9 @@ export async function startApp(rootDocument = document) {
   };
 
   function fitCanvasToWindow() {
-    const dpr = window.devicePixelRatio || 1;
+    const baseDpr = window.devicePixelRatio || 1;
+    const cfgScale = (RendererConfig && typeof RendererConfig.rendererScale === 'number') ? RendererConfig.rendererScale : 1;
+    const dpr = baseDpr * cfgScale;
     const bounds = getDefaultBounds();
     canvas.style.width = `${bounds.W}px`;
     canvas.style.height = `${bounds.H}px`;
@@ -33,6 +35,28 @@ export async function startApp(rootDocument = document) {
 
   fitCanvasToWindow();
   window.addEventListener('resize', fitCanvasToWindow);
+
+  // Dev-only renderer scale slider: wire up live changes
+  try {
+    const scaleRange = document.getElementById('rendererScaleRange');
+    const scaleValue = document.getElementById('rendererScaleValue');
+    if (scaleRange && scaleValue) {
+      // initialize display from config
+      scaleValue.textContent = String((RendererConfig.rendererScale || 1).toFixed(2));
+      scaleRange.value = String(RendererConfig.rendererScale || 1);
+      scaleRange.addEventListener('input', (ev) => {
+        const v = parseFloat(ev.target.value || '1');
+        RendererConfig.rendererScale = v;
+        scaleValue.textContent = v.toFixed(2);
+        // resize backing store to pick up new combined DPR and re-render visuals
+        try { fitCanvasToWindow(); } catch (e) { /* ignore */ }
+        // inform renderer that the scale/backing-store changed so it can
+        // reapply transforms or update viewport. Prefer updateScale() if
+        // available rather than re-initializing the whole renderer.
+        try { if (renderer && typeof renderer.updateScale === 'function') renderer.updateScale(); else if (renderer && typeof renderer.init === 'function') renderer.init(); } catch (e) { /* ignore */ }
+      });
+    }
+  } catch (e) { /* dev controls optional */ }
 
   // Choose renderer per config; default to Canvas for dev
   let renderer;
@@ -47,6 +71,17 @@ export async function startApp(rootDocument = document) {
     renderer = new CanvasRenderer(canvas);
     renderer.init && renderer.init();
   }
+
+  // Ensure renderer re-initializes its backing-store transform when the
+  // window resizes (fitCanvasToWindow updates canvas.width/height). We add
+  // a resize listener here after the renderer exists so it can update its
+  // internal pixelRatio/transform to match the new backing store size.
+  try {
+    window.addEventListener('resize', () => {
+      try { fitCanvasToWindow(); } catch (e) {}
+      try { if (renderer && typeof renderer.init === 'function') renderer.init(); } catch (e) {}
+    });
+  } catch (e) {}
 
   const gm = createGameManager({ renderer, canvas });
 

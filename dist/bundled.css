@@ -110,6 +110,22 @@ body {
   inset: 0;
   display: block;
 }
+#devControls {
+  position: fixed;
+  left: 12px;
+  bottom: 80px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  z-index: 11;
+}
+#devControls input[type=range] {
+  width: 180px;
+  display: block;
+  margin-top: 6px;
+}
 
 /* src/styles/bundle.css */
 /*# sourceMappingURL=bundled.css.map */

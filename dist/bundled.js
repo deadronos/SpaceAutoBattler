@@ -994,6 +994,27 @@ var config = {
 
 // src/canvasrenderer.js
 init_teamsConfig();
+
+// src/config/rendererConfig.js
+var RendererConfig = {
+  preferred: "canvas",
+  allowUrlOverride: true,
+  allowWebGL: true
+};
+RendererConfig.rendererScale = 1;
+function getPreferredRenderer() {
+  try {
+    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
+      const p = new URLSearchParams(window.location.search);
+      const r = p.get("renderer");
+      if (r === "canvas" || r === "webgl") return r;
+    }
+  } catch (e) {
+  }
+  return RendererConfig.preferred;
+}
+
+// src/canvasrenderer.js
 var CanvasRenderer = class {
   constructor(canvas) {
     this.canvas = canvas;
@@ -1003,7 +1024,9 @@ var CanvasRenderer = class {
   init() {
     this.ctx = this.canvas.getContext("2d");
     if (!this.ctx) return false;
-    this.dpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    this.dpr = baseDpr * cfgScale;
     try {
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     } catch (e) {
@@ -1017,7 +1040,9 @@ var CanvasRenderer = class {
   renderState(state, interpolation = 0) {
     const ctx = this.ctx;
     if (!ctx) return;
-    const dpr = typeof this.dpr === "number" && this.dpr > 0 ? this.dpr : typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const cfgScale = typeof RendererConfig !== "undefined" && RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const dpr = baseDpr * cfgScale;
     try {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     } catch (e) {
@@ -1188,24 +1213,6 @@ var WebGLRenderer = class {
   }
 };
 
-// src/config/rendererConfig.js
-var RendererConfig = {
-  preferred: "canvas",
-  allowUrlOverride: true,
-  allowWebGL: true
-};
-function getPreferredRenderer() {
-  try {
-    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
-      const p = new URLSearchParams(window.location.search);
-      const r = p.get("renderer");
-      if (r === "canvas" || r === "webgl") return r;
-    }
-  } catch (e) {
-  }
-  return RendererConfig.preferred;
-}
-
 // src/main.js
 async function startApp(rootDocument = document) {
   const canvas = rootDocument.getElementById("world");
@@ -1224,7 +1231,9 @@ async function startApp(rootDocument = document) {
     formationBtn: rootDocument.getElementById("formationBtn")
   };
   function fitCanvasToWindow() {
-    const dpr = window.devicePixelRatio || 1;
+    const baseDpr = window.devicePixelRatio || 1;
+    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const dpr = baseDpr * cfgScale;
     const bounds = getDefaultBounds();
     canvas.style.width = `${bounds.W}px`;
     canvas.style.height = `${bounds.H}px`;
@@ -1233,6 +1242,28 @@ async function startApp(rootDocument = document) {
   }
   fitCanvasToWindow();
   window.addEventListener("resize", fitCanvasToWindow);
+  try {
+    const scaleRange = document.getElementById("rendererScaleRange");
+    const scaleValue = document.getElementById("rendererScaleValue");
+    if (scaleRange && scaleValue) {
+      scaleValue.textContent = String((RendererConfig.rendererScale || 1).toFixed(2));
+      scaleRange.value = String(RendererConfig.rendererScale || 1);
+      scaleRange.addEventListener("input", (ev) => {
+        const v = parseFloat(ev.target.value || "1");
+        RendererConfig.rendererScale = v;
+        scaleValue.textContent = v.toFixed(2);
+        try {
+          fitCanvasToWindow();
+        } catch (e) {
+        }
+        try {
+          if (renderer && typeof renderer.init === "function") renderer.init();
+        } catch (e) {
+        }
+      });
+    }
+  } catch (e) {
+  }
   let renderer;
   const pref = getPreferredRenderer();
   if (pref === "webgl") {

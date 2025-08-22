@@ -10,3 +10,7 @@ html, body { height: 100%; margin: 0; background: radial-gradient(1200px 800px a
 #bottomRight .continuous-label { color: var(--ui-color,#eaeff8); margin-right: 6px; }
 #bottomRight .muted { opacity: .7; }
 #world { position: fixed; inset: 0; display:block; }
+
+/* Developer-only renderer scale control */
+#devControls { position: fixed; left: 12px; bottom: 80px; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px; color: #fff; font-size: 13px; z-index: 11; }
+#devControls input[type=range] { width: 180px; display: block; margin-top: 6px; }
