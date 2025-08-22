@@ -8,21 +8,51 @@ import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js'
 import { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
 import { applySimpleAI } from './behavior.js';
 
-export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
+export function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
   let state = makeInitialState();
   let running = false;
+  // Manager-level event listeners (always available even if worker creation fails)
+  const managerListeners = new Map();
+  function emitManagerEvent(type, msg) {
+    const arr = managerListeners.get(type);
+    if (Array.isArray(arr)) {
+      for (const cb of arr.slice()) {
+        try { if (typeof cb === 'function') cb(msg); } catch (e) { /* ignore */ }
+      }
+    }
+  }
   let score = { red: 0, blue: 0 };
+  // continuous reinforcement controls (per-manager, works with worker or main-thread)
+  let continuous = false;
+  let reinforcementInterval = 5.0; // seconds
+  let reinforcementAccumulator = 0;
   const bounds = getDefaultBounds();
   srand(seed);
   // Try to run simulation in a worker when available
   let simWorker = null;
+  let workerReady = false; // will be set when worker signals ready
+  const workerReadyCbs = [];
   // Transient visual effects for the renderer (persist across frames with TTL)
   const flashes = []; // explosions
   const shieldFlashes = [];
   const healthFlashes = [];
   try {
-    simWorker = createSimWorker(new URL('./simWorker.js', import.meta.url).href);
-    simWorker.on('ready', () => console.log('sim worker ready'));
+    const factory = createSimWorkerFactory || createSimWorker;
+    simWorker = factory(new URL('./simWorker.js', import.meta.url).href);
+    // forward worker reinforcements messages to manager listeners
+    try { simWorker.on('reinforcements', (m) => emitManagerEvent('reinforcements', m)); } catch (e) {}
+    // mark worker as ready when it signals readiness so UI and callers can
+    // rely on a definitive source of truth (gm.isWorker()). Also invoke any
+    // registered callbacks (gm.onWorkerReady) so consumers can react.
+    simWorker.on('ready', () => {
+      workerReady = true;
+      try {
+        // call callbacks with try/catch to avoid breaking the worker loop
+        for (const cb of workerReadyCbs.slice()) {
+          try { if (typeof cb === 'function') cb(); } catch (e) { /* ignore callback errors */ }
+        }
+      } catch (e) { /* ignore overall errors */ }
+    });
     simWorker.on('snapshot', (m) => {
       // replace authoritative local state with worker snapshot for rendering
       if (m && m.state) state = m.state;
@@ -48,6 +78,46 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
       simWorker.post({ type: 'snapshotRequest' });
     } else {
       simulateStep(state, dtSeconds, bounds);
+    }
+    // evaluate continuous reinforcements for main-thread sim (fallback)
+    // When continuous mode is enabled and there's no worker, spawn a
+    // randomized number and types of ships for the weaker team when that
+    // team's live ship count is below 3. This keeps matches balanced.
+    if (!simWorker && continuous) {
+      reinforcementAccumulator += dtSeconds;
+      if (reinforcementAccumulator >= reinforcementInterval) {
+        reinforcementAccumulator = 0;
+        try {
+          const redCount = state.ships.filter(s => s && s.team === 'red').length;
+          const blueCount = state.ships.filter(s => s && s.team === 'blue').length;
+          // choose weaker team (ties: random)
+          let weaker = null;
+          if (redCount < blueCount) weaker = 'red';
+          else if (blueCount < redCount) weaker = 'blue';
+          else weaker = (srandom() < 0.5 ? 'red' : 'blue');
+          const weakerCount = weaker === 'red' ? redCount : blueCount;
+          const deficit = Math.max(0, 3 - weakerCount);
+          if (deficit > 0) {
+            // spawn between 1 and deficit ships (randomized)
+            const maxSpawn = Math.max(1, deficit);
+            const spawnCount = Math.min(maxSpawn, Math.max(1, Math.floor(srandom() * maxSpawn) + 1));
+            const types = Object.keys(getShipConfig() || { fighter: {} });
+            for (let i = 0; i < spawnCount; i++) {
+              const type = types[Math.floor(srandom() * types.length)] || 'fighter';
+              const jitter = () => (srandom() - 0.5) * 40;
+              let x = 0, y = 0;
+              if (weaker === 'red') { x = 100 + jitter(); y = 100 + jitter(); }
+              else { x = bounds.W - 100 + jitter(); y = bounds.H - 100 + jitter(); }
+              const ship = createShip(type, x, y, weaker);
+              state.ships.push(ship);
+            }
+            // notify any manager-level listeners about the reinforcement batch
+            try { emitManagerEvent('reinforcements', { spawned: state.ships.slice(-spawnCount) }); } catch (e) {}
+          }
+        } catch (e) {
+          // ignore reinforcement errors — should not break the sim loop
+        }
+      }
     }
     // process transient events into effect buffers with TTL for rendering
     // Copy events before scoring consumes them
@@ -115,13 +185,45 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
   }
 
   return {
+    on(event, cb) { if (typeof event === 'string' && typeof cb === 'function') {
+      const arr = managerListeners.get(event) || []; arr.push(cb); managerListeners.set(event, arr);
+    } },
+    // expose single-step for tests and deterministic stepping
+    stepOnce(dtSeconds = SIM_DT_MS / 1000) { step(Number(dtSeconds) || (SIM_DT_MS / 1000)); },
+    off(event, cb) { if (typeof event === 'string' && typeof cb === 'function') {
+      const arr = managerListeners.get(event) || []; const i = arr.indexOf(cb); if (i !== -1) { arr.splice(i, 1); managerListeners.set(event, arr); }
+    } },
     start() { if (!running) { running = true; last = performance.now(); runLoop(); } },
     pause() { running = false; },
     reset() {
       state = makeInitialState(); score = { red: 0, blue: 0 };
       if (simWorker) simWorker.post({ type: 'command', cmd: 'setState', args: { state } });
     },
+    // continuous mode controls (UI can toggle this)
+    setContinuousEnabled(v = false) {
+      // forward to worker when available, otherwise use local manager state
+      if (simWorker) {
+        try { simWorker.post({ type: 'setContinuous', value: !!v }); } catch (e) { /* ignore */ }
+      } else {
+        continuous = !!v; if (!continuous) reinforcementAccumulator = 0;
+      }
+    },
+    isContinuousEnabled() {
+      if (simWorker) return !!continuous; // local flag may be stale if worker is authoritative
+      return !!continuous;
+    },
+    setReinforcementInterval(seconds = 5.0) {
+      if (simWorker) {
+        try { simWorker.post({ type: 'setReinforcementInterval', seconds: Math.max(0.01, Number(seconds) || 5.0) }); } catch (e) { /* ignore */ }
+      } else {
+        reinforcementInterval = Math.max(0.01, Number(seconds) || 5.0);
+      }
+    },
     isRunning() { return running; },
+  // authoritative check whether simulation is running in a worker
+  isWorker() { return !!simWorker && !!workerReady; },
+  onWorkerReady(cb) { if (typeof cb === 'function') workerReadyCbs.push(cb); },
+  offWorkerReady(cb) { const i = workerReadyCbs.indexOf(cb); if (i !== -1) workerReadyCbs.splice(i, 1); },
     spawnShip(color = 'red') {
       const x = Math.random() * bounds.W; const y = Math.random() * bounds.H;
       const ship = createShip('fighter', x, y, color);
