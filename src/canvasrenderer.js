@@ -103,6 +103,52 @@ export class CanvasRenderer {
       ctx.restore();
     }
 
+    // visual effects: explosions (flashes), shield hits, health hits
+    function drawRing(x, y, R, color, alpha = 1.0, thickness = 2) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      ctx.strokeStyle = color;
+      ctx.lineWidth = thickness;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Explosions: warm rings that expand and fade
+    if (Array.isArray(state.flashes)) {
+      for (const f of state.flashes) {
+        const ttl = f.ttl || 0.6; const life = f.life != null ? f.life : ttl;
+        const t = Math.max(0, Math.min(1, life / ttl));
+        const R = 8 + (1 - t) * 28; // expands as it fades
+        const alpha = 0.8 * t;
+        const color = '#ffaa33';
+        drawRing(f.x || 0, f.y || 0, R, color, alpha, 3);
+      }
+    }
+
+    // Shield hits: cool blue rings
+    if (Array.isArray(state.shieldFlashes)) {
+      for (const s of state.shieldFlashes) {
+        const ttl = s.ttl || 0.4; const life = s.life != null ? s.life : ttl;
+        const t = Math.max(0, Math.min(1, life / ttl));
+        const R = 6 + (1 - t) * 16;
+        const alpha = 0.9 * t;
+        drawRing(s.x || 0, s.y || 0, R, '#88ccff', alpha, 2);
+      }
+    }
+
+    // Health hits: reddish rings
+    if (Array.isArray(state.healthFlashes)) {
+      for (const s of state.healthFlashes) {
+        const ttl = s.ttl || 0.6; const life = s.life != null ? s.life : ttl;
+        const t = Math.max(0, Math.min(1, life / ttl));
+        const R = 6 + (1 - t) * 18;
+        const alpha = 0.9 * t;
+        drawRing(s.x || 0, s.y || 0, R, '#ff7766', alpha, 2);
+      }
+    }
+
     ctx.restore();
   }
 }

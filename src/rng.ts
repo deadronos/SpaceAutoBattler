@@ -22,7 +22,9 @@ export function srandom(): number {
   if (_state === null) return Math.random();
   // produce [0,1)
   const v = _next();
-  return v / 4294967295;
+  // Use 2^32 to ensure the result is in [0,1), not [0,1].
+  // Dividing by 4294967295 could yield 1 when v == 0xffffffff, which breaks exclusive upper-bounds.
+  return v / 4294967296; // 2**32
 }
 
 export function srange(min: number, max: number): number {

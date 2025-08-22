@@ -34,6 +34,34 @@ async function concatCss(fromDir, outFile) {
   await fs.writeFile(outFile, combined, 'utf8');
 }
 
+// Build CSS via esbuild to produce a single bundled stylesheet with sourcemaps
+async function buildCssBundle({ stylesDir, outFile, sourcemap = true, sourcesContent = true }) {
+  // Create a virtual CSS entry that @imports all CSS files in a stable order
+  const entries = await fs.readdir(stylesDir, { withFileTypes: true }).catch(() => []);
+  const files = entries.filter(e => e.isFile() && e.name.endsWith('.css')).map(e => e.name).sort();
+  const imports = files.map(name => `@import "./${name}";`).join('\n');
+  if (!imports) {
+    // No CSS files; still emit an empty file and empty sourcemap for consistency
+    await fs.writeFile(outFile, '', 'utf8');
+    if (sourcemap) await fs.writeFile(outFile + '.map', JSON.stringify({ version: 3, sources: [], mappings: '' }), 'utf8');
+    return;
+  }
+  const result = await esbuild({
+    stdin: {
+      contents: imports,
+      sourcefile: 'bundle.css',
+      resolveDir: stylesDir,
+      loader: 'css',
+    },
+    bundle: true,
+    outfile: outFile,
+    sourcemap,
+    sourcesContent,
+    logLevel: 'silent',
+  });
+  return result;
+}
+
 async function copyDir(srcDir, dstDir) {
   try {
     const entries = await fs.readdir(srcDir, { withFileTypes: true });
@@ -63,6 +91,12 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   await rimraf(outDir);
   await ensureDir(outDir);
 
+  // Allow environment overrides for sourcemap mode and sourcesContent embedding
+  const smEnv = process.env.SOURCEMAP;
+  const sourcemapOpt = (smEnv === 'inline' || smEnv === 'external' || smEnv === 'linked') ? smEnv : (smEnv === 'false' ? false : true);
+  const scEnv = process.env.SOURCES_CONTENT;
+  const sourcesContentOpt = scEnv === 'false' ? false : true;
+
   const result = await esbuild({
     entryPoints: {
       bundled: path.join(srcDir, 'main.ts'),
@@ -73,14 +107,15 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
     format: 'esm',
     platform: 'browser',
     target: ['es2022'],
-    sourcemap: false,
+    sourcemap: sourcemapOpt,
+    sourcesContent: sourcesContentOpt,
     splitting: false,
     logLevel: 'silent',
     define: { 'process.env.NODE_ENV': '"production"' },
   });
 
   const cssOut = path.join(outDir, 'bundled.css');
-  await concatCss(stylesDir, cssOut);
+  await buildCssBundle({ stylesDir, outFile: cssOut, sourcemap: sourcemapOpt, sourcesContent: sourcesContentOpt });
 
   await copyDir(assetsDir, path.join(outDir, 'assets'));
   await copyDir(publicDir, outDir);
@@ -94,7 +129,8 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   } catch {}
 
   const uiHtml = (await readIfExists(uiHtmlPath)) || '<!doctype html><html><head></head><body></body></html>';
-  const htmlOut = rewriteHtmlReferences(uiHtml, { cssHref: './bundled.css', jsSrc: './bundled.ts' });
+  // IMPORTANT: load the JS bundle with a .js extension so servers send the correct MIME type.
+  const htmlOut = rewriteHtmlReferences(uiHtml, { cssHref: './bundled.css', jsSrc: './bundled.js' });
   const namedHtmlOut = path.join(outDir, 'spaceautobattler.html');
   await fs.writeFile(namedHtmlOut, htmlOut, 'utf8');
 
@@ -102,7 +138,7 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
     outDir,
     files: {
       html: namedHtmlOut,
-      js: mainTsPath,
+      js: mainJsPath,
       worker: path.join(outDir, 'simWorker.js'),
       css: cssOut,
     },
@@ -110,12 +146,16 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// When executed directly via `node scripts/build.mjs`, run the build.
+// Compare file system paths (not file URLs) for reliability across OSes.
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   const outDir = process.env.OUT_DIR ? path.resolve(process.env.OUT_DIR) : path.join(repoRoot, 'dist');
-  build({ outDir }).then(o => {
-    console.log(`Built to ${o.outDir}`);
-  }).catch(e => {
-    console.error(e);
-    process.exit(1);
-  });
+  build({ outDir })
+    .then((o) => {
+      console.log(`Built to ${o.outDir}`);
+    })
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }

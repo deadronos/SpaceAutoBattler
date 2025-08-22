@@ -1,5 +1,6 @@
 // simWorker.js - simulation worker (ES module). Expects to be loaded with Worker({ type: 'module' })
 import { simulateStep } from './simulate.js';
+import { applySimpleAI } from './behavior.js';
 import { srand } from './rng.js';
 
 let state = null;
@@ -21,6 +22,8 @@ function tick() {
   acc += now - last; last = now;
   if (acc > 250) acc = 250;
   while (acc >= simDtMs) {
+    // Apply deterministic behavior before the physics step
+    try { applySimpleAI(state, simDtMs / 1000, bounds); } catch (e) { /* ignore behavior errors */ }
     simulateStep(state, simDtMs / 1000, bounds);
     acc -= simDtMs;
   }

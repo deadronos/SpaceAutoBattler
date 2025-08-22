@@ -56,7 +56,11 @@ async function buildStandalone() {
 	console.log(`Standalone written: ${standalonePath}`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-	buildStandalone().catch((e) => { console.error(e); process.exit(1); });
+// Execute when run directly via `node scripts/build-standalone.mjs`
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+	buildStandalone().catch((e) => {
+		console.error(e);
+		process.exit(1);
+	});
 }
 

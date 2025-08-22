@@ -3,8 +3,8 @@
 // other parts of the codebase can be migrated safely.
 
 import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset } from './config/assets/assetsConfig.js';
-import { TeamsConfig } from './config/teamsConfig.js';
-import { VisualMappingConfig, bulletKindForRadius } from './config/entitiesConfig.js';
+import { TeamsConfig } from './config/teamsConfig';
+import { VisualMappingConfig, bulletKindForRadius } from './config/entitiesConfig';
 
 export type AnyState = any;
 

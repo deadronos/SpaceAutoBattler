@@ -1,6 +1,7 @@
 // src/simWorker.ts - simulation worker implementation (compiled to JS and loaded as module Worker)
-import { simulateStep } from './simulate.js';
-import { srand } from './rng.js';
+import { simulateStep } from './simulate';
+import { applySimpleAI } from './behavior';
+import { srand } from './rng';
 
 type Bounds = { W: number; H: number };
 
@@ -27,7 +28,9 @@ function tick() {
 	if (acc > 250) acc = 250;
 		while (acc >= simDtMs) {
 			try {
-				simulateStep(state, simDtMs / 1000, bounds);
+					// Apply deterministic AI before physics step
+					applySimpleAI(state as any, simDtMs / 1000, bounds);
+					simulateStep(state, simDtMs / 1000, bounds);
 			} catch (e) {
 				const errAny: any = e as any;
 				const stack = errAny && errAny.stack ? errAny.stack : '';

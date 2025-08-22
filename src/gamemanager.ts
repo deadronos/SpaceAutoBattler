@@ -1,10 +1,11 @@
 // gamemanager.ts - full TypeScript port of gamemanager.js
-import { makeInitialState, createShip, createBullet, type Ship, type Bullet } from './entities.js';
-import { simulateStep, SIM_DT_MS } from './simulate.js';
-import { srand, srandom, srange } from './rng.js';
-import { getDefaultBounds } from './config/displayConfig.js';
-import { createSimWorker } from './createSimWorker.js';
-import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js';
+import { makeInitialState, createShip, createBullet, type Ship, type Bullet } from './entities';
+import { simulateStep, SIM_DT_MS } from './simulate';
+import { srand, srandom, srange } from './rng';
+import { applySimpleAI } from './behavior';
+import { getDefaultBounds } from './config/displayConfig';
+import { createSimWorker } from './createSimWorker';
+import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig';
 
 export const ships: Ship[] = [];
 export const bullets: Bullet[] = [];
@@ -226,16 +227,10 @@ export function createGameManager({ renderer, canvas, seed = 12345 } : any = {})
   } catch (e) { simWorker = null; }
 
   function step(dtSeconds: number) {
-    // basic AI & movement
-    for (const s of state.ships) {
-      s.vx += (srange(-1, 1) * 10) * dtSeconds; s.vy += (srange(-1, 1) * 10) * dtSeconds;
-      if (Math.random() < 0.01) {
-        const b = createBullet(s.x, s.y, (Math.random() - 0.5) * 200, (Math.random() - 0.5) * 200, s.team, s.id, s.cannons?.[0]?.damage || 3, 2.0);
-        if (simWorker) simWorker.post({ type: 'command', cmd: 'spawnShipBullet', args: { bullet: b } });
-        else state.bullets.push(b);
-      }
+    // Apply deterministic AI only in local (no worker) path for parity
+    if (!simWorker) {
+      try { applySimpleAI(state as any, dtSeconds, bounds); } catch (e) {}
     }
-
     if (simWorker) {
       simWorker.post({ type: 'snapshotRequest' });
     } else {
@@ -272,6 +267,6 @@ export function createGameManager({ renderer, canvas, seed = 12345 } : any = {})
   };
 }
 
-export { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
+export { setShipConfig, getShipConfig } from './config/entitiesConfig';
 
 export default { reset, simulate, processStateEvents, evaluateReinforcement, ships, bullets } as any;

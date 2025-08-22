@@ -1,28 +1,19 @@
-// Minimal global declarations for legacy JS modules used in the codebase.
-// These intentionally use `any` to allow incremental migration from JS -> TS
-// without requiring full .d.ts files for every JS module.
+// Minimal ambient declarations to ease JS -> TS migration without
+// suppressing real type errors across the codebase. Prefer targeted shims
+// over broad fallbacks. Keep this file intentionally small.
 
+// Allow importing legacy .js modules with an `any` default export.
+// Only matches files explicitly imported with a .js suffix.
 declare module '*.js' {
   const value: any;
   export default value;
-  export const __esModule: boolean;
 }
 
-// Commonly imported legacy modules (add more as needed)
-declare module './rng.js' {
-  export function srand(seed?: number): void;
-  export function srandom(): number;
-  export function srange(min: number, max: number): number;
-  export function srangeInt(min: number, max: number): number;
-}
+// If additional legacy modules require shape hints, declare them explicitly
+// below rather than using a broad catch-all. Example template:
+// declare module './path/to/legacyModule.js' {
+//   export function someFn(arg: string): number;
+// }
 
-declare module './config/assets/assetsConfig.js' {
-  const Assets: any;
-  export = Assets;
-}
-
-// Fallback for any other unknown relative imports (conservative any)
-declare module '*/*' {
-  const whatever: any;
-  export default whatever;
-}
+// Node testing shims (very light) — uncomment if tests need them in TS files
+// declare const __DEV__: boolean;

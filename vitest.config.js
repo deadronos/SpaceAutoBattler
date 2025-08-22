@@ -3,10 +3,15 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-  include: ['test/**/*.js'],
-  exclude: ['test/setupTests.js', 'test/playwright/**'],
+    include: [
+      'test/vitest/**/*.spec.ts',
+      'test/vitest/**/*.test.ts',
+    ],
+    exclude: [
+      'test/playwright/**',
+    ],
     environment: 'jsdom',
-    setupFiles: path.resolve(__dirname, 'test/setupTests.js'),
+    setupFiles: path.resolve(__dirname, 'test/vitest/setupTests.ts'),
     globals: true,
     watch: false,
   },

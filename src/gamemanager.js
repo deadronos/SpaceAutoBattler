@@ -1,9 +1,12 @@
 // gamemanager.js - orchestrates simulateStep, simple behavior, and exposes API
 import { makeInitialState, createShip, createBullet } from './entities.js';
 import { simulateStep, SIM_DT_MS } from './simulate.js';
-import { srand, srange } from './rng.js';
+import { srand, srange, srandom } from './rng.js';
 import { getDefaultBounds } from './config/displayConfig.js';
 import { createSimWorker } from './createSimWorker.js';
+import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js';
+import { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
+import { applySimpleAI } from './behavior.js';
 
 export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
   let state = makeInitialState();
@@ -13,6 +16,10 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
   srand(seed);
   // Try to run simulation in a worker when available
   let simWorker = null;
+  // Transient visual effects for the renderer (persist across frames with TTL)
+  const flashes = []; // explosions
+  const shieldFlashes = [];
+  const healthFlashes = [];
   try {
     simWorker = createSimWorker(new URL('./simWorker.js', import.meta.url).href);
     simWorker.on('ready', () => console.log('sim worker ready'));
@@ -23,22 +30,17 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
     simWorker.on('error', (m) => console.error('sim worker error', m));
     // initialize worker
     simWorker.post({ type: 'init', seed, bounds, simDtMs: SIM_DT_MS, state });
+    // start the worker simulation loop so snapshots advance over time
+    simWorker.post({ type: 'start' });
   } catch (e) {
     simWorker = null; // fallback to main-thread sim
   }
 
   function step(dtSeconds) {
-    // basic AI: randomly fire bullets from ships occasionally
-    for (const s of state.ships) {
-      // random small thrust for demo (renderer-level randomness ok)
-      s.vx += (srange(-1, 1) * 10) * dtSeconds;
-      s.vy += (srange(-1, 1) * 10) * dtSeconds;
-      // occasional fire (use main-thread randomness to decide firing; bullets created locally or via command)
-      if (Math.random() < 0.01) {
-        const b = createBullet(s.x, s.y, (Math.random()-0.5)*200, (Math.random()-0.5)*200, s.team, s.id, s.cannons?.[0]?.damage || 3, 2.0);
-        if (simWorker) simWorker.post({ type: 'command', cmd: 'spawnShipBullet', args: { bullet: b } });
-        else state.bullets.push(b);
-      }
+    // basic AI & local firing only when no worker (main-thread simulation)
+    if (!simWorker) {
+      // Apply the same AI as the worker for parity
+      try { applySimpleAI(state, dtSeconds, bounds); } catch (e) {}
     }
 
     if (simWorker) {
@@ -47,14 +49,55 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
     } else {
       simulateStep(state, dtSeconds, bounds);
     }
-    // reconciliate events for score
+    // process transient events into effect buffers with TTL for rendering
+    // Copy events before scoring consumes them
+    if (Array.isArray(state.explosions)) {
+      for (const ex of state.explosions) {
+        flashes.push({ x: ex.x, y: ex.y, team: ex.team, ttl: EXPLOSION.particleTTL || 0.6, life: EXPLOSION.particleTTL || 0.6 });
+      }
+    }
+    if (Array.isArray(state.shieldHits)) {
+      for (const h of state.shieldHits) {
+        shieldFlashes.push({ x: h.hitX || h.x, y: h.hitY || h.y, team: h.team, amount: h.amount, ttl: SHIELD.ttl || 0.4, life: SHIELD.ttl || 0.4 });
+      }
+      state.shieldHits.length = 0; // events consumed into effect buffer
+    }
+    if (Array.isArray(state.healthHits)) {
+      for (const h of state.healthHits) {
+        healthFlashes.push({ x: h.hitX || h.x, y: h.hitY || h.y, team: h.team, amount: h.amount, ttl: HEALTH.ttl || 0.6, life: HEALTH.ttl || 0.6 });
+      }
+      state.healthHits.length = 0;
+    }
+
+    // reconciliate events for score (consume explosions after buffering for visuals)
     while (state.explosions.length) {
       const e = state.explosions.shift();
       if (e.team === 'red') score.blue++;
       else score.red++;
     }
-    // push snapshot to renderer
-  if (renderer && typeof renderer.renderState === 'function') renderer.renderState(state);
+
+    // decay and purge effect buffers
+    function decay(arr, dt) {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const it = arr[i]; it.life = (it.life || 0) - dt; if (it.life <= 0) arr.splice(i, 1);
+      }
+    }
+    decay(flashes, dtSeconds);
+    decay(shieldFlashes, dtSeconds);
+    decay(healthFlashes, dtSeconds);
+
+    // push augmented snapshot to renderer
+    if (renderer && typeof renderer.renderState === 'function') {
+      const renderSnapshot = {
+        ships: state.ships,
+        bullets: state.bullets,
+        flashes,
+        shieldFlashes,
+        healthFlashes,
+        t: state.t
+      };
+      renderer.renderState(renderSnapshot);
+    }
   }
 
   // run loop (main-thread) -----------------
@@ -74,14 +117,31 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
   return {
     start() { if (!running) { running = true; last = performance.now(); runLoop(); } },
     pause() { running = false; },
-    reset() { state = makeInitialState(); score = { red: 0, blue: 0 }; },
+    reset() {
+      state = makeInitialState(); score = { red: 0, blue: 0 };
+      if (simWorker) simWorker.post({ type: 'command', cmd: 'setState', args: { state } });
+    },
     isRunning() { return running; },
-    spawnShip(color = 'red') { const x = Math.random()*bounds.W; const y = Math.random()*bounds.H; state.ships.push(createShip('fighter', x, y, color)); },
-    reseed(newSeed = Math.floor(Math.random()*0xffffffff)) { srand(newSeed); },
+    spawnShip(color = 'red') {
+      const x = Math.random() * bounds.W; const y = Math.random() * bounds.H;
+      const ship = createShip('fighter', x, y, color);
+      // give a small initial drift to encourage engagement
+      const dir = color === 'red' ? 1 : -1;
+      ship.vx = 30 * dir; ship.vy = (Math.random() - 0.5) * 20;
+      if (simWorker) simWorker.post({ type: 'command', cmd: 'spawnShip', args: { ship } });
+      else state.ships.push(ship);
+    },
+    reseed(newSeed = Math.floor(Math.random()*0xffffffff)) { srand(newSeed); if (simWorker) simWorker.post({ type: 'setSeed', seed: newSeed }); },
     formFleets() { // create a small fleet each side
       for (let i = 0; i < 5; i++) {
-        state.ships.push(createShip('fighter', 100 + i*20, 100 + i*10, 'red'));
-        state.ships.push(createShip('fighter', bounds.W - 100 - i*20, bounds.H - 100 - i*10, 'blue'));
+        const r = createShip('fighter', 100 + i*20, 100 + i*10, 'red'); r.vx = 40; r.vy = 0;
+        const b = createShip('fighter', bounds.W - 100 - i*20, bounds.H - 100 - i*10, 'blue'); b.vx = -40; b.vy = 0;
+        if (simWorker) {
+          simWorker.post({ type: 'command', cmd: 'spawnShip', args: { ship: r } });
+          simWorker.post({ type: 'command', cmd: 'spawnShip', args: { ship: b } });
+        } else {
+          state.ships.push(r); state.ships.push(b);
+        }
       }
     },
     snapshot() { return { ships: state.ships.slice(), bullets: state.bullets.slice(), t: state.t }; },
@@ -90,11 +150,7 @@ export function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
   };
 }
 
-import { srand, srandom } from './rng.js';
-import { createShip } from './entities.js';
-import { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
-import { simulateStep } from './simulate.js';
-import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js';
+// (duplicate imports removed; consolidated at top of file)
 
 export const ships = [];
 export const bullets = [];

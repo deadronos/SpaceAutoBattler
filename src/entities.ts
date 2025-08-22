@@ -1,5 +1,5 @@
 // entities.ts - catalog of ships, bullets, cannon configs and simple factories
-import { getShipConfig } from './config/entitiesConfig.js';
+import { getShipConfig } from './config/entitiesConfig';
 
 let nextId = 1;
 export function genId(): number { return nextId++; }

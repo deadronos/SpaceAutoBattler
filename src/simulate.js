@@ -1,5 +1,6 @@
 // simulate.js - deterministic fixed-step simulation logic
 import { srange, srand } from './rng.js';
+import { progression as progressionCfg } from './config/progressionConfig.js';
 
 // Configurable sim constants (exported for tests)
 export const SIM_DT_MS = 16; // default fixed-step in ms
@@ -38,6 +39,12 @@ export function simulateStep(state, dtSeconds, bounds) {
       if (s.team === b.team) continue; // friendly fire off
       const r = (s.radius || 6) + (b.radius || 1);
       if (dist2(b, s) <= r * r) {
+        // track attacker (if present) for XP awards
+        const attacker = typeof b.ownerId === 'number' || typeof b.ownerId === 'string'
+          ? state.ships.find(sh => sh.id === b.ownerId) || undefined
+          : undefined;
+        let dealtToShield = 0;
+        let dealtToHealth = 0;
         // apply to shield first
         const shield = s.shield || 0;
         if (shield > 0) {
@@ -50,14 +57,62 @@ export function simulateStep(state, dtSeconds, bounds) {
             s.hp -= remaining;
             state.healthHits.push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
           }
+          dealtToShield = absorbed;
+          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
         } else {
           s.hp -= b.damage;
           state.healthHits.push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage });
+          dealtToHealth = (b.damage || 0);
         }
-        // damage credit to owner
+        // XP: award for damage dealt (shield + health)
+        if (attacker) {
+          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progressionCfg.xpPerDamage || 0);
+          // Handle level-ups while XP exceeds thresholds
+          while ((attacker.xp || 0) >= progressionCfg.xpToLevel((attacker.level || 1))) {
+            attacker.xp -= progressionCfg.xpToLevel((attacker.level || 1));
+            attacker.level = (attacker.level || 1) + 1;
+            // Apply simple per-level scaling
+            const hpMul = 1 + (progressionCfg.hpPercentPerLevel || 0);
+            const shMul = 1 + (progressionCfg.shieldPercentPerLevel || 0);
+            const dmgMul = 1 + (progressionCfg.dmgPercentPerLevel || 0);
+            attacker.maxHp = (attacker.maxHp || 0) * hpMul;
+            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
+            if (typeof attacker.maxShield === 'number') {
+              attacker.maxShield = (attacker.maxShield || 0) * shMul;
+              attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
+            }
+            if (Array.isArray(attacker.cannons)) {
+              for (const c of attacker.cannons) {
+                if (typeof c.damage === 'number') c.damage *= dmgMul;
+              }
+            }
+          }
+        }
         // remove bullet
         state.bullets.splice(bi, 1);
         if (s.hp <= 0) {
+          // kill credit
+          if (attacker) {
+            attacker.xp = (attacker.xp || 0) + (progressionCfg.xpPerKill || 0);
+            while ((attacker.xp || 0) >= progressionCfg.xpToLevel((attacker.level || 1))) {
+              attacker.xp -= progressionCfg.xpToLevel((attacker.level || 1));
+              attacker.level = (attacker.level || 1) + 1;
+              const hpMul = 1 + (progressionCfg.hpPercentPerLevel || 0);
+              const shMul = 1 + (progressionCfg.shieldPercentPerLevel || 0);
+              const dmgMul = 1 + (progressionCfg.dmgPercentPerLevel || 0);
+              attacker.maxHp = (attacker.maxHp || 0) * hpMul;
+              attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
+              if (typeof attacker.maxShield === 'number') {
+                attacker.maxShield = (attacker.maxShield || 0) * shMul;
+                attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
+              }
+              if (Array.isArray(attacker.cannons)) {
+                for (const c of attacker.cannons) {
+                  if (typeof c.damage === 'number') c.damage *= dmgMul;
+                }
+              }
+            }
+          }
           state.explosions.push({ x: s.x, y: s.y, team: s.team });
           // remove ship
           state.ships.splice(si, 1);

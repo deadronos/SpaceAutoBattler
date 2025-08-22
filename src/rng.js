@@ -28,7 +28,8 @@ export function srange(min, max) {
 }
 
 export function srangeInt(min, max) {
-  return Math.floor(srange(min, max + 1));
+  // exclusive upper bound to match rng.ts and common expectations
+  return Math.floor(srange(min, max));
 }
 
 export default { srand, srandom, srange, srangeInt };
