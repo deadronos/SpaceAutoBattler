@@ -444,10 +444,12 @@ function simulateStep(state, dtSeconds, bounds) {
   for (const s of state.ships) {
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;
-    if (s.x < 0) s.x += bounds.W;
-    if (s.x > bounds.W) s.x -= bounds.W;
-    if (s.y < 0) s.y += bounds.H;
-    if (s.y > bounds.H) s.y -= bounds.H;
+    if (typeof bounds.W === "number" && bounds.W > 0) {
+      s.x = (s.x % bounds.W + bounds.W) % bounds.W;
+    }
+    if (typeof bounds.H === "number" && bounds.H > 0) {
+      s.y = (s.y % bounds.H + bounds.H) % bounds.H;
+    }
   }
   for (let bi = state.bullets.length - 1; bi >= 0; bi--) {
     const b = state.bullets[bi];
@@ -1001,6 +1003,12 @@ var CanvasRenderer = class {
   init() {
     this.ctx = this.canvas.getContext("2d");
     if (!this.ctx) return false;
+    this.dpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    try {
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    } catch (e) {
+      this.ctx.scale(this.dpr, this.dpr);
+    }
     return true;
   }
   isRunning() {
@@ -1009,8 +1017,15 @@ var CanvasRenderer = class {
   renderState(state, interpolation = 0) {
     const ctx = this.ctx;
     if (!ctx) return;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const dpr = typeof this.dpr === "number" && this.dpr > 0 ? this.dpr : typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    try {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    } catch (e) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+    const w = Math.round(this.canvas.width / dpr);
+    const h = Math.round(this.canvas.height / dpr);
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     ctx.fillStyle = "#0b1220";
