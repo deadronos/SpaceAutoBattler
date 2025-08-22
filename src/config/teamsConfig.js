@@ -134,14 +134,18 @@ export function chooseReinforcements(seed = 0, state = {}, options = {}) {
   if (weakestRatio < (0.5 - cfg.scoreMargin)) {
     const orders = [];
     const rng = mulberry32((seed >>> 0) + hashStringToInt(weakest));
-    for (let i = 0; i < cfg.perTick; i++) {
-      // spawn near the team's side center
-      const bounds = (options.bounds || { W: 800, H: 600 });
-      const centerY = bounds.H / 2;
-      const baseX = weakest === 'red' ? bounds.W * 0.18 : bounds.W * 0.82;
-      const x = Math.max(0, Math.min(bounds.W, baseX + (rng() - 0.5) * 120));
-      const y = Math.max(0, Math.min(bounds.H, centerY + (rng() - 0.5) * 160));
-      orders.push({ type: cfg.reinforceType || 'fighter', team: weakest, x, y });
+    // determine candidate ship types: either explicit list or keys from defaultFleet
+    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
+    const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
+    const b = (options.bounds || { W: 800, H: 600 });
+    const centerY = b.H / 2;
+    const baseX = weakest === 'red' ? b.W * 0.18 : b.W * 0.82;
+    for (let i = 0; i < spawnCount; i++) {
+      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
+      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
+      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || (cfg.reinforceType || 'fighter');
+      orders.push({ type, team: weakest, x, y });
     }
     return orders;
   }
@@ -150,3 +154,12 @@ export function chooseReinforcements(seed = 0, state = {}, options = {}) {
 }
 
 export default TeamsConfig;
+
+// Helper: call chooseReinforcements using a manager-derived seed (from global RNG)
+// This is convenient for callers (like gamemanager) that want to keep
+// reinforcements deterministic relative to the global `srand`/`srandom` state.
+import { srandom } from '../rng.js';
+export function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
+  const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
+  return chooseReinforcements(seed, state, options);
+}

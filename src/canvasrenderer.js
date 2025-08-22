@@ -12,16 +12,41 @@ export class CanvasRenderer {
   init() {
     this.ctx = this.canvas.getContext('2d');
     if (!this.ctx) return false;
+    // Ensure drawing uses CSS (logical) pixels so simulation coordinates
+    // (which operate in logical bounds) map correctly to the canvas.
+    // The main entry sets canvas.width/height = bounds * devicePixelRatio
+    // and canvas.style.width/height = bounds in CSS pixels. Scale the
+    // 2D context by the DPR so drawing coordinates match CSS pixels.
+    this.dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    try {
+      // Use setTransform to reset any existing transform then apply DPR scale
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    } catch (e) {
+      // Older browsers may not support setTransform with these args; fall back to scale
+      this.ctx.scale(this.dpr, this.dpr);
+    }
     return true;
   }
   isRunning() { return false; }
   renderState(state, interpolation = 0) {
     const ctx = this.ctx; if (!ctx) return;
-    const w = this.canvas.width; const h = this.canvas.height;
+    // The canvas' drawing context is reset when canvas.width/height changes
+    // (which happens on window resize). Re-apply the DPR transform here so
+    // simulation coordinates (which are in logical/CSS pixels) map to the
+    // visible canvas correctly each frame.
+    const dpr = (typeof this.dpr === 'number' && this.dpr > 0) ? this.dpr : ((typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1);
+    try {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    } catch (e) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+    const w = Math.round(this.canvas.width / dpr);
+    const h = Math.round(this.canvas.height / dpr);
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     ctx.fillStyle = '#0b1220';
-    ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(0, 0, w, h);
 
     // helper: draw a polygon path from points (already scaled/rotated by transform)
     function drawPolygon(points) {

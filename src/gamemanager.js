@@ -6,6 +6,7 @@ import { getDefaultBounds } from './config/displayConfig.js';
 import { createSimWorker } from './createSimWorker.js';
 import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js';
 import { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
+import { chooseReinforcementsWithManagerSeed } from './config/teamsConfig.js';
 import { applySimpleAI } from './behavior.js';
 
 export function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
@@ -26,6 +27,10 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
   let continuous = false;
   let reinforcementInterval = 5.0; // seconds
   let reinforcementAccumulator = 0;
+  // allow overriding continuous reinforcement options (passed to chooseReinforcements)
+  let continuousOptions = {};
+  // diagnostics about last reinforcement batch (for UI/telemetry)
+  let lastReinforcement = { spawned: [], timestamp: 0, options: {} };
   const bounds = getDefaultBounds();
   srand(seed);
   // Try to run simulation in a worker when available
@@ -80,39 +85,41 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
       simulateStep(state, dtSeconds, bounds);
     }
     // evaluate continuous reinforcements for main-thread sim (fallback)
-    // When continuous mode is enabled and there's no worker, spawn a
-    // randomized number and types of ships for the weaker team when that
-    // team's live ship count is below 3. This keeps matches balanced.
+    // When continuous mode is enabled and there's no worker, reinforce any team with <3 ships (including both teams if both <3 or 0)
     if (!simWorker && continuous) {
       reinforcementAccumulator += dtSeconds;
       if (reinforcementAccumulator >= reinforcementInterval) {
         reinforcementAccumulator = 0;
         try {
-          const redCount = state.ships.filter(s => s && s.team === 'red').length;
-          const blueCount = state.ships.filter(s => s && s.team === 'blue').length;
-          // choose weaker team (ties: random)
-          let weaker = null;
-          if (redCount < blueCount) weaker = 'red';
-          else if (blueCount < redCount) weaker = 'blue';
-          else weaker = (srandom() < 0.5 ? 'red' : 'blue');
-          const weakerCount = weaker === 'red' ? redCount : blueCount;
-          const deficit = Math.max(0, 3 - weakerCount);
-          if (deficit > 0) {
-            // spawn between 1 and deficit ships (randomized)
-            const maxSpawn = Math.max(1, deficit);
-            const spawnCount = Math.min(maxSpawn, Math.max(1, Math.floor(srandom() * maxSpawn) + 1));
-            const types = Object.keys(getShipConfig() || { fighter: {} });
-            for (let i = 0; i < spawnCount; i++) {
-              const type = types[Math.floor(srandom() * types.length)] || 'fighter';
-              const jitter = () => (srandom() - 0.5) * 40;
-              let x = 0, y = 0;
-              if (weaker === 'red') { x = 100 + jitter(); y = 100 + jitter(); }
-              else { x = bounds.W - 100 + jitter(); y = bounds.H - 100 + jitter(); }
-              const ship = createShip(type, x, y, weaker);
-              state.ships.push(ship);
+          const teams = Object.keys(require('./config/teamsConfig.js').TeamsConfig.teams);
+          const spawned = [];
+          for (const team of teams) {
+            const teamShips = (state.ships || []).filter(s => s && s.team === team);
+            if (teamShips.length < 3) {
+              // Create a filtered state for this team (so chooseReinforcements logic works)
+              const teamState = Object.assign({}, state, { ships: teamShips });
+              const orders = require('./config/teamsConfig.js').chooseReinforcementsWithManagerSeed(teamState, Object.assign({}, continuousOptions, { bounds, team }));
+              if (Array.isArray(orders) && orders.length) {
+                for (const o of orders) {
+                  try {
+                    let type = o.type || 'fighter';
+                    if (Array.isArray(continuousOptions.shipTypes) && continuousOptions.shipTypes.length) {
+                      const types = continuousOptions.shipTypes;
+                      type = types[Math.floor(srandom() * types.length)] || type;
+                    }
+                    const x = (typeof o.x === 'number') ? o.x : Math.max(0, Math.min(bounds.W, (srandom() - 0.5) * bounds.W + bounds.W * 0.5));
+                    const y = (typeof o.y === 'number') ? o.y : Math.max(0, Math.min(bounds.H, (srandom() - 0.5) * bounds.H + bounds.H * 0.5));
+                    const ship = createShip(type, x, y, team);
+                    state.ships.push(ship);
+                    spawned.push(ship);
+                  } catch (e) { /* ignore per-ship errors */ }
+                }
+              }
             }
-            // notify any manager-level listeners about the reinforcement batch
-            try { emitManagerEvent('reinforcements', { spawned: state.ships.slice(-spawnCount) }); } catch (e) {}
+          }
+          if (spawned.length) {
+            try { emitManagerEvent('reinforcements', { spawned }); } catch (e) { /* ignore */ }
+            try { lastReinforcement = { spawned: spawned.slice(), timestamp: Date.now(), options: Object.assign({}, continuousOptions) }; } catch (e) {}
           }
         } catch (e) {
           // ignore reinforcement errors — should not break the sim loop
@@ -205,13 +212,20 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
       if (simWorker) {
         try { simWorker.post({ type: 'setContinuous', value: !!v }); } catch (e) { /* ignore */ }
       } else {
-        continuous = !!v; if (!continuous) reinforcementAccumulator = 0;
+        continuous = !!v;
+        // ensure the continuousOptions mirror enabled state so chooseReinforcements
+        // will actually produce orders when continuous is true
+        continuousOptions = Object.assign({}, continuousOptions, { enabled: !!v });
+        if (!continuous) reinforcementAccumulator = 0;
       }
     },
     isContinuousEnabled() {
       if (simWorker) return !!continuous; // local flag may be stale if worker is authoritative
       return !!continuous;
     },
+    // configure continuous reinforcement behaviour used by chooseReinforcements
+    setContinuousOptions(opts = {}) { continuousOptions = Object.assign({}, continuousOptions, opts); },
+    getContinuousOptions() { return Object.assign({}, continuousOptions); },
     setReinforcementInterval(seconds = 5.0) {
       if (simWorker) {
         try { simWorker.post({ type: 'setReinforcementInterval', seconds: Math.max(0.01, Number(seconds) || 5.0) }); } catch (e) { /* ignore */ }
@@ -220,6 +234,9 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
       }
     },
     isRunning() { return running; },
+  // diagnostics getters for UI
+  getLastReinforcement() { return Object.assign({}, lastReinforcement); },
+  getReinforcementInterval() { return reinforcementInterval; },
   // authoritative check whether simulation is running in a worker
   isWorker() { return !!simWorker && !!workerReady; },
   onWorkerReady(cb) { if (typeof cb === 'function') workerReadyCbs.push(cb); },
@@ -558,8 +575,15 @@ export function evaluateReinforcement(dt) {
   if (_reinforcementAccumulator >= _reinforcementInterval) {
     _reinforcementAccumulator = 0;
     // spawn a pair of ships for each team
-    ships.push(createShip({ x: 100, y: 100, team: 'red' }));
-    ships.push(createShip({ x: 700, y: 500, team: 'blue' }));
+    // createShip expects (type, x, y, team) — previous code passed an object
+    // which produced malformed ships and prevented reinforcements from
+    // being recognized by consumers. Use 'fighter' as default type and
+    // emit a manager-level 'reinforcements' event for compatibility.
+    const r = createShip('fighter', 100, 100, 'red');
+    const b = createShip('fighter', 700, 500, 'blue');
+    ships.push(r);
+    ships.push(b);
+    try { emitManagerEvent('reinforcements', { spawned: [r, b] }); } catch (e) { /* ignore */ }
   }
 }
 

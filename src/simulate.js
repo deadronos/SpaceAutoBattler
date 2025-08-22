@@ -26,9 +26,14 @@ export function simulateStep(state, dtSeconds, bounds) {
   for (const s of state.ships) {
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;
-    // wrap-around toroidal field
-    if (s.x < 0) s.x += bounds.W; if (s.x > bounds.W) s.x -= bounds.W;
-    if (s.y < 0) s.y += bounds.H; if (s.y > bounds.H) s.y -= bounds.H;
+    // wrap-around toroidal field (use modulo so large displacements wrap correctly)
+    if (typeof bounds.W === 'number' && bounds.W > 0) {
+      // normalize into [0, bounds.W)
+      s.x = ((s.x % bounds.W) + bounds.W) % bounds.W;
+    }
+    if (typeof bounds.H === 'number' && bounds.H > 0) {
+      s.y = ((s.y % bounds.H) + bounds.H) % bounds.H;
+    }
   }
 
   // Bullet collisions (brute force): bullet -> ship

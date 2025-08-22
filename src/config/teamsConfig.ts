@@ -6,7 +6,12 @@ export const TeamsConfig = {
     blue: { id: 'blue', color: '#4da6ff', label: 'Blue' }
   },
   defaultFleet: { counts: { fighter: 8, corvette: 3, frigate: 1 }, spacing: 28, jitter: { x: 80, y: 120 } },
-  continuousReinforcement: { enabled: false, scoreMargin: 0.12, perTick: 1, reinforceType: 'fighter' }
+  // continuousReinforcement controls: enable/disable, scoreMargin is the
+  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
+  // perTick is the maximum ships considered per reinforcement tick, and
+  // shipTypes is an optional array of types to choose from randomly. If
+  // omitted, keys from defaultFleet.counts are used.
+  continuousReinforcement: { enabled: false, scoreMargin: 0.12, perTick: 1, shipTypes: undefined as string[] | undefined }
 };
 
 // Local seeded PRNG (does not affect global rng)
@@ -63,6 +68,7 @@ export function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFac
 
 export function chooseReinforcements(seed = 0, state: any = {}, options: any = {}) {
   const cfg = Object.assign({}, TeamsConfig.continuousReinforcement, options);
+  // (no-op) merge options onto default continuous reinforcement config
   if (!cfg.enabled) return [] as any[];
   const teamStrength: Record<string, number> = {};
   if (Array.isArray(state.ships)) {
@@ -87,16 +93,33 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
   if (weakestRatio < (0.5 - cfg.scoreMargin)) {
     const orders: any[] = [];
     const rng = mulberry32((seed >>> 0) + hashStringToInt(weakest));
-    for (let i = 0; i < cfg.perTick; i++) {
-      const b = (options.bounds || { W: 800, H: 600 });
-      const centerY = b.H / 2; const baseX = weakest === 'red' ? b.W * 0.18 : b.W * 0.82;
+    // determine candidate ship types: either explicit list or keys from defaultFleet
+  const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    // Randomize number to spawn between 1 and cfg.perTick (inclusive)
+    const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
+  const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
+  // spawnCount computed deterministically from the provided seed
+    const b = (options.bounds || { W: 800, H: 600 });
+    const centerY = b.H / 2; const baseX = weakest === 'red' ? b.W * 0.18 : b.W * 0.82;
+    for (let i = 0; i < spawnCount; i++) {
       const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
       const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
-      orders.push({ type: cfg.reinforceType || 'fighter', team: weakest, x, y });
+      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || 'fighter';
+      orders.push({ type, team: weakest, x, y });
     }
+  // return deterministic orders
     return orders;
   }
   return [] as any[];
 }
 
 export default TeamsConfig;
+
+// Helper: call chooseReinforcements using a manager-derived seed (from global RNG)
+// This is convenient for callers (like gamemanager) that want to keep
+// reinforcements deterministic relative to the global `srand`/`srandom` state.
+import { srandom } from '../rng.js';
+export function chooseReinforcementsWithManagerSeed(state: any = {}, options: any = {}) {
+  const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
+  return chooseReinforcements(seed, state, options);
+}

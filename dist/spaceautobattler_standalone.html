@@ -164,6 +164,200 @@ body {
 		}
 	};
 	
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/rng.js
+function srand(seed = 1) {
+  _seed = seed >>> 0;
+}
+function mulberry32(a) {
+  return function() {
+    let t = a += 1831565813;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function srandom() {
+  const f = mulberry32(_seed);
+  _seed = _seed + 2654435761 >>> 0;
+  return f();
+}
+function srange(min, max) {
+  return min + (max - min) * srandom();
+}
+var _seed;
+var init_rng = __esm({
+  "src/rng.js"() {
+    "use strict";
+    _seed = 1;
+  }
+});
+
+// src/config/teamsConfig.js
+var teamsConfig_exports = {};
+__export(teamsConfig_exports, {
+  TeamsConfig: () => TeamsConfig,
+  chooseReinforcements: () => chooseReinforcements,
+  chooseReinforcementsWithManagerSeed: () => chooseReinforcementsWithManagerSeed,
+  default: () => teamsConfig_default,
+  generateFleetForTeam: () => generateFleetForTeam,
+  makeInitialFleets: () => makeInitialFleets
+});
+function mulberry322(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t += 1831565813;
+    let r = Math.imul(t ^ t >>> 15, 1 | t);
+    r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
+    return ((r ^ r >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashStringToInt(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
+  const cfg = Object.assign({}, TeamsConfig.defaultFleet, options.fleet || {});
+  const spacing = options.spacing ?? cfg.spacing;
+  const jitter = Object.assign({}, cfg.jitter, options.jitter || {});
+  const centerY = bounds.H / 2;
+  const baseX = teamId === "red" ? bounds.W * 0.22 : bounds.W * 0.78;
+  const rng = mulberry322((seed >>> 0) + hashStringToInt(teamId));
+  const out = [];
+  for (const [type, count] of Object.entries(cfg.counts)) {
+    for (let i = 0; i < count; i++) {
+      const r = spacing * Math.sqrt(rng());
+      const angle = rng() * Math.PI * 2;
+      const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
+      const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
+      const x = Math.max(0, Math.min(bounds.W, baseX + dx));
+      const y = Math.max(0, Math.min(bounds.H, centerY + dy));
+      if (typeof shipFactory === "function") {
+        out.push(shipFactory(type, x, y, teamId));
+      } else {
+        out.push({ type, x, y, team: teamId });
+      }
+    }
+  }
+  return out;
+}
+function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
+  const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
+  const blue = generateFleetForTeam(seed + 1, "blue", bounds, shipFactory, options);
+  return red.concat(blue);
+}
+function chooseReinforcements(seed = 0, state = {}, options = {}) {
+  const cfg = Object.assign({}, TeamsConfig.continuousReinforcement, options);
+  if (!cfg.enabled) return [];
+  const teamStrength = {};
+  if (Array.isArray(state.ships)) {
+    for (const s of state.ships) {
+      if (!s || !s.team) continue;
+      const hp = typeof s.hp === "number" ? s.hp : 1;
+      teamStrength[s.team] = (teamStrength[s.team] || 0) + hp;
+    }
+  }
+  const teams = Object.keys(TeamsConfig.teams);
+  if (teams.length === 0) return [];
+  for (const t of teams) {
+    if (!teamStrength[t]) {
+      const cnt = (state.ships || []).filter((s) => s && s.team === t).length;
+      teamStrength[t] = cnt > 0 ? cnt : 0;
+    }
+  }
+  let weakest = teams[0];
+  let strongest = teams[0];
+  for (const t of teams) {
+    if (teamStrength[t] < teamStrength[weakest]) weakest = t;
+    if (teamStrength[t] > teamStrength[strongest]) strongest = t;
+  }
+  const total = teams.reduce((s, t) => s + (teamStrength[t] || 0), 0) || 1;
+  const weakestRatio = (teamStrength[weakest] || 0) / total;
+  if (weakestRatio < 0.5 - cfg.scoreMargin) {
+    const orders = [];
+    const rng = mulberry322((seed >>> 0) + hashStringToInt(weakest));
+    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
+    const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
+    const b = options.bounds || { W: 800, H: 600 };
+    const centerY = b.H / 2;
+    const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
+    for (let i = 0; i < spawnCount; i++) {
+      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
+      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
+      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || (cfg.reinforceType || "fighter");
+      orders.push({ type, team: weakest, x, y });
+    }
+    return orders;
+  }
+  return [];
+}
+function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
+  const seed = Math.floor(srandom() * 4294967295) >>> 0;
+  return chooseReinforcements(seed, state, options);
+}
+var TeamsConfig, teamsConfig_default;
+var init_teamsConfig = __esm({
+  "src/config/teamsConfig.js"() {
+    "use strict";
+    init_rng();
+    TeamsConfig = {
+      teams: {
+        red: { id: "red", color: "#ff4d4d", label: "Red" },
+        blue: { id: "blue", color: "#4da6ff", label: "Blue" }
+      },
+      // Default fleet composition when prepopulating a game
+      defaultFleet: {
+        // counts per ship type
+        counts: {
+          fighter: 8,
+          corvette: 3,
+          frigate: 1
+        },
+        // jitter and spacing used when scattering initial ships
+        spacing: 28,
+        jitter: { x: 80, y: 120 }
+      },
+      // Continuous reinforcement defaults
+      continuousReinforcement: {
+        enabled: false,
+        // toggle to enable/disable
+        scoreMargin: 0.12,
+        // if weaker team has less than (1 - scoreMargin) of strength, reinforce
+        perTick: 1,
+        // number of reinforcement ships to provide when triggered
+        reinforceType: "fighter"
+        // default reinforcement ship type
+      }
+    };
+    teamsConfig_default = TeamsConfig;
+  }
+});
+
 // src/config/assets/assetsConfig.ts
 var AssetsConfig = {
   meta: {
@@ -383,27 +577,8 @@ function makeInitialState() {
   };
 }
 
-// src/rng.js
-var _seed = 1;
-function srand(seed = 1) {
-  _seed = seed >>> 0;
-}
-function mulberry32(a) {
-  return function() {
-    let t = a += 1831565813;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function srandom() {
-  const f = mulberry32(_seed);
-  _seed = _seed + 2654435761 >>> 0;
-  return f();
-}
-function srange(min, max) {
-  return min + (max - min) * srandom();
-}
+// src/simulate.js
+init_rng();
 
 // src/config/progressionConfig.js
 var progression = {
@@ -524,6 +699,9 @@ function simulateStep(state, dtSeconds, bounds) {
   return state;
 }
 
+// src/gamemanager.js
+init_rng();
+
 // src/config/displayConfig.js
 function getDefaultBounds() {
   return { W: Math.max(800, window.innerWidth), H: Math.max(600, window.innerHeight) };
@@ -579,7 +757,11 @@ var STARS = {
   redrawInterval: 500
 };
 
+// src/gamemanager.js
+init_teamsConfig();
+
 // src/behavior.js
+init_rng();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -668,10 +850,24 @@ function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
 function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
   let state = makeInitialState();
   let running = false;
+  const managerListeners = /* @__PURE__ */ new Map();
+  function emitManagerEvent2(type, msg) {
+    const arr = managerListeners.get(type);
+    if (Array.isArray(arr)) {
+      for (const cb of arr.slice()) {
+        try {
+          if (typeof cb === "function") cb(msg);
+        } catch (e) {
+        }
+      }
+    }
+  }
   let score = { red: 0, blue: 0 };
   let continuous = false;
   let reinforcementInterval = 5;
   let reinforcementAccumulator = 0;
+  let continuousOptions = {};
+  let lastReinforcement = { spawned: [], timestamp: 0, options: {} };
   const bounds = getDefaultBounds();
   srand(seed);
   let simWorker = null;
@@ -683,6 +879,10 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
   try {
     const factory = createSimWorkerFactory || createSimWorker;
     simWorker = factory(new URL("./simWorker.js", import.meta.url).href);
+    try {
+      simWorker.on("reinforcements", (m) => emitManagerEvent2("reinforcements", m));
+    } catch (e) {
+    }
     simWorker.on("ready", () => {
       workerReady = true;
       try {
@@ -720,8 +920,45 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
       reinforcementAccumulator += dtSeconds;
       if (reinforcementAccumulator >= reinforcementInterval) {
         reinforcementAccumulator = 0;
-        state.ships.push(createShip("fighter", 100, 100, "red"));
-        state.ships.push(createShip("fighter", bounds.W - 100, bounds.H - 100, "blue"));
+        try {
+          const teams = Object.keys((init_teamsConfig(), __toCommonJS(teamsConfig_exports)).TeamsConfig.teams);
+          const spawned = [];
+          for (const team of teams) {
+            const teamShips = (state.ships || []).filter((s) => s && s.team === team);
+            if (teamShips.length < 3) {
+              const teamState = Object.assign({}, state, { ships: teamShips });
+              const orders = (init_teamsConfig(), __toCommonJS(teamsConfig_exports)).chooseReinforcementsWithManagerSeed(teamState, Object.assign({}, continuousOptions, { bounds, team }));
+              if (Array.isArray(orders) && orders.length) {
+                for (const o of orders) {
+                  try {
+                    let type = o.type || "fighter";
+                    if (Array.isArray(continuousOptions.shipTypes) && continuousOptions.shipTypes.length) {
+                      const types = continuousOptions.shipTypes;
+                      type = types[Math.floor(srandom() * types.length)] || type;
+                    }
+                    const x = typeof o.x === "number" ? o.x : Math.max(0, Math.min(bounds.W, (srandom() - 0.5) * bounds.W + bounds.W * 0.5));
+                    const y = typeof o.y === "number" ? o.y : Math.max(0, Math.min(bounds.H, (srandom() - 0.5) * bounds.H + bounds.H * 0.5));
+                    const ship = createShip(type, x, y, team);
+                    state.ships.push(ship);
+                    spawned.push(ship);
+                  } catch (e) {
+                  }
+                }
+              }
+            }
+          }
+          if (spawned.length) {
+            try {
+              emitManagerEvent2("reinforcements", { spawned });
+            } catch (e) {
+            }
+            try {
+              lastReinforcement = { spawned: spawned.slice(), timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
+            } catch (e) {
+            }
+          }
+        } catch (e) {
+        }
       }
     }
     if (Array.isArray(state.explosions)) {
@@ -783,6 +1020,27 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
     requestAnimationFrame(runLoop);
   }
   return {
+    on(event, cb) {
+      if (typeof event === "string" && typeof cb === "function") {
+        const arr = managerListeners.get(event) || [];
+        arr.push(cb);
+        managerListeners.set(event, arr);
+      }
+    },
+    // expose single-step for tests and deterministic stepping
+    stepOnce(dtSeconds = SIM_DT_MS / 1e3) {
+      step(Number(dtSeconds) || SIM_DT_MS / 1e3);
+    },
+    off(event, cb) {
+      if (typeof event === "string" && typeof cb === "function") {
+        const arr = managerListeners.get(event) || [];
+        const i = arr.indexOf(cb);
+        if (i !== -1) {
+          arr.splice(i, 1);
+          managerListeners.set(event, arr);
+        }
+      }
+    },
     start() {
       if (!running) {
         running = true;
@@ -807,12 +1065,20 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
         }
       } else {
         continuous = !!v;
+        continuousOptions = Object.assign({}, continuousOptions, { enabled: !!v });
         if (!continuous) reinforcementAccumulator = 0;
       }
     },
     isContinuousEnabled() {
       if (simWorker) return !!continuous;
       return !!continuous;
+    },
+    // configure continuous reinforcement behaviour used by chooseReinforcements
+    setContinuousOptions(opts = {}) {
+      continuousOptions = Object.assign({}, continuousOptions, opts);
+    },
+    getContinuousOptions() {
+      return Object.assign({}, continuousOptions);
     },
     setReinforcementInterval(seconds = 5) {
       if (simWorker) {
@@ -827,9 +1093,23 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
     isRunning() {
       return running;
     },
+    // diagnostics getters for UI
+    getLastReinforcement() {
+      return Object.assign({}, lastReinforcement);
+    },
+    getReinforcementInterval() {
+      return reinforcementInterval;
+    },
     // authoritative check whether simulation is running in a worker
     isWorker() {
       return !!simWorker && !!workerReady;
+    },
+    onWorkerReady(cb) {
+      if (typeof cb === "function") workerReadyCbs.push(cb);
+    },
+    offWorkerReady(cb) {
+      const i = workerReadyCbs.indexOf(cb);
+      if (i !== -1) workerReadyCbs.splice(i, 1);
     },
     spawnShip(color = "red") {
       const x = Math.random() * bounds.W;
@@ -876,38 +1156,8 @@ var config = {
   stars: Object.assign({}, STARS)
 };
 
-// src/config/teamsConfig.js
-var TeamsConfig = {
-  teams: {
-    red: { id: "red", color: "#ff4d4d", label: "Red" },
-    blue: { id: "blue", color: "#4da6ff", label: "Blue" }
-  },
-  // Default fleet composition when prepopulating a game
-  defaultFleet: {
-    // counts per ship type
-    counts: {
-      fighter: 8,
-      corvette: 3,
-      frigate: 1
-    },
-    // jitter and spacing used when scattering initial ships
-    spacing: 28,
-    jitter: { x: 80, y: 120 }
-  },
-  // Continuous reinforcement defaults
-  continuousReinforcement: {
-    enabled: false,
-    // toggle to enable/disable
-    scoreMargin: 0.12,
-    // if weaker team has less than (1 - scoreMargin) of strength, reinforce
-    perTick: 1,
-    // number of reinforcement ships to provide when triggered
-    reinforceType: "fighter"
-    // default reinforcement ship type
-  }
-};
-
 // src/canvasrenderer.js
+init_teamsConfig();
 var CanvasRenderer = class {
   constructor(canvas) {
     this.canvas = canvas;
@@ -1148,6 +1398,18 @@ async function startApp(rootDocument = document) {
     renderer.init && renderer.init();
   }
   const gm = createGameManager({ renderer, canvas });
+  try {
+    if (gm && typeof gm.on === "function") {
+      gm.on("reinforcements", (msg) => {
+        const list = msg && msg.spawned || [];
+        const types = list.map((s) => s.type).filter(Boolean);
+        const summary = `Reinforcements: spawned ${list.length} ships (${types.join(", ")})`;
+        if (ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
+        else console.info(summary);
+      });
+    }
+  } catch (e) {
+  }
   const workerIndicator = rootDocument.getElementById("workerIndicator");
   if (workerIndicator) {
     try {
