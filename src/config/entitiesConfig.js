@@ -1,4 +1,5 @@
 // Copied from spec/entitiesConfig.js - ship-type defaults and helpers
+import { getShipAsset, getBulletAsset, getTurretAsset } from './assets/assetsConfig';
 export const ShipConfig = {
   fighter: {
     maxHp: 15,
@@ -81,4 +82,52 @@ export function setShipConfig(newCfg = {}) {
 
 export function getShipConfig() {
   return JSON.parse(JSON.stringify(ShipConfig));
+}
+
+// Visual mapping configuration and helpers
+export const VisualMappingConfig = {
+  // thresholds to map bulletRadius to an asset kind
+  bulletRadiusThresholds: [
+    { threshold: 0.22, kind: 'small' },
+    { threshold: 0.32, kind: 'medium' },
+    { threshold: Infinity, kind: 'large' }
+  ],
+  defaultTurretKind: 'basic',
+  shipAssetKey: {
+    fighter: 'fighter',
+    corvette: 'corvette',
+    frigate: 'frigate',
+    destroyer: 'destroyer',
+    carrier: 'carrier'
+  }
+};
+
+export function bulletKindForRadius(r = 0.2) {
+  for (const t of VisualMappingConfig.bulletRadiusThresholds) {
+    if (r <= t.threshold) return t.kind;
+  }
+  return 'small';
+}
+
+export function getBulletAssetForCannon(cannon = {}) {
+  const r = typeof cannon.bulletRadius === 'number' ? cannon.bulletRadius : (typeof cannon.radius === 'number' ? cannon.radius : 0.2);
+  const kind = bulletKindForRadius(r);
+  return getBulletAsset(kind);
+}
+
+export function getShipAssetForType(type = 'fighter') {
+  const key = VisualMappingConfig.shipAssetKey[type] || type;
+  return getShipAsset(key);
+}
+
+export function getTurretAssetForShip(_shipType = 'fighter') {
+  return getTurretAsset(VisualMappingConfig.defaultTurretKind);
+}
+
+export function getVisualsForShipType(type = 'fighter', cannon = undefined) {
+  return {
+    hull: getShipAssetForType(type),
+    turret: getTurretAssetForShip(type),
+    bullet: getBulletAssetForCannon(cannon)
+  };
 }

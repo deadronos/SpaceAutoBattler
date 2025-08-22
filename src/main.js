@@ -3,6 +3,7 @@ import { createGameManager } from './gamemanager.js';
 import { CanvasRenderer } from './canvasrenderer.js';
 import { WebGLRenderer } from './webglrenderer.js';
 import { getDefaultBounds } from './config/displayConfig.js';
+import { getPreferredRenderer } from './config/rendererConfig.js';
 
 export async function startApp(rootDocument = document) {
   const canvas = rootDocument.getElementById('world');
@@ -33,15 +34,18 @@ export async function startApp(rootDocument = document) {
   fitCanvasToWindow();
   window.addEventListener('resize', fitCanvasToWindow);
 
-  // Choose renderer (prefer WebGL if available)
+  // Choose renderer per config; default to Canvas for dev
   let renderer;
-  try {
-    renderer = new WebGLRenderer(canvas);
-    if (!renderer.init()) throw new Error('webgl init failed');
-  } catch (e) {
-    console.warn('WebGL renderer not available, falling back to Canvas2D', e);
+  const pref = getPreferredRenderer();
+  if (pref === 'webgl') {
+    try {
+      const w = new WebGLRenderer(canvas);
+      if (w && w.init && w.init()) renderer = w;
+    } catch (e) { /* fall through to canvas */ }
+  }
+  if (!renderer) {
     renderer = new CanvasRenderer(canvas);
-    renderer.init();
+    renderer.init && renderer.init();
   }
 
   const gm = createGameManager({ renderer, canvas });

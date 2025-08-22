@@ -5,12 +5,14 @@
   "scripts": {
     "test": "vitest --environment jsdom",
     "serve": "http-server -c-1 -p 8080",
-    "build-bundle": "node ./scripts/build-standalone.mjs --bundle-only",
+    "build": "node ./scripts/build.mjs",
+    "build-bundle": "node ./scripts/build.mjs",
     "build-standalone": "node ./scripts/build-standalone.mjs",
     "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:playwright": "playwright test -c playwright.config.cjs"
+    "test:playwright": "playwright test -c playwright.config.cjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
@@ -24,6 +26,7 @@
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "vitest": "^3.2.4",
-    "viz.js": "^2.1.2"
+  "viz.js": "^2.1.2",
+  "typescript": "^5.6.2"
   }
 }

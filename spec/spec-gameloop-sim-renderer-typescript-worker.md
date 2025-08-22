@@ -1,5 +1,18 @@
 ## SpaceAutoBattler — Architecture Draft (TypeScript + Worker-based sim + Renderer)
 
+Status update (TS migration)
+---------------------------
+- Entry points are now TypeScript:
+  - `src/main.ts` (wraps and re-exports current JS `main.js` during migration)
+  - `src/simWorker.ts` (wraps `simWorker.js` so the worker remains a module and is bundled)
+- Build pipeline:
+  - `scripts/build.mjs` bundles TS entrypoints with esbuild to `dist/`.
+  - Outputs `bundled.js` and a `.ts`-named copy `bundled.ts` (project consumers requested `.ts` filename).
+  - Generates `dist/spaceautobattler.html` referencing `./bundled.ts` and `./bundled.css`.
+  - `scripts/build-standalone.mjs` creates `dist/spaceautobattler_standalone.html` with inlined CSS/JS and an inlined worker via Blob URL.
+- TypeScript config: `tsconfig.json` added with strict ESM settings and `allowJs` to support incremental porting of existing JS files.
+- Next step: gradually port core modules (entities, simulate, gamemanager) from `.js` to `.ts` while maintaining the deterministic contracts.
+
 Purpose
 -------
 This document is a pragmatic TypeScript-focused architecture draft that complements `spec/spec-gameloop-sim-renderer.md` and shows a concrete, testable pattern to run the deterministic simulation in a Worker, render on the main thread (or in a renderer worker with OffscreenCanvas), and orchestrate a safe gameloop that preserves determinism and testability.
@@ -179,15 +192,16 @@ Testing plan & acceptance criteria
 
 Mapping to existing configs
 ---------------------------
-- Use `spec/entitiesConfig.js` ship types (fighter, corvette, frigate, destroyer, carrier) as canonical data shapes for tests.
+- Use `spec/entitiesConfig.js` ship types (fighter, corvette, frigate, destroyer, carrier) as canonical data shapes for tests. During the TS migration, prefer adding `.d.ts` typings where necessary and then port to `.ts`.
 - Progression/XP: simulate worker must respect `progressionConfig` constants; tests should seed a single ship and verify XP/level transitions after deterministic damage events.
 
 Migration steps (minimal, reversible)
 ----------------------------------
-1. Add `src/simWorker.ts` implementing message protocol, compiled to `dist/simWorker.js` (keep CommonJS/ESM choices consistent with build setup).
-2. Add `createSimWorker({ url, seed, state })` helper in `src/gamemanager.ts` and wire `startGame` to use it when `mode: 'worker'`.
+1. Add `src/main.ts` and `src/simWorker.ts` wrappers to make TS the public entrypoints while delegating to current JS modules.
+2. Update build to bundle TS entrypoints and emit JS bundles (plus a `.ts`-named copy as requested by consumers).
 3. Keep `simulateStep` unchanged; run the same tests after wiring to confirm determinism.
-4. Add `transferOptimized` feature flag behind runtime opt-in and tests.
+4. Incrementally port internal modules to TypeScript with `allowJs` until fully migrated, then disable `allowJs`.
+5. Add `transferOptimized` feature flag behind runtime opt-in and tests.
 
 Files to create/modify
 ----------------------
