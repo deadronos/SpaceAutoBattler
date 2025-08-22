@@ -311,6 +311,19 @@ var last = 0;
 function postSnapshot() {
   try {
     postMessage({ type: "snapshot", state });
+    try {
+      clearTransientEvents(state);
+    } catch (e) {
+    }
+  } catch (e) {
+  }
+}
+function clearTransientEvents(s) {
+  if (!s || typeof s !== "object") return;
+  try {
+    if (Array.isArray(s.explosions)) s.explosions.length = 0;
+    if (Array.isArray(s.shieldHits)) s.shieldHits.length = 0;
+    if (Array.isArray(s.healthHits)) s.healthHits.length = 0;
   } catch (e) {
   }
 }
@@ -386,6 +399,7 @@ self.onmessage = (ev) => {
 };
 var simWorker_default = null;
 export {
+  clearTransientEvents,
   simWorker_default as default
 };
 //# sourceMappingURL=simWorker.js.map

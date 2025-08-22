@@ -15,9 +15,23 @@ let last = 0;
 function postSnapshot() {
 	try {
 		postMessage({ type: 'snapshot', state });
+		// Clear transient event arrays so the worker does not repeatedly resend
+		// the same events on every snapshot. The snapshot is cloned by postMessage
+		// so it's safe to clear them here.
+		try { clearTransientEvents(state); } catch (e) { /* ignore */ }
 	} catch (e) {
 		// ignore
 	}
+}
+
+// exported for tests: clear transient worker event arrays after snapshot
+export function clearTransientEvents(s: any) {
+  if (!s || typeof s !== 'object') return;
+  try {
+    if (Array.isArray(s.explosions)) s.explosions.length = 0;
+    if (Array.isArray(s.shieldHits)) s.shieldHits.length = 0;
+    if (Array.isArray(s.healthHits)) s.healthHits.length = 0;
+  } catch (e) { /* ignore */ }
 }
 
 function tick() {

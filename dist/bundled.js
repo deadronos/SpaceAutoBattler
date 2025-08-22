@@ -499,19 +499,36 @@ function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
 }
 
 // src/gamemanager.js
-function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
+function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
   let state = makeInitialState();
   let running = false;
   let score = { red: 0, blue: 0 };
+  let continuous = false;
+  let reinforcementInterval = 5;
+  let reinforcementAccumulator = 0;
   const bounds = getDefaultBounds();
   srand(seed);
   let simWorker = null;
+  let workerReady = false;
+  const workerReadyCbs = [];
   const flashes = [];
   const shieldFlashes = [];
   const healthFlashes = [];
   try {
-    simWorker = createSimWorker(new URL("./simWorker.js", import.meta.url).href);
-    simWorker.on("ready", () => console.log("sim worker ready"));
+    const factory = createSimWorkerFactory || createSimWorker;
+    simWorker = factory(new URL("./simWorker.js", import.meta.url).href);
+    simWorker.on("ready", () => {
+      workerReady = true;
+      try {
+        for (const cb of workerReadyCbs.slice()) {
+          try {
+            if (typeof cb === "function") cb();
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+    });
     simWorker.on("snapshot", (m) => {
       if (m && m.state) state = m.state;
     });
@@ -532,6 +549,14 @@ function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
       simWorker.post({ type: "snapshotRequest" });
     } else {
       simulateStep(state, dtSeconds, bounds);
+    }
+    if (!simWorker && continuous) {
+      reinforcementAccumulator += dtSeconds;
+      if (reinforcementAccumulator >= reinforcementInterval) {
+        reinforcementAccumulator = 0;
+        state.ships.push(createShip("fighter", 100, 100, "red"));
+        state.ships.push(createShip("fighter", bounds.W - 100, bounds.H - 100, "blue"));
+      }
     }
     if (Array.isArray(state.explosions)) {
       for (const ex of state.explosions) {
@@ -607,8 +632,38 @@ function createGameManager({ renderer, canvas, seed = 12345 } = {}) {
       score = { red: 0, blue: 0 };
       if (simWorker) simWorker.post({ type: "command", cmd: "setState", args: { state } });
     },
+    // continuous mode controls (UI can toggle this)
+    setContinuousEnabled(v = false) {
+      if (simWorker) {
+        try {
+          simWorker.post({ type: "setContinuous", value: !!v });
+        } catch (e) {
+        }
+      } else {
+        continuous = !!v;
+        if (!continuous) reinforcementAccumulator = 0;
+      }
+    },
+    isContinuousEnabled() {
+      if (simWorker) return !!continuous;
+      return !!continuous;
+    },
+    setReinforcementInterval(seconds = 5) {
+      if (simWorker) {
+        try {
+          simWorker.post({ type: "setReinforcementInterval", seconds: Math.max(0.01, Number(seconds) || 5) });
+        } catch (e) {
+        }
+      } else {
+        reinforcementInterval = Math.max(0.01, Number(seconds) || 5);
+      }
+    },
     isRunning() {
       return running;
+    },
+    // authoritative check whether simulation is running in a worker
+    isWorker() {
+      return !!simWorker && !!workerReady;
     },
     spawnShip(color = "red") {
       const x = Math.random() * bounds.W;
@@ -927,6 +982,18 @@ async function startApp(rootDocument = document) {
     renderer.init && renderer.init();
   }
   const gm = createGameManager({ renderer, canvas });
+  const workerIndicator = rootDocument.getElementById("workerIndicator");
+  if (workerIndicator) {
+    try {
+      workerIndicator.textContent = gm.isWorker() ? "Worker" : "Main";
+      (function refresh() {
+        workerIndicator.textContent = gm.isWorker() ? "Worker" : "Main";
+        requestAnimationFrame(refresh);
+      })();
+    } catch (e) {
+      workerIndicator.textContent = "Unknown";
+    }
+  }
   ui.startPause.addEventListener("click", () => {
     if (gm.isRunning()) {
       gm.pause();
@@ -941,11 +1008,19 @@ async function startApp(rootDocument = document) {
   ui.addBlue.addEventListener("click", () => gm.spawnShip("blue"));
   ui.seedBtn.addEventListener("click", () => gm.reseed());
   ui.formationBtn.addEventListener("click", () => gm.formFleets());
+  if (ui.continuousCheckbox) {
+    ui.continuousCheckbox.addEventListener("change", (ev) => {
+      const v = !!ev.target.checked;
+      if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(v);
+    });
+  }
   function uiTick() {
     const s = gm.snapshot();
     ui.redScore.textContent = `Red ${gm.score.red}`;
     ui.blueScore.textContent = `Blue ${gm.score.blue}`;
-    ui.stats.textContent = `Ships: ${s.ships.length} Bullets: ${s.bullets.length}`;
+    const redCount = s.ships.filter((sh) => sh.team === "red").length;
+    const blueCount = s.ships.filter((sh) => sh.team === "blue").length;
+    ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}`;
     requestAnimationFrame(uiTick);
   }
   requestAnimationFrame(uiTick);
