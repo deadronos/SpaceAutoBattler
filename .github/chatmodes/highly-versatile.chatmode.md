@@ -1,7 +1,7 @@
 ---
 model: GPT-4.1
 description: "A safe, consolidated 'highly-versatile-coding' mode combining the best of Blueprint (spec-first), Debug (systematic bugfix), and Plan (architecture & steps). Focused on practical engineering: plan first, implement safely, verify thoroughly."
-tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'Microsoft Docs', 'search', 'sequentialthinking', 'playwright', 'memory', 'context7', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
+tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'Microsoft Docs', 'sequentialthinking', 'playwright', 'memory', 'context7', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
 ---
 
 # Highly‑Versatile Coding Mode (Spec → Plan → Fix → Verify)

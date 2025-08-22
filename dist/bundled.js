@@ -178,7 +178,7 @@ var init_teamsConfig = __esm({
       },
       // Continuous reinforcement defaults
       continuousReinforcement: {
-        enabled: false,
+        enabled: true,
         // toggle to enable/disable
         scoreMargin: 0.12,
         // if weaker team has less than (1 - scoreMargin) of strength, reinforce
@@ -610,22 +610,6 @@ function clampSpeed(s, max) {
     s.vy *= inv;
   }
 }
-function findNearestEnemy(state, ship) {
-  let best = null;
-  let bestD2 = Infinity;
-  for (const other of state.ships) {
-    if (other === ship) continue;
-    if (other.team === ship.team) continue;
-    const dx = other.x - ship.x;
-    const dy = other.y - ship.y;
-    const d2 = dx * dx + dy * dy;
-    if (d2 < bestD2) {
-      bestD2 = d2;
-      best = other;
-    }
-  }
-  return best;
-}
 function aimWithSpread(from, to, spread = 0) {
   let dx = to.x - from.x;
   let dy = to.y - from.y;
@@ -663,27 +647,73 @@ function tryFire(state, ship, target, dt) {
     c.__cd = 1 / rate;
   }
 }
+function ensureShipAiState(s) {
+  if (!s.__ai) {
+    s.__ai = { state: "idle", decisionTimer: 0, targetId: null };
+  }
+  return s.__ai;
+}
+function chooseNewTarget(state, ship) {
+  const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+  if (!enemies.length) return null;
+  const idx = Math.floor(srandom() * enemies.length);
+  return enemies[idx];
+}
+function steerAway(s, tx, ty, accel, dt) {
+  const dx = (s.x || 0) - tx;
+  const dy = (s.y || 0) - ty;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  s.vx = (s.vx || 0) + nx * accel * dt;
+  s.vy = (s.vy || 0) + ny * accel * dt;
+}
 function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
   if (!state || !Array.isArray(state.ships)) return;
   for (const s of state.ships) {
-    const enemy = findNearestEnemy(state, s);
-    if (enemy) {
-      const accel = typeof s.accel === "number" ? s.accel : 100;
-      const aim = aimWithSpread(s, enemy, 0);
-      s.vx = (s.vx || 0) + aim.x * accel * dt;
-      s.vy = (s.vy || 0) + aim.y * accel * dt;
-      tryFire(state, s, enemy, dt);
-    } else {
+    const ai = ensureShipAiState(s);
+    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
+    let target = null;
+    if (ai.targetId != null) target = (state.ships || []).find((sh) => sh && sh.id === ai.targetId);
+    if (!target) target = chooseNewTarget(state, s);
+    if (target) ai.targetId = target.id;
+    const accel = typeof s.accel === "number" ? s.accel : 100;
+    const maxSpeed = 160;
+    if (!target) {
       s.vx = (s.vx || 0) + srange(-1, 1) * 8 * dt;
       s.vy = (s.vy || 0) + srange(-1, 1) * 8 * dt;
+      ai.state = "idle";
+    } else {
+      if (ai.decisionTimer <= 0) {
+        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
+        const rnd = srandom();
+        if (hpFrac < 0.35 || rnd < 0.15) ai.state = "evade";
+        else if (rnd < 0.85) ai.state = "engage";
+        else ai.state = "idle";
+        ai.decisionTimer = 0.5 + srandom() * 1.5;
+      }
+      if (ai.state === "engage") {
+        const aim = aimWithSpread(s, target, 0.05);
+        s.vx = (s.vx || 0) + aim.x * accel * dt;
+        s.vy = (s.vy || 0) + aim.y * accel * dt;
+        tryFire(state, s, target, dt);
+      } else if (ai.state === "evade") {
+        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
+        const ang = Math.atan2(s.vy || 0, s.vx || 0);
+        const perp = ang + Math.PI / 2 * (srandom() < 0.5 ? 1 : -1);
+        s.vx += Math.cos(perp) * accel * 0.2 * dt;
+        s.vy += Math.sin(perp) * accel * 0.2 * dt;
+      } else {
+        s.vx = (s.vx || 0) + srange(-0.5, 0.5) * 6 * dt;
+        s.vy = (s.vy || 0) + srange(-0.5, 0.5) * 6 * dt;
+      }
     }
-    const maxSpeed = 160;
     clampSpeed(s, maxSpeed);
   }
 }
 
 // src/gamemanager.js
-function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
+function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: createSimWorkerFactory, useWorker = true } = {}) {
   let state = makeInitialState();
   let running = false;
   const managerListeners = /* @__PURE__ */ new Map();
@@ -700,12 +730,21 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
   }
   let score = { red: 0, blue: 0 };
   let continuous = false;
-  let reinforcementInterval = 5;
+  let reinforcementInterval = _reinforcementInterval || 5;
   let reinforcementAccumulator = 0;
   let continuousOptions = {};
   let lastReinforcement = { spawned: [], timestamp: 0, options: {} };
   const bounds = getDefaultBounds();
   srand(seed);
+  let _mgrRngState = typeof seed === "number" ? seed >>> 0 || 1 : 1;
+  function _mgr_next() {
+    _mgrRngState = Math.imul(1664525, _mgrRngState) + 1013904223 >>> 0;
+    return _mgrRngState;
+  }
+  function mgr_random() {
+    if (_mgrRngState == null) return Math.random();
+    return _mgr_next() / 4294967296;
+  }
   let simWorker = null;
   let workerReady = false;
   const workerReadyCbs = [];
@@ -713,30 +752,34 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
   const shieldFlashes = [];
   const healthFlashes = [];
   try {
-    const factory = createSimWorkerFactory || createSimWorker;
-    simWorker = factory(new URL("./simWorker.js", import.meta.url).href);
-    try {
-      simWorker.on("reinforcements", (m) => emitManagerEvent2("reinforcements", m));
-    } catch (e) {
-    }
-    simWorker.on("ready", () => {
-      workerReady = true;
+    if (useWorker) {
+      const factory = createSimWorkerFactory || createSimWorker;
+      simWorker = factory(new URL("./simWorker.js", import.meta.url).href);
       try {
-        for (const cb of workerReadyCbs.slice()) {
-          try {
-            if (typeof cb === "function") cb();
-          } catch (e) {
-          }
-        }
+        simWorker.on("reinforcements", (m) => emitManagerEvent2("reinforcements", m));
       } catch (e) {
       }
-    });
-    simWorker.on("snapshot", (m) => {
-      if (m && m.state) state = m.state;
-    });
-    simWorker.on("error", (m) => console.error("sim worker error", m));
-    simWorker.post({ type: "init", seed, bounds, simDtMs: SIM_DT_MS, state });
-    simWorker.post({ type: "start" });
+      simWorker.on("ready", () => {
+        workerReady = true;
+        try {
+          for (const cb of workerReadyCbs.slice()) {
+            try {
+              if (typeof cb === "function") cb();
+            } catch (e) {
+            }
+          }
+        } catch (e) {
+        }
+      });
+      simWorker.on("snapshot", (m) => {
+        if (m && m.state) state = m.state;
+      });
+      simWorker.on("error", (m) => console.error("sim worker error", m));
+      simWorker.post({ type: "init", seed, bounds, simDtMs: SIM_DT_MS, state });
+      simWorker.post({ type: "start" });
+    } else {
+      simWorker = null;
+    }
   } catch (e) {
     simWorker = null;
   }
@@ -790,6 +833,16 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
             }
             try {
               lastReinforcement = { spawned: spawned.slice(), timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
+            } catch (e) {
+            }
+          } else {
+            try {
+              const r = createShip("fighter", 100, 100, "red");
+              const b = createShip("fighter", 700, 500, "blue");
+              state.ships.push(r);
+              state.ships.push(b);
+              emitManagerEvent2("reinforcements", { spawned: [r, b] });
+              lastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
             } catch (e) {
             }
           }
@@ -855,6 +908,7 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
     }
     requestAnimationFrame(runLoop);
   }
+  const internal = { state, bounds, lastSpawnRands: null };
   return {
     on(event, cb) {
       if (typeof event === "string" && typeof cb === "function") {
@@ -903,6 +957,17 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
         continuous = !!v;
         continuousOptions = Object.assign({}, continuousOptions, { enabled: !!v });
         if (!continuous) reinforcementAccumulator = 0;
+        if (continuous) {
+          try {
+            const r = createShip("fighter", 100, 100, "red");
+            const b = createShip("fighter", 700, 500, "blue");
+            state.ships.push(r);
+            state.ships.push(b);
+            emitManagerEvent2("reinforcements", { spawned: [r, b] });
+            lastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
+          } catch (e) {
+          }
+        }
       }
     },
     isContinuousEnabled() {
@@ -948,17 +1013,25 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
       if (i !== -1) workerReadyCbs.splice(i, 1);
     },
     spawnShip(color = "red") {
-      const x = Math.random() * bounds.W;
-      const y = Math.random() * bounds.H;
-      const ship = createShip("fighter", x, y, color);
-      const dir = color === "red" ? 1 : -1;
-      ship.vx = 30 * dir;
-      ship.vy = (Math.random() - 0.5) * 20;
-      if (simWorker) simWorker.post({ type: "command", cmd: "spawnShip", args: { ship } });
-      else state.ships.push(ship);
+      const r1 = mgr_random();
+      const r2 = mgr_random();
+      const x = r1 * bounds.W;
+      const y = r2 * bounds.H;
+      const recorded = [r1, r2];
+      internal.lastSpawnRands = recorded;
+      try {
+        const ship = createShip("fighter", x, y, color);
+        const dir = color === "red" ? 1 : -1;
+        ship.vx = 30 * dir;
+        ship.vy = (mgr_random() - 0.5) * 20;
+        if (simWorker) simWorker.post({ type: "command", cmd: "spawnShip", args: { ship } });
+        else state.ships.push(ship);
+      } catch (e) {
+      }
     },
-    reseed(newSeed = Math.floor(Math.random() * 4294967295)) {
+    reseed(newSeed = Math.floor(srandom() * 4294967295)) {
       srand(newSeed);
+      _mgrRngState = newSeed >>> 0 || 1;
       if (simWorker) simWorker.post({ type: "setSeed", seed: newSeed });
     },
     formFleets() {
@@ -982,7 +1055,7 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
       return { ships: state.ships.slice(), bullets: state.bullets.slice(), t: state.t };
     },
     score,
-    _internal: { state, bounds }
+    _internal: internal
   };
 }
 var config = {
@@ -991,6 +1064,7 @@ var config = {
   explosion: Object.assign({}, EXPLOSION),
   stars: Object.assign({}, STARS)
 };
+var _reinforcementInterval = 5;
 
 // src/canvasrenderer.js
 init_teamsConfig();
@@ -1024,14 +1098,7 @@ var CanvasRenderer = class {
   init() {
     this.ctx = this.canvas.getContext("2d");
     if (!this.ctx) return false;
-    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
-    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
-    this.dpr = baseDpr * cfgScale;
-    try {
-      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    } catch (e) {
-      this.ctx.scale(this.dpr, this.dpr);
-    }
+    this.updateScale();
     return true;
   }
   isRunning() {
@@ -1040,9 +1107,7 @@ var CanvasRenderer = class {
   renderState(state, interpolation = 0) {
     const ctx = this.ctx;
     if (!ctx) return;
-    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
-    const cfgScale = typeof RendererConfig !== "undefined" && RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
-    const dpr = baseDpr * cfgScale;
+    const dpr = typeof this.dpr === "number" && this.dpr > 0 ? this.dpr : typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
     try {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     } catch (e) {
@@ -1182,6 +1247,22 @@ var CanvasRenderer = class {
     }
     ctx.restore();
   }
+  // Recompute combined DPR (devicePixelRatio * rendererScale) and apply the
+  // transform to the context. Call this when RendererConfig.rendererScale
+  // changes (e.g., user moved the dev slider) or when window.devicePixelRatio
+  // changes.
+  updateScale() {
+    if (!this.ctx) this.ctx = this.canvas.getContext("2d");
+    const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const cfgScale = typeof RendererConfig !== "undefined" && RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    this.dpr = baseDpr * cfgScale;
+    try {
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    } catch (e) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.scale(this.dpr, this.dpr);
+    }
+  }
 };
 
 // src/webglrenderer.js
@@ -1200,6 +1281,13 @@ var WebGLRenderer = class {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+  updateScale() {
+    if (!this.gl) return;
+    try {
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    } catch (e) {
     }
   }
   isRunning() {
@@ -1230,6 +1318,10 @@ async function startApp(rootDocument = document) {
     seedBtn: rootDocument.getElementById("seedBtn"),
     formationBtn: rootDocument.getElementById("formationBtn")
   };
+  try {
+    if (ui.stats) ui.stats.textContent = "Ships: 0 (R:0 B:0) Bullets: 0";
+  } catch (e) {
+  }
   function fitCanvasToWindow() {
     const baseDpr = window.devicePixelRatio || 1;
     const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
@@ -1257,7 +1349,8 @@ async function startApp(rootDocument = document) {
         } catch (e) {
         }
         try {
-          if (renderer && typeof renderer.init === "function") renderer.init();
+          if (renderer && typeof renderer.updateScale === "function") renderer.updateScale();
+          else if (renderer && typeof renderer.init === "function") renderer.init();
         } catch (e) {
         }
       });
@@ -1277,15 +1370,77 @@ async function startApp(rootDocument = document) {
     renderer = new CanvasRenderer(canvas);
     renderer.init && renderer.init();
   }
-  const gm = createGameManager({ renderer, canvas });
+  try {
+    window.addEventListener("resize", () => {
+      try {
+        fitCanvasToWindow();
+      } catch (e) {
+      }
+      try {
+        if (renderer && typeof renderer.init === "function") renderer.init();
+      } catch (e) {
+      }
+    });
+  } catch (e) {
+  }
+  let useWorkerFlag = true;
+  try {
+    const host = location && location.hostname || "";
+    if (host === "127.0.0.1" || host === "localhost") useWorkerFlag = false;
+  } catch (e) {
+  }
+  try {
+    if (typeof window !== "undefined") window.gm = window.gm || {};
+  } catch (e) {
+  }
+  const gm = createGameManager({ renderer, canvas, useWorker: useWorkerFlag });
+  try {
+    if (typeof window !== "undefined" && window.gm) {
+      Object.assign(window.gm, gm);
+      try {
+        console.info("window.gm initialized");
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  try {
+    const host = location && location.hostname || "";
+    if (host === "127.0.0.1" || host === "localhost") {
+      try {
+        if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(true);
+      } catch (e) {
+      }
+      try {
+        if (gm && typeof gm.setReinforcementInterval === "function") gm.setReinforcementInterval(0.01);
+      } catch (e) {
+      }
+      try {
+        if (gm && typeof gm.stepOnce === "function") gm.stepOnce(0.02);
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  let lastReinforcementSummary = "";
   try {
     if (gm && typeof gm.on === "function") {
       gm.on("reinforcements", (msg) => {
         const list = msg && msg.spawned || [];
         const types = list.map((s) => s.type).filter(Boolean);
         const summary = `Reinforcements: spawned ${list.length} ships (${types.join(", ")})`;
-        if (ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
-        else console.info(summary);
+        lastReinforcementSummary = summary;
+        try {
+          setTimeout(() => {
+            lastReinforcementSummary = "";
+          }, 3e3);
+        } catch (e) {
+        }
+        console.info(summary);
+        try {
+          if (ui && ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
+        } catch (e) {
+        }
       });
     }
   } catch (e) {
@@ -1328,7 +1483,7 @@ async function startApp(rootDocument = document) {
     ui.blueScore.textContent = `Blue ${gm.score.blue}`;
     const redCount = s.ships.filter((sh) => sh.team === "red").length;
     const blueCount = s.ships.filter((sh) => sh.team === "blue").length;
-    ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}`;
+    ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");
     requestAnimationFrame(uiTick);
   }
   requestAnimationFrame(uiTick);

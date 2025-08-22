@@ -1,5 +1,63 @@
 // Copied from spec/entitiesConfig.js - ship-type defaults and helpers
 import { getShipAsset, getBulletAsset, getTurretAsset } from './assets/assetsConfig';
+/*
+  Developer notes: AI, GameManager and RNG contract
+
+  This file defines the ship type defaults and visual mapping helpers used
+  throughout the simulation and renderer. It intentionally contains no
+  runtime-side effects — only plain configuration objects and pure helper
+  functions. When changing any numbers or shapes here, update corresponding
+  unit tests that depend on ship stats (damage/HP/shield/radius) and visual
+  snapshot tests where applicable.
+
+  Important runtime contracts and interactions:
+
+  - Simulation determinism and RNG
+    * The simulation is expected to be deterministic when seeded. Calls to
+      `srand(seed)` / `srandom()` are provided by the global seeded RNG
+      module (`src/rng.js` / `src/rng.ts`).
+    * Game manager may also use a manager-local RNG instance for
+      per-manager deterministic behavior (see `createGameManager`). This
+      file is configuration-only and should not rely on RNG directly. If a
+      config helper needs deterministic randomness for tests, make callers
+      pass the manager-local RNG in instead of calling Math.random().
+
+  - GameManager expectations
+    * The `simulateStep(state, dt, bounds)` contract is numeric-only and
+      must not perform DOM or rendering actions. It may push small event
+      objects onto `state.explosions`, `state.shieldHits`, and
+      `state.healthHits` for the renderer to consume.
+    * When gamemanager spawns ships or reinforcements it uses ship type keys
+      present in `ShipConfig` and the helper `createShip(type,x,y,team)`.
+    * Tests rely on `spawnShip()` recording the two random values used to
+      compute spawn coordinates as `manager._internal.lastSpawnRands` for
+      deterministic assertions. Do not change the shape of that diagnostic
+      object without updating tests.
+
+  - Reinforcements & continuous mode
+    * The gamemanager may call `chooseReinforcementsWithManagerSeed` from
+      `src/config/teamsConfig` to decide reinforcement orders. That helper
+      receives a small subset of the state and an options object. If
+      `chooseReinforcementsWithManagerSeed` returns an empty array the
+      manager may fall back to a deterministic spawn for tests — this
+      behavior is intentionally conservative and subject to review.
+
+  - Visual mapping helpers
+    * Helpers such as `getShipAssetForType` and `getBulletAssetForCannon`
+      are pure mappers used by both the Canvas and WebGL renderers. They
+      must remain synchronous and deterministic for snapshot tests.
+
+  Testing notes
+  - When writing tests that depend on these configs, seed the global RNG
+    using `srand(seed)` and, if available, reseed the manager-local RNG
+    through the manager API (e.g. `gm.reseed(seed)`) to isolate randomness.
+  - Prefer creating a manager with `useWorker: false` when asserting
+    deterministic behavior in unit tests to avoid worker timing nondeterminism.
+
+  Summary: This file is configuration-driven. Keep numeric tuning here but
+  avoid introducing runtime side-effects or RNG calls. If code needs
+  randomness for tests, have the caller provide a seeded RNG instance.
+*/
 export const ShipConfig = {
   fighter: {
     maxHp: 15,

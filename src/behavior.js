@@ -67,28 +67,81 @@ function tryFire(state, ship, target, dt) {
   }
 }
 
+// Per-ship AI states: 'idle', 'engage', 'evade'
+function ensureShipAiState(s) {
+  if (!s.__ai) {
+    s.__ai = { state: 'idle', decisionTimer: 0, targetId: null };
+  }
+  return s.__ai;
+}
+
+function chooseNewTarget(state, ship) {
+  const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+  if (!enemies.length) return null;
+  const idx = Math.floor(srandom() * enemies.length);
+  return enemies[idx];
+}
+
+function steerAway(s, tx, ty, accel, dt) {
+  const dx = (s.x || 0) - tx; const dy = (s.y || 0) - ty;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d; const ny = dy / d;
+  s.vx = (s.vx || 0) + nx * accel * dt;
+  s.vy = (s.vy || 0) + ny * accel * dt;
+}
+
 export function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
   if (!state || !Array.isArray(state.ships)) return;
   for (const s of state.ships) {
-    // Steering towards nearest enemy
-    const enemy = findNearestEnemy(state, s);
-    if (enemy) {
-      // Accelerate towards enemy using ship.accel if present
-      const accel = typeof s.accel === 'number' ? s.accel : 100;
-      const aim = aimWithSpread(s, enemy, 0); // no spread for steering
-      s.vx = (s.vx || 0) + aim.x * accel * dt;
-      s.vy = (s.vy || 0) + aim.y * accel * dt;
-      // Fire if off cooldown
-      tryFire(state, s, enemy, dt);
-    } else {
-      // Idle drift with tiny deterministic noise
+    const ai = ensureShipAiState(s);
+    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
+
+    let target = null;
+    if (ai.targetId != null) target = (state.ships || []).find(sh => sh && sh.id === ai.targetId);
+    if (!target) target = chooseNewTarget(state, s);
+    if (target) ai.targetId = target.id;
+
+    const accel = typeof s.accel === 'number' ? s.accel : 100;
+    const maxSpeed = 160;
+
+    if (!target) {
       s.vx = (s.vx || 0) + (srange(-1, 1) * 8) * dt;
       s.vy = (s.vy || 0) + (srange(-1, 1) * 8) * dt;
+      ai.state = 'idle';
+    } else {
+      if (ai.decisionTimer <= 0) {
+        const hpFrac = ((s.hp || 0) / Math.max(1, (s.maxHp || 1)));
+        const rnd = srandom();
+        if (hpFrac < 0.35 || rnd < 0.15) ai.state = 'evade';
+        else if (rnd < 0.85) ai.state = 'engage'; else ai.state = 'idle';
+        ai.decisionTimer = 0.5 + srandom() * 1.5;
+      }
+
+      if (ai.state === 'engage') {
+        const aim = aimWithSpread(s, target, 0.05);
+        s.vx = (s.vx || 0) + aim.x * accel * dt;
+        s.vy = (s.vy || 0) + aim.y * accel * dt;
+        tryFire(state, s, target, dt);
+      } else if (ai.state === 'evade') {
+        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
+        const ang = Math.atan2((s.vy || 0), (s.vx || 0));
+        const perp = ang + (Math.PI / 2) * (srandom() < 0.5 ? 1 : -1);
+        s.vx += Math.cos(perp) * accel * 0.2 * dt; s.vy += Math.sin(perp) * accel * 0.2 * dt;
+      } else {
+        s.vx = (s.vx || 0) + (srange(-0.5, 0.5) * 6) * dt;
+        s.vy = (s.vy || 0) + (srange(-0.5, 0.5) * 6) * dt;
+      }
     }
-    // Clamp max speed to keep motion sane
-    const maxSpeed = 160;
     clampSpeed(s, maxSpeed);
   }
 }
 
-export default { applySimpleAI };
+// Debug helper
+export function getShipAiState(ship) {
+  if (!ship || !ship.__ai) return null;
+  // return a copy but omit targetId to avoid test flakiness due to global id counters
+  const { targetId, ...rest } = ship.__ai;
+  return Object.assign({}, rest);
+}
+
+export default { applySimpleAI, getShipAiState };

@@ -24,7 +24,7 @@ export const TeamsConfig = {
   },
   // Continuous reinforcement defaults
   continuousReinforcement: {
-    enabled: false,        // toggle to enable/disable
+    enabled: true,        // toggle to enable/disable
     scoreMargin: 0.12,     // if weaker team has less than (1 - scoreMargin) of strength, reinforce
     perTick: 1,            // number of reinforcement ships to provide when triggered
     reinforceType: 'fighter' // default reinforcement ship type

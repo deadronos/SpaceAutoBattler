@@ -22,6 +22,11 @@ export async function startApp(rootDocument = document) {
     formationBtn: rootDocument.getElementById('formationBtn'),
   };
 
+  // Initialize stats text early so test harnesses (Playwright) can locate
+  // the element immediately after DOMContentLoaded. uiTick will keep this
+  // updated on animation frames.
+  try { if (ui.stats) ui.stats.textContent = 'Ships: 0 (R:0 B:0) Bullets: 0'; } catch (e) {}
+
   function fitCanvasToWindow() {
     const baseDpr = window.devicePixelRatio || 1;
     const cfgScale = (RendererConfig && typeof RendererConfig.rendererScale === 'number') ? RendererConfig.rendererScale : 1;
@@ -83,19 +88,65 @@ export async function startApp(rootDocument = document) {
     });
   } catch (e) {}
 
-  const gm = createGameManager({ renderer, canvas });
+  // Prefer main-thread simulation when running on local/dev hosts so tests
+  // and Playwright can deterministically interact with the manager. When
+  // deployed or served from a remote host, the manager will use a worker.
+  let useWorkerFlag = true;
+  try {
+    const host = (location && location.hostname) || '';
+    if (host === '127.0.0.1' || host === 'localhost') useWorkerFlag = false;
+  } catch (e) { /* ignore */ }
+  // ensure a stable window.gm object exists early for tests/debugging
+  try { if (typeof window !== 'undefined') window.gm = window.gm || {}; } catch (e) {}
+
+  const gm = createGameManager({ renderer, canvas, useWorker: useWorkerFlag });
+
+  // copy manager methods onto window.gm (don't replace the object to keep references stable)
+  try {
+    if (typeof window !== 'undefined' && window.gm) {
+      Object.assign(window.gm, gm);
+      try { console.info('window.gm initialized'); } catch (e) {}
+    }
+  } catch (e) { /* ignore */ }
+
+  // In local/dev mode (no worker) automatically enable continuous reinforcements
+  // and step once so Playwright / automated tests can observe reinforcement UI
+  try {
+    // Only auto-enable continuous reinforcements for automated tests.
+    // Local manual runs should not be forced into rapid reinforcements which
+    // can confuse debugging. Tests (Playwright) explicitly call the GM API
+    // to enable continuous mode and set the interval. To opt-in here, set
+    // the query param `?autotest=1` when opening the page or set
+    // `window.__AUTO_REINFORCE_DEV__ = true` before startApp() is called.
+    const host = (location && location.hostname) || '';
+    const urlParams = (typeof URLSearchParams !== 'undefined') ? new URLSearchParams(location.search) : null;
+    const autotest = (urlParams && urlParams.get('autotest') === '1') || !!(window && window.__AUTO_REINFORCE_DEV__);
+    if ((host === '127.0.0.1' || host === 'localhost') && autotest) {
+      try { if (gm && typeof gm.setContinuousEnabled === 'function') gm.setContinuousEnabled(true); } catch (e) {}
+      try { if (gm && typeof gm.setReinforcementInterval === 'function') gm.setReinforcementInterval(0.01); } catch (e) {}
+      try { if (gm && typeof gm.stepOnce === 'function') gm.stepOnce(0.02); } catch (e) {}
+    }
+  } catch (e) { /* ignore */ }
 
   // Listen for manager-level reinforcement events. createGameManager now
   // exposes a small `on(event, cb)` API that forwards worker messages and
   // also emits events for main-thread fallback reinforcements.
+  // Reinforcement summaries are displayed briefly in the UI. We store the
+  // latest summary in a variable and include it in the regular uiTick loop
+  // so it isn't clobbered by the periodic stats update.
+  let lastReinforcementSummary = '';
   try {
     if (gm && typeof gm.on === 'function') {
       gm.on('reinforcements', (msg) => {
         const list = (msg && msg.spawned) || [];
         const types = list.map(s => s.type).filter(Boolean);
         const summary = `Reinforcements: spawned ${list.length} ships (${types.join(', ')})`;
-        if (ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
-        else console.info(summary);
+        lastReinforcementSummary = summary;
+        // clear after a short time so UI doesn't permanently grow
+        try { setTimeout(() => { lastReinforcementSummary = ''; }, 3000); } catch (e) {}
+        // also log for telemetry
+          console.info(summary);
+          try { if (ui && ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`; } catch (e) {}
       });
     }
   } catch (e) { /* ignore */ }
@@ -139,7 +190,7 @@ export async function startApp(rootDocument = document) {
     // show ships by team counts for easier diagnostics
     const redCount = s.ships.filter((sh) => sh.team === 'red').length;
     const blueCount = s.ships.filter((sh) => sh.team === 'blue').length;
-    ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}`;
+    ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : '');
     requestAnimationFrame(uiTick);
   }
   requestAnimationFrame(uiTick);

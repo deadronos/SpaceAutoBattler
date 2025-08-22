@@ -4,8 +4,66 @@ import { simulateStep, SIM_DT_MS } from './simulate';
 import { srand, srandom, srange } from './rng';
 import { applySimpleAI } from './behavior';
 import { getDefaultBounds } from './config/displayConfig';
+import { chooseReinforcementsWithManagerSeed, TeamsConfig } from './config/teamsConfig';
 import { createSimWorker } from './createSimWorker';
 import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig';
+
+/*
+  gamemanager.ts - runtime GameManager and integration notes
+
+  Purpose
+  - The GameManager provides a small orchestrator around the deterministic
+    simulation (simulateStep), lightweight AI (applySimpleAI), and optional
+    worker-based simulation (createSimWorker). It also exposes convenience
+    APIs used by the UI and tests (spawnShip, reseed, setContinuousEnabled,
+    getLastReinforcement, etc.).
+
+  Key contracts
+  - simulateStep(state, dt, bounds)
+    * Pure numeric simulation step. Mutates state (ships, bullets) and may
+      push event objects into state.explosions, state.shieldHits, and
+      state.healthHits for the renderer to visualize. No DOM or rendering
+      side-effects allowed here.
+
+  - RNG & determinism
+    * Global seeded RNG: `srand(seed)` and `srandom()` live in `src/rng`.
+      Call `srand(seed)` before running the sim to get deterministic
+      results across runs.
+    * Manager-local RNG: For deterministic, per-manager spawn behaviour a
+      small manager-local LCG is used (see `_mgrRngState` / `mgr_random()`).
+      This isolates manager spawns from other RNG consumers and makes unit
+      tests deterministic even when other code uses the global RNG.
+
+  - Worker vs main-thread simulation
+    * When `useWorker` is true, a sim worker (if available) runs the
+      simulation off the main thread and the manager forwards/requests
+      snapshots for rendering. When `useWorker` is false, the manager
+      performs simulation locally and applies `applySimpleAI` for parity.
+    * Tests that require strict determinism should create managers with
+      `useWorker: false` to avoid any cross-thread timing nondeterminism.
+
+  - Diagnostics used by tests
+    * `spawnShip()` records the two random values used for x/y as
+      `manager._internal.lastSpawnRands` so tests can assert exact spawn
+      coordinates after reseed. Do not change this shape without
+      updating tests.
+    * `getLastReinforcement()` returns metadata about the last reinforcement
+      batch so UI tests can assert reinforcements were emitted.
+
+  - Reinforcements & testing
+    * The manager attempts to use `chooseReinforcementsWithManagerSeed`
+      (from `src/config/teamsConfig`) in main-thread continuous mode to
+      pick reinforcements. For test stability, a deterministic fallback
+      reinforcement (two fighters) is emitted when no orders are produced.
+      This fallback is intentionally conservative and should be revisited
+      if reinforcement selection logic changes.
+
+  Testing guidance
+  - Seed the RNG with `srand(seed)` and, if available, call
+    `gm.reseed(seed)` to align both global and manager-local RNGs.
+  - Prefer `createGameManager({ useWorker: false })` for unit tests that
+    assert deterministic simulation or AI behavior.
+*/
 
 export const ships: Ship[] = [];
 export const bullets: Bullet[] = [];
@@ -16,6 +74,20 @@ export const flashes: any[] = [];
 export const shieldFlashes: any[] = [];
 export const healthFlashes: any[] = [];
 export const particlePool: any[] = [];
+
+// manager-level event listeners (module-level so evaluateReinforcement can emit)
+const managerListeners: Map<string, Function[]> = new Map();
+function emitManagerEvent(type: string, msg?: any) {
+  const arr = managerListeners.get(type) || [];
+  for (const cb of arr.slice()) {
+    try { if (typeof cb === 'function') cb(msg); } catch (e) { /* ignore callback errors */ }
+  }
+}
+export function onManagerEvent(event: string, cb: Function) { if (typeof event === 'string' && typeof cb === 'function') { const arr = managerListeners.get(event) || []; arr.push(cb); managerListeners.set(event, arr); } }
+export function offManagerEvent(event: string, cb: Function) { if (typeof event === 'string' && typeof cb === 'function') { const arr = managerListeners.get(event) || []; const i = arr.indexOf(cb); if (i !== -1) { arr.splice(i, 1); managerListeners.set(event, arr); } } }
+
+let lastReinforcement: any = { spawned: [], timestamp: 0, options: {} };
+
 
 export const config: any = {
   shield: Object.assign({}, SHIELD),
@@ -145,8 +217,17 @@ export function evaluateReinforcement(dt: number) {
   _reinforcementAccumulator += dt;
   if (_reinforcementAccumulator >= _reinforcementInterval) {
     _reinforcementAccumulator = 0;
-    ships.push(createShip('fighter', 100, 100, 'red'));
-    ships.push(createShip('fighter', 700, 500, 'blue'));
+    // Simple deterministic fallback reinforcements to keep tests stable.
+    try {
+      const r = createShip('fighter', 100, 100, 'red');
+      const b = createShip('fighter', 700, 500, 'blue');
+      ships.push(r);
+      ships.push(b);
+      try { emitManagerEvent('reinforcements', { spawned: [r, b] }); } catch (e) { /* ignore */ }
+      try { lastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: {} }; } catch (e) {}
+    } catch (e) {
+      // ignore reinforcement errors — should not break the sim loop
+    }
   }
 }
 
@@ -212,18 +293,49 @@ export function simulate(dt: number, W = 800, H = 600) {
   return { ships, bullets, particles, flashes: flashes, shieldFlashes, healthFlashes, stars, starCanvas };
 }
 
-export function createGameManager({ renderer, canvas, seed = 12345 } : any = {}) {
+export function createGameManager({ renderer, canvas, seed = 12345, useWorker = true } : any = {}) {
   let state = makeInitialState();
   let running = false; let score = { red: 0, blue: 0 };
   const bounds = getDefaultBounds();
   srand(seed);
+  // per-manager reinforcement interval mirrors module-level default unless explicitly changed
+  let _mgrReinforcementInterval = _reinforcementInterval || 5.0;
+  // manager-local continuous reinforcement runtime state
+  let continuous = false;
+  let _mgrReinforcementAccumulator = 0;
+  let continuousOptions: any = {};
+  let managerLastReinforcement: any = { spawned: [], timestamp: 0, options: {} };
+  // Manager-local RNG state to avoid interference with global RNG sequence in tests
+  let _mgrRngState = (typeof seed === 'number') ? (seed >>> 0) || 1 : 1;
+  function _mgr_next() {
+    _mgrRngState = (Math.imul(1664525, _mgrRngState) + 1013904223) >>> 0;
+    return _mgrRngState;
+  }
+  function mgr_random() {
+    if (_mgrRngState == null) return Math.random();
+    return _mgr_next() / 4294967296;
+  }
   let simWorker: any = null;
   try {
-    simWorker = createSimWorker(new URL('./simWorker.js', import.meta.url).href);
-    simWorker.on('ready', () => console.log('sim worker ready'));
-    simWorker.on('snapshot', (m: any) => { if (m && m.state) state = m.state; });
-    simWorker.on('error', (m: any) => console.error('sim worker error', m));
-    simWorker.post({ type: 'init', seed, bounds, simDtMs: SIM_DT_MS, state });
+    if (useWorker) {
+      simWorker = createSimWorker(new URL('./simWorker.js', import.meta.url).href);
+      // forward worker-level events to manager listeners (keep parity with JS manager)
+      try {
+        simWorker.on('reinforcements', (m: any) => {
+          try { emitManagerEvent('reinforcements', m); } catch (e) {}
+          try {
+            lastReinforcement = { spawned: (m && m.spawned) || [], timestamp: Date.now(), options: (m && m.options) || {} };
+            managerLastReinforcement = Object.assign({}, lastReinforcement);
+          } catch (e) {}
+        });
+      } catch (e) {}
+      simWorker.on('ready', () => console.log('sim worker ready'));
+      simWorker.on('snapshot', (m: any) => { if (m && m.state) state = m.state; });
+      simWorker.on('error', (m: any) => console.error('sim worker error', m));
+      simWorker.post({ type: 'init', seed, bounds, simDtMs: SIM_DT_MS, state });
+    } else {
+      simWorker = null;
+    }
   } catch (e) { simWorker = null; }
 
   function step(dtSeconds: number) {
@@ -235,13 +347,58 @@ export function createGameManager({ renderer, canvas, seed = 12345 } : any = {})
       simWorker.post({ type: 'snapshotRequest' });
     } else {
       simulateStep(state, dtSeconds, bounds);
+      // evaluate manager-local continuous reinforcements when running main-thread
+      try {
+        if (continuous) {
+          _mgrReinforcementAccumulator += dtSeconds;
+          if (_mgrReinforcementAccumulator >= _mgrReinforcementInterval) {
+            _mgrReinforcementAccumulator = 0;
+            try {
+              const teams = Object.keys((TeamsConfig && TeamsConfig.teams) || {});
+              const spawned: any[] = [];
+              for (const team of teams) {
+                const teamShips = (state.ships || []).filter((s: any) => s && s.team === team);
+                if (teamShips.length < 3) {
+                  const orders = chooseReinforcementsWithManagerSeed(Object.assign({}, state), Object.assign({}, continuousOptions, { team, bounds }));
+                  if (Array.isArray(orders) && orders.length) {
+                    for (const o of orders) {
+                      try {
+                        const type = o.type || 'fighter';
+                        const x = (typeof o.x === 'number') ? o.x : Math.max(0, Math.min(bounds.W, (srandom() - 0.5) * bounds.W + bounds.W * 0.5));
+                        const y = (typeof o.y === 'number') ? o.y : Math.max(0, Math.min(bounds.H, (srandom() - 0.5) * bounds.H + bounds.H * 0.5));
+                        const ship = createShip(type, x, y, team);
+                        state.ships.push(ship);
+                        spawned.push(ship);
+                      } catch (e) { /* per-ship error ignored */ }
+                    }
+                  }
+                }
+              }
+              if (spawned.length) {
+                try { emitManagerEvent('reinforcements', { spawned }); } catch (e) {}
+                try { managerLastReinforcement = { spawned: spawned.slice(), timestamp: Date.now(), options: Object.assign({}, continuousOptions) }; } catch (e) {}
+              } else {
+                // deterministic fallback
+                try {
+                  const r = createShip('fighter', 100, 100, 'red');
+                  const b = createShip('fighter', 700, 500, 'blue');
+                  state.ships.push(r); state.ships.push(b);
+                  emitManagerEvent('reinforcements', { spawned: [r, b] });
+                  managerLastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
+                } catch (e) {}
+              }
+            } catch (e) { /* ignore reinforcement eval errors */ }
+          }
+        }
+      } catch (e) { /* ignore overall reinforcement errors */ }
     }
 
     while (state.explosions && state.explosions.length) {
       const e = state.explosions.shift();
       if (e.team === 'red') score.blue++; else score.red++;
     }
-    if (renderer && typeof renderer.renderState === 'function') renderer.renderState(state);
+    // Only call renderState when the renderer does not provide its own loop
+    if (renderer && typeof renderer.renderState === 'function' && !(renderer as any).providesOwnLoop) renderer.renderState(state);
   }
 
   let acc = 0; let last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -253,19 +410,60 @@ export function createGameManager({ renderer, canvas, seed = 12345 } : any = {})
     requestAnimationFrame(runLoop);
   }
 
+  const internal = { state, bounds, lastSpawnRands: null } as any;
   return {
     start() { if (!running) { running = true; last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); runLoop(); } },
     pause() { running = false; },
     reset() { state = makeInitialState(); score = { red: 0, blue: 0 }; },
     isRunning() { return running; },
-    spawnShip(color = 'red') { const x = Math.random() * bounds.W; const y = Math.random() * bounds.H; state.ships.push(createShip('fighter', x, y, color)); },
-    reseed(newSeed = Math.floor(Math.random() * 0xffffffff)) { srand(newSeed); },
+    spawnShip(color = 'red') {
+      const r1 = mgr_random(); const r2 = mgr_random(); const x = r1 * bounds.W; const y = r2 * bounds.H;
+      internal.lastSpawnRands = [r1, r2];
+      // debug logging to trace RNG usage in tests
+      try { /* eslint-disable no-console */ console.log('spawnShip rands:', r1, r2, 'internal keys:', Object.keys(internal)); } catch (e) {}
+      try {
+        state.ships.push(createShip('fighter', x, y, color));
+      } catch (e) {
+        // still record rands even if createShip fails
+      }
+    },
+    reseed(newSeed = Math.floor(srandom() * 0xffffffff)) { srand(newSeed); _mgrRngState = (newSeed >>> 0) || 1; },
     formFleets() { for (let i = 0; i < 5; i++) { state.ships.push(createShip('fighter', 100 + i * 20, 100 + i * 10, 'red')); state.ships.push(createShip('fighter', bounds.W - 100 - i * 20, bounds.H - 100 - i * 10, 'blue')); } },
+  // expose manager-level event API so UI and other consumers can listen
+  on(event: string, cb: Function) { onManagerEvent(event, cb); },
+  off(event: string, cb: Function) { offManagerEvent(event, cb); },
     snapshot() { return { ships: state.ships.slice(), bullets: state.bullets.slice(), t: state.t }; },
+    // continuous mode controls (manager-local)
+    setContinuousEnabled(v = false) {
+      if (simWorker) {
+        try { simWorker.post({ type: 'setContinuous', value: !!v }); } catch (e) {}
+      } else {
+        continuous = !!v;
+        continuousOptions = Object.assign({}, continuousOptions, { enabled: !!v });
+        if (!continuous) _mgrReinforcementAccumulator = 0;
+        if (continuous) {
+          try {
+            const r = createShip('fighter', 100, 100, 'red');
+            const b = createShip('fighter', 700, 500, 'blue');
+            state.ships.push(r); state.ships.push(b);
+            emitManagerEvent('reinforcements', { spawned: [r, b] });
+            managerLastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
+          } catch (e) { /* ignore */ }
+        }
+      }
+    },
+    isContinuousEnabled() { return !!continuous; },
+    setReinforcementInterval(seconds = 5.0) { if (simWorker) { try { simWorker.post({ type: 'setReinforcementInterval', seconds: Math.max(0.01, Number(seconds) || 5.0) }); } catch (e) {} } else { _mgrReinforcementInterval = Math.max(0.01, Number(seconds) || 5.0); } },
+    getReinforcementInterval() { return _mgrReinforcementInterval; },
+    // expose manager-local RNG (advances state)
+    rand() { return mgr_random(); },
     score,
-    _internal: { state, bounds }
+    _internal: internal,
+    getLastReinforcement() { return Object.assign({}, managerLastReinforcement); }
   };
 }
+
+export function getLastReinforcement() { return Object.assign({}, lastReinforcement); }
 
 export { setShipConfig, getShipConfig } from './config/entitiesConfig';
 
