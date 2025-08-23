@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 // Verify that the worker helper clears transient event arrays after snapshot
 describe('simWorker clearTransientEvents', () => {
   it('clears explosions, shieldHits, and healthHits arrays', async () => {
-    const mod = await import('../../src/simWorker');
+  const mod = await import('../../src/simWorker');
     expect(mod).toBeTruthy();
     // prepare a fake state with transient arrays
     const state: any = { explosions: [{ x: 1 }], shieldHits: [{ id: 2 }], healthHits: [{ id: 3 }] };
