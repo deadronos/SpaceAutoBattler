@@ -332,6 +332,24 @@ export function simulate(dt: number, W = 800, H = 600) {
     }
   } catch (e) {}
 
+  // Periodic cleanup: prune stale flash index entries to keep maps small
+  try {
+    const nowT = state.t || 0;
+    const pruneMap = (m: Map<any, any[]>) => {
+      for (const [k, arr] of Array.from(m.entries())) {
+        if (!Array.isArray(arr) || arr.length === 0) { m.delete(k); continue; }
+        const kept = arr.filter((f: any) => {
+          const fTs = (typeof f._ts === 'number') ? f._ts : 0;
+          const fTtl = (typeof f.ttl === 'number') ? f.ttl : FLASH_TTL_DEFAULT;
+          return fTs + fTtl >= nowT - 1e-6;
+        });
+        if (kept.length) m.set(k, kept); else m.delete(k);
+      }
+    };
+    pruneMap(shieldFlashIndex);
+    pruneMap(healthFlashIndex);
+  } catch (e) {}
+
   return { ships, bullets, particles, flashes: flashes, shieldFlashes, healthFlashes, stars, starCanvas };
 }
 

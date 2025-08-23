@@ -21,7 +21,18 @@ export type NonEmptyArray<T> = [T, ...T[]];
 
 export interface ShipSpec {
   maxHp: number;
+  /**
+   * Linear acceleration magnitude for the ship. Units: pixels per second^2 (px/s^2).
+   * Simulation and AI expect accel to be a positive number. Use the seeded RNG
+   * and time-step (SIM_DT_MS) when reasoning about movement.
+   */
   accel: number;
+  /**
+   * Optional ship-level damage (legacy field). Prefer per-cannon `damage` on
+   * `cannons`. This is kept for compatibility with older configs; consumers
+   * should prefer `cannons[].damage` when present.
+   */
+  damage?: number;
   // require at least one cannon for conventional ship types
   cannons: NonEmptyArray<CannonSpec>;
   maxShield?: number;

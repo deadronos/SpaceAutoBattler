@@ -102,7 +102,9 @@ function tryFire(state: State, ship: any, target: any, dt: number) {
     const spread = typeof c.spread === 'number' ? c.spread : 0;
     const dir = aimWithSpread(ship, target, spread);
     const speed = typeof c.muzzleSpeed === 'number' ? c.muzzleSpeed : 240;
-    const dmg = typeof c.damage === 'number' ? c.damage : 3;
+  // Prefer per-cannon damage; fall back to ship-level damage (`ship.damage` or legacy `ship.dmg`) if present,
+  // otherwise use default 3.
+  const dmg = (typeof c.damage === 'number') ? c.damage : (typeof ship.damage === 'number' ? ship.damage : (typeof ship.dmg === 'number' ? ship.dmg : 3));
     const ttl = typeof c.bulletTTL === 'number' ? c.bulletTTL : 2.0;
     const radius = typeof c.bulletRadius === 'number' ? c.bulletRadius : 1.5;
     const vx = dir.x * speed; const vy = dir.y * speed;

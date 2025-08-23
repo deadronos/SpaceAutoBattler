@@ -3,6 +3,7 @@
 
 import { AssetsConfig, getShipAsset, getTurretAsset, getVisualConfig } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig';
+import { shieldFlashIndex } from './gamemanager';
 import { getDefaultShipType } from './config/entitiesConfig';
 
 export class WebGLRenderer {
@@ -159,18 +160,19 @@ export class WebGLRenderer {
                 verts.push(clipX, clipY, Math.max(4, ps * (sh.r || 1.6)), ac[0], ac[1], ac[2], Math.min(1, aBase + aScale * shieldPct) * pulse);
                 // If there's a recent shieldFlash for this ship with a hitAngle, render an arc using multiple small points
                 try {
-                  // TTL-based lookup for freshest flash for this ship
+                  // TTL-based lookup: use index for fast per-ship lookup
                   let flash: any = null;
-                  if (Array.isArray(state.shieldFlashes)) {
+                  try {
                     const nowT = (state && state.t) || 0;
+                    const arr = shieldFlashIndex.get(s.id) || [];
                     let bestTs = -Infinity;
-                    for (const f of state.shieldFlashes) {
-                      if (!f || f.id !== s.id) continue;
+                    for (const f of arr) {
+                      if (!f) continue;
                       const fTs = (typeof f._ts === 'number') ? f._ts : 0;
                       const fTtl = (typeof f.ttl === 'number') ? f.ttl : ((AssetsConfig && (AssetsConfig as any).shield && (AssetsConfig as any).shield.ttl) || 0.4);
                       if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) { bestTs = fTs; flash = f; }
                     }
-                  }
+                  } catch (e) { flash = null; }
                   if (flash && typeof flash.hitAngle === 'number') {
                     const arc = (typeof flash.arcWidth === 'number') ? flash.arcWidth : ((vconf && (vconf as any).arcWidth) || (AssetsConfig && (AssetsConfig as any).shieldArcWidth) || Math.PI / 6);
                     const segs: number = 6; // number of samples along the arc
