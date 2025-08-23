@@ -155,7 +155,28 @@ export class WebGLRenderer {
                 const ac = hexToRgba(accent);
                 const aBase = (sh.alphaBase != null ? sh.alphaBase : 0.25);
                 const aScale = (sh.alphaScale != null ? sh.alphaScale : 0.75);
+                // Push central shield point
                 verts.push(clipX, clipY, Math.max(4, ps * (sh.r || 1.6)), ac[0], ac[1], ac[2], Math.min(1, aBase + aScale * shieldPct) * pulse);
+                // If there's a recent shieldFlash for this ship with a hitAngle, render an arc using multiple small points
+                try {
+                  const flash = (Array.isArray(state.shieldFlashes) && state.shieldFlashes.find((f: any) => f && f.id === s.id && f.spawned));
+                  if (flash && typeof flash.hitAngle === 'number') {
+                    const arc = (typeof flash.arcWidth === 'number') ? flash.arcWidth : ((vconf && (vconf as any).arcWidth) || (AssetsConfig && (AssetsConfig as any).shieldArcWidth) || Math.PI / 6);
+                    const segs: number = 6; // number of samples along the arc
+                    const radiusMul = (sh.r || 1.6) * (s.radius || 6);
+                    for (let si = 0; si < segs; si++) {
+                      const t = segs === 1 ? 0.5 : si / (segs - 1);
+                      const a = flash.hitAngle - arc * 0.5 + t * arc;
+                      const px = x + Math.cos(a) * radiusMul;
+                      const py = y + Math.sin(a) * radiusMul;
+                      const cpx = (px / Math.max(1, w)) * 2 - 1;
+                      const cpy = 1 - (py / Math.max(1, h)) * 2;
+                      const pointSize = Math.max(2, ps * 0.45);
+                      const alpha = Math.min(1, aBase + aScale * shieldPct) * pulse * 0.9;
+                      verts.push(cpx, cpy, pointSize, ac[0], ac[1], ac[2], alpha);
+                    }
+                  }
+                } catch (e) {}
               }
             } catch (e) {}
 

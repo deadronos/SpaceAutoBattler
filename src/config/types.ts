@@ -1,10 +1,12 @@
 // Shared configuration types for SpaceAutoBattler
 export interface CannonSpec {
   // common cannon fields used by simulation and progression
-  damage?: number;
+  // damage is required for simulation damage calculations
+  damage: number;
   ttl?: number;
   reload?: number;
   range?: number;
+  angle?: number;
   [k: string]: any;
 }
 
