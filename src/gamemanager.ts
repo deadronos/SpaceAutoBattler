@@ -78,6 +78,13 @@ export const shieldFlashes: any[] = [];
 export const healthFlashes: any[] = [];
 export const particlePool: any[] = [];
 
+// Flash indexes for quick lookup by ship id (improves renderer performance)
+export const shieldFlashIndex: Map<string | number, any[]> = new Map();
+export const healthFlashIndex: Map<string | number, any[]> = new Map();
+
+// default TTL for flashes (seconds) when a flash doesn't provide its own ttl
+export const FLASH_TTL_DEFAULT = 0.4;
+
 // manager-level event listeners (module-level so evaluateReinforcement can emit)
 const managerListeners: Map<string, Function[]> = new Map();
 function emitManagerEvent(type: string, msg?: any) {
@@ -139,8 +146,10 @@ export function acquireParticle(x: number, y: number, opts: any = {}) {
   if (particlePool.length) {
     p = particlePool.pop();
     p.x = x; p.y = y; p.vx = opts.vx || 0; p.vy = opts.vy || 0; p.ttl = opts.ttl || 1; p.life = p.ttl; p.color = opts.color || '#fff'; p.size = opts.size || 2; p.alive = true;
+    p._ts = (typeof opts._ts === 'number') ? opts._ts : (p._ts || 0);
   } else {
     p = new Particle(x, y, opts.vx || 0, opts.vy || 0, opts.ttl || 1, opts.color || '#fff', opts.size || 2);
+    p._ts = (typeof opts._ts === 'number') ? opts._ts : 0;
   }
   particles.push(p);
   return p;
@@ -244,8 +253,8 @@ export function simulate(dt: number, W = 800, H = 600) {
   simulateStep(state, dt, { W, H });
 
   // merge explosions
-  for (const ex of state.explosions || []) {
-  flashes.push(Object.assign({}, ex, { _ts: state.t || 0 }));
+    for (const ex of state.explosions || []) {
+    flashes.push(Object.assign({}, ex, { _ts: state.t || 0 }));
     try {
       const cfg = config.explosion || {};
       const count = cfg.particleCount || 12; const ttl = cfg.particleTTL || 0.6; const color = cfg.particleColor || 'rgba(255,200,100,0.95)'; const size = cfg.particleSize || 3;
@@ -255,7 +264,7 @@ export function simulate(dt: number, W = 800, H = 600) {
         const maxS = (cfg.maxSpeed != null ? cfg.maxSpeed : 120);
         const sp = minS + srandom() * Math.max(0, (maxS - minS));
         const vx = Math.cos(ang) * sp; const vy = Math.sin(ang) * sp;
-        acquireParticle(ex.x || 0, ex.y || 0, { vx, vy, ttl, color, size });
+        acquireParticle(ex.x || 0, ex.y || 0, { vx, vy, ttl, color, size, _ts: state.t || 0 });
       }
     } catch (e) {}
   }
@@ -264,7 +273,17 @@ export function simulate(dt: number, W = 800, H = 600) {
   for (const h of state.shieldHits || []) {
   // preserve hitAngle when present so renderers can draw localized arcs
   const hitObj = Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true, _ts: state.t || 0 });
-  shieldFlashes.push(hitObj);
+    shieldFlashes.push(hitObj);
+    // maintain index per-ship for quick renderer lookup (prune expired flashes)
+    try {
+      const idKey = hitObj.id;
+      const nowT = state.t || 0;
+      const existing = shieldFlashIndex.get(idKey) || [];
+      const ttlDefault = (typeof hitObj.ttl === 'number') ? hitObj.ttl : (config.shield && config.shield.ttl) || FLASH_TTL_DEFAULT;
+      const pruned = existing.filter((f: any) => { const fTs = (typeof f._ts === 'number') ? f._ts : 0; const fTtl = (typeof f.ttl === 'number') ? f.ttl : ttlDefault; return fTs + fTtl >= nowT - 1e-6; });
+      pruned.push(hitObj);
+      shieldFlashIndex.set(idKey, pruned);
+    } catch (e) {}
     try {
       const cfg = config.shield || {};
       const cnt = cfg.particleCount || 6; const ttl = cfg.particleTTL || 0.35; const color = cfg.particleColor || 'rgba(160,200,255,0.9)'; const size = cfg.particleSize || 2;
@@ -274,20 +293,30 @@ export function simulate(dt: number, W = 800, H = 600) {
         // if hitAngle is present, constrain to arc centered on hitAngle; otherwise full circle
         const ang = (center != null) ? (center - arc * 0.5 + srandom() * arc) : (srandom() * Math.PI * 2);
         const sp = 10 + srandom() * 40; const vx = Math.cos(ang) * sp; const vy = Math.sin(ang) * sp;
-        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size, _ts: state.t || 0 });
       }
     } catch (e) {}
   }
 
   // health hits -> healthFlashes + particles
   for (const h of state.healthHits || []) {
-  healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true, _ts: state.t || 0 }));
+    const healthObj = Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true, _ts: state.t || 0 });
+    healthFlashes.push(healthObj);
+    try {
+      const idKey = healthObj.id;
+      const nowT = state.t || 0;
+      const existing = healthFlashIndex.get(idKey) || [];
+      const ttlDefault = (typeof healthObj.ttl === 'number') ? healthObj.ttl : (config.health && config.health.ttl) || FLASH_TTL_DEFAULT;
+      const pruned = existing.filter((f: any) => { const fTs = (typeof f._ts === 'number') ? f._ts : 0; const fTtl = (typeof f.ttl === 'number') ? f.ttl : ttlDefault; return fTs + fTtl >= nowT - 1e-6; });
+      pruned.push(healthObj);
+      healthFlashIndex.set(idKey, pruned);
+    } catch (e) {}
     try {
       const cfg = config.health || {};
       const cnt = cfg.particleCount || 8; const ttl = cfg.particleTTL || 0.6; const color = cfg.particleColor || 'rgba(255,120,80,0.95)'; const size = cfg.particleSize || 2;
       for (let i = 0; i < cnt; i++) {
         const ang = srandom() * Math.PI * 2; const sp = 20 + srandom() * 50; const vx = Math.cos(ang) * sp; const vy = Math.sin(ang) * sp;
-        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
+        acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size, _ts: state.t || 0 });
       }
     } catch (e) {}
   }

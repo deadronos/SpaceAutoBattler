@@ -16,10 +16,14 @@ export interface CannonSpec {
   [k: string]: any;
 }
 
+// Helper: non-empty array type for cannons (at least one cannon expected for most ship types)
+export type NonEmptyArray<T> = [T, ...T[]];
+
 export interface ShipSpec {
   maxHp: number;
   accel: number;
-  cannons: CannonSpec[];
+  // require at least one cannon for conventional ship types
+  cannons: NonEmptyArray<CannonSpec>;
   maxShield?: number;
   shieldRegen?: number;
   turnRate?: number;
