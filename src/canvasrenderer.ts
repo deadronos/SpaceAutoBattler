@@ -63,16 +63,16 @@ export class CanvasRenderer {
   renderState(state: AnyState, interpolation = 0): void {
     // helper: draw a stroked ring (used for explosions / flashes)
     function drawRing(x: number, y: number, R: number, color: string, alpha = 1.0, thickness = 2) {
-      try {
-        bufferCtx.save();
-        bufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        bufferCtx.strokeStyle = color;
-        bufferCtx.lineWidth = thickness;
-        bufferCtx.beginPath();
-        bufferCtx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
-        bufferCtx.stroke();
-        bufferCtx.restore();
-      } catch (e) { /* ignore draw errors */ }
+          try {
+            bufferCtx.save();
+            bufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+            bufferCtx.strokeStyle = color;
+            bufferCtx.lineWidth = thickness * renderScale;
+            bufferCtx.beginPath();
+            bufferCtx.arc(x * renderScale, y * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
+            bufferCtx.stroke();
+            bufferCtx.restore();
+          } catch (e) { /* ignore draw errors */ }
     }
     // --- Offscreen buffer rendering ---
     // 1. Resize bufferCanvas to logical size × renderer scale BEFORE any drawing
@@ -97,7 +97,7 @@ export class CanvasRenderer {
     // Always use latest bufferCtx after possible resize
     const activeBufferCtx = this.bufferCtx!;
     // Draw simulation to bufferCanvas
-    activeBufferCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+        activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0); // No scaling here; scale coordinates instead
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
     activeBufferCtx.save();
     activeBufferCtx.fillStyle = (AssetsConfig.palette as any).background || '#0b1220';
@@ -221,30 +221,47 @@ export class CanvasRenderer {
           }
         }
       }
-      // Draw turrets/cannons using asset shapes
-      const turretShape = getTurretAsset('basic');
-      activeBufferCtx.save();
-      activeBufferCtx.rotate(0); // Optionally rotate for turret direction
-      activeBufferCtx.fillStyle = AssetsConfig.palette.turret || '#94a3b8';
-      if (turretShape.type === 'circle') {
-        activeBufferCtx.beginPath();
-        activeBufferCtx.arc(0, 0, (turretShape.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
-        activeBufferCtx.fill();
-      } else if (turretShape.type === 'polygon') {
-        drawPolygon(turretShape.points as number[][]);
-      } else if (turretShape.type === 'compound') {
-        for (const part of turretShape.parts) {
-          if (part.type === 'circle') {
+      // Draw all turrets at their configured positions
+      if (Array.isArray(s.turrets) && s.turrets.length > 0) {
+        for (const turret of s.turrets) {
+          if (!turret || !turret.position) continue;
+          const turretShape = getTurretAsset(turret.kind || 'basic');
+          const turretScale = (s.radius || 12) * renderScale * 0.5;
+          // Calculate turret position relative to ship center, rotated by ship angle
+          const angle = (s.angle || 0);
+          const [tx, ty] = turret.position;
+          const turretX = Math.cos(angle) * tx * (s.radius || 12) - Math.sin(angle) * ty * (s.radius || 12);
+          const turretY = Math.sin(angle) * tx * (s.radius || 12) + Math.cos(angle) * ty * (s.radius || 12);
+          activeBufferCtx.save();
+          activeBufferCtx.translate(turretX, turretY);
+          activeBufferCtx.rotate(0); // Optionally rotate for turret direction
+          activeBufferCtx.fillStyle = AssetsConfig.palette.turret || '#94a3b8';
+          if (turretShape.type === 'circle') {
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
             activeBufferCtx.fill();
-          } else if (part.type === 'polygon') {
-            drawPolygon(part.points as number[][]);
+          } else if (turretShape.type === 'polygon') {
+            activeBufferCtx.save();
+            activeBufferCtx.scale(turretScale, turretScale);
+            drawPolygon(turretShape.points as number[][]);
+            activeBufferCtx.restore();
+          } else if (turretShape.type === 'compound') {
+            for (const part of turretShape.parts) {
+              if (part.type === 'circle') {
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
+                activeBufferCtx.fill();
+              } else if (part.type === 'polygon') {
+                activeBufferCtx.save();
+                activeBufferCtx.scale(turretScale, turretScale);
+                drawPolygon(part.points as number[][]);
+                activeBufferCtx.restore();
+              }
+            }
           }
+          activeBufferCtx.restore();
         }
       }
-      activeBufferCtx.restore();
-      activeBufferCtx.restore();
 
       // Draw shield effect (blue ring if shield > 0)
       if (s.shield > 0) {
@@ -258,7 +275,7 @@ export class CanvasRenderer {
               const alphaBase = typeof shAnim.alphaBase === 'number' ? shAnim.alphaBase : (shAnim.alpha || 0.25);
               const alphaScale = typeof shAnim.alphaScale === 'number' ? shAnim.alphaScale : 0.75;
               const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
-              const R = (shAnim.r || ((s.radius || 12) * 1.2));
+              const R = (shAnim.r || 1.2) * (s.radius || 12);
               activeBufferCtx.save();
               activeBufferCtx.globalAlpha = alpha;
               activeBufferCtx.strokeStyle = shAnim.color || '#3ab6ff';

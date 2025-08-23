@@ -188,12 +188,12 @@ export class WebGLRenderer {
     // --- Ensure FBO is always resized to 1920x1080 × renderScale before any drawing ---
     if (!this.gl) return;
     const gl = this.gl as WebGLRenderingContext;
-    const LOGICAL_W = 1920, LOGICAL_H = 1080;
-    const renderScale = (RendererConfig && typeof (RendererConfig.renderScale) === 'number') ? RendererConfig.renderScale : 1;
-    const bufferW = Math.round(LOGICAL_W * renderScale);
-    const bufferH = Math.round(LOGICAL_H * renderScale);
-    // If FBO size changed, recreate FBO and texture
-    if (this.fboWidth !== bufferW || this.fboHeight !== bufferH) {
+  const LOGICAL_W = 1920, LOGICAL_H = 1080;
+  const renderScale = (RendererConfig && typeof (RendererConfig.renderScale) === 'number') ? RendererConfig.renderScale : 1;
+  const bufferW = Math.round(LOGICAL_W * renderScale);
+  const bufferH = Math.round(LOGICAL_H * renderScale);
+  // If FBO size changed, recreate FBO and texture
+  if (this.fboWidth !== bufferW || this.fboHeight !== bufferH) {
       // Delete old FBO/texture if present
       if (this.fboTexture) gl.deleteTexture(this.fboTexture);
       if (this.fbo) gl.deleteFramebuffer(this.fbo);
@@ -215,23 +215,23 @@ export class WebGLRenderer {
     }
     // --- Render simulation to offscreen framebuffer ---
     if (this.fbo && this.fboTexture) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-      gl.viewport(0, 0, this.fboWidth, this.fboHeight);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+  gl.viewport(0, 0, bufferW, bufferH);
+  gl.clear(gl.COLOR_BUFFER_BIT);
         // If we have a simple GL program, draw ships as round points with simple overlays
         if (this.prog && this.vertexBuffer) {
           try {
             // ...existing vertex packing and draw logic, but use fboWidth/fboHeight for logical size...
-            const w = this.fboWidth;
-            const h = this.fboHeight;
+            const w = bufferW;
+            const h = bufferH;
             const ships = state.ships || [];
             const verts: number[] = [];
             const now = (state && state.t) || 0;
             for (const s of ships) {
               const x = (s.x || 0);
               const y = (s.y || 0);
-              const clipX = (x / Math.max(1, w)) * 2 - 1;
-              const clipY = 1 - (y / Math.max(1, h)) * 2;
+              const clipX = (x / Math.max(1, LOGICAL_W)) * 2 - 1;
+              const clipY = 1 - (y / Math.max(1, LOGICAL_H)) * 2;
               const radius = s.radius || 6;
               const ps = Math.max(2, radius * 2);
               const teamObj = (s.team === 'blue') ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
@@ -264,8 +264,8 @@ export class WebGLRenderer {
                 for (let i = 0; i < s.trail.length; i++) {
                   const tx = s.trail[i].x || 0;
                   const ty = s.trail[i].y || 0;
-                  const tClipX = (tx / Math.max(1, w)) * 2 - 1;
-                  const tClipY = 1 - (ty / Math.max(1, h)) * 2;
+                  const tClipX = (tx / Math.max(1, LOGICAL_W)) * 2 - 1;
+                  const tClipY = 1 - (ty / Math.max(1, LOGICAL_H)) * 2;
                   const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
                   verts.push(tClipX, tClipY, Math.max(2, radius), 0.7, 0.7, 1.0, tAlpha);
                 }
@@ -318,8 +318,8 @@ export class WebGLRenderer {
           try {
             const bx = (b.x || 0);
             const by = (b.y || 0);
-            const clipX = (bx / Math.max(1, this.fboWidth)) * 2 - 1;
-            const clipY = 1 - (by / Math.max(1, this.fboHeight)) * 2;
+            const clipX = (bx / Math.max(1, LOGICAL_W)) * 2 - 1;
+            const clipY = 1 - (by / Math.max(1, LOGICAL_H)) * 2;
             const r = b.radius || b.bulletRadius || 1.5;
             const kind = b.kind || 'bullet';
             const assetKey = `bullet_${kind}`;
@@ -357,8 +357,8 @@ export class WebGLRenderer {
         for (const p of state.particles || []) {
           try {
             const px = (p.x || 0); const py = (p.y || 0);
-            const clipX = (px / Math.max(1, this.fboWidth)) * 2 - 1;
-            const clipY = 1 - (py / Math.max(1, this.fboHeight)) * 2;
+            const clipX = (px / Math.max(1, LOGICAL_W)) * 2 - 1;
+            const clipY = 1 - (py / Math.max(1, LOGICAL_H)) * 2;
             const size = (p.r || 2);
             const shapeKey = p.assetShape || (p.r > 0.5 ? 'particleMedium' : 'particleSmall');
             const tex = this.bakeShapeToTexture(shapeKey) || this.bakeShapeToTexture('particleSmall');
@@ -375,8 +375,8 @@ export class WebGLRenderer {
         for (const ex of state.explosions || []) {
           try {
             const exx = (ex.x || 0); const exy = (ex.y || 0);
-            const clipX = (exx / Math.max(1, this.fboWidth)) * 2 - 1;
-            const clipY = 1 - (exy / Math.max(1, this.fboHeight)) * 2;
+            const clipX = (exx / Math.max(1, LOGICAL_W)) * 2 - 1;
+            const clipY = 1 - (exy / Math.max(1, LOGICAL_H)) * 2;
             const tex = this.bakeShapeToTexture('explosionParticle') || null;
             const s = ex.scale || 1;
             if (tex && this.texProg) {

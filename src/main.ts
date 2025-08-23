@@ -43,8 +43,12 @@ export async function startApp(rootDocument: Document = document) {
 		const logicalW = LOGICAL_BOUNDS.W;
 		const logicalH = LOGICAL_BOUNDS.H;
 		if (canvas) {
-			canvas.width = Math.round(logicalW * renderScale / dpr);
-			canvas.height = Math.round(logicalH * renderScale / dpr);
+			const bufferW = Math.round(logicalW * renderScale / dpr);
+			const bufferH = Math.round(logicalH * renderScale / dpr);
+			canvas.width = bufferW;
+			canvas.height = bufferH;
+			canvas.style.width = bufferW + 'px';
+			canvas.style.height = bufferH + 'px';
 			const dimsEl = document.getElementById('rendererDims');
 			if (dimsEl) {
 				dimsEl.textContent = `${canvas.width} x ${canvas.height} px @ ${dpr}x`;
@@ -61,18 +65,26 @@ export async function startApp(rootDocument: Document = document) {
 	function fitCanvasToWindow() {
 		const winW = window.innerWidth;
 		const winH = window.innerHeight;
-		const logicalW = LOGICAL_BOUNDS.W;
-		const logicalH = LOGICAL_BOUNDS.H;
-		const fitScale = Math.min(winW / logicalW, winH / logicalH);
-		const visibleW = Math.round(logicalW * fitScale);
-		const visibleH = Math.round(logicalH * fitScale);
+		const bufferW = canvas ? canvas.width : LOGICAL_BOUNDS.W;
+		const bufferH = canvas ? canvas.height : LOGICAL_BOUNDS.H;
+		// Compute scale to fit buffer into window, preserving aspect ratio
+		const scale = Math.min(winW / bufferW, winH / bufferH);
+		const scaledW = bufferW * scale;
+		const scaledH = bufferH * scale;
+		const offsetX = Math.round((winW - scaledW) / 2);
+		const offsetY = Math.round((winH - scaledH) / 2);
 		if (canvas) {
-			canvas.style.width = `${visibleW}px`;
-			canvas.style.height = `${visibleH}px`;
+			// Set width/height to buffer size, but use transform for scaling
+			canvas.style.width = `${bufferW}px`;
+			canvas.style.height = `${bufferH}px`;
 			canvas.style.position = 'absolute';
-			canvas.style.left = '0px';
-			canvas.style.top = '0px';
+			canvas.style.left = `${offsetX}px`;
+			canvas.style.top = `${offsetY}px`;
+			canvas.style.transformOrigin = 'top left';
+			canvas.style.transform = `scale(${scale})`;
 		}
+		// Prevent scrollbars
+		document.body.style.overflow = 'hidden';
 	}
 	// Renderer scale slider and dynamic scaling wiring
 	const scaleSlider = rootDocument.getElementById('rendererScaleRange');
@@ -87,6 +99,7 @@ export async function startApp(rootDocument: Document = document) {
 				(RendererConfig as any).dynamicScaleEnabled = false;
 				if (dynamicCheckbox) (dynamicCheckbox as HTMLInputElement).checked = false;
 				updateCanvasBackingStore();
+				fitCanvasToWindow();
 			}
 		});
 		// Set initial value display

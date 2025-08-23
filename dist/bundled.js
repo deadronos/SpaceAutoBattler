@@ -62,7 +62,8 @@ var init_assetsConfig = __esm({
           parts: [
             { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
             { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] }
+            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+            { type: "circle", r: 0.5 }
           ],
           strokeWidth: 0.08,
           model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
@@ -70,29 +71,38 @@ var init_assetsConfig = __esm({
         corvette: {
           type: "compound",
           parts: [
-            { type: "polygon", points: [[1, 0], [0.2, 0.6], [-0.9, 0.5], [-1.1, 0], [-0.9, -0.5], [0.2, -0.6]] },
-            { type: "polygon", points: [[1.2, 0.18], [1, 0.1], [1, -0.1], [1.2, -0.18]] }
+            { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+            { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+            { type: "circle", r: 0.6 }
           ],
           strokeWidth: 0.08,
           model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
         },
         frigate: {
-          type: "polygon",
-          points: [[1.1, 0], [0.6, 0.55], [-0.2, 0.8], [-1.2, 0.45], [-1.2, -0.45], [-0.2, -0.8], [0.6, -0.55]],
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+            { type: "circle", r: 0.7 }
+          ],
           strokeWidth: 0.1,
           model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
         },
         destroyer: {
-          type: "polygon",
-          points: [[1.4, 0], [0.8, 0.5], [0.1, 0.7], [-0.6, 0.6], [-1.4, 0.4], [-1.4, -0.4], [-0.6, -0.6], [0.1, -0.7], [0.8, -0.5]],
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+            { type: "circle", r: 1 },
+            { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+          ],
           strokeWidth: 0.12,
           model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 }
         },
         carrier: {
           type: "compound",
           parts: [
-            { type: "polygon", points: [[1.1, 0], [0.6, 0.7], [-0.5, 0.9], [-1.4, 0.7], [-1.6, 0], [-1.4, -0.7], [-0.5, -0.9], [0.6, -0.7]] },
-            { type: "polygon", points: [[1.4, 0.25], [1.1, 0.15], [1.1, -0.15], [1.4, -0.25]] }
+            { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+            { type: "circle", r: 1.2 },
+            { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
           ],
           strokeWidth: 0.12,
           model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 }
@@ -198,7 +208,7 @@ var init_entitiesConfig = __esm({
         shieldRegen: 1,
         dmg: 3,
         damage: 3,
-        radius: 4,
+        radius: 12,
         cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
         accel: 600,
         turnRate: 6
@@ -210,7 +220,7 @@ var init_entitiesConfig = __esm({
         shieldRegen: 0.5,
         dmg: 5,
         damage: 5,
-        radius: 8,
+        radius: 20,
         accel: 200,
         turnRate: 3,
         cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]
@@ -222,7 +232,7 @@ var init_entitiesConfig = __esm({
         shieldRegen: 0.4,
         dmg: 8,
         damage: 8,
-        radius: 12,
+        radius: 24,
         cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
         accel: 120,
         turnRate: 2.2
@@ -234,7 +244,7 @@ var init_entitiesConfig = __esm({
         shieldRegen: 0.3,
         dmg: 12,
         damage: 12,
-        radius: 16,
+        radius: 40,
         cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
         accel: 80,
         turnRate: 1.6
@@ -246,7 +256,7 @@ var init_entitiesConfig = __esm({
         shieldRegen: 0.2,
         dmg: 2,
         damage: 2,
-        radius: 24,
+        radius: 40,
         cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
         accel: 40,
         turnRate: 0.8,
@@ -1301,9 +1311,9 @@ var CanvasRenderer = class {
         bufferCtx.save();
         bufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
         bufferCtx.strokeStyle = color;
-        bufferCtx.lineWidth = thickness;
+        bufferCtx.lineWidth = thickness * renderScale;
         bufferCtx.beginPath();
-        bufferCtx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
+        bufferCtx.arc(x * renderScale, y * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
         bufferCtx.stroke();
         bufferCtx.restore();
       } catch (e) {
@@ -1324,7 +1334,7 @@ var CanvasRenderer = class {
       if (!this.bufferCtx) return;
     }
     const activeBufferCtx = this.bufferCtx;
-    activeBufferCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
     activeBufferCtx.save();
     activeBufferCtx.fillStyle = AssetsConfig.palette.background || "#0b1220";
@@ -1435,20 +1445,27 @@ var CanvasRenderer = class {
       activeBufferCtx.save();
       activeBufferCtx.rotate(0);
       activeBufferCtx.fillStyle = AssetsConfig.palette.turret || "#94a3b8";
+      const turretScale = (s.radius || 12) * renderScale * 0.5;
       if (turretShape.type === "circle") {
         activeBufferCtx.beginPath();
-        activeBufferCtx.arc(0, 0, (turretShape.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+        activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
         activeBufferCtx.fill();
       } else if (turretShape.type === "polygon") {
+        activeBufferCtx.save();
+        activeBufferCtx.scale(turretScale, turretScale);
         drawPolygon(turretShape.points);
+        activeBufferCtx.restore();
       } else if (turretShape.type === "compound") {
         for (const part of turretShape.parts) {
           if (part.type === "circle") {
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
             activeBufferCtx.fill();
           } else if (part.type === "polygon") {
+            activeBufferCtx.save();
+            activeBufferCtx.scale(turretScale, turretScale);
             drawPolygon(part.points);
+            activeBufferCtx.restore();
           }
         }
       }
@@ -1464,7 +1481,7 @@ var CanvasRenderer = class {
               const alphaBase = typeof shAnim.alphaBase === "number" ? shAnim.alphaBase : shAnim.alpha || 0.25;
               const alphaScale = typeof shAnim.alphaScale === "number" ? shAnim.alphaScale : 0.75;
               const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
-              const R = shAnim.r || (s.radius || 12) * 1.2;
+              const R = (shAnim.r || 1.2) * (s.radius || 12);
               activeBufferCtx.save();
               activeBufferCtx.globalAlpha = alpha;
               activeBufferCtx.strokeStyle = shAnim.color || "#3ab6ff";
@@ -1659,8 +1676,8 @@ var CanvasRenderer = class {
       this.bufferCanvas.height,
       0,
       0,
-      this.bufferCanvas.width * fitScale,
-      this.bufferCanvas.height * fitScale
+      this.canvas.width,
+      this.canvas.height
     );
     ctx.restore();
   }
@@ -1708,6 +1725,13 @@ var WebGLRenderer = class {
   // map of shape keys to GL textures
   shapeTextures = {};
   shapeCanvasSize = 64;
+  // Public helpers to inspect the baked texture cache in tests or callers
+  hasCachedTexture(key) {
+    return !!this.shapeTextures[key];
+  }
+  getCachedTexture(key) {
+    return this.shapeTextures[key] || null;
+  }
   constructor(canvas) {
     this.canvas = canvas;
   }
@@ -1912,20 +1936,20 @@ var WebGLRenderer = class {
     }
     if (this.fbo && this.fboTexture) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-      gl.viewport(0, 0, this.fboWidth, this.fboHeight);
+      gl.viewport(0, 0, bufferW, bufferH);
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (this.prog && this.vertexBuffer) {
         try {
-          const w = this.fboWidth;
-          const h = this.fboHeight;
+          const w = bufferW;
+          const h = bufferH;
           const ships = state.ships || [];
           const verts = [];
           const now = state && state.t || 0;
           for (const s of ships) {
             const x = s.x || 0;
             const y = s.y || 0;
-            const clipX = x / Math.max(1, w) * 2 - 1;
-            const clipY = 1 - y / Math.max(1, h) * 2;
+            const clipX = x / Math.max(1, LOGICAL_W) * 2 - 1;
+            const clipY = 1 - y / Math.max(1, LOGICAL_H) * 2;
             const radius = s.radius || 6;
             const ps = Math.max(2, radius * 2);
             const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
@@ -1955,8 +1979,8 @@ var WebGLRenderer = class {
               for (let i = 0; i < s.trail.length; i++) {
                 const tx = s.trail[i].x || 0;
                 const ty = s.trail[i].y || 0;
-                const tClipX = tx / Math.max(1, w) * 2 - 1;
-                const tClipY = 1 - ty / Math.max(1, h) * 2;
+                const tClipX = tx / Math.max(1, LOGICAL_W) * 2 - 1;
+                const tClipY = 1 - ty / Math.max(1, LOGICAL_H) * 2;
                 const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
                 verts.push(tClipX, tClipY, Math.max(2, radius), 0.7, 0.7, 1, tAlpha);
               }
@@ -2005,8 +2029,8 @@ var WebGLRenderer = class {
           try {
             const bx = b.x || 0;
             const by = b.y || 0;
-            const clipX = bx / Math.max(1, this.fboWidth) * 2 - 1;
-            const clipY = 1 - by / Math.max(1, this.fboHeight) * 2;
+            const clipX = bx / Math.max(1, LOGICAL_W) * 2 - 1;
+            const clipY = 1 - by / Math.max(1, LOGICAL_H) * 2;
             const r = b.radius || b.bulletRadius || 1.5;
             const kind = b.kind || "bullet";
             const assetKey = `bullet_${kind}`;
@@ -2049,8 +2073,8 @@ var WebGLRenderer = class {
           try {
             const px = p.x || 0;
             const py = p.y || 0;
-            const clipX = px / Math.max(1, this.fboWidth) * 2 - 1;
-            const clipY = 1 - py / Math.max(1, this.fboHeight) * 2;
+            const clipX = px / Math.max(1, LOGICAL_W) * 2 - 1;
+            const clipY = 1 - py / Math.max(1, LOGICAL_H) * 2;
             const size = p.r || 2;
             const shapeKey = p.assetShape || (p.r > 0.5 ? "particleMedium" : "particleSmall");
             const tex = this.bakeShapeToTexture(shapeKey) || this.bakeShapeToTexture("particleSmall");
@@ -2069,8 +2093,8 @@ var WebGLRenderer = class {
           try {
             const exx = ex.x || 0;
             const exy = ex.y || 0;
-            const clipX = exx / Math.max(1, this.fboWidth) * 2 - 1;
-            const clipY = 1 - exy / Math.max(1, this.fboHeight) * 2;
+            const clipX = exx / Math.max(1, LOGICAL_W) * 2 - 1;
+            const clipY = 1 - exy / Math.max(1, LOGICAL_H) * 2;
             const tex = this.bakeShapeToTexture("explosionParticle") || null;
             const s = ex.scale || 1;
             if (tex && this.texProg) {
@@ -2258,24 +2282,18 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   const LOGICAL_BOUNDS = getDefaultBounds();
-  function fitCanvasToWindow() {
+  function updateCanvasBackingStore() {
     const dpr = window.devicePixelRatio || 1;
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
     const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
     const logicalW = LOGICAL_BOUNDS.W;
     const logicalH = LOGICAL_BOUNDS.H;
-    const fitScale = Math.min(winW / logicalW, winH / logicalH);
-    const visibleW = Math.round(logicalW * fitScale);
-    const visibleH = Math.round(logicalH * fitScale);
     if (canvas) {
-      canvas.width = Math.round(logicalW * renderScale / dpr);
-      canvas.height = Math.round(logicalH * renderScale / dpr);
-      canvas.style.width = `${visibleW}px`;
-      canvas.style.height = `${visibleH}px`;
-      canvas.style.position = "absolute";
-      canvas.style.left = "0px";
-      canvas.style.top = "0px";
+      const bufferW = Math.round(logicalW * renderScale / dpr);
+      const bufferH = Math.round(logicalH * renderScale / dpr);
+      canvas.width = bufferW;
+      canvas.height = bufferH;
+      canvas.style.width = bufferW + "px";
+      canvas.style.height = bufferH + "px";
       const dimsEl = document.getElementById("rendererDims");
       if (dimsEl) {
         dimsEl.textContent = `${canvas.width} x ${canvas.height} px @ ${dpr}x`;
@@ -2286,6 +2304,27 @@ async function startApp(rootDocument = document) {
     RendererConfig._offsetY = 0;
     const scaleVal = rootDocument.getElementById("rendererScaleValue");
     if (scaleVal) scaleVal.textContent = renderScale.toFixed(2);
+  }
+  function fitCanvasToWindow() {
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const bufferW = canvas ? canvas.width : LOGICAL_BOUNDS.W;
+    const bufferH = canvas ? canvas.height : LOGICAL_BOUNDS.H;
+    const scale = Math.min(winW / bufferW, winH / bufferH);
+    const scaledW = bufferW * scale;
+    const scaledH = bufferH * scale;
+    const offsetX = Math.round((winW - scaledW) / 2);
+    const offsetY = Math.round((winH - scaledH) / 2);
+    if (canvas) {
+      canvas.style.width = `${bufferW}px`;
+      canvas.style.height = `${bufferH}px`;
+      canvas.style.position = "absolute";
+      canvas.style.left = `${offsetX}px`;
+      canvas.style.top = `${offsetY}px`;
+      canvas.style.transformOrigin = "top left";
+      canvas.style.transform = `scale(${scale})`;
+    }
+    document.body.style.overflow = "hidden";
   }
   const scaleSlider = rootDocument.getElementById("rendererScaleRange");
   const dynamicCheckbox = rootDocument.getElementById("dynamicScaleCheckbox");
@@ -2298,11 +2337,13 @@ async function startApp(rootDocument = document) {
         RendererConfig.renderScale = val;
         RendererConfig.dynamicScaleEnabled = false;
         if (dynamicCheckbox) dynamicCheckbox.checked = false;
+        updateCanvasBackingStore();
         fitCanvasToWindow();
       }
     });
     const scaleVal = rootDocument.getElementById("rendererScaleValue");
     if (scaleVal) scaleVal.textContent = scaleSlider.value;
+    updateCanvasBackingStore();
     fitCanvasToWindow();
   }
   if (dynamicCheckbox) {

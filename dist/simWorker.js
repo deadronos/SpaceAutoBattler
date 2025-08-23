@@ -221,7 +221,8 @@ var AssetsConfig = {
       parts: [
         { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
         { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] }
+        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+        { type: "circle", r: 0.5 }
       ],
       strokeWidth: 0.08,
       model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
@@ -229,29 +230,38 @@ var AssetsConfig = {
     corvette: {
       type: "compound",
       parts: [
-        { type: "polygon", points: [[1, 0], [0.2, 0.6], [-0.9, 0.5], [-1.1, 0], [-0.9, -0.5], [0.2, -0.6]] },
-        { type: "polygon", points: [[1.2, 0.18], [1, 0.1], [1, -0.1], [1.2, -0.18]] }
+        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+        { type: "circle", r: 0.6 }
       ],
       strokeWidth: 0.08,
       model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
     },
     frigate: {
-      type: "polygon",
-      points: [[1.1, 0], [0.6, 0.55], [-0.2, 0.8], [-1.2, 0.45], [-1.2, -0.45], [-0.2, -0.8], [0.6, -0.55]],
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+        { type: "circle", r: 0.7 }
+      ],
       strokeWidth: 0.1,
       model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
     },
     destroyer: {
-      type: "polygon",
-      points: [[1.4, 0], [0.8, 0.5], [0.1, 0.7], [-0.6, 0.6], [-1.4, 0.4], [-1.4, -0.4], [-0.6, -0.6], [0.1, -0.7], [0.8, -0.5]],
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+        { type: "circle", r: 1 },
+        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+      ],
       strokeWidth: 0.12,
       model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 }
     },
     carrier: {
       type: "compound",
       parts: [
-        { type: "polygon", points: [[1.1, 0], [0.6, 0.7], [-0.5, 0.9], [-1.4, 0.7], [-1.6, 0], [-1.4, -0.7], [-0.5, -0.9], [0.6, -0.7]] },
-        { type: "polygon", points: [[1.4, 0.25], [1.1, 0.15], [1.1, -0.15], [1.4, -0.25]] }
+        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+        { type: "circle", r: 1.2 },
+        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
       ],
       strokeWidth: 0.12,
       model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 }
@@ -337,7 +347,7 @@ var ShipConfig = {
     shieldRegen: 1,
     dmg: 3,
     damage: 3,
-    radius: 4,
+    radius: 12,
     cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
     accel: 600,
     turnRate: 6
@@ -349,7 +359,7 @@ var ShipConfig = {
     shieldRegen: 0.5,
     dmg: 5,
     damage: 5,
-    radius: 8,
+    radius: 20,
     accel: 200,
     turnRate: 3,
     cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]
@@ -361,7 +371,7 @@ var ShipConfig = {
     shieldRegen: 0.4,
     dmg: 8,
     damage: 8,
-    radius: 12,
+    radius: 24,
     cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
     accel: 120,
     turnRate: 2.2
@@ -373,7 +383,7 @@ var ShipConfig = {
     shieldRegen: 0.3,
     dmg: 12,
     damage: 12,
-    radius: 16,
+    radius: 40,
     cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
     accel: 80,
     turnRate: 1.6
@@ -385,7 +395,7 @@ var ShipConfig = {
     shieldRegen: 0.2,
     dmg: 2,
     damage: 2,
-    radius: 24,
+    radius: 40,
     cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
     accel: 40,
     turnRate: 0.8,

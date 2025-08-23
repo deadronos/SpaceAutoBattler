@@ -13,6 +13,8 @@ type ShipLike = {
   accel?: number; radius?: number; turnRate?: number;
   damage?: number; dmg?: number;
   __ai?: any;
+  turrets?: any[];
+  angle?: number;
 };
 
 type State = { ships: ShipLike[]; bullets: any[] };
@@ -42,25 +44,87 @@ function aimWithSpread(from: ShipLike, to: ShipLike, spread = 0) {
 }
 
 function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
-  if (!Array.isArray(ship.cannons) || ship.cannons.length === 0) return;
-  for (const c of ship.cannons) {
-    if (typeof c.__cd !== 'number') c.__cd = 0;
-    c.__cd -= dt;
-    if (c.__cd > 0) continue;
-    const spread = typeof c.spread === 'number' ? c.spread : 0;
-    const dir = aimWithSpread(ship, target, spread);
-    const speed = typeof c.muzzleSpeed === 'number' ? c.muzzleSpeed : 240;
-    const dmg = (typeof c.damage === 'number') ? c.damage : (typeof ship.damage === 'number' ? ship.damage : (typeof ship.dmg === 'number' ? ship.dmg : 3));
-    const ttl = typeof c.bulletTTL === 'number' ? c.bulletTTL : 2.0;
-    const radius = typeof c.bulletRadius === 'number' ? c.bulletRadius : 1.5;
-    const vx = dir.x * speed; const vy = dir.y * speed;
-    const b = Object.assign(
-      createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || 'red', ship.id || null, dmg, ttl),
-      { radius }
-    );
-    state.bullets.push(b);
-    const rate = (typeof c.rate === 'number' && c.rate > 0) ? c.rate : 1;
-    c.__cd = 1 / rate;
+  // Legacy cannons (single target, all fire at once)
+  if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {
+    for (const c of ship.cannons) {
+      if (typeof c.__cd !== 'number') c.__cd = 0;
+      c.__cd -= dt;
+      if (c.__cd > 0) continue;
+      const spread = typeof c.spread === 'number' ? c.spread : 0;
+      const dir = aimWithSpread(ship, target, spread);
+      const speed = typeof c.muzzleSpeed === 'number' ? c.muzzleSpeed : 240;
+      const dmg = (typeof c.damage === 'number') ? c.damage : (typeof ship.damage === 'number' ? ship.damage : (typeof ship.dmg === 'number' ? ship.dmg : 3));
+      const ttl = typeof c.bulletTTL === 'number' ? c.bulletTTL : 2.0;
+      const radius = typeof c.bulletRadius === 'number' ? c.bulletRadius : 1.5;
+      const vx = dir.x * speed; const vy = dir.y * speed;
+      const b = Object.assign(
+        createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || 'red', ship.id || null, dmg, ttl),
+        { radius }
+      );
+      state.bullets.push(b);
+      const rate = (typeof c.rate === 'number' && c.rate > 0) ? c.rate : 1;
+      c.__cd = 1 / rate;
+    }
+  }
+  // Multi-turret support: each turret fires independently
+  if (Array.isArray(ship.turrets) && ship.turrets.length > 0) {
+    for (const [i, turret] of ship.turrets.entries()) {
+      if (!turret) continue;
+      if (typeof turret.__cd !== 'number') turret.__cd = 0;
+      turret.__cd -= dt;
+      if (turret.__cd > 0) continue;
+      // Target selection per turret
+      let turretTarget: ShipLike | null = null;
+      if (turret.targeting === 'nearest') {
+        const enemies = (state.ships || []).filter(sh => sh && sh.team !== ship.team);
+        let minDist = Infinity;
+        for (const enemy of enemies) {
+          const dx = (enemy.x || 0) - (ship.x || 0);
+          const dy = (enemy.y || 0) - (ship.y || 0);
+          const d2 = dx * dx + dy * dy;
+          if (d2 < minDist) { minDist = d2; turretTarget = enemy; }
+        }
+      } else if (turret.targeting === 'random') {
+        const enemies = (state.ships || []).filter(sh => sh && sh.team !== ship.team);
+        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+      } else if (turret.targeting === 'focus') {
+        // Use ship's main target if available
+        if (ship.__ai && ship.__ai.targetId != null) {
+          turretTarget = (state.ships || []).find(sh => sh && sh.id === ship.__ai.targetId) || null;
+        }
+      } else {
+        // Default: nearest
+        const enemies = (state.ships || []).filter(sh => sh && sh.team !== ship.team);
+        let minDist = Infinity;
+        for (const enemy of enemies) {
+          const dx = (enemy.x || 0) - (ship.x || 0);
+          const dy = (enemy.y || 0) - (ship.y || 0);
+          const d2 = dx * dx + dy * dy;
+          if (d2 < minDist) { minDist = d2; turretTarget = enemy; }
+        }
+      }
+      if (!turretTarget) continue;
+      // Fire from turret position (relative to ship center)
+      const spread = 0.05;
+      const dir = aimWithSpread(ship, turretTarget, spread);
+      const speed = 240;
+      const dmg = typeof turret.damage === 'number' ? turret.damage : (typeof ship.damage === 'number' ? ship.damage : 3);
+      const ttl = 2.0;
+      const radius = 2.0;
+      // Calculate turret world position
+      const angle = (ship.angle || 0);
+      const [tx, ty] = turret.position || [0, 0];
+      const turretX = (ship.x || 0) + Math.cos(angle) * tx * (ship.radius || 12) - Math.sin(angle) * ty * (ship.radius || 12);
+      const turretY = (ship.y || 0) + Math.sin(angle) * tx * (ship.radius || 12) + Math.cos(angle) * ty * (ship.radius || 12);
+      const vx = dir.x * speed;
+      const vy = dir.y * speed;
+      const b = Object.assign(
+        createBullet(turretX, turretY, vx, vy, ship.team || 'red', ship.id || null, dmg, ttl),
+        { radius }
+      );
+      state.bullets.push(b);
+      turret.__cd = typeof turret.cooldown === 'number' && turret.cooldown > 0 ? turret.cooldown : 1.0;
+    }
   }
 }
 
@@ -117,6 +181,7 @@ export function applySimpleAI(state: State, dt: number, bounds = { W: 800, H: 60
         const aim = aimWithSpread(s, target, 0.05);
         s.vx = (s.vx || 0) + aim.x * accel * dt;
         s.vy = (s.vy || 0) + aim.y * accel * dt;
+        // tryFire now handles both legacy cannons and multi-turret
         tryFire(state, s, target, dt);
       } else if (ai.state === 'evade') {
         steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);

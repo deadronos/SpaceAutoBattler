@@ -26,6 +26,10 @@ export type CompoundShape = {
 };
 
 export type Shape2D = PolygonShape | CircleShape | CompoundShape;
+export type TurretVisualConfig = {
+  kind: string;
+  position: [number, number]; // relative to ship center, in radius units
+};
 
 export type Model3D = {
   url?: string | undefined;
@@ -37,7 +41,7 @@ export type Model3D = {
 export type AssetsConfigType = {
   meta: { orientation: string; coordinateSystem: string };
   palette: Record<string, string>;
-  shapes2d: Record<string, Shape2D>;
+  shapes2d: Record<string, Shape2D & { turrets?: TurretVisualConfig[] }>;
   animations?: Record<string, any>;
   damageStates?: Record<string, { opacity?: number; accentColor?: string }>;
   visualStateDefaults?: Record<string, { engine?: string; shield?: string; damageParticles?: string }>;
@@ -65,7 +69,8 @@ export const AssetsConfig: AssetsConfigType = {
       parts: [
         { type: 'polygon', points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
         { type: 'polygon', points: [[0.0, 0.35], [-0.6, 0.65], [-0.35, 0.0]] },
-        { type: 'polygon', points: [[0.0, -0.35], [-0.35, 0.0], [-0.6, -0.65]] }
+        { type: 'polygon', points: [[0.0, -0.35], [-0.35, 0.0], [-0.6, -0.65]] },
+        { type: 'circle', r: 0.5 }
       ],
       strokeWidth: 0.08,
       model3d: { url: undefined, scale: 1, type: 'gltf', mesh: undefined }
@@ -73,32 +78,55 @@ export const AssetsConfig: AssetsConfigType = {
     corvette: {
       type: 'compound',
       parts: [
-        { type: 'polygon', points: [[1.0, 0], [0.2, 0.6], [-0.9, 0.5], [-1.1, 0], [-0.9, -0.5], [0.2, -0.6]] },
-        { type: 'polygon', points: [[1.2, 0.18], [1.0, 0.1], [1.0, -0.1], [1.2, -0.18]] }
+        { type: 'polygon', points: [[1.2, 0], [0.4, 0.7], [-1.0, 0.6], [-1.2, 0], [-1.0, -0.6], [0.4, -0.7]] },
+        { type: 'polygon', points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+        { type: 'circle', r: 0.6 }
       ],
       strokeWidth: 0.08,
       model3d: { url: undefined, scale: 1.4, type: 'gltf', mesh: undefined }
     },
     frigate: {
-      type: 'polygon',
-      points: [[1.1, 0], [0.6, 0.55], [-0.2, 0.8], [-1.2, 0.45], [-1.2, -0.45], [-0.2, -0.8], [0.6, -0.55]],
+      type: 'compound',
+      parts: [
+        { type: 'polygon', points: [[1.3, 0], [0.7, 0.65], [-0.3, 1.0], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1.0], [0.7, -0.65]] },
+        { type: 'circle', r: 0.7 }
+      ],
       strokeWidth: 0.1,
       model3d: { url: undefined, scale: 1.8, type: 'gltf', mesh: undefined }
     },
     destroyer: {
-      type: 'polygon',
-      points: [[1.4, 0], [0.8, 0.5], [0.1, 0.7], [-0.6, 0.6], [-1.4, 0.4], [-1.4, -0.4], [-0.6, -0.6], [0.1, -0.7], [0.8, -0.5]],
+      type: 'compound',
+      parts: [
+        { type: 'polygon', points: [[1.8, 0], [1.0, 0.7], [0.2, 1.0], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1.0], [1.0, -0.7]] },
+        { type: 'circle', r: 1.0 },
+        { type: 'polygon', points: [[2.0, 0.3], [1.8, 0.2], [1.8, -0.2], [2.0, -0.3]] }
+      ],
       strokeWidth: 0.12,
-      model3d: { url: undefined, scale: 2.2, type: 'gltf', mesh: undefined }
+      model3d: { url: undefined, scale: 2.2, type: 'gltf', mesh: undefined },
+      turrets: [
+        { kind: 'basic', position: [1.2, 0.8] },
+        { kind: 'basic', position: [-1.2, 0.8] },
+        { kind: 'basic', position: [1.2, -0.8] },
+        { kind: 'basic', position: [-1.2, -0.8] },
+        { kind: 'basic', position: [0, 1.5] },
+        { kind: 'basic', position: [0, -1.5] }
+      ]
     },
     carrier: {
       type: 'compound',
       parts: [
-        { type: 'polygon', points: [[1.1, 0], [0.6, 0.7], [-0.5, 0.9], [-1.4, 0.7], [-1.6, 0], [-1.4, -0.7], [-0.5, -0.9], [0.6, -0.7]] },
-        { type: 'polygon', points: [[1.4, 0.25], [1.1, 0.15], [1.1, -0.15], [1.4, -0.25]] }
+        { type: 'polygon', points: [[2.2, 0], [1.2, 1.2], [-1.0, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1.0, -1.6], [1.2, -1.2]] },
+        { type: 'circle', r: 1.2 },
+        { type: 'polygon', points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
       ],
       strokeWidth: 0.12,
-      model3d: { url: undefined, scale: 3.0, type: 'gltf', mesh: undefined }
+      model3d: { url: undefined, scale: 3.0, type: 'gltf', mesh: undefined },
+      turrets: [
+        { kind: 'basic', position: [2.0, 1.2] },
+        { kind: 'basic', position: [-2.0, 1.2] },
+        { kind: 'basic', position: [2.0, -1.2] },
+        { kind: 'basic', position: [-2.0, -1.2] }
+      ]
     },
     bulletSmall: { type: 'circle', r: 0.18 },
     bulletMedium: { type: 'circle', r: 0.25 },
