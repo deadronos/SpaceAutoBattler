@@ -1,4 +1,10 @@
 // simWorker.js - simulation worker (ES module). Expects to be loaded with Worker({ type: 'module' })
+// src/simWorker.js - simulation worker implementation (compiled to JS and loaded as module Worker)
+/**
+ * @typedef {import('./types').ShipSpec} ShipSpec
+ * @typedef {import('./types').Bounds} Bounds
+ */
+
 import { simulateStep } from './simulate.js';
 import { applySimpleAI } from './behavior.js';
 import { srand, srandom } from './rng.js';

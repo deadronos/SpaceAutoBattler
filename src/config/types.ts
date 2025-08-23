@@ -1,5 +1,10 @@
 // Shared configuration types for SpaceAutoBattler
 export interface CannonSpec {
+  // common cannon fields used by simulation and progression
+  damage?: number;
+  ttl?: number;
+  reload?: number;
+  range?: number;
   [k: string]: any;
 }
 
@@ -8,6 +13,8 @@ export interface ShipSpec {
   accel: number;
   cannons: CannonSpec[];
   maxShield?: number;
+  shieldRegen?: number;
+  turnRate?: number;
   radius?: number;
   [k: string]: any;
 }

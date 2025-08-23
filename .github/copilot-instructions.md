@@ -34,10 +34,58 @@ Project summary
 Tech stack & runtime
 --------------------
 - Browser-side game: Vanilla ES modules with TypeScript source files (see `src/*.ts`) that compile to JS for the browser. Both a Canvas 2D renderer and a WebGL renderer are supported (see `src/canvasrenderer.ts` and `src/webglrenderer.ts`).
+- The codebase is actively ported to TypeScript. Prefer editing `.ts` sources located under `src/` and let build scripts emit JS as needed. Keep public contracts stable and update tests when types change.
 - Node.js used for dev tooling (build helpers) and tests.
 - Testing: Vitest for unit tests (run with npm script `test`), and Playwright for end-to-end / visual browser tests (tests live under `test/playwright/`).
 - Bundling/inlining: `scripts/build-standalone.mjs` (esbuild JS API) produces an inlined standalone HTML into `./dist/` and (optionally) overwrites the repo-root standalone file.
 - Seeded RNG for deterministic simulation: `src/rng.ts` / `src/rng.js` (srand, unseed, srandom, srange, srangeInt). The simulation must use the seeded RNG; the renderer may use `Math.random()` for purely cosmetic (non-deterministic) effects.
+
+Types — single source of truth
+------------------------------
+- Import types from `src/types/index.ts` only. This barrel file re-exports types from config modules and other domains so consumers have a single, stable import path.
+- Example:
+	- `import type { TeamsConfig, ShipSpec } from '../types';`
+- When adding or renaming types in config modules, update the re-exports in `src/types/index.ts` so dependents don’t import deep paths directly.
+- Prefer `import type { X } from '...'` to avoid runtime circulars and keep the bundle lean.
+
+Configuration modules — balance & visuals
+-----------------------------------------
+All gameplay balance and most visuals are controlled through config modules under `src/config/`. Prefer changing these files over hardcoding constants in logic or renderers.
+
+- `src/config/assets/assetsConfig.ts`
+	- Palette: `palette.background` (scene clear color), `shipHull`, `shipAccent`, `bullet`, `turret`.
+	- Shapes: `shapes2d` definitions for ships, bullets, turrets.
+	- Animations: `animations.engineFlare` (points, `pulseRate`, `alpha`, `offset`), `animations.shieldEffect` (`r`, `color`, `pulseRate`, `strokeWidth`, `alphaBase`, `alphaScale`), `animations.damageParticles`.
+	- Damage mapping: `damageStates` and `damageThresholds` (e.g., `{ moderate: 0.66, heavy: 0.33 }`).
+	- Visual defaults: `visualStateDefaults` per ship type (`engine`, `shield`, `damageParticles`).
+	- Helper: `getVisualConfig(type)` returns shape, palette, animations, and damage states — use this instead of deep-reading config internals.
+
+- `src/config/rendererConfig.ts`
+	- Renderer choice: `preferred`, `allowUrlOverride`, `allowWebGL`.
+	- HP bar styling: `hpBar` with `{ bg, fill, w, h, dx, dy }` consumed by the Canvas renderer.
+
+- `src/config/gamemanagerConfig.ts`
+	- Hit particles: `SHIELD` and `HEALTH` TTL/count/color/size.
+	- Explosions: `EXPLOSION` with `particleCount`, `particleTTL`, `particleColor`, `particleSize`, `minSpeed`, `maxSpeed`.
+	- Starfield: `STARS` with `twinkle`, `redrawInterval`, plus `background` and `count`.
+
+- `src/config/progressionConfig.ts`
+	- XP rewards/curve and per-level scalars (HP/damage/shield/etc.). Keep tests up to date if you change these.
+
+- `src/config/teamsConfig.ts`
+	- Team colors and reinforcement preferences. Deterministic selection helpers live here.
+
+- `src/config/entitiesConfig.ts`
+	- Ship mapping and helpers (e.g., `getDefaultShipType`, `bulletKindForRadius`).
+
+Renderer behavior driven by config
+----------------------------------
+- Background clear color comes from `AssetsConfig.palette.background` (Canvas/WebGL).
+- Damage tint thresholds come from `AssetsConfig.damageThresholds`; tint colors/opacity from `damageStates`.
+- Shield effect uses animation config (`r`, `strokeWidth`, `alphaBase`, `alphaScale`, `pulseRate`).
+- Engine flare uses `animations.engineFlare.alpha` and `offset` with `pulseRate`.
+- Canvas HP bar reads `RendererConfig.hpBar`.
+- GameManager uses `EXPLOSION`, `SHIELD`, and `HEALTH` for particle bursts and `STARS` for the starfield background and count.
 
 Key areas and where to make related changes
 ------------------------------------------
@@ -109,6 +157,13 @@ node ./scripts/build-standalone.mjs
 	that exercises the behavior at two different values so regressions are
 	detectable.
 
+Config changes — quick validation
+---------------------------------
+- When changing any `src/config/*` values (balance or visuals), run:
+	- `npm run validate-config` to validate config shapes and invariants.
+	- `npm test` to ensure deterministic/unit tests remain green.
+	- Optionally `npm run build-standalone` and a Playwright smoke to visually sanity-check dist.
+
 Build & dev workflow
 --------------------
 - Install dev deps: `npm install` (devDependencies include `vitest`,
@@ -132,6 +187,8 @@ npm run build-standalone:watch
 
 ```powershell
 npm run serve
+# this serves / open http://localhost:8080/dist/space_themed_autobattler_canvas_red_vs_blue.html  in that case
+npm run serve:dist
 # then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html
 ```
 

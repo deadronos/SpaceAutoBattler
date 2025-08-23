@@ -1,4 +1,7 @@
 // simulate.js - deterministic fixed-step simulation logic
+/**
+ * @typedef {import('./types').ProgressionConfig} ProgressionConfig
+ */
 import { srange, srand } from './rng.js';
 import { progression as progressionCfg } from './config/progressionConfig';
 

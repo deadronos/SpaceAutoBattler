@@ -1,4 +1,9 @@
 // canvasrenderer.js - simple Canvas2D fallback renderer
+/**
+ * @typedef {import('./types').AssetsConfig} AssetsConfig
+ * @typedef {import('./types').TeamsConfig} TeamsConfig
+ * @typedef {import('./types').ShipSpec} ShipSpec
+ */
 import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig';
 import { VisualMappingConfig, bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';

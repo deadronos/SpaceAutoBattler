@@ -1,4 +1,8 @@
 // entities.js - catalog of ships, bullets, cannon configs and simple factories
+/**
+ * @typedef {import('./types').ShipSpec} ShipSpec
+ * @typedef {import('./types').ShipConfigMap} ShipConfigMap
+ */
 import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 import { validateConfigOrThrow } from './config/validateConfig';
 

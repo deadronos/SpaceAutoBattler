@@ -1,4 +1,9 @@
 // webglrenderer.js - minimal WebGL2 renderer stub
+/**
+ * @typedef {import('./types').ShipSpec} ShipSpec
+ * @typedef {import('./types').AssetsConfig} AssetsConfig
+ * @typedef {import('./types').TeamsConfig} TeamsConfig
+ */
 export class WebGLRenderer {
   constructor(canvas) {
     this.canvas = canvas;

@@ -2,6 +2,11 @@
 import { createGameManager } from './gamemanager.js';
 import { CanvasRenderer } from './canvasrenderer.js';
 import { WebGLRenderer } from './webglrenderer.js';
+// JSDoc typedefs for editor/type-checking only
+/**
+ * @typedef {import('./types').RendererConfig} RendererConfig
+ * @typedef {import('./types').DisplayConfig} DisplayConfig
+ */
 import { getDefaultBounds } from './config/displayConfig';
 import { getPreferredRenderer, RendererConfig } from './config/rendererConfig';
 

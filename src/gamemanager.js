@@ -1,4 +1,8 @@
 // gamemanager.js - orchestrates simulateStep, simple behavior, and exposes API
+/**
+ * @typedef {import('./types').TeamsConfig} TeamsConfig
+ * @typedef {import('./types').ShipSpec} ShipSpec
+ */
 import { makeInitialState, createShip, createBullet } from './entities.js';
 import { simulateStep, SIM_DT_MS } from './simulate.js';
 import { srand, srange, srandom } from './rng.js';
