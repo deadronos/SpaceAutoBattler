@@ -27,18 +27,18 @@ Project summary
 	- Ships with HP and regenerating shields.
 	- Bullets with owner attribution (ownerId) for XP/kill crediting.
 	- XP and level progression: ships earn XP for damage and kills and gain
-		stat increases per level (HP, damage, shields) via `src/progressionConfig.js`.
+		stat increases per level (HP, damage, shields) via `src/progressionConfig.ts`.
 	- Visual-only effects emitted by simulateStep: `explosions`, `shieldHits`,
 		`healthHits` arrays in the `state` object.
 
 Tech stack & runtime
 --------------------
-- Browser-side game: Vanilla ES modules with TypeScript source files (see `src/*.ts`) that compile to JS for the browser. Both a Canvas 2D renderer and a WebGL renderer are supported (see `src/canvasrenderer.ts` and `src/webglrenderer.ts`).
-- The codebase is actively ported to TypeScript. Prefer editing `.ts` sources located under `src/` and let build scripts emit JS as needed. Keep public contracts stable and update tests when types change.
-- Node.js used for dev tooling (build helpers) and tests.
-- Testing: Vitest for unit tests (run with npm script `test`), and Playwright for end-to-end / visual browser tests (tests live under `test/playwright/`).
-- Bundling/inlining: `scripts/build-standalone.mjs` (esbuild JS API) produces an inlined standalone HTML into `./dist/` and (optionally) overwrites the repo-root standalone file.
-- Seeded RNG for deterministic simulation: `src/rng.ts` / `src/rng.js` (srand, unseed, srandom, srange, srangeInt). The simulation must use the seeded RNG; the renderer may use `Math.random()` for purely cosmetic (non-deterministic) effects.
+- Browser-side game: TypeScript + ES modules (see `src/*.ts`) that compile to JS for the browser. Both a Canvas 2D renderer and a WebGL renderer are supported (see `src/canvasrenderer.ts` and `src/webglrenderer.ts`).
+- The codebase is primarily authored in TypeScript. Edit `.ts` sources under `src/` — the JS runtime (`src/*.js`) is considered build output and will be (re)generated from TypeScript during the build.
+- Node.js is used for dev tooling (build helpers) and tests.
+- Testing: Vitest for unit tests (run with `npm test`), and Playwright for end-to-end / visual browser tests (tests live under `test/playwright/`).
+- Bundling/inlining: `scripts/build-standalone.mjs` (esbuild) produces an inlined standalone HTML into `./dist/`. The build now includes a step to transpile authoritative TS runtime sources (for example `src/gamemanager.ts`) into their JS runtime equivalents before bundling.
+	- Seeded RNG for deterministic simulation: `src/rng.ts` (srand, unseed, srandom, srange, srangeInt). The simulation must use the seeded RNG; the renderer may use `Math.random()` for purely cosmetic (non-deterministic) effects. The runtime JS (`src/*.js`) will be generated from the TypeScript sources during the build.
 
 Types — single source of truth
 ------------------------------
@@ -128,20 +128,23 @@ don't break unexpectedly.
 
 	- The simulation must be deterministic when seeded. Tests rely on calling
 		`srand(seed)` before running simulation steps. Use functions exported from
-		`src/rng.js` for any randomness in game logic. The renderer may use
+		`src/rng.ts` for any randomness in game logic. The renderer may use
 		non-deterministic randomness (Math.random) for cosmetic variety only.
 
 Coding & contribution rules (human + automated)
 ---------------------------------------------
-- Keep changes minimal: modify the smallest number of files necessary.
-- Tests first: For any gameplay change (shields, XP, bullets), add unit
-	tests under `test/` that seed the RNG and assert deterministic outcomes.
-- Preserve public APIs: `simulateStep`, Ship/Bullet property names, and the
-	event shapes in the `state` object must be kept stable or updated together
-	with tests and changelog.
-- No runtime dependencies: Avoid adding browser runtime dependencies. Dev
-	dependencies (Vitest, esbuild, http-server) are acceptable.
+- Prefer small, targeted edits: change the minimal files needed to implement a behavior change.
+- Source of truth: The TypeScript sources under `src/*.ts` are authoritative. For runtime behavioral changes (for example the GameManager), edit the `.ts` file and run the build to regenerate the JS runtime. This avoids dual maintenance of JS and TS implementations.
+- Tests first: For any gameplay change (shields, XP, bullets), add unit tests under `test/` that seed the RNG and assert deterministic outcomes. Include a happy path and 1–2 edge cases for changes that affect build-time behavior (e.g., configuration-driven sampling).
+- Preserve public APIs: `simulateStep`, Ship/Bullet property names, and the event shapes in the `state` object must be kept stable or updated together with tests and changelog.
+- No runtime dependencies: Avoid adding browser runtime dependencies. Dev dependencies (Vitest, esbuild, http-server) are acceptable.
 - Respect the repo style: 2-space indentation, semicolons, const/let usage.
+
+GameManager & spawn behavior (important)
+----------------------------------------
+- The GameManager implementation is authored in `src/gamemanager.ts` (authoritative). The build process transpiles TypeScript runtime sources into their `.js` equivalents prior to bundling so runtime JS is generated from the TypeScript source.
+- When adding or changing behavior used by UI (for example `spawnShip()` or `formFleets()`), update `src/gamemanager.ts`. The UI calls into the manager API (for example `gm.spawnShip()` and `gm.formFleets()`), so keeping the TS source authoritative prevents desyncs between dev-time JS and TS implementations.
+- spawnShip semantics: calling `spawnShip(team)` without an explicit ship type will sample types according to `TeamsConfig.defaultFleet.counts` when present. If counts are absent or empty the manager falls back to `getDefaultShipType()` for deterministic tests.
 
 Testing and quality gates
 -------------------------
@@ -153,7 +156,7 @@ npm test
 node ./scripts/build-standalone.mjs
 ```
 
-- If you add a new constant to `src/progressionConfig.js`, include a unit test
+- If you add a new constant to `src/progressionConfig.ts`, include a unit test
 	that exercises the behavior at two different values so regressions are
 	detectable.
 
@@ -166,16 +169,16 @@ Config changes — quick validation
 
 Build & dev workflow
 --------------------
-- Install dev deps: `npm install` (devDependencies include `vitest`,
-	`esbuild`, `http-server`). If `npm install` fails on esbuild, ensure you
-	have a compatible Node toolchain and try reinstalling.
+- Install dev deps: `npm install` (devDependencies include `vitest`, `esbuild`, `http-server`). If `npm install` fails on esbuild, ensure you have a compatible Node toolchain and try reinstalling.
+
 - One-off build (creates `./dist/` and inlines a standalone HTML):
 
 ```powershell
 npm run build
-then
 npm run build-standalone
 ```
+
+- Note: The build includes a step that transpiles authoritative TS runtime files (for example `src/gamemanager.ts`) into JS runtime files in `src/` before bundling. Edit `.ts` sources and run the build to regenerate the runtime JS.
 
 - Watch mode (rebuilds on changes):
 
@@ -187,7 +190,7 @@ npm run build-standalone:watch
 
 ```powershell
 npm run serve
-# this serves / open http://localhost:8080/dist/space_themed_autobattler_canvas_red_vs_blue.html  in that case
+# then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html
 npm run serve:dist
 # then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html
 ```
@@ -205,7 +208,7 @@ High-level rules:
 - State a short intent line before making non-trivial edits (what file and why).
 - Prefer small, surgical changes. Avoid wide refactors unless coordinated in
   a design doc and accompanied by tests.
-- Preserve determinism: use the seeded RNG (`src/rng.ts` / `src/rng.js`) for
+-- Preserve determinism: use the seeded RNG (`src/rng.ts`) for
   simulation logic and update tests when behavior changes.
 - Add unit tests for behavioral changes (happy path + 1–2 edge cases) and run
   the test suite locally before committing.
@@ -218,25 +221,25 @@ and include a one-line description of the change.
 
 Appendix: Useful snippets & patterns
 -----------------------------------
-- Seed RNG in tests to make simulations deterministic:
+	- Seed RNG in tests to make simulations deterministic:
 
-```js
-import { srand } from '../src/rng.js';
+```ts
+import { srand } from '../src/rng.ts';
 srand(12345);
 ```
 
 - Minimal simulateStep test pattern (Vitest):
 
-```js
+```ts
 import { test, expect } from 'vitest';
-import { srand } from '../src/rng.js';
-import { simulateStep } from '../src/simulate.js';
+import { srand } from '../src/rng.ts';
+import { simulateStep } from '../src/simulate.ts';
 
 test('simulateStep emits shieldHits on shield absorption', () => {
-	srand(1);
-	const state = { ships: /* small fleet */, bullets: [], explosions: [], shieldHits: [], healthHits: [] };
-	simulateStep(state, 0.016, { W: 800, H: 600 });
-	expect(state.shieldHits.length).toBeGreaterThanOrEqual(0);
+  srand(1);
+  const state = { ships: /* small fleet */, bullets: [], explosions: [], shieldHits: [], healthHits: [] };
+  simulateStep(state, 0.016, { W: 800, H: 600 });
+  expect(state.shieldHits.length).toBeGreaterThanOrEqual(0);
 });
 ```
 
@@ -244,7 +247,7 @@ Maintainers
 -----------
 - Repo owner: deadronos
 - Primary branch: `main`
-- Current working branch (example): `shields-and-xp/level-progression`
+- Current working branch (example): `webgl`
 
 If you are an automated agent performing large work, open a draft PR and link
 this file in the PR description so reviewers can validate the agent's
@@ -256,3 +259,4 @@ If anything in these instructions is unclear, open an issue titled
 "clarify: copilot instructions" with a one-paragraph request and a code
 example if relevant.
 
+update/overwrite /spec/IMPLEMENTATION_STATUS.md with recent completed goals and and shortterm and longterm goals or current state of the project

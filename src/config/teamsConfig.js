@@ -172,7 +172,7 @@ export default TeamsConfig;
 // Helper: call chooseReinforcements using a manager-derived seed (from global RNG)
 // This is convenient for callers (like gamemanager) that want to keep
 // reinforcements deterministic relative to the global `srand`/`srandom` state.
-import { srandom } from '../rng.js';
+import { srandom } from '../rng';
 export function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
   const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
   return chooseReinforcements(seed, state, options);

@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 
 test('getLastReinforcement returns diagnostic after reinforcement trigger', async () => {
-  const gmMod = await import('../../src/gamemanager.js');
+  const gmMod = await import('../../src/gamemanager');
   // reset state and set small interval
   gmMod.reset && gmMod.reset(12345);
   gmMod.setReinforcementInterval && gmMod.setReinforcementInterval(0.01);

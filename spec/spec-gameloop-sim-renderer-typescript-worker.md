@@ -201,7 +201,7 @@ Migration steps (minimal, reversible)
 2. Update build to bundle TS entrypoints and emit JS bundles (plus a `.ts`-named copy as requested by consumers).
 3. Keep `simulateStep` unchanged; run the same tests after wiring to confirm determinism.
 4. Incrementally port internal modules to TypeScript with `allowJs` until fully migrated, then disable `allowJs`.
-5. Add `transferOptimized` feature flag behind runtime opt-in and tests.
+5. Use `spec/entitiesConfig.js` ship types (fighter, corvette, frigate, destroyer, carrier) as canonical data shapes for tests. During the TS migration, prefer adding `.d.ts` typings where necessary and then port the canonical configs to `src/config/entitiesConfig.ts`.
 
 Files to create/modify
 ----------------------

@@ -1,38 +1,34 @@
 // src/rng.ts - Seeded RNG utilities (ported from rng.js)
-let _state: number | null = null;
+let _seed = 1;
 
-export function srand(seed?: number) {
-  // Mirror original behavior: accept 32-bit seed and coerce to non-zero; if undefined -> leave null
-  if (typeof seed === 'number') {
-    _state = (seed >>> 0) || 1;
-  } else {
-    _state = null;
-  }
+export function srand(seed: number = 1) {
+  // store as 32-bit unsigned
+  _seed = seed >>> 0;
 }
 
-function _next(): number {
-  // xorshift/LCG style used in original; keep same constants
-  if (_state === null) _state = 1;
-  // Math.imul for 32-bit multiply, then add, then >>> 0 to ensure uint32
-  _state = (Math.imul(1664525, _state) + 1013904223) >>> 0;
-  return _state;
+// mulberry32 PRNG
+function mulberry32(a: number) {
+  return function() {
+    let t = (a += 0x6D2B79F5) >>> 0;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 export function srandom(): number {
-  if (_state === null) return Math.random();
-  // produce [0,1)
-  const v = _next();
-  // Use 2^32 to ensure the result is in [0,1), not [0,1].
-  // Dividing by 4294967295 could yield 1 when v == 0xffffffff, which breaks exclusive upper-bounds.
-  return v / 4294967296; // 2**32
+  const f = mulberry32(_seed);
+  // advance seed deterministically
+  _seed = (_seed + 0x9E3779B1) >>> 0;
+  return f();
 }
 
 export function srange(min: number, max: number): number {
-  return min + srandom() * (max - min);
+  return min + (max - min) * srandom();
 }
 
 export function srangeInt(min: number, max: number): number {
-  // inclusive min, exclusive max to match common patterns
+  // exclusive upper bound to match expectations
   return Math.floor(srange(min, max));
 }
 

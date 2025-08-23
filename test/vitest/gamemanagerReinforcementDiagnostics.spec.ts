@@ -1,11 +1,11 @@
 import { test, expect } from 'vitest';
 
 test('getLastReinforcement includes continuousOptions snapshot', async () => {
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: () => { throw new Error('no worker'); } });
 
   // deterministic RNG
-  const { srand } = await import('../../src/rng.js');
+  const { srand } = await import('../../src/rng');
   srand(555);
 
   // set continuous behavior options and enable

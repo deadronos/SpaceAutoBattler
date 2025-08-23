@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 
 test('reinforcements respect configured interval (not every step)', async () => {
-  const gmMod = await import('../../src/gamemanager.js');
+  const gmMod = await import('../../src/gamemanager');
   // reset global/module state
   if (typeof gmMod.reset === 'function') gmMod.reset(12345);
 

@@ -24,7 +24,7 @@ test('createGameManager hooks worker ready and forwards init/start', async () =>
   // Now call createGameManager with our shimmed factory so it will use the
   // shim and post messages to our `posts` array. Import the manager and call
   // it with the injected factory.
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: shim.createSimWorker });
 
   // At this point the shim should have received init and start posts

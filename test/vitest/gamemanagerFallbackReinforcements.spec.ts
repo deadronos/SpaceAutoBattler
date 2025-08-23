@@ -1,14 +1,14 @@
 import { test, expect } from 'vitest';
 
 test('main-thread fallback emits reinforcements when continuous and team under threshold', async () => {
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: () => { throw new Error('no worker'); } });
 
   let captured: any = null;
   gm.on('reinforcements', (m: any) => { captured = m; });
 
   // ensure deterministic RNG for test
-  const { srand } = await import('../../src/rng.js');
+  const { srand } = await import('../../src/rng');
   srand(42);
 
   // set continuous mode and short interval
@@ -26,7 +26,7 @@ test('main-thread fallback emits reinforcements when continuous and team under t
   expect(Array.isArray(captured.spawned)).toBe(true);
   expect(captured.spawned.length).toBeGreaterThanOrEqual(1);
   // spawned types should be valid according to ship config
-  const { getShipConfig } = await import('../../src/config/entitiesConfig.js');
+  const { getShipConfig } = await import('../../src/config/entitiesConfig');
   const validTypes = Object.keys(getShipConfig());
   for (const s of captured.spawned) {
     expect(validTypes.includes(s.type)).toBe(true);

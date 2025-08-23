@@ -7,7 +7,7 @@ import { TeamsConfig } from './config/teamsConfig';
 import type { AssetsConfig as AssetsConfigType, TeamsConfig as TeamsConfigType, ShipSpec } from './types';
 import { VisualMappingConfig, bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';
 import { RendererConfig } from './config/rendererConfig';
-import { shieldFlashIndex, healthFlashIndex } from './gamemanager';
+import { shieldFlashIndex, healthFlashIndex, FLASH_TTL_DEFAULT } from './gamemanager';
 
 export type AnyState = any;
 
@@ -289,6 +289,45 @@ export class CanvasRenderer {
         } catch (e) {}
       }
     }
+
+    // helper: draw a stroked ring (used for explosions / flashes)
+    function drawRing(x: number, y: number, R: number, color: string, alpha = 1.0, thickness = 2) {
+      try {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } catch (e) { /* ignore draw errors */ }
+    }
+
+    // Health hits: render freshest per-ship health flash using index (reddish rings)
+    try {
+      const nowT = (state && state.t) || 0;
+      for (const s of state.ships || []) {
+        try {
+          let flash: any = null;
+          const arr = healthFlashIndex.get(s.id) || [];
+          let bestTs = -Infinity;
+          for (const f of arr) {
+            if (!f) continue;
+            const fTs = (typeof f._ts === 'number') ? f._ts : 0;
+            const fTtl = (typeof f.ttl === 'number') ? f.ttl : FLASH_TTL_DEFAULT;
+            if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) { bestTs = fTs; flash = f; }
+          }
+          if (flash) {
+            const ttl = flash.ttl || FLASH_TTL_DEFAULT; const life = flash.life != null ? flash.life : ttl;
+            const t = Math.max(0, Math.min(1, life / ttl));
+            const R = 6 + (1 - t) * 18;
+            const alpha = 0.9 * t;
+            drawRing(flash.x || (s.x || 0), flash.y || (s.y || 0), R, '#ff7766', alpha, 2);
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
 
     // bullets
   for (const b of state.bullets || []) {

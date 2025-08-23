@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { validateAssetsConfig, validateRendererConfig } from '../../src/config/validateConfig.js';
-import AssetsConfig from '../../src/config/assets/assetsConfig.js';
-import RendererConfig from '../../src/config/rendererConfig.js';
+import { validateAssetsConfig, validateRendererConfig } from '../../src/config/validateConfig';
+import AssetsConfig from '../../src/config/assets/assetsConfig';
+import RendererConfig from '../../src/config/rendererConfig';
 
 describe('assets and renderer config validation', () => {
   it('assets config passes basic validation', () => {

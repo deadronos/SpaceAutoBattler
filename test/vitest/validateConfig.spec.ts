@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateShipConfig, validateConfigOrThrow, validateTeamsConfig, validateProgressionConfig } from '../../src/config/validateConfig.js';
+import { validateShipConfig, validateConfigOrThrow, validateTeamsConfig, validateProgressionConfig } from '../../src/config/validateConfig';
 
 describe('validateConfig helpers', () => {
   it('validateShipConfig accepts a minimal valid config', () => {

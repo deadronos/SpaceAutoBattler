@@ -28,8 +28,15 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 	for (const s of state.ships || []) {
 		s.x += (s.vx || 0) * dtSeconds;
 		s.y += (s.vy || 0) * dtSeconds;
-		if (s.x < 0) s.x += bounds.W; if (s.x > bounds.W) s.x -= bounds.W;
-		if (s.y < 0) s.y += bounds.H; if (s.y > bounds.H) s.y -= bounds.H;
+		// normalize into [0, bounds.W) and [0, bounds.H) using modulo so large
+		// displacements that wrap multiple times are handled correctly.
+		if (typeof bounds.W === 'number' && bounds.W > 0) {
+			// ((x % W) + W) % W ensures positive results for negative x
+			s.x = ((s.x % bounds.W) + bounds.W) % bounds.W;
+		}
+		if (typeof bounds.H === 'number' && bounds.H > 0) {
+			s.y = ((s.y % bounds.H) + bounds.H) % bounds.H;
+		}
 	}
 
 	// Bullet collisions

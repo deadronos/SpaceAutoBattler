@@ -1,12 +1,28 @@
 // teamsConfig.ts - Teams and fleet helpers (typed)
-import { getDefaultShipType } from './entitiesConfig';
+import { getDefaultShipType, getShipConfig } from './entitiesConfig';
 export type Team = { id: string; color: string; label?: string };
 export const TeamsConfig = {
   teams: {
     red: { id: 'red', color: '#ff4d4d', label: 'Red' },
     blue: { id: 'blue', color: '#4da6ff', label: 'Blue' }
   },
-  defaultFleet: { counts: { fighter: 8, corvette: 3, frigate: 1 }, spacing: 28, jitter: { x: 80, y: 120 } },
+  defaultFleet: { counts: (() => {
+    // Build a default counts map from available ShipConfig types so new
+    // ship types are automatically included without needing manual edits.
+    const shipCfg = getShipConfig();
+    const types = Object.keys(shipCfg || {});
+    // sane defaults: make fighters most common, others rarer
+    const defaultCounts: Record<string, number> = {};
+    for (const t of types) {
+      if (t === 'fighter') defaultCounts[t] = 8;
+      else if (t === 'corvette') defaultCounts[t] = 3;
+      else if (t === 'frigate') defaultCounts[t] = 2;
+      else if (t === 'destroyer') defaultCounts[t] = 1;
+      else if (t === 'carrier') defaultCounts[t] = 1;
+      else defaultCounts[t] = 1;
+    }
+    return defaultCounts;
+  })(), spacing: 28, jitter: { x: 80, y: 120 } },
   // continuousReinforcement controls: enable/disable, scoreMargin is the
   // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
   // perTick is the maximum ships considered per reinforcement tick, and
@@ -95,17 +111,30 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
     const orders: any[] = [];
     const rng = mulberry32((seed >>> 0) + hashStringToInt(weakest));
     // determine candidate ship types: either explicit list or keys from defaultFleet
-  const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    // Build weights for candidate types using defaultFleet counts when available
+    const countsMap = (TeamsConfig && TeamsConfig.defaultFleet && TeamsConfig.defaultFleet.counts) ? TeamsConfig.defaultFleet.counts : {};
+    const weights = candidateTypes.map((t: string) => Math.max(0, Number((countsMap as any)[t]) || 1));
+    const totalWeight = weights.reduce((s: number, w: number) => s + w, 0) || candidateTypes.length || 1;
+    function weightedPick() {
+      const r = rng() * totalWeight;
+      let acc = 0;
+      for (let i = 0; i < candidateTypes.length; i++) {
+        acc += weights[i];
+        if (r < acc) return candidateTypes[i];
+      }
+      return candidateTypes[candidateTypes.length - 1];
+    }
     // Randomize number to spawn between 1 and cfg.perTick (inclusive)
     const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
-  const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
+    const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
   // spawnCount computed deterministically from the provided seed
     const b = (options.bounds || { W: 800, H: 600 });
     const centerY = b.H / 2; const baseX = weakest === 'red' ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {
       const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
       const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
-  const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType();
+    const type = (Array.isArray(cfg.shipTypes) && cfg.shipTypes.length) ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick();
       orders.push({ type, team: weakest, x, y });
     }
   // return deterministic orders
@@ -119,7 +148,7 @@ export default TeamsConfig;
 // Helper: call chooseReinforcements using a manager-derived seed (from global RNG)
 // This is convenient for callers (like gamemanager) that want to keep
 // reinforcements deterministic relative to the global `srand`/`srandom` state.
-import { srandom } from '../rng.js';
+import { srandom } from '../rng';
 export function chooseReinforcementsWithManagerSeed(state: any = {}, options: any = {}) {
   const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
   return chooseReinforcements(seed, state, options);

@@ -166,6 +166,60 @@ export async function startApp(rootDocument = document) {
 
   // show whether simulation is running in a worker (diagnostic)
   const workerIndicator = rootDocument.getElementById('workerIndicator');
+
+  // --- Lightweight toast UI for level-up notifications ---
+  // create a toast container element if not present in DOM
+  let toastContainer = rootDocument.getElementById('toastContainer');
+  if (!toastContainer) {
+    try {
+      toastContainer = rootDocument.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.style.position = 'fixed';
+      toastContainer.style.right = '16px';
+      toastContainer.style.top = '16px';
+      toastContainer.style.zIndex = '9999';
+      toastContainer.style.pointerEvents = 'none';
+      rootDocument.body.appendChild(toastContainer);
+    } catch (e) { toastContainer = null; }
+  }
+
+  function showToast(msg, opts = {}) {
+    try {
+      if (!toastContainer) return;
+      const ttl = (typeof opts.ttl === 'number') ? opts.ttl : 2000;
+      const el = rootDocument.createElement('div');
+      el.style.background = 'rgba(20,20,30,0.9)';
+      el.style.color = '#fff';
+      el.style.padding = '8px 12px';
+      el.style.marginTop = '6px';
+      el.style.borderRadius = '6px';
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
+      el.style.fontFamily = 'sans-serif';
+      el.style.fontSize = '13px';
+      el.style.pointerEvents = 'auto';
+      el.textContent = msg;
+      toastContainer.appendChild(el);
+      setTimeout(() => {
+        try { el.style.transition = 'opacity 300ms ease'; el.style.opacity = '0'; } catch (e) {}
+        setTimeout(() => { try { if (el && el.parentNode) el.parentNode.removeChild(el); } catch (e) {} }, 350);
+      }, ttl);
+    } catch (e) {}
+  }
+
+  // listen for level-up events from the manager and show a quick toast
+  try {
+    if (gm && typeof gm.on === 'function') {
+      gm.on('levelup', (m) => {
+        try {
+          const ship = (m && m.ship) || null;
+          const lvl = (m && m.newLevel) || (m && m.newLevel === 0 ? 0 : undefined);
+          const who = ship && ship.team ? `${ship.team} ship` : 'Ship';
+          const msg = `${who} leveled up to ${lvl}`;
+          showToast(msg, { ttl: 2200 });
+        } catch (e) {}
+      });
+    }
+  } catch (e) { /* ignore */ }
   if (workerIndicator) {
     // initial set and authoritative update using the manager's API
     try {
@@ -185,7 +239,24 @@ export async function startApp(rootDocument = document) {
   ui.reset.addEventListener('click', () => gm.reset());
   ui.addRed.addEventListener('click', () => gm.spawnShip('red'));
   ui.addBlue.addEventListener('click', () => gm.spawnShip('blue'));
-  ui.seedBtn.addEventListener('click', () => gm.reseed());
+  ui.seedBtn.addEventListener('click', () => {
+    try {
+      // Prompt user for a new seed. Empty input => reseed with random.
+      const raw = (typeof window !== 'undefined' && typeof window.prompt === 'function') ? window.prompt('Enter new seed (leave blank for random):', '') : null;
+      if (raw == null) return; // user cancelled prompt or prompt unavailable
+      const trimmed = String(raw).trim();
+      if (trimmed === '') {
+        try { gm.reseed(); showToast('Reseeded with random seed'); } catch (e) { /* ignore */ }
+        return;
+      }
+      const asNum = Number(trimmed);
+      if (!Number.isFinite(asNum) || Math.floor(asNum) !== asNum) {
+        try { showToast('Invalid seed. Please enter an integer.'); } catch (e) {}
+        return;
+      }
+      try { gm.reseed(asNum >>> 0); showToast(`Reseeded with ${asNum >>> 0}`); } catch (e) { /* ignore */ }
+    } catch (e) { try { showToast('Unable to prompt for seed in this environment'); } catch (err) {} }
+  });
   ui.formationBtn.addEventListener('click', () => gm.formFleets());
   // wire continuous checkbox if present
   if (ui.continuousCheckbox) {

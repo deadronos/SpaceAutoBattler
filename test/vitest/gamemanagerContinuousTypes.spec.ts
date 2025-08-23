@@ -1,14 +1,14 @@
 import { test, expect } from 'vitest';
 
 test('continuous reinforcements choose types from configured shipTypes', async () => {
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: () => { throw new Error('no worker'); } });
 
   let captured: any = null;
   gm.on('reinforcements', (m: any) => { captured = m; });
 
   // deterministic RNG
-  const { srand } = await import('../../src/rng.js');
+  const { srand } = await import('../../src/rng');
   srand(123);
 
   // set continuous behavior to prefer specific types
@@ -42,7 +42,7 @@ test('continuous reinforcements choose types from configured shipTypes', async (
   expect(diag.spawned.length).toBe(captured.spawned.length);
 
   // Also call chooseReinforcements directly to ensure orders come from shipTypes
-  const { chooseReinforcements } = await import('../../src/config/teamsConfig.js');
+  const { chooseReinforcements } = await import('../../src/config/teamsConfig');
   const orders = chooseReinforcements(123, gm._internal.state, { shipTypes: ['corvette', 'frigate'], perTick: 3, scoreMargin: 0.01, bounds: gm._internal.bounds, enabled: true });
   // eslint-disable-next-line no-console
   console.log('direct orders:', orders);

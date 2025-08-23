@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chooseReinforcements } from '../../src/config/teamsConfig.js';
+import { chooseReinforcements } from '../../src/config/teamsConfig';
 
 describe('teamsConfig helpers', () => {
   it('chooseReinforcements is deterministic for a seed and state', () => {

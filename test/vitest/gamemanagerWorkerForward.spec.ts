@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { createGameManager } from '../../src/gamemanager.js';
+import { createGameManager } from '../../src/gamemanager';
 
 test('forwards continuous toggle to worker when worker exists (mocked check)', () => {
   // This test verifies the message shape intended to be forwarded to the worker.

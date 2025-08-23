@@ -83,6 +83,26 @@ function rewriteHtmlReferences(html, { cssHref, jsSrc }) {
 
 export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   const srcDir = path.join(repoRoot, 'src');
+  // Ensure the JS runtime is produced from the TypeScript authoritative source
+  // by transpiling src/gamemanager.ts -> src/gamemanager.js prior to bundling.
+  try {
+    const gmTs = path.join(srcDir, 'gamemanager.ts');
+    const gmJs = path.join(srcDir, 'gamemanager.js');
+    // Only transpile if the TS file exists
+    try { await fs.access(gmTs);
+      // Use esbuild to transpile to an ES module in-place (overwrites JS runtime)
+      await esbuild({
+        entryPoints: [gmTs],
+        bundle: false,
+        outfile: gmJs,
+        format: 'esm',
+        platform: 'neutral',
+        target: ['es2022'],
+        sourcemap: false,
+        logLevel: 'silent',
+      });
+    } catch (e) { /* ignore if TS file missing */ }
+  } catch (e) { /* ignore transpile errors to keep build portable */ }
   const uiHtmlPath = path.join(srcDir, 'ui.html');
   const stylesDir = path.join(srcDir, 'styles');
   const assetsDir = path.join(srcDir, 'assets');

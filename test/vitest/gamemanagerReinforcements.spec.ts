@@ -20,7 +20,7 @@ test('manager receives reinforcements message from worker shim and types are val
   };
 
   // import manager and create instance with the shim factory
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: shim.createSimWorker });
 
   // Ensure init/start messages were posted to worker shim as part of manager setup
@@ -39,7 +39,7 @@ test('manager receives reinforcements message from worker shim and types are val
   // behaviour varies by implementation we'll assert that the spawned types
   // are valid according to the runtime ShipConfig keys accessible via
   // the exported helper on gamemanager.
-  const { getShipConfig } = await import('../../src/config/entitiesConfig.js');
+  const { getShipConfig } = await import('../../src/config/entitiesConfig');
   const validTypes = Object.keys(getShipConfig());
   for (const s of spawned) {
     expect(validTypes.includes(s.type)).toBe(true);

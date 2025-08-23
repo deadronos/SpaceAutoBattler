@@ -1,6 +1,6 @@
 // behavior.js - deterministic, simple AI for steering and firing
 // Uses seeded RNG for any randomness so results are reproducible.
-import { srandom, srange } from './rng.js';
+import { srandom, srange } from './rng';
 import { createBullet } from './entities.js';
 
 // Small helpers

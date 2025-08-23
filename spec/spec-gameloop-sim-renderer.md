@@ -12,14 +12,7 @@ This spec describes the small, testable specifications to author for the core ti
 - `canvas fallback renderer` (2D canvas rendering path)
 - `webgl2 renderer` (WebGL2 renderer path and loop ownership)
 - `rng` (seeded RNG contract and usage rules)
-- `entities` (entity model and configuration spec mirroring `entitiesConfig.js`)
-
-Each spec below contains: intent, inputs, outputs, acceptance criteria, and tests to write.
-
----
-
-### 1) Spec: gameloop (orchestration)
-
+ - `entities` (entity model and configuration spec mirroring `entitiesConfig.ts`)
 Intent
 - Provide clear rules for how the application starts and coordinates simulation and rendering. Should allow three deployment modes: (A) main-thread sim + main-thread render, (B) worker sim + main-thread render, (C) worker sim + worker render (OffscreenCanvas).
 

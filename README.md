@@ -1,9 +1,8 @@
-# Space Autobattler
 # SpaceAutoBattler
 
 [![Gameplay preview — click to open VideoCapture.gif](VideoCapture.gif)](VideoCapture.gif)
 
-A small, deterministic 2D auto-battler (Red vs Blue) implemented with vanilla ES modules and the Canvas 2D API. The simulation is deterministic when seeded and is intentionally separated from the renderer so the game logic can be unit tested independently from visuals.
+A small, deterministic 2D auto-battler (Red vs Blue) implemented with TypeScript/ES modules and a Canvas 2D renderer. The simulation is deterministic when seeded and is separated from the renderer so game logic can be unit tested independently from visuals.
 
 Why this project exists
 -----------------------
@@ -17,18 +16,27 @@ Highlights
 - Bullets carry `ownerId` so kills and XP credit are attributed correctly.
 - The simulation step `simulateStep(state, dt, bounds)` is pure game-logic and emits small event arrays for the renderer.
 
+Design notes — authoritative sources and configs
+-----------------------------------------------
+
+- Game logic and the authoritative GameManager implementation live in TypeScript: `src/gamemanager.ts`.
+- To avoid duplicate edits between JS and TS sources, the build now transpiles `src/gamemanager.ts` into `src/gamemanager.js` prior to bundling. Edit `src/gamemanager.ts` for behavioral changes and run `npm run build` (or `npm run build-standalone`) to regenerate the JS runtime.
+- Fleet composition and team defaults are configured under `src/config/teamsConfig.ts` (re-exported as `TeamsConfig`). The manager (and UI) now sample ship types from `TeamsConfig.defaultFleet.counts` when `spawnShip()` is called without an explicit type. If no counts are present the manager falls back to `getDefaultShipType()` for deterministic behavior.
+
+These choices keep balancing/config in config modules and the runtime behavior in TS source so tests remain deterministic and UI behavior reflects configured fleet composition.
+
 Quick demo
 ----------
 Click the preview above to view the animated capture (`VideoCapture.gif`). If you prefer a static screenshot, extract a frame from `VideoCapture.gif` (for example with ImageMagick: `magick VideoCapture.gif[0] VideoCapture_screenshot.png`) and place it in the repo as `VideoCapture_screenshot.png`, then update this README to reference that file instead.
 
 Important files
 ---------------
-- `src/entities.js` — Ship and Bullet definitions, damage/shield handling, XP and level code.
-- `src/simulate.js` — Deterministic time-step: `simulateStep(state, dt, bounds)`.
-- `src/renderer.js` — Visual layer (Canvas) that consumes `state` and event arrays.
-- `src/rng.js` — Seeded RNG used by the simulation.
-- `src/progressionConfig.js` — XP and progression constants.
- - `src/gamemanagerConfig.js` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
+ - `src/entities.ts` (authoritative) — Ship and Bullet definitions, damage/shield handling, XP and level code. A JS runtime copy exists at `src/entities.js` for legacy consumers.
+ - `src/simulate.ts` (authoritative) — Deterministic time-step: `simulateStep(state, dt, bounds)`. A runtime copy exists at `src/simulate.js`.
+ - `src/renderer.ts` / `src/canvasrenderer.ts` — Visual layer (Canvas) that consumes `state` and event arrays. Legacy JS versions exist for compatibility.
+ - `src/rng.ts` — Seeded RNG used by the simulation (use `srand(seed)` in tests).
+ - `src/progressionConfig.ts` — XP and progression constants (authoritative; JS runtime copies may exist).
+ - `src/gamemanagerConfig.ts` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
 - `space_themed_autobattler_canvas_red_vs_blue.html` — Main page to open in a browser.
 - `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file exported build.
 - `scripts/build-standalone.mjs` — Bundles the renderer and inlines a standalone HTML in `./dist/`.

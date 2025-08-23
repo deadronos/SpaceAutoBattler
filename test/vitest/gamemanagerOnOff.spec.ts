@@ -3,7 +3,7 @@ import { test, expect } from 'vitest';
 test('manager on/off subscribe and unsubscribe works', async () => {
   // create a shim that never creates a real worker (force main-thread fallback)
   const shimFactory = () => { throw new Error('no worker'); };
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: shimFactory });
 
   let called = 0;

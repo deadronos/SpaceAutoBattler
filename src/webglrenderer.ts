@@ -3,7 +3,7 @@
 
 import { AssetsConfig, getShipAsset, getTurretAsset, getVisualConfig } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig';
-import { shieldFlashIndex } from './gamemanager';
+import { shieldFlashIndex, healthFlashIndex, FLASH_TTL_DEFAULT } from './gamemanager';
 import { getDefaultShipType } from './config/entitiesConfig';
 
 export class WebGLRenderer {
@@ -208,6 +208,29 @@ export class WebGLRenderer {
                 verts.push(clipX, clipY, Math.max(2, ps * 1.0), ac[0], ac[1], ac[2], alpha);
               }
             } catch (e) {}
+
+              // health flash overlay: check index for freshest flash and render a small red point
+              try {
+                const nowT = (state && state.t) || 0;
+                let hflash: any = null;
+                const harr = healthFlashIndex.get(s.id) || [];
+                let bestTsH = -Infinity;
+                for (const hf of harr) {
+                  if (!hf) continue;
+                  const fTs = (typeof hf._ts === 'number') ? hf._ts : 0;
+                  const fTtl = (typeof hf.ttl === 'number') ? hf.ttl : FLASH_TTL_DEFAULT;
+                  if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTsH) { bestTsH = fTs; hflash = hf; }
+                }
+                if (hflash) {
+                  const hx = (hflash.x != null ? hflash.x : x);
+                  const hy = (hflash.y != null ? hflash.y : y);
+                  const cpx = (hx / Math.max(1, w)) * 2 - 1;
+                  const cpy = 1 - (hy / Math.max(1, h)) * 2;
+                  const pointSize = Math.max(2, ps * 0.6);
+                  const col = [1, 0.47, 0.4, 0.95]; // reddish
+                  verts.push(cpx, cpy, pointSize, col[0], col[1], col[2], col[3]);
+                }
+              } catch (e) {}
           }
 
           // upload buffer and draw

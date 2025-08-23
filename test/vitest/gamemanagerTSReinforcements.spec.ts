@@ -5,7 +5,7 @@ import { test, expect } from 'vitest';
 // createGameManager().on receive the message.
 test('TS manager emits reinforcements and gm.on receives them', async () => {
   // Import the TypeScript module directly so we exercise the TS implementation
-  const gmMod = await import('../../src/gamemanager.js');
+  const gmMod = await import('../../src/gamemanager');
 
   // ensure clean start
   if (typeof gmMod.reset === 'function') gmMod.reset(12345);

@@ -1,5 +1,5 @@
 // entities.ts - catalog of ships, bullets, cannon configs and simple factories
-import { getShipConfig } from './config/entitiesConfig';
+import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 import type { ShipConfigMap, ShipSpec } from './types';
 
 let nextId = 1;
@@ -30,8 +30,8 @@ export type Ship = {
 export function createShip(type: string | undefined = undefined, x = 0, y = 0, team = 'red'): Ship {
   const shipCfg = getShipConfig() as ShipConfigMap;
   const availableTypes = Object.keys(shipCfg || {});
-  const resolvedType = (type && shipCfg[type]) ? type : (availableTypes.length ? availableTypes[0] : 'fighter');
-  const cfg = (shipCfg[resolvedType] || shipCfg.fighter) as Partial<ShipSpec>;
+  const resolvedType = (type && shipCfg[type]) ? type : (availableTypes.length ? availableTypes[0] : getDefaultShipType());
+  const cfg = (shipCfg[resolvedType] || shipCfg[getDefaultShipType()]) as Partial<ShipSpec>;
   return {
     id: genId(),
     type: resolvedType,

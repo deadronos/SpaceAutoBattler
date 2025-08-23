@@ -10,7 +10,7 @@ test('gm.onWorkerReady is called when worker signals ready', async () => {
     })
   };
 
-  const { createGameManager } = await import('../../src/gamemanager.js');
+  const { createGameManager } = await import('../../src/gamemanager');
   const gm: any = createGameManager({ renderer: null, createSimWorker: shim.createSimWorker });
 
   let called = false;

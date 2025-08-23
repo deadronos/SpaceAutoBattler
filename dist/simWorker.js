@@ -28,10 +28,12 @@ function simulateStep(state2, dtSeconds, bounds2) {
   for (const s of state2.ships || []) {
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;
-    if (s.x < 0) s.x += bounds2.W;
-    if (s.x > bounds2.W) s.x -= bounds2.W;
-    if (s.y < 0) s.y += bounds2.H;
-    if (s.y > bounds2.H) s.y -= bounds2.H;
+    if (typeof bounds2.W === "number" && bounds2.W > 0) {
+      s.x = (s.x % bounds2.W + bounds2.W) % bounds2.W;
+    }
+    if (typeof bounds2.H === "number" && bounds2.H > 0) {
+      s.y = (s.y % bounds2.H + bounds2.H) % bounds2.H;
+    }
   }
   for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {
     const b = state2.bullets[bi];
@@ -47,7 +49,8 @@ function simulateStep(state2, dtSeconds, bounds2) {
         if (shield > 0) {
           const absorbed = Math.min(shield, b.damage || 0);
           s.shield = shield - absorbed;
-          (state2.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed });
+          const hitAngle = Math.atan2((b.y || 0) - (s.y || 0), (b.x || 0) - (s.x || 0));
+          (state2.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed, hitAngle });
           (state2.damageEvents ||= []).push({ id: s.id, type: "shield", amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
@@ -145,26 +148,25 @@ function simulateStep(state2, dtSeconds, bounds2) {
 }
 
 // src/rng.ts
-var _state = null;
-function srand(seed) {
-  if (typeof seed === "number") {
-    _state = seed >>> 0 || 1;
-  } else {
-    _state = null;
-  }
+var _seed = 1;
+function srand(seed = 1) {
+  _seed = seed >>> 0;
 }
-function _next() {
-  if (_state === null) _state = 1;
-  _state = Math.imul(1664525, _state) + 1013904223 >>> 0;
-  return _state;
+function mulberry32(a) {
+  return function() {
+    let t = (a += 1831565813) >>> 0;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
 }
 function srandom() {
-  if (_state === null) return Math.random();
-  const v = _next();
-  return v / 4294967296;
+  const f = mulberry32(_seed);
+  _seed = _seed + 2654435761 >>> 0;
+  return f();
 }
 function srange(min, max) {
-  return min + srandom() * (max - min);
+  return min + (max - min) * srandom();
 }
 
 // src/config/assets/assetsConfig.ts
@@ -288,6 +290,7 @@ var ShipConfig = {
     maxShield: 8,
     shieldRegen: 1,
     dmg: 3,
+    damage: 3,
     radius: 4,
     cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
     accel: 600,
@@ -299,6 +302,7 @@ var ShipConfig = {
     maxShield: Math.round(50 * 0.6),
     shieldRegen: 0.5,
     dmg: 5,
+    damage: 5,
     radius: 8,
     accel: 200,
     turnRate: 3,
@@ -310,6 +314,7 @@ var ShipConfig = {
     maxShield: Math.round(80 * 0.6),
     shieldRegen: 0.4,
     dmg: 8,
+    damage: 8,
     radius: 12,
     cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
     accel: 120,
@@ -321,6 +326,7 @@ var ShipConfig = {
     maxShield: Math.round(120 * 0.6),
     shieldRegen: 0.3,
     dmg: 12,
+    damage: 12,
     radius: 16,
     cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
     accel: 80,
@@ -332,6 +338,7 @@ var ShipConfig = {
     maxShield: Math.round(200 * 0.6),
     shieldRegen: 0.2,
     dmg: 2,
+    damage: 2,
     radius: 24,
     cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
     accel: 40,
@@ -368,8 +375,8 @@ function clampSpeed(s, max) {
   const max2 = max * max;
   if (v2 > max2 && v2 > 0) {
     const inv = max / Math.sqrt(v2);
-    s.vx *= inv;
-    s.vy *= inv;
+    s.vx = (s.vx || 0) * inv;
+    s.vy = (s.vy || 0) * inv;
   }
 }
 function aimWithSpread(from, to, spread = 0) {
@@ -387,21 +394,21 @@ function aimWithSpread(from, to, spread = 0) {
   return { x: dx, y: dy };
 }
 function tryFire(state2, ship, target, dt) {
-  const cannons = Array.isArray(ship.cannons) ? ship.cannons : [];
-  for (const c of cannons) {
+  if (!Array.isArray(ship.cannons) || ship.cannons.length === 0) return;
+  for (const c of ship.cannons) {
     if (typeof c.__cd !== "number") c.__cd = 0;
     c.__cd -= dt;
     if (c.__cd > 0) continue;
     const spread = typeof c.spread === "number" ? c.spread : 0;
     const dir = aimWithSpread(ship, target, spread);
     const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : 240;
-    const dmg = typeof c.damage === "number" ? c.damage : 3;
+    const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : 3;
     const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : 2;
     const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : 1.5;
     const vx = dir.x * speed;
     const vy = dir.y * speed;
     const b = Object.assign(
-      createBullet(ship.x, ship.y, vx, vy, ship.team, ship.id, dmg, ttl),
+      createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
       { radius }
     );
     state2.bullets.push(b);
@@ -430,13 +437,13 @@ function steerAway(s, tx, ty, accel, dt) {
   s.vx = (s.vx || 0) + nx * accel * dt;
   s.vy = (s.vy || 0) + ny * accel * dt;
 }
-function applySimpleAI(state2, dt, _bounds = { W: 800, H: 600 }) {
+function applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {
   if (!state2 || !Array.isArray(state2.ships)) return;
   for (const s of state2.ships) {
     const ai = ensureShipAiState(s);
     ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
     let target = null;
-    if (ai.targetId != null) target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId);
+    if (ai.targetId != null) target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
     if (!target) target = chooseNewTarget(state2, s);
     if (target) ai.targetId = target.id;
     const accel = typeof s.accel === "number" ? s.accel : 100;
@@ -463,8 +470,8 @@ function applySimpleAI(state2, dt, _bounds = { W: 800, H: 600 }) {
         steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
         const ang = Math.atan2(s.vy || 0, s.vx || 0);
         const perp = ang + Math.PI / 2 * (srandom() < 0.5 ? 1 : -1);
-        s.vx += Math.cos(perp) * accel * 0.2 * dt;
-        s.vy += Math.sin(perp) * accel * 0.2 * dt;
+        s.vx = (s.vx || 0) + Math.cos(perp) * accel * 0.2 * dt;
+        s.vy = (s.vy || 0) + Math.sin(perp) * accel * 0.2 * dt;
       } else {
         s.vx = (s.vx || 0) + srange(-0.5, 0.5) * 6 * dt;
         s.vy = (s.vy || 0) + srange(-0.5, 0.5) * 6 * dt;
