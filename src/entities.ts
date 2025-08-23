@@ -1,5 +1,6 @@
 // entities.ts - catalog of ships, bullets, cannon configs and simple factories
 import { getShipConfig } from './config/entitiesConfig';
+import type { ShipConfigMap, ShipSpec } from './types';
 
 let nextId = 1;
 export function genId(): number { return nextId++; }
@@ -26,11 +27,14 @@ export type Ship = {
   accel?: number; turnRate?: number; radius?: number;
 };
 
-export function createShip(type = 'fighter', x = 0, y = 0, team = 'red'): Ship {
-  const cfg = (getShipConfig() as any)[type] || (getShipConfig() as any).fighter;
+export function createShip(type: string | undefined = undefined, x = 0, y = 0, team = 'red'): Ship {
+  const shipCfg = getShipConfig() as ShipConfigMap;
+  const availableTypes = Object.keys(shipCfg || {});
+  const resolvedType = (type && shipCfg[type]) ? type : (availableTypes.length ? availableTypes[0] : 'fighter');
+  const cfg = (shipCfg[resolvedType] || shipCfg.fighter) as Partial<ShipSpec>;
   return {
     id: genId(),
-    type,
+    type: resolvedType,
     x, y,
     vx: 0, vy: 0,
     hp: cfg.maxHp,

@@ -3,3 +3,14 @@ export function getDefaultBounds() {
 }
 
 export default { getDefaultBounds };
+
+// Validate display config
+import { validateConfigOrThrow, validateDisplayConfig } from './validateConfig';
+try {
+  const errs = validateDisplayConfig({ getDefaultBounds });
+  if (errs && errs.length) validateConfigOrThrow({ getDefaultBounds });
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.error('displayConfig validation failed:', err && err.message ? err.message : err);
+  throw err;
+}

@@ -1,4 +1,5 @@
 // teamsConfig.ts - Teams and fleet helpers (typed)
+import { getDefaultShipType } from './entitiesConfig';
 export type Team = { id: string; color: string; label?: string };
 export const TeamsConfig = {
   teams: {
@@ -104,7 +105,7 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
     for (let i = 0; i < spawnCount; i++) {
       const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
       const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
-      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || 'fighter';
+  const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType();
       orders.push({ type, team: weakest, x, y });
     }
   // return deterministic orders

@@ -46,31 +46,51 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 				let dealtToShield = 0;
 				let dealtToHealth = 0;
 				const shield = s.shield || 0;
-				if (shield > 0) {
+					if (shield > 0) {
 					const absorbed = Math.min(shield, b.damage || 0);
 					s.shield = shield - absorbed;
-					(state.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed });
+						(state.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed });
+						// expose damage event for renderer (shield hit)
+						(state.damageEvents ||= []).push({ id: s.id, type: 'shield', amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
 					const remaining = (b.damage || 0) - absorbed;
 					if (remaining > 0) {
 						s.hp -= remaining;
-						(state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
+							(state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
+							// expose damage event for renderer (health hit)
+							(state.damageEvents ||= []).push({ id: s.id, type: 'hp', amount: remaining, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
 					}
 					dealtToShield = absorbed;
 					dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
 				} else {
 					s.hp -= (b.damage || 0);
-					(state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });
+						(state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });
+						// expose damage event for renderer (health hit)
+						(state.damageEvents ||= []).push({ id: s.id, type: 'hp', amount: b.damage || 0, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
 					dealtToHealth = (b.damage || 0);
 				}
+
+					// Update percent fields for renderer convenience
+					s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+					s.shieldPercent = (typeof s.maxShield === 'number' && s.maxShield > 0) ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
 				// XP for damage
 				if (attacker) {
 					attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progressionCfg.xpPerDamage || 0);
 					while ((attacker.xp || 0) >= progressionCfg.xpToLevel((attacker.level || 1))) {
 						attacker.xp -= progressionCfg.xpToLevel((attacker.level || 1));
 						attacker.level = (attacker.level || 1) + 1;
-						const hpMul = 1 + (progressionCfg.hpPercentPerLevel || 0);
-						const shMul = 1 + (progressionCfg.shieldPercentPerLevel || 0);
-						const dmgMul = 1 + (progressionCfg.dmgPercentPerLevel || 0);
+						// Support function or number scalars for progression
+						const resolveScalar = (s: any, lvl: number) => (typeof s === 'function' ? s(lvl) : s || 0);
+						const lvl = attacker.level || 1;
+						const hpScalar = resolveScalar(progressionCfg.hpPercentPerLevel, lvl);
+						const shScalar = resolveScalar(progressionCfg.shieldPercentPerLevel, lvl);
+						const dmgScalar = resolveScalar(progressionCfg.dmgPercentPerLevel, lvl);
+						const speedScalar = resolveScalar((progressionCfg as any).speedPercentPerLevel, lvl);
+						const regenScalar = resolveScalar((progressionCfg as any).regenPercentPerLevel, lvl);
+
+						const hpMul = 1 + hpScalar;
+						const shMul = 1 + shScalar;
+						const dmgMul = 1 + dmgScalar;
+
 						attacker.maxHp = (attacker.maxHp || 0) * hpMul;
 						attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
 						if (typeof attacker.maxShield === 'number') {
@@ -82,6 +102,9 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 								if (typeof c.damage === 'number') c.damage *= dmgMul;
 							}
 						}
+						// Apply optional speed and shield regen increases
+						if (typeof speedScalar === 'number' && typeof attacker.accel === 'number') attacker.accel = attacker.accel * (1 + speedScalar);
+						if (typeof regenScalar === 'number' && typeof attacker.shieldRegen === 'number') attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
 					}
 				}
 				state.bullets.splice(bi, 1);
@@ -91,9 +114,18 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 						while ((attacker.xp || 0) >= progressionCfg.xpToLevel((attacker.level || 1))) {
 							attacker.xp -= progressionCfg.xpToLevel((attacker.level || 1));
 							attacker.level = (attacker.level || 1) + 1;
-							const hpMul = 1 + (progressionCfg.hpPercentPerLevel || 0);
-							const shMul = 1 + (progressionCfg.shieldPercentPerLevel || 0);
-							const dmgMul = 1 + (progressionCfg.dmgPercentPerLevel || 0);
+							// Support function or number scalars for progression on kill XP
+							const resolveScalar = (s: any, lvl: number) => (typeof s === 'function' ? s(lvl) : s || 0);
+							const lvl = attacker.level || 1;
+							const hpScalar = resolveScalar(progressionCfg.hpPercentPerLevel, lvl);
+							const shScalar = resolveScalar(progressionCfg.shieldPercentPerLevel, lvl);
+							const dmgScalar = resolveScalar(progressionCfg.dmgPercentPerLevel, lvl);
+							const speedScalar = resolveScalar((progressionCfg as any).speedPercentPerLevel, lvl);
+							const regenScalar = resolveScalar((progressionCfg as any).regenPercentPerLevel, lvl);
+
+							const hpMul = 1 + hpScalar;
+							const shMul = 1 + shScalar;
+							const dmgMul = 1 + dmgScalar;
 							attacker.maxHp = (attacker.maxHp || 0) * hpMul;
 							attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
 							if (typeof attacker.maxShield === 'number') {
@@ -105,6 +137,9 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 									if (typeof c.damage === 'number') c.damage *= dmgMul;
 								}
 							}
+							// Apply optional speed and shield regen increases
+							if (typeof speedScalar === 'number' && typeof attacker.accel === 'number') attacker.accel = attacker.accel * (1 + speedScalar);
+							if (typeof regenScalar === 'number' && typeof attacker.shieldRegen === 'number') attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
 						}
 					}
 					(state.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });
@@ -118,6 +153,12 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 	// Shield regen
 	for (const s of state.ships || []) {
 		if (s.maxShield) s.shield = Math.min(s.maxShield, (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds);
+	}
+
+	// refresh percent convenience fields after regen
+	for (const s of state.ships || []) {
+		s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+		s.shieldPercent = (typeof s.maxShield === 'number' && s.maxShield > 0) ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
 	}
 
 	return state;

@@ -173,19 +173,25 @@ export function getBulletAssetForCannon(cannon = {}) {
   return getBulletAsset(kind);
 }
 
-export function getShipAssetForType(type = 'fighter') {
-  const key = VisualMappingConfig.shipAssetKey[type] || type;
+export function getShipAssetForType(type) {
+  const t = type || getDefaultShipType();
+  const key = VisualMappingConfig.shipAssetKey[t] || t;
   return getShipAsset(key);
 }
 
-export function getTurretAssetForShip(_shipType = 'fighter') {
+export function getTurretAssetForShip(_shipType) {
   return getTurretAsset(VisualMappingConfig.defaultTurretKind);
 }
 
-export function getVisualsForShipType(type = 'fighter', cannon = undefined) {
+export function getVisualsForShipType(type, cannon = undefined) {
   return {
     hull: getShipAssetForType(type),
     turret: getTurretAssetForShip(type),
     bullet: getBulletAssetForCannon(cannon)
   };
+}
+
+export function getDefaultShipType() {
+  const keys = Object.keys(ShipConfig || {});
+  return keys.length ? keys[0] : 'fighter';
 }

@@ -38,6 +38,9 @@ export type AssetsConfigType = {
   meta: { orientation: string; coordinateSystem: string };
   palette: Record<string, string>;
   shapes2d: Record<string, Shape2D>;
+  animations?: Record<string, any>;
+  damageStates?: Record<string, { opacity?: number; accentColor?: string }>;
+  visualStateDefaults?: Record<string, { engine?: string; shield?: string; damageParticles?: string }>;
 };
 
 export const AssetsConfig: AssetsConfigType = {
@@ -50,6 +53,8 @@ export const AssetsConfig: AssetsConfigType = {
     shipAccent: '#6c7380',
     bullet: '#ffd166',
     turret: '#94a3b8',
+    // Scene background color used by renderers
+    background: '#0b1220',
   },
   // 2D vector shapes defined as polygons and circles. Points are unit-sized
   // profiles (roughly radius 1). Renderer should multiply by entity radius or
@@ -108,6 +113,59 @@ export const AssetsConfig: AssetsConfigType = {
     }
   }
 };
+
+// Animations and visual defaults (align with JS AssetsConfig)
+(AssetsConfig as any).animations = {
+  engineFlare: {
+    type: 'polygon',
+    points: [ [0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15] ],
+    pulseRate: 8,
+    // configurable alpha multiplier for engine overlay
+    alpha: 0.4,
+    // local-space X offset (negative = behind ship)
+    offset: -0.9
+  },
+  shieldEffect: {
+    type: 'circle',
+    r: 1.2,
+    strokeWidth: 0.1,
+    color: '#88ccff',
+    pulseRate: 2,
+    // map shieldPct -> alpha = base + scale * shieldPct
+    alphaBase: 0.25,
+    alphaScale: 0.75
+  },
+  damageParticles: {
+    type: 'particles',
+    color: '#ff6b6b',
+    count: 6,
+    lifetime: 0.8,
+    spread: 0.6
+  }
+};
+
+(AssetsConfig as any).damageStates = {
+  light: { opacity: 0.9, accentColor: '#b0b7c3' },
+  moderate: { opacity: 0.75, accentColor: '#d4a06a' },
+  heavy: { opacity: 0.5, accentColor: '#ff6b6b' }
+};
+
+(AssetsConfig as any).visualStateDefaults = {
+  fighter: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  corvette: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  frigate: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  destroyer: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  carrier: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' }
+};
+
+// thresholds for mapping hpPct -> damage state key
+(AssetsConfig as any).damageThresholds = { moderate: 0.66, heavy: 0.33 };
+
+export function getVisualConfig(type: string) {
+  const shape = getShipAsset(type);
+  const visuals = (AssetsConfig as any).visualStateDefaults[type] || (AssetsConfig as any).visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: (AssetsConfig as any).animations, damageStates: (AssetsConfig as any).damageStates } as any;
+}
 
 export function getShipAsset(type: string): Shape2D {
   return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;

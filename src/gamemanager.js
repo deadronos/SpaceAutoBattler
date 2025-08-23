@@ -2,11 +2,12 @@
 import { makeInitialState, createShip, createBullet } from './entities.js';
 import { simulateStep, SIM_DT_MS } from './simulate.js';
 import { srand, srange, srandom } from './rng.js';
-import { getDefaultBounds } from './config/displayConfig.js';
-import { createSimWorker } from './createSimWorker.js';
-import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig.js';
-import { setShipConfig, getShipConfig } from './config/entitiesConfig.js';
-import { chooseReinforcementsWithManagerSeed } from './config/teamsConfig.js';
+import { getDefaultBounds } from './config/displayConfig';
+import { createSimWorker } from './createSimWorker';
+import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig';
+import { setShipConfig, getShipConfig } from './config/entitiesConfig';
+import { chooseReinforcementsWithManagerSeed, TeamsConfig } from './config/teamsConfig';
+import { getDefaultShipType } from './config/entitiesConfig';
 import { applySimpleAI } from './behavior.js';
 
 /*
@@ -119,18 +120,18 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
       if (reinforcementAccumulator >= reinforcementInterval) {
         reinforcementAccumulator = 0;
         try {
-          const teams = Object.keys(require('./config/teamsConfig.js').TeamsConfig.teams);
+          const teams = Object.keys(TeamsConfig.teams);
           const spawned = [];
           for (const team of teams) {
             const teamShips = (state.ships || []).filter(s => s && s.team === team);
             if (teamShips.length < 3) {
               // Create a filtered state for this team (so chooseReinforcements logic works)
               const teamState = Object.assign({}, state, { ships: teamShips });
-              const orders = require('./config/teamsConfig.js').chooseReinforcementsWithManagerSeed(teamState, Object.assign({}, continuousOptions, { bounds, team }));
+              const orders = chooseReinforcementsWithManagerSeed(teamState, Object.assign({}, continuousOptions, { bounds, team }));
               if (Array.isArray(orders) && orders.length) {
                 for (const o of orders) {
                   try {
-                    let type = o.type || 'fighter';
+                    let type = o.type || getDefaultShipType();
                     if (Array.isArray(continuousOptions.shipTypes) && continuousOptions.shipTypes.length) {
                       const types = continuousOptions.shipTypes;
                       type = types[Math.floor(srandom() * types.length)] || type;
@@ -149,10 +150,11 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
             try { emitManagerEvent('reinforcements', { spawned }); } catch (e) { /* ignore */ }
             try { lastReinforcement = { spawned: spawned.slice(), timestamp: Date.now(), options: Object.assign({}, continuousOptions) }; } catch (e) {}
           } else {
-            // fallback: if no orders returned, spawn two default fighters to keep tests deterministic
+            // fallback: if no orders returned, spawn two default ships from ShipConfig to keep tests deterministic
             try {
-              const r = createShip('fighter', 100, 100, 'red');
-              const b = createShip('fighter', 700, 500, 'blue');
+              const fallbackType = getDefaultShipType();
+              const r = createShip(fallbackType, 100, 100, 'red');
+              const b = createShip(fallbackType, 700, 500, 'blue');
               state.ships.push(r); state.ships.push(b);
               emitManagerEvent('reinforcements', { spawned: [r, b] });
               lastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
@@ -245,7 +247,7 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
       if (simWorker) simWorker.post({ type: 'command', cmd: 'setState', args: { state } });
     },
     // continuous mode controls (UI can toggle this)
-    setContinuousEnabled(v = false) {
+  setContinuousEnabled(v = false) {
       // forward to worker when available, otherwise use local manager state
       if (simWorker) {
         try { simWorker.post({ type: 'setContinuous', value: !!v }); } catch (e) { /* ignore */ }
@@ -259,8 +261,9 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
         // reinforcement immediately so tests that toggle this flag observe data.
         if (continuous) {
           try {
-            const r = createShip('fighter', 100, 100, 'red');
-            const b = createShip('fighter', 700, 500, 'blue');
+            const fallbackType = getDefaultShipType();
+            const r = createShip(fallbackType, 100, 100, 'red');
+            const b = createShip(fallbackType, 700, 500, 'blue');
             state.ships.push(r); state.ships.push(b);
             emitManagerEvent('reinforcements', { spawned: [r, b] });
             lastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
@@ -297,7 +300,7 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
       const recorded = [r1, r2];
       internal.lastSpawnRands = recorded;
       try {
-        const ship = createShip('fighter', x, y, color);
+        const ship = createShip(getDefaultShipType(), x, y, color);
         // give a small initial drift to encourage engagement
         const dir = color === 'red' ? 1 : -1;
         ship.vx = 30 * dir; ship.vy = (mgr_random() - 0.5) * 20;
@@ -309,9 +312,10 @@ export function createGameManager({ renderer, canvas, seed = 12345, createSimWor
     },
   reseed(newSeed = Math.floor(srandom()*0xffffffff)) { srand(newSeed); _mgrRngState = (newSeed >>> 0) || 1; if (simWorker) simWorker.post({ type: 'setSeed', seed: newSeed }); },
     formFleets() { // create a small fleet each side
+      const fallbackType = getDefaultShipType();
       for (let i = 0; i < 5; i++) {
-        const r = createShip('fighter', 100 + i*20, 100 + i*10, 'red'); r.vx = 40; r.vy = 0;
-        const b = createShip('fighter', bounds.W - 100 - i*20, bounds.H - 100 - i*10, 'blue'); b.vx = -40; b.vy = 0;
+        const r = createShip(fallbackType, 100 + i*20, 100 + i*10, 'red'); r.vx = 40; r.vy = 0;
+        const b = createShip(fallbackType, bounds.W - 100 - i*20, bounds.H - 100 - i*10, 'blue'); b.vx = -40; b.vy = 0;
         if (simWorker) {
           simWorker.post({ type: 'command', cmd: 'spawnShip', args: { ship: r } });
           simWorker.post({ type: 'command', cmd: 'spawnShip', args: { ship: b } });
@@ -631,13 +635,15 @@ export function evaluateReinforcement(dt) {
   _reinforcementAccumulator += dt;
   if (_reinforcementAccumulator >= _reinforcementInterval) {
     _reinforcementAccumulator = 0;
-    // spawn a pair of ships for each team
-    // createShip expects (type, x, y, team) — previous code passed an object
-    // which produced malformed ships and prevented reinforcements from
-    // being recognized by consumers. Use 'fighter' as default type and
-    // emit a manager-level 'reinforcements' event for compatibility.
-    const r = createShip('fighter', 100, 100, 'red');
-    const b = createShip('fighter', 700, 500, 'blue');
+  // spawn a pair of ships for each team
+  // createShip expects (type, x, y, team) — previous code passed an object
+  // which produced malformed ships and prevented reinforcements from
+  // being recognized by consumers. Use the ShipConfig-derived default
+  // type (getDefaultShipType()) as a fallback and emit a manager-level
+  // 'reinforcements' event for compatibility.
+  const fallback = getDefaultShipType();
+  const r = createShip(fallback, 100, 100, 'red');
+  const b = createShip(fallback, 700, 500, 'blue');
     ships.push(r);
     ships.push(b);
     try { emitManagerEvent('reinforcements', { spawned: [r, b] }); } catch (e) { /* ignore */ }

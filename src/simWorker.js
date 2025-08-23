@@ -3,7 +3,7 @@ import { simulateStep } from './simulate.js';
 import { applySimpleAI } from './behavior.js';
 import { srand, srandom } from './rng.js';
 import { createShip } from './entities.js';
-import { getShipConfig } from './config/entitiesConfig.js';
+import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 
 let state = null;
 let bounds = { W: 800, H: 600 };
@@ -72,7 +72,7 @@ function tick() {
               const types = Object.keys(getShipConfig() || { fighter: {} });
               const spawned = [];
               for (let i = 0; i < spawnCount; i++) {
-                const type = types[Math.floor(srandom() * types.length)] || 'fighter';
+                const type = types[Math.floor(srandom() * types.length)] || getDefaultShipType();
                 const jitter = () => (srandom() - 0.5) * 40;
                 let x = 0, y = 0;
                 if (weaker === 'red') { x = 100 + jitter(); y = 100 + jitter(); }

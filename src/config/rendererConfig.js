@@ -23,3 +23,14 @@ export function getPreferredRenderer() {
 }
 
 export default RendererConfig;
+
+// Validate renderer config at module load
+import { validateConfigOrThrow, validateRendererConfig } from './validateConfig';
+try {
+  const errs = validateRendererConfig(RendererConfig);
+  if (errs && errs.length) validateConfigOrThrow(RendererConfig);
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.error('RendererConfig validation failed:', err && err.message ? err.message : err);
+  throw err;
+}

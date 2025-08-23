@@ -2,6 +2,7 @@
 import { simulateStep } from './simulate';
 import { applySimpleAI } from './behavior';
 import { srand } from './rng';
+import type { /* Bounds type can be extended in src/types if needed */ } from './types';
 
 type Bounds = { W: number; H: number };
 

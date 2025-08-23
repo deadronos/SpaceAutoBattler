@@ -5,8 +5,11 @@ import { srand, srandom, srange } from './rng';
 import { applySimpleAI } from './behavior';
 import { getDefaultBounds } from './config/displayConfig';
 import { chooseReinforcementsWithManagerSeed, TeamsConfig } from './config/teamsConfig';
+import type { TeamsConfig as TeamsConfigType } from './types';
+import { getDefaultShipType } from './config/entitiesConfig';
 import { createSimWorker } from './createSimWorker';
 import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig';
+import { AssetsConfig } from './config/assets/assetsConfig';
 
 /*
   gamemanager.ts - runtime GameManager and integration notes
@@ -109,7 +112,7 @@ export function setManagerConfig(newCfg: any = {}) {
     explosion: { particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number', minSpeed: 'number', maxSpeed: 'number' },
     shield: { ttl: 'number', particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number' },
     health: { ttl: 'number', particleCount: 'number', particleTTL: 'number', particleColor: 'string', particleSize: 'number' },
-    stars: { twinkle: 'boolean', redrawInterval: 'number' }
+    stars: { twinkle: 'boolean', redrawInterval: 'number', background: 'string', count: 'number' }
   };
   for (const k of Object.keys(newCfg)) {
     if (config[k] && typeof config[k] === 'object' && typeof newCfg[k] === 'object' && fieldTypes[k]) {
@@ -166,8 +169,8 @@ export function reset(seedValue: number | null = null) {
   flashes.length = 0; shieldFlashes.length = 0; healthFlashes.length = 0;
   _reinforcementAccumulator = 0;
   if (typeof seedValue === 'number') { _seed = seedValue >>> 0; srand(_seed); }
-  try { initStars({ stars }, 800, 600, 140); } catch (e) { /* ignore */ }
-  try { if (!config.stars || !config.stars.twinkle) createStarCanvas({ stars }, 800, 600); } catch (e) { /* ignore */ }
+  try { initStars({ stars }, 800, 600, (config.stars && (config.stars as any).count) || 140); } catch (e) { /* ignore */ }
+  try { if (!config.stars || !config.stars.twinkle) createStarCanvas({ stars }, 800, 600, (config.stars && (config.stars as any).background) || (AssetsConfig && (AssetsConfig as any).palette && (AssetsConfig as any).palette.background) || '#041018'); } catch (e) { /* ignore */ }
 }
 
 export function initStars(state: any, W = 800, H = 600, count = 140) {
@@ -193,7 +196,7 @@ export function createStarCanvas(state: any, W = 800, H = 600, bg = '#041018') {
     c.width = W; c.height = H; // @ts-ignore
     const ctx = (c.getContext ? c.getContext('2d') : null) as any;
     if (!ctx) return null;
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
     for (const s of state.stars || []) {
       ctx.beginPath(); ctx.fillStyle = `rgba(255,255,255,${s.a || 1})`;
       ctx.arc(s.x || 0, s.y || 0, s.r || 1, 0, Math.PI * 2);
@@ -219,8 +222,9 @@ export function evaluateReinforcement(dt: number) {
     _reinforcementAccumulator = 0;
     // Simple deterministic fallback reinforcements to keep tests stable.
     try {
-      const r = createShip('fighter', 100, 100, 'red');
-      const b = createShip('fighter', 700, 500, 'blue');
+        const fallbackType = getDefaultShipType();
+        const r = createShip(fallbackType, 100, 100, 'red');
+        const b = createShip(fallbackType, 700, 500, 'blue');
       ships.push(r);
       ships.push(b);
       try { emitManagerEvent('reinforcements', { spawned: [r, b] }); } catch (e) { /* ignore */ }
@@ -243,10 +247,13 @@ export function simulate(dt: number, W = 800, H = 600) {
   for (const ex of state.explosions || []) {
     flashes.push(Object.assign({}, ex));
     try {
-      const count = 12; const ttl = 0.6; const color = 'rgba(255,200,100,0.95)'; const size = 3;
+      const cfg = config.explosion || {};
+      const count = cfg.particleCount || 12; const ttl = cfg.particleTTL || 0.6; const color = cfg.particleColor || 'rgba(255,200,100,0.95)'; const size = cfg.particleSize || 3;
       for (let i = 0; i < count; i++) {
         const ang = srandom() * Math.PI * 2;
-        const sp = 30 + srandom() * 90;
+        const minS = (cfg.minSpeed != null ? cfg.minSpeed : 30);
+        const maxS = (cfg.maxSpeed != null ? cfg.maxSpeed : 120);
+        const sp = minS + srandom() * Math.max(0, (maxS - minS));
         const vx = Math.cos(ang) * sp; const vy = Math.sin(ang) * sp;
         acquireParticle(ex.x || 0, ex.y || 0, { vx, vy, ttl, color, size });
       }
@@ -318,6 +325,7 @@ export function createGameManager({ renderer, canvas, seed = 12345, useWorker = 
   let simWorker: any = null;
   try {
     if (useWorker) {
+      // Use extensionless path so bundlers that prefer .ts sources can resolve correctly
       simWorker = createSimWorker(new URL('./simWorker.js', import.meta.url).href);
       // forward worker-level events to manager listeners (keep parity with JS manager)
       try {
@@ -363,7 +371,7 @@ export function createGameManager({ renderer, canvas, seed = 12345, useWorker = 
                   if (Array.isArray(orders) && orders.length) {
                     for (const o of orders) {
                       try {
-                        const type = o.type || 'fighter';
+                        const type = o.type || getDefaultShipType();
                         const x = (typeof o.x === 'number') ? o.x : Math.max(0, Math.min(bounds.W, (srandom() - 0.5) * bounds.W + bounds.W * 0.5));
                         const y = (typeof o.y === 'number') ? o.y : Math.max(0, Math.min(bounds.H, (srandom() - 0.5) * bounds.H + bounds.H * 0.5));
                         const ship = createShip(type, x, y, team);
@@ -380,8 +388,9 @@ export function createGameManager({ renderer, canvas, seed = 12345, useWorker = 
               } else {
                 // deterministic fallback
                 try {
-                  const r = createShip('fighter', 100, 100, 'red');
-                  const b = createShip('fighter', 700, 500, 'blue');
+                  const fallbackType = getDefaultShipType();
+                  const r = createShip(fallbackType, 100, 100, 'red');
+                  const b = createShip(fallbackType, 700, 500, 'blue');
                   state.ships.push(r); state.ships.push(b);
                   emitManagerEvent('reinforcements', { spawned: [r, b] });
                   managerLastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };
@@ -412,6 +421,8 @@ export function createGameManager({ renderer, canvas, seed = 12345, useWorker = 
 
   const internal = { state, bounds, lastSpawnRands: null } as any;
   return {
+    // expose single-step for tests and deterministic stepping
+    stepOnce(dtSeconds = SIM_DT_MS / 1000) { step(Number(dtSeconds) || (SIM_DT_MS / 1000)); },
     start() { if (!running) { running = true; last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); runLoop(); } },
     pause() { running = false; },
     reset() { state = makeInitialState(); score = { red: 0, blue: 0 }; },
@@ -422,13 +433,13 @@ export function createGameManager({ renderer, canvas, seed = 12345, useWorker = 
       // debug logging to trace RNG usage in tests
       try { /* eslint-disable no-console */ console.log('spawnShip rands:', r1, r2, 'internal keys:', Object.keys(internal)); } catch (e) {}
       try {
-        state.ships.push(createShip('fighter', x, y, color));
+        state.ships.push(createShip(getDefaultShipType(), x, y, color));
       } catch (e) {
         // still record rands even if createShip fails
       }
     },
     reseed(newSeed = Math.floor(srandom() * 0xffffffff)) { srand(newSeed); _mgrRngState = (newSeed >>> 0) || 1; },
-    formFleets() { for (let i = 0; i < 5; i++) { state.ships.push(createShip('fighter', 100 + i * 20, 100 + i * 10, 'red')); state.ships.push(createShip('fighter', bounds.W - 100 - i * 20, bounds.H - 100 - i * 10, 'blue')); } },
+  formFleets() { const defaultType = getDefaultShipType(); for (let i = 0; i < 5; i++) { state.ships.push(createShip(defaultType, 100 + i * 20, 100 + i * 10, 'red')); state.ships.push(createShip(defaultType, bounds.W - 100 - i * 20, bounds.H - 100 - i * 10, 'blue')); } },
   // expose manager-level event API so UI and other consumers can listen
   on(event: string, cb: Function) { onManagerEvent(event, cb); },
   off(event: string, cb: Function) { offManagerEvent(event, cb); },
@@ -443,8 +454,9 @@ export function createGameManager({ renderer, canvas, seed = 12345, useWorker = 
         if (!continuous) _mgrReinforcementAccumulator = 0;
         if (continuous) {
           try {
-            const r = createShip('fighter', 100, 100, 'red');
-            const b = createShip('fighter', 700, 500, 'blue');
+            const fallbackType = getDefaultShipType();
+            const r = createShip(fallbackType, 100, 100, 'red');
+            const b = createShip(fallbackType, 700, 500, 'blue');
             state.ships.push(r); state.ships.push(b);
             emitManagerEvent('reinforcements', { spawned: [r, b] });
             managerLastReinforcement = { spawned: [r, b], timestamp: Date.now(), options: Object.assign({}, continuousOptions) };

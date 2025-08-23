@@ -1,14 +1,27 @@
 // entities.js - catalog of ships, bullets, cannon configs and simple factories
-import { getShipConfig } from './config/entitiesConfig.js';
+import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
+import { validateConfigOrThrow } from './config/validateConfig';
+
+// Validate ship configuration on module load. In CI / production this will throw.
+try {
+  validateConfigOrThrow(getShipConfig());
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.error('Fatal ship config validation error:', err && err.message ? err.message : err);
+  // Re-throw so importing modules fail fast in strict environments
+  throw err;
+}
 
 let nextId = 1;
 export function genId() { return nextId++; }
 
-export function createShip(type = 'fighter', x = 0, y = 0, team = 'red') {
-  const cfg = getShipConfig()[type] || getShipConfig().fighter;
+export function createShip(type, x = 0, y = 0, team = 'red') {
+  const shipCfg = getShipConfig();
+  const resolvedType = (type && shipCfg[type]) ? type : getDefaultShipType();
+  const cfg = shipCfg[resolvedType] || shipCfg[getDefaultShipType()];
   return {
     id: genId(),
-    type,
+    type: resolvedType,
     x, y,
     vx: 0, vy: 0,
     hp: cfg.maxHp,

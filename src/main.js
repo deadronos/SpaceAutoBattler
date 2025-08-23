@@ -2,8 +2,8 @@
 import { createGameManager } from './gamemanager.js';
 import { CanvasRenderer } from './canvasrenderer.js';
 import { WebGLRenderer } from './webglrenderer.js';
-import { getDefaultBounds } from './config/displayConfig.js';
-import { getPreferredRenderer, RendererConfig } from './config/rendererConfig.js';
+import { getDefaultBounds } from './config/displayConfig';
+import { getPreferredRenderer, RendererConfig } from './config/rendererConfig';
 
 export async function startApp(rootDocument = document) {
   const canvas = rootDocument.getElementById('world');
@@ -30,12 +30,18 @@ export async function startApp(rootDocument = document) {
   function fitCanvasToWindow() {
     const baseDpr = window.devicePixelRatio || 1;
     const cfgScale = (RendererConfig && typeof RendererConfig.rendererScale === 'number') ? RendererConfig.rendererScale : 1;
-    const dpr = baseDpr * cfgScale;
     const bounds = getDefaultBounds();
-    canvas.style.width = `${bounds.W}px`;
-    canvas.style.height = `${bounds.H}px`;
-    canvas.width = Math.round(bounds.W * dpr);
-    canvas.height = Math.round(bounds.H * dpr);
+    // To implement a visible "zoom" while preserving crispness on high-DPI
+    // screens we change the CSS size (logical pixels) by the rendererScale and
+    // keep the backing store at CSS_size * devicePixelRatio. This ensures the
+    // canvas appears larger/smaller (zoom) while still rendering at device
+    // pixel density.
+    const cssW = Math.round(bounds.W * cfgScale);
+    const cssH = Math.round(bounds.H * cfgScale);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    canvas.width = Math.round(cssW * baseDpr);
+    canvas.height = Math.round(cssH * baseDpr);
   }
 
   fitCanvasToWindow();
@@ -46,11 +52,13 @@ export async function startApp(rootDocument = document) {
     const scaleRange = document.getElementById('rendererScaleRange');
     const scaleValue = document.getElementById('rendererScaleValue');
     if (scaleRange && scaleValue) {
+      try { console.debug && console.debug('startApp: renderer scale controls present, initial=', RendererConfig.rendererScale); } catch (e) {}
       // initialize display from config
       scaleValue.textContent = String((RendererConfig.rendererScale || 1).toFixed(2));
       scaleRange.value = String(RendererConfig.rendererScale || 1);
       scaleRange.addEventListener('input', (ev) => {
         const v = parseFloat(ev.target.value || '1');
+        try { console.debug && console.debug('rendererScaleRange input ->', v); } catch (e) {}
         RendererConfig.rendererScale = v;
         scaleValue.textContent = v.toFixed(2);
         // resize backing store to pick up new combined DPR and re-render visuals

@@ -10,6 +10,6 @@ export const EXPLOSION = {
   particleCount: 30, particleTTL: 1.2, particleColor: '#ffaa33', particleSize: 3, minSpeed: 20, maxSpeed: 140,
 };
 
-export const STARS = { twinkle: true, redrawInterval: 500 };
+export const STARS = { twinkle: true, redrawInterval: 500, background: '#041018', count: 140 };
 
 export default { SHIELD, HEALTH, EXPLOSION, STARS };

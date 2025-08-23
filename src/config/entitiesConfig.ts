@@ -101,3 +101,8 @@ export function getTurretAssetForShip(_shipType = 'fighter') {
 export function getVisualsForShipType(type = 'fighter', cannon: any = undefined) {
   return { hull: getShipAssetForType(type), turret: getTurretAssetForShip(type), bullet: getBulletAssetForCannon(cannon) };
 }
+
+export function getDefaultShipType(): string {
+  const keys = Object.keys(ShipConfig || {} as any);
+  return keys.length ? keys[0] as string : 'fighter';
+}

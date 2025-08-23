@@ -27,9 +27,23 @@ export const TeamsConfig = {
     enabled: true,        // toggle to enable/disable
     scoreMargin: 0.12,     // if weaker team has less than (1 - scoreMargin) of strength, reinforce
     perTick: 1,            // number of reinforcement ships to provide when triggered
-    reinforceType: 'fighter' // default reinforcement ship type
+    reinforceType: undefined // default reinforcement ship type (use ShipConfig first key when needed)
   }
 };
+
+// Validate TeamsConfig at module init
+import { validateConfigOrThrow, validateTeamsConfig } from './validateConfig';
+try {
+  const errs = validateTeamsConfig(TeamsConfig);
+  if (errs && errs.length) {
+    // validateConfigOrThrow will throw in CI/production based on env
+    validateConfigOrThrow(TeamsConfig);
+  }
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.error('TeamsConfig validation failed:', err && err.message ? err.message : err);
+  throw err;
+}
 
 // Small local seeded PRNG (does not modify global RNG state)
 function mulberry32(seed) {
@@ -144,7 +158,7 @@ export function chooseReinforcements(seed = 0, state = {}, options = {}) {
     for (let i = 0; i < spawnCount; i++) {
       const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
       const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
-      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || (cfg.reinforceType || 'fighter');
+  const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || (cfg.reinforceType || undefined);
       orders.push({ type, team: weakest, x, y });
     }
     return orders;

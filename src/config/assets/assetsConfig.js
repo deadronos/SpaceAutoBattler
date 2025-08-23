@@ -7,6 +7,31 @@ export const AssetsConfig = {
     orientation: '+X',
     coordinateSystem: 'topdown-2d',
   },
+  // Visual animation / state system for renderer to consume
+  animations: {
+    // Engine flare polygon (renderer should scale & rotate to ship heading)
+    engineFlare: {
+      type: 'polygon',
+      points: [ [0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15] ],
+      pulseRate: 8 // pulses per second
+    },
+    // Circular shield effect (drawn as stroke / glow)
+    shieldEffect: {
+      type: 'circle',
+      r: 1.2,
+      strokeWidth: 0.1,
+      color: '#88ccff',
+      pulseRate: 2
+    },
+    // Damage ember / smoke particle descriptor (renderer may use a particle system)
+    damageParticles: {
+      type: 'particles',
+      color: '#ff6b6b',
+      count: 6,
+      lifetime: 0.8,
+      spread: 0.6
+    }
+  },
   palette: {
     shipHull: '#b0b7c3',
     shipAccent: '#6c7380',
@@ -78,6 +103,29 @@ export const AssetsConfig = {
   }
 };
 
+// Damage visual states (used by renderer to tint/overlay assets)
+AssetsConfig.damageStates = {
+  light: { opacity: 0.9, accentColor: '#b0b7c3' },
+  moderate: { opacity: 0.75, accentColor: '#d4a06a' },
+  heavy: { opacity: 0.5, accentColor: '#ff6b6b' }
+};
+
+// Per-ship visualState defaults map: which animations/effects to use for each ship type
+AssetsConfig.visualStateDefaults = {
+  fighter: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  corvette: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  frigate: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  destroyer: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
+  carrier: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' }
+};
+
+// Helper: resolve visual assets for an entity type (returns existing asset config + visual defaults)
+export function getVisualConfig(type) {
+  const shape = getShipAsset(type);
+  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
+}
+
 export function getShipAsset(type) {
   return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
 }
@@ -93,3 +141,14 @@ export function getTurretAsset(kind = 'basic') {
 }
 
 export default AssetsConfig;
+
+// Validate assets config on module load
+import { validateConfigOrThrow, validateAssetsConfig } from '../validateConfig';
+try {
+  const errs = validateAssetsConfig(AssetsConfig);
+  if (errs && errs.length) validateConfigOrThrow(AssetsConfig);
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.error('AssetsConfig validation failed:', err && err.message ? err.message : err);
+  throw err;
+}

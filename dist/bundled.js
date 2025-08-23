@@ -1,197 +1,3 @@
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// src/rng.js
-function srand(seed = 1) {
-  _seed = seed >>> 0;
-}
-function mulberry32(a) {
-  return function() {
-    let t = a += 1831565813;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function srandom() {
-  const f = mulberry32(_seed);
-  _seed = _seed + 2654435761 >>> 0;
-  return f();
-}
-function srange(min, max) {
-  return min + (max - min) * srandom();
-}
-var _seed;
-var init_rng = __esm({
-  "src/rng.js"() {
-    "use strict";
-    _seed = 1;
-  }
-});
-
-// src/config/teamsConfig.js
-var teamsConfig_exports = {};
-__export(teamsConfig_exports, {
-  TeamsConfig: () => TeamsConfig,
-  chooseReinforcements: () => chooseReinforcements,
-  chooseReinforcementsWithManagerSeed: () => chooseReinforcementsWithManagerSeed,
-  default: () => teamsConfig_default,
-  generateFleetForTeam: () => generateFleetForTeam,
-  makeInitialFleets: () => makeInitialFleets
-});
-function mulberry322(seed) {
-  let t = seed >>> 0;
-  return function() {
-    t += 1831565813;
-    let r = Math.imul(t ^ t >>> 15, 1 | t);
-    r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
-    return ((r ^ r >>> 14) >>> 0) / 4294967296;
-  };
-}
-function hashStringToInt(s) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  return h >>> 0;
-}
-function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
-  const cfg = Object.assign({}, TeamsConfig.defaultFleet, options.fleet || {});
-  const spacing = options.spacing ?? cfg.spacing;
-  const jitter = Object.assign({}, cfg.jitter, options.jitter || {});
-  const centerY = bounds.H / 2;
-  const baseX = teamId === "red" ? bounds.W * 0.22 : bounds.W * 0.78;
-  const rng = mulberry322((seed >>> 0) + hashStringToInt(teamId));
-  const out = [];
-  for (const [type, count] of Object.entries(cfg.counts)) {
-    for (let i = 0; i < count; i++) {
-      const r = spacing * Math.sqrt(rng());
-      const angle = rng() * Math.PI * 2;
-      const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
-      const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
-      const x = Math.max(0, Math.min(bounds.W, baseX + dx));
-      const y = Math.max(0, Math.min(bounds.H, centerY + dy));
-      if (typeof shipFactory === "function") {
-        out.push(shipFactory(type, x, y, teamId));
-      } else {
-        out.push({ type, x, y, team: teamId });
-      }
-    }
-  }
-  return out;
-}
-function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
-  const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
-  const blue = generateFleetForTeam(seed + 1, "blue", bounds, shipFactory, options);
-  return red.concat(blue);
-}
-function chooseReinforcements(seed = 0, state = {}, options = {}) {
-  const cfg = Object.assign({}, TeamsConfig.continuousReinforcement, options);
-  if (!cfg.enabled) return [];
-  const teamStrength = {};
-  if (Array.isArray(state.ships)) {
-    for (const s of state.ships) {
-      if (!s || !s.team) continue;
-      const hp = typeof s.hp === "number" ? s.hp : 1;
-      teamStrength[s.team] = (teamStrength[s.team] || 0) + hp;
-    }
-  }
-  const teams = Object.keys(TeamsConfig.teams);
-  if (teams.length === 0) return [];
-  for (const t of teams) {
-    if (!teamStrength[t]) {
-      const cnt = (state.ships || []).filter((s) => s && s.team === t).length;
-      teamStrength[t] = cnt > 0 ? cnt : 0;
-    }
-  }
-  let weakest = teams[0];
-  let strongest = teams[0];
-  for (const t of teams) {
-    if (teamStrength[t] < teamStrength[weakest]) weakest = t;
-    if (teamStrength[t] > teamStrength[strongest]) strongest = t;
-  }
-  const total = teams.reduce((s, t) => s + (teamStrength[t] || 0), 0) || 1;
-  const weakestRatio = (teamStrength[weakest] || 0) / total;
-  if (weakestRatio < 0.5 - cfg.scoreMargin) {
-    const orders = [];
-    const rng = mulberry322((seed >>> 0) + hashStringToInt(weakest));
-    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
-    const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
-    const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
-    const b = options.bounds || { W: 800, H: 600 };
-    const centerY = b.H / 2;
-    const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
-    for (let i = 0; i < spawnCount; i++) {
-      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
-      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
-      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || (cfg.reinforceType || "fighter");
-      orders.push({ type, team: weakest, x, y });
-    }
-    return orders;
-  }
-  return [];
-}
-function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
-  const seed = Math.floor(srandom() * 4294967295) >>> 0;
-  return chooseReinforcements(seed, state, options);
-}
-var TeamsConfig, teamsConfig_default;
-var init_teamsConfig = __esm({
-  "src/config/teamsConfig.js"() {
-    "use strict";
-    init_rng();
-    TeamsConfig = {
-      teams: {
-        red: { id: "red", color: "#ff4d4d", label: "Red" },
-        blue: { id: "blue", color: "#4da6ff", label: "Blue" }
-      },
-      // Default fleet composition when prepopulating a game
-      defaultFleet: {
-        // counts per ship type
-        counts: {
-          fighter: 8,
-          corvette: 3,
-          frigate: 1
-        },
-        // jitter and spacing used when scattering initial ships
-        spacing: 28,
-        jitter: { x: 80, y: 120 }
-      },
-      // Continuous reinforcement defaults
-      continuousReinforcement: {
-        enabled: true,
-        // toggle to enable/disable
-        scoreMargin: 0.12,
-        // if weaker team has less than (1 - scoreMargin) of strength, reinforce
-        perTick: 1,
-        // number of reinforcement ships to provide when triggered
-        reinforceType: "fighter"
-        // default reinforcement ship type
-      }
-    };
-    teamsConfig_default = TeamsConfig;
-  }
-});
-
 // src/config/assets/assetsConfig.ts
 var AssetsConfig = {
   meta: {
@@ -202,7 +8,9 @@ var AssetsConfig = {
     shipHull: "#b0b7c3",
     shipAccent: "#6c7380",
     bullet: "#ffd166",
-    turret: "#94a3b8"
+    turret: "#94a3b8",
+    // Scene background color used by renderers
+    background: "#0b1220"
   },
   // 2D vector shapes defined as polygons and circles. Points are unit-sized
   // profiles (roughly radius 1). Renderer should multiply by entity radius or
@@ -261,6 +69,47 @@ var AssetsConfig = {
     }
   }
 };
+AssetsConfig.animations = {
+  engineFlare: {
+    type: "polygon",
+    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+    pulseRate: 8,
+    // configurable alpha multiplier for engine overlay
+    alpha: 0.4,
+    // local-space X offset (negative = behind ship)
+    offset: -0.9
+  },
+  shieldEffect: {
+    type: "circle",
+    r: 1.2,
+    strokeWidth: 0.1,
+    color: "#88ccff",
+    pulseRate: 2,
+    // map shieldPct -> alpha = base + scale * shieldPct
+    alphaBase: 0.25,
+    alphaScale: 0.75
+  },
+  damageParticles: {
+    type: "particles",
+    color: "#ff6b6b",
+    count: 6,
+    lifetime: 0.8,
+    spread: 0.6
+  }
+};
+AssetsConfig.damageStates = {
+  light: { opacity: 0.9, accentColor: "#b0b7c3" },
+  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+};
+AssetsConfig.visualStateDefaults = {
+  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" }
+};
+AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
 function getShipAsset(type) {
   return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
 }
@@ -273,7 +122,7 @@ function getTurretAsset(_kind = "basic") {
   return AssetsConfig.shapes2d.turretBasic;
 }
 
-// src/config/entitiesConfig.js
+// src/config/entitiesConfig.ts
 var ShipConfig = {
   fighter: {
     maxHp: 15,
@@ -282,9 +131,7 @@ var ShipConfig = {
     shieldRegen: 1,
     dmg: 3,
     radius: 4,
-    cannons: [
-      { damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }
-    ],
+    cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
     accel: 600,
     turnRate: 6
   },
@@ -338,7 +185,6 @@ function getShipConfig() {
   return JSON.parse(JSON.stringify(ShipConfig));
 }
 var VisualMappingConfig = {
-  // thresholds to map bulletRadius to an asset kind
   bulletRadiusThresholds: [
     { threshold: 0.22, kind: "small" },
     { threshold: 0.32, kind: "medium" },
@@ -359,17 +205,81 @@ function bulletKindForRadius(r = 0.2) {
   }
   return "small";
 }
+function getDefaultShipType() {
+  const keys = Object.keys(ShipConfig || {});
+  return keys.length ? keys[0] : "fighter";
+}
+
+// src/config/validateConfig.ts
+function validateShipConfig(config2) {
+  const errors = [];
+  if (!config2 || typeof config2 !== "object") {
+    errors.push("config must be an object");
+    return errors;
+  }
+  for (const [type, shipRaw] of Object.entries(config2)) {
+    const ship = shipRaw;
+    if (!ship || typeof ship !== "object") {
+      errors.push(`${type}: ship entry must be an object`);
+      continue;
+    }
+    if (typeof ship.maxHp !== "number" || Number.isNaN(ship.maxHp)) {
+      errors.push(`${type}: maxHp must be a number`);
+    } else if (ship.maxHp <= 0) {
+      errors.push(`${type}: maxHp must be positive`);
+    }
+    if (typeof ship.accel !== "number" || Number.isNaN(ship.accel)) {
+      errors.push(`${type}: accel must be a number`);
+    } else if (ship.accel < 0) {
+      errors.push(`${type}: accel cannot be negative`);
+    }
+    if (!Array.isArray(ship.cannons) || ship.cannons.length === 0) {
+      errors.push(`${type}: must have at least one cannon`);
+    }
+    if (typeof ship.maxShield !== "undefined") {
+      if (typeof ship.maxShield !== "number" || Number.isNaN(ship.maxShield) || ship.maxShield < 0) {
+        errors.push(`${type}: maxShield must be a non-negative number`);
+      }
+    }
+    if (typeof ship.radius !== "undefined") {
+      if (typeof ship.radius !== "number" || Number.isNaN(ship.radius) || ship.radius <= 0) {
+        errors.push(`${type}: radius must be a positive number`);
+      }
+    }
+  }
+  return errors;
+}
+function validateConfigOrThrow(config2, { throwInCI = true } = {}) {
+  const errors = validateShipConfig(config2);
+  if (errors.length === 0) return [];
+  const message = `Ship config validation failed:
+ - ${errors.join("\n - ")}`;
+  const isCI = process.env.CI === "true" || true;
+  if (throwInCI && isCI) {
+    throw new Error(message);
+  }
+  console.error(message);
+  return errors;
+}
 
 // src/entities.js
+try {
+  validateConfigOrThrow(getShipConfig());
+} catch (err) {
+  console.error("Fatal ship config validation error:", err && err.message ? err.message : err);
+  throw err;
+}
 var nextId = 1;
 function genId() {
   return nextId++;
 }
-function createShip(type = "fighter", x = 0, y = 0, team = "red") {
-  const cfg = getShipConfig()[type] || getShipConfig().fighter;
+function createShip(type, x = 0, y = 0, team = "red") {
+  const shipCfg = getShipConfig();
+  const resolvedType = type && shipCfg[type] ? type : getDefaultShipType();
+  const cfg = shipCfg[resolvedType] || shipCfg[getDefaultShipType()];
   return {
     id: genId(),
-    type,
+    type: resolvedType,
     x,
     y,
     vx: 0,
@@ -411,18 +321,38 @@ function makeInitialState() {
   };
 }
 
-// src/simulate.js
-init_rng();
+// src/rng.js
+var _seed = 1;
+function srand(seed = 1) {
+  _seed = seed >>> 0;
+}
+function mulberry32(a) {
+  return function() {
+    let t = a += 1831565813;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function srandom() {
+  const f = mulberry32(_seed);
+  _seed = _seed + 2654435761 >>> 0;
+  return f();
+}
+function srange(min, max) {
+  return min + (max - min) * srandom();
+}
 
-// src/config/progressionConfig.js
+// src/config/progressionConfig.ts
 var progression = {
   xpPerDamage: 1,
   xpPerKill: 50,
-  xpToLevel: (level) => 100 + level * 50,
-  // percent-per-level scalars (fractions)
-  hpPercentPerLevel: 0.1,
+  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),
+  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),
   dmgPercentPerLevel: 0.08,
-  shieldPercentPerLevel: 0.06
+  shieldPercentPerLevel: 0.06,
+  speedPercentPerLevel: 0.03,
+  regenPercentPerLevel: 0.04
 };
 
 // src/simulate.js
@@ -483,9 +413,16 @@ function simulateStep(state, dtSeconds, bounds) {
           while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
             attacker.xp -= progression.xpToLevel(attacker.level || 1);
             attacker.level = (attacker.level || 1) + 1;
-            const hpMul = 1 + (progression.hpPercentPerLevel || 0);
-            const shMul = 1 + (progression.shieldPercentPerLevel || 0);
-            const dmgMul = 1 + (progression.dmgPercentPerLevel || 0);
+            const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+            const lvl = attacker.level || 1;
+            const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
+            const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
+            const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
+            const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
+            const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+            const hpMul = 1 + hpScalar;
+            const shMul = 1 + shScalar;
+            const dmgMul = 1 + dmgScalar;
             attacker.maxHp = (attacker.maxHp || 0) * hpMul;
             attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
             if (typeof attacker.maxShield === "number") {
@@ -497,6 +434,8 @@ function simulateStep(state, dtSeconds, bounds) {
                 if (typeof c.damage === "number") c.damage *= dmgMul;
               }
             }
+            if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
+            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
           }
         }
         state.bullets.splice(bi, 1);
@@ -535,21 +474,20 @@ function simulateStep(state, dtSeconds, bounds) {
   return state;
 }
 
-// src/gamemanager.js
-init_rng();
-
-// src/config/displayConfig.js
+// src/config/displayConfig.ts
 function getDefaultBounds() {
-  return { W: Math.max(800, window.innerWidth), H: Math.max(600, window.innerHeight) };
+  const W = typeof window !== "undefined" && window.innerWidth ? window.innerWidth : 800;
+  const H = typeof window !== "undefined" && window.innerHeight ? window.innerHeight : 600;
+  return { W: Math.max(800, W), H: Math.max(600, H) };
 }
 
-// src/createSimWorker.js
+// src/createSimWorker.ts
 function createSimWorker(url = "./simWorker.js") {
   const worker = new Worker(url, { type: "module" });
   const listeners = /* @__PURE__ */ new Map();
   worker.onmessage = (ev) => {
     const msg = ev.data;
-    const cb = listeners.get(msg.type);
+    const cb = listeners.get(msg && msg.type);
     if (cb) cb(msg);
   };
   return {
@@ -565,7 +503,7 @@ function createSimWorker(url = "./simWorker.js") {
   };
 }
 
-// src/config/gamemanagerConfig.js
+// src/config/gamemanagerConfig.ts
 var SHIELD = {
   ttl: 0.4,
   particleCount: 6,
@@ -588,16 +526,91 @@ var EXPLOSION = {
   minSpeed: 20,
   maxSpeed: 140
 };
-var STARS = {
-  twinkle: true,
-  redrawInterval: 500
-};
+var STARS = { twinkle: true, redrawInterval: 500, background: "#041018", count: 140 };
 
-// src/gamemanager.js
-init_teamsConfig();
+// src/config/teamsConfig.ts
+var TeamsConfig = {
+  teams: {
+    red: { id: "red", color: "#ff4d4d", label: "Red" },
+    blue: { id: "blue", color: "#4da6ff", label: "Blue" }
+  },
+  defaultFleet: { counts: { fighter: 8, corvette: 3, frigate: 1 }, spacing: 28, jitter: { x: 80, y: 120 } },
+  // continuousReinforcement controls: enable/disable, scoreMargin is the
+  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
+  // perTick is the maximum ships considered per reinforcement tick, and
+  // shipTypes is an optional array of types to choose from randomly. If
+  // omitted, keys from defaultFleet.counts are used.
+  continuousReinforcement: { enabled: false, scoreMargin: 0.12, perTick: 1, shipTypes: void 0 }
+};
+function mulberry322(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t += 1831565813;
+    let r = Math.imul(t ^ t >>> 15, 1 | t);
+    r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
+    return ((r ^ r >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashStringToInt(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+function chooseReinforcements(seed = 0, state = {}, options = {}) {
+  const cfg = Object.assign({}, TeamsConfig.continuousReinforcement, options);
+  if (!cfg.enabled) return [];
+  const teamStrength = {};
+  if (Array.isArray(state.ships)) {
+    for (const s of state.ships) {
+      if (!s || !s.team) continue;
+      const hp = typeof s.hp === "number" ? s.hp : 1;
+      teamStrength[s.team] = (teamStrength[s.team] || 0) + hp;
+    }
+  }
+  const teams = Object.keys(TeamsConfig.teams);
+  if (teams.length === 0) return [];
+  for (const t of teams) {
+    if (!teamStrength[t]) {
+      const cnt = (state.ships || []).filter((s) => s && s.team === t).length;
+      teamStrength[t] = cnt > 0 ? cnt : 0;
+    }
+  }
+  let weakest = teams[0];
+  let strongest = teams[0];
+  for (const t of teams) {
+    if (teamStrength[t] < teamStrength[weakest]) weakest = t;
+    if (teamStrength[t] > teamStrength[strongest]) strongest = t;
+  }
+  const total = teams.reduce((s, t) => s + (teamStrength[t] || 0), 0) || 1;
+  const weakestRatio = (teamStrength[weakest] || 0) / total;
+  if (weakestRatio < 0.5 - cfg.scoreMargin) {
+    const orders = [];
+    const rng = mulberry322((seed >>> 0) + hashStringToInt(weakest));
+    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
+    const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
+    const b = options.bounds || { W: 800, H: 600 };
+    const centerY = b.H / 2;
+    const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
+    for (let i = 0; i < spawnCount; i++) {
+      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
+      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
+      const type = candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType();
+      orders.push({ type, team: weakest, x, y });
+    }
+    return orders;
+  }
+  return [];
+}
+function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
+  const seed = Math.floor(srandom() * 4294967295) >>> 0;
+  return chooseReinforcements(seed, state, options);
+}
 
 // src/behavior.js
-init_rng();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -800,17 +813,17 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
       if (reinforcementAccumulator >= reinforcementInterval) {
         reinforcementAccumulator = 0;
         try {
-          const teams = Object.keys((init_teamsConfig(), __toCommonJS(teamsConfig_exports)).TeamsConfig.teams);
+          const teams = Object.keys(TeamsConfig.teams);
           const spawned = [];
           for (const team of teams) {
             const teamShips = (state.ships || []).filter((s) => s && s.team === team);
             if (teamShips.length < 3) {
               const teamState = Object.assign({}, state, { ships: teamShips });
-              const orders = (init_teamsConfig(), __toCommonJS(teamsConfig_exports)).chooseReinforcementsWithManagerSeed(teamState, Object.assign({}, continuousOptions, { bounds, team }));
+              const orders = chooseReinforcementsWithManagerSeed(teamState, Object.assign({}, continuousOptions, { bounds, team }));
               if (Array.isArray(orders) && orders.length) {
                 for (const o of orders) {
                   try {
-                    let type = o.type || "fighter";
+                    let type = o.type || getDefaultShipType();
                     if (Array.isArray(continuousOptions.shipTypes) && continuousOptions.shipTypes.length) {
                       const types = continuousOptions.shipTypes;
                       type = types[Math.floor(srandom() * types.length)] || type;
@@ -837,8 +850,9 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
             }
           } else {
             try {
-              const r = createShip("fighter", 100, 100, "red");
-              const b = createShip("fighter", 700, 500, "blue");
+              const fallbackType = getDefaultShipType();
+              const r = createShip(fallbackType, 100, 100, "red");
+              const b = createShip(fallbackType, 700, 500, "blue");
               state.ships.push(r);
               state.ships.push(b);
               emitManagerEvent2("reinforcements", { spawned: [r, b] });
@@ -959,8 +973,9 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
         if (!continuous) reinforcementAccumulator = 0;
         if (continuous) {
           try {
-            const r = createShip("fighter", 100, 100, "red");
-            const b = createShip("fighter", 700, 500, "blue");
+            const fallbackType = getDefaultShipType();
+            const r = createShip(fallbackType, 100, 100, "red");
+            const b = createShip(fallbackType, 700, 500, "blue");
             state.ships.push(r);
             state.ships.push(b);
             emitManagerEvent2("reinforcements", { spawned: [r, b] });
@@ -1020,7 +1035,7 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
       const recorded = [r1, r2];
       internal.lastSpawnRands = recorded;
       try {
-        const ship = createShip("fighter", x, y, color);
+        const ship = createShip(getDefaultShipType(), x, y, color);
         const dir = color === "red" ? 1 : -1;
         ship.vx = 30 * dir;
         ship.vy = (mgr_random() - 0.5) * 20;
@@ -1035,11 +1050,12 @@ function createGameManager({ renderer, canvas, seed = 12345, createSimWorker: cr
       if (simWorker) simWorker.post({ type: "setSeed", seed: newSeed });
     },
     formFleets() {
+      const fallbackType = getDefaultShipType();
       for (let i = 0; i < 5; i++) {
-        const r = createShip("fighter", 100 + i * 20, 100 + i * 10, "red");
+        const r = createShip(fallbackType, 100 + i * 20, 100 + i * 10, "red");
         r.vx = 40;
         r.vy = 0;
-        const b = createShip("fighter", bounds.W - 100 - i * 20, bounds.H - 100 - i * 10, "blue");
+        const b = createShip(fallbackType, bounds.W - 100 - i * 20, bounds.H - 100 - i * 10, "blue");
         b.vx = -40;
         b.vy = 0;
         if (simWorker) {
@@ -1066,16 +1082,14 @@ var config = {
 };
 var _reinforcementInterval = 5;
 
-// src/canvasrenderer.js
-init_teamsConfig();
-
-// src/config/rendererConfig.js
+// src/config/rendererConfig.ts
 var RendererConfig = {
   preferred: "canvas",
   allowUrlOverride: true,
-  allowWebGL: true
+  allowWebGL: true,
+  // UI overlays configuration
+  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
 };
-RendererConfig.rendererScale = 1;
 function getPreferredRenderer() {
   try {
     if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
@@ -1133,7 +1147,8 @@ var CanvasRenderer = class {
       const color = team.color || AssetsConfig.palette.shipHull;
       const radius = s.radius || 6;
       const angle = s.angle || 0;
-      const shape = getShipAsset(s.type || "fighter");
+      const fallback = getDefaultShipType();
+      const shape = getShipAsset(s.type || fallback);
       ctx.save();
       ctx.translate(s.x, s.y);
       ctx.rotate(angle);
@@ -1254,8 +1269,11 @@ var CanvasRenderer = class {
   updateScale() {
     if (!this.ctx) this.ctx = this.canvas.getContext("2d");
     const baseDpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
-    const cfgScale = typeof RendererConfig !== "undefined" && RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
-    this.dpr = baseDpr * cfgScale;
+    this.dpr = baseDpr;
+    try {
+      console.debug && console.debug("CanvasRenderer.updateScale -> dpr=", this.dpr);
+    } catch (e) {
+    }
     try {
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     } catch (e) {
@@ -1325,12 +1343,13 @@ async function startApp(rootDocument = document) {
   function fitCanvasToWindow() {
     const baseDpr = window.devicePixelRatio || 1;
     const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
-    const dpr = baseDpr * cfgScale;
     const bounds = getDefaultBounds();
-    canvas.style.width = `${bounds.W}px`;
-    canvas.style.height = `${bounds.H}px`;
-    canvas.width = Math.round(bounds.W * dpr);
-    canvas.height = Math.round(bounds.H * dpr);
+    const cssW = Math.round(bounds.W * cfgScale);
+    const cssH = Math.round(bounds.H * cfgScale);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    canvas.width = Math.round(cssW * baseDpr);
+    canvas.height = Math.round(cssH * baseDpr);
   }
   fitCanvasToWindow();
   window.addEventListener("resize", fitCanvasToWindow);
@@ -1338,10 +1357,18 @@ async function startApp(rootDocument = document) {
     const scaleRange = document.getElementById("rendererScaleRange");
     const scaleValue = document.getElementById("rendererScaleValue");
     if (scaleRange && scaleValue) {
+      try {
+        console.debug && console.debug("startApp: renderer scale controls present, initial=", RendererConfig.rendererScale);
+      } catch (e) {
+      }
       scaleValue.textContent = String((RendererConfig.rendererScale || 1).toFixed(2));
       scaleRange.value = String(RendererConfig.rendererScale || 1);
       scaleRange.addEventListener("input", (ev) => {
         const v = parseFloat(ev.target.value || "1");
+        try {
+          console.debug && console.debug("rendererScaleRange input ->", v);
+        } catch (e) {
+        }
         RendererConfig.rendererScale = v;
         scaleValue.textContent = v.toFixed(2);
         try {
@@ -1406,7 +1433,9 @@ async function startApp(rootDocument = document) {
   }
   try {
     const host = location && location.hostname || "";
-    if (host === "127.0.0.1" || host === "localhost") {
+    const urlParams = typeof URLSearchParams !== "undefined" ? new URLSearchParams(location.search) : null;
+    const autotest = urlParams && urlParams.get("autotest") === "1" || !!(window && window.__AUTO_REINFORCE_DEV__);
+    if ((host === "127.0.0.1" || host === "localhost") && autotest) {
       try {
         if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(true);
       } catch (e) {

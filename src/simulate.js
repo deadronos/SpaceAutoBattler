@@ -1,6 +1,6 @@
 // simulate.js - deterministic fixed-step simulation logic
 import { srange, srand } from './rng.js';
-import { progression as progressionCfg } from './config/progressionConfig.js';
+import { progression as progressionCfg } from './config/progressionConfig';
 
 // Configurable sim constants (exported for tests)
 export const SIM_DT_MS = 16; // default fixed-step in ms
@@ -76,10 +76,19 @@ export function simulateStep(state, dtSeconds, bounds) {
           while ((attacker.xp || 0) >= progressionCfg.xpToLevel((attacker.level || 1))) {
             attacker.xp -= progressionCfg.xpToLevel((attacker.level || 1));
             attacker.level = (attacker.level || 1) + 1;
-            // Apply simple per-level scaling
-            const hpMul = 1 + (progressionCfg.hpPercentPerLevel || 0);
-            const shMul = 1 + (progressionCfg.shieldPercentPerLevel || 0);
-            const dmgMul = 1 + (progressionCfg.dmgPercentPerLevel || 0);
+            // Apply per-level scaling; support functions or numbers for each scalar
+            const resolveScalar = (s, lvl) => (typeof s === 'function' ? s(lvl) : s || 0);
+            const lvl = attacker.level || 1;
+            const hpScalar = resolveScalar(progressionCfg.hpPercentPerLevel, lvl);
+            const shScalar = resolveScalar(progressionCfg.shieldPercentPerLevel, lvl);
+            const dmgScalar = resolveScalar(progressionCfg.dmgPercentPerLevel, lvl);
+            const speedScalar = resolveScalar(progressionCfg.speedPercentPerLevel, lvl);
+            const regenScalar = resolveScalar(progressionCfg.regenPercentPerLevel, lvl);
+
+            const hpMul = 1 + hpScalar;
+            const shMul = 1 + shScalar;
+            const dmgMul = 1 + dmgScalar;
+
             attacker.maxHp = (attacker.maxHp || 0) * hpMul;
             attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
             if (typeof attacker.maxShield === 'number') {
@@ -91,6 +100,9 @@ export function simulateStep(state, dtSeconds, bounds) {
                 if (typeof c.damage === 'number') c.damage *= dmgMul;
               }
             }
+            // Apply optional speed and regen increases
+            if (typeof speedScalar === 'number' && typeof attacker.accel === 'number') attacker.accel = attacker.accel * (1 + speedScalar);
+            if (typeof regenScalar === 'number' && typeof attacker.shieldRegen === 'number') attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
           }
         }
         // remove bullet

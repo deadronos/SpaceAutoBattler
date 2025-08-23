@@ -2,10 +2,12 @@
 var progression = {
   xpPerDamage: 1,
   xpPerKill: 50,
-  xpToLevel: (level) => 100 + level * 50,
-  hpPercentPerLevel: 0.1,
+  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),
+  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),
   dmgPercentPerLevel: 0.08,
-  shieldPercentPerLevel: 0.06
+  shieldPercentPerLevel: 0.06,
+  speedPercentPerLevel: 0.03,
+  regenPercentPerLevel: 0.04
 };
 
 // src/simulate.ts
@@ -46,26 +48,38 @@ function simulateStep(state2, dtSeconds, bounds2) {
           const absorbed = Math.min(shield, b.damage || 0);
           s.shield = shield - absorbed;
           (state2.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed });
+          (state2.damageEvents ||= []).push({ id: s.id, type: "shield", amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
             s.hp -= remaining;
             (state2.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
+            (state2.damageEvents ||= []).push({ id: s.id, type: "hp", amount: remaining, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
           }
           dealtToShield = absorbed;
           dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
         } else {
           s.hp -= b.damage || 0;
           (state2.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });
+          (state2.damageEvents ||= []).push({ id: s.id, type: "hp", amount: b.damage || 0, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
           dealtToHealth = b.damage || 0;
         }
+        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+        s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
         if (attacker) {
           attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);
           while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
             attacker.xp -= progression.xpToLevel(attacker.level || 1);
             attacker.level = (attacker.level || 1) + 1;
-            const hpMul = 1 + (progression.hpPercentPerLevel || 0);
-            const shMul = 1 + (progression.shieldPercentPerLevel || 0);
-            const dmgMul = 1 + (progression.dmgPercentPerLevel || 0);
+            const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+            const lvl = attacker.level || 1;
+            const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
+            const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
+            const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
+            const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
+            const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+            const hpMul = 1 + hpScalar;
+            const shMul = 1 + shScalar;
+            const dmgMul = 1 + dmgScalar;
             attacker.maxHp = (attacker.maxHp || 0) * hpMul;
             attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
             if (typeof attacker.maxShield === "number") {
@@ -77,6 +91,8 @@ function simulateStep(state2, dtSeconds, bounds2) {
                 if (typeof c.damage === "number") c.damage *= dmgMul;
               }
             }
+            if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
+            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
           }
         }
         state2.bullets.splice(bi, 1);
@@ -86,9 +102,16 @@ function simulateStep(state2, dtSeconds, bounds2) {
             while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
               attacker.xp -= progression.xpToLevel(attacker.level || 1);
               attacker.level = (attacker.level || 1) + 1;
-              const hpMul = 1 + (progression.hpPercentPerLevel || 0);
-              const shMul = 1 + (progression.shieldPercentPerLevel || 0);
-              const dmgMul = 1 + (progression.dmgPercentPerLevel || 0);
+              const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+              const lvl = attacker.level || 1;
+              const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
+              const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
+              const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
+              const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
+              const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+              const hpMul = 1 + hpScalar;
+              const shMul = 1 + shScalar;
+              const dmgMul = 1 + dmgScalar;
               attacker.maxHp = (attacker.maxHp || 0) * hpMul;
               attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
               if (typeof attacker.maxShield === "number") {
@@ -100,6 +123,8 @@ function simulateStep(state2, dtSeconds, bounds2) {
                   if (typeof c.damage === "number") c.damage *= dmgMul;
                 }
               }
+              if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
+              if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
           (state2.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });
@@ -111,6 +136,10 @@ function simulateStep(state2, dtSeconds, bounds2) {
   }
   for (const s of state2.ships || []) {
     if (s.maxShield) s.shield = Math.min(s.maxShield, (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds);
+  }
+  for (const s of state2.ships || []) {
+    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+    s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
   }
   return state2;
 }
@@ -137,6 +166,119 @@ function srandom() {
 function srange(min, max) {
   return min + srandom() * (max - min);
 }
+
+// src/config/assets/assetsConfig.ts
+var AssetsConfig = {
+  meta: {
+    orientation: "+X",
+    coordinateSystem: "topdown-2d"
+  },
+  palette: {
+    shipHull: "#b0b7c3",
+    shipAccent: "#6c7380",
+    bullet: "#ffd166",
+    turret: "#94a3b8",
+    // Scene background color used by renderers
+    background: "#0b1220"
+  },
+  // 2D vector shapes defined as polygons and circles. Points are unit-sized
+  // profiles (roughly radius 1). Renderer should multiply by entity radius or
+  // provided scale before drawing.
+  shapes2d: {
+    fighter: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+    },
+    corvette: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1, 0], [0.2, 0.6], [-0.9, 0.5], [-1.1, 0], [-0.9, -0.5], [0.2, -0.6]] },
+        { type: "polygon", points: [[1.2, 0.18], [1, 0.1], [1, -0.1], [1.2, -0.18]] }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+    },
+    frigate: {
+      type: "polygon",
+      points: [[1.1, 0], [0.6, 0.55], [-0.2, 0.8], [-1.2, 0.45], [-1.2, -0.45], [-0.2, -0.8], [0.6, -0.55]],
+      strokeWidth: 0.1,
+      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+    },
+    destroyer: {
+      type: "polygon",
+      points: [[1.4, 0], [0.8, 0.5], [0.1, 0.7], [-0.6, 0.6], [-1.4, 0.4], [-1.4, -0.4], [-0.6, -0.6], [0.1, -0.7], [0.8, -0.5]],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 }
+    },
+    carrier: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.1, 0], [0.6, 0.7], [-0.5, 0.9], [-1.4, 0.7], [-1.6, 0], [-1.4, -0.7], [-0.5, -0.9], [0.6, -0.7]] },
+        { type: "polygon", points: [[1.4, 0.25], [1.1, 0.15], [1.1, -0.15], [1.4, -0.25]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 }
+    },
+    bulletSmall: { type: "circle", r: 0.18 },
+    bulletMedium: { type: "circle", r: 0.25 },
+    bulletLarge: { type: "circle", r: 0.36 },
+    turretBasic: {
+      type: "compound",
+      parts: [
+        { type: "circle", r: 0.5 },
+        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+      ],
+      strokeWidth: 0.08
+    }
+  }
+};
+AssetsConfig.animations = {
+  engineFlare: {
+    type: "polygon",
+    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+    pulseRate: 8,
+    // configurable alpha multiplier for engine overlay
+    alpha: 0.4,
+    // local-space X offset (negative = behind ship)
+    offset: -0.9
+  },
+  shieldEffect: {
+    type: "circle",
+    r: 1.2,
+    strokeWidth: 0.1,
+    color: "#88ccff",
+    pulseRate: 2,
+    // map shieldPct -> alpha = base + scale * shieldPct
+    alphaBase: 0.25,
+    alphaScale: 0.75
+  },
+  damageParticles: {
+    type: "particles",
+    color: "#ff6b6b",
+    count: 6,
+    lifetime: 0.8,
+    spread: 0.6
+  }
+};
+AssetsConfig.damageStates = {
+  light: { opacity: 0.9, accentColor: "#b0b7c3" },
+  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+};
+AssetsConfig.visualStateDefaults = {
+  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" },
+  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles" }
+};
+AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
 
 // src/config/entitiesConfig.ts
 var ShipConfig = {

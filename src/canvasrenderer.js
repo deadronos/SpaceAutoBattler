@@ -1,8 +1,8 @@
 // canvasrenderer.js - simple Canvas2D fallback renderer
 import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset } from './config/assets/assetsConfig';
-import { TeamsConfig } from './config/teamsConfig.js';
-import { VisualMappingConfig, bulletKindForRadius } from './config/entitiesConfig.js';
-import { RendererConfig } from './config/rendererConfig.js';
+import { TeamsConfig } from './config/teamsConfig';
+import { VisualMappingConfig, bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';
+import { RendererConfig } from './config/rendererConfig';
 
 export class CanvasRenderer {
   constructor(canvas) {
@@ -65,7 +65,8 @@ export class CanvasRenderer {
       const color = team.color || AssetsConfig.palette.shipHull;
       const radius = s.radius || 6;
       const angle = s.angle || 0;
-      const shape = getShipAsset(s.type || 'fighter');
+  const fallback = getDefaultShipType();
+  const shape = getShipAsset(s.type || fallback);
 
       ctx.save();
       ctx.translate(s.x, s.y);
@@ -184,9 +185,13 @@ export class CanvasRenderer {
   // changes.
   updateScale() {
     if (!this.ctx) this.ctx = this.canvas.getContext('2d');
+    // The backing store DPR should be devicePixelRatio only. main.js sets
+    // canvas.width/height based on devicePixelRatio * CSS_size. The renderer
+    // here uses dpr=baseDpr to scale drawing into the backing store pixels.
     const baseDpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-    const cfgScale = (typeof RendererConfig !== 'undefined' && RendererConfig && typeof RendererConfig.rendererScale === 'number') ? RendererConfig.rendererScale : 1;
-    this.dpr = baseDpr * cfgScale;
+    this.dpr = baseDpr;
+    // Diagnostic log to verify updateScale is called during tests/standalone runtime.
+    try { console.debug && console.debug('CanvasRenderer.updateScale -> dpr=', this.dpr); } catch (e) {}
     try {
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     } catch (e) {
