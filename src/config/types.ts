@@ -15,7 +15,8 @@ export interface ShipSpec {
   maxShield?: number;
   shieldRegen?: number;
   turnRate?: number;
-  radius?: number;
+  // radius is now required for rendering and collision calculations
+  radius: number;
   [k: string]: any;
 }
 
@@ -67,6 +68,6 @@ export interface RendererConfig {
   [k: string]: any;
 }
 
-export type ShipConfigMap = Record<string, Partial<ShipSpec>>;
+export type ShipConfigMap = Record<string, ShipSpec>;
 
 export default {};

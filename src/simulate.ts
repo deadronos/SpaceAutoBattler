@@ -49,7 +49,8 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 					if (shield > 0) {
 					const absorbed = Math.min(shield, b.damage || 0);
 					s.shield = shield - absorbed;
-						(state.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed });
+							const hitAngle = Math.atan2((b.y || 0) - (s.y || 0), (b.x || 0) - (s.x || 0));
+							(state.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed, hitAngle });
 						// expose damage event for renderer (shield hit)
 						(state.damageEvents ||= []).push({ id: s.id, type: 'shield', amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
 					const remaining = (b.damage || 0) - absorbed;

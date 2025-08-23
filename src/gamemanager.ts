@@ -262,12 +262,18 @@ export function simulate(dt: number, W = 800, H = 600) {
 
   // shield hits -> shieldFlashes + particles
   for (const h of state.shieldHits || []) {
-    shieldFlashes.push(Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true }));
+    // preserve hitAngle when present so renderers can draw localized arcs
+    const hitObj = Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true });
+    shieldFlashes.push(hitObj);
     try {
       const cfg = config.shield || {};
       const cnt = cfg.particleCount || 6; const ttl = cfg.particleTTL || 0.35; const color = cfg.particleColor || 'rgba(160,200,255,0.9)'; const size = cfg.particleSize || 2;
+      const arc = (typeof cfg.arcWidth === 'number') ? cfg.arcWidth : (Math.PI / 6);
+      const center = (typeof hitObj.hitAngle === 'number') ? hitObj.hitAngle : null;
       for (let i = 0; i < cnt; i++) {
-        const ang = srandom() * Math.PI * 2; const sp = 10 + srandom() * 40; const vx = Math.cos(ang) * sp; const vy = Math.sin(ang) * sp;
+        // if hitAngle is present, constrain to arc centered on hitAngle; otherwise full circle
+        const ang = (center != null) ? (center - arc * 0.5 + srandom() * arc) : (srandom() * Math.PI * 2);
+        const sp = 10 + srandom() * 40; const vx = Math.cos(ang) * sp; const vy = Math.sin(ang) * sp;
         acquireParticle(h.hitX || h.x || 0, h.hitY || h.y || 0, { vx, vy, ttl, color, size });
       }
     } catch (e) {}

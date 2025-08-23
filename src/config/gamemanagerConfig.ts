@@ -1,5 +1,7 @@
 export const SHIELD = {
   ttl: 0.4, particleCount: 6, particleTTL: 0.5, particleColor: '#88ccff', particleSize: 2,
+  // arcWidth (radians) for shield hit visual/particle spread centered on hitAngle
+  arcWidth: Math.PI / 6,
 };
 
 export const HEALTH = {

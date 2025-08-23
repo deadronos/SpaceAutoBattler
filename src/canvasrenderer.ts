@@ -206,7 +206,20 @@ export class CanvasRenderer {
             const aBase = (sh.alphaBase != null ? sh.alphaBase : 0.25);
             const aScale = (sh.alphaScale != null ? sh.alphaScale : 0.75);
             ctx.globalAlpha = Math.min(1, aBase + aScale * shieldPct) * pulse;
-            ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.stroke();
+            // If a recent shieldFlash exists for this ship with hitAngle, draw only an arc segment
+            try {
+              const flash = (Array.isArray(state.shieldFlashes) && state.shieldFlashes.find((f: any) => f && f.id === s.id && f.spawned));
+              if (flash && typeof flash.hitAngle === 'number') {
+                const arc = (typeof flash.arcWidth === 'number') ? flash.arcWidth : ((vconf && vconf.arcWidth) || (AssetsConfig && (AssetsConfig as any).shieldArcWidth) || Math.PI / 6);
+                const start = flash.hitAngle - arc * 0.5 - angle; // account for rotation
+                const end = flash.hitAngle + arc * 0.5 - angle;
+                ctx.beginPath(); ctx.arc(0, 0, 1, start, end); ctx.stroke();
+              } else {
+                ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.stroke();
+              }
+            } catch (e) {
+              ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.stroke();
+            }
             ctx.globalAlpha = 1.0;
             ctx.restore();
           }
