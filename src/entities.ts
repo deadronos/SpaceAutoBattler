@@ -25,6 +25,8 @@ export type Ship = {
   xp?: number; level?: number;
   cannons?: Cannon[];
   accel?: number; turnRate?: number; radius?: number;
+  // optional AI runtime slot used by tests and behavior logic
+  __ai?: any;
 };
 
 export function createShip(type: string | undefined = undefined, x = 0, y = 0, team = 'red'): Ship {

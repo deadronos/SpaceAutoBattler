@@ -30,8 +30,21 @@ export class CanvasRenderer {
 
   init(): boolean {
     this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return false;
-    this.bufferCtx = this.bufferCanvas.getContext('2d');
+    // If running in a test environment (jsdom) getContext may be unimplemented.
+    // Provide a minimal no-op 2D context so renderState can still resize buffers and run logic.
+    if (!this.ctx) {
+      // create a lightweight no-op ctx that satisfies the subset used by the renderer
+      const noop = () => {};
+      const noOpCtx: any = {
+        setTransform: noop, imageSmoothingEnabled: true, clearRect: noop, save: noop, restore: noop,
+        fillRect: noop, beginPath: noop, moveTo: noop, lineTo: noop, closePath: noop,
+        fill: noop, stroke: noop, arc: noop, translate: noop, rotate: noop, drawImage: noop,
+        globalAlpha: 1, strokeStyle: '#000', fillStyle: '#000', lineWidth: 1, globalCompositeOperation: 'source-over'
+      };
+      this.ctx = noOpCtx as unknown as CanvasRenderingContext2D;
+    }
+    this.bufferCtx = this.bufferCanvas.getContext('2d') || this.ctx;
+    // bufferCtx must be present (either real or no-op) for renderState to proceed
     if (!this.bufferCtx) return false;
     // compute pixelRatio from renderScale only
     try {
@@ -148,16 +161,6 @@ export class CanvasRenderer {
       const sx = (s.x || 0) * renderScale;
       const sy = (s.y || 0) * renderScale;
       if (sx < 0 || sx >= bufferW || sy < 0 || sy >= bufferH) continue;
-      if (s.team === 'blue') {
-        console.log('[DEBUG] Blue ship:', {
-          id: s.id,
-          x: s.x,
-          y: s.y,
-          radius: s.radius,
-          type: s.type,
-          visible: true
-        });
-      }
       // Update trail history (store in s.trail)
       if (engineTrailsEnabled) {
         s.trail = s.trail || [];
@@ -191,31 +194,86 @@ export class CanvasRenderer {
         }
       }
 
-      // Draw ship hull (polygon or circle)
+      // Draw ship hull (polygon, circle, or compound)
       const vconf = getVisualConfig(s.type || getDefaultShipType());
       const shape = getShipAsset(s.type || getDefaultShipType());
       activeBufferCtx.save();
       activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
       activeBufferCtx.rotate((s.angle || 0));
-  let teamColor = AssetsConfig.palette.shipHull || '#888';
-  if (s.team === 'red' && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
-  else if (s.team === 'blue' && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
-  activeBufferCtx.fillStyle = teamColor;
+      let teamColor = AssetsConfig.palette.shipHull || '#888';
+      if (s.team === 'red' && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
+      else if (s.team === 'blue' && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
+      activeBufferCtx.fillStyle = teamColor;
       if (shape.type === 'circle') {
         activeBufferCtx.beginPath();
         activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
         activeBufferCtx.fill();
       } else if (shape.type === 'polygon') {
         drawPolygon(shape.points as number[][]);
+      } else if (shape.type === 'compound') {
+        for (const part of shape.parts) {
+          if (part.type === 'circle') {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          } else if (part.type === 'polygon') {
+            drawPolygon(part.points as number[][]);
+          }
+        }
       }
+      // Draw turrets/cannons using asset shapes
+      const turretShape = getTurretAsset('basic');
+      activeBufferCtx.save();
+      activeBufferCtx.rotate(0); // Optionally rotate for turret direction
+      activeBufferCtx.fillStyle = AssetsConfig.palette.turret || '#94a3b8';
+      if (turretShape.type === 'circle') {
+        activeBufferCtx.beginPath();
+        activeBufferCtx.arc(0, 0, (turretShape.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+        activeBufferCtx.fill();
+      } else if (turretShape.type === 'polygon') {
+        drawPolygon(turretShape.points as number[][]);
+      } else if (turretShape.type === 'compound') {
+        for (const part of turretShape.parts) {
+          if (part.type === 'circle') {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          } else if (part.type === 'polygon') {
+            drawPolygon(part.points as number[][]);
+          }
+        }
+      }
+      activeBufferCtx.restore();
       activeBufferCtx.restore();
 
       // Draw shield effect (blue ring if shield > 0)
       if (s.shield > 0) {
         if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
-          drawRing(s.x, s.y, (s.radius || 12) * 1.2, '#3ab6ff', 0.5, 3 * renderScale);
+          const shAnim = (AssetsConfig as any).animations && (AssetsConfig as any).animations.shieldEffect;
+          try {
+            if (shAnim) {
+              // pulse based on time
+              const pulse = (typeof shAnim.pulseRate === 'number') ? (0.5 + 0.5 * Math.sin(now * shAnim.pulseRate)) : 1.0;
+              const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
+              const alphaBase = typeof shAnim.alphaBase === 'number' ? shAnim.alphaBase : (shAnim.alpha || 0.25);
+              const alphaScale = typeof shAnim.alphaScale === 'number' ? shAnim.alphaScale : 0.75;
+              const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
+              const R = (shAnim.r || ((s.radius || 12) * 1.2));
+              activeBufferCtx.save();
+              activeBufferCtx.globalAlpha = alpha;
+              activeBufferCtx.strokeStyle = shAnim.color || '#3ab6ff';
+              activeBufferCtx.lineWidth = (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale;
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc((s.x || 0) * renderScale, (s.y || 0) * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
+              activeBufferCtx.stroke();
+              activeBufferCtx.restore();
+            } else {
+              drawRing(s.x, s.y, (s.radius || 12) * 1.2, '#3ab6ff', 0.5, 3 * renderScale);
+            }
+          } catch (e) { /* ignore shield draw errors */ }
         }
       }
+
     }
 
     // Health hits: render freshest per-ship health flash using index (reddish rings)
@@ -266,14 +324,106 @@ export class CanvasRenderer {
         activeBufferCtx.save();
         activeBufferCtx.translate(bx, by);
         const px = Math.max(1, r * renderScale);
+        activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
         if (shape.type === 'circle') {
-          activeBufferCtx.beginPath(); activeBufferCtx.fillStyle = AssetsConfig.palette.bullet; activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2); activeBufferCtx.fill();
+          activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2); activeBufferCtx.fill();
         } else if (shape.type === 'polygon') {
-          activeBufferCtx.fillStyle = AssetsConfig.palette.bullet; drawPolygon(shape.points as number[][]);
+          drawPolygon(shape.points as number[][]);
+        } else if (shape.type === 'compound') {
+          for (const part of shape.parts) {
+            if (part.type === 'circle') {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, (part.r || 1) * px, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else if (part.type === 'polygon') {
+              drawPolygon(part.points as number[][]);
+            }
+          }
         }
         activeBufferCtx.restore();
       } catch (e) {}
     }
+    // particles
+    try {
+      const shapes = (AssetsConfig as any).shapes2d || {};
+      for (const p of state.particles || []) {
+        try {
+          const px = (p.x || 0) * renderScale;
+          const py = (p.y || 0) * renderScale;
+          if (px < 0 || px >= bufferW || py < 0 || py >= bufferH) continue;
+          activeBufferCtx.save();
+          const shapeName = p.assetShape || (p.r > 0.5 ? 'particleMedium' : 'particleSmall');
+          const shape = shapes[shapeName];
+          const color = p.color || '#ffdca8';
+          activeBufferCtx.fillStyle = color;
+          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - ((p.age || 0) / (p.lifetime || 1))));
+          activeBufferCtx.translate(px, py);
+          if (shape) {
+            if (shape.type === 'circle') {
+              const rr = (shape.r || 0.12) * (p.r || 1) * renderScale * 6; // scale up to canvas pixels
+              activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2); activeBufferCtx.fill();
+            } else if (shape.type === 'polygon') {
+              activeBufferCtx.beginPath();
+              const pts = shape.points || [];
+              if (pts.length) {
+                activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
+                for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                activeBufferCtx.closePath();
+                activeBufferCtx.fill();
+              }
+            } else if (shape.type === 'compound') {
+              for (const part of shape.parts || []) {
+                if (part.type === 'circle') {
+                  const rr = (part.r || 0.12) * (p.r || 1) * renderScale * 6;
+                  activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2); activeBufferCtx.fill();
+                } else if (part.type === 'polygon') {
+                  // draw polygon part
+                  activeBufferCtx.beginPath();
+                  const pts = part.points || [];
+                  if (pts.length) {
+                    activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
+                    for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                    activeBufferCtx.closePath();
+                    activeBufferCtx.fill();
+                  }
+                }
+              }
+            } else {
+              // fallback to simple circle
+              activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2); activeBufferCtx.fill();
+            }
+          } else {
+            // fallback
+            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2); activeBufferCtx.fill();
+          }
+          activeBufferCtx.restore();
+        } catch (e) {}
+      }
+    } catch (e) { /* ignore particle render errors */ }
+
+    // Explosions (flashes) use explosionParticle if available
+    try {
+      const expShape = (AssetsConfig as any).shapes2d && (AssetsConfig as any).shapes2d.explosionParticle;
+      for (const ex of state.explosions || []) {
+        try {
+          const exx = (ex.x || 0) * renderScale;
+          const exy = (ex.y || 0) * renderScale;
+          const life = ex.life || 0.5; const ttl = ex.ttl || 0.5; const t = Math.max(0, Math.min(1, life / ttl));
+          const alpha = (1 - t) * 0.9;
+          activeBufferCtx.save();
+          activeBufferCtx.globalAlpha = alpha;
+          activeBufferCtx.translate(exx, exy);
+          activeBufferCtx.fillStyle = ex.color || '#ffd089';
+          if (expShape && expShape.type === 'circle') {
+            const rr = (expShape.r || 0.32) * (ex.scale || 1) * renderScale * 6;
+            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr * (1 + (1 - t)), 0, Math.PI * 2); activeBufferCtx.fill();
+          } else {
+            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, Math.max(2, (ex.scale || 1) * 12 * (1 - t)), 0, Math.PI * 2); activeBufferCtx.fill();
+          }
+          activeBufferCtx.restore();
+        } catch (e) {}
+      }
+    } catch (e) {}
 
     // --- Copy bufferCanvas to main canvas, scaling to fit window ---
     // Only copy after all drawing is finished
@@ -281,13 +431,14 @@ export class CanvasRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for drawImage
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(
-      this.bufferCanvas,
-      0, 0, this.bufferCanvas.width, this.bufferCanvas.height,
-      0, 0,
-      this.bufferCanvas.width * fitScale,
-      this.bufferCanvas.height * fitScale
-    );
+      // Copy buffer to canvas at 1:1 scaling; let CSS handle visual scaling if needed
+      ctx.drawImage(
+        this.bufferCanvas,
+        0, 0, this.bufferCanvas.width, this.bufferCanvas.height,
+        0, 0,
+        this.canvas.width,
+        this.canvas.height
+      );
     ctx.restore();
   }
 }

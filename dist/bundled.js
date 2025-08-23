@@ -33,6 +33,9 @@ function getBulletAsset(kind = "small") {
   if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
   return AssetsConfig.shapes2d.bulletSmall;
 }
+function getTurretAsset(_kind = "basic") {
+  return AssetsConfig.shapes2d.turretBasic;
+}
 var AssetsConfig;
 var init_assetsConfig = __esm({
   "src/config/assets/assetsConfig.ts"() {
@@ -104,7 +107,12 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
           ],
           strokeWidth: 0.08
-        }
+        },
+        // Small effect/particle shapes for renderer-driven effects
+        particleSmall: { type: "circle", r: 0.12 },
+        particleMedium: { type: "circle", r: 0.22 },
+        explosionParticle: { type: "circle", r: 0.32 },
+        shieldRing: { type: "circle", r: 1.2 }
       }
     };
     AssetsConfig.animations = {
@@ -833,7 +841,9 @@ var SHIELD = {
   particleColor: "#88ccff",
   particleSize: 2,
   // arcWidth (radians) for shield hit visual/particle spread centered on hitAngle
+  // NOTE: Used in assetsConfig.ts visualStateDefaults and renderer logic. If not consumed, consider removing.
   arcWidth: Math.PI / 6
+  // TODO: Ensure renderer/particle logic uses this or remove if redundant
 };
 var HEALTH = {
   ttl: 0.6,
@@ -849,12 +859,13 @@ var EXPLOSION = {
   particleSize: 3,
   minSpeed: 20,
   maxSpeed: 140
+  // TODO: Unify particle effect configs with assetsConfig.ts animations for maintainability
 };
 var FALLBACK_POSITIONS = [
   { x: 100, y: 100, team: "red" },
   { x: 700, y: 500, team: "blue" }
 ];
-var STARS = { twinkle: true, redrawInterval: 500, background: "#041018", count: 140 };
+var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
 init_entitiesConfig();
@@ -1241,8 +1252,35 @@ var CanvasRenderer = class {
   }
   init() {
     this.ctx = this.canvas.getContext("2d");
-    if (!this.ctx) return false;
-    this.bufferCtx = this.bufferCanvas.getContext("2d");
+    if (!this.ctx) {
+      const noop = () => {
+      };
+      const noOpCtx = {
+        setTransform: noop,
+        imageSmoothingEnabled: true,
+        clearRect: noop,
+        save: noop,
+        restore: noop,
+        fillRect: noop,
+        beginPath: noop,
+        moveTo: noop,
+        lineTo: noop,
+        closePath: noop,
+        fill: noop,
+        stroke: noop,
+        arc: noop,
+        translate: noop,
+        rotate: noop,
+        drawImage: noop,
+        globalAlpha: 1,
+        strokeStyle: "#000",
+        fillStyle: "#000",
+        lineWidth: 1,
+        globalCompositeOperation: "source-over"
+      };
+      this.ctx = noOpCtx;
+    }
+    this.bufferCtx = this.bufferCanvas.getContext("2d") || this.ctx;
     if (!this.bufferCtx) return false;
     try {
       const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
@@ -1341,16 +1379,6 @@ var CanvasRenderer = class {
       const sx = (s.x || 0) * renderScale;
       const sy = (s.y || 0) * renderScale;
       if (sx < 0 || sx >= bufferW || sy < 0 || sy >= bufferH) continue;
-      if (s.team === "blue") {
-        console.log("[DEBUG] Blue ship:", {
-          id: s.id,
-          x: s.x,
-          y: s.y,
-          radius: s.radius,
-          type: s.type,
-          visible: true
-        });
-      }
       if (engineTrailsEnabled) {
         s.trail = s.trail || [];
         const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
@@ -1392,11 +1420,64 @@ var CanvasRenderer = class {
         activeBufferCtx.fill();
       } else if (shape.type === "polygon") {
         drawPolygon(shape.points);
+      } else if (shape.type === "compound") {
+        for (const part of shape.parts) {
+          if (part.type === "circle") {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          } else if (part.type === "polygon") {
+            drawPolygon(part.points);
+          }
+        }
       }
+      const turretShape = getTurretAsset("basic");
+      activeBufferCtx.save();
+      activeBufferCtx.rotate(0);
+      activeBufferCtx.fillStyle = AssetsConfig.palette.turret || "#94a3b8";
+      if (turretShape.type === "circle") {
+        activeBufferCtx.beginPath();
+        activeBufferCtx.arc(0, 0, (turretShape.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+        activeBufferCtx.fill();
+      } else if (turretShape.type === "polygon") {
+        drawPolygon(turretShape.points);
+      } else if (turretShape.type === "compound") {
+        for (const part of turretShape.parts) {
+          if (part.type === "circle") {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale * 0.5, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          } else if (part.type === "polygon") {
+            drawPolygon(part.points);
+          }
+        }
+      }
+      activeBufferCtx.restore();
       activeBufferCtx.restore();
       if (s.shield > 0) {
         if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
-          drawRing(s.x, s.y, (s.radius || 12) * 1.2, "#3ab6ff", 0.5, 3 * renderScale);
+          const shAnim = AssetsConfig.animations && AssetsConfig.animations.shieldEffect;
+          try {
+            if (shAnim) {
+              const pulse = typeof shAnim.pulseRate === "number" ? 0.5 + 0.5 * Math.sin(now * shAnim.pulseRate) : 1;
+              const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
+              const alphaBase = typeof shAnim.alphaBase === "number" ? shAnim.alphaBase : shAnim.alpha || 0.25;
+              const alphaScale = typeof shAnim.alphaScale === "number" ? shAnim.alphaScale : 0.75;
+              const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
+              const R = shAnim.r || (s.radius || 12) * 1.2;
+              activeBufferCtx.save();
+              activeBufferCtx.globalAlpha = alpha;
+              activeBufferCtx.strokeStyle = shAnim.color || "#3ab6ff";
+              activeBufferCtx.lineWidth = (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale;
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc((s.x || 0) * renderScale, (s.y || 0) * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
+              activeBufferCtx.stroke();
+              activeBufferCtx.restore();
+            } else {
+              drawRing(s.x, s.y, (s.radius || 12) * 1.2, "#3ab6ff", 0.5, 3 * renderScale);
+            }
+          } catch (e) {
+          }
         }
       }
     }
@@ -1451,18 +1532,120 @@ var CanvasRenderer = class {
         activeBufferCtx.save();
         activeBufferCtx.translate(bx, by);
         const px = Math.max(1, r * renderScale);
+        activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
         if (shape.type === "circle") {
           activeBufferCtx.beginPath();
-          activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
           activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2);
           activeBufferCtx.fill();
         } else if (shape.type === "polygon") {
-          activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
           drawPolygon(shape.points);
+        } else if (shape.type === "compound") {
+          for (const part of shape.parts) {
+            if (part.type === "circle") {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, (part.r || 1) * px, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else if (part.type === "polygon") {
+              drawPolygon(part.points);
+            }
+          }
         }
         activeBufferCtx.restore();
       } catch (e) {
       }
+    }
+    try {
+      const shapes = AssetsConfig.shapes2d || {};
+      for (const p of state.particles || []) {
+        try {
+          const px = (p.x || 0) * renderScale;
+          const py = (p.y || 0) * renderScale;
+          if (px < 0 || px >= bufferW || py < 0 || py >= bufferH) continue;
+          activeBufferCtx.save();
+          const shapeName = p.assetShape || (p.r > 0.5 ? "particleMedium" : "particleSmall");
+          const shape = shapes[shapeName];
+          const color = p.color || "#ffdca8";
+          activeBufferCtx.fillStyle = color;
+          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - (p.age || 0) / (p.lifetime || 1)));
+          activeBufferCtx.translate(px, py);
+          if (shape) {
+            if (shape.type === "circle") {
+              const rr = (shape.r || 0.12) * (p.r || 1) * renderScale * 6;
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else if (shape.type === "polygon") {
+              activeBufferCtx.beginPath();
+              const pts = shape.points || [];
+              if (pts.length) {
+                activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
+                for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                activeBufferCtx.closePath();
+                activeBufferCtx.fill();
+              }
+            } else if (shape.type === "compound") {
+              for (const part of shape.parts || []) {
+                if (part.type === "circle") {
+                  const rr = (part.r || 0.12) * (p.r || 1) * renderScale * 6;
+                  activeBufferCtx.beginPath();
+                  activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
+                  activeBufferCtx.fill();
+                } else if (part.type === "polygon") {
+                  activeBufferCtx.beginPath();
+                  const pts = part.points || [];
+                  if (pts.length) {
+                    activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
+                    for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                    activeBufferCtx.closePath();
+                    activeBufferCtx.fill();
+                  }
+                }
+              }
+            } else {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            }
+          } else {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          }
+          activeBufferCtx.restore();
+        } catch (e) {
+        }
+      }
+    } catch (e) {
+    }
+    try {
+      const expShape = AssetsConfig.shapes2d && AssetsConfig.shapes2d.explosionParticle;
+      for (const ex of state.explosions || []) {
+        try {
+          const exx = (ex.x || 0) * renderScale;
+          const exy = (ex.y || 0) * renderScale;
+          const life = ex.life || 0.5;
+          const ttl = ex.ttl || 0.5;
+          const t = Math.max(0, Math.min(1, life / ttl));
+          const alpha = (1 - t) * 0.9;
+          activeBufferCtx.save();
+          activeBufferCtx.globalAlpha = alpha;
+          activeBufferCtx.translate(exx, exy);
+          activeBufferCtx.fillStyle = ex.color || "#ffd089";
+          if (expShape && expShape.type === "circle") {
+            const rr = (expShape.r || 0.32) * (ex.scale || 1) * renderScale * 6;
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, rr * (1 + (1 - t)), 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          } else {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, Math.max(2, (ex.scale || 1) * 12 * (1 - t)), 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          }
+          activeBufferCtx.restore();
+        } catch (e) {
+        }
+      }
+    } catch (e) {
     }
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1486,6 +1669,7 @@ var CanvasRenderer = class {
 // src/webglrenderer.ts
 init_assetsConfig();
 init_teamsConfig();
+init_entitiesConfig();
 var WebGLRenderer = class {
   // Fullscreen quad shader for blitting FBO to main canvas
   quadProg = null;
@@ -1495,8 +1679,15 @@ var WebGLRenderer = class {
   // Offscreen framebuffer and texture for buffer rendering
   fbo = null;
   fboTexture = null;
-  fboWidth = 0;
-  fboHeight = 0;
+  _fboWidth = 0;
+  _fboHeight = 0;
+  // Public accessors for tests/consumers (read-only)
+  get fboWidth() {
+    return this._fboWidth;
+  }
+  get fboHeight() {
+    return this._fboHeight;
+  }
   canvas;
   gl = null;
   // simple GL program state for point rendering
@@ -1508,6 +1699,15 @@ var WebGLRenderer = class {
   providesOwnLoop = false;
   type = "webgl";
   pixelRatio = 1;
+  // textured quad shader for rendering baked asset textures
+  texProg = null;
+  texVBO = null;
+  texAttrib_pos = -1;
+  texAttrib_uv = -1;
+  texLoc_tex = null;
+  // map of shape keys to GL textures
+  shapeTextures = {};
+  shapeCanvasSize = 64;
   constructor(canvas) {
     this.canvas = canvas;
   }
@@ -1560,6 +1760,39 @@ var WebGLRenderer = class {
       this.quadProg = null;
     }
     try {
+      const gl = this.gl;
+      const vs = `attribute vec2 a_pos; attribute vec2 a_uv; varying vec2 v_uv; void main(){ v_uv = a_uv; gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+      const fs = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_tex; void main(){ gl_FragColor = texture2D(u_tex, v_uv); }`;
+      const compile = (src, type) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          const info = gl.getShaderInfoLog(s);
+          gl.deleteShader(s);
+          throw new Error("Shader compile error: " + info);
+        }
+        return s;
+      };
+      const vsObj = compile(vs, gl.VERTEX_SHADER);
+      const fsObj = compile(fs, gl.FRAGMENT_SHADER);
+      const prog = gl.createProgram();
+      gl.attachShader(prog, vsObj);
+      gl.attachShader(prog, fsObj);
+      gl.linkProgram(prog);
+      if (gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        this.texProg = prog;
+        this.texAttrib_pos = gl.getAttribLocation(prog, "a_pos");
+        this.texAttrib_uv = gl.getAttribLocation(prog, "a_uv");
+        this.texLoc_tex = gl.getUniformLocation(prog, "u_tex");
+        this.texVBO = gl.createBuffer();
+      } else {
+        this.texProg = null;
+      }
+    } catch (e) {
+      this.texProg = null;
+    }
+    try {
       this.gl = this.canvas.getContext("webgl2");
       if (!this.gl) {
         this.gl = this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
@@ -1580,8 +1813,8 @@ var WebGLRenderer = class {
       this.fbo = gl.createFramebuffer();
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
-      this.fboWidth = bufferW;
-      this.fboHeight = bufferH;
+      this._fboWidth = bufferW;
+      this._fboHeight = bufferH;
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       try {
         const bg = (AssetsConfig.palette.background || "#0b1220").replace("#", "");
@@ -1673,8 +1906,8 @@ var WebGLRenderer = class {
       this.fbo = gl.createFramebuffer();
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
-      this.fboWidth = bufferW;
-      this.fboHeight = bufferH;
+      this._fboWidth = bufferW;
+      this._fboHeight = bufferH;
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
     if (this.fbo && this.fboTexture) {
@@ -1706,6 +1939,17 @@ var WebGLRenderer = class {
               return [r, g, b, 1];
             };
             const baseColor = hexToRgba(colorHex);
+            try {
+              const shipAssetKey = s.type || getDefaultShipType();
+              const shipTex = this.bakeShapeToTexture(shipAssetKey);
+              if (shipTex && this.texProg) {
+                const quadW = radius * 2 / Math.max(1, w) * 2;
+                const quadH = radius * 2 / Math.max(1, h) * 2;
+                this.drawTexturedQuad(shipTex, clipX, clipY, quadW, quadH);
+                continue;
+              }
+            } catch (e) {
+            }
             verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
             if (Array.isArray(s.trail)) {
               for (let i = 0; i < s.trail.length; i++) {
@@ -1718,7 +1962,19 @@ var WebGLRenderer = class {
               }
             }
             if (s.shield > 0) {
-              verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1, 0.5);
+              try {
+                const shKey = "shieldRing";
+                const shTex = this.bakeShapeToTexture(shKey);
+                if (shTex && this.texProg) {
+                  const quadW = radius * 2.4 / Math.max(1, w) * 2;
+                  const quadH = radius * 2.4 / Math.max(1, h) * 2;
+                  this.drawTexturedQuad(shTex, clipX, clipY, quadW, quadH);
+                } else {
+                  verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1, 0.5);
+                }
+              } catch (e) {
+                verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1, 0.5);
+              }
             }
             if (Array.isArray(healthFlashes)) {
               const flash = healthFlashes.find((f) => f.id === s.id);
@@ -1743,7 +1999,103 @@ var WebGLRenderer = class {
         } catch (e) {
         }
       }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      try {
+        const shapes = AssetsConfig.shapes2d || {};
+        for (const b of state.bullets || []) {
+          try {
+            const bx = b.x || 0;
+            const by = b.y || 0;
+            const clipX = bx / Math.max(1, this.fboWidth) * 2 - 1;
+            const clipY = 1 - by / Math.max(1, this.fboHeight) * 2;
+            const r = b.radius || b.bulletRadius || 1.5;
+            const kind = b.kind || "bullet";
+            const assetKey = `bullet_${kind}`;
+            const tex = this.bakeShapeToTexture(assetKey) || this.bakeShapeToTexture("bullet") || this.bakeShapeToTexture("particleSmall");
+            if (tex && this.texProg) {
+              const quadW = r * 2 / Math.max(1, this.fboWidth) * 2;
+              const quadH = r * 2 / Math.max(1, this.fboHeight) * 2;
+              this.drawTexturedQuad(tex, clipX, clipY, quadW, quadH);
+              continue;
+            }
+            const clipSize = Math.max(1, r * 2);
+            const color = AssetsConfig.palette && AssetsConfig.palette.bullet || "#fff";
+            const hexToRgba = (hex) => {
+              const h = hex.replace("#", "");
+              const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+              const rr = (bigint >> 16 & 255) / 255;
+              const gg = (bigint >> 8 & 255) / 255;
+              const bcol = (bigint & 255) / 255;
+              return [rr, gg, bcol, 1];
+            };
+            const floatArr = new Float32Array([clipX, clipY, clipSize, 1, 1, 1, 1]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
+            gl.useProgram(this.prog);
+            const stride = 7 * 4;
+            gl.enableVertexAttribArray(this.attribLoc_pos);
+            gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
+            gl.enableVertexAttribArray(this.attribLoc_size);
+            gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
+            gl.enableVertexAttribArray(this.attribLoc_color);
+            gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
+            gl.drawArrays(gl.POINTS, 0, 1);
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+      try {
+        for (const p of state.particles || []) {
+          try {
+            const px = p.x || 0;
+            const py = p.y || 0;
+            const clipX = px / Math.max(1, this.fboWidth) * 2 - 1;
+            const clipY = 1 - py / Math.max(1, this.fboHeight) * 2;
+            const size = p.r || 2;
+            const shapeKey = p.assetShape || (p.r > 0.5 ? "particleMedium" : "particleSmall");
+            const tex = this.bakeShapeToTexture(shapeKey) || this.bakeShapeToTexture("particleSmall");
+            if (tex && this.texProg) {
+              const quadW = size * 2 / Math.max(1, this.fboWidth) * 2;
+              const quadH = size * 2 / Math.max(1, this.fboHeight) * 2;
+              this.drawTexturedQuad(tex, clipX, clipY, quadW, quadH);
+            }
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+      try {
+        for (const ex of state.explosions || []) {
+          try {
+            const exx = ex.x || 0;
+            const exy = ex.y || 0;
+            const clipX = exx / Math.max(1, this.fboWidth) * 2 - 1;
+            const clipY = 1 - exy / Math.max(1, this.fboHeight) * 2;
+            const tex = this.bakeShapeToTexture("explosionParticle") || null;
+            const s = ex.scale || 1;
+            if (tex && this.texProg) {
+              const wq = 12 * s / Math.max(1, this.fboWidth) * 2;
+              const hq = 12 * s / Math.max(1, this.fboHeight) * 2;
+              this.drawTexturedQuad(tex, clipX, clipY, wq, hq);
+            } else {
+              const floatArr = new Float32Array([clipX, clipY, Math.max(2, 12 * s), 1, 1, 0.8, 1]);
+              gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+              gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
+              gl.useProgram(this.prog);
+              const stride = 7 * 4;
+              gl.enableVertexAttribArray(this.attribLoc_pos);
+              gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
+              gl.enableVertexAttribArray(this.attribLoc_size);
+              gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
+              gl.enableVertexAttribArray(this.attribLoc_color);
+              gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
+              gl.drawArrays(gl.POINTS, 0, 1);
+            }
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
     }
     if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
       const displayScale = RendererConfig && typeof RendererConfig.displayScale === "number" ? RendererConfig.displayScale : 1;
@@ -1761,6 +2113,124 @@ var WebGLRenderer = class {
       gl.disableVertexAttribArray(this.quadLoc_pos);
     }
     try {
+    } catch (e) {
+    }
+  }
+  // Bake a 2D asset shape into a canvas and upload to a GL texture (cached)
+  bakeShapeToTexture(key) {
+    if (!this.gl) return null;
+    if (this.shapeTextures[key]) return this.shapeTextures[key];
+    try {
+      const gl = this.gl;
+      const shapes = AssetsConfig.shapes2d || {};
+      const shape = shapes[key];
+      const size = this.shapeCanvasSize;
+      const cvs = document.createElement("canvas");
+      cvs.width = size;
+      cvs.height = size;
+      const ctx2 = cvs.getContext("2d");
+      ctx2.clearRect(0, 0, size, size);
+      ctx2.translate(size / 2, size / 2);
+      const scale = size / 4;
+      ctx2.fillStyle = AssetsConfig.palette && AssetsConfig.palette.shipHull || "#eee";
+      if (!shape) {
+        ctx2.beginPath();
+        ctx2.arc(0, 0, Math.max(4, size * 0.12), 0, Math.PI * 2);
+        ctx2.fill();
+      } else if (shape.type === "circle") {
+        ctx2.beginPath();
+        ctx2.arc(0, 0, (shape.r || 0.5) * scale, 0, Math.PI * 2);
+        ctx2.fill();
+      } else if (shape.type === "polygon") {
+        const pts = shape.points || [];
+        if (pts.length) {
+          ctx2.beginPath();
+          ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+          for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+          ctx2.closePath();
+          ctx2.fill();
+        }
+      } else if (shape.type === "compound") {
+        for (const part of shape.parts || []) {
+          if (part.type === "circle") {
+            ctx2.beginPath();
+            ctx2.arc(0, 0, (part.r || 0.5) * scale, 0, Math.PI * 2);
+            ctx2.fill();
+          } else if (part.type === "polygon") {
+            const pts = part.points || [];
+            if (pts.length) {
+              ctx2.beginPath();
+              ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+              for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+              ctx2.closePath();
+              ctx2.fill();
+            }
+          }
+        }
+      }
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cvs);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.shapeTextures[key] = tex;
+      return tex;
+    } catch (e) {
+      return null;
+    }
+  }
+  // Draw a textured quad at clip-space coordinates [-1..1] using the baked texture
+  drawTexturedQuad(tex, clipX, clipY, clipW, clipH) {
+    if (!this.gl || !this.texProg || !tex) return;
+    try {
+      const gl = this.gl;
+      gl.useProgram(this.texProg);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      if (this.texLoc_tex) gl.uniform1i(this.texLoc_tex, 0);
+      const x1 = clipX - clipW / 2;
+      const x2 = clipX + clipW / 2;
+      const y1 = clipY - clipH / 2;
+      const y2 = clipY + clipH / 2;
+      const verts = new Float32Array([
+        x1,
+        y1,
+        0,
+        0,
+        x2,
+        y1,
+        1,
+        0,
+        x1,
+        y2,
+        0,
+        1,
+        x2,
+        y1,
+        1,
+        0,
+        x2,
+        y2,
+        1,
+        1,
+        x1,
+        y2,
+        0,
+        1
+      ]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.texVBO);
+      gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+      const stride = 4 * 4;
+      gl.enableVertexAttribArray(this.texAttrib_pos);
+      gl.vertexAttribPointer(this.texAttrib_pos, 2, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(this.texAttrib_uv);
+      gl.vertexAttribPointer(this.texAttrib_uv, 2, gl.FLOAT, false, stride, 2 * 4);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disableVertexAttribArray(this.texAttrib_pos);
+      gl.disableVertexAttribArray(this.texAttrib_uv);
     } catch (e) {
     }
   }

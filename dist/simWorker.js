@@ -266,7 +266,12 @@ var AssetsConfig = {
         { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
       ],
       strokeWidth: 0.08
-    }
+    },
+    // Small effect/particle shapes for renderer-driven effects
+    particleSmall: { type: "circle", r: 0.12 },
+    particleMedium: { type: "circle", r: 0.22 },
+    explosionParticle: { type: "circle", r: 0.32 },
+    shieldRing: { type: "circle", r: 1.2 }
   }
 };
 AssetsConfig.animations = {

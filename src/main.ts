@@ -36,39 +36,43 @@ export async function startApp(rootDocument: Document = document) {
 
 	// Always use fixed logical bounds for simulation/game loop
 	const LOGICAL_BOUNDS = getDefaultBounds();
-	function fitCanvasToWindow() {
-		// Minimal robust canvas sizing and centering
+	// Only update backing store when renderScale changes
+	function updateCanvasBackingStore() {
 		const dpr = window.devicePixelRatio || 1;
-		const winW = window.innerWidth;
-		const winH = window.innerHeight;
 		const renderScale = (RendererConfig && typeof (RendererConfig as any).renderScale === 'number') ? (RendererConfig as any).renderScale : 1;
 		const logicalW = LOGICAL_BOUNDS.W;
 		const logicalH = LOGICAL_BOUNDS.H;
-				// Fit logical area to window, preserving aspect ratio
-		const fitScale = Math.min(winW / logicalW, winH / logicalH);
-		const visibleW = Math.round(logicalW * fitScale);
-		const visibleH = Math.round(logicalH * fitScale);
 		if (canvas) {
-			// Set logical size
 			canvas.width = Math.round(logicalW * renderScale / dpr);
 			canvas.height = Math.round(logicalH * renderScale / dpr);
-			canvas.style.width = `${visibleW}px`;
-			canvas.style.height = `${visibleH}px`;
-			canvas.style.position = 'absolute';
-			canvas.style.left = '0px';
-			canvas.style.top = '0px';
 			const dimsEl = document.getElementById('rendererDims');
 			if (dimsEl) {
 				dimsEl.textContent = `${canvas.width} x ${canvas.height} px @ ${dpr}x`;
 			}
 		}
-		// For renderer use
 		(RendererConfig as any)._renderScale = renderScale;
 		(RendererConfig as any)._offsetX = 0;
 		(RendererConfig as any)._offsetY = 0;
-		// Update slider value display if present
 		const scaleVal = rootDocument.getElementById('rendererScaleValue');
 		if (scaleVal) scaleVal.textContent = renderScale.toFixed(2);
+	}
+
+	// Only update CSS size on window resize
+	function fitCanvasToWindow() {
+		const winW = window.innerWidth;
+		const winH = window.innerHeight;
+		const logicalW = LOGICAL_BOUNDS.W;
+		const logicalH = LOGICAL_BOUNDS.H;
+		const fitScale = Math.min(winW / logicalW, winH / logicalH);
+		const visibleW = Math.round(logicalW * fitScale);
+		const visibleH = Math.round(logicalH * fitScale);
+		if (canvas) {
+			canvas.style.width = `${visibleW}px`;
+			canvas.style.height = `${visibleH}px`;
+			canvas.style.position = 'absolute';
+			canvas.style.left = '0px';
+			canvas.style.top = '0px';
+		}
 	}
 	// Renderer scale slider and dynamic scaling wiring
 	const scaleSlider = rootDocument.getElementById('rendererScaleRange');
@@ -82,14 +86,15 @@ export async function startApp(rootDocument: Document = document) {
 				(RendererConfig as any).renderScale = val;
 				(RendererConfig as any).dynamicScaleEnabled = false;
 				if (dynamicCheckbox) (dynamicCheckbox as HTMLInputElement).checked = false;
-				fitCanvasToWindow();
+				updateCanvasBackingStore();
 			}
 		});
 		// Set initial value display
 		const scaleVal = rootDocument.getElementById('rendererScaleValue');
 		if (scaleVal) scaleVal.textContent = (scaleSlider as HTMLInputElement).value;
 		// Ensure initial fit-to-window calculation uses current scale
-	fitCanvasToWindow();
+		updateCanvasBackingStore();
+		fitCanvasToWindow();
 	}
 	if (dynamicCheckbox) {
 		dynamicCheckbox.addEventListener('change', (ev: any) => {
