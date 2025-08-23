@@ -3,7 +3,7 @@
 
 import { AssetsConfig, getShipAsset, getTurretAsset, getVisualConfig } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig';
-import { shieldFlashIndex, healthFlashIndex, FLASH_TTL_DEFAULT } from './gamemanager';
+import { shieldFlashes, healthFlashes } from './gamemanager';
 import { getDefaultShipType } from './config/entitiesConfig';
 
 export class WebGLRenderer {
@@ -164,7 +164,7 @@ export class WebGLRenderer {
                   let flash: any = null;
                   try {
                     const nowT = (state && state.t) || 0;
-                    const arr = shieldFlashIndex.get(s.id) || [];
+                    const arr = shieldFlashes.filter((f: any) => f && f.id === s.id) || [];
                     let bestTs = -Infinity;
                     for (const f of arr) {
                       if (!f) continue;
@@ -213,12 +213,12 @@ export class WebGLRenderer {
               try {
                 const nowT = (state && state.t) || 0;
                 let hflash: any = null;
-                const harr = healthFlashIndex.get(s.id) || [];
+                const harr = healthFlashes.filter((hf: any) => hf && hf.id === s.id);
                 let bestTsH = -Infinity;
                 for (const hf of harr) {
                   if (!hf) continue;
                   const fTs = (typeof hf._ts === 'number') ? hf._ts : 0;
-                  const fTtl = (typeof hf.ttl === 'number') ? hf.ttl : FLASH_TTL_DEFAULT;
+                  const fTtl = (typeof hf.ttl === 'number') ? hf.ttl : 0.6;
                   if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTsH) { bestTsH = fTs; hflash = hf; }
                 }
                 if (hflash) {
@@ -232,7 +232,6 @@ export class WebGLRenderer {
                 }
               } catch (e) {}
           }
-
           // upload buffer and draw
           const floatArr = new Float32Array(verts);
           gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -245,7 +244,6 @@ export class WebGLRenderer {
           gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
           gl.enableVertexAttribArray(this.attribLoc_color);
           gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-
           // draw all points in one draw call
           const count = Math.floor(floatArr.length / 7);
           gl.drawArrays(gl.POINTS, 0, count);
@@ -254,9 +252,7 @@ export class WebGLRenderer {
         }
       }
     } catch (e) {
-      // swallow GL render errors to avoid crashing the app
+      // swallow outer render errors
     }
   }
 }
-
-export default WebGLRenderer;

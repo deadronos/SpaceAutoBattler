@@ -12,6 +12,11 @@ export const EXPLOSION = {
   particleCount: 30, particleTTL: 1.2, particleColor: '#ffaa33', particleSize: 3, minSpeed: 20, maxSpeed: 140,
 };
 
+export const FALLBACK_POSITIONS = [
+  { x: 100, y: 100, team: 'red' },
+  { x: 700, y: 500, team: 'blue' }
+];
+
 export const STARS = { twinkle: true, redrawInterval: 500, background: '#041018', count: 140 };
 
-export default { SHIELD, HEALTH, EXPLOSION, STARS };
+export default { SHIELD, HEALTH, EXPLOSION, STARS, FALLBACK_POSITIONS };

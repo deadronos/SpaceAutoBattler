@@ -4,10 +4,10 @@
 
 import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset, getVisualConfig } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig';
-import type { AssetsConfig as AssetsConfigType, TeamsConfig as TeamsConfigType, ShipSpec } from './types';
-import { VisualMappingConfig, bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';
+import type { VisualMappingConfig } from './types';
+import { bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';
 import { RendererConfig } from './config/rendererConfig';
-import { shieldFlashIndex, healthFlashIndex, FLASH_TTL_DEFAULT } from './gamemanager';
+import { shieldFlashes, healthFlashes } from './gamemanager';
 
 export type AnyState = any;
 
@@ -213,7 +213,7 @@ export class CanvasRenderer {
               let flash: any = null;
               try {
                 const nowT = (state && state.t) || 0;
-                const arr = shieldFlashIndex.get(s.id) || [];
+                const arr = Array.isArray(shieldFlashes) ? shieldFlashes.filter(f => f.id === s.id) : [];
                 let bestTs = -Infinity;
                 for (const f of arr) {
                   if (!f) continue;
@@ -310,16 +310,16 @@ export class CanvasRenderer {
       for (const s of state.ships || []) {
         try {
           let flash: any = null;
-          const arr = healthFlashIndex.get(s.id) || [];
+          const arr = Array.isArray(healthFlashes) ? healthFlashes.filter(f => f.id === s.id) : [];
           let bestTs = -Infinity;
           for (const f of arr) {
             if (!f) continue;
             const fTs = (typeof f._ts === 'number') ? f._ts : 0;
-            const fTtl = (typeof f.ttl === 'number') ? f.ttl : FLASH_TTL_DEFAULT;
+            const fTtl = (typeof f.ttl === 'number') ? f.ttl : 0.4;
             if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) { bestTs = fTs; flash = f; }
           }
           if (flash) {
-            const ttl = flash.ttl || FLASH_TTL_DEFAULT; const life = flash.life != null ? flash.life : ttl;
+            const ttl = flash.ttl || 0.4; const life = flash.life != null ? flash.life : ttl;
             const t = Math.max(0, Math.min(1, life / ttl));
             const R = 6 + (1 - t) * 18;
             const alpha = 0.9 * t;

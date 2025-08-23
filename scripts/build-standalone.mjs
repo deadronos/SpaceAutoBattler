@@ -1,49 +1,53 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// Pure TypeScript build: all runtime logic is sourced from /src/*.ts files.
+// No JS shims or transpilation steps are required.
 import { build as runBaseBuild } from './build.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 
-function escapeHtml(str) {
-	return str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+
+// No longer needed: escapeHtml (unused)
 
 function inlineHtml({ html, css, js, workerJs }) {
-	// Inject CSS inside a <style> tag
-	let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, () => `<style>\n${css}\n</style>`);
+		// Inject CSS inside a <style> tag
+		let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, () => `<style>\n${css}\n</style>`);
 
-	// Replace module script src with inline code after adding a worker loader shim.
-	// We monkey-patch Worker to handle URL('./simWorker.js', import.meta.url) by serving from an inline blob.
-	const workerLoader = `
-	const __workerCode = ${JSON.stringify(workerJs)};
-	const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
-	const __workerUrl = URL.createObjectURL(__workerBlob);
-	const __OrigWorker = window.Worker;
-	window.Worker = class extends __OrigWorker {
-		constructor(url, opts) {
-			// redirect requests ending with simWorker.js to the blob URL; otherwise, pass-through
-			try {
-				const s = typeof url === 'string' ? url : String(url);
-				if (s.endsWith('simWorker.js')) {
-					super(__workerUrl, { type: 'module', ...(opts||{}) });
-					return;
+
+		// Replace module script src with inline code after adding a worker loader shim.
+		// Monkey-patch Worker to handle URL('./simWorker.js', import.meta.url) by serving from an inline blob.
+		const workerLoader = `
+			const __workerCode = ${JSON.stringify(workerJs)};
+			const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
+			const __workerUrl = URL.createObjectURL(__workerBlob);
+			const __OrigWorker = window.Worker;
+			window.Worker = class extends __OrigWorker {
+				constructor(url, opts) {
+					try {
+						const s = typeof url === 'string' ? url : String(url);
+						if (s.endsWith('simWorker.js')) {
+							super(__workerUrl, { type: 'module', ...(opts||{}) });
+							return;
+						}
+					} catch {}
+					super(url, opts);
 				}
-			} catch {}
-			super(url, opts);
-		}
-	};
-	`;
+			};
+		`;
 
-	const jsInline = `${workerLoader}\n${js}`;
-	out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, () => `<script type="module">\n${jsInline}\n</script>`);
-	return out;
+		const jsInline = `${workerLoader}\n${js}`;
+		out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, () => `<script type="module">\n${jsInline}\n<\/script>`);
+		return out;
 }
 
+
 async function buildStandalone() {
-		const { outDir, files } = await runBaseBuild({ outDir: path.join(repoRoot, 'dist') });
+	// All logic is bundled from TypeScript sources.
+	const { outDir, files } = await runBaseBuild({ outDir: path.join(repoRoot, 'dist') });
 	const [html, css, js, workerJs] = await Promise.all([
 		fs.readFile(files.html, 'utf8'),
 		fs.readFile(files.css, 'utf8'),
@@ -56,11 +60,13 @@ async function buildStandalone() {
 	console.log(`Standalone written: ${standalonePath}`);
 }
 
+
 // Execute when run directly via `node scripts/build-standalone.mjs`
+// This script now builds exclusively from TypeScript sources in /src.
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-	buildStandalone().catch((e) => {
-		console.error(e);
-		process.exit(1);
-	});
+  buildStandalone().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 }
 

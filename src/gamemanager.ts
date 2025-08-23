@@ -9,7 +9,8 @@ import { simulateStep, SIM_DT_MS } from './simulate';
 import { srand, srandom } from './rng';
 import { getDefaultBounds } from './config/displayConfig';
 import { createSimWorker } from './createSimWorker';
-import { SHIELD, HEALTH, EXPLOSION, STARS } from './config/gamemanagerConfig';
+import { SHIELD, HEALTH, EXPLOSION, STARS, FALLBACK_POSITIONS } from './config/gamemanagerConfig';
+import type { ShipConfigMap } from './types';
 import { setShipConfig, getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 import { chooseReinforcementsWithManagerSeed } from './config/teamsConfig';
 
@@ -135,8 +136,8 @@ function evaluateReinforcement(dt: number, state: any, continuousOptions: any = 
 						}
 					}
 			const fallback = getDefaultShipType();
-			const r = createShip(fallback, 100, 100, 'red');
-			const b = createShip(fallback, 700, 500, 'blue');
+			const r = createShip(fallback, FALLBACK_POSITIONS[0].x, FALLBACK_POSITIONS[0].y, FALLBACK_POSITIONS[0].team);
+			const b = createShip(fallback, FALLBACK_POSITIONS[1].x, FALLBACK_POSITIONS[1].y, FALLBACK_POSITIONS[1].team);
 			state.ships.push(r); state.ships.push(b);
 			return { spawned: [r, b] };
 		} catch (e) { return null; }

@@ -59,7 +59,7 @@ export async function startApp(rootDocument: Document = document) {
 	if (!renderer) { renderer = new CanvasRenderer(canvas); renderer.init && renderer.init(); }
 
 	try { window.gm = window.gm || {}; } catch (e) {}
-	const gm = createGameManager({ renderer, canvas, useWorker: false });
+	const gm = createGameManager({ renderer, useWorker: false });
 	try { if (typeof window !== 'undefined' && (window as any).gm) Object.assign((window as any).gm, gm); } catch (e) {}
 
 	try {
@@ -156,7 +156,7 @@ export async function startApp(rootDocument: Document = document) {
 		} catch (e) {}
 	}
 	try { ui.seedBtn.addEventListener('click', onSeedBtnClick); } catch (e) {}
-	try { ui.formationBtn.addEventListener('click', () => gm.formFleets()); } catch (e) {}
+	// try { ui.formationBtn.addEventListener('click', () => gm.formFleets()); } catch (e) {}
 	try { if (ui.continuousCheckbox) { ui.continuousCheckbox.addEventListener('change', (ev: any) => { const v = !!ev.target.checked; if (gm && typeof gm.setContinuousEnabled === 'function') gm.setContinuousEnabled(v); }); } } catch (e) {}
 
 	function uiTick() {

@@ -21,19 +21,6 @@ async function readIfExists(file) {
   try { return await fs.readFile(file, 'utf8'); } catch { return undefined; }
 }
 
-async function concatCss(fromDir, outFile) {
-  let combined = '';
-  try {
-    const entries = await fs.readdir(fromDir, { withFileTypes: true });
-    const files = entries.filter(e => e.isFile() && e.name.endsWith('.css')).map(e => e.name).sort();
-    for (const name of files) {
-      const css = await fs.readFile(path.join(fromDir, name), 'utf8');
-      combined += css + '\n';
-    }
-  } catch {}
-  await fs.writeFile(outFile, combined, 'utf8');
-}
-
 // Build CSS via esbuild to produce a single bundled stylesheet with sourcemaps
 async function buildCssBundle({ stylesDir, outFile, sourcemap = true, sourcesContent = true }) {
   // Create a virtual CSS entry that @imports all CSS files in a stable order
@@ -83,26 +70,9 @@ function rewriteHtmlReferences(html, { cssHref, jsSrc }) {
 
 export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   const srcDir = path.join(repoRoot, 'src');
-  // Ensure the JS runtime is produced from the TypeScript authoritative source
-  // by transpiling src/gamemanager.ts -> src/gamemanager.js prior to bundling.
-  try {
-    const gmTs = path.join(srcDir, 'gamemanager.ts');
-    const gmJs = path.join(srcDir, 'gamemanager.js');
-    // Only transpile if the TS file exists
-    try { await fs.access(gmTs);
-      // Use esbuild to transpile to an ES module in-place (overwrites JS runtime)
-      await esbuild({
-        entryPoints: [gmTs],
-        bundle: false,
-        outfile: gmJs,
-        format: 'esm',
-        platform: 'neutral',
-        target: ['es2022'],
-        sourcemap: false,
-        logLevel: 'silent',
-      });
-    } catch (e) { /* ignore if TS file missing */ }
-  } catch (e) { /* ignore transpile errors to keep build portable */ }
+
+  // Pure TypeScript build: all runtime logic is sourced from /src/*.ts files.
+  // No JS shims or transpilation steps are required.
   const uiHtmlPath = path.join(srcDir, 'ui.html');
   const stylesDir = path.join(srcDir, 'styles');
   const assetsDir = path.join(srcDir, 'assets');
@@ -140,19 +110,18 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   await copyDir(assetsDir, path.join(outDir, 'assets'));
   await copyDir(publicDir, outDir);
 
-  // Also output a .ts-named copy of the main bundle if requested by consumers.
+
+  // Output main JS bundle only (no .ts copy needed for runtime)
   const mainJsPath = path.join(outDir, 'bundled.js');
-  const mainTsPath = path.join(outDir, 'bundled.ts');
-  try {
-    const jsCode = await fs.readFile(mainJsPath, 'utf8');
-    await fs.writeFile(mainTsPath, jsCode, 'utf8');
-  } catch {}
 
   const uiHtml = (await readIfExists(uiHtmlPath)) || '<!doctype html><html><head></head><body></body></html>';
-  // IMPORTANT: load the JS bundle with a .js extension so servers send the correct MIME type.
+
+  // Load the JS bundle with a .js extension for correct MIME type.
+  // All logic is bundled from TypeScript sources.
   const htmlOut = rewriteHtmlReferences(uiHtml, { cssHref: './bundled.css', jsSrc: './bundled.js' });
   const namedHtmlOut = path.join(outDir, 'spaceautobattler.html');
   await fs.writeFile(namedHtmlOut, htmlOut, 'utf8');
+
 
   return {
     outDir,
@@ -166,8 +135,9 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   };
 }
 
+
 // When executed directly via `node scripts/build.mjs`, run the build.
-// Compare file system paths (not file URLs) for reliability across OSes.
+// This script now builds exclusively from TypeScript sources in /src.
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   const outDir = process.env.OUT_DIR ? path.resolve(process.env.OUT_DIR) : path.join(repoRoot, 'dist');
   build({ outDir })

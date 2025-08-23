@@ -8,6 +8,10 @@
 
 # SpaceAutoBattler — Contributor & Copilot Guidelines
 
+!! What To Do At The End of each work cycle !!
+update/overwrite /spec/IMPLEMENTATION_STATUS.md with recent completed goals and and shortterm and longterm goals or current state of the project
+
+
 Purpose
 -------
 This document is the single-source guidance for contributors and automated
@@ -259,4 +263,3 @@ If anything in these instructions is unclear, open an issue titled
 "clarify: copilot instructions" with a one-paragraph request and a code
 example if relevant.
 
-update/overwrite /spec/IMPLEMENTATION_STATUS.md with recent completed goals and and shortterm and longterm goals or current state of the project

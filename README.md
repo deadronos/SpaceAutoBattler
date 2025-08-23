@@ -11,8 +11,8 @@ Why this project exists
 
 Highlights
 ----------
-- Deterministic RNG via `src/rng.js` (use `srand(seed)` in tests).
-- Ships with HP, regenerating shields, XP, and per-level progression (`src/progressionConfig.js`).
+- Deterministic RNG via `src/rng.ts` (use `srand(seed)` in tests).
+- Ships with HP, regenerating shields, XP, and per-level progression (`src/progressionConfig.ts`).
 - Bullets carry `ownerId` so kills and XP credit are attributed correctly.
 - The simulation step `simulateStep(state, dt, bounds)` is pure game-logic and emits small event arrays for the renderer.
 
@@ -20,7 +20,7 @@ Design notes — authoritative sources and configs
 -----------------------------------------------
 
 - Game logic and the authoritative GameManager implementation live in TypeScript: `src/gamemanager.ts`.
-- To avoid duplicate edits between JS and TS sources, the build now transpiles `src/gamemanager.ts` into `src/gamemanager.js` prior to bundling. Edit `src/gamemanager.ts` for behavioral changes and run `npm run build` (or `npm run build-standalone`) to regenerate the JS runtime.
+- The build system now uses only TypeScript sources in `/src/*.ts` for all runtime and bundling. No JS shims or transpilation steps are required.
 - Fleet composition and team defaults are configured under `src/config/teamsConfig.ts` (re-exported as `TeamsConfig`). The manager (and UI) now sample ship types from `TeamsConfig.defaultFleet.counts` when `spawnShip()` is called without an explicit type. If no counts are present the manager falls back to `getDefaultShipType()` for deterministic behavior.
 
 These choices keep balancing/config in config modules and the runtime behavior in TS source so tests remain deterministic and UI behavior reflects configured fleet composition.
@@ -31,12 +31,12 @@ Click the preview above to view the animated capture (`VideoCapture.gif`). If yo
 
 Important files
 ---------------
- - `src/entities.ts` (authoritative) — Ship and Bullet definitions, damage/shield handling, XP and level code. A JS runtime copy exists at `src/entities.js` for legacy consumers.
- - `src/simulate.ts` (authoritative) — Deterministic time-step: `simulateStep(state, dt, bounds)`. A runtime copy exists at `src/simulate.js`.
- - `src/renderer.ts` / `src/canvasrenderer.ts` — Visual layer (Canvas) that consumes `state` and event arrays. Legacy JS versions exist for compatibility.
- - `src/rng.ts` — Seeded RNG used by the simulation (use `srand(seed)` in tests).
- - `src/progressionConfig.ts` — XP and progression constants (authoritative; JS runtime copies may exist).
- - `src/gamemanagerConfig.ts` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
+- `src/entities.ts` — Ship and Bullet definitions, damage/shield handling, XP and level code.
+- `src/simulate.ts` — Deterministic time-step: `simulateStep(state, dt, bounds)`.
+- `src/canvasrenderer.ts` / `src/webglrenderer.ts` — Visual layer (Canvas/WebGL) that consumes `state` and event arrays.
+- `src/rng.ts` — Seeded RNG used by the simulation (use `srand(seed)` in tests).
+- `src/progressionConfig.ts` — XP and progression constants.
+- `src/gamemanagerConfig.ts` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
 - `space_themed_autobattler_canvas_red_vs_blue.html` — Main page to open in a browser.
 - `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file exported build.
 - `scripts/build-standalone.mjs` — Bundles the renderer and inlines a standalone HTML in `./dist/`.
@@ -76,12 +76,6 @@ Build & standalone workflow (new)
 
 This repository includes a small build helper that bundles the ES modules in `src/` and produces distributable files in `dist/`.
 
-- Build only the JS bundle (outputs `dist/bundle.js`):
-
-```powershell
-npm run build-bundle
-```
-
 - Build the JS bundle + `dist/index.html` (links the bundle) and a single-file `dist/standalone.html` that inlines the JS and CSS:
 
 ```powershell
@@ -96,7 +90,7 @@ npm run build-standalone:watch
 
 Outputs placed in `dist/`:
 
-- `dist/bundle.js` — ES module bundle of `src/main.js` and its imports.
+- `dist/bundle.js` — ES module bundle of `src/main.ts` and its imports.
 - `dist/bundle.css` — concatenated CSS extracted from `src/styles/`.
 - `dist/index.html` — a small HTML page that references `./bundle.css` and `./dist/bundle.js`.
 - `dist/standalone.html` — a single-file HTML with the CSS and JS inlined for easy distribution.
@@ -186,7 +180,7 @@ If you want help updating a specific file or test to the new API, tell me which 
 Gamemanager visual/config note
 ------------------------------
 
-The file `src/gamemanagerConfig.js` centralizes visual tuning defaults for the game manager (matching the style of `behaviorConfig.js` and `progressionConfig.js`).
+The file `src/gamemanagerConfig.ts` centralizes visual tuning defaults for the game manager (matching the style of `behaviorConfig.ts` and `progressionConfig.ts`).
 
 - It exports named defaults: `SHIELD`, `HEALTH`, `EXPLOSION`, and `STARS`.
 - The runtime `src/gamemanager.js` copies these into a `config` object and exposes `setManagerConfig()` for shallow merging of runtime overrides.
@@ -194,7 +188,10 @@ The file `src/gamemanagerConfig.js` centralizes visual tuning defaults for the g
 Example (change explosion particle count at runtime):
 
 ```powershell
-node -e "const gm = require('./src/gamemanager.js'); gm.setManagerConfig({ explosion: { particleCount: 24 } }); console.log(gm.getManagerConfig().explosion.particleCount);"
+// Example usage in TypeScript:
+// import { setManagerConfig, getManagerConfig } from './src/gamemanager.ts';
+// setManagerConfig({ explosion: { particleCount: 24 } });
+// console.log(getManagerConfig().explosion.particleCount);
 ```
 
 `setManagerConfig` performs a shallow merge for top-level object keys, so partial updates only modify supplied fields.
@@ -202,7 +199,7 @@ node -e "const gm = require('./src/gamemanager.js'); gm.setManagerConfig({ explo
 Running the demo locally
 ------------------------
 1. Serve the repository or open `space_themed_autobattler_canvas_red_vs_blue.html` in a modern browser.
-2. The renderer imports `src/renderer.js` and runs the visual demo while the simulation logic stays deterministic when seeded.
+2. The renderer imports `src/canvasrenderer.ts` or `src/webglrenderer.ts` and runs the visual demo while the simulation logic stays deterministic when seeded.
 
 Testing & determinism
 ---------------------
@@ -236,7 +233,8 @@ MIT
 
 ## GameManager API
 
-A `src/gamemanager.js` module centralizes simulation and game state so renderers can remain visual-only. Publicly exported symbols include:
+The GameManager implementation and API are written in TypeScript (`src/gamemanager.ts`).
+Publicly exported symbols include:
 
 - `reset(seed?)` — reset world state; optionally seed RNG for deterministic runs.
 - `simulate(dt, W, H)` — advance game state by dt; returns an object containing `{ ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars }`.
@@ -246,7 +244,7 @@ A `src/gamemanager.js` module centralizes simulation and game state so renderers
 - `setReinforcementInterval(seconds), getReinforcementInterval()` — control reinforcement check timing.
 - `resetReinforcementCooldowns(), handleReinforcement(dt, team), evaluateReinforcement(dt)` — reinforcement helpers for tests.
 
-Prefer importing `src/gamemanager.js` directly in unit tests when you need to assert on simulation state without involving the renderer.
+Import `src/gamemanager.ts` directly in unit tests when you need to assert on simulation state without involving the renderer.
 
 ## WebGL Renderer (Experimental)
 
@@ -258,7 +256,7 @@ The WebGL renderer is an experimental feature designed to improve performance an
 2. Open `space_themed_autobattler_canvas_red_vs_blue_standalone.html` in your browser.
 
 ### Key Files
-- `src/webglRenderer.js`: Core WebGL rendering logic.
+- `src/webglrenderer.ts`: Core WebGL rendering logic.
 - `src/webgl_head.js`: Shader definitions and setup.
 
 ### Additional WebGL files
@@ -275,5 +273,5 @@ npm run serve
 
 ### Notes
 - The WebGL renderer adheres to the deterministic simulation contract.
-- All randomness is sourced from the simulation (`rng.js`).
+- All randomness is sourced from the simulation (`rng.ts`).
 - Precision qualifiers (`mediump`, `highp`) are used in shaders for mobile compatibility.

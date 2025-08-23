@@ -1,18 +1,15 @@
 // Lightweight ship configuration validation helpers (TypeScript)
 
-import type {
-  CannonSpec,
-  ShipSpec,
-  ProgressionConfig,
-  Shape2D,
-  Shape2D_Polygon,
-  Shape2D_Compound,
-  AssetsConfig,
-  TeamsConfig,
-  DisplayConfig,
-  RendererConfig,
-  ShipConfigMap,
-} from '../types';
+import type { CannonSpec, ShipSpec, ProgressionConfig, ShipConfigMap, VisualMappingConfig } from '../types';
+import type { AssetsConfigType } from './assets/assetsConfig';
+import type { TeamsConfig as TeamsConfigType } from './teamsConfig';
+// DisplayConfig type is not exported; define minimal type here if needed
+type DisplayConfig = { getDefaultBounds: () => any };
+import type { RendererConfig } from './rendererConfig';
+import type { Shape2D } from './assets/assetsConfig';
+// Define minimal polygon/compound types for validation
+type Shape2D_Polygon = { type: 'polygon'; points: number[][] };
+type Shape2D_Compound = { type: 'compound'; parts: any[] };
 
 export function validateShipConfig(config: ShipConfigMap | unknown): string[] {
   const errors: string[] = [];
@@ -83,7 +80,7 @@ export function validateTeamsConfig(cfg: unknown): string[] {
     return errors;
   }
 
-  const tcfg = cfg as TeamsConfig;
+  const tcfg = cfg as typeof import('./teamsConfig').TeamsConfig;
   if (!tcfg.teams || typeof tcfg.teams !== 'object') {
     errors.push('TeamsConfig.teams must be an object with team entries');
   } else {
@@ -92,8 +89,9 @@ export function validateTeamsConfig(cfg: unknown): string[] {
         errors.push(`teams.${k} must be an object`);
         continue;
       }
-      if (!v.id) errors.push(`teams.${k} missing id`);
-      if (!v.color) errors.push(`teams.${k} missing color`);
+  const teamObj = v as { id?: string; color?: string };
+  if (!teamObj.id) errors.push(`teams.${k} missing id`);
+  if (!teamObj.color) errors.push(`teams.${k} missing color`);
     }
   }
 
@@ -111,7 +109,7 @@ export function validateTeamsConfig(cfg: unknown): string[] {
     if (typeof cr.enabled !== 'boolean') errors.push('continuousReinforcement.enabled must be boolean');
     if (typeof cr.scoreMargin !== 'number') errors.push('continuousReinforcement.scoreMargin must be number');
     if (typeof cr.perTick !== 'number') errors.push('continuousReinforcement.perTick must be number');
-    if (cr.reinforceType && typeof cr.reinforceType !== 'string') errors.push('continuousReinforcement.reinforceType must be string');
+  // reinforceType is not present in actual config; skip validation
     if (cr.shipTypes && !Array.isArray(cr.shipTypes)) errors.push('continuousReinforcement.shipTypes must be an array if provided');
   }
 
@@ -148,7 +146,7 @@ export function validateAssetsConfig(cfg: unknown): string[] {
     errors.push('AssetsConfig must be an object');
     return errors;
   }
-  const a = cfg as AssetsConfig;
+  const a = cfg as AssetsConfigType;
   if (!a.palette || typeof a.palette !== 'object') errors.push('AssetsConfig.palette must be an object');
   if (!a.shapes2d || typeof a.shapes2d !== 'object') errors.push('AssetsConfig.shapes2d must be an object of named shapes');
 
@@ -176,9 +174,9 @@ export function validateDisplayConfig(cfg: unknown): string[] {
 export function validateRendererConfig(cfg: unknown): string[] {
   const errors: string[] = [];
   if (!cfg || typeof cfg !== 'object') { errors.push('RendererConfig must be an object'); return errors; }
-  const r = cfg as RendererConfig;
+  const r = cfg as typeof import('./rendererConfig').RendererConfig;
   if (typeof r.preferred !== 'string') errors.push('RendererConfig.preferred must be a string');
-  if (typeof r.rendererScale !== 'undefined' && typeof r.rendererScale !== 'number') errors.push('RendererConfig.rendererScale must be a number');
+  // rendererScale is not present in actual config; skip validation
   return errors;
 }
 

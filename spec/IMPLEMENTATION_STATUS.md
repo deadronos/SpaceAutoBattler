@@ -1,67 +1,29 @@
-# Implementation status — SpaceAutoBattler
+# Implementation Status — SpaceAutoBattler
 
-This file records the current implementation progress and verification status for the recent changes to the progression system: function-valued scalars, new progression axes, validator updates, simulation application, tests, and build verification.
+## Recent Changes
+- All progression, visuals, and balance constants are now centralized in config files (see `assetsConfig`, `rendererConfig`, `gamemanagerConfig`).
+- Types are fully centralized in `src/types/index.ts` (single source of truth).
+- Codebase is now pure TypeScript; all JS shims and transpilation steps removed.
+- Renderer and simulation now read all tunables (background, thresholds, particles, HP bar, etc.) from config.
 
-## Summary (high-level)
 
-- Goal: Support number-or-function progression scalars (e.g., exponential `xpToLevel`, diminishing `hpPercentPerLevel`), add `speedPercentPerLevel` and `regenPercentPerLevel`, update validation and simulation to handle functions, and add tests and build verification.
-- Branch: `webgl` (working branch); default branch: `main`.
+## Outstanding Goals (Updated)
+- Propose and implement config unification: merge overlapping config files into logical domains (e.g., visualsConfig, gameplayConfig).
+- Document migration steps for config unification and update all imports/usages.
+- Move any remaining hardcoded values (visuals, balance, thresholds, UI constants) into config for full tunability.
+- Rewrite and expand tests to match the TypeScript port, new type contracts, and config-driven architecture.
+- Run and verify the full Vitest suite for regressions and edge cases.
+- Add multi-level progression and scaling tests (including function-valued scalars).
+- Optionally: run Playwright smoke tests against the standalone build for browser validation.
 
-## Completed work
-
-- Progression config updated (JS + TS): function-valued scalars and new fields added:
-
-  - `xpToLevel(level) => 100 * 1.25^(level - 1)` (function)
-  - `hpPercentPerLevel(level) => Math.min(0.10, 0.05 + 0.05 / Math.sqrt(level))` (function)
-  - `dmgPercentPerLevel`, `shieldPercentPerLevel` (numbers)
-  - `speedPercentPerLevel`, `regenPercentPerLevel` (numbers)
-
-- Validator updated to accept number OR function for per-level scalars and to allow speed/regen fields.
-
-- Simulation updated (`simulate.ts` / `simulate.js`): added `resolveScalar` helper that calls functions with the level or treats numeric scalars directly. Resolved scalars are applied at level-up to HP/damage/shields and to speed and shield-regen where applicable.
-
-- Tests added and exercised:
-
-  - `test/vitest/progression.spec.ts` — unit tests for `xpToLevel` and `hpPercentPerLevel` numeric outputs (passed).
-  - `test/vitest/progression-application.spec.ts` — smoke test that seeds XP to trigger a deterministic level-up and asserts `accel` and `shieldRegen` were multiplied by `1 + speedPercentPerLevel` and `1 + regenPercentPerLevel` (updated to seed XP; passed).
-
-- Standalone build verification: ran `npm run build-standalone` and inspected `dist/simWorker.js`. The bundled worker contains the inlined `progression` object with function-valued entries and the `resolveScalar` usage in `simulateStep`.
-
-## Verification status
-
-- Targeted unit tests: `progression.spec.ts` and `progression-application.spec.ts` — both pass locally with Vitest.
-
-- Dist bundle inspection: `dist/simWorker.js` contains function-valued progression entries and level-up application logic.
-
-## Pending / follow-ups
-
-- Run the full Vitest suite to ensure there are no regressions (recommended next step).
-
-- Add tests for multi-level progression (multiple sequential level-ups) and for hp/dmg/shield scaling across several levels.
-
-- Optionally run headless Playwright checks against the built standalone (`dist/`) to verify worker runtime in a browser environment.
-
-## Notes and considerations
-
-- Tests that assert level-up side-effects must seed XP to just below `xpToLevel` to deterministically exercise the level-up code path.
-
-- Current bundler preserves function-valued config entries; if bundling is changed later (e.g., to JSON-only), functions may be lost. If that occurs, consider either expanding functions to numeric tables at build-time or serializing function parameters rather than raw functions.
-
-## Recent actions (traceability)
-
-- Ran targeted Vitest smoke test: `test/vitest/progression-application.spec.ts` — passed after seeding XP to trigger level-up.
-
-- Built standalone (`npm run build-standalone`) and inspected `dist/simWorker.js`.
-
-## Current todo status
-
-- `Update IMPLEMENTATION_STATUS.md` — completed (this file)
-- `Verify full test run` — not-started (recommended)
-- `Rebuild & smoke-run standalone` — not-started (recommended)
+## Next Steps (Updated)
+- Draft unified config structure and document rationale for merging.
+- Create new unified config files and refactor codebase to use them.
+- Update and expand tests for config migration and TS changes.
+- Run full test and build verification (Vitest + Playwright).
 
 ---
-
-If you'd like, I can now run the full Vitest suite and/or rebuild + run the standalone in a headless Playwright test and report results. Tell me which you'd prefer next.
+For details, see config files and recent PRs. If you want a targeted patch for config migration or test rewrite, request it here.
 # Implementation status summary — SpaceAutoBattler
 
 This document records the current implementation progress and verification status for the recent changes to the progression system (function-valued scalars, new progression axes, validator updates, simulation application, and tests).
