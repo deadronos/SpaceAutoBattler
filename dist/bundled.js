@@ -95,7 +95,15 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
           ],
           strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 }
+          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
+          turrets: [
+            { kind: "basic", position: [1.2, 0.8] },
+            { kind: "basic", position: [-1.2, 0.8] },
+            { kind: "basic", position: [1.2, -0.8] },
+            { kind: "basic", position: [-1.2, -0.8] },
+            { kind: "basic", position: [0, 1.5] },
+            { kind: "basic", position: [0, -1.5] }
+          ]
         },
         carrier: {
           type: "compound",
@@ -105,7 +113,13 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
           ],
           strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 }
+          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
+          turrets: [
+            { kind: "basic", position: [2, 1.2] },
+            { kind: "basic", position: [-2, 1.2] },
+            { kind: "basic", position: [2, -1.2] },
+            { kind: "basic", position: [-2, -1.2] }
+          ]
         },
         bulletSmall: { type: "circle", r: 0.18 },
         bulletMedium: { type: "circle", r: 0.25 },
@@ -247,7 +261,15 @@ var init_entitiesConfig = __esm({
         radius: 40,
         cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
         accel: 80,
-        turnRate: 1.6
+        turnRate: 1.6,
+        turrets: [
+          { position: [1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
+          { position: [-1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
+          { position: [1.2, -0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
+          { position: [-1.2, -0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
+          { position: [0, 1.5], kind: "basic", targeting: "nearest", cooldown: 0.8 },
+          { position: [0, -1.5], kind: "basic", targeting: "nearest", cooldown: 0.8 }
+        ]
       },
       carrier: {
         maxHp: 200,
@@ -260,7 +282,13 @@ var init_entitiesConfig = __esm({
         cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
         accel: 40,
         turnRate: 0.8,
-        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 }
+        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+        turrets: [
+          { position: [2, 1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
+          { position: [-2, 1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
+          { position: [2, -1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
+          { position: [-2, -1.2], kind: "basic", targeting: "nearest", cooldown: 1 }
+        ]
       }
     };
     VisualMappingConfig = {
@@ -547,26 +575,87 @@ function aimWithSpread(from, to, spread = 0) {
   return { x: dx, y: dy };
 }
 function tryFire(state, ship, target, dt) {
-  if (!Array.isArray(ship.cannons) || ship.cannons.length === 0) return;
-  for (const c of ship.cannons) {
-    if (typeof c.__cd !== "number") c.__cd = 0;
-    c.__cd -= dt;
-    if (c.__cd > 0) continue;
-    const spread = typeof c.spread === "number" ? c.spread : 0;
-    const dir = aimWithSpread(ship, target, spread);
-    const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : 240;
-    const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : 3;
-    const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : 2;
-    const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : 1.5;
-    const vx = dir.x * speed;
-    const vy = dir.y * speed;
-    const b = Object.assign(
-      createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
-      { radius }
-    );
-    state.bullets.push(b);
-    const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
-    c.__cd = 1 / rate;
+  if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {
+    for (const c of ship.cannons) {
+      if (typeof c.__cd !== "number") c.__cd = 0;
+      c.__cd -= dt;
+      if (c.__cd > 0) continue;
+      const spread = typeof c.spread === "number" ? c.spread : 0;
+      const dir = aimWithSpread(ship, target, spread);
+      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : 240;
+      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : 3;
+      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : 2;
+      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : 1.5;
+      const vx = dir.x * speed;
+      const vy = dir.y * speed;
+      const b = Object.assign(
+        createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+        { radius }
+      );
+      state.bullets.push(b);
+      const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
+      c.__cd = 1 / rate;
+    }
+  }
+  if (Array.isArray(ship.turrets) && ship.turrets.length > 0) {
+    for (const [i, turret] of ship.turrets.entries()) {
+      if (!turret) continue;
+      if (typeof turret.__cd !== "number") turret.__cd = 0;
+      turret.__cd -= dt;
+      if (turret.__cd > 0) continue;
+      let turretTarget = null;
+      if (turret.targeting === "nearest") {
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        let minDist = Infinity;
+        for (const enemy of enemies) {
+          const dx = (enemy.x || 0) - (ship.x || 0);
+          const dy = (enemy.y || 0) - (ship.y || 0);
+          const d2 = dx * dx + dy * dy;
+          if (d2 < minDist) {
+            minDist = d2;
+            turretTarget = enemy;
+          }
+        }
+      } else if (turret.targeting === "random") {
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+      } else if (turret.targeting === "focus") {
+        if (ship.__ai && ship.__ai.targetId != null) {
+          turretTarget = (state.ships || []).find((sh) => sh && sh.id === ship.__ai.targetId) || null;
+        }
+      } else {
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        let minDist = Infinity;
+        for (const enemy of enemies) {
+          const dx = (enemy.x || 0) - (ship.x || 0);
+          const dy = (enemy.y || 0) - (ship.y || 0);
+          const d2 = dx * dx + dy * dy;
+          if (d2 < minDist) {
+            minDist = d2;
+            turretTarget = enemy;
+          }
+        }
+      }
+      if (!turretTarget) continue;
+      const spread = 0.05;
+      const dir = aimWithSpread(ship, turretTarget, spread);
+      const speed = 240;
+      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : 3;
+      const ttl = 2;
+      const radius = 2;
+      const angle = ship.angle || 0;
+      const [tx, ty] = turret.position || [0, 0];
+      const turretX = (ship.x || 0) + Math.cos(angle) * tx * (ship.radius || 12) - Math.sin(angle) * ty * (ship.radius || 12);
+      const turretY = (ship.y || 0) + Math.sin(angle) * tx * (ship.radius || 12) + Math.cos(angle) * ty * (ship.radius || 12);
+      const vx = dir.x * speed;
+      const vy = dir.y * speed;
+      const b = Object.assign(
+        createBullet(turretX, turretY, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+        { radius }
+      );
+      state.bullets.push(b);
+      turret.__cd = typeof turret.cooldown === "number" && turret.cooldown > 0 ? turret.cooldown : 1;
+    }
   }
 }
 function ensureShipAiState(s) {
@@ -1441,36 +1530,45 @@ var CanvasRenderer = class {
           }
         }
       }
-      const turretShape = getTurretAsset("basic");
-      activeBufferCtx.save();
-      activeBufferCtx.rotate(0);
-      activeBufferCtx.fillStyle = AssetsConfig.palette.turret || "#94a3b8";
-      const turretScale = (s.radius || 12) * renderScale * 0.5;
-      if (turretShape.type === "circle") {
-        activeBufferCtx.beginPath();
-        activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
-        activeBufferCtx.fill();
-      } else if (turretShape.type === "polygon") {
-        activeBufferCtx.save();
-        activeBufferCtx.scale(turretScale, turretScale);
-        drawPolygon(turretShape.points);
-        activeBufferCtx.restore();
-      } else if (turretShape.type === "compound") {
-        for (const part of turretShape.parts) {
-          if (part.type === "circle") {
+      if (Array.isArray(s.turrets) && s.turrets.length > 0) {
+        for (const turret of s.turrets) {
+          if (!turret || !turret.position) continue;
+          const turretShape = getTurretAsset(turret.kind || "basic");
+          const turretScale = (s.radius || 12) * renderScale * 0.5;
+          const angle = s.angle || 0;
+          const [tx, ty] = turret.position;
+          const turretX = Math.cos(angle) * tx * (s.radius || 12) - Math.sin(angle) * ty * (s.radius || 12);
+          const turretY = Math.sin(angle) * tx * (s.radius || 12) + Math.cos(angle) * ty * (s.radius || 12);
+          activeBufferCtx.save();
+          activeBufferCtx.translate(turretX, turretY);
+          activeBufferCtx.rotate(0);
+          activeBufferCtx.fillStyle = AssetsConfig.palette.turret || "#94a3b8";
+          if (turretShape.type === "circle") {
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
             activeBufferCtx.fill();
-          } else if (part.type === "polygon") {
+          } else if (turretShape.type === "polygon") {
             activeBufferCtx.save();
             activeBufferCtx.scale(turretScale, turretScale);
-            drawPolygon(part.points);
+            drawPolygon(turretShape.points);
             activeBufferCtx.restore();
+          } else if (turretShape.type === "compound") {
+            for (const part of turretShape.parts) {
+              if (part.type === "circle") {
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
+                activeBufferCtx.fill();
+              } else if (part.type === "polygon") {
+                activeBufferCtx.save();
+                activeBufferCtx.scale(turretScale, turretScale);
+                drawPolygon(part.points);
+                activeBufferCtx.restore();
+              }
+            }
           }
+          activeBufferCtx.restore();
         }
       }
-      activeBufferCtx.restore();
-      activeBufferCtx.restore();
       if (s.shield > 0) {
         if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
           const shAnim = AssetsConfig.animations && AssetsConfig.animations.shieldEffect;

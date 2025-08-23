@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#181a20"/>
+  <!-- Main hull -->
+  <rect x="18" y="36" width="92" height="56" rx="28" fill="#ffee9a" stroke="#b0974b" stroke-width="6"/>
+  <!-- Hangar deck -->
+  <rect x="32" y="52" width="64" height="24" rx="8" fill="#f8b349" opacity="0.8"/>
+  <!-- Launch bays -->
+  <rect x="38" y="80" width="12" height="14" rx="4" fill="#3ac4e6"/>
+  <rect x="78" y="80" width="12" height="14" rx="4" fill="#3ac4e6"/>
+  <!-- Engine glows -->
+  <ellipse cx="38" cy="104" rx="7" ry="4" fill="#fff3a6"/>
+  <ellipse cx="90" cy="104" rx="7" ry="4" fill="#fff3a6"/>
+  <!-- 4 Turrets -->
+  <rect x="44" y="44" width="8" height="10" rx="2" fill="#fff" />
+  <rect x="76" y="44" width="8" height="10" rx="2" fill="#fff" />
+  <rect x="60" y="36" width="8" height="10" rx="2" fill="#fff" />
+  <rect x="60" y="62" width="8" height="10" rx="2" fill="#fff" />
+  <!-- Tech panels -->
+  <rect x="50" y="62" width="28" height="6" rx="2" fill="#fff" opacity="0.2"/>
+  <rect x="50" y="70" width="28" height="6" rx="2" fill="#fff" opacity="0.2"/>
+</svg>
