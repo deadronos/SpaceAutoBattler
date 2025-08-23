@@ -5,6 +5,7 @@ import { AssetsConfig, getShipAsset, getTurretAsset, getVisualConfig } from './c
 import { TeamsConfig } from './config/teamsConfig';
 import { shieldFlashes, healthFlashes } from './gamemanager';
 import { getDefaultShipType } from './config/entitiesConfig';
+import { RendererConfig } from './config/rendererConfig';
 
 export class WebGLRenderer {
   // Fullscreen quad shader for blitting FBO to main canvas
@@ -68,10 +69,10 @@ export class WebGLRenderer {
       }
       const gl = this.gl as WebGLRenderingContext;
       // Create offscreen framebuffer and texture at logical size × renderer scale
-      const LOGICAL_W = 1920, LOGICAL_H = 1080;
-      const rendererScale = 1; // TODO: get from config if available
-      const bufferW = Math.round(LOGICAL_W * rendererScale);
-      const bufferH = Math.round(LOGICAL_H * rendererScale);
+  const LOGICAL_W = 1920, LOGICAL_H = 1080;
+  const renderScale = (RendererConfig && typeof (RendererConfig.renderScale) === 'number') ? RendererConfig.renderScale : 1;
+  const bufferW = Math.round(LOGICAL_W * renderScale);
+  const bufferH = Math.round(LOGICAL_H * renderScale);
       // Create texture for FBO
       this.fboTexture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
@@ -142,31 +143,39 @@ export class WebGLRenderer {
   isRunning(): boolean { return false; }
 
   renderState(state: any, interpolation = 0): void {
-      // --- Blit/copy FBO to main canvas with fit-to-window scaling ---
-      if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
-        const gl = this.gl as WebGLRenderingContext;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        // Set viewport to canvas size
-        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.useProgram(this.quadProg);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
-        if (this.quadLoc_tex) gl.uniform1i(this.quadLoc_tex, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
-        gl.enableVertexAttribArray(this.quadLoc_pos);
-        gl.vertexAttribPointer(this.quadLoc_pos, 2, gl.FLOAT, false, 0, 0);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-        gl.disableVertexAttribArray(this.quadLoc_pos);
-      }
+    // --- Ensure FBO is always resized to 1920x1080 × renderScale before any drawing ---
     if (!this.gl) return;
     const gl = this.gl as WebGLRenderingContext;
-    try {
-      // --- Render simulation to offscreen framebuffer ---
-      if (this.fbo && this.fboTexture) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-        gl.viewport(0, 0, this.fboWidth, this.fboHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+    const LOGICAL_W = 1920, LOGICAL_H = 1080;
+    const renderScale = (RendererConfig && typeof (RendererConfig.renderScale) === 'number') ? RendererConfig.renderScale : 1;
+    const bufferW = Math.round(LOGICAL_W * renderScale);
+    const bufferH = Math.round(LOGICAL_H * renderScale);
+    // If FBO size changed, recreate FBO and texture
+    if (this.fboWidth !== bufferW || this.fboHeight !== bufferH) {
+      // Delete old FBO/texture if present
+      if (this.fboTexture) gl.deleteTexture(this.fboTexture);
+      if (this.fbo) gl.deleteFramebuffer(this.fbo);
+      // Create new texture for FBO
+      this.fboTexture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      // Create new framebuffer
+      this.fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
+      this.fboWidth = bufferW;
+      this.fboHeight = bufferH;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    // --- Render simulation to offscreen framebuffer ---
+    if (this.fbo && this.fboTexture) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+      gl.viewport(0, 0, this.fboWidth, this.fboHeight);
+      gl.clear(gl.COLOR_BUFFER_BIT);
         // If we have a simple GL program, draw ships as round points with simple overlays
         if (this.prog && this.vertexBuffer) {
           try {
@@ -183,7 +192,6 @@ export class WebGLRenderer {
               const clipY = 1 - (y / Math.max(1, h)) * 2;
               const radius = s.radius || 6;
               const ps = Math.max(2, radius * 2);
-              // ...existing color and overlay logic...
               const teamObj = (s.team === 'blue') ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
               const colorHex = (teamObj && teamObj.color) || AssetsConfig.palette.shipHull || '#888';
               const hexToRgba = (hex: string) => {
@@ -191,9 +199,33 @@ export class WebGLRenderer {
                 const r = ((bigint >> 16) & 255)/255; const g = ((bigint >> 8) & 255)/255; const b = (bigint & 255)/255; return [r,g,b,1];
               };
               const baseColor = hexToRgba(colorHex);
+              // Ship hull
               verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
-              // ...engine flare, shield, damage, health overlays as before...
-              // ...existing overlay logic unchanged...
+
+              // Engine trail (simple: draw faded points for trail)
+              if (Array.isArray(s.trail)) {
+                for (let i = 0; i < s.trail.length; i++) {
+                  const tx = s.trail[i].x || 0;
+                  const ty = s.trail[i].y || 0;
+                  const tClipX = (tx / Math.max(1, w)) * 2 - 1;
+                  const tClipY = 1 - (ty / Math.max(1, h)) * 2;
+                  const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
+                  verts.push(tClipX, tClipY, Math.max(2, radius), 0.7, 0.7, 1.0, tAlpha);
+                }
+              }
+
+              // Shield effect (draw a blue ring if shield is up)
+              if (s.shield > 0) {
+                verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1.0, 0.5);
+              }
+
+              // Health/damage flash (draw a reddish ring if recent damage)
+              if (Array.isArray(healthFlashes)) {
+                const flash = healthFlashes.find(f => f.id === s.id);
+                if (flash && flash.ttl > 0) {
+                  verts.push(clipX, clipY, ps * 1.3, 1.0, 0.3, 0.3, 0.7);
+                }
+              }
             }
             // upload buffer and draw
             const floatArr = new Float32Array(verts);
@@ -211,13 +243,28 @@ export class WebGLRenderer {
             gl.drawArrays(gl.POINTS, 0, count);
           } catch (e) {}
         }
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      }
-      // --- End simulation rendering to FBO ---
-      // Next step: blit/copy FBO to main canvas with fit-to-window scaling
-      // (to be implemented in next step)
-    } catch (e) {
-      // swallow outer render errors
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
+    // --- Blit/copy FBO to main canvas with fit-to-window scaling ---
+    if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
+      const displayScale = (RendererConfig && typeof (RendererConfig.displayScale) === 'number') ? RendererConfig.displayScale : 1;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      // Set viewport to canvas size, scaled by displayScale
+      gl.viewport(0, 0, Math.round(this.canvas.width * displayScale), Math.round(this.canvas.height * displayScale));
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(this.quadProg);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+      if (this.quadLoc_tex) gl.uniform1i(this.quadLoc_tex, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+      gl.enableVertexAttribArray(this.quadLoc_pos);
+      gl.vertexAttribPointer(this.quadLoc_pos, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disableVertexAttribArray(this.quadLoc_pos);
+    }
+    // --- End simulation rendering and buffer copy ---
+    // No redundant resizing or copying; buffer is always correct size before drawing, and copy happens once after drawing.
+    // Swallow outer render errors
+    try {} catch (e) {}
   }
 }

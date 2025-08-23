@@ -332,8 +332,8 @@ function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 60
       const angle = rng() * Math.PI * 2;
       const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
       const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
-      const x = Math.max(0, Math.min(bounds.W, baseX + dx));
-      const y = Math.max(0, Math.min(bounds.H, centerY + dy));
+      const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
+      const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
       if (typeof shipFactory === "function") out.push(shipFactory(type, x, y, teamId));
       else out.push({ type, x, y, team: teamId });
     }
@@ -395,8 +395,8 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
     const centerY = b.H / 2;
     const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {
-      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
-      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
+      const x = Math.max(0, Math.min(b.W - 1e-6, baseX + (rng() - 0.5) * 120));
+      const y = Math.max(0, Math.min(b.H - 1e-6, centerY + (rng() - 0.5) * 160));
       const type = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick2();
       orders.push({ type, team: weakest, x, y });
     }
@@ -642,8 +642,18 @@ function simulateStep(state, dtSeconds, bounds) {
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
-    if (b.ttl <= 0) state.bullets.splice(i, 1);
+    if (b.ttl <= 0 || b.x < 0 || b.x >= bounds.W || b.y < 0 || b.y >= bounds.H) {
+      state.bullets.splice(i, 1);
+    }
   }
+  function pruneHits(arr, bounds2) {
+    if (!Array.isArray(arr)) return arr;
+    return arr.filter((e) => typeof e.x === "number" && typeof e.y === "number" && e.x >= 0 && e.x < bounds2.W && e.y >= 0 && e.y < bounds2.H);
+  }
+  if (Array.isArray(state.shieldHits)) state.shieldHits = pruneHits(state.shieldHits, bounds);
+  if (Array.isArray(state.healthHits)) state.healthHits = pruneHits(state.healthHits, bounds);
+  if (Array.isArray(state.explosions)) state.explosions = pruneHits(state.explosions, bounds);
+  if (Array.isArray(state.damageEvents)) state.damageEvents = pruneHits(state.damageEvents, bounds);
   for (const s of state.ships || []) {
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;
@@ -1116,8 +1126,8 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
     try {
       const type = getDefaultShipType();
       const b = getDefaultBounds();
-      const x = Math.max(0, Math.min(b.W, srandom() * b.W));
-      const y = Math.max(0, Math.min(b.H, srandom() * b.H));
+      const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
+      const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
       const ship = createShip(type, x, y, team);
       state.ships.push(ship);
       return ship;
@@ -1183,6 +1193,7 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
 
 // src/canvasrenderer.ts
 init_assetsConfig();
+init_teamsConfig();
 init_entitiesConfig();
 
 // src/config/rendererConfig.ts
@@ -1190,7 +1201,10 @@ var RendererConfig = {
   preferred: "canvas",
   allowUrlOverride: true,
   allowWebGL: true,
-  rendererScale: 1,
+  renderScale: 1,
+  // scale for output buffer resolution
+  displayScale: 1,
+  // scale for canvas transform to fit window
   dynamicScaleEnabled: false,
   lastFrameTime: 0,
   frameScore: "green",
@@ -1231,9 +1245,9 @@ var CanvasRenderer = class {
     this.bufferCtx = this.bufferCanvas.getContext("2d");
     if (!this.bufferCtx) return false;
     try {
-      const cssW = this.canvas.clientWidth || this.canvas.width || 1;
-      this.pixelRatio = (this.canvas.width || cssW) / cssW;
-      this.ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+      const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
+      this.pixelRatio = renderScale;
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.imageSmoothingEnabled = true;
     } catch (e) {
       this.pixelRatio = 1;
@@ -1261,36 +1275,37 @@ var CanvasRenderer = class {
     const bufferCtx = this.bufferCtx;
     if (!ctx || !bufferCtx) return;
     const LOGICAL_W = 1920, LOGICAL_H = 1080;
-    const rendererScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
     const fitScale = RendererConfig._fitScale || 1;
-    const offsetX = RendererConfig._offsetX || 0;
-    const offsetY = RendererConfig._offsetY || 0;
-    const bufferW = Math.round(LOGICAL_W * rendererScale);
-    const bufferH = Math.round(LOGICAL_H * rendererScale);
+    const bufferW = Math.round(LOGICAL_W * renderScale);
+    const bufferH = Math.round(LOGICAL_H * renderScale);
     if (this.bufferCanvas.width !== bufferW || this.bufferCanvas.height !== bufferH) {
       this.bufferCanvas.width = bufferW;
       this.bufferCanvas.height = bufferH;
+      this.bufferCtx = this.bufferCanvas.getContext("2d");
+      if (!this.bufferCtx) return;
     }
-    bufferCtx.setTransform(rendererScale, 0, 0, rendererScale, 0, 0);
-    bufferCtx.clearRect(0, 0, bufferW, bufferH);
-    bufferCtx.save();
-    bufferCtx.fillStyle = AssetsConfig.palette.background || "#0b1220";
-    bufferCtx.fillRect(0, 0, bufferW, bufferH);
-    bufferCtx.restore();
+    const activeBufferCtx = this.bufferCtx;
+    activeBufferCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
+    activeBufferCtx.save();
+    activeBufferCtx.fillStyle = AssetsConfig.palette.background || "#0b1220";
+    activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
+    activeBufferCtx.restore();
     function drawPolygon(points) {
       if (!points || points.length === 0) return;
-      bufferCtx.beginPath();
-      bufferCtx.moveTo(points[0][0], points[0][1]);
-      for (let i = 1; i < points.length; i++) bufferCtx.lineTo(points[i][0], points[i][1]);
-      bufferCtx.closePath();
-      bufferCtx.fill();
+      activeBufferCtx.beginPath();
+      activeBufferCtx.moveTo(points[0][0] * renderScale, points[0][1] * renderScale);
+      for (let i = 1; i < points.length; i++) activeBufferCtx.lineTo(points[i][0] * renderScale, points[i][1] * renderScale);
+      activeBufferCtx.closePath();
+      activeBufferCtx.fill();
     }
     if (state && state.starCanvas) {
       try {
-        bufferCtx.save();
-        bufferCtx.globalCompositeOperation = "source-over";
-        bufferCtx.drawImage(state.starCanvas, 0, 0, LOGICAL_W, LOGICAL_H);
-        bufferCtx.restore();
+        activeBufferCtx.save();
+        activeBufferCtx.globalCompositeOperation = "source-over";
+        activeBufferCtx.drawImage(state.starCanvas, 0, 0, bufferW, bufferH);
+        activeBufferCtx.restore();
       } catch (e) {
       }
     }
@@ -1323,14 +1338,66 @@ var CanvasRenderer = class {
     }
     const engineTrailsEnabled = !!state.engineTrailsEnabled;
     for (const s of state.ships || []) {
+      const sx = (s.x || 0) * renderScale;
+      const sy = (s.y || 0) * renderScale;
+      if (sx < 0 || sx >= bufferW || sy < 0 || sy >= bufferH) continue;
+      if (s.team === "blue") {
+        console.log("[DEBUG] Blue ship:", {
+          id: s.id,
+          x: s.x,
+          y: s.y,
+          radius: s.radius,
+          type: s.type,
+          visible: true
+        });
+      }
       if (engineTrailsEnabled) {
         s.trail = s.trail || [];
         const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
         if (!last || last.x !== s.x || last.y !== s.y) {
           s.trail.push({ x: s.x, y: s.y });
         }
-        const vconf = getVisualConfig(s.type || getDefaultShipType());
-        const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
+        const vconf2 = getVisualConfig(s.type || getDefaultShipType());
+        const trailName = vconf2.visuals && vconf2.visuals.engineTrail || "engineTrail";
+      }
+      if (Array.isArray(s.trail)) {
+        for (let i = 0; i < s.trail.length; i++) {
+          const tx = s.trail[i].x || 0;
+          const ty = s.trail[i].y || 0;
+          const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
+          const txx = tx * renderScale;
+          const tyy = ty * renderScale;
+          if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
+          activeBufferCtx.save();
+          activeBufferCtx.globalAlpha = tAlpha;
+          activeBufferCtx.fillStyle = "#aee1ff";
+          activeBufferCtx.beginPath();
+          activeBufferCtx.arc(txx, tyy, 6 * renderScale, 0, Math.PI * 2);
+          activeBufferCtx.fill();
+          activeBufferCtx.restore();
+        }
+      }
+      const vconf = getVisualConfig(s.type || getDefaultShipType());
+      const shape = getShipAsset(s.type || getDefaultShipType());
+      activeBufferCtx.save();
+      activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
+      activeBufferCtx.rotate(s.angle || 0);
+      let teamColor = AssetsConfig.palette.shipHull || "#888";
+      if (s.team === "red" && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
+      else if (s.team === "blue" && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
+      activeBufferCtx.fillStyle = teamColor;
+      if (shape.type === "circle") {
+        activeBufferCtx.beginPath();
+        activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
+        activeBufferCtx.fill();
+      } else if (shape.type === "polygon") {
+        drawPolygon(shape.points);
+      }
+      activeBufferCtx.restore();
+      if (s.shield > 0) {
+        if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
+          drawRing(s.x, s.y, (s.radius || 12) * 1.2, "#3ab6ff", 0.5, 3 * renderScale);
+        }
       }
     }
     try {
@@ -1355,7 +1422,18 @@ var CanvasRenderer = class {
             const t = Math.max(0, Math.min(1, life / ttl));
             const R = 6 + (1 - t) * 18;
             const alpha = 0.9 * t;
-            drawRing(flash.x || (s.x || 0), flash.y || (s.y || 0), R, "#ff7766", alpha, 2);
+            const fx = (flash.x || (s.x || 0)) * renderScale;
+            const fy = (flash.y || (s.y || 0)) * renderScale;
+            if (fx >= 0 && fx < bufferW && fy >= 0 && fy < bufferH) {
+              activeBufferCtx.save();
+              activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+              activeBufferCtx.strokeStyle = "#ff7766";
+              activeBufferCtx.lineWidth = 2 * renderScale;
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(fx, fy, Math.max(1, R * renderScale), 0, Math.PI * 2);
+              activeBufferCtx.stroke();
+              activeBufferCtx.restore();
+            }
           }
         } catch (e) {
         }
@@ -1364,22 +1442,25 @@ var CanvasRenderer = class {
     }
     for (const b of state.bullets || []) {
       try {
+        const bx = (b.x || 0) * renderScale;
+        const by = (b.y || 0) * renderScale;
+        if (bx < 0 || bx >= bufferW || by < 0 || by >= bufferH) continue;
         const r = b.radius || b.bulletRadius || 1.5;
         const kind = bulletKindForRadius(r / 6);
         const shape = getBulletAsset(kind);
-        bufferCtx.save();
-        bufferCtx.translate(b.x || 0, b.y || 0);
-        const px = Math.max(1, r);
+        activeBufferCtx.save();
+        activeBufferCtx.translate(bx, by);
+        const px = Math.max(1, r * renderScale);
         if (shape.type === "circle") {
-          bufferCtx.beginPath();
-          bufferCtx.fillStyle = AssetsConfig.palette.bullet;
-          bufferCtx.arc(0, 0, px, 0, Math.PI * 2);
-          bufferCtx.fill();
+          activeBufferCtx.beginPath();
+          activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
+          activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2);
+          activeBufferCtx.fill();
         } else if (shape.type === "polygon") {
-          bufferCtx.fillStyle = AssetsConfig.palette.bullet;
+          activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
           drawPolygon(shape.points);
         }
-        bufferCtx.restore();
+        activeBufferCtx.restore();
       } catch (e) {
       }
     }
@@ -1393,8 +1474,8 @@ var CanvasRenderer = class {
       0,
       this.bufferCanvas.width,
       this.bufferCanvas.height,
-      offsetX,
-      offsetY,
+      0,
+      0,
       this.bufferCanvas.width * fitScale,
       this.bufferCanvas.height * fitScale
     );
@@ -1486,9 +1567,9 @@ var WebGLRenderer = class {
       }
       const gl = this.gl;
       const LOGICAL_W = 1920, LOGICAL_H = 1080;
-      const rendererScale = 1;
-      const bufferW = Math.round(LOGICAL_W * rendererScale);
-      const bufferH = Math.round(LOGICAL_H * rendererScale);
+      const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
+      const bufferW = Math.round(LOGICAL_W * renderScale);
+      const bufferH = Math.round(LOGICAL_H * renderScale);
       this.fboTexture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -1573,73 +1654,113 @@ var WebGLRenderer = class {
     return false;
   }
   renderState(state, interpolation = 0) {
-    if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
-      const gl2 = this.gl;
-      gl2.bindFramebuffer(gl2.FRAMEBUFFER, null);
-      gl2.viewport(0, 0, this.canvas.width, this.canvas.height);
-      gl2.clear(gl2.COLOR_BUFFER_BIT);
-      gl2.useProgram(this.quadProg);
-      gl2.activeTexture(gl2.TEXTURE0);
-      gl2.bindTexture(gl2.TEXTURE_2D, this.fboTexture);
-      if (this.quadLoc_tex) gl2.uniform1i(this.quadLoc_tex, 0);
-      gl2.bindBuffer(gl2.ARRAY_BUFFER, this.quadVBO);
-      gl2.enableVertexAttribArray(this.quadLoc_pos);
-      gl2.vertexAttribPointer(this.quadLoc_pos, 2, gl2.FLOAT, false, 0, 0);
-      gl2.drawArrays(gl2.TRIANGLES, 0, 6);
-      gl2.disableVertexAttribArray(this.quadLoc_pos);
-    }
     if (!this.gl) return;
     const gl = this.gl;
-    try {
-      if (this.fbo && this.fboTexture) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-        gl.viewport(0, 0, this.fboWidth, this.fboHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        if (this.prog && this.vertexBuffer) {
-          try {
-            const w = this.fboWidth;
-            const h = this.fboHeight;
-            const ships = state.ships || [];
-            const verts = [];
-            const now = state && state.t || 0;
-            for (const s of ships) {
-              const x = s.x || 0;
-              const y = s.y || 0;
-              const clipX = x / Math.max(1, w) * 2 - 1;
-              const clipY = 1 - y / Math.max(1, h) * 2;
-              const radius = s.radius || 6;
-              const ps = Math.max(2, radius * 2);
-              const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
-              const colorHex = teamObj && teamObj.color || AssetsConfig.palette.shipHull || "#888";
-              const hexToRgba = (hex) => {
-                const h2 = hex.replace("#", "");
-                const bigint = parseInt(h2.length === 3 ? h2.split("").map((c) => c + c).join("") : h2, 16);
-                const r = (bigint >> 16 & 255) / 255;
-                const g = (bigint >> 8 & 255) / 255;
-                const b = (bigint & 255) / 255;
-                return [r, g, b, 1];
-              };
-              const baseColor = hexToRgba(colorHex);
-              verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
+    const LOGICAL_W = 1920, LOGICAL_H = 1080;
+    const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
+    const bufferW = Math.round(LOGICAL_W * renderScale);
+    const bufferH = Math.round(LOGICAL_H * renderScale);
+    if (this.fboWidth !== bufferW || this.fboHeight !== bufferH) {
+      if (this.fboTexture) gl.deleteTexture(this.fboTexture);
+      if (this.fbo) gl.deleteFramebuffer(this.fbo);
+      this.fboTexture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
+      this.fboWidth = bufferW;
+      this.fboHeight = bufferH;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    if (this.fbo && this.fboTexture) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+      gl.viewport(0, 0, this.fboWidth, this.fboHeight);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      if (this.prog && this.vertexBuffer) {
+        try {
+          const w = this.fboWidth;
+          const h = this.fboHeight;
+          const ships = state.ships || [];
+          const verts = [];
+          const now = state && state.t || 0;
+          for (const s of ships) {
+            const x = s.x || 0;
+            const y = s.y || 0;
+            const clipX = x / Math.max(1, w) * 2 - 1;
+            const clipY = 1 - y / Math.max(1, h) * 2;
+            const radius = s.radius || 6;
+            const ps = Math.max(2, radius * 2);
+            const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
+            const colorHex = teamObj && teamObj.color || AssetsConfig.palette.shipHull || "#888";
+            const hexToRgba = (hex) => {
+              const h2 = hex.replace("#", "");
+              const bigint = parseInt(h2.length === 3 ? h2.split("").map((c) => c + c).join("") : h2, 16);
+              const r = (bigint >> 16 & 255) / 255;
+              const g = (bigint >> 8 & 255) / 255;
+              const b = (bigint & 255) / 255;
+              return [r, g, b, 1];
+            };
+            const baseColor = hexToRgba(colorHex);
+            verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
+            if (Array.isArray(s.trail)) {
+              for (let i = 0; i < s.trail.length; i++) {
+                const tx = s.trail[i].x || 0;
+                const ty = s.trail[i].y || 0;
+                const tClipX = tx / Math.max(1, w) * 2 - 1;
+                const tClipY = 1 - ty / Math.max(1, h) * 2;
+                const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
+                verts.push(tClipX, tClipY, Math.max(2, radius), 0.7, 0.7, 1, tAlpha);
+              }
             }
-            const floatArr = new Float32Array(verts);
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
-            gl.useProgram(this.prog);
-            const stride = 7 * 4;
-            gl.enableVertexAttribArray(this.attribLoc_pos);
-            gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
-            gl.enableVertexAttribArray(this.attribLoc_size);
-            gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
-            gl.enableVertexAttribArray(this.attribLoc_color);
-            gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-            const count = Math.floor(floatArr.length / 7);
-            gl.drawArrays(gl.POINTS, 0, count);
-          } catch (e) {
+            if (s.shield > 0) {
+              verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1, 0.5);
+            }
+            if (Array.isArray(healthFlashes)) {
+              const flash = healthFlashes.find((f) => f.id === s.id);
+              if (flash && flash.ttl > 0) {
+                verts.push(clipX, clipY, ps * 1.3, 1, 0.3, 0.3, 0.7);
+              }
+            }
           }
+          const floatArr = new Float32Array(verts);
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
+          gl.useProgram(this.prog);
+          const stride = 7 * 4;
+          gl.enableVertexAttribArray(this.attribLoc_pos);
+          gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
+          gl.enableVertexAttribArray(this.attribLoc_size);
+          gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
+          gl.enableVertexAttribArray(this.attribLoc_color);
+          gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
+          const count = Math.floor(floatArr.length / 7);
+          gl.drawArrays(gl.POINTS, 0, count);
+        } catch (e) {
         }
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
+      const displayScale = RendererConfig && typeof RendererConfig.displayScale === "number" ? RendererConfig.displayScale : 1;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, Math.round(this.canvas.width * displayScale), Math.round(this.canvas.height * displayScale));
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(this.quadProg);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+      if (this.quadLoc_tex) gl.uniform1i(this.quadLoc_tex, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+      gl.enableVertexAttribArray(this.quadLoc_pos);
+      gl.vertexAttribPointer(this.quadLoc_pos, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disableVertexAttribArray(this.quadLoc_pos);
+    }
+    try {
     } catch (e) {
     }
   }
@@ -1666,34 +1787,35 @@ async function startApp(rootDocument = document) {
     if (ui.stats) ui.stats.textContent = "Ships: 0 (R:0 B:0) Bullets: 0";
   } catch (e) {
   }
-  const LOGICAL_BOUNDS = { W: 1920, H: 1080 };
+  const LOGICAL_BOUNDS = getDefaultBounds();
   function fitCanvasToWindow() {
-    const baseDpr = window.devicePixelRatio || 1;
+    const dpr = window.devicePixelRatio || 1;
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
-    const scaledLogicalW = LOGICAL_BOUNDS.W * cfgScale;
-    const scaledLogicalH = LOGICAL_BOUNDS.H * cfgScale;
-    const fitScale = Math.min(winW / scaledLogicalW, winH / scaledLogicalH);
-    const finalW = scaledLogicalW * fitScale;
-    const finalH = scaledLogicalH * fitScale;
-    const offsetX = Math.floor((winW - finalW) / 2);
-    const offsetY = Math.floor((winH - finalH) / 2);
+    const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
+    const logicalW = LOGICAL_BOUNDS.W;
+    const logicalH = LOGICAL_BOUNDS.H;
+    const fitScale = Math.min(winW / logicalW, winH / logicalH);
+    const visibleW = Math.round(logicalW * fitScale);
+    const visibleH = Math.round(logicalH * fitScale);
     if (canvas) {
-      canvas.style.width = `${winW}px`;
-      canvas.style.height = `${winH}px`;
-      canvas.width = Math.round(winW * baseDpr);
-      canvas.height = Math.round(winH * baseDpr);
+      canvas.width = Math.round(logicalW * renderScale / dpr);
+      canvas.height = Math.round(logicalH * renderScale / dpr);
+      canvas.style.width = `${visibleW}px`;
+      canvas.style.height = `${visibleH}px`;
+      canvas.style.position = "absolute";
+      canvas.style.left = "0px";
+      canvas.style.top = "0px";
       const dimsEl = document.getElementById("rendererDims");
       if (dimsEl) {
-        dimsEl.textContent = `${Math.round(finalW)} x ${Math.round(finalH)} px`;
+        dimsEl.textContent = `${canvas.width} x ${canvas.height} px @ ${dpr}x`;
       }
     }
-    RendererConfig._fitScale = fitScale;
-    RendererConfig._offsetX = offsetX;
-    RendererConfig._offsetY = offsetY;
+    RendererConfig._renderScale = renderScale;
+    RendererConfig._offsetX = 0;
+    RendererConfig._offsetY = 0;
     const scaleVal = rootDocument.getElementById("rendererScaleValue");
-    if (scaleVal) scaleVal.textContent = cfgScale.toFixed(2);
+    if (scaleVal) scaleVal.textContent = renderScale.toFixed(2);
   }
   const scaleSlider = rootDocument.getElementById("rendererScaleRange");
   const dynamicCheckbox = rootDocument.getElementById("dynamicScaleCheckbox");
@@ -1703,7 +1825,7 @@ async function startApp(rootDocument = document) {
       if (internalScaleUpdate) return;
       const val = parseFloat(ev.target.value);
       if (!isNaN(val)) {
-        RendererConfig.rendererScale = val;
+        RendererConfig.renderScale = val;
         RendererConfig.dynamicScaleEnabled = false;
         if (dynamicCheckbox) dynamicCheckbox.checked = false;
         fitCanvasToWindow();
@@ -1990,11 +2112,11 @@ async function startApp(rootDocument = document) {
       scaleValEl.style.color = frameScore === "green" ? "#4caf50" : frameScore === "yellow" ? "#ffd600" : "#ff1744";
     }
     if (dynamicEnabled && scaleSliderEl) {
-      let scale = RendererConfig.rendererScale;
+      let scale = RendererConfig.renderScale;
       if (frameScore === "red" && scale > 0.25) scale = Math.max(0.25, scale - 0.05);
       else if (frameScore === "green" && scale < 2) scale = Math.min(2, scale + 0.01);
-      if (scale !== RendererConfig.rendererScale) {
-        RendererConfig.rendererScale = scale;
+      if (scale !== RendererConfig.renderScale) {
+        RendererConfig.renderScale = scale;
         internalScaleUpdate = true;
         scaleSliderEl.value = scale.toFixed(2);
         if (scaleValEl) scaleValEl.textContent = scale.toFixed(2);

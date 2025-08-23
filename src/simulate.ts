@@ -15,14 +15,25 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 	// Advance time
 	state.t = (state.t || 0) + dtSeconds;
 
-	// Move bullets
+	// Move bullets and prune out-of-bounds
 	for (let i = (state.bullets || []).length - 1; i >= 0; i--) {
 		const b = state.bullets[i];
 		b.x += (b.vx || 0) * dtSeconds;
 		b.y += (b.vy || 0) * dtSeconds;
 		b.ttl = (b.ttl || 0) - dtSeconds;
-		if (b.ttl <= 0) state.bullets.splice(i, 1);
+		if (b.ttl <= 0 || b.x < 0 || b.x >= bounds.W || b.y < 0 || b.y >= bounds.H) {
+			state.bullets.splice(i, 1);
+		}
 	}
+	// Prune out-of-bounds shieldHits, healthHits, explosions, damageEvents
+	function pruneHits(arr: any[], bounds: Bounds) {
+		if (!Array.isArray(arr)) return arr;
+		return arr.filter(e => typeof e.x === 'number' && typeof e.y === 'number' && e.x >= 0 && e.x < bounds.W && e.y >= 0 && e.y < bounds.H);
+	}
+	if (Array.isArray(state.shieldHits)) state.shieldHits = pruneHits(state.shieldHits, bounds);
+	if (Array.isArray(state.healthHits)) state.healthHits = pruneHits(state.healthHits, bounds);
+	if (Array.isArray(state.explosions)) state.explosions = pruneHits(state.explosions, bounds);
+	if (Array.isArray(state.damageEvents)) state.damageEvents = pruneHits(state.damageEvents, bounds);
 
 	// Move ships and update heading
 	for (const s of state.ships || []) {

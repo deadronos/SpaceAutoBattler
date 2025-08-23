@@ -23,8 +23,18 @@ function simulateStep(state2, dtSeconds, bounds2) {
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
-    if (b.ttl <= 0) state2.bullets.splice(i, 1);
+    if (b.ttl <= 0 || b.x < 0 || b.x >= bounds2.W || b.y < 0 || b.y >= bounds2.H) {
+      state2.bullets.splice(i, 1);
+    }
   }
+  function pruneHits(arr, bounds3) {
+    if (!Array.isArray(arr)) return arr;
+    return arr.filter((e) => typeof e.x === "number" && typeof e.y === "number" && e.x >= 0 && e.x < bounds3.W && e.y >= 0 && e.y < bounds3.H);
+  }
+  if (Array.isArray(state2.shieldHits)) state2.shieldHits = pruneHits(state2.shieldHits, bounds2);
+  if (Array.isArray(state2.healthHits)) state2.healthHits = pruneHits(state2.healthHits, bounds2);
+  if (Array.isArray(state2.explosions)) state2.explosions = pruneHits(state2.explosions, bounds2);
+  if (Array.isArray(state2.damageEvents)) state2.damageEvents = pruneHits(state2.damageEvents, bounds2);
   for (const s of state2.ships || []) {
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;

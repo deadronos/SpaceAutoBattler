@@ -2,7 +2,8 @@ export const RendererConfig = {
   preferred: 'canvas' as 'canvas' | 'webgl',
   allowUrlOverride: true,
   allowWebGL: true,
-  rendererScale: 1.0,
+  renderScale: 1.0, // scale for output buffer resolution
+  displayScale: 1.0, // scale for canvas transform to fit window
   dynamicScaleEnabled: false,
   lastFrameTime: 0,
   frameScore: 'green', // green, yellow, red

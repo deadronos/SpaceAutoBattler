@@ -247,8 +247,8 @@ export function createGameManager({ useWorker = true, renderer = null, seed = 12
 		try {
 			const type = getDefaultShipType();
 			const b = getDefaultBounds();
-			const x = Math.max(0, Math.min(b.W, srandom() * b.W));
-			const y = Math.max(0, Math.min(b.H, srandom() * b.H));
+		const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
+		const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
 			const ship = createShip(type, x, y, team);
 			state.ships.push(ship);
 			return ship;

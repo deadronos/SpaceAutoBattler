@@ -68,8 +68,8 @@ export function generateFleetForTeam(
       const angle = rng() * Math.PI * 2;
       const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
       const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
-      const x = Math.max(0, Math.min(bounds.W, baseX + dx));
-      const y = Math.max(0, Math.min(bounds.H, centerY + dy));
+  const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
+  const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
       if (typeof shipFactory === 'function') out.push(shipFactory(type, x, y, teamId));
       else out.push({ type, x, y, team: teamId });
     }
@@ -132,8 +132,8 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
     const b = (options.bounds || { W: 800, H: 600 });
     const centerY = b.H / 2; const baseX = weakest === 'red' ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {
-      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
-      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
+  const x = Math.max(0, Math.min(b.W - 1e-6, baseX + (rng() - 0.5) * 120));
+  const y = Math.max(0, Math.min(b.H - 1e-6, centerY + (rng() - 0.5) * 160));
     const type = (Array.isArray(cfg.shipTypes) && cfg.shipTypes.length) ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick();
       orders.push({ type, team: weakest, x, y });
     }

@@ -46,10 +46,10 @@ html, body { height: 100%; margin: 0; background: radial-gradient(1200px 800px a
 #bottomRight .continuous-label { color: var(--ui-color,#eaeff8); margin-right: 6px; }
 #bottomRight .muted { opacity: .7; }
 #world {
-	display: block;
-	max-width: 100vw;
-	max-height: 100vh;
-	box-shadow: 0 2px 24px rgba(0,0,0,0.45);
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.45);
 }
 
 /* Developer-only renderer scale control */

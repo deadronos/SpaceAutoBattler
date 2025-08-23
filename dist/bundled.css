@@ -143,8 +143,8 @@ body {
 }
 #world {
   display: block;
-  max-width: 100vw;
-  max-height: 100vh;
+  width: 100%;
+  height: 100%;
   box-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 #devControls {

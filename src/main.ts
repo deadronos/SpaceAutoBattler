@@ -35,51 +35,40 @@ export async function startApp(rootDocument: Document = document) {
 	try { if (ui.stats) ui.stats.textContent = 'Ships: 0 (R:0 B:0) Bullets: 0'; } catch (e) {}
 
 	// Always use fixed logical bounds for simulation/game loop
-	const LOGICAL_BOUNDS = { W: 1920, H: 1080 };
+	const LOGICAL_BOUNDS = getDefaultBounds();
 	function fitCanvasToWindow() {
-		// --- Viewport Scaling Logic ---
-		// The goal is: when rendererScale = 1.0, the logical simulation area (LOGICAL_BOUNDS)
-		// fills the visible canvas, with ships edge-to-edge (except for aspect ratio padding).
-		// fitScale is computed so the logical area fits inside the window, preserving aspect ratio.
-		// offsetX/Y center the logical area if the window is larger than the aspect ratio.
-		// This ensures correct scaling for both Canvas and WebGL renderers.
-		const baseDpr = window.devicePixelRatio || 1;
+		// Minimal robust canvas sizing and centering
+		const dpr = window.devicePixelRatio || 1;
 		const winW = window.innerWidth;
 		const winH = window.innerHeight;
-		// --- Renderer scaling order ---
-		// 1. Start with logical map (1920x1080)
-		// 2. Apply rendererScale (zoom in/out)
-		// 3. Fit the scaled logical map to the window (aspect ratio)
-		const cfgScale = (RendererConfig && typeof (RendererConfig as any).rendererScale === 'number') ? (RendererConfig as any).rendererScale : 1;
-		const scaledLogicalW = LOGICAL_BOUNDS.W * cfgScale;
-		const scaledLogicalH = LOGICAL_BOUNDS.H * cfgScale;
-		const fitScale = Math.min(winW / scaledLogicalW, winH / scaledLogicalH);
-		// Final size of logical map in window
-		const finalW = scaledLogicalW * fitScale;
-		const finalH = scaledLogicalH * fitScale;
-		const offsetX = Math.floor((winW - finalW) / 2);
-		const offsetY = Math.floor((winH - finalH) / 2);
+		const renderScale = (RendererConfig && typeof (RendererConfig as any).renderScale === 'number') ? (RendererConfig as any).renderScale : 1;
+		const logicalW = LOGICAL_BOUNDS.W;
+		const logicalH = LOGICAL_BOUNDS.H;
+				// Fit logical area to window, preserving aspect ratio
+		const fitScale = Math.min(winW / logicalW, winH / logicalH);
+		const visibleW = Math.round(logicalW * fitScale);
+		const visibleH = Math.round(logicalH * fitScale);
 		if (canvas) {
-			canvas.style.width = `${winW}px`;
-			canvas.style.height = `${winH}px`;
-			canvas.width = Math.round(winW * baseDpr);
-			canvas.height = Math.round(winH * baseDpr);
-			// Update rendererDims text in UI
+			// Set logical size
+			canvas.width = Math.round(logicalW * renderScale / dpr);
+			canvas.height = Math.round(logicalH * renderScale / dpr);
+			canvas.style.width = `${visibleW}px`;
+			canvas.style.height = `${visibleH}px`;
+			canvas.style.position = 'absolute';
+			canvas.style.left = '0px';
+			canvas.style.top = '0px';
 			const dimsEl = document.getElementById('rendererDims');
 			if (dimsEl) {
-				dimsEl.textContent = `${Math.round(finalW)} x ${Math.round(finalH)} px`;
+				dimsEl.textContent = `${canvas.width} x ${canvas.height} px @ ${dpr}x`;
 			}
 		}
-		// Store fitScale and offset for renderer use
-		// fitScale: scales the already renderer-scaled logical map to fit window
-		(RendererConfig as any)._fitScale = fitScale;
-		(RendererConfig as any)._offsetX = offsetX;
-		(RendererConfig as any)._offsetY = offsetY;
+		// For renderer use
+		(RendererConfig as any)._renderScale = renderScale;
+		(RendererConfig as any)._offsetX = 0;
+		(RendererConfig as any)._offsetY = 0;
 		// Update slider value display if present
 		const scaleVal = rootDocument.getElementById('rendererScaleValue');
-		if (scaleVal) scaleVal.textContent = cfgScale.toFixed(2);
-		// Debug: log scale and offset for verification
-		// console.log('rendererScale:', cfgScale, 'fitScale:', fitScale, 'offsetX:', offsetX, 'offsetY:', offsetY);
+		if (scaleVal) scaleVal.textContent = renderScale.toFixed(2);
 	}
 	// Renderer scale slider and dynamic scaling wiring
 	const scaleSlider = rootDocument.getElementById('rendererScaleRange');
@@ -90,7 +79,7 @@ export async function startApp(rootDocument: Document = document) {
 			if (internalScaleUpdate) return; // ignore internal updates
 			const val = parseFloat(ev.target.value);
 			if (!isNaN(val)) {
-				(RendererConfig as any).rendererScale = val;
+				(RendererConfig as any).renderScale = val;
 				(RendererConfig as any).dynamicScaleEnabled = false;
 				if (dynamicCheckbox) (dynamicCheckbox as HTMLInputElement).checked = false;
 				fitCanvasToWindow();
@@ -100,7 +89,7 @@ export async function startApp(rootDocument: Document = document) {
 		const scaleVal = rootDocument.getElementById('rendererScaleValue');
 		if (scaleVal) scaleVal.textContent = (scaleSlider as HTMLInputElement).value;
 		// Ensure initial fit-to-window calculation uses current scale
-		fitCanvasToWindow();
+	fitCanvasToWindow();
 	}
 	if (dynamicCheckbox) {
 		dynamicCheckbox.addEventListener('change', (ev: any) => {
@@ -294,13 +283,13 @@ export async function startApp(rootDocument: Document = document) {
 		}
 		// Dynamic scaling logic
 		if (dynamicEnabled && scaleSliderEl) {
-			let scale = (RendererConfig as any).rendererScale;
+			let scale = (RendererConfig as any).renderScale;
 			// If frame is slow, reduce scale; if fast, increase scale
 			if (frameScore === 'red' && scale > 0.25) scale = Math.max(0.25, scale - 0.05);
 			else if (frameScore === 'green' && scale < 2.0) scale = Math.min(2.0, scale + 0.01);
 			// Only update if changed
-			if (scale !== (RendererConfig as any).rendererScale) {
-				(RendererConfig as any).rendererScale = scale;
+			if (scale !== (RendererConfig as any).renderScale) {
+				(RendererConfig as any).renderScale = scale;
 				internalScaleUpdate = true;
 				scaleSliderEl.value = scale.toFixed(2);
 				if (scaleValEl) scaleValEl.textContent = scale.toFixed(2);
