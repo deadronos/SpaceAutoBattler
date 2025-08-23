@@ -24,7 +24,9 @@ export type Ship = {
   team?: string;
   xp?: number; level?: number;
   cannons?: Cannon[];
-  accel?: number; turnRate?: number; radius?: number;
+  accel?: number; // max acceleration from config
+  currentAccel?: number; // dynamic, set by AI/gamemanager, 0..accel
+  turnRate?: number; radius?: number;
   // optional AI runtime slot used by tests and behavior logic
   __ai?: any;
 };
@@ -48,6 +50,7 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
     level: 1,
     cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
     accel: cfg.accel || 0,
+    currentAccel: 0, // start at rest, AI/gamemanager sets this
     turnRate: cfg.turnRate || 0,
     radius: cfg.radius || 6,
   } as Ship;

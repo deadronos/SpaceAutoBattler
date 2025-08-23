@@ -38,11 +38,14 @@ function simulateStep(state2, dtSeconds, bounds2) {
   for (const s of state2.ships || []) {
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;
+    const r = typeof s.radius === "number" ? s.radius : 12;
     if (typeof bounds2.W === "number" && bounds2.W > 0) {
-      s.x = (s.x % bounds2.W + bounds2.W) % bounds2.W;
+      if (s.x < -r) s.x += bounds2.W + r * 2;
+      if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;
     }
     if (typeof bounds2.H === "number" && bounds2.H > 0) {
-      s.y = (s.y % bounds2.H + bounds2.H) % bounds2.H;
+      if (s.y < -r) s.y += bounds2.H + r * 2;
+      if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;
     }
     const speed2 = (s.vx || 0) * (s.vx || 0) + (s.vy || 0) * (s.vy || 0);
     const minSpeed = 0.5;
@@ -363,7 +366,7 @@ var ShipConfig = {
     damage: 3,
     radius: 12,
     cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
-    accel: 600,
+    accel: 150,
     turnRate: 6
   },
   corvette: {
@@ -374,7 +377,7 @@ var ShipConfig = {
     dmg: 5,
     damage: 5,
     radius: 20,
-    accel: 200,
+    accel: 80,
     turnRate: 3,
     cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]
   },
@@ -387,7 +390,7 @@ var ShipConfig = {
     damage: 8,
     radius: 24,
     cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
-    accel: 120,
+    accel: 60,
     turnRate: 2.2
   },
   destroyer: {
@@ -399,7 +402,7 @@ var ShipConfig = {
     damage: 12,
     radius: 40,
     cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
-    accel: 80,
+    accel: 40,
     turnRate: 1.6,
     turrets: [
       { position: [1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
@@ -419,7 +422,7 @@ var ShipConfig = {
     damage: 2,
     radius: 40,
     cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
-    accel: 40,
+    accel: 20,
     turnRate: 0.8,
     carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
     turrets: [

@@ -10,7 +10,9 @@ type ShipLike = {
   team?: string;
   hp?: number; maxHp?: number;
   cannons?: any[];
-  accel?: number; radius?: number; turnRate?: number;
+  accel?: number; // max acceleration from config
+  currentAccel?: number; // dynamic, set by AI/gamemanager, 0..accel
+  radius?: number; turnRate?: number;
   damage?: number; dmg?: number;
   __ai?: any;
   turrets?: any[];
@@ -161,10 +163,15 @@ export function applySimpleAI(state: State, dt: number, bounds = { W: 800, H: 60
     if (!target) target = chooseNewTarget(state, s);
     if (target) ai.targetId = target.id;
 
-    const accel = typeof s.accel === 'number' ? s.accel : 100;
+  // Set currentAccel dynamically based on intent (0 to max accel)
+  const maxAccel = typeof s.accel === 'number' ? s.accel : 100;
+  // Default: no acceleration
+  s.currentAccel = 0;
     const maxSpeed = 160;
 
     if (!target) {
+      // Idle: no acceleration
+      s.currentAccel = 0;
       s.vx = (s.vx || 0) + (srange(-1, 1) * 8) * dt;
       s.vy = (s.vy || 0) + (srange(-1, 1) * 8) * dt;
       ai.state = 'idle';
@@ -178,18 +185,23 @@ export function applySimpleAI(state: State, dt: number, bounds = { W: 800, H: 60
       }
 
       if (ai.state === 'engage') {
+        // Accelerate to max
+        s.currentAccel = maxAccel;
         const aim = aimWithSpread(s, target, 0.05);
-        s.vx = (s.vx || 0) + aim.x * accel * dt;
-        s.vy = (s.vy || 0) + aim.y * accel * dt;
-        // tryFire now handles both legacy cannons and multi-turret
+        s.vx = (s.vx || 0) + aim.x * s.currentAccel * dt;
+        s.vy = (s.vy || 0) + aim.y * s.currentAccel * dt;
         tryFire(state, s, target, dt);
       } else if (ai.state === 'evade') {
-        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
+        // Accelerate to 80% of max
+        s.currentAccel = maxAccel * 0.8;
+        steerAway(s, target.x || 0, target.y || 0, s.currentAccel, dt);
         const ang = Math.atan2((s.vy || 0), (s.vx || 0));
         const perp = ang + (Math.PI / 2) * (srandom() < 0.5 ? 1 : -1);
-        s.vx = (s.vx || 0) + Math.cos(perp) * accel * 0.2 * dt;
-        s.vy = (s.vy || 0) + Math.sin(perp) * accel * 0.2 * dt;
+        s.vx = (s.vx || 0) + Math.cos(perp) * s.currentAccel * 0.25 * dt;
+        s.vy = (s.vy || 0) + Math.sin(perp) * s.currentAccel * 0.25 * dt;
       } else {
+        // Idle: no acceleration
+        s.currentAccel = 0;
         s.vx = (s.vx || 0) + (srange(-0.5, 0.5) * 6) * dt;
         s.vy = (s.vy || 0) + (srange(-0.5, 0.5) * 6) * dt;
       }

@@ -39,14 +39,15 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 	for (const s of state.ships || []) {
 		s.x += (s.vx || 0) * dtSeconds;
 		s.y += (s.vy || 0) * dtSeconds;
-		// normalize into [0, bounds.W) and [0, bounds.H) using modulo so large
-		// displacements that wrap multiple times are handled correctly.
+		// Robust toroidal wrapping using config-driven radius
+		const r = typeof s.radius === 'number' ? s.radius : 12;
 		if (typeof bounds.W === 'number' && bounds.W > 0) {
-			// ((x % W) + W) % W ensures positive results for negative x
-			s.x = ((s.x % bounds.W) + bounds.W) % bounds.W;
+			if (s.x < -r) s.x += bounds.W + r * 2;
+			if (s.x > bounds.W + r) s.x -= bounds.W + r * 2;
 		}
 		if (typeof bounds.H === 'number' && bounds.H > 0) {
-			s.y = ((s.y % bounds.H) + bounds.H) % bounds.H;
+			if (s.y < -r) s.y += bounds.H + r * 2;
+			if (s.y > bounds.H + r) s.y -= bounds.H + r * 2;
 		}
 
 		// --- Heading/angle update ---
@@ -152,8 +153,12 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 				}
 				state.bullets.splice(bi, 1);
 				if (s.hp <= 0) {
+					// eslint-disable-next-line no-console
+					console.log('DEBUG: KILL BRANCH, attacker', attacker && attacker.id, 'xp before', attacker && attacker.xp);
 					if (attacker) {
 						attacker.xp = (attacker.xp || 0) + (progressionCfg.xpPerKill || 0);
+						// eslint-disable-next-line no-console
+						console.log('DEBUG: KILL XP AWARDED, attacker', attacker.id, 'xp after', attacker.xp);
 						while ((attacker.xp || 0) >= progressionCfg.xpToLevel((attacker.level || 1))) {
 							attacker.xp -= progressionCfg.xpToLevel((attacker.level || 1));
 							attacker.level = (attacker.level || 1) + 1;
