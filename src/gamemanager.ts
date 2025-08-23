@@ -245,7 +245,7 @@ export function simulate(dt: number, W = 800, H = 600) {
 
   // merge explosions
   for (const ex of state.explosions || []) {
-    flashes.push(Object.assign({}, ex));
+  flashes.push(Object.assign({}, ex, { _ts: state.t || 0 }));
     try {
       const cfg = config.explosion || {};
       const count = cfg.particleCount || 12; const ttl = cfg.particleTTL || 0.6; const color = cfg.particleColor || 'rgba(255,200,100,0.95)'; const size = cfg.particleSize || 3;
@@ -262,9 +262,9 @@ export function simulate(dt: number, W = 800, H = 600) {
 
   // shield hits -> shieldFlashes + particles
   for (const h of state.shieldHits || []) {
-    // preserve hitAngle when present so renderers can draw localized arcs
-    const hitObj = Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true });
-    shieldFlashes.push(hitObj);
+  // preserve hitAngle when present so renderers can draw localized arcs
+  const hitObj = Object.assign({}, h, { ttl: config.shield.ttl, life: config.shield.ttl, spawned: true, _ts: state.t || 0 });
+  shieldFlashes.push(hitObj);
     try {
       const cfg = config.shield || {};
       const cnt = cfg.particleCount || 6; const ttl = cfg.particleTTL || 0.35; const color = cfg.particleColor || 'rgba(160,200,255,0.9)'; const size = cfg.particleSize || 2;
@@ -281,7 +281,7 @@ export function simulate(dt: number, W = 800, H = 600) {
 
   // health hits -> healthFlashes + particles
   for (const h of state.healthHits || []) {
-    healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true }));
+  healthFlashes.push(Object.assign({}, h, { ttl: config.health.ttl, life: config.health.ttl, spawned: true, _ts: state.t || 0 }));
     try {
       const cfg = config.health || {};
       const cnt = cfg.particleCount || 8; const ttl = cfg.particleTTL || 0.6; const color = cfg.particleColor || 'rgba(255,120,80,0.95)'; const size = cfg.particleSize || 2;

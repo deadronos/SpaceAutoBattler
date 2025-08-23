@@ -208,7 +208,18 @@ export class CanvasRenderer {
             ctx.globalAlpha = Math.min(1, aBase + aScale * shieldPct) * pulse;
             // If a recent shieldFlash exists for this ship with hitAngle, draw only an arc segment
             try {
-              const flash = (Array.isArray(state.shieldFlashes) && state.shieldFlashes.find((f: any) => f && f.id === s.id && f.spawned));
+              // TTL-based lookup: find the freshest shieldFlash for this ship within its ttl window
+              let flash: any = null;
+              if (Array.isArray(state.shieldFlashes)) {
+                const nowT = (state && state.t) || 0;
+                let bestTs = -Infinity;
+                for (const f of state.shieldFlashes) {
+                  if (!f || f.id !== s.id) continue;
+                  const fTs = (typeof f._ts === 'number') ? f._ts : 0;
+                  const fTtl = (typeof f.ttl === 'number') ? f.ttl : ((AssetsConfig && (AssetsConfig as any).shield && (AssetsConfig as any).shield.ttl) || 0.4);
+                  if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) { bestTs = fTs; flash = f; }
+                }
+              }
               if (flash && typeof flash.hitAngle === 'number') {
                 const arc = (typeof flash.arcWidth === 'number') ? flash.arcWidth : ((vconf && vconf.arcWidth) || (AssetsConfig && (AssetsConfig as any).shieldArcWidth) || Math.PI / 6);
                 const start = flash.hitAngle - arc * 0.5 - angle; // account for rotation

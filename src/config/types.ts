@@ -7,6 +7,12 @@ export interface CannonSpec {
   reload?: number;
   range?: number;
   angle?: number;
+  // fields commonly found in cannon config objects
+  rate?: number;
+  spread?: number;
+  muzzleSpeed?: number;
+  bulletRadius?: number;
+  bulletTTL?: number;
   [k: string]: any;
 }
 
