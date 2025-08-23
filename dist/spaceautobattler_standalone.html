@@ -6,6 +6,33 @@
   <title>Space AutoBattler UI</title>
   <style>
 /* src/styles/ui.css */
+#topRightRenderer {
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  z-index: 30;
+  background: rgba(10, 12, 20, 0.6);
+  border-radius: 12px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  font-size: 18px;
+  font-weight: 600;
+  color: #eaeff8;
+  letter-spacing: 0.5px;
+}
+.renderer-type {
+  color: #aee1ff;
+  font-weight: 700;
+  font-size: 18px;
+}
+.renderer-dims {
+  margin-left: 14px;
+  color: #b8e2ff;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0.85;
+}
 html,
 body {
   height: 100%;
@@ -31,6 +58,15 @@ body {
     "Segoe UI Emoji",
     "Segoe UI Symbol";
 }
+#flexRoot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
 #ui {
   position: fixed;
   top: 12px;
@@ -39,7 +75,7 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  z-index: 10;
+  z-index: 20;
   background: rgba(10, 12, 20, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 10px;
@@ -113,9 +149,10 @@ body {
   opacity: .7;
 }
 #world {
-  position: fixed;
-  inset: 0;
   display: block;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 #devControls {
   position: fixed;
@@ -140,6 +177,10 @@ body {
 </style>
 </head>
 <body>
+  <div id="topRightRenderer">
+    <span id="rendererType" class="renderer-type">Renderer: Canvas</span>
+    <span id="rendererDims" class="renderer-dims">1280 x 720 px</span>
+  </div>
   <canvas id="world"></canvas>
   <div id="ui">
     <button id="startPause" class="btn">▶ Start</button>
@@ -155,7 +196,9 @@ body {
   <!-- Developer control: renderer scale slider (dev-only) -->
   <div id="devControls">
     <label for="rendererScaleRange">Renderer scale: <span id="rendererScaleValue">1.00</span></label>
-  <input id="rendererScaleRange" type="range" min="0.5" max="2.0" step="0.01" value="1.0" />
+    <input id="rendererScaleRange" type="range" min="0.25" max="2.0" step="0.01" value="1.0" />
+    <input id="dynamicScaleCheckbox" type="checkbox" />
+    <label for="dynamicScaleCheckbox" class="dynamic-label">Dynamic</label>
   </div>
   <div id="bottomRight">
     <input id="continuousCheckbox" type="checkbox" />
@@ -218,9 +261,6 @@ function getBulletAsset(kind = "small") {
   if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
   if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
   return AssetsConfig.shapes2d.bulletSmall;
-}
-function getTurretAsset(_kind = "basic") {
-  return AssetsConfig.shapes2d.turretBasic;
 }
 var AssetsConfig;
 var init_assetsConfig = __esm({
@@ -979,9 +1019,7 @@ init_rng();
 
 // src/config/displayConfig.ts
 function getDefaultBounds() {
-  const W = typeof window !== "undefined" && window.innerWidth ? window.innerWidth : 800;
-  const H = typeof window !== "undefined" && window.innerHeight ? window.innerHeight : 600;
-  return { W: Math.max(800, W), H: Math.max(600, H) };
+  return { W: 1920, H: 1080 };
 }
 
 // src/createSimWorker.ts
@@ -1374,7 +1412,6 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
 
 // src/canvasrenderer.ts
 init_assetsConfig();
-init_teamsConfig();
 init_entitiesConfig();
 
 // src/config/rendererConfig.ts
@@ -1382,6 +1419,11 @@ var RendererConfig = {
   preferred: "canvas",
   allowUrlOverride: true,
   allowWebGL: true,
+  rendererScale: 1,
+  dynamicScaleEnabled: false,
+  lastFrameTime: 0,
+  frameScore: "green",
+  // green, yellow, red
   // UI overlays configuration
   hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
 };
@@ -1401,16 +1443,22 @@ function getPreferredRenderer() {
 var CanvasRenderer = class {
   canvas;
   ctx = null;
+  bufferCanvas;
+  bufferCtx = null;
   providesOwnLoop = false;
   type = "canvas";
   // ratio between backing store pixels and CSS (logical) pixels
   pixelRatio = 1;
   constructor(canvas) {
     this.canvas = canvas;
+    this.bufferCanvas = document.createElement("canvas");
+    this.bufferCtx = this.bufferCanvas.getContext("2d");
   }
   init() {
     this.ctx = this.canvas.getContext("2d");
     if (!this.ctx) return false;
+    this.bufferCtx = this.bufferCanvas.getContext("2d");
+    if (!this.bufferCtx) return false;
     try {
       const cssW = this.canvas.clientWidth || this.canvas.width || 1;
       this.pixelRatio = (this.canvas.width || cssW) / cssW;
@@ -1425,44 +1473,53 @@ var CanvasRenderer = class {
     return false;
   }
   renderState(state, interpolation = 0) {
+    function drawRing(x, y, R, color, alpha = 1, thickness = 2) {
+      try {
+        bufferCtx.save();
+        bufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        bufferCtx.strokeStyle = color;
+        bufferCtx.lineWidth = thickness;
+        bufferCtx.beginPath();
+        bufferCtx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
+        bufferCtx.stroke();
+        bufferCtx.restore();
+      } catch (e) {
+      }
+    }
     const ctx = this.ctx;
-    if (!ctx) return;
+    const bufferCtx = this.bufferCtx;
+    if (!ctx || !bufferCtx) return;
     const LOGICAL_W = 1920, LOGICAL_H = 1080;
     const rendererScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
     const fitScale = RendererConfig._fitScale || 1;
     const offsetX = RendererConfig._offsetX || 0;
     const offsetY = RendererConfig._offsetY || 0;
-    const finalScale = this.pixelRatio * fitScale * rendererScale;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.save();
-    ctx.fillStyle = AssetsConfig.palette.background || "#0b1220";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.restore();
-    if (state && state.starCanvas) {
-      try {
-        ctx.save();
-        ctx.globalCompositeOperation = "source-over";
-        ctx.drawImage(state.starCanvas, 0, 0, this.canvas.width, this.canvas.height);
-        ctx.restore();
-      } catch (e) {
-      }
+    const bufferW = Math.round(LOGICAL_W * rendererScale);
+    const bufferH = Math.round(LOGICAL_H * rendererScale);
+    if (this.bufferCanvas.width !== bufferW || this.bufferCanvas.height !== bufferH) {
+      this.bufferCanvas.width = bufferW;
+      this.bufferCanvas.height = bufferH;
     }
-    ctx.setTransform(finalScale, 0, 0, finalScale, offsetX * this.pixelRatio, offsetY * this.pixelRatio);
+    bufferCtx.setTransform(rendererScale, 0, 0, rendererScale, 0, 0);
+    bufferCtx.clearRect(0, 0, bufferW, bufferH);
+    bufferCtx.save();
+    bufferCtx.fillStyle = AssetsConfig.palette.background || "#0b1220";
+    bufferCtx.fillRect(0, 0, bufferW, bufferH);
+    bufferCtx.restore();
     function drawPolygon(points) {
       if (!points || points.length === 0) return;
-      ctx.beginPath();
-      ctx.moveTo(points[0][0], points[0][1]);
-      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
-      ctx.closePath();
-      ctx.fill();
+      bufferCtx.beginPath();
+      bufferCtx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) bufferCtx.lineTo(points[i][0], points[i][1]);
+      bufferCtx.closePath();
+      bufferCtx.fill();
     }
     if (state && state.starCanvas) {
       try {
-        ctx.save();
-        ctx.globalCompositeOperation = "source-over";
-        ctx.drawImage(state.starCanvas, 0, 0, LOGICAL_W, LOGICAL_H);
-        ctx.restore();
+        bufferCtx.save();
+        bufferCtx.globalCompositeOperation = "source-over";
+        bufferCtx.drawImage(state.starCanvas, 0, 0, LOGICAL_W, LOGICAL_H);
+        bufferCtx.restore();
       } catch (e) {
       }
     }
@@ -1503,249 +1560,6 @@ var CanvasRenderer = class {
         }
         const vconf = getVisualConfig(s.type || getDefaultShipType());
         const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
-        const trailConf = vconf.animations[trailName];
-        const maxLen = trailConf && trailConf.maxLength || 16;
-        while (s.trail.length > maxLen) s.trail.shift();
-      } else {
-        s.trail = [];
-      }
-    }
-    if (engineTrailsEnabled) {
-      for (const s of state.ships || []) {
-        if (!s.trail || s.trail.length < 2) continue;
-        const vconf = getVisualConfig(s.type || getDefaultShipType());
-        const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
-        const trailConf = vconf.animations[trailName];
-        const color = trailConf && trailConf.color || "#6cf2ff";
-        const width = trailConf && trailConf.width || 0.18;
-        const fade = trailConf && trailConf.fade || 0.7;
-        const radius = s.radius || 6;
-        ctx.save();
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        for (let i = 1; i < s.trail.length; i++) {
-          const a = Math.pow(fade, s.trail.length - i);
-          ctx.globalAlpha = a;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = width * radius;
-          ctx.beginPath();
-          ctx.moveTo(s.trail[i - 1].x, s.trail[i - 1].y);
-          ctx.lineTo(s.trail[i].x, s.trail[i].y);
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        ctx.restore();
-      }
-    }
-    for (const s of state.ships || []) {
-      try {
-        const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
-        const color = teamObj && teamObj.color || AssetsConfig.palette.shipHull;
-        const radius = s.radius || 6;
-        const angle = s.angle || 0;
-        const fallback = getDefaultShipType();
-        const shape = getShipAsset(s.type || fallback);
-        const vconf = getVisualConfig(s.type || fallback);
-        ctx.save();
-        ctx.translate(s.x || 0, s.y || 0);
-        ctx.rotate(angle);
-        ctx.scale(radius, radius);
-        ctx.fillStyle = color;
-        if (shape.type === "polygon") drawPolygon(shape.points);
-        else if (shape.type === "circle") {
-          ctx.beginPath();
-          ctx.arc(0, 0, shape.r || 1, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (shape.type === "compound" && Array.isArray(shape.parts)) {
-          for (const part of shape.parts) {
-            if (part.type === "polygon") drawPolygon(part.points);
-            else if (part.type === "circle") {
-              ctx.beginPath();
-              ctx.arc(0, 0, part.r || 1, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-        }
-        try {
-          const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
-          const thresholds = AssetsConfig.damageThresholds || { moderate: 0.66, heavy: 0.33 };
-          let ds = "light";
-          if (hpPct < thresholds.heavy) ds = "heavy";
-          else if (hpPct < thresholds.moderate) ds = "moderate";
-          const dcfg = vconf.damageStates?.[ds] || AssetsConfig.damageStates?.[ds];
-          if (dcfg) {
-            ctx.globalCompositeOperation = "source-over";
-            ctx.fillStyle = dcfg.accentColor || "#ff6b6b";
-            ctx.globalAlpha = (1 - (hpPct || 0)) * (dcfg.opacity || 0.5);
-            if (shape.type === "polygon") drawPolygon(shape.points);
-            else if (shape.type === "circle") {
-              ctx.beginPath();
-              ctx.arc(0, 0, shape.r || 1, 0, Math.PI * 2);
-              ctx.fill();
-            } else if (shape.type === "compound" && Array.isArray(shape.parts)) {
-              for (const part of shape.parts) {
-                if (part.type === "polygon") drawPolygon(part.points);
-                else if (part.type === "circle") {
-                  ctx.beginPath();
-                  ctx.arc(0, 0, part.r || 1, 0, Math.PI * 2);
-                  ctx.fill();
-                }
-              }
-            }
-            ctx.globalAlpha = 1;
-          }
-        } catch (e) {
-        }
-        ctx.restore();
-        try {
-          const engineName = vconf.visuals && vconf.visuals.engine || "engineFlare";
-          const engine = vconf.animations[engineName];
-          if (engine && engine.type === "polygon") {
-            const pulse = 0.5 + 0.5 * Math.sin((now || 0) * (engine.pulseRate || 6) * Math.PI * 2);
-            ctx.save();
-            ctx.translate(s.x || 0, s.y || 0);
-            ctx.rotate(angle);
-            const engOffset = engine.offset != null ? engine.offset : -0.9;
-            ctx.translate(engOffset * radius, 0);
-            ctx.scale(radius, radius);
-            ctx.fillStyle = vconf.palette.shipAccent || AssetsConfig.palette.shipAccent;
-            const engAlpha = engine.alpha != null ? engine.alpha : 0.4;
-            ctx.globalAlpha = engAlpha * pulse;
-            drawPolygon(engine.points);
-            ctx.globalAlpha = 1;
-            ctx.restore();
-          }
-        } catch (e) {
-        }
-        try {
-          const shieldName = vconf.visuals && vconf.visuals.shield || "shieldEffect";
-          const sh = vconf.animations[shieldName];
-          const shieldPct = typeof s.shieldPercent === "number" ? s.shieldPercent : s.maxShield && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
-          if (sh && shieldPct > 0) {
-            const pulse = 0.6 + 0.4 * Math.sin((now || 0) * (sh.pulseRate || 2) * Math.PI * 2);
-            ctx.save();
-            ctx.translate(s.x || 0, s.y || 0);
-            ctx.rotate(angle);
-            ctx.scale(radius * (sh.r || 1), radius * (sh.r || 1));
-            ctx.lineWidth = (sh.strokeWidth != null ? sh.strokeWidth : 0.08) * radius;
-            ctx.strokeStyle = sh.color || "#88ccff";
-            const aBase = sh.alphaBase != null ? sh.alphaBase : 0.25;
-            const aScale = sh.alphaScale != null ? sh.alphaScale : 0.75;
-            ctx.globalAlpha = Math.min(1, aBase + aScale * shieldPct) * pulse;
-            try {
-              let flash = null;
-              try {
-                const nowT = state && state.t || 0;
-                const arr = Array.isArray(shieldFlashes) ? shieldFlashes.filter((f) => f.id === s.id) : [];
-                let bestTs = -Infinity;
-                for (const f of arr) {
-                  if (!f) continue;
-                  const fTs = typeof f._ts === "number" ? f._ts : 0;
-                  const fTtl = typeof f.ttl === "number" ? f.ttl : AssetsConfig && AssetsConfig.shield && AssetsConfig.shield.ttl || 0.4;
-                  if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) {
-                    bestTs = fTs;
-                    flash = f;
-                  }
-                }
-              } catch (e) {
-                flash = null;
-              }
-              if (flash && typeof flash.hitAngle === "number") {
-                const arc = typeof flash.arcWidth === "number" ? flash.arcWidth : vconf && vconf.arcWidth || AssetsConfig && AssetsConfig.shieldArcWidth || Math.PI / 6;
-                const start = flash.hitAngle - arc * 0.5 - angle;
-                const end = flash.hitAngle + arc * 0.5 - angle;
-                ctx.beginPath();
-                ctx.arc(0, 0, 1, start, end);
-                ctx.stroke();
-              } else {
-                ctx.beginPath();
-                ctx.arc(0, 0, 1, 0, Math.PI * 2);
-                ctx.stroke();
-              }
-            } catch (e) {
-              ctx.beginPath();
-              ctx.arc(0, 0, 1, 0, Math.PI * 2);
-              ctx.stroke();
-            }
-            ctx.globalAlpha = 1;
-            ctx.restore();
-          }
-        } catch (e) {
-        }
-        try {
-          const hpBar = RendererConfig.hpBar || { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 };
-          const pct = Math.max(0, (s.hp || 0) / (s.maxHp || 1));
-          ctx.fillStyle = hpBar.bg;
-          ctx.fillRect((s.x || 0) + (hpBar.dx || -10), (s.y || 0) + (hpBar.dy || -12), hpBar.w || 20, hpBar.h || 4);
-          ctx.fillStyle = hpBar.fill;
-          ctx.fillRect((s.x || 0) + (hpBar.dx || -10), (s.y || 0) + (hpBar.dy || -12), (hpBar.w || 20) * pct, hpBar.h || 4);
-        } catch (e) {
-          ctx.fillStyle = "#222";
-          ctx.fillRect((s.x || 0) - 10, (s.y || 0) - 12, 20, 4);
-          ctx.fillStyle = "#4caf50";
-          ctx.fillRect((s.x || 0) - 10, (s.y || 0) - 12, 20 * Math.max(0, (s.hp || 0) / (s.maxHp || 1)), 4);
-        }
-      } catch (e) {
-      }
-    }
-    for (const s of state.ships || []) {
-      try {
-        const radius = (s.radius || 6) * 0.6;
-        const angle = s.angle || 0;
-        const tShape = getTurretAsset("basic");
-        ctx.save();
-        ctx.translate(s.x || 0, s.y || 0);
-        ctx.rotate(angle);
-        ctx.scale(radius, radius);
-        ctx.fillStyle = AssetsConfig.palette.turret;
-        if (tShape.type === "compound") {
-          for (const part of tShape.parts) {
-            if (part.type === "polygon") drawPolygon(part.points);
-            else if (part.type === "circle") {
-              ctx.beginPath();
-              ctx.arc(0, 0, part.r || 1, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-        } else if (tShape.type === "polygon") drawPolygon(tShape.points || []);
-        else if (tShape.type === "circle") {
-          ctx.beginPath();
-          ctx.arc(0, 0, tShape.r || 1, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      } catch (e) {
-      }
-    }
-    if (Array.isArray(state.particles)) {
-      for (const p of state.particles) {
-        try {
-          ctx.save();
-          ctx.translate(p.x || 0, p.y || 0);
-          ctx.fillStyle = p.color || "#fff";
-          if (p.shape === "circle" || p.r) {
-            ctx.beginPath();
-            ctx.arc(0, 0, p.r || p.size || 1, 0, Math.PI * 2);
-            ctx.fill();
-          } else {
-            ctx.fillRect(-1, -1, 2, 2);
-          }
-          ctx.restore();
-        } catch (e) {
-        }
-      }
-    }
-    function drawRing(x, y, R, color, alpha = 1, thickness = 2) {
-      try {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        ctx.strokeStyle = color;
-        ctx.lineWidth = thickness;
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      } catch (e) {
       }
     }
     try {
@@ -1782,23 +1596,37 @@ var CanvasRenderer = class {
         const r = b.radius || b.bulletRadius || 1.5;
         const kind = bulletKindForRadius(r / 6);
         const shape = getBulletAsset(kind);
-        ctx.save();
-        ctx.translate(b.x || 0, b.y || 0);
+        bufferCtx.save();
+        bufferCtx.translate(b.x || 0, b.y || 0);
         const px = Math.max(1, r);
         if (shape.type === "circle") {
-          ctx.beginPath();
-          ctx.fillStyle = AssetsConfig.palette.bullet;
-          ctx.arc(0, 0, px, 0, Math.PI * 2);
-          ctx.fill();
+          bufferCtx.beginPath();
+          bufferCtx.fillStyle = AssetsConfig.palette.bullet;
+          bufferCtx.arc(0, 0, px, 0, Math.PI * 2);
+          bufferCtx.fill();
         } else if (shape.type === "polygon") {
-          ctx.fillStyle = AssetsConfig.palette.bullet;
-          ctx.scale(px, px);
+          bufferCtx.fillStyle = AssetsConfig.palette.bullet;
           drawPolygon(shape.points);
         }
-        ctx.restore();
+        bufferCtx.restore();
       } catch (e) {
       }
     }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+      this.bufferCanvas,
+      0,
+      0,
+      this.bufferCanvas.width,
+      this.bufferCanvas.height,
+      offsetX,
+      offsetY,
+      this.bufferCanvas.width * fitScale,
+      this.bufferCanvas.height * fitScale
+    );
     ctx.restore();
   }
 };
@@ -1806,8 +1634,17 @@ var CanvasRenderer = class {
 // src/webglrenderer.ts
 init_assetsConfig();
 init_teamsConfig();
-init_entitiesConfig();
 var WebGLRenderer = class {
+  // Fullscreen quad shader for blitting FBO to main canvas
+  quadProg = null;
+  quadVBO = null;
+  quadLoc_pos = -1;
+  quadLoc_tex = null;
+  // Offscreen framebuffer and texture for buffer rendering
+  fbo = null;
+  fboTexture = null;
+  fboWidth = 0;
+  fboHeight = 0;
   canvas;
   gl = null;
   // simple GL program state for point rendering
@@ -1824,12 +1661,76 @@ var WebGLRenderer = class {
   }
   init() {
     try {
+      const gl = this.gl;
+      const vsQuad = `attribute vec2 a_pos; varying vec2 v_tex; void main(){ v_tex = (a_pos+1.0)*0.5; gl_Position = vec4(a_pos,0,1); }`;
+      const fsQuad = `precision mediump float; varying vec2 v_tex; uniform sampler2D u_tex; void main(){ gl_FragColor = texture2D(u_tex, v_tex); }`;
+      const compile = (src, type) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          const info = gl.getShaderInfoLog(s);
+          gl.deleteShader(s);
+          throw new Error("Shader compile error: " + info);
+        }
+        return s;
+      };
+      const vsObj = compile(vsQuad, gl.VERTEX_SHADER);
+      const fsObj = compile(fsQuad, gl.FRAGMENT_SHADER);
+      const prog = gl.createProgram();
+      gl.attachShader(prog, vsObj);
+      gl.attachShader(prog, fsObj);
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        throw new Error("Program link error: " + gl.getProgramInfoLog(prog));
+      }
+      this.quadProg = prog;
+      this.quadLoc_pos = gl.getAttribLocation(prog, "a_pos");
+      this.quadLoc_tex = gl.getUniformLocation(prog, "u_tex");
+      this.quadVBO = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+      const quadVerts = new Float32Array([
+        -1,
+        -1,
+        1,
+        -1,
+        -1,
+        1,
+        1,
+        -1,
+        1,
+        1,
+        -1,
+        1
+      ]);
+      gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
+    } catch (e) {
+      this.quadProg = null;
+    }
+    try {
       this.gl = this.canvas.getContext("webgl2");
       if (!this.gl) {
         this.gl = this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
         if (!this.gl) return false;
       }
       const gl = this.gl;
+      const LOGICAL_W = 1920, LOGICAL_H = 1080;
+      const rendererScale = 1;
+      const bufferW = Math.round(LOGICAL_W * rendererScale);
+      const bufferH = Math.round(LOGICAL_H * rendererScale);
+      this.fboTexture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
+      this.fboWidth = bufferW;
+      this.fboHeight = bufferH;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       try {
         const bg = (AssetsConfig.palette.background || "#0b1220").replace("#", "");
         const bigint = parseInt(bg.length === 3 ? bg.split("").map((c) => c + c).join("") : bg, 16);
@@ -1901,167 +1802,72 @@ var WebGLRenderer = class {
     return false;
   }
   renderState(state, interpolation = 0) {
+    if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
+      const gl2 = this.gl;
+      gl2.bindFramebuffer(gl2.FRAMEBUFFER, null);
+      gl2.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl2.clear(gl2.COLOR_BUFFER_BIT);
+      gl2.useProgram(this.quadProg);
+      gl2.activeTexture(gl2.TEXTURE0);
+      gl2.bindTexture(gl2.TEXTURE_2D, this.fboTexture);
+      if (this.quadLoc_tex) gl2.uniform1i(this.quadLoc_tex, 0);
+      gl2.bindBuffer(gl2.ARRAY_BUFFER, this.quadVBO);
+      gl2.enableVertexAttribArray(this.quadLoc_pos);
+      gl2.vertexAttribPointer(this.quadLoc_pos, 2, gl2.FLOAT, false, 0, 0);
+      gl2.drawArrays(gl2.TRIANGLES, 0, 6);
+      gl2.disableVertexAttribArray(this.quadLoc_pos);
+    }
     if (!this.gl) return;
     const gl = this.gl;
     try {
-      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      if (this.prog && this.vertexBuffer) {
-        try {
-          const w = this.canvas.clientWidth || Math.round(this.canvas.width / this.pixelRatio);
-          const h = this.canvas.clientHeight || Math.round(this.canvas.height / this.pixelRatio);
-          const ships = state.ships || [];
-          const verts = [];
-          const now = state && state.t || 0;
-          for (const s of ships) {
-            const x = s.x || 0;
-            const y = s.y || 0;
-            const clipX = x / Math.max(1, w) * 2 - 1;
-            const clipY = 1 - y / Math.max(1, h) * 2;
-            const radius = s.radius || 6;
-            const ps = Math.max(2, radius * 2);
-            const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
-            const colorHex = teamObj && teamObj.color || AssetsConfig.palette.shipHull || "#888";
-            const hexToRgba = (hex) => {
-              const h2 = hex.replace("#", "");
-              const bigint = parseInt(h2.length === 3 ? h2.split("").map((c) => c + c).join("") : h2, 16);
-              const r = (bigint >> 16 & 255) / 255;
-              const g = (bigint >> 8 & 255) / 255;
-              const b = (bigint & 255) / 255;
-              return [r, g, b, 1];
-            };
-            const baseColor = hexToRgba(colorHex);
-            verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
-            try {
-              const fallback = getDefaultShipType();
-              const vconf = getVisualConfig(s.type || fallback);
-              const engineName = vconf.visuals && vconf.visuals.engine || "engineFlare";
-              const engine = vconf.animations && vconf.animations[engineName];
-              if (engine && engine.type === "polygon") {
-                const pulse = 0.5 + 0.5 * Math.sin((now || 0) * (engine.pulseRate || 6) * Math.PI * 2);
-                const offset = (engine.offset != null ? engine.offset : -0.9) * (s.radius || 6);
-                const ang = s.angle || 0;
-                const ex = x + Math.cos(ang) * offset;
-                const ey = y + Math.sin(ang) * offset;
-                const cex = ex / Math.max(1, w) * 2 - 1;
-                const cey = 1 - ey / Math.max(1, h) * 2;
-                const accent = vconf.palette && vconf.palette.shipAccent || AssetsConfig.palette.shipAccent || "#ffd27f";
-                const ac = hexToRgba(accent);
-                const engAlpha = engine.alpha != null ? engine.alpha : 0.4;
-                verts.push(cex, cey, Math.max(2, ps * 0.9), ac[0], ac[1], ac[2], engAlpha * pulse);
-              }
-            } catch (e) {
+      if (this.fbo && this.fboTexture) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+        gl.viewport(0, 0, this.fboWidth, this.fboHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        if (this.prog && this.vertexBuffer) {
+          try {
+            const w = this.fboWidth;
+            const h = this.fboHeight;
+            const ships = state.ships || [];
+            const verts = [];
+            const now = state && state.t || 0;
+            for (const s of ships) {
+              const x = s.x || 0;
+              const y = s.y || 0;
+              const clipX = x / Math.max(1, w) * 2 - 1;
+              const clipY = 1 - y / Math.max(1, h) * 2;
+              const radius = s.radius || 6;
+              const ps = Math.max(2, radius * 2);
+              const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
+              const colorHex = teamObj && teamObj.color || AssetsConfig.palette.shipHull || "#888";
+              const hexToRgba = (hex) => {
+                const h2 = hex.replace("#", "");
+                const bigint = parseInt(h2.length === 3 ? h2.split("").map((c) => c + c).join("") : h2, 16);
+                const r = (bigint >> 16 & 255) / 255;
+                const g = (bigint >> 8 & 255) / 255;
+                const b = (bigint & 255) / 255;
+                return [r, g, b, 1];
+              };
+              const baseColor = hexToRgba(colorHex);
+              verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
             }
-            try {
-              const fallback = getDefaultShipType();
-              const vconf = getVisualConfig(s.type || fallback);
-              const shieldName = vconf.visuals && vconf.visuals.shield || "shieldEffect";
-              const sh = vconf.animations && vconf.animations[shieldName];
-              const shieldPct = typeof s.shieldPercent === "number" ? s.shieldPercent : s.maxShield && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
-              if (sh && shieldPct > 0) {
-                const pulse = 0.6 + 0.4 * Math.sin((now || 0) * (sh.pulseRate || 2) * Math.PI * 2);
-                const accent = sh.color || "#88ccff";
-                const ac = hexToRgba(accent);
-                const aBase = sh.alphaBase != null ? sh.alphaBase : 0.25;
-                const aScale = sh.alphaScale != null ? sh.alphaScale : 0.75;
-                verts.push(clipX, clipY, Math.max(4, ps * (sh.r || 1.6)), ac[0], ac[1], ac[2], Math.min(1, aBase + aScale * shieldPct) * pulse);
-                try {
-                  let flash = null;
-                  try {
-                    const nowT = state && state.t || 0;
-                    const arr = shieldFlashes.filter((f) => f && f.id === s.id) || [];
-                    let bestTs = -Infinity;
-                    for (const f of arr) {
-                      if (!f) continue;
-                      const fTs = typeof f._ts === "number" ? f._ts : 0;
-                      const fTtl = typeof f.ttl === "number" ? f.ttl : AssetsConfig && AssetsConfig.shield && AssetsConfig.shield.ttl || 0.4;
-                      if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) {
-                        bestTs = fTs;
-                        flash = f;
-                      }
-                    }
-                  } catch (e) {
-                    flash = null;
-                  }
-                  if (flash && typeof flash.hitAngle === "number") {
-                    const arc = typeof flash.arcWidth === "number" ? flash.arcWidth : vconf && vconf.arcWidth || AssetsConfig && AssetsConfig.shieldArcWidth || Math.PI / 6;
-                    const segs = 6;
-                    const radiusMul = (sh.r || 1.6) * (s.radius || 6);
-                    for (let si = 0; si < segs; si++) {
-                      const t = segs === 1 ? 0.5 : si / (segs - 1);
-                      const a = flash.hitAngle - arc * 0.5 + t * arc;
-                      const px = x + Math.cos(a) * radiusMul;
-                      const py = y + Math.sin(a) * radiusMul;
-                      const cpx = px / Math.max(1, w) * 2 - 1;
-                      const cpy = 1 - py / Math.max(1, h) * 2;
-                      const pointSize = Math.max(2, ps * 0.45);
-                      const alpha = Math.min(1, aBase + aScale * shieldPct) * pulse * 0.9;
-                      verts.push(cpx, cpy, pointSize, ac[0], ac[1], ac[2], alpha);
-                    }
-                  }
-                } catch (e) {
-                }
-              }
-            } catch (e) {
-            }
-            try {
-              const fallback = getDefaultShipType();
-              const vconf = getVisualConfig(s.type || fallback);
-              const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
-              const thresholds = AssetsConfig.damageThresholds || { moderate: 0.66, heavy: 0.33 };
-              let ds = "light";
-              if (hpPct < thresholds.heavy) ds = "heavy";
-              else if (hpPct < thresholds.moderate) ds = "moderate";
-              const dcfg = vconf.damageStates && vconf.damageStates[ds] || AssetsConfig.damageStates && AssetsConfig.damageStates[ds];
-              if (dcfg) {
-                const accent = dcfg.accentColor || "#ff6b6b";
-                const alpha = (1 - (hpPct || 0)) * (dcfg.opacity || 0.5);
-                const ac = hexToRgba(accent);
-                verts.push(clipX, clipY, Math.max(2, ps * 1), ac[0], ac[1], ac[2], alpha);
-              }
-            } catch (e) {
-            }
-            try {
-              const nowT = state && state.t || 0;
-              let hflash = null;
-              const harr = healthFlashes.filter((hf) => hf && hf.id === s.id);
-              let bestTsH = -Infinity;
-              for (const hf of harr) {
-                if (!hf) continue;
-                const fTs = typeof hf._ts === "number" ? hf._ts : 0;
-                const fTtl = typeof hf.ttl === "number" ? hf.ttl : 0.6;
-                if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTsH) {
-                  bestTsH = fTs;
-                  hflash = hf;
-                }
-              }
-              if (hflash) {
-                const hx = hflash.x != null ? hflash.x : x;
-                const hy = hflash.y != null ? hflash.y : y;
-                const cpx = hx / Math.max(1, w) * 2 - 1;
-                const cpy = 1 - hy / Math.max(1, h) * 2;
-                const pointSize = Math.max(2, ps * 0.6);
-                const col = [1, 0.47, 0.4, 0.95];
-                verts.push(cpx, cpy, pointSize, col[0], col[1], col[2], col[3]);
-              }
-            } catch (e) {
-            }
+            const floatArr = new Float32Array(verts);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
+            gl.useProgram(this.prog);
+            const stride = 7 * 4;
+            gl.enableVertexAttribArray(this.attribLoc_pos);
+            gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
+            gl.enableVertexAttribArray(this.attribLoc_size);
+            gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
+            gl.enableVertexAttribArray(this.attribLoc_color);
+            gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
+            const count = Math.floor(floatArr.length / 7);
+            gl.drawArrays(gl.POINTS, 0, count);
+          } catch (e) {
           }
-          const floatArr = new Float32Array(verts);
-          gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-          gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
-          gl.useProgram(this.prog);
-          const stride = 7 * 4;
-          gl.enableVertexAttribArray(this.attribLoc_pos);
-          gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
-          gl.enableVertexAttribArray(this.attribLoc_size);
-          gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
-          gl.enableVertexAttribArray(this.attribLoc_color);
-          gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-          const count = Math.floor(floatArr.length / 7);
-          gl.drawArrays(gl.POINTS, 0, count);
-        } catch (e) {
         }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
     } catch (e) {
     }
@@ -2094,16 +1900,23 @@ async function startApp(rootDocument = document) {
     const baseDpr = window.devicePixelRatio || 1;
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    const fitScale = Math.min(winW / LOGICAL_BOUNDS.W, winH / LOGICAL_BOUNDS.H);
     const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
-    const finalScale = fitScale * cfgScale;
-    const offsetX = 0;
-    const offsetY = 0;
+    const scaledLogicalW = LOGICAL_BOUNDS.W * cfgScale;
+    const scaledLogicalH = LOGICAL_BOUNDS.H * cfgScale;
+    const fitScale = Math.min(winW / scaledLogicalW, winH / scaledLogicalH);
+    const finalW = scaledLogicalW * fitScale;
+    const finalH = scaledLogicalH * fitScale;
+    const offsetX = Math.floor((winW - finalW) / 2);
+    const offsetY = Math.floor((winH - finalH) / 2);
     if (canvas) {
       canvas.style.width = `${winW}px`;
       canvas.style.height = `${winH}px`;
       canvas.width = Math.round(winW * baseDpr);
       canvas.height = Math.round(winH * baseDpr);
+      const dimsEl = document.getElementById("rendererDims");
+      if (dimsEl) {
+        dimsEl.textContent = `${Math.round(finalW)} x ${Math.round(finalH)} px`;
+      }
     }
     RendererConfig._fitScale = fitScale;
     RendererConfig._offsetX = offsetX;
@@ -2112,17 +1925,29 @@ async function startApp(rootDocument = document) {
     if (scaleVal) scaleVal.textContent = cfgScale.toFixed(2);
   }
   const scaleSlider = rootDocument.getElementById("rendererScaleRange");
+  const dynamicCheckbox = rootDocument.getElementById("dynamicScaleCheckbox");
+  let internalScaleUpdate = false;
   if (scaleSlider) {
     scaleSlider.addEventListener("input", (ev) => {
+      if (internalScaleUpdate) return;
       const val = parseFloat(ev.target.value);
       if (!isNaN(val)) {
         RendererConfig.rendererScale = val;
+        RendererConfig.dynamicScaleEnabled = false;
+        if (dynamicCheckbox) dynamicCheckbox.checked = false;
         fitCanvasToWindow();
       }
     });
     const scaleVal = rootDocument.getElementById("rendererScaleValue");
     if (scaleVal) scaleVal.textContent = scaleSlider.value;
     fitCanvasToWindow();
+  }
+  if (dynamicCheckbox) {
+    dynamicCheckbox.addEventListener("change", (ev) => {
+      const enabled = !!ev.target.checked;
+      RendererConfig.dynamicScaleEnabled = enabled;
+    });
+    dynamicCheckbox.checked = !!RendererConfig.dynamicScaleEnabled;
   }
   fitCanvasToWindow();
   window.addEventListener("resize", fitCanvasToWindow);
@@ -2377,6 +2202,34 @@ async function startApp(rootDocument = document) {
       const blueCount = s.ships.filter((sh) => sh.team === "blue").length;
       ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");
     } catch (e) {
+    }
+    const dynamicEnabled = !!RendererConfig.dynamicScaleEnabled;
+    const scaleSliderEl = rootDocument.getElementById("rendererScaleRange");
+    const scaleValEl = rootDocument.getElementById("rendererScaleValue");
+    const now = performance.now();
+    RendererConfig._lastUiTick = RendererConfig._lastUiTick || now;
+    const dt = now - RendererConfig._lastUiTick;
+    RendererConfig._lastUiTick = now;
+    RendererConfig.lastFrameTime = dt;
+    let frameScore = "green";
+    if (dt > 33) frameScore = "red";
+    else if (dt > 20) frameScore = "yellow";
+    RendererConfig.frameScore = frameScore;
+    if (scaleValEl) {
+      scaleValEl.style.color = frameScore === "green" ? "#4caf50" : frameScore === "yellow" ? "#ffd600" : "#ff1744";
+    }
+    if (dynamicEnabled && scaleSliderEl) {
+      let scale = RendererConfig.rendererScale;
+      if (frameScore === "red" && scale > 0.25) scale = Math.max(0.25, scale - 0.05);
+      else if (frameScore === "green" && scale < 2) scale = Math.min(2, scale + 0.01);
+      if (scale !== RendererConfig.rendererScale) {
+        RendererConfig.rendererScale = scale;
+        internalScaleUpdate = true;
+        scaleSliderEl.value = scale.toFixed(2);
+        if (scaleValEl) scaleValEl.textContent = scale.toFixed(2);
+        fitCanvasToWindow();
+        internalScaleUpdate = false;
+      }
     }
     requestAnimationFrame(uiTick);
   }

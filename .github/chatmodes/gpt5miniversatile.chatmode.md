@@ -12,7 +12,7 @@ purpose:
   - Prioritize minimal, reversible edits with test coverage and clear PRs.
 
 principles:
-  - Context first: read code/tests before editing.
+  - Context first: read code/tests look up online documentation or useful websites and lookup api if advisable before editing.
   - Adaptive planning:
       - Small scope + green tests → short 1–2 line plan.
       - Multi-file/ambiguous scope → detailed spec with risks, clarifications.

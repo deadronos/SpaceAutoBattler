@@ -37,39 +37,62 @@ export async function startApp(rootDocument: Document = document) {
 	// Always use fixed logical bounds for simulation/game loop
 	const LOGICAL_BOUNDS = { W: 1920, H: 1080 };
 	function fitCanvasToWindow() {
+		// --- Viewport Scaling Logic ---
+		// The goal is: when rendererScale = 1.0, the logical simulation area (LOGICAL_BOUNDS)
+		// fills the visible canvas, with ships edge-to-edge (except for aspect ratio padding).
+		// fitScale is computed so the logical area fits inside the window, preserving aspect ratio.
+		// offsetX/Y center the logical area if the window is larger than the aspect ratio.
+		// This ensures correct scaling for both Canvas and WebGL renderers.
 		const baseDpr = window.devicePixelRatio || 1;
 		const winW = window.innerWidth;
 		const winH = window.innerHeight;
-		// Compute fit scale to preserve aspect ratio
-		const fitScale = Math.min(winW / LOGICAL_BOUNDS.W, winH / LOGICAL_BOUNDS.H);
+		// --- Renderer scaling order ---
+		// 1. Start with logical map (1920x1080)
+		// 2. Apply rendererScale (zoom in/out)
+		// 3. Fit the scaled logical map to the window (aspect ratio)
 		const cfgScale = (RendererConfig && typeof (RendererConfig as any).rendererScale === 'number') ? (RendererConfig as any).rendererScale : 1;
-	// Final scale for drawing entities
-	const finalScale = fitScale * cfgScale;
-	// Center logical map in canvas
-	const offsetX = Math.floor((winW - LOGICAL_BOUNDS.W * finalScale) / 2);
-	const offsetY = Math.floor((winH - LOGICAL_BOUNDS.H * finalScale) / 2);
+		const scaledLogicalW = LOGICAL_BOUNDS.W * cfgScale;
+		const scaledLogicalH = LOGICAL_BOUNDS.H * cfgScale;
+		const fitScale = Math.min(winW / scaledLogicalW, winH / scaledLogicalH);
+		// Final size of logical map in window
+		const finalW = scaledLogicalW * fitScale;
+		const finalH = scaledLogicalH * fitScale;
+		const offsetX = Math.floor((winW - finalW) / 2);
+		const offsetY = Math.floor((winH - finalH) / 2);
 		if (canvas) {
 			canvas.style.width = `${winW}px`;
 			canvas.style.height = `${winH}px`;
 			canvas.width = Math.round(winW * baseDpr);
 			canvas.height = Math.round(winH * baseDpr);
+			// Update rendererDims text in UI
+			const dimsEl = document.getElementById('rendererDims');
+			if (dimsEl) {
+				dimsEl.textContent = `${Math.round(finalW)} x ${Math.round(finalH)} px`;
+			}
 		}
-		// Store scale and offset in RendererConfig for renderer use
+		// Store fitScale and offset for renderer use
+		// fitScale: scales the already renderer-scaled logical map to fit window
 		(RendererConfig as any)._fitScale = fitScale;
 		(RendererConfig as any)._offsetX = offsetX;
 		(RendererConfig as any)._offsetY = offsetY;
 		// Update slider value display if present
 		const scaleVal = rootDocument.getElementById('rendererScaleValue');
 		if (scaleVal) scaleVal.textContent = cfgScale.toFixed(2);
+		// Debug: log scale and offset for verification
+		// console.log('rendererScale:', cfgScale, 'fitScale:', fitScale, 'offsetX:', offsetX, 'offsetY:', offsetY);
 	}
-	// Renderer scale slider wiring
+	// Renderer scale slider and dynamic scaling wiring
 	const scaleSlider = rootDocument.getElementById('rendererScaleRange');
+	const dynamicCheckbox = rootDocument.getElementById('dynamicScaleCheckbox');
+	let internalScaleUpdate = false;
 	if (scaleSlider) {
 		scaleSlider.addEventListener('input', (ev: any) => {
+			if (internalScaleUpdate) return; // ignore internal updates
 			const val = parseFloat(ev.target.value);
 			if (!isNaN(val)) {
 				(RendererConfig as any).rendererScale = val;
-				// Always recalculate fit-to-window logic when renderer scale changes
+				(RendererConfig as any).dynamicScaleEnabled = false;
+				if (dynamicCheckbox) (dynamicCheckbox as HTMLInputElement).checked = false;
 				fitCanvasToWindow();
 			}
 		});
@@ -78,6 +101,13 @@ export async function startApp(rootDocument: Document = document) {
 		if (scaleVal) scaleVal.textContent = (scaleSlider as HTMLInputElement).value;
 		// Ensure initial fit-to-window calculation uses current scale
 		fitCanvasToWindow();
+	}
+	if (dynamicCheckbox) {
+		dynamicCheckbox.addEventListener('change', (ev: any) => {
+			const enabled = !!ev.target.checked;
+			(RendererConfig as any).dynamicScaleEnabled = enabled;
+		});
+	(dynamicCheckbox as HTMLInputElement).checked = !!(RendererConfig as any).dynamicScaleEnabled;
 	}
 
 	fitCanvasToWindow();
@@ -243,6 +273,41 @@ export async function startApp(rootDocument: Document = document) {
 			const blueCount = s.ships.filter((sh: any) => sh.team === 'blue').length;
 			ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : '');
 		} catch (e) {}
+		// --- Dynamic buffer scaling logic ---
+		const dynamicEnabled = !!(RendererConfig as any).dynamicScaleEnabled;
+		const scaleSliderEl = rootDocument.getElementById('rendererScaleRange') as HTMLInputElement;
+		const scaleValEl = rootDocument.getElementById('rendererScaleValue');
+		// Track frame time
+		const now = performance.now();
+		(RendererConfig as any)._lastUiTick = (RendererConfig as any)._lastUiTick || now;
+		const dt = now - (RendererConfig as any)._lastUiTick;
+		(RendererConfig as any)._lastUiTick = now;
+		(RendererConfig as any).lastFrameTime = dt;
+		// Score frame time
+		let frameScore = 'green';
+		if (dt > 33) frameScore = 'red';
+		else if (dt > 20) frameScore = 'yellow';
+		(RendererConfig as any).frameScore = frameScore;
+		// Color slider value for feedback
+		if (scaleValEl) {
+			scaleValEl.style.color = frameScore === 'green' ? '#4caf50' : frameScore === 'yellow' ? '#ffd600' : '#ff1744';
+		}
+		// Dynamic scaling logic
+		if (dynamicEnabled && scaleSliderEl) {
+			let scale = (RendererConfig as any).rendererScale;
+			// If frame is slow, reduce scale; if fast, increase scale
+			if (frameScore === 'red' && scale > 0.25) scale = Math.max(0.25, scale - 0.05);
+			else if (frameScore === 'green' && scale < 2.0) scale = Math.min(2.0, scale + 0.01);
+			// Only update if changed
+			if (scale !== (RendererConfig as any).rendererScale) {
+				(RendererConfig as any).rendererScale = scale;
+				internalScaleUpdate = true;
+				scaleSliderEl.value = scale.toFixed(2);
+				if (scaleValEl) scaleValEl.textContent = scale.toFixed(2);
+				fitCanvasToWindow();
+				internalScaleUpdate = false;
+			}
+		}
 		requestAnimationFrame(uiTick);
 	}
 	requestAnimationFrame(uiTick);

@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="./styles/ui.css">
 </head>
 <body>
+  <div id="topRightRenderer">
+    <span id="rendererType" class="renderer-type">Renderer: Canvas</span>
+    <span id="rendererDims" class="renderer-dims">1280 x 720 px</span>
+  </div>
   <canvas id="world"></canvas>
   <div id="ui">
     <button id="startPause" class="btn">▶ Start</button>
@@ -22,7 +26,9 @@
   <!-- Developer control: renderer scale slider (dev-only) -->
   <div id="devControls">
     <label for="rendererScaleRange">Renderer scale: <span id="rendererScaleValue">1.00</span></label>
-  <input id="rendererScaleRange" type="range" min="0.5" max="2.0" step="0.01" value="1.0" />
+    <input id="rendererScaleRange" type="range" min="0.25" max="2.0" step="0.01" value="1.0" />
+    <input id="dynamicScaleCheckbox" type="checkbox" />
+    <label for="dynamicScaleCheckbox" class="dynamic-label">Dynamic</label>
   </div>
   <div id="bottomRight">
     <input id="continuousCheckbox" type="checkbox" />

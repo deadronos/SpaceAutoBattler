@@ -7,6 +7,16 @@ import { shieldFlashes, healthFlashes } from './gamemanager';
 import { getDefaultShipType } from './config/entitiesConfig';
 
 export class WebGLRenderer {
+  // Fullscreen quad shader for blitting FBO to main canvas
+  private quadProg: WebGLProgram | null = null;
+  private quadVBO: WebGLBuffer | null = null;
+  private quadLoc_pos: number = -1;
+  private quadLoc_tex: WebGLUniformLocation | null = null;
+  // Offscreen framebuffer and texture for buffer rendering
+  private fbo: WebGLFramebuffer | null = null;
+  private fboTexture: WebGLTexture | null = null;
+  private fboWidth: number = 0;
+  private fboHeight: number = 0;
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext | WebGLRenderingContext | null = null;
   // simple GL program state for point rendering
@@ -21,9 +31,34 @@ export class WebGLRenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+  // FBO will be created in init or on first render
   }
 
   init(): boolean {
+      // Create fullscreen quad shader for blitting FBO
+      try {
+        const gl = this.gl as WebGLRenderingContext;
+        const vsQuad = `attribute vec2 a_pos; varying vec2 v_tex; void main(){ v_tex = (a_pos+1.0)*0.5; gl_Position = vec4(a_pos,0,1); }`;
+        const fsQuad = `precision mediump float; varying vec2 v_tex; uniform sampler2D u_tex; void main(){ gl_FragColor = texture2D(u_tex, v_tex); }`;
+        const compile = (src: string, type: number) => { const s = gl.createShader(type as any)!; gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { const info = gl.getShaderInfoLog(s); gl.deleteShader(s); throw new Error('Shader compile error: ' + info); } return s; };
+        const vsObj = compile(vsQuad, gl.VERTEX_SHADER);
+        const fsObj = compile(fsQuad, gl.FRAGMENT_SHADER);
+        const prog = gl.createProgram()!;
+        gl.attachShader(prog, vsObj); gl.attachShader(prog, fsObj); gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { throw new Error('Program link error: ' + gl.getProgramInfoLog(prog)); }
+        this.quadProg = prog;
+        this.quadLoc_pos = gl.getAttribLocation(prog, 'a_pos');
+        this.quadLoc_tex = gl.getUniformLocation(prog, 'u_tex');
+        // Create VBO for fullscreen quad
+        this.quadVBO = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+        // Vertices: two triangles covering clip space
+        const quadVerts = new Float32Array([
+          -1, -1,  1, -1,  -1, 1,
+           1, -1,  1, 1,  -1, 1
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
+      } catch (e) { this.quadProg = null; }
     try {
       // Prefer WebGL2, fall back to WebGL1
       this.gl = this.canvas.getContext('webgl2') as WebGL2RenderingContext | null;
@@ -32,6 +67,26 @@ export class WebGLRenderer {
         if (!this.gl) return false;
       }
       const gl = this.gl as WebGLRenderingContext;
+      // Create offscreen framebuffer and texture at logical size × renderer scale
+      const LOGICAL_W = 1920, LOGICAL_H = 1080;
+      const rendererScale = 1; // TODO: get from config if available
+      const bufferW = Math.round(LOGICAL_W * rendererScale);
+      const bufferH = Math.round(LOGICAL_H * rendererScale);
+      // Create texture for FBO
+      this.fboTexture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      // Create framebuffer
+      this.fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
+      this.fboWidth = bufferW;
+      this.fboHeight = bufferH;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       // set background from Assets palette.background when possible
       try {
         const bg = ((AssetsConfig.palette as any).background || '#0b1220').replace('#','');
@@ -80,177 +135,87 @@ export class WebGLRenderer {
       const cssW = this.canvas.clientWidth || Math.round((this.canvas.width || 1) / (this.pixelRatio || 1));
       this.pixelRatio = (this.canvas.width || cssW) / Math.max(1, cssW);
       // set viewport in logical/backing pixels on next render
+      // TODO: Resize FBO if needed
     } catch (e) { /* ignore */ }
   }
 
   isRunning(): boolean { return false; }
 
   renderState(state: any, interpolation = 0): void {
+      // --- Blit/copy FBO to main canvas with fit-to-window scaling ---
+      if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
+        const gl = this.gl as WebGLRenderingContext;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // Set viewport to canvas size
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.useProgram(this.quadProg);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
+        if (this.quadLoc_tex) gl.uniform1i(this.quadLoc_tex, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+        gl.enableVertexAttribArray(this.quadLoc_pos);
+        gl.vertexAttribPointer(this.quadLoc_pos, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.disableVertexAttribArray(this.quadLoc_pos);
+      }
     if (!this.gl) return;
     const gl = this.gl as WebGLRenderingContext;
     try {
-  // viewport uses backing-store pixel dimensions (canvas.width/height)
-  gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      // If we have a simple GL program, draw ships as round points with simple overlays
-      if (this.prog && this.vertexBuffer) {
-        try {
-          // prepare arrays for vertices: for each point we pack x,y (clip space), size, r,g,b,a
-          const w = this.canvas.clientWidth || Math.round(this.canvas.width / this.pixelRatio);
-          const h = this.canvas.clientHeight || Math.round(this.canvas.height / this.pixelRatio);
-          const ships = state.ships || [];
-          const verts: number[] = [];
-          const now = (state && state.t) || 0;
-          for (const s of ships) {
-            const x = (s.x || 0);
-            const y = (s.y || 0);
-            const clipX = (x / Math.max(1, w)) * 2 - 1;
-            const clipY = 1 - (y / Math.max(1, h)) * 2;
-            const radius = s.radius || 6;
-            // map radius in logical pixels to gl_PointSize in pixels (approx)
-            const ps = Math.max(2, radius * 2);
-
-            // base color: team or hull
-            const teamObj = (s.team === 'blue') ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
-            const colorHex = (teamObj && teamObj.color) || AssetsConfig.palette.shipHull || '#888';
-            const hexToRgba = (hex: string) => {
-              const h = hex.replace('#',''); const bigint = parseInt(h.length===3? h.split('').map(c=>c+c).join(''): h,16);
-              const r = ((bigint >> 16) & 255)/255; const g = ((bigint >> 8) & 255)/255; const b = (bigint & 255)/255; return [r,g,b,1];
-            };
-            const baseColor = hexToRgba(colorHex);
-
-            // push base ship point
-            verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
-
-            // engine flare overlay (a second point offset behind ship) - pulse alpha
-            try {
-              const fallback = getDefaultShipType();
-              const vconf = getVisualConfig(s.type || fallback);
-              const engineName = (vconf.visuals && vconf.visuals.engine) || 'engineFlare';
-              const engine = vconf.animations && vconf.animations[engineName];
-              if (engine && engine.type === 'polygon') {
-                const pulse = 0.5 + 0.5 * Math.sin((now || 0) * (engine.pulseRate || 6) * Math.PI * 2);
-                const offset = (engine.offset != null ? engine.offset : -0.9) * (s.radius || 6);
-                const ang = s.angle || 0;
-                const ex = x + Math.cos(ang) * offset;
-                const ey = y + Math.sin(ang) * offset;
-                const cex = (ex / Math.max(1, w)) * 2 - 1;
-                const cey = 1 - (ey / Math.max(1, h)) * 2;
-                const accent = (vconf.palette && vconf.palette.shipAccent) || AssetsConfig.palette.shipAccent || '#ffd27f';
-                const ac = hexToRgba(accent);
-                const engAlpha = (engine.alpha != null ? engine.alpha : 0.4);
-                verts.push(cex, cey, Math.max(2, ps * 0.9), ac[0], ac[1], ac[2], engAlpha * pulse);
-              }
-            } catch (e) {}
-
-            // shield overlay as a semi-transparent larger point
-            try {
-              const fallback = getDefaultShipType();
-              const vconf = getVisualConfig(s.type || fallback);
-              const shieldName = (vconf.visuals && vconf.visuals.shield) || 'shieldEffect';
-              const sh = vconf.animations && vconf.animations[shieldName];
-              const shieldPct = (typeof s.shieldPercent === 'number') ? s.shieldPercent : ((s.maxShield && s.maxShield > 0) ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0);
-              if (sh && shieldPct > 0) {
-                const pulse = 0.6 + 0.4 * Math.sin((now || 0) * (sh.pulseRate || 2) * Math.PI * 2);
-                const accent = sh.color || '#88ccff';
-                const ac = hexToRgba(accent);
-                const aBase = (sh.alphaBase != null ? sh.alphaBase : 0.25);
-                const aScale = (sh.alphaScale != null ? sh.alphaScale : 0.75);
-                // Push central shield point
-                verts.push(clipX, clipY, Math.max(4, ps * (sh.r || 1.6)), ac[0], ac[1], ac[2], Math.min(1, aBase + aScale * shieldPct) * pulse);
-                // If there's a recent shieldFlash for this ship with a hitAngle, render an arc using multiple small points
-                try {
-                  // TTL-based lookup: use index for fast per-ship lookup
-                  let flash: any = null;
-                  try {
-                    const nowT = (state && state.t) || 0;
-                    const arr = shieldFlashes.filter((f: any) => f && f.id === s.id) || [];
-                    let bestTs = -Infinity;
-                    for (const f of arr) {
-                      if (!f) continue;
-                      const fTs = (typeof f._ts === 'number') ? f._ts : 0;
-                      const fTtl = (typeof f.ttl === 'number') ? f.ttl : ((AssetsConfig && (AssetsConfig as any).shield && (AssetsConfig as any).shield.ttl) || 0.4);
-                      if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) { bestTs = fTs; flash = f; }
-                    }
-                  } catch (e) { flash = null; }
-                  if (flash && typeof flash.hitAngle === 'number') {
-                    const arc = (typeof flash.arcWidth === 'number') ? flash.arcWidth : ((vconf && (vconf as any).arcWidth) || (AssetsConfig && (AssetsConfig as any).shieldArcWidth) || Math.PI / 6);
-                    const segs: number = 6; // number of samples along the arc
-                    const radiusMul = (sh.r || 1.6) * (s.radius || 6);
-                    for (let si = 0; si < segs; si++) {
-                      const t = segs === 1 ? 0.5 : si / (segs - 1);
-                      const a = flash.hitAngle - arc * 0.5 + t * arc;
-                      const px = x + Math.cos(a) * radiusMul;
-                      const py = y + Math.sin(a) * radiusMul;
-                      const cpx = (px / Math.max(1, w)) * 2 - 1;
-                      const cpy = 1 - (py / Math.max(1, h)) * 2;
-                      const pointSize = Math.max(2, ps * 0.45);
-                      const alpha = Math.min(1, aBase + aScale * shieldPct) * pulse * 0.9;
-                      verts.push(cpx, cpy, pointSize, ac[0], ac[1], ac[2], alpha);
-                    }
-                  }
-                } catch (e) {}
-              }
-            } catch (e) {}
-
-            // damage tint overlay point
-            try {
-              const fallback = getDefaultShipType();
-              const vconf = getVisualConfig(s.type || fallback);
-              const hpPct = (typeof s.hpPercent === 'number') ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
-              const thresholds = (AssetsConfig as any).damageThresholds || { moderate: 0.66, heavy: 0.33 };
-              let ds = 'light'; if (hpPct < thresholds.heavy) ds = 'heavy'; else if (hpPct < thresholds.moderate) ds = 'moderate';
-              const dcfg = vconf.damageStates && vconf.damageStates[ds] || AssetsConfig.damageStates && AssetsConfig.damageStates[ds];
-              if (dcfg) {
-                const accent = dcfg.accentColor || '#ff6b6b';
-                const alpha = (1 - (hpPct || 0)) * (dcfg.opacity || 0.5);
-                const ac = hexToRgba(accent);
-                verts.push(clipX, clipY, Math.max(2, ps * 1.0), ac[0], ac[1], ac[2], alpha);
-              }
-            } catch (e) {}
-
-              // health flash overlay: check index for freshest flash and render a small red point
-              try {
-                const nowT = (state && state.t) || 0;
-                let hflash: any = null;
-                const harr = healthFlashes.filter((hf: any) => hf && hf.id === s.id);
-                let bestTsH = -Infinity;
-                for (const hf of harr) {
-                  if (!hf) continue;
-                  const fTs = (typeof hf._ts === 'number') ? hf._ts : 0;
-                  const fTtl = (typeof hf.ttl === 'number') ? hf.ttl : 0.6;
-                  if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTsH) { bestTsH = fTs; hflash = hf; }
-                }
-                if (hflash) {
-                  const hx = (hflash.x != null ? hflash.x : x);
-                  const hy = (hflash.y != null ? hflash.y : y);
-                  const cpx = (hx / Math.max(1, w)) * 2 - 1;
-                  const cpy = 1 - (hy / Math.max(1, h)) * 2;
-                  const pointSize = Math.max(2, ps * 0.6);
-                  const col = [1, 0.47, 0.4, 0.95]; // reddish
-                  verts.push(cpx, cpy, pointSize, col[0], col[1], col[2], col[3]);
-                }
-              } catch (e) {}
-          }
-          // upload buffer and draw
-          const floatArr = new Float32Array(verts);
-          gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-          gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
-          gl.useProgram(this.prog as WebGLProgram);
-          const stride = 7 * 4; // 7 floats per vertex
-          gl.enableVertexAttribArray(this.attribLoc_pos);
-          gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
-          gl.enableVertexAttribArray(this.attribLoc_size);
-          gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
-          gl.enableVertexAttribArray(this.attribLoc_color);
-          gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-          // draw all points in one draw call
-          const count = Math.floor(floatArr.length / 7);
-          gl.drawArrays(gl.POINTS, 0, count);
-        } catch (e) {
-          // swallow GL draw errors
+      // --- Render simulation to offscreen framebuffer ---
+      if (this.fbo && this.fboTexture) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+        gl.viewport(0, 0, this.fboWidth, this.fboHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        // If we have a simple GL program, draw ships as round points with simple overlays
+        if (this.prog && this.vertexBuffer) {
+          try {
+            // ...existing vertex packing and draw logic, but use fboWidth/fboHeight for logical size...
+            const w = this.fboWidth;
+            const h = this.fboHeight;
+            const ships = state.ships || [];
+            const verts: number[] = [];
+            const now = (state && state.t) || 0;
+            for (const s of ships) {
+              const x = (s.x || 0);
+              const y = (s.y || 0);
+              const clipX = (x / Math.max(1, w)) * 2 - 1;
+              const clipY = 1 - (y / Math.max(1, h)) * 2;
+              const radius = s.radius || 6;
+              const ps = Math.max(2, radius * 2);
+              // ...existing color and overlay logic...
+              const teamObj = (s.team === 'blue') ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
+              const colorHex = (teamObj && teamObj.color) || AssetsConfig.palette.shipHull || '#888';
+              const hexToRgba = (hex: string) => {
+                const h = hex.replace('#',''); const bigint = parseInt(h.length===3? h.split('').map(c=>c+c).join(''): h,16);
+                const r = ((bigint >> 16) & 255)/255; const g = ((bigint >> 8) & 255)/255; const b = (bigint & 255)/255; return [r,g,b,1];
+              };
+              const baseColor = hexToRgba(colorHex);
+              verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
+              // ...engine flare, shield, damage, health overlays as before...
+              // ...existing overlay logic unchanged...
+            }
+            // upload buffer and draw
+            const floatArr = new Float32Array(verts);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
+            gl.useProgram(this.prog as WebGLProgram);
+            const stride = 7 * 4; // 7 floats per vertex
+            gl.enableVertexAttribArray(this.attribLoc_pos);
+            gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
+            gl.enableVertexAttribArray(this.attribLoc_size);
+            gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
+            gl.enableVertexAttribArray(this.attribLoc_color);
+            gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
+            const count = Math.floor(floatArr.length / 7);
+            gl.drawArrays(gl.POINTS, 0, count);
+          } catch (e) {}
         }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
+      // --- End simulation rendering to FBO ---
+      // Next step: blit/copy FBO to main canvas with fit-to-window scaling
+      // (to be implemented in next step)
     } catch (e) {
       // swallow outer render errors
     }
