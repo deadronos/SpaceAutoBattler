@@ -34,18 +34,50 @@ export async function startApp(rootDocument: Document = document) {
 
 	try { if (ui.stats) ui.stats.textContent = 'Ships: 0 (R:0 B:0) Bullets: 0'; } catch (e) {}
 
+	// Always use fixed logical bounds for simulation/game loop
+	const LOGICAL_BOUNDS = { W: 1920, H: 1080 };
 	function fitCanvasToWindow() {
 		const baseDpr = window.devicePixelRatio || 1;
+		const winW = window.innerWidth;
+		const winH = window.innerHeight;
+		// Compute fit scale to preserve aspect ratio
+		const fitScale = Math.min(winW / LOGICAL_BOUNDS.W, winH / LOGICAL_BOUNDS.H);
 		const cfgScale = (RendererConfig && typeof (RendererConfig as any).rendererScale === 'number') ? (RendererConfig as any).rendererScale : 1;
-		const bounds = getDefaultBounds();
-		const cssW = Math.round(bounds.W * cfgScale);
-		const cssH = Math.round(bounds.H * cfgScale);
+	// Final scale for drawing entities
+	const finalScale = fitScale * cfgScale;
+	// Center logical map in canvas
+	const offsetX = Math.floor((winW - LOGICAL_BOUNDS.W * finalScale) / 2);
+	const offsetY = Math.floor((winH - LOGICAL_BOUNDS.H * finalScale) / 2);
 		if (canvas) {
-			canvas.style.width = `${cssW}px`;
-			canvas.style.height = `${cssH}px`;
-			canvas.width = Math.round(cssW * baseDpr);
-			canvas.height = Math.round(cssH * baseDpr);
+			canvas.style.width = `${winW}px`;
+			canvas.style.height = `${winH}px`;
+			canvas.width = Math.round(winW * baseDpr);
+			canvas.height = Math.round(winH * baseDpr);
 		}
+		// Store scale and offset in RendererConfig for renderer use
+		(RendererConfig as any)._fitScale = fitScale;
+		(RendererConfig as any)._offsetX = offsetX;
+		(RendererConfig as any)._offsetY = offsetY;
+		// Update slider value display if present
+		const scaleVal = rootDocument.getElementById('rendererScaleValue');
+		if (scaleVal) scaleVal.textContent = cfgScale.toFixed(2);
+	}
+	// Renderer scale slider wiring
+	const scaleSlider = rootDocument.getElementById('rendererScaleRange');
+	if (scaleSlider) {
+		scaleSlider.addEventListener('input', (ev: any) => {
+			const val = parseFloat(ev.target.value);
+			if (!isNaN(val)) {
+				(RendererConfig as any).rendererScale = val;
+				// Always recalculate fit-to-window logic when renderer scale changes
+				fitCanvasToWindow();
+			}
+		});
+		// Set initial value display
+		const scaleVal = rootDocument.getElementById('rendererScaleValue');
+		if (scaleVal) scaleVal.textContent = (scaleSlider as HTMLInputElement).value;
+		// Ensure initial fit-to-window calculation uses current scale
+		fitCanvasToWindow();
 	}
 
 	fitCanvasToWindow();
@@ -59,8 +91,51 @@ export async function startApp(rootDocument: Document = document) {
 	if (!renderer) { renderer = new CanvasRenderer(canvas); renderer.init && renderer.init(); }
 
 	try { window.gm = window.gm || {}; } catch (e) {}
-	const gm = createGameManager({ renderer, useWorker: false });
+	// Pass fixed logical bounds to game manager
+	const gm = createGameManager({ renderer, useWorker: false, seed: 12345 });
+	if (gm && gm._internal) gm._internal.bounds = LOGICAL_BOUNDS;
 	try { if (typeof window !== 'undefined' && (window as any).gm) Object.assign((window as any).gm, gm); } catch (e) {}
+
+	// Speed multiplier logic
+	let simSpeedMultiplier = 1;
+	if (ui.speed) {
+		ui.speed.addEventListener('click', () => {
+			simSpeedMultiplier = simSpeedMultiplier >= 4 ? 0.25 : simSpeedMultiplier * 2;
+			ui.speed.textContent = `Speed: ${simSpeedMultiplier}×`;
+		});
+		ui.speed.textContent = `Speed: ${simSpeedMultiplier}×`;
+	}
+
+	// Patch stepOnce to use multiplier
+	if (gm && typeof gm.stepOnce === 'function') {
+		const origStepOnce = gm.stepOnce.bind(gm);
+		gm.stepOnce = (dt = 0.016) => origStepOnce(dt * simSpeedMultiplier);
+	}
+
+	// Fleet formation logic
+	if (ui.formationBtn) {
+		ui.formationBtn.addEventListener('click', () => {
+			if (gm && typeof gm.formFleets === 'function') {
+				gm.formFleets();
+			}
+		});
+	}
+
+	// Engine trail UI toggle state
+	let engineTrailsEnabled = true;
+	if (gm && gm._internal && gm._internal.state) {
+		gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
+	}
+	if (ui.toggleTrails) {
+		ui.toggleTrails.addEventListener('click', () => {
+			engineTrailsEnabled = !engineTrailsEnabled;
+			if (gm && gm._internal && gm._internal.state) {
+				gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
+			}
+			ui.toggleTrails.textContent = engineTrailsEnabled ? '☄ Trails: On' : '☄ Trails: Off';
+		});
+		ui.toggleTrails.textContent = engineTrailsEnabled ? '☄ Trails: On' : '☄ Trails: Off';
+	}
 
 	try {
 		const host = (location && location.hostname) || '';

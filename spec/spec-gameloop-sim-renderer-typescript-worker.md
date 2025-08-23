@@ -192,8 +192,44 @@ Testing plan & acceptance criteria
 
 Mapping to existing configs
 ---------------------------
-- Use `spec/entitiesConfig.js` ship types (fighter, corvette, frigate, destroyer, carrier) as canonical data shapes for tests. During the TS migration, prefer adding `.d.ts` typings where necessary and then port to `.ts`.
-- Progression/XP: simulate worker must respect `progressionConfig` constants; tests should seed a single ship and verify XP/level transitions after deterministic damage events.
+
+## Config-driven Game Balance and Entities Mapping
+
+All game balance, entity stats, visuals, and progression are now centralized in `/src/config` files:
+
+- `entitiesConfig.ts`: Defines canonical ship types (`fighter`, `corvette`, `frigate`, `destroyer`, `carrier`) with stats (maxHp, armor, maxShield, shieldRegen, damage, radius, cannons, accel, turnRate, carrier properties).
+- `progressionConfig.ts`: Progression system uses function-valued scalars for XP, HP, damage, shield, speed, and regen per level. Example:
+  - `xpToLevel(level) => 100 * 1.25^(level - 1)`
+  - `hpPercentPerLevel(level) => Math.min(0.10, 0.05 + 0.05 / Math.sqrt(level))`
+  - `dmgPercentPerLevel`, `shieldPercentPerLevel`, `speedPercentPerLevel`, `regenPercentPerLevel` (numbers)
+- `gamemanagerConfig.ts`: Visuals and particles for shield, health, explosion, and stars. All particle params (count, ttl, color, size, speed) are config-driven.
+- `rendererConfig.ts`: Renderer preferences and UI overlay settings (HP bar styling, background color).
+- `assetsConfig.ts`: Palette (hull, accent, bullet, turret, background), shapes, animations, damage states, thresholds.
+- `teamsConfig.ts`: Team colors, fleet composition, reinforcement logic.
+- `displayConfig.ts`: Bounds and display helpers.
+- `validateConfig.ts`: Validation helpers for config correctness.
+
+Simulation and gamemanager logic must read all tunables from config. No hardcoded values for gameplay, visuals, or progression remain outside config files. All entity creation, progression, and visual effects reference config fields.
+
+### Entities and Progression in Simulation
+
+- Ship creation uses `entitiesConfig.ts` for stats and visuals.
+- Progression (XP, level-up) uses `progressionConfig.ts` scalars, including function-valued fields for multi-level scaling.
+- Visual events (explosions, shieldHits, healthHits) use `gamemanagerConfig.ts` and `assetsConfig.ts` for all parameters.
+- Renderer reads palette, shapes, and UI overlays from config.
+
+### Tests and Validation
+
+- Unit tests seed XP and verify level-up effects using config-driven progression.
+- All entity shapes, colors, and thresholds are validated against config.
+- Renderer and simulation tests assert config usage and determinism.
+
+### Migration and Maintenance
+
+- All JS files in `/src` are build artifacts; only TypeScript sources in `/src` should be edited.
+- Any future changes to game balance, visuals, or progression must be made in config files and reflected in specs and tests.
+
+This mapping ensures the spec and implementation remain aligned, and all gameplay and visual parameters are tunable via config.
 
 Migration steps (minimal, reversible)
 ----------------------------------

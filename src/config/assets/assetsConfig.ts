@@ -142,6 +142,14 @@ export const AssetsConfig: AssetsConfigType = {
     lifetime: 0.8,
     spread: 0.6
   }
+  ,
+  engineTrail: {
+    type: 'trail',
+    color: '#fffc00', // bright yellow for high contrast
+  maxLength: 40,    // much longer trail
+    width: 0.35,      // thicker trail line
+    fade: 0.35        // slower fading, more persistent
+  }
 };
 
 (AssetsConfig as any).damageStates = {
@@ -151,15 +159,16 @@ export const AssetsConfig: AssetsConfigType = {
 };
 
 (AssetsConfig as any).visualStateDefaults = {
-  fighter: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
-  corvette: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
-  frigate: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
-  destroyer: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' },
-  carrier: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles' }
+  fighter:   { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles', engineTrail: 'engineTrail', arcWidth: Math.PI / 12 },
+  corvette:  { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles', engineTrail: 'engineTrail', arcWidth: Math.PI / 12 },
+  frigate:   { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles', engineTrail: 'engineTrail', arcWidth: Math.PI / 12 },
+  destroyer: { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles', engineTrail: 'engineTrail', arcWidth: Math.PI / 12 },
+  carrier:   { engine: 'engineFlare', shield: 'shieldEffect', damageParticles: 'damageParticles', engineTrail: 'engineTrail', arcWidth: Math.PI / 12 }
 };
 
 // thresholds for mapping hpPct -> damage state key
 (AssetsConfig as any).damageThresholds = { moderate: 0.66, heavy: 0.33 };
+(AssetsConfig as any).shieldArcWidth = Math.PI / 12;
 
 export function getVisualConfig(type: string) {
   const shape = getShipAsset(type);

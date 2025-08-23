@@ -1,10 +1,21 @@
 # Implementation Status — SpaceAutoBattler
 
-## Recent Changes
-- All progression, visuals, and balance constants are now centralized in config files (see `assetsConfig`, `rendererConfig`, `gamemanagerConfig`).
+## Recent Changes (Config-driven Architecture)
+- All game balance, entity stats, progression, and visual parameters are now centralized in `/src/config` files:
+  - `entitiesConfig.ts`: Canonical ship types (`fighter`, `corvette`, `frigate`, `destroyer`, `carrier`) with all gameplay stats and visuals.
+  - `progressionConfig.ts`: Function-valued scalars for XP, HP, damage, shield, speed, and regen per level. Example:
+    - `xpToLevel(level) => 100 * 1.25^(level - 1)`
+    - `hpPercentPerLevel(level) => Math.min(0.10, 0.05 + 0.05 / Math.sqrt(level))`
+    - `dmgPercentPerLevel`, `shieldPercentPerLevel`, `speedPercentPerLevel`, `regenPercentPerLevel` (numbers)
+  - `gamemanagerConfig.ts`: Visuals and particles for shield, health, explosion, and stars. All particle params (count, ttl, color, size, speed) are config-driven.
+  - `rendererConfig.ts`: Renderer preferences and UI overlay settings (HP bar styling, background color).
+  - `assetsConfig.ts`: Palette (hull, accent, bullet, turret, background), shapes, animations, damage states, thresholds.
+  - `teamsConfig.ts`: Team colors, fleet composition, reinforcement logic.
+  - `displayConfig.ts`: Bounds and display helpers.
+  - `validateConfig.ts`: Validation helpers for config correctness.
 - Types are fully centralized in `src/types/index.ts` (single source of truth).
 - Codebase is now pure TypeScript; all JS shims and transpilation steps removed.
-- Renderer and simulation now read all tunables (background, thresholds, particles, HP bar, etc.) from config.
+- Renderer and simulation now read all tunables (background, thresholds, particles, HP bar, etc.) from config. No hardcoded values for gameplay, visuals, or progression remain outside config files.
 
 
 ## Outstanding Goals (Updated)
@@ -28,27 +39,13 @@ For details, see config files and recent PRs. If you want a targeted patch for c
 
 This document records the current implementation progress and verification status for the recent changes to the progression system (function-valued scalars, new progression axes, validator updates, simulation application, and tests).
 
-## Summary (high-level)
-
-- Goal: Extend the progression system to support number-or-function scalars (e.g., exponential `xpToLevel`, diminishing `hpPercentPerLevel`), add `speedPercentPerLevel` and `regenPercentPerLevel`, update validation and simulation to handle functions, and add tests and build verification.
-
+## Summary
+All JS files in /src are build artifacts. All logic, codepaths, and updates should be made to the TypeScript files in /src. Do not edit JS files directly; always update the corresponding TypeScript source and rebuild.
 - Branch: `webgl` (working branch); default branch: `main`.
 
-## Completed work
-
-- Progression config updated (JS + TS): added function-valued scalars and new fields:
-
-  - `xpToLevel(level) => 100 * 1.25^(level - 1)` (function)
-  - `hpPercentPerLevel(level) => Math.min(0.10, 0.05 + 0.05 / Math.sqrt(level))` (function)
-  - `dmgPercentPerLevel`, `shieldPercentPerLevel` (numbers)
   - `speedPercentPerLevel`, `regenPercentPerLevel` (numbers)
 
-- Validator updated: accepts number OR function for per-level scalars and optional speed/regen fields.
-
-- Simulation updated (`simulate.ts` / `simulate.js`): added `resolveScalar` helper that calls functions with the relevant level or treats numeric scalars directly. At level-up, resolved scalars are applied to HP/damage/shields as before and to speed and shield-regen where applicable.
-
 - Tests added:
-
   - `test/vitest/progression.spec.ts` — unit tests for `xpToLevel` and `hpPercentPerLevel` numeric outputs (passed).
   - `test/vitest/progression-application.spec.ts` — smoke test that seeds XP to trigger a deterministic level-up and asserts `accel` and `shieldRegen` were multiplied by `1 + speedPercentPerLevel` and `1 + regenPercentPerLevel` (updated to seed XP; re-run passed).
 

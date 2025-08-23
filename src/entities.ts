@@ -69,6 +69,7 @@ export type GameState = {
   explosions: any[];
   shieldHits: any[];
   healthHits: any[];
+  engineTrailsEnabled?: boolean;
 };
 
 export function makeInitialState(): GameState {
@@ -79,6 +80,7 @@ export function makeInitialState(): GameState {
     explosions: [],
     shieldHits: [],
     healthHits: [],
+    engineTrailsEnabled: true,
   };
 }
 

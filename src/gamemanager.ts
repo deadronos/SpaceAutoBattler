@@ -5,6 +5,7 @@
 
 // Ported from gamemanager.js, now canonical TypeScript implementation
 import { makeInitialState, createShip } from './entities';
+import { applySimpleAI } from './behavior';
 import { simulateStep, SIM_DT_MS } from './simulate';
 import { srand, srandom } from './rng';
 import { getDefaultBounds } from './config/displayConfig';
@@ -185,6 +186,8 @@ export function createGameManager({ useWorker = true, renderer = null, seed = 12
 
 	function step(dtSeconds: number) {
 		if (!simWorker) {
+			// Run AI logic before simulation step
+			try { applySimpleAI(state, dtSeconds, getDefaultBounds()); } catch (e) {}
 			try { simulateStep(state, dtSeconds, getDefaultBounds()); } catch (e) {}
 		} else {
 			try { simWorker.post && simWorker.post({ type: 'snapshotRequest' }); } catch (e) {}
@@ -251,6 +254,22 @@ export function createGameManager({ useWorker = true, renderer = null, seed = 12
 			return ship;
 		} catch (e) { return null; }
 	}
+
+	// Fleet formation (config-driven)
+	function formFleets() {
+		try {
+			// Remove all ships
+			state.ships.length = 0;
+			// Use makeInitialFleets from teamsConfig
+			const { makeInitialFleets } = require('./config/teamsConfig');
+			const bounds = getDefaultBounds();
+			const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
+			const ships = makeInitialFleets(seed, bounds, createShip);
+			for (const ship of ships) {
+				state.ships.push(ship);
+			}
+		} catch (e) { /* ignore errors */ }
+	}
 	function reseedManager(newSeed: number = Math.floor(srandom() * 0xffffffff)) {
 		_seed = newSeed >>> 0; srand(_seed);
 		if (simWorker) try { simWorker.post({ type: 'setSeed', seed: _seed }); } catch (e) {}
@@ -282,6 +301,7 @@ export function createGameManager({ useWorker = true, renderer = null, seed = 12
 		getLastReinforcement,
 		snapshot,
 		score,
+		formFleets,
 		_internal: internal
 	};
 }

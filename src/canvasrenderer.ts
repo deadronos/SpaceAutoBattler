@@ -48,19 +48,42 @@ export class CanvasRenderer {
   isRunning(): boolean { return false; }
 
   renderState(state: AnyState, interpolation = 0): void {
-  const ctx = this.ctx!;
-  if (!ctx) return;
-    // Use CSS (logical) pixel dimensions for layout/drawing now that we
-    // applied a transform in init(). This keeps the scene size stable when
-    // the backing store (canvas.width/height) is scaled by devicePixelRatio
-    // and RendererConfig.rendererScale.
-    const w = this.canvas.clientWidth || Math.round(this.canvas.width / this.pixelRatio);
-    const h = this.canvas.clientHeight || Math.round(this.canvas.height / this.pixelRatio);
-    // clear logical area
-    ctx.clearRect(0, 0, w, h);
-  ctx.save();
-  ctx.fillStyle = (AssetsConfig.palette as any).background || '#0b1220';
-    ctx.fillRect(0, 0, w, h);
+    const ctx = this.ctx!;
+    if (!ctx) return;
+    // Always use fixed logical bounds for drawing
+  const LOGICAL_W = 1920, LOGICAL_H = 1080;
+    // Get renderer scale and viewport fit scale/offset from config
+    const rendererScale = (RendererConfig && typeof (RendererConfig as any).rendererScale === 'number') ? (RendererConfig as any).rendererScale : 1;
+    const fitScale = (RendererConfig as any)._fitScale || 1;
+    const offsetX = (RendererConfig as any)._offsetX || 0;
+    const offsetY = (RendererConfig as any)._offsetY || 0;
+    // Final scale for drawing entities
+    const finalScale = this.pixelRatio * fitScale * rendererScale;
+    // Set transform: scale and translate to center logical map
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Identity for background
+    // Clear the full canvas area
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Fill entire canvas with background color
+    ctx.save();
+    ctx.fillStyle = (AssetsConfig.palette as any).background || '#0b1220';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+    // Draw starCanvas if present, stretched to fill canvas
+    if (state && state.starCanvas) {
+      try {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(state.starCanvas, 0, 0, this.canvas.width, this.canvas.height);
+        ctx.restore();
+      } catch (e) { /* ignore draw errors */ }
+    }
+    // Now set transform for entities
+    ctx.setTransform(finalScale, 0, 0, finalScale, offsetX * this.pixelRatio, offsetY * this.pixelRatio);
+    // Draw logical map background (optional, for debugging)
+    // ctx.save();
+    // ctx.fillStyle = (AssetsConfig.palette as any).background || '#0b1220';
+    // ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    // ctx.restore();
 
     // helper: draw a polygon path from points (already scaled/rotated by transform)
     function drawPolygon(points: number[][]) {
@@ -78,7 +101,7 @@ export class CanvasRenderer {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         // drawImage will scale to logical size because we've set the transform
-        ctx.drawImage(state.starCanvas, 0, 0, w, h);
+        ctx.drawImage(state.starCanvas, 0, 0, LOGICAL_W, LOGICAL_H);
         ctx.restore();
       } catch (e) { /* ignore draw errors */ }
     }
@@ -113,6 +136,57 @@ export class CanvasRenderer {
         state.damageEvents = [];
       }
     } catch (e) { /* ignore particle spawn errors */ }
+
+    // Engine trail rendering (config-driven, per ship)
+    const engineTrailsEnabled = !!state.engineTrailsEnabled;
+    for (const s of state.ships || []) {
+      // Update trail history (store in s.trail)
+      if (engineTrailsEnabled) {
+        s.trail = s.trail || [];
+        // Only add new trail point if ship moved
+        const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
+        if (!last || last.x !== s.x || last.y !== s.y) {
+          s.trail.push({ x: s.x, y: s.y });
+        }
+        // Limit trail length
+        const vconf = getVisualConfig(s.type || getDefaultShipType());
+        const trailName = (vconf.visuals && vconf.visuals.engineTrail) || 'engineTrail';
+        const trailConf = vconf.animations[trailName];
+        const maxLen = (trailConf && trailConf.maxLength) || 16;
+        while (s.trail.length > maxLen) s.trail.shift();
+      } else {
+        s.trail = [];
+      }
+    }
+
+    // Draw engine trails (before ships)
+    if (engineTrailsEnabled) {
+      for (const s of state.ships || []) {
+        if (!s.trail || s.trail.length < 2) continue;
+        const vconf = getVisualConfig(s.type || getDefaultShipType());
+        const trailName = (vconf.visuals && vconf.visuals.engineTrail) || 'engineTrail';
+        const trailConf = vconf.animations[trailName];
+        const color = (trailConf && trailConf.color) || '#6cf2ff';
+        const width = (trailConf && trailConf.width) || 0.18;
+        const fade = (trailConf && trailConf.fade) || 0.7;
+        const radius = s.radius || 6;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (let i = 1; i < s.trail.length; i++) {
+          const a = Math.pow(fade, s.trail.length - i);
+          ctx.globalAlpha = a;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width * radius;
+          ctx.beginPath();
+          ctx.moveTo(s.trail[i - 1].x, s.trail[i - 1].y);
+          ctx.lineTo(s.trail[i].x, s.trail[i].y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      }
+    }
 
     // draw ships using shapes
     for (const s of state.ships || []) {

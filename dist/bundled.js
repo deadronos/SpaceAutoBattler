@@ -1,0 +1,2209 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/config/assets/assetsConfig.ts
+function getVisualConfig(type) {
+  const shape = getShipAsset(type);
+  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
+}
+function getShipAsset(type) {
+  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+}
+function getBulletAsset(kind = "small") {
+  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
+  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
+  return AssetsConfig.shapes2d.bulletSmall;
+}
+function getTurretAsset(_kind = "basic") {
+  return AssetsConfig.shapes2d.turretBasic;
+}
+var AssetsConfig;
+var init_assetsConfig = __esm({
+  "src/config/assets/assetsConfig.ts"() {
+    "use strict";
+    AssetsConfig = {
+      meta: {
+        orientation: "+X",
+        coordinateSystem: "topdown-2d"
+      },
+      palette: {
+        shipHull: "#b0b7c3",
+        shipAccent: "#6c7380",
+        bullet: "#ffd166",
+        turret: "#94a3b8",
+        // Scene background color used by renderers
+        background: "#0b1220"
+      },
+      // 2D vector shapes defined as polygons and circles. Points are unit-sized
+      // profiles (roughly radius 1). Renderer should multiply by entity radius or
+      // provided scale before drawing.
+      shapes2d: {
+        fighter: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+            { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] }
+          ],
+          strokeWidth: 0.08,
+          model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+        },
+        corvette: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1, 0], [0.2, 0.6], [-0.9, 0.5], [-1.1, 0], [-0.9, -0.5], [0.2, -0.6]] },
+            { type: "polygon", points: [[1.2, 0.18], [1, 0.1], [1, -0.1], [1.2, -0.18]] }
+          ],
+          strokeWidth: 0.08,
+          model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+        },
+        frigate: {
+          type: "polygon",
+          points: [[1.1, 0], [0.6, 0.55], [-0.2, 0.8], [-1.2, 0.45], [-1.2, -0.45], [-0.2, -0.8], [0.6, -0.55]],
+          strokeWidth: 0.1,
+          model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+        },
+        destroyer: {
+          type: "polygon",
+          points: [[1.4, 0], [0.8, 0.5], [0.1, 0.7], [-0.6, 0.6], [-1.4, 0.4], [-1.4, -0.4], [-0.6, -0.6], [0.1, -0.7], [0.8, -0.5]],
+          strokeWidth: 0.12,
+          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 }
+        },
+        carrier: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.1, 0], [0.6, 0.7], [-0.5, 0.9], [-1.4, 0.7], [-1.6, 0], [-1.4, -0.7], [-0.5, -0.9], [0.6, -0.7]] },
+            { type: "polygon", points: [[1.4, 0.25], [1.1, 0.15], [1.1, -0.15], [1.4, -0.25]] }
+          ],
+          strokeWidth: 0.12,
+          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 }
+        },
+        bulletSmall: { type: "circle", r: 0.18 },
+        bulletMedium: { type: "circle", r: 0.25 },
+        bulletLarge: { type: "circle", r: 0.36 },
+        turretBasic: {
+          type: "compound",
+          parts: [
+            { type: "circle", r: 0.5 },
+            { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+          ],
+          strokeWidth: 0.08
+        }
+      }
+    };
+    AssetsConfig.animations = {
+      engineFlare: {
+        type: "polygon",
+        points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+        pulseRate: 8,
+        // configurable alpha multiplier for engine overlay
+        alpha: 0.4,
+        // local-space X offset (negative = behind ship)
+        offset: -0.9
+      },
+      shieldEffect: {
+        type: "circle",
+        r: 1.2,
+        strokeWidth: 0.1,
+        color: "#88ccff",
+        pulseRate: 2,
+        // map shieldPct -> alpha = base + scale * shieldPct
+        alphaBase: 0.25,
+        alphaScale: 0.75
+      },
+      damageParticles: {
+        type: "particles",
+        color: "#ff6b6b",
+        count: 6,
+        lifetime: 0.8,
+        spread: 0.6
+      },
+      engineTrail: {
+        type: "trail",
+        color: "#fffc00",
+        // bright yellow for high contrast
+        maxLength: 40,
+        // much longer trail
+        width: 0.35,
+        // thicker trail line
+        fade: 0.35
+        // slower fading, more persistent
+      }
+    };
+    AssetsConfig.damageStates = {
+      light: { opacity: 0.9, accentColor: "#b0b7c3" },
+      moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+      heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+    };
+    AssetsConfig.visualStateDefaults = {
+      fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
+    };
+    AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
+    AssetsConfig.shieldArcWidth = Math.PI / 12;
+  }
+});
+
+// src/config/entitiesConfig.ts
+function getShipConfig() {
+  return JSON.parse(JSON.stringify(ShipConfig));
+}
+function bulletKindForRadius(r = 0.2) {
+  for (const t of VisualMappingConfig.bulletRadiusThresholds) {
+    if (r <= t.threshold) return t.kind;
+  }
+  return "small";
+}
+function getDefaultShipType() {
+  const keys = Object.keys(ShipConfig || {});
+  return keys.length ? keys[0] : "fighter";
+}
+var ShipConfig, VisualMappingConfig;
+var init_entitiesConfig = __esm({
+  "src/config/entitiesConfig.ts"() {
+    "use strict";
+    init_assetsConfig();
+    ShipConfig = {
+      fighter: {
+        maxHp: 15,
+        armor: 0,
+        maxShield: 8,
+        shieldRegen: 1,
+        dmg: 3,
+        damage: 3,
+        radius: 4,
+        cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
+        accel: 600,
+        turnRate: 6
+      },
+      corvette: {
+        maxHp: 50,
+        armor: 0,
+        maxShield: Math.round(50 * 0.6),
+        shieldRegen: 0.5,
+        dmg: 5,
+        damage: 5,
+        radius: 8,
+        accel: 200,
+        turnRate: 3,
+        cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]
+      },
+      frigate: {
+        maxHp: 80,
+        armor: 1,
+        maxShield: Math.round(80 * 0.6),
+        shieldRegen: 0.4,
+        dmg: 8,
+        damage: 8,
+        radius: 12,
+        cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
+        accel: 120,
+        turnRate: 2.2
+      },
+      destroyer: {
+        maxHp: 120,
+        armor: 2,
+        maxShield: Math.round(120 * 0.6),
+        shieldRegen: 0.3,
+        dmg: 12,
+        damage: 12,
+        radius: 16,
+        cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
+        accel: 80,
+        turnRate: 1.6
+      },
+      carrier: {
+        maxHp: 200,
+        armor: 3,
+        maxShield: Math.round(200 * 0.6),
+        shieldRegen: 0.2,
+        dmg: 2,
+        damage: 2,
+        radius: 24,
+        cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
+        accel: 40,
+        turnRate: 0.8,
+        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 }
+      }
+    };
+    VisualMappingConfig = {
+      bulletRadiusThresholds: [
+        { threshold: 0.22, kind: "small" },
+        { threshold: 0.32, kind: "medium" },
+        { threshold: Infinity, kind: "large" }
+      ],
+      defaultTurretKind: "basic",
+      shipAssetKey: {
+        fighter: "fighter",
+        corvette: "corvette",
+        frigate: "frigate",
+        destroyer: "destroyer",
+        carrier: "carrier"
+      }
+    };
+  }
+});
+
+// src/rng.ts
+function srand(seed = 1) {
+  _seed = seed >>> 0;
+}
+function mulberry32(a) {
+  return function() {
+    let t = (a += 1831565813) >>> 0;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function srandom() {
+  const f = mulberry32(_seed);
+  _seed = _seed + 2654435761 >>> 0;
+  return f();
+}
+function srange(min, max) {
+  return min + (max - min) * srandom();
+}
+var _seed;
+var init_rng = __esm({
+  "src/rng.ts"() {
+    "use strict";
+    _seed = 1;
+  }
+});
+
+// src/config/teamsConfig.ts
+var teamsConfig_exports = {};
+__export(teamsConfig_exports, {
+  TeamsConfig: () => TeamsConfig,
+  chooseReinforcements: () => chooseReinforcements,
+  chooseReinforcementsWithManagerSeed: () => chooseReinforcementsWithManagerSeed,
+  default: () => teamsConfig_default,
+  generateFleetForTeam: () => generateFleetForTeam,
+  makeInitialFleets: () => makeInitialFleets
+});
+function mulberry322(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t += 1831565813;
+    let r = Math.imul(t ^ t >>> 15, 1 | t);
+    r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
+    return ((r ^ r >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashStringToInt(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
+  const cfg = Object.assign({}, TeamsConfig.defaultFleet, options.fleet || {});
+  const spacing = options.spacing ?? cfg.spacing;
+  const jitter = Object.assign({}, cfg.jitter, options.jitter || {});
+  const centerY = bounds.H / 2;
+  const baseX = teamId === "red" ? bounds.W * 0.22 : bounds.W * 0.78;
+  const rng = mulberry322((seed >>> 0) + hashStringToInt(teamId));
+  const out = [];
+  for (const [type, count] of Object.entries(cfg.counts)) {
+    for (let i = 0; i < count; i++) {
+      const r = spacing * Math.sqrt(rng());
+      const angle = rng() * Math.PI * 2;
+      const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
+      const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
+      const x = Math.max(0, Math.min(bounds.W, baseX + dx));
+      const y = Math.max(0, Math.min(bounds.H, centerY + dy));
+      if (typeof shipFactory === "function") out.push(shipFactory(type, x, y, teamId));
+      else out.push({ type, x, y, team: teamId });
+    }
+  }
+  return out;
+}
+function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
+  const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
+  const blue = generateFleetForTeam(seed + 1, "blue", bounds, shipFactory, options);
+  return red.concat(blue);
+}
+function chooseReinforcements(seed = 0, state = {}, options = {}) {
+  const cfg = Object.assign({}, TeamsConfig.continuousReinforcement, options);
+  if (!cfg.enabled) return [];
+  const teamStrength = {};
+  if (Array.isArray(state.ships)) {
+    for (const s of state.ships) {
+      if (!s || !s.team) continue;
+      const hp = typeof s.hp === "number" ? s.hp : 1;
+      teamStrength[s.team] = (teamStrength[s.team] || 0) + hp;
+    }
+  }
+  const teams = Object.keys(TeamsConfig.teams);
+  if (teams.length === 0) return [];
+  for (const t of teams) {
+    if (!teamStrength[t]) {
+      const cnt = (state.ships || []).filter((s) => s && s.team === t).length;
+      teamStrength[t] = cnt > 0 ? cnt : 0;
+    }
+  }
+  let weakest = teams[0];
+  let strongest = teams[0];
+  for (const t of teams) {
+    if (teamStrength[t] < teamStrength[weakest]) weakest = t;
+    if (teamStrength[t] > teamStrength[strongest]) strongest = t;
+  }
+  const total = teams.reduce((s, t) => s + (teamStrength[t] || 0), 0) || 1;
+  const weakestRatio = (teamStrength[weakest] || 0) / total;
+  if (weakestRatio < 0.5 - cfg.scoreMargin) {
+    let weightedPick2 = function() {
+      const r = rng() * totalWeight;
+      let acc = 0;
+      for (let i = 0; i < candidateTypes.length; i++) {
+        acc += weights[i];
+        if (r < acc) return candidateTypes[i];
+      }
+      return candidateTypes[candidateTypes.length - 1];
+    };
+    var weightedPick = weightedPick2;
+    const orders = [];
+    const rng = mulberry322((seed >>> 0) + hashStringToInt(weakest));
+    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const countsMap = TeamsConfig && TeamsConfig.defaultFleet && TeamsConfig.defaultFleet.counts ? TeamsConfig.defaultFleet.counts : {};
+    const weights = candidateTypes.map((t) => Math.max(0, Number(countsMap[t]) || 1));
+    const totalWeight = weights.reduce((s, w) => s + w, 0) || candidateTypes.length || 1;
+    const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
+    const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
+    const b = options.bounds || { W: 800, H: 600 };
+    const centerY = b.H / 2;
+    const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
+    for (let i = 0; i < spawnCount; i++) {
+      const x = Math.max(0, Math.min(b.W, baseX + (rng() - 0.5) * 120));
+      const y = Math.max(0, Math.min(b.H, centerY + (rng() - 0.5) * 160));
+      const type = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick2();
+      orders.push({ type, team: weakest, x, y });
+    }
+    return orders;
+  }
+  return [];
+}
+function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
+  const seed = Math.floor(srandom() * 4294967295) >>> 0;
+  return chooseReinforcements(seed, state, options);
+}
+var TeamsConfig, teamsConfig_default;
+var init_teamsConfig = __esm({
+  "src/config/teamsConfig.ts"() {
+    "use strict";
+    init_entitiesConfig();
+    init_rng();
+    TeamsConfig = {
+      teams: {
+        red: { id: "red", color: "#ff4d4d", label: "Red" },
+        blue: { id: "blue", color: "#4da6ff", label: "Blue" }
+      },
+      defaultFleet: { counts: (() => {
+        const shipCfg = getShipConfig();
+        const types = Object.keys(shipCfg || {});
+        const defaultCounts = {};
+        for (const t of types) {
+          if (t === "fighter") defaultCounts[t] = 8;
+          else if (t === "corvette") defaultCounts[t] = 3;
+          else if (t === "frigate") defaultCounts[t] = 2;
+          else if (t === "destroyer") defaultCounts[t] = 1;
+          else if (t === "carrier") defaultCounts[t] = 1;
+          else defaultCounts[t] = 1;
+        }
+        return defaultCounts;
+      })(), spacing: 28, jitter: { x: 80, y: 120 } },
+      // continuousReinforcement controls: enable/disable, scoreMargin is the
+      // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
+      // perTick is the maximum ships considered per reinforcement tick, and
+      // shipTypes is an optional array of types to choose from randomly. If
+      // omitted, keys from defaultFleet.counts are used.
+      continuousReinforcement: { enabled: false, scoreMargin: 0.12, perTick: 1, shipTypes: void 0 }
+    };
+    teamsConfig_default = TeamsConfig;
+  }
+});
+
+// src/entities.ts
+init_entitiesConfig();
+var nextId = 1;
+function genId() {
+  return nextId++;
+}
+function createShip(type = void 0, x = 0, y = 0, team = "red") {
+  const shipCfg = getShipConfig();
+  const availableTypes = Object.keys(shipCfg || {});
+  const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipType();
+  const cfg = shipCfg[resolvedType] || shipCfg[getDefaultShipType()];
+  return {
+    id: genId(),
+    type: resolvedType,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    hp: cfg.maxHp,
+    maxHp: cfg.maxHp,
+    shield: cfg.maxShield || 0,
+    maxShield: cfg.maxShield || 0,
+    team,
+    xp: 0,
+    level: 1,
+    cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
+    accel: cfg.accel || 0,
+    turnRate: cfg.turnRate || 0,
+    radius: cfg.radius || 6
+  };
+}
+function createBullet(x, y, vx, vy, team = "red", ownerId = null, damage = 1, ttl = 2) {
+  return {
+    id: genId(),
+    x,
+    y,
+    vx,
+    vy,
+    team,
+    ownerId,
+    damage,
+    ttl
+  };
+}
+function makeInitialState() {
+  return {
+    t: 0,
+    ships: [],
+    bullets: [],
+    explosions: [],
+    shieldHits: [],
+    healthHits: [],
+    engineTrailsEnabled: true
+  };
+}
+
+// src/behavior.ts
+init_rng();
+function len2(vx, vy) {
+  return vx * vx + vy * vy;
+}
+function clampSpeed(s, max) {
+  const v2 = len2(s.vx || 0, s.vy || 0);
+  const max2 = max * max;
+  if (v2 > max2 && v2 > 0) {
+    const inv = max / Math.sqrt(v2);
+    s.vx = (s.vx || 0) * inv;
+    s.vy = (s.vy || 0) * inv;
+  }
+}
+function aimWithSpread(from, to, spread = 0) {
+  let dx = (to.x || 0) - (from.x || 0);
+  let dy = (to.y || 0) - (from.y || 0);
+  const d = Math.hypot(dx, dy) || 1;
+  dx /= d;
+  dy /= d;
+  if (spread > 0) {
+    const ang = Math.atan2(dy, dx);
+    const jitter = srange(-spread, spread);
+    const na = ang + jitter;
+    return { x: Math.cos(na), y: Math.sin(na) };
+  }
+  return { x: dx, y: dy };
+}
+function tryFire(state, ship, target, dt) {
+  if (!Array.isArray(ship.cannons) || ship.cannons.length === 0) return;
+  for (const c of ship.cannons) {
+    if (typeof c.__cd !== "number") c.__cd = 0;
+    c.__cd -= dt;
+    if (c.__cd > 0) continue;
+    const spread = typeof c.spread === "number" ? c.spread : 0;
+    const dir = aimWithSpread(ship, target, spread);
+    const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : 240;
+    const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : 3;
+    const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : 2;
+    const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : 1.5;
+    const vx = dir.x * speed;
+    const vy = dir.y * speed;
+    const b = Object.assign(
+      createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+      { radius }
+    );
+    state.bullets.push(b);
+    const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
+    c.__cd = 1 / rate;
+  }
+}
+function ensureShipAiState(s) {
+  if (!s.__ai) {
+    s.__ai = { state: "idle", decisionTimer: 0, targetId: null };
+  }
+  return s.__ai;
+}
+function chooseNewTarget(state, ship) {
+  const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+  if (!enemies.length) return null;
+  const idx = Math.floor(srandom() * enemies.length);
+  return enemies[idx];
+}
+function steerAway(s, tx, ty, accel, dt) {
+  const dx = (s.x || 0) - tx;
+  const dy = (s.y || 0) - ty;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  s.vx = (s.vx || 0) + nx * accel * dt;
+  s.vy = (s.vy || 0) + ny * accel * dt;
+}
+function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
+  if (!state || !Array.isArray(state.ships)) return;
+  for (const s of state.ships) {
+    const ai = ensureShipAiState(s);
+    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
+    let target = null;
+    if (ai.targetId != null) target = (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
+    if (!target) target = chooseNewTarget(state, s);
+    if (target) ai.targetId = target.id;
+    const accel = typeof s.accel === "number" ? s.accel : 100;
+    const maxSpeed = 160;
+    if (!target) {
+      s.vx = (s.vx || 0) + srange(-1, 1) * 8 * dt;
+      s.vy = (s.vy || 0) + srange(-1, 1) * 8 * dt;
+      ai.state = "idle";
+    } else {
+      if (ai.decisionTimer <= 0) {
+        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
+        const rnd = srandom();
+        if (hpFrac < 0.35 || rnd < 0.15) ai.state = "evade";
+        else if (rnd < 0.85) ai.state = "engage";
+        else ai.state = "idle";
+        ai.decisionTimer = 0.5 + srandom() * 1.5;
+      }
+      if (ai.state === "engage") {
+        const aim = aimWithSpread(s, target, 0.05);
+        s.vx = (s.vx || 0) + aim.x * accel * dt;
+        s.vy = (s.vy || 0) + aim.y * accel * dt;
+        tryFire(state, s, target, dt);
+      } else if (ai.state === "evade") {
+        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
+        const ang = Math.atan2(s.vy || 0, s.vx || 0);
+        const perp = ang + Math.PI / 2 * (srandom() < 0.5 ? 1 : -1);
+        s.vx = (s.vx || 0) + Math.cos(perp) * accel * 0.2 * dt;
+        s.vy = (s.vy || 0) + Math.sin(perp) * accel * 0.2 * dt;
+      } else {
+        s.vx = (s.vx || 0) + srange(-0.5, 0.5) * 6 * dt;
+        s.vy = (s.vy || 0) + srange(-0.5, 0.5) * 6 * dt;
+      }
+    }
+    clampSpeed(s, maxSpeed);
+  }
+}
+
+// src/config/progressionConfig.ts
+var progression = {
+  xpPerDamage: 1,
+  xpPerKill: 50,
+  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),
+  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),
+  dmgPercentPerLevel: 0.08,
+  shieldPercentPerLevel: 0.06,
+  speedPercentPerLevel: 0.03,
+  regenPercentPerLevel: 0.04
+};
+
+// src/simulate.ts
+var SIM_DT_MS = 16;
+function dist2(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+function simulateStep(state, dtSeconds, bounds) {
+  state.t = (state.t || 0) + dtSeconds;
+  for (let i = (state.bullets || []).length - 1; i >= 0; i--) {
+    const b = state.bullets[i];
+    b.x += (b.vx || 0) * dtSeconds;
+    b.y += (b.vy || 0) * dtSeconds;
+    b.ttl = (b.ttl || 0) - dtSeconds;
+    if (b.ttl <= 0) state.bullets.splice(i, 1);
+  }
+  for (const s of state.ships || []) {
+    s.x += (s.vx || 0) * dtSeconds;
+    s.y += (s.vy || 0) * dtSeconds;
+    if (typeof bounds.W === "number" && bounds.W > 0) {
+      s.x = (s.x % bounds.W + bounds.W) % bounds.W;
+    }
+    if (typeof bounds.H === "number" && bounds.H > 0) {
+      s.y = (s.y % bounds.H + bounds.H) % bounds.H;
+    }
+    const speed2 = (s.vx || 0) * (s.vx || 0) + (s.vy || 0) * (s.vy || 0);
+    const minSpeed = 0.5;
+    if (speed2 > minSpeed * minSpeed) {
+      const desired = Math.atan2(s.vy || 0, s.vx || 0);
+      if (typeof s.angle !== "number") s.angle = desired;
+      else {
+        let a = s.angle;
+        let da = desired - a;
+        while (da < -Math.PI) da += Math.PI * 2;
+        while (da > Math.PI) da -= Math.PI * 2;
+        const turnRate = typeof s.turnRate === "number" ? s.turnRate : 3;
+        const maxTurn = turnRate * dtSeconds;
+        if (Math.abs(da) < maxTurn) a = desired;
+        else a += Math.sign(da) * maxTurn;
+        while (a < -Math.PI) a += Math.PI * 2;
+        while (a > Math.PI) a -= Math.PI * 2;
+        s.angle = a;
+      }
+    }
+  }
+  for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
+    const b = state.bullets[bi];
+    for (let si = (state.ships || []).length - 1; si >= 0; si--) {
+      const s = state.ships[si];
+      if (s.team === b.team) continue;
+      const r = (s.radius || 6) + (b.radius || 1);
+      if (dist2(b, s) <= r * r) {
+        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? (state.ships || []).find((sh) => sh.id === b.ownerId) : void 0;
+        let dealtToShield = 0;
+        let dealtToHealth = 0;
+        const shield = s.shield || 0;
+        if (shield > 0) {
+          const absorbed = Math.min(shield, b.damage || 0);
+          s.shield = shield - absorbed;
+          const hitAngle = Math.atan2((b.y || 0) - (s.y || 0), (b.x || 0) - (s.x || 0));
+          (state.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed, hitAngle });
+          (state.damageEvents ||= []).push({ id: s.id, type: "shield", amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
+          const remaining = (b.damage || 0) - absorbed;
+          if (remaining > 0) {
+            s.hp -= remaining;
+            (state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
+            (state.damageEvents ||= []).push({ id: s.id, type: "hp", amount: remaining, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
+          }
+          dealtToShield = absorbed;
+          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
+        } else {
+          s.hp -= b.damage || 0;
+          (state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });
+          (state.damageEvents ||= []).push({ id: s.id, type: "hp", amount: b.damage || 0, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
+          dealtToHealth = b.damage || 0;
+        }
+        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+        s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+        if (attacker) {
+          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);
+          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
+            attacker.xp -= progression.xpToLevel(attacker.level || 1);
+            attacker.level = (attacker.level || 1) + 1;
+            const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+            const lvl = attacker.level || 1;
+            const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
+            const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
+            const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
+            const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
+            const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+            const hpMul = 1 + hpScalar;
+            const shMul = 1 + shScalar;
+            const dmgMul = 1 + dmgScalar;
+            attacker.maxHp = (attacker.maxHp || 0) * hpMul;
+            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
+            if (typeof attacker.maxShield === "number") {
+              attacker.maxShield = (attacker.maxShield || 0) * shMul;
+              attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
+            }
+            if (Array.isArray(attacker.cannons)) {
+              for (const c of attacker.cannons) {
+                if (typeof c.damage === "number") c.damage *= dmgMul;
+              }
+            }
+            if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
+            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
+          }
+        }
+        state.bullets.splice(bi, 1);
+        if (s.hp <= 0) {
+          if (attacker) {
+            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);
+            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
+              attacker.xp -= progression.xpToLevel(attacker.level || 1);
+              attacker.level = (attacker.level || 1) + 1;
+              const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+              const lvl = attacker.level || 1;
+              const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
+              const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
+              const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
+              const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
+              const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+              const hpMul = 1 + hpScalar;
+              const shMul = 1 + shScalar;
+              const dmgMul = 1 + dmgScalar;
+              attacker.maxHp = (attacker.maxHp || 0) * hpMul;
+              attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
+              if (typeof attacker.maxShield === "number") {
+                attacker.maxShield = (attacker.maxShield || 0) * shMul;
+                attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
+              }
+              if (Array.isArray(attacker.cannons)) {
+                for (const c of attacker.cannons) {
+                  if (typeof c.damage === "number") c.damage *= dmgMul;
+                }
+              }
+              if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
+              if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
+            }
+          }
+          (state.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });
+          state.ships.splice(si, 1);
+        }
+        break;
+      }
+    }
+  }
+  for (const s of state.ships || []) {
+    if (s.maxShield) s.shield = Math.min(s.maxShield, (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds);
+  }
+  for (const s of state.ships || []) {
+    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+    s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+  }
+  return state;
+}
+
+// src/gamemanager.ts
+init_rng();
+
+// src/config/displayConfig.ts
+function getDefaultBounds() {
+  const W = typeof window !== "undefined" && window.innerWidth ? window.innerWidth : 800;
+  const H = typeof window !== "undefined" && window.innerHeight ? window.innerHeight : 600;
+  return { W: Math.max(800, W), H: Math.max(600, H) };
+}
+
+// src/createSimWorker.ts
+function createSimWorker(url = "./simWorker.js") {
+  const worker = new Worker(url, { type: "module" });
+  const listeners = /* @__PURE__ */ new Map();
+  worker.onmessage = (ev) => {
+    const msg = ev.data;
+    const cb = listeners.get(msg && msg.type);
+    if (cb) cb(msg);
+  };
+  return {
+    post(msg) {
+      worker.postMessage(msg);
+    },
+    on(type, cb) {
+      listeners.set(type, cb);
+    },
+    terminate() {
+      worker.terminate();
+    }
+  };
+}
+
+// src/config/gamemanagerConfig.ts
+var SHIELD = {
+  ttl: 0.4,
+  particleCount: 6,
+  particleTTL: 0.5,
+  particleColor: "#88ccff",
+  particleSize: 2,
+  // arcWidth (radians) for shield hit visual/particle spread centered on hitAngle
+  arcWidth: Math.PI / 6
+};
+var HEALTH = {
+  ttl: 0.6,
+  particleCount: 8,
+  particleTTL: 0.6,
+  particleColor: "#ffb3b3",
+  particleSize: 2.5
+};
+var EXPLOSION = {
+  particleCount: 30,
+  particleTTL: 1.2,
+  particleColor: "#ffaa33",
+  particleSize: 3,
+  minSpeed: 20,
+  maxSpeed: 140
+};
+var FALLBACK_POSITIONS = [
+  { x: 100, y: 100, team: "red" },
+  { x: 700, y: 500, team: "blue" }
+];
+var STARS = { twinkle: true, redrawInterval: 500, background: "#041018", count: 140 };
+
+// src/gamemanager.ts
+init_entitiesConfig();
+init_teamsConfig();
+var flashes = [];
+var shieldFlashes = [];
+var healthFlashes = [];
+var config = {
+  shield: { ...SHIELD },
+  health: { ...HEALTH },
+  explosion: { ...EXPLOSION },
+  stars: { ...STARS }
+};
+var _seed2 = null;
+var _reinforcementInterval = 5;
+var _reinforcementAccumulator = 0;
+function setReinforcementInterval(seconds) {
+  _reinforcementInterval = Number(seconds) || 5;
+}
+function getReinforcementInterval() {
+  return _reinforcementInterval;
+}
+function emitManagerEvent(map, type, data) {
+  const arr = map.get(type) || [];
+  for (const cb of arr.slice()) {
+    try {
+      if (typeof cb === "function") cb(data);
+    } catch (e) {
+    }
+  }
+}
+function evaluateReinforcement(dt, state, continuousOptions = {}) {
+  _reinforcementAccumulator += dt;
+  if (_reinforcementAccumulator >= _reinforcementInterval) {
+    _reinforcementAccumulator = 0;
+    try {
+      if (typeof chooseReinforcementsWithManagerSeed === "function") {
+        const orders = chooseReinforcementsWithManagerSeed(state, { ...continuousOptions, bounds: getDefaultBounds(), enabled: true });
+        if (Array.isArray(orders) && orders.length) {
+          const spawned = [];
+          for (const o of orders) {
+            try {
+              const ship = createShip(o.type || getDefaultShipType(), o.x || 100, o.y || 100, o.team || "red");
+              state.ships.push(ship);
+              spawned.push(ship);
+            } catch (e) {
+            }
+          }
+          return { spawned };
+        }
+      }
+      const fallback = getDefaultShipType();
+      const r = createShip(fallback, FALLBACK_POSITIONS[0].x, FALLBACK_POSITIONS[0].y, FALLBACK_POSITIONS[0].team);
+      const b = createShip(fallback, FALLBACK_POSITIONS[1].x, FALLBACK_POSITIONS[1].y, FALLBACK_POSITIONS[1].team);
+      state.ships.push(r);
+      state.ships.push(b);
+      return { spawned: [r, b] };
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+function createGameManager({ useWorker = true, renderer = null, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
+  let state = makeInitialState();
+  let running = false;
+  const listeners = /* @__PURE__ */ new Map();
+  const workerReadyCbs = [];
+  let simWorker = null;
+  let workerReady = false;
+  let lastReinforcement = { spawned: [], timestamp: 0, options: {} };
+  let continuous = false;
+  let continuousOptions = {};
+  function emit(type, msg) {
+    emitManagerEvent(listeners, type, msg);
+  }
+  function _mgr_random() {
+    return srandom();
+  }
+  try {
+    if (useWorker) {
+      const factory = createSimWorkerFactory || createSimWorker;
+      simWorker = factory(new URL("./simWorker.js", import.meta.url).href);
+      simWorker.on && simWorker.on("ready", () => {
+        workerReady = true;
+        for (const cb of workerReadyCbs.slice()) {
+          try {
+            cb();
+          } catch (e) {
+          }
+        }
+      });
+      simWorker.on && simWorker.on("snapshot", (m) => {
+        if (m && m.state) state = m.state;
+      });
+      simWorker.on && simWorker.on("reinforcements", (m) => {
+        emit("reinforcements", m);
+      });
+      try {
+        simWorker.post({ type: "init", seed, bounds: getDefaultBounds(), simDtMs: SIM_DT_MS, state });
+        simWorker.post({ type: "start" });
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+    simWorker = null;
+  }
+  function _evaluateAndEmit(dt) {
+    const result = evaluateReinforcement(dt, state, continuousOptions);
+    if (result && Array.isArray(result.spawned) && result.spawned.length) {
+      lastReinforcement = { spawned: result.spawned, timestamp: Date.now(), options: { ...continuousOptions } };
+      emit("reinforcements", { spawned: result.spawned });
+    }
+  }
+  function step(dtSeconds) {
+    if (!simWorker) {
+      try {
+        applySimpleAI(state, dtSeconds, getDefaultBounds());
+      } catch (e) {
+      }
+      try {
+        simulateStep(state, dtSeconds, getDefaultBounds());
+      } catch (e) {
+      }
+    } else {
+      try {
+        simWorker.post && simWorker.post({ type: "snapshotRequest" });
+      } catch (e) {
+      }
+    }
+    _evaluateAndEmit(dtSeconds);
+    if (Array.isArray(state.explosions)) {
+      for (const ex of state.explosions) {
+        flashes.push({ ...ex });
+      }
+    }
+    if (Array.isArray(state.shieldHits)) {
+      for (const h of state.shieldHits) {
+        shieldFlashes.push({ ...h });
+      }
+      state.shieldHits.length = 0;
+    }
+    if (Array.isArray(state.healthHits)) {
+      for (const h of state.healthHits) {
+        healthFlashes.push({ ...h });
+      }
+      state.healthHits.length = 0;
+    }
+    function decay(arr, dt) {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const it = arr[i];
+        it.life = (it.life || it.ttl || 0) - dt;
+        if (it.life <= 0) arr.splice(i, 1);
+      }
+    }
+    decay(flashes, dtSeconds);
+    decay(shieldFlashes, dtSeconds);
+    decay(healthFlashes, dtSeconds);
+    if (renderer && typeof renderer.renderState === "function") {
+      try {
+        renderer.renderState({ ships: state.ships, bullets: state.bullets, flashes, shieldFlashes, healthFlashes, t: state.t });
+      } catch (e) {
+      }
+    }
+  }
+  let last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  let acc = 0;
+  function runLoop() {
+    if (!running) return;
+    const now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    acc += now - last;
+    last = now;
+    if (acc > 250) acc = 250;
+    while (acc >= SIM_DT_MS) {
+      step(SIM_DT_MS / 1e3);
+      acc -= SIM_DT_MS;
+    }
+    try {
+      requestAnimationFrame(runLoop);
+    } catch (e) {
+      setTimeout(runLoop, SIM_DT_MS);
+    }
+  }
+  function on(evt, cb) {
+    const arr = listeners.get(evt) || [];
+    arr.push(cb);
+    listeners.set(evt, arr);
+  }
+  function off(evt, cb) {
+    const arr = listeners.get(evt) || [];
+    const i = arr.indexOf(cb);
+    if (i !== -1) arr.splice(i, 1);
+  }
+  function start() {
+    if (!running) {
+      running = true;
+      last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      runLoop();
+    }
+  }
+  function pause() {
+    running = false;
+  }
+  function resetManager() {
+    state = makeInitialState();
+    if (simWorker) try {
+      simWorker.post({ type: "command", cmd: "setState", args: { state } });
+    } catch (e) {
+    }
+  }
+  function stepOnce(dt = SIM_DT_MS / 1e3) {
+    const n = Number(dt) || SIM_DT_MS / 1e3;
+    step(n);
+  }
+  function setContinuousEnabled(v = false) {
+    continuous = !!v;
+    if (simWorker) {
+      try {
+        simWorker.post({ type: "setContinuous", value: !!v });
+      } catch (e) {
+      }
+    } else {
+      if (continuous) {
+        const result = evaluateReinforcement(SIM_DT_MS / 1e3, state, continuousOptions);
+        if (result && Array.isArray(result.spawned) && result.spawned.length) {
+          lastReinforcement = { spawned: result.spawned, timestamp: Date.now(), options: { ...continuousOptions } };
+          emit("reinforcements", { spawned: result.spawned });
+        }
+      }
+    }
+  }
+  function isContinuousEnabled() {
+    return !!continuous;
+  }
+  function setContinuousOptions(opts = {}) {
+    continuousOptions = { ...continuousOptions, ...opts };
+    if (simWorker) try {
+      simWorker.post({ type: "setContinuousOptions", opts: continuousOptions });
+    } catch (e) {
+    }
+  }
+  function getContinuousOptions() {
+    return { ...continuousOptions };
+  }
+  function setReinforcementIntervalManager(seconds) {
+    setReinforcementInterval(seconds);
+    if (simWorker) try {
+      simWorker.post({ type: "setReinforcementInterval", seconds });
+    } catch (e) {
+    }
+  }
+  function getReinforcementIntervalManager() {
+    return getReinforcementInterval();
+  }
+  function isRunning() {
+    return running;
+  }
+  function isWorker() {
+    return !!simWorker && !!workerReady;
+  }
+  function onWorkerReady(cb) {
+    if (typeof cb === "function") workerReadyCbs.push(cb);
+  }
+  function offWorkerReady(cb) {
+    const i = workerReadyCbs.indexOf(cb);
+    if (i !== -1) workerReadyCbs.splice(i, 1);
+  }
+  function spawnShip(team = "red") {
+    try {
+      const type = getDefaultShipType();
+      const b = getDefaultBounds();
+      const x = Math.max(0, Math.min(b.W, srandom() * b.W));
+      const y = Math.max(0, Math.min(b.H, srandom() * b.H));
+      const ship = createShip(type, x, y, team);
+      state.ships.push(ship);
+      return ship;
+    } catch (e) {
+      return null;
+    }
+  }
+  function formFleets() {
+    try {
+      state.ships.length = 0;
+      const { makeInitialFleets: makeInitialFleets2 } = (init_teamsConfig(), __toCommonJS(teamsConfig_exports));
+      const bounds = getDefaultBounds();
+      const seed2 = Math.floor(srandom() * 4294967295) >>> 0;
+      const ships = makeInitialFleets2(seed2, bounds, createShip);
+      for (const ship of ships) {
+        state.ships.push(ship);
+      }
+    } catch (e) {
+    }
+  }
+  function reseedManager(newSeed = Math.floor(srandom() * 4294967295)) {
+    _seed2 = newSeed >>> 0;
+    srand(_seed2);
+    if (simWorker) try {
+      simWorker.post({ type: "setSeed", seed: _seed2 });
+    } catch (e) {
+    }
+  }
+  function getLastReinforcement() {
+    return { ...lastReinforcement };
+  }
+  function snapshot() {
+    return { ships: state.ships.slice(), bullets: state.bullets.slice(), t: state.t };
+  }
+  const score = { red: 0, blue: 0 };
+  const internal = { state, bounds: getDefaultBounds() };
+  return {
+    on,
+    off,
+    start,
+    pause,
+    reset: resetManager,
+    stepOnce,
+    setContinuousEnabled,
+    isContinuousEnabled,
+    setContinuousOptions,
+    getContinuousOptions,
+    setReinforcementInterval: setReinforcementIntervalManager,
+    getReinforcementInterval: getReinforcementIntervalManager,
+    isRunning,
+    isWorker,
+    onWorkerReady,
+    offWorkerReady,
+    spawnShip,
+    reseed: reseedManager,
+    getLastReinforcement,
+    snapshot,
+    score,
+    formFleets,
+    _internal: internal
+  };
+}
+
+// src/canvasrenderer.ts
+init_assetsConfig();
+init_teamsConfig();
+init_entitiesConfig();
+
+// src/config/rendererConfig.ts
+var RendererConfig = {
+  preferred: "canvas",
+  allowUrlOverride: true,
+  allowWebGL: true,
+  // UI overlays configuration
+  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
+};
+function getPreferredRenderer() {
+  try {
+    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
+      const p = new URLSearchParams(window.location.search);
+      const r = p.get("renderer");
+      if (r === "canvas" || r === "webgl") return r;
+    }
+  } catch (e) {
+  }
+  return RendererConfig.preferred;
+}
+
+// src/canvasrenderer.ts
+var CanvasRenderer = class {
+  canvas;
+  ctx = null;
+  providesOwnLoop = false;
+  type = "canvas";
+  // ratio between backing store pixels and CSS (logical) pixels
+  pixelRatio = 1;
+  constructor(canvas) {
+    this.canvas = canvas;
+  }
+  init() {
+    this.ctx = this.canvas.getContext("2d");
+    if (!this.ctx) return false;
+    try {
+      const cssW = this.canvas.clientWidth || this.canvas.width || 1;
+      this.pixelRatio = (this.canvas.width || cssW) / cssW;
+      this.ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+      this.ctx.imageSmoothingEnabled = true;
+    } catch (e) {
+      this.pixelRatio = 1;
+    }
+    return true;
+  }
+  isRunning() {
+    return false;
+  }
+  renderState(state, interpolation = 0) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const LOGICAL_W = 1920, LOGICAL_H = 1080;
+    const rendererScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const fitScale = RendererConfig._fitScale || 1;
+    const offsetX = RendererConfig._offsetX || 0;
+    const offsetY = RendererConfig._offsetY || 0;
+    const finalScale = this.pixelRatio * fitScale * rendererScale;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.save();
+    ctx.fillStyle = AssetsConfig.palette.background || "#0b1220";
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+    if (state && state.starCanvas) {
+      try {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.drawImage(state.starCanvas, 0, 0, this.canvas.width, this.canvas.height);
+        ctx.restore();
+      } catch (e) {
+      }
+    }
+    ctx.setTransform(finalScale, 0, 0, finalScale, offsetX * this.pixelRatio, offsetY * this.pixelRatio);
+    function drawPolygon(points) {
+      if (!points || points.length === 0) return;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (state && state.starCanvas) {
+      try {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.drawImage(state.starCanvas, 0, 0, LOGICAL_W, LOGICAL_H);
+        ctx.restore();
+      } catch (e) {
+      }
+    }
+    const now = state && state.t || 0;
+    try {
+      const dmgAnim = AssetsConfig.animations && AssetsConfig.animations.damageParticles;
+      if (Array.isArray(state.damageEvents) && dmgAnim) {
+        state.particles = state.particles || [];
+        for (const ev of state.damageEvents) {
+          const count = dmgAnim.count || 6;
+          for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * (dmgAnim.spread || 0.6);
+            state.particles.push({
+              x: ev.x || 0,
+              y: ev.y || 0,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              r: 0.6 + Math.random() * 0.8,
+              color: dmgAnim.color || "#ff6b6b",
+              lifetime: dmgAnim.lifetime || 0.8,
+              age: 0,
+              shape: "circle"
+            });
+          }
+        }
+        state.damageEvents = [];
+      }
+    } catch (e) {
+    }
+    const engineTrailsEnabled = !!state.engineTrailsEnabled;
+    for (const s of state.ships || []) {
+      if (engineTrailsEnabled) {
+        s.trail = s.trail || [];
+        const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
+        if (!last || last.x !== s.x || last.y !== s.y) {
+          s.trail.push({ x: s.x, y: s.y });
+        }
+        const vconf = getVisualConfig(s.type || getDefaultShipType());
+        const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
+        const trailConf = vconf.animations[trailName];
+        const maxLen = trailConf && trailConf.maxLength || 16;
+        while (s.trail.length > maxLen) s.trail.shift();
+      } else {
+        s.trail = [];
+      }
+    }
+    if (engineTrailsEnabled) {
+      for (const s of state.ships || []) {
+        if (!s.trail || s.trail.length < 2) continue;
+        const vconf = getVisualConfig(s.type || getDefaultShipType());
+        const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
+        const trailConf = vconf.animations[trailName];
+        const color = trailConf && trailConf.color || "#6cf2ff";
+        const width = trailConf && trailConf.width || 0.18;
+        const fade = trailConf && trailConf.fade || 0.7;
+        const radius = s.radius || 6;
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        for (let i = 1; i < s.trail.length; i++) {
+          const a = Math.pow(fade, s.trail.length - i);
+          ctx.globalAlpha = a;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width * radius;
+          ctx.beginPath();
+          ctx.moveTo(s.trail[i - 1].x, s.trail[i - 1].y);
+          ctx.lineTo(s.trail[i].x, s.trail[i].y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+    }
+    for (const s of state.ships || []) {
+      try {
+        const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
+        const color = teamObj && teamObj.color || AssetsConfig.palette.shipHull;
+        const radius = s.radius || 6;
+        const angle = s.angle || 0;
+        const fallback = getDefaultShipType();
+        const shape = getShipAsset(s.type || fallback);
+        const vconf = getVisualConfig(s.type || fallback);
+        ctx.save();
+        ctx.translate(s.x || 0, s.y || 0);
+        ctx.rotate(angle);
+        ctx.scale(radius, radius);
+        ctx.fillStyle = color;
+        if (shape.type === "polygon") drawPolygon(shape.points);
+        else if (shape.type === "circle") {
+          ctx.beginPath();
+          ctx.arc(0, 0, shape.r || 1, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (shape.type === "compound" && Array.isArray(shape.parts)) {
+          for (const part of shape.parts) {
+            if (part.type === "polygon") drawPolygon(part.points);
+            else if (part.type === "circle") {
+              ctx.beginPath();
+              ctx.arc(0, 0, part.r || 1, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+        try {
+          const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+          const thresholds = AssetsConfig.damageThresholds || { moderate: 0.66, heavy: 0.33 };
+          let ds = "light";
+          if (hpPct < thresholds.heavy) ds = "heavy";
+          else if (hpPct < thresholds.moderate) ds = "moderate";
+          const dcfg = vconf.damageStates?.[ds] || AssetsConfig.damageStates?.[ds];
+          if (dcfg) {
+            ctx.globalCompositeOperation = "source-over";
+            ctx.fillStyle = dcfg.accentColor || "#ff6b6b";
+            ctx.globalAlpha = (1 - (hpPct || 0)) * (dcfg.opacity || 0.5);
+            if (shape.type === "polygon") drawPolygon(shape.points);
+            else if (shape.type === "circle") {
+              ctx.beginPath();
+              ctx.arc(0, 0, shape.r || 1, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (shape.type === "compound" && Array.isArray(shape.parts)) {
+              for (const part of shape.parts) {
+                if (part.type === "polygon") drawPolygon(part.points);
+                else if (part.type === "circle") {
+                  ctx.beginPath();
+                  ctx.arc(0, 0, part.r || 1, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              }
+            }
+            ctx.globalAlpha = 1;
+          }
+        } catch (e) {
+        }
+        ctx.restore();
+        try {
+          const engineName = vconf.visuals && vconf.visuals.engine || "engineFlare";
+          const engine = vconf.animations[engineName];
+          if (engine && engine.type === "polygon") {
+            const pulse = 0.5 + 0.5 * Math.sin((now || 0) * (engine.pulseRate || 6) * Math.PI * 2);
+            ctx.save();
+            ctx.translate(s.x || 0, s.y || 0);
+            ctx.rotate(angle);
+            const engOffset = engine.offset != null ? engine.offset : -0.9;
+            ctx.translate(engOffset * radius, 0);
+            ctx.scale(radius, radius);
+            ctx.fillStyle = vconf.palette.shipAccent || AssetsConfig.palette.shipAccent;
+            const engAlpha = engine.alpha != null ? engine.alpha : 0.4;
+            ctx.globalAlpha = engAlpha * pulse;
+            drawPolygon(engine.points);
+            ctx.globalAlpha = 1;
+            ctx.restore();
+          }
+        } catch (e) {
+        }
+        try {
+          const shieldName = vconf.visuals && vconf.visuals.shield || "shieldEffect";
+          const sh = vconf.animations[shieldName];
+          const shieldPct = typeof s.shieldPercent === "number" ? s.shieldPercent : s.maxShield && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+          if (sh && shieldPct > 0) {
+            const pulse = 0.6 + 0.4 * Math.sin((now || 0) * (sh.pulseRate || 2) * Math.PI * 2);
+            ctx.save();
+            ctx.translate(s.x || 0, s.y || 0);
+            ctx.rotate(angle);
+            ctx.scale(radius * (sh.r || 1), radius * (sh.r || 1));
+            ctx.lineWidth = (sh.strokeWidth != null ? sh.strokeWidth : 0.08) * radius;
+            ctx.strokeStyle = sh.color || "#88ccff";
+            const aBase = sh.alphaBase != null ? sh.alphaBase : 0.25;
+            const aScale = sh.alphaScale != null ? sh.alphaScale : 0.75;
+            ctx.globalAlpha = Math.min(1, aBase + aScale * shieldPct) * pulse;
+            try {
+              let flash = null;
+              try {
+                const nowT = state && state.t || 0;
+                const arr = Array.isArray(shieldFlashes) ? shieldFlashes.filter((f) => f.id === s.id) : [];
+                let bestTs = -Infinity;
+                for (const f of arr) {
+                  if (!f) continue;
+                  const fTs = typeof f._ts === "number" ? f._ts : 0;
+                  const fTtl = typeof f.ttl === "number" ? f.ttl : AssetsConfig && AssetsConfig.shield && AssetsConfig.shield.ttl || 0.4;
+                  if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) {
+                    bestTs = fTs;
+                    flash = f;
+                  }
+                }
+              } catch (e) {
+                flash = null;
+              }
+              if (flash && typeof flash.hitAngle === "number") {
+                const arc = typeof flash.arcWidth === "number" ? flash.arcWidth : vconf && vconf.arcWidth || AssetsConfig && AssetsConfig.shieldArcWidth || Math.PI / 6;
+                const start = flash.hitAngle - arc * 0.5 - angle;
+                const end = flash.hitAngle + arc * 0.5 - angle;
+                ctx.beginPath();
+                ctx.arc(0, 0, 1, start, end);
+                ctx.stroke();
+              } else {
+                ctx.beginPath();
+                ctx.arc(0, 0, 1, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+            } catch (e) {
+              ctx.beginPath();
+              ctx.arc(0, 0, 1, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            ctx.restore();
+          }
+        } catch (e) {
+        }
+        try {
+          const hpBar = RendererConfig.hpBar || { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 };
+          const pct = Math.max(0, (s.hp || 0) / (s.maxHp || 1));
+          ctx.fillStyle = hpBar.bg;
+          ctx.fillRect((s.x || 0) + (hpBar.dx || -10), (s.y || 0) + (hpBar.dy || -12), hpBar.w || 20, hpBar.h || 4);
+          ctx.fillStyle = hpBar.fill;
+          ctx.fillRect((s.x || 0) + (hpBar.dx || -10), (s.y || 0) + (hpBar.dy || -12), (hpBar.w || 20) * pct, hpBar.h || 4);
+        } catch (e) {
+          ctx.fillStyle = "#222";
+          ctx.fillRect((s.x || 0) - 10, (s.y || 0) - 12, 20, 4);
+          ctx.fillStyle = "#4caf50";
+          ctx.fillRect((s.x || 0) - 10, (s.y || 0) - 12, 20 * Math.max(0, (s.hp || 0) / (s.maxHp || 1)), 4);
+        }
+      } catch (e) {
+      }
+    }
+    for (const s of state.ships || []) {
+      try {
+        const radius = (s.radius || 6) * 0.6;
+        const angle = s.angle || 0;
+        const tShape = getTurretAsset("basic");
+        ctx.save();
+        ctx.translate(s.x || 0, s.y || 0);
+        ctx.rotate(angle);
+        ctx.scale(radius, radius);
+        ctx.fillStyle = AssetsConfig.palette.turret;
+        if (tShape.type === "compound") {
+          for (const part of tShape.parts) {
+            if (part.type === "polygon") drawPolygon(part.points);
+            else if (part.type === "circle") {
+              ctx.beginPath();
+              ctx.arc(0, 0, part.r || 1, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        } else if (tShape.type === "polygon") drawPolygon(tShape.points || []);
+        else if (tShape.type === "circle") {
+          ctx.beginPath();
+          ctx.arc(0, 0, tShape.r || 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      } catch (e) {
+      }
+    }
+    if (Array.isArray(state.particles)) {
+      for (const p of state.particles) {
+        try {
+          ctx.save();
+          ctx.translate(p.x || 0, p.y || 0);
+          ctx.fillStyle = p.color || "#fff";
+          if (p.shape === "circle" || p.r) {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.r || p.size || 1, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(-1, -1, 2, 2);
+          }
+          ctx.restore();
+        } catch (e) {
+        }
+      }
+    }
+    function drawRing(x, y, R, color, alpha = 1, thickness = 2) {
+      try {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, R), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } catch (e) {
+      }
+    }
+    try {
+      const nowT = state && state.t || 0;
+      for (const s of state.ships || []) {
+        try {
+          let flash = null;
+          const arr = Array.isArray(healthFlashes) ? healthFlashes.filter((f) => f.id === s.id) : [];
+          let bestTs = -Infinity;
+          for (const f of arr) {
+            if (!f) continue;
+            const fTs = typeof f._ts === "number" ? f._ts : 0;
+            const fTtl = typeof f.ttl === "number" ? f.ttl : 0.4;
+            if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) {
+              bestTs = fTs;
+              flash = f;
+            }
+          }
+          if (flash) {
+            const ttl = flash.ttl || 0.4;
+            const life = flash.life != null ? flash.life : ttl;
+            const t = Math.max(0, Math.min(1, life / ttl));
+            const R = 6 + (1 - t) * 18;
+            const alpha = 0.9 * t;
+            drawRing(flash.x || (s.x || 0), flash.y || (s.y || 0), R, "#ff7766", alpha, 2);
+          }
+        } catch (e) {
+        }
+      }
+    } catch (e) {
+    }
+    for (const b of state.bullets || []) {
+      try {
+        const r = b.radius || b.bulletRadius || 1.5;
+        const kind = bulletKindForRadius(r / 6);
+        const shape = getBulletAsset(kind);
+        ctx.save();
+        ctx.translate(b.x || 0, b.y || 0);
+        const px = Math.max(1, r);
+        if (shape.type === "circle") {
+          ctx.beginPath();
+          ctx.fillStyle = AssetsConfig.palette.bullet;
+          ctx.arc(0, 0, px, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (shape.type === "polygon") {
+          ctx.fillStyle = AssetsConfig.palette.bullet;
+          ctx.scale(px, px);
+          drawPolygon(shape.points);
+        }
+        ctx.restore();
+      } catch (e) {
+      }
+    }
+    ctx.restore();
+  }
+};
+
+// src/webglrenderer.ts
+init_assetsConfig();
+init_teamsConfig();
+init_entitiesConfig();
+var WebGLRenderer = class {
+  canvas;
+  gl = null;
+  // simple GL program state for point rendering
+  prog = null;
+  attribLoc_pos = -1;
+  attribLoc_size = -1;
+  attribLoc_color = -1;
+  vertexBuffer = null;
+  providesOwnLoop = false;
+  type = "webgl";
+  pixelRatio = 1;
+  constructor(canvas) {
+    this.canvas = canvas;
+  }
+  init() {
+    try {
+      this.gl = this.canvas.getContext("webgl2");
+      if (!this.gl) {
+        this.gl = this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
+        if (!this.gl) return false;
+      }
+      const gl = this.gl;
+      try {
+        const bg = (AssetsConfig.palette.background || "#0b1220").replace("#", "");
+        const bigint = parseInt(bg.length === 3 ? bg.split("").map((c) => c + c).join("") : bg, 16);
+        const r = (bigint >> 16 & 255) / 255;
+        const g = (bigint >> 8 & 255) / 255;
+        const b = (bigint & 255) / 255;
+        gl.clearColor(r, g, b, 1);
+      } catch {
+        gl.clearColor(0.02, 0.03, 0.06, 1);
+      }
+      try {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      } catch (e) {
+      }
+      try {
+        const cssW = this.canvas.clientWidth || this.canvas.width || 1;
+        this.pixelRatio = (this.canvas.width || cssW) / cssW;
+      } catch (e) {
+        this.pixelRatio = 1;
+      }
+      try {
+        const vs = `attribute vec2 a_pos; attribute float a_size; attribute vec4 a_color; varying vec4 v_color; void main(){ v_color=a_color; gl_Position = vec4(a_pos, 0.0, 1.0); gl_PointSize = a_size; }`;
+        const fs = `precision mediump float; varying vec4 v_color; void main(){ vec2 c = gl_PointCoord - vec2(0.5); if(length(c) > 0.5) discard; gl_FragColor = v_color; }`;
+        const compile = (src, type) => {
+          const s = gl.createShader(type);
+          gl.shaderSource(s, src);
+          gl.compileShader(s);
+          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+            const info = gl.getShaderInfoLog(s);
+            gl.deleteShader(s);
+            throw new Error("Shader compile error: " + info);
+          }
+          return s;
+        };
+        const vsObj = compile(vs, gl.VERTEX_SHADER);
+        const fsObj = compile(fs, gl.FRAGMENT_SHADER);
+        const prog = gl.createProgram();
+        gl.attachShader(prog, vsObj);
+        gl.attachShader(prog, fsObj);
+        gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+          throw new Error("Program link error: " + gl.getProgramInfoLog(prog));
+        }
+        this.prog = prog;
+        this.attribLoc_pos = gl.getAttribLocation(prog, "a_pos");
+        this.attribLoc_size = gl.getAttribLocation(prog, "a_size");
+        this.attribLoc_color = gl.getAttribLocation(prog, "a_color");
+        this.vertexBuffer = gl.createBuffer();
+      } catch (e) {
+        this.prog = null;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  // Called when backing-store size (canvas.width/height) changes so
+  // the renderer can update internal scaling/viewport without a full re-init.
+  updateScale() {
+    if (!this.gl) return;
+    try {
+      const cssW = this.canvas.clientWidth || Math.round((this.canvas.width || 1) / (this.pixelRatio || 1));
+      this.pixelRatio = (this.canvas.width || cssW) / Math.max(1, cssW);
+    } catch (e) {
+    }
+  }
+  isRunning() {
+    return false;
+  }
+  renderState(state, interpolation = 0) {
+    if (!this.gl) return;
+    const gl = this.gl;
+    try {
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      if (this.prog && this.vertexBuffer) {
+        try {
+          const w = this.canvas.clientWidth || Math.round(this.canvas.width / this.pixelRatio);
+          const h = this.canvas.clientHeight || Math.round(this.canvas.height / this.pixelRatio);
+          const ships = state.ships || [];
+          const verts = [];
+          const now = state && state.t || 0;
+          for (const s of ships) {
+            const x = s.x || 0;
+            const y = s.y || 0;
+            const clipX = x / Math.max(1, w) * 2 - 1;
+            const clipY = 1 - y / Math.max(1, h) * 2;
+            const radius = s.radius || 6;
+            const ps = Math.max(2, radius * 2);
+            const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
+            const colorHex = teamObj && teamObj.color || AssetsConfig.palette.shipHull || "#888";
+            const hexToRgba = (hex) => {
+              const h2 = hex.replace("#", "");
+              const bigint = parseInt(h2.length === 3 ? h2.split("").map((c) => c + c).join("") : h2, 16);
+              const r = (bigint >> 16 & 255) / 255;
+              const g = (bigint >> 8 & 255) / 255;
+              const b = (bigint & 255) / 255;
+              return [r, g, b, 1];
+            };
+            const baseColor = hexToRgba(colorHex);
+            verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
+            try {
+              const fallback = getDefaultShipType();
+              const vconf = getVisualConfig(s.type || fallback);
+              const engineName = vconf.visuals && vconf.visuals.engine || "engineFlare";
+              const engine = vconf.animations && vconf.animations[engineName];
+              if (engine && engine.type === "polygon") {
+                const pulse = 0.5 + 0.5 * Math.sin((now || 0) * (engine.pulseRate || 6) * Math.PI * 2);
+                const offset = (engine.offset != null ? engine.offset : -0.9) * (s.radius || 6);
+                const ang = s.angle || 0;
+                const ex = x + Math.cos(ang) * offset;
+                const ey = y + Math.sin(ang) * offset;
+                const cex = ex / Math.max(1, w) * 2 - 1;
+                const cey = 1 - ey / Math.max(1, h) * 2;
+                const accent = vconf.palette && vconf.palette.shipAccent || AssetsConfig.palette.shipAccent || "#ffd27f";
+                const ac = hexToRgba(accent);
+                const engAlpha = engine.alpha != null ? engine.alpha : 0.4;
+                verts.push(cex, cey, Math.max(2, ps * 0.9), ac[0], ac[1], ac[2], engAlpha * pulse);
+              }
+            } catch (e) {
+            }
+            try {
+              const fallback = getDefaultShipType();
+              const vconf = getVisualConfig(s.type || fallback);
+              const shieldName = vconf.visuals && vconf.visuals.shield || "shieldEffect";
+              const sh = vconf.animations && vconf.animations[shieldName];
+              const shieldPct = typeof s.shieldPercent === "number" ? s.shieldPercent : s.maxShield && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+              if (sh && shieldPct > 0) {
+                const pulse = 0.6 + 0.4 * Math.sin((now || 0) * (sh.pulseRate || 2) * Math.PI * 2);
+                const accent = sh.color || "#88ccff";
+                const ac = hexToRgba(accent);
+                const aBase = sh.alphaBase != null ? sh.alphaBase : 0.25;
+                const aScale = sh.alphaScale != null ? sh.alphaScale : 0.75;
+                verts.push(clipX, clipY, Math.max(4, ps * (sh.r || 1.6)), ac[0], ac[1], ac[2], Math.min(1, aBase + aScale * shieldPct) * pulse);
+                try {
+                  let flash = null;
+                  try {
+                    const nowT = state && state.t || 0;
+                    const arr = shieldFlashes.filter((f) => f && f.id === s.id) || [];
+                    let bestTs = -Infinity;
+                    for (const f of arr) {
+                      if (!f) continue;
+                      const fTs = typeof f._ts === "number" ? f._ts : 0;
+                      const fTtl = typeof f.ttl === "number" ? f.ttl : AssetsConfig && AssetsConfig.shield && AssetsConfig.shield.ttl || 0.4;
+                      if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) {
+                        bestTs = fTs;
+                        flash = f;
+                      }
+                    }
+                  } catch (e) {
+                    flash = null;
+                  }
+                  if (flash && typeof flash.hitAngle === "number") {
+                    const arc = typeof flash.arcWidth === "number" ? flash.arcWidth : vconf && vconf.arcWidth || AssetsConfig && AssetsConfig.shieldArcWidth || Math.PI / 6;
+                    const segs = 6;
+                    const radiusMul = (sh.r || 1.6) * (s.radius || 6);
+                    for (let si = 0; si < segs; si++) {
+                      const t = segs === 1 ? 0.5 : si / (segs - 1);
+                      const a = flash.hitAngle - arc * 0.5 + t * arc;
+                      const px = x + Math.cos(a) * radiusMul;
+                      const py = y + Math.sin(a) * radiusMul;
+                      const cpx = px / Math.max(1, w) * 2 - 1;
+                      const cpy = 1 - py / Math.max(1, h) * 2;
+                      const pointSize = Math.max(2, ps * 0.45);
+                      const alpha = Math.min(1, aBase + aScale * shieldPct) * pulse * 0.9;
+                      verts.push(cpx, cpy, pointSize, ac[0], ac[1], ac[2], alpha);
+                    }
+                  }
+                } catch (e) {
+                }
+              }
+            } catch (e) {
+            }
+            try {
+              const fallback = getDefaultShipType();
+              const vconf = getVisualConfig(s.type || fallback);
+              const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+              const thresholds = AssetsConfig.damageThresholds || { moderate: 0.66, heavy: 0.33 };
+              let ds = "light";
+              if (hpPct < thresholds.heavy) ds = "heavy";
+              else if (hpPct < thresholds.moderate) ds = "moderate";
+              const dcfg = vconf.damageStates && vconf.damageStates[ds] || AssetsConfig.damageStates && AssetsConfig.damageStates[ds];
+              if (dcfg) {
+                const accent = dcfg.accentColor || "#ff6b6b";
+                const alpha = (1 - (hpPct || 0)) * (dcfg.opacity || 0.5);
+                const ac = hexToRgba(accent);
+                verts.push(clipX, clipY, Math.max(2, ps * 1), ac[0], ac[1], ac[2], alpha);
+              }
+            } catch (e) {
+            }
+            try {
+              const nowT = state && state.t || 0;
+              let hflash = null;
+              const harr = healthFlashes.filter((hf) => hf && hf.id === s.id);
+              let bestTsH = -Infinity;
+              for (const hf of harr) {
+                if (!hf) continue;
+                const fTs = typeof hf._ts === "number" ? hf._ts : 0;
+                const fTtl = typeof hf.ttl === "number" ? hf.ttl : 0.6;
+                if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTsH) {
+                  bestTsH = fTs;
+                  hflash = hf;
+                }
+              }
+              if (hflash) {
+                const hx = hflash.x != null ? hflash.x : x;
+                const hy = hflash.y != null ? hflash.y : y;
+                const cpx = hx / Math.max(1, w) * 2 - 1;
+                const cpy = 1 - hy / Math.max(1, h) * 2;
+                const pointSize = Math.max(2, ps * 0.6);
+                const col = [1, 0.47, 0.4, 0.95];
+                verts.push(cpx, cpy, pointSize, col[0], col[1], col[2], col[3]);
+              }
+            } catch (e) {
+            }
+          }
+          const floatArr = new Float32Array(verts);
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
+          gl.useProgram(this.prog);
+          const stride = 7 * 4;
+          gl.enableVertexAttribArray(this.attribLoc_pos);
+          gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
+          gl.enableVertexAttribArray(this.attribLoc_size);
+          gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
+          gl.enableVertexAttribArray(this.attribLoc_color);
+          gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
+          const count = Math.floor(floatArr.length / 7);
+          gl.drawArrays(gl.POINTS, 0, count);
+        } catch (e) {
+        }
+      }
+    } catch (e) {
+    }
+  }
+};
+
+// src/main.ts
+async function startApp(rootDocument = document) {
+  const canvas = rootDocument.getElementById("world");
+  const ui = {
+    startPause: rootDocument.getElementById("startPause"),
+    reset: rootDocument.getElementById("reset"),
+    addRed: rootDocument.getElementById("addRed"),
+    addBlue: rootDocument.getElementById("addBlue"),
+    toggleTrails: rootDocument.getElementById("toggleTrails"),
+    speed: rootDocument.getElementById("speed"),
+    redScore: rootDocument.getElementById("redScore"),
+    blueScore: rootDocument.getElementById("blueScore"),
+    stats: rootDocument.getElementById("stats"),
+    continuousCheckbox: rootDocument.getElementById("continuousCheckbox"),
+    seedBtn: rootDocument.getElementById("seedBtn"),
+    formationBtn: rootDocument.getElementById("formationBtn")
+  };
+  try {
+    if (ui.stats) ui.stats.textContent = "Ships: 0 (R:0 B:0) Bullets: 0";
+  } catch (e) {
+  }
+  const LOGICAL_BOUNDS = { W: 1920, H: 1080 };
+  function fitCanvasToWindow() {
+    const baseDpr = window.devicePixelRatio || 1;
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const fitScale = Math.min(winW / LOGICAL_BOUNDS.W, winH / LOGICAL_BOUNDS.H);
+    const cfgScale = RendererConfig && typeof RendererConfig.rendererScale === "number" ? RendererConfig.rendererScale : 1;
+    const finalScale = fitScale * cfgScale;
+    const offsetX = 0;
+    const offsetY = 0;
+    if (canvas) {
+      canvas.style.width = `${winW}px`;
+      canvas.style.height = `${winH}px`;
+      canvas.width = Math.round(winW * baseDpr);
+      canvas.height = Math.round(winH * baseDpr);
+    }
+    RendererConfig._fitScale = fitScale;
+    RendererConfig._offsetX = offsetX;
+    RendererConfig._offsetY = offsetY;
+    const scaleVal = rootDocument.getElementById("rendererScaleValue");
+    if (scaleVal) scaleVal.textContent = cfgScale.toFixed(2);
+  }
+  const scaleSlider = rootDocument.getElementById("rendererScaleRange");
+  if (scaleSlider) {
+    scaleSlider.addEventListener("input", (ev) => {
+      const val = parseFloat(ev.target.value);
+      if (!isNaN(val)) {
+        RendererConfig.rendererScale = val;
+        fitCanvasToWindow();
+      }
+    });
+    const scaleVal = rootDocument.getElementById("rendererScaleValue");
+    if (scaleVal) scaleVal.textContent = scaleSlider.value;
+    fitCanvasToWindow();
+  }
+  fitCanvasToWindow();
+  window.addEventListener("resize", fitCanvasToWindow);
+  let renderer;
+  const pref = getPreferredRenderer();
+  if (pref === "webgl") {
+    try {
+      const w = new WebGLRenderer(canvas);
+      if (w && w.init && w.init()) renderer = w;
+    } catch (e) {
+    }
+  }
+  if (!renderer) {
+    renderer = new CanvasRenderer(canvas);
+    renderer.init && renderer.init();
+  }
+  try {
+    window.gm = window.gm || {};
+  } catch (e) {
+  }
+  const gm = createGameManager({ renderer, useWorker: false, seed: 12345 });
+  if (gm && gm._internal) gm._internal.bounds = LOGICAL_BOUNDS;
+  try {
+    if (typeof window !== "undefined" && window.gm) Object.assign(window.gm, gm);
+  } catch (e) {
+  }
+  let simSpeedMultiplier = 1;
+  if (ui.speed) {
+    ui.speed.addEventListener("click", () => {
+      simSpeedMultiplier = simSpeedMultiplier >= 4 ? 0.25 : simSpeedMultiplier * 2;
+      ui.speed.textContent = `Speed: ${simSpeedMultiplier}\xD7`;
+    });
+    ui.speed.textContent = `Speed: ${simSpeedMultiplier}\xD7`;
+  }
+  if (gm && typeof gm.stepOnce === "function") {
+    const origStepOnce = gm.stepOnce.bind(gm);
+    gm.stepOnce = (dt = 0.016) => origStepOnce(dt * simSpeedMultiplier);
+  }
+  if (ui.formationBtn) {
+    ui.formationBtn.addEventListener("click", () => {
+      if (gm && typeof gm.formFleets === "function") {
+        gm.formFleets();
+      }
+    });
+  }
+  let engineTrailsEnabled = true;
+  if (gm && gm._internal && gm._internal.state) {
+    gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
+  }
+  if (ui.toggleTrails) {
+    ui.toggleTrails.addEventListener("click", () => {
+      engineTrailsEnabled = !engineTrailsEnabled;
+      if (gm && gm._internal && gm._internal.state) {
+        gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
+      }
+      ui.toggleTrails.textContent = engineTrailsEnabled ? "\u2604 Trails: On" : "\u2604 Trails: Off";
+    });
+    ui.toggleTrails.textContent = engineTrailsEnabled ? "\u2604 Trails: On" : "\u2604 Trails: Off";
+  }
+  try {
+    const host = location && location.hostname || "";
+    const urlParams = typeof URLSearchParams !== "undefined" ? new URLSearchParams(location.search) : null;
+    const autotest = urlParams && urlParams.get("autotest") === "1" || !!window.__AUTO_REINFORCE_DEV__;
+    if ((host === "127.0.0.1" || host === "localhost") && autotest) {
+      try {
+        if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(true);
+      } catch (e) {
+      }
+      try {
+        if (gm && typeof gm.setReinforcementInterval === "function") gm.setReinforcementInterval(0.01);
+      } catch (e) {
+      }
+      try {
+        if (gm && typeof gm.stepOnce === "function") gm.stepOnce(0.02);
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  let lastReinforcementSummary = "";
+  try {
+    if (gm && typeof gm.on === "function") {
+      gm.on("reinforcements", (msg) => {
+        const list = msg && msg.spawned || [];
+        const types = list.map((s) => s.type).filter(Boolean);
+        const summary = `Reinforcements: spawned ${list.length} ships (${types.join(", ")})`;
+        lastReinforcementSummary = summary;
+        try {
+          setTimeout(() => {
+            lastReinforcementSummary = "";
+          }, 3e3);
+        } catch (e) {
+        }
+        try {
+          if (ui && ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
+        } catch (e) {
+        }
+      });
+    }
+  } catch (e) {
+  }
+  const workerIndicator = rootDocument.getElementById("workerIndicator");
+  let toastContainer = rootDocument.getElementById("toastContainer");
+  if (!toastContainer) {
+    try {
+      toastContainer = rootDocument.createElement("div");
+      toastContainer.id = "toastContainer";
+      toastContainer.style.position = "fixed";
+      toastContainer.style.right = "16px";
+      toastContainer.style.top = "16px";
+      toastContainer.style.zIndex = "9999";
+      toastContainer.style.pointerEvents = "none";
+      rootDocument.body.appendChild(toastContainer);
+    } catch (e) {
+      toastContainer = null;
+    }
+  }
+  function showToast(msg, opts = {}) {
+    try {
+      if (!toastContainer) return;
+      const ttl = typeof opts.ttl === "number" ? opts.ttl : 2e3;
+      const el = rootDocument.createElement("div");
+      el.style.background = "rgba(20,20,30,0.9)";
+      el.style.color = "#fff";
+      el.style.padding = "8px 12px";
+      el.style.marginTop = "6px";
+      el.style.borderRadius = "6px";
+      el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.5)";
+      el.style.fontFamily = "sans-serif";
+      el.style.fontSize = "13px";
+      el.style.pointerEvents = "auto";
+      el.textContent = msg;
+      toastContainer.appendChild(el);
+      setTimeout(() => {
+        try {
+          el.style.transition = "opacity 300ms ease";
+          el.style.opacity = "0";
+        } catch (e) {
+        }
+        ;
+        setTimeout(() => {
+          try {
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+          } catch (err) {
+          }
+        }, 350);
+      }, ttl);
+    } catch (e) {
+    }
+  }
+  try {
+    if (gm && typeof gm.on === "function") {
+      gm.on("levelup", (m) => {
+        try {
+          const ship = m && m.ship || null;
+          const lvl = m && m.newLevel || (m && m.newLevel === 0 ? 0 : void 0);
+          const who = ship && ship.team ? `${ship.team} ship` : "Ship";
+          const msg = `${who} leveled up to ${lvl}`;
+          showToast(msg, { ttl: 2200 });
+        } catch (e) {
+        }
+      });
+    }
+  } catch (e) {
+  }
+  if (workerIndicator) {
+    try {
+      workerIndicator.textContent = gm.isWorker && gm.isWorker() ? "Worker" : "Main";
+      (function refresh() {
+        try {
+          workerIndicator.textContent = gm.isWorker && gm.isWorker() ? "Worker" : "Main";
+          requestAnimationFrame(refresh);
+        } catch (e) {
+        }
+      })();
+    } catch (e) {
+      workerIndicator.textContent = "Unknown";
+    }
+  }
+  try {
+    ui.startPause.addEventListener("click", () => {
+      if (gm.isRunning()) {
+        gm.pause();
+        ui.startPause.textContent = "\u25B6 Start";
+      } else {
+        gm.start();
+        ui.startPause.textContent = "\u23F8 Pause";
+      }
+    });
+  } catch (e) {
+  }
+  try {
+    ui.reset.addEventListener("click", () => gm.reset());
+  } catch (e) {
+  }
+  try {
+    ui.addRed.addEventListener("click", () => gm.spawnShip("red"));
+  } catch (e) {
+  }
+  try {
+    ui.addBlue.addEventListener("click", () => gm.spawnShip("blue"));
+  } catch (e) {
+  }
+  function onSeedBtnClick() {
+    try {
+      const raw = typeof window !== "undefined" && typeof window.prompt === "function" ? window.prompt("Enter new seed (leave blank for random):", "") : null;
+      if (raw == null) return;
+      const trimmed = String(raw).trim();
+      if (trimmed === "") {
+        try {
+          gm.reseed();
+          showToast("Reseeded with random seed");
+        } catch (e) {
+        }
+        return;
+      }
+      const asNum = Number(trimmed);
+      if (!Number.isFinite(asNum) || Math.floor(asNum) !== asNum) {
+        try {
+          showToast("Invalid seed. Please enter an integer.");
+        } catch (e) {
+        }
+        return;
+      }
+      try {
+        gm.reseed(asNum >>> 0);
+        showToast(`Reseeded with ${asNum >>> 0}`);
+      } catch (e) {
+      }
+    } catch (e) {
+    }
+  }
+  try {
+    ui.seedBtn.addEventListener("click", onSeedBtnClick);
+  } catch (e) {
+  }
+  try {
+    if (ui.continuousCheckbox) {
+      ui.continuousCheckbox.addEventListener("change", (ev) => {
+        const v = !!ev.target.checked;
+        if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(v);
+      });
+    }
+  } catch (e) {
+  }
+  function uiTick() {
+    try {
+      const s = gm.snapshot();
+      ui.redScore.textContent = `Red ${gm.score.red}`;
+      ui.blueScore.textContent = `Blue ${gm.score.blue}`;
+      const redCount = s.ships.filter((sh) => sh.team === "red").length;
+      const blueCount = s.ships.filter((sh) => sh.team === "blue").length;
+      ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");
+    } catch (e) {
+    }
+    requestAnimationFrame(uiTick);
+  }
+  requestAnimationFrame(uiTick);
+  return { gm, renderer };
+}
+if (typeof window !== "undefined") {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => startApp(document));
+  else startApp(document);
+}
+var main_default = startApp;
+export {
+  main_default as default,
+  startApp
+};
+//# sourceMappingURL=bundled.js.map

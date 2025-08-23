@@ -24,7 +24,7 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 		if (b.ttl <= 0) state.bullets.splice(i, 1);
 	}
 
-	// Move ships
+	// Move ships and update heading
 	for (const s of state.ships || []) {
 		s.x += (s.vx || 0) * dtSeconds;
 		s.y += (s.vy || 0) * dtSeconds;
@@ -36,6 +36,30 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
 		}
 		if (typeof bounds.H === 'number' && bounds.H > 0) {
 			s.y = ((s.y % bounds.H) + bounds.H) % bounds.H;
+		}
+
+		// --- Heading/angle update ---
+		// If ship is moving, rotate angle toward velocity heading
+		const speed2 = (s.vx || 0) * (s.vx || 0) + (s.vy || 0) * (s.vy || 0);
+		const minSpeed = 0.5; // threshold to avoid jitter when nearly stopped
+		if (speed2 > minSpeed * minSpeed) {
+			const desired = Math.atan2(s.vy || 0, s.vx || 0);
+			if (typeof s.angle !== 'number') s.angle = desired;
+			else {
+				let a = s.angle;
+				let da = desired - a;
+				// Wrap to [-PI, PI]
+				while (da < -Math.PI) da += Math.PI * 2;
+				while (da > Math.PI) da -= Math.PI * 2;
+				const turnRate = typeof s.turnRate === 'number' ? s.turnRate : 3; // radians/sec
+				const maxTurn = turnRate * dtSeconds;
+				if (Math.abs(da) < maxTurn) a = desired;
+				else a += Math.sign(da) * maxTurn;
+				// Wrap to [-PI, PI]
+				while (a < -Math.PI) a += Math.PI * 2;
+				while (a > Math.PI) a -= Math.PI * 2;
+				s.angle = a;
+			}
 		}
 	}
 
