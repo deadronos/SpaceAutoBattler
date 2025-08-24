@@ -282,6 +282,7 @@ export class WebGLRenderer {
                     this.drawTexturedQuad(shTex, clipX, clipY, quadW, quadH);
                   } else {
                     verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1.0, 0.5);
+<<<<<<< HEAD
   /**
    * Dispose all GL resources and cached textures. Call on shutdown/reset.
    */
@@ -319,6 +320,9 @@ export class WebGLRenderer {
   }
 }
 
+=======
+                  }
+>>>>>>> origin/dev
                 } catch (e) { verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1.0, 0.5); }
               }
 
@@ -549,4 +553,8 @@ export class WebGLRenderer {
       gl.disableVertexAttribArray(this.texAttrib_uv);
     } catch (e) {}
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/dev

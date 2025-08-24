@@ -18,7 +18,11 @@ import {
   FALLBACK_POSITIONS,
 } from "./config/gamemanagerConfig";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { ShipConfigMap, GameState } from "./types";
+=======
+import type { ShipConfigMap } from "./types";
+>>>>>>> origin/dev
 =======
 import type { ShipConfigMap } from "./types";
 >>>>>>> origin/dev
@@ -235,7 +239,11 @@ export function reset(seedValue: number | null = null) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 export function initStars(state: GameState, W = 800, H = 600, count = 140) {
+=======
+export function initStars(state: any, W = 800, H = 600, count = 140) {
+>>>>>>> origin/dev
 =======
 export function initStars(state: any, W = 800, H = 600, count = 140) {
 >>>>>>> origin/dev
@@ -254,7 +262,11 @@ export function initStars(state: any, W = 800, H = 600, count = 140) {
 
 export function createStarCanvas(
 <<<<<<< HEAD
+<<<<<<< HEAD
   state: GameState,
+=======
+  state: any,
+>>>>>>> origin/dev
 =======
   state: any,
 >>>>>>> origin/dev
@@ -324,7 +336,11 @@ function emitManagerEvent(
 function evaluateReinforcement(
   dt: number,
 <<<<<<< HEAD
+<<<<<<< HEAD
   state: GameState,
+=======
+  state: any,
+>>>>>>> origin/dev
 =======
   state: any,
 >>>>>>> origin/dev
@@ -394,7 +410,11 @@ export function createGameManager({
   createSimWorker: createSimWorkerFactory,
 }: GameManagerOptions = {}) {
 <<<<<<< HEAD
+<<<<<<< HEAD
   let state: GameState = makeInitialState();
+=======
+  let state = makeInitialState();
+>>>>>>> origin/dev
 =======
   let state = makeInitialState();
 >>>>>>> origin/dev
@@ -437,7 +457,11 @@ export function createGameManager({
       }
       simWorker = factory(simWorkerUrl);
 <<<<<<< HEAD
+<<<<<<< HEAD
       // Keep references to worker handler functions so they can be removed on destroy
+=======
+  // Keep references to worker handler functions so they can be removed on destroy
+>>>>>>> origin/dev
 =======
   // Keep references to worker handler functions so they can be removed on destroy
 >>>>>>> origin/dev
@@ -446,9 +470,13 @@ export function createGameManager({
         workerReady = true;
         for (const cb of workerReadyCbs.slice()) {
 <<<<<<< HEAD
+<<<<<<< HEAD
           try {
             cb();
           } catch (e) {}
+=======
+          try { cb(); } catch (e) {}
+>>>>>>> origin/dev
 =======
           try { cb(); } catch (e) {}
 >>>>>>> origin/dev
@@ -465,8 +493,12 @@ export function createGameManager({
         emit("reinforcements", m);
       };
 <<<<<<< HEAD
+<<<<<<< HEAD
       simWorker.on &&
         simWorker.on("reinforcements", _workerReinforcementsHandler);
+=======
+      simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
+>>>>>>> origin/dev
 =======
       simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
 >>>>>>> origin/dev
@@ -595,6 +627,7 @@ export function createGameManager({
       if (simWorker) {
         try {
 <<<<<<< HEAD
+<<<<<<< HEAD
           if (typeof simWorker.off === "function") {
             try {
               if (_workerReadyHandler)
@@ -617,6 +650,8 @@ export function createGameManager({
             simWorker.post({ type: "stop" });
         } catch (e) {}
 =======
+=======
+>>>>>>> origin/dev
           if (typeof simWorker.off === 'function') {
             try { if (_workerReadyHandler) simWorker.off('ready', _workerReadyHandler); } catch (e) {}
             try { if (_workerSnapshotHandler) simWorker.off('snapshot', _workerSnapshotHandler); } catch (e) {}
@@ -624,12 +659,16 @@ export function createGameManager({
           }
         } catch (e) {}
         try { if (typeof simWorker.terminate === 'function') simWorker.terminate(); else if (typeof simWorker.close === 'function') simWorker.close(); else if (typeof simWorker.post === 'function') simWorker.post({ type: 'stop' }); } catch (e) {}
+<<<<<<< HEAD
+>>>>>>> origin/dev
+=======
 >>>>>>> origin/dev
         simWorker = null;
       }
     } catch (e) {}
     workerReady = false;
     workerReadyCbs.length = 0;
+<<<<<<< HEAD
 <<<<<<< HEAD
     // Dispose renderer assets if possible
     if (renderer && typeof renderer.dispose === "function") {
@@ -639,6 +678,8 @@ export function createGameManager({
     }
     // Clear asset references in GameState
     starCanvas = null;
+=======
+>>>>>>> origin/dev
 =======
 >>>>>>> origin/dev
   }
@@ -824,6 +865,7 @@ export function simulate(dt: number, W = 800, H = 600) {
     _lastSimulateFrameId = frame;
   } catch (e) {}
 <<<<<<< HEAD
+<<<<<<< HEAD
   const state: GameState = {
     t: 0,
     ships,
@@ -838,6 +880,8 @@ export function simulate(dt: number, W = 800, H = 600) {
     healthFlashes,
     starCanvas: starCanvas || undefined,
 =======
+=======
+>>>>>>> origin/dev
   const state = {
     ships,
     bullets,
@@ -846,6 +890,9 @@ export function simulate(dt: number, W = 800, H = 600) {
     explosions: [],
     shieldHits: [],
     healthHits: [],
+<<<<<<< HEAD
+>>>>>>> origin/dev
+=======
 >>>>>>> origin/dev
   };
   evaluateReinforcement(dt, state);

@@ -1,12 +1,15 @@
 {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "folders": [
         {
             "path": "."
         }
     ]
 =======
+=======
+>>>>>>> origin/dev
 =======
 >>>>>>> origin/dev
 	"folders": [
@@ -16,7 +19,10 @@
 	],
 	"settings": {}
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> f7ff55edb7700a56b64c7890e95195a5e4c6d912
+=======
+>>>>>>> origin/dev
 =======
 >>>>>>> origin/dev
 }
