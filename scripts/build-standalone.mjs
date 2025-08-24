@@ -1,140 +1,72 @@
-import { build } from 'esbuild';
-import fs from 'fs/promises';
-import fsSync from 'fs';
-import path from 'path';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// Paths
-const root = path.resolve('.');
-const srcEntry = path.join(root, 'src', 'renderer.js');
-const outDir = path.join(root, 'dist');
-const outBundle = path.join(outDir, 'bundle.js');
-const standaloneHtml = path.join(root, 'space_themed_autobattler_canvas_red_vs_blue_standalone.html');
+// Pure TypeScript build: all runtime logic is sourced from /src/*.ts files.
+// No JS shims or transpilation steps are required.
+import { build as runBaseBuild } from './build.mjs';
 
-async function ensureDir(d){ try{ await fs.mkdir(d, { recursive: true }); }catch(e){} }
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..');
 
-async function buildBundle(){
-  await ensureDir(outDir);
-  await build({ entryPoints: [srcEntry], outfile: outBundle, bundle: true, minify: true, sourcemap: false, format: 'esm', target: ['es2020'] });
-  return null;
+
+// No longer needed: escapeHtml (unused)
+
+function inlineHtml({ html, css, js, workerJs }) {
+		// Inject CSS inside a <style> tag
+		let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, () => `<style>\n${css}\n</style>`);
+
+
+		// Replace module script src with inline code after adding a worker loader shim.
+		// Monkey-patch Worker to handle URL('./simWorker.js', import.meta.url) by serving from an inline blob.
+		const workerLoader = `
+			const __workerCode = ${JSON.stringify(workerJs)};
+			const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
+			const __workerUrl = URL.createObjectURL(__workerBlob);
+			const __OrigWorker = window.Worker;
+			window.Worker = class extends __OrigWorker {
+				constructor(url, opts) {
+					try {
+						const s = typeof url === 'string' ? url : String(url);
+						if (s.endsWith('simWorker.js')) {
+							super(__workerUrl, { type: 'module', ...(opts||{}) });
+							return;
+						}
+					} catch {}
+					super(url, opts);
+				}
+			};
+		`;
+
+		const jsInline = `${workerLoader}\n${js}`;
+		out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, () => `<script type="module">\n${jsInline}\n<\/script>`);
+		return out;
 }
 
-async function inlineBundle(){ const html = await fs.readFile(standaloneHtml, 'utf8');
-  // Replace the module import or existing inline bundle placeholder with an inlined script tag.
-  // To avoid repeatedly inlining and duplicating bundles, remove prior inlined bundle markers
-  // and any previous inlined module script that contains the bundle signature.
-  const importTag = '<script type="module" src="./src/renderer.js"></script>';
-  const bundleCode = await fs.readFile(outBundle, 'utf8');
-  const beginMarker = '<!-- BEGIN_INLINED_BUNDLE -->';
-  const endMarker = '<!-- END_INLINED_BUNDLE -->';
 
-  // Remove any existing block between our markers (safe, idempotent)
-  let cleaned = html;
-  const markerStart = cleaned.indexOf(beginMarker);
-  const markerEnd = cleaned.indexOf(endMarker);
-  if (markerStart !== -1 && markerEnd !== -1 && markerEnd > markerStart){
-    cleaned = cleaned.slice(0, markerStart) + cleaned.slice(markerEnd + endMarker.length);
-  }
+async function buildStandalone() {
+	// All logic is bundled from TypeScript sources.
+	const { outDir, files } = await runBaseBuild({ outDir: path.join(repoRoot, 'dist') });
+	const [html, css, js, workerJs] = await Promise.all([
+		fs.readFile(files.html, 'utf8'),
+		fs.readFile(files.css, 'utf8'),
+		fs.readFile(files.js, 'utf8'),
+		fs.readFile(files.worker, 'utf8'),
+	]);
+	const inlined = inlineHtml({ html, css, js, workerJs });
+	const standalonePath = path.join(outDir, 'spaceautobattler_standalone.html');
+	await fs.writeFile(standalonePath, inlined, 'utf8');
+	console.log(`Standalone written: ${standalonePath}`);
+}
 
-  // Extra cleanup: some older standalone outputs in this repo previously inlined the bundle
-  // without markers. Remove any <script type="module">...</script> blocks whose content
-  // contains the bundle signature to avoid duplicate script blocks.
-  const bundleSignature = 'var ut=Object.defineProperty';
-  // simple regex to find module script blocks (non-greedy)
-  cleaned = cleaned.replace(/<script\s+type=["']module["'][^>]*>[\s\S]*?<\/script>/gi, (match) => {
-    return match.indexOf(bundleSignature) !== -1 ? '' : match;
+
+// Execute when run directly via `node scripts/build-standalone.mjs`
+// This script now builds exclusively from TypeScript sources in /src.
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  buildStandalone().catch((e) => {
+    console.error(e);
+    process.exit(1);
   });
-
-  const inlined = `${beginMarker}\n<script type="module">\n${bundleCode}\n</script>\n${endMarker}`;
-  let newHtml;
-  if (cleaned.includes(importTag)){
-    newHtml = cleaned.replace(importTag, inlined);
-  } else if (cleaned.includes('</body>')){
-    // insert before closing body
-    newHtml = cleaned.replace('</body>', `${inlined}\n</body>`);
-  } else {
-    // append to end
-    newHtml = cleaned + '\n' + inlined;
-  }
-  const outPath = path.join(outDir, path.basename(standaloneHtml));
-  await fs.writeFile(outPath, newHtml, 'utf8');
-  // Also overwrite the original standalone HTML at repo root so it is updated for file:// use
-  await fs.writeFile(standaloneHtml, newHtml, 'utf8');
-  console.log('Wrote inlined standalone to', outPath);
-  console.log('Also updated', standaloneHtml);
 }
 
-// Helper that performs the same cleaning of HTML string content as inlineBundle
-// but does not read/write files. Useful for unit testing the idempotent cleaning logic.
-export function cleanHtmlContent(html, bundleCode){
-  const beginMarker = '<!-- BEGIN_INLINED_BUNDLE -->';
-  const endMarker = '<!-- END_INLINED_BUNDLE -->';
-  let cleaned = html;
-  const markerStart = cleaned.indexOf(beginMarker);
-  const markerEnd = cleaned.indexOf(endMarker);
-  if (markerStart !== -1 && markerEnd !== -1 && markerEnd > markerStart){
-    cleaned = cleaned.slice(0, markerStart) + cleaned.slice(markerEnd + endMarker.length);
-  }
-  const bundleSignature = 'var ut=Object.defineProperty';
-  cleaned = cleaned.replace(/<script\s+type=["']module["'][^>]*>[\s\S]*?<\/script>/gi, (match) => {
-    return match.indexOf(bundleSignature) !== -1 ? '' : match;
-  });
-  const importTag = '<script type="module" src="./src/renderer.js"></script>';
-  const inlined = `${beginMarker}\n<script type="module">\n${bundleCode}\n</script>\n${endMarker}`;
-  let newHtml;
-  if (cleaned.includes(importTag)){
-    newHtml = cleaned.replace(importTag, inlined);
-  } else if (cleaned.includes('</body>')){
-    newHtml = cleaned.replace('</body>', `${inlined}\n</body>`);
-  } else {
-    newHtml = cleaned + '\n' + inlined;
-  }
-  return newHtml;
-}
-
-// Export build utilities for tests
-export { buildBundle, inlineBundle };
-
-async function runOnce(){ console.log('Building bundle...'); await buildBundle(); console.log('Inlining bundle into standalone HTML...'); await inlineBundle(); console.log('Done. Output in ./dist'); }
-
-async function runWatch(){
-  console.log('Starting fs.watch build...');
-  // initial build + inline
-  try{ await buildBundle(); await inlineBundle(); console.log('Initial build + inline complete'); } catch(err){ console.error('Initial build error', err); }
-
-  const srcDir = path.join(root, 'src');
-  let timeout = null;
-  try{
-    fsSync.watch(srcDir, { recursive: true }, (eventType, filename) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(async () => {
-        try{
-          console.log('Change detected in src, rebuilding...');
-          await buildBundle();
-          await inlineBundle();
-          console.log('Rebuild + inline complete');
-        }catch(e){ console.error('Rebuild error', e); }
-      }, 150);
-    });
-  }catch(e){
-    console.error('fs.watch failed, falling back to polling:', e);
-    // polling fallback
-    const bundlePath = outBundle;
-    let lastMtime = 0;
-    setInterval(async () => {
-      try{
-        const st = await fs.stat(bundlePath);
-        if (st.mtimeMs > lastMtime){ lastMtime = st.mtimeMs; console.log('Detected bundle change, inlining...'); await inlineBundle(); }
-      }catch(_){}
-    }, 500);
-  }
-}
-
-(async function main(){ try{
-  const args = process.argv.slice(2);
-  if (args.includes('--watch')){
-    await runWatch();
-    // keep process alive
-    return;
-  }
-  await runOnce();
- }catch(err){ console.error(err); process.exit(1); } })();

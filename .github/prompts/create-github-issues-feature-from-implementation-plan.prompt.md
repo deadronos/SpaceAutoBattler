@@ -1,28 +1,19 @@
 ---
 mode: 'agent'
-description: 'Create GitHub Issues from implementation plan phases using feature_request.yml or chore_request.yml templates.'
-tools: ['codebase', 'search', 'github', 'create_issue', 'search_issues', 'update_issue']
+description: 'Cookbook: generate GitHub issues from an implementation plan (one issue per phase) using feature/chore templates.'
 ---
-# Create GitHub Issue from Implementation Plan
 
-Create GitHub Issues for the implementation plan at `${file}`.
+Receipt: I'll generate GitHub issues from the given implementation plan.
 
-## Process
+Plan:
+1) Break the plan into 4–6 issues (each deliverable small and testable).
+2) For each issue provide Title, Description, Acceptance, Files to edit, Estimate.
+3) Output as Markdown-ready issues for copy/paste.
 
-1. Analyze plan file to identify phases
-2. Check existing issues using `search_issues`
-3. Create new issue per phase using `create_issue` or update existing with `update_issue`
-4. Use `feature_request.yml` or `chore_request.yml` templates (fallback to default)
+Assumptions: Implementation plan lists tasks in order.
 
-## Requirements
+Constraints: Prefer issues no larger than 'M' difficulty.
 
-- One issue per implementation phase
-- Clear, structured titles and descriptions
-- Include only changes required by the plan
-- Verify against existing issues before creation
+Output: Markdown with issues numbered and succinct fields.
 
-## Issue Content
-
-- Title: Phase name from implementation plan
-- Description: Phase details, requirements, and context
-- Labels: Appropriate for issue type (feature/chore)
+Example: Plan: Add Playwright tests + CI → Issues: Add Playwright scaffold (M), Add tests for login (S), CI step for Playwright (S).

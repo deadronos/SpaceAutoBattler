@@ -1,26 +1,21 @@
 ---
-description: 'Transform this Python script into a polished, beginner-friendly project by refactoring the code, adding clear instructional comments, and generating a complete markdown tutorial.'
+description: "Comment & tutorial generator — create beginner-friendly comments and a short README from provided code." 
 mode: 'agent'
 ---
 
-Transform this Python script into a polished, beginner-friendly project by refactoring the code, adding clear instructional comments, and generating a complete markdown tutorial.
+# Comment Code & Generate Tutorial — Cookbook Template
 
-1. **Refactor the code**  
-   - Apply standard Python best practices  
-   - Ensure code follows the PEP 8 style guide  
-   - Rename unclear variables and functions if needed for clarity
+Receipt: I'll generate a short tutorial from the provided code snippet or file.
 
-1. **Add comments throughout the code**  
-   - Use a beginner-friendly, instructional tone  
-   - Explain what each part of the code is doing and why it's important  
-   - Focus on the logic and reasoning, not just syntax  
-   - Avoid redundant or superficial comments
+Plan:
+1) Extract intent and public API from the code.
+2) Produce a 6-step tutorial with code snippets and expected outputs.
+3) Provide a short checklist of prerequisites and a one-line summary for README.
 
-1. **Generate a tutorial as a `README.md` file**  
-   Include the following sections:
-   - **Project Overview:** What the script does and why it's useful  
-   - **Setup Instructions:** Prerequisites, dependencies, and how to run the script  
-   - **How It Works:** A breakdown of the code logic based on the comments  
-   - **Example Usage:** A code snippet showing how to use it  
-   - **Sample Output:** (Optional) Include if the script returns visible results  
-   - Use clear, readable Markdown formatting
+Assumptions: Input is a JS file or function; tutorial should be beginner-friendly.
+
+Constraints: Keep tutorial under 700 words; code blocks ≤ 40 lines.
+
+Output: Title, Prereqs, Steps (with code), Example run, One-line summary for README.
+
+Example: "Tutorial for `src/simulate.js` — show how to seed RNG, construct minimal `state`, call `simulateStep`, and inspect `state.explosions`."
