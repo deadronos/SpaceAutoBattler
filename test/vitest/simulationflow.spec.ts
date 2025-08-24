@@ -40,6 +40,12 @@ describe("GameState serialization", () => {
   });
 });
 import { getShipConfig } from '../../src/config/entitiesConfig';
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+=======
+=======
+>>>>>>> origin/dev
 describe('Tactical Scenarios', () => {
   // Flanking: Ship approaches target from the side or rear
   it('allows flanking attacks', () => {
@@ -138,6 +144,10 @@ describe('Tactical Scenarios', () => {
     expect(state.ships.includes(edgePlayer)).toBe(false);
   });
 });
+<<<<<<< HEAD
+>>>>>>> origin/dev
+=======
+>>>>>>> origin/dev
 import { boundaryBehavior } from '../../src/config/simConfig';
 describe('Boundary Behavior', () => {
   let origConfig: any;

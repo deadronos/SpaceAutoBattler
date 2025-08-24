@@ -282,7 +282,47 @@ export class WebGLRenderer {
                     this.drawTexturedQuad(shTex, clipX, clipY, quadW, quadH);
                   } else {
                     verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1.0, 0.5);
+<<<<<<< HEAD
+  /**
+   * Dispose all GL resources and cached textures. Call on shutdown/reset.
+   */
+  dispose(): void {
+    if (!this.gl) return;
+    const gl = this.gl as WebGLRenderingContext;
+    // Delete all cached shape textures
+    for (const key in this.shapeTextures) {
+      const tex = this.shapeTextures[key];
+      if (tex) gl.deleteTexture(tex);
+      this.shapeTextures[key] = null;
+    }
+    // Delete FBO and its texture
+    if (this.fboTexture) gl.deleteTexture(this.fboTexture);
+    if (this.fbo) gl.deleteFramebuffer(this.fbo);
+    this.fboTexture = null;
+    this.fbo = null;
+    // Delete GL buffers
+    if (this.vertexBuffer) gl.deleteBuffer(this.vertexBuffer);
+    if (this.quadVBO) gl.deleteBuffer(this.quadVBO);
+    if (this.texVBO) gl.deleteBuffer(this.texVBO);
+    this.vertexBuffer = null;
+    this.quadVBO = null;
+    this.texVBO = null;
+    // Delete GL programs
+    if (this.prog) gl.deleteProgram(this.prog);
+    if (this.quadProg) gl.deleteProgram(this.quadProg);
+    if (this.texProg) gl.deleteProgram(this.texProg);
+    this.prog = null;
+    this.quadProg = null;
+    this.texProg = null;
+    // Clear other references
+    this.shapeTextures = {};
+    this.gl = null;
+  }
+}
+
+=======
                   }
+>>>>>>> origin/dev
                 } catch (e) { verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1.0, 0.5); }
               }
 
@@ -309,8 +349,18 @@ export class WebGLRenderer {
             const count = Math.floor(floatArr.length / 7);
             gl.drawArrays(gl.POINTS, 0, count);
           } catch (e) {}
-        }
-      
+  /**
+   * Preload all asset textures at startup/reset.
+   */
+  preloadAllAssets(): void {
+    if (!this.gl) return;
+    const shapes = (AssetsConfig as any).shapes2d || {};
+    for (const key of Object.keys(shapes)) {
+      this.bakeShapeToTexture(key);
+    }
+  }
+}
+
       // Draw bullets using baked textures if available
       try {
         const shapes = (AssetsConfig as any).shapes2d || {};
@@ -503,4 +553,8 @@ export class WebGLRenderer {
       gl.disableVertexAttribArray(this.texAttrib_uv);
     } catch (e) {}
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/dev
