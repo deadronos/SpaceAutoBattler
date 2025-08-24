@@ -434,6 +434,7 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
   return [];
 }
 var TEAM_DEFAULT = "red";
+var teamsConfig_default = TeamsConfig;
 function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
   const seed = Math.floor(srandom() * 4294967295) >>> 0;
   return chooseReinforcements(seed, state, options);
@@ -1724,6 +1725,40 @@ function createGameManager({
   };
 }
 
+// src/config/displayConfig.ts
+var DISPLAY_DEFAULTS = {
+  renderScale: 1,
+  displayScale: 1,
+  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
+};
+
+// src/config/rendererConfig.ts
+var RendererConfig = {
+  preferred: "canvas",
+  allowUrlOverride: true,
+  allowWebGL: true,
+  renderScale: DISPLAY_DEFAULTS.renderScale,
+  displayScale: DISPLAY_DEFAULTS.displayScale,
+  dynamicScaleEnabled: false,
+  lastFrameTime: 0,
+  frameScore: "green",
+  // green, yellow, red
+  // UI overlays configuration
+  hpBar: DISPLAY_DEFAULTS.hpBar
+};
+function getPreferredRenderer() {
+  try {
+    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
+      const p = new URLSearchParams(window.location.search);
+      const r = p.get("renderer");
+      if (r === "canvas" || r === "webgl") return r;
+    }
+  } catch (e) {
+  }
+  return RendererConfig.preferred;
+}
+var rendererConfig_default = RendererConfig;
+
 // src/config/assets/assetsConfig.ts
 var AssetsConfig = {
   meta: {
@@ -1893,44 +1928,10 @@ function getBulletAsset(kind = "small") {
 function getTurretAsset(_kind = "basic") {
   return AssetsConfig.shapes2d.turretBasic;
 }
+var assetsConfig_default = AssetsConfig;
 
 // src/canvasrenderer.ts
 init_entitiesConfig();
-
-// src/config/displayConfig.ts
-var DISPLAY_DEFAULTS = {
-  renderScale: 1,
-  displayScale: 1,
-  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
-};
-
-// src/config/rendererConfig.ts
-var RendererConfig = {
-  preferred: "canvas",
-  allowUrlOverride: true,
-  allowWebGL: true,
-  renderScale: DISPLAY_DEFAULTS.renderScale,
-  displayScale: DISPLAY_DEFAULTS.displayScale,
-  dynamicScaleEnabled: false,
-  lastFrameTime: 0,
-  frameScore: "green",
-  // green, yellow, red
-  // UI overlays configuration
-  hpBar: DISPLAY_DEFAULTS.hpBar
-};
-function getPreferredRenderer() {
-  try {
-    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
-      const p = new URLSearchParams(window.location.search);
-      const r = p.get("renderer");
-      if (r === "canvas" || r === "webgl") return r;
-    }
-  } catch (e) {
-  }
-  return RendererConfig.preferred;
-}
-
-// src/canvasrenderer.ts
 var CanvasRenderer = class {
   canvas;
   ctx = null;
@@ -1978,7 +1979,7 @@ var CanvasRenderer = class {
     this.bufferCtx = this.bufferCanvas.getContext("2d") || this.ctx;
     if (!this.bufferCtx) return false;
     try {
-      const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
+      const renderScale = rendererConfig_default && typeof rendererConfig_default.renderScale === "number" ? rendererConfig_default.renderScale : 1;
       this.pixelRatio = renderScale;
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.imageSmoothingEnabled = true;
@@ -2008,8 +2009,8 @@ var CanvasRenderer = class {
     const bufferCtx = this.bufferCtx;
     if (!ctx || !bufferCtx) return;
     const LOGICAL_W = 1920, LOGICAL_H = 1080;
-    const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
-    const fitScale = RendererConfig._fitScale || 1;
+    const renderScale = rendererConfig_default && typeof rendererConfig_default.renderScale === "number" ? rendererConfig_default.renderScale : 1;
+    const fitScale = rendererConfig_default._fitScale || 1;
     const bufferW = Math.round(LOGICAL_W * renderScale);
     const bufferH = Math.round(LOGICAL_H * renderScale);
     if (this.bufferCanvas.width !== bufferW || this.bufferCanvas.height !== bufferH) {
@@ -2022,7 +2023,7 @@ var CanvasRenderer = class {
     activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
     activeBufferCtx.save();
-    activeBufferCtx.fillStyle = AssetsConfig.palette.background || "#0b1220";
+    activeBufferCtx.fillStyle = assetsConfig_default.palette.background || "#0b1220";
     activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     activeBufferCtx.restore();
     function drawPolygon(points) {
@@ -2044,7 +2045,7 @@ var CanvasRenderer = class {
     }
     const now = state && state.t || 0;
     try {
-      const dmgAnim = AssetsConfig.animations && AssetsConfig.animations.damageParticles;
+      const dmgAnim = assetsConfig_default.animations && assetsConfig_default.animations.damageParticles;
       if (Array.isArray(state.damageEvents) && dmgAnim) {
         state.particles = state.particles || [];
         for (const ev of state.damageEvents) {
@@ -2069,12 +2070,11 @@ var CanvasRenderer = class {
       }
     } catch (e) {
     }
-    const engineTrailsEnabled = !!state.engineTrailsEnabled;
     for (const s of state.ships || []) {
       const sx = (s.x || 0) * renderScale;
       const sy = (s.y || 0) * renderScale;
       if (sx < 0 || sx >= bufferW || sy < 0 || sy >= bufferH) continue;
-      if (engineTrailsEnabled) {
+      if (state.engineTrailsEnabled) {
         s.trail = s.trail || [];
         const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
         if (!last || last.x !== s.x || last.y !== s.y) {
@@ -2105,9 +2105,9 @@ var CanvasRenderer = class {
       activeBufferCtx.save();
       activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
       activeBufferCtx.rotate(s.angle || 0);
-      let teamColor = AssetsConfig.palette.shipHull || "#888";
-      if (s.team === "red" && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
-      else if (s.team === "blue" && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
+      let teamColor = assetsConfig_default.palette.shipHull || "#888";
+      if (s.team === "red" && teamsConfig_default.teams.red) teamColor = teamsConfig_default.teams.red.color;
+      else if (s.team === "blue" && teamsConfig_default.teams.blue) teamColor = teamsConfig_default.teams.blue.color;
       activeBufferCtx.fillStyle = teamColor;
       if (shape.type === "circle") {
         activeBufferCtx.beginPath();
@@ -2141,7 +2141,7 @@ var CanvasRenderer = class {
           activeBufferCtx.save();
           activeBufferCtx.translate(turretX, turretY);
           activeBufferCtx.rotate(0);
-          activeBufferCtx.fillStyle = AssetsConfig.palette.turret || "#94a3b8";
+          activeBufferCtx.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
           if (turretShape.type === "circle") {
             activeBufferCtx.beginPath();
             activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
@@ -2168,9 +2168,9 @@ var CanvasRenderer = class {
           activeBufferCtx.restore();
         }
       }
-      if (s.shield > 0) {
+      if ((s.shield ?? 0) > 0) {
         if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
-          const shAnim = AssetsConfig.animations && AssetsConfig.animations.shieldEffect;
+          const shAnim = assetsConfig_default.animations && assetsConfig_default.animations.shieldEffect;
           try {
             if (shAnim) {
               const pulse = typeof shAnim.pulseRate === "number" ? 0.5 + 0.5 * Math.sin(now * shAnim.pulseRate) : 1;
@@ -2196,11 +2196,11 @@ var CanvasRenderer = class {
       }
     }
     try {
-      const nowT = state && state.t || 0;
+      const nowT = state.t || 0;
       for (const s of state.ships || []) {
         try {
           let flash = null;
-          const arr = Array.isArray(healthFlashes) ? healthFlashes.filter((f) => f.id === s.id) : [];
+          const arr = Array.isArray(state.healthFlashes) ? state.healthFlashes.filter((f) => f.id === s.id) : [];
           let bestTs = -Infinity;
           for (const f of arr) {
             if (!f) continue;
@@ -2241,12 +2241,12 @@ var CanvasRenderer = class {
         const by = (b.y || 0) * renderScale;
         if (bx < 0 || bx >= bufferW || by < 0 || by >= bufferH) continue;
         const r = b.radius || b.bulletRadius || 1.5;
-        const kind = bulletKindForRadius(r / 6);
+        const kind = typeof b.bulletRadius === "number" ? b.bulletRadius < 2 ? "small" : b.bulletRadius < 3 ? "medium" : "large" : "small";
         const shape = getBulletAsset(kind);
         activeBufferCtx.save();
         activeBufferCtx.translate(bx, by);
         const px = Math.max(1, r * renderScale);
-        activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
+        activeBufferCtx.fillStyle = assetsConfig_default.palette.bullet;
         if (shape.type === "circle") {
           activeBufferCtx.beginPath();
           activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2);
@@ -2269,7 +2269,7 @@ var CanvasRenderer = class {
       }
     }
     try {
-      const shapes = AssetsConfig.shapes2d || {};
+      const shapes = assetsConfig_default.shapes2d || {};
       for (const p of state.particles || []) {
         try {
           const px = (p.x || 0) * renderScale;
@@ -2332,7 +2332,7 @@ var CanvasRenderer = class {
     } catch (e) {
     }
     try {
-      const expShape = AssetsConfig.shapes2d && AssetsConfig.shapes2d.explosionParticle;
+      const expShape = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d.explosionParticle;
       for (const ex of state.explosions || []) {
         try {
           const exx = (ex.x || 0) * renderScale;
@@ -2957,6 +2957,7 @@ var WebGLRenderer = class {
 
 // src/main.ts
 async function startApp(rootDocument = document) {
+  const gameState = makeInitialState();
   let canvas = rootDocument.getElementById("world");
   if (!canvas) {
     try {
@@ -3121,7 +3122,10 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   const gm = createGameManager({ renderer, useWorker: false, seed: 12345 });
-  if (gm && gm._internal) gm._internal.bounds = LOGICAL_BOUNDS;
+  if (gm && gm._internal) {
+    gm._internal.bounds = LOGICAL_BOUNDS;
+    gm._internal.state = gameState;
+  }
   try {
     if (typeof window !== "undefined" && window.gm) Object.assign(window.gm, gm);
   } catch (e) {
@@ -3148,15 +3152,11 @@ async function startApp(rootDocument = document) {
     addListener(ui.formationBtn, "click", onFormationClick);
   }
   let engineTrailsEnabled = true;
-  if (gm && gm._internal && gm._internal.state) {
-    gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
-  }
+  gameState.engineTrailsEnabled = engineTrailsEnabled;
   if (ui.toggleTrails) {
     const onToggleTrails = () => {
       engineTrailsEnabled = !engineTrailsEnabled;
-      if (gm && gm._internal && gm._internal.state) {
-        gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
-      }
+      gameState.engineTrailsEnabled = engineTrailsEnabled;
       ui.toggleTrails.textContent = engineTrailsEnabled ? "\u2604 Trails: On" : "\u2604 Trails: Off";
     };
     addListener(ui.toggleTrails, "click", onToggleTrails);
