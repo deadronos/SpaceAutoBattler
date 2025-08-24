@@ -184,7 +184,7 @@ export class WebGLRenderer {
 
   isRunning(): boolean { return false; }
 
-  renderState(state: any, interpolation = 0): void {
+  renderState(state: import('./types').GameState, interpolation = 0): void {
     // --- Ensure FBO is always resized to 1920x1080 × renderScale before any drawing ---
     if (!this.gl) return;
     const gl = this.gl as WebGLRenderingContext;

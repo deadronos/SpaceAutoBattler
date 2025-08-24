@@ -1,6 +1,16 @@
+
 # SpaceAutoBattler: API & Library Summary
 
 This document summarizes the main APIs and libraries used in the SpaceAutoBattler project, including their purpose and links to documentation.
+
+## Architecture: Canonical GameState
+
+All simulation, rendering, and UI state is centralized in the canonical `GameState` type (`src/types/index.ts`).
+Every subsystem (simulation, renderer, UI) receives and mutates the `GameState` object—no scattered state variables.
+Simulation is deterministic and uses seeded RNG (`src/rng.ts`).
+State serialization and deserialization are supported for replay, debugging, and determinism validation.
+
+All new code and tests must use the canonical `GameState` for state access and mutation. For serialization/replay, use the provided helpers and validate determinism with test cases.
 
 ### TypeScript
 

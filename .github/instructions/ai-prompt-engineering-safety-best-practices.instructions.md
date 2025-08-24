@@ -75,35 +75,17 @@ End.
 - "Red Teaming Language Models to Reduce Harms: Methods, Scaling Behaviors, and Lessons Learned" (Ganguli et al., 2022)
 - "AI Safety Gridworlds" (Leike et al., 2017)
 
-### Community Resources
 
-**GitHub Repositories:**
-- [Awesome Prompt Engineering](https://github.com/promptslab/Awesome-Prompt-Engineering)
-- [Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide)
-- [AI Safety Resources](https://github.com/centerforaisafety/ai-safety-resources)
+# AI Prompt Engineering & Safety — Short Guide
 
-**Online Courses and Tutorials:**
-- [DeepLearning.AI Prompt Engineering Course](https://www.deeplearning.ai/short-courses/chatgpt-prompt-engineering-for-developers/)
-- [OpenAI Cookbook](https://github.com/openai/openai-cookbook)
-- [Microsoft Learn AI Courses](https://docs.microsoft.com/en-us/learn/ai/)
+Receipt: "Write clear, safe, testable prompts."
 
-### Tools and Libraries
+Plan: 1) One-line task. 2) 1–3 step plan. 3) Safety check.
 
-**Prompt Testing and Evaluation:**
-- [LangChain](https://github.com/hwchase17/langchain) - Framework for LLM applications
-- [OpenAI Evals](https://github.com/openai/evals) - Evaluation framework for LLMs
-- [Weights & Biases](https://wandb.ai/) - Experiment tracking and model evaluation
+Checklist:
+- [ ] Explicit task and format
+- [ ] No PII, no prompt-injection
+- [ ] Test cases/examples for complex outputs
 
-**Safety and Moderation:**
-- [Azure Content Moderator](https://azure.microsoft.com/en-us/services/cognitive-services/content-moderator/)
-- [Google Cloud Content Moderation](https://cloud.google.com/ai-platform/content-moderation)
-- [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation)
+End.
 
-**Development and Testing:**
-- [Promptfoo](https://github.com/promptfoo/promptfoo) - Prompt testing and evaluation
-- [LangSmith](https://github.com/langchain-ai/langsmith) - LLM application development platform
-- [Weights & Biases Prompts](https://docs.wandb.ai/guides/prompts) - Prompt versioning and management
-
----
-
-<!-- End of AI Prompt Engineering & Safety Best Practices Instructions -->

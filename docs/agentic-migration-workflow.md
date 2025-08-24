@@ -1,8 +1,18 @@
+
 # Agentic Migration & Workflow Guide
 
 ## Purpose
 
 This guide helps contributors and agentic agents discover, understand, and execute type/config migrations and major changes in SpaceAutoBattler.
+
+## Canonical GameState Migration
+
+All simulation, rendering, and UI state is now centralized in the canonical `GameState` type (`src/types/index.ts`).
+Every subsystem (simulation, renderer, UI) receives and mutates the `GameState` object—no scattered state variables.
+Simulation is deterministic and uses seeded RNG (`src/rng.ts`).
+State serialization and deserialization are supported for replay, debugging, and determinism validation.
+
+All new code and tests must use the canonical `GameState` for state access and mutation. For serialization/replay, use the provided helpers and validate determinism with test cases.
 
 ## Key Documentation Locations
 

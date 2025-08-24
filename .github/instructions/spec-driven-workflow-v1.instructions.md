@@ -2,103 +2,34 @@
 description: 'Specification-Driven Workflow v1 provides a structured approach to software development, ensuring that requirements are clearly defined, designs are meticulously planned, and implementations are thoroughly documented and validated.'
 applyTo: '**'
 ---
-# Spec Driven Workflow v1
 
-**Specification-Driven Workflow:**
-Bridge the gap between requirements and implementation.
+# Spec-Driven Workflow — Quick Loop
 
-**Maintain these artifacts at all times:**
+Receipt: "Follow a 6-phase spec-driven loop: Analyze → Design → Implement → Validate → Reflect → Handoff."
 
-- **`requirements.md`**: User stories and acceptance criteria in structured EARS notation.
-- **`design.md`**: Technical architecture, sequence diagrams, implementation considerations.
-- **`tasks.md`**: Detailed, trackable implementation plan.
+6-phase micro-plan (one sentence each):
+- Analyze: gather facts, write 2–5 EARS-style requirements.  
+- Design: write a short design (diagram + interfaces) and tasks list.  
+- Implement: small commits, tests, and update tasks.md as you go.  
+- Validate: run automated tests, manual checks, and performance verifications.  
+- Reflect: refactor, update docs, and record technical debt.  
+- Handoff: prepare PR with executive summary, changelog, tests, and artifacts.
 
-## Universal Documentation Framework
+Quick templates
+- Requirement (EARS): WHEN <event>, THE SYSTEM SHALL <behavior> [Acceptance: how to test].
+- PR summary (3 lines): 1) Goal: <one-line> 2) Key changes: <files/functions> 3) Validation: <tests/metrics>. Attach decision records if any.
 
-**Documentation Rule:**
-Use the detailed templates as the **primary source of truth** for all documentation.
+Minimal acceptance checklist before merge:
+- [ ] 2–5 testable requirements written.  
+- [ ] Design doc linked in PR.  
+- [ ] Tests for each requirement (unit/integration).  
+- [ ] Performance baseline if applicable.  
+- [ ] Decision records for non-trivial trade-offs.  
+- [ ] Exec summary and streamlined action log included.
 
-**Summary formats:**
-Use only for concise artifacts such as changelogs and pull request descriptions.
+If blocked: re-run Analyze → adjust Confidence Score → pick PoC if medium/low confidence.
 
-### Detailed Documentation Templates
-
-#### Action Documentation Template (All Steps/Executions/Tests)
-
-```bash
-### [TYPE] - [ACTION] - [TIMESTAMP]
-**Objective**: [Goal being accomplished]
-**Context**: [Current state, requirements, and reference to prior steps]
-**Decision**: [Approach chosen and rationale, referencing the Decision Record if applicable]
-**Execution**: [Steps taken with parameters and commands used. For code, include file paths.]
-**Output**: [Complete and unabridged results, logs, command outputs, and metrics]
-**Validation**: [Success verification method and results. If failed, include a remediation plan.]
-**Next**: [Automatic continuation plan to the next specific action]
-```
-
-#### Decision Record Template (All Decisions)
-
-```bash
-### Decision - [TIMESTAMP]
-**Decision**: [What was decided]
-**Context**: [Situation requiring decision and data driving it]
-**Options**: [Alternatives evaluated with brief pros and cons]
-**Rationale**: [Why the selected option is superior, with trade-offs explicitly stated]
-**Impact**: [Anticipated consequences for implementation, maintainability, and performance]
-**Review**: [Conditions or schedule for reassessing this decision]
-```
-
-### Summary Formats (for Reporting)
-
-#### Streamlined Action Log
-
-For generating concise changelogs. Each log entry is derived from a full Action Document.
-
-`[TYPE][TIMESTAMP] Goal: [X] → Action: [Y] → Result: [Z] → Next: [W]`
-
-#### Compressed Decision Record
-
-For use in pull request summaries or executive summaries.
-
-`Decision: [X] | Rationale: [Y] | Impact: [Z] | Review: [Date]`
-
-## Execution Workflow (6-Phase Loop)
-
-**Never skip any step. Use consistent terminology. Reduce ambiguity.**
-
-### **Phase 1: ANALYZE**
-
-**Objective:**
-
-- Understand the problem.
-- Analyze the existing system.
-- Produce a clear, testable set of requirements.
-- Think about the possible solutions and their implications.
-
-**Checklist:**
-
-- [ ] Read all provided code, documentation, tests, and logs.
-      - Document file inventory, summaries, and initial analysis results.
-- [ ] Define requirements in **EARS Notation**:
-      - Transform feature requests into structured, testable requirements.
-      - Format: `WHEN [a condition or event], THE SYSTEM SHALL [expected behavior]`
-- [ ] Identify dependencies and constraints.
-      - Document a dependency graph with risks and mitigation strategies.
-- [ ] Map data flows and interactions.
-      - Document system interaction diagrams and data models.
-- [ ] Catalog edge cases and failures.
-      - Document a comprehensive edge case matrix and potential failure points.
-- [ ] Assess confidence.
-      - Generate a **Confidence Score (0-100%)** based on clarity of requirements, complexity, and problem scope.
-      - Document the score and its rationale.
-
-**Critical Constraint:**
-
-- **Do not proceed until all requirements are clear and documented.**
-
-### **Phase 2: DESIGN**
-
-**Objective:**
+End.
 
 - Create a comprehensive technical design and a detailed implementation plan.
 

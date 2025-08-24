@@ -1,4 +1,7 @@
+
 # Renderer scale (RendererConfig.rendererScale)
+
+All rendering is driven by the canonical `GameState` object (`src/types/index.ts`). The renderer receives the current `GameState` and renders only from its properties—no scattered state variables. This ensures deterministic, reproducible visuals and supports serialization/replay for debugging and validation.
 
 Purpose: `RendererConfig.rendererScale` is a developer-facing multiplier applied on top of `window.devicePixelRatio` to scale the renderer backing store. It allows you to increase or decrease the number of physical pixels the canvas uses without changing the logical (CSS) scene coordinate system.
 

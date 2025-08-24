@@ -4,6 +4,7 @@ import { progression as progressionCfg } from "./config/progressionConfig";
 import { SIM, boundaryBehavior } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
 import { acquireBullet, releaseBullet, acquireExplosion, releaseExplosion, acquireShieldHit, releaseShieldHit, acquireHealthHit, releaseHealthHit, releaseParticle } from "./gamemanager";
+import type { GameState } from "./types";
 
 export type Bounds = { W: number; H: number };
 
@@ -16,7 +17,7 @@ function dist2(a: { x: number; y: number }, b: { x: number; y: number }) {
   return dx * dx + dy * dy;
 }
 
-export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
+export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds) {
   pruneAll(state, dtSeconds, bounds);
   // Advance time
   state.t = (state.t || 0) + dtSeconds;
@@ -58,7 +59,7 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
     if (remove) releaseBullet(b);
   }
   // Batched in-place pruning for all high-frequency event arrays
-function pruneAll(state: any, dtSeconds: number, bounds: Bounds) {
+function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
   // Ensure all event arrays are initialized
   state.particles = state.particles || [];
   state.explosions = state.explosions || [];

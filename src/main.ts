@@ -2,6 +2,8 @@
 // main.ts — TypeScript entrypoint (ported from main.js). Uses TS imports so
 // the module graph resolves to .ts sources during migration.
 import { createGameManager } from './gamemanager';
+import { makeInitialState } from './entities';
+import type { GameState } from './types';
 import { CanvasRenderer } from './canvasrenderer';
 import { WebGLRenderer } from './webglrenderer';
 import { getDefaultBounds } from './config/simConfig';
@@ -14,6 +16,9 @@ declare global {
 }
 
 export async function startApp(rootDocument: Document = document) {
+	// Instantiate canonical GameState at startup
+	const gameState: GameState = makeInitialState();
+
 	let canvas = rootDocument.getElementById('world') as HTMLCanvasElement | null;
 	// If the host document doesn't already have a canvas#world (some DOM emulators
 	// may provide a fresh document per test), create one so renderers can attach.
@@ -175,9 +180,12 @@ export async function startApp(rootDocument: Document = document) {
 	}
 
 	try { window.gm = window.gm || {}; } catch (e) {}
-	// Pass fixed logical bounds to game manager
+	// Pass fixed logical bounds and canonical GameState to game manager
 	const gm = createGameManager({ renderer, useWorker: false, seed: 12345 });
-	if (gm && gm._internal) gm._internal.bounds = LOGICAL_BOUNDS;
+	if (gm && gm._internal) {
+		gm._internal.bounds = LOGICAL_BOUNDS;
+		gm._internal.state = gameState;
+	}
 	try { if (typeof window !== 'undefined' && (window as any).gm) Object.assign((window as any).gm, gm); } catch (e) {}
 
 	// Speed multiplier logic
@@ -209,15 +217,11 @@ export async function startApp(rootDocument: Document = document) {
 
 	// Engine trail UI toggle state
 	let engineTrailsEnabled = true;
-	if (gm && gm._internal && gm._internal.state) {
-		gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
-	}
+	gameState.engineTrailsEnabled = engineTrailsEnabled;
 	if (ui.toggleTrails) {
 		const onToggleTrails = () => {
 			engineTrailsEnabled = !engineTrailsEnabled;
-			if (gm && gm._internal && gm._internal.state) {
-				gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
-			}
+			gameState.engineTrailsEnabled = engineTrailsEnabled;
 			ui.toggleTrails.textContent = engineTrailsEnabled ? '☄ Trails: On' : '☄ Trails: Off';
 		};
 		addListener(ui.toggleTrails, 'click', onToggleTrails);

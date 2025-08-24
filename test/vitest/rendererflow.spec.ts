@@ -4,6 +4,7 @@ import { WebGLRenderer } from '../../src/webglrenderer';
 import RendererConfig from '../../src/config/rendererConfig';
 import { getDefaultBounds } from '../../src/config/simConfig';
 import { getWebGLContext, hasWebGL } from './utils/webgl';
+import { makeInitialState, createShip } from '../../src/entities';
 
 describe('Renderer Flow', () => {
   it('CanvasRenderer should map world to screen coordinates consistently', () => {
@@ -14,15 +15,12 @@ describe('Renderer Flow', () => {
     const renderer = new CanvasRenderer(canvas);
     renderer.init();
     // Place a ship at center and at edge
-    const state = {
-      ships: [
-        { x: 960, y: 540, radius: 20, angle: 0, turrets: [], team: 'red' },
-        { x: 0, y: 0, radius: 20, angle: 0, turrets: [], team: 'blue' },
-        { x: 1920, y: 1080, radius: 20, angle: 0, turrets: [], team: 'blue' }
-      ],
-      bullets: [],
-      t: 0
-    };
+  const state = makeInitialState();
+    state.ships.push(
+      createShip('fighter', 960, 540, 'red'),
+      createShip('fighter', 0, 0, 'blue'),
+      createShip('fighter', 1920, 1080, 'blue')
+    );
     renderer.renderState(state);
     // Check that buffer canvas is correct size
     expect(renderer.bufferCanvas.width).toBeCloseTo(getDefaultBounds().W * RendererConfig.renderScale, 1);
@@ -44,7 +42,8 @@ describe('Renderer Flow', () => {
     canvas.height = getDefaultBounds().H * RendererConfig.renderScale;
     const renderer = new CanvasRenderer(canvas);
     renderer.init();
-    renderer.renderState({ ships: [], bullets: [], t: 0 });
+  const state = makeInitialState();
+  renderer.renderState(state);
     expect(renderer.bufferCanvas.width).toBeCloseTo(getDefaultBounds().W * RendererConfig.renderScale, 1);
     expect(renderer.bufferCanvas.height).toBeCloseTo(getDefaultBounds().H * RendererConfig.renderScale, 1);
   });
@@ -63,7 +62,8 @@ describe('Renderer Flow', () => {
       const gl = getWebGLContext(canvas);
       if (!gl) return;
       renderer.init();
-      renderer.renderState({ ships: [], bullets: [], t: 0 });
+  const state = makeInitialState();
+  renderer.renderState(state);
       expect(renderer.fboWidth).toBeCloseTo(getDefaultBounds().W * RendererConfig.renderScale, 1);
       expect(renderer.fboHeight).toBeCloseTo(getDefaultBounds().H * RendererConfig.renderScale, 1);
     });

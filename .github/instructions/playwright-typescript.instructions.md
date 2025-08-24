@@ -47,52 +47,18 @@ test.describe('Movie Search Feature', () => {
       await page.getByRole('search').click();
       const searchInput = page.getByRole('textbox', { name: 'Search Input' });
       await searchInput.fill('Garfield');
-      await searchInput.press('Enter');
-    });
-
-    await test.step('Verify search results', async () => {
-      // Verify the accessibility tree of the search results
-      await expect(page.getByRole('main')).toMatchAriaSnapshot(`
-        - main:
-          - heading "Garfield" [level=1]
-          ---
-          description: 'Playwright TS quick guide — one-line receipt, short plan, resilient locators, and a minimal example.'
-          applyTo: '**'
-          ---
-
-          # Playwright (TypeScript) — Quick Guide
-
-          Receipt: "Write a resilient Playwright test for <feature> — plan: scenario, actions, expected assertions."
-
-          Plan (3 steps):
-          - 1) Declare scenario and page state (URL, auth). 2) Perform user actions using role-based locators. 3) Assert user-visible outcomes with web-first assertions.
-
-          Core rules (short):
-          - Prefer user-facing locators: getByRole/getByLabel/getByText.  
-          - Use await + auto-retrying assertions (toHaveText/toHaveURL/toHaveCount).  
-          - Group related interactions with test.step for clarity.  
-          - Avoid hard waits; prefer built-in waits and expect-based checks.
-
-          Minimal example:
-          import { test, expect } from '@playwright/test';
-
-          test('Feature - Search returns results', async ({ page }) => {
             await page.goto('http://localhost:8080/');
-            await test.step('search for term', async () => {
-              await page.getByRole('search').click();
-              const input = page.getByRole('textbox', { name: 'Search Input' });
-              await input.fill('Garfield');
-              await input.press('Enter');
-            });
-            await expect(page.getByRole('main')).toContainText('Garfield');
-          });
 
-          Checklist before merge:
-          - [ ] Uses role-based locators where possible.  
-          - [ ] No fixed sleeps or flaky selectors.  
-          - [ ] Clear test title and steps.  
-          - [ ] Assertions reflect user-visible behaviour.
+      # Playwright (TypeScript) — Short Guide
 
-          Run: `npx playwright test --project=chromium`
+      Receipt: "Write resilient Playwright tests."
 
-          End.
+      Plan: 1) Use role-based locators. 2) Use auto-retrying assertions. 3) No hard waits.
+
+      Checklist:
+      - [ ] Role-based locators
+      - [ ] All state via canonical GameState if simulation
+      - [ ] Clear test titles and steps
+
+      End.
+

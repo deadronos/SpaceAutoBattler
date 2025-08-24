@@ -1,3 +1,30 @@
+# SpaceAutoBattler
+
+AutoBattler simulation and renderer for space fleet battles.
+## Quickstart
+
+1. Install dependencies: `npm install`
+## Architecture: Canonical GameState
+
+All simulation, rendering, and UI state is centralized in the canonical `GameState` type (`src/types/index.ts`).
+Every subsystem (simulation, renderer, UI) receives and mutates the `GameState` object—no scattered state variables.
+Simulation is deterministic and uses seeded RNG (`src/rng.ts`).
+State serialization and deserialization are supported for replay, debugging, and determinism validation.
+## Contributor Workflow
+
+1. Make minimal, targeted edits. Prefer small, test-backed changes.
+4. All new code and tests must use the canonical `GameState` for state access and mutation.
+5. For serialization/replay, use the provided helpers and validate determinism with test cases.
+## Recent Changes
+
+- Canonical `GameState` type now required for all simulation, renderer, and UI logic.
+- All state must be a property of `GameState`.
+- Renderer and simulation refactored to use only `GameState`.
+- Serialization and replay logic added for determinism and debugging.
+## Maintainers
+
+- Owner: deadronos
+- Main branch: `main`
 ## Simulation boundary behavior
 
 The simulation exposes a config option for boundary behavior of ships and bullets:

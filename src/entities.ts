@@ -42,6 +42,18 @@ export type Ship = {
   maxSpeed?: number; // max speed override for tests/simulation
   // optional AI runtime slot used by tests and behavior logic
   __ai?: any;
+  // Renderer/simulation convenience fields
+  hpPercent?: number;
+  shieldPercent?: number;
+  shieldRegen?: number;
+  trail?: { x: number; y: number }[];
+  turrets?: Array<{
+    position: [number, number];
+    kind: string;
+    targeting?: string;
+    cooldown?: number;
+    lastFired?: number;
+  }>;
 };
 
 export function createShip(
@@ -96,6 +108,10 @@ export type Bullet = {
   ownerId?: number | null;
   damage: number;
   ttl: number;
+  radius?: number;
+  bulletRadius?: number;
+  bulletTTL?: number;
+  kind?: string;
 };
 
 export function createBullet(
@@ -129,6 +145,7 @@ export type GameState = {
   shieldHits: any[];
   healthHits: any[];
   engineTrailsEnabled?: boolean;
+  starCanvas?: HTMLCanvasElement;
 };
 
 export function makeInitialState(): GameState {

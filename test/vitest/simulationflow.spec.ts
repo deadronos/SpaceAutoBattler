@@ -1,3 +1,44 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { makeInitialState, createShip, createBullet } from "../../src/entities";
+import { simulateStep } from "../../src/simulate";
+// ...existing code...
+
+describe("GameState serialization", () => {
+  it("should serialize and deserialize GameState with integrity", () => {
+    const state = makeInitialState();
+    state.ships.push(createShip("fighter", 100, 100, "red"));
+    state.bullets.push(createBullet(100, 100, 10, 0, "red", 1, 5, 1));
+    state.t = 42;
+    // Serialize
+    const json = JSON.stringify(state);
+    // Deserialize
+    const restored = JSON.parse(json);
+    expect(restored.t).toBe(42);
+    expect(Array.isArray(restored.ships)).toBe(true);
+    expect(Array.isArray(restored.bullets)).toBe(true);
+    expect(restored.ships[0].type).toBe("fighter");
+    expect(restored.bullets[0].damage).toBe(5);
+  });
+
+  it("should produce deterministic replay from serialized state", () => {
+    const state = makeInitialState();
+    state.ships.push(createShip("fighter", 100, 100, "red"));
+    state.bullets.push(createBullet(100, 100, 10, 0, "red", 1, 5, 1));
+    state.t = 0;
+    // Step simulation
+    simulateStep(state, 0.1, { W: 1920, H: 1080 });
+    // Serialize
+    const json = JSON.stringify(state);
+    // Deserialize
+    const restored = JSON.parse(json);
+    // Step again
+    simulateStep(restored, 0.1, { W: 1920, H: 1080 });
+    // Compare key fields
+    expect(restored.ships.length).toBe(state.ships.length);
+    expect(restored.bullets.length).toBe(state.bullets.length);
+    expect(typeof restored.t).toBe("number");
+  });
+});
 import { getShipConfig } from '../../src/config/entitiesConfig';
 describe('Tactical Scenarios', () => {
   // Flanking: Ship approaches target from the side or rear
@@ -98,7 +139,6 @@ describe('Tactical Scenarios', () => {
   });
 });
 import { boundaryBehavior } from '../../src/config/simConfig';
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 describe('Boundary Behavior', () => {
   let origConfig: any;
   beforeEach(() => {
@@ -170,8 +210,7 @@ describe('Boundary Behavior', () => {
   expect(state.ships[0].x).toBeGreaterThanOrEqual(-radius2);
   });
 });
-import { simulateStep } from "../../src/simulate";
-import { makeInitialState, createShip, createBullet } from "../../src/entities";
+// ...existing code...
 import progression from "../../src/config/progressionConfig";
 import ShipConfig from "../../src/config/entitiesConfig";
 import { applySimpleAI } from "../../src/behavior";

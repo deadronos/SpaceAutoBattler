@@ -4,6 +4,7 @@ import { getDefaultBounds } from '../../src/config/simConfig';
 import TeamsConfig from '../../src/config/teamsConfig';
 import ShipConfig from '../../src/config/entitiesConfig';
 import { simulateStep } from '../../src/simulate';
+import { makeInitialState } from '../../src/entities';
 
 // Game flow: start, tick, end
 
@@ -25,15 +26,17 @@ describe('Game Flow', () => {
     expect(Object.keys(ShipConfig).length).toBeGreaterThan(0);
   });
 
+
   it('should run simulation tick and update state', () => {
-    const state = { ships: [], bullets: [], t: 0 };
+    const state = makeInitialState();
     simulateStep(state, 0.016, getDefaultBounds());
     expect(state).toBeDefined();
     expect(Array.isArray(state.ships)).toBe(true);
   });
 
   it('should end game when win condition met', () => {
-    const state = { ships: [], bullets: [], t: 0, win: true };
-    expect(state.win).toBe(true);
+    const state = makeInitialState();
+    (state as any).win = true;
+    expect((state as any).win).toBe(true);
   });
 });

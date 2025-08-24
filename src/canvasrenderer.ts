@@ -2,13 +2,12 @@
 // This mirrors the behavior in src/canvasrenderer.js but provides types so
 // other parts of the codebase can be migrated safely.
 
-import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset, getVisualConfig } from './config/assets/assetsConfig';
-import { TeamsConfig } from './config/teamsConfig';
-import { bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';
-import { RendererConfig } from './config/rendererConfig';
-import { shieldFlashes, healthFlashes } from './gamemanager';
 
-export type AnyState = any;
+import type { GameState } from './types';
+import RendererConfig from './config/rendererConfig';
+import AssetsConfig, { getVisualConfig, getShipAsset, getBulletAsset, getTurretAsset } from './config/assets/assetsConfig';
+import TeamsConfig from './config/teamsConfig';
+import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 
 export class CanvasRenderer {
   canvas: HTMLCanvasElement;
@@ -59,7 +58,7 @@ export class CanvasRenderer {
 
   isRunning(): boolean { return false; }
 
-  renderState(state: AnyState, interpolation = 0): void {
+  renderState(state: GameState, interpolation = 0): void {
     // helper: draw a stroked ring (used for explosions / flashes)
     function drawRing(x: number, y: number, R: number, color: string, alpha = 1.0, thickness = 2) {
           try {
@@ -155,13 +154,12 @@ export class CanvasRenderer {
     } catch (e) { /* ignore particle spawn errors */ }
 
     // Engine trail rendering (config-driven, per ship)
-    const engineTrailsEnabled = !!state.engineTrailsEnabled;
     for (const s of state.ships || []) {
       const sx = (s.x || 0) * renderScale;
       const sy = (s.y || 0) * renderScale;
       if (sx < 0 || sx >= bufferW || sy < 0 || sy >= bufferH) continue;
       // Update trail history (store in s.trail)
-      if (engineTrailsEnabled) {
+      if (state.engineTrailsEnabled) {
         s.trail = s.trail || [];
         // Only add new trail point if ship moved
         const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
@@ -221,8 +219,8 @@ export class CanvasRenderer {
         }
       }
       // Draw all turrets at their configured positions
-      if (Array.isArray(s.turrets) && s.turrets.length > 0) {
-        for (const turret of s.turrets) {
+      if (Array.isArray((s as any).turrets) && (s as any).turrets.length > 0) {
+        for (const turret of (s as any).turrets) {
           if (!turret || !turret.position) continue;
           const turretShape = getTurretAsset(turret.kind || 'basic');
           // Always use latest config radius for turret position and scale
@@ -267,7 +265,7 @@ export class CanvasRenderer {
       }
 
       // Draw shield effect (blue ring if shield > 0)
-      if (s.shield > 0) {
+  if ((s.shield ?? 0) > 0) {
         if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
           const shAnim = (AssetsConfig as any).animations && (AssetsConfig as any).animations.shieldEffect;
           try {
@@ -298,11 +296,11 @@ export class CanvasRenderer {
 
     // Health hits: render freshest per-ship health flash using index (reddish rings)
     try {
-      const nowT = (state && state.t) || 0;
+      const nowT = state.t || 0;
       for (const s of state.ships || []) {
         try {
           let flash: any = null;
-          const arr = Array.isArray(healthFlashes) ? healthFlashes.filter(f => f.id === s.id) : [];
+          const arr = Array.isArray(state.healthFlashes) ? state.healthFlashes.filter((f: any) => f.id === s.id) : [];
           let bestTs = -Infinity;
           for (const f of arr) {
             if (!f) continue;
@@ -339,7 +337,7 @@ export class CanvasRenderer {
         const by = (b.y || 0) * renderScale;
         if (bx < 0 || bx >= bufferW || by < 0 || by >= bufferH) continue;
         const r = b.radius || b.bulletRadius || 1.5;
-        const kind = bulletKindForRadius((r / 6)) as any;
+  const kind = typeof b.bulletRadius === 'number' ? (b.bulletRadius < 2 ? 'small' : b.bulletRadius < 3 ? 'medium' : 'large') : 'small';
         const shape = getBulletAsset(kind as any);
         activeBufferCtx.save();
         activeBufferCtx.translate(bx, by);
