@@ -1,3 +1,40 @@
+# Ownership Model: Renderer vs Simulation
+
+## Visual Ownership Principle
+
+- **Renderer owns render-only transient visuals** (e.g., explosions, flashes, particles):
+  - The renderer is responsible for pooling, spawning, and recycling all visuals that exist only for rendering and do not affect simulation logic.
+  - These visuals are managed via the renderer's pooling API (e.g., `acquireEffect`, `releaseEffect`) and are not persisted in simulation state.
+  - Example: Explosions shown for visual feedback are spawned and recycled by the renderer, not the simulation.
+
+- **Simulation owns persistent simulation state** (e.g., ships, bullets, game events):
+  - The simulation is responsible for all game objects and events that affect gameplay, rules, or logic.
+  - Persistent state is stored in the canonical `GameState` and mutated by simulation steps.
+  - Example: Ship positions, bullet trajectories, and health changes are managed by simulation and reflected in `GameState`.
+
+## Migration Guidance
+
+- When migrating visuals (such as explosions) to renderer-owned pooling:
+  1. Remove pooling and lifecycle management for that visual from simulation code.
+  2. Implement a spawn/lease API in the renderer to handle creation and recycling.
+  3. Ensure integration tests validate that the renderer is the sole owner of pooling for these visuals.
+  4. Document the ownership model in code comments and docs.
+
+## Rationale
+
+- This separation ensures deterministic simulation, easier debugging, and more efficient resource management. Simulation state remains minimal and focused on gameplay, while the renderer can optimize pooling and recycling for visuals without affecting game logic.
+
+## Example
+
+```ts
+// Renderer spawns a visual explosion (transient)
+const explosion = renderer.spawnExplosion({ x, y, r });
+// Renderer recycles explosion when its lifetime ends
+renderer.releaseExplosion(explosion);
+
+// Simulation updates persistent state only
+state.ships[0].hp -= damage;
+```
 # Asset Pooling (GameState.assetPool)
 
 ## Overview

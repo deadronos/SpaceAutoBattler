@@ -213,7 +213,6 @@ export function releaseSprite<T extends object>(state: GameState, key: string, s
     _incCount(counts, key, -1);
   }
 }
-export default { createShip, createBullet, makeInitialState };
 // Provide a default initial GameState for simulation and tests
 export function makeInitialState(): GameState {
   return {
