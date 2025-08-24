@@ -4,7 +4,6 @@ import type {
   CannonSpec,
   ProgressionConfig,
   ShipConfigMap,
-  VisualMappingConfig,
   AssetsConfigType,
   Shape2D
 } from '../../src/types';

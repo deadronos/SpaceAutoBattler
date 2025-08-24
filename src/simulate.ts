@@ -56,7 +56,7 @@ export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds
           break;
       }
     }
-    if (remove) releaseBullet(b);
+  if (remove) releaseBullet(state, b);
   }
   // Batched in-place pruning for all high-frequency event arrays
 function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
@@ -103,7 +103,7 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
     if (!remove) {
       state.bullets[writeBullet++] = b;
     } else {
-      releaseBullet(b);
+  releaseBullet(state, b);
     }
   }
   state.bullets.length = writeBullet;
@@ -196,10 +196,10 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
       s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;
     }
 
-    // Apply friction/damping to velocity
-    const friction = typeof s.friction === "number" ? s.friction : 0.98;
-    s.vx = (s.vx || 0) * friction;
-    s.vy = (s.vy || 0) * friction;
+  // Apply friction/damping to velocity (from simConfig)
+  const friction = typeof SIM.friction === "number" ? SIM.friction : 0.98;
+  s.vx = (s.vx || 0) * friction;
+  s.vy = (s.vy || 0) * friction;
 
     // Clamp speed using shared function
     clampSpeed(s, maxSpeed);
@@ -261,7 +261,7 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             (b.y || 0) - (s.y || 0),
             (b.x || 0) - (s.x || 0),
           );
-          (state.shieldHits ||= []).push(acquireShieldHit({
+          (state.shieldHits ||= []).push(acquireShieldHit(state, {
             id: s.id,
             x: b.x,
             y: b.y,
@@ -282,7 +282,7 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
             s.hp -= remaining;
-            (state.healthHits ||= []).push(acquireHealthHit({
+            (state.healthHits ||= []).push(acquireHealthHit(state, {
               id: s.id,
               x: b.x,
               y: b.y,
@@ -304,13 +304,13 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
         } else {
           s.hp -= b.damage || 0;
-          (state.healthHits ||= []).push(acquireHealthHit({
-            id: s.id,
-            x: b.x,
-            y: b.y,
-            team: s.team,
-            amount: b.damage || 0,
-          }));
+            (state.healthHits ||= []).push(acquireHealthHit(state, {
+              id: s.id,
+              x: b.x,
+              y: b.y,
+              team: s.team,
+              amount: b.damage || 0,
+            }));
           // expose damage event for renderer (health hit)
           (state.damageEvents ||= []).push({
             id: s.id,
@@ -478,7 +478,7 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
                 attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
-          (state.explosions ||= []).push(acquireExplosion({ x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
+          (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
           state.ships.splice(si, 1);
         }
         break;

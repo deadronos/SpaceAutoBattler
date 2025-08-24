@@ -210,7 +210,7 @@ body {
   <div id="toast"></div>
   <script type="module">
 
-			const __workerCode = "var __defProp = Object.defineProperty;\nvar __getOwnPropDesc = Object.getOwnPropertyDescriptor;\nvar __getOwnPropNames = Object.getOwnPropertyNames;\nvar __hasOwnProp = Object.prototype.hasOwnProperty;\nvar __esm = (fn, res) => function __init() {\n  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;\n};\nvar __export = (target, all) => {\n  for (var name in all)\n    __defProp(target, name, { get: all[name], enumerable: true });\n};\nvar __copyProps = (to, from, except, desc) => {\n  if (from && typeof from === \"object\" || typeof from === \"function\") {\n    for (let key of __getOwnPropNames(from))\n      if (!__hasOwnProp.call(to, key) && key !== except)\n        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n  }\n  return to;\n};\nvar __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n// src/config/entitiesConfig.ts\nvar entitiesConfig_exports = {};\n__export(entitiesConfig_exports, {\n  BULLET_DEFAULTS: () => BULLET_DEFAULTS,\n  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,\n  ShipConfig: () => ShipConfig,\n  bulletKindForRadius: () => bulletKindForRadius,\n  default: () => entitiesConfig_default,\n  getDefaultShipType: () => getDefaultShipType,\n  getShipConfig: () => getShipConfig\n});\nfunction getShipConfig() {\n  return ShipConfig;\n}\nfunction bulletKindForRadius(r) {\n  if (r < 2) return \"small\";\n  if (r < 2.5) return \"medium\";\n  if (r < 3.5) return \"large\";\n  return \"heavy\";\n}\nfunction getDefaultShipType() {\n  return Object.keys(ShipConfig)[0] || \"fighter\";\n}\nvar ShipConfig, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;\nvar init_entitiesConfig = __esm({\n  \"src/config/entitiesConfig.ts\"() {\n    \"use strict\";\n    ShipConfig = {\n      fighter: {\n        maxHp: 15,\n        armor: 0,\n        maxShield: 8,\n        shieldRegen: 1,\n        dmg: 3,\n        damage: 3,\n        radius: 12,\n        cannons: [\n          {\n            damage: 3,\n            rate: 3,\n            spread: 0.1,\n            muzzleSpeed: 260,\n            // was 300\n            bulletRadius: 1.5,\n            bulletTTL: 1.1\n            // was 1.2\n          }\n        ],\n        accel: 5,\n        turnRate: 6,\n        maxSpeed: 160\n      },\n      corvette: {\n        maxHp: 50,\n        armor: 0,\n        maxShield: Math.round(50 * 0.6),\n        shieldRegen: 0.5,\n        dmg: 5,\n        damage: 5,\n        radius: 20,\n        accel: 5,\n        turnRate: 3.5,\n        // was 3\n        maxSpeed: 145,\n        // was 140\n        cannons: [\n          {\n            damage: 6,\n            rate: 1.2,\n            spread: 0.05,\n            muzzleSpeed: 180,\n            // was 220\n            bulletRadius: 2,\n            bulletTTL: 1.8\n            // was 2.0\n          }\n        ]\n      },\n      frigate: {\n        maxHp: 80,\n        armor: 1,\n        maxShield: Math.round(80 * 0.6),\n        shieldRegen: 0.4,\n        dmg: 8,\n        damage: 8,\n        radius: 24,\n        cannons: [\n          {\n            damage: 8,\n            rate: 1,\n            spread: 0.06,\n            muzzleSpeed: 180,\n            // was 200\n            bulletRadius: 2.5,\n            bulletTTL: 2\n            // was 2.2\n          }\n        ],\n        accel: 5,\n        turnRate: 2.5,\n        // was 2.2\n        maxSpeed: 125\n        // was 120\n      },\n      destroyer: {\n        maxHp: 120,\n        armor: 2,\n        maxShield: Math.round(120 * 0.6),\n        shieldRegen: 0.3,\n        dmg: 12,\n        damage: 12,\n        radius: 40,\n        cannons: new Array(6).fill(0).map(() => ({\n          damage: 6,\n          rate: 0.8,\n          spread: 0.08,\n          muzzleSpeed: 160,\n          // was 240\n          bulletRadius: 2.5,\n          bulletTTL: 1.8\n          // was 2.4\n        })),\n        accel: 5,\n        turnRate: 2,\n        // was 1.6\n        maxSpeed: 110,\n        // was 100\n        turrets: [\n          {\n            position: [1.2, 0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [-1.2, 0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [1.2, -0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [-1.2, -0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [0, 1.5],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [0, -1.5],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          }\n        ]\n      },\n      carrier: {\n        maxHp: 200,\n        armor: 3,\n        maxShield: Math.round(200 * 0.6),\n        shieldRegen: 0.2,\n        dmg: 2,\n        damage: 2,\n        radius: 40,\n        cannons: new Array(4).fill(0).map(() => ({\n          damage: 4,\n          rate: 0.6,\n          spread: 0.12,\n          muzzleSpeed: 140,\n          // was 180\n          bulletRadius: 3,\n          bulletTTL: 2.2\n          // was 2.8\n        })),\n        accel: 5,\n        turnRate: 1.2,\n        // was 0.8\n        maxSpeed: 95,\n        // was 80\n        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },\n        turrets: [\n          {\n            position: [2, 1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [-2, 1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [2, -1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [-2, -1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          }\n        ]\n      }\n    };\n    BULLET_DEFAULTS = {\n      damage: 1,\n      ttl: 2,\n      radius: 1.5,\n      muzzleSpeed: 240\n    };\n    PARTICLE_DEFAULTS = {\n      ttl: 1,\n      color: \"#fff\",\n      size: 2\n    };\n    entitiesConfig_default = ShipConfig;\n  }\n});\n\n// src/config/progressionConfig.ts\nvar progression = {\n  xpPerDamage: 1,\n  xpPerKill: 50,\n  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),\n  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),\n  dmgPercentPerLevel: 0.08,\n  shieldPercentPerLevel: 0.06,\n  speedPercentPerLevel: 0.03,\n  regenPercentPerLevel: 0.04\n};\n\n// src/config/simConfig.ts\nvar boundaryBehavior = {\n  ships: \"wrap\",\n  bullets: \"remove\"\n};\n\n// src/rng.ts\nvar _seed = 1;\nfunction srand(seed = 1) {\n  _seed = seed >>> 0;\n}\nfunction mulberry32(a) {\n  return function() {\n    let t = (a += 1831565813) >>> 0;\n    t = Math.imul(t ^ t >>> 15, t | 1);\n    t ^= t + Math.imul(t ^ t >>> 7, t | 61);\n    return ((t ^ t >>> 14) >>> 0) / 4294967296;\n  };\n}\nfunction srandom() {\n  const f = mulberry32(_seed);\n  _seed = _seed + 2654435761 >>> 0;\n  return f();\n}\nfunction srange(min, max) {\n  return min + (max - min) * srandom();\n}\n\n// src/entities.ts\ninit_entitiesConfig();\n\n// src/config/teamsConfig.ts\ninit_entitiesConfig();\nvar TeamsConfig = {\n  teams: {\n    red: { id: \"red\", color: \"#ff4d4d\", label: \"Red\" },\n    blue: { id: \"blue\", color: \"#4da6ff\", label: \"Blue\" }\n  },\n  defaultFleet: {\n    counts: (() => {\n      const shipCfg = getShipConfig();\n      const types = Object.keys(shipCfg || {});\n      const defaultCounts = {};\n      for (const t of types) {\n        if (t === \"fighter\") defaultCounts[t] = 8;\n        else if (t === \"corvette\") defaultCounts[t] = 3;\n        else if (t === \"frigate\") defaultCounts[t] = 2;\n        else if (t === \"destroyer\") defaultCounts[t] = 1;\n        else if (t === \"carrier\") defaultCounts[t] = 1;\n        else defaultCounts[t] = 1;\n      }\n      return defaultCounts;\n    })(),\n    spacing: 28,\n    jitter: { x: 80, y: 120 }\n  },\n  // continuousReinforcement controls: enable/disable, scoreMargin is the\n  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),\n  // perTick is the maximum ships considered per reinforcement tick, and\n  // shipTypes is an optional array of types to choose from randomly. If\n  // omitted, keys from defaultFleet.counts are used.\n  continuousReinforcement: {\n    enabled: false,\n    scoreMargin: 0.12,\n    perTick: 1,\n    interval: 5,\n    shipTypes: void 0\n  }\n};\nvar TEAM_DEFAULT = \"red\";\n\n// src/entities.ts\nvar nextId = 1;\nfunction genId() {\n  return nextId++;\n}\nfunction createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {\n  return {\n    id: genId(),\n    x,\n    y,\n    vx,\n    vy,\n    team,\n    ownerId,\n    damage,\n    ttl\n  };\n}\n\n// src/config/behaviorConfig.ts\nvar AI_THRESHOLDS = {\n  decisionTimerMin: 0.5,\n  decisionTimerMax: 2,\n  hpEvadeThreshold: 0.35,\n  randomLow: 0.15,\n  randomHigh: 0.85\n};\n\n// src/behavior.ts\ninit_entitiesConfig();\nfunction len2(vx, vy) {\n  return vx * vx + vy * vy;\n}\nfunction clampSpeed(s, max) {\n  const v2 = len2(s.vx || 0, s.vy || 0);\n  const max2 = max * max;\n  if (v2 > max2 && v2 > 0) {\n    const inv = max / Math.sqrt(v2);\n    s.vx = (s.vx || 0) * inv;\n    s.vy = (s.vy || 0) * inv;\n  }\n}\nfunction aimWithSpread(from, to, spread = 0) {\n  let dx = (to.x || 0) - (from.x || 0);\n  let dy = (to.y || 0) - (from.y || 0);\n  const d = Math.hypot(dx, dy) || 1;\n  dx /= d;\n  dy /= d;\n  if (spread > 0) {\n    const ang = Math.atan2(dy, dx);\n    const jitter = srange(-spread, spread);\n    const na = ang + jitter;\n    return { x: Math.cos(na), y: Math.sin(na) };\n  }\n  return { x: dx, y: dy };\n}\nfunction tryFire(state2, ship, target, dt) {\n  if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {\n    for (const c of ship.cannons) {\n      if (typeof c.__cd !== \"number\") c.__cd = 0;\n      c.__cd -= dt;\n      if (c.__cd > 0) continue;\n      const spread = typeof c.spread === \"number\" ? c.spread : 0;\n      const dir = aimWithSpread(ship, target, spread);\n      const speed = typeof c.muzzleSpeed === \"number\" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;\n      const dmg = typeof c.damage === \"number\" ? c.damage : typeof ship.damage === \"number\" ? ship.damage : typeof ship.dmg === \"number\" ? ship.dmg : BULLET_DEFAULTS.damage;\n      const ttl = typeof c.bulletTTL === \"number\" ? c.bulletTTL : BULLET_DEFAULTS.ttl;\n      const radius = typeof c.bulletRadius === \"number\" ? c.bulletRadius : BULLET_DEFAULTS.radius;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(\n          ship.x || 0,\n          ship.y || 0,\n          vx,\n          vy,\n          ship.team || TEAM_DEFAULT,\n          ship.id || null,\n          dmg,\n          ttl\n        ),\n        { radius }\n      );\n      state2.bullets.push(b);\n      const rate = typeof c.rate === \"number\" && c.rate > 0 ? c.rate : 1;\n      c.__cd = 1 / rate;\n    }\n  }\n  if (Array.isArray(ship.turrets) && ship.turrets.length > 0) {\n    for (const [i, turret] of ship.turrets.entries()) {\n      if (!turret) continue;\n      if (typeof turret.__cd !== \"number\") turret.__cd = 0;\n      turret.__cd -= dt;\n      if (turret.__cd > 0) continue;\n      let turretTarget = null;\n      if (turret.targeting === \"nearest\") {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      } else if (turret.targeting === \"random\") {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        if (enemies.length)\n          turretTarget = enemies[Math.floor(srandom() * enemies.length)];\n      } else if (turret.targeting === \"focus\") {\n        if (ship.__ai && ship.__ai.targetId != null) {\n          turretTarget = (state2.ships || []).find(\n            (sh) => sh && sh.id === ship.__ai.targetId\n          ) || null;\n        }\n      } else {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      }\n      if (!turretTarget) continue;\n      const spread = typeof turret.spread === \"number\" ? turret.spread : 0.05;\n      const dir = aimWithSpread(ship, turretTarget, spread);\n      const speed = typeof turret.muzzleSpeed === \"number\" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;\n      const dmg = typeof turret.damage === \"number\" ? turret.damage : typeof ship.damage === \"number\" ? ship.damage : BULLET_DEFAULTS.damage;\n      const ttl = typeof turret.bulletTTL === \"number\" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;\n      const radius = typeof turret.bulletRadius === \"number\" ? turret.bulletRadius : BULLET_DEFAULTS.radius;\n      const angle = ship.angle || 0;\n      const shipType = ship.type || \"fighter\";\n      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];\n      const configRadius = shipCfg && typeof shipCfg.radius === \"number\" ? shipCfg.radius : ship.radius || 12;\n      const [tx, ty] = turret.position || [0, 0];\n      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;\n      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(\n          turretX,\n          turretY,\n          vx,\n          vy,\n          ship.team || TEAM_DEFAULT,\n          ship.id || null,\n          dmg,\n          ttl\n        ),\n        { radius }\n      );\n      state2.bullets.push(b);\n      turret.__cd = typeof turret.cooldown === \"number\" && turret.cooldown > 0 ? turret.cooldown : 1;\n    }\n  }\n}\nfunction ensureShipAiState(s) {\n  if (!s.__ai) {\n    s.__ai = { state: \"idle\", decisionTimer: 0, targetId: null };\n  }\n  return s.__ai;\n}\nfunction chooseNewTarget(state2, ship) {\n  const enemies = (state2.ships || []).filter(\n    (sh) => sh && sh.team !== ship.team\n  );\n  if (!enemies.length) return null;\n  const idx = Math.floor(srandom() * enemies.length);\n  return enemies[idx];\n}\nfunction applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {\n  if (!state2 || !Array.isArray(state2.ships)) return;\n  for (const s of state2.ships) {\n    const ai = ensureShipAiState(s);\n    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);\n    let target = null;\n    if (ai.targetId != null)\n      target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;\n    if (!target) target = chooseNewTarget(state2, s);\n    if (target) ai.targetId = target.id;\n    const maxAccel = typeof s.accel === \"number\" ? s.accel : 100;\n    const maxSpeed = typeof s.maxSpeed === \"number\" ? s.maxSpeed : 160;\n    s.steering = typeof s.steering === \"number\" ? s.steering : 0;\n    s.throttle = typeof s.throttle === \"number\" ? s.throttle : 0;\n    if (!target) {\n      s.throttle = 0;\n      s.steering = 0;\n      ai.state = \"idle\";\n    } else {\n      if (ai.decisionTimer <= 0) {\n        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);\n        const rnd = srandom();\n        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = \"evade\";\n        else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = \"engage\";\n        else ai.state = \"idle\";\n        ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);\n      }\n      const dx = (target.x || 0) - (s.x || 0);\n      const dy = (target.y || 0) - (s.y || 0);\n      const desiredAngle = Math.atan2(dy, dx);\n      const currentAngle = typeof s.angle === \"number\" ? s.angle : 0;\n      let da = desiredAngle - currentAngle;\n      while (da < -Math.PI) da += Math.PI * 2;\n      while (da > Math.PI) da -= Math.PI * 2;\n      const steeringNorm = Math.PI / 2;\n      const steering = Math.max(-1, Math.min(1, da / steeringNorm));\n      if (ai.state === \"engage\") {\n        s.throttle = 1;\n        s.steering = steering;\n        tryFire(state2, s, target, dt);\n      } else if (ai.state === \"evade\") {\n        s.throttle = 0.8;\n        const awayAngle = Math.atan2(\n          (s.y || 0) - (target.y || 0),\n          (s.x || 0) - (target.x || 0)\n        );\n        let daAway = awayAngle - currentAngle;\n        while (daAway < -Math.PI) daAway += Math.PI * 2;\n        while (daAway > Math.PI) daAway -= Math.PI * 2;\n        s.steering = Math.max(-1, Math.min(1, daAway / steeringNorm));\n      } else {\n        s.throttle = 0;\n        s.steering = 0;\n      }\n    }\n    clampSpeed(s, maxSpeed);\n  }\n}\n\n// src/gamemanager.ts\ninit_entitiesConfig();\n\n// src/config/gamemanagerConfig.ts\nvar SHIELD = {\n  ttl: 0.4,\n  particleCount: 6,\n  particleTTL: 0.5,\n  particleColor: \"#88ccff\",\n  particleSize: 2,\n  // arcWidth (radians) for shield hit visual/particle spread centered on hitAngle\n  // NOTE: Used in assetsConfig.ts visualStateDefaults and renderer logic. If not consumed, consider removing.\n  arcWidth: Math.PI / 6\n  // TODO: Ensure renderer/particle logic uses this or remove if redundant\n};\nvar HEALTH = {\n  ttl: 0.6,\n  particleCount: 8,\n  particleTTL: 0.6,\n  particleColor: \"#ffb3b3\",\n  particleSize: 2.5\n};\nvar EXPLOSION = {\n  particleCount: 30,\n  particleTTL: 1.2,\n  particleColor: \"#ffaa33\",\n  particleSize: 3,\n  minSpeed: 20,\n  maxSpeed: 140\n  // TODO: Unify particle effect configs with assetsConfig.ts animations for maintainability\n};\nvar STARS = { twinkle: true, redrawInterval: 500, count: 140 };\n\n// src/gamemanager.ts\ninit_entitiesConfig();\nvar particles = [];\nvar flashes = [];\nvar shieldFlashes = [];\nvar healthFlashes = [];\nvar particlePool = [];\nvar bulletPool = [];\nvar explosionPool = [];\nvar shieldHitPool = [];\nvar healthHitPool = [];\nfunction releaseBullet(b) {\n  if (!b.alive) return;\n  b.alive = false;\n  bulletPool.push(b);\n}\nfunction acquireExplosion(opts = {}) {\n  let e;\n  if (explosionPool.length) {\n    e = explosionPool.pop();\n    Object.assign(e, opts);\n    e.alive = true;\n    e._pooled = false;\n  } else {\n    e = { ...opts, alive: true, _pooled: false };\n  }\n  flashes.push(e);\n  return e;\n}\nfunction releaseExplosion(e) {\n  if (e._pooled) return;\n  if (!e.alive) return;\n  e.alive = false;\n  e._pooled = true;\n  explosionPool.push(e);\n}\nfunction acquireShieldHit(opts = {}) {\n  let sh = null;\n  if (shieldHitPool.length) {\n    sh = shieldHitPool.pop();\n    Object.assign(sh, opts);\n    sh.alive = true;\n    sh._pooled = false;\n  } else {\n    sh = { ...opts, alive: true, _pooled: false };\n  }\n  shieldFlashes.push(sh);\n  return sh;\n}\nfunction releaseShieldHit(sh) {\n  if (sh._pooled) return;\n  const i = shieldFlashes.indexOf(sh);\n  if (i !== -1) shieldFlashes.splice(i, 1);\n  sh.alive = false;\n  sh._pooled = true;\n  shieldHitPool.push(sh);\n}\nfunction acquireHealthHit(opts = {}) {\n  let hh = null;\n  if (healthHitPool.length) {\n    hh = healthHitPool.pop();\n    Object.assign(hh, opts);\n    hh.alive = true;\n    hh._pooled = false;\n  } else {\n    hh = { ...opts, alive: true, _pooled: false };\n  }\n  healthFlashes.push(hh);\n  return hh;\n}\nfunction releaseHealthHit(hh) {\n  if (hh._pooled) return;\n  const i = healthFlashes.indexOf(hh);\n  if (i !== -1) healthFlashes.splice(i, 1);\n  hh.alive = false;\n  hh._pooled = true;\n  healthHitPool.push(hh);\n}\nvar config = {\n  shield: { ...SHIELD },\n  health: { ...HEALTH },\n  explosion: { ...EXPLOSION },\n  stars: { ...STARS }\n};\nvar _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;\nfunction releaseParticle(p) {\n  if (!p._pooled) {\n    p._pooled = true;\n    p.alive = false;\n    const idx = particles.indexOf(p);\n    if (idx !== -1) {\n      particles.splice(idx, 1);\n    }\n    particlePool.push(p);\n  }\n}\n\n// src/simulate.ts\nfunction dist2(a, b) {\n  const dx = a.x - b.x;\n  const dy = a.y - b.y;\n  return dx * dx + dy * dy;\n}\nfunction simulateStep(state2, dtSeconds, bounds2) {\n  pruneAll(state2, dtSeconds, bounds2);\n  state2.t = (state2.t || 0) + dtSeconds;\n  for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {\n    const b = state2.bullets[i];\n    b.x += (b.vx || 0) * dtSeconds;\n    b.y += (b.vy || 0) * dtSeconds;\n    b.ttl = (b.ttl || 0) - dtSeconds;\n    let outX = b.x < 0 || b.x >= bounds2.W;\n    let outY = b.y < 0 || b.y >= bounds2.H;\n    let outOfBounds = outX || outY;\n    let remove = false;\n    if (b.ttl <= 0) remove = true;\n    else if (outOfBounds) {\n      switch (boundaryBehavior.bullets) {\n        case \"remove\":\n          remove = true;\n          break;\n        case \"wrap\":\n          if (b.x < 0) b.x += bounds2.W;\n          if (b.x >= bounds2.W) b.x -= bounds2.W;\n          if (b.y < 0) b.y += bounds2.H;\n          if (b.y >= bounds2.H) b.y -= bounds2.H;\n          break;\n        case \"bounce\":\n          if (outX) {\n            b.vx = -(b.vx || 0);\n            b.x = Math.max(0, Math.min(bounds2.W, b.x));\n          }\n          if (outY) {\n            b.vy = -(b.vy || 0);\n            b.y = Math.max(0, Math.min(bounds2.H, b.y));\n          }\n          break;\n      }\n    }\n    if (remove) releaseBullet(b);\n  }\n  function pruneAll(state3, dtSeconds2, bounds3) {\n    state3.particles = state3.particles || [];\n    state3.explosions = state3.explosions || [];\n    state3.shieldHits = state3.shieldHits || [];\n    state3.healthHits = state3.healthHits || [];\n    let writeBullet = 0;\n    for (let read = 0; read < state3.bullets.length; read++) {\n      const b = state3.bullets[read];\n      b.x += (b.vx || 0) * dtSeconds2;\n      b.y += (b.vy || 0) * dtSeconds2;\n      b.ttl = (b.ttl || 0) - dtSeconds2;\n      let outX = b.x < 0 || b.x >= bounds3.W;\n      let outY = b.y < 0 || b.y >= bounds3.H;\n      let outOfBounds = outX || outY;\n      let remove = false;\n      if (b.ttl <= 0) remove = true;\n      else if (outOfBounds) {\n        switch (boundaryBehavior.bullets) {\n          case \"remove\":\n            remove = true;\n            break;\n          case \"wrap\":\n            if (b.x < 0) b.x += bounds3.W;\n            if (b.x >= bounds3.W) b.x -= bounds3.W;\n            if (b.y < 0) b.y += bounds3.H;\n            if (b.y >= bounds3.H) b.y -= bounds3.H;\n            break;\n          case \"bounce\":\n            if (outX) {\n              b.vx = -(b.vx || 0);\n              b.x = Math.max(0, Math.min(bounds3.W, b.x));\n            }\n            if (outY) {\n              b.vy = -(b.vy || 0);\n              b.y = Math.max(0, Math.min(bounds3.H, b.y));\n            }\n            break;\n        }\n      }\n      if (!remove) {\n        state3.bullets[writeBullet++] = b;\n      } else {\n        releaseBullet(b);\n      }\n    }\n    state3.bullets.length = writeBullet;\n    let writeParticle = 0;\n    for (let read = 0; read < state3.particles.length; read++) {\n      const p = state3.particles[read];\n      p.life = (p.life || p.ttl || 0) - dtSeconds2;\n      if (p.life > 0) {\n        state3.particles[writeParticle++] = p;\n      } else {\n        releaseParticle(p);\n      }\n    }\n    state3.particles.length = writeParticle;\n    let writeExplosion = 0;\n    for (let read = 0; read < state3.explosions.length; read++) {\n      const e = state3.explosions[read];\n      e.life = (e.life || e.ttl || 0) - dtSeconds2;\n      if (e.life > 0) {\n        state3.explosions[writeExplosion++] = e;\n      } else {\n        releaseExplosion(e);\n      }\n    }\n    state3.explosions.length = writeExplosion;\n    let writeShield = 0;\n    for (let read = 0; read < state3.shieldHits.length; read++) {\n      const sh = state3.shieldHits[read];\n      if (typeof sh.x === \"number\" && typeof sh.y === \"number\" && sh.x >= 0 && sh.x < bounds3.W && sh.y >= 0 && sh.y < bounds3.H) {\n        state3.shieldHits[writeShield++] = sh;\n      } else {\n        releaseShieldHit(sh);\n      }\n    }\n    state3.shieldHits.length = writeShield;\n    let writeHealth = 0;\n    for (let read = 0; read < state3.healthHits.length; read++) {\n      const hh = state3.healthHits[read];\n      if (typeof hh.x === \"number\" && typeof hh.y === \"number\" && hh.x >= 0 && hh.x < bounds3.W && hh.y >= 0 && hh.y < bounds3.H) {\n        state3.healthHits[writeHealth++] = hh;\n      } else {\n        releaseHealthHit(hh);\n      }\n    }\n    state3.healthHits.length = writeHealth;\n  }\n  for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n    const s = state2.ships[si];\n    const throttle = typeof s.throttle === \"number\" ? s.throttle : 0;\n    const steering = typeof s.steering === \"number\" ? s.steering : 0;\n    const accel = typeof s.accel === \"number\" ? s.accel : 0;\n    const turnRate = typeof s.turnRate === \"number\" ? s.turnRate : 3;\n    const maxSpeed = typeof s.maxSpeed === \"number\" ? s.maxSpeed : 160;\n    const angle = typeof s.angle === \"number\" ? s.angle : 0;\n    const maxTurn = turnRate * Math.abs(steering) * dtSeconds;\n    if (steering !== 0) {\n      let a = angle + Math.sign(steering) * maxTurn;\n      while (a < -Math.PI) a += Math.PI * 2;\n      while (a > Math.PI) a -= Math.PI * 2;\n      s.angle = a;\n    }\n    const actualAccel = accel * throttle;\n    if (actualAccel > 0) {\n      s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;\n      s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;\n    }\n    const friction = typeof s.friction === \"number\" ? s.friction : 0.98;\n    s.vx = (s.vx || 0) * friction;\n    s.vy = (s.vy || 0) * friction;\n    clampSpeed(s, maxSpeed);\n    s.x += (s.vx || 0) * dtSeconds;\n    s.y += (s.vy || 0) * dtSeconds;\n    const r = typeof s.radius === \"number\" ? s.radius : 12;\n    let outX = s.x < -r || s.x > bounds2.W + r;\n    let outY = s.y < -r || s.y > bounds2.H + r;\n    let outOfBounds = outX || outY;\n    let remove = false;\n    if (outOfBounds) {\n      switch (boundaryBehavior.ships) {\n        case \"remove\":\n          remove = true;\n          break;\n        case \"wrap\":\n          if (s.x < -r) s.x += bounds2.W + r * 2;\n          if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;\n          if (s.y < -r) s.y += bounds2.H + r * 2;\n          if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;\n          break;\n        case \"bounce\":\n          if (outX) {\n            s.vx = -(s.vx || 0);\n            s.x = Math.max(-r, Math.min(bounds2.W + r, s.x));\n          }\n          if (outY) {\n            s.vy = -(s.vy || 0);\n            s.y = Math.max(-r, Math.min(bounds2.H + r, s.y));\n          }\n          break;\n      }\n    }\n    if (remove) state2.ships.splice(si, 1);\n  }\n  for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {\n    const b = state2.bullets[bi];\n    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n      const s = state2.ships[si];\n      if (s.team === b.team) continue;\n      const r = (s.radius || 6) + (b.radius || 1);\n      if (dist2(b, s) <= r * r) {\n        const attacker = typeof b.ownerId === \"number\" || typeof b.ownerId === \"string\" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;\n        let dealtToShield = 0;\n        let dealtToHealth = 0;\n        const shield = s.shield || 0;\n        if (shield > 0) {\n          const absorbed = Math.min(shield, b.damage || 0);\n          s.shield = shield - absorbed;\n          const hitAngle = Math.atan2(\n            (b.y || 0) - (s.y || 0),\n            (b.x || 0) - (s.x || 0)\n          );\n          (state2.shieldHits ||= []).push(acquireShieldHit({\n            id: s.id,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            amount: absorbed,\n            hitAngle\n          }));\n          (state2.damageEvents ||= []).push({\n            id: s.id,\n            type: \"shield\",\n            amount: absorbed,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            attackerId: attacker && attacker.id\n          });\n          const remaining = (b.damage || 0) - absorbed;\n          if (remaining > 0) {\n            s.hp -= remaining;\n            (state2.healthHits ||= []).push(acquireHealthHit({\n              id: s.id,\n              x: b.x,\n              y: b.y,\n              team: s.team,\n              amount: remaining\n            }));\n            (state2.damageEvents ||= []).push({\n              id: s.id,\n              type: \"hp\",\n              amount: remaining,\n              x: b.x,\n              y: b.y,\n              team: s.team,\n              attackerId: attacker && attacker.id\n            });\n          }\n          dealtToShield = absorbed;\n          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);\n        } else {\n          s.hp -= b.damage || 0;\n          (state2.healthHits ||= []).push(acquireHealthHit({\n            id: s.id,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            amount: b.damage || 0\n          }));\n          (state2.damageEvents ||= []).push({\n            id: s.id,\n            type: \"hp\",\n            amount: b.damage || 0,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            attackerId: attacker && attacker.id\n          });\n          dealtToHealth = b.damage || 0;\n        }\n        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n        s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n        if (attacker) {\n          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);\n          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n            attacker.xp -= progression.xpToLevel(attacker.level || 1);\n            attacker.level = (attacker.level || 1) + 1;\n            const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n            const lvl = attacker.level || 1;\n            const hpScalar = resolveScalar(\n              progression.hpPercentPerLevel,\n              lvl\n            );\n            const shScalar = resolveScalar(\n              progression.shieldPercentPerLevel,\n              lvl\n            );\n            const dmgScalar = resolveScalar(\n              progression.dmgPercentPerLevel,\n              lvl\n            );\n            const speedScalar = resolveScalar(\n              progression.speedPercentPerLevel,\n              lvl\n            );\n            const regenScalar = resolveScalar(\n              progression.regenPercentPerLevel,\n              lvl\n            );\n            const hpMul = 1 + hpScalar;\n            const shMul = 1 + shScalar;\n            const dmgMul = 1 + dmgScalar;\n            attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);\n            if (typeof attacker.maxShield === \"number\") {\n              attacker.maxShield = (attacker.maxShield || 0) * shMul;\n              attacker.shield = Math.min(\n                attacker.maxShield,\n                (attacker.shield || 0) * shMul\n              );\n            }\n            if (Array.isArray(attacker.cannons)) {\n              for (const c of attacker.cannons) {\n                if (typeof c.damage === \"number\") c.damage *= dmgMul;\n              }\n            }\n            if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\")\n              attacker.accel = attacker.accel * (1 + speedScalar);\n            if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\")\n              attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n          }\n        }\n        state2.bullets.splice(bi, 1);\n        if (s.hp <= 0) {\n          console.log(\n            \"DEBUG: KILL BRANCH, attacker\",\n            attacker && attacker.id,\n            \"xp before\",\n            attacker && attacker.xp\n          );\n          if (attacker) {\n            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);\n            console.log(\n              \"DEBUG: KILL XP AWARDED, attacker\",\n              attacker.id,\n              \"xp after\",\n              attacker.xp\n            );\n            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n              attacker.xp -= progression.xpToLevel(attacker.level || 1);\n              attacker.level = (attacker.level || 1) + 1;\n              const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n              const lvl = attacker.level || 1;\n              const hpScalar = resolveScalar(\n                progression.hpPercentPerLevel,\n                lvl\n              );\n              const shScalar = resolveScalar(\n                progression.shieldPercentPerLevel,\n                lvl\n              );\n              const dmgScalar = resolveScalar(\n                progression.dmgPercentPerLevel,\n                lvl\n              );\n              const speedScalar = resolveScalar(\n                progression.speedPercentPerLevel,\n                lvl\n              );\n              const regenScalar = resolveScalar(\n                progression.regenPercentPerLevel,\n                lvl\n              );\n              const hpMul = 1 + hpScalar;\n              const shMul = 1 + shScalar;\n              const dmgMul = 1 + dmgScalar;\n              attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n              attacker.hp = Math.min(\n                attacker.maxHp,\n                (attacker.hp || 0) * hpMul\n              );\n              if (typeof attacker.maxShield === \"number\") {\n                attacker.maxShield = (attacker.maxShield || 0) * shMul;\n                attacker.shield = Math.min(\n                  attacker.maxShield,\n                  (attacker.shield || 0) * shMul\n                );\n              }\n              if (Array.isArray(attacker.cannons)) {\n                for (const c of attacker.cannons) {\n                  if (typeof c.damage === \"number\") c.damage *= dmgMul;\n                }\n              }\n              if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\")\n                attacker.accel = attacker.accel * (1 + speedScalar);\n              if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\")\n                attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n            }\n          }\n          (state2.explosions ||= []).push(acquireExplosion({ x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));\n          state2.ships.splice(si, 1);\n        }\n        break;\n      }\n    }\n  }\n  for (const s of state2.ships || []) {\n    if (s.maxShield)\n      s.shield = Math.min(\n        s.maxShield,\n        (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds\n      );\n  }\n  for (const s of state2.ships || []) {\n    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n    s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n  }\n  return state2;\n}\n\n// src/simWorker.ts\nvar state = null;\nvar bounds = { W: 800, H: 600 };\nvar simDtMs = 16;\nvar running = false;\nvar acc = 0;\nvar last = 0;\nfunction postSnapshot() {\n  try {\n    postMessage({ type: \"snapshot\", state });\n    try {\n      clearTransientEvents(state);\n    } catch (e) {\n    }\n  } catch (e) {\n  }\n}\nfunction clearTransientEvents(s) {\n  if (!s || typeof s !== \"object\") return;\n  try {\n    if (Array.isArray(s.explosions)) s.explosions.length = 0;\n    if (Array.isArray(s.shieldHits)) s.shieldHits.length = 0;\n    if (Array.isArray(s.healthHits)) s.healthHits.length = 0;\n  } catch (e) {\n  }\n}\nfunction tick() {\n  if (!running) return;\n  const now = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n  if (!last) last = now;\n  acc += now - last;\n  last = now;\n  if (acc > 250) acc = 250;\n  while (acc >= simDtMs) {\n    try {\n      applySimpleAI(state, simDtMs / 1e3, bounds);\n      simulateStep(state, simDtMs / 1e3, bounds);\n    } catch (e) {\n      const errAny = e;\n      const stack = errAny && errAny.stack ? errAny.stack : \"\";\n      postMessage({ type: \"error\", message: String(e), stack });\n    }\n    acc -= simDtMs;\n  }\n  postSnapshot();\n  setTimeout(tick, 0);\n}\nself.onmessage = (ev) => {\n  const msg = ev.data;\n  try {\n    switch (msg && msg.type) {\n      case \"init\":\n        if (typeof msg.seed === \"number\") srand(msg.seed);\n        if (msg.bounds) bounds = msg.bounds;\n        if (typeof msg.simDtMs === \"number\") simDtMs = msg.simDtMs;\n        if (msg.state) state = msg.state;\n        postMessage({ type: \"ready\" });\n        break;\n      case \"start\":\n        if (!state) {\n          postMessage({ type: \"error\", message: \"no state\" });\n          break;\n        }\n        running = true;\n        acc = 0;\n        last = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n        tick();\n        break;\n      case \"stop\":\n        running = false;\n        break;\n      case \"snapshotRequest\":\n        postSnapshot();\n        break;\n      case \"setSeed\":\n        if (typeof msg.seed === \"number\") {\n          srand(msg.seed);\n        }\n        break;\n      case \"command\":\n        if (msg.cmd === \"spawnShip\" && state) {\n          state.ships.push(msg.args.ship);\n        } else if (msg.cmd === \"spawnShipBullet\" && state) {\n          state.bullets.push(msg.args.bullet);\n        } else if (msg.cmd === \"setState\") {\n          state = msg.args.state;\n        }\n        break;\n      default:\n        break;\n    }\n  } catch (err) {\n    const stack = err && err.stack ? err.stack : \"\";\n    postMessage({ type: \"error\", message: String(err), stack });\n  }\n};\nvar simWorker_default = null;\nexport {\n  clearTransientEvents,\n  simWorker_default as default\n};\n//# sourceMappingURL=simWorker.js.map\n";
+			const __workerCode = "var __defProp = Object.defineProperty;\nvar __getOwnPropDesc = Object.getOwnPropertyDescriptor;\nvar __getOwnPropNames = Object.getOwnPropertyNames;\nvar __hasOwnProp = Object.prototype.hasOwnProperty;\nvar __esm = (fn, res) => function __init() {\n  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;\n};\nvar __export = (target, all) => {\n  for (var name in all)\n    __defProp(target, name, { get: all[name], enumerable: true });\n};\nvar __copyProps = (to, from, except, desc) => {\n  if (from && typeof from === \"object\" || typeof from === \"function\") {\n    for (let key of __getOwnPropNames(from))\n      if (!__hasOwnProp.call(to, key) && key !== except)\n        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n  }\n  return to;\n};\nvar __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n// src/config/entitiesConfig.ts\nvar entitiesConfig_exports = {};\n__export(entitiesConfig_exports, {\n  BULLET_DEFAULTS: () => BULLET_DEFAULTS,\n  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,\n  ShipConfig: () => ShipConfig,\n  bulletKindForRadius: () => bulletKindForRadius,\n  default: () => entitiesConfig_default,\n  getDefaultShipType: () => getDefaultShipType,\n  getShipConfig: () => getShipConfig\n});\nfunction getShipConfig() {\n  return ShipConfig;\n}\nfunction bulletKindForRadius(r) {\n  if (r < 2) return \"small\";\n  if (r < 2.5) return \"medium\";\n  if (r < 3.5) return \"large\";\n  return \"heavy\";\n}\nfunction getDefaultShipType() {\n  return Object.keys(ShipConfig)[0] || \"fighter\";\n}\nvar ShipConfig, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;\nvar init_entitiesConfig = __esm({\n  \"src/config/entitiesConfig.ts\"() {\n    \"use strict\";\n    ShipConfig = {\n      fighter: {\n        maxHp: 15,\n        armor: 0,\n        maxShield: 8,\n        shieldRegen: 1,\n        dmg: 3,\n        damage: 3,\n        radius: 12,\n        cannons: [\n          {\n            damage: 3,\n            rate: 3,\n            spread: 0.1,\n            muzzleSpeed: 260,\n            // was 300\n            bulletRadius: 1.5,\n            bulletTTL: 1.1\n            // was 1.2\n          }\n        ],\n        accel: 5,\n        turnRate: 6,\n        maxSpeed: 160\n      },\n      corvette: {\n        maxHp: 50,\n        armor: 0,\n        maxShield: Math.round(50 * 0.6),\n        shieldRegen: 0.5,\n        dmg: 5,\n        damage: 5,\n        radius: 20,\n        accel: 5,\n        turnRate: 3.5,\n        // was 3\n        maxSpeed: 145,\n        // was 140\n        cannons: [\n          {\n            damage: 6,\n            rate: 1.2,\n            spread: 0.05,\n            muzzleSpeed: 180,\n            // was 220\n            bulletRadius: 2,\n            bulletTTL: 1.8\n            // was 2.0\n          }\n        ]\n      },\n      frigate: {\n        maxHp: 80,\n        armor: 1,\n        maxShield: Math.round(80 * 0.6),\n        shieldRegen: 0.4,\n        dmg: 8,\n        damage: 8,\n        radius: 24,\n        cannons: [\n          {\n            damage: 8,\n            rate: 1,\n            spread: 0.06,\n            muzzleSpeed: 180,\n            // was 200\n            bulletRadius: 2.5,\n            bulletTTL: 2\n            // was 2.2\n          }\n        ],\n        accel: 5,\n        turnRate: 2.5,\n        // was 2.2\n        maxSpeed: 125\n        // was 120\n      },\n      destroyer: {\n        maxHp: 120,\n        armor: 2,\n        maxShield: Math.round(120 * 0.6),\n        shieldRegen: 0.3,\n        dmg: 12,\n        damage: 12,\n        radius: 40,\n        cannons: new Array(6).fill(0).map(() => ({\n          damage: 6,\n          rate: 0.8,\n          spread: 0.08,\n          muzzleSpeed: 160,\n          // was 240\n          bulletRadius: 2.5,\n          bulletTTL: 1.8\n          // was 2.4\n        })),\n        accel: 5,\n        turnRate: 2,\n        // was 1.6\n        maxSpeed: 110,\n        // was 100\n        turrets: [\n          {\n            position: [1.2, 0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [-1.2, 0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [1.2, -0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [-1.2, -0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [0, 1.5],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [0, -1.5],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          }\n        ]\n      },\n      carrier: {\n        maxHp: 200,\n        armor: 3,\n        maxShield: Math.round(200 * 0.6),\n        shieldRegen: 0.2,\n        dmg: 2,\n        damage: 2,\n        radius: 40,\n        cannons: new Array(4).fill(0).map(() => ({\n          damage: 4,\n          rate: 0.6,\n          spread: 0.12,\n          muzzleSpeed: 140,\n          // was 180\n          bulletRadius: 3,\n          bulletTTL: 2.2\n          // was 2.8\n        })),\n        accel: 5,\n        turnRate: 1.2,\n        // was 0.8\n        maxSpeed: 95,\n        // was 80\n        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },\n        turrets: [\n          {\n            position: [2, 1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [-2, 1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [2, -1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [-2, -1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          }\n        ]\n      }\n    };\n    BULLET_DEFAULTS = {\n      damage: 1,\n      ttl: 2,\n      radius: 1.5,\n      muzzleSpeed: 240\n    };\n    PARTICLE_DEFAULTS = {\n      ttl: 1,\n      color: \"#fff\",\n      size: 2\n    };\n    entitiesConfig_default = ShipConfig;\n  }\n});\n\n// src/config/progressionConfig.ts\nvar progression = {\n  xpPerDamage: 1,\n  xpPerKill: 50,\n  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),\n  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),\n  dmgPercentPerLevel: 0.08,\n  shieldPercentPerLevel: 0.06,\n  speedPercentPerLevel: 0.03,\n  regenPercentPerLevel: 0.04\n};\n\n// src/config/simConfig.ts\nvar SIM = {\n  DT_MS: 16,\n  MAX_ACC_MS: 250,\n  bounds: { W: 1920, H: 1080 },\n  // Use LOGICAL_MAP for default bounds\n  friction: 0.98\n};\nvar boundaryBehavior = {\n  ships: \"wrap\",\n  bullets: \"remove\"\n};\n\n// src/rng.ts\nvar _seed = 1;\nfunction srand(seed = 1) {\n  _seed = seed >>> 0;\n}\nfunction mulberry32(a) {\n  return function() {\n    let t = (a += 1831565813) >>> 0;\n    t = Math.imul(t ^ t >>> 15, t | 1);\n    t ^= t + Math.imul(t ^ t >>> 7, t | 61);\n    return ((t ^ t >>> 14) >>> 0) / 4294967296;\n  };\n}\nfunction srandom() {\n  const f = mulberry32(_seed);\n  _seed = _seed + 2654435761 >>> 0;\n  return f();\n}\nfunction srange(min, max) {\n  return min + (max - min) * srandom();\n}\n\n// src/entities.ts\ninit_entitiesConfig();\n\n// src/config/teamsConfig.ts\ninit_entitiesConfig();\nvar TeamsConfig = {\n  teams: {\n    red: { id: \"red\", color: \"#ff4d4d\", label: \"Red\" },\n    blue: { id: \"blue\", color: \"#4da6ff\", label: \"Blue\" }\n  },\n  defaultFleet: {\n    counts: (() => {\n      const shipCfg = getShipConfig();\n      const types = Object.keys(shipCfg || {});\n      const defaultCounts = {};\n      for (const t of types) {\n        if (t === \"fighter\") defaultCounts[t] = 8;\n        else if (t === \"corvette\") defaultCounts[t] = 3;\n        else if (t === \"frigate\") defaultCounts[t] = 2;\n        else if (t === \"destroyer\") defaultCounts[t] = 1;\n        else if (t === \"carrier\") defaultCounts[t] = 1;\n        else defaultCounts[t] = 1;\n      }\n      return defaultCounts;\n    })(),\n    spacing: 28,\n    jitter: { x: 80, y: 120 }\n  },\n  // continuousReinforcement controls: enable/disable, scoreMargin is the\n  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),\n  // perTick is the maximum ships considered per reinforcement tick, and\n  // shipTypes is an optional array of types to choose from randomly. If\n  // omitted, keys from defaultFleet.counts are used.\n  continuousReinforcement: {\n    enabled: false,\n    scoreMargin: 0.12,\n    perTick: 1,\n    interval: 5,\n    shipTypes: void 0\n  }\n};\nvar TEAM_DEFAULT = \"red\";\n\n// src/entities.ts\nfunction acquireEffect(state2, key, createFn, initArgs) {\n  const poolMap = state2.assetPool.effects;\n  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();\n  if (!state2.assetPool.counts) state2.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };\n  let entry = poolMap.get(key);\n  if (!entry) {\n    entry = { freeList: [], allocated: 0 };\n    poolMap.set(key, entry);\n  }\n  const free = entry.freeList;\n  if (free.length) {\n    const obj = free.pop();\n    try {\n      if (typeof obj.reset === \"function\") obj.reset(initArgs);\n      else if (initArgs && typeof initArgs === \"object\") Object.assign(obj, initArgs);\n    } catch {\n    }\n    return obj;\n  }\n  const max = state2.assetPool.config.effectPoolSize || 128;\n  const strategy = _getStrategy(state2.assetPool.config.effectOverflowStrategy, \"discard-oldest\");\n  const total = entry.allocated || counts.get(key) || 0;\n  if (total < max || strategy === \"grow\") {\n    const e2 = createFn();\n    try {\n      if (typeof e2.reset === \"function\") e2.reset(initArgs);\n      else if (initArgs && typeof initArgs === \"object\") Object.assign(e2, initArgs);\n    } catch {\n    }\n    entry.allocated = (entry.allocated || 0) + 1;\n    _incCount(counts, key, 1);\n    return e2;\n  }\n  if (strategy === \"error\") throw new Error(`Effect pool exhausted for key \"${key}\" (max=${max})`);\n  const e = createFn();\n  entry.allocated = (entry.allocated || 0) + 1;\n  _incCount(counts, key, 1);\n  return e;\n}\nfunction releaseEffect(state2, key, effect, disposeFn) {\n  const poolMap = state2.assetPool.effects;\n  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();\n  if (!state2.assetPool.counts) state2.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };\n  let entry = poolMap.get(key);\n  if (!entry) {\n    entry = { freeList: [], allocated: 0 };\n    poolMap.set(key, entry);\n  }\n  const free = entry.freeList;\n  if (!free.includes(effect)) free.push(effect);\n  const max = state2.assetPool.config.effectPoolSize || 128;\n  const strategy = _getStrategy(state2.assetPool.config.effectOverflowStrategy, \"discard-oldest\");\n  if (strategy === \"grow\") return;\n  while (free.length > max) {\n    const victim = strategy === \"discard-oldest\" ? free.shift() : free.pop();\n    try {\n      if (disposeFn) disposeFn(victim);\n    } catch {\n    }\n    _incCount(counts, key, -1);\n  }\n  if (strategy === \"error\" && free.length > max) {\n    const victim = free.pop();\n    try {\n      if (disposeFn) disposeFn(victim);\n    } catch {\n    }\n    _incCount(counts, key, -1);\n  }\n}\nvar nextId = 1;\nfunction genId() {\n  return nextId++;\n}\nfunction createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {\n  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl };\n}\nfunction createExplosionEffect(init) {\n  return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };\n}\nfunction resetExplosionEffect(obj, init) {\n  obj.x = init?.x ?? 0;\n  obj.y = init?.y ?? 0;\n  obj.r = init?.r;\n  obj.alive = true;\n  obj._pooled = false;\n  Object.assign(obj, init);\n}\nfunction createShieldHitEffect(init) {\n  return { x: init?.x ?? 0, y: init?.y ?? 0, magnitude: init?.magnitude, alive: true, _pooled: false, ...init };\n}\nfunction resetShieldHitEffect(obj, init) {\n  obj.x = init?.x ?? 0;\n  obj.y = init?.y ?? 0;\n  obj.magnitude = init?.magnitude;\n  obj.alive = true;\n  obj._pooled = false;\n  Object.assign(obj, init);\n}\nfunction createHealthHitEffect(init) {\n  return { x: init?.x ?? 0, y: init?.y ?? 0, amount: init?.amount, alive: true, _pooled: false, ...init };\n}\nfunction resetHealthHitEffect(obj, init) {\n  obj.x = init?.x ?? 0;\n  obj.y = init?.y ?? 0;\n  obj.amount = init?.amount;\n  obj.alive = true;\n  obj._pooled = false;\n  Object.assign(obj, init);\n}\nfunction makePooled(obj, resetFn) {\n  const o = obj;\n  if (typeof o.reset !== \"function\") {\n    if (typeof resetFn === \"function\") {\n      o.reset = function(initArgs) {\n        try {\n          resetFn(o, initArgs);\n        } catch {\n        }\n      };\n    } else {\n      o.reset = function(initArgs) {\n        if (initArgs && typeof initArgs === \"object\") Object.assign(o, initArgs);\n      };\n    }\n  }\n  return o;\n}\nfunction _getStrategy(v, def) {\n  return v === \"grow\" || v === \"error\" || v === \"discard-oldest\" ? v : def;\n}\nfunction _incCount(map, key, delta) {\n  const cur = map.get(key) || 0;\n  const next = cur + delta;\n  if (next <= 0) map.delete(key);\n  else map.set(key, next);\n}\nfunction releaseSprite(state2, key, sprite, disposeFn) {\n  const poolMap = state2.assetPool.sprites;\n  const counts = state2.assetPool.counts?.sprites || /* @__PURE__ */ new Map();\n  if (!state2.assetPool.counts) state2.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: counts, effects: /* @__PURE__ */ new Map() };\n  let entry = poolMap.get(key);\n  if (!entry) {\n    entry = { freeList: [], allocated: 0 };\n    poolMap.set(key, entry);\n  }\n  const free = entry.freeList;\n  if (!free.includes(sprite)) free.push(sprite);\n  const max = state2.assetPool.config.spritePoolSize || 256;\n  const strategy = _getStrategy(state2.assetPool.config.spriteOverflowStrategy, \"discard-oldest\");\n  if (strategy === \"grow\") return;\n  while (free.length > max) {\n    const victim = strategy === \"discard-oldest\" ? free.shift() : free.pop();\n    try {\n      if (disposeFn) disposeFn(victim);\n    } catch {\n    }\n    _incCount(counts, key, -1);\n  }\n  if (strategy === \"error\" && free.length > max) {\n    const victim = free.pop();\n    try {\n      if (disposeFn) disposeFn(victim);\n    } catch {\n    }\n    _incCount(counts, key, -1);\n  }\n}\n\n// src/config/behaviorConfig.ts\nvar AI_THRESHOLDS = {\n  decisionTimerMin: 0.5,\n  decisionTimerMax: 2,\n  hpEvadeThreshold: 0.35,\n  randomLow: 0.15,\n  randomHigh: 0.85\n};\n\n// src/behavior.ts\ninit_entitiesConfig();\nfunction len2(vx, vy) {\n  return vx * vx + vy * vy;\n}\nfunction clampSpeed(s, max) {\n  const v2 = len2(s.vx || 0, s.vy || 0);\n  const max2 = max * max;\n  if (v2 > max2 && v2 > 0) {\n    const inv = max / Math.sqrt(v2);\n    s.vx = (s.vx || 0) * inv;\n    s.vy = (s.vy || 0) * inv;\n  }\n}\nfunction aimWithSpread(from, to, spread = 0) {\n  let dx = (to.x || 0) - (from.x || 0);\n  let dy = (to.y || 0) - (from.y || 0);\n  const d = Math.hypot(dx, dy) || 1;\n  dx /= d;\n  dy /= d;\n  if (spread > 0) {\n    const ang = Math.atan2(dy, dx);\n    const jitter = srange(-spread, spread);\n    const na = ang + jitter;\n    return { x: Math.cos(na), y: Math.sin(na) };\n  }\n  return { x: dx, y: dy };\n}\nfunction tryFire(state2, ship, target, dt) {\n  if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {\n    for (const c of ship.cannons) {\n      if (typeof c.__cd !== \"number\") c.__cd = 0;\n      c.__cd -= dt;\n      if (c.__cd > 0) continue;\n      const spread = typeof c.spread === \"number\" ? c.spread : 0;\n      const dir = aimWithSpread(ship, target, spread);\n      const speed = typeof c.muzzleSpeed === \"number\" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;\n      const dmg = typeof c.damage === \"number\" ? c.damage : typeof ship.damage === \"number\" ? ship.damage : typeof ship.dmg === \"number\" ? ship.dmg : BULLET_DEFAULTS.damage;\n      const ttl = typeof c.bulletTTL === \"number\" ? c.bulletTTL : BULLET_DEFAULTS.ttl;\n      const radius = typeof c.bulletRadius === \"number\" ? c.bulletRadius : BULLET_DEFAULTS.radius;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(\n          ship.x || 0,\n          ship.y || 0,\n          vx,\n          vy,\n          ship.team || TEAM_DEFAULT,\n          ship.id || null,\n          dmg,\n          ttl\n        ),\n        { radius }\n      );\n      state2.bullets.push(b);\n      const rate = typeof c.rate === \"number\" && c.rate > 0 ? c.rate : 1;\n      c.__cd = 1 / rate;\n    }\n  }\n  if (Array.isArray(ship.turrets) && ship.turrets.length > 0) {\n    for (const [i, turret] of ship.turrets.entries()) {\n      if (!turret) continue;\n      if (typeof turret.__cd !== \"number\") turret.__cd = 0;\n      turret.__cd -= dt;\n      if (turret.__cd > 0) continue;\n      let turretTarget = null;\n      if (turret.targeting === \"nearest\") {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      } else if (turret.targeting === \"random\") {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        if (enemies.length)\n          turretTarget = enemies[Math.floor(srandom() * enemies.length)];\n      } else if (turret.targeting === \"focus\") {\n        if (ship.__ai && ship.__ai.targetId != null) {\n          turretTarget = (state2.ships || []).find(\n            (sh) => sh && sh.id === ship.__ai.targetId\n          ) || null;\n        }\n      } else {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      }\n      if (!turretTarget) continue;\n      const spread = typeof turret.spread === \"number\" ? turret.spread : 0.05;\n      const dir = aimWithSpread(ship, turretTarget, spread);\n      const speed = typeof turret.muzzleSpeed === \"number\" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;\n      const dmg = typeof turret.damage === \"number\" ? turret.damage : typeof ship.damage === \"number\" ? ship.damage : BULLET_DEFAULTS.damage;\n      const ttl = typeof turret.bulletTTL === \"number\" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;\n      const radius = typeof turret.bulletRadius === \"number\" ? turret.bulletRadius : BULLET_DEFAULTS.radius;\n      const angle = ship.angle || 0;\n      const shipType = ship.type || \"fighter\";\n      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];\n      const configRadius = shipCfg && typeof shipCfg.radius === \"number\" ? shipCfg.radius : ship.radius || 12;\n      const [tx, ty] = turret.position || [0, 0];\n      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;\n      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(\n          turretX,\n          turretY,\n          vx,\n          vy,\n          ship.team || TEAM_DEFAULT,\n          ship.id || null,\n          dmg,\n          ttl\n        ),\n        { radius }\n      );\n      state2.bullets.push(b);\n      turret.__cd = typeof turret.cooldown === \"number\" && turret.cooldown > 0 ? turret.cooldown : 1;\n    }\n  }\n}\nfunction ensureShipAiState(s) {\n  if (!s.__ai) {\n    s.__ai = { state: \"idle\", decisionTimer: 0, targetId: null };\n  }\n  return s.__ai;\n}\nfunction chooseNewTarget(state2, ship) {\n  const enemies = (state2.ships || []).filter(\n    (sh) => sh && sh.team !== ship.team\n  );\n  if (!enemies.length) return null;\n  const idx = Math.floor(srandom() * enemies.length);\n  return enemies[idx];\n}\nfunction applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {\n  if (!state2 || !Array.isArray(state2.ships)) return;\n  for (const s of state2.ships) {\n    const ai = ensureShipAiState(s);\n    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);\n    let target = null;\n    if (ai.targetId != null)\n      target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;\n    if (!target) target = chooseNewTarget(state2, s);\n    if (target) ai.targetId = target.id;\n    const maxAccel = typeof s.accel === \"number\" ? s.accel : 100;\n    const maxSpeed = typeof s.maxSpeed === \"number\" ? s.maxSpeed : 160;\n    s.steering = typeof s.steering === \"number\" ? s.steering : 0;\n    s.throttle = typeof s.throttle === \"number\" ? s.throttle : 0;\n    if (!target) {\n      s.throttle = 0;\n      s.steering = 0;\n      ai.state = \"idle\";\n    } else {\n      if (ai.decisionTimer <= 0) {\n        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);\n        const rnd = srandom();\n        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = \"evade\";\n        else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = \"engage\";\n        else ai.state = \"idle\";\n        ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);\n      }\n      const dx = (target.x || 0) - (s.x || 0);\n      const dy = (target.y || 0) - (s.y || 0);\n      const desiredAngle = Math.atan2(dy, dx);\n      const currentAngle = typeof s.angle === \"number\" ? s.angle : 0;\n      let da = desiredAngle - currentAngle;\n      while (da < -Math.PI) da += Math.PI * 2;\n      while (da > Math.PI) da -= Math.PI * 2;\n      const steeringNorm = Math.PI / 2;\n      const steering = Math.max(-1, Math.min(1, da / steeringNorm));\n      if (ai.state === \"engage\") {\n        s.throttle = 1;\n        s.steering = steering;\n        tryFire(state2, s, target, dt);\n      } else if (ai.state === \"evade\") {\n        s.throttle = 0.8;\n        const awayAngle = Math.atan2(\n          (s.y || 0) - (target.y || 0),\n          (s.x || 0) - (target.x || 0)\n        );\n        let daAway = awayAngle - currentAngle;\n        while (daAway < -Math.PI) daAway += Math.PI * 2;\n        while (daAway > Math.PI) daAway -= Math.PI * 2;\n        s.steering = Math.max(-1, Math.min(1, daAway / steeringNorm));\n      } else {\n        s.throttle = 0;\n        s.steering = 0;\n      }\n    }\n    clampSpeed(s, maxSpeed);\n  }\n}\n\n// src/gamemanager.ts\ninit_entitiesConfig();\n\n// src/config/gamemanagerConfig.ts\nvar SHIELD = {\n  ttl: 0.4,\n  particleCount: 6,\n  particleTTL: 0.5,\n  particleColor: \"#88ccff\",\n  particleSize: 2,\n  // arcWidth (radians) for shield hit visual/particle spread centered on hitAngle\n  // NOTE: Used in assetsConfig.ts visualStateDefaults and renderer logic. If not consumed, consider removing.\n  arcWidth: Math.PI / 6\n  // TODO: Ensure renderer/particle logic uses this or remove if redundant\n};\nvar HEALTH = {\n  ttl: 0.6,\n  particleCount: 8,\n  particleTTL: 0.6,\n  particleColor: \"#ffb3b3\",\n  particleSize: 2.5\n};\nvar EXPLOSION = {\n  particleCount: 30,\n  particleTTL: 1.2,\n  particleColor: \"#ffaa33\",\n  particleSize: 3,\n  minSpeed: 20,\n  maxSpeed: 140\n  // TODO: Unify particle effect configs with assetsConfig.ts animations for maintainability\n};\nvar STARS = { twinkle: true, redrawInterval: 500, count: 140 };\n\n// src/gamemanager.ts\ninit_entitiesConfig();\nfunction releaseBullet(state2, b) {\n  if (!b) return;\n  if (!b.alive) return;\n  b.alive = false;\n  const arr = state2.bullets || [];\n  const idx = arr.indexOf(b);\n  if (idx !== -1) arr.splice(idx, 1);\n  releaseSprite(state2, \"bullet\", b, void 0);\n}\nfunction acquireExplosion(state2, opts = {}) {\n  const key = \"explosion\";\n  const e = acquireEffect(state2, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);\n  (state2.explosions ||= []).push(e);\n  return e;\n}\nfunction releaseExplosion(state2, e) {\n  if (!e) return;\n  if (e._pooled) return;\n  if (!e.alive) return;\n  e.alive = false;\n  e._pooled = true;\n  const arr = state2.explosions || [];\n  const idx = arr.indexOf(e);\n  if (idx !== -1) arr.splice(idx, 1);\n  releaseEffect(state2, \"explosion\", e, void 0);\n}\nfunction acquireShieldHit(state2, opts = {}) {\n  const key = \"shieldHit\";\n  const sh = acquireEffect(state2, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);\n  (state2.shieldHits ||= []).push(sh);\n  return sh;\n}\nfunction releaseShieldHit(state2, sh) {\n  if (!sh) return;\n  if (sh._pooled) return;\n  const arr = state2.shieldHits || [];\n  const i = arr.indexOf(sh);\n  if (i !== -1) arr.splice(i, 1);\n  sh.alive = false;\n  sh._pooled = true;\n  releaseEffect(state2, \"shieldHit\", sh, void 0);\n}\nfunction acquireHealthHit(state2, opts = {}) {\n  const key = \"healthHit\";\n  const hh = acquireEffect(state2, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);\n  (state2.healthHits ||= []).push(hh);\n  return hh;\n}\nfunction releaseHealthHit(state2, hh) {\n  if (!hh) return;\n  if (hh._pooled) return;\n  const arr = state2.healthHits || [];\n  const i = arr.indexOf(hh);\n  if (i !== -1) arr.splice(i, 1);\n  hh.alive = false;\n  hh._pooled = true;\n  releaseEffect(state2, \"healthHit\", hh, void 0);\n}\nvar config = {\n  shield: { ...SHIELD },\n  health: { ...HEALTH },\n  explosion: { ...EXPLOSION },\n  stars: { ...STARS }\n};\nvar _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;\nfunction releaseParticle(state2, p) {\n  if (!p) return;\n  const key = \"particle\";\n  try {\n    releaseEffect(state2, key, p, (x) => {\n    });\n  } catch {\n  }\n  const idx = (state2.particles || []).indexOf(p);\n  if (idx !== -1) (state2.particles || []).splice(idx, 1);\n}\n\n// src/simulate.ts\nfunction dist2(a, b) {\n  const dx = a.x - b.x;\n  const dy = a.y - b.y;\n  return dx * dx + dy * dy;\n}\nfunction simulateStep(state2, dtSeconds, bounds2) {\n  pruneAll(state2, dtSeconds, bounds2);\n  state2.t = (state2.t || 0) + dtSeconds;\n  for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {\n    const b = state2.bullets[i];\n    b.x += (b.vx || 0) * dtSeconds;\n    b.y += (b.vy || 0) * dtSeconds;\n    b.ttl = (b.ttl || 0) - dtSeconds;\n    let outX = b.x < 0 || b.x >= bounds2.W;\n    let outY = b.y < 0 || b.y >= bounds2.H;\n    let outOfBounds = outX || outY;\n    let remove = false;\n    if (b.ttl <= 0) remove = true;\n    else if (outOfBounds) {\n      switch (boundaryBehavior.bullets) {\n        case \"remove\":\n          remove = true;\n          break;\n        case \"wrap\":\n          if (b.x < 0) b.x += bounds2.W;\n          if (b.x >= bounds2.W) b.x -= bounds2.W;\n          if (b.y < 0) b.y += bounds2.H;\n          if (b.y >= bounds2.H) b.y -= bounds2.H;\n          break;\n        case \"bounce\":\n          if (outX) {\n            b.vx = -(b.vx || 0);\n            b.x = Math.max(0, Math.min(bounds2.W, b.x));\n          }\n          if (outY) {\n            b.vy = -(b.vy || 0);\n            b.y = Math.max(0, Math.min(bounds2.H, b.y));\n          }\n          break;\n      }\n    }\n    if (remove) releaseBullet(state2, b);\n  }\n  function pruneAll(state3, dtSeconds2, bounds3) {\n    state3.particles = state3.particles || [];\n    state3.explosions = state3.explosions || [];\n    state3.shieldHits = state3.shieldHits || [];\n    state3.healthHits = state3.healthHits || [];\n    let writeBullet = 0;\n    for (let read = 0; read < state3.bullets.length; read++) {\n      const b = state3.bullets[read];\n      b.x += (b.vx || 0) * dtSeconds2;\n      b.y += (b.vy || 0) * dtSeconds2;\n      b.ttl = (b.ttl || 0) - dtSeconds2;\n      let outX = b.x < 0 || b.x >= bounds3.W;\n      let outY = b.y < 0 || b.y >= bounds3.H;\n      let outOfBounds = outX || outY;\n      let remove = false;\n      if (b.ttl <= 0) remove = true;\n      else if (outOfBounds) {\n        switch (boundaryBehavior.bullets) {\n          case \"remove\":\n            remove = true;\n            break;\n          case \"wrap\":\n            if (b.x < 0) b.x += bounds3.W;\n            if (b.x >= bounds3.W) b.x -= bounds3.W;\n            if (b.y < 0) b.y += bounds3.H;\n            if (b.y >= bounds3.H) b.y -= bounds3.H;\n            break;\n          case \"bounce\":\n            if (outX) {\n              b.vx = -(b.vx || 0);\n              b.x = Math.max(0, Math.min(bounds3.W, b.x));\n            }\n            if (outY) {\n              b.vy = -(b.vy || 0);\n              b.y = Math.max(0, Math.min(bounds3.H, b.y));\n            }\n            break;\n        }\n      }\n      if (!remove) {\n        state3.bullets[writeBullet++] = b;\n      } else {\n        releaseBullet(state3, b);\n      }\n    }\n    state3.bullets.length = writeBullet;\n    let writeParticle = 0;\n    for (let read = 0; read < state3.particles.length; read++) {\n      const p = state3.particles[read];\n      p.life = (p.life || p.ttl || 0) - dtSeconds2;\n      if (p.life > 0) {\n        state3.particles[writeParticle++] = p;\n      } else {\n        releaseParticle(p);\n      }\n    }\n    state3.particles.length = writeParticle;\n    let writeExplosion = 0;\n    for (let read = 0; read < state3.explosions.length; read++) {\n      const e = state3.explosions[read];\n      e.life = (e.life || e.ttl || 0) - dtSeconds2;\n      if (e.life > 0) {\n        state3.explosions[writeExplosion++] = e;\n      } else {\n        releaseExplosion(e);\n      }\n    }\n    state3.explosions.length = writeExplosion;\n    let writeShield = 0;\n    for (let read = 0; read < state3.shieldHits.length; read++) {\n      const sh = state3.shieldHits[read];\n      if (typeof sh.x === \"number\" && typeof sh.y === \"number\" && sh.x >= 0 && sh.x < bounds3.W && sh.y >= 0 && sh.y < bounds3.H) {\n        state3.shieldHits[writeShield++] = sh;\n      } else {\n        releaseShieldHit(sh);\n      }\n    }\n    state3.shieldHits.length = writeShield;\n    let writeHealth = 0;\n    for (let read = 0; read < state3.healthHits.length; read++) {\n      const hh = state3.healthHits[read];\n      if (typeof hh.x === \"number\" && typeof hh.y === \"number\" && hh.x >= 0 && hh.x < bounds3.W && hh.y >= 0 && hh.y < bounds3.H) {\n        state3.healthHits[writeHealth++] = hh;\n      } else {\n        releaseHealthHit(hh);\n      }\n    }\n    state3.healthHits.length = writeHealth;\n  }\n  for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n    const s = state2.ships[si];\n    const throttle = typeof s.throttle === \"number\" ? s.throttle : 0;\n    const steering = typeof s.steering === \"number\" ? s.steering : 0;\n    const accel = typeof s.accel === \"number\" ? s.accel : 0;\n    const turnRate = typeof s.turnRate === \"number\" ? s.turnRate : 3;\n    const maxSpeed = typeof s.maxSpeed === \"number\" ? s.maxSpeed : 160;\n    const angle = typeof s.angle === \"number\" ? s.angle : 0;\n    const maxTurn = turnRate * Math.abs(steering) * dtSeconds;\n    if (steering !== 0) {\n      let a = angle + Math.sign(steering) * maxTurn;\n      while (a < -Math.PI) a += Math.PI * 2;\n      while (a > Math.PI) a -= Math.PI * 2;\n      s.angle = a;\n    }\n    const actualAccel = accel * throttle;\n    if (actualAccel > 0) {\n      s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;\n      s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;\n    }\n    const friction = typeof SIM.friction === \"number\" ? SIM.friction : 0.98;\n    s.vx = (s.vx || 0) * friction;\n    s.vy = (s.vy || 0) * friction;\n    clampSpeed(s, maxSpeed);\n    s.x += (s.vx || 0) * dtSeconds;\n    s.y += (s.vy || 0) * dtSeconds;\n    const r = typeof s.radius === \"number\" ? s.radius : 12;\n    let outX = s.x < -r || s.x > bounds2.W + r;\n    let outY = s.y < -r || s.y > bounds2.H + r;\n    let outOfBounds = outX || outY;\n    let remove = false;\n    if (outOfBounds) {\n      switch (boundaryBehavior.ships) {\n        case \"remove\":\n          remove = true;\n          break;\n        case \"wrap\":\n          if (s.x < -r) s.x += bounds2.W + r * 2;\n          if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;\n          if (s.y < -r) s.y += bounds2.H + r * 2;\n          if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;\n          break;\n        case \"bounce\":\n          if (outX) {\n            s.vx = -(s.vx || 0);\n            s.x = Math.max(-r, Math.min(bounds2.W + r, s.x));\n          }\n          if (outY) {\n            s.vy = -(s.vy || 0);\n            s.y = Math.max(-r, Math.min(bounds2.H + r, s.y));\n          }\n          break;\n      }\n    }\n    if (remove) state2.ships.splice(si, 1);\n  }\n  for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {\n    const b = state2.bullets[bi];\n    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n      const s = state2.ships[si];\n      if (s.team === b.team) continue;\n      const r = (s.radius || 6) + (b.radius || 1);\n      if (dist2(b, s) <= r * r) {\n        const attacker = typeof b.ownerId === \"number\" || typeof b.ownerId === \"string\" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;\n        let dealtToShield = 0;\n        let dealtToHealth = 0;\n        const shield = s.shield || 0;\n        if (shield > 0) {\n          const absorbed = Math.min(shield, b.damage || 0);\n          s.shield = shield - absorbed;\n          const hitAngle = Math.atan2(\n            (b.y || 0) - (s.y || 0),\n            (b.x || 0) - (s.x || 0)\n          );\n          (state2.shieldHits ||= []).push(acquireShieldHit(state2, {\n            id: s.id,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            amount: absorbed,\n            hitAngle\n          }));\n          (state2.damageEvents ||= []).push({\n            id: s.id,\n            type: \"shield\",\n            amount: absorbed,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            attackerId: attacker && attacker.id\n          });\n          const remaining = (b.damage || 0) - absorbed;\n          if (remaining > 0) {\n            s.hp -= remaining;\n            (state2.healthHits ||= []).push(acquireHealthHit(state2, {\n              id: s.id,\n              x: b.x,\n              y: b.y,\n              team: s.team,\n              amount: remaining\n            }));\n            (state2.damageEvents ||= []).push({\n              id: s.id,\n              type: \"hp\",\n              amount: remaining,\n              x: b.x,\n              y: b.y,\n              team: s.team,\n              attackerId: attacker && attacker.id\n            });\n          }\n          dealtToShield = absorbed;\n          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);\n        } else {\n          s.hp -= b.damage || 0;\n          (state2.healthHits ||= []).push(acquireHealthHit(state2, {\n            id: s.id,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            amount: b.damage || 0\n          }));\n          (state2.damageEvents ||= []).push({\n            id: s.id,\n            type: \"hp\",\n            amount: b.damage || 0,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            attackerId: attacker && attacker.id\n          });\n          dealtToHealth = b.damage || 0;\n        }\n        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n        s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n        if (attacker) {\n          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);\n          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n            attacker.xp -= progression.xpToLevel(attacker.level || 1);\n            attacker.level = (attacker.level || 1) + 1;\n            const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n            const lvl = attacker.level || 1;\n            const hpScalar = resolveScalar(\n              progression.hpPercentPerLevel,\n              lvl\n            );\n            const shScalar = resolveScalar(\n              progression.shieldPercentPerLevel,\n              lvl\n            );\n            const dmgScalar = resolveScalar(\n              progression.dmgPercentPerLevel,\n              lvl\n            );\n            const speedScalar = resolveScalar(\n              progression.speedPercentPerLevel,\n              lvl\n            );\n            const regenScalar = resolveScalar(\n              progression.regenPercentPerLevel,\n              lvl\n            );\n            const hpMul = 1 + hpScalar;\n            const shMul = 1 + shScalar;\n            const dmgMul = 1 + dmgScalar;\n            attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);\n            if (typeof attacker.maxShield === \"number\") {\n              attacker.maxShield = (attacker.maxShield || 0) * shMul;\n              attacker.shield = Math.min(\n                attacker.maxShield,\n                (attacker.shield || 0) * shMul\n              );\n            }\n            if (Array.isArray(attacker.cannons)) {\n              for (const c of attacker.cannons) {\n                if (typeof c.damage === \"number\") c.damage *= dmgMul;\n              }\n            }\n            if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\")\n              attacker.accel = attacker.accel * (1 + speedScalar);\n            if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\")\n              attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n          }\n        }\n        state2.bullets.splice(bi, 1);\n        if (s.hp <= 0) {\n          console.log(\n            \"DEBUG: KILL BRANCH, attacker\",\n            attacker && attacker.id,\n            \"xp before\",\n            attacker && attacker.xp\n          );\n          if (attacker) {\n            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);\n            console.log(\n              \"DEBUG: KILL XP AWARDED, attacker\",\n              attacker.id,\n              \"xp after\",\n              attacker.xp\n            );\n            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n              attacker.xp -= progression.xpToLevel(attacker.level || 1);\n              attacker.level = (attacker.level || 1) + 1;\n              const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n              const lvl = attacker.level || 1;\n              const hpScalar = resolveScalar(\n                progression.hpPercentPerLevel,\n                lvl\n              );\n              const shScalar = resolveScalar(\n                progression.shieldPercentPerLevel,\n                lvl\n              );\n              const dmgScalar = resolveScalar(\n                progression.dmgPercentPerLevel,\n                lvl\n              );\n              const speedScalar = resolveScalar(\n                progression.speedPercentPerLevel,\n                lvl\n              );\n              const regenScalar = resolveScalar(\n                progression.regenPercentPerLevel,\n                lvl\n              );\n              const hpMul = 1 + hpScalar;\n              const shMul = 1 + shScalar;\n              const dmgMul = 1 + dmgScalar;\n              attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n              attacker.hp = Math.min(\n                attacker.maxHp,\n                (attacker.hp || 0) * hpMul\n              );\n              if (typeof attacker.maxShield === \"number\") {\n                attacker.maxShield = (attacker.maxShield || 0) * shMul;\n                attacker.shield = Math.min(\n                  attacker.maxShield,\n                  (attacker.shield || 0) * shMul\n                );\n              }\n              if (Array.isArray(attacker.cannons)) {\n                for (const c of attacker.cannons) {\n                  if (typeof c.damage === \"number\") c.damage *= dmgMul;\n                }\n              }\n              if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\")\n                attacker.accel = attacker.accel * (1 + speedScalar);\n              if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\")\n                attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n            }\n          }\n          (state2.explosions ||= []).push(acquireExplosion(state2, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));\n          state2.ships.splice(si, 1);\n        }\n        break;\n      }\n    }\n  }\n  for (const s of state2.ships || []) {\n    if (s.maxShield)\n      s.shield = Math.min(\n        s.maxShield,\n        (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds\n      );\n  }\n  for (const s of state2.ships || []) {\n    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n    s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n  }\n  return state2;\n}\n\n// src/simWorker.ts\nvar state = null;\nvar bounds = { W: 800, H: 600 };\nvar simDtMs = 16;\nvar running = false;\nvar acc = 0;\nvar last = 0;\nfunction postSnapshot() {\n  try {\n    postMessage({ type: \"snapshot\", state });\n    try {\n      clearTransientEvents(state);\n    } catch (e) {\n    }\n  } catch (e) {\n  }\n}\nfunction clearTransientEvents(s) {\n  if (!s || typeof s !== \"object\") return;\n  try {\n    if (Array.isArray(s.explosions)) s.explosions.length = 0;\n    if (Array.isArray(s.shieldHits)) s.shieldHits.length = 0;\n    if (Array.isArray(s.healthHits)) s.healthHits.length = 0;\n  } catch (e) {\n  }\n}\nfunction tick() {\n  if (!running) return;\n  const now = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n  if (!last) last = now;\n  acc += now - last;\n  last = now;\n  if (acc > 250) acc = 250;\n  while (acc >= simDtMs) {\n    try {\n      applySimpleAI(state, simDtMs / 1e3, bounds);\n      simulateStep(state, simDtMs / 1e3, bounds);\n    } catch (e) {\n      const errAny = e;\n      const stack = errAny && errAny.stack ? errAny.stack : \"\";\n      postMessage({ type: \"error\", message: String(e), stack });\n    }\n    acc -= simDtMs;\n  }\n  postSnapshot();\n  setTimeout(tick, 0);\n}\nself.onmessage = (ev) => {\n  const msg = ev.data;\n  try {\n    switch (msg && msg.type) {\n      case \"init\":\n        if (typeof msg.seed === \"number\") srand(msg.seed);\n        if (msg.bounds) bounds = msg.bounds;\n        if (typeof msg.simDtMs === \"number\") simDtMs = msg.simDtMs;\n        if (msg.state) state = msg.state;\n        postMessage({ type: \"ready\" });\n        break;\n      case \"start\":\n        if (!state) {\n          postMessage({ type: \"error\", message: \"no state\" });\n          break;\n        }\n        running = true;\n        acc = 0;\n        last = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n        tick();\n        break;\n      case \"stop\":\n        running = false;\n        break;\n      case \"snapshotRequest\":\n        postSnapshot();\n        break;\n      case \"setSeed\":\n        if (typeof msg.seed === \"number\") {\n          srand(msg.seed);\n        }\n        break;\n      case \"command\":\n        if (msg.cmd === \"spawnShip\" && state) {\n          state.ships.push(msg.args.ship);\n        } else if (msg.cmd === \"spawnShipBullet\" && state) {\n          state.bullets.push(msg.args.bullet);\n        } else if (msg.cmd === \"setState\") {\n          state = msg.args.state;\n        }\n        break;\n      default:\n        break;\n    }\n  } catch (err) {\n    const stack = err && err.stack ? err.stack : \"\";\n    postMessage({ type: \"error\", message: String(err), stack });\n  }\n};\nvar simWorker_default = null;\nexport {\n  clearTransientEvents,\n  simWorker_default as default\n};\n//# sourceMappingURL=simWorker.js.map\n";
 			const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
 			const __workerUrl = URL.createObjectURL(__workerBlob);
 			const __OrigWorker = window.Worker;
@@ -481,6 +481,209 @@ var init_entitiesConfig = __esm({
   }
 });
 
+// src/config/assets/assetsConfig.ts
+var assetsConfig_exports = {};
+__export(assetsConfig_exports, {
+  AssetsConfig: () => AssetsConfig,
+  default: () => assetsConfig_default,
+  getBulletAsset: () => getBulletAsset,
+  getEngineTrailConfig: () => getEngineTrailConfig,
+  getShipAsset: () => getShipAsset,
+  getSpriteAsset: () => getSpriteAsset,
+  getTurretAsset: () => getTurretAsset,
+  getVisualConfig: () => getVisualConfig
+});
+function getEngineTrailConfig(type) {
+  const vconf = getVisualConfig(type);
+  const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
+  return AssetsConfig.animations && AssetsConfig.animations[trailName] || AssetsConfig.animations && AssetsConfig.animations.engineTrail;
+}
+function getSpriteAsset(type) {
+  const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+  if (shapeEntry.svg) {
+    return { svg: shapeEntry.svg };
+  }
+  if (shapeEntry.model3d && shapeEntry.model3d.url) {
+    return { model3d: shapeEntry.model3d };
+  }
+  return { shape: shapeEntry };
+}
+function getVisualConfig(type) {
+  const shape = getShipAsset(type);
+  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
+}
+function getShipAsset(type) {
+  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+}
+function getBulletAsset(kind = "small") {
+  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
+  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
+  return AssetsConfig.shapes2d.bulletSmall;
+}
+function getTurretAsset(_kind = "basic") {
+  return AssetsConfig.shapes2d.turretBasic;
+}
+var AssetsConfig, assetsConfig_default;
+var init_assetsConfig = __esm({
+  "src/config/assets/assetsConfig.ts"() {
+    "use strict";
+    AssetsConfig = {
+      meta: {
+        orientation: "+X",
+        coordinateSystem: "topdown-2d"
+      },
+      palette: {
+        shipHull: "#b0b7c3",
+        shipAccent: "#6c7380",
+        bullet: "#ffd166",
+        turret: "#94a3b8",
+        // Scene background color used by renderers
+        background: "#0b1220"
+      },
+      // 2D vector shapes defined as polygons and circles. Points are unit-sized
+      // profiles (roughly radius 1). Renderer should multiply by entity radius or
+      // provided scale before drawing.
+      shapes2d: {
+        fighter: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+            { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+            { type: "circle", r: 0.5 }
+          ],
+          strokeWidth: 0.08,
+          model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+        },
+        corvette: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+            { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+            { type: "circle", r: 0.6 }
+          ],
+          strokeWidth: 0.08,
+          model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+        },
+        frigate: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+            { type: "circle", r: 0.7 }
+          ],
+          strokeWidth: 0.1,
+          model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+        },
+        destroyer: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+            { type: "circle", r: 1 },
+            { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+          ],
+          strokeWidth: 0.12,
+          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
+          turrets: [
+            { kind: "basic", position: [1.2, 0.8] },
+            { kind: "basic", position: [-1.2, 0.8] },
+            { kind: "basic", position: [1.2, -0.8] },
+            { kind: "basic", position: [-1.2, -0.8] },
+            { kind: "basic", position: [0, 1.5] },
+            { kind: "basic", position: [0, -1.5] }
+          ]
+        },
+        carrier: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+            { type: "circle", r: 1.2 },
+            { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
+          ],
+          strokeWidth: 0.12,
+          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
+          turrets: [
+            { kind: "basic", position: [2, 1.2] },
+            { kind: "basic", position: [-2, 1.2] },
+            { kind: "basic", position: [2, -1.2] },
+            { kind: "basic", position: [-2, -1.2] }
+          ]
+        },
+        bulletSmall: { type: "circle", r: 0.18 },
+        bulletMedium: { type: "circle", r: 0.25 },
+        bulletLarge: { type: "circle", r: 0.36 },
+        turretBasic: {
+          type: "compound",
+          parts: [
+            { type: "circle", r: 0.5 },
+            { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+          ],
+          strokeWidth: 0.08
+        },
+        // Small effect/particle shapes for renderer-driven effects
+        particleSmall: { type: "circle", r: 0.12 },
+        particleMedium: { type: "circle", r: 0.22 },
+        explosionParticle: { type: "circle", r: 0.32 },
+        shieldRing: { type: "circle", r: 1.2 }
+      }
+    };
+    AssetsConfig.animations = {
+      engineFlare: {
+        type: "polygon",
+        points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+        pulseRate: 8,
+        // configurable alpha multiplier for engine overlay
+        alpha: 0.4,
+        // local-space X offset (negative = behind ship)
+        offset: -0.9
+      },
+      shieldEffect: {
+        type: "circle",
+        r: 1.2,
+        strokeWidth: 0.1,
+        color: "#88ccff",
+        pulseRate: 2,
+        // map shieldPct -> alpha = base + scale * shieldPct
+        alphaBase: 0.25,
+        alphaScale: 0.75
+      },
+      damageParticles: {
+        type: "particles",
+        color: "#ff6b6b",
+        count: 6,
+        lifetime: 0.8,
+        spread: 0.6
+      },
+      engineTrail: {
+        type: "trail",
+        color: "#fffc00",
+        // bright yellow for high contrast
+        maxLength: 40,
+        // much longer trail
+        width: 0.35,
+        // thicker trail line
+        fade: 0.35
+        // slower fading, more persistent
+      }
+    };
+    AssetsConfig.damageStates = {
+      light: { opacity: 0.9, accentColor: "#b0b7c3" },
+      moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+      heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+    };
+    AssetsConfig.visualStateDefaults = {
+      fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
+    };
+    AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
+    AssetsConfig.shieldArcWidth = Math.PI / 12;
+    assetsConfig_default = AssetsConfig;
+  }
+});
+
 // src/entities.ts
 init_entitiesConfig();
 
@@ -663,12 +866,83 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
   return [];
 }
 var TEAM_DEFAULT = "red";
+var teamsConfig_default = TeamsConfig;
 function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
   const seed = Math.floor(srandom() * 4294967295) >>> 0;
   return chooseReinforcements(seed, state, options);
 }
 
 // src/entities.ts
+function acquireEffect(state, key, createFn, initArgs) {
+  const poolMap = state.assetPool.effects;
+  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const e2 = createFn();
+    try {
+      if (typeof e2.reset === "function") e2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(e2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return e2;
+  }
+  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
+  const e = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return e;
+}
+function releaseEffect(state, key, effect, disposeFn) {
+  const poolMap = state.assetPool.effects;
+  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(effect)) free.push(effect);
+  const max = state.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+}
 var nextId = 1;
 function genId() {
   return nextId++;
@@ -685,39 +959,222 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     y,
     vx: 0,
     vy: 0,
-    hp: cfg.maxHp,
-    maxHp: cfg.maxHp,
-    shield: cfg.maxShield || 0,
-    maxShield: cfg.maxShield || 0,
+    hp: cfg.maxHp ?? 0,
+    maxHp: cfg.maxHp ?? 0,
+    shield: cfg.maxShield ?? 0,
+    maxShield: cfg.maxShield ?? 0,
+    shieldRegen: cfg.shieldRegen ?? 0,
     team,
     xp: 0,
     level: 1,
     cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
     accel: cfg.accel || 0,
     currentAccel: 0,
-    // start at rest, AI/gamemanager sets this
     throttle: 0,
-    // start at rest, AI/gamemanager sets this
     steering: 0,
-    // start straight, AI/gamemanager sets this
     turnRate: cfg.turnRate || 0,
     radius: cfg.radius || 6,
-    maxSpeed: cfg.maxSpeed || void 0,
-    angle: 0
+    maxSpeed: cfg.maxSpeed,
+    angle: 0,
+    trail: void 0,
+    shieldPercent: 1,
+    hpPercent: 1
   };
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
-  return {
-    id: genId(),
-    x,
-    y,
-    vx,
-    vy,
-    team,
-    ownerId,
-    damage,
-    ttl
-  };
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl };
+}
+function createExplosionEffect(init) {
+  return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };
+}
+function resetExplosionEffect(obj, init) {
+  obj.x = init?.x ?? 0;
+  obj.y = init?.y ?? 0;
+  obj.r = init?.r;
+  obj.alive = true;
+  obj._pooled = false;
+  Object.assign(obj, init);
+}
+function createShieldHitEffect(init) {
+  return { x: init?.x ?? 0, y: init?.y ?? 0, magnitude: init?.magnitude, alive: true, _pooled: false, ...init };
+}
+function resetShieldHitEffect(obj, init) {
+  obj.x = init?.x ?? 0;
+  obj.y = init?.y ?? 0;
+  obj.magnitude = init?.magnitude;
+  obj.alive = true;
+  obj._pooled = false;
+  Object.assign(obj, init);
+}
+function createHealthHitEffect(init) {
+  return { x: init?.x ?? 0, y: init?.y ?? 0, amount: init?.amount, alive: true, _pooled: false, ...init };
+}
+function resetHealthHitEffect(obj, init) {
+  obj.x = init?.x ?? 0;
+  obj.y = init?.y ?? 0;
+  obj.amount = init?.amount;
+  obj.alive = true;
+  obj._pooled = false;
+  Object.assign(obj, init);
+}
+function makePooled(obj, resetFn) {
+  const o = obj;
+  if (typeof o.reset !== "function") {
+    if (typeof resetFn === "function") {
+      o.reset = function(initArgs) {
+        try {
+          resetFn(o, initArgs);
+        } catch {
+        }
+      };
+    } else {
+      o.reset = function(initArgs) {
+        if (initArgs && typeof initArgs === "object") Object.assign(o, initArgs);
+      };
+    }
+  }
+  return o;
+}
+function _getStrategy(v, def) {
+  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
+}
+function _incCount(map, key, delta) {
+  const cur = map.get(key) || 0;
+  const next = cur + delta;
+  if (next <= 0) map.delete(key);
+  else map.set(key, next);
+}
+function acquireTexture(state, key, createFn) {
+  const poolMap = state.assetPool.textures;
+  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts) state.assetPool.counts = { textures: counts, sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) return free.pop();
+  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
+  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const tex2 = createFn();
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return tex2;
+  }
+  if (strategy === "error") throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
+  const tex = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return tex;
+}
+function releaseTexture(state, key, tex, disposeFn) {
+  const poolMap = state.assetPool.textures;
+  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts) state.assetPool.counts = { textures: counts, sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(tex)) free.push(tex);
+  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
+  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
+  const countsMap = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (entry.disposer) entry.disposer(victim);
+      else if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(countsMap, key, -1);
+    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (entry.disposer) entry.disposer(victim);
+      else if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(countsMap, key, -1);
+    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
+  }
+}
+function acquireSprite(state, key, createFn, initArgs) {
+  const poolMap = state.assetPool.sprites;
+  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: counts, effects: /* @__PURE__ */ new Map() };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const s2 = createFn();
+    try {
+      if (typeof s2.reset === "function") s2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(s2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return s2;
+  }
+  if (strategy === "error") throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
+  const s = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return s;
+}
+function releaseSprite(state, key, sprite, disposeFn) {
+  const poolMap = state.assetPool.sprites;
+  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: counts, effects: /* @__PURE__ */ new Map() };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(sprite)) free.push(sprite);
+  const max = state.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
 }
 function makeInitialState() {
   return {
@@ -727,7 +1184,25 @@ function makeInitialState() {
     explosions: [],
     shieldHits: [],
     healthHits: [],
-    engineTrailsEnabled: true
+    engineTrailsEnabled: true,
+    assetPool: {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map(),
+      counts: {
+        textures: /* @__PURE__ */ new Map(),
+        sprites: /* @__PURE__ */ new Map(),
+        effects: /* @__PURE__ */ new Map()
+      },
+      config: {
+        texturePoolSize: 128,
+        spritePoolSize: 256,
+        effectPoolSize: 128,
+        textureOverflowStrategy: "discard-oldest",
+        spriteOverflowStrategy: "discard-oldest",
+        effectOverflowStrategy: "discard-oldest"
+      }
+    }
   };
 }
 
@@ -974,8 +1449,9 @@ var progression = {
 var SIM = {
   DT_MS: 16,
   MAX_ACC_MS: 250,
-  bounds: { W: 1920, H: 1080 }
+  bounds: { W: 1920, H: 1080 },
   // Use LOGICAL_MAP for default bounds
+  friction: 0.98
 };
 var boundaryBehavior = {
   ships: "wrap",
@@ -1028,7 +1504,7 @@ function simulateStep(state, dtSeconds, bounds) {
           break;
       }
     }
-    if (remove) releaseBullet(b);
+    if (remove) releaseBullet(state, b);
   }
   function pruneAll(state2, dtSeconds2, bounds2) {
     state2.particles = state2.particles || [];
@@ -1072,7 +1548,7 @@ function simulateStep(state, dtSeconds, bounds) {
       if (!remove) {
         state2.bullets[writeBullet++] = b;
       } else {
-        releaseBullet(b);
+        releaseBullet(state2, b);
       }
     }
     state2.bullets.length = writeBullet;
@@ -1139,7 +1615,7 @@ function simulateStep(state, dtSeconds, bounds) {
       s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;
       s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;
     }
-    const friction = typeof s.friction === "number" ? s.friction : 0.98;
+    const friction = typeof SIM.friction === "number" ? SIM.friction : 0.98;
     s.vx = (s.vx || 0) * friction;
     s.vy = (s.vy || 0) * friction;
     clampSpeed(s, maxSpeed);
@@ -1193,7 +1669,7 @@ function simulateStep(state, dtSeconds, bounds) {
             (b.y || 0) - (s.y || 0),
             (b.x || 0) - (s.x || 0)
           );
-          (state.shieldHits ||= []).push(acquireShieldHit({
+          (state.shieldHits ||= []).push(acquireShieldHit(state, {
             id: s.id,
             x: b.x,
             y: b.y,
@@ -1213,7 +1689,7 @@ function simulateStep(state, dtSeconds, bounds) {
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
             s.hp -= remaining;
-            (state.healthHits ||= []).push(acquireHealthHit({
+            (state.healthHits ||= []).push(acquireHealthHit(state, {
               id: s.id,
               x: b.x,
               y: b.y,
@@ -1234,7 +1710,7 @@ function simulateStep(state, dtSeconds, bounds) {
           dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
         } else {
           s.hp -= b.damage || 0;
-          (state.healthHits ||= []).push(acquireHealthHit({
+          (state.healthHits ||= []).push(acquireHealthHit(state, {
             id: s.id,
             x: b.x,
             y: b.y,
@@ -1371,7 +1847,7 @@ function simulateStep(state, dtSeconds, bounds) {
                 attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
-          (state.explosions ||= []).push(acquireExplosion({ x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
+          (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
           state.ships.splice(si, 1);
         }
         break;
@@ -1450,81 +1926,66 @@ var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
 init_entitiesConfig();
-var particles = [];
 var flashes = [];
 var shieldFlashes = [];
 var healthFlashes = [];
-var particlePool = [];
-var bulletPool = [];
-var explosionPool = [];
-var shieldHitPool = [];
-var healthHitPool = [];
-function releaseBullet(b) {
+function releaseBullet(state, b) {
+  if (!b) return;
   if (!b.alive) return;
   b.alive = false;
-  bulletPool.push(b);
+  const arr = state.bullets || [];
+  const idx = arr.indexOf(b);
+  if (idx !== -1) arr.splice(idx, 1);
+  releaseSprite(state, "bullet", b, void 0);
 }
-function acquireExplosion(opts = {}) {
-  let e;
-  if (explosionPool.length) {
-    e = explosionPool.pop();
-    Object.assign(e, opts);
-    e.alive = true;
-    e._pooled = false;
-  } else {
-    e = { ...opts, alive: true, _pooled: false };
-  }
-  flashes.push(e);
+function acquireExplosion(state, opts = {}) {
+  const key = "explosion";
+  const e = acquireEffect(state, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);
+  (state.explosions ||= []).push(e);
   return e;
 }
-function releaseExplosion(e) {
+function releaseExplosion(state, e) {
+  if (!e) return;
   if (e._pooled) return;
   if (!e.alive) return;
   e.alive = false;
   e._pooled = true;
-  explosionPool.push(e);
+  const arr = state.explosions || [];
+  const idx = arr.indexOf(e);
+  if (idx !== -1) arr.splice(idx, 1);
+  releaseEffect(state, "explosion", e, void 0);
 }
-function acquireShieldHit(opts = {}) {
-  let sh = null;
-  if (shieldHitPool.length) {
-    sh = shieldHitPool.pop();
-    Object.assign(sh, opts);
-    sh.alive = true;
-    sh._pooled = false;
-  } else {
-    sh = { ...opts, alive: true, _pooled: false };
-  }
-  shieldFlashes.push(sh);
+function acquireShieldHit(state, opts = {}) {
+  const key = "shieldHit";
+  const sh = acquireEffect(state, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);
+  (state.shieldHits ||= []).push(sh);
   return sh;
 }
-function releaseShieldHit(sh) {
+function releaseShieldHit(state, sh) {
+  if (!sh) return;
   if (sh._pooled) return;
-  const i = shieldFlashes.indexOf(sh);
-  if (i !== -1) shieldFlashes.splice(i, 1);
+  const arr = state.shieldHits || [];
+  const i = arr.indexOf(sh);
+  if (i !== -1) arr.splice(i, 1);
   sh.alive = false;
   sh._pooled = true;
-  shieldHitPool.push(sh);
+  releaseEffect(state, "shieldHit", sh, void 0);
 }
-function acquireHealthHit(opts = {}) {
-  let hh = null;
-  if (healthHitPool.length) {
-    hh = healthHitPool.pop();
-    Object.assign(hh, opts);
-    hh.alive = true;
-    hh._pooled = false;
-  } else {
-    hh = { ...opts, alive: true, _pooled: false };
-  }
-  healthFlashes.push(hh);
+function acquireHealthHit(state, opts = {}) {
+  const key = "healthHit";
+  const hh = acquireEffect(state, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);
+  (state.healthHits ||= []).push(hh);
   return hh;
 }
-function releaseHealthHit(hh) {
+function releaseHealthHit(state, hh) {
+  if (!hh) return;
   if (hh._pooled) return;
-  const i = healthFlashes.indexOf(hh);
-  if (i !== -1) healthFlashes.splice(i, 1);
+  const arr = state.healthHits || [];
+  const i = arr.indexOf(hh);
+  if (i !== -1) arr.splice(i, 1);
   hh.alive = false;
   hh._pooled = true;
-  healthHitPool.push(hh);
+  releaseEffect(state, "healthHit", hh, void 0);
 }
 var config = {
   shield: { ...SHIELD },
@@ -1535,16 +1996,17 @@ var config = {
 var _seed2 = null;
 var _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;
 var _reinforcementAccumulator = 0;
-function releaseParticle(p) {
-  if (!p._pooled) {
-    p._pooled = true;
-    p.alive = false;
-    const idx = particles.indexOf(p);
-    if (idx !== -1) {
-      particles.splice(idx, 1);
-    }
-    particlePool.push(p);
+var starCanvas = null;
+function releaseParticle(state, p) {
+  if (!p) return;
+  const key = "particle";
+  try {
+    releaseEffect(state, key, p, (x) => {
+    });
+  } catch {
   }
+  const idx = (state.particles || []).indexOf(p);
+  if (idx !== -1) (state.particles || []).splice(idx, 1);
 }
 function setReinforcementInterval(seconds) {
   _reinforcementInterval = Number(seconds) || (TeamsConfig.continuousReinforcement?.interval ?? 5);
@@ -1712,9 +2174,6 @@ function createGameManager({
       }
     }
     _evaluateAndEmit(clampedDt);
-    if (typeof simulateStep === "function") {
-      simulateStep(state, clampedDt, SIM.bounds);
-    }
     if (renderer && typeof renderer.renderState === "function") {
       try {
         renderer.renderState({
@@ -1764,15 +2223,18 @@ function createGameManager({
         try {
           if (typeof simWorker.off === "function") {
             try {
-              if (_workerReadyHandler) simWorker.off("ready", _workerReadyHandler);
+              if (_workerReadyHandler)
+                simWorker.off("ready", _workerReadyHandler);
             } catch (e) {
             }
             try {
-              if (_workerSnapshotHandler) simWorker.off("snapshot", _workerSnapshotHandler);
+              if (_workerSnapshotHandler)
+                simWorker.off("snapshot", _workerSnapshotHandler);
             } catch (e) {
             }
             try {
-              if (_workerReinforcementsHandler) simWorker.off("reinforcements", _workerReinforcementsHandler);
+              if (_workerReinforcementsHandler)
+                simWorker.off("reinforcements", _workerReinforcementsHandler);
             } catch (e) {
             }
           }
@@ -1781,7 +2243,8 @@ function createGameManager({
         try {
           if (typeof simWorker.terminate === "function") simWorker.terminate();
           else if (typeof simWorker.close === "function") simWorker.close();
-          else if (typeof simWorker.post === "function") simWorker.post({ type: "stop" });
+          else if (typeof simWorker.post === "function")
+            simWorker.post({ type: "stop" });
         } catch (e) {
         }
         simWorker = null;
@@ -1790,6 +2253,13 @@ function createGameManager({
     }
     workerReady = false;
     workerReadyCbs.length = 0;
+    if (renderer && typeof renderer.dispose === "function") {
+      try {
+        renderer.dispose();
+      } catch (e) {
+      }
+    }
+    starCanvas = null;
   }
   function start() {
     if (!running) {
@@ -1953,179 +2423,6 @@ function createGameManager({
   };
 }
 
-// src/config/assets/assetsConfig.ts
-var AssetsConfig = {
-  meta: {
-    orientation: "+X",
-    coordinateSystem: "topdown-2d"
-  },
-  palette: {
-    shipHull: "#b0b7c3",
-    shipAccent: "#6c7380",
-    bullet: "#ffd166",
-    turret: "#94a3b8",
-    // Scene background color used by renderers
-    background: "#0b1220"
-  },
-  // 2D vector shapes defined as polygons and circles. Points are unit-sized
-  // profiles (roughly radius 1). Renderer should multiply by entity radius or
-  // provided scale before drawing.
-  shapes2d: {
-    fighter: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
-        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
-        { type: "circle", r: 0.5 }
-      ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
-    },
-    corvette: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
-        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
-        { type: "circle", r: 0.6 }
-      ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
-    },
-    frigate: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
-        { type: "circle", r: 0.7 }
-      ],
-      strokeWidth: 0.1,
-      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
-    },
-    destroyer: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
-        { type: "circle", r: 1 },
-        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
-      ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
-      turrets: [
-        { kind: "basic", position: [1.2, 0.8] },
-        { kind: "basic", position: [-1.2, 0.8] },
-        { kind: "basic", position: [1.2, -0.8] },
-        { kind: "basic", position: [-1.2, -0.8] },
-        { kind: "basic", position: [0, 1.5] },
-        { kind: "basic", position: [0, -1.5] }
-      ]
-    },
-    carrier: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
-        { type: "circle", r: 1.2 },
-        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
-      ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
-      turrets: [
-        { kind: "basic", position: [2, 1.2] },
-        { kind: "basic", position: [-2, 1.2] },
-        { kind: "basic", position: [2, -1.2] },
-        { kind: "basic", position: [-2, -1.2] }
-      ]
-    },
-    bulletSmall: { type: "circle", r: 0.18 },
-    bulletMedium: { type: "circle", r: 0.25 },
-    bulletLarge: { type: "circle", r: 0.36 },
-    turretBasic: {
-      type: "compound",
-      parts: [
-        { type: "circle", r: 0.5 },
-        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
-      ],
-      strokeWidth: 0.08
-    },
-    // Small effect/particle shapes for renderer-driven effects
-    particleSmall: { type: "circle", r: 0.12 },
-    particleMedium: { type: "circle", r: 0.22 },
-    explosionParticle: { type: "circle", r: 0.32 },
-    shieldRing: { type: "circle", r: 1.2 }
-  }
-};
-AssetsConfig.animations = {
-  engineFlare: {
-    type: "polygon",
-    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
-    pulseRate: 8,
-    // configurable alpha multiplier for engine overlay
-    alpha: 0.4,
-    // local-space X offset (negative = behind ship)
-    offset: -0.9
-  },
-  shieldEffect: {
-    type: "circle",
-    r: 1.2,
-    strokeWidth: 0.1,
-    color: "#88ccff",
-    pulseRate: 2,
-    // map shieldPct -> alpha = base + scale * shieldPct
-    alphaBase: 0.25,
-    alphaScale: 0.75
-  },
-  damageParticles: {
-    type: "particles",
-    color: "#ff6b6b",
-    count: 6,
-    lifetime: 0.8,
-    spread: 0.6
-  },
-  engineTrail: {
-    type: "trail",
-    color: "#fffc00",
-    // bright yellow for high contrast
-    maxLength: 40,
-    // much longer trail
-    width: 0.35,
-    // thicker trail line
-    fade: 0.35
-    // slower fading, more persistent
-  }
-};
-AssetsConfig.damageStates = {
-  light: { opacity: 0.9, accentColor: "#b0b7c3" },
-  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
-  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
-};
-AssetsConfig.visualStateDefaults = {
-  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
-};
-AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
-AssetsConfig.shieldArcWidth = Math.PI / 12;
-function getVisualConfig(type) {
-  const shape = getShipAsset(type);
-  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
-  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
-}
-function getShipAsset(type) {
-  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-}
-function getBulletAsset(kind = "small") {
-  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
-  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
-  return AssetsConfig.shapes2d.bulletSmall;
-}
-function getTurretAsset(_kind = "basic") {
-  return AssetsConfig.shapes2d.turretBasic;
-}
-
-// src/canvasrenderer.ts
-init_entitiesConfig();
-
 // src/config/displayConfig.ts
 var DISPLAY_DEFAULTS = {
   renderScale: 1,
@@ -2158,8 +2455,12 @@ function getPreferredRenderer() {
   }
   return RendererConfig.preferred;
 }
+var rendererConfig_default = RendererConfig;
 
 // src/canvasrenderer.ts
+init_assetsConfig();
+init_assetsConfig();
+init_entitiesConfig();
 var CanvasRenderer = class {
   canvas;
   ctx = null;
@@ -2207,7 +2508,7 @@ var CanvasRenderer = class {
     this.bufferCtx = this.bufferCanvas.getContext("2d") || this.ctx;
     if (!this.bufferCtx) return false;
     try {
-      const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
+      const renderScale = rendererConfig_default && typeof rendererConfig_default.renderScale === "number" ? rendererConfig_default.renderScale : 1;
       this.pixelRatio = renderScale;
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.imageSmoothingEnabled = true;
@@ -2236,9 +2537,11 @@ var CanvasRenderer = class {
     const ctx = this.ctx;
     const bufferCtx = this.bufferCtx;
     if (!ctx || !bufferCtx) return;
-    const LOGICAL_W = 1920, LOGICAL_H = 1080;
-    const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
-    const fitScale = RendererConfig._fitScale || 1;
+    const defaultBounds = typeof getDefaultBounds === "function" ? getDefaultBounds() : { W: 1920, H: 1080 };
+    const LOGICAL_W = defaultBounds && typeof defaultBounds.W === "number" ? defaultBounds.W : 1920;
+    const LOGICAL_H = defaultBounds && typeof defaultBounds.H === "number" ? defaultBounds.H : 1080;
+    const renderScale = rendererConfig_default && typeof rendererConfig_default.renderScale === "number" ? rendererConfig_default.renderScale : 1;
+    const fitScale = rendererConfig_default._fitScale || 1;
     const bufferW = Math.round(LOGICAL_W * renderScale);
     const bufferH = Math.round(LOGICAL_H * renderScale);
     if (this.bufferCanvas.width !== bufferW || this.bufferCanvas.height !== bufferH) {
@@ -2251,7 +2554,7 @@ var CanvasRenderer = class {
     activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
     activeBufferCtx.save();
-    activeBufferCtx.fillStyle = AssetsConfig.palette.background || "#0b1220";
+    activeBufferCtx.fillStyle = assetsConfig_default.palette.background || "#0b1220";
     activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     activeBufferCtx.restore();
     function drawPolygon(points) {
@@ -2273,7 +2576,7 @@ var CanvasRenderer = class {
     }
     const now = state && state.t || 0;
     try {
-      const dmgAnim = AssetsConfig.animations && AssetsConfig.animations.damageParticles;
+      const dmgAnim = assetsConfig_default.animations && assetsConfig_default.animations.damageParticles;
       if (Array.isArray(state.damageEvents) && dmgAnim) {
         state.particles = state.particles || [];
         for (const ev of state.damageEvents) {
@@ -2298,60 +2601,70 @@ var CanvasRenderer = class {
       }
     } catch (e) {
     }
-    const engineTrailsEnabled = !!state.engineTrailsEnabled;
     for (const s of state.ships || []) {
       const sx = (s.x || 0) * renderScale;
       const sy = (s.y || 0) * renderScale;
       if (sx < 0 || sx >= bufferW || sy < 0 || sy >= bufferH) continue;
-      if (engineTrailsEnabled) {
+      if (state.engineTrailsEnabled) {
         s.trail = s.trail || [];
         const last = s.trail.length ? s.trail[s.trail.length - 1] : null;
         if (!last || last.x !== s.x || last.y !== s.y) {
           s.trail.push({ x: s.x, y: s.y });
         }
-        const vconf2 = getVisualConfig(s.type || getDefaultShipType());
-        const trailName = vconf2.visuals && vconf2.visuals.engineTrail || "engineTrail";
+        const trailConfig = (init_assetsConfig(), __toCommonJS(assetsConfig_exports)).getEngineTrailConfig(s.type || getDefaultShipType());
+        const maxTrail = trailConfig?.maxLength || 40;
+        while (s.trail.length > maxTrail) s.trail.shift();
       }
       if (Array.isArray(s.trail)) {
+        const trailConfig = (init_assetsConfig(), __toCommonJS(assetsConfig_exports)).getEngineTrailConfig(s.type || getDefaultShipType());
+        const color = trailConfig?.color || "#aee1ff";
+        const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
+        const fade = trailConfig?.fade || 0.35;
         for (let i = 0; i < s.trail.length; i++) {
           const tx = s.trail[i].x || 0;
           const ty = s.trail[i].y || 0;
-          const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
+          const tAlpha = fade + (1 - fade) * (i / s.trail.length);
           const txx = tx * renderScale;
           const tyy = ty * renderScale;
           if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
           activeBufferCtx.save();
           activeBufferCtx.globalAlpha = tAlpha;
-          activeBufferCtx.fillStyle = "#aee1ff";
+          activeBufferCtx.fillStyle = color;
           activeBufferCtx.beginPath();
-          activeBufferCtx.arc(txx, tyy, 6 * renderScale, 0, Math.PI * 2);
+          activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
           activeBufferCtx.fill();
           activeBufferCtx.restore();
         }
       }
-      const vconf = getVisualConfig(s.type || getDefaultShipType());
-      const shape = getShipAsset(s.type || getDefaultShipType());
+      const sprite = getSpriteAsset(s.type || getDefaultShipType());
       activeBufferCtx.save();
       activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
       activeBufferCtx.rotate(s.angle || 0);
-      let teamColor = AssetsConfig.palette.shipHull || "#888";
-      if (s.team === "red" && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
-      else if (s.team === "blue" && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
+      let teamColor = assetsConfig_default.palette.shipHull || "#888";
+      if (s.team === "red" && teamsConfig_default.teams.red) teamColor = teamsConfig_default.teams.red.color;
+      else if (s.team === "blue" && teamsConfig_default.teams.blue) teamColor = teamsConfig_default.teams.blue.color;
       activeBufferCtx.fillStyle = teamColor;
-      if (shape.type === "circle") {
-        activeBufferCtx.beginPath();
-        activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
-        activeBufferCtx.fill();
-      } else if (shape.type === "polygon") {
-        drawPolygon(shape.points);
-      } else if (shape.type === "compound") {
-        for (const part of shape.parts) {
-          if (part.type === "circle") {
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          } else if (part.type === "polygon") {
-            drawPolygon(part.points);
+      if (sprite.svg) {
+      }
+      if (sprite.model3d) {
+      }
+      const shape = sprite.shape;
+      if (shape) {
+        if (shape.type === "circle") {
+          activeBufferCtx.beginPath();
+          activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
+          activeBufferCtx.fill();
+        } else if (shape.type === "polygon") {
+          drawPolygon(shape.points);
+        } else if (shape.type === "compound") {
+          for (const part of shape.parts) {
+            if (part.type === "circle") {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else if (part.type === "polygon") {
+              drawPolygon(part.points);
+            }
           }
         }
       }
@@ -2370,7 +2683,7 @@ var CanvasRenderer = class {
           activeBufferCtx.save();
           activeBufferCtx.translate(turretX, turretY);
           activeBufferCtx.rotate(0);
-          activeBufferCtx.fillStyle = AssetsConfig.palette.turret || "#94a3b8";
+          activeBufferCtx.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
           if (turretShape.type === "circle") {
             activeBufferCtx.beginPath();
             activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
@@ -2397,9 +2710,9 @@ var CanvasRenderer = class {
           activeBufferCtx.restore();
         }
       }
-      if (s.shield > 0) {
+      if ((s.shield ?? 0) > 0) {
         if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
-          const shAnim = AssetsConfig.animations && AssetsConfig.animations.shieldEffect;
+          const shAnim = assetsConfig_default.animations && assetsConfig_default.animations.shieldEffect;
           try {
             if (shAnim) {
               const pulse = typeof shAnim.pulseRate === "number" ? 0.5 + 0.5 * Math.sin(now * shAnim.pulseRate) : 1;
@@ -2425,11 +2738,11 @@ var CanvasRenderer = class {
       }
     }
     try {
-      const nowT = state && state.t || 0;
+      const nowT = state.t || 0;
       for (const s of state.ships || []) {
         try {
           let flash = null;
-          const arr = Array.isArray(healthFlashes) ? healthFlashes.filter((f) => f.id === s.id) : [];
+          const arr = Array.isArray(state.healthFlashes) ? state.healthFlashes.filter((f) => f.id === s.id) : [];
           let bestTs = -Infinity;
           for (const f of arr) {
             if (!f) continue;
@@ -2441,23 +2754,34 @@ var CanvasRenderer = class {
             }
           }
           if (flash) {
-            const ttl = flash.ttl || 0.4;
-            const life = flash.life != null ? flash.life : ttl;
-            const t = Math.max(0, Math.min(1, life / ttl));
-            const R = 6 + (1 - t) * 18;
+            const pooledFlash = acquireEffect(state, "healthFlash", () => makePooled(
+              // Use typed factory to create base health effect and attach render fields via reset
+              createHealthHitEffect({ x: flash.x || s.x || 0, y: flash.y || s.y || 0 }),
+              (obj, initArgs) => {
+                resetHealthHitEffect(obj, initArgs);
+                obj.ttl = initArgs?.ttl ?? 0.4;
+                obj.life = initArgs?.life ?? obj.ttl;
+                obj.color = "#ff7766";
+                obj.radius = 6;
+              }
+            ), flash);
+            const pf = pooledFlash;
+            const t = Math.max(0, Math.min(1, pf.life / pf.ttl));
+            const R = pf.radius + (1 - t) * 18;
             const alpha = 0.9 * t;
-            const fx = (flash.x || (s.x || 0)) * renderScale;
-            const fy = (flash.y || (s.y || 0)) * renderScale;
+            const fx = pf.x * renderScale;
+            const fy = pf.y * renderScale;
             if (fx >= 0 && fx < bufferW && fy >= 0 && fy < bufferH) {
               activeBufferCtx.save();
               activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
-              activeBufferCtx.strokeStyle = "#ff7766";
+              activeBufferCtx.strokeStyle = pf.color;
               activeBufferCtx.lineWidth = 2 * renderScale;
               activeBufferCtx.beginPath();
               activeBufferCtx.arc(fx, fy, Math.max(1, R * renderScale), 0, Math.PI * 2);
               activeBufferCtx.stroke();
               activeBufferCtx.restore();
             }
+            releaseEffect(state, "healthFlash", pooledFlash);
           }
         } catch (e) {
         }
@@ -2470,12 +2794,12 @@ var CanvasRenderer = class {
         const by = (b.y || 0) * renderScale;
         if (bx < 0 || bx >= bufferW || by < 0 || by >= bufferH) continue;
         const r = b.radius || b.bulletRadius || 1.5;
-        const kind = bulletKindForRadius(r / 6);
+        const kind = typeof b.bulletRadius === "number" ? b.bulletRadius < 2 ? "small" : b.bulletRadius < 3 ? "medium" : "large" : "small";
         const shape = getBulletAsset(kind);
         activeBufferCtx.save();
         activeBufferCtx.translate(bx, by);
         const px = Math.max(1, r * renderScale);
-        activeBufferCtx.fillStyle = AssetsConfig.palette.bullet;
+        activeBufferCtx.fillStyle = assetsConfig_default.palette.bullet;
         if (shape.type === "circle") {
           activeBufferCtx.beginPath();
           activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2);
@@ -2498,22 +2822,38 @@ var CanvasRenderer = class {
       }
     }
     try {
-      const shapes = AssetsConfig.shapes2d || {};
+      const shapes = assetsConfig_default.shapes2d || {};
       for (const p of state.particles || []) {
         try {
-          const px = (p.x || 0) * renderScale;
-          const py = (p.y || 0) * renderScale;
+          const particle = acquireSprite(state, "particle", () => makePooled({
+            x: p.x || 0,
+            y: p.y || 0,
+            r: p.r || 1,
+            color: p.color || "#ffdca8",
+            age: p.age || 0,
+            lifetime: p.lifetime || 1,
+            assetShape: p.assetShape
+          }, (obj, initArgs) => {
+            obj.x = initArgs?.x ?? 0;
+            obj.y = initArgs?.y ?? 0;
+            obj.r = initArgs?.r ?? 1;
+            obj.color = initArgs?.color ?? "#ffdca8";
+            obj.age = initArgs?.age ?? 0;
+            obj.lifetime = initArgs?.lifetime ?? 1;
+            obj.assetShape = initArgs?.assetShape;
+          }), p);
+          const px = particle.x * renderScale;
+          const py = particle.y * renderScale;
           if (px < 0 || px >= bufferW || py < 0 || py >= bufferH) continue;
           activeBufferCtx.save();
-          const shapeName = p.assetShape || (p.r > 0.5 ? "particleMedium" : "particleSmall");
+          const shapeName = particle.assetShape || (particle.r > 0.5 ? "particleMedium" : "particleSmall");
           const shape = shapes[shapeName];
-          const color = p.color || "#ffdca8";
-          activeBufferCtx.fillStyle = color;
-          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - (p.age || 0) / (p.lifetime || 1)));
+          activeBufferCtx.fillStyle = particle.color;
+          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - particle.age / particle.lifetime));
           activeBufferCtx.translate(px, py);
           if (shape) {
             if (shape.type === "circle") {
-              const rr = (shape.r || 0.12) * (p.r || 1) * renderScale * 6;
+              const rr = (shape.r || 0.12) * particle.r * renderScale * 6;
               activeBufferCtx.beginPath();
               activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
               activeBufferCtx.fill();
@@ -2529,7 +2869,7 @@ var CanvasRenderer = class {
             } else if (shape.type === "compound") {
               for (const part of shape.parts || []) {
                 if (part.type === "circle") {
-                  const rr = (part.r || 0.12) * (p.r || 1) * renderScale * 6;
+                  const rr = (part.r || 0.12) * particle.r * renderScale * 6;
                   activeBufferCtx.beginPath();
                   activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
                   activeBufferCtx.fill();
@@ -2546,45 +2886,51 @@ var CanvasRenderer = class {
               }
             } else {
               activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
               activeBufferCtx.fill();
             }
           } else {
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
             activeBufferCtx.fill();
           }
           activeBufferCtx.restore();
+          releaseSprite(state, "particle", particle);
         } catch (e) {
         }
       }
     } catch (e) {
     }
     try {
-      const expShape = AssetsConfig.shapes2d && AssetsConfig.shapes2d.explosionParticle;
+      const expShape = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d.explosionParticle;
       for (const ex of state.explosions || []) {
         try {
-          const exx = (ex.x || 0) * renderScale;
-          const exy = (ex.y || 0) * renderScale;
-          const life = ex.life || 0.5;
-          const ttl = ex.ttl || 0.5;
-          const t = Math.max(0, Math.min(1, life / ttl));
-          const alpha = (1 - t) * 0.9;
+          const effect = acquireEffect(state, "explosion", () => makePooled(
+            createExplosionEffect({ x: ex.x || 0, y: ex.y || 0, r: expShape && expShape.r || 0.32 }),
+            (obj, initArgs) => {
+              resetExplosionEffect(obj, initArgs);
+              obj.scale = initArgs?.scale ?? 1;
+              obj.color = initArgs?.color ?? "#ffd089";
+              obj.alpha = initArgs?.alpha ?? (1 - (ex.life || 0.5) / (ex.ttl || 0.5)) * 0.9;
+            }
+          ), ex);
+          const ef = effect;
           activeBufferCtx.save();
-          activeBufferCtx.globalAlpha = alpha;
-          activeBufferCtx.translate(exx, exy);
-          activeBufferCtx.fillStyle = ex.color || "#ffd089";
+          activeBufferCtx.globalAlpha = ef.alpha || 0;
+          activeBufferCtx.translate(ef.x * renderScale, ef.y * renderScale);
+          activeBufferCtx.fillStyle = ef.color || "#ffd089";
           if (expShape && expShape.type === "circle") {
-            const rr = (expShape.r || 0.32) * (ex.scale || 1) * renderScale * 6;
+            const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, rr * (1 + (1 - t)), 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, rr * (1 + (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
             activeBufferCtx.fill();
           } else {
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, Math.max(2, (ex.scale || 1) * 12 * (1 - t)), 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, Math.max(2, (ef.scale || 1) * 12 * (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
             activeBufferCtx.fill();
           }
           activeBufferCtx.restore();
+          releaseEffect(state, "explosion", effect);
         } catch (e) {
         }
       }
@@ -2610,582 +2956,274 @@ var CanvasRenderer = class {
 };
 
 // src/webglrenderer.ts
-init_entitiesConfig();
+init_assetsConfig();
 var WebGLRenderer = class {
-  // Fullscreen quad shader for blitting FBO to main canvas
-  quadProg = null;
-  quadVBO = null;
-  quadLoc_pos = -1;
-  quadLoc_tex = null;
-  // Offscreen framebuffer and texture for buffer rendering
-  fbo = null;
-  fboTexture = null;
-  _fboWidth = 0;
-  _fboHeight = 0;
-  // Public accessors for tests/consumers (read-only)
-  get fboWidth() {
-    return this._fboWidth;
-  }
-  get fboHeight() {
-    return this._fboHeight;
-  }
   canvas;
   gl = null;
-  // simple GL program state for point rendering
-  prog = null;
-  attribLoc_pos = -1;
-  attribLoc_size = -1;
-  attribLoc_color = -1;
-  vertexBuffer = null;
+  // Renderer may run its own loop in advanced impls (not used here)
   providesOwnLoop = false;
-  type = "webgl";
-  pixelRatio = 1;
-  // textured quad shader for rendering baked asset textures
-  texProg = null;
-  texVBO = null;
-  texAttrib_pos = -1;
-  texAttrib_uv = -1;
-  texLoc_tex = null;
-  // map of shape keys to GL textures
+  // Cache of baked textures keyed by asset key
   shapeTextures = {};
-  shapeCanvasSize = 64;
-  // Public helpers to inspect the baked texture cache in tests or callers
-  hasCachedTexture(key) {
-    return !!this.shapeTextures[key];
-  }
-  getCachedTexture(key) {
-    return this.shapeTextures[key] || null;
-  }
+  // Last-seen GameState (to support release to pool during dispose)
+  gameState = null;
+  // Optional textured-quad resources (not required by tests)
+  quadVBO = null;
+  quadProg = null;
+  // Optional FBO resources for render-to-texture
+  fbo = null;
+  fboTex = null;
   constructor(canvas) {
     this.canvas = canvas;
   }
+  // Initialize GL context and basic state
   init() {
     try {
-      const gl = this.gl;
-      const vsQuad = `attribute vec2 a_pos; varying vec2 v_tex; void main(){ v_tex = (a_pos+1.0)*0.5; gl_Position = vec4(a_pos,0,1); }`;
-      const fsQuad = `precision mediump float; varying vec2 v_tex; uniform sampler2D u_tex; void main(){ gl_FragColor = texture2D(u_tex, v_tex); }`;
-      const compile = (src, type) => {
-        const s = gl.createShader(type);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-          const info = gl.getShaderInfoLog(s);
-          gl.deleteShader(s);
-          throw new Error("Shader compile error: " + info);
-        }
-        return s;
-      };
-      const vsObj = compile(vsQuad, gl.VERTEX_SHADER);
-      const fsObj = compile(fsQuad, gl.FRAGMENT_SHADER);
-      const prog = gl.createProgram();
-      gl.attachShader(prog, vsObj);
-      gl.attachShader(prog, fsObj);
-      gl.linkProgram(prog);
-      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        throw new Error("Program link error: " + gl.getProgramInfoLog(prog));
-      }
-      this.quadProg = prog;
-      this.quadLoc_pos = gl.getAttribLocation(prog, "a_pos");
-      this.quadLoc_tex = gl.getUniformLocation(prog, "u_tex");
-      this.quadVBO = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
-      const quadVerts = new Float32Array([
-        -1,
-        -1,
-        1,
-        -1,
-        -1,
-        1,
-        1,
-        -1,
-        1,
-        1,
-        -1,
-        1
-      ]);
-      gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
-    } catch (e) {
-      this.quadProg = null;
-    }
-    try {
-      const gl = this.gl;
-      const vs = `attribute vec2 a_pos; attribute vec2 a_uv; varying vec2 v_uv; void main(){ v_uv = a_uv; gl_Position = vec4(a_pos, 0.0, 1.0); }`;
-      const fs = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_tex; void main(){ gl_FragColor = texture2D(u_tex, v_uv); }`;
-      const compile = (src, type) => {
-        const s = gl.createShader(type);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-          const info = gl.getShaderInfoLog(s);
-          gl.deleteShader(s);
-          throw new Error("Shader compile error: " + info);
-        }
-        return s;
-      };
-      const vsObj = compile(vs, gl.VERTEX_SHADER);
-      const fsObj = compile(fs, gl.FRAGMENT_SHADER);
-      const prog = gl.createProgram();
-      gl.attachShader(prog, vsObj);
-      gl.attachShader(prog, fsObj);
-      gl.linkProgram(prog);
-      if (gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        this.texProg = prog;
-        this.texAttrib_pos = gl.getAttribLocation(prog, "a_pos");
-        this.texAttrib_uv = gl.getAttribLocation(prog, "a_uv");
-        this.texLoc_tex = gl.getUniformLocation(prog, "u_tex");
-        this.texVBO = gl.createBuffer();
-      } else {
-        this.texProg = null;
-      }
-    } catch (e) {
-      this.texProg = null;
-    }
-    try {
-      this.gl = this.canvas.getContext("webgl2");
-      if (!this.gl) {
-        this.gl = this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-        if (!this.gl) return false;
-      }
-      const gl = this.gl;
-      const LOGICAL_W = 1920, LOGICAL_H = 1080;
-      const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
-      const bufferW = Math.round(LOGICAL_W * renderScale);
-      const bufferH = Math.round(LOGICAL_H * renderScale);
-      this.fboTexture = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      this.fbo = gl.createFramebuffer();
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
-      this._fboWidth = bufferW;
-      this._fboHeight = bufferH;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      try {
-        const bg = (AssetsConfig.palette.background || "#0b1220").replace("#", "");
-        const bigint = parseInt(bg.length === 3 ? bg.split("").map((c) => c + c).join("") : bg, 16);
-        const r = (bigint >> 16 & 255) / 255;
-        const g = (bigint >> 8 & 255) / 255;
-        const b = (bigint & 255) / 255;
-        gl.clearColor(r, g, b, 1);
-      } catch {
-        gl.clearColor(0.02, 0.03, 0.06, 1);
-      }
-      try {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      } catch (e) {
-      }
-      try {
-        const cssW = this.canvas.clientWidth || this.canvas.width || 1;
-        this.pixelRatio = (this.canvas.width || cssW) / cssW;
-      } catch (e) {
-        this.pixelRatio = 1;
-      }
-      try {
-        const vs = `attribute vec2 a_pos; attribute float a_size; attribute vec4 a_color; varying vec4 v_color; void main(){ v_color=a_color; gl_Position = vec4(a_pos, 0.0, 1.0); gl_PointSize = a_size; }`;
-        const fs = `precision mediump float; varying vec4 v_color; void main(){ vec2 c = gl_PointCoord - vec2(0.5); if(length(c) > 0.5) discard; gl_FragColor = v_color; }`;
-        const compile = (src, type) => {
-          const s = gl.createShader(type);
-          gl.shaderSource(s, src);
-          gl.compileShader(s);
-          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-            const info = gl.getShaderInfoLog(s);
-            gl.deleteShader(s);
-            throw new Error("Shader compile error: " + info);
-          }
-          return s;
-        };
-        const vsObj = compile(vs, gl.VERTEX_SHADER);
-        const fsObj = compile(fs, gl.FRAGMENT_SHADER);
-        const prog = gl.createProgram();
-        gl.attachShader(prog, vsObj);
-        gl.attachShader(prog, fsObj);
-        gl.linkProgram(prog);
-        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-          throw new Error("Program link error: " + gl.getProgramInfoLog(prog));
-        }
-        this.prog = prog;
-        this.attribLoc_pos = gl.getAttribLocation(prog, "a_pos");
-        this.attribLoc_size = gl.getAttribLocation(prog, "a_size");
-        this.attribLoc_color = gl.getAttribLocation(prog, "a_color");
-        this.vertexBuffer = gl.createBuffer();
-      } catch (e) {
-        this.prog = null;
-      }
+      const gl = this.canvas.getContext("webgl2") || this.canvas.getContext("webgl");
+      if (!gl) return false;
+      this.gl = gl;
+      gl.clearColor(0.02, 0.03, 0.06, 1);
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   }
-  // Called when backing-store size (canvas.width/height) changes so
-  // the renderer can update internal scaling/viewport without a full re-init.
+  // Called when canvas backing store size changes
   updateScale() {
     if (!this.gl) return;
     try {
-      const cssW = this.canvas.clientWidth || Math.round((this.canvas.width || 1) / (this.pixelRatio || 1));
-      this.pixelRatio = (this.canvas.width || cssW) / Math.max(1, cssW);
-    } catch (e) {
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    } catch {
     }
   }
   isRunning() {
     return false;
   }
-  renderState(state, interpolation = 0) {
+  // Render a state frame. This stub clears the screen and ensures
+  // textures for present ship types are baked and cached.
+  renderState(state, _interpolation = 0) {
     if (!this.gl) return;
+    this.gameState = state;
     const gl = this.gl;
-    const LOGICAL_W = 1920, LOGICAL_H = 1080;
-    const renderScale = RendererConfig && typeof RendererConfig.renderScale === "number" ? RendererConfig.renderScale : 1;
-    const bufferW = Math.round(LOGICAL_W * renderScale);
-    const bufferH = Math.round(LOGICAL_H * renderScale);
-    if (this.fboWidth !== bufferW || this.fboHeight !== bufferH) {
-      if (this.fboTexture) gl.deleteTexture(this.fboTexture);
-      if (this.fbo) gl.deleteFramebuffer(this.fbo);
-      this.fboTexture = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferW, bufferH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      this.fbo = gl.createFramebuffer();
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTexture, 0);
-      this._fboWidth = bufferW;
-      this._fboHeight = bufferH;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
-    if (this.fbo && this.fboTexture) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-      gl.viewport(0, 0, bufferW, bufferH);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      if (this.prog && this.vertexBuffer) {
-        try {
-          const w = bufferW;
-          const h = bufferH;
-          const ships = state.ships || [];
-          const verts = [];
-          const now = state && state.t || 0;
-          for (const s of ships) {
-            const x = s.x || 0;
-            const y = s.y || 0;
-            const clipX = x / Math.max(1, LOGICAL_W) * 2 - 1;
-            const clipY = 1 - y / Math.max(1, LOGICAL_H) * 2;
-            const radius = s.radius || 6;
-            const ps = Math.max(2, radius * 2);
-            const teamObj = s.team === "blue" ? TeamsConfig.teams.blue : TeamsConfig.teams.red;
-            const colorHex = teamObj && teamObj.color || AssetsConfig.palette.shipHull || "#888";
-            const hexToRgba = (hex) => {
-              const h2 = hex.replace("#", "");
-              const bigint = parseInt(h2.length === 3 ? h2.split("").map((c) => c + c).join("") : h2, 16);
-              const r = (bigint >> 16 & 255) / 255;
-              const g = (bigint >> 8 & 255) / 255;
-              const b = (bigint & 255) / 255;
-              return [r, g, b, 1];
-            };
-            const baseColor = hexToRgba(colorHex);
-            try {
-              const shipAssetKey = s.type || getDefaultShipType();
-              const shipTex = this.bakeShapeToTexture(shipAssetKey);
-              if (shipTex && this.texProg) {
-                const quadW = radius * 2 / Math.max(1, w) * 2;
-                const quadH = radius * 2 / Math.max(1, h) * 2;
-                this.drawTexturedQuad(shipTex, clipX, clipY, quadW, quadH);
-                continue;
-              }
-            } catch (e) {
-            }
-            verts.push(clipX, clipY, ps, baseColor[0], baseColor[1], baseColor[2], baseColor[3]);
-            if (Array.isArray(s.trail)) {
-              for (let i = 0; i < s.trail.length; i++) {
-                const tx = s.trail[i].x || 0;
-                const ty = s.trail[i].y || 0;
-                const tClipX = tx / Math.max(1, LOGICAL_W) * 2 - 1;
-                const tClipY = 1 - ty / Math.max(1, LOGICAL_H) * 2;
-                const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
-                verts.push(tClipX, tClipY, Math.max(2, radius), 0.7, 0.7, 1, tAlpha);
-              }
-            }
-            if (s.shield > 0) {
-              try {
-                const shKey = "shieldRing";
-                const shTex = this.bakeShapeToTexture(shKey);
-                if (shTex && this.texProg) {
-                  const quadW = radius * 2.4 / Math.max(1, w) * 2;
-                  const quadH = radius * 2.4 / Math.max(1, h) * 2;
-                  this.drawTexturedQuad(shTex, clipX, clipY, quadW, quadH);
-                } else {
-                  verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1, 0.5);
-                }
-              } catch (e) {
-                verts.push(clipX, clipY, ps * 1.2, 0.3, 0.7, 1, 0.5);
-              }
-            }
-            if (Array.isArray(healthFlashes)) {
-              const flash = healthFlashes.find((f) => f.id === s.id);
-              if (flash && flash.ttl > 0) {
-                verts.push(clipX, clipY, ps * 1.3, 1, 0.3, 0.3, 0.7);
-              }
-            }
-          }
-          const floatArr = new Float32Array(verts);
-          gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-          gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
-          gl.useProgram(this.prog);
-          const stride = 7 * 4;
-          gl.enableVertexAttribArray(this.attribLoc_pos);
-          gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
-          gl.enableVertexAttribArray(this.attribLoc_size);
-          gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
-          gl.enableVertexAttribArray(this.attribLoc_color);
-          gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-          const count = Math.floor(floatArr.length / 7);
-          gl.drawArrays(gl.POINTS, 0, count);
-        } catch (e) {
-        }
-      }
-      try {
-        const shapes = AssetsConfig.shapes2d || {};
-        for (const b of state.bullets || []) {
-          try {
-            const bx = b.x || 0;
-            const by = b.y || 0;
-            const clipX = bx / Math.max(1, LOGICAL_W) * 2 - 1;
-            const clipY = 1 - by / Math.max(1, LOGICAL_H) * 2;
-            const r = b.radius || b.bulletRadius || 1.5;
-            const kind = b.kind || "bullet";
-            const assetKey = `bullet_${kind}`;
-            const tex = this.bakeShapeToTexture(assetKey) || this.bakeShapeToTexture("bullet") || this.bakeShapeToTexture("particleSmall");
-            if (tex && this.texProg) {
-              const quadW = r * 2 / Math.max(1, this.fboWidth) * 2;
-              const quadH = r * 2 / Math.max(1, this.fboHeight) * 2;
-              this.drawTexturedQuad(tex, clipX, clipY, quadW, quadH);
-              continue;
-            }
-            const clipSize = Math.max(1, r * 2);
-            const color = AssetsConfig.palette && AssetsConfig.palette.bullet || "#fff";
-            const hexToRgba = (hex) => {
-              const h = hex.replace("#", "");
-              const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
-              const rr = (bigint >> 16 & 255) / 255;
-              const gg = (bigint >> 8 & 255) / 255;
-              const bcol = (bigint & 255) / 255;
-              return [rr, gg, bcol, 1];
-            };
-            const floatArr = new Float32Array([clipX, clipY, clipSize, 1, 1, 1, 1]);
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
-            gl.useProgram(this.prog);
-            const stride = 7 * 4;
-            gl.enableVertexAttribArray(this.attribLoc_pos);
-            gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
-            gl.enableVertexAttribArray(this.attribLoc_size);
-            gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
-            gl.enableVertexAttribArray(this.attribLoc_color);
-            gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-            gl.drawArrays(gl.POINTS, 0, 1);
-          } catch (e) {
-          }
-        }
-      } catch (e) {
-      }
-      try {
-        for (const p of state.particles || []) {
-          try {
-            const px = p.x || 0;
-            const py = p.y || 0;
-            const clipX = px / Math.max(1, LOGICAL_W) * 2 - 1;
-            const clipY = 1 - py / Math.max(1, LOGICAL_H) * 2;
-            const size = p.r || 2;
-            const shapeKey = p.assetShape || (p.r > 0.5 ? "particleMedium" : "particleSmall");
-            const tex = this.bakeShapeToTexture(shapeKey) || this.bakeShapeToTexture("particleSmall");
-            if (tex && this.texProg) {
-              const quadW = size * 2 / Math.max(1, this.fboWidth) * 2;
-              const quadH = size * 2 / Math.max(1, this.fboHeight) * 2;
-              this.drawTexturedQuad(tex, clipX, clipY, quadW, quadH);
-            }
-          } catch (e) {
-          }
-        }
-      } catch (e) {
-      }
-      try {
-        for (const ex of state.explosions || []) {
-          try {
-            const exx = ex.x || 0;
-            const exy = ex.y || 0;
-            const clipX = exx / Math.max(1, LOGICAL_W) * 2 - 1;
-            const clipY = 1 - exy / Math.max(1, LOGICAL_H) * 2;
-            const tex = this.bakeShapeToTexture("explosionParticle") || null;
-            const s = ex.scale || 1;
-            if (tex && this.texProg) {
-              const wq = 12 * s / Math.max(1, this.fboWidth) * 2;
-              const hq = 12 * s / Math.max(1, this.fboHeight) * 2;
-              this.drawTexturedQuad(tex, clipX, clipY, wq, hq);
-            } else {
-              const floatArr = new Float32Array([clipX, clipY, Math.max(2, 12 * s), 1, 1, 0.8, 1]);
-              gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-              gl.bufferData(gl.ARRAY_BUFFER, floatArr, gl.DYNAMIC_DRAW);
-              gl.useProgram(this.prog);
-              const stride = 7 * 4;
-              gl.enableVertexAttribArray(this.attribLoc_pos);
-              gl.vertexAttribPointer(this.attribLoc_pos, 2, gl.FLOAT, false, stride, 0);
-              gl.enableVertexAttribArray(this.attribLoc_size);
-              gl.vertexAttribPointer(this.attribLoc_size, 1, gl.FLOAT, false, stride, 2 * 4);
-              gl.enableVertexAttribArray(this.attribLoc_color);
-              gl.vertexAttribPointer(this.attribLoc_color, 4, gl.FLOAT, false, stride, 3 * 4);
-              gl.drawArrays(gl.POINTS, 0, 1);
-            }
-          } catch (e) {
-          }
-        }
-      } catch (e) {
-      }
-    }
-    if (this.fboTexture && this.quadProg && this.quadVBO && this.gl) {
-      const displayScale = RendererConfig && typeof RendererConfig.displayScale === "number" ? RendererConfig.displayScale : 1;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.viewport(0, 0, Math.round(this.canvas.width * displayScale), Math.round(this.canvas.height * displayScale));
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(this.quadProg);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
-      if (this.quadLoc_tex) gl.uniform1i(this.quadLoc_tex, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
-      gl.enableVertexAttribArray(this.quadLoc_pos);
-      gl.vertexAttribPointer(this.quadLoc_pos, 2, gl.FLOAT, false, 0, 0);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      gl.disableVertexAttribArray(this.quadLoc_pos);
-    }
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     try {
-    } catch (e) {
+      const ships = state && state.ships || [];
+      for (const s of ships) {
+        const type = s && s.type || "fighter";
+        this.bakeShapeToTexture(state, type);
+        try {
+          const key = `ship:${type}`;
+          const sprite = acquireSprite(this.gameState || state, key, () => ({ type }));
+          const sp = sprite;
+          try {
+            sp.x = s.x || 0;
+            sp.y = s.y || 0;
+            sp.angle = s.angle || 0;
+          } catch {
+          }
+          try {
+            releaseSprite(this.gameState || state, key, sprite);
+          } catch {
+          }
+        } catch {
+        }
+      }
+      try {
+        const flashes2 = state.flashes || [];
+        for (const f of flashes2) {
+          try {
+            const key = `flash`;
+            const pooled = acquireEffect(this.gameState || state, key, () => makePooled(
+              createExplosionEffect({ x: f.x || 0, y: f.y || 0 }),
+              (obj, initArgs) => {
+                resetExplosionEffect(obj, initArgs);
+                obj.ttl = initArgs?.ttl ?? 0.5;
+              }
+            ), f);
+            const ef = pooled;
+            try {
+              if (ef) {
+                ef.x = ef.x || 0;
+                ef.y = ef.y || 0;
+                ef.ttl = ef.ttl ?? 0.5;
+              }
+            } catch {
+            }
+            try {
+              releaseEffect(this.gameState || state, key, pooled);
+            } catch {
+            }
+          } catch {
+          }
+        }
+      } catch {
+      }
+    } catch {
     }
   }
-  // Bake a 2D asset shape into a canvas and upload to a GL texture (cached)
-  bakeShapeToTexture(key) {
+  // Pre-bake textures for all known shapes
+  preloadAllAssets() {
+    if (!this.gl) return;
+    try {
+      const shapes = AssetsConfig.shapes2d || {};
+      for (const key of Object.keys(shapes)) this.bakeShapeToTexture(this.gameState, key);
+    } catch {
+    }
+  }
+  // Testing helper: check if we have a cached texture for a key
+  hasCachedTexture(key) {
+    return !!this.shapeTextures[key];
+  }
+  // Dispose all GL resources and clear caches
+  dispose() {
+    if (this.gl) {
+      try {
+        for (const key of Object.keys(this.shapeTextures)) {
+          const tex = this.shapeTextures[key];
+          if (!tex) continue;
+          if (this.gameState) {
+            try {
+              const gl = this.gl;
+              releaseTexture(this.gameState, key, tex, (t) => {
+                try {
+                  gl.deleteTexture(t);
+                } catch {
+                }
+              });
+            } catch {
+            }
+          } else {
+            try {
+              this.gl.deleteTexture(tex);
+            } catch {
+            }
+          }
+        }
+        try {
+          if (this.quadVBO) this.gl.deleteBuffer(this.quadVBO);
+        } catch {
+        }
+        try {
+          if (this.quadProg) this.gl.deleteProgram(this.quadProg);
+        } catch {
+        }
+        try {
+          if (this.fboTex) this.gl.deleteTexture(this.fboTex);
+        } catch {
+        }
+        try {
+          if (this.fbo) this.gl.deleteFramebuffer(this.fbo);
+        } catch {
+        }
+      } catch {
+      }
+    }
+    this.shapeTextures = {};
+    this.quadVBO = null;
+    this.quadProg = null;
+    this.fbo = null;
+    this.fboTex = null;
+    this.gl = null;
+  }
+  // Internal: bake a simple 2D shape into a texture and cache it
+  bakeShapeToTexture(state, key) {
     if (!this.gl) return null;
     if (this.shapeTextures[key]) return this.shapeTextures[key];
     try {
       const gl = this.gl;
       const shapes = AssetsConfig.shapes2d || {};
       const shape = shapes[key];
-      const size = this.shapeCanvasSize;
+      const size = 128;
       const cvs = document.createElement("canvas");
       cvs.width = size;
       cvs.height = size;
-      const ctx2 = cvs.getContext("2d");
-      ctx2.clearRect(0, 0, size, size);
-      ctx2.translate(size / 2, size / 2);
+      const ctx = cvs.getContext("2d");
+      if (!ctx) return null;
+      ctx.clearRect(0, 0, size, size);
+      ctx.save();
+      ctx.translate(size / 2, size / 2);
       const scale = size / 4;
-      ctx2.fillStyle = AssetsConfig.palette && AssetsConfig.palette.shipHull || "#eee";
+      ctx.fillStyle = AssetsConfig.palette && AssetsConfig.palette.shipHull || "#b0b7c3";
       if (!shape) {
-        ctx2.beginPath();
-        ctx2.arc(0, 0, Math.max(4, size * 0.12), 0, Math.PI * 2);
-        ctx2.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(4, size * 0.12), 0, Math.PI * 2);
+        ctx.fill();
       } else if (shape.type === "circle") {
-        ctx2.beginPath();
-        ctx2.arc(0, 0, (shape.r || 0.5) * scale, 0, Math.PI * 2);
-        ctx2.fill();
+        const r = (shape.r ?? 0.5) * scale;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
       } else if (shape.type === "polygon") {
         const pts = shape.points || [];
         if (pts.length) {
-          ctx2.beginPath();
-          ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
-          for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
-          ctx2.closePath();
-          ctx2.fill();
+          ctx.beginPath();
+          ctx.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+          for (let i = 1; i < pts.length; i++)
+            ctx.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+          ctx.closePath();
+          ctx.fill();
         }
       } else if (shape.type === "compound") {
-        for (const part of shape.parts || []) {
+        const parts = shape.parts || [];
+        for (const part of parts) {
           if (part.type === "circle") {
-            ctx2.beginPath();
-            ctx2.arc(0, 0, (part.r || 0.5) * scale, 0, Math.PI * 2);
-            ctx2.fill();
+            const r = (part.r ?? 0.5) * scale;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fill();
           } else if (part.type === "polygon") {
             const pts = part.points || [];
             if (pts.length) {
-              ctx2.beginPath();
-              ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
-              for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
-              ctx2.closePath();
-              ctx2.fill();
+              ctx.beginPath();
+              ctx.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+              for (let i = 1; i < pts.length; i++)
+                ctx.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+              ctx.closePath();
+              ctx.fill();
             }
           }
         }
       }
-      const tex = gl.createTexture();
+      ctx.restore();
+      const createTex = () => {
+        const t = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL ?? 32867, 0);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cvs);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        return t;
+      };
+      let tex = null;
+      if (state) {
+        try {
+          tex = acquireTexture(state, key, createTex);
+        } catch {
+          tex = createTex();
+        }
+      } else {
+        tex = createTex();
+      }
+      if (!tex) return null;
       gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cvs);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       this.shapeTextures[key] = tex;
       return tex;
-    } catch (e) {
+    } catch {
       return null;
     }
   }
-  // Draw a textured quad at clip-space coordinates [-1..1] using the baked texture
-  drawTexturedQuad(tex, clipX, clipY, clipW, clipH) {
-    if (!this.gl || !this.texProg || !tex) return;
-    try {
-      const gl = this.gl;
-      gl.useProgram(this.texProg);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      if (this.texLoc_tex) gl.uniform1i(this.texLoc_tex, 0);
-      const x1 = clipX - clipW / 2;
-      const x2 = clipX + clipW / 2;
-      const y1 = clipY - clipH / 2;
-      const y2 = clipY + clipH / 2;
-      const verts = new Float32Array([
-        x1,
-        y1,
-        0,
-        0,
-        x2,
-        y1,
-        1,
-        0,
-        x1,
-        y2,
-        0,
-        1,
-        x2,
-        y1,
-        1,
-        0,
-        x2,
-        y2,
-        1,
-        1,
-        x1,
-        y2,
-        0,
-        1
-      ]);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.texVBO);
-      gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
-      const stride = 4 * 4;
-      gl.enableVertexAttribArray(this.texAttrib_pos);
-      gl.vertexAttribPointer(this.texAttrib_pos, 2, gl.FLOAT, false, stride, 0);
-      gl.enableVertexAttribArray(this.texAttrib_uv);
-      gl.vertexAttribPointer(this.texAttrib_uv, 2, gl.FLOAT, false, stride, 2 * 4);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      gl.disableVertexAttribArray(this.texAttrib_pos);
-      gl.disableVertexAttribArray(this.texAttrib_uv);
-    } catch (e) {
-    }
-  }
+  // Optional future path: draw a textured quad (not used in tests yet)
+  // Keeping a stub to document intent and ease future extension.
+  // private drawTexturedQuad(_tex: WebGLTexture, _x: number, _y: number, _w: number, _h: number): void {
+  //   // Intentionally empty in minimal stub
+  // }
 };
 
 // src/main.ts
 async function startApp(rootDocument = document) {
+  const gameState = makeInitialState();
   let canvas = rootDocument.getElementById("world");
   if (!canvas) {
     try {
@@ -3220,6 +3258,7 @@ async function startApp(rootDocument = document) {
   let uiRaf = null;
   let workerIndicatorRaf = null;
   const pendingTimers = /* @__PURE__ */ new Set();
+  let isUiTickRunning = false;
   function addListener(target, type, handler) {
     if (!target) return;
     try {
@@ -3296,14 +3335,16 @@ async function startApp(rootDocument = document) {
       if (!isNaN(val)) {
         RendererConfig.renderScale = val;
         RendererConfig.dynamicScaleEnabled = false;
-        if (dynamicCheckbox) dynamicCheckbox.checked = false;
+        if (dynamicCheckbox)
+          dynamicCheckbox.checked = false;
         updateCanvasBackingStore();
         fitCanvasToWindow();
       }
     };
     addListener(scaleSlider, "input", onScaleInput);
     const scaleVal = rootDocument.getElementById("rendererScaleValue");
-    if (scaleVal) scaleVal.textContent = scaleSlider.value;
+    if (scaleVal)
+      scaleVal.textContent = scaleSlider.value;
     updateCanvasBackingStore();
     fitCanvasToWindow();
   }
@@ -3336,6 +3377,12 @@ async function startApp(rootDocument = document) {
       }
     }
   }
+  if (renderer && typeof renderer.preloadAllAssets === "function") {
+    try {
+      renderer.preloadAllAssets();
+    } catch (e) {
+    }
+  }
   if (!renderer) {
     renderer = {
       type: "noop",
@@ -3350,9 +3397,13 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   const gm = createGameManager({ renderer, useWorker: false, seed: 12345 });
-  if (gm && gm._internal) gm._internal.bounds = LOGICAL_BOUNDS;
+  if (gm && gm._internal) {
+    gm._internal.bounds = LOGICAL_BOUNDS;
+    gm._internal.state = gameState;
+  }
   try {
-    if (typeof window !== "undefined" && window.gm) Object.assign(window.gm, gm);
+    if (typeof window !== "undefined" && window.gm)
+      Object.assign(window.gm, gm);
   } catch (e) {
   }
   let simSpeedMultiplier = 1;
@@ -3377,15 +3428,11 @@ async function startApp(rootDocument = document) {
     addListener(ui.formationBtn, "click", onFormationClick);
   }
   let engineTrailsEnabled = true;
-  if (gm && gm._internal && gm._internal.state) {
-    gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
-  }
+  gameState.engineTrailsEnabled = engineTrailsEnabled;
   if (ui.toggleTrails) {
     const onToggleTrails = () => {
       engineTrailsEnabled = !engineTrailsEnabled;
-      if (gm && gm._internal && gm._internal.state) {
-        gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
-      }
+      gameState.engineTrailsEnabled = engineTrailsEnabled;
       ui.toggleTrails.textContent = engineTrailsEnabled ? "\u2604 Trails: On" : "\u2604 Trails: Off";
     };
     addListener(ui.toggleTrails, "click", onToggleTrails);
@@ -3397,11 +3444,13 @@ async function startApp(rootDocument = document) {
     const autotest = urlParams && urlParams.get("autotest") === "1" || !!window.__AUTO_REINFORCE_DEV__;
     if ((host === "127.0.0.1" || host === "localhost") && autotest) {
       try {
-        if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(true);
+        if (gm && typeof gm.setContinuousEnabled === "function")
+          gm.setContinuousEnabled(true);
       } catch (e) {
       }
       try {
-        if (gm && typeof gm.setReinforcementInterval === "function") gm.setReinforcementInterval(0.01);
+        if (gm && typeof gm.setReinforcementInterval === "function")
+          gm.setReinforcementInterval(0.01);
       } catch (e) {
       }
       try {
@@ -3428,7 +3477,8 @@ async function startApp(rootDocument = document) {
         } catch (e) {
         }
         try {
-          if (ui && ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
+          if (ui && ui.stats)
+            ui.stats.textContent = `${ui.stats.textContent} | ${summary}`;
         } catch (e) {
         }
       };
@@ -3450,7 +3500,8 @@ async function startApp(rootDocument = document) {
       rootDocument.body.appendChild(toastContainer);
       disposables.push(() => {
         try {
-          if (toastContainer && toastContainer.parentNode) toastContainer.parentNode.removeChild(toastContainer);
+          if (toastContainer && toastContainer.parentNode)
+            toastContainer.parentNode.removeChild(toastContainer);
         } catch (e) {
         }
       });
@@ -3480,7 +3531,6 @@ async function startApp(rootDocument = document) {
           el.style.opacity = "0";
         } catch (e) {
         }
-        ;
         setTimeout(() => {
           try {
             if (el && el.parentNode) el.parentNode.removeChild(el);
@@ -3528,15 +3578,16 @@ async function startApp(rootDocument = document) {
     }
   }
   try {
-    if (ui.startPause) addListener(ui.startPause, "click", () => {
-      if (gm.isRunning()) {
-        gm.pause();
-        ui.startPause.textContent = "\u25B6 Start";
-      } else {
-        gm.start();
-        ui.startPause.textContent = "\u23F8 Pause";
-      }
-    });
+    if (ui.startPause)
+      addListener(ui.startPause, "click", () => {
+        if (gm.isRunning()) {
+          gm.pause();
+          ui.startPause.textContent = "\u25B6 Start";
+        } else {
+          gm.start();
+          ui.startPause.textContent = "\u23F8 Pause";
+        }
+      });
   } catch (e) {
   }
   try {
@@ -3548,7 +3599,8 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   try {
-    if (ui.addBlue) addListener(ui.addBlue, "click", () => gm.spawnShip("blue"));
+    if (ui.addBlue)
+      addListener(ui.addBlue, "click", () => gm.spawnShip("blue"));
   } catch (e) {
   }
   function onSeedBtnClick() {
@@ -3588,12 +3640,15 @@ async function startApp(rootDocument = document) {
     if (ui.continuousCheckbox) {
       addListener(ui.continuousCheckbox, "change", (ev) => {
         const v = !!ev.target.checked;
-        if (gm && typeof gm.setContinuousEnabled === "function") gm.setContinuousEnabled(v);
+        if (gm && typeof gm.setContinuousEnabled === "function")
+          gm.setContinuousEnabled(v);
       });
     }
   } catch (e) {
   }
   function uiTick() {
+    if (isUiTickRunning) return;
+    isUiTickRunning = true;
     const startTick = performance.now();
     let skipRender = false;
     try {
@@ -3611,7 +3666,9 @@ async function startApp(rootDocument = document) {
       skipRender = true;
     }
     const dynamicEnabled = !!RendererConfig.dynamicScaleEnabled;
-    const scaleSliderEl = rootDocument.getElementById("rendererScaleRange");
+    const scaleSliderEl = rootDocument.getElementById(
+      "rendererScaleRange"
+    );
     const scaleValEl = rootDocument.getElementById("rendererScaleValue");
     const now = performance.now();
     RendererConfig._lastUiTick = RendererConfig._lastUiTick || now;
@@ -3627,8 +3684,10 @@ async function startApp(rootDocument = document) {
     }
     if (dynamicEnabled && scaleSliderEl) {
       let scale = RendererConfig.renderScale;
-      if (frameScore === "red" && scale > 0.25) scale = Math.max(0.25, scale - 0.05);
-      else if (frameScore === "green" && scale < 2) scale = Math.min(2, scale + 0.01);
+      if (frameScore === "red" && scale > 0.25)
+        scale = Math.max(0.25, scale - 0.05);
+      else if (frameScore === "green" && scale < 2)
+        scale = Math.min(2, scale + 0.01);
       if (scale !== RendererConfig.renderScale) {
         RendererConfig.renderScale = scale;
         internalScaleUpdate = true;
@@ -3640,12 +3699,19 @@ async function startApp(rootDocument = document) {
     }
     if (!skipRender) {
       try {
-        uiRaf = requestAnimationFrame(uiTick);
+        uiRaf = requestAnimationFrame(() => {
+          isUiTickRunning = false;
+          uiTick();
+        });
       } catch (e) {
         uiRaf = null;
+        isUiTickRunning = false;
       }
     } else {
-      const tid = setTimeout(uiTick, SIM.DT_MS);
+      const tid = setTimeout(() => {
+        isUiTickRunning = false;
+        uiTick();
+      }, SIM.DT_MS);
       if (typeof tid === "number") pendingTimers.add(tid);
     }
   }
@@ -3661,7 +3727,8 @@ async function startApp(rootDocument = document) {
     }
     try {
       if (gm && typeof gm.off === "function") {
-        if (reinforcementsHandler) gm.off("reinforcements", reinforcementsHandler);
+        if (reinforcementsHandler)
+          gm.off("reinforcements", reinforcementsHandler);
         if (levelupHandler) gm.off("levelup", levelupHandler);
       }
     } catch (e) {
@@ -3673,6 +3740,7 @@ async function startApp(rootDocument = document) {
       }
       uiRaf = null;
     }
+    isUiTickRunning = false;
     if (workerIndicatorRaf != null) {
       try {
         cancelAnimationFrame(workerIndicatorRaf);
@@ -3704,9 +3772,26 @@ async function startApp(rootDocument = document) {
   return { gm, renderer, dispose };
 }
 if (typeof window !== "undefined") {
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => startApp(document));
-  else startApp(document);
+  let safeStartApp = function(doc) {
+    if (appInstance && typeof appInstance.dispose === "function") {
+      appInstance.dispose();
+    }
+    startApp(doc).then((instance) => {
+      appInstance = instance;
+    });
+  };
+  safeStartApp2 = safeStartApp;
+  let appInstance = null;
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", () => safeStartApp(document));
+  else safeStartApp(document);
+  window.addEventListener("beforeunload", () => {
+    if (appInstance && typeof appInstance.dispose === "function") {
+      appInstance.dispose();
+    }
+  });
 }
+var safeStartApp2;
 var main_default = startApp;
 export {
   main_default as default,

@@ -3,11 +3,11 @@
 import { Window } from 'happy-dom';
 
 const happyWindow = new Window();
-globalThis.window = happyWindow;
-globalThis.document = happyWindow.document;
-globalThis.navigator = happyWindow.navigator;
-globalThis.HTMLElement = happyWindow.HTMLElement;
-globalThis.customElements = happyWindow.customElements;
+globalThis.window = happyWindow as any;
+globalThis.document = (happyWindow.document as any);
+globalThis.navigator = (happyWindow.navigator as any);
+globalThis.HTMLElement = (happyWindow.HTMLElement as any);
+globalThis.customElements = (happyWindow.customElements as any);
 
 // Polyfills or globals can be added here if needed by tests.
 // For now, we only ensure TextEncoder/TextDecoder exist for environments that need them.

@@ -1,211 +1,123 @@
-## SpaceAutoBattler — Spec: Game Loop, Simulation Loop, Renderer, RNG, Entities
+# SpaceAutoBattler — Spec: Game Loop, Simulation Loop, Renderer, RNG, Entities
 
-### Purpose
+## Purpose
 
-This spec describes the small, testable specifications to author for the core timing and rendering contracts in SpaceAutoBattler. The goal is to make the game loop, simulation loop, and renderer modular, testable, and able to be decoupled (for Worker/off-main-thread execution) while preserving deterministic simulation behavior.
+This document defines small, testable contracts for the game loop, deterministic simulation (simulateStep), and renderer backends.
 
-### Scope
+Goals:
 
-- `gameloop` (high-level orchestration)
-- `simloop` / `simulateStep` (deterministic simulation ticks)
-- `renderer` (modular rendering API for main-thread and worker use)
-- `canvas fallback renderer` (2D canvas rendering path)
-- `webgl2 renderer` (WebGL2 renderer path and loop ownership)
-- `rng` (seeded RNG contract and usage rules)
- - `entities` (entity model and configuration spec mirroring `entitiesConfig.ts`)
-Intent
-- Provide clear rules for how the application starts and coordinates simulation and rendering. Should allow three deployment modes: (A) main-thread sim + main-thread render, (B) worker sim + main-thread render, (C) worker sim + worker render (OffscreenCanvas).
+- Keep simulation deterministic and unit-testable.
+- Allow renderers to run on main thread or use OffscreenCanvas workers.
+- Provide a canonical `GameState.assetPool` contract for pooled GPU/texture/sprite/effect resources.
 
-Public contract / API
-- Start: `startGame({ mode, seed, state, bounds, simDtMs })`
-- Stop: `stopGame()`
-- Query: `isRunning()`
+## Deployment modes
 
-Behavior
-- On start, the gameloop chooses wiring based on `mode` and available features (OffscreenCanvas, Worker support). It instantiates renderer and/or sim worker but does NOT assume renderer internals; it MUST respect renderer-provided flags:
-  - `renderer.providesOwnLoop` (boolean)
-  - `renderer.isRunning()` (may throw; gameloop must handle exceptions)
+- main-thread sim + main-thread render
+- worker sim + main-thread render
+- worker sim + worker render (OffscreenCanvas)
 
-Acceptance criteria
-- When `renderer.providesOwnLoop === true`, gameloop must NOT start an external requestAnimationFrame loop.
-- When `renderer.isRunning() === true`, gameloop must NOT start an external rAF loop.
-- If `renderer.isRunning()` throws, gameloop must fallback to safe behavior and start external rAF.
+## Public API (high-level)
 
-Tests to add
-- Unit test covering the three cases above (mock renderer with combinations of `providesOwnLoop` and `isRunning`), as well as error path when `isRunning` throws. (See `test/main.webglloop.guard.test.js` as a template.)
+- `startGame({ mode, seed, state, bounds, simDtMs })`
+- `stopGame()`
+- `isRunning()`
 
----
+## Gameloop rules
 
-### 2) Spec: simloop / simulateStep
+The gameloop treats the renderer as a black box except for two flags:
 
-Intent
-- Maintain a deterministic, fixed-timestep simulation function and a recommended worker-run loop that uses an accumulator.
+- `renderer.providesOwnLoop: boolean` — if true, do not start an external rAF loop.
+- `renderer.isRunning(): boolean` — when true, do not start a separate render loop; if this call throws, fallback to starting an rAF loop.
 
-Contract
-- `simulateStep(state, dtSeconds, bounds)` — mutates `state` in place and appends visual-only events to `state.explosions`, `state.shieldHits`, `state.healthHits`.
-- Deterministic when `srand(seed)` is called before stepping.
+Acceptance criteria:
 
-Timing
-- Sim step should be fixed-step. Recommend: `SIM_DT_MS = 16` (16 ms) or `16.6667` (60 Hz). Optionally support 8 ms.
+- If `renderer.providesOwnLoop === true`, gameloop must not start an external rAF.
+- If `renderer.isRunning() === true`, gameloop must not start an external rAF.
+- If `renderer.isRunning()` throws, gameloop must fallback to starting an rAF.
 
-Acceptance Criteria
-- Given same initial `state` and same `seed`, repeated runs of N steps must produce identical state (including event arrays). Add unit tests that seed RNG and compare snapshots.
+Tests to add:
 
-Tests to add
-- Determinism test (seeded): run simulateStep N times and assert deep equality with known-good snapshot.
-- Edge cases: large dt (clamped delta), no ships, no bullets.
+- Unit tests that mock renderer permutations:
+  - providesOwnLoop=true
+  - providesOwnLoop=false + isRunning()=true
+  - isRunning() throws (error path)
 
----
+## Sim loop / simulateStep contract
 
-### 3) Spec: renderer (modular)
+- `simulateStep(state, dtSeconds, bounds)` mutates `state` in-place and may append visual-only events (e.g., `state.explosions`).
+- The simulation must be deterministic when the seeded RNG is used (`srand(seed)`).
+- Use a fixed-step simulation (default ~16 ms / 60 Hz). Large dt should be clamped and processed as multiple fixed steps.
 
-Intent
-- Provide a small renderer contract that can be implemented by multiple backends (DOM Canvas 2D, WebGL2, OffscreenCanvas/WebWorker). Renderer must be able to accept an external state snapshot for rendering.
+Tests to add:
 
-Contract / API
+- Determinism test: seed the RNG, run N steps, and compare snapshots.
+- Edge cases: very large dt, empty entity lists.
+
+## Renderer contract (modular)
+
+Minimal API:
+
 - `createRenderer(canvas, opts) -> renderer`
 - `renderer.init()` -> boolean
-- `renderer.renderState(state, interpolationAlpha?)` // pure drawing of given snapshot
-- `renderer.start()` // optional — if renderer owns its own loop
+- `renderer.renderState(state, interpolationAlpha?)`
+- `renderer.start()` (optional)
 - `renderer.stop()`
 - `renderer.providesOwnLoop` (boolean)
 - `renderer.isRunning()` -> boolean
 
-Behavior
-- Renderer must not mutate the simulation `state` object (only read). Visual-only ephemeral arrays (explosions, shieldHits, healthHits) may be consumed by renderer for visual effects; renderer may optionally clear them or copy them for visuals, but must not influence simulation state used by simulateStep.
+Rules:
 
-Acceptance Criteria
-- `renderState` must draw given `state` consistently and not cause side-effects to simulation state visible to next simulation step.
+- Renderer must not mutate simulation state. It may consume visual-only arrays for display but must not alter values used by simulateStep.
 
-Tests to add
-- Unit test for `renderState` that passes a small snapshot and validates no mutation occurred (deep clone before/after). DOM/integration tests can assert canvas draws or call into a headless canvas mock.
+Tests to add:
 
----
+- Unit test that calls `renderState` with a snapshot and asserts no mutation occurred.
 
-### 4) Spec: canvas fallback renderer (2D)
+## Canvas2D fallback renderer
 
-Intent
-- Provide a reliable 2D Canvas renderer as fallback when WebGL2 or OffscreenCanvas isn't available.
+- Implements same contract as other renderers. Integration or Playwright smoke tests should validate expected primitives for a small snapshot.
 
-API
-- Same `createRenderer` contract; `type` property = `'canvas2d'`.
+## WebGL2 renderer and pooling
 
-Acceptance Criteria
-- Renders expected simple primitives for a small known state (e.g., one ship at x,y with color/team) — verified via integration or visual smoke test.
+- The typed `WebGLRenderer` should route texture creation through `GameState.assetPool` using pooling helpers (e.g., `acquireTexture(factory, key, disposer)`) when a `GameState` is present. If no `GameState` is available, renderer falls back to direct create/delete.
 
-Tests to add
-- Playwright or integration test that loads the page in a browser and validates rendered pixels or accessibility snapshot.
+Pooling acceptance criteria:
 
----
+- Acquire/release helpers must prevent double-free, respect per-key `max` and `strategy` (`discard-oldest`, `grow`, `error`), and invoke `disposer` when trimming.
 
-### 5) Spec: webgl2 renderer and loop ownership
+Tests to add:
 
-Intent
-- WebGL2 renderer provides higher-performance rendering; it may optionally own its own loop (e.g., using requestAnimationFrame internally). Gameloop must handle both ownership modes.
+- Unit tests with the deterministic GL stub to assert create/delete counts and that disposers are invoked on trimming.
+- Playwright/headless smoke test for a real WebGL lifecycle.
 
-API differences / flags
-- `renderer.type === 'webgl' || 'webgl2'`
-- `renderer.providesOwnLoop` boolean
+## RNG (seeded)
 
-Acceptance Criteria
-- If `providesOwnLoop` is true, the gameloop must not start an external rAF for rendering.
-- If `providesOwnLoop` is false, gameloop must call `requestAnimationFrame` and call `renderer.render()` passing latest state.
+- Use `srand(seed)` for simulation determinism. Rendering may use non-deterministic randomness unless deterministic replay is required.
 
-Tests to add
-- Unit tests that mock the webgl renderer's properties and ensure gameloop responds appropriately (see existing test file `test/main.webglloop.guard.test.js`).
+## Entities & configs
 
----
+- All gameplay and visual tunables live under `src/config/*`. Avoid hard-coded values in logic.
 
-### 6) Spec: rng (seeded random)
+## Implementation priorities
 
-Intent
-- Define the RNG contract and usage constraints to preserve determinism across worker/main contexts.
+1. Per-key overflow + disposer tests (high): add unit tests for `discard-oldest`, `grow`, and `error`; set explicit `max` for high-churn keys.
+2. Real-GL smoke test (medium): Playwright/headless test exercising create/release lifecycle.
+3. Migrate one visual to renderer-owned pooling (low): e.g., explosion effects with an integration test.
+4. CI & lockfile updates (low): ensure `happy-dom` and new tests run in CI.
 
-Contract
-- `srand(seed)` — seed the RNG
-- deterministic functions: `srange`, `srangeInt`, `srandom` used only inside simulation logic that affects gameplay
+## Validation & QA
 
-Rules
-- Seed RNG inside simulation context before running simulate steps. Do not call seeded RNG for cosmetic rendering effects unless those cosmetic effects must be deterministic for replays.
+- Run `npx tsc --noEmit` and the Vitest suite locally before PRs.
+- Add deterministic simulateStep tests seeded via `srand` and compare snapshots.
 
-Acceptance Criteria
-- Determinism test that calls `srand(12345)` and runs simulation steps producing expected output.
+## Files to update
 
-Tests to add
-- Extend existing `rng` tests to include worker-simulated runs if possible (or test simulateStep determinism which uses RNG internally).
+- `src/webglrenderer.ts` — ensure pool usage with safe fallback.
+- `src/entities.ts` — pooling helpers (already implemented).
+- `test/vitest/utils/glStub.ts` — used for deterministic lifecycle tests.
+- `test/*` — add sim determinism and per-key overflow tests.
 
 ---
-
-### 7) Spec: entities & entitiesConfig mapping
-
-
-## Config-driven Entities, Progression, and Visuals
-
-All entity stats, progression, and visual parameters are now centralized in `/src/config` files:
-
-- `entitiesConfig.ts`: Canonical ship types (`fighter`, `corvette`, `frigate`, `destroyer`, `carrier`) with all gameplay stats and visuals.
-- `progressionConfig.ts`: Function-valued scalars for XP, HP, damage, shield, speed, and regen per level. Example:
-  - `xpToLevel(level) => 100 * 1.25^(level - 1)`
-  - `hpPercentPerLevel(level) => Math.min(0.10, 0.05 + 0.05 / Math.sqrt(level))`
-  - `dmgPercentPerLevel`, `shieldPercentPerLevel`, `speedPercentPerLevel`, `regenPercentPerLevel` (numbers)
-- `gamemanagerConfig.ts`: Visuals and particles for shield, health, explosion, and stars. All particle params (count, ttl, color, size, speed) are config-driven.
-- `rendererConfig.ts`: Renderer preferences and UI overlay settings (HP bar styling, background color).
-- `assetsConfig.ts`: Palette (hull, accent, bullet, turret, background), shapes, animations, damage states, thresholds.
-- `teamsConfig.ts`: Team colors, fleet composition, reinforcement logic.
-- `displayConfig.ts`: Bounds and display helpers.
-- `validateConfig.ts`: Validation helpers for config correctness.
-
-Simulation and gamemanager logic must read all tunables from config. No hardcoded values for gameplay, visuals, or progression remain outside config files. All entity creation, progression, and visual effects reference config fields.
-
-### Entities and Progression in Simulation
-
-- Ship creation uses `entitiesConfig.ts` for stats and visuals.
-- Progression (XP, level-up) uses `progressionConfig.ts` scalars, including function-valued fields for multi-level scaling.
-- Visual events (explosions, shieldHits, healthHits) use `gamemanagerConfig.ts` and `assetsConfig.ts` for all parameters.
-- Renderer reads palette, shapes, and UI overlays from config.
-
-### Tests and Validation
-
-- Unit tests seed XP and verify level-up effects using config-driven progression.
-- All entity shapes, colors, and thresholds are validated against config.
-- Renderer and simulation tests assert config usage and determinism.
-
-### Migration and Maintenance
-
-- All JS files in `/src` are build artifacts; only TypeScript sources in `/src` should be edited.
-- Any future changes to game balance, visuals, or progression must be made in config files and reflected in specs and tests.
-
-This mapping ensures the spec and implementation remain aligned, and all gameplay and visual parameters are tunable via config.
-
----
-
-### Implementation tasks (recommended prioritization)
-
-1. Write the gameloop guarding tests (some already present — ensure they pass). Use `test/main.webglloop.guard.test.js` pattern.
-2. Author `spec` files for each above item as a foundation for implementation and review (this file + separate detailed specs if needed).
-3. Implement Worker-sim minimal wiring (create `src/simWorker.js`) and adapt `src/main.js` to instantiate worker (non-invasive change). Keep structured clone snapshot approach first.
-4. Add `renderer.renderState(state)` wrapper so renderer can accept snapshots instead of reading a shared `state` global.
-5. If profiling shows copying cost, implement typed-array serialization + transferables (ping/pong) and add tests.
-
-### Validation & QA
-
-- Run Vitest unit suite: `npm test` and ensure no regressions.
-- Add deterministic simulation tests seeded via `srand` and compare snapshots.
-- Manual smoke run: open standalone HTML or serve and confirm visual correctness.
-
-### Notes / Rationale
-
-- Favor minimal, test-covered changes. Preserve `simulateStep` contract exactly (mutating `state` and appending event arrays). Prefer structured clone first; move to binary transfer only if needed.
-
----
-
-### Files suggested to author/update
-
-- `spec/spec-gameloop-sim-renderer.md` (this file)
-- `src/simWorker.js` (worker prototype)
-- `src/main.js` (wire worker creation on opt-in)
-- `src/renderer.js` (add `renderState` wrapper)
-- `test/sim.worker.determinism.test.js` (unit test for seeded simulation)
-- `test/main.webglloop.guard.test.js` (already present — keep and expand)
 
 End of spec.
+

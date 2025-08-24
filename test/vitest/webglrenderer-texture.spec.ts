@@ -22,12 +22,10 @@ describe("WebGLRenderer", () => {
       if (!ok) return;
 
       const shipType = getDefaultShipType();
-      renderer.renderState({
-        ships: [{ type: shipType, x: 10, y: 10, radius: 6 }],
-        bullets: [],
-        particles: [],
-        t: 0,
-      });
+      const state = require('../../src/entities').makeInitialState();
+      const ship = require('../../src/entities').createShip(shipType, 10, 10, 'red');
+      state.ships.push(ship);
+      renderer.renderState(state);
 
       expect(renderer.hasCachedTexture(shipType)).toBeTruthy();
       it("should dispose all cached textures and clear cache on shutdown", () => {
