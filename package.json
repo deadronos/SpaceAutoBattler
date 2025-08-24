@@ -36,15 +36,7 @@
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
-<<<<<<< HEAD
-<<<<<<< HEAD
     "viz": "^1.2.0"
-=======
-    "viz": "^3.0.1"
->>>>>>> origin/dev
-=======
-    "viz": "^3.0.1"
->>>>>>> origin/dev
   },
   "dependencies": {
     "glob": "^11.0.3",

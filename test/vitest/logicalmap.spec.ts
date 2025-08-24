@@ -18,14 +18,15 @@ describe('Logical map boundary behavior', () => {
     LOGICAL_MAP.H = 300;
     boundaryBehavior.ships = 'wrap';
     const bounds = { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-    const state = {
-      ships: [makeShip(399, 299, 5, 5)],
-      bullets: [],
-      shieldHits: [],
-      healthHits: [],
-      explosions: [],
-      damageEvents: [],
-    };
+      const state = {
+        t: 0,
+        ships: [makeShip(399, 299, 5, 5)],
+        bullets: [],
+        shieldHits: [],
+        healthHits: [],
+        explosions: [],
+        damageEvents: [],
+      };
     simulateStep(state, 0.1, bounds);
     // Ship should wrap to opposite edge
     expect(state.ships.length).toBeGreaterThan(0);
@@ -41,14 +42,15 @@ describe('Logical map boundary behavior', () => {
     LOGICAL_MAP.H = 300;
     boundaryBehavior.ships = 'remove';
     const bounds = { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-    const state = {
-  ships: [makeShip(400 + 12 + 1, 300 + 12 + 1, 5, 5)],
-      bullets: [],
-      shieldHits: [],
-      healthHits: [],
-      explosions: [],
-      damageEvents: [],
-    };
+      const state = {
+        t: 0,
+        ships: [makeShip(400 + 12 + 1, 300 + 12 + 1, 5, 5)],
+        bullets: [],
+        shieldHits: [],
+        healthHits: [],
+        explosions: [],
+        damageEvents: [],
+      };
     simulateStep(state, 0.1, bounds);
     // Ship should be removed
   // Debug output
@@ -62,14 +64,15 @@ describe('Logical map boundary behavior', () => {
     LOGICAL_MAP.H = 300;
     boundaryBehavior.ships = 'bounce';
     const bounds = { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-    const state = {
-  ships: [makeShip(400 + 12 + 1, 300 + 12 + 1, 5, 5)],
-      bullets: [],
-      shieldHits: [],
-      healthHits: [],
-      explosions: [],
-      damageEvents: [],
-    };
+      const state = {
+        t: 0,
+        ships: [makeShip(400 + 12 + 1, 300 + 12 + 1, 5, 5)],
+        bullets: [],
+        shieldHits: [],
+        healthHits: [],
+        explosions: [],
+        damageEvents: [],
+      };
     simulateStep(state, 0.1, bounds);
     // Ship should bounce and remain in bounds
     expect(state.ships.length).toBeGreaterThan(0);
@@ -90,14 +93,15 @@ describe('Logical map boundary behavior', () => {
     LOGICAL_MAP.H = 2000;
     boundaryBehavior.ships = 'wrap';
     const bounds = { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-    const state = {
-      ships: [makeShip(2999, 1999, 10, 10)],
-      bullets: [],
-      shieldHits: [],
-      healthHits: [],
-      explosions: [],
-      damageEvents: [],
-    };
+      const state = {
+        t: 0,
+        ships: [makeShip(2999, 1999, 10, 10)],
+        bullets: [],
+        shieldHits: [],
+        healthHits: [],
+        explosions: [],
+        damageEvents: [],
+      };
     simulateStep(state, 0.1, bounds);
   expect(state.ships.length).toBeGreaterThan(0);
   const ship = state.ships[0];
@@ -112,14 +116,15 @@ describe('Logical map boundary behavior', () => {
     LOGICAL_MAP.H = 2000;
     boundaryBehavior.ships = 'remove';
     const bounds = { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-    const state = {
-  ships: [makeShip(3000 + 12 + 1, 2000 + 12 + 1, 10, 10)],
-      bullets: [],
-      shieldHits: [],
-      healthHits: [],
-      explosions: [],
-      damageEvents: [],
-    };
+      const state = {
+        t: 0,
+        ships: [makeShip(3000 + 12 + 1, 2000 + 12 + 1, 10, 10)],
+        bullets: [],
+        shieldHits: [],
+        healthHits: [],
+        explosions: [],
+        damageEvents: [],
+      };
     simulateStep(state, 0.1, bounds);
   // Debug output
   // eslint-disable-next-line no-console
@@ -132,14 +137,15 @@ describe('Logical map boundary behavior', () => {
     LOGICAL_MAP.H = 2000;
     boundaryBehavior.ships = 'bounce';
     const bounds = { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-    const state = {
-  ships: [makeShip(3000 + 12 + 1, 2000 + 12 + 1, 10, 10)],
-      bullets: [],
-      shieldHits: [],
-      healthHits: [],
-      explosions: [],
-      damageEvents: [],
-    };
+      const state = {
+        t: 0,
+        ships: [makeShip(3000 + 12 + 1, 2000 + 12 + 1, 10, 10)],
+        bullets: [],
+        shieldHits: [],
+        healthHits: [],
+        explosions: [],
+        damageEvents: [],
+      };
     simulateStep(state, 0.1, bounds);
   expect(state.ships.length).toBeGreaterThan(0);
   const ship = state.ships[0];
