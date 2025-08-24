@@ -17,6 +17,7 @@
     "validate-config": "node ./scripts/validate-config.mjs"
   },
   "devDependencies": {
+    "@babel/preset-env": "latest",
     "@playwright/test": "^1.55.0",
     "@types/bun": "latest",
     "@types/node": "^24.3.0",
@@ -34,13 +35,12 @@
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
-    "viz": "latest"
+    "viz": "^3.0.1"
   },
-  "private": true,
   "dependencies": {
-    "opencode": "sst/opencode"
-  },
-  "trustedDependencies": [
-    "opencode"
-  ]
+    "glob": "^11.0.3",
+    "lodash": "^4.17.21",
+    "lru-cache": "^11.1.0",
+    "rimraf": "^6.0.1"
+  }
 }

@@ -1,5 +1,13 @@
 // Vitest setup for SpaceAutoBattler
-// Keep it light and DOM-safe. Happy DOM is provided by vitest.config.js.
+// Explicitly initialize happy-dom globals for Vitest tests.
+import { Window } from 'happy-dom';
+
+const happyWindow = new Window();
+globalThis.window = happyWindow;
+globalThis.document = happyWindow.document;
+globalThis.navigator = happyWindow.navigator;
+globalThis.HTMLElement = happyWindow.HTMLElement;
+globalThis.customElements = happyWindow.customElements;
 
 // Polyfills or globals can be added here if needed by tests.
 // For now, we only ensure TextEncoder/TextDecoder exist for environments that need them.
@@ -16,6 +24,7 @@ if (typeof globalThis.TextDecoder === 'undefined') {
   // @ts-ignore
   globalThis.TextDecoder = TextDecoder as any;
 }
+// ...existing code...
 
 // Note: Vitest with the `happy-dom` environment provides `window` and `document`.
 // If a test or environment doesn't expose them, you can create a Window instance
