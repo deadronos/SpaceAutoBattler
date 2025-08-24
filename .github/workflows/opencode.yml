@@ -26,5 +26,5 @@ jobs:
            BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          $BRANCH_NAME
+          branch: ${{ env.BRANCH_NAME }}
           model: github-copilot/gpt-4.1
