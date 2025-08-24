@@ -30,8 +30,18 @@ export interface GameState {
 	healthFlashes?: any[];
 	engineTrailsEnabled?: boolean;
 	damageEvents?: any[];
-		starCanvas?: HTMLCanvasElement;
-	// Add other top-level state fields as needed
+	starCanvas?: HTMLCanvasElement;
+	// --- Asset Pooling ---
+	assetPool: {
+		textures: Map<string, WebGLTexture[]>;
+		sprites: Map<string, any[]>;
+		effects: Map<string, any[]>;
+		config: {
+			texturePoolSize: number;
+			spritePoolSize: number;
+			effectPoolSize: number;
+		};
+	};
 }
 
 export default {};

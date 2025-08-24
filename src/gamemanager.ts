@@ -10,6 +10,7 @@ import { simulateStep } from "./simulate";
 import { SIM } from "./config/simConfig";
 import { srand, srandom } from "./rng";
 import { createSimWorker } from "./createSimWorker";
+import { acquireEffect, releaseEffect, acquireSprite, releaseSprite, makePooled } from "./entities";
 import {
   SHIELD,
   HEALTH,
@@ -38,7 +39,23 @@ export const explosionPool: any[] = [];
 export const shieldHitPool: any[] = [];
 export const healthHitPool: any[] = [];
 // Bullet pooling
-export function acquireBullet(opts: any = {}): any {
+// Bullets: support optional GameState-backed pooling. If `state` is provided,
+// use state.assetPool.sprites keyed by 'bullet', otherwise fallback to legacy in-memory pool.
+export function acquireBullet(stateOrOpts?: any, maybeOpts?: any): any {
+  let state: GameState | undefined;
+  let opts: any = {};
+  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
+  else opts = stateOrOpts || {};
+  if (maybeOpts) opts = maybeOpts;
+
+  if (state && state.assetPool) {
+    const key = 'bullet';
+    const b = acquireSprite(state, key, () => makePooled({ ...opts, alive: true }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
+    bullets.push(b);
+    return b;
+  }
+
+  // Legacy fallback
   let b: any = null;
   if (bulletPool.length) {
     b = bulletPool.pop();
@@ -50,14 +67,48 @@ export function acquireBullet(opts: any = {}): any {
   bullets.push(b);
   return b;
 }
-export function releaseBullet(b: any) {
+
+export function releaseBullet(stateOrBullet?: any): void {
+  // If first arg is a state and second is bullet, support that form too
+  let state: GameState | undefined;
+  let b: any;
+  if (stateOrBullet && stateOrBullet.assetPool) {
+    state = stateOrBullet as GameState;
+    b = arguments[1];
+  } else {
+    b = stateOrBullet;
+  }
+  if (!b) return;
+  if (state && state.assetPool) {
+    if (!b.alive) return;
+    b.alive = false;
+    // Remove from active list
+    const idx = bullets.indexOf(b);
+    if (idx !== -1) bullets.splice(idx, 1);
+    releaseSprite(state, 'bullet', b, undefined);
+    return;
+  }
   if (!b.alive) return; // Prevent double-free
   b.alive = false;
   bulletPool.push(b);
 }
 
 // Explosion pooling
-export function acquireExplosion(opts: any = {}): any {
+// Explosions: support optional GameState-backed pooling via assetPool.effects
+export function acquireExplosion(stateOrOpts?: any, maybeOpts?: any): any {
+  let state: GameState | undefined;
+  let opts: any = {};
+  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
+  else opts = stateOrOpts || {};
+  if (maybeOpts) opts = maybeOpts;
+
+  if (state && state.assetPool) {
+    const key = 'explosion';
+    const e = acquireEffect(state, key, () => makePooled({ ...opts, alive: true, _pooled: false }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
+    flashes.push(e);
+    return e;
+  }
+
   let e: any;
   if (explosionPool.length) {
     e = explosionPool.pop();
@@ -70,7 +121,27 @@ export function acquireExplosion(opts: any = {}): any {
   flashes.push(e);
   return e;
 }
-export function releaseExplosion(e: any) {
+
+export function releaseExplosion(eOrState?: any, maybeE?: any) {
+  let state: GameState | undefined;
+  let e: any;
+  if (eOrState && eOrState.assetPool) {
+    state = eOrState as GameState;
+    e = maybeE;
+  } else {
+    e = eOrState;
+  }
+  if (!e) return;
+  if (state && state.assetPool) {
+    if (e._pooled) return;
+    if (!e.alive) return;
+    e.alive = false;
+    e._pooled = true;
+    const idx = flashes.indexOf(e);
+    if (idx !== -1) flashes.splice(idx, 1);
+    releaseEffect(state, 'explosion', e, undefined);
+    return;
+  }
   if (e._pooled) return;
   if (!e.alive) return;
   e.alive = false;
@@ -79,7 +150,20 @@ export function releaseExplosion(e: any) {
 }
 
 // ShieldHit pooling
-export function acquireShieldHit(opts: any = {}): any {
+export function acquireShieldHit(stateOrOpts?: any, maybeOpts?: any): any {
+  let state: GameState | undefined;
+  let opts: any = {};
+  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
+  else opts = stateOrOpts || {};
+  if (maybeOpts) opts = maybeOpts;
+
+  if (state && state.assetPool) {
+    const key = 'shieldHit';
+    const sh = acquireEffect(state, key, () => makePooled({ ...opts, alive: true, _pooled: false }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
+    shieldFlashes.push(sh);
+    return sh;
+  }
+
   let sh: any = null;
   if (shieldHitPool.length) {
     sh = shieldHitPool.pop();
@@ -92,7 +176,26 @@ export function acquireShieldHit(opts: any = {}): any {
   shieldFlashes.push(sh);
   return sh;
 }
-export function releaseShieldHit(sh: any) {
+
+export function releaseShieldHit(shOrState?: any, maybeSh?: any) {
+  let state: GameState | undefined;
+  let sh: any;
+  if (shOrState && shOrState.assetPool) {
+    state = shOrState as GameState;
+    sh = maybeSh;
+  } else {
+    sh = shOrState;
+  }
+  if (!sh) return;
+  if (state && state.assetPool) {
+    if (sh._pooled) return;
+    const i = shieldFlashes.indexOf(sh);
+    if (i !== -1) shieldFlashes.splice(i, 1);
+    sh.alive = false;
+    sh._pooled = true;
+    releaseEffect(state, 'shieldHit', sh, undefined);
+    return;
+  }
   if (sh._pooled) return;
   const i = shieldFlashes.indexOf(sh);
   if (i !== -1) shieldFlashes.splice(i, 1);
@@ -102,7 +205,20 @@ export function releaseShieldHit(sh: any) {
 }
 
 // HealthHit pooling
-export function acquireHealthHit(opts: any = {}): any {
+export function acquireHealthHit(stateOrOpts?: any, maybeOpts?: any): any {
+  let state: GameState | undefined;
+  let opts: any = {};
+  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
+  else opts = stateOrOpts || {};
+  if (maybeOpts) opts = maybeOpts;
+
+  if (state && state.assetPool) {
+    const key = 'healthHit';
+    const hh = acquireEffect(state, key, () => makePooled({ ...opts, alive: true, _pooled: false }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
+    healthFlashes.push(hh);
+    return hh;
+  }
+
   let hh: any = null;
   if (healthHitPool.length) {
     hh = healthHitPool.pop();
@@ -115,7 +231,26 @@ export function acquireHealthHit(opts: any = {}): any {
   healthFlashes.push(hh);
   return hh;
 }
-export function releaseHealthHit(hh: any) {
+
+export function releaseHealthHit(hhOrState?: any, maybeHh?: any) {
+  let state: GameState | undefined;
+  let hh: any;
+  if (hhOrState && hhOrState.assetPool) {
+    state = hhOrState as GameState;
+    hh = maybeHh;
+  } else {
+    hh = hhOrState;
+  }
+  if (!hh) return;
+  if (state && state.assetPool) {
+    if (hh._pooled) return;
+    const i = healthFlashes.indexOf(hh);
+    if (i !== -1) healthFlashes.splice(i, 1);
+    hh.alive = false;
+    hh._pooled = true;
+    releaseEffect(state, 'healthHit', hh, undefined);
+    return;
+  }
   if (hh._pooled) return;
   const i = healthFlashes.indexOf(hh);
   if (i !== -1) healthFlashes.splice(i, 1);
@@ -170,10 +305,46 @@ export class Particle {
 }
 
 export function acquireParticle(
-  x: number,
-  y: number,
-  opts: Partial<Particle> = {},
+  stateOrX: any,
+  maybeY?: number,
+  maybeZ?: number | Partial<Particle>,
+  maybeOpts?: Partial<Particle>,
 ): Particle {
+  // Accept overloads: (x,y,opts) or (state,x,y,opts)
+  let state: GameState | undefined;
+  let x: number;
+  let y: number;
+  let opts: Partial<Particle> = {};
+  if (stateOrX && stateOrX.assetPool) {
+    // form: (state, x, y, opts)
+    state = stateOrX as GameState;
+    x = (maybeY as number) || 0;
+    y = (maybeZ as number) || 0;
+    opts = (maybeOpts as any) || {};
+  } else {
+    // form: (x, y, opts)
+    x = (stateOrX as number) || 0;
+    y = (maybeY as number) || 0;
+    opts = (maybeZ as any) || {};
+  }
+
+  if (state && state.assetPool) {
+    const key = 'particle';
+    const p = acquireEffect(state, key, () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS.ttl, opts.color ?? PARTICLE_DEFAULTS.color, opts.size ?? PARTICLE_DEFAULTS.size), (o: any, initArgs?: any) => Object.assign(o, initArgs)), { x, y, vx: opts.vx ?? 0, vy: opts.vy ?? 0, ttl: opts.ttl ?? PARTICLE_DEFAULTS.ttl, color: opts.color ?? PARTICLE_DEFAULTS.color, size: opts.size ?? PARTICLE_DEFAULTS.size });
+    // rehydrate
+    p.x = x;
+    p.y = y;
+    p.vx = opts.vx ?? 0;
+    p.vy = opts.vy ?? 0;
+    p.ttl = opts.ttl ?? PARTICLE_DEFAULTS.ttl;
+    p.life = p.ttl;
+    p.color = opts.color ?? PARTICLE_DEFAULTS.color;
+    p.size = opts.size ?? PARTICLE_DEFAULTS.size;
+    p.alive = true;
+    return p;
+  }
+
+  // Legacy fallback
   let p: Particle;
   if (particlePool.length) {
     p = particlePool.pop()!;
@@ -202,11 +373,27 @@ export function acquireParticle(
   return p;
 }
 
-export function releaseParticle(p: Particle) {
+export function releaseParticle(arg?: any, maybeP?: any) {
+  // Accept (p) or (state,p)
+  let state: GameState | undefined;
+  let p: Particle | undefined;
+  if (arg && arg.assetPool) {
+    state = arg as GameState;
+    p = maybeP as Particle;
+  } else {
+    p = arg as Particle;
+  }
+  if (!p) return;
+  if (state && state.assetPool) {
+    const key = 'particle';
+    try { releaseEffect(state, key, p, (x) => { /* no-op */ }); } catch {}
+    const idx = particles.indexOf(p);
+    if (idx !== -1) particles.splice(idx, 1);
+    return;
+  }
   if (!p._pooled) {
     p._pooled = true;
     p.alive = false;
-    // Remove from active particles array if present
     const idx = particles.indexOf(p);
     if (idx !== -1) {
       particles.splice(idx, 1);
@@ -778,20 +965,23 @@ export function simulate(dt: number, W = 800, H = 600) {
     }
     _lastSimulateFrameId = frame;
   } catch (e) {}
-  const state: GameState = {
-    t: 0,
-    ships,
-    bullets,
-    explosions: [],
-    shieldHits: [],
-    healthHits: [],
-    particles,
-    stars,
-    flashes,
-    shieldFlashes,
-    healthFlashes,
-    starCanvas: starCanvas || undefined,
-  };
+  // Build a canonical GameState using makeInitialState to ensure assetPool exists
+  const base = makeInitialState();
+  (base as any).t = 0;
+  (base as any).ships = ships;
+  (base as any).bullets = bullets;
+  (base as any).explosions = [];
+  (base as any).shieldHits = [];
+  (base as any).healthHits = [];
+  (base as any).particles = particles;
+  (base as any).stars = stars;
+  (base as any).flashes = flashes;
+  (base as any).shieldFlashes = shieldFlashes;
+  (base as any).healthFlashes = healthFlashes;
+  (base as any).starCanvas = starCanvas || undefined;
+  const state: GameState = base as any;
+  // (Previously exposed state globally via _lastGameState for legacy helpers.)
+  // We now pass `state` explicitly to pooling helpers to avoid global state.
   evaluateReinforcement(dt, state);
   try {
     simulateStep(state, dt, SIM.bounds);
@@ -803,7 +993,7 @@ export function simulate(dt: number, W = 800, H = 600) {
       for (let i = 0; i < count; i++) {
         const ang = srandom() * Math.PI * 2;
         const sp = 30 + srandom() * 90;
-        acquireParticle((ex as any).x || 0, (ex as any).y || 0, {
+        acquireParticle(state, (ex as any).x || 0, (ex as any).y || 0, {
           vx: Math.cos(ang) * sp,
           vy: Math.sin(ang) * sp,
           ttl: 0.6,
@@ -819,6 +1009,7 @@ export function simulate(dt: number, W = 800, H = 600) {
   for (const h of state.healthHits) {
     if (h && typeof h === "object") healthFlashes.push({ ...(h as object) });
   }
+  // No global state to clear; callers should pass `state` explicitly to helpers.
   return {
     ships,
     bullets,

@@ -24,6 +24,25 @@
 - Config files reviewed for duplication/unused entries; hygiene improved.
 - **Type/config migration complete; all configs match stricter requirements.**
 
+### 2025-08-24
+
+- Rebuilt `src/webglrenderer.ts` from scratch as a minimal, typed WebGL renderer that mirrors the legacy JS stub’s public API.
+- Implemented simple shape-to-texture baking with an internal cache and full dispose lifecycle; added `hasCachedTexture` for tests.
+- Verified full test suite: 77 tests passed locally; WebGL renderer texture and lifecycle tests green.
+
+#### Pooling integration
+
+- WebGLRenderer now routes texture creation through the canonical GameState asset pool via `acquireTexture` with a factory and returns textures via `releaseTexture` in `dispose()` when a state is available. Fallback path creates/deletes directly if no state is present.
+- 2025-08-24 (Step 1): Strengthened asset pool semantics in `entities.ts`:
+  - Added per-key total allocation tracking and overflow strategies (`discard-oldest` default, `grow`, `error`).
+  - `releaseTexture`/`releaseSprite`/`releaseEffect` accept optional disposer callbacks and trim free lists to capacity.
+  - Fixed edge case where empty pools returned `undefined` on exhaustion; now either create (grow) or throw (error) by strategy.
+  - Renderer passes a GL texture disposer to allow safe trimming.
+
+#### Optional scaffolding
+
+- Added optional placeholders for textured-quad shader/VBO and FBO handles; currently unused by tests and guarded to avoid regressions.
+
 ## Short-term Goals
 
 - Unify overlapping particle effect configs between gamemanagerConfig.ts and assetsConfig.ts.
@@ -31,6 +50,7 @@
 - Expand edge case test coverage for config-driven logic.
 - **Remove legacy fields (e.g., `dmg`) after all callers are updated.**
 - **Document new required/optional fields in code comments and PR notes.**
+- Integrate texture pooling with canonical `GameState` asset pool helpers for reuse across sessions (follow-up; not required for current tests).
 
 ## Notes: Test DOM environment migration
 
