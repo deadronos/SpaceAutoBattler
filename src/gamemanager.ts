@@ -382,6 +382,10 @@ export function createGameManager({
   const listeners = new Map<string, Function[]>();
   const workerReadyCbs: Function[] = [];
   let simWorker: any = null;
+  // Worker event handler refs (declared here so destroy() can unregister them)
+  let _workerReadyHandler: Function | null = null;
+  let _workerSnapshotHandler: Function | null = null;
+  let _workerReinforcementsHandler: Function | null = null;
   let workerReady = false;
   let lastReinforcement: { spawned: any[]; timestamp: number; options: any } = {
     spawned: [],
@@ -412,23 +416,25 @@ export function createGameManager({
         simWorkerUrl = "./simWorker.js";
       }
       simWorker = factory(simWorkerUrl);
-      simWorker.on &&
-        simWorker.on("ready", () => {
-          workerReady = true;
-          for (const cb of workerReadyCbs.slice()) {
-            try {
-              cb();
-            } catch (e) {}
-          }
-        });
-      simWorker.on &&
-        simWorker.on("snapshot", (m: any) => {
-          if (m && m.state) state = m.state;
-        });
-      simWorker.on &&
-        simWorker.on("reinforcements", (m: any) => {
-          emit("reinforcements", m);
-        });
+  // Keep references to worker handler functions so they can be removed on destroy
+
+      _workerReadyHandler = () => {
+        workerReady = true;
+        for (const cb of workerReadyCbs.slice()) {
+          try { cb(); } catch (e) {}
+        }
+      };
+      simWorker.on && simWorker.on("ready", _workerReadyHandler);
+
+      _workerSnapshotHandler = (m: any) => {
+        if (m && m.state) state = m.state;
+      };
+      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
+
+      _workerReinforcementsHandler = (m: any) => {
+        emit("reinforcements", m);
+      };
+      simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
       try {
         simWorker.post({
           type: "init",
@@ -527,6 +533,44 @@ export function createGameManager({
     const arr = listeners.get(evt) || [];
     const i = arr.indexOf(cb);
     if (i !== -1) arr.splice(i, 1);
+  }
+  /**
+   * destroy()
+   * ---------
+   * Tear down all internal resources owned by the GameManager.
+   * - Stops the run loop (idempotent).
+   * - Unregisters any internal worker event handlers that were attached
+   *   to the sim worker so external references are not retained.
+   * - Terminates/closes the sim worker if possible, or posts a stop
+   *   message as a best-effort fallback.
+   * - Clears internal worker-ready callbacks and resets worker state.
+   *
+   * Contract and guarantees:
+   * - Safe to call multiple times (idempotent).
+   * - Will not throw on missing or partially-initialized worker.
+   * - Designed to be called before higher-level cleanup (e.g. UI dispose)
+   *   so that worker-side handlers are removed while manager internals
+   *   are still available.
+   */
+  function destroy() {
+    // Stop running loop
+    running = false;
+    // Tear down worker and its handlers
+    try {
+      if (simWorker) {
+        try {
+          if (typeof simWorker.off === 'function') {
+            try { if (_workerReadyHandler) simWorker.off('ready', _workerReadyHandler); } catch (e) {}
+            try { if (_workerSnapshotHandler) simWorker.off('snapshot', _workerSnapshotHandler); } catch (e) {}
+            try { if (_workerReinforcementsHandler) simWorker.off('reinforcements', _workerReinforcementsHandler); } catch (e) {}
+          }
+        } catch (e) {}
+        try { if (typeof simWorker.terminate === 'function') simWorker.terminate(); else if (typeof simWorker.close === 'function') simWorker.close(); else if (typeof simWorker.post === 'function') simWorker.post({ type: 'stop' }); } catch (e) {}
+        simWorker = null;
+      }
+    } catch (e) {}
+    workerReady = false;
+    workerReadyCbs.length = 0;
   }
   function start() {
     if (!running) {
@@ -689,6 +733,7 @@ export function createGameManager({
     snapshot,
     score,
     formFleets,
+    destroy,
     _internal: internal,
   };
 }

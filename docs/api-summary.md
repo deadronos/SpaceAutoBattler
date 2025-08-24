@@ -22,7 +22,7 @@ This document summarizes the main APIs and libraries used in the SpaceAutoBattle
 | Vitest      | Unit testing            | [Vitest](https://vitest.dev/)                            |
 | Pixelmatch  | Image diffing           | [Pixelmatch](https://github.com/mapbox/pixelmatch)       |
 | Viz.js      | Graphviz rendering      | [Viz.js](https://github.com/mdaines/viz.js/)             |
-| JSdom       | Simulated DOM for tests | [JSdom](https://github.com/jsdom/jsdom)                  |
+| Happy DOM   | Simulated DOM for tests | [happy-dom](https://github.com/capricorn86/happy-dom)   |
 | Husky       | Pre-commit hooks        | [Husky](https://typicode.github.io/husky/)               |
 | Lint-Staged | Linting staged files    | [Lint-Staged](https://github.com/okonet/lint-staged)     |
 | http-server | Local static server     | [http-server](https://github.com/http-party/http-server) |
@@ -122,9 +122,9 @@ This document summarizes the main APIs and libraries used in the SpaceAutoBattle
 - [Viz.js Docs](https://github.com/mdaines/viz.js/)
 - Graphviz rendering in JS/WebAssembly. DOT language support, SVG output, layout engines, browser/Node usage.
 
-## JSdom
+## Happy DOM
 
-- [JSdom Docs](https://github.com/jsdom/jsdom)
+- [happy-dom Docs](https://github.com/capricorn86/happy-dom)
 - Pure JS DOM/HTML implementation for Node.js. Script execution, resource loading, browser-like environment for testing.
 
 ## Prettier

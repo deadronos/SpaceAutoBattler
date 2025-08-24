@@ -29,7 +29,7 @@ export class CanvasRenderer {
 
   init(): boolean {
     this.ctx = this.canvas.getContext('2d');
-    // If running in a test environment (jsdom) getContext may be unimplemented.
+  // If running in a test environment (DOM emulation) getContext may be unimplemented.
     // Provide a minimal no-op 2D context so renderState can still resize buffers and run logic.
     if (!this.ctx) {
       // create a lightweight no-op ctx that satisfies the subset used by the renderer

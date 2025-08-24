@@ -2,12 +2,9 @@
 // main.ts — TypeScript entrypoint (ported from main.js). Uses TS imports so
 // the module graph resolves to .ts sources during migration.
 import { createGameManager } from './gamemanager';
-// This allows the build to treat the app as TypeScript while we incrementally port internals.
-// main.ts — TypeScript entrypoint (ported from main.js). Uses TS imports so
-// the module graph resolves to .ts sources during migration.
 import { CanvasRenderer } from './canvasrenderer';
 import { WebGLRenderer } from './webglrenderer';
-import { getDefaultBounds } from './config/displayConfig';
+import { getDefaultBounds } from './config/simConfig';
 import { SIM } from './config/simConfig';
 import { getPreferredRenderer, RendererConfig } from './config/rendererConfig';
 
@@ -17,7 +14,19 @@ declare global {
 }
 
 export async function startApp(rootDocument: Document = document) {
-	const canvas = rootDocument.getElementById('world') as HTMLCanvasElement;
+	let canvas = rootDocument.getElementById('world') as HTMLCanvasElement | null;
+	// If the host document doesn't already have a canvas#world (some DOM emulators
+	// may provide a fresh document per test), create one so renderers can attach.
+	if (!canvas) {
+		try {
+			const el = rootDocument.createElement('canvas');
+			el.id = 'world';
+			rootDocument.body.appendChild(el);
+			canvas = el as HTMLCanvasElement;
+		} catch (e) {
+			canvas = null;
+		}
+	}
 	const ui: any = {
 		startPause: rootDocument.getElementById('startPause'),
 		reset: rootDocument.getElementById('reset'),
@@ -37,6 +46,30 @@ export async function startApp(rootDocument: Document = document) {
 
 	// Always use fixed logical bounds for simulation/game loop
 	const LOGICAL_BOUNDS = getDefaultBounds();
+
+	// --- Disposable tracking helpers to avoid memory leaks ---
+	const disposables: Array<() => void> = [];
+	let uiRaf: number | null = null;
+	let workerIndicatorRaf: number | null = null;
+	const pendingTimers = new Set<number>();
+
+	function addListener(target: EventTarget | null, type: string, handler: EventListenerOrEventListenerObject) {
+		if (!target) return;
+		try {
+			target.addEventListener(type, handler as EventListener);
+			disposables.push(() => {
+				try { target.removeEventListener(type, handler as EventListener); } catch (e) {}
+			});
+		} catch (e) {}
+	}
+
+	function clearAllTimers() {
+		for (const id of Array.from(pendingTimers)) {
+			try { clearTimeout(id as unknown as number); } catch (e) {}
+			pendingTimers.delete(id);
+		}
+	}
+
 	// Only update backing store when renderScale changes
 	function updateCanvasBackingStore() {
 		const dpr = window.devicePixelRatio || 1;
@@ -92,7 +125,7 @@ export async function startApp(rootDocument: Document = document) {
 	const dynamicCheckbox = rootDocument.getElementById('dynamicScaleCheckbox');
 	let internalScaleUpdate = false;
 	if (scaleSlider) {
-		scaleSlider.addEventListener('input', (ev: any) => {
+		const onScaleInput = (ev: any) => {
 			if (internalScaleUpdate) return; // ignore internal updates
 			const val = parseFloat(ev.target.value);
 			if (!isNaN(val)) {
@@ -102,7 +135,8 @@ export async function startApp(rootDocument: Document = document) {
 				updateCanvasBackingStore();
 				fitCanvasToWindow();
 			}
-		});
+		};
+		addListener(scaleSlider, 'input', onScaleInput);
 		// Set initial value display
 		const scaleVal = rootDocument.getElementById('rendererScaleValue');
 		if (scaleVal) scaleVal.textContent = (scaleSlider as HTMLInputElement).value;
@@ -111,22 +145,34 @@ export async function startApp(rootDocument: Document = document) {
 		fitCanvasToWindow();
 	}
 	if (dynamicCheckbox) {
-		dynamicCheckbox.addEventListener('change', (ev: any) => {
+		const onDynamicChange = (ev: any) => {
 			const enabled = !!ev.target.checked;
 			(RendererConfig as any).dynamicScaleEnabled = enabled;
-		});
-	(dynamicCheckbox as HTMLInputElement).checked = !!(RendererConfig as any).dynamicScaleEnabled;
+		};
+		addListener(dynamicCheckbox, 'change', onDynamicChange);
+		(dynamicCheckbox as HTMLInputElement).checked = !!(RendererConfig as any).dynamicScaleEnabled;
 	}
 
 	fitCanvasToWindow();
-	window.addEventListener('resize', fitCanvasToWindow);
+	addListener(window, 'resize', fitCanvasToWindow);
 
-	let renderer: any;
+	let renderer: any = null;
 	const pref = getPreferredRenderer();
-	if (pref === 'webgl') {
-		try { const w = new WebGLRenderer(canvas); if (w && w.init && w.init()) renderer = w; } catch (e) {}
+	if (canvas) {
+		if (pref === 'webgl') {
+			try { const w = new WebGLRenderer(canvas); if (w && w.init && w.init()) renderer = w; } catch (e) {}
+		}
+		if (!renderer) { try { renderer = new CanvasRenderer(canvas); renderer.init && renderer.init(); } catch (e) { renderer = null; } }
 	}
-	if (!renderer) { renderer = new CanvasRenderer(canvas); renderer.init && renderer.init(); }
+	// If we don't have a canvas (or renderer failed), provide a minimal no-op renderer
+	if (!renderer) {
+		renderer = {
+			type: 'noop',
+			init: () => false,
+			renderState: (_: any) => {},
+			isRunning: () => false,
+		};
+	}
 
 	try { window.gm = window.gm || {}; } catch (e) {}
 	// Pass fixed logical bounds to game manager
@@ -137,10 +183,11 @@ export async function startApp(rootDocument: Document = document) {
 	// Speed multiplier logic
 	let simSpeedMultiplier = 1;
 	if (ui.speed) {
-		ui.speed.addEventListener('click', () => {
+		const onSpeedClick = () => {
 			simSpeedMultiplier = simSpeedMultiplier >= 4 ? 0.25 : simSpeedMultiplier * 2;
 			ui.speed.textContent = `Speed: ${simSpeedMultiplier}×`;
-		});
+		};
+		addListener(ui.speed, 'click', onSpeedClick);
 		ui.speed.textContent = `Speed: ${simSpeedMultiplier}×`;
 	}
 
@@ -152,11 +199,12 @@ export async function startApp(rootDocument: Document = document) {
 
 	// Fleet formation logic
 	if (ui.formationBtn) {
-		ui.formationBtn.addEventListener('click', () => {
+		const onFormationClick = () => {
 			if (gm && typeof gm.formFleets === 'function') {
 				gm.formFleets();
 			}
-		});
+		};
+		addListener(ui.formationBtn, 'click', onFormationClick);
 	}
 
 	// Engine trail UI toggle state
@@ -165,13 +213,14 @@ export async function startApp(rootDocument: Document = document) {
 		gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
 	}
 	if (ui.toggleTrails) {
-		ui.toggleTrails.addEventListener('click', () => {
+		const onToggleTrails = () => {
 			engineTrailsEnabled = !engineTrailsEnabled;
 			if (gm && gm._internal && gm._internal.state) {
 				gm._internal.state.engineTrailsEnabled = engineTrailsEnabled;
 			}
 			ui.toggleTrails.textContent = engineTrailsEnabled ? '☄ Trails: On' : '☄ Trails: Off';
-		});
+		};
+		addListener(ui.toggleTrails, 'click', onToggleTrails);
 		ui.toggleTrails.textContent = engineTrailsEnabled ? '☄ Trails: On' : '☄ Trails: Off';
 	}
 
@@ -187,16 +236,18 @@ export async function startApp(rootDocument: Document = document) {
 	} catch (e) {}
 
 	let lastReinforcementSummary = '';
+	let reinforcementsHandler: ((msg: any) => void) | null = null;
 	try {
 		if (gm && typeof gm.on === 'function') {
-			gm.on('reinforcements', (msg: any) => {
+			reinforcementsHandler = (msg: any) => {
 				const list = (msg && msg.spawned) || [];
 				const types = list.map((s: any) => s.type).filter(Boolean);
 				const summary = `Reinforcements: spawned ${list.length} ships (${types.join(', ')})`;
 				lastReinforcementSummary = summary;
-				try { setTimeout(() => { lastReinforcementSummary = ''; }, 3000); } catch (e) {}
+				try { const tid = setTimeout(() => { lastReinforcementSummary = ''; }, 3000); pendingTimers.add(tid as unknown as number); } catch (e) {}
 				try { if (ui && ui.stats) ui.stats.textContent = `${ui.stats.textContent} | ${summary}`; } catch (e) {}
-			});
+			};
+			gm.on('reinforcements', reinforcementsHandler);
 		}
 	} catch (e) {}
 
@@ -212,6 +263,7 @@ export async function startApp(rootDocument: Document = document) {
 			toastContainer.style.zIndex = '9999';
 			toastContainer.style.pointerEvents = 'none';
 			rootDocument.body.appendChild(toastContainer);
+			disposables.push(() => { try { if (toastContainer && toastContainer.parentNode) toastContainer.parentNode.removeChild(toastContainer); } catch (e) {} });
 		} catch (e) { toastContainer = null; }
 	}
 
@@ -231,13 +283,15 @@ export async function startApp(rootDocument: Document = document) {
 			el.style.pointerEvents = 'auto';
 			el.textContent = msg;
 			toastContainer.appendChild(el);
-			setTimeout(() => { try { el.style.transition = 'opacity 300ms ease'; el.style.opacity = '0'; } catch (e) {}; setTimeout(() => { try { if (el && el.parentNode) el.parentNode.removeChild(el); } catch (err) {} }, 350); }, ttl);
+			const tid = setTimeout(() => { try { el.style.transition = 'opacity 300ms ease'; el.style.opacity = '0'; } catch (e) {}; setTimeout(() => { try { if (el && el.parentNode) el.parentNode.removeChild(el); } catch (err) {} }, 350); }, ttl);
+			pendingTimers.add(tid as unknown as number);
 		} catch (e) {}
 	}
 
+	let levelupHandler: ((m: any) => void) | null = null;
 	try {
 		if (gm && typeof gm.on === 'function') {
-			gm.on('levelup', (m: any) => {
+			levelupHandler = (m: any) => {
 				try {
 					const ship = (m && m.ship) || null;
 					const lvl = (m && m.newLevel) || (m && m.newLevel === 0 ? 0 : undefined);
@@ -245,18 +299,25 @@ export async function startApp(rootDocument: Document = document) {
 					const msg = `${who} leveled up to ${lvl}`;
 					showToast(msg, { ttl: 2200 });
 				} catch (e) {}
-			});
+			};
+			gm.on('levelup', levelupHandler);
 		}
 	} catch (e) {}
 
 	if (workerIndicator) {
-		try { workerIndicator.textContent = (gm.isWorker && gm.isWorker()) ? 'Worker' : 'Main'; (function refresh() { try { workerIndicator.textContent = (gm.isWorker && gm.isWorker()) ? 'Worker' : 'Main'; requestAnimationFrame(refresh); } catch (e) {} }()); } catch (e) { workerIndicator.textContent = 'Unknown'; }
+		try {
+			const refresh = () => {
+				try { workerIndicator.textContent = (gm.isWorker && gm.isWorker()) ? 'Worker' : 'Main'; } catch (e) {}
+				try { workerIndicatorRaf = requestAnimationFrame(refresh); } catch (e) { workerIndicatorRaf = null; }
+			};
+			refresh();
+		} catch (e) { workerIndicator.textContent = 'Unknown'; }
 	}
 
-	try { ui.startPause.addEventListener('click', () => { if (gm.isRunning()) { gm.pause(); ui.startPause.textContent = '▶ Start'; } else { gm.start(); ui.startPause.textContent = '⏸ Pause'; } }); } catch (e) {}
-	try { ui.reset.addEventListener('click', () => gm.reset()); } catch (e) {}
-	try { ui.addRed.addEventListener('click', () => gm.spawnShip('red')); } catch (e) {}
-	try { ui.addBlue.addEventListener('click', () => gm.spawnShip('blue')); } catch (e) {}
+	try { if (ui.startPause) addListener(ui.startPause, 'click', () => { if (gm.isRunning()) { gm.pause(); ui.startPause.textContent = '▶ Start'; } else { gm.start(); ui.startPause.textContent = '⏸ Pause'; } }); } catch (e) {}
+	try { if (ui.reset) addListener(ui.reset, 'click', () => gm.reset()); } catch (e) {}
+	try { if (ui.addRed) addListener(ui.addRed, 'click', () => gm.spawnShip('red')); } catch (e) {}
+	try { if (ui.addBlue) addListener(ui.addBlue, 'click', () => gm.spawnShip('blue')); } catch (e) {}
 	function onSeedBtnClick() {
 		try {
 			const raw = (typeof window !== 'undefined' && typeof window.prompt === 'function') ? window.prompt('Enter new seed (leave blank for random):', '') : null;
@@ -268,9 +329,9 @@ export async function startApp(rootDocument: Document = document) {
 			try { gm.reseed(asNum >>> 0); showToast(`Reseeded with ${asNum >>> 0}`); } catch (e) {}
 		} catch (e) {}
 	}
-	try { ui.seedBtn.addEventListener('click', onSeedBtnClick); } catch (e) {}
+	try { if (ui.seedBtn) addListener(ui.seedBtn, 'click', onSeedBtnClick); } catch (e) {}
 	// try { ui.formationBtn.addEventListener('click', () => gm.formFleets()); } catch (e) {}
-	try { if (ui.continuousCheckbox) { ui.continuousCheckbox.addEventListener('change', (ev: any) => { const v = !!ev.target.checked; if (gm && typeof gm.setContinuousEnabled === 'function') gm.setContinuousEnabled(v); }); } } catch (e) {}
+	try { if (ui.continuousCheckbox) { addListener(ui.continuousCheckbox, 'change', (ev: any) => { const v = !!ev.target.checked; if (gm && typeof gm.setContinuousEnabled === 'function') gm.setContinuousEnabled(v); }); } } catch (e) {}
 
 	function uiTick() {
 		const startTick = performance.now();
@@ -324,14 +385,59 @@ export async function startApp(rootDocument: Document = document) {
 			}
 		}
 		if (!skipRender) {
-			requestAnimationFrame(uiTick);
+			try { uiRaf = requestAnimationFrame(uiTick); } catch (e) { uiRaf = null; }
 		} else {
 			// Only update simulation, skip rendering for this frame
-			setTimeout(uiTick, SIM.DT_MS);
+			const tid = setTimeout(uiTick, SIM.DT_MS);
+			if (typeof tid === 'number') pendingTimers.add(tid as number);
 		}
 	}
-	requestAnimationFrame(uiTick);
-	return { gm, renderer };
+	uiRaf = requestAnimationFrame(uiTick);
+
+	function dispose() {
+		// First, destroy game manager resources (worker, handlers)
+		try { if (gm && typeof gm.destroy === 'function') gm.destroy(); } catch (e) {}
+
+		// Stop the game manager run loop
+		try { if (gm && typeof gm.pause === 'function') gm.pause(); } catch (e) {}
+
+		// Unregister gm-level listeners we added
+		try {
+			if (gm && typeof gm.off === 'function') {
+				if (reinforcementsHandler) gm.off('reinforcements', reinforcementsHandler);
+				if (levelupHandler) gm.off('levelup', levelupHandler);
+			}
+		} catch (e) {}
+
+		// Cancel RAFs started here
+		if (uiRaf != null) {
+			try { cancelAnimationFrame(uiRaf); } catch (e) {}
+			uiRaf = null;
+		}
+		if (workerIndicatorRaf != null) {
+			try { cancelAnimationFrame(workerIndicatorRaf); } catch (e) {}
+			workerIndicatorRaf = null;
+		}
+
+		// Clear timers
+		try { clearAllTimers(); } catch (e) {}
+
+		// Run registered disposables (removes DOM listeners, etc)
+		for (const fn of disposables.slice()) {
+			try { fn(); } catch (e) {}
+		}
+		disposables.length = 0;
+
+		// Optionally clear global gm reference (defensive)
+		try {
+			if (typeof window !== 'undefined' && (window as any).gm) {
+				// Only remove properties we assigned (don't blow away other properties)
+				try { delete (window as any).gm; } catch (e) {}
+			}
+		} catch (e) {}
+	}
+
+	return { gm, renderer, dispose };
 }
 
 if (typeof window !== 'undefined') {

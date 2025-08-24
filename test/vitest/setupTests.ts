@@ -1,5 +1,5 @@
 // Vitest setup for SpaceAutoBattler
-// Keep it light and DOM-safe. JSDOM is provided by vitest.config.js.
+// Keep it light and DOM-safe. Happy DOM is provided by vitest.config.js.
 
 // Polyfills or globals can be added here if needed by tests.
 // For now, we only ensure TextEncoder/TextDecoder exist for environments that need them.
@@ -16,3 +16,8 @@ if (typeof globalThis.TextDecoder === 'undefined') {
   // @ts-ignore
   globalThis.TextDecoder = TextDecoder as any;
 }
+
+// Note: Vitest with the `happy-dom` environment provides `window` and `document`.
+// If a test or environment doesn't expose them, you can create a Window instance
+// from 'happy-dom' and assign globals here. Keep the setup minimal to avoid
+// interfering with Playwright or other test runners.
