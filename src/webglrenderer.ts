@@ -10,6 +10,10 @@ import {
   releaseSprite,
   acquireEffect,
   releaseEffect,
+  makePooled,
+  createExplosionEffect,
+  resetExplosionEffect,
+  ExplosionEffect,
 } from "./entities";
 
 export class WebGLRenderer {
@@ -80,12 +84,12 @@ export class WebGLRenderer {
           const key = `ship:${type}`;
           const sprite = acquireSprite(this.gameState || (state as any), key, () => ({ type }));
           // Reset/rehydrate runtime fields used by renderer
+          type RenderSprite = { type: string; x?: number; y?: number; angle?: number };
+          const sp = sprite as unknown as RenderSprite;
           try {
-            if (sprite) {
-              sprite.x = s.x || 0;
-              sprite.y = s.y || 0;
-              sprite.angle = s.angle || 0;
-            }
+            sp.x = s.x || 0;
+            sp.y = s.y || 0;
+            sp.angle = s.angle || 0;
           } catch {}
           try { releaseSprite(this.gameState || (state as any), key, sprite); } catch {}
         } catch {}
@@ -96,15 +100,25 @@ export class WebGLRenderer {
         for (const f of flashes) {
           try {
             const key = `flash`;
-            const effect = acquireEffect(this.gameState || (state as any), key, () => ({ active: true }));
+            const pooled = acquireEffect(this.gameState || (state as any), key, () => makePooled(
+              createExplosionEffect({ x: f.x || 0, y: f.y || 0 }),
+              (obj, initArgs) => {
+                resetExplosionEffect(obj, initArgs as any);
+                // attach render-only fields
+                (obj as any).ttl = initArgs?.ttl ?? 0.5;
+              }
+            ), f);
+            type RenderFlash = ExplosionEffect & { ttl?: number };
+            const ef = pooled as unknown as RenderFlash;
             try {
-              if (effect) {
-                effect.x = f.x || 0;
-                effect.y = f.y || 0;
-                effect.ttl = f.ttl || 0.5;
+              if (ef) {
+                // ef.x/ef.y already set by reset on acquire; ensure numeric
+                ef.x = ef.x || 0;
+                ef.y = ef.y || 0;
+                ef.ttl = ef.ttl ?? 0.5;
               }
             } catch {}
-            try { releaseEffect(this.gameState || (state as any), key, effect); } catch {}
+            try { releaseEffect(this.gameState || (state as any), key, pooled); } catch {}
           } catch {}
         }
       } catch {}

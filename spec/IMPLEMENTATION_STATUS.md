@@ -18,6 +18,39 @@
 
 ## Current State
 
+## Asset Pooling API & Edge Cases
+
+### API Overview
+
+- All asset pooling is centralized in `GameState.assetPool`, which contains per-kind maps for textures, sprites, and effects.
+- Pooling helpers (`acquireTexture`, `releaseTexture`, `acquireSprite`, `releaseSprite`, `acquireEffect`, `releaseEffect`) enforce capacity, overflow strategy, and optional disposer callbacks.
+- Factories and reset/rehydrate contracts are supported for pooled objects; see `PooledFactory` and `makePooled` in `entities.ts`.
+- Ownership: Renderer owns transient GPU assets (textures, sprites, effects); simulation owns persistent game objects.
+- All requests for pooled assets go through the helpers; direct allocation is discouraged except for fallback.
+
+### Strategies
+
+- `discard-oldest`: Trims free list to max capacity, disposing oldest resources via callback.
+- `grow`: Allows pool to expand beyond configured size (for debugging or stress scenarios).
+- `error`: Throws on acquire when exhausted; on release, does not retain extra.
+
+### Edge Cases
+
+- Double-free prevention: `release*` helpers guard against duplicate entries in free lists.
+- Overflow disposal: When free list exceeds max, disposer callback is invoked for excess resources.
+- Large-churn scenarios: Pools are stress-tested for rapid acquire/release across many keys.
+- Thread-safety: Current pools assume single-threaded use; future migration to workers will require message-based leasing or main-thread restriction for GPU assets.
+
+### Migration Steps
+
+- All modules must import canonical `GameState` from `src/types/index.ts`.
+- Legacy pools in simulation (bullets, explosions, etc.) should migrate to use assetPool for sprites/effects if/when renderer-side pooling is desired.
+
+### Test Coverage
+
+- Unit tests for pooling helpers cover reuse, double-free prevention, capacity/overflow, and disposal.
+- WebGL tests assert pool reuse vs. fresh create by counting deletions/creations via instrumented stubs.
+
 - All major subsystems are config-driven and tested.
 - Renderer buffer logic and scaling are robust and consistent.
 - Most test failures resolved; only edge cases remain.

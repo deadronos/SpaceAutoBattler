@@ -22,12 +22,12 @@ describe('Pooling stress test', () => {
 
     // Check that free lists are not excessively large
     let maxSprite = 0;
-    for (const [k, arr] of state.assetPool.sprites.entries()) {
-      maxSprite = Math.max(maxSprite, arr.length);
+    for (const [k, entry] of state.assetPool.sprites.entries()) {
+      maxSprite = Math.max(maxSprite, entry?.freeList?.length ?? 0);
     }
     let maxEffect = 0;
-    for (const [k, arr] of state.assetPool.effects.entries()) {
-      maxEffect = Math.max(maxEffect, arr.length);
+    for (const [k, entry] of state.assetPool.effects.entries()) {
+      maxEffect = Math.max(maxEffect, entry?.freeList?.length ?? 0);
     }
     expect(maxSprite).toBeLessThanOrEqual(20);
     expect(maxEffect).toBeLessThanOrEqual(20);

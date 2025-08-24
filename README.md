@@ -292,7 +292,22 @@ Publicly exported symbols include:
 - `reset(seed?)` — reset world state; optionally seed RNG for deterministic runs.
 - `simulate(dt, W, H)` — advance game state by dt; returns an object containing `{ ships, bullets, particles, flashes, shieldFlashes, healthFlashes, stars }`.
 - `ships, bullets, particles, stars, flashes, shieldFlashes, healthFlashes` — arrays containing live game objects and visual event lists.
-- `acquireParticle, releaseParticle, particlePool, Particle` — particle pool and helper for visual effects.
+- Particle pooling helpers (state-first API): use `acquireParticle(state, x, y, opts)` and `releaseParticle(state, p)`; pool free-lists live under `state.assetPool.effects.get('particle')` for inspection.
+
+Example:
+
+```typescript
+import { makeInitialState } from './src/entities';
+import { acquireParticle, releaseParticle } from './src/gamemanager';
+
+const state = makeInitialState();
+const p = acquireParticle(state, 100, 200, { vx: 1, vy: -0.5, ttl: 0.8 });
+// When particle expires or is no longer needed:
+releaseParticle(state, p);
+
+// Inspect free-list size:
+const freeCount = (state.assetPool.effects.get('particle') || []).length;
+```
 - `initStars()` — regenerate the starfield.
 - `setReinforcementInterval(seconds), getReinforcementInterval()` — control reinforcement check timing.
 - `resetReinforcementCooldowns(), handleReinforcement(dt, team), evaluateReinforcement(dt)` — reinforcement helpers for tests.

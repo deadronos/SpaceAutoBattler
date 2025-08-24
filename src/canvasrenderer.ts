@@ -4,8 +4,11 @@
 
 
 import type { GameState } from './types';
+import { acquireSprite, releaseSprite, acquireEffect, releaseEffect, makePooled, createExplosionEffect, resetExplosionEffect, createHealthHitEffect, resetHealthHitEffect, ExplosionEffect, HealthHitEffect } from './entities';
 import RendererConfig from './config/rendererConfig';
+import { getDefaultBounds } from './config/simConfig';
 import AssetsConfig, { getVisualConfig, getShipAsset, getBulletAsset, getTurretAsset } from './config/assets/assetsConfig';
+import { getSpriteAsset } from './config/assets/assetsConfig';
 import TeamsConfig from './config/teamsConfig';
 import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 
@@ -79,8 +82,12 @@ export class CanvasRenderer {
     const ctx = this.ctx!;
     const bufferCtx = this.bufferCtx!;
     if (!ctx || !bufferCtx) return;
-    const LOGICAL_W = 1920, LOGICAL_H = 1080;
-    const renderScale = (RendererConfig && typeof (RendererConfig as any).renderScale === 'number') ? (RendererConfig as any).renderScale : 1;
+  // Prefer canonical logical bounds from simConfig so renderer matches simulation
+  // defaults. If unavailable, fall back to previous hard-coded values.
+  const defaultBounds = (typeof getDefaultBounds === 'function') ? getDefaultBounds() : { W: 1920, H: 1080 };
+  const LOGICAL_W = (defaultBounds && typeof defaultBounds.W === 'number') ? defaultBounds.W : 1920;
+  const LOGICAL_H = (defaultBounds && typeof defaultBounds.H === 'number') ? defaultBounds.H : 1080;
+  const renderScale = (RendererConfig && typeof (RendererConfig as any).renderScale === 'number') ? (RendererConfig as any).renderScale : 1;
     const fitScale = (RendererConfig as any)._fitScale || 1;
     // Resize bufferCanvas if needed (before any drawing)
     const bufferW = Math.round(LOGICAL_W * renderScale);
@@ -166,34 +173,38 @@ export class CanvasRenderer {
         if (!last || last.x !== s.x || last.y !== s.y) {
           s.trail.push({ x: s.x, y: s.y });
         }
-        // Limit trail length
-        const vconf = getVisualConfig(s.type || getDefaultShipType());
-        const trailName = (vconf.visuals && vconf.visuals.engineTrail) || 'engineTrail';
-        // No catch block needed here
+        // Limit trail length using config
+        const trailConfig = require('./config/assets/assetsConfig').getEngineTrailConfig(s.type || getDefaultShipType());
+        const maxTrail = trailConfig?.maxLength || 40;
+        while (s.trail.length > maxTrail) s.trail.shift();
       }
 
-      // Draw engine trail (faded circles)
+      // Draw engine trail (configurable shape, color, width, fade)
       if (Array.isArray(s.trail)) {
+        const trailConfig = require('./config/assets/assetsConfig').getEngineTrailConfig(s.type || getDefaultShipType());
+        const color = trailConfig?.color || '#aee1ff';
+        const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
+        const fade = trailConfig?.fade || 0.35;
         for (let i = 0; i < s.trail.length; i++) {
           const tx = s.trail[i].x || 0;
           const ty = s.trail[i].y || 0;
-          const tAlpha = 0.2 + 0.5 * (i / s.trail.length);
+          // Fade alpha from fade to 1.0
+          const tAlpha = fade + (1 - fade) * (i / s.trail.length);
           const txx = tx * renderScale;
           const tyy = ty * renderScale;
           if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
           activeBufferCtx.save();
           activeBufferCtx.globalAlpha = tAlpha;
-          activeBufferCtx.fillStyle = '#aee1ff';
+          activeBufferCtx.fillStyle = color;
           activeBufferCtx.beginPath();
-          activeBufferCtx.arc(txx, tyy, 6 * renderScale, 0, Math.PI * 2);
+          activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
           activeBufferCtx.fill();
           activeBufferCtx.restore();
         }
       }
 
-      // Draw ship hull (polygon, circle, or compound)
-      const vconf = getVisualConfig(s.type || getDefaultShipType());
-      const shape = getShipAsset(s.type || getDefaultShipType());
+      // Draw ship hull using asset-agnostic sprite provider
+      const sprite = getSpriteAsset(s.type || getDefaultShipType());
       activeBufferCtx.save();
       activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
       activeBufferCtx.rotate((s.angle || 0));
@@ -201,20 +212,31 @@ export class CanvasRenderer {
       if (s.team === 'red' && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
       else if (s.team === 'blue' && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
       activeBufferCtx.fillStyle = teamColor;
-      if (shape.type === 'circle') {
-        activeBufferCtx.beginPath();
-        activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
-        activeBufferCtx.fill();
-      } else if (shape.type === 'polygon') {
-        drawPolygon(shape.points as number[][]);
-      } else if (shape.type === 'compound') {
-        for (const part of shape.parts) {
-          if (part.type === 'circle') {
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          } else if (part.type === 'polygon') {
-            drawPolygon(part.points as number[][]);
+      if (sprite.svg) {
+        // Future: render SVG (not implemented yet)
+        // For now, fallback to shape
+      }
+      if (sprite.model3d) {
+        // Future: render 3D model (not implemented yet)
+        // For now, fallback to shape
+      }
+      const shape = sprite.shape;
+      if (shape) {
+        if (shape.type === 'circle') {
+          activeBufferCtx.beginPath();
+          activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
+          activeBufferCtx.fill();
+        } else if (shape.type === 'polygon') {
+          drawPolygon(shape.points as number[][]);
+        } else if (shape.type === 'compound') {
+          for (const part of shape.parts) {
+            if (part.type === 'circle') {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else if (part.type === 'polygon') {
+              drawPolygon(part.points as number[][]);
+            }
           }
         }
       }
@@ -294,7 +316,7 @@ export class CanvasRenderer {
 
     }
 
-    // Health hits: render freshest per-ship health flash using index (reddish rings)
+    // Health hits: render freshest per-ship health flash using index (reddish rings), pooled
     try {
       const nowT = state.t || 0;
       for (const s of state.ships || []) {
@@ -309,22 +331,38 @@ export class CanvasRenderer {
             if (fTs + fTtl >= nowT - 1e-6 && fTs > bestTs) { bestTs = fTs; flash = f; }
           }
           if (flash) {
-            const ttl = flash.ttl || 0.4; const life = flash.life != null ? flash.life : ttl;
-            const t = Math.max(0, Math.min(1, life / ttl));
-            const R = 6 + (1 - t) * 18;
+            // Use pooled effect for health flash
+            const pooledFlash = acquireEffect(state, 'healthFlash', () => makePooled(
+              // Use typed factory to create base health effect and attach render fields via reset
+              createHealthHitEffect({ x: flash.x || s.x || 0, y: flash.y || s.y || 0 }),
+              (obj, initArgs) => {
+                // rehydrate base health fields
+                resetHealthHitEffect(obj, initArgs as any);
+                // attach/rehydrate render-specific fields
+                (obj as any).ttl = initArgs?.ttl ?? 0.4;
+                (obj as any).life = initArgs?.life ?? (obj as any).ttl;
+                (obj as any).color = '#ff7766';
+                (obj as any).radius = 6;
+              }
+            ), flash);
+            type RenderHealthFlash = HealthHitEffect & { ttl: number; life: number; color: string; radius: number };
+            const pf = pooledFlash as unknown as RenderHealthFlash;
+            const t = Math.max(0, Math.min(1, pf.life / pf.ttl));
+            const R = (pf.radius as number) + (1 - t) * 18;
             const alpha = 0.9 * t;
-            const fx = (flash.x || (s.x || 0)) * renderScale;
-            const fy = (flash.y || (s.y || 0)) * renderScale;
+            const fx = (pf.x as number) * renderScale;
+            const fy = (pf.y as number) * renderScale;
             if (fx >= 0 && fx < bufferW && fy >= 0 && fy < bufferH) {
               activeBufferCtx.save();
               activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
-              activeBufferCtx.strokeStyle = '#ff7766';
+              activeBufferCtx.strokeStyle = pf.color;
               activeBufferCtx.lineWidth = 2 * renderScale;
               activeBufferCtx.beginPath();
               activeBufferCtx.arc(fx, fy, Math.max(1, R * renderScale), 0, Math.PI * 2);
               activeBufferCtx.stroke();
               activeBufferCtx.restore();
             }
+            releaseEffect(state, 'healthFlash', pooledFlash);
           }
         } catch (e) {}
       }
@@ -361,24 +399,41 @@ export class CanvasRenderer {
         activeBufferCtx.restore();
       } catch (e) {}
     }
-    // particles
+    // particles (pooled)
     try {
       const shapes = (AssetsConfig as any).shapes2d || {};
       for (const p of state.particles || []) {
         try {
-          const px = (p.x || 0) * renderScale;
-          const py = (p.y || 0) * renderScale;
+          // Use pooled sprite for particle visuals
+          const particle = acquireSprite(state, 'particle', () => makePooled({
+            x: p.x || 0,
+            y: p.y || 0,
+            r: p.r || 1,
+            color: p.color || '#ffdca8',
+            age: p.age || 0,
+            lifetime: p.lifetime || 1,
+            assetShape: p.assetShape,
+          }, (obj, initArgs) => {
+            obj.x = initArgs?.x ?? 0;
+            obj.y = initArgs?.y ?? 0;
+            obj.r = initArgs?.r ?? 1;
+            obj.color = initArgs?.color ?? '#ffdca8';
+            obj.age = initArgs?.age ?? 0;
+            obj.lifetime = initArgs?.lifetime ?? 1;
+            obj.assetShape = initArgs?.assetShape;
+          }), p);
+          const px = particle.x * renderScale;
+          const py = particle.y * renderScale;
           if (px < 0 || px >= bufferW || py < 0 || py >= bufferH) continue;
           activeBufferCtx.save();
-          const shapeName = p.assetShape || (p.r > 0.5 ? 'particleMedium' : 'particleSmall');
+          const shapeName = particle.assetShape || (particle.r > 0.5 ? 'particleMedium' : 'particleSmall');
           const shape = shapes[shapeName];
-          const color = p.color || '#ffdca8';
-          activeBufferCtx.fillStyle = color;
-          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - ((p.age || 0) / (p.lifetime || 1))));
+          activeBufferCtx.fillStyle = particle.color;
+          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - (particle.age / particle.lifetime)));
           activeBufferCtx.translate(px, py);
           if (shape) {
             if (shape.type === 'circle') {
-              const rr = (shape.r || 0.12) * (p.r || 1) * renderScale * 6; // scale up to canvas pixels
+              const rr = (shape.r || 0.12) * particle.r * renderScale * 6;
               activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2); activeBufferCtx.fill();
             } else if (shape.type === 'polygon') {
               activeBufferCtx.beginPath();
@@ -392,10 +447,9 @@ export class CanvasRenderer {
             } else if (shape.type === 'compound') {
               for (const part of shape.parts || []) {
                 if (part.type === 'circle') {
-                  const rr = (part.r || 0.12) * (p.r || 1) * renderScale * 6;
+                  const rr = (part.r || 0.12) * particle.r * renderScale * 6;
                   activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2); activeBufferCtx.fill();
                 } else if (part.type === 'polygon') {
-                  // draw polygon part
                   activeBufferCtx.beginPath();
                   const pts = part.points || [];
                   if (pts.length) {
@@ -407,38 +461,48 @@ export class CanvasRenderer {
                 }
               }
             } else {
-              // fallback to simple circle
-              activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2); activeBufferCtx.fill();
+              activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2); activeBufferCtx.fill();
             }
           } else {
-            // fallback
-            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, (p.r || 2) * renderScale, 0, Math.PI * 2); activeBufferCtx.fill();
+            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2); activeBufferCtx.fill();
           }
           activeBufferCtx.restore();
+          releaseSprite(state, 'particle', particle);
         } catch (e) {}
       }
     } catch (e) { /* ignore particle render errors */ }
 
-    // Explosions (flashes) use explosionParticle if available
+    // Explosions (flashes) use explosionParticle if available, pooled via acquireEffect
     try {
       const expShape = (AssetsConfig as any).shapes2d && (AssetsConfig as any).shapes2d.explosionParticle;
       for (const ex of state.explosions || []) {
         try {
-          const exx = (ex.x || 0) * renderScale;
-          const exy = (ex.y || 0) * renderScale;
-          const life = ex.life || 0.5; const ttl = ex.ttl || 0.5; const t = Math.max(0, Math.min(1, life / ttl));
-          const alpha = (1 - t) * 0.9;
+          // Use pooled effect for explosion visuals
+          const effect = acquireEffect(state, 'explosion', () => makePooled(
+            createExplosionEffect({ x: ex.x || 0, y: ex.y || 0, r: (expShape && expShape.r) || 0.32 }),
+            (obj, initArgs) => {
+              // rehydrate base explosion fields
+              resetExplosionEffect(obj, initArgs as any);
+              // attach/rehydrate render-specific fields
+              (obj as any).scale = initArgs?.scale ?? 1;
+              (obj as any).color = initArgs?.color ?? '#ffd089';
+              (obj as any).alpha = initArgs?.alpha ?? ((1 - ((ex.life || 0.5) / (ex.ttl || 0.5))) * 0.9);
+            }
+          ), ex);
+          type RenderExplosion = ExplosionEffect & { scale?: number; color?: string; alpha?: number };
+          const ef = effect as unknown as RenderExplosion;
           activeBufferCtx.save();
-          activeBufferCtx.globalAlpha = alpha;
-          activeBufferCtx.translate(exx, exy);
-          activeBufferCtx.fillStyle = ex.color || '#ffd089';
+          activeBufferCtx.globalAlpha = (ef.alpha as number) || 0;
+          activeBufferCtx.translate((ef.x as number) * renderScale, (ef.y as number) * renderScale);
+          activeBufferCtx.fillStyle = ef.color || '#ffd089';
           if (expShape && expShape.type === 'circle') {
-            const rr = (expShape.r || 0.32) * (ex.scale || 1) * renderScale * 6;
-            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr * (1 + (1 - t)), 0, Math.PI * 2); activeBufferCtx.fill();
+            const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
+            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, rr * (1 + (1 - ((ex.life || 0.5) / (ex.ttl || 0.5)))), 0, Math.PI * 2); activeBufferCtx.fill();
           } else {
-            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, Math.max(2, (ex.scale || 1) * 12 * (1 - t)), 0, Math.PI * 2); activeBufferCtx.fill();
+            activeBufferCtx.beginPath(); activeBufferCtx.arc(0, 0, Math.max(2, (ef.scale || 1) * 12 * (1 - ((ex.life || 0.5) / (ex.ttl || 0.5)))), 0, Math.PI * 2); activeBufferCtx.fill();
           }
           activeBufferCtx.restore();
+          releaseEffect(state, 'explosion', effect);
         } catch (e) {}
       }
     } catch (e) {}

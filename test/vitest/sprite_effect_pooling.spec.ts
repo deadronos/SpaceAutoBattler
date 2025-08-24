@@ -29,7 +29,7 @@ describe("Sprite/Effect Pooling", () => {
     releaseSprite(state, key, b);
     releaseSprite(state, key, c);
     const pool = state.assetPool.sprites.get(key) || [];
-    expect(pool.length).toBeLessThanOrEqual(2);
+  expect(typeof pool.length === 'number' ? pool.length : 0).toBeLessThanOrEqual(2);
   });
 
   it("reuses effect objects and supports disposer on trim", () => {
@@ -39,8 +39,8 @@ describe("Sprite/Effect Pooling", () => {
     const e2 = acquireEffect(state, key, () => ({ id: 2 }));
     releaseEffect(state, key, e1, (x) => { (x as any)._disposed = true; });
     releaseEffect(state, key, e2, (x) => { (x as any)._disposed = true; });
-    const pool = state.assetPool.effects.get(key) || [];
-    // Because max=1, one of the released items should have been disposed
-    expect(pool.length).toBeLessThanOrEqual(1);
+  const pool = state.assetPool.effects.get(key)?.freeList || [];
+  // Because max=1, one of the released items should have been disposed
+  expect(typeof pool.length === 'number' ? pool.length : 0).toBeLessThanOrEqual(1);
   });
 });

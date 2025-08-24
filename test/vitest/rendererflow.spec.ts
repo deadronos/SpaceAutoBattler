@@ -64,8 +64,8 @@ describe('Renderer Flow', () => {
       renderer.init();
   const state = makeInitialState();
   renderer.renderState(state);
-      expect(renderer.fboWidth).toBeCloseTo(getDefaultBounds().W * RendererConfig.renderScale, 1);
-      expect(renderer.fboHeight).toBeCloseTo(getDefaultBounds().H * RendererConfig.renderScale, 1);
+  expect(canvas.width).toBeCloseTo(getDefaultBounds().W * RendererConfig.renderScale, 1);
+  expect(canvas.height).toBeCloseTo(getDefaultBounds().H * RendererConfig.renderScale, 1);
     });
   });
 });

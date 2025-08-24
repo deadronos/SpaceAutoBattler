@@ -3,7 +3,7 @@
 // circular alias issues. Types are defined in `gamemanager.d.ts`.
 
 // Ported from gamemanager.js, now canonical TypeScript implementation
-import { makeInitialState, createShip } from "./entities";
+import { makeInitialState, createShip, Ship, Bullet, genId, ExplosionEffect, ShieldHitEffect, HealthHitEffect, createExplosionEffect, resetExplosionEffect, createShieldHitEffect, resetShieldHitEffect, createHealthHitEffect, resetHealthHitEffect } from "./entities";
 import { PARTICLE_DEFAULTS } from "./config/entitiesConfig";
 import { applySimpleAI } from "./behavior";
 import { simulateStep } from "./simulate";
@@ -26,237 +26,92 @@ import {
   TeamsConfig,
 } from "./config/teamsConfig";
 
-export const ships: any[] = [];
-export const bullets: any[] = [];
-export const particles: any[] = [];
-export const stars: any[] = [];
-export const flashes: any[] = [];
-export const shieldFlashes: any[] = [];
-export const healthFlashes: any[] = [];
-export const particlePool: any[] = [];
-export const bulletPool: any[] = [];
-export const explosionPool: any[] = [];
-export const shieldHitPool: any[] = [];
-export const healthHitPool: any[] = [];
+export const ships: Ship[] = [];
+export const bullets: Bullet[] = [];
+export const particles: Particle[] = [];
+export const stars: Array<Record<string, unknown>> = [];
+export const flashes: ExplosionEffect[] = [];
+export const shieldFlashes: ShieldHitEffect[] = [];
+export const healthFlashes: HealthHitEffect[] = [];
 // Bullet pooling
 // Bullets: support optional GameState-backed pooling. If `state` is provided,
 // use state.assetPool.sprites keyed by 'bullet', otherwise fallback to legacy in-memory pool.
-export function acquireBullet(stateOrOpts?: any, maybeOpts?: any): any {
-  let state: GameState | undefined;
-  let opts: any = {};
-  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
-  else opts = stateOrOpts || {};
-  if (maybeOpts) opts = maybeOpts;
-
-  if (state && state.assetPool) {
-    const key = 'bullet';
-    const b = acquireSprite(state, key, () => makePooled({ ...opts, alive: true }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
-    bullets.push(b);
-    return b;
-  }
-
-  // Legacy fallback
-  let b: any = null;
-  if (bulletPool.length) {
-    b = bulletPool.pop();
-    Object.assign(b, opts);
-    b.alive = true;
-  } else {
-    b = { ...opts, alive: true };
-  }
-  bullets.push(b);
+export function acquireBullet(state: GameState, opts: Partial<Bullet> = {}): Bullet {
+  // Use state-backed sprite pool keyed by 'bullet'
+  const key = 'bullet';
+  const b = acquireSprite(state, key, () => makePooled({ ...opts, id: genId(), alive: true } as any, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts) as Bullet & any;
+  // push into the state-active array so simulation sees it
+  (state.bullets ||= []).push(b as Bullet);
   return b;
 }
 
-export function releaseBullet(stateOrBullet?: any): void {
-  // If first arg is a state and second is bullet, support that form too
-  let state: GameState | undefined;
-  let b: any;
-  if (stateOrBullet && stateOrBullet.assetPool) {
-    state = stateOrBullet as GameState;
-    b = arguments[1];
-  } else {
-    b = stateOrBullet;
-  }
+export function releaseBullet(state: GameState, b?: Bullet): void {
   if (!b) return;
-  if (state && state.assetPool) {
-    if (!b.alive) return;
-    b.alive = false;
-    // Remove from active list
-    const idx = bullets.indexOf(b);
-    if (idx !== -1) bullets.splice(idx, 1);
-    releaseSprite(state, 'bullet', b, undefined);
-    return;
-  }
   if (!b.alive) return; // Prevent double-free
   b.alive = false;
-  bulletPool.push(b);
+  // remove from the state's active bullets
+  const arr = state.bullets || [] as Bullet[];
+  const idx = arr.indexOf(b as Bullet);
+  if (idx !== -1) arr.splice(idx, 1);
+  releaseSprite(state, 'bullet', b as any, undefined);
 }
 
 // Explosion pooling
-// Explosions: support optional GameState-backed pooling via assetPool.effects
-export function acquireExplosion(stateOrOpts?: any, maybeOpts?: any): any {
-  let state: GameState | undefined;
-  let opts: any = {};
-  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
-  else opts = stateOrOpts || {};
-  if (maybeOpts) opts = maybeOpts;
-
-  if (state && state.assetPool) {
-    const key = 'explosion';
-    const e = acquireEffect(state, key, () => makePooled({ ...opts, alive: true, _pooled: false }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
-    flashes.push(e);
-    return e;
-  }
-
-  let e: any;
-  if (explosionPool.length) {
-    e = explosionPool.pop();
-    Object.assign(e, opts);
-    e.alive = true;
-    e._pooled = false; // Reset pooled flag
-  } else {
-    e = { ...opts, alive: true, _pooled: false };
-  }
-  flashes.push(e);
+export function acquireExplosion(state: GameState, opts: Partial<ExplosionEffect> = {}): ExplosionEffect {
+  const key = 'explosion';
+  const e = acquireEffect<ExplosionEffect>(state, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);
+  (state.explosions ||= []).push(e);
   return e;
 }
 
-export function releaseExplosion(eOrState?: any, maybeE?: any) {
-  let state: GameState | undefined;
-  let e: any;
-  if (eOrState && eOrState.assetPool) {
-    state = eOrState as GameState;
-    e = maybeE;
-  } else {
-    e = eOrState;
-  }
+export function releaseExplosion(state: GameState, e?: ExplosionEffect) {
   if (!e) return;
-  if (state && state.assetPool) {
-    if (e._pooled) return;
-    if (!e.alive) return;
-    e.alive = false;
-    e._pooled = true;
-    const idx = flashes.indexOf(e);
-    if (idx !== -1) flashes.splice(idx, 1);
-    releaseEffect(state, 'explosion', e, undefined);
-    return;
-  }
   if (e._pooled) return;
   if (!e.alive) return;
   e.alive = false;
   e._pooled = true;
-  explosionPool.push(e);
+  const arr = state.explosions || [] as ExplosionEffect[];
+  const idx = arr.indexOf(e);
+  if (idx !== -1) arr.splice(idx, 1);
+  releaseEffect(state, 'explosion', e, undefined);
 }
 
 // ShieldHit pooling
-export function acquireShieldHit(stateOrOpts?: any, maybeOpts?: any): any {
-  let state: GameState | undefined;
-  let opts: any = {};
-  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
-  else opts = stateOrOpts || {};
-  if (maybeOpts) opts = maybeOpts;
-
-  if (state && state.assetPool) {
-    const key = 'shieldHit';
-    const sh = acquireEffect(state, key, () => makePooled({ ...opts, alive: true, _pooled: false }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
-    shieldFlashes.push(sh);
-    return sh;
-  }
-
-  let sh: any = null;
-  if (shieldHitPool.length) {
-    sh = shieldHitPool.pop();
-    Object.assign(sh, opts);
-    sh.alive = true;
-    sh._pooled = false; // Reset pooled flag
-  } else {
-    sh = { ...opts, alive: true, _pooled: false };
-  }
-  shieldFlashes.push(sh);
+export function acquireShieldHit(state: GameState, opts: Partial<ShieldHitEffect> = {}): ShieldHitEffect {
+  const key = 'shieldHit';
+  const sh = acquireEffect<ShieldHitEffect>(state, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);
+  (state.shieldHits ||= []).push(sh);
   return sh;
 }
 
-export function releaseShieldHit(shOrState?: any, maybeSh?: any) {
-  let state: GameState | undefined;
-  let sh: any;
-  if (shOrState && shOrState.assetPool) {
-    state = shOrState as GameState;
-    sh = maybeSh;
-  } else {
-    sh = shOrState;
-  }
+export function releaseShieldHit(state: GameState, sh?: ShieldHitEffect) {
   if (!sh) return;
-  if (state && state.assetPool) {
-    if (sh._pooled) return;
-    const i = shieldFlashes.indexOf(sh);
-    if (i !== -1) shieldFlashes.splice(i, 1);
-    sh.alive = false;
-    sh._pooled = true;
-    releaseEffect(state, 'shieldHit', sh, undefined);
-    return;
-  }
   if (sh._pooled) return;
-  const i = shieldFlashes.indexOf(sh);
-  if (i !== -1) shieldFlashes.splice(i, 1);
+  const arr = state.shieldHits || [] as ShieldHitEffect[];
+  const i = arr.indexOf(sh);
+  if (i !== -1) arr.splice(i, 1);
   sh.alive = false;
   sh._pooled = true;
-  shieldHitPool.push(sh);
+  releaseEffect(state, 'shieldHit', sh, undefined);
 }
 
 // HealthHit pooling
-export function acquireHealthHit(stateOrOpts?: any, maybeOpts?: any): any {
-  let state: GameState | undefined;
-  let opts: any = {};
-  if (stateOrOpts && stateOrOpts.assetPool) state = stateOrOpts as GameState;
-  else opts = stateOrOpts || {};
-  if (maybeOpts) opts = maybeOpts;
-
-  if (state && state.assetPool) {
-    const key = 'healthHit';
-    const hh = acquireEffect(state, key, () => makePooled({ ...opts, alive: true, _pooled: false }, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts);
-    healthFlashes.push(hh);
-    return hh;
-  }
-
-  let hh: any = null;
-  if (healthHitPool.length) {
-    hh = healthHitPool.pop();
-    Object.assign(hh, opts);
-    hh.alive = true;
-    hh._pooled = false; // Reset pooled flag
-  } else {
-    hh = { ...opts, alive: true, _pooled: false };
-  }
-  healthFlashes.push(hh);
+export function acquireHealthHit(state: GameState, opts: Partial<HealthHitEffect> = {}): HealthHitEffect {
+  const key = 'healthHit';
+  const hh = acquireEffect<HealthHitEffect>(state, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);
+  (state.healthHits ||= []).push(hh);
   return hh;
 }
 
-export function releaseHealthHit(hhOrState?: any, maybeHh?: any) {
-  let state: GameState | undefined;
-  let hh: any;
-  if (hhOrState && hhOrState.assetPool) {
-    state = hhOrState as GameState;
-    hh = maybeHh;
-  } else {
-    hh = hhOrState;
-  }
+export function releaseHealthHit(state: GameState, hh?: HealthHitEffect) {
   if (!hh) return;
-  if (state && state.assetPool) {
-    if (hh._pooled) return;
-    const i = healthFlashes.indexOf(hh);
-    if (i !== -1) healthFlashes.splice(i, 1);
-    hh.alive = false;
-    hh._pooled = true;
-    releaseEffect(state, 'healthHit', hh, undefined);
-    return;
-  }
   if (hh._pooled) return;
-  const i = healthFlashes.indexOf(hh);
-  if (i !== -1) healthFlashes.splice(i, 1);
+  const arr = state.healthHits || [] as HealthHitEffect[];
+  const i = arr.indexOf(hh);
+  if (i !== -1) arr.splice(i, 1);
   hh.alive = false;
   hh._pooled = true;
-  healthHitPool.push(hh);
+  releaseEffect(state, 'healthHit', hh, undefined);
 }
 
 export const config = {
@@ -304,102 +159,29 @@ export class Particle {
   }
 }
 
-export function acquireParticle(
-  stateOrX: any,
-  maybeY?: number,
-  maybeZ?: number | Partial<Particle>,
-  maybeOpts?: Partial<Particle>,
-): Particle {
-  // Accept overloads: (x,y,opts) or (state,x,y,opts)
-  let state: GameState | undefined;
-  let x: number;
-  let y: number;
-  let opts: Partial<Particle> = {};
-  if (stateOrX && stateOrX.assetPool) {
-    // form: (state, x, y, opts)
-    state = stateOrX as GameState;
-    x = (maybeY as number) || 0;
-    y = (maybeZ as number) || 0;
-    opts = (maybeOpts as any) || {};
-  } else {
-    // form: (x, y, opts)
-    x = (stateOrX as number) || 0;
-    y = (maybeY as number) || 0;
-    opts = (maybeZ as any) || {};
-  }
-
-  if (state && state.assetPool) {
-    const key = 'particle';
-    const p = acquireEffect(state, key, () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS.ttl, opts.color ?? PARTICLE_DEFAULTS.color, opts.size ?? PARTICLE_DEFAULTS.size), (o: any, initArgs?: any) => Object.assign(o, initArgs)), { x, y, vx: opts.vx ?? 0, vy: opts.vy ?? 0, ttl: opts.ttl ?? PARTICLE_DEFAULTS.ttl, color: opts.color ?? PARTICLE_DEFAULTS.color, size: opts.size ?? PARTICLE_DEFAULTS.size });
-    // rehydrate
-    p.x = x;
-    p.y = y;
-    p.vx = opts.vx ?? 0;
-    p.vy = opts.vy ?? 0;
-    p.ttl = opts.ttl ?? PARTICLE_DEFAULTS.ttl;
-    p.life = p.ttl;
-    p.color = opts.color ?? PARTICLE_DEFAULTS.color;
-    p.size = opts.size ?? PARTICLE_DEFAULTS.size;
-    p.alive = true;
-    return p;
-  }
-
-  // Legacy fallback
-  let p: Particle;
-  if (particlePool.length) {
-    p = particlePool.pop()!;
-    p.x = x;
-    p.y = y;
-    p.vx = opts.vx ?? 0;
-    p.vy = opts.vy ?? 0;
-    p.ttl = opts.ttl ?? PARTICLE_DEFAULTS.ttl;
-    p.life = p.ttl;
-    p.color = opts.color ?? PARTICLE_DEFAULTS.color;
-    p.size = opts.size ?? PARTICLE_DEFAULTS.size;
-    p.alive = true;
-    p._pooled = false;
-  } else {
-    p = new Particle(
-      x,
-      y,
-      opts.vx ?? 0,
-      opts.vy ?? 0,
-      opts.ttl ?? PARTICLE_DEFAULTS.ttl,
-      opts.color ?? PARTICLE_DEFAULTS.color,
-      opts.size ?? PARTICLE_DEFAULTS.size,
-    );
-  }
-  particles.push(p);
+export function acquireParticle(state: GameState, x: number, y: number, opts: Partial<Particle> = {}): Particle {
+  const key = 'particle';
+  const p = acquireEffect(state, key, () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS.ttl, opts.color ?? PARTICLE_DEFAULTS.color, opts.size ?? PARTICLE_DEFAULTS.size), (o: any, initArgs?: any) => Object.assign(o, initArgs)), { x, y, vx: opts.vx ?? 0, vy: opts.vy ?? 0, ttl: opts.ttl ?? PARTICLE_DEFAULTS.ttl, color: opts.color ?? PARTICLE_DEFAULTS.color, size: opts.size ?? PARTICLE_DEFAULTS.size });
+  // rehydrate
+  p.x = x;
+  p.y = y;
+  p.vx = opts.vx ?? 0;
+  p.vy = opts.vy ?? 0;
+  p.ttl = opts.ttl ?? PARTICLE_DEFAULTS.ttl;
+  p.life = p.ttl;
+  p.color = opts.color ?? PARTICLE_DEFAULTS.color;
+  p.size = opts.size ?? PARTICLE_DEFAULTS.size;
+  p.alive = true;
+  (state.particles ||= []).push(p);
   return p;
 }
 
-export function releaseParticle(arg?: any, maybeP?: any) {
-  // Accept (p) or (state,p)
-  let state: GameState | undefined;
-  let p: Particle | undefined;
-  if (arg && arg.assetPool) {
-    state = arg as GameState;
-    p = maybeP as Particle;
-  } else {
-    p = arg as Particle;
-  }
+export function releaseParticle(state: GameState, p?: Particle) {
   if (!p) return;
-  if (state && state.assetPool) {
-    const key = 'particle';
-    try { releaseEffect(state, key, p, (x) => { /* no-op */ }); } catch {}
-    const idx = particles.indexOf(p);
-    if (idx !== -1) particles.splice(idx, 1);
-    return;
-  }
-  if (!p._pooled) {
-    p._pooled = true;
-    p.alive = false;
-    const idx = particles.indexOf(p);
-    if (idx !== -1) {
-      particles.splice(idx, 1);
-    }
-    particlePool.push(p);
-  }
+  const key = 'particle';
+  try { releaseEffect(state, key, p, (x) => { /* no-op */ }); } catch {}
+  const idx = (state.particles || []).indexOf(p);
+  if (idx !== -1) (state.particles || []).splice(idx, 1);
 }
 
 export function reset(seedValue: number | null = null) {
@@ -669,11 +451,6 @@ export function createGameManager({
       } catch (e) {}
     }
     _evaluateAndEmit(clampedDt);
-    // Prune all high-frequency event arrays in-place
-    // (ships array is handled separately for hp > 0)
-    if (typeof simulateStep === "function") {
-      simulateStep(state, clampedDt, SIM.bounds);
-    }
     // Flashes and event arrays are pruned by simulation now; no need for decay/splice/filter here.
     if (renderer && typeof renderer.renderState === "function") {
       try {
@@ -987,7 +764,7 @@ export function simulate(dt: number, W = 800, H = 600) {
     simulateStep(state, dt, SIM.bounds);
   } catch (e) {}
   for (const ex of state.explosions) {
-    if (ex && typeof ex === "object") flashes.push({ ...(ex as object) });
+    if (ex && typeof ex === "object") flashes.push(ex);
     try {
       const count = 12;
       for (let i = 0; i < count; i++) {
@@ -1004,10 +781,10 @@ export function simulate(dt: number, W = 800, H = 600) {
     } catch (e) {}
   }
   for (const h of state.shieldHits) {
-    if (h && typeof h === "object") shieldFlashes.push({ ...(h as object) });
+    if (h && typeof h === "object") shieldFlashes.push(h);
   }
   for (const h of state.healthHits) {
-    if (h && typeof h === "object") healthFlashes.push({ ...(h as object) });
+    if (h && typeof h === "object") healthFlashes.push(h);
   }
   // No global state to clear; callers should pass `state` explicitly to helpers.
   return {

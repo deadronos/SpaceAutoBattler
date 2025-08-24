@@ -1,3 +1,32 @@
+/**
+ * Returns the engine trail config for a given ship type.
+ * If not present, returns the default engineTrail animation config.
+ */
+export function getEngineTrailConfig(type: string): any {
+  const vconf = getVisualConfig(type);
+  const trailName = (vconf.visuals && vconf.visuals.engineTrail) || 'engineTrail';
+  return (AssetsConfig.animations && AssetsConfig.animations[trailName]) || (AssetsConfig.animations && AssetsConfig.animations.engineTrail);
+}
+/**
+ * Asset-agnostic sprite provider: returns a sprite object for a given type.
+ * Supports fallback to vector shapes, 3D models, or SVG files.
+ * Usage: getSpriteAsset('fighter'), getSpriteAsset('carrier'), etc.
+ */
+export function getSpriteAsset(type: string): { shape?: Shape2D; model3d?: Model3D; svg?: string } {
+  // Prefer SVG if available (future: load from assets/svg/)
+  // For now, check for a .svg property in shapes2d config
+  const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+  // If shapeEntry has an svg property, use it
+  if ((shapeEntry as any).svg) {
+    return { svg: (shapeEntry as any).svg };
+  }
+  // If model3d is present, use it
+  if (shapeEntry.model3d && shapeEntry.model3d.url) {
+    return { model3d: shapeEntry.model3d };
+  }
+  // Fallback to vector shape
+  return { shape: shapeEntry };
+}
 // Basic asset templates for 2D top-down rendering with future 3D model placeholders.
 // Orientation: shapes face +X (to the right). Scale is in logical units; renderer
 // should scale to entity radius and rotate by entity heading if present.
