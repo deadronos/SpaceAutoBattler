@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { RendererConfig } from '../../src/config/rendererConfig';
-import { getDefaultBounds } from '../../src/config/displayConfig';
+import { getDefaultBounds } from '../../src/config/simConfig';
 import TeamsConfig from '../../src/config/teamsConfig';
 import ShipConfig from '../../src/config/entitiesConfig';
 import { simulateStep } from '../../src/simulate';

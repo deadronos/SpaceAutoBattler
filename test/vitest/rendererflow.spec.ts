@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CanvasRenderer } from '../../src/canvasrenderer';
 import { WebGLRenderer } from '../../src/webglrenderer';
 import RendererConfig from '../../src/config/rendererConfig';
-import { getDefaultBounds } from '../../src/config/displayConfig';
+import { getDefaultBounds } from '../../src/config/simConfig';
 import { getWebGLContext, hasWebGL } from './utils/webgl';
 
 describe('Renderer Flow', () => {

@@ -3,7 +3,7 @@ import { srange, srand, srandom } from "./rng";
 import { progression as progressionCfg } from "./config/progressionConfig";
 import { SIM, boundaryBehavior } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
-import { acquireBullet, releaseBullet, acquireExplosion, releaseExplosion, acquireShieldHit, releaseShieldHit, acquireHealthHit, releaseHealthHit } from "./gamemanager";
+import { acquireBullet, releaseBullet, acquireExplosion, releaseExplosion, acquireShieldHit, releaseShieldHit, acquireHealthHit, releaseHealthHit, releaseParticle } from "./gamemanager";
 
 export type Bounds = { W: number; H: number };
 
@@ -59,6 +59,11 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
   }
   // Batched in-place pruning for all high-frequency event arrays
 function pruneAll(state: any, dtSeconds: number, bounds: Bounds) {
+  // Ensure all event arrays are initialized
+  state.particles = state.particles || [];
+  state.explosions = state.explosions || [];
+  state.shieldHits = state.shieldHits || [];
+  state.healthHits = state.healthHits || [];
   // Bullets: prune expired/out-of-bounds
   let writeBullet = 0;
   for (let read = 0; read < state.bullets.length; read++) {
@@ -493,16 +498,6 @@ function pruneAll(state: any, dtSeconds: number, bounds: Bounds) {
   for (const s of state.ships || []) {
     s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
     s.shieldPercent =
-      typeof s.maxShield === "number" && s.maxShield > 0
-        ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield))
-        : 0;
-  }
-
-  return state;
-}
-
-export default { simulateStep };
-cent =
       typeof s.maxShield === "number" && s.maxShield > 0
         ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield))
         : 0;

@@ -1,5 +1,16 @@
 import type { BoundaryBehavior } from "./types";
-export const SIM = { DT_MS: 16, MAX_ACC_MS: 250 } as const;
+
+export interface SimConfig {
+  DT_MS: number;
+  MAX_ACC_MS: number;
+  bounds: { W: number; H: number };
+}
+
+export const SIM: SimConfig = {
+  DT_MS: 16,
+  MAX_ACC_MS: 250,
+  bounds: { W: 1920, H: 1080 }, // Use LOGICAL_MAP for default bounds
+};
 // boundaryBehavior: Tactical impact and pruning rationale
 // - 'remove': Ships/bullets are eliminated at map edge; punishes edge play, rewards central control. Pruning is immediate for out-of-bounds entities.
 // - 'wrap': Ships/bullets reappear on opposite edge; enables edge escapes, flanking via wrap, and kiting around boundaries. Pruning only occurs for expired entities.

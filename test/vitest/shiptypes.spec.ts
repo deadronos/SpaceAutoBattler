@@ -61,15 +61,13 @@ it("should fail for malformed configs (wrong types)", () => {
   };
   expect(typeof badAccelConfig.accel).toBe("string");
 });
-  });
 
-  it("should have config-driven attributes", () => {
-    const cfg = getShipConfig();
-    for (const type of Object.keys(cfg)) {
-      expect(cfg[type].maxHp).toBeGreaterThan(0);
-      expect(cfg[type].dmg).toBeGreaterThan(0);
-      expect(cfg[type].radius).toBeGreaterThan(0);
-      expect(Array.isArray(cfg[type].cannons)).toBe(true);
-    }
-  });
+it("should have config-driven attributes", () => {
+  const cfg = getShipConfig();
+  for (const type of Object.keys(cfg)) {
+    expect(cfg[type].maxHp).toBeGreaterThan(0);
+    expect(cfg[type].dmg).toBeGreaterThan(0);
+    expect(cfg[type].radius).toBeGreaterThan(0);
+    expect(Array.isArray(cfg[type].cannons)).toBe(true);
+  }
 });

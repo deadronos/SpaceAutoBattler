@@ -9,7 +9,6 @@ import { applySimpleAI } from "./behavior";
 import { simulateStep } from "./simulate";
 import { SIM } from "./config/simConfig";
 import { srand, srandom } from "./rng";
-import { getDefaultBounds } from "./config/displayConfig";
 import { createSimWorker } from "./createSimWorker";
 import {
   SHIELD,
@@ -59,20 +58,23 @@ export function releaseBullet(b: any) {
 
 // Explosion pooling
 export function acquireExplosion(opts: any = {}): any {
-  let e: any = null;
+  let e: any;
   if (explosionPool.length) {
     e = explosionPool.pop();
     Object.assign(e, opts);
     e.alive = true;
+    e._pooled = false; // Reset pooled flag
   } else {
-    e = { ...opts, alive: true };
+    e = { ...opts, alive: true, _pooled: false };
   }
   flashes.push(e);
   return e;
 }
 export function releaseExplosion(e: any) {
+  if (e._pooled) return;
   if (!e.alive) return;
   e.alive = false;
+  e._pooled = true;
   explosionPool.push(e);
 }
 
@@ -83,16 +85,19 @@ export function acquireShieldHit(opts: any = {}): any {
     sh = shieldHitPool.pop();
     Object.assign(sh, opts);
     sh.alive = true;
+    sh._pooled = false; // Reset pooled flag
   } else {
-    sh = { ...opts, alive: true };
+    sh = { ...opts, alive: true, _pooled: false };
   }
   shieldFlashes.push(sh);
   return sh;
 }
 export function releaseShieldHit(sh: any) {
+  if (sh._pooled) return;
   const i = shieldFlashes.indexOf(sh);
   if (i !== -1) shieldFlashes.splice(i, 1);
   sh.alive = false;
+  sh._pooled = true;
   shieldHitPool.push(sh);
 }
 
@@ -103,16 +108,19 @@ export function acquireHealthHit(opts: any = {}): any {
     hh = healthHitPool.pop();
     Object.assign(hh, opts);
     hh.alive = true;
+    hh._pooled = false; // Reset pooled flag
   } else {
-    hh = { ...opts, alive: true };
+    hh = { ...opts, alive: true, _pooled: false };
   }
   healthFlashes.push(hh);
   return hh;
 }
 export function releaseHealthHit(hh: any) {
+  if (hh._pooled) return;
   const i = healthFlashes.indexOf(hh);
   if (i !== -1) healthFlashes.splice(i, 1);
   hh.alive = false;
+  hh._pooled = true;
   healthHitPool.push(hh);
 }
 
@@ -146,6 +154,7 @@ export class Particle {
   color: string;
   size: number;
   alive: boolean;
+  _pooled?: boolean; // Add pooled flag to prevent double-free
   constructor(x = 0, y = 0, vx = 0, vy = 0, ttl = 1, color = "#fff", size = 2) {
     this.x = x;
     this.y = y;
@@ -156,6 +165,7 @@ export class Particle {
     this.color = color;
     this.size = size;
     this.alive = true;
+    this._pooled = false;
   }
 }
 
@@ -164,9 +174,9 @@ export function acquireParticle(
   y: number,
   opts: Partial<Particle> = {},
 ): Particle {
-  let p: Particle | null = null;
+  let p: Particle;
   if (particlePool.length) {
-    p = particlePool.pop() as Particle;
+    p = particlePool.pop()!;
     p.x = x;
     p.y = y;
     p.vx = opts.vx ?? 0;
@@ -176,6 +186,7 @@ export function acquireParticle(
     p.color = opts.color ?? PARTICLE_DEFAULTS.color;
     p.size = opts.size ?? PARTICLE_DEFAULTS.size;
     p.alive = true;
+    p._pooled = false;
   } else {
     p = new Particle(
       x,
@@ -192,9 +203,16 @@ export function acquireParticle(
 }
 
 export function releaseParticle(p: Particle) {
-  if (!p.alive) return;
-  p.alive = false;
-  particlePool.push(p);
+  if (!p._pooled) {
+    p._pooled = true;
+    p.alive = false;
+    // Remove from active particles array if present
+    const idx = particles.indexOf(p);
+    if (idx !== -1) {
+      particles.splice(idx, 1);
+    }
+    particlePool.push(p);
+  }
 }
 
 export function reset(seedValue: number | null = null) {
@@ -303,7 +321,7 @@ function evaluateReinforcement(
       if (typeof chooseReinforcementsWithManagerSeed === "function") {
         const orders = chooseReinforcementsWithManagerSeed(state, {
           ...continuousOptions,
-          bounds: getDefaultBounds(),
+          bounds: SIM.bounds,
           enabled: true,
         });
         if (Array.isArray(orders) && orders.length) {
@@ -415,7 +433,7 @@ export function createGameManager({
         simWorker.post({
           type: "init",
           seed,
-          bounds: getDefaultBounds(),
+          bounds: SIM.bounds,
           simDtMs: SIM.DT_MS,
           state,
         });
@@ -444,10 +462,10 @@ export function createGameManager({
     if (!simWorker) {
       // Run AI logic before simulation step
       try {
-        applySimpleAI(state, clampedDt, getDefaultBounds());
+        applySimpleAI(state, clampedDt, SIM.bounds);
       } catch (e) {}
       try {
-        simulateStep(state, clampedDt, getDefaultBounds());
+        simulateStep(state, clampedDt, SIM.bounds);
       } catch (e) {}
     } else {
       try {
@@ -458,7 +476,7 @@ export function createGameManager({
     // Prune all high-frequency event arrays in-place
     // (ships array is handled separately for hp > 0)
     if (typeof simulateStep === "function") {
-      simulateStep(state, clampedDt, getDefaultBounds());
+      simulateStep(state, clampedDt, SIM.bounds);
     }
     // Flashes and event arrays are pruned by simulation now; no need for decay/splice/filter here.
     if (renderer && typeof renderer.renderState === "function") {
@@ -600,7 +618,7 @@ export function createGameManager({
   function spawnShip(team: string = "red") {
     try {
       const type = getDefaultShipType();
-      const b = getDefaultBounds();
+      const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
       const ship = createShip(type, x, y, team);
@@ -617,7 +635,7 @@ export function createGameManager({
       // Remove all ships
       state.ships.length = 0;
       // Use makeInitialFleets from teamsConfig (static import)
-      const bounds = getDefaultBounds();
+      const bounds = SIM.bounds;
       const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
       const ships = makeInitialFleets(seed, bounds, createShip);
       for (const ship of ships) {
@@ -646,7 +664,7 @@ export function createGameManager({
     };
   }
   const score = { red: 0, blue: 0 };
-  const internal = { state, bounds: getDefaultBounds() };
+  const internal = { state, bounds: SIM.bounds };
 
   return {
     on,
@@ -701,7 +719,7 @@ export function simulate(dt: number, W = 800, H = 600) {
   };
   evaluateReinforcement(dt, state);
   try {
-    simulateStep(state, dt, { W, H });
+    simulateStep(state, dt, SIM.bounds);
   } catch (e) {}
   for (const ex of state.explosions) {
     if (ex && typeof ex === "object") flashes.push({ ...(ex as object) });

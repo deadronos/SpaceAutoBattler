@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import createGameManager from '../../src/gamemanager';
-import { getDefaultBounds } from '../../src/config/displayConfig';
+import { getDefaultBounds } from '../../src/config/simConfig';
 import TeamsConfig from '../../src/config/teamsConfig';
 
 describe('GameManager', () => {
