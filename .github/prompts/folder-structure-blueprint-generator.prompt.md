@@ -1,216 +1,45 @@
 ---
-description: 'Comprehensive technology-agnostic prompt for analyzing and documenting project folder structures. Auto-detects project types (.NET, Java, React, Angular, Python, Node.js, Flutter), generates detailed blueprints with visualization options, naming conventions, file placement patterns, and extension templates for maintaining consistent code organization across diverse technology stacks.'
-mode: 'agent'
+description: 'Cookbook: analyze the repository and produce a concise folder-structure blueprint (visual + rules).' 
 ---
 
-# Project Folder Structure Blueprint Generator
+Receipt: "Produce `Project_Folders_Structure_Blueprint.md` summarizing detected project type(s), key directories, file placement patterns, naming conventions, and a small visualization (tree or markdown list)."
 
-## Configuration Variables
+Plan:
+- Auto-detect primary tech (Node/React/.NET/Python) from repo files; if ambiguous, list candidates.
+- Produce a short Structural Overview, Directory Visualization (depth 2–3), Key Directory Analysis (purpose + patterns), File Placement Rules, and Templates for adding new features.
+- Output a compact markdown file and a optional JSON summary for automation.
 
-${PROJECT_TYPE="Auto-detect|.NET|Java|React|Angular|Python|Node.js|Flutter|Other"} 
-<!-- Select primary technology -->
+Assumptions:
+- Keep blueprint concise (prefer < 1000 words); avoid exhaustive per-language sections unless requested.
+- Exclude generated folders (node_modules, dist, obj) by default.
 
-${INCLUDES_MICROSERVICES="Auto-detect|true|false"} 
-<!-- Is this a microservices architecture? -->
+One-line template:
+"Generate folder blueprint → Project_Folders_Structure_Blueprint.md with Overview, Tree (depth=3), KeyDirs, FilePatterns, NewFeatureTemplate."
 
-${INCLUDES_FRONTEND="Auto-detect|true|false"} 
-<!-- Does project include frontend components? -->
+Output example (markdown):
+````md
+# Project Folder Structure Blueprint
 
-${IS_MONOREPO="Auto-detect|true|false"} 
-<!-- Is this a monorepo with multiple projects? -->
+## Overview
+- Detected: Node.js + Canvas renderer
 
-${VISUALIZATION_STYLE="ASCII|Markdown List|Table"} 
-<!-- How to visualize the structure -->
+## Tree (depth=2)
+- src/
+  - entities.js
+  - simulate.js
+- test/
 
-${DEPTH_LEVEL=1-5} 
-<!-- How many levels of folders to document in detail -->
+## Key Rules
+- Place simulation logic in `src/` and tests in `test/`.
+- Docs under `docs/`.
 
-${INCLUDE_FILE_COUNTS=true|false} 
-<!-- Include file count statistics -->
+## New Feature Template
+- src/features/<feature>/index.js
+- tests/features/<feature>.test.js
 
-${INCLUDE_GENERATED_FOLDERS=true|false} 
-<!-- Include auto-generated folders -->
+````
 
-${INCLUDE_FILE_PATTERNS=true|false} 
-<!-- Document file naming/location patterns -->
-
-${INCLUDE_TEMPLATES=true|false} 
-<!-- Include file/folder templates for new features -->
-
-## Generated Prompt
-
-"Analyze the project's folder structure and create a comprehensive 'Project_Folders_Structure_Blueprint.md' document that serves as a definitive guide for maintaining consistent code organization. Use the following approach:
-
-### Initial Auto-detection Phase
-
-${PROJECT_TYPE == "Auto-detect" ? 
-"Begin by scanning the folder structure for key files that identify the project type:
-- Look for solution/project files (.sln, .csproj, .fsproj, .vbproj) to identify .NET projects
-- Check for build files (pom.xml, build.gradle, settings.gradle) for Java projects
-- Identify package.json with dependencies for JavaScript/TypeScript projects
-- Look for specific framework files (angular.json, react-scripts entries, next.config.js)
-- Check for Python project identifiers (requirements.txt, setup.py, pyproject.toml)
-- Examine mobile app identifiers (pubspec.yaml, android/ios folders)
-- Note all technology signatures found and their versions" : 
-"Focus analysis on ${PROJECT_TYPE} project structure"}
-
-${IS_MONOREPO == "Auto-detect" ? 
-"Determine if this is a monorepo by looking for:
-- Multiple distinct projects with their own configuration files
-- Workspace configuration files (lerna.json, nx.json, turborepo.json, etc.)
-- Cross-project references and shared dependency patterns
-- Root-level orchestration scripts and configuration" : ""}
-
-${INCLUDES_MICROSERVICES == "Auto-detect" ? 
-"Check for microservices architecture indicators:
-- Multiple service directories with similar/repeated structures
-- Service-specific Dockerfiles or deployment configurations
-- Inter-service communication patterns (APIs, message brokers)
-- Service registry or discovery configuration
-- API gateway configuration files
-- Shared libraries or utilities across services" : ""}
-
-${INCLUDES_FRONTEND == "Auto-detect" ? 
-"Identify frontend components by looking for:
-- Web asset directories (wwwroot, public, dist, static)
-- UI framework files (components, modules, pages)
-- Frontend build configuration (webpack, vite, rollup, etc.)
-- Style sheet organization (CSS, SCSS, styled-components)
-- Static asset organization (images, fonts, icons)" : ""}
-
-### 1. Structural Overview
-
-Provide a high-level overview of the ${PROJECT_TYPE == "Auto-detect" ? "detected project type(s)" : PROJECT_TYPE} project's organization principles and folder structure:
-
-- Document the overall architectural approach reflected in the folder structure
-- Identify the main organizational principles (by feature, by layer, by domain, etc.)
-- Note any structural patterns that repeat throughout the codebase
-- Document the rationale behind the structure where it can be inferred
-
-${IS_MONOREPO == "Auto-detect" ? 
-"If detected as a monorepo, explain how the monorepo is organized and the relationship between projects." : 
-IS_MONOREPO ? "Explain how the monorepo is organized and the relationship between projects." : ""}
-
-${INCLUDES_MICROSERVICES == "Auto-detect" ? 
-"If microservices are detected, describe how they are structured and organized." : 
-INCLUDES_MICROSERVICES ? "Describe how the microservices are structured and organized." : ""}
-
-### 2. Directory Visualization
-
-${VISUALIZATION_STYLE == "ASCII" ? 
-"Create an ASCII tree representation of the folder hierarchy to depth level ${DEPTH_LEVEL}." : ""}
-
-${VISUALIZATION_STYLE == "Markdown List" ? 
-"Use nested markdown lists to represent the folder hierarchy to depth level ${DEPTH_LEVEL}." : ""}
-
-${VISUALIZATION_STYLE == "Table" ? 
-"Create a table with columns for Path, Purpose, Content Types, and Conventions." : ""}
-
-${INCLUDE_GENERATED_FOLDERS ? 
-"Include all folders including generated ones." : 
-"Exclude auto-generated folders like bin/, obj/, node_modules/, etc."}
-
-### 3. Key Directory Analysis
-
-Document each significant directory's purpose, contents, and patterns:
-
-${PROJECT_TYPE == "Auto-detect" ? 
-"For each detected technology, analyze directory structures based on observed usage patterns:" : ""}
-
-${(PROJECT_TYPE == ".NET" || PROJECT_TYPE == "Auto-detect") ? 
-"#### .NET Project Structure (if detected)
-
-- **Solution Organization**: 
-  - How projects are grouped and related
-  - Solution folder organization patterns
-  - Multi-targeting project patterns
-
-- **Project Organization**:
-  - Internal folder structure patterns
-  - Source code organization approach
-  - Resource organization
-  - Project dependencies and references
-
-- **Domain/Feature Organization**:
-  - How business domains or features are separated
-  - Domain boundary enforcement patterns
-
-- **Layer Organization**:
-  - Separation of concerns (Controllers, Services, Repositories, etc.)
-  - Layer interaction and dependency patterns
-
-- **Configuration Management**:
-  - Configuration file locations and purposes
-  - Environment-specific configurations
-  - Secret management approach
-
-- **Test Project Organization**:
-  - Test project structure and naming
-  - Test categories and organization
-  - Test data and mock locations" : ""}
-
-${(PROJECT_TYPE == "React" || PROJECT_TYPE == "Angular" || PROJECT_TYPE == "Auto-detect") ? 
-"#### UI Project Structure (if detected)
-
-- **Component Organization**:
-  - Component folder structure patterns
-  - Grouping strategies (by feature, type, etc.)
-  - Shared vs. feature-specific components
-
-- **State Management**:
-  - State-related file organization
-  - Store structure for global state
-  - Local state management patterns
-
-- **Routing Organization**:
-  - Route definition locations
-  - Page/view component organization
-  - Route parameter handling
-
-- **API Integration**:
-  - API client organization
-  - Service layer structure
-  - Data fetching patterns
-
-- **Asset Management**:
-  - Static resource organization
-  - Image/media file structure
-  - Font and icon organization
-  
-- **Style Organization**:
-  - CSS/SCSS file structure
-  - Theme organization
-  - Style module patterns" : ""}
-
-### 4. File Placement Patterns
-
-${INCLUDE_FILE_PATTERNS ? 
-"Document the patterns that determine where different types of files should be placed:
-
-- **Configuration Files**:
-  - Locations for different types of configuration
-  - Environment-specific configuration patterns
-  
-- **Model/Entity Definitions**:
-  - Where domain models are defined
-  - Data transfer object (DTO) locations
-  - Schema definition locations
-  
-- **Business Logic**:
-  - Service implementation locations
-  - Business rule organization
-  - Utility and helper function placement
-  
-- **Interface Definitions**:
-  - Where interfaces and abstractions are defined
-  - How interfaces are grouped and organized
-  
-- **Test Files**:
-  - Unit test location patterns
-  - Integration test placement
-  - Test utility and mock locations
-  
-- **Documentation Files**:
+```
   - API documentation placement
   - Internal documentation organization
   - README file distribution" : 

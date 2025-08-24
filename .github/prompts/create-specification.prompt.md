@@ -15,113 +15,77 @@ The specification file must define the requirements, constraints, and interfaces
 - Clearly distinguish between requirements, constraints, and recommendations.
 - Use structured formatting (headings, lists, tables) for easy parsing.
 - Avoid idioms, metaphors, or context-dependent references.
-- Define all acronyms and domain-specific terms.
-- Include examples and edge cases where applicable.
-- Ensure the document is self-contained and does not rely on external context.
-
-The specification should be saved in the [/spec/](/spec/) directory and named according to the following convention: `spec-[a-z0-9-]+.md`, where the name should be descriptive of the specification's content and starting with the highlevel purpose, which is one of [schema, tool, data, infrastructure, process, architecture, or design].
-
-The specification file must be formatted in well formed Markdown.
-
-Specification files must follow the template below, ensuring that all sections are filled out appropriately. The front matter for the markdown should be structured correctly as per the example following:
-
-```md
+```prompt
 ---
-title: [Concise Title Describing the Specification's Focus]
-version: [Optional: e.g., 1.0, Date]
-date_created: [YYYY-MM-DD]
-last_updated: [Optional: YYYY-MM-DD]
-owner: [Optional: Team/Individual responsible for this spec]
-tags: [Optional: List of relevant tags or categories, e.g., `infrastructure`, `process`, `design`, `app` etc]
+mode: 'agent'
+description: 'Cookbook: create an AI-friendly specification file template and example for a given purpose.'
 ---
 
-# Introduction
+Receipt: "From `${input:SpecPurpose}` produce a concise spec saved as `/spec/spec-[purpose]-[name].md` containing Purpose, Requirements, Interfaces, Acceptance Criteria, Tests, Dependencies."
 
-[A short concise introduction to the specification and the goal it is intended to achieve.]
+Plan:
+- Create front-matter (title, version, date, owner, tags).
+- Provide short Introduction, Purpose & Scope, Definitions (only necessary terms).
+- List Requirements (REQ-###), Acceptance Criteria (AC-###), Interfaces/Data Contracts, Test Strategy, Dependencies, Examples/Edge Cases, and Related Specs.
 
-## 1. Purpose & Scope
+Assumptions:
+- Keep spec implementation-agnostic and machine-parseable.
+- Use Given-When-Then for acceptance criteria and short code examples only when necessary.
 
-[Provide a clear, concise description of the specification's purpose and the scope of its application. State the intended audience and any assumptions.]
+One-line template:
+"Generate spec for `${input:SpecPurpose}` → `/spec/spec-[purpose]-[name].md` with Purpose, REQs, ACs, Interfaces, Tests, Dependencies."
 
-## 2. Definitions
+Output example (markdown):
+````md
+---
+title: Deterministic RNG for Simulation
+version: 1.0
+date_created: 2025-08-22
+owner: core-team
+tags: [infrastructure, feature]
+---
 
-[List and define all acronyms, abbreviations, and domain-specific terms used in this specification.]
+## Purpose & Scope
+Short description...
 
-## 3. Requirements, Constraints & Guidelines
+## Requirements
+- REQ-001: Provide seeded RNG API
 
-[Explicitly list all requirements, constraints, rules, and guidelines. Use bullet points or tables for clarity.]
+## Acceptance Criteria
+- AC-001: Given seed X, when RNG is used, then outputs are deterministic across runs
 
-- **REQ-001**: Requirement 1
-- **SEC-001**: Security Requirement 1
-- **[3 LETTERS]-001**: Other Requirement 1
-- **CON-001**: Constraint 1
-- **GUD-001**: Guideline 1
-- **PAT-001**: Pattern to follow 1
+## Interfaces
+- API: srand(seed), srandom()
 
-## 4. Interfaces & Data Contracts
+## Tests
+- Unit tests verifying deterministic outputs
 
-[Describe the interfaces, APIs, data contracts, or integration points. Use tables or code blocks for schemas and examples.]
+````
 
-## 5. Acceptance Criteria
+`````
+This is the description of what the code block changes:
+<changeDescription>
+Replace with compact spec creation prompt template (EARS format emphasis).
+</changeDescription>
 
-[Define clear, testable acceptance criteria for each requirement using Given-When-Then format where appropriate.]
+This is the code block that represents the suggested code change:
+```prompt
+Receipt: I'll draft a concise specification using EARS format for the requested feature.
 
-- **AC-001**: Given [context], When [action], Then [expected outcome]
-- **AC-002**: The system shall [specific behavior] when [condition]
-- **AC-003**: [Additional acceptance criteria as needed]
+Plan:
+1) Provide 3–5 EARS requirements (WHEN ..., THE SYSTEM SHALL ... [Acceptance]).
+2) Add 2 edge cases and 2 non-functional constraints (perf/security).
+3) Provide one short test matrix mapping requirements → tests.
 
-## 6. Test Automation Strategy
+Assumptions: Feature scope fits in a single PR-sized change.
 
-[Define the testing approach, frameworks, and automation requirements.]
+Constraints: Keep spec under 450 words.
 
-- **Test Levels**: Unit, Integration, End-to-End
-- **Frameworks**: MSTest, FluentAssertions, Moq (for .NET applications)
-- **Test Data Management**: [approach for test data creation and cleanup]
-- **CI/CD Integration**: [automated testing in GitHub Actions pipelines]
-- **Coverage Requirements**: [minimum code coverage thresholds]
-- **Performance Testing**: [approach for load and performance testing]
+Output: `requirements.md` formatted with EARS entries and acceptance checks.
 
-## 7. Rationale & Context
-
-[Explain the reasoning behind the requirements, constraints, and guidelines. Provide context for design decisions.]
-
-## 8. Dependencies & External Integrations
-
-[Define the external systems, services, and architectural dependencies required for this specification. Focus on **what** is needed rather than **how** it's implemented. Avoid specific package or library versions unless they represent architectural constraints.]
-
-### External Systems
-- **EXT-001**: [External system name] - [Purpose and integration type]
-
-### Third-Party Services
-- **SVC-001**: [Service name] - [Required capabilities and SLA requirements]
-
-### Infrastructure Dependencies
-- **INF-001**: [Infrastructure component] - [Requirements and constraints]
-
-### Data Dependencies
-- **DAT-001**: [External data source] - [Format, frequency, and access requirements]
-
-### Technology Platform Dependencies
-- **PLT-001**: [Platform/runtime requirement] - [Version constraints and rationale]
-
-### Compliance Dependencies
-- **COM-001**: [Regulatory or compliance requirement] - [Impact on implementation]
-
-**Note**: This section should focus on architectural and business dependencies, not specific package implementations. For example, specify "OAuth 2.0 authentication library" rather than "Microsoft.AspNetCore.Authentication.JwtBearer v6.0.1".
-
-## 9. Examples & Edge Cases
-
-```code
-// Code snippet or data example demonstrating the correct application of the guidelines, including edge cases
+Example: "WHEN a ship HP <= 0, THE SYSTEM SHALL emit explosion event. Acceptance: state.explosions includes {id,x,y,team}."
 ```
+<userPrompt>
+Provide the fully rewritten file, incorporating the suggested code change. You must produce the complete file.
+</userPrompt>
 
-## 10. Validation Criteria
-
-[List the criteria or tests that must be satisfied for compliance with this specification.]
-
-## 11. Related Specifications / Further Reading
-
-[Link to related spec 1]
-[Link to relevant external documentation]
-
-```

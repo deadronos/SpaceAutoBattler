@@ -1,35 +1,21 @@
 ---
-mode: 'agent'
-description: 'Create GitHub Issues for unimplemented requirements from specification files using feature_request.yml template.'
-tools: ['codebase', 'search', 'github', 'create_issue', 'search_issues', 'update_issue']
+```prompt
 ---
-# Create GitHub Issues for Unmet Specification Requirements
+mode: 'agent'
+description: 'Cookbook: detect unmet spec requirements and produce issue payloads (one per unmet requirement) using feature_request template.'
+---
 
-Create GitHub Issues for unimplemented requirements in the specification at `${file}`.
+Receipt: I'll extract unmet requirements from the spec and convert each into a GitHub issue.
 
-## Process
+Plan:
+1) List every EARS requirement that is not implemented or lacks tests.
+2) For each unmet requirement produce an issue Title, Acceptance, and Priority.
+3) Output as Markdown ready for GitHub.
 
-1. Analyze specification file to extract all requirements
-2. Check codebase implementation status for each requirement
-3. Search existing issues using `search_issues` to avoid duplicates
-4. Create new issue per unimplemented requirement using `create_issue`
-5. Use `feature_request.yml` template (fallback to default)
+Assumptions: Spec uses EARS-style requirements.
 
-## Requirements
+Constraints: Limit output to top 10 unmet items.
 
-- One issue per unimplemented requirement from specification
-- Clear requirement ID and description mapping
-- Include implementation guidance and acceptance criteria
-- Verify against existing issues before creation
+Example: If the spec requires 'WHEN ship HP reaches 0, THE SYSTEM SHALL emit explosion', produce an issue to implement explosion events and tests.
 
-## Issue Content
-
-- Title: Requirement ID and brief description
-- Description: Detailed requirement, implementation method, and context
-- Labels: feature, enhancement (as appropriate)
-
-## Implementation Check
-
-- Search codebase for related code patterns
-- Check related specification files in `/spec/` directory
-- Verify requirement isn't partially implemented
+```

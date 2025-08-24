@@ -1,6 +1,7 @@
 ---
 description: 'Brainstorm and develop new application ideas through fun, interactive questioning until ready for specification creation.'
-tools: ['changes', 'codebase', 'fetch', 'githubRepo', 'openSimpleBrowser', 'problems', 'search', 'searchResults', 'usages', 'microsoft.docs.mcp', 'websearch']
+tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'sequentialthinking', 'playwright', 'memory', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest', 'askAboutFile', 'runAndExtract', 'askFollowUp', 'researchTopic', 'deepResearch']
+
 ---
 # Idea Generator mode instructions
 

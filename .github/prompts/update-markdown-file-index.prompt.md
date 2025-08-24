@@ -74,3 +74,29 @@ Look for existing sections with these patterns:
 - Sort files alphabetically by default
 - Handle special characters in filenames
 - Validate all generated markdown syntax
+
+## Receipt
+
+I'll update a markdown index (TOC) with provided entries or by scanning a folder.
+
+## Plan
+
+1. Scan the folder for top-level markdown files or accept a list.
+2. Generate a concise `README`-style index with links and one-line descriptions.
+3. Output suggested content and insertion point.
+
+## Assumptions
+
+Files have front-matter or first heading used as description if present.
+
+## Constraints
+
+Keep index < 200 lines.
+
+## Output
+
+Markdown list of linked files with descriptions.
+
+## Example
+
+Scan `docs/` and produce `docs/README.md` with links to design docs and tests.
