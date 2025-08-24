@@ -1,41 +1,51 @@
 // teamsConfig.ts - Teams and fleet helpers (typed)
-import { getDefaultShipType, getShipConfig } from './entitiesConfig';
+import { getDefaultShipType, getShipConfig } from "./entitiesConfig"; // should be './config/entitiesConfig'
 export type Team = { id: string; color: string; label?: string };
 export const TeamsConfig = {
   teams: {
-    red: { id: 'red', color: '#ff4d4d', label: 'Red' },
-    blue: { id: 'blue', color: '#4da6ff', label: 'Blue' }
+    red: { id: "red", color: "#ff4d4d", label: "Red" },
+    blue: { id: "blue", color: "#4da6ff", label: "Blue" },
   },
-  defaultFleet: { counts: (() => {
-    // Build a default counts map from available ShipConfig types so new
-    // ship types are automatically included without needing manual edits.
-    const shipCfg = getShipConfig();
-    const types = Object.keys(shipCfg || {});
-    // sane defaults: make fighters most common, others rarer
-    const defaultCounts: Record<string, number> = {};
-    for (const t of types) {
-      if (t === 'fighter') defaultCounts[t] = 8;
-      else if (t === 'corvette') defaultCounts[t] = 3;
-      else if (t === 'frigate') defaultCounts[t] = 2;
-      else if (t === 'destroyer') defaultCounts[t] = 1;
-      else if (t === 'carrier') defaultCounts[t] = 1;
-      else defaultCounts[t] = 1;
-    }
-    return defaultCounts;
-  })(), spacing: 28, jitter: { x: 80, y: 120 } },
+  defaultFleet: {
+    counts: (() => {
+      // Build a default counts map from available ShipConfig types so new
+      // ship types are automatically included without needing manual edits.
+      const shipCfg = getShipConfig();
+      const types = Object.keys(shipCfg || {});
+      // sane defaults: make fighters most common, others rarer
+      const defaultCounts: Record<string, number> = {};
+      for (const t of types) {
+        if (t === "fighter") defaultCounts[t] = 8;
+        else if (t === "corvette") defaultCounts[t] = 3;
+        else if (t === "frigate") defaultCounts[t] = 2;
+        else if (t === "destroyer") defaultCounts[t] = 1;
+        else if (t === "carrier") defaultCounts[t] = 1;
+        else defaultCounts[t] = 1;
+      }
+      return defaultCounts;
+    })(),
+    spacing: 28,
+    jitter: { x: 80, y: 120 },
+  },
   // continuousReinforcement controls: enable/disable, scoreMargin is the
   // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
   // perTick is the maximum ships considered per reinforcement tick, and
   // shipTypes is an optional array of types to choose from randomly. If
   // omitted, keys from defaultFleet.counts are used.
-  continuousReinforcement: { enabled: false, scoreMargin: 0.12, perTick: 1, shipTypes: undefined as string[] | undefined }
+  continuousReinforcement: {
+    enabled: false,
+    scoreMargin: 0.12,
+    perTick: 1,
+    interval: 5.0,
+    shipTypes: undefined as string[] | undefined,
+  },
 };
 
 // Local seeded PRNG (does not affect global rng)
 function mulberry32(seed: number) {
   let t = seed >>> 0;
-  return function() {
-    t += 0x6D2B79F5;
+  return function () {
+    t += 0x6d2b79f5;
     let r = Math.imul(t ^ (t >>> 15), 1 | t);
     r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
@@ -44,22 +54,25 @@ function mulberry32(seed: number) {
 
 function hashStringToInt(s: string) {
   let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
   return h >>> 0;
 }
 
 export function generateFleetForTeam(
   seed = 0,
-  teamId: 'red' | 'blue' = 'red',
+  teamId: "red" | "blue" = "red",
   bounds = { W: 800, H: 600 },
   shipFactory?: (type: string, x: number, y: number, team: string) => any,
-  options: any = {}
+  options: any = {},
 ) {
   const cfg = Object.assign({}, TeamsConfig.defaultFleet, options.fleet || {});
   const spacing = options.spacing ?? cfg.spacing;
   const jitter = Object.assign({}, cfg.jitter, options.jitter || {});
   const centerY = bounds.H / 2;
-  const baseX = teamId === 'red' ? bounds.W * 0.22 : bounds.W * 0.78;
+  const baseX = teamId === "red" ? bounds.W * 0.22 : bounds.W * 0.78;
   const rng = mulberry32((seed >>> 0) + hashStringToInt(teamId));
   const out: any[] = [];
   for (const [type, count] of Object.entries(cfg.counts)) {
@@ -68,22 +81,38 @@ export function generateFleetForTeam(
       const angle = rng() * Math.PI * 2;
       const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
       const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
-  const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
-  const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
-      if (typeof shipFactory === 'function') out.push(shipFactory(type, x, y, teamId));
+      const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
+      const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
+      if (typeof shipFactory === "function")
+        out.push(shipFactory(type, x, y, teamId));
       else out.push({ type, x, y, team: teamId });
     }
   }
   return out;
 }
 
-export function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFactory?: (type: string, x: number, y: number, team: string) => any, options: any = {}) {
-  const red = generateFleetForTeam(seed, 'red', bounds, shipFactory, options);
-  const blue = generateFleetForTeam(seed + 1, 'blue', bounds, shipFactory, options);
+export function makeInitialFleets(
+  seed = 0,
+  bounds = { W: 800, H: 600 },
+  shipFactory?: (type: string, x: number, y: number, team: string) => any,
+  options: any = {},
+) {
+  const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
+  const blue = generateFleetForTeam(
+    seed + 1,
+    "blue",
+    bounds,
+    shipFactory,
+    options,
+  );
   return red.concat(blue);
 }
 
-export function chooseReinforcements(seed = 0, state: any = {}, options: any = {}) {
+export function chooseReinforcements(
+  seed = 0,
+  state: any = {},
+  options: any = {},
+) {
   const cfg = Object.assign({}, TeamsConfig.continuousReinforcement, options);
   // (no-op) merge options onto default continuous reinforcement config
   if (!cfg.enabled) return [] as any[];
@@ -91,7 +120,7 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
   if (Array.isArray(state.ships)) {
     for (const s of state.ships) {
       if (!s || !s.team) continue;
-      const hp = (typeof s.hp === 'number' ? s.hp : 1);
+      const hp = typeof s.hp === "number" ? s.hp : 1;
       teamStrength[s.team] = (teamStrength[s.team] || 0) + hp;
     }
   }
@@ -99,24 +128,42 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
   if (teams.length === 0) return [];
   for (const t of teams) {
     if (!teamStrength[t]) {
-      const cnt = (state.ships || []).filter((s: any) => s && s.team === t).length;
+      const cnt = (state.ships || []).filter(
+        (s: any) => s && s.team === t,
+      ).length;
       teamStrength[t] = cnt > 0 ? cnt : 0;
     }
   }
-  let weakest = teams[0]; let strongest = teams[0];
-  for (const t of teams) { if (teamStrength[t] < teamStrength[weakest]) weakest = t; if (teamStrength[t] > teamStrength[strongest]) strongest = t; }
+  let weakest = teams[0];
+  let strongest = teams[0];
+  for (const t of teams) {
+    if (teamStrength[t] < teamStrength[weakest]) weakest = t;
+    if (teamStrength[t] > teamStrength[strongest]) strongest = t;
+  }
   const total = teams.reduce((s, t) => s + (teamStrength[t] || 0), 0) || 1;
   const weakestRatio = (teamStrength[weakest] || 0) / total;
-  if (weakestRatio < (0.5 - cfg.scoreMargin)) {
+  if (weakestRatio < 0.5 - cfg.scoreMargin) {
     const orders: any[] = [];
     const rng = mulberry32((seed >>> 0) + hashStringToInt(weakest));
     // determine candidate ship types: either explicit list or keys from defaultFleet
-    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const candidateTypes =
+      Array.isArray(cfg.shipTypes) && cfg.shipTypes.length
+        ? cfg.shipTypes
+        : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
     // Build weights for candidate types using defaultFleet counts when available
-    const countsMap = (TeamsConfig && TeamsConfig.defaultFleet && TeamsConfig.defaultFleet.counts) ? TeamsConfig.defaultFleet.counts : {};
-    const weights = candidateTypes.map((t: string) => Math.max(0, Number((countsMap as any)[t]) || 1));
-    const totalWeight = weights.reduce((s: number, w: number) => s + w, 0) || candidateTypes.length || 1;
-    function weightedPick() {
+    const countsMap =
+      TeamsConfig && TeamsConfig.defaultFleet && TeamsConfig.defaultFleet.counts
+        ? TeamsConfig.defaultFleet.counts
+        : {};
+    const weights = candidateTypes.map((t: string) =>
+      Math.max(0, Number((countsMap as any)[t]) || 1),
+    );
+    const totalWeight =
+      weights.reduce((s: number, w: number) => s + w, 0) ||
+      candidateTypes.length ||
+      1;
+    // Helper: weighted random pick for ship types
+    const weightedPick = () => {
       const r = rng() * totalWeight;
       let acc = 0;
       for (let i = 0; i < candidateTypes.length; i++) {
@@ -124,32 +171,46 @@ export function chooseReinforcements(seed = 0, state: any = {}, options: any = {
         if (r < acc) return candidateTypes[i];
       }
       return candidateTypes[candidateTypes.length - 1];
-    }
+    };
     // Randomize number to spawn between 1 and cfg.perTick (inclusive)
     const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
     const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
-  // spawnCount computed deterministically from the provided seed
-    const b = (options.bounds || { W: 800, H: 600 });
-    const centerY = b.H / 2; const baseX = weakest === 'red' ? b.W * 0.18 : b.W * 0.82;
+    // spawnCount computed deterministically from the provided seed
+    const b = options.bounds || { W: 800, H: 600 };
+    const centerY = b.H / 2;
+    const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {
-  const x = Math.max(0, Math.min(b.W - 1e-6, baseX + (rng() - 0.5) * 120));
-  const y = Math.max(0, Math.min(b.H - 1e-6, centerY + (rng() - 0.5) * 160));
-    const type = (Array.isArray(cfg.shipTypes) && cfg.shipTypes.length) ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick();
+      const x = Math.max(0, Math.min(b.W - 1e-6, baseX + (rng() - 0.5) * 120));
+      const y = Math.max(
+        0,
+        Math.min(b.H - 1e-6, centerY + (rng() - 0.5) * 160),
+      );
+      const type =
+        Array.isArray(cfg.shipTypes) && cfg.shipTypes.length
+          ? candidateTypes[Math.floor(rng() * candidateTypes.length)] ||
+            getDefaultShipType()
+          : weightedPick();
       orders.push({ type, team: weakest, x, y });
     }
-  // return deterministic orders
+    // return deterministic orders
     return orders;
   }
   return [] as any[];
 }
+
+// Team fallback default
+export const TEAM_DEFAULT = "red";
 
 export default TeamsConfig;
 
 // Helper: call chooseReinforcements using a manager-derived seed (from global RNG)
 // This is convenient for callers (like gamemanager) that want to keep
 // reinforcements deterministic relative to the global `srand`/`srandom` state.
-import { srandom } from '../rng';
-export function chooseReinforcementsWithManagerSeed(state: any = {}, options: any = {}) {
+import { srandom } from "../rng";
+export function chooseReinforcementsWithManagerSeed(
+  state: any = {},
+  options: any = {},
+) {
   const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
   return chooseReinforcements(seed, state, options);
 }

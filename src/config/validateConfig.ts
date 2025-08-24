@@ -1,6 +1,6 @@
 // Lightweight ship configuration validation helpers (TypeScript)
 
-import type { CannonSpec, ShipSpec, ProgressionConfig, ShipConfigMap, VisualMappingConfig } from '../types';
+import type { CannonSpec, ShipSpec, ProgressionConfig, ShipConfigMap } from '../types';
 import type { AssetsConfigType } from './assets/assetsConfig';
 import type { TeamsConfig as TeamsConfigType } from './teamsConfig';
 // DisplayConfig type is not exported; define minimal type here if needed

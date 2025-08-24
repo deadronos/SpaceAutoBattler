@@ -8,6 +8,7 @@ import { createGameManager } from './gamemanager';
 import { CanvasRenderer } from './canvasrenderer';
 import { WebGLRenderer } from './webglrenderer';
 import { getDefaultBounds } from './config/displayConfig';
+import { SIM } from './config/simConfig';
 import { getPreferredRenderer, RendererConfig } from './config/rendererConfig';
 
 // Allow temporary extension of window.gm used by the app during migration.
@@ -272,6 +273,8 @@ export async function startApp(rootDocument: Document = document) {
 	try { if (ui.continuousCheckbox) { ui.continuousCheckbox.addEventListener('change', (ev: any) => { const v = !!ev.target.checked; if (gm && typeof gm.setContinuousEnabled === 'function') gm.setContinuousEnabled(v); }); } } catch (e) {}
 
 	function uiTick() {
+		const startTick = performance.now();
+		let skipRender = false;
 		try {
 			const s = gm.snapshot();
 			ui.redScore.textContent = `Red ${gm.score.red}`;
@@ -280,6 +283,11 @@ export async function startApp(rootDocument: Document = document) {
 			const blueCount = s.ships.filter((sh: any) => sh.team === 'blue').length;
 			ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : '');
 		} catch (e) {}
+		const endTick = performance.now();
+		const tickTime = endTick - startTick;
+		if (tickTime > SIM.DT_MS) {
+			skipRender = true;
+		}
 		// --- Dynamic buffer scaling logic ---
 		const dynamicEnabled = !!(RendererConfig as any).dynamicScaleEnabled;
 		const scaleSliderEl = rootDocument.getElementById('rendererScaleRange') as HTMLInputElement;
@@ -315,7 +323,12 @@ export async function startApp(rootDocument: Document = document) {
 				internalScaleUpdate = false;
 			}
 		}
-		requestAnimationFrame(uiTick);
+		if (!skipRender) {
+			requestAnimationFrame(uiTick);
+		} else {
+			// Only update simulation, skip rendering for this frame
+			setTimeout(uiTick, SIM.DT_MS);
+		}
 	}
 	requestAnimationFrame(uiTick);
 	return { gm, renderer };

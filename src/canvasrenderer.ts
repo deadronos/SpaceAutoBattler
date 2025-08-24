@@ -4,7 +4,6 @@
 
 import { AssetsConfig, getShipAsset, getBulletAsset, getTurretAsset, getVisualConfig } from './config/assets/assetsConfig';
 import { TeamsConfig } from './config/teamsConfig';
-import type { VisualMappingConfig } from './types';
 import { bulletKindForRadius, getDefaultShipType } from './config/entitiesConfig';
 import { RendererConfig } from './config/rendererConfig';
 import { shieldFlashes, healthFlashes } from './gamemanager';
@@ -226,12 +225,16 @@ export class CanvasRenderer {
         for (const turret of s.turrets) {
           if (!turret || !turret.position) continue;
           const turretShape = getTurretAsset(turret.kind || 'basic');
-          const turretScale = (s.radius || 12) * renderScale * 0.5;
+          // Always use latest config radius for turret position and scale
+          const shipType = s.type || 'fighter';
+          const shipCfg = require('./config/entitiesConfig').getShipConfig()[shipType];
+          const configRadius = shipCfg && typeof shipCfg.radius === 'number' ? shipCfg.radius : (s.radius || 12);
+          const turretScale = configRadius * renderScale * 0.5;
           // Calculate turret position relative to ship center, rotated by ship angle
           const angle = (s.angle || 0);
           const [tx, ty] = turret.position;
-          const turretX = Math.cos(angle) * tx * (s.radius || 12) - Math.sin(angle) * ty * (s.radius || 12);
-          const turretY = Math.sin(angle) * tx * (s.radius || 12) + Math.cos(angle) * ty * (s.radius || 12);
+          const turretX = Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
+          const turretY = Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
           activeBufferCtx.save();
           activeBufferCtx.translate(turretX, turretY);
           activeBufferCtx.rotate(0); // Optionally rotate for turret direction

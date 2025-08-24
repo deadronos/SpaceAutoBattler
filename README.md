@@ -1,23 +1,41 @@
+## Simulation boundary behavior
+
+The simulation exposes a config option for boundary behavior of ships and bullets:
+
+- `src/config/simConfig.ts` — `boundaryBehavior` object with `ships` and `bullets` keys.
+	- Each can be set to `'remove'`, `'wrap'`, or `'bounce'`.
+		- `'remove'`: entities are removed when out of bounds.
+		- `'wrap'`: entities wrap around the playfield edges (toroidal).
+		- `'bounce'`: entities bounce off the edges, inverting velocity.
+
+Example usage:
+
+```typescript
+import { boundaryBehavior } from './src/config/simConfig';
+boundaryBehavior.ships = 'bounce';
+boundaryBehavior.bullets = 'wrap';
+```
+
+Unit tests cover all three behaviors for both ships and bullets in `test/vitest/simulationflow.spec.ts`.
 # SpaceAutoBattler
 
 [![Gameplay preview — click to open VideoCapture.gif](VideoCapture.gif)](VideoCapture.gif)
 
 A small, deterministic 2D auto-battler (Red vs Blue) implemented with TypeScript/ES modules and a Canvas 2D renderer. The simulation is deterministic when seeded and is separated from the renderer so game logic can be unit tested independently from visuals.
 
-Why this project exists
------------------------
+## Why this project exists
+
 - A compact, deterministic simulation useful for experimentation and automated testing.
 - A renderer that consumes minimal, numeric event objects from the simulator (explosions, shieldHits, healthHits) so visuals are replayable.
 
-Highlights
-----------
+## Highlights
+
 - Deterministic RNG via `src/rng.ts` (use `srand(seed)` in tests).
 - Ships with HP, regenerating shields, XP, and per-level progression (`src/progressionConfig.ts`).
 - Bullets carry `ownerId` so kills and XP credit are attributed correctly.
 - The simulation step `simulateStep(state, dt, bounds)` is pure game-logic and emits small event arrays for the renderer.
 
-Design notes — authoritative sources and configs
------------------------------------------------
+## Design notes — authoritative sources and configs
 
 - Game logic and the authoritative GameManager implementation live in TypeScript: `src/gamemanager.ts`.
 - The build system now uses only TypeScript sources in `/src/*.ts` for all runtime and bundling. No JS shims or transpilation steps are required.
@@ -25,12 +43,12 @@ Design notes — authoritative sources and configs
 
 These choices keep balancing/config in config modules and the runtime behavior in TS source so tests remain deterministic and UI behavior reflects configured fleet composition.
 
-Quick demo
-----------
+## Quick demo
+
 Click the preview above to view the animated capture (`VideoCapture.gif`). If you prefer a static screenshot, extract a frame from `VideoCapture.gif` (for example with ImageMagick: `magick VideoCapture.gif[0] VideoCapture_screenshot.png`) and place it in the repo as `VideoCapture_screenshot.png`, then update this README to reference that file instead.
 
-Important files
----------------
+## Important files
+
 - `src/entities.ts` — Ship and Bullet definitions, damage/shield handling, XP and level code.
 - `src/simulate.ts` — Deterministic time-step: `simulateStep(state, dt, bounds)`.
 - `src/canvasrenderer.ts` / `src/webglrenderer.ts` — Visual layer (Canvas/WebGL) that consumes `state` and event arrays.
@@ -41,8 +59,17 @@ Important files
 - `space_themed_autobattler_canvas_red_vs_blue_standalone.html` — Single-file exported build.
 - `scripts/build-standalone.mjs` — Bundles the renderer and inlines a standalone HTML in `./dist/`.
 
-Development
------------
+## Migration & Agentic Docs
+
+---
+
+- **Type/config migration decision records:** See `/PR_NOTES/2025-08-23-type-config-tightening.md` for the latest major migration.
+- **Granular change logs:** See `.copilot-tracking/changes/2025-08-23-*` for details on recent type/config changes.
+- **Implementation status:** See `/spec/IMPLEMENTATION_STATUS.md` for current migration and config status.
+- **Agentic workflow guide:** See `/docs/agentic-migration-workflow.md` for how agents and contributors should discover and execute migrations.
+- **Contributor guidelines:** See `AGENTS.md` for requirements, validation, and cross-links to all major docs.
+
+## Development
 
 Prerequisites: Node.js (for tests and build tooling), npm.
 
@@ -71,8 +98,7 @@ npm run serve
 # then open http://localhost:8080/space_themed_autobattler_canvas_red_vs_blue.html
 ```
 
-Build & standalone workflow (new)
---------------------------------
+## Build & standalone workflow (new)
 
 This repository includes a small build helper that bundles the ES modules in `src/` and produces distributable files in `dist/`.
 
@@ -102,8 +128,7 @@ npx http-server ./dist -c-1 -p 8080
 # then open http://localhost:8080/index.html
 ```
 
-Render the architecture flowchart (Graphviz / DOT)
------------------------------------------------
+## Render the architecture flowchart (Graphviz / DOT)
 
 This repo includes a DOT source at `docs/flowchart.dot` (Graphviz). You can render it to SVG in two ways:
 
@@ -139,8 +164,8 @@ Recent changes made the `initStars` and `createStarCanvas` APIs explicit to impr
 ```js
 // new - explicit state-first API
 // state must be an object containing `stars` array, e.g. { stars }
-initStars(state, W = 800, H = 600, count = 140);
-createStarCanvas(state, W = 800, H = 600, bg = '#041018');
+initStars(state, (W = 800), (H = 600), (count = 140));
+createStarCanvas(state, (W = 800), (H = 600), (bg = "#041018"));
 ```
 
 Migration steps:
@@ -158,7 +183,7 @@ initStars(state, W, H, count);
 
 ```js
 // recommended
-const canvas = createStarCanvas({ stars }, W, H, '#041018');
+const canvas = createStarCanvas({ stars }, W, H, "#041018");
 
 // legacy form is still supported for now but will be removed in a future release
 // createStarCanvas(W, H, '#041018');
@@ -167,18 +192,18 @@ const canvas = createStarCanvas({ stars }, W, H, '#041018');
 3. Ensure your code seeds the RNG before calling `initStars` if you expect deterministic results in tests:
 
 ```js
-import { srand } from './src/rng.js';
+import { srand } from "./src/rng.js";
 srand(12345);
 initStars(state, 800, 600, 140);
 ```
 
 Rationale:
+
 - Passing `state` first makes the star helpers explicitly operate on the provided star array and avoids implicit global state usage. It also keeps RNG call order deterministic for tests.
 
 If you want help updating a specific file or test to the new API, tell me which file and I will update it.
 
-Gamemanager visual/config note
-------------------------------
+## Gamemanager visual/config note
 
 The file `src/gamemanagerConfig.ts` centralizes visual tuning defaults for the game manager (matching the style of `behaviorConfig.ts` and `progressionConfig.ts`).
 
@@ -196,18 +221,18 @@ Example (change explosion particle count at runtime):
 
 `setManagerConfig` performs a shallow merge for top-level object keys, so partial updates only modify supplied fields.
 
-Running the demo locally
-------------------------
+## Running the demo locally
+
 1. Serve the repository or open `space_themed_autobattler_canvas_red_vs_blue.html` in a modern browser.
 2. The renderer imports `src/canvasrenderer.ts` or `src/webglrenderer.ts` and runs the visual demo while the simulation logic stays deterministic when seeded.
 
-Testing & determinism
----------------------
+## Testing & determinism
+
 - Tests are in `test/` and are written for Vitest.
 - Seed the RNG in tests for deterministic results: `srand(12345)`.
 
-Playwright (JS vs TS discovery)
---------------------------------
+## Playwright (JS vs TS discovery)
+
 If Playwright's VS Code extension or test discovery doesn't show your Playwright tests, it may be configured to look for TypeScript tests by default. This repo uses JavaScript test files in `test/playwright/`.
 
 - Ensure the Playwright extension is pointed at the repo config (we set this in `.vscode/settings.json` via `"playwright.configPath": "playwright.config.cjs"`).
@@ -216,17 +241,18 @@ If Playwright's VS Code extension or test discovery doesn't show your Playwright
 
 This project includes a `.vscode/settings.json` entry that helps both Playwright and Test Explorer locate JS tests.
 
-Contributing
-------------
+## Contributing
+
 Contributions welcome. When changing gameplay behavior:
+
 1. Keep changes minimal and surgical.
 2. Add/update unit tests under `test/` and seed the RNG for determinism.
 3. Preserve public contracts: `simulateStep(state, dt, bounds)` and event shapes (`explosions`, `shieldHits`, `healthHits`).
 
 For larger design decisions consider adding a short Decision Record under `.github/DECISIONS/`.
 
-License
--------
+## License
+
 MIT
 
 <!-- markdownlint-disable-file -->
@@ -249,13 +275,16 @@ Import `src/gamemanager.ts` directly in unit tests when you need to assert on si
 ## WebGL Renderer (Experimental)
 
 ### Overview
+
 The WebGL renderer is an experimental feature designed to improve performance and visual fidelity. It uses instanced rendering and batching techniques to minimize draw calls and optimize GPU usage.
 
 ### How to Start
+
 1. Ensure you have a local server running (`npm run serve`).
 2. Open `space_themed_autobattler_canvas_red_vs_blue_standalone.html` in your browser.
 
 ### Key Files
+
 - `src/webglrenderer.ts`: Core WebGL rendering logic.
 - `src/webgl_head.js`: Shader definitions and setup.
 
@@ -272,6 +301,7 @@ npm run serve
 ```
 
 ### Notes
+
 - The WebGL renderer adheres to the deterministic simulation contract.
 - All randomness is sourced from the simulation (`rng.ts`).
 - Precision qualifiers (`mediump`, `highp`) are used in shaders for mobile compatibility.

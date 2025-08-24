@@ -1,3 +1,257 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/config/entitiesConfig.ts
+var entitiesConfig_exports = {};
+__export(entitiesConfig_exports, {
+  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
+  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
+  ShipConfig: () => ShipConfig,
+  bulletKindForRadius: () => bulletKindForRadius,
+  default: () => entitiesConfig_default,
+  getDefaultShipType: () => getDefaultShipType,
+  getShipConfig: () => getShipConfig
+});
+function getShipConfig() {
+  return ShipConfig;
+}
+function bulletKindForRadius(r) {
+  if (r < 2) return "small";
+  if (r < 2.5) return "medium";
+  if (r < 3.5) return "large";
+  return "heavy";
+}
+function getDefaultShipType() {
+  return Object.keys(ShipConfig)[0] || "fighter";
+}
+var ShipConfig, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
+var init_entitiesConfig = __esm({
+  "src/config/entitiesConfig.ts"() {
+    "use strict";
+    ShipConfig = {
+      fighter: {
+        maxHp: 15,
+        armor: 0,
+        maxShield: 8,
+        shieldRegen: 1,
+        dmg: 3,
+        damage: 3,
+        radius: 12,
+        cannons: [
+          {
+            damage: 3,
+            rate: 3,
+            spread: 0.1,
+            muzzleSpeed: 260,
+            // was 300
+            bulletRadius: 1.5,
+            bulletTTL: 1.1
+            // was 1.2
+          }
+        ],
+        accel: 5,
+        turnRate: 6,
+        maxSpeed: 160
+      },
+      corvette: {
+        maxHp: 50,
+        armor: 0,
+        maxShield: Math.round(50 * 0.6),
+        shieldRegen: 0.5,
+        dmg: 5,
+        damage: 5,
+        radius: 20,
+        accel: 5,
+        turnRate: 3.5,
+        // was 3
+        maxSpeed: 145,
+        // was 140
+        cannons: [
+          {
+            damage: 6,
+            rate: 1.2,
+            spread: 0.05,
+            muzzleSpeed: 180,
+            // was 220
+            bulletRadius: 2,
+            bulletTTL: 1.8
+            // was 2.0
+          }
+        ]
+      },
+      frigate: {
+        maxHp: 80,
+        armor: 1,
+        maxShield: Math.round(80 * 0.6),
+        shieldRegen: 0.4,
+        dmg: 8,
+        damage: 8,
+        radius: 24,
+        cannons: [
+          {
+            damage: 8,
+            rate: 1,
+            spread: 0.06,
+            muzzleSpeed: 180,
+            // was 200
+            bulletRadius: 2.5,
+            bulletTTL: 2
+            // was 2.2
+          }
+        ],
+        accel: 5,
+        turnRate: 2.5,
+        // was 2.2
+        maxSpeed: 125
+        // was 120
+      },
+      destroyer: {
+        maxHp: 120,
+        armor: 2,
+        maxShield: Math.round(120 * 0.6),
+        shieldRegen: 0.3,
+        dmg: 12,
+        damage: 12,
+        radius: 40,
+        cannons: new Array(6).fill(0).map(() => ({
+          damage: 6,
+          rate: 0.8,
+          spread: 0.08,
+          muzzleSpeed: 160,
+          // was 240
+          bulletRadius: 2.5,
+          bulletTTL: 1.8
+          // was 2.4
+        })),
+        accel: 5,
+        turnRate: 2,
+        // was 1.6
+        maxSpeed: 110,
+        // was 100
+        turrets: [
+          {
+            position: [1.2, 0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [-1.2, 0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [1.2, -0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [-1.2, -0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [0, 1.5],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [0, -1.5],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          }
+        ]
+      },
+      carrier: {
+        maxHp: 200,
+        armor: 3,
+        maxShield: Math.round(200 * 0.6),
+        shieldRegen: 0.2,
+        dmg: 2,
+        damage: 2,
+        radius: 40,
+        cannons: new Array(4).fill(0).map(() => ({
+          damage: 4,
+          rate: 0.6,
+          spread: 0.12,
+          muzzleSpeed: 140,
+          // was 180
+          bulletRadius: 3,
+          bulletTTL: 2.2
+          // was 2.8
+        })),
+        accel: 5,
+        turnRate: 1.2,
+        // was 0.8
+        maxSpeed: 95,
+        // was 80
+        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+        turrets: [
+          {
+            position: [2, 1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [-2, 1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [2, -1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [-2, -1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          }
+        ]
+      }
+    };
+    BULLET_DEFAULTS = {
+      damage: 1,
+      ttl: 2,
+      radius: 1.5,
+      muzzleSpeed: 240
+    };
+    PARTICLE_DEFAULTS = {
+      ttl: 1,
+      color: "#fff",
+      size: 2
+    };
+    entitiesConfig_default = ShipConfig;
+  }
+});
+
 // src/config/progressionConfig.ts
 var progression = {
   xpPerDamage: 1,
@@ -10,174 +264,11 @@ var progression = {
   regenPercentPerLevel: 0.04
 };
 
-// src/simulate.ts
-function dist2(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx * dx + dy * dy;
-}
-function simulateStep(state2, dtSeconds, bounds2) {
-  state2.t = (state2.t || 0) + dtSeconds;
-  for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {
-    const b = state2.bullets[i];
-    b.x += (b.vx || 0) * dtSeconds;
-    b.y += (b.vy || 0) * dtSeconds;
-    b.ttl = (b.ttl || 0) - dtSeconds;
-    if (b.ttl <= 0 || b.x < 0 || b.x >= bounds2.W || b.y < 0 || b.y >= bounds2.H) {
-      state2.bullets.splice(i, 1);
-    }
-  }
-  function pruneHits(arr, bounds3) {
-    if (!Array.isArray(arr)) return arr;
-    return arr.filter((e) => typeof e.x === "number" && typeof e.y === "number" && e.x >= 0 && e.x < bounds3.W && e.y >= 0 && e.y < bounds3.H);
-  }
-  if (Array.isArray(state2.shieldHits)) state2.shieldHits = pruneHits(state2.shieldHits, bounds2);
-  if (Array.isArray(state2.healthHits)) state2.healthHits = pruneHits(state2.healthHits, bounds2);
-  if (Array.isArray(state2.explosions)) state2.explosions = pruneHits(state2.explosions, bounds2);
-  if (Array.isArray(state2.damageEvents)) state2.damageEvents = pruneHits(state2.damageEvents, bounds2);
-  for (const s of state2.ships || []) {
-    s.x += (s.vx || 0) * dtSeconds;
-    s.y += (s.vy || 0) * dtSeconds;
-    const r = typeof s.radius === "number" ? s.radius : 12;
-    if (typeof bounds2.W === "number" && bounds2.W > 0) {
-      if (s.x < -r) s.x += bounds2.W + r * 2;
-      if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;
-    }
-    if (typeof bounds2.H === "number" && bounds2.H > 0) {
-      if (s.y < -r) s.y += bounds2.H + r * 2;
-      if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;
-    }
-    const speed2 = (s.vx || 0) * (s.vx || 0) + (s.vy || 0) * (s.vy || 0);
-    const minSpeed = 0.5;
-    if (speed2 > minSpeed * minSpeed) {
-      const desired = Math.atan2(s.vy || 0, s.vx || 0);
-      if (typeof s.angle !== "number") s.angle = desired;
-      else {
-        let a = s.angle;
-        let da = desired - a;
-        while (da < -Math.PI) da += Math.PI * 2;
-        while (da > Math.PI) da -= Math.PI * 2;
-        const turnRate = typeof s.turnRate === "number" ? s.turnRate : 3;
-        const maxTurn = turnRate * dtSeconds;
-        if (Math.abs(da) < maxTurn) a = desired;
-        else a += Math.sign(da) * maxTurn;
-        while (a < -Math.PI) a += Math.PI * 2;
-        while (a > Math.PI) a -= Math.PI * 2;
-        s.angle = a;
-      }
-    }
-  }
-  for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {
-    const b = state2.bullets[bi];
-    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {
-      const s = state2.ships[si];
-      if (s.team === b.team) continue;
-      const r = (s.radius || 6) + (b.radius || 1);
-      if (dist2(b, s) <= r * r) {
-        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;
-        let dealtToShield = 0;
-        let dealtToHealth = 0;
-        const shield = s.shield || 0;
-        if (shield > 0) {
-          const absorbed = Math.min(shield, b.damage || 0);
-          s.shield = shield - absorbed;
-          const hitAngle = Math.atan2((b.y || 0) - (s.y || 0), (b.x || 0) - (s.x || 0));
-          (state2.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed, hitAngle });
-          (state2.damageEvents ||= []).push({ id: s.id, type: "shield", amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
-          const remaining = (b.damage || 0) - absorbed;
-          if (remaining > 0) {
-            s.hp -= remaining;
-            (state2.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
-            (state2.damageEvents ||= []).push({ id: s.id, type: "hp", amount: remaining, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
-          }
-          dealtToShield = absorbed;
-          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
-        } else {
-          s.hp -= b.damage || 0;
-          (state2.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });
-          (state2.damageEvents ||= []).push({ id: s.id, type: "hp", amount: b.damage || 0, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
-          dealtToHealth = b.damage || 0;
-        }
-        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
-        s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
-        if (attacker) {
-          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);
-          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
-            attacker.xp -= progression.xpToLevel(attacker.level || 1);
-            attacker.level = (attacker.level || 1) + 1;
-            const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
-            const lvl = attacker.level || 1;
-            const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
-            const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
-            const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
-            const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
-            const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
-            const hpMul = 1 + hpScalar;
-            const shMul = 1 + shScalar;
-            const dmgMul = 1 + dmgScalar;
-            attacker.maxHp = (attacker.maxHp || 0) * hpMul;
-            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
-            if (typeof attacker.maxShield === "number") {
-              attacker.maxShield = (attacker.maxShield || 0) * shMul;
-              attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
-            }
-            if (Array.isArray(attacker.cannons)) {
-              for (const c of attacker.cannons) {
-                if (typeof c.damage === "number") c.damage *= dmgMul;
-              }
-            }
-            if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
-            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
-          }
-        }
-        state2.bullets.splice(bi, 1);
-        if (s.hp <= 0) {
-          if (attacker) {
-            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);
-            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
-              attacker.xp -= progression.xpToLevel(attacker.level || 1);
-              attacker.level = (attacker.level || 1) + 1;
-              const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
-              const lvl = attacker.level || 1;
-              const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
-              const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
-              const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
-              const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
-              const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
-              const hpMul = 1 + hpScalar;
-              const shMul = 1 + shScalar;
-              const dmgMul = 1 + dmgScalar;
-              attacker.maxHp = (attacker.maxHp || 0) * hpMul;
-              attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
-              if (typeof attacker.maxShield === "number") {
-                attacker.maxShield = (attacker.maxShield || 0) * shMul;
-                attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
-              }
-              if (Array.isArray(attacker.cannons)) {
-                for (const c of attacker.cannons) {
-                  if (typeof c.damage === "number") c.damage *= dmgMul;
-                }
-              }
-              if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
-              if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
-            }
-          }
-          (state2.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });
-          state2.ships.splice(si, 1);
-        }
-        break;
-      }
-    }
-  }
-  for (const s of state2.ships || []) {
-    if (s.maxShield) s.shield = Math.min(s.maxShield, (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds);
-  }
-  for (const s of state2.ships || []) {
-    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
-    s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
-  }
-  return state2;
-}
+// src/config/simConfig.ts
+var boundaryBehavior = {
+  ships: "wrap",
+  bullets: "remove"
+};
 
 // src/rng.ts
 var _seed = 1;
@@ -201,245 +292,55 @@ function srange(min, max) {
   return min + (max - min) * srandom();
 }
 
-// src/config/assets/assetsConfig.ts
-var AssetsConfig = {
-  meta: {
-    orientation: "+X",
-    coordinateSystem: "topdown-2d"
-  },
-  palette: {
-    shipHull: "#b0b7c3",
-    shipAccent: "#6c7380",
-    bullet: "#ffd166",
-    turret: "#94a3b8",
-    // Scene background color used by renderers
-    background: "#0b1220"
-  },
-  // 2D vector shapes defined as polygons and circles. Points are unit-sized
-  // profiles (roughly radius 1). Renderer should multiply by entity radius or
-  // provided scale before drawing.
-  shapes2d: {
-    fighter: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
-        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
-        { type: "circle", r: 0.5 }
-      ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
-    },
-    corvette: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
-        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
-        { type: "circle", r: 0.6 }
-      ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
-    },
-    frigate: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
-        { type: "circle", r: 0.7 }
-      ],
-      strokeWidth: 0.1,
-      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
-    },
-    destroyer: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
-        { type: "circle", r: 1 },
-        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
-      ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
-      turrets: [
-        { kind: "basic", position: [1.2, 0.8] },
-        { kind: "basic", position: [-1.2, 0.8] },
-        { kind: "basic", position: [1.2, -0.8] },
-        { kind: "basic", position: [-1.2, -0.8] },
-        { kind: "basic", position: [0, 1.5] },
-        { kind: "basic", position: [0, -1.5] }
-      ]
-    },
-    carrier: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
-        { type: "circle", r: 1.2 },
-        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
-      ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
-      turrets: [
-        { kind: "basic", position: [2, 1.2] },
-        { kind: "basic", position: [-2, 1.2] },
-        { kind: "basic", position: [2, -1.2] },
-        { kind: "basic", position: [-2, -1.2] }
-      ]
-    },
-    bulletSmall: { type: "circle", r: 0.18 },
-    bulletMedium: { type: "circle", r: 0.25 },
-    bulletLarge: { type: "circle", r: 0.36 },
-    turretBasic: {
-      type: "compound",
-      parts: [
-        { type: "circle", r: 0.5 },
-        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
-      ],
-      strokeWidth: 0.08
-    },
-    // Small effect/particle shapes for renderer-driven effects
-    particleSmall: { type: "circle", r: 0.12 },
-    particleMedium: { type: "circle", r: 0.22 },
-    explosionParticle: { type: "circle", r: 0.32 },
-    shieldRing: { type: "circle", r: 1.2 }
-  }
-};
-AssetsConfig.animations = {
-  engineFlare: {
-    type: "polygon",
-    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
-    pulseRate: 8,
-    // configurable alpha multiplier for engine overlay
-    alpha: 0.4,
-    // local-space X offset (negative = behind ship)
-    offset: -0.9
-  },
-  shieldEffect: {
-    type: "circle",
-    r: 1.2,
-    strokeWidth: 0.1,
-    color: "#88ccff",
-    pulseRate: 2,
-    // map shieldPct -> alpha = base + scale * shieldPct
-    alphaBase: 0.25,
-    alphaScale: 0.75
-  },
-  damageParticles: {
-    type: "particles",
-    color: "#ff6b6b",
-    count: 6,
-    lifetime: 0.8,
-    spread: 0.6
-  },
-  engineTrail: {
-    type: "trail",
-    color: "#fffc00",
-    // bright yellow for high contrast
-    maxLength: 40,
-    // much longer trail
-    width: 0.35,
-    // thicker trail line
-    fade: 0.35
-    // slower fading, more persistent
-  }
-};
-AssetsConfig.damageStates = {
-  light: { opacity: 0.9, accentColor: "#b0b7c3" },
-  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
-  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
-};
-AssetsConfig.visualStateDefaults = {
-  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
-};
-AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
-AssetsConfig.shieldArcWidth = Math.PI / 12;
+// src/entities.ts
+init_entitiesConfig();
 
-// src/config/entitiesConfig.ts
-var ShipConfig = {
-  fighter: {
-    maxHp: 15,
-    armor: 0,
-    maxShield: 8,
-    shieldRegen: 1,
-    dmg: 3,
-    damage: 3,
-    radius: 12,
-    cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
-    accel: 150,
-    turnRate: 6
+// src/config/teamsConfig.ts
+init_entitiesConfig();
+var TeamsConfig = {
+  teams: {
+    red: { id: "red", color: "#ff4d4d", label: "Red" },
+    blue: { id: "blue", color: "#4da6ff", label: "Blue" }
   },
-  corvette: {
-    maxHp: 50,
-    armor: 0,
-    maxShield: Math.round(50 * 0.6),
-    shieldRegen: 0.5,
-    dmg: 5,
-    damage: 5,
-    radius: 20,
-    accel: 80,
-    turnRate: 3,
-    cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]
+  defaultFleet: {
+    counts: (() => {
+      const shipCfg = getShipConfig();
+      const types = Object.keys(shipCfg || {});
+      const defaultCounts = {};
+      for (const t of types) {
+        if (t === "fighter") defaultCounts[t] = 8;
+        else if (t === "corvette") defaultCounts[t] = 3;
+        else if (t === "frigate") defaultCounts[t] = 2;
+        else if (t === "destroyer") defaultCounts[t] = 1;
+        else if (t === "carrier") defaultCounts[t] = 1;
+        else defaultCounts[t] = 1;
+      }
+      return defaultCounts;
+    })(),
+    spacing: 28,
+    jitter: { x: 80, y: 120 }
   },
-  frigate: {
-    maxHp: 80,
-    armor: 1,
-    maxShield: Math.round(80 * 0.6),
-    shieldRegen: 0.4,
-    dmg: 8,
-    damage: 8,
-    radius: 24,
-    cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
-    accel: 60,
-    turnRate: 2.2
-  },
-  destroyer: {
-    maxHp: 120,
-    armor: 2,
-    maxShield: Math.round(120 * 0.6),
-    shieldRegen: 0.3,
-    dmg: 12,
-    damage: 12,
-    radius: 40,
-    cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
-    accel: 40,
-    turnRate: 1.6,
-    turrets: [
-      { position: [1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-      { position: [-1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-      { position: [1.2, -0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-      { position: [-1.2, -0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-      { position: [0, 1.5], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-      { position: [0, -1.5], kind: "basic", targeting: "nearest", cooldown: 0.8 }
-    ]
-  },
-  carrier: {
-    maxHp: 200,
-    armor: 3,
-    maxShield: Math.round(200 * 0.6),
-    shieldRegen: 0.2,
-    dmg: 2,
-    damage: 2,
-    radius: 40,
-    cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
-    accel: 20,
-    turnRate: 0.8,
-    carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
-    turrets: [
-      { position: [2, 1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
-      { position: [-2, 1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
-      { position: [2, -1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
-      { position: [-2, -1.2], kind: "basic", targeting: "nearest", cooldown: 1 }
-    ]
+  // continuousReinforcement controls: enable/disable, scoreMargin is the
+  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
+  // perTick is the maximum ships considered per reinforcement tick, and
+  // shipTypes is an optional array of types to choose from randomly. If
+  // omitted, keys from defaultFleet.counts are used.
+  continuousReinforcement: {
+    enabled: false,
+    scoreMargin: 0.12,
+    perTick: 1,
+    interval: 5,
+    shipTypes: void 0
   }
 };
+var TEAM_DEFAULT = "red";
 
 // src/entities.ts
 var nextId = 1;
 function genId() {
   return nextId++;
 }
-function createBullet(x, y, vx, vy, team = "red", ownerId = null, damage = 1, ttl = 2) {
+function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
   return {
     id: genId(),
     x,
@@ -453,7 +354,17 @@ function createBullet(x, y, vx, vy, team = "red", ownerId = null, damage = 1, tt
   };
 }
 
+// src/config/behaviorConfig.ts
+var AI_THRESHOLDS = {
+  decisionTimerMin: 0.5,
+  decisionTimerMax: 2,
+  hpEvadeThreshold: 0.35,
+  randomLow: 0.15,
+  randomHigh: 0.85
+};
+
 // src/behavior.ts
+init_entitiesConfig();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -488,14 +399,23 @@ function tryFire(state2, ship, target, dt) {
       if (c.__cd > 0) continue;
       const spread = typeof c.spread === "number" ? c.spread : 0;
       const dir = aimWithSpread(ship, target, spread);
-      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : 240;
-      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : 3;
-      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : 2;
-      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : 1.5;
+      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
+      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : BULLET_DEFAULTS.damage;
+      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : BULLET_DEFAULTS.ttl;
+      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : BULLET_DEFAULTS.radius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+        createBullet(
+          ship.x || 0,
+          ship.y || 0,
+          vx,
+          vy,
+          ship.team || TEAM_DEFAULT,
+          ship.id || null,
+          dmg,
+          ttl
+        ),
         { radius }
       );
       state2.bullets.push(b);
@@ -511,7 +431,9 @@ function tryFire(state2, ship, target, dt) {
       if (turret.__cd > 0) continue;
       let turretTarget = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state2.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -523,14 +445,21 @@ function tryFire(state2, ship, target, dt) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
-        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state2.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
+        if (enemies.length)
+          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
         if (ship.__ai && ship.__ai.targetId != null) {
-          turretTarget = (state2.ships || []).find((sh) => sh && sh.id === ship.__ai.targetId) || null;
+          turretTarget = (state2.ships || []).find(
+            (sh) => sh && sh.id === ship.__ai.targetId
+          ) || null;
         }
       } else {
-        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state2.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -543,20 +472,32 @@ function tryFire(state2, ship, target, dt) {
         }
       }
       if (!turretTarget) continue;
-      const spread = 0.05;
+      const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
       const dir = aimWithSpread(ship, turretTarget, spread);
-      const speed = 240;
-      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : 3;
-      const ttl = 2;
-      const radius = 2;
+      const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
+      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : BULLET_DEFAULTS.damage;
+      const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;
+      const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
       const angle = ship.angle || 0;
+      const shipType = ship.type || "fighter";
+      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];
+      const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : ship.radius || 12;
       const [tx, ty] = turret.position || [0, 0];
-      const turretX = (ship.x || 0) + Math.cos(angle) * tx * (ship.radius || 12) - Math.sin(angle) * ty * (ship.radius || 12);
-      const turretY = (ship.y || 0) + Math.sin(angle) * tx * (ship.radius || 12) + Math.cos(angle) * ty * (ship.radius || 12);
+      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
+      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(turretX, turretY, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+        createBullet(
+          turretX,
+          turretY,
+          vx,
+          vy,
+          ship.team || TEAM_DEFAULT,
+          ship.id || null,
+          dmg,
+          ttl
+        ),
         { radius }
       );
       state2.bullets.push(b);
@@ -571,19 +512,12 @@ function ensureShipAiState(s) {
   return s.__ai;
 }
 function chooseNewTarget(state2, ship) {
-  const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
+  const enemies = (state2.ships || []).filter(
+    (sh) => sh && sh.team !== ship.team
+  );
   if (!enemies.length) return null;
   const idx = Math.floor(srandom() * enemies.length);
   return enemies[idx];
-}
-function steerAway(s, tx, ty, accel, dt) {
-  const dx = (s.x || 0) - tx;
-  const dy = (s.y || 0) - ty;
-  const d = Math.hypot(dx, dy) || 1;
-  const nx = dx / d;
-  const ny = dy / d;
-  s.vx = (s.vx || 0) + nx * accel * dt;
-  s.vy = (s.vy || 0) + ny * accel * dt;
 }
 function applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {
   if (!state2 || !Array.isArray(state2.ships)) return;
@@ -591,42 +525,400 @@ function applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {
     const ai = ensureShipAiState(s);
     ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
     let target = null;
-    if (ai.targetId != null) target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
+    if (ai.targetId != null)
+      target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
     if (!target) target = chooseNewTarget(state2, s);
     if (target) ai.targetId = target.id;
-    const accel = typeof s.accel === "number" ? s.accel : 100;
-    const maxSpeed = 160;
+    const maxAccel = typeof s.accel === "number" ? s.accel : 100;
+    const maxSpeed = typeof s.maxSpeed === "number" ? s.maxSpeed : 160;
+    s.steering = typeof s.steering === "number" ? s.steering : 0;
+    s.throttle = typeof s.throttle === "number" ? s.throttle : 0;
     if (!target) {
-      s.vx = (s.vx || 0) + srange(-1, 1) * 8 * dt;
-      s.vy = (s.vy || 0) + srange(-1, 1) * 8 * dt;
+      s.throttle = 0;
+      s.steering = 0;
       ai.state = "idle";
     } else {
       if (ai.decisionTimer <= 0) {
         const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
         const rnd = srandom();
-        if (hpFrac < 0.35 || rnd < 0.15) ai.state = "evade";
-        else if (rnd < 0.85) ai.state = "engage";
+        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = "evade";
+        else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = "engage";
         else ai.state = "idle";
-        ai.decisionTimer = 0.5 + srandom() * 1.5;
+        ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);
       }
+      const dx = (target.x || 0) - (s.x || 0);
+      const dy = (target.y || 0) - (s.y || 0);
+      const desiredAngle = Math.atan2(dy, dx);
+      const currentAngle = typeof s.angle === "number" ? s.angle : 0;
+      let da = desiredAngle - currentAngle;
+      while (da < -Math.PI) da += Math.PI * 2;
+      while (da > Math.PI) da -= Math.PI * 2;
+      const steeringNorm = Math.PI / 2;
+      const steering = Math.max(-1, Math.min(1, da / steeringNorm));
       if (ai.state === "engage") {
-        const aim = aimWithSpread(s, target, 0.05);
-        s.vx = (s.vx || 0) + aim.x * accel * dt;
-        s.vy = (s.vy || 0) + aim.y * accel * dt;
+        s.throttle = 1;
+        s.steering = steering;
         tryFire(state2, s, target, dt);
       } else if (ai.state === "evade") {
-        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
-        const ang = Math.atan2(s.vy || 0, s.vx || 0);
-        const perp = ang + Math.PI / 2 * (srandom() < 0.5 ? 1 : -1);
-        s.vx = (s.vx || 0) + Math.cos(perp) * accel * 0.2 * dt;
-        s.vy = (s.vy || 0) + Math.sin(perp) * accel * 0.2 * dt;
+        s.throttle = 0.8;
+        const awayAngle = Math.atan2(
+          (s.y || 0) - (target.y || 0),
+          (s.x || 0) - (target.x || 0)
+        );
+        let daAway = awayAngle - currentAngle;
+        while (daAway < -Math.PI) daAway += Math.PI * 2;
+        while (daAway > Math.PI) daAway -= Math.PI * 2;
+        s.steering = Math.max(-1, Math.min(1, daAway / steeringNorm));
       } else {
-        s.vx = (s.vx || 0) + srange(-0.5, 0.5) * 6 * dt;
-        s.vy = (s.vy || 0) + srange(-0.5, 0.5) * 6 * dt;
+        s.throttle = 0;
+        s.steering = 0;
       }
     }
     clampSpeed(s, maxSpeed);
   }
+}
+
+// src/simulate.ts
+function dist2(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+function simulateStep(state2, dtSeconds, bounds2) {
+  state2.t = (state2.t || 0) + dtSeconds;
+  for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {
+    const b = state2.bullets[i];
+    b.x += (b.vx || 0) * dtSeconds;
+    b.y += (b.vy || 0) * dtSeconds;
+    b.ttl = (b.ttl || 0) - dtSeconds;
+    let outX = b.x < 0 || b.x >= bounds2.W;
+    let outY = b.y < 0 || b.y >= bounds2.H;
+    let outOfBounds = outX || outY;
+    let remove = false;
+    if (b.ttl <= 0) remove = true;
+    else if (outOfBounds) {
+      switch (boundaryBehavior.bullets) {
+        case "remove":
+          remove = true;
+          break;
+        case "wrap":
+          if (b.x < 0) b.x += bounds2.W;
+          if (b.x >= bounds2.W) b.x -= bounds2.W;
+          if (b.y < 0) b.y += bounds2.H;
+          if (b.y >= bounds2.H) b.y -= bounds2.H;
+          break;
+        case "bounce":
+          if (outX) {
+            b.vx = -(b.vx || 0);
+            b.x = Math.max(0, Math.min(bounds2.W, b.x));
+          }
+          if (outY) {
+            b.vy = -(b.vy || 0);
+            b.y = Math.max(0, Math.min(bounds2.H, b.y));
+          }
+          break;
+      }
+    }
+    if (remove) state2.bullets.splice(i, 1);
+  }
+  function pruneHits(arr, bounds3) {
+    if (!Array.isArray(arr)) return arr;
+    return arr.filter(
+      (e) => typeof e.x === "number" && typeof e.y === "number" && e.x >= 0 && e.x < bounds3.W && e.y >= 0 && e.y < bounds3.H
+    );
+  }
+  if (Array.isArray(state2.shieldHits)) {
+    if (state2.particles) {
+      state2.particles = state2.particles.filter((p) => {
+        p.life = (p.life || p.ttl || 0) - dtSeconds;
+        return p.life > 0;
+      });
+    }
+  }
+  if (state2.explosions) {
+    state2.explosions = state2.explosions.filter((e) => {
+      e.life = (e.life || e.ttl || 0) - dtSeconds;
+      return e.life > 0;
+    });
+  }
+  state2.shieldHits = pruneHits(state2.shieldHits, bounds2);
+  if (Array.isArray(state2.healthHits))
+    state2.healthHits = pruneHits(state2.healthHits, bounds2);
+  if (Array.isArray(state2.explosions))
+    state2.explosions = pruneHits(state2.explosions, bounds2);
+  if (Array.isArray(state2.damageEvents))
+    state2.damageEvents = pruneHits(state2.damageEvents, bounds2);
+  for (let si = (state2.ships || []).length - 1; si >= 0; si--) {
+    const s = state2.ships[si];
+    const throttle = typeof s.throttle === "number" ? s.throttle : 0;
+    const steering = typeof s.steering === "number" ? s.steering : 0;
+    const accel = typeof s.accel === "number" ? s.accel : 0;
+    const turnRate = typeof s.turnRate === "number" ? s.turnRate : 3;
+    const maxSpeed = typeof s.maxSpeed === "number" ? s.maxSpeed : 160;
+    const angle = typeof s.angle === "number" ? s.angle : 0;
+    const maxTurn = turnRate * Math.abs(steering) * dtSeconds;
+    if (steering !== 0) {
+      let a = angle + Math.sign(steering) * maxTurn;
+      while (a < -Math.PI) a += Math.PI * 2;
+      while (a > Math.PI) a -= Math.PI * 2;
+      s.angle = a;
+    }
+    const actualAccel = accel * throttle;
+    if (actualAccel > 0) {
+      s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;
+      s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;
+    }
+    const friction = typeof s.friction === "number" ? s.friction : 0.98;
+    s.vx = (s.vx || 0) * friction;
+    s.vy = (s.vy || 0) * friction;
+    clampSpeed(s, maxSpeed);
+    s.x += (s.vx || 0) * dtSeconds;
+    s.y += (s.vy || 0) * dtSeconds;
+    const r = typeof s.radius === "number" ? s.radius : 12;
+    let outX = s.x < -r || s.x > bounds2.W + r;
+    let outY = s.y < -r || s.y > bounds2.H + r;
+    let outOfBounds = outX || outY;
+    let remove = false;
+    if (outOfBounds) {
+      switch (boundaryBehavior.ships) {
+        case "remove":
+          remove = true;
+          break;
+        case "wrap":
+          if (s.x < -r) s.x += bounds2.W + r * 2;
+          if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;
+          if (s.y < -r) s.y += bounds2.H + r * 2;
+          if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;
+          break;
+        case "bounce":
+          if (outX) {
+            s.vx = -(s.vx || 0);
+            s.x = Math.max(-r, Math.min(bounds2.W + r, s.x));
+          }
+          if (outY) {
+            s.vy = -(s.vy || 0);
+            s.y = Math.max(-r, Math.min(bounds2.H + r, s.y));
+          }
+          break;
+      }
+    }
+    if (remove) state2.ships.splice(si, 1);
+  }
+  for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {
+    const b = state2.bullets[bi];
+    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {
+      const s = state2.ships[si];
+      if (s.team === b.team) continue;
+      const r = (s.radius || 6) + (b.radius || 1);
+      if (dist2(b, s) <= r * r) {
+        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;
+        let dealtToShield = 0;
+        let dealtToHealth = 0;
+        const shield = s.shield || 0;
+        if (shield > 0) {
+          const absorbed = Math.min(shield, b.damage || 0);
+          s.shield = shield - absorbed;
+          const hitAngle = Math.atan2(
+            (b.y || 0) - (s.y || 0),
+            (b.x || 0) - (s.x || 0)
+          );
+          (state2.shieldHits ||= []).push({
+            id: s.id,
+            hitX: b.x,
+            hitY: b.y,
+            team: s.team,
+            amount: absorbed,
+            hitAngle
+          });
+          (state2.damageEvents ||= []).push({
+            id: s.id,
+            type: "shield",
+            amount: absorbed,
+            x: b.x,
+            y: b.y,
+            team: s.team,
+            attackerId: attacker && attacker.id
+          });
+          const remaining = (b.damage || 0) - absorbed;
+          if (remaining > 0) {
+            s.hp -= remaining;
+            (state2.healthHits ||= []).push({
+              id: s.id,
+              hitX: b.x,
+              hitY: b.y,
+              team: s.team,
+              amount: remaining
+            });
+            (state2.damageEvents ||= []).push({
+              id: s.id,
+              type: "hp",
+              amount: remaining,
+              x: b.x,
+              y: b.y,
+              team: s.team,
+              attackerId: attacker && attacker.id
+            });
+          }
+          dealtToShield = absorbed;
+          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
+        } else {
+          s.hp -= b.damage || 0;
+          (state2.healthHits ||= []).push({
+            id: s.id,
+            hitX: b.x,
+            hitY: b.y,
+            team: s.team,
+            amount: b.damage || 0
+          });
+          (state2.damageEvents ||= []).push({
+            id: s.id,
+            type: "hp",
+            amount: b.damage || 0,
+            x: b.x,
+            y: b.y,
+            team: s.team,
+            attackerId: attacker && attacker.id
+          });
+          dealtToHealth = b.damage || 0;
+        }
+        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+        s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+        if (attacker) {
+          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);
+          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
+            attacker.xp -= progression.xpToLevel(attacker.level || 1);
+            attacker.level = (attacker.level || 1) + 1;
+            const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+            const lvl = attacker.level || 1;
+            const hpScalar = resolveScalar(
+              progression.hpPercentPerLevel,
+              lvl
+            );
+            const shScalar = resolveScalar(
+              progression.shieldPercentPerLevel,
+              lvl
+            );
+            const dmgScalar = resolveScalar(
+              progression.dmgPercentPerLevel,
+              lvl
+            );
+            const speedScalar = resolveScalar(
+              progression.speedPercentPerLevel,
+              lvl
+            );
+            const regenScalar = resolveScalar(
+              progression.regenPercentPerLevel,
+              lvl
+            );
+            const hpMul = 1 + hpScalar;
+            const shMul = 1 + shScalar;
+            const dmgMul = 1 + dmgScalar;
+            attacker.maxHp = (attacker.maxHp || 0) * hpMul;
+            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
+            if (typeof attacker.maxShield === "number") {
+              attacker.maxShield = (attacker.maxShield || 0) * shMul;
+              attacker.shield = Math.min(
+                attacker.maxShield,
+                (attacker.shield || 0) * shMul
+              );
+            }
+            if (Array.isArray(attacker.cannons)) {
+              for (const c of attacker.cannons) {
+                if (typeof c.damage === "number") c.damage *= dmgMul;
+              }
+            }
+            if (typeof speedScalar === "number" && typeof attacker.accel === "number")
+              attacker.accel = attacker.accel * (1 + speedScalar);
+            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number")
+              attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
+          }
+        }
+        state2.bullets.splice(bi, 1);
+        if (s.hp <= 0) {
+          console.log(
+            "DEBUG: KILL BRANCH, attacker",
+            attacker && attacker.id,
+            "xp before",
+            attacker && attacker.xp
+          );
+          if (attacker) {
+            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);
+            console.log(
+              "DEBUG: KILL XP AWARDED, attacker",
+              attacker.id,
+              "xp after",
+              attacker.xp
+            );
+            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
+              attacker.xp -= progression.xpToLevel(attacker.level || 1);
+              attacker.level = (attacker.level || 1) + 1;
+              const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
+              const lvl = attacker.level || 1;
+              const hpScalar = resolveScalar(
+                progression.hpPercentPerLevel,
+                lvl
+              );
+              const shScalar = resolveScalar(
+                progression.shieldPercentPerLevel,
+                lvl
+              );
+              const dmgScalar = resolveScalar(
+                progression.dmgPercentPerLevel,
+                lvl
+              );
+              const speedScalar = resolveScalar(
+                progression.speedPercentPerLevel,
+                lvl
+              );
+              const regenScalar = resolveScalar(
+                progression.regenPercentPerLevel,
+                lvl
+              );
+              const hpMul = 1 + hpScalar;
+              const shMul = 1 + shScalar;
+              const dmgMul = 1 + dmgScalar;
+              attacker.maxHp = (attacker.maxHp || 0) * hpMul;
+              attacker.hp = Math.min(
+                attacker.maxHp,
+                (attacker.hp || 0) * hpMul
+              );
+              if (typeof attacker.maxShield === "number") {
+                attacker.maxShield = (attacker.maxShield || 0) * shMul;
+                attacker.shield = Math.min(
+                  attacker.maxShield,
+                  (attacker.shield || 0) * shMul
+                );
+              }
+              if (Array.isArray(attacker.cannons)) {
+                for (const c of attacker.cannons) {
+                  if (typeof c.damage === "number") c.damage *= dmgMul;
+                }
+              }
+              if (typeof speedScalar === "number" && typeof attacker.accel === "number")
+                attacker.accel = attacker.accel * (1 + speedScalar);
+              if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number")
+                attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
+            }
+          }
+          (state2.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });
+          state2.ships.splice(si, 1);
+        }
+        break;
+      }
+    }
+  }
+  for (const s of state2.ships || []) {
+    if (s.maxShield)
+      s.shield = Math.min(
+        s.maxShield,
+        (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds
+      );
+  }
+  for (const s of state2.ships || []) {
+    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+    s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+  }
+  return state2;
 }
 
 // src/simWorker.ts

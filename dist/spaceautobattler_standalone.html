@@ -210,7 +210,7 @@ body {
   <div id="toast"></div>
   <script type="module">
 
-			const __workerCode = "// src/config/progressionConfig.ts\nvar progression = {\n  xpPerDamage: 1,\n  xpPerKill: 50,\n  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),\n  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),\n  dmgPercentPerLevel: 0.08,\n  shieldPercentPerLevel: 0.06,\n  speedPercentPerLevel: 0.03,\n  regenPercentPerLevel: 0.04\n};\n\n// src/simulate.ts\nfunction dist2(a, b) {\n  const dx = a.x - b.x;\n  const dy = a.y - b.y;\n  return dx * dx + dy * dy;\n}\nfunction simulateStep(state2, dtSeconds, bounds2) {\n  state2.t = (state2.t || 0) + dtSeconds;\n  for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {\n    const b = state2.bullets[i];\n    b.x += (b.vx || 0) * dtSeconds;\n    b.y += (b.vy || 0) * dtSeconds;\n    b.ttl = (b.ttl || 0) - dtSeconds;\n    if (b.ttl <= 0 || b.x < 0 || b.x >= bounds2.W || b.y < 0 || b.y >= bounds2.H) {\n      state2.bullets.splice(i, 1);\n    }\n  }\n  function pruneHits(arr, bounds3) {\n    if (!Array.isArray(arr)) return arr;\n    return arr.filter((e) => typeof e.x === \"number\" && typeof e.y === \"number\" && e.x >= 0 && e.x < bounds3.W && e.y >= 0 && e.y < bounds3.H);\n  }\n  if (Array.isArray(state2.shieldHits)) state2.shieldHits = pruneHits(state2.shieldHits, bounds2);\n  if (Array.isArray(state2.healthHits)) state2.healthHits = pruneHits(state2.healthHits, bounds2);\n  if (Array.isArray(state2.explosions)) state2.explosions = pruneHits(state2.explosions, bounds2);\n  if (Array.isArray(state2.damageEvents)) state2.damageEvents = pruneHits(state2.damageEvents, bounds2);\n  for (const s of state2.ships || []) {\n    s.x += (s.vx || 0) * dtSeconds;\n    s.y += (s.vy || 0) * dtSeconds;\n    const r = typeof s.radius === \"number\" ? s.radius : 12;\n    if (typeof bounds2.W === \"number\" && bounds2.W > 0) {\n      if (s.x < -r) s.x += bounds2.W + r * 2;\n      if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;\n    }\n    if (typeof bounds2.H === \"number\" && bounds2.H > 0) {\n      if (s.y < -r) s.y += bounds2.H + r * 2;\n      if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;\n    }\n    const speed2 = (s.vx || 0) * (s.vx || 0) + (s.vy || 0) * (s.vy || 0);\n    const minSpeed = 0.5;\n    if (speed2 > minSpeed * minSpeed) {\n      const desired = Math.atan2(s.vy || 0, s.vx || 0);\n      if (typeof s.angle !== \"number\") s.angle = desired;\n      else {\n        let a = s.angle;\n        let da = desired - a;\n        while (da < -Math.PI) da += Math.PI * 2;\n        while (da > Math.PI) da -= Math.PI * 2;\n        const turnRate = typeof s.turnRate === \"number\" ? s.turnRate : 3;\n        const maxTurn = turnRate * dtSeconds;\n        if (Math.abs(da) < maxTurn) a = desired;\n        else a += Math.sign(da) * maxTurn;\n        while (a < -Math.PI) a += Math.PI * 2;\n        while (a > Math.PI) a -= Math.PI * 2;\n        s.angle = a;\n      }\n    }\n  }\n  for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {\n    const b = state2.bullets[bi];\n    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n      const s = state2.ships[si];\n      if (s.team === b.team) continue;\n      const r = (s.radius || 6) + (b.radius || 1);\n      if (dist2(b, s) <= r * r) {\n        const attacker = typeof b.ownerId === \"number\" || typeof b.ownerId === \"string\" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;\n        let dealtToShield = 0;\n        let dealtToHealth = 0;\n        const shield = s.shield || 0;\n        if (shield > 0) {\n          const absorbed = Math.min(shield, b.damage || 0);\n          s.shield = shield - absorbed;\n          const hitAngle = Math.atan2((b.y || 0) - (s.y || 0), (b.x || 0) - (s.x || 0));\n          (state2.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed, hitAngle });\n          (state2.damageEvents ||= []).push({ id: s.id, type: \"shield\", amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });\n          const remaining = (b.damage || 0) - absorbed;\n          if (remaining > 0) {\n            s.hp -= remaining;\n            (state2.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });\n            (state2.damageEvents ||= []).push({ id: s.id, type: \"hp\", amount: remaining, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });\n          }\n          dealtToShield = absorbed;\n          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);\n        } else {\n          s.hp -= b.damage || 0;\n          (state2.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });\n          (state2.damageEvents ||= []).push({ id: s.id, type: \"hp\", amount: b.damage || 0, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });\n          dealtToHealth = b.damage || 0;\n        }\n        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n        s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n        if (attacker) {\n          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);\n          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n            attacker.xp -= progression.xpToLevel(attacker.level || 1);\n            attacker.level = (attacker.level || 1) + 1;\n            const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n            const lvl = attacker.level || 1;\n            const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);\n            const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);\n            const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);\n            const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);\n            const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);\n            const hpMul = 1 + hpScalar;\n            const shMul = 1 + shScalar;\n            const dmgMul = 1 + dmgScalar;\n            attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);\n            if (typeof attacker.maxShield === \"number\") {\n              attacker.maxShield = (attacker.maxShield || 0) * shMul;\n              attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);\n            }\n            if (Array.isArray(attacker.cannons)) {\n              for (const c of attacker.cannons) {\n                if (typeof c.damage === \"number\") c.damage *= dmgMul;\n              }\n            }\n            if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\") attacker.accel = attacker.accel * (1 + speedScalar);\n            if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n          }\n        }\n        state2.bullets.splice(bi, 1);\n        if (s.hp <= 0) {\n          if (attacker) {\n            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);\n            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n              attacker.xp -= progression.xpToLevel(attacker.level || 1);\n              attacker.level = (attacker.level || 1) + 1;\n              const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n              const lvl = attacker.level || 1;\n              const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);\n              const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);\n              const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);\n              const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);\n              const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);\n              const hpMul = 1 + hpScalar;\n              const shMul = 1 + shScalar;\n              const dmgMul = 1 + dmgScalar;\n              attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n              attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);\n              if (typeof attacker.maxShield === \"number\") {\n                attacker.maxShield = (attacker.maxShield || 0) * shMul;\n                attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);\n              }\n              if (Array.isArray(attacker.cannons)) {\n                for (const c of attacker.cannons) {\n                  if (typeof c.damage === \"number\") c.damage *= dmgMul;\n                }\n              }\n              if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\") attacker.accel = attacker.accel * (1 + speedScalar);\n              if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n            }\n          }\n          (state2.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });\n          state2.ships.splice(si, 1);\n        }\n        break;\n      }\n    }\n  }\n  for (const s of state2.ships || []) {\n    if (s.maxShield) s.shield = Math.min(s.maxShield, (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds);\n  }\n  for (const s of state2.ships || []) {\n    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n    s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n  }\n  return state2;\n}\n\n// src/rng.ts\nvar _seed = 1;\nfunction srand(seed = 1) {\n  _seed = seed >>> 0;\n}\nfunction mulberry32(a) {\n  return function() {\n    let t = (a += 1831565813) >>> 0;\n    t = Math.imul(t ^ t >>> 15, t | 1);\n    t ^= t + Math.imul(t ^ t >>> 7, t | 61);\n    return ((t ^ t >>> 14) >>> 0) / 4294967296;\n  };\n}\nfunction srandom() {\n  const f = mulberry32(_seed);\n  _seed = _seed + 2654435761 >>> 0;\n  return f();\n}\nfunction srange(min, max) {\n  return min + (max - min) * srandom();\n}\n\n// src/config/assets/assetsConfig.ts\nvar AssetsConfig = {\n  meta: {\n    orientation: \"+X\",\n    coordinateSystem: \"topdown-2d\"\n  },\n  palette: {\n    shipHull: \"#b0b7c3\",\n    shipAccent: \"#6c7380\",\n    bullet: \"#ffd166\",\n    turret: \"#94a3b8\",\n    // Scene background color used by renderers\n    background: \"#0b1220\"\n  },\n  // 2D vector shapes defined as polygons and circles. Points are unit-sized\n  // profiles (roughly radius 1). Renderer should multiply by entity radius or\n  // provided scale before drawing.\n  shapes2d: {\n    fighter: {\n      type: \"compound\",\n      parts: [\n        { type: \"polygon\", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },\n        { type: \"polygon\", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },\n        { type: \"polygon\", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },\n        { type: \"circle\", r: 0.5 }\n      ],\n      strokeWidth: 0.08,\n      model3d: { url: void 0, scale: 1, type: \"gltf\", mesh: void 0 }\n    },\n    corvette: {\n      type: \"compound\",\n      parts: [\n        { type: \"polygon\", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },\n        { type: \"polygon\", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },\n        { type: \"circle\", r: 0.6 }\n      ],\n      strokeWidth: 0.08,\n      model3d: { url: void 0, scale: 1.4, type: \"gltf\", mesh: void 0 }\n    },\n    frigate: {\n      type: \"compound\",\n      parts: [\n        { type: \"polygon\", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },\n        { type: \"circle\", r: 0.7 }\n      ],\n      strokeWidth: 0.1,\n      model3d: { url: void 0, scale: 1.8, type: \"gltf\", mesh: void 0 }\n    },\n    destroyer: {\n      type: \"compound\",\n      parts: [\n        { type: \"polygon\", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },\n        { type: \"circle\", r: 1 },\n        { type: \"polygon\", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }\n      ],\n      strokeWidth: 0.12,\n      model3d: { url: void 0, scale: 2.2, type: \"gltf\", mesh: void 0 },\n      turrets: [\n        { kind: \"basic\", position: [1.2, 0.8] },\n        { kind: \"basic\", position: [-1.2, 0.8] },\n        { kind: \"basic\", position: [1.2, -0.8] },\n        { kind: \"basic\", position: [-1.2, -0.8] },\n        { kind: \"basic\", position: [0, 1.5] },\n        { kind: \"basic\", position: [0, -1.5] }\n      ]\n    },\n    carrier: {\n      type: \"compound\",\n      parts: [\n        { type: \"polygon\", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },\n        { type: \"circle\", r: 1.2 },\n        { type: \"polygon\", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }\n      ],\n      strokeWidth: 0.12,\n      model3d: { url: void 0, scale: 3, type: \"gltf\", mesh: void 0 },\n      turrets: [\n        { kind: \"basic\", position: [2, 1.2] },\n        { kind: \"basic\", position: [-2, 1.2] },\n        { kind: \"basic\", position: [2, -1.2] },\n        { kind: \"basic\", position: [-2, -1.2] }\n      ]\n    },\n    bulletSmall: { type: \"circle\", r: 0.18 },\n    bulletMedium: { type: \"circle\", r: 0.25 },\n    bulletLarge: { type: \"circle\", r: 0.36 },\n    turretBasic: {\n      type: \"compound\",\n      parts: [\n        { type: \"circle\", r: 0.5 },\n        { type: \"polygon\", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }\n      ],\n      strokeWidth: 0.08\n    },\n    // Small effect/particle shapes for renderer-driven effects\n    particleSmall: { type: \"circle\", r: 0.12 },\n    particleMedium: { type: \"circle\", r: 0.22 },\n    explosionParticle: { type: \"circle\", r: 0.32 },\n    shieldRing: { type: \"circle\", r: 1.2 }\n  }\n};\nAssetsConfig.animations = {\n  engineFlare: {\n    type: \"polygon\",\n    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],\n    pulseRate: 8,\n    // configurable alpha multiplier for engine overlay\n    alpha: 0.4,\n    // local-space X offset (negative = behind ship)\n    offset: -0.9\n  },\n  shieldEffect: {\n    type: \"circle\",\n    r: 1.2,\n    strokeWidth: 0.1,\n    color: \"#88ccff\",\n    pulseRate: 2,\n    // map shieldPct -> alpha = base + scale * shieldPct\n    alphaBase: 0.25,\n    alphaScale: 0.75\n  },\n  damageParticles: {\n    type: \"particles\",\n    color: \"#ff6b6b\",\n    count: 6,\n    lifetime: 0.8,\n    spread: 0.6\n  },\n  engineTrail: {\n    type: \"trail\",\n    color: \"#fffc00\",\n    // bright yellow for high contrast\n    maxLength: 40,\n    // much longer trail\n    width: 0.35,\n    // thicker trail line\n    fade: 0.35\n    // slower fading, more persistent\n  }\n};\nAssetsConfig.damageStates = {\n  light: { opacity: 0.9, accentColor: \"#b0b7c3\" },\n  moderate: { opacity: 0.75, accentColor: \"#d4a06a\" },\n  heavy: { opacity: 0.5, accentColor: \"#ff6b6b\" }\n};\nAssetsConfig.visualStateDefaults = {\n  fighter: { engine: \"engineFlare\", shield: \"shieldEffect\", damageParticles: \"damageParticles\", engineTrail: \"engineTrail\", arcWidth: Math.PI / 12 },\n  corvette: { engine: \"engineFlare\", shield: \"shieldEffect\", damageParticles: \"damageParticles\", engineTrail: \"engineTrail\", arcWidth: Math.PI / 12 },\n  frigate: { engine: \"engineFlare\", shield: \"shieldEffect\", damageParticles: \"damageParticles\", engineTrail: \"engineTrail\", arcWidth: Math.PI / 12 },\n  destroyer: { engine: \"engineFlare\", shield: \"shieldEffect\", damageParticles: \"damageParticles\", engineTrail: \"engineTrail\", arcWidth: Math.PI / 12 },\n  carrier: { engine: \"engineFlare\", shield: \"shieldEffect\", damageParticles: \"damageParticles\", engineTrail: \"engineTrail\", arcWidth: Math.PI / 12 }\n};\nAssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };\nAssetsConfig.shieldArcWidth = Math.PI / 12;\n\n// src/config/entitiesConfig.ts\nvar ShipConfig = {\n  fighter: {\n    maxHp: 15,\n    armor: 0,\n    maxShield: 8,\n    shieldRegen: 1,\n    dmg: 3,\n    damage: 3,\n    radius: 12,\n    cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],\n    accel: 150,\n    turnRate: 6\n  },\n  corvette: {\n    maxHp: 50,\n    armor: 0,\n    maxShield: Math.round(50 * 0.6),\n    shieldRegen: 0.5,\n    dmg: 5,\n    damage: 5,\n    radius: 20,\n    accel: 80,\n    turnRate: 3,\n    cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]\n  },\n  frigate: {\n    maxHp: 80,\n    armor: 1,\n    maxShield: Math.round(80 * 0.6),\n    shieldRegen: 0.4,\n    dmg: 8,\n    damage: 8,\n    radius: 24,\n    cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],\n    accel: 60,\n    turnRate: 2.2\n  },\n  destroyer: {\n    maxHp: 120,\n    armor: 2,\n    maxShield: Math.round(120 * 0.6),\n    shieldRegen: 0.3,\n    dmg: 12,\n    damage: 12,\n    radius: 40,\n    cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),\n    accel: 40,\n    turnRate: 1.6,\n    turrets: [\n      { position: [1.2, 0.8], kind: \"basic\", targeting: \"nearest\", cooldown: 0.8 },\n      { position: [-1.2, 0.8], kind: \"basic\", targeting: \"nearest\", cooldown: 0.8 },\n      { position: [1.2, -0.8], kind: \"basic\", targeting: \"nearest\", cooldown: 0.8 },\n      { position: [-1.2, -0.8], kind: \"basic\", targeting: \"nearest\", cooldown: 0.8 },\n      { position: [0, 1.5], kind: \"basic\", targeting: \"nearest\", cooldown: 0.8 },\n      { position: [0, -1.5], kind: \"basic\", targeting: \"nearest\", cooldown: 0.8 }\n    ]\n  },\n  carrier: {\n    maxHp: 200,\n    armor: 3,\n    maxShield: Math.round(200 * 0.6),\n    shieldRegen: 0.2,\n    dmg: 2,\n    damage: 2,\n    radius: 40,\n    cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),\n    accel: 20,\n    turnRate: 0.8,\n    carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },\n    turrets: [\n      { position: [2, 1.2], kind: \"basic\", targeting: \"nearest\", cooldown: 1 },\n      { position: [-2, 1.2], kind: \"basic\", targeting: \"nearest\", cooldown: 1 },\n      { position: [2, -1.2], kind: \"basic\", targeting: \"nearest\", cooldown: 1 },\n      { position: [-2, -1.2], kind: \"basic\", targeting: \"nearest\", cooldown: 1 }\n    ]\n  }\n};\n\n// src/entities.ts\nvar nextId = 1;\nfunction genId() {\n  return nextId++;\n}\nfunction createBullet(x, y, vx, vy, team = \"red\", ownerId = null, damage = 1, ttl = 2) {\n  return {\n    id: genId(),\n    x,\n    y,\n    vx,\n    vy,\n    team,\n    ownerId,\n    damage,\n    ttl\n  };\n}\n\n// src/behavior.ts\nfunction len2(vx, vy) {\n  return vx * vx + vy * vy;\n}\nfunction clampSpeed(s, max) {\n  const v2 = len2(s.vx || 0, s.vy || 0);\n  const max2 = max * max;\n  if (v2 > max2 && v2 > 0) {\n    const inv = max / Math.sqrt(v2);\n    s.vx = (s.vx || 0) * inv;\n    s.vy = (s.vy || 0) * inv;\n  }\n}\nfunction aimWithSpread(from, to, spread = 0) {\n  let dx = (to.x || 0) - (from.x || 0);\n  let dy = (to.y || 0) - (from.y || 0);\n  const d = Math.hypot(dx, dy) || 1;\n  dx /= d;\n  dy /= d;\n  if (spread > 0) {\n    const ang = Math.atan2(dy, dx);\n    const jitter = srange(-spread, spread);\n    const na = ang + jitter;\n    return { x: Math.cos(na), y: Math.sin(na) };\n  }\n  return { x: dx, y: dy };\n}\nfunction tryFire(state2, ship, target, dt) {\n  if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {\n    for (const c of ship.cannons) {\n      if (typeof c.__cd !== \"number\") c.__cd = 0;\n      c.__cd -= dt;\n      if (c.__cd > 0) continue;\n      const spread = typeof c.spread === \"number\" ? c.spread : 0;\n      const dir = aimWithSpread(ship, target, spread);\n      const speed = typeof c.muzzleSpeed === \"number\" ? c.muzzleSpeed : 240;\n      const dmg = typeof c.damage === \"number\" ? c.damage : typeof ship.damage === \"number\" ? ship.damage : typeof ship.dmg === \"number\" ? ship.dmg : 3;\n      const ttl = typeof c.bulletTTL === \"number\" ? c.bulletTTL : 2;\n      const radius = typeof c.bulletRadius === \"number\" ? c.bulletRadius : 1.5;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || \"red\", ship.id || null, dmg, ttl),\n        { radius }\n      );\n      state2.bullets.push(b);\n      const rate = typeof c.rate === \"number\" && c.rate > 0 ? c.rate : 1;\n      c.__cd = 1 / rate;\n    }\n  }\n  if (Array.isArray(ship.turrets) && ship.turrets.length > 0) {\n    for (const [i, turret] of ship.turrets.entries()) {\n      if (!turret) continue;\n      if (typeof turret.__cd !== \"number\") turret.__cd = 0;\n      turret.__cd -= dt;\n      if (turret.__cd > 0) continue;\n      let turretTarget = null;\n      if (turret.targeting === \"nearest\") {\n        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      } else if (turret.targeting === \"random\") {\n        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);\n        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];\n      } else if (turret.targeting === \"focus\") {\n        if (ship.__ai && ship.__ai.targetId != null) {\n          turretTarget = (state2.ships || []).find((sh) => sh && sh.id === ship.__ai.targetId) || null;\n        }\n      } else {\n        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      }\n      if (!turretTarget) continue;\n      const spread = 0.05;\n      const dir = aimWithSpread(ship, turretTarget, spread);\n      const speed = 240;\n      const dmg = typeof turret.damage === \"number\" ? turret.damage : typeof ship.damage === \"number\" ? ship.damage : 3;\n      const ttl = 2;\n      const radius = 2;\n      const angle = ship.angle || 0;\n      const [tx, ty] = turret.position || [0, 0];\n      const turretX = (ship.x || 0) + Math.cos(angle) * tx * (ship.radius || 12) - Math.sin(angle) * ty * (ship.radius || 12);\n      const turretY = (ship.y || 0) + Math.sin(angle) * tx * (ship.radius || 12) + Math.cos(angle) * ty * (ship.radius || 12);\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(turretX, turretY, vx, vy, ship.team || \"red\", ship.id || null, dmg, ttl),\n        { radius }\n      );\n      state2.bullets.push(b);\n      turret.__cd = typeof turret.cooldown === \"number\" && turret.cooldown > 0 ? turret.cooldown : 1;\n    }\n  }\n}\nfunction ensureShipAiState(s) {\n  if (!s.__ai) {\n    s.__ai = { state: \"idle\", decisionTimer: 0, targetId: null };\n  }\n  return s.__ai;\n}\nfunction chooseNewTarget(state2, ship) {\n  const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);\n  if (!enemies.length) return null;\n  const idx = Math.floor(srandom() * enemies.length);\n  return enemies[idx];\n}\nfunction steerAway(s, tx, ty, accel, dt) {\n  const dx = (s.x || 0) - tx;\n  const dy = (s.y || 0) - ty;\n  const d = Math.hypot(dx, dy) || 1;\n  const nx = dx / d;\n  const ny = dy / d;\n  s.vx = (s.vx || 0) + nx * accel * dt;\n  s.vy = (s.vy || 0) + ny * accel * dt;\n}\nfunction applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {\n  if (!state2 || !Array.isArray(state2.ships)) return;\n  for (const s of state2.ships) {\n    const ai = ensureShipAiState(s);\n    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);\n    let target = null;\n    if (ai.targetId != null) target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;\n    if (!target) target = chooseNewTarget(state2, s);\n    if (target) ai.targetId = target.id;\n    const accel = typeof s.accel === \"number\" ? s.accel : 100;\n    const maxSpeed = 160;\n    if (!target) {\n      s.vx = (s.vx || 0) + srange(-1, 1) * 8 * dt;\n      s.vy = (s.vy || 0) + srange(-1, 1) * 8 * dt;\n      ai.state = \"idle\";\n    } else {\n      if (ai.decisionTimer <= 0) {\n        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);\n        const rnd = srandom();\n        if (hpFrac < 0.35 || rnd < 0.15) ai.state = \"evade\";\n        else if (rnd < 0.85) ai.state = \"engage\";\n        else ai.state = \"idle\";\n        ai.decisionTimer = 0.5 + srandom() * 1.5;\n      }\n      if (ai.state === \"engage\") {\n        const aim = aimWithSpread(s, target, 0.05);\n        s.vx = (s.vx || 0) + aim.x * accel * dt;\n        s.vy = (s.vy || 0) + aim.y * accel * dt;\n        tryFire(state2, s, target, dt);\n      } else if (ai.state === \"evade\") {\n        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);\n        const ang = Math.atan2(s.vy || 0, s.vx || 0);\n        const perp = ang + Math.PI / 2 * (srandom() < 0.5 ? 1 : -1);\n        s.vx = (s.vx || 0) + Math.cos(perp) * accel * 0.2 * dt;\n        s.vy = (s.vy || 0) + Math.sin(perp) * accel * 0.2 * dt;\n      } else {\n        s.vx = (s.vx || 0) + srange(-0.5, 0.5) * 6 * dt;\n        s.vy = (s.vy || 0) + srange(-0.5, 0.5) * 6 * dt;\n      }\n    }\n    clampSpeed(s, maxSpeed);\n  }\n}\n\n// src/simWorker.ts\nvar state = null;\nvar bounds = { W: 800, H: 600 };\nvar simDtMs = 16;\nvar running = false;\nvar acc = 0;\nvar last = 0;\nfunction postSnapshot() {\n  try {\n    postMessage({ type: \"snapshot\", state });\n    try {\n      clearTransientEvents(state);\n    } catch (e) {\n    }\n  } catch (e) {\n  }\n}\nfunction clearTransientEvents(s) {\n  if (!s || typeof s !== \"object\") return;\n  try {\n    if (Array.isArray(s.explosions)) s.explosions.length = 0;\n    if (Array.isArray(s.shieldHits)) s.shieldHits.length = 0;\n    if (Array.isArray(s.healthHits)) s.healthHits.length = 0;\n  } catch (e) {\n  }\n}\nfunction tick() {\n  if (!running) return;\n  const now = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n  if (!last) last = now;\n  acc += now - last;\n  last = now;\n  if (acc > 250) acc = 250;\n  while (acc >= simDtMs) {\n    try {\n      applySimpleAI(state, simDtMs / 1e3, bounds);\n      simulateStep(state, simDtMs / 1e3, bounds);\n    } catch (e) {\n      const errAny = e;\n      const stack = errAny && errAny.stack ? errAny.stack : \"\";\n      postMessage({ type: \"error\", message: String(e), stack });\n    }\n    acc -= simDtMs;\n  }\n  postSnapshot();\n  setTimeout(tick, 0);\n}\nself.onmessage = (ev) => {\n  const msg = ev.data;\n  try {\n    switch (msg && msg.type) {\n      case \"init\":\n        if (typeof msg.seed === \"number\") srand(msg.seed);\n        if (msg.bounds) bounds = msg.bounds;\n        if (typeof msg.simDtMs === \"number\") simDtMs = msg.simDtMs;\n        if (msg.state) state = msg.state;\n        postMessage({ type: \"ready\" });\n        break;\n      case \"start\":\n        if (!state) {\n          postMessage({ type: \"error\", message: \"no state\" });\n          break;\n        }\n        running = true;\n        acc = 0;\n        last = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n        tick();\n        break;\n      case \"stop\":\n        running = false;\n        break;\n      case \"snapshotRequest\":\n        postSnapshot();\n        break;\n      case \"setSeed\":\n        if (typeof msg.seed === \"number\") {\n          srand(msg.seed);\n        }\n        break;\n      case \"command\":\n        if (msg.cmd === \"spawnShip\" && state) {\n          state.ships.push(msg.args.ship);\n        } else if (msg.cmd === \"spawnShipBullet\" && state) {\n          state.bullets.push(msg.args.bullet);\n        } else if (msg.cmd === \"setState\") {\n          state = msg.args.state;\n        }\n        break;\n      default:\n        break;\n    }\n  } catch (err) {\n    const stack = err && err.stack ? err.stack : \"\";\n    postMessage({ type: \"error\", message: String(err), stack });\n  }\n};\nvar simWorker_default = null;\nexport {\n  clearTransientEvents,\n  simWorker_default as default\n};\n//# sourceMappingURL=simWorker.js.map\n";
+			const __workerCode = "var __defProp = Object.defineProperty;\nvar __getOwnPropDesc = Object.getOwnPropertyDescriptor;\nvar __getOwnPropNames = Object.getOwnPropertyNames;\nvar __hasOwnProp = Object.prototype.hasOwnProperty;\nvar __esm = (fn, res) => function __init() {\n  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;\n};\nvar __export = (target, all) => {\n  for (var name in all)\n    __defProp(target, name, { get: all[name], enumerable: true });\n};\nvar __copyProps = (to, from, except, desc) => {\n  if (from && typeof from === \"object\" || typeof from === \"function\") {\n    for (let key of __getOwnPropNames(from))\n      if (!__hasOwnProp.call(to, key) && key !== except)\n        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n  }\n  return to;\n};\nvar __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n// src/config/entitiesConfig.ts\nvar entitiesConfig_exports = {};\n__export(entitiesConfig_exports, {\n  BULLET_DEFAULTS: () => BULLET_DEFAULTS,\n  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,\n  ShipConfig: () => ShipConfig,\n  bulletKindForRadius: () => bulletKindForRadius,\n  default: () => entitiesConfig_default,\n  getDefaultShipType: () => getDefaultShipType,\n  getShipConfig: () => getShipConfig\n});\nfunction getShipConfig() {\n  return ShipConfig;\n}\nfunction bulletKindForRadius(r) {\n  if (r < 2) return \"small\";\n  if (r < 2.5) return \"medium\";\n  if (r < 3.5) return \"large\";\n  return \"heavy\";\n}\nfunction getDefaultShipType() {\n  return Object.keys(ShipConfig)[0] || \"fighter\";\n}\nvar ShipConfig, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;\nvar init_entitiesConfig = __esm({\n  \"src/config/entitiesConfig.ts\"() {\n    \"use strict\";\n    ShipConfig = {\n      fighter: {\n        maxHp: 15,\n        armor: 0,\n        maxShield: 8,\n        shieldRegen: 1,\n        dmg: 3,\n        damage: 3,\n        radius: 12,\n        cannons: [\n          {\n            damage: 3,\n            rate: 3,\n            spread: 0.1,\n            muzzleSpeed: 260,\n            // was 300\n            bulletRadius: 1.5,\n            bulletTTL: 1.1\n            // was 1.2\n          }\n        ],\n        accel: 5,\n        turnRate: 6,\n        maxSpeed: 160\n      },\n      corvette: {\n        maxHp: 50,\n        armor: 0,\n        maxShield: Math.round(50 * 0.6),\n        shieldRegen: 0.5,\n        dmg: 5,\n        damage: 5,\n        radius: 20,\n        accel: 5,\n        turnRate: 3.5,\n        // was 3\n        maxSpeed: 145,\n        // was 140\n        cannons: [\n          {\n            damage: 6,\n            rate: 1.2,\n            spread: 0.05,\n            muzzleSpeed: 180,\n            // was 220\n            bulletRadius: 2,\n            bulletTTL: 1.8\n            // was 2.0\n          }\n        ]\n      },\n      frigate: {\n        maxHp: 80,\n        armor: 1,\n        maxShield: Math.round(80 * 0.6),\n        shieldRegen: 0.4,\n        dmg: 8,\n        damage: 8,\n        radius: 24,\n        cannons: [\n          {\n            damage: 8,\n            rate: 1,\n            spread: 0.06,\n            muzzleSpeed: 180,\n            // was 200\n            bulletRadius: 2.5,\n            bulletTTL: 2\n            // was 2.2\n          }\n        ],\n        accel: 5,\n        turnRate: 2.5,\n        // was 2.2\n        maxSpeed: 125\n        // was 120\n      },\n      destroyer: {\n        maxHp: 120,\n        armor: 2,\n        maxShield: Math.round(120 * 0.6),\n        shieldRegen: 0.3,\n        dmg: 12,\n        damage: 12,\n        radius: 40,\n        cannons: new Array(6).fill(0).map(() => ({\n          damage: 6,\n          rate: 0.8,\n          spread: 0.08,\n          muzzleSpeed: 160,\n          // was 240\n          bulletRadius: 2.5,\n          bulletTTL: 1.8\n          // was 2.4\n        })),\n        accel: 5,\n        turnRate: 2,\n        // was 1.6\n        maxSpeed: 110,\n        // was 100\n        turrets: [\n          {\n            position: [1.2, 0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [-1.2, 0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [1.2, -0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [-1.2, -0.8],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [0, 1.5],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          },\n          {\n            position: [0, -1.5],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 0.8\n          }\n        ]\n      },\n      carrier: {\n        maxHp: 200,\n        armor: 3,\n        maxShield: Math.round(200 * 0.6),\n        shieldRegen: 0.2,\n        dmg: 2,\n        damage: 2,\n        radius: 40,\n        cannons: new Array(4).fill(0).map(() => ({\n          damage: 4,\n          rate: 0.6,\n          spread: 0.12,\n          muzzleSpeed: 140,\n          // was 180\n          bulletRadius: 3,\n          bulletTTL: 2.2\n          // was 2.8\n        })),\n        accel: 5,\n        turnRate: 1.2,\n        // was 0.8\n        maxSpeed: 95,\n        // was 80\n        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },\n        turrets: [\n          {\n            position: [2, 1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [-2, 1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [2, -1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          },\n          {\n            position: [-2, -1.2],\n            kind: \"basic\",\n            targeting: \"nearest\",\n            cooldown: 1\n          }\n        ]\n      }\n    };\n    BULLET_DEFAULTS = {\n      damage: 1,\n      ttl: 2,\n      radius: 1.5,\n      muzzleSpeed: 240\n    };\n    PARTICLE_DEFAULTS = {\n      ttl: 1,\n      color: \"#fff\",\n      size: 2\n    };\n    entitiesConfig_default = ShipConfig;\n  }\n});\n\n// src/config/progressionConfig.ts\nvar progression = {\n  xpPerDamage: 1,\n  xpPerKill: 50,\n  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),\n  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),\n  dmgPercentPerLevel: 0.08,\n  shieldPercentPerLevel: 0.06,\n  speedPercentPerLevel: 0.03,\n  regenPercentPerLevel: 0.04\n};\n\n// src/config/simConfig.ts\nvar boundaryBehavior = {\n  ships: \"wrap\",\n  bullets: \"remove\"\n};\n\n// src/rng.ts\nvar _seed = 1;\nfunction srand(seed = 1) {\n  _seed = seed >>> 0;\n}\nfunction mulberry32(a) {\n  return function() {\n    let t = (a += 1831565813) >>> 0;\n    t = Math.imul(t ^ t >>> 15, t | 1);\n    t ^= t + Math.imul(t ^ t >>> 7, t | 61);\n    return ((t ^ t >>> 14) >>> 0) / 4294967296;\n  };\n}\nfunction srandom() {\n  const f = mulberry32(_seed);\n  _seed = _seed + 2654435761 >>> 0;\n  return f();\n}\nfunction srange(min, max) {\n  return min + (max - min) * srandom();\n}\n\n// src/entities.ts\ninit_entitiesConfig();\n\n// src/config/teamsConfig.ts\ninit_entitiesConfig();\nvar TeamsConfig = {\n  teams: {\n    red: { id: \"red\", color: \"#ff4d4d\", label: \"Red\" },\n    blue: { id: \"blue\", color: \"#4da6ff\", label: \"Blue\" }\n  },\n  defaultFleet: {\n    counts: (() => {\n      const shipCfg = getShipConfig();\n      const types = Object.keys(shipCfg || {});\n      const defaultCounts = {};\n      for (const t of types) {\n        if (t === \"fighter\") defaultCounts[t] = 8;\n        else if (t === \"corvette\") defaultCounts[t] = 3;\n        else if (t === \"frigate\") defaultCounts[t] = 2;\n        else if (t === \"destroyer\") defaultCounts[t] = 1;\n        else if (t === \"carrier\") defaultCounts[t] = 1;\n        else defaultCounts[t] = 1;\n      }\n      return defaultCounts;\n    })(),\n    spacing: 28,\n    jitter: { x: 80, y: 120 }\n  },\n  // continuousReinforcement controls: enable/disable, scoreMargin is the\n  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),\n  // perTick is the maximum ships considered per reinforcement tick, and\n  // shipTypes is an optional array of types to choose from randomly. If\n  // omitted, keys from defaultFleet.counts are used.\n  continuousReinforcement: {\n    enabled: false,\n    scoreMargin: 0.12,\n    perTick: 1,\n    interval: 5,\n    shipTypes: void 0\n  }\n};\nvar TEAM_DEFAULT = \"red\";\n\n// src/entities.ts\nvar nextId = 1;\nfunction genId() {\n  return nextId++;\n}\nfunction createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {\n  return {\n    id: genId(),\n    x,\n    y,\n    vx,\n    vy,\n    team,\n    ownerId,\n    damage,\n    ttl\n  };\n}\n\n// src/config/behaviorConfig.ts\nvar AI_THRESHOLDS = {\n  decisionTimerMin: 0.5,\n  decisionTimerMax: 2,\n  hpEvadeThreshold: 0.35,\n  randomLow: 0.15,\n  randomHigh: 0.85\n};\n\n// src/behavior.ts\ninit_entitiesConfig();\nfunction len2(vx, vy) {\n  return vx * vx + vy * vy;\n}\nfunction clampSpeed(s, max) {\n  const v2 = len2(s.vx || 0, s.vy || 0);\n  const max2 = max * max;\n  if (v2 > max2 && v2 > 0) {\n    const inv = max / Math.sqrt(v2);\n    s.vx = (s.vx || 0) * inv;\n    s.vy = (s.vy || 0) * inv;\n  }\n}\nfunction aimWithSpread(from, to, spread = 0) {\n  let dx = (to.x || 0) - (from.x || 0);\n  let dy = (to.y || 0) - (from.y || 0);\n  const d = Math.hypot(dx, dy) || 1;\n  dx /= d;\n  dy /= d;\n  if (spread > 0) {\n    const ang = Math.atan2(dy, dx);\n    const jitter = srange(-spread, spread);\n    const na = ang + jitter;\n    return { x: Math.cos(na), y: Math.sin(na) };\n  }\n  return { x: dx, y: dy };\n}\nfunction tryFire(state2, ship, target, dt) {\n  if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {\n    for (const c of ship.cannons) {\n      if (typeof c.__cd !== \"number\") c.__cd = 0;\n      c.__cd -= dt;\n      if (c.__cd > 0) continue;\n      const spread = typeof c.spread === \"number\" ? c.spread : 0;\n      const dir = aimWithSpread(ship, target, spread);\n      const speed = typeof c.muzzleSpeed === \"number\" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;\n      const dmg = typeof c.damage === \"number\" ? c.damage : typeof ship.damage === \"number\" ? ship.damage : typeof ship.dmg === \"number\" ? ship.dmg : BULLET_DEFAULTS.damage;\n      const ttl = typeof c.bulletTTL === \"number\" ? c.bulletTTL : BULLET_DEFAULTS.ttl;\n      const radius = typeof c.bulletRadius === \"number\" ? c.bulletRadius : BULLET_DEFAULTS.radius;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(\n          ship.x || 0,\n          ship.y || 0,\n          vx,\n          vy,\n          ship.team || TEAM_DEFAULT,\n          ship.id || null,\n          dmg,\n          ttl\n        ),\n        { radius }\n      );\n      state2.bullets.push(b);\n      const rate = typeof c.rate === \"number\" && c.rate > 0 ? c.rate : 1;\n      c.__cd = 1 / rate;\n    }\n  }\n  if (Array.isArray(ship.turrets) && ship.turrets.length > 0) {\n    for (const [i, turret] of ship.turrets.entries()) {\n      if (!turret) continue;\n      if (typeof turret.__cd !== \"number\") turret.__cd = 0;\n      turret.__cd -= dt;\n      if (turret.__cd > 0) continue;\n      let turretTarget = null;\n      if (turret.targeting === \"nearest\") {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      } else if (turret.targeting === \"random\") {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        if (enemies.length)\n          turretTarget = enemies[Math.floor(srandom() * enemies.length)];\n      } else if (turret.targeting === \"focus\") {\n        if (ship.__ai && ship.__ai.targetId != null) {\n          turretTarget = (state2.ships || []).find(\n            (sh) => sh && sh.id === ship.__ai.targetId\n          ) || null;\n        }\n      } else {\n        const enemies = (state2.ships || []).filter(\n          (sh) => sh && sh.team !== ship.team\n        );\n        let minDist = Infinity;\n        for (const enemy of enemies) {\n          const dx = (enemy.x || 0) - (ship.x || 0);\n          const dy = (enemy.y || 0) - (ship.y || 0);\n          const d2 = dx * dx + dy * dy;\n          if (d2 < minDist) {\n            minDist = d2;\n            turretTarget = enemy;\n          }\n        }\n      }\n      if (!turretTarget) continue;\n      const spread = typeof turret.spread === \"number\" ? turret.spread : 0.05;\n      const dir = aimWithSpread(ship, turretTarget, spread);\n      const speed = typeof turret.muzzleSpeed === \"number\" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;\n      const dmg = typeof turret.damage === \"number\" ? turret.damage : typeof ship.damage === \"number\" ? ship.damage : BULLET_DEFAULTS.damage;\n      const ttl = typeof turret.bulletTTL === \"number\" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;\n      const radius = typeof turret.bulletRadius === \"number\" ? turret.bulletRadius : BULLET_DEFAULTS.radius;\n      const angle = ship.angle || 0;\n      const shipType = ship.type || \"fighter\";\n      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];\n      const configRadius = shipCfg && typeof shipCfg.radius === \"number\" ? shipCfg.radius : ship.radius || 12;\n      const [tx, ty] = turret.position || [0, 0];\n      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;\n      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;\n      const vx = dir.x * speed;\n      const vy = dir.y * speed;\n      const b = Object.assign(\n        createBullet(\n          turretX,\n          turretY,\n          vx,\n          vy,\n          ship.team || TEAM_DEFAULT,\n          ship.id || null,\n          dmg,\n          ttl\n        ),\n        { radius }\n      );\n      state2.bullets.push(b);\n      turret.__cd = typeof turret.cooldown === \"number\" && turret.cooldown > 0 ? turret.cooldown : 1;\n    }\n  }\n}\nfunction ensureShipAiState(s) {\n  if (!s.__ai) {\n    s.__ai = { state: \"idle\", decisionTimer: 0, targetId: null };\n  }\n  return s.__ai;\n}\nfunction chooseNewTarget(state2, ship) {\n  const enemies = (state2.ships || []).filter(\n    (sh) => sh && sh.team !== ship.team\n  );\n  if (!enemies.length) return null;\n  const idx = Math.floor(srandom() * enemies.length);\n  return enemies[idx];\n}\nfunction applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {\n  if (!state2 || !Array.isArray(state2.ships)) return;\n  for (const s of state2.ships) {\n    const ai = ensureShipAiState(s);\n    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);\n    let target = null;\n    if (ai.targetId != null)\n      target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;\n    if (!target) target = chooseNewTarget(state2, s);\n    if (target) ai.targetId = target.id;\n    const maxAccel = typeof s.accel === \"number\" ? s.accel : 100;\n    const maxSpeed = typeof s.maxSpeed === \"number\" ? s.maxSpeed : 160;\n    s.steering = typeof s.steering === \"number\" ? s.steering : 0;\n    s.throttle = typeof s.throttle === \"number\" ? s.throttle : 0;\n    if (!target) {\n      s.throttle = 0;\n      s.steering = 0;\n      ai.state = \"idle\";\n    } else {\n      if (ai.decisionTimer <= 0) {\n        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);\n        const rnd = srandom();\n        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = \"evade\";\n        else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = \"engage\";\n        else ai.state = \"idle\";\n        ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);\n      }\n      const dx = (target.x || 0) - (s.x || 0);\n      const dy = (target.y || 0) - (s.y || 0);\n      const desiredAngle = Math.atan2(dy, dx);\n      const currentAngle = typeof s.angle === \"number\" ? s.angle : 0;\n      let da = desiredAngle - currentAngle;\n      while (da < -Math.PI) da += Math.PI * 2;\n      while (da > Math.PI) da -= Math.PI * 2;\n      const steeringNorm = Math.PI / 2;\n      const steering = Math.max(-1, Math.min(1, da / steeringNorm));\n      if (ai.state === \"engage\") {\n        s.throttle = 1;\n        s.steering = steering;\n        tryFire(state2, s, target, dt);\n      } else if (ai.state === \"evade\") {\n        s.throttle = 0.8;\n        const awayAngle = Math.atan2(\n          (s.y || 0) - (target.y || 0),\n          (s.x || 0) - (target.x || 0)\n        );\n        let daAway = awayAngle - currentAngle;\n        while (daAway < -Math.PI) daAway += Math.PI * 2;\n        while (daAway > Math.PI) daAway -= Math.PI * 2;\n        s.steering = Math.max(-1, Math.min(1, daAway / steeringNorm));\n      } else {\n        s.throttle = 0;\n        s.steering = 0;\n      }\n    }\n    clampSpeed(s, maxSpeed);\n  }\n}\n\n// src/simulate.ts\nfunction dist2(a, b) {\n  const dx = a.x - b.x;\n  const dy = a.y - b.y;\n  return dx * dx + dy * dy;\n}\nfunction simulateStep(state2, dtSeconds, bounds2) {\n  state2.t = (state2.t || 0) + dtSeconds;\n  for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {\n    const b = state2.bullets[i];\n    b.x += (b.vx || 0) * dtSeconds;\n    b.y += (b.vy || 0) * dtSeconds;\n    b.ttl = (b.ttl || 0) - dtSeconds;\n    let outX = b.x < 0 || b.x >= bounds2.W;\n    let outY = b.y < 0 || b.y >= bounds2.H;\n    let outOfBounds = outX || outY;\n    let remove = false;\n    if (b.ttl <= 0) remove = true;\n    else if (outOfBounds) {\n      switch (boundaryBehavior.bullets) {\n        case \"remove\":\n          remove = true;\n          break;\n        case \"wrap\":\n          if (b.x < 0) b.x += bounds2.W;\n          if (b.x >= bounds2.W) b.x -= bounds2.W;\n          if (b.y < 0) b.y += bounds2.H;\n          if (b.y >= bounds2.H) b.y -= bounds2.H;\n          break;\n        case \"bounce\":\n          if (outX) {\n            b.vx = -(b.vx || 0);\n            b.x = Math.max(0, Math.min(bounds2.W, b.x));\n          }\n          if (outY) {\n            b.vy = -(b.vy || 0);\n            b.y = Math.max(0, Math.min(bounds2.H, b.y));\n          }\n          break;\n      }\n    }\n    if (remove) state2.bullets.splice(i, 1);\n  }\n  function pruneHits(arr, bounds3) {\n    if (!Array.isArray(arr)) return arr;\n    return arr.filter(\n      (e) => typeof e.x === \"number\" && typeof e.y === \"number\" && e.x >= 0 && e.x < bounds3.W && e.y >= 0 && e.y < bounds3.H\n    );\n  }\n  if (Array.isArray(state2.shieldHits)) {\n    if (state2.particles) {\n      state2.particles = state2.particles.filter((p) => {\n        p.life = (p.life || p.ttl || 0) - dtSeconds;\n        return p.life > 0;\n      });\n    }\n  }\n  if (state2.explosions) {\n    state2.explosions = state2.explosions.filter((e) => {\n      e.life = (e.life || e.ttl || 0) - dtSeconds;\n      return e.life > 0;\n    });\n  }\n  state2.shieldHits = pruneHits(state2.shieldHits, bounds2);\n  if (Array.isArray(state2.healthHits))\n    state2.healthHits = pruneHits(state2.healthHits, bounds2);\n  if (Array.isArray(state2.explosions))\n    state2.explosions = pruneHits(state2.explosions, bounds2);\n  if (Array.isArray(state2.damageEvents))\n    state2.damageEvents = pruneHits(state2.damageEvents, bounds2);\n  for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n    const s = state2.ships[si];\n    const throttle = typeof s.throttle === \"number\" ? s.throttle : 0;\n    const steering = typeof s.steering === \"number\" ? s.steering : 0;\n    const accel = typeof s.accel === \"number\" ? s.accel : 0;\n    const turnRate = typeof s.turnRate === \"number\" ? s.turnRate : 3;\n    const maxSpeed = typeof s.maxSpeed === \"number\" ? s.maxSpeed : 160;\n    const angle = typeof s.angle === \"number\" ? s.angle : 0;\n    const maxTurn = turnRate * Math.abs(steering) * dtSeconds;\n    if (steering !== 0) {\n      let a = angle + Math.sign(steering) * maxTurn;\n      while (a < -Math.PI) a += Math.PI * 2;\n      while (a > Math.PI) a -= Math.PI * 2;\n      s.angle = a;\n    }\n    const actualAccel = accel * throttle;\n    if (actualAccel > 0) {\n      s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;\n      s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;\n    }\n    const friction = typeof s.friction === \"number\" ? s.friction : 0.98;\n    s.vx = (s.vx || 0) * friction;\n    s.vy = (s.vy || 0) * friction;\n    clampSpeed(s, maxSpeed);\n    s.x += (s.vx || 0) * dtSeconds;\n    s.y += (s.vy || 0) * dtSeconds;\n    const r = typeof s.radius === \"number\" ? s.radius : 12;\n    let outX = s.x < -r || s.x > bounds2.W + r;\n    let outY = s.y < -r || s.y > bounds2.H + r;\n    let outOfBounds = outX || outY;\n    let remove = false;\n    if (outOfBounds) {\n      switch (boundaryBehavior.ships) {\n        case \"remove\":\n          remove = true;\n          break;\n        case \"wrap\":\n          if (s.x < -r) s.x += bounds2.W + r * 2;\n          if (s.x > bounds2.W + r) s.x -= bounds2.W + r * 2;\n          if (s.y < -r) s.y += bounds2.H + r * 2;\n          if (s.y > bounds2.H + r) s.y -= bounds2.H + r * 2;\n          break;\n        case \"bounce\":\n          if (outX) {\n            s.vx = -(s.vx || 0);\n            s.x = Math.max(-r, Math.min(bounds2.W + r, s.x));\n          }\n          if (outY) {\n            s.vy = -(s.vy || 0);\n            s.y = Math.max(-r, Math.min(bounds2.H + r, s.y));\n          }\n          break;\n      }\n    }\n    if (remove) state2.ships.splice(si, 1);\n  }\n  for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {\n    const b = state2.bullets[bi];\n    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {\n      const s = state2.ships[si];\n      if (s.team === b.team) continue;\n      const r = (s.radius || 6) + (b.radius || 1);\n      if (dist2(b, s) <= r * r) {\n        const attacker = typeof b.ownerId === \"number\" || typeof b.ownerId === \"string\" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;\n        let dealtToShield = 0;\n        let dealtToHealth = 0;\n        const shield = s.shield || 0;\n        if (shield > 0) {\n          const absorbed = Math.min(shield, b.damage || 0);\n          s.shield = shield - absorbed;\n          const hitAngle = Math.atan2(\n            (b.y || 0) - (s.y || 0),\n            (b.x || 0) - (s.x || 0)\n          );\n          (state2.shieldHits ||= []).push({\n            id: s.id,\n            hitX: b.x,\n            hitY: b.y,\n            team: s.team,\n            amount: absorbed,\n            hitAngle\n          });\n          (state2.damageEvents ||= []).push({\n            id: s.id,\n            type: \"shield\",\n            amount: absorbed,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            attackerId: attacker && attacker.id\n          });\n          const remaining = (b.damage || 0) - absorbed;\n          if (remaining > 0) {\n            s.hp -= remaining;\n            (state2.healthHits ||= []).push({\n              id: s.id,\n              hitX: b.x,\n              hitY: b.y,\n              team: s.team,\n              amount: remaining\n            });\n            (state2.damageEvents ||= []).push({\n              id: s.id,\n              type: \"hp\",\n              amount: remaining,\n              x: b.x,\n              y: b.y,\n              team: s.team,\n              attackerId: attacker && attacker.id\n            });\n          }\n          dealtToShield = absorbed;\n          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);\n        } else {\n          s.hp -= b.damage || 0;\n          (state2.healthHits ||= []).push({\n            id: s.id,\n            hitX: b.x,\n            hitY: b.y,\n            team: s.team,\n            amount: b.damage || 0\n          });\n          (state2.damageEvents ||= []).push({\n            id: s.id,\n            type: \"hp\",\n            amount: b.damage || 0,\n            x: b.x,\n            y: b.y,\n            team: s.team,\n            attackerId: attacker && attacker.id\n          });\n          dealtToHealth = b.damage || 0;\n        }\n        s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n        s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n        if (attacker) {\n          attacker.xp = (attacker.xp || 0) + (dealtToShield + dealtToHealth) * (progression.xpPerDamage || 0);\n          while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n            attacker.xp -= progression.xpToLevel(attacker.level || 1);\n            attacker.level = (attacker.level || 1) + 1;\n            const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n            const lvl = attacker.level || 1;\n            const hpScalar = resolveScalar(\n              progression.hpPercentPerLevel,\n              lvl\n            );\n            const shScalar = resolveScalar(\n              progression.shieldPercentPerLevel,\n              lvl\n            );\n            const dmgScalar = resolveScalar(\n              progression.dmgPercentPerLevel,\n              lvl\n            );\n            const speedScalar = resolveScalar(\n              progression.speedPercentPerLevel,\n              lvl\n            );\n            const regenScalar = resolveScalar(\n              progression.regenPercentPerLevel,\n              lvl\n            );\n            const hpMul = 1 + hpScalar;\n            const shMul = 1 + shScalar;\n            const dmgMul = 1 + dmgScalar;\n            attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n            attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);\n            if (typeof attacker.maxShield === \"number\") {\n              attacker.maxShield = (attacker.maxShield || 0) * shMul;\n              attacker.shield = Math.min(\n                attacker.maxShield,\n                (attacker.shield || 0) * shMul\n              );\n            }\n            if (Array.isArray(attacker.cannons)) {\n              for (const c of attacker.cannons) {\n                if (typeof c.damage === \"number\") c.damage *= dmgMul;\n              }\n            }\n            if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\")\n              attacker.accel = attacker.accel * (1 + speedScalar);\n            if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\")\n              attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n          }\n        }\n        state2.bullets.splice(bi, 1);\n        if (s.hp <= 0) {\n          console.log(\n            \"DEBUG: KILL BRANCH, attacker\",\n            attacker && attacker.id,\n            \"xp before\",\n            attacker && attacker.xp\n          );\n          if (attacker) {\n            attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);\n            console.log(\n              \"DEBUG: KILL XP AWARDED, attacker\",\n              attacker.id,\n              \"xp after\",\n              attacker.xp\n            );\n            while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {\n              attacker.xp -= progression.xpToLevel(attacker.level || 1);\n              attacker.level = (attacker.level || 1) + 1;\n              const resolveScalar = (s2, lvl2) => typeof s2 === \"function\" ? s2(lvl2) : s2 || 0;\n              const lvl = attacker.level || 1;\n              const hpScalar = resolveScalar(\n                progression.hpPercentPerLevel,\n                lvl\n              );\n              const shScalar = resolveScalar(\n                progression.shieldPercentPerLevel,\n                lvl\n              );\n              const dmgScalar = resolveScalar(\n                progression.dmgPercentPerLevel,\n                lvl\n              );\n              const speedScalar = resolveScalar(\n                progression.speedPercentPerLevel,\n                lvl\n              );\n              const regenScalar = resolveScalar(\n                progression.regenPercentPerLevel,\n                lvl\n              );\n              const hpMul = 1 + hpScalar;\n              const shMul = 1 + shScalar;\n              const dmgMul = 1 + dmgScalar;\n              attacker.maxHp = (attacker.maxHp || 0) * hpMul;\n              attacker.hp = Math.min(\n                attacker.maxHp,\n                (attacker.hp || 0) * hpMul\n              );\n              if (typeof attacker.maxShield === \"number\") {\n                attacker.maxShield = (attacker.maxShield || 0) * shMul;\n                attacker.shield = Math.min(\n                  attacker.maxShield,\n                  (attacker.shield || 0) * shMul\n                );\n              }\n              if (Array.isArray(attacker.cannons)) {\n                for (const c of attacker.cannons) {\n                  if (typeof c.damage === \"number\") c.damage *= dmgMul;\n                }\n              }\n              if (typeof speedScalar === \"number\" && typeof attacker.accel === \"number\")\n                attacker.accel = attacker.accel * (1 + speedScalar);\n              if (typeof regenScalar === \"number\" && typeof attacker.shieldRegen === \"number\")\n                attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);\n            }\n          }\n          (state2.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });\n          state2.ships.splice(si, 1);\n        }\n        break;\n      }\n    }\n  }\n  for (const s of state2.ships || []) {\n    if (s.maxShield)\n      s.shield = Math.min(\n        s.maxShield,\n        (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds\n      );\n  }\n  for (const s of state2.ships || []) {\n    s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));\n    s.shieldPercent = typeof s.maxShield === \"number\" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;\n  }\n  return state2;\n}\n\n// src/simWorker.ts\nvar state = null;\nvar bounds = { W: 800, H: 600 };\nvar simDtMs = 16;\nvar running = false;\nvar acc = 0;\nvar last = 0;\nfunction postSnapshot() {\n  try {\n    postMessage({ type: \"snapshot\", state });\n    try {\n      clearTransientEvents(state);\n    } catch (e) {\n    }\n  } catch (e) {\n  }\n}\nfunction clearTransientEvents(s) {\n  if (!s || typeof s !== \"object\") return;\n  try {\n    if (Array.isArray(s.explosions)) s.explosions.length = 0;\n    if (Array.isArray(s.shieldHits)) s.shieldHits.length = 0;\n    if (Array.isArray(s.healthHits)) s.healthHits.length = 0;\n  } catch (e) {\n  }\n}\nfunction tick() {\n  if (!running) return;\n  const now = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n  if (!last) last = now;\n  acc += now - last;\n  last = now;\n  if (acc > 250) acc = 250;\n  while (acc >= simDtMs) {\n    try {\n      applySimpleAI(state, simDtMs / 1e3, bounds);\n      simulateStep(state, simDtMs / 1e3, bounds);\n    } catch (e) {\n      const errAny = e;\n      const stack = errAny && errAny.stack ? errAny.stack : \"\";\n      postMessage({ type: \"error\", message: String(e), stack });\n    }\n    acc -= simDtMs;\n  }\n  postSnapshot();\n  setTimeout(tick, 0);\n}\nself.onmessage = (ev) => {\n  const msg = ev.data;\n  try {\n    switch (msg && msg.type) {\n      case \"init\":\n        if (typeof msg.seed === \"number\") srand(msg.seed);\n        if (msg.bounds) bounds = msg.bounds;\n        if (typeof msg.simDtMs === \"number\") simDtMs = msg.simDtMs;\n        if (msg.state) state = msg.state;\n        postMessage({ type: \"ready\" });\n        break;\n      case \"start\":\n        if (!state) {\n          postMessage({ type: \"error\", message: \"no state\" });\n          break;\n        }\n        running = true;\n        acc = 0;\n        last = typeof performance !== \"undefined\" && performance.now ? performance.now() : Date.now();\n        tick();\n        break;\n      case \"stop\":\n        running = false;\n        break;\n      case \"snapshotRequest\":\n        postSnapshot();\n        break;\n      case \"setSeed\":\n        if (typeof msg.seed === \"number\") {\n          srand(msg.seed);\n        }\n        break;\n      case \"command\":\n        if (msg.cmd === \"spawnShip\" && state) {\n          state.ships.push(msg.args.ship);\n        } else if (msg.cmd === \"spawnShipBullet\" && state) {\n          state.bullets.push(msg.args.bullet);\n        } else if (msg.cmd === \"setState\") {\n          state = msg.args.state;\n        }\n        break;\n      default:\n        break;\n    }\n  } catch (err) {\n    const stack = err && err.stack ? err.stack : \"\";\n    postMessage({ type: \"error\", message: String(err), stack });\n  }\n};\nvar simWorker_default = null;\nexport {\n  clearTransientEvents,\n  simWorker_default as default\n};\n//# sourceMappingURL=simWorker.js.map\n";
 			const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
 			const __workerUrl = URL.createObjectURL(__workerBlob);
 			const __OrigWorker = window.Worker;
@@ -248,201 +248,33 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/config/assets/assetsConfig.ts
-function getVisualConfig(type) {
-  const shape = getShipAsset(type);
-  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
-  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
-}
-function getShipAsset(type) {
-  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-}
-function getBulletAsset(kind = "small") {
-  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
-  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
-  return AssetsConfig.shapes2d.bulletSmall;
-}
-function getTurretAsset(_kind = "basic") {
-  return AssetsConfig.shapes2d.turretBasic;
-}
-var AssetsConfig;
-var init_assetsConfig = __esm({
-  "src/config/assets/assetsConfig.ts"() {
-    "use strict";
-    AssetsConfig = {
-      meta: {
-        orientation: "+X",
-        coordinateSystem: "topdown-2d"
-      },
-      palette: {
-        shipHull: "#b0b7c3",
-        shipAccent: "#6c7380",
-        bullet: "#ffd166",
-        turret: "#94a3b8",
-        // Scene background color used by renderers
-        background: "#0b1220"
-      },
-      // 2D vector shapes defined as polygons and circles. Points are unit-sized
-      // profiles (roughly radius 1). Renderer should multiply by entity radius or
-      // provided scale before drawing.
-      shapes2d: {
-        fighter: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
-            { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
-            { type: "circle", r: 0.5 }
-          ],
-          strokeWidth: 0.08,
-          model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
-        },
-        corvette: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
-            { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
-            { type: "circle", r: 0.6 }
-          ],
-          strokeWidth: 0.08,
-          model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
-        },
-        frigate: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
-            { type: "circle", r: 0.7 }
-          ],
-          strokeWidth: 0.1,
-          model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
-        },
-        destroyer: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
-            { type: "circle", r: 1 },
-            { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
-          ],
-          strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
-          turrets: [
-            { kind: "basic", position: [1.2, 0.8] },
-            { kind: "basic", position: [-1.2, 0.8] },
-            { kind: "basic", position: [1.2, -0.8] },
-            { kind: "basic", position: [-1.2, -0.8] },
-            { kind: "basic", position: [0, 1.5] },
-            { kind: "basic", position: [0, -1.5] }
-          ]
-        },
-        carrier: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
-            { type: "circle", r: 1.2 },
-            { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
-          ],
-          strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
-          turrets: [
-            { kind: "basic", position: [2, 1.2] },
-            { kind: "basic", position: [-2, 1.2] },
-            { kind: "basic", position: [2, -1.2] },
-            { kind: "basic", position: [-2, -1.2] }
-          ]
-        },
-        bulletSmall: { type: "circle", r: 0.18 },
-        bulletMedium: { type: "circle", r: 0.25 },
-        bulletLarge: { type: "circle", r: 0.36 },
-        turretBasic: {
-          type: "compound",
-          parts: [
-            { type: "circle", r: 0.5 },
-            { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
-          ],
-          strokeWidth: 0.08
-        },
-        // Small effect/particle shapes for renderer-driven effects
-        particleSmall: { type: "circle", r: 0.12 },
-        particleMedium: { type: "circle", r: 0.22 },
-        explosionParticle: { type: "circle", r: 0.32 },
-        shieldRing: { type: "circle", r: 1.2 }
-      }
-    };
-    AssetsConfig.animations = {
-      engineFlare: {
-        type: "polygon",
-        points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
-        pulseRate: 8,
-        // configurable alpha multiplier for engine overlay
-        alpha: 0.4,
-        // local-space X offset (negative = behind ship)
-        offset: -0.9
-      },
-      shieldEffect: {
-        type: "circle",
-        r: 1.2,
-        strokeWidth: 0.1,
-        color: "#88ccff",
-        pulseRate: 2,
-        // map shieldPct -> alpha = base + scale * shieldPct
-        alphaBase: 0.25,
-        alphaScale: 0.75
-      },
-      damageParticles: {
-        type: "particles",
-        color: "#ff6b6b",
-        count: 6,
-        lifetime: 0.8,
-        spread: 0.6
-      },
-      engineTrail: {
-        type: "trail",
-        color: "#fffc00",
-        // bright yellow for high contrast
-        maxLength: 40,
-        // much longer trail
-        width: 0.35,
-        // thicker trail line
-        fade: 0.35
-        // slower fading, more persistent
-      }
-    };
-    AssetsConfig.damageStates = {
-      light: { opacity: 0.9, accentColor: "#b0b7c3" },
-      moderate: { opacity: 0.75, accentColor: "#d4a06a" },
-      heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
-    };
-    AssetsConfig.visualStateDefaults = {
-      fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
-    };
-    AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
-    AssetsConfig.shieldArcWidth = Math.PI / 12;
-  }
-});
-
 // src/config/entitiesConfig.ts
+var entitiesConfig_exports = {};
+__export(entitiesConfig_exports, {
+  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
+  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
+  ShipConfig: () => ShipConfig,
+  bulletKindForRadius: () => bulletKindForRadius,
+  default: () => entitiesConfig_default,
+  getDefaultShipType: () => getDefaultShipType,
+  getShipConfig: () => getShipConfig
+});
 function getShipConfig() {
-  return JSON.parse(JSON.stringify(ShipConfig));
+  return ShipConfig;
 }
-function bulletKindForRadius(r = 0.2) {
-  for (const t of VisualMappingConfig.bulletRadiusThresholds) {
-    if (r <= t.threshold) return t.kind;
-  }
-  return "small";
+function bulletKindForRadius(r) {
+  if (r < 2) return "small";
+  if (r < 2.5) return "medium";
+  if (r < 3.5) return "large";
+  return "heavy";
 }
 function getDefaultShipType() {
-  const keys = Object.keys(ShipConfig || {});
-  return keys.length ? keys[0] : "fighter";
+  return Object.keys(ShipConfig)[0] || "fighter";
 }
-var ShipConfig, VisualMappingConfig;
+var ShipConfig, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
 var init_entitiesConfig = __esm({
   "src/config/entitiesConfig.ts"() {
     "use strict";
-    init_assetsConfig();
     ShipConfig = {
       fighter: {
         maxHp: 15,
@@ -452,9 +284,21 @@ var init_entitiesConfig = __esm({
         dmg: 3,
         damage: 3,
         radius: 12,
-        cannons: [{ damage: 3, rate: 3, spread: 0.1, muzzleSpeed: 300, bulletRadius: 1.5, bulletTTL: 1.2 }],
-        accel: 150,
-        turnRate: 6
+        cannons: [
+          {
+            damage: 3,
+            rate: 3,
+            spread: 0.1,
+            muzzleSpeed: 260,
+            // was 300
+            bulletRadius: 1.5,
+            bulletTTL: 1.1
+            // was 1.2
+          }
+        ],
+        accel: 5,
+        turnRate: 6,
+        maxSpeed: 160
       },
       corvette: {
         maxHp: 50,
@@ -464,9 +308,23 @@ var init_entitiesConfig = __esm({
         dmg: 5,
         damage: 5,
         radius: 20,
-        accel: 80,
-        turnRate: 3,
-        cannons: [{ damage: 6, rate: 1.2, spread: 0.05, muzzleSpeed: 220, bulletRadius: 2, bulletTTL: 2 }]
+        accel: 5,
+        turnRate: 3.5,
+        // was 3
+        maxSpeed: 145,
+        // was 140
+        cannons: [
+          {
+            damage: 6,
+            rate: 1.2,
+            spread: 0.05,
+            muzzleSpeed: 180,
+            // was 220
+            bulletRadius: 2,
+            bulletTTL: 1.8
+            // was 2.0
+          }
+        ]
       },
       frigate: {
         maxHp: 80,
@@ -476,9 +334,23 @@ var init_entitiesConfig = __esm({
         dmg: 8,
         damage: 8,
         radius: 24,
-        cannons: [{ damage: 8, rate: 1, spread: 0.06, muzzleSpeed: 200, bulletRadius: 2.5, bulletTTL: 2.2 }],
-        accel: 60,
-        turnRate: 2.2
+        cannons: [
+          {
+            damage: 8,
+            rate: 1,
+            spread: 0.06,
+            muzzleSpeed: 180,
+            // was 200
+            bulletRadius: 2.5,
+            bulletTTL: 2
+            // was 2.2
+          }
+        ],
+        accel: 5,
+        turnRate: 2.5,
+        // was 2.2
+        maxSpeed: 125
+        // was 120
       },
       destroyer: {
         maxHp: 120,
@@ -488,16 +360,58 @@ var init_entitiesConfig = __esm({
         dmg: 12,
         damage: 12,
         radius: 40,
-        cannons: new Array(6).fill(0).map(() => ({ damage: 6, rate: 0.8, spread: 0.08, muzzleSpeed: 240, bulletRadius: 2.5, bulletTTL: 2.4 })),
-        accel: 40,
-        turnRate: 1.6,
+        cannons: new Array(6).fill(0).map(() => ({
+          damage: 6,
+          rate: 0.8,
+          spread: 0.08,
+          muzzleSpeed: 160,
+          // was 240
+          bulletRadius: 2.5,
+          bulletTTL: 1.8
+          // was 2.4
+        })),
+        accel: 5,
+        turnRate: 2,
+        // was 1.6
+        maxSpeed: 110,
+        // was 100
         turrets: [
-          { position: [1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-          { position: [-1.2, 0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-          { position: [1.2, -0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-          { position: [-1.2, -0.8], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-          { position: [0, 1.5], kind: "basic", targeting: "nearest", cooldown: 0.8 },
-          { position: [0, -1.5], kind: "basic", targeting: "nearest", cooldown: 0.8 }
+          {
+            position: [1.2, 0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [-1.2, 0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [1.2, -0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [-1.2, -0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [0, 1.5],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [0, -1.5],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          }
         ]
       },
       carrier: {
@@ -508,37 +422,73 @@ var init_entitiesConfig = __esm({
         dmg: 2,
         damage: 2,
         radius: 40,
-        cannons: new Array(4).fill(0).map(() => ({ damage: 4, rate: 0.6, spread: 0.12, muzzleSpeed: 180, bulletRadius: 3, bulletTTL: 2.8 })),
-        accel: 20,
-        turnRate: 0.8,
+        cannons: new Array(4).fill(0).map(() => ({
+          damage: 4,
+          rate: 0.6,
+          spread: 0.12,
+          muzzleSpeed: 140,
+          // was 180
+          bulletRadius: 3,
+          bulletTTL: 2.2
+          // was 2.8
+        })),
+        accel: 5,
+        turnRate: 1.2,
+        // was 0.8
+        maxSpeed: 95,
+        // was 80
         carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
         turrets: [
-          { position: [2, 1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
-          { position: [-2, 1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
-          { position: [2, -1.2], kind: "basic", targeting: "nearest", cooldown: 1 },
-          { position: [-2, -1.2], kind: "basic", targeting: "nearest", cooldown: 1 }
+          {
+            position: [2, 1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [-2, 1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [2, -1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [-2, -1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          }
         ]
       }
     };
-    VisualMappingConfig = {
-      bulletRadiusThresholds: [
-        { threshold: 0.22, kind: "small" },
-        { threshold: 0.32, kind: "medium" },
-        { threshold: Infinity, kind: "large" }
-      ],
-      defaultTurretKind: "basic",
-      shipAssetKey: {
-        fighter: "fighter",
-        corvette: "corvette",
-        frigate: "frigate",
-        destroyer: "destroyer",
-        carrier: "carrier"
-      }
+    BULLET_DEFAULTS = {
+      damage: 1,
+      ttl: 2,
+      radius: 1.5,
+      muzzleSpeed: 240
     };
+    PARTICLE_DEFAULTS = {
+      ttl: 1,
+      color: "#fff",
+      size: 2
+    };
+    entitiesConfig_default = ShipConfig;
   }
 });
 
+// src/entities.ts
+init_entitiesConfig();
+
+// src/config/teamsConfig.ts
+init_entitiesConfig();
+
 // src/rng.ts
+var _seed = 1;
 function srand(seed = 1) {
   _seed = seed >>> 0;
 }
@@ -558,24 +508,44 @@ function srandom() {
 function srange(min, max) {
   return min + (max - min) * srandom();
 }
-var _seed;
-var init_rng = __esm({
-  "src/rng.ts"() {
-    "use strict";
-    _seed = 1;
-  }
-});
 
 // src/config/teamsConfig.ts
-var teamsConfig_exports = {};
-__export(teamsConfig_exports, {
-  TeamsConfig: () => TeamsConfig,
-  chooseReinforcements: () => chooseReinforcements,
-  chooseReinforcementsWithManagerSeed: () => chooseReinforcementsWithManagerSeed,
-  default: () => teamsConfig_default,
-  generateFleetForTeam: () => generateFleetForTeam,
-  makeInitialFleets: () => makeInitialFleets
-});
+var TeamsConfig = {
+  teams: {
+    red: { id: "red", color: "#ff4d4d", label: "Red" },
+    blue: { id: "blue", color: "#4da6ff", label: "Blue" }
+  },
+  defaultFleet: {
+    counts: (() => {
+      const shipCfg = getShipConfig();
+      const types = Object.keys(shipCfg || {});
+      const defaultCounts = {};
+      for (const t of types) {
+        if (t === "fighter") defaultCounts[t] = 8;
+        else if (t === "corvette") defaultCounts[t] = 3;
+        else if (t === "frigate") defaultCounts[t] = 2;
+        else if (t === "destroyer") defaultCounts[t] = 1;
+        else if (t === "carrier") defaultCounts[t] = 1;
+        else defaultCounts[t] = 1;
+      }
+      return defaultCounts;
+    })(),
+    spacing: 28,
+    jitter: { x: 80, y: 120 }
+  },
+  // continuousReinforcement controls: enable/disable, scoreMargin is the
+  // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
+  // perTick is the maximum ships considered per reinforcement tick, and
+  // shipTypes is an optional array of types to choose from randomly. If
+  // omitted, keys from defaultFleet.counts are used.
+  continuousReinforcement: {
+    enabled: false,
+    scoreMargin: 0.12,
+    perTick: 1,
+    interval: 5,
+    shipTypes: void 0
+  }
+};
 function mulberry322(seed) {
   let t = seed >>> 0;
   return function() {
@@ -609,7 +579,8 @@ function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 60
       const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
       const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
       const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
-      if (typeof shipFactory === "function") out.push(shipFactory(type, x, y, teamId));
+      if (typeof shipFactory === "function")
+        out.push(shipFactory(type, x, y, teamId));
       else out.push({ type, x, y, team: teamId });
     }
   }
@@ -617,7 +588,13 @@ function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 60
 }
 function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
   const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
-  const blue = generateFleetForTeam(seed + 1, "blue", bounds, shipFactory, options);
+  const blue = generateFleetForTeam(
+    seed + 1,
+    "blue",
+    bounds,
+    shipFactory,
+    options
+  );
   return red.concat(blue);
 }
 function chooseReinforcements(seed = 0, state = {}, options = {}) {
@@ -635,7 +612,9 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
   if (teams.length === 0) return [];
   for (const t of teams) {
     if (!teamStrength[t]) {
-      const cnt = (state.ships || []).filter((s) => s && s.team === t).length;
+      const cnt = (state.ships || []).filter(
+        (s) => s && s.team === t
+      ).length;
       teamStrength[t] = cnt > 0 ? cnt : 0;
     }
   }
@@ -648,7 +627,15 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
   const total = teams.reduce((s, t) => s + (teamStrength[t] || 0), 0) || 1;
   const weakestRatio = (teamStrength[weakest] || 0) / total;
   if (weakestRatio < 0.5 - cfg.scoreMargin) {
-    let weightedPick2 = function() {
+    const orders = [];
+    const rng = mulberry322((seed >>> 0) + hashStringToInt(weakest));
+    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
+    const countsMap = TeamsConfig && TeamsConfig.defaultFleet && TeamsConfig.defaultFleet.counts ? TeamsConfig.defaultFleet.counts : {};
+    const weights = candidateTypes.map(
+      (t) => Math.max(0, Number(countsMap[t]) || 1)
+    );
+    const totalWeight = weights.reduce((s, w) => s + w, 0) || candidateTypes.length || 1;
+    const weightedPick = () => {
       const r = rng() * totalWeight;
       let acc = 0;
       for (let i = 0; i < candidateTypes.length; i++) {
@@ -657,13 +644,6 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
       }
       return candidateTypes[candidateTypes.length - 1];
     };
-    var weightedPick = weightedPick2;
-    const orders = [];
-    const rng = mulberry322((seed >>> 0) + hashStringToInt(weakest));
-    const candidateTypes = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? cfg.shipTypes : Object.keys(TeamsConfig.defaultFleet.counts || { fighter: 1 });
-    const countsMap = TeamsConfig && TeamsConfig.defaultFleet && TeamsConfig.defaultFleet.counts ? TeamsConfig.defaultFleet.counts : {};
-    const weights = candidateTypes.map((t) => Math.max(0, Number(countsMap[t]) || 1));
-    const totalWeight = weights.reduce((s, w) => s + w, 0) || candidateTypes.length || 1;
     const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
     const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
     const b = options.bounds || { W: 800, H: 600 };
@@ -671,61 +651,29 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
     const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {
       const x = Math.max(0, Math.min(b.W - 1e-6, baseX + (rng() - 0.5) * 120));
-      const y = Math.max(0, Math.min(b.H - 1e-6, centerY + (rng() - 0.5) * 160));
-      const type = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick2();
+      const y = Math.max(
+        0,
+        Math.min(b.H - 1e-6, centerY + (rng() - 0.5) * 160)
+      );
+      const type = Array.isArray(cfg.shipTypes) && cfg.shipTypes.length ? candidateTypes[Math.floor(rng() * candidateTypes.length)] || getDefaultShipType() : weightedPick();
       orders.push({ type, team: weakest, x, y });
     }
     return orders;
   }
   return [];
 }
+var TEAM_DEFAULT = "red";
 function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
   const seed = Math.floor(srandom() * 4294967295) >>> 0;
   return chooseReinforcements(seed, state, options);
 }
-var TeamsConfig, teamsConfig_default;
-var init_teamsConfig = __esm({
-  "src/config/teamsConfig.ts"() {
-    "use strict";
-    init_entitiesConfig();
-    init_rng();
-    TeamsConfig = {
-      teams: {
-        red: { id: "red", color: "#ff4d4d", label: "Red" },
-        blue: { id: "blue", color: "#4da6ff", label: "Blue" }
-      },
-      defaultFleet: { counts: (() => {
-        const shipCfg = getShipConfig();
-        const types = Object.keys(shipCfg || {});
-        const defaultCounts = {};
-        for (const t of types) {
-          if (t === "fighter") defaultCounts[t] = 8;
-          else if (t === "corvette") defaultCounts[t] = 3;
-          else if (t === "frigate") defaultCounts[t] = 2;
-          else if (t === "destroyer") defaultCounts[t] = 1;
-          else if (t === "carrier") defaultCounts[t] = 1;
-          else defaultCounts[t] = 1;
-        }
-        return defaultCounts;
-      })(), spacing: 28, jitter: { x: 80, y: 120 } },
-      // continuousReinforcement controls: enable/disable, scoreMargin is the
-      // imbalance fraction (e.g. 0.12 means reinforce when weakest ratio < 0.38),
-      // perTick is the maximum ships considered per reinforcement tick, and
-      // shipTypes is an optional array of types to choose from randomly. If
-      // omitted, keys from defaultFleet.counts are used.
-      continuousReinforcement: { enabled: false, scoreMargin: 0.12, perTick: 1, shipTypes: void 0 }
-    };
-    teamsConfig_default = TeamsConfig;
-  }
-});
 
 // src/entities.ts
-init_entitiesConfig();
 var nextId = 1;
 function genId() {
   return nextId++;
 }
-function createShip(type = void 0, x = 0, y = 0, team = "red") {
+function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
   const shipCfg = getShipConfig();
   const availableTypes = Object.keys(shipCfg || {});
   const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipType();
@@ -746,11 +694,19 @@ function createShip(type = void 0, x = 0, y = 0, team = "red") {
     level: 1,
     cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
     accel: cfg.accel || 0,
+    currentAccel: 0,
+    // start at rest, AI/gamemanager sets this
+    throttle: 0,
+    // start at rest, AI/gamemanager sets this
+    steering: 0,
+    // start straight, AI/gamemanager sets this
     turnRate: cfg.turnRate || 0,
-    radius: cfg.radius || 6
+    radius: cfg.radius || 6,
+    maxSpeed: cfg.maxSpeed || void 0,
+    angle: 0
   };
 }
-function createBullet(x, y, vx, vy, team = "red", ownerId = null, damage = 1, ttl = 2) {
+function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
   return {
     id: genId(),
     x,
@@ -775,8 +731,20 @@ function makeInitialState() {
   };
 }
 
+// src/gamemanager.ts
+init_entitiesConfig();
+
+// src/config/behaviorConfig.ts
+var AI_THRESHOLDS = {
+  decisionTimerMin: 0.5,
+  decisionTimerMax: 2,
+  hpEvadeThreshold: 0.35,
+  randomLow: 0.15,
+  randomHigh: 0.85
+};
+
 // src/behavior.ts
-init_rng();
+init_entitiesConfig();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -811,14 +779,23 @@ function tryFire(state, ship, target, dt) {
       if (c.__cd > 0) continue;
       const spread = typeof c.spread === "number" ? c.spread : 0;
       const dir = aimWithSpread(ship, target, spread);
-      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : 240;
-      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : 3;
-      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : 2;
-      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : 1.5;
+      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
+      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : BULLET_DEFAULTS.damage;
+      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : BULLET_DEFAULTS.ttl;
+      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : BULLET_DEFAULTS.radius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(ship.x || 0, ship.y || 0, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+        createBullet(
+          ship.x || 0,
+          ship.y || 0,
+          vx,
+          vy,
+          ship.team || TEAM_DEFAULT,
+          ship.id || null,
+          dmg,
+          ttl
+        ),
         { radius }
       );
       state.bullets.push(b);
@@ -834,7 +811,9 @@ function tryFire(state, ship, target, dt) {
       if (turret.__cd > 0) continue;
       let turretTarget = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -846,14 +825,21 @@ function tryFire(state, ship, target, dt) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
-        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
+        if (enemies.length)
+          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
         if (ship.__ai && ship.__ai.targetId != null) {
-          turretTarget = (state.ships || []).find((sh) => sh && sh.id === ship.__ai.targetId) || null;
+          turretTarget = (state.ships || []).find(
+            (sh) => sh && sh.id === ship.__ai.targetId
+          ) || null;
         }
       } else {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -866,20 +852,32 @@ function tryFire(state, ship, target, dt) {
         }
       }
       if (!turretTarget) continue;
-      const spread = 0.05;
+      const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
       const dir = aimWithSpread(ship, turretTarget, spread);
-      const speed = 240;
-      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : 3;
-      const ttl = 2;
-      const radius = 2;
+      const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
+      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : BULLET_DEFAULTS.damage;
+      const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;
+      const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
       const angle = ship.angle || 0;
+      const shipType = ship.type || "fighter";
+      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];
+      const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : ship.radius || 12;
       const [tx, ty] = turret.position || [0, 0];
-      const turretX = (ship.x || 0) + Math.cos(angle) * tx * (ship.radius || 12) - Math.sin(angle) * ty * (ship.radius || 12);
-      const turretY = (ship.y || 0) + Math.sin(angle) * tx * (ship.radius || 12) + Math.cos(angle) * ty * (ship.radius || 12);
+      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
+      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(turretX, turretY, vx, vy, ship.team || "red", ship.id || null, dmg, ttl),
+        createBullet(
+          turretX,
+          turretY,
+          vx,
+          vy,
+          ship.team || TEAM_DEFAULT,
+          ship.id || null,
+          dmg,
+          ttl
+        ),
         { radius }
       );
       state.bullets.push(b);
@@ -894,19 +892,12 @@ function ensureShipAiState(s) {
   return s.__ai;
 }
 function chooseNewTarget(state, ship) {
-  const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+  const enemies = (state.ships || []).filter(
+    (sh) => sh && sh.team !== ship.team
+  );
   if (!enemies.length) return null;
   const idx = Math.floor(srandom() * enemies.length);
   return enemies[idx];
-}
-function steerAway(s, tx, ty, accel, dt) {
-  const dx = (s.x || 0) - tx;
-  const dy = (s.y || 0) - ty;
-  const d = Math.hypot(dx, dy) || 1;
-  const nx = dx / d;
-  const ny = dy / d;
-  s.vx = (s.vx || 0) + nx * accel * dt;
-  s.vy = (s.vy || 0) + ny * accel * dt;
 }
 function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
   if (!state || !Array.isArray(state.ships)) return;
@@ -914,38 +905,53 @@ function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
     const ai = ensureShipAiState(s);
     ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
     let target = null;
-    if (ai.targetId != null) target = (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
+    if (ai.targetId != null)
+      target = (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
     if (!target) target = chooseNewTarget(state, s);
     if (target) ai.targetId = target.id;
-    const accel = typeof s.accel === "number" ? s.accel : 100;
-    const maxSpeed = 160;
+    const maxAccel = typeof s.accel === "number" ? s.accel : 100;
+    const maxSpeed = typeof s.maxSpeed === "number" ? s.maxSpeed : 160;
+    s.steering = typeof s.steering === "number" ? s.steering : 0;
+    s.throttle = typeof s.throttle === "number" ? s.throttle : 0;
     if (!target) {
-      s.vx = (s.vx || 0) + srange(-1, 1) * 8 * dt;
-      s.vy = (s.vy || 0) + srange(-1, 1) * 8 * dt;
+      s.throttle = 0;
+      s.steering = 0;
       ai.state = "idle";
     } else {
       if (ai.decisionTimer <= 0) {
         const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
         const rnd = srandom();
-        if (hpFrac < 0.35 || rnd < 0.15) ai.state = "evade";
-        else if (rnd < 0.85) ai.state = "engage";
+        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = "evade";
+        else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = "engage";
         else ai.state = "idle";
-        ai.decisionTimer = 0.5 + srandom() * 1.5;
+        ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);
       }
+      const dx = (target.x || 0) - (s.x || 0);
+      const dy = (target.y || 0) - (s.y || 0);
+      const desiredAngle = Math.atan2(dy, dx);
+      const currentAngle = typeof s.angle === "number" ? s.angle : 0;
+      let da = desiredAngle - currentAngle;
+      while (da < -Math.PI) da += Math.PI * 2;
+      while (da > Math.PI) da -= Math.PI * 2;
+      const steeringNorm = Math.PI / 2;
+      const steering = Math.max(-1, Math.min(1, da / steeringNorm));
       if (ai.state === "engage") {
-        const aim = aimWithSpread(s, target, 0.05);
-        s.vx = (s.vx || 0) + aim.x * accel * dt;
-        s.vy = (s.vy || 0) + aim.y * accel * dt;
+        s.throttle = 1;
+        s.steering = steering;
         tryFire(state, s, target, dt);
       } else if (ai.state === "evade") {
-        steerAway(s, target.x || 0, target.y || 0, accel * 0.8, dt);
-        const ang = Math.atan2(s.vy || 0, s.vx || 0);
-        const perp = ang + Math.PI / 2 * (srandom() < 0.5 ? 1 : -1);
-        s.vx = (s.vx || 0) + Math.cos(perp) * accel * 0.2 * dt;
-        s.vy = (s.vy || 0) + Math.sin(perp) * accel * 0.2 * dt;
+        s.throttle = 0.8;
+        const awayAngle = Math.atan2(
+          (s.y || 0) - (target.y || 0),
+          (s.x || 0) - (target.x || 0)
+        );
+        let daAway = awayAngle - currentAngle;
+        while (daAway < -Math.PI) daAway += Math.PI * 2;
+        while (daAway > Math.PI) daAway -= Math.PI * 2;
+        s.steering = Math.max(-1, Math.min(1, daAway / steeringNorm));
       } else {
-        s.vx = (s.vx || 0) + srange(-0.5, 0.5) * 6 * dt;
-        s.vy = (s.vy || 0) + srange(-0.5, 0.5) * 6 * dt;
+        s.throttle = 0;
+        s.steering = 0;
       }
     }
     clampSpeed(s, maxSpeed);
@@ -964,8 +970,14 @@ var progression = {
   regenPercentPerLevel: 0.04
 };
 
+// src/config/simConfig.ts
+var SIM = { DT_MS: 16, MAX_ACC_MS: 250 };
+var boundaryBehavior = {
+  ships: "wrap",
+  bullets: "remove"
+};
+
 // src/simulate.ts
-var SIM_DT_MS = 16;
 function dist2(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -978,49 +990,118 @@ function simulateStep(state, dtSeconds, bounds) {
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
-    if (b.ttl <= 0 || b.x < 0 || b.x >= bounds.W || b.y < 0 || b.y >= bounds.H) {
-      state.bullets.splice(i, 1);
+    let outX = b.x < 0 || b.x >= bounds.W;
+    let outY = b.y < 0 || b.y >= bounds.H;
+    let outOfBounds = outX || outY;
+    let remove = false;
+    if (b.ttl <= 0) remove = true;
+    else if (outOfBounds) {
+      switch (boundaryBehavior.bullets) {
+        case "remove":
+          remove = true;
+          break;
+        case "wrap":
+          if (b.x < 0) b.x += bounds.W;
+          if (b.x >= bounds.W) b.x -= bounds.W;
+          if (b.y < 0) b.y += bounds.H;
+          if (b.y >= bounds.H) b.y -= bounds.H;
+          break;
+        case "bounce":
+          if (outX) {
+            b.vx = -(b.vx || 0);
+            b.x = Math.max(0, Math.min(bounds.W, b.x));
+          }
+          if (outY) {
+            b.vy = -(b.vy || 0);
+            b.y = Math.max(0, Math.min(bounds.H, b.y));
+          }
+          break;
+      }
     }
+    if (remove) state.bullets.splice(i, 1);
   }
   function pruneHits(arr, bounds2) {
     if (!Array.isArray(arr)) return arr;
-    return arr.filter((e) => typeof e.x === "number" && typeof e.y === "number" && e.x >= 0 && e.x < bounds2.W && e.y >= 0 && e.y < bounds2.H);
+    return arr.filter(
+      (e) => typeof e.x === "number" && typeof e.y === "number" && e.x >= 0 && e.x < bounds2.W && e.y >= 0 && e.y < bounds2.H
+    );
   }
-  if (Array.isArray(state.shieldHits)) state.shieldHits = pruneHits(state.shieldHits, bounds);
-  if (Array.isArray(state.healthHits)) state.healthHits = pruneHits(state.healthHits, bounds);
-  if (Array.isArray(state.explosions)) state.explosions = pruneHits(state.explosions, bounds);
-  if (Array.isArray(state.damageEvents)) state.damageEvents = pruneHits(state.damageEvents, bounds);
-  for (const s of state.ships || []) {
+  if (Array.isArray(state.shieldHits)) {
+    if (state.particles) {
+      state.particles = state.particles.filter((p) => {
+        p.life = (p.life || p.ttl || 0) - dtSeconds;
+        return p.life > 0;
+      });
+    }
+  }
+  if (state.explosions) {
+    state.explosions = state.explosions.filter((e) => {
+      e.life = (e.life || e.ttl || 0) - dtSeconds;
+      return e.life > 0;
+    });
+  }
+  state.shieldHits = pruneHits(state.shieldHits, bounds);
+  if (Array.isArray(state.healthHits))
+    state.healthHits = pruneHits(state.healthHits, bounds);
+  if (Array.isArray(state.explosions))
+    state.explosions = pruneHits(state.explosions, bounds);
+  if (Array.isArray(state.damageEvents))
+    state.damageEvents = pruneHits(state.damageEvents, bounds);
+  for (let si = (state.ships || []).length - 1; si >= 0; si--) {
+    const s = state.ships[si];
+    const throttle = typeof s.throttle === "number" ? s.throttle : 0;
+    const steering = typeof s.steering === "number" ? s.steering : 0;
+    const accel = typeof s.accel === "number" ? s.accel : 0;
+    const turnRate = typeof s.turnRate === "number" ? s.turnRate : 3;
+    const maxSpeed = typeof s.maxSpeed === "number" ? s.maxSpeed : 160;
+    const angle = typeof s.angle === "number" ? s.angle : 0;
+    const maxTurn = turnRate * Math.abs(steering) * dtSeconds;
+    if (steering !== 0) {
+      let a = angle + Math.sign(steering) * maxTurn;
+      while (a < -Math.PI) a += Math.PI * 2;
+      while (a > Math.PI) a -= Math.PI * 2;
+      s.angle = a;
+    }
+    const actualAccel = accel * throttle;
+    if (actualAccel > 0) {
+      s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;
+      s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;
+    }
+    const friction = typeof s.friction === "number" ? s.friction : 0.98;
+    s.vx = (s.vx || 0) * friction;
+    s.vy = (s.vy || 0) * friction;
+    clampSpeed(s, maxSpeed);
     s.x += (s.vx || 0) * dtSeconds;
     s.y += (s.vy || 0) * dtSeconds;
     const r = typeof s.radius === "number" ? s.radius : 12;
-    if (typeof bounds.W === "number" && bounds.W > 0) {
-      if (s.x < -r) s.x += bounds.W + r * 2;
-      if (s.x > bounds.W + r) s.x -= bounds.W + r * 2;
-    }
-    if (typeof bounds.H === "number" && bounds.H > 0) {
-      if (s.y < -r) s.y += bounds.H + r * 2;
-      if (s.y > bounds.H + r) s.y -= bounds.H + r * 2;
-    }
-    const speed2 = (s.vx || 0) * (s.vx || 0) + (s.vy || 0) * (s.vy || 0);
-    const minSpeed = 0.5;
-    if (speed2 > minSpeed * minSpeed) {
-      const desired = Math.atan2(s.vy || 0, s.vx || 0);
-      if (typeof s.angle !== "number") s.angle = desired;
-      else {
-        let a = s.angle;
-        let da = desired - a;
-        while (da < -Math.PI) da += Math.PI * 2;
-        while (da > Math.PI) da -= Math.PI * 2;
-        const turnRate = typeof s.turnRate === "number" ? s.turnRate : 3;
-        const maxTurn = turnRate * dtSeconds;
-        if (Math.abs(da) < maxTurn) a = desired;
-        else a += Math.sign(da) * maxTurn;
-        while (a < -Math.PI) a += Math.PI * 2;
-        while (a > Math.PI) a -= Math.PI * 2;
-        s.angle = a;
+    let outX = s.x < -r || s.x > bounds.W + r;
+    let outY = s.y < -r || s.y > bounds.H + r;
+    let outOfBounds = outX || outY;
+    let remove = false;
+    if (outOfBounds) {
+      switch (boundaryBehavior.ships) {
+        case "remove":
+          remove = true;
+          break;
+        case "wrap":
+          if (s.x < -r) s.x += bounds.W + r * 2;
+          if (s.x > bounds.W + r) s.x -= bounds.W + r * 2;
+          if (s.y < -r) s.y += bounds.H + r * 2;
+          if (s.y > bounds.H + r) s.y -= bounds.H + r * 2;
+          break;
+        case "bounce":
+          if (outX) {
+            s.vx = -(s.vx || 0);
+            s.x = Math.max(-r, Math.min(bounds.W + r, s.x));
+          }
+          if (outY) {
+            s.vy = -(s.vy || 0);
+            s.y = Math.max(-r, Math.min(bounds.H + r, s.y));
+          }
+          break;
       }
     }
+    if (remove) state.ships.splice(si, 1);
   }
   for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
     const b = state.bullets[bi];
@@ -1036,21 +1117,67 @@ function simulateStep(state, dtSeconds, bounds) {
         if (shield > 0) {
           const absorbed = Math.min(shield, b.damage || 0);
           s.shield = shield - absorbed;
-          const hitAngle = Math.atan2((b.y || 0) - (s.y || 0), (b.x || 0) - (s.x || 0));
-          (state.shieldHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: absorbed, hitAngle });
-          (state.damageEvents ||= []).push({ id: s.id, type: "shield", amount: absorbed, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
+          const hitAngle = Math.atan2(
+            (b.y || 0) - (s.y || 0),
+            (b.x || 0) - (s.x || 0)
+          );
+          (state.shieldHits ||= []).push({
+            id: s.id,
+            hitX: b.x,
+            hitY: b.y,
+            team: s.team,
+            amount: absorbed,
+            hitAngle
+          });
+          (state.damageEvents ||= []).push({
+            id: s.id,
+            type: "shield",
+            amount: absorbed,
+            x: b.x,
+            y: b.y,
+            team: s.team,
+            attackerId: attacker && attacker.id
+          });
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
             s.hp -= remaining;
-            (state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: remaining });
-            (state.damageEvents ||= []).push({ id: s.id, type: "hp", amount: remaining, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
+            (state.healthHits ||= []).push({
+              id: s.id,
+              hitX: b.x,
+              hitY: b.y,
+              team: s.team,
+              amount: remaining
+            });
+            (state.damageEvents ||= []).push({
+              id: s.id,
+              type: "hp",
+              amount: remaining,
+              x: b.x,
+              y: b.y,
+              team: s.team,
+              attackerId: attacker && attacker.id
+            });
           }
           dealtToShield = absorbed;
           dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
         } else {
           s.hp -= b.damage || 0;
-          (state.healthHits ||= []).push({ id: s.id, hitX: b.x, hitY: b.y, team: s.team, amount: b.damage || 0 });
-          (state.damageEvents ||= []).push({ id: s.id, type: "hp", amount: b.damage || 0, x: b.x, y: b.y, team: s.team, attackerId: attacker && attacker.id });
+          (state.healthHits ||= []).push({
+            id: s.id,
+            hitX: b.x,
+            hitY: b.y,
+            team: s.team,
+            amount: b.damage || 0
+          });
+          (state.damageEvents ||= []).push({
+            id: s.id,
+            type: "hp",
+            amount: b.damage || 0,
+            x: b.x,
+            y: b.y,
+            team: s.team,
+            attackerId: attacker && attacker.id
+          });
           dealtToHealth = b.damage || 0;
         }
         s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
@@ -1062,11 +1189,26 @@ function simulateStep(state, dtSeconds, bounds) {
             attacker.level = (attacker.level || 1) + 1;
             const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
             const lvl = attacker.level || 1;
-            const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
-            const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
-            const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
-            const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
-            const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+            const hpScalar = resolveScalar(
+              progression.hpPercentPerLevel,
+              lvl
+            );
+            const shScalar = resolveScalar(
+              progression.shieldPercentPerLevel,
+              lvl
+            );
+            const dmgScalar = resolveScalar(
+              progression.dmgPercentPerLevel,
+              lvl
+            );
+            const speedScalar = resolveScalar(
+              progression.speedPercentPerLevel,
+              lvl
+            );
+            const regenScalar = resolveScalar(
+              progression.regenPercentPerLevel,
+              lvl
+            );
             const hpMul = 1 + hpScalar;
             const shMul = 1 + shScalar;
             const dmgMul = 1 + dmgScalar;
@@ -1074,47 +1216,87 @@ function simulateStep(state, dtSeconds, bounds) {
             attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
             if (typeof attacker.maxShield === "number") {
               attacker.maxShield = (attacker.maxShield || 0) * shMul;
-              attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
+              attacker.shield = Math.min(
+                attacker.maxShield,
+                (attacker.shield || 0) * shMul
+              );
             }
             if (Array.isArray(attacker.cannons)) {
               for (const c of attacker.cannons) {
                 if (typeof c.damage === "number") c.damage *= dmgMul;
               }
             }
-            if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
-            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
+            if (typeof speedScalar === "number" && typeof attacker.accel === "number")
+              attacker.accel = attacker.accel * (1 + speedScalar);
+            if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number")
+              attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
           }
         }
         state.bullets.splice(bi, 1);
         if (s.hp <= 0) {
+          console.log(
+            "DEBUG: KILL BRANCH, attacker",
+            attacker && attacker.id,
+            "xp before",
+            attacker && attacker.xp
+          );
           if (attacker) {
             attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);
+            console.log(
+              "DEBUG: KILL XP AWARDED, attacker",
+              attacker.id,
+              "xp after",
+              attacker.xp
+            );
             while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
               attacker.xp -= progression.xpToLevel(attacker.level || 1);
               attacker.level = (attacker.level || 1) + 1;
               const resolveScalar = (s2, lvl2) => typeof s2 === "function" ? s2(lvl2) : s2 || 0;
               const lvl = attacker.level || 1;
-              const hpScalar = resolveScalar(progression.hpPercentPerLevel, lvl);
-              const shScalar = resolveScalar(progression.shieldPercentPerLevel, lvl);
-              const dmgScalar = resolveScalar(progression.dmgPercentPerLevel, lvl);
-              const speedScalar = resolveScalar(progression.speedPercentPerLevel, lvl);
-              const regenScalar = resolveScalar(progression.regenPercentPerLevel, lvl);
+              const hpScalar = resolveScalar(
+                progression.hpPercentPerLevel,
+                lvl
+              );
+              const shScalar = resolveScalar(
+                progression.shieldPercentPerLevel,
+                lvl
+              );
+              const dmgScalar = resolveScalar(
+                progression.dmgPercentPerLevel,
+                lvl
+              );
+              const speedScalar = resolveScalar(
+                progression.speedPercentPerLevel,
+                lvl
+              );
+              const regenScalar = resolveScalar(
+                progression.regenPercentPerLevel,
+                lvl
+              );
               const hpMul = 1 + hpScalar;
               const shMul = 1 + shScalar;
               const dmgMul = 1 + dmgScalar;
               attacker.maxHp = (attacker.maxHp || 0) * hpMul;
-              attacker.hp = Math.min(attacker.maxHp, (attacker.hp || 0) * hpMul);
+              attacker.hp = Math.min(
+                attacker.maxHp,
+                (attacker.hp || 0) * hpMul
+              );
               if (typeof attacker.maxShield === "number") {
                 attacker.maxShield = (attacker.maxShield || 0) * shMul;
-                attacker.shield = Math.min(attacker.maxShield, (attacker.shield || 0) * shMul);
+                attacker.shield = Math.min(
+                  attacker.maxShield,
+                  (attacker.shield || 0) * shMul
+                );
               }
               if (Array.isArray(attacker.cannons)) {
                 for (const c of attacker.cannons) {
                   if (typeof c.damage === "number") c.damage *= dmgMul;
                 }
               }
-              if (typeof speedScalar === "number" && typeof attacker.accel === "number") attacker.accel = attacker.accel * (1 + speedScalar);
-              if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number") attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
+              if (typeof speedScalar === "number" && typeof attacker.accel === "number")
+                attacker.accel = attacker.accel * (1 + speedScalar);
+              if (typeof regenScalar === "number" && typeof attacker.shieldRegen === "number")
+                attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
           (state.explosions ||= []).push({ x: s.x, y: s.y, team: s.team });
@@ -1125,7 +1307,11 @@ function simulateStep(state, dtSeconds, bounds) {
     }
   }
   for (const s of state.ships || []) {
-    if (s.maxShield) s.shield = Math.min(s.maxShield, (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds);
+    if (s.maxShield)
+      s.shield = Math.min(
+        s.maxShield,
+        (s.shield || 0) + (s.shieldRegen || 0) * dtSeconds
+      );
   }
   for (const s of state.ships || []) {
     s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
@@ -1134,10 +1320,13 @@ function simulateStep(state, dtSeconds, bounds) {
   return state;
 }
 
-// src/gamemanager.ts
-init_rng();
-
 // src/config/displayConfig.ts
+var DISPLAY_DEFAULTS = {
+  logicalMap: { W: 1920, H: 1080 },
+  renderScale: 1,
+  displayScale: 1,
+  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
+};
 function getDefaultBounds() {
   return { W: 1920, H: 1080 };
 }
@@ -1200,10 +1389,13 @@ var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
 init_entitiesConfig();
-init_teamsConfig();
+var ships = [];
+var bullets = [];
+var particles = [];
 var flashes = [];
 var shieldFlashes = [];
 var healthFlashes = [];
+var particlePool = [];
 var config = {
   shield: { ...SHIELD },
   health: { ...HEALTH },
@@ -1211,10 +1403,16 @@ var config = {
   stars: { ...STARS }
 };
 var _seed2 = null;
-var _reinforcementInterval = 5;
+var _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;
 var _reinforcementAccumulator = 0;
+function releaseParticle(p) {
+  const i = particles.indexOf(p);
+  if (i !== -1) particles.splice(i, 1);
+  p.alive = false;
+  particlePool.push(p);
+}
 function setReinforcementInterval(seconds) {
-  _reinforcementInterval = Number(seconds) || 5;
+  _reinforcementInterval = Number(seconds) || (TeamsConfig.continuousReinforcement?.interval ?? 5);
 }
 function getReinforcementInterval() {
   return _reinforcementInterval;
@@ -1234,12 +1432,21 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
     _reinforcementAccumulator = 0;
     try {
       if (typeof chooseReinforcementsWithManagerSeed === "function") {
-        const orders = chooseReinforcementsWithManagerSeed(state, { ...continuousOptions, bounds: getDefaultBounds(), enabled: true });
+        const orders = chooseReinforcementsWithManagerSeed(state, {
+          ...continuousOptions,
+          bounds: getDefaultBounds(),
+          enabled: true
+        });
         if (Array.isArray(orders) && orders.length) {
           const spawned = [];
           for (const o of orders) {
             try {
-              const ship = createShip(o.type || getDefaultShipType(), o.x || 100, o.y || 100, o.team || "red");
+              const ship = createShip(
+                o.type || getDefaultShipType(),
+                o.x || 100,
+                o.y || 100,
+                o.team || "red"
+              );
               state.ships.push(ship);
               spawned.push(ship);
             } catch (e) {
@@ -1249,8 +1456,18 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
         }
       }
       const fallback = getDefaultShipType();
-      const r = createShip(fallback, FALLBACK_POSITIONS[0].x, FALLBACK_POSITIONS[0].y, FALLBACK_POSITIONS[0].team);
-      const b = createShip(fallback, FALLBACK_POSITIONS[1].x, FALLBACK_POSITIONS[1].y, FALLBACK_POSITIONS[1].team);
+      const r = createShip(
+        fallback,
+        FALLBACK_POSITIONS[0].x,
+        FALLBACK_POSITIONS[0].y,
+        FALLBACK_POSITIONS[0].team
+      );
+      const b = createShip(
+        fallback,
+        FALLBACK_POSITIONS[1].x,
+        FALLBACK_POSITIONS[1].y,
+        FALLBACK_POSITIONS[1].team
+      );
       state.ships.push(r);
       state.ships.push(b);
       return { spawned: [r, b] };
@@ -1260,14 +1477,23 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
   }
   return null;
 }
-function createGameManager({ useWorker = true, renderer = null, seed = 12345, createSimWorker: createSimWorkerFactory } = {}) {
+function createGameManager({
+  useWorker = true,
+  renderer = null,
+  seed = 12345,
+  createSimWorker: createSimWorkerFactory
+} = {}) {
   let state = makeInitialState();
   let running = false;
   const listeners = /* @__PURE__ */ new Map();
   const workerReadyCbs = [];
   let simWorker = null;
   let workerReady = false;
-  let lastReinforcement = { spawned: [], timestamp: 0, options: {} };
+  let lastReinforcement = {
+    spawned: [],
+    timestamp: 0,
+    options: {}
+  };
   let continuous = false;
   let continuousOptions = {};
   function emit(type, msg) {
@@ -1279,7 +1505,13 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   try {
     if (useWorker) {
       const factory = createSimWorkerFactory || createSimWorker;
-      simWorker = factory(new URL("./simWorker.js", import.meta.url).href);
+      let simWorkerUrl;
+      try {
+        simWorkerUrl = typeof import.meta !== "undefined" && import.meta.url ? new URL("./simWorker.js", import.meta.url).href : "./simWorker.js";
+      } catch (e) {
+        simWorkerUrl = "./simWorker.js";
+      }
+      simWorker = factory(simWorkerUrl);
       simWorker.on && simWorker.on("ready", () => {
         workerReady = true;
         for (const cb of workerReadyCbs.slice()) {
@@ -1296,7 +1528,13 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
         emit("reinforcements", m);
       });
       try {
-        simWorker.post({ type: "init", seed, bounds: getDefaultBounds(), simDtMs: SIM_DT_MS, state });
+        simWorker.post({
+          type: "init",
+          seed,
+          bounds: getDefaultBounds(),
+          simDtMs: SIM.DT_MS,
+          state
+        });
         simWorker.post({ type: "start" });
       } catch (e) {
       }
@@ -1307,18 +1545,23 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   function _evaluateAndEmit(dt) {
     const result = evaluateReinforcement(dt, state, continuousOptions);
     if (result && Array.isArray(result.spawned) && result.spawned.length) {
-      lastReinforcement = { spawned: result.spawned, timestamp: Date.now(), options: { ...continuousOptions } };
+      lastReinforcement = {
+        spawned: result.spawned,
+        timestamp: Date.now(),
+        options: { ...continuousOptions }
+      };
       emit("reinforcements", { spawned: result.spawned });
     }
   }
   function step(dtSeconds) {
+    const clampedDt = Math.min(dtSeconds, 0.05);
     if (!simWorker) {
       try {
-        applySimpleAI(state, dtSeconds, getDefaultBounds());
+        applySimpleAI(state, clampedDt, getDefaultBounds());
       } catch (e) {
       }
       try {
-        simulateStep(state, dtSeconds, getDefaultBounds());
+        simulateStep(state, clampedDt, getDefaultBounds());
       } catch (e) {
       }
     } else {
@@ -1327,23 +1570,13 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
       } catch (e) {
       }
     }
-    _evaluateAndEmit(dtSeconds);
-    if (Array.isArray(state.explosions)) {
-      for (const ex of state.explosions) {
-        flashes.push({ ...ex });
-      }
-    }
-    if (Array.isArray(state.shieldHits)) {
-      for (const h of state.shieldHits) {
-        shieldFlashes.push({ ...h });
-      }
-      state.shieldHits.length = 0;
-    }
-    if (Array.isArray(state.healthHits)) {
-      for (const h of state.healthHits) {
-        healthFlashes.push({ ...h });
-      }
-      state.healthHits.length = 0;
+    _evaluateAndEmit(clampedDt);
+    ships.splice(0, ships.length, ...state.ships.filter((s) => s.hp > 0));
+    bullets.splice(0, bullets.length, ...state.bullets.filter((b) => b.ttl > 0));
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life = (p.life || p.ttl || 0) - clampedDt;
+      if (p.life <= 0) releaseParticle(p);
     }
     function decay(arr, dt) {
       for (let i = arr.length - 1; i >= 0; i--) {
@@ -1352,12 +1585,19 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
         if (it.life <= 0) arr.splice(i, 1);
       }
     }
-    decay(flashes, dtSeconds);
-    decay(shieldFlashes, dtSeconds);
-    decay(healthFlashes, dtSeconds);
+    decay(flashes, clampedDt);
+    decay(shieldFlashes, clampedDt);
+    decay(healthFlashes, clampedDt);
     if (renderer && typeof renderer.renderState === "function") {
       try {
-        renderer.renderState({ ships: state.ships, bullets: state.bullets, flashes, shieldFlashes, healthFlashes, t: state.t });
+        renderer.renderState({
+          ships: state.ships,
+          bullets: state.bullets,
+          flashes,
+          shieldFlashes,
+          healthFlashes,
+          t: state.t
+        });
       } catch (e) {
       }
     }
@@ -1370,14 +1610,14 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
     acc += now - last;
     last = now;
     if (acc > 250) acc = 250;
-    while (acc >= SIM_DT_MS) {
-      step(SIM_DT_MS / 1e3);
-      acc -= SIM_DT_MS;
+    while (acc >= SIM.DT_MS) {
+      step(SIM.DT_MS / 1e3);
+      acc -= SIM.DT_MS;
     }
     try {
       requestAnimationFrame(runLoop);
     } catch (e) {
-      setTimeout(runLoop, SIM_DT_MS);
+      setTimeout(runLoop, SIM.DT_MS);
     }
   }
   function on(evt, cb) {
@@ -1402,13 +1642,14 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   }
   function resetManager() {
     state = makeInitialState();
-    if (simWorker) try {
-      simWorker.post({ type: "command", cmd: "setState", args: { state } });
-    } catch (e) {
-    }
+    if (simWorker)
+      try {
+        simWorker.post({ type: "command", cmd: "setState", args: { state } });
+      } catch (e) {
+      }
   }
-  function stepOnce(dt = SIM_DT_MS / 1e3) {
-    const n = Number(dt) || SIM_DT_MS / 1e3;
+  function stepOnce(dt = SIM.DT_MS / 1e3) {
+    const n = Number(dt) || SIM.DT_MS / 1e3;
     step(n);
   }
   function setContinuousEnabled(v = false) {
@@ -1420,9 +1661,17 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
       }
     } else {
       if (continuous) {
-        const result = evaluateReinforcement(SIM_DT_MS / 1e3, state, continuousOptions);
+        const result = evaluateReinforcement(
+          SIM.DT_MS / 1e3,
+          state,
+          continuousOptions
+        );
         if (result && Array.isArray(result.spawned) && result.spawned.length) {
-          lastReinforcement = { spawned: result.spawned, timestamp: Date.now(), options: { ...continuousOptions } };
+          lastReinforcement = {
+            spawned: result.spawned,
+            timestamp: Date.now(),
+            options: { ...continuousOptions }
+          };
           emit("reinforcements", { spawned: result.spawned });
         }
       }
@@ -1433,20 +1682,25 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   }
   function setContinuousOptions(opts = {}) {
     continuousOptions = { ...continuousOptions, ...opts };
-    if (simWorker) try {
-      simWorker.post({ type: "setContinuousOptions", opts: continuousOptions });
-    } catch (e) {
-    }
+    if (simWorker)
+      try {
+        simWorker.post({
+          type: "setContinuousOptions",
+          opts: continuousOptions
+        });
+      } catch (e) {
+      }
   }
   function getContinuousOptions() {
     return { ...continuousOptions };
   }
   function setReinforcementIntervalManager(seconds) {
     setReinforcementInterval(seconds);
-    if (simWorker) try {
-      simWorker.post({ type: "setReinforcementInterval", seconds });
-    } catch (e) {
-    }
+    if (simWorker)
+      try {
+        simWorker.post({ type: "setReinforcementInterval", seconds });
+      } catch (e) {
+      }
   }
   function getReinforcementIntervalManager() {
     return getReinforcementInterval();
@@ -1480,11 +1734,10 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   function formFleets() {
     try {
       state.ships.length = 0;
-      const { makeInitialFleets: makeInitialFleets2 } = (init_teamsConfig(), __toCommonJS(teamsConfig_exports));
       const bounds = getDefaultBounds();
       const seed2 = Math.floor(srandom() * 4294967295) >>> 0;
-      const ships = makeInitialFleets2(seed2, bounds, createShip);
-      for (const ship of ships) {
+      const ships2 = makeInitialFleets(seed2, bounds, createShip);
+      for (const ship of ships2) {
         state.ships.push(ship);
       }
     } catch (e) {
@@ -1493,16 +1746,21 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   function reseedManager(newSeed = Math.floor(srandom() * 4294967295)) {
     _seed2 = newSeed >>> 0;
     srand(_seed2);
-    if (simWorker) try {
-      simWorker.post({ type: "setSeed", seed: _seed2 });
-    } catch (e) {
-    }
+    if (simWorker)
+      try {
+        simWorker.post({ type: "setSeed", seed: _seed2 });
+      } catch (e) {
+      }
   }
   function getLastReinforcement() {
     return { ...lastReinforcement };
   }
   function snapshot() {
-    return { ships: state.ships.slice(), bullets: state.bullets.slice(), t: state.t };
+    return {
+      ships: state.ships.slice(),
+      bullets: state.bullets.slice(),
+      t: state.t
+    };
   }
   const score = { red: 0, blue: 0 };
   const internal = { state, bounds: getDefaultBounds() };
@@ -1533,9 +1791,177 @@ function createGameManager({ useWorker = true, renderer = null, seed = 12345, cr
   };
 }
 
+// src/config/assets/assetsConfig.ts
+var AssetsConfig = {
+  meta: {
+    orientation: "+X",
+    coordinateSystem: "topdown-2d"
+  },
+  palette: {
+    shipHull: "#b0b7c3",
+    shipAccent: "#6c7380",
+    bullet: "#ffd166",
+    turret: "#94a3b8",
+    // Scene background color used by renderers
+    background: "#0b1220"
+  },
+  // 2D vector shapes defined as polygons and circles. Points are unit-sized
+  // profiles (roughly radius 1). Renderer should multiply by entity radius or
+  // provided scale before drawing.
+  shapes2d: {
+    fighter: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+        { type: "circle", r: 0.5 }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+    },
+    corvette: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+        { type: "circle", r: 0.6 }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+    },
+    frigate: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+        { type: "circle", r: 0.7 }
+      ],
+      strokeWidth: 0.1,
+      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+    },
+    destroyer: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+        { type: "circle", r: 1 },
+        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
+      turrets: [
+        { kind: "basic", position: [1.2, 0.8] },
+        { kind: "basic", position: [-1.2, 0.8] },
+        { kind: "basic", position: [1.2, -0.8] },
+        { kind: "basic", position: [-1.2, -0.8] },
+        { kind: "basic", position: [0, 1.5] },
+        { kind: "basic", position: [0, -1.5] }
+      ]
+    },
+    carrier: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+        { type: "circle", r: 1.2 },
+        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
+      turrets: [
+        { kind: "basic", position: [2, 1.2] },
+        { kind: "basic", position: [-2, 1.2] },
+        { kind: "basic", position: [2, -1.2] },
+        { kind: "basic", position: [-2, -1.2] }
+      ]
+    },
+    bulletSmall: { type: "circle", r: 0.18 },
+    bulletMedium: { type: "circle", r: 0.25 },
+    bulletLarge: { type: "circle", r: 0.36 },
+    turretBasic: {
+      type: "compound",
+      parts: [
+        { type: "circle", r: 0.5 },
+        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+      ],
+      strokeWidth: 0.08
+    },
+    // Small effect/particle shapes for renderer-driven effects
+    particleSmall: { type: "circle", r: 0.12 },
+    particleMedium: { type: "circle", r: 0.22 },
+    explosionParticle: { type: "circle", r: 0.32 },
+    shieldRing: { type: "circle", r: 1.2 }
+  }
+};
+AssetsConfig.animations = {
+  engineFlare: {
+    type: "polygon",
+    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+    pulseRate: 8,
+    // configurable alpha multiplier for engine overlay
+    alpha: 0.4,
+    // local-space X offset (negative = behind ship)
+    offset: -0.9
+  },
+  shieldEffect: {
+    type: "circle",
+    r: 1.2,
+    strokeWidth: 0.1,
+    color: "#88ccff",
+    pulseRate: 2,
+    // map shieldPct -> alpha = base + scale * shieldPct
+    alphaBase: 0.25,
+    alphaScale: 0.75
+  },
+  damageParticles: {
+    type: "particles",
+    color: "#ff6b6b",
+    count: 6,
+    lifetime: 0.8,
+    spread: 0.6
+  },
+  engineTrail: {
+    type: "trail",
+    color: "#fffc00",
+    // bright yellow for high contrast
+    maxLength: 40,
+    // much longer trail
+    width: 0.35,
+    // thicker trail line
+    fade: 0.35
+    // slower fading, more persistent
+  }
+};
+AssetsConfig.damageStates = {
+  light: { opacity: 0.9, accentColor: "#b0b7c3" },
+  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+};
+AssetsConfig.visualStateDefaults = {
+  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
+};
+AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
+AssetsConfig.shieldArcWidth = Math.PI / 12;
+function getVisualConfig(type) {
+  const shape = getShipAsset(type);
+  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
+}
+function getShipAsset(type) {
+  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+}
+function getBulletAsset(kind = "small") {
+  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
+  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
+  return AssetsConfig.shapes2d.bulletSmall;
+}
+function getTurretAsset(_kind = "basic") {
+  return AssetsConfig.shapes2d.turretBasic;
+}
+
 // src/canvasrenderer.ts
-init_assetsConfig();
-init_teamsConfig();
 init_entitiesConfig();
 
 // src/config/rendererConfig.ts
@@ -1543,16 +1969,14 @@ var RendererConfig = {
   preferred: "canvas",
   allowUrlOverride: true,
   allowWebGL: true,
-  renderScale: 1,
-  // scale for output buffer resolution
-  displayScale: 1,
-  // scale for canvas transform to fit window
+  renderScale: DISPLAY_DEFAULTS.renderScale,
+  displayScale: DISPLAY_DEFAULTS.displayScale,
   dynamicScaleEnabled: false,
   lastFrameTime: 0,
   frameScore: "green",
   // green, yellow, red
   // UI overlays configuration
-  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
+  hpBar: DISPLAY_DEFAULTS.hpBar
 };
 function getPreferredRenderer() {
   try {
@@ -1766,11 +2190,14 @@ var CanvasRenderer = class {
         for (const turret of s.turrets) {
           if (!turret || !turret.position) continue;
           const turretShape = getTurretAsset(turret.kind || "basic");
-          const turretScale = (s.radius || 12) * renderScale * 0.5;
+          const shipType = s.type || "fighter";
+          const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];
+          const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : s.radius || 12;
+          const turretScale = configRadius * renderScale * 0.5;
           const angle = s.angle || 0;
           const [tx, ty] = turret.position;
-          const turretX = Math.cos(angle) * tx * (s.radius || 12) - Math.sin(angle) * ty * (s.radius || 12);
-          const turretY = Math.sin(angle) * tx * (s.radius || 12) + Math.cos(angle) * ty * (s.radius || 12);
+          const turretX = Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
+          const turretY = Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
           activeBufferCtx.save();
           activeBufferCtx.translate(turretX, turretY);
           activeBufferCtx.rotate(0);
@@ -2014,8 +2441,6 @@ var CanvasRenderer = class {
 };
 
 // src/webglrenderer.ts
-init_assetsConfig();
-init_teamsConfig();
 init_entitiesConfig();
 var WebGLRenderer = class {
   // Fullscreen quad shader for blitting FBO to main canvas
@@ -2272,10 +2697,10 @@ var WebGLRenderer = class {
         try {
           const w = bufferW;
           const h = bufferH;
-          const ships = state.ships || [];
+          const ships2 = state.ships || [];
           const verts = [];
           const now = state && state.t || 0;
-          for (const s of ships) {
+          for (const s of ships2) {
             const x = s.x || 0;
             const y = s.y || 0;
             const clipX = x / Math.max(1, LOGICAL_W) * 2 - 1;
@@ -2928,6 +3353,8 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   function uiTick() {
+    const startTick = performance.now();
+    let skipRender = false;
     try {
       const s = gm.snapshot();
       ui.redScore.textContent = `Red ${gm.score.red}`;
@@ -2936,6 +3363,11 @@ async function startApp(rootDocument = document) {
       const blueCount = s.ships.filter((sh) => sh.team === "blue").length;
       ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");
     } catch (e) {
+    }
+    const endTick = performance.now();
+    const tickTime = endTick - startTick;
+    if (tickTime > SIM.DT_MS) {
+      skipRender = true;
     }
     const dynamicEnabled = !!RendererConfig.dynamicScaleEnabled;
     const scaleSliderEl = rootDocument.getElementById("rendererScaleRange");
@@ -2965,7 +3397,11 @@ async function startApp(rootDocument = document) {
         internalScaleUpdate = false;
       }
     }
-    requestAnimationFrame(uiTick);
+    if (!skipRender) {
+      requestAnimationFrame(uiTick);
+    } else {
+      setTimeout(uiTick, SIM.DT_MS);
+    }
   }
   requestAnimationFrame(uiTick);
   return { gm, renderer };

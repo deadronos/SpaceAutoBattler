@@ -3,7 +3,7 @@
 
 // Core simulation and config types
 export type { ShipSpec, CannonSpec, ProgressionConfig } from '../config/types';
-export type { ShipConfigMap, VisualMappingConfig } from '../config/entitiesConfig';
+export type { ShipConfigMap } from '../config/entitiesConfig';
 export type { AssetsConfigType, Shape2D } from '../config/assets/assetsConfig';
 export type { TeamsConfig } from '../config/teamsConfig';
 export type { RendererConfig } from '../config/rendererConfig';

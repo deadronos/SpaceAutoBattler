@@ -1,3 +1,6 @@
+// Boundary behavior type for ships and bullets
+export type BoundaryBehavior = 'remove' | 'wrap' | 'bounce';
+
 // Shared configuration types for SpaceAutoBattler
 export interface CannonSpec {
   // common cannon fields used by simulation and progression
@@ -40,6 +43,15 @@ export interface ShipSpec {
   turnRate?: number;
   // radius is now required for rendering and collision calculations
   radius: number;
+  /**
+   * Throttle (0..1) and steering (-1..1) for physics-based movement, set by AI/game manager each frame.
+   */
+  throttle?: number;
+  steering?: number;
+  /**
+   * Optional max speed for clamping velocity.
+   */
+  maxSpeed?: number;
   [k: string]: any;
 }
 
@@ -55,8 +67,16 @@ export interface ProgressionConfig {
   [k: string]: any;
 }
 
-export type Shape2D_Polygon = { type: 'polygon'; points: any[]; [k: string]: any };
-export type Shape2D_Compound = { type: 'compound'; parts: any[]; [k: string]: any };
+export type Shape2D_Polygon = {
+  type: "polygon";
+  points: any[];
+  [k: string]: any;
+};
+export type Shape2D_Compound = {
+  type: "compound";
+  parts: any[];
+  [k: string]: any;
+};
 export type Shape2D_Generic = { type: string; [k: string]: any };
 export type Shape2D = Shape2D_Polygon | Shape2D_Compound | Shape2D_Generic;
 
@@ -68,7 +88,11 @@ export interface AssetsConfig {
 
 export interface TeamsConfig {
   teams: Record<string, { id: string; color: string; [k: string]: any }>;
-  defaultFleet?: { counts: Record<string, number>; spacing?: number; [k: string]: any };
+  defaultFleet?: {
+    counts: Record<string, number>;
+    spacing?: number;
+    [k: string]: any;
+  };
   continuousReinforcement?: {
     enabled: boolean;
     scoreMargin: number;

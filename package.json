@@ -14,7 +14,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:playwright": "playwright test -c playwright.config.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "validate-config": "node -e \"(async()=>{const v=require('./src/config/validateConfig');const a=require('./src/config/assets/assetsConfig');const t=require('./src/config/teamsConfig');const p=require('./src/config/progressionConfig');const r=require('./src/config/rendererConfig'); const errs=[...v.validateAssetsConfig(a),...v.validateTeamsConfig(t.TeamsConfig),...v.validateProgressionConfig(p.progression),...v.validateRendererConfig(r)]; if(errs.length){console.error('Config validation failed:\n',errs.join('\n')); process.exit(2);} console.log('Config validation passed');})()\""
+  "validate-config": "node ./scripts/validate-config.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
