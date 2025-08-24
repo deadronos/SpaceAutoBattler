@@ -17,6 +17,7 @@ function dist2(a: { x: number; y: number }, b: { x: number; y: number }) {
 }
 
 export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
+  pruneAll(state, dtSeconds, bounds);
   // Advance time
   state.t = (state.t || 0) + dtSeconds;
 
@@ -56,80 +57,111 @@ export function simulateStep(state: any, dtSeconds: number, bounds: Bounds) {
     }
     if (remove) releaseBullet(b);
   }
-  // Prune out-of-bounds shieldHits, healthHits, explosions, damageEvents
-  function pruneHits(arr: any[], bounds: Bounds) {
-    if (!Array.isArray(arr)) return arr;
-    return arr.filter(
-      (e) =>
-        typeof e.x === "number" &&
-        typeof e.y === "number" &&
-        e.x >= 0 &&
-        e.x < bounds.W &&
-        e.y >= 0 &&
-        e.y < bounds.H,
-    );
+  // Batched in-place pruning for all high-frequency event arrays
+function pruneAll(state: any, dtSeconds: number, bounds: Bounds) {
+  // Bullets: prune expired/out-of-bounds
+  let writeBullet = 0;
+  for (let read = 0; read < state.bullets.length; read++) {
+    const b = state.bullets[read];
+    b.x += (b.vx || 0) * dtSeconds;
+    b.y += (b.vy || 0) * dtSeconds;
+    b.ttl = (b.ttl || 0) - dtSeconds;
+    let outX = b.x < 0 || b.x >= bounds.W;
+    let outY = b.y < 0 || b.y >= bounds.H;
+    let outOfBounds = outX || outY;
+    let remove = false;
+    if (b.ttl <= 0) remove = true;
+    else if (outOfBounds) {
+      switch (boundaryBehavior.bullets) {
+        case 'remove':
+          remove = true;
+          break;
+        case 'wrap':
+          if (b.x < 0) b.x += bounds.W;
+          if (b.x >= bounds.W) b.x -= bounds.W;
+          if (b.y < 0) b.y += bounds.H;
+          if (b.y >= bounds.H) b.y -= bounds.H;
+          break;
+        case 'bounce':
+          if (outX) {
+            b.vx = -(b.vx || 0);
+            b.x = Math.max(0, Math.min(bounds.W, b.x));
+          }
+          if (outY) {
+            b.vy = -(b.vy || 0);
+            b.y = Math.max(0, Math.min(bounds.H, b.y));
+          }
+          break;
+      }
+    }
+    if (!remove) {
+      state.bullets[writeBullet++] = b;
+    } else {
+      releaseBullet(b);
+    }
   }
-  if (Array.isArray(state.shieldHits))
-  // Prune particles/events after their lifetime
-if (state.particles) {
-  // In-place compaction (write pointer)
-  let write = 0;
+  state.bullets.length = writeBullet;
+
+  // Particles: prune expired
+  let writeParticle = 0;
   for (let read = 0; read < state.particles.length; read++) {
     const p = state.particles[read];
     p.life = (p.life || p.ttl || 0) - dtSeconds;
     if (p.life > 0) {
-      state.particles[write++] = p;
+      state.particles[writeParticle++] = p;
     } else {
       releaseParticle(p);
     }
   }
-  state.particles.length = write;
-}
-  if (state.explosions) {
-    for (let i = state.explosions.length - 1; i >= 0; i--) {
-      const e = state.explosions[i];
-      e.life = (e.life || e.ttl || 0) - dtSeconds;
-      if (e.life <= 0) releaseExplosion(e);
+  state.particles.length = writeParticle;
+
+  // Explosions: prune expired
+  let writeExplosion = 0;
+  for (let read = 0; read < state.explosions.length; read++) {
+    const e = state.explosions[read];
+    e.life = (e.life || e.ttl || 0) - dtSeconds;
+    if (e.life > 0) {
+      state.explosions[writeExplosion++] = e;
+    } else {
+      releaseExplosion(e);
     }
-    state.explosions = state.explosions.filter((e: any) => e.life > 0);
   }
-let writeShield = 0;
-for (let read = 0; read < state.shieldHits.length; read++) {
-  const sh = state.shieldHits[read];
-  if (
-    typeof sh.x === "number" &&
-    typeof sh.y === "number" &&
-    sh.x >= 0 && sh.x < bounds.W &&
-    sh.y >= 0 && sh.y < bounds.H
-  ) {
-    state.shieldHits[writeShield++] = sh;
-  } else {
-    releaseShieldHit(sh);
-  }
-}
-state.shieldHits.length = writeShield;
-  if (Array.isArray(state.healthHits)) {
-    for (let i = state.healthHits.length - 1; i >= 0; i--) {
-      const hh = state.healthHits[i];
-      if (
-        typeof hh.x !== "number" ||
-        typeof hh.y !== "number" ||
-        hh.x < 0 ||
-        hh.x >= bounds.W ||
-        hh.y < 0 ||
-        hh.y >= bounds.H
-      ) {
-        releaseHealthHit(hh);
-      }
+  state.explosions.length = writeExplosion;
+
+  // ShieldHits: prune out-of-bounds
+  let writeShield = 0;
+  for (let read = 0; read < state.shieldHits.length; read++) {
+    const sh = state.shieldHits[read];
+    if (
+      typeof sh.x === "number" &&
+      typeof sh.y === "number" &&
+      sh.x >= 0 && sh.x < bounds.W &&
+      sh.y >= 0 && sh.y < bounds.H
+    ) {
+      state.shieldHits[writeShield++] = sh;
+    } else {
+      releaseShieldHit(sh);
     }
-    state.healthHits = pruneHits(state.healthHits, bounds);
   }
-  if (Array.isArray(state.explosions)) {
-    state.explosions = pruneHits(state.explosions, bounds);
+  state.shieldHits.length = writeShield;
+
+  // HealthHits: prune out-of-bounds
+  let writeHealth = 0;
+  for (let read = 0; read < state.healthHits.length; read++) {
+    const hh = state.healthHits[read];
+    if (
+      typeof hh.x === "number" &&
+      typeof hh.y === "number" &&
+      hh.x >= 0 && hh.x < bounds.W &&
+      hh.y >= 0 && hh.y < bounds.H
+    ) {
+      state.healthHits[writeHealth++] = hh;
+    } else {
+      releaseHealthHit(hh);
+    }
   }
-  if (Array.isArray(state.damageEvents)) {
-    state.damageEvents = pruneHits(state.damageEvents, bounds);
-  }
+  state.healthHits.length = writeHealth;
+}
 
   // Move ships and update heading
   for (let si = (state.ships || []).length - 1; si >= 0; si--) {

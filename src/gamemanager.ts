@@ -192,8 +192,7 @@ export function acquireParticle(
 }
 
 export function releaseParticle(p: Particle) {
-  const i = particles.indexOf(p);
-  if (i !== -1) particles.splice(i, 1);
+  if (!p.alive) return;
   p.alive = false;
   particlePool.push(p);
 }
@@ -456,30 +455,12 @@ export function createGameManager({
       } catch (e) {}
     }
     _evaluateAndEmit(clampedDt);
-    // Prune dead entities from GameManager arrays
-    ships.splice(0, ships.length, ...state.ships.filter((s: any) => s.hp > 0));
-    bullets.splice(
-      0,
-      bullets.length,
-      ...state.bullets.filter((b: any) => b.ttl > 0),
-    );
-    // Prune particles after their lifetime
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.life = (p.life || p.ttl || 0) - clampedDt;
-      if (p.life <= 0) releaseParticle(p);
+    // Prune all high-frequency event arrays in-place
+    // (ships array is handled separately for hp > 0)
+    if (typeof simulateStep === "function") {
+      simulateStep(state, clampedDt, getDefaultBounds());
     }
-    // Prune flashes/events after their lifetime using release functions
-    function decay(arr: any[], dt: number, releaseFn: (obj: any) => void) {
-      for (let i = arr.length - 1; i >= 0; i--) {
-        const it = arr[i];
-        it.life = (it.life || it.ttl || 0) - dt;
-        if (it.life <= 0) releaseFn(it);
-      }
-    }
-    decay(flashes, clampedDt, releaseExplosion);
-    decay(shieldFlashes, clampedDt, releaseShieldHit);
-    decay(healthFlashes, clampedDt, releaseHealthHit);
+    // Flashes and event arrays are pruned by simulation now; no need for decay/splice/filter here.
     if (renderer && typeof renderer.renderState === "function") {
       try {
         renderer.renderState({
