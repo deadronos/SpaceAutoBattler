@@ -17,3 +17,18 @@ Your goal is to generate a Playwright test based on the provided scenario after 
 - Only after all steps are completed, emit a Playwright TypeScript test that uses `@playwright/test` based on message history
 - Save generated test file in the tests directory
 - Execute the test file and iterate until the test passes
+
+## Receipt: I'll generate a resilient Playwright test for the requested feature.
+
+### Plan:
+1) Use role-based locators, `test.step()`, and web-first auto-retrying assertions.
+2) Provide setup `beforeEach` navigation and any fixture logic.
+3) Output a complete `.spec.ts` file and short explanation of assertions.
+
+### Assumptions: The target page is reachable and uses semantic HTML.
+
+### Constraints: Keep test < 150 lines and recommend `toHaveURL`, `toHaveText`, `toHaveCount` assertions.
+
+### Output: Full TypeScript Playwright test content with steps and comments.
+
+### Example: Scenario: Search for ship — open page, type 'Garfield' in search input (role=textbox name='Search Input'), press Enter, assert results contain 'Garfield'.

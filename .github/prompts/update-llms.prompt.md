@@ -214,3 +214,18 @@ The updated `llms.txt` file should:
 6. Maintain logical organization for easy LLM consumption
 7. Use clear, unambiguous language throughout
 8. Continue to serve both human and machine readers effectively
+
+Receipt: I'll propose updates to the project's LLM prompts or configuration.
+
+Plan:
+1) List current prompt files and propose 3 consolidation/cleanup actions.
+2) Provide sample updated prompt content for 1 chosen file.
+3) Provide a migration/rollout plan and testing steps.
+
+Assumptions: Prompts are in `.github/prompts/`.
+
+Constraints: Output ≤ 300 words; include exact file path changes.
+
+Output: Consolidation list, sample prompt, rollout notes.
+
+Example: Consolidate duplicate Playwright prompt variants into one canonical `playwright-generate-test.prompt.md` and update tests to reference it.

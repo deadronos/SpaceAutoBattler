@@ -28,3 +28,20 @@ Navigate to https://forms.microsoft.com/url-of-my-form
 DO NOT SUBMIT THE FORM. 
 
 Ask for a review of the form before submitting it.
+
+---
+
+Receipt: I'll generate a Playwright test that fills and submits a form following accessibility-first locators.
+
+Plan:
+1) Use `getByRole` and `getByLabel` locators where possible.
+2) Add `test.step()` grouping and assertions for success states.
+3) Provide retries and avoid fixed sleeps.
+
+Assumptions: Test runs with Playwright TS in this repo's config.
+
+Constraints: Provide test file ≤ 120 lines; include setup `beforeEach` navigation.
+
+Output: Full TS test file content with comments and brief explanation.
+
+Example: Fill login form and assert `toHaveURL('/dashboard')` and `main` contains username.

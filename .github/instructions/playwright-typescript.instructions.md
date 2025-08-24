@@ -47,40 +47,18 @@ test.describe('Movie Search Feature', () => {
       await page.getByRole('search').click();
       const searchInput = page.getByRole('textbox', { name: 'Search Input' });
       await searchInput.fill('Garfield');
-      await searchInput.press('Enter');
-    });
+            await page.goto('http://localhost:8080/');
 
-    await test.step('Verify search results', async () => {
-      // Verify the accessibility tree of the search results
-      await expect(page.getByRole('main')).toMatchAriaSnapshot(`
-        - main:
-          - heading "Garfield" [level=1]
-          - heading "search results" [level=2]
-          - list "movies":
-            - listitem "movie":
-              - link "poster of The Garfield Movie The Garfield Movie rating":
-                - /url: /playwright-movies-app/movie?id=tt5779228&page=1
-                - img "poster of The Garfield Movie"
-                - heading "The Garfield Movie" [level=2]
-      `);
-    });
-  });
-});
-```
+      # Playwright (TypeScript) — Short Guide
 
-## Test Execution Strategy
+      Receipt: "Write resilient Playwright tests."
 
-1. **Initial Run**: Execute tests with `npx playwright test --project=chromium`
-2. **Debug Failures**: Analyze test failures and identify root causes
-3. **Iterate**: Refine locators, assertions, or test logic as needed
-4. **Validate**: Ensure tests pass consistently and cover the intended functionality
-5. **Report**: Provide feedback on test results and any issues discovered
+      Plan: 1) Use role-based locators. 2) Use auto-retrying assertions. 3) No hard waits.
 
-## Quality Checklist
+      Checklist:
+      - [ ] Role-based locators
+      - [ ] All state via canonical GameState if simulation
+      - [ ] Clear test titles and steps
 
-Before finalizing tests, ensure:
-- [ ] All locators are accessible and specific and avoid strict mode violations
-- [ ] Tests are grouped logically and follow a clear structure
-- [ ] Assertions are meaningful and reflect user expectations
-- [ ] Tests follow consistent naming conventions
-- [ ] Code is properly formatted and commented
+      End.
+

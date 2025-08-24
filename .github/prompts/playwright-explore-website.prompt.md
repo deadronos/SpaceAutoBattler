@@ -17,3 +17,18 @@ Your goal is to explore the website and identify key functionalities.
 4. Close the browser context upon completion.
 5. Provide a concise summary of your findings.
 6. Propose and generate test cases based on the exploration.
+
+Receipt: I'll create an exploratory Playwright script to find key pages and assert accessible roles.
+
+Plan:
+1) Crawl provided base URL for main routes (home, /login, /standalone) and capture titles.
+2) For each route capture accessibility snapshot of `main` and list missing roles.
+3) Output a report with pages, accessibility issues, and suggested selectors for tests.
+
+Assumptions: Base site is locally served and accessible.
+
+Constraints: Keep steps safe (no destructive actions) and limit to 10 pages.
+
+Output: Markdown report and suggested Playwright test skeletons.
+
+Example: Found `/standalone` — missing role on main; suggested selector: `getByRole('main')`.

@@ -77,3 +77,66 @@ Format the README with proper Markdown, including:
 - Badges for build status, version, etc. if information is available
 
 Keep the README concise yet informative, focusing on what new developers or users would need to know about the project.
+
+---
+# README Blueprint
+
+## Overview
+Brief description of the project, its purpose, and key features.
+
+## Install
+Step-by-step instructions on how to install the project, including prerequisites and dependencies.
+
+## Run
+Instructions to run the project locally, including any necessary configuration.
+
+## Test
+Guide on how to run tests for the project, including unit and integration tests.
+
+## Usage
+Examples of common use cases for the project, including code snippets and command-line examples.
+
+## Contributing
+Instructions for contributing to the project, including coding standards and pull request guidelines.
+
+---
+
+## Example Commands
+
+### Install Dependencies
+```
+npm install
+```
+
+### Run the Project
+```
+npm start
+```
+
+### Run Tests
+```
+npm test
+```
+
+### Serve and Open HTML File
+For `space_themed_autobattler_canvas_red_vs_blue_standalone.html`, use:
+```
+http-server . -o
+```
+
+---
+
+## Troubleshooting
+- Common issues and their solutions
+- How to get help or report bugs
+
+---
+
+## CI Badges
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+
+---
+
+## License
+Include license information here.
