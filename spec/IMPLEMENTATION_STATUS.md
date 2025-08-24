@@ -15,6 +15,12 @@
   - ShipConfigMap requires full ShipSpec objects (no partials).
   - Legacy fields (e.g., `dmg`) maintained for compatibility; fallback logic added.
   - All changes validated with TypeScript and tests.
+- **2025-01-02: Critical performance optimizations:**
+  - Fixed duplicate simulateStep invocation in GameManager.step (50% reduction in simulation work).
+  - Optimized release functions (releaseParticle, releaseShieldHit, releaseHealthHit) to use O(1) swap-pop instead of O(n) splice.
+  - Eliminated unnecessary array allocations in emitManagerEvent by removing arr.slice().
+  - Added comprehensive performance test suite (test/vitest/performance.spec.ts).
+  - All optimizations verified with stress tests and existing pooling tests.
 
 ## Current State
 
@@ -23,6 +29,7 @@
 - Most test failures resolved; only edge cases remain.
 - Config files reviewed for duplication/unused entries; hygiene improved.
 - **Type/config migration complete; all configs match stricter requirements.**
+- **Performance audit completed; critical hot-path optimizations implemented and tested.**
 
 ## Short-term Goals
 

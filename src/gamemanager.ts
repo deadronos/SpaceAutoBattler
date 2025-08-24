@@ -95,7 +95,10 @@ export function acquireShieldHit(opts: any = {}): any {
 export function releaseShieldHit(sh: any) {
   if (sh._pooled) return;
   const i = shieldFlashes.indexOf(sh);
-  if (i !== -1) shieldFlashes.splice(i, 1);
+  if (i !== -1) {
+    shieldFlashes[i] = shieldFlashes[shieldFlashes.length - 1];
+    shieldFlashes.pop();
+  }
   sh.alive = false;
   sh._pooled = true;
   shieldHitPool.push(sh);
@@ -118,7 +121,10 @@ export function acquireHealthHit(opts: any = {}): any {
 export function releaseHealthHit(hh: any) {
   if (hh._pooled) return;
   const i = healthFlashes.indexOf(hh);
-  if (i !== -1) healthFlashes.splice(i, 1);
+  if (i !== -1) {
+    healthFlashes[i] = healthFlashes[healthFlashes.length - 1];
+    healthFlashes.pop();
+  }
   hh.alive = false;
   hh._pooled = true;
   healthHitPool.push(hh);
@@ -206,10 +212,11 @@ export function releaseParticle(p: Particle) {
   if (!p._pooled) {
     p._pooled = true;
     p.alive = false;
-    // Remove from active particles array if present
+    // Remove from active particles array if present (optimized swap-pop)
     const idx = particles.indexOf(p);
     if (idx !== -1) {
-      particles.splice(idx, 1);
+      particles[idx] = particles[particles.length - 1];
+      particles.pop();
     }
     particlePool.push(p);
   }
@@ -302,7 +309,9 @@ function emitManagerEvent(
   data: any,
 ) {
   const arr = map.get(type) || [];
-  for (const cb of arr.slice()) {
+  // Iterate directly without creating a copy to avoid unnecessary allocations
+  for (let i = 0; i < arr.length; i++) {
+    const cb = arr[i];
     try {
       if (typeof cb === "function") cb(data);
     } catch (e) {}
@@ -481,9 +490,7 @@ export function createGameManager({
     _evaluateAndEmit(clampedDt);
     // Prune all high-frequency event arrays in-place
     // (ships array is handled separately for hp > 0)
-    if (typeof simulateStep === "function") {
-      simulateStep(state, clampedDt, SIM.bounds);
-    }
+    // NOTE: simulateStep is already called above when !simWorker, so no need to call again
     // Flashes and event arrays are pruned by simulation now; no need for decay/splice/filter here.
     if (renderer && typeof renderer.renderState === "function") {
       try {
