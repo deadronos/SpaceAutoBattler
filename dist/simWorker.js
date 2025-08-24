@@ -265,6 +265,13 @@ var progression = {
 };
 
 // src/config/simConfig.ts
+var SIM = {
+  DT_MS: 16,
+  MAX_ACC_MS: 250,
+  bounds: { W: 1920, H: 1080 },
+  // Use LOGICAL_MAP for default bounds
+  friction: 0.98
+};
 var boundaryBehavior = {
   ships: "wrap",
   bullets: "remove"
@@ -336,22 +343,173 @@ var TeamsConfig = {
 var TEAM_DEFAULT = "red";
 
 // src/entities.ts
+function acquireEffect(state2, key, createFn, initArgs) {
+  const poolMap = state2.assetPool.effects;
+  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts) state2.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state2.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state2.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const e2 = createFn();
+    try {
+      if (typeof e2.reset === "function") e2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(e2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return e2;
+  }
+  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
+  const e = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return e;
+}
+function releaseEffect(state2, key, effect, disposeFn) {
+  const poolMap = state2.assetPool.effects;
+  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts) state2.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(effect)) free.push(effect);
+  const max = state2.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state2.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+}
 var nextId = 1;
 function genId() {
   return nextId++;
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
-  return {
-    id: genId(),
-    x,
-    y,
-    vx,
-    vy,
-    team,
-    ownerId,
-    damage,
-    ttl
-  };
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl };
+}
+function createExplosionEffect(init) {
+  return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };
+}
+function resetExplosionEffect(obj, init) {
+  obj.x = init?.x ?? 0;
+  obj.y = init?.y ?? 0;
+  obj.r = init?.r;
+  obj.alive = true;
+  obj._pooled = false;
+  Object.assign(obj, init);
+}
+function createShieldHitEffect(init) {
+  return { x: init?.x ?? 0, y: init?.y ?? 0, magnitude: init?.magnitude, alive: true, _pooled: false, ...init };
+}
+function resetShieldHitEffect(obj, init) {
+  obj.x = init?.x ?? 0;
+  obj.y = init?.y ?? 0;
+  obj.magnitude = init?.magnitude;
+  obj.alive = true;
+  obj._pooled = false;
+  Object.assign(obj, init);
+}
+function createHealthHitEffect(init) {
+  return { x: init?.x ?? 0, y: init?.y ?? 0, amount: init?.amount, alive: true, _pooled: false, ...init };
+}
+function resetHealthHitEffect(obj, init) {
+  obj.x = init?.x ?? 0;
+  obj.y = init?.y ?? 0;
+  obj.amount = init?.amount;
+  obj.alive = true;
+  obj._pooled = false;
+  Object.assign(obj, init);
+}
+function makePooled(obj, resetFn) {
+  const o = obj;
+  if (typeof o.reset !== "function") {
+    if (typeof resetFn === "function") {
+      o.reset = function(initArgs) {
+        try {
+          resetFn(o, initArgs);
+        } catch {
+        }
+      };
+    } else {
+      o.reset = function(initArgs) {
+        if (initArgs && typeof initArgs === "object") Object.assign(o, initArgs);
+      };
+    }
+  }
+  return o;
+}
+function _getStrategy(v, def) {
+  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
+}
+function _incCount(map, key, delta) {
+  const cur = map.get(key) || 0;
+  const next = cur + delta;
+  if (next <= 0) map.delete(key);
+  else map.set(key, next);
+}
+function releaseSprite(state2, key, sprite, disposeFn) {
+  const poolMap = state2.assetPool.sprites;
+  const counts = state2.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts) state2.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: counts, effects: /* @__PURE__ */ new Map() };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(sprite)) free.push(sprite);
+  const max = state2.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state2.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
 }
 
 // src/config/behaviorConfig.ts
@@ -613,81 +771,63 @@ var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
 init_entitiesConfig();
-var particles = [];
-var flashes = [];
-var shieldFlashes = [];
-var healthFlashes = [];
-var particlePool = [];
-var bulletPool = [];
-var explosionPool = [];
-var shieldHitPool = [];
-var healthHitPool = [];
-function releaseBullet(b) {
+function releaseBullet(state2, b) {
+  if (!b) return;
   if (!b.alive) return;
   b.alive = false;
-  bulletPool.push(b);
+  const arr = state2.bullets || [];
+  const idx = arr.indexOf(b);
+  if (idx !== -1) arr.splice(idx, 1);
+  releaseSprite(state2, "bullet", b, void 0);
 }
-function acquireExplosion(opts = {}) {
-  let e;
-  if (explosionPool.length) {
-    e = explosionPool.pop();
-    Object.assign(e, opts);
-    e.alive = true;
-    e._pooled = false;
-  } else {
-    e = { ...opts, alive: true, _pooled: false };
-  }
-  flashes.push(e);
+function acquireExplosion(state2, opts = {}) {
+  const key = "explosion";
+  const e = acquireEffect(state2, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);
+  (state2.explosions ||= []).push(e);
   return e;
 }
-function releaseExplosion(e) {
+function releaseExplosion(state2, e) {
+  if (!e) return;
   if (e._pooled) return;
   if (!e.alive) return;
   e.alive = false;
   e._pooled = true;
-  explosionPool.push(e);
+  const arr = state2.explosions || [];
+  const idx = arr.indexOf(e);
+  if (idx !== -1) arr.splice(idx, 1);
+  releaseEffect(state2, "explosion", e, void 0);
 }
-function acquireShieldHit(opts = {}) {
-  let sh = null;
-  if (shieldHitPool.length) {
-    sh = shieldHitPool.pop();
-    Object.assign(sh, opts);
-    sh.alive = true;
-    sh._pooled = false;
-  } else {
-    sh = { ...opts, alive: true, _pooled: false };
-  }
-  shieldFlashes.push(sh);
+function acquireShieldHit(state2, opts = {}) {
+  const key = "shieldHit";
+  const sh = acquireEffect(state2, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);
+  (state2.shieldHits ||= []).push(sh);
   return sh;
 }
-function releaseShieldHit(sh) {
+function releaseShieldHit(state2, sh) {
+  if (!sh) return;
   if (sh._pooled) return;
-  const i = shieldFlashes.indexOf(sh);
-  if (i !== -1) shieldFlashes.splice(i, 1);
+  const arr = state2.shieldHits || [];
+  const i = arr.indexOf(sh);
+  if (i !== -1) arr.splice(i, 1);
   sh.alive = false;
   sh._pooled = true;
-  shieldHitPool.push(sh);
+  releaseEffect(state2, "shieldHit", sh, void 0);
 }
-function acquireHealthHit(opts = {}) {
-  let hh = null;
-  if (healthHitPool.length) {
-    hh = healthHitPool.pop();
-    Object.assign(hh, opts);
-    hh.alive = true;
-    hh._pooled = false;
-  } else {
-    hh = { ...opts, alive: true, _pooled: false };
-  }
-  healthFlashes.push(hh);
+function acquireHealthHit(state2, opts = {}) {
+  const key = "healthHit";
+  const hh = acquireEffect(state2, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);
+  (state2.healthHits ||= []).push(hh);
   return hh;
 }
-function releaseHealthHit(hh) {
+function releaseHealthHit(state2, hh) {
+  if (!hh) return;
   if (hh._pooled) return;
-  const i = healthFlashes.indexOf(hh);
-  if (i !== -1) healthFlashes.splice(i, 1);
+  const arr = state2.healthHits || [];
+  const i = arr.indexOf(hh);
+  if (i !== -1) arr.splice(i, 1);
   hh.alive = false;
   hh._pooled = true;
-  healthHitPool.push(hh);
+  releaseEffect(state2, "healthHit", hh, void 0);
 }
 var config = {
   shield: { ...SHIELD },
@@ -696,16 +836,16 @@ var config = {
   stars: { ...STARS }
 };
 var _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;
-function releaseParticle(p) {
-  if (!p._pooled) {
-    p._pooled = true;
-    p.alive = false;
-    const idx = particles.indexOf(p);
-    if (idx !== -1) {
-      particles.splice(idx, 1);
-    }
-    particlePool.push(p);
+function releaseParticle(state2, p) {
+  if (!p) return;
+  const key = "particle";
+  try {
+    releaseEffect(state2, key, p, (x) => {
+    });
+  } catch {
   }
+  const idx = (state2.particles || []).indexOf(p);
+  if (idx !== -1) (state2.particles || []).splice(idx, 1);
 }
 
 // src/simulate.ts
@@ -750,7 +890,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
           break;
       }
     }
-    if (remove) releaseBullet(b);
+    if (remove) releaseBullet(state2, b);
   }
   function pruneAll(state3, dtSeconds2, bounds3) {
     state3.particles = state3.particles || [];
@@ -794,7 +934,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
       if (!remove) {
         state3.bullets[writeBullet++] = b;
       } else {
-        releaseBullet(b);
+        releaseBullet(state3, b);
       }
     }
     state3.bullets.length = writeBullet;
@@ -861,7 +1001,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
       s.vx = (s.vx || 0) + Math.cos(s.angle || 0) * actualAccel * dtSeconds;
       s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;
     }
-    const friction = typeof s.friction === "number" ? s.friction : 0.98;
+    const friction = typeof SIM.friction === "number" ? SIM.friction : 0.98;
     s.vx = (s.vx || 0) * friction;
     s.vy = (s.vy || 0) * friction;
     clampSpeed(s, maxSpeed);
@@ -915,7 +1055,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
             (b.y || 0) - (s.y || 0),
             (b.x || 0) - (s.x || 0)
           );
-          (state2.shieldHits ||= []).push(acquireShieldHit({
+          (state2.shieldHits ||= []).push(acquireShieldHit(state2, {
             id: s.id,
             x: b.x,
             y: b.y,
@@ -935,7 +1075,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
             s.hp -= remaining;
-            (state2.healthHits ||= []).push(acquireHealthHit({
+            (state2.healthHits ||= []).push(acquireHealthHit(state2, {
               id: s.id,
               x: b.x,
               y: b.y,
@@ -956,7 +1096,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
           dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
         } else {
           s.hp -= b.damage || 0;
-          (state2.healthHits ||= []).push(acquireHealthHit({
+          (state2.healthHits ||= []).push(acquireHealthHit(state2, {
             id: s.id,
             x: b.x,
             y: b.y,
@@ -1093,7 +1233,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
                 attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
-          (state2.explosions ||= []).push(acquireExplosion({ x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
+          (state2.explosions ||= []).push(acquireExplosion(state2, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
           state2.ships.splice(si, 1);
         }
         break;
