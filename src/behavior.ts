@@ -2,6 +2,7 @@
 // Uses seeded RNG for any randomness so results are reproducible.
 import { srandom, srange } from "./rng";
 import { createBullet } from "./entities";
+import { acquireBullet } from "./gamemanager";
 import { AI_THRESHOLDS, SHIP_MOVEMENT_DEFAULTS } from "./config/behaviorConfig";
 import { BULLET_DEFAULTS, getShipConfig } from "./config/entitiesConfig";
 import { TEAM_DEFAULT } from "./config/teamsConfig";
@@ -31,13 +32,28 @@ type ShipLike = {
   type?: string; // Added for config sync
 };
 
-type State = { ships: ShipLike[]; bullets: any[] };
+import type { GameState } from "./types";
+type State = GameState;
 
 function len2(vx: number, vy: number) {
   return vx * vx + vy * vy;
 }
+const DEFAULT_BULLET_RANGE =
+  typeof BULLET_DEFAULTS.range === "number" ? BULLET_DEFAULTS.range : 300;
+function withinRange(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  range: number,
+) {
+  const dx = tx - sx;
+  const dy = ty - sy;
+  return dx * dx + dy * dy <= range * range;
+}
 function clampSpeed(s: ShipLike, max: number) {
   const v2 = len2(s.vx || 0, s.vy || 0);
+
   const max2 = max * max;
   if (v2 > max2 && v2 > 0) {
     const inv = max / Math.sqrt(v2);
@@ -70,34 +86,53 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       if (typeof c.__cd !== "number") c.__cd = 0;
       c.__cd -= dt;
       if (c.__cd > 0) continue;
+      const range =
+        typeof c.range === "number" ? c.range : DEFAULT_BULLET_RANGE;
+      if (
+        !withinRange(
+          ship.x || 0,
+          ship.y || 0,
+          target.x || 0,
+          target.y || 0,
+          range,
+        )
+      )
+        continue;
       const spread = typeof c.spread === "number" ? c.spread : 0;
       const dir = aimWithSpread(ship, target, spread);
-      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
-      const dmg = typeof c.damage === "number"
-        ? c.damage
-        : typeof ship.damage === "number"
-          ? ship.damage
-          : typeof ship.dmg === "number"
-            ? ship.dmg
-            : BULLET_DEFAULTS.damage;
-      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : BULLET_DEFAULTS.ttl;
-      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : BULLET_DEFAULTS.radius;
+      const speed =
+        typeof c.muzzleSpeed === "number"
+          ? c.muzzleSpeed
+          : BULLET_DEFAULTS.muzzleSpeed;
+      const dmg =
+        typeof c.damage === "number"
+          ? c.damage
+          : typeof ship.damage === "number"
+            ? ship.damage
+            : typeof ship.dmg === "number"
+              ? ship.dmg
+              : BULLET_DEFAULTS.damage;
+      const ttl =
+        typeof c.bulletTTL === "number" ? c.bulletTTL : BULLET_DEFAULTS.ttl;
+      const radius =
+        typeof c.bulletRadius === "number"
+          ? c.bulletRadius
+          : BULLET_DEFAULTS.radius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(
-          ship.x || 0,
-          ship.y || 0,
+        acquireBullet(state, {
+          x: ship.x || 0,
+          y: ship.y || 0,
           vx,
           vy,
-          ship.team || TEAM_DEFAULT,
-          ship.id || null,
-          dmg,
+          team: ship.team || TEAM_DEFAULT,
+          ownerId: ship.id || null,
+          damage: dmg,
           ttl,
-        ),
+        }),
         { radius },
       );
-      state.bullets.push(b);
       const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
       c.__cd = 1 / rate;
     }
@@ -112,7 +147,9 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       // Target selection per turret
       let turretTarget: ShipLike | null = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team,
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -124,19 +161,25 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
-        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team,
+        );
+        if (enemies.length)
+          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
         // Use ship's main target if available (O(1) via shipMap)
         if (ship.__ai && ship.__ai.targetId != null) {
           const tId = ship.__ai.targetId as number | string | null;
-          turretTarget = (state as any).shipMap && typeof tId !== 'undefined' && tId !== null
-            ? (state as any).shipMap.get(Number(tId)) || null
-            : ((state.ships || []).find((sh) => sh && sh.id === tId) || null);
+          turretTarget =
+            (state as any).shipMap && typeof tId !== "undefined" && tId !== null
+              ? (state as any).shipMap.get(Number(tId)) || null
+              : (state.ships || []).find((sh) => sh && sh.id === tId) || null;
         }
       } else {
         // Default: nearest
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team,
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -152,26 +195,42 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       // Fire from turret position (relative to ship center, using config radius)
       const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
       const dir = aimWithSpread(ship, turretTarget, spread);
-      const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
-      const dmg = typeof turret.damage === "number"
-        ? turret.damage
-        : typeof ship.damage === "number"
-          ? ship.damage
-          : BULLET_DEFAULTS.damage;
-      const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;
-      const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
+      const speed =
+        typeof turret.muzzleSpeed === "number"
+          ? turret.muzzleSpeed
+          : BULLET_DEFAULTS.muzzleSpeed;
+      const dmg =
+        typeof turret.damage === "number"
+          ? turret.damage
+          : typeof ship.damage === "number"
+            ? ship.damage
+            : BULLET_DEFAULTS.damage;
+      const ttl =
+        typeof turret.bulletTTL === "number"
+          ? turret.bulletTTL
+          : BULLET_DEFAULTS.ttl;
+      const radius =
+        typeof turret.bulletRadius === "number"
+          ? turret.bulletRadius
+          : BULLET_DEFAULTS.radius;
       // Always use config radius for turret position
       const angle = ship.angle || 0;
       // Get latest config radius for this ship type
-  const shipType = ship.type || "fighter";
-  const shipCfg = getShipConfig()[shipType];
-      const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : (ship.radius || 12);
+      const shipType = ship.type || "fighter";
+      const shipCfg = getShipConfig()[shipType];
+      const configRadius =
+        shipCfg && typeof shipCfg.radius === "number"
+          ? shipCfg.radius
+          : ship.radius || 12;
       // Accept both object-style turrets ({ position: [x,y] }) and tuple-style
       // shorthand ([x,y]) which the renderer commonly uses. Support both here
       // so bullets spawn from the same mountpoints that are drawn.
-      const pos = Array.isArray(turret) && turret.length === 2
-        ? turret
-        : (turret && Array.isArray((turret as any).position) ? (turret as any).position : [0, 0]);
+      const pos =
+        Array.isArray(turret) && turret.length === 2
+          ? turret
+          : turret && Array.isArray((turret as any).position)
+            ? (turret as any).position
+            : [0, 0];
       const [tx, ty] = pos;
       const turretX =
         (ship.x || 0) +
@@ -181,22 +240,26 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
         (ship.y || 0) +
         Math.sin(angle) * tx * configRadius +
         Math.cos(angle) * ty * configRadius;
+      const range =
+        typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
+      const dxT = (turretTarget.x || 0) - turretX;
+      const dyT = (turretTarget.y || 0) - turretY;
+      if (dxT * dxT + dyT * dyT > range * range) continue;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(
-          turretX,
-          turretY,
+        acquireBullet(state, {
+          x: turretX,
+          y: turretY,
           vx,
           vy,
-          ship.team || TEAM_DEFAULT,
-          ship.id || null,
-          dmg,
+          team: ship.team || TEAM_DEFAULT,
+          ownerId: ship.id || null,
+          damage: dmg,
           ttl,
-        ),
+        }),
         { radius },
       );
-      state.bullets.push(b);
       turret.__cd =
         typeof turret.cooldown === "number" && turret.cooldown > 0
           ? turret.cooldown
@@ -249,9 +312,13 @@ export function applySimpleAI(
 
     let target: ShipLike | null = null;
     if (ai.targetId != null)
-        target = (state as any).shipMap && typeof ai.targetId !== 'undefined' && ai.targetId !== null
+      target =
+        (state as any).shipMap &&
+        typeof ai.targetId !== "undefined" &&
+        ai.targetId !== null
           ? (state as any).shipMap.get(Number(ai.targetId)) || null
-          : ((state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null);
+          : (state.ships || []).find((sh) => sh && sh.id === ai.targetId) ||
+            null;
     if (!target) target = chooseNewTarget(state, s);
     if (target) ai.targetId = target.id;
 
@@ -270,10 +337,46 @@ export function applySimpleAI(
       if (ai.decisionTimer <= 0) {
         const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
         const rnd = srandom();
-        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = "evade";
+        if (
+          hpFrac < AI_THRESHOLDS.hpEvadeThreshold ||
+          rnd < AI_THRESHOLDS.randomLow
+        )
+          ai.state = "evade";
         else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = "engage";
         else ai.state = "idle";
-        ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);
+        ai.decisionTimer =
+          AI_THRESHOLDS.decisionTimerMin +
+          srandom() *
+            (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);
+        // If ship has ready cannons and target is within any cannon's range,
+        // prefer engage to make immediate firing deterministic in minimal test states.
+        try {
+          if (
+            ai.state !== "engage" &&
+            Array.isArray(s.cannons) &&
+            s.cannons.length > 0
+          ) {
+            for (const c of s.cannons) {
+              const ready = typeof c.__cd !== "number" || c.__cd <= 0;
+              const range =
+                typeof c.range === "number" ? c.range : DEFAULT_BULLET_RANGE;
+              if (
+                ready &&
+                target &&
+                withinRange(
+                  s.x || 0,
+                  s.y || 0,
+                  target.x || 0,
+                  target.y || 0,
+                  range,
+                )
+              ) {
+                ai.state = "engage";
+                break;
+              }
+            }
+          }
+        } catch (e) {}
       }
 
       // Calculate desired angle to target

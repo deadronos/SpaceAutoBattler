@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import CanvasRenderer from '../../src/canvasrenderer';
 import AssetsConfig from '../../src/config/assets/assetsConfig';
 import TeamsConfig from '../../src/config/teamsConfig';
+import TintedHullPool from '../../src/pools/tintedHullPool';
 
 // Minimal DOM canvas stub is provided by happy-dom in the test environment
 describe('CanvasRenderer tinted hull cache', () => {
@@ -22,11 +23,11 @@ describe('CanvasRenderer tinted hull cache', () => {
 
   it('pre-warms tinted cache for known teams', async () => {
     const r = new CanvasRenderer(canvas);
-    // small cap so test is deterministic
-    r._tintedHullCacheMax = 8;
+    // small cap so test is deterministic: set pool caps explicitly
+    (r as any)._tintedHullPool = new TintedHullPool({ globalCap: 8, perTeamCap: 4 });
     await (r as any).preloadAllAssets();
-    // After preload, expect tinted cache to contain entries for the testfighter+teams
-    const keys = r._tintedHullCache ? Array.from(r._tintedHullCache.keys()) : [];
+    // After preload, expect tinted pool to contain entries for the testfighter+teams
+    const keys = (r as any)._tintedHullPool ? Array.from(((r as any)._tintedHullPool as TintedHullPool).keys()) : [];
     // diagnostic checks
     const declared = (AssetsConfig as any).svgAssets || {};
   // DEBUG: dump declared assets and renderer caches
@@ -42,7 +43,8 @@ describe('CanvasRenderer tinted hull cache', () => {
 
   it('evicts LRU entries when cap exceeded and promotes on access', async () => {
     const r = new CanvasRenderer(canvas);
-    r._tintedHullCacheMax = 3;
+    // Use a small global cap to exercise eviction
+    (r as any)._tintedHullPool = new TintedHullPool({ globalCap: 3, perTeamCap: 3 });
     // Manually populate svgHullCache to avoid async rasterization complexity
     const c1 = document.createElement('canvas'); c1.width = c1.height = 32;
     const c2 = document.createElement('canvas'); c2.width = c2.height = 32;
@@ -50,16 +52,17 @@ describe('CanvasRenderer tinted hull cache', () => {
     const c4 = document.createElement('canvas'); c4.width = c4.height = 32;
     (r as any)._svgHullCache = { a: c1, b: c2, c: c3, d: c4 };
     // create tinted entries
-    (r as any)._tintedHullCache = new Map();
-  r._testSetTintedCanvas('a::#111', c1);
-  r._testSetTintedCanvas('b::#111', c2);
-  r._testSetTintedCanvas('c::#111', c3);
-    // Access 'a' to promote it (becomes MRU)
-    const ex = (r as any)._tintedHullCache.get('a::#111');
-    if (ex) { (r as any)._tintedHullCache.delete('a::#111'); (r as any)._tintedHullCache.set('a::#111', ex); }
+    // Use renderer helper which will populate the pool
+    (r as any)._testSetTintedCanvas('a::#111', c1);
+    (r as any)._testSetTintedCanvas('b::#111', c2);
+    (r as any)._testSetTintedCanvas('c::#111', c3);
+    // Access 'a' to promote it (becomes MRU) using pool API
+    const pool = (r as any)._tintedHullPool as TintedHullPool;
+    const ex = pool.get('a::#111');
+    if (ex) { pool.delete('a::#111'); pool.set('a::#111', ex); }
     // Insert d, should evict the oldest (which should be 'b' now)
   r._testSetTintedCanvas('d::#111', c4);
-    const keys = Array.from((r as any)._tintedHullCache.keys());
+    const keys = Array.from(pool.keys());
     expect(keys).not.toContain('b::#111');
     expect(keys).toContain('a::#111');
     expect(keys).toContain('c::#111');
@@ -68,9 +71,9 @@ describe('CanvasRenderer tinted hull cache', () => {
 
   it('clearTintedHullCache clears the cache', () => {
     const r = new CanvasRenderer(canvas);
-    (r as any)._tintedHullCache = new Map();
-    (r as any)._tintedHullCache.set('x::#1', document.createElement('canvas'));
+    (r as any)._tintedHullPool = new TintedHullPool({ globalCap: 10, perTeamCap: 5 });
+    (r as any)._tintedHullPool.set('x::#1', document.createElement('canvas'));
     r.clearTintedHullCache();
-    expect((r as any)._tintedHullCache.size).toBe(0);
+    expect(((r as any)._tintedHullPool as TintedHullPool).size).toBe(0);
   });
 });

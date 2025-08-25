@@ -2,16 +2,28 @@
 import { srange, srand, srandom } from "./rng";
 import { createShip, updateTeamCount, normalizeTurrets } from "./entities";
 import { getShipConfig } from "./config/entitiesConfig";
-import AssetsConfig from './config/assets/assetsConfig';
+import AssetsConfig from "./config/assets/assetsConfig";
 import { progression as progressionCfg } from "./config/progressionConfig";
 import { SIM, boundaryBehavior } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
-import { acquireBullet, releaseBullet, acquireExplosion, releaseExplosion, acquireShieldHit, releaseShieldHit, acquireHealthHit, releaseHealthHit, releaseParticle } from "./gamemanager";
+import {
+  acquireBullet,
+  releaseBullet,
+  acquireExplosion,
+  releaseExplosion,
+  acquireShieldHit,
+  releaseShieldHit,
+  acquireHealthHit,
+  releaseHealthHit,
+  releaseParticle,
+} from "./gamemanager";
 import type { GameState } from "./types";
 import * as SpatialGridModule from "./spatialGrid";
 // typed as any to avoid strict import/typing issues in this hotpath
-const SpatialGrid: any = (SpatialGridModule as any).default || SpatialGridModule;
-const segmentIntersectsCircle: any = (SpatialGridModule as any).segmentIntersectsCircle;
+const SpatialGrid: any =
+  (SpatialGridModule as any).default || SpatialGridModule;
+const segmentIntersectsCircle: any = (SpatialGridModule as any)
+  .segmentIntersectsCircle;
 
 export type Bounds = { W: number; H: number };
 
@@ -24,7 +36,11 @@ function dist2(a: { x: number; y: number }, b: { x: number; y: number }) {
   return dx * dx + dy * dy;
 }
 
-export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds) {
+export function simulateStep(
+  state: GameState,
+  dtSeconds: number,
+  bounds: Bounds,
+) {
   pruneAll(state, dtSeconds, bounds);
   // Advance time
   state.t = (state.t || 0) + dtSeconds;
@@ -35,8 +51,8 @@ export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds
     // store previous position for swept collision tests (both legacy and
     // internal names). Some compiled code reads _prevX/_prevY while other
     // paths read prevX/prevY; keep them synchronized.
-    const prevXVal = typeof b.x === 'number' ? b.x : 0;
-    const prevYVal = typeof b.y === 'number' ? b.y : 0;
+    const prevXVal = typeof b.x === "number" ? b.x : 0;
+    const prevYVal = typeof b.y === "number" ? b.y : 0;
     b.prevX = prevXVal;
     b.prevY = prevYVal;
     (b as any)._prevX = prevXVal;
@@ -51,16 +67,16 @@ export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds
     if (b.ttl <= 0) remove = true;
     else if (outOfBounds) {
       switch (boundaryBehavior.bullets) {
-        case 'remove':
+        case "remove":
           remove = true;
           break;
-        case 'wrap':
+        case "wrap":
           if (b.x < 0) b.x += bounds.W;
           if (b.x >= bounds.W) b.x -= bounds.W;
           if (b.y < 0) b.y += bounds.H;
           if (b.y >= bounds.H) b.y -= bounds.H;
           break;
-        case 'bounce':
+        case "bounce":
           if (outX) {
             b.vx = -(b.vx || 0);
             b.x = Math.max(0, Math.min(bounds.W, b.x));
@@ -72,124 +88,132 @@ export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds
           break;
       }
     }
-  if (remove) releaseBullet(state, b);
+    if (remove) {
+      try {
+        releaseBullet(state, b);
+      } catch (e) {}
+    }
   }
   // Batched in-place pruning for all high-frequency event arrays
-function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
-  // Ensure all event arrays are initialized
-  state.particles = state.particles || [];
-  state.explosions = state.explosions || [];
-  state.shieldHits = state.shieldHits || [];
-  state.healthHits = state.healthHits || [];
-  // Bullets: prune expired/out-of-bounds
-  let writeBullet = 0;
-  for (let read = 0; read < state.bullets.length; read++) {
-    const b = state.bullets[read];
-    const prevXVal = typeof b.x === 'number' ? b.x : 0;
-    const prevYVal = typeof b.y === 'number' ? b.y : 0;
-    b.prevX = prevXVal;
-    b.prevY = prevYVal;
-    (b as any)._prevX = prevXVal;
-    (b as any)._prevY = prevYVal;
-    b.x += (b.vx || 0) * dtSeconds;
-    b.y += (b.vy || 0) * dtSeconds;
-    b.ttl = (b.ttl || 0) - dtSeconds;
-    let outX = b.x < 0 || b.x >= bounds.W;
-    let outY = b.y < 0 || b.y >= bounds.H;
-    let outOfBounds = outX || outY;
-    let remove = false;
-    if (b.ttl <= 0) remove = true;
-    else if (outOfBounds) {
-      switch (boundaryBehavior.bullets) {
-        case 'remove':
-          remove = true;
-          break;
-        case 'wrap':
-          if (b.x < 0) b.x += bounds.W;
-          if (b.x >= bounds.W) b.x -= bounds.W;
-          if (b.y < 0) b.y += bounds.H;
-          if (b.y >= bounds.H) b.y -= bounds.H;
-          break;
-        case 'bounce':
-          if (outX) {
-            b.vx = -(b.vx || 0);
-            b.x = Math.max(0, Math.min(bounds.W, b.x));
-          }
-          if (outY) {
-            b.vy = -(b.vy || 0);
-            b.y = Math.max(0, Math.min(bounds.H, b.y));
-          }
-          break;
+  function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
+    // Ensure all event arrays are initialized
+    state.particles = state.particles || [];
+    state.explosions = state.explosions || [];
+    state.shieldHits = state.shieldHits || [];
+    state.healthHits = state.healthHits || [];
+    // Bullets: prune expired/out-of-bounds
+    let writeBullet = 0;
+    for (let read = 0; read < state.bullets.length; read++) {
+      const b = state.bullets[read];
+      const prevXVal = typeof b.x === "number" ? b.x : 0;
+      const prevYVal = typeof b.y === "number" ? b.y : 0;
+      b.prevX = prevXVal;
+      b.prevY = prevYVal;
+      (b as any)._prevX = prevXVal;
+      (b as any)._prevY = prevYVal;
+      b.x += (b.vx || 0) * dtSeconds;
+      b.y += (b.vy || 0) * dtSeconds;
+      b.ttl = (b.ttl || 0) - dtSeconds;
+      let outX = b.x < 0 || b.x >= bounds.W;
+      let outY = b.y < 0 || b.y >= bounds.H;
+      let outOfBounds = outX || outY;
+      let remove = false;
+      if (b.ttl <= 0) remove = true;
+      else if (outOfBounds) {
+        switch (boundaryBehavior.bullets) {
+          case "remove":
+            remove = true;
+            break;
+          case "wrap":
+            if (b.x < 0) b.x += bounds.W;
+            if (b.x >= bounds.W) b.x -= bounds.W;
+            if (b.y < 0) b.y += bounds.H;
+            if (b.y >= bounds.H) b.y -= bounds.H;
+            break;
+          case "bounce":
+            if (outX) {
+              b.vx = -(b.vx || 0);
+              b.x = Math.max(0, Math.min(bounds.W, b.x));
+            }
+            if (outY) {
+              b.vy = -(b.vy || 0);
+              b.y = Math.max(0, Math.min(bounds.H, b.y));
+            }
+            break;
+        }
+      }
+      if (!remove) {
+        state.bullets[writeBullet++] = b;
+      } else {
+        releaseBullet(state, b);
       }
     }
-    if (!remove) {
-      state.bullets[writeBullet++] = b;
-    } else {
-  releaseBullet(state, b);
-    }
-  }
-  state.bullets.length = writeBullet;
+    state.bullets.length = writeBullet;
 
-  // Particles: prune expired
-  let writeParticle = 0;
-  for (let read = 0; read < state.particles.length; read++) {
-    const p = state.particles[read];
-    p.life = (p.life || p.ttl || 0) - dtSeconds;
-    if (p.life > 0) {
-      state.particles[writeParticle++] = p;
-    } else {
-      releaseParticle(p);
+    // Particles: prune expired
+    let writeParticle = 0;
+    for (let read = 0; read < state.particles.length; read++) {
+      const p = state.particles[read];
+      p.life = (p.life || p.ttl || 0) - dtSeconds;
+      if (p.life > 0) {
+        state.particles[writeParticle++] = p;
+      } else {
+        releaseParticle(p);
+      }
     }
-  }
-  state.particles.length = writeParticle;
+    state.particles.length = writeParticle;
 
-  // Explosions: prune expired
-  let writeExplosion = 0;
-  for (let read = 0; read < state.explosions.length; read++) {
-    const e = state.explosions[read];
-    e.life = (e.life || e.ttl || 0) - dtSeconds;
-    if (e.life > 0) {
-      state.explosions[writeExplosion++] = e;
-    } else {
-      releaseExplosion(e);
+    // Explosions: prune expired
+    let writeExplosion = 0;
+    for (let read = 0; read < state.explosions.length; read++) {
+      const e = state.explosions[read];
+      e.life = (e.life || e.ttl || 0) - dtSeconds;
+      if (e.life > 0) {
+        state.explosions[writeExplosion++] = e;
+      } else {
+        releaseExplosion(e);
+      }
     }
-  }
-  state.explosions.length = writeExplosion;
+    state.explosions.length = writeExplosion;
 
-  // ShieldHits: prune out-of-bounds
-  let writeShield = 0;
-  for (let read = 0; read < state.shieldHits.length; read++) {
-    const sh = state.shieldHits[read];
-    if (
-      typeof sh.x === "number" &&
-      typeof sh.y === "number" &&
-      sh.x >= 0 && sh.x < bounds.W &&
-      sh.y >= 0 && sh.y < bounds.H
-    ) {
-      state.shieldHits[writeShield++] = sh;
-    } else {
-      releaseShieldHit(sh);
+    // ShieldHits: prune out-of-bounds
+    let writeShield = 0;
+    for (let read = 0; read < state.shieldHits.length; read++) {
+      const sh = state.shieldHits[read];
+      if (
+        typeof sh.x === "number" &&
+        typeof sh.y === "number" &&
+        sh.x >= 0 &&
+        sh.x < bounds.W &&
+        sh.y >= 0 &&
+        sh.y < bounds.H
+      ) {
+        state.shieldHits[writeShield++] = sh;
+      } else {
+        releaseShieldHit(sh);
+      }
     }
-  }
-  state.shieldHits.length = writeShield;
+    state.shieldHits.length = writeShield;
 
-  // HealthHits: prune out-of-bounds
-  let writeHealth = 0;
-  for (let read = 0; read < state.healthHits.length; read++) {
-    const hh = state.healthHits[read];
-    if (
-      typeof hh.x === "number" &&
-      typeof hh.y === "number" &&
-      hh.x >= 0 && hh.x < bounds.W &&
-      hh.y >= 0 && hh.y < bounds.H
-    ) {
-      state.healthHits[writeHealth++] = hh;
-    } else {
-      releaseHealthHit(hh);
+    // HealthHits: prune out-of-bounds
+    let writeHealth = 0;
+    for (let read = 0; read < state.healthHits.length; read++) {
+      const hh = state.healthHits[read];
+      if (
+        typeof hh.x === "number" &&
+        typeof hh.y === "number" &&
+        hh.x >= 0 &&
+        hh.x < bounds.W &&
+        hh.y >= 0 &&
+        hh.y < bounds.H
+      ) {
+        state.healthHits[writeHealth++] = hh;
+      } else {
+        releaseHealthHit(hh);
+      }
     }
+    state.healthHits.length = writeHealth;
   }
-  state.healthHits.length = writeHealth;
-}
 
   // Move ships and update heading
   for (let si = (state.ships || []).length - 1; si >= 0; si--) {
@@ -218,10 +242,10 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
       s.vy = (s.vy || 0) + Math.sin(s.angle || 0) * actualAccel * dtSeconds;
     }
 
-  // Apply friction/damping to velocity (from simConfig)
-  const friction = typeof SIM.friction === "number" ? SIM.friction : 0.98;
-  s.vx = (s.vx || 0) * friction;
-  s.vy = (s.vy || 0) * friction;
+    // Apply friction/damping to velocity (from simConfig)
+    const friction = typeof SIM.friction === "number" ? SIM.friction : 0.98;
+    s.vx = (s.vx || 0) * friction;
+    s.vy = (s.vy || 0) * friction;
 
     // Clamp speed using shared function
     clampSpeed(s, maxSpeed);
@@ -237,16 +261,16 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
     let remove = false;
     if (outOfBounds) {
       switch (boundaryBehavior.ships) {
-        case 'remove':
+        case "remove":
           remove = true;
           break;
-        case 'wrap':
+        case "wrap":
           if (s.x < -r) s.x += bounds.W + r * 2;
           if (s.x > bounds.W + r) s.x -= bounds.W + r * 2;
           if (s.y < -r) s.y += bounds.H + r * 2;
           if (s.y > bounds.H + r) s.y -= bounds.H + r * 2;
           break;
-        case 'bounce':
+        case "bounce":
           if (outX) {
             s.vx = -(s.vx || 0);
             s.x = Math.max(-r, Math.min(bounds.W + r, s.x));
@@ -261,21 +285,33 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
     if (remove) {
       const rem = state.ships.splice(si, 1);
       if (rem && rem.length) {
-        try { (state as any).shipMap && (state as any).shipMap.delete(rem[0].id); } catch (e) {}
-        try { if (rem[0] && rem[0].team) state.teamCounts[rem[0].team] = Math.max(0, (state.teamCounts[rem[0].team] || 0) - 1); } catch (e) {}
+        try {
+          (state as any).shipMap && (state as any).shipMap.delete(rem[0].id);
+        } catch (e) {}
+        try {
+          if (rem[0] && rem[0].team)
+            state.teamCounts[rem[0].team] = Math.max(
+              0,
+              (state.teamCounts[rem[0].team] || 0) - 1,
+            );
+        } catch (e) {}
       }
     }
     // --- Turret per-frame integration: advance turret.angle toward targetAngle using turnRate ---
     try {
       // Basic turret AI: if turret has no explicit targetAngle, aim at nearest enemy ship
       try {
-        if (Array.isArray(state.ships) && Array.isArray((s as any).turrets) && (s as any).turrets.length) {
+        if (
+          Array.isArray(state.ships) &&
+          Array.isArray((s as any).turrets) &&
+          (s as any).turrets.length
+        ) {
           for (let ti = 0; ti < (s as any).turrets.length; ti++) {
             try {
               const t = (s as any).turrets[ti];
               if (!t || Array.isArray(t)) continue; // skip tuple mounts
               // If caller already provided a targetAngle, don't override
-              if (typeof t.targetAngle === 'number') continue;
+              if (typeof t.targetAngle === "number") continue;
               // Find nearest enemy ship (team different from s.team)
               let best: any = null;
               let bestDist = Infinity;
@@ -291,7 +327,10 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
                 }
               }
               if (best) {
-                t.targetAngle = Math.atan2((best.y || 0) - (s.y || 0), (best.x || 0) - (s.x || 0));
+                t.targetAngle = Math.atan2(
+                  (best.y || 0) - (s.y || 0),
+                  (best.x || 0) - (s.x || 0),
+                );
               }
             } catch (e) {}
           }
@@ -310,15 +349,30 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             const t = turretDefs[ti];
             if (!t) continue;
             // Ensure numeric fields exist and perform per-turret integration
-            t.angle = typeof t.angle === 'number' ? t.angle : (typeof (s as any).turretAngle === 'number' ? (s as any).turretAngle : s.angle || 0);
-            t.targetAngle = typeof t.targetAngle === 'number' ? t.targetAngle : (typeof t.desiredAngle === 'number' ? t.desiredAngle : t.angle);
+            t.angle =
+              typeof t.angle === "number"
+                ? t.angle
+                : typeof (s as any).turretAngle === "number"
+                  ? (s as any).turretAngle
+                  : s.angle || 0;
+            t.targetAngle =
+              typeof t.targetAngle === "number"
+                ? t.targetAngle
+                : typeof t.desiredAngle === "number"
+                  ? t.desiredAngle
+                  : t.angle;
             // Determine turret turnRate: use instance value, else turretDefaults by kind, else fallback
             let defaultTurn = Math.PI * 1.5;
             try {
-              const td = (AssetsConfig as any).turretDefaults && (AssetsConfig as any).turretDefaults[t.kind || 'basic'];
-              if (td && typeof td.turnRate === 'number') defaultTurn = td.turnRate;
+              const td =
+                (AssetsConfig as any).turretDefaults &&
+                (AssetsConfig as any).turretDefaults[t.kind || "basic"];
+              if (td && typeof td.turnRate === "number")
+                defaultTurn = td.turnRate;
             } catch (e) {}
-            const maxTurn = (typeof t.turnRate === 'number' ? t.turnRate : defaultTurn) * dtSeconds;
+            const maxTurn =
+              (typeof t.turnRate === "number" ? t.turnRate : defaultTurn) *
+              dtSeconds;
             // Shortest angular difference
             let diff = t.targetAngle - t.angle;
             while (diff < -Math.PI) diff += Math.PI * 2;
@@ -336,7 +390,10 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
     // Carrier spawning: if this ship type has a carrier config, accumulate
     // a per-ship timer and spawn fighters as children up to maxFighters.
     try {
-      const shipCfg = getShipConfig && typeof getShipConfig === 'function' ? getShipConfig() : {};
+      const shipCfg =
+        getShipConfig && typeof getShipConfig === "function"
+          ? getShipConfig()
+          : {};
       const typeCfg = shipCfg && s.type ? shipCfg[s.type] : undefined;
       if (typeCfg && (typeCfg as any).carrier) {
         const carrierCfg = (typeCfg as any).carrier;
@@ -347,7 +404,9 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
         if ((s as any)._carrierTimer >= cooldown) {
           (s as any)._carrierTimer = 0;
           // count existing fighters spawned by this carrier
-          const existing = (state.ships || []).filter((sh: any) => sh && sh.parentId === s.id && sh.type === 'fighter').length;
+          const existing = (state.ships || []).filter(
+            (sh: any) => sh && sh.parentId === s.id && sh.type === "fighter",
+          ).length;
           const maxF = Number(carrierCfg.maxFighters) || 0;
           const spawnPer = Number(carrierCfg.spawnPerCooldown) || 1;
           const canSpawn = Math.max(0, maxF - existing);
@@ -358,12 +417,16 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             const nx = (s.x || 0) + Math.cos(angle) * dist;
             const ny = (s.y || 0) + Math.sin(angle) * dist;
             try {
-              const f = createShip('fighter', nx, ny, s.team);
+              const f = createShip("fighter", nx, ny, s.team);
               f.parentId = s.id;
               f.angle = s.angle;
               (state.ships ||= []).push(f);
-              try { (state as any).shipMap && (state as any).shipMap.set(f.id, f); } catch (e) {}
-              try { updateTeamCount(state as any, undefined, String(f.team)); } catch (e) {}
+              try {
+                (state as any).shipMap && (state as any).shipMap.set(f.id, f);
+              } catch (e) {}
+              try {
+                updateTeamCount(state as any, undefined, String(f.team));
+              } catch (e) {}
             } catch (e) {}
             toSpawn--;
           }
@@ -393,15 +456,31 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
       if (s.team === b.team) continue;
       const r = (s.radius || 6) + (b.radius || 1);
       // Swept collision: check segment from previous bullet pos (if available) to current pos
-  const bxPrev = typeof (b as any)._prevX === 'number' ? (b as any)._prevX : b.x - (b.vx || 0) * dtSeconds;
-  const byPrev = typeof (b as any)._prevY === 'number' ? (b as any)._prevY : b.y - (b.vy || 0) * dtSeconds;
+      const bxPrev =
+        typeof (b as any)._prevX === "number"
+          ? (b as any)._prevX
+          : b.x - (b.vx || 0) * dtSeconds;
+      const byPrev =
+        typeof (b as any)._prevY === "number"
+          ? (b as any)._prevY
+          : b.y - (b.vy || 0) * dtSeconds;
       const didHit =
         dist2(b, s) <= r * r ||
-        segmentIntersectsCircle(bxPrev, byPrev, b.x || 0, b.y || 0, s.x || 0, s.y || 0, r);
+        segmentIntersectsCircle(
+          bxPrev,
+          byPrev,
+          b.x || 0,
+          b.y || 0,
+          s.x || 0,
+          s.y || 0,
+          r,
+        );
       if (didHit) {
-        const attacker = (typeof b.ownerId === "number" || typeof b.ownerId === "string")
-          ? (state as any).shipMap && (state as any).shipMap.get(Number(b.ownerId))
-          : (undefined as any);
+        const attacker =
+          typeof b.ownerId === "number" || typeof b.ownerId === "string"
+            ? (state as any).shipMap &&
+              (state as any).shipMap.get(Number(b.ownerId))
+            : (undefined as any);
         let dealtToShield = 0;
         let dealtToHealth = 0;
         const shield = s.shield || 0;
@@ -412,14 +491,16 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             (b.y || 0) - (s.y || 0),
             (b.x || 0) - (s.x || 0),
           );
-          (state.shieldHits ||= []).push(acquireShieldHit(state, {
-            id: s.id,
-            x: b.x,
-            y: b.y,
-            team: s.team,
-            amount: absorbed,
-            hitAngle,
-          }));
+          (state.shieldHits ||= []).push(
+            acquireShieldHit(state, {
+              id: s.id,
+              x: b.x,
+              y: b.y,
+              team: s.team,
+              amount: absorbed,
+              hitAngle,
+            }),
+          );
           // expose damage event for renderer (shield hit)
           (state.damageEvents ||= []).push({
             id: s.id,
@@ -438,13 +519,15 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             const dmgMul = Math.max(0, 1 - 0.1 * armor);
             const dealt = Math.max(0, remaining * dmgMul);
             s.hp -= dealt;
-            (state.healthHits ||= []).push(acquireHealthHit(state, {
-              id: s.id,
-              x: b.x,
-              y: b.y,
-              team: s.team,
-              amount: dealt,
-            }));
+            (state.healthHits ||= []).push(
+              acquireHealthHit(state, {
+                id: s.id,
+                x: b.x,
+                y: b.y,
+                team: s.team,
+                amount: dealt,
+              }),
+            );
             // expose damage event for renderer (health hit)
             (state.damageEvents ||= []).push({
               id: s.id,
@@ -460,20 +543,25 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           // remaining damage after shields, reduced by armor
           const remainingAfterShield = Math.max(0, (b.damage || 0) - absorbed);
           const armorAfterShield = s.armor || 0;
-          dealtToHealth = Math.max(0, remainingAfterShield * Math.max(0, 1 - 0.1 * armorAfterShield));
+          dealtToHealth = Math.max(
+            0,
+            remainingAfterShield * Math.max(0, 1 - 0.1 * armorAfterShield),
+          );
         } else {
           // No shields - apply armor reduction directly to bullet damage
           const armor = s.armor || 0;
           const dmgMulNoShield = Math.max(0, 1 - 0.1 * armor);
           const dealtNoShield = Math.max(0, (b.damage || 0) * dmgMulNoShield);
           s.hp -= dealtNoShield;
-            (state.healthHits ||= []).push(acquireHealthHit(state, {
+          (state.healthHits ||= []).push(
+            acquireHealthHit(state, {
               id: s.id,
               x: b.x,
               y: b.y,
               team: s.team,
               amount: dealtNoShield,
-            }));
+            }),
+          );
           // expose damage event for renderer (health hit)
           (state.damageEvents ||= []).push({
             id: s.id,
@@ -560,9 +648,15 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           }
         }
 
-        state.bullets.splice(bi, 1);
+        try {
+          releaseBullet(state, b);
+        } catch (e) {
+          try {
+            state.bullets.splice(bi, 1);
+          } catch (e) {}
+        }
         collided = true;
-  // No need to check other candidates for this bullet
+        // No need to check other candidates for this bullet
         if (s.hp <= 0) {
           if (attacker) {
             attacker.xp = (attacker.xp || 0) + (progressionCfg.xpPerKill || 0);
@@ -628,13 +722,31 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
                 attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
-          (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
+          (state.explosions ||= []).push(
+            acquireExplosion(state, {
+              x: s.x,
+              y: s.y,
+              team: s.team,
+              life: 0.5,
+              ttl: 0.5,
+            }),
+          );
           // remove from ships array and mark as removed for this frame
-          const idx = (state.ships || []).findIndex((sh: any) => sh && sh.id === s.id);
+          const idx = (state.ships || []).findIndex(
+            (sh: any) => sh && sh.id === s.id,
+          );
           if (idx >= 0) {
             state.ships.splice(idx, 1);
-            try { (state as any).shipMap && (state as any).shipMap.delete(s.id); } catch (e) {}
-            try { if (s && s.team) state.teamCounts[s.team] = Math.max(0, (state.teamCounts[s.team] || 0) - 1); } catch (e) {}
+            try {
+              (state as any).shipMap && (state as any).shipMap.delete(s.id);
+            } catch (e) {}
+            try {
+              if (s && s.team)
+                state.teamCounts[s.team] = Math.max(
+                  0,
+                  (state.teamCounts[s.team] || 0) - 1,
+                );
+            } catch (e) {}
           }
           removedShipIds.add(s.id);
         }

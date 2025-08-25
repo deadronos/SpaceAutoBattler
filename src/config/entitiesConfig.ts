@@ -29,6 +29,8 @@ export type CannonCfg = {
   muzzleSpeed?: number;
   bulletRadius?: number;
   bulletTTL?: number;
+  // optional per-weapon effective range (units). If omitted, engine uses muzzleSpeed*bulletTTL or BULLET_DEFAULTS.range
+  range?: number;
 };
 
 // ShipTypeCfg parameters and tactical impact:
@@ -49,7 +51,7 @@ export type ShipTypeCfg = {
   maxShield?: number;
   shieldRegen?: number;
   // size classification for tuning: 'small' | 'medium' | 'large'
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
   dmg?: number;
   damage?: number;
   radius?: number;
@@ -68,6 +70,8 @@ export type ShipTypeCfg = {
     targeting?: "nearest" | "random" | "focus" | "custom"; // targeting logic
     cooldown?: number; // seconds between shots
     lastFired?: number; // timestamp of last shot
+    // optional turret firing range (units)
+    range?: number;
   }>;
 };
 
@@ -77,54 +81,58 @@ export const ShipConfig: ShipConfigMap = {
   fighter: {
     maxHp: 15,
     // size classification used for armor/shield tuning
-    size: 'small',
+    size: "small",
     armor: 0,
     maxShield: 8,
     shieldRegen: 1.0,
     dmg: 3,
     damage: 3,
     radius: 12,
-      cannons: [
-        {
-          damage: 3,
-          rate: 3,
-          spread: 0.1,
-    muzzleSpeed: 260, // reduced back (/10)
-          bulletRadius: 1.5,
-          bulletTTL: 1.1, // was 1.2
-        },
-      ],
+    cannons: [
+      {
+        damage: 3,
+        rate: 3,
+        spread: 0.1,
+        muzzleSpeed: 260, // reduced back (/10)
+        bulletRadius: 1.5,
+        bulletTTL: 1.1, // was 1.2
+        // effective range (muzzleSpeed * bulletTTL) scaled to engine units
+        range: Math.round(260 * 1.1),
+      },
+    ],
+
     // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
-      accel: 100, // ~10x accel
-      turnRate: 6,
-      maxSpeed: 2200, // ~10x maxSpeed
+    accel: 100, // ~10x accel
+    turnRate: 6,
+    maxSpeed: 2200, // ~10x maxSpeed
   },
   corvette: {
     maxHp: 50,
-    size: 'medium',
+    size: "medium",
     armor: 0,
     maxShield: Math.round(50 * 0.6),
     shieldRegen: 0.5,
     dmg: 5,
     damage: 5,
     radius: 20,
-      accel: 80,
-      turnRate: 3.5, // was 3
-      maxSpeed: 1800, // ~10x increased
+    accel: 80,
+    turnRate: 3.5, // was 3
+    maxSpeed: 1800, // ~10x increased
     cannons: [
       {
         damage: 6,
         rate: 1.2,
         spread: 0.05,
-    muzzleSpeed: 180, // reduced back (/10)
+        muzzleSpeed: 180, // reduced back (/10)
         bulletRadius: 2,
         bulletTTL: 1.8, // was 2.0
+        range: Math.round(180 * 1.8),
       },
     ],
   },
   frigate: {
     maxHp: 80,
-    size: 'medium',
+    size: "medium",
     armor: 1,
     maxShield: Math.round(80 * 0.6),
     shieldRegen: 0.4,
@@ -136,18 +144,19 @@ export const ShipConfig: ShipConfigMap = {
         damage: 8,
         rate: 1.0,
         spread: 0.06,
-    muzzleSpeed: 180, // reduced back (/10)
+        muzzleSpeed: 180, // reduced back (/10)
         bulletRadius: 2.5,
         bulletTTL: 2.0, // was 2.2
+        range: Math.round(180 * 2.0),
       },
     ],
-      accel: 70,
-      turnRate: 2.5, // was 2.2
-      maxSpeed: 1500, // ~10x increased
+    accel: 70,
+    turnRate: 2.5, // was 2.2
+    maxSpeed: 1500, // ~10x increased
   },
   destroyer: {
     maxHp: 120,
-    size: 'large',
+    size: "large",
     armor: 2,
     maxShield: Math.round(120 * 0.6),
     shieldRegen: 0.3,
@@ -158,19 +167,22 @@ export const ShipConfig: ShipConfigMap = {
       damage: 6,
       rate: 0.8,
       spread: 0.08,
-    muzzleSpeed: 160, // reduced back (/10)
+      muzzleSpeed: 160, // reduced back (/10)
       bulletRadius: 2.5,
       bulletTTL: 1.8, // was 2.4
+      range: Math.round(160 * 1.8),
     })),
-      accel: 60,
-      turnRate: 2.0, // was 1.6
-      maxSpeed: 1300, // ~10x increased
+    accel: 60,
+    turnRate: 2.0, // was 1.6
+    maxSpeed: 1300, // ~10x increased
     turrets: [
       {
         position: [1.2, 0.8],
         kind: "basic",
         targeting: "nearest",
         cooldown: 0.8,
+        // turret effective range (units)
+        range: 300,
       },
       {
         position: [-1.2, 0.8],
@@ -206,7 +218,7 @@ export const ShipConfig: ShipConfigMap = {
   },
   carrier: {
     maxHp: 200,
-    size: 'large',
+    size: "large",
     armor: 3,
     maxShield: Math.round(200 * 0.6),
     shieldRegen: 0.2,
@@ -217,13 +229,14 @@ export const ShipConfig: ShipConfigMap = {
       damage: 4,
       rate: 0.6,
       spread: 0.12,
-    muzzleSpeed: 140, // reduced back (/10)
+      muzzleSpeed: 140, // reduced back (/10)
       bulletRadius: 3,
       bulletTTL: 2.2, // was 2.8
+      range: Math.round(140 * 2.2),
     })),
-      accel: 55,
-      turnRate: 1.2, // was 0.8
-      maxSpeed: 1100, // ~10x increased
+    accel: 55,
+    turnRate: 1.2, // was 0.8
+    maxSpeed: 1100, // ~10x increased
     carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
     turrets: [
       {
@@ -231,6 +244,7 @@ export const ShipConfig: ShipConfigMap = {
         kind: "basic",
         targeting: "nearest",
         cooldown: 1.0,
+        range: 300,
       },
       {
         position: [-2.0, 1.2],
@@ -257,7 +271,10 @@ export const ShipConfig: ShipConfigMap = {
 // Per-size defaults to provide consistent tuning shortcuts. These values are
 // applied when a ShipTypeCfg omits explicit armor/shield tuning. They make it
 // easy to adjust broad balance by class (small/medium/large) in one place.
-export const SIZE_DEFAULTS: Record<'small'|'medium'|'large', Partial<ShipTypeCfg>> = {
+export const SIZE_DEFAULTS: Record<
+  "small" | "medium" | "large",
+  Partial<ShipTypeCfg>
+> = {
   small: {
     armor: 0,
     maxShield: 8,
@@ -287,12 +304,15 @@ export const SIZE_DEFAULTS: Record<'small'|'medium'|'large', Partial<ShipTypeCfg
   },
 };
 
-export function getSizeDefaults(size: 'small'|'medium'|'large') {
+export function getSizeDefaults(size: "small" | "medium" | "large") {
   return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
 }
 
 // Runtime configuration helpers: update per-size defaults in-place.
-export function setSizeDefaults(size: 'small'|'medium'|'large', patch: Partial<ShipTypeCfg>) {
+export function setSizeDefaults(
+  size: "small" | "medium" | "large",
+  patch: Partial<ShipTypeCfg>,
+) {
   SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
 }
 
@@ -308,6 +328,37 @@ export function setAllSizeDefaults(patch: Partial<ShipTypeCfg>) {
 // translation while still allowing rotation/firing (a common source of
 // confusing "ships rotate and shoot but don't move" bugs).
 export function getShipConfig() {
+  // Normalize weapon ranges at runtime so configs may omit 'range'.
+  // For cannons: range = Math.round(muzzleSpeed * bulletTTL) or BULLET_DEFAULTS.range
+  // For turrets: if missing, inherit first cannon range or BULLET_DEFAULTS.range
+  Object.keys(ShipConfig).forEach((key) => {
+    const cfg = ShipConfig[key];
+    if (cfg.cannons) {
+      cfg.cannons.forEach((c) => {
+        if (c.range == null) {
+          const ms = c.muzzleSpeed ?? BULLET_DEFAULTS.muzzleSpeed;
+          const ttl = c.bulletTTL ?? BULLET_DEFAULTS.ttl;
+          const computed =
+            Number.isFinite(ms) && Number.isFinite(ttl)
+              ? Math.round(ms * ttl)
+              : BULLET_DEFAULTS.range;
+          c.range = computed || BULLET_DEFAULTS.range;
+        }
+      });
+    }
+    // Turret range fallback: prefer existing turret.range, else try first cannon, else BULLET_DEFAULTS.range
+    if (cfg.turrets) {
+      const firstCannonRange =
+        cfg.cannons && cfg.cannons.length
+          ? cfg.cannons[0].range || BULLET_DEFAULTS.range
+          : BULLET_DEFAULTS.range;
+      cfg.turrets.forEach((t) => {
+        if (t.range == null) {
+          t.range = firstCannonRange;
+        }
+      });
+    }
+  });
   return ShipConfig;
 }
 
@@ -317,6 +368,8 @@ export const BULLET_DEFAULTS = {
   ttl: 2.0,
   radius: 1.5,
   muzzleSpeed: 24,
+  // default effective range (units)
+  range: 300,
 };
 
 // Particle defaults (used for generic effects)

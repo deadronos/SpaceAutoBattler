@@ -24,8 +24,10 @@ var ShipConfig = {
         muzzleSpeed: 260,
         // reduced back (/10)
         bulletRadius: 1.5,
-        bulletTTL: 1.1
+        bulletTTL: 1.1,
         // was 1.2
+        // effective range (muzzleSpeed * bulletTTL) scaled to engine units
+        range: Math.round(260 * 1.1)
       }
     ],
     // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
@@ -57,8 +59,9 @@ var ShipConfig = {
         muzzleSpeed: 180,
         // reduced back (/10)
         bulletRadius: 2,
-        bulletTTL: 1.8
+        bulletTTL: 1.8,
         // was 2.0
+        range: Math.round(180 * 1.8)
       }
     ]
   },
@@ -79,8 +82,9 @@ var ShipConfig = {
         muzzleSpeed: 180,
         // reduced back (/10)
         bulletRadius: 2.5,
-        bulletTTL: 2
+        bulletTTL: 2,
         // was 2.2
+        range: Math.round(180 * 2)
       }
     ],
     accel: 70,
@@ -105,8 +109,9 @@ var ShipConfig = {
       muzzleSpeed: 160,
       // reduced back (/10)
       bulletRadius: 2.5,
-      bulletTTL: 1.8
+      bulletTTL: 1.8,
       // was 2.4
+      range: Math.round(160 * 1.8)
     })),
     accel: 60,
     turnRate: 2,
@@ -118,7 +123,9 @@ var ShipConfig = {
         position: [1.2, 0.8],
         kind: "basic",
         targeting: "nearest",
-        cooldown: 0.8
+        cooldown: 0.8,
+        // turret effective range (units)
+        range: 300
       },
       {
         position: [-1.2, 0.8],
@@ -168,8 +175,9 @@ var ShipConfig = {
       muzzleSpeed: 140,
       // reduced back (/10)
       bulletRadius: 3,
-      bulletTTL: 2.2
+      bulletTTL: 2.2,
       // was 2.8
+      range: Math.round(140 * 2.2)
     })),
     accel: 55,
     turnRate: 1.2,
@@ -182,7 +190,8 @@ var ShipConfig = {
         position: [2, 1.2],
         kind: "basic",
         targeting: "nearest",
-        cooldown: 1
+        cooldown: 1,
+        range: 300
       },
       {
         position: [-2, 1.2],
@@ -238,13 +247,36 @@ function getSizeDefaults(size) {
   return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
 }
 function getShipConfig() {
+  Object.keys(ShipConfig).forEach((key) => {
+    const cfg = ShipConfig[key];
+    if (cfg.cannons) {
+      cfg.cannons.forEach((c) => {
+        if (c.range == null) {
+          const ms = c.muzzleSpeed ?? BULLET_DEFAULTS.muzzleSpeed;
+          const ttl = c.bulletTTL ?? BULLET_DEFAULTS.ttl;
+          const computed = Number.isFinite(ms) && Number.isFinite(ttl) ? Math.round(ms * ttl) : BULLET_DEFAULTS.range;
+          c.range = computed || BULLET_DEFAULTS.range;
+        }
+      });
+    }
+    if (cfg.turrets) {
+      const firstCannonRange = cfg.cannons && cfg.cannons.length ? cfg.cannons[0].range || BULLET_DEFAULTS.range : BULLET_DEFAULTS.range;
+      cfg.turrets.forEach((t) => {
+        if (t.range == null) {
+          t.range = firstCannonRange;
+        }
+      });
+    }
+  });
   return ShipConfig;
 }
 var BULLET_DEFAULTS = {
   damage: 1,
   ttl: 2,
   radius: 1.5,
-  muzzleSpeed: 24
+  muzzleSpeed: 24,
+  // default effective range (units)
+  range: 300
 };
 function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
@@ -432,11 +464,45 @@ function chooseReinforcementsWithManagerSeed(state = {}, options = {}) {
   return chooseReinforcements(seed, state, options);
 }
 
+// src/pools/pool.ts
+var Pool = class {
+  stack = [];
+  factory;
+  reset;
+  created = 0;
+  constructor(factory, reset, initialSize = 0) {
+    this.factory = factory;
+    this.reset = reset;
+    for (let i = 0; i < initialSize; i++) this.stack.push(this.factory());
+    this.created = this.stack.length;
+  }
+  acquire() {
+    const obj = this.stack.pop() || this.factory();
+    if (!this.stack.includes(obj)) this.created++;
+    return obj;
+  }
+  release(obj) {
+    if (this.reset) this.reset(obj);
+    this.stack.push(obj);
+  }
+  size() {
+    return this.stack.length;
+  }
+  clear() {
+    this.stack.length = 0;
+  }
+};
+
 // src/entities.ts
 function acquireEffect(state, key, createFn, initArgs) {
   const poolMap = state.assetPool.effects;
   const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: counts
+    };
   let entry = poolMap.get(key);
   if (!entry) {
     entry = { freeList: [], allocated: 0 };
@@ -447,26 +513,32 @@ function acquireEffect(state, key, createFn, initArgs) {
     const obj = free.pop();
     try {
       if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+      else if (initArgs && typeof initArgs === "object")
+        Object.assign(obj, initArgs);
     } catch {
     }
     return obj;
   }
   const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  const strategy = _getStrategy(
+    state.assetPool.config.effectOverflowStrategy,
+    "discard-oldest"
+  );
   const total = entry.allocated || counts.get(key) || 0;
   if (total < max || strategy === "grow") {
     const e2 = createFn();
     try {
       if (typeof e2.reset === "function") e2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(e2, initArgs);
+      else if (initArgs && typeof initArgs === "object")
+        Object.assign(e2, initArgs);
     } catch {
     }
     entry.allocated = (entry.allocated || 0) + 1;
     _incCount(counts, key, 1);
     return e2;
   }
-  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
+  if (strategy === "error")
+    throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
   const e = createFn();
   entry.allocated = (entry.allocated || 0) + 1;
   _incCount(counts, key, 1);
@@ -475,7 +547,12 @@ function acquireEffect(state, key, createFn, initArgs) {
 function releaseEffect(state, key, effect, disposeFn) {
   const poolMap = state.assetPool.effects;
   const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: counts };
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: counts
+    };
   let entry = poolMap.get(key);
   if (!entry) {
     entry = { freeList: [], allocated: 0 };
@@ -484,7 +561,10 @@ function releaseEffect(state, key, effect, disposeFn) {
   const free = entry.freeList;
   if (!free.includes(effect)) free.push(effect);
   const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  const strategy = _getStrategy(
+    state.assetPool.config.effectOverflowStrategy,
+    "discard-oldest"
+  );
   if (strategy === "grow") return;
   while (free.length > max) {
     const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
@@ -573,11 +653,47 @@ function normalizeTurrets(ship) {
   } catch (e) {
   }
 }
-function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
-  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y, _prevX: x, _prevY: y };
-}
+var bulletPool = new Pool(
+  () => ({
+    id: 0,
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    team: TEAM_DEFAULT,
+    ownerId: null,
+    damage: 0,
+    ttl: 0,
+    prevX: 0,
+    prevY: 0,
+    _prevX: 0,
+    _prevY: 0
+  }),
+  (b) => {
+    b.id = 0;
+    b.x = 0;
+    b.y = 0;
+    b.vx = 0;
+    b.vy = 0;
+    b.team = TEAM_DEFAULT;
+    b.ownerId = null;
+    b.damage = 0;
+    b.ttl = 0;
+    b.prevX = 0;
+    b.prevY = 0;
+    b._prevX = 0;
+    b._prevY = 0;
+  }
+);
 function createExplosionEffect(init) {
-  return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };
+  return {
+    x: init?.x ?? 0,
+    y: init?.y ?? 0,
+    r: init?.r,
+    alive: true,
+    _pooled: false,
+    ...init
+  };
 }
 function resetExplosionEffect(obj, init) {
   obj.x = init?.x ?? 0;
@@ -588,7 +704,14 @@ function resetExplosionEffect(obj, init) {
   Object.assign(obj, init);
 }
 function createShieldHitEffect(init) {
-  return { x: init?.x ?? 0, y: init?.y ?? 0, magnitude: init?.magnitude, alive: true, _pooled: false, ...init };
+  return {
+    x: init?.x ?? 0,
+    y: init?.y ?? 0,
+    magnitude: init?.magnitude,
+    alive: true,
+    _pooled: false,
+    ...init
+  };
 }
 function resetShieldHitEffect(obj, init) {
   obj.x = init?.x ?? 0;
@@ -599,7 +722,14 @@ function resetShieldHitEffect(obj, init) {
   Object.assign(obj, init);
 }
 function createHealthHitEffect(init) {
-  return { x: init?.x ?? 0, y: init?.y ?? 0, amount: init?.amount, alive: true, _pooled: false, ...init };
+  return {
+    x: init?.x ?? 0,
+    y: init?.y ?? 0,
+    amount: init?.amount,
+    alive: true,
+    _pooled: false,
+    ...init
+  };
 }
 function resetHealthHitEffect(obj, init) {
   obj.x = init?.x ?? 0;
@@ -621,7 +751,8 @@ function makePooled(obj, resetFn) {
       };
     } else {
       o.reset = function(initArgs) {
-        if (initArgs && typeof initArgs === "object") Object.assign(o, initArgs);
+        if (initArgs && typeof initArgs === "object")
+          Object.assign(o, initArgs);
       };
     }
   }
@@ -639,7 +770,12 @@ function _incCount(map, key, delta) {
 function acquireTexture(state, key, createFn) {
   const poolMap = state.assetPool.textures;
   const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts) state.assetPool.counts = { textures: counts, sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: counts,
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map()
+    };
   let entry = poolMap.get(key);
   if (!entry) {
     entry = { freeList: [], allocated: 0 };
@@ -648,7 +784,10 @@ function acquireTexture(state, key, createFn) {
   const free = entry.freeList;
   if (free.length) return free.pop();
   const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
+  const strategy = entry.config?.strategy ?? _getStrategy(
+    state.assetPool.config.textureOverflowStrategy,
+    "discard-oldest"
+  );
   const total = entry.allocated || counts.get(key) || 0;
   if (total < max || strategy === "grow") {
     const tex2 = createFn();
@@ -656,7 +795,8 @@ function acquireTexture(state, key, createFn) {
     _incCount(counts, key, 1);
     return tex2;
   }
-  if (strategy === "error") throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
+  if (strategy === "error")
+    throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
   const tex = createFn();
   entry.allocated = (entry.allocated || 0) + 1;
   _incCount(counts, key, 1);
@@ -665,7 +805,12 @@ function acquireTexture(state, key, createFn) {
 function releaseTexture(state, key, tex, disposeFn) {
   const poolMap = state.assetPool.textures;
   const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts) state.assetPool.counts = { textures: counts, sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: counts,
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map()
+    };
   let entry = poolMap.get(key);
   if (!entry) {
     entry = { freeList: [], allocated: 0 };
@@ -674,7 +819,10 @@ function releaseTexture(state, key, tex, disposeFn) {
   const free = entry.freeList;
   if (!free.includes(tex)) free.push(tex);
   const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
+  const strategy = entry.config?.strategy ?? _getStrategy(
+    state.assetPool.config.textureOverflowStrategy,
+    "discard-oldest"
+  );
   const countsMap = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
   if (strategy === "grow") return;
   while (free.length > max) {
@@ -701,7 +849,12 @@ function releaseTexture(state, key, tex, disposeFn) {
 function acquireSprite(state, key, createFn, initArgs) {
   const poolMap = state.assetPool.sprites;
   const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: counts, effects: /* @__PURE__ */ new Map() };
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: counts,
+      effects: /* @__PURE__ */ new Map()
+    };
   let entry = poolMap.get(key);
   if (!entry) {
     entry = { freeList: [], allocated: 0 };
@@ -712,26 +865,32 @@ function acquireSprite(state, key, createFn, initArgs) {
     const obj = free.pop();
     try {
       if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+      else if (initArgs && typeof initArgs === "object")
+        Object.assign(obj, initArgs);
     } catch {
     }
     return obj;
   }
   const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  const strategy = _getStrategy(
+    state.assetPool.config.spriteOverflowStrategy,
+    "discard-oldest"
+  );
   const total = entry.allocated || counts.get(key) || 0;
   if (total < max || strategy === "grow") {
     const s2 = createFn();
     try {
       if (typeof s2.reset === "function") s2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(s2, initArgs);
+      else if (initArgs && typeof initArgs === "object")
+        Object.assign(s2, initArgs);
     } catch {
     }
     entry.allocated = (entry.allocated || 0) + 1;
     _incCount(counts, key, 1);
     return s2;
   }
-  if (strategy === "error") throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
+  if (strategy === "error")
+    throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
   const s = createFn();
   entry.allocated = (entry.allocated || 0) + 1;
   _incCount(counts, key, 1);
@@ -740,7 +899,12 @@ function acquireSprite(state, key, createFn, initArgs) {
 function releaseSprite(state, key, sprite, disposeFn) {
   const poolMap = state.assetPool.sprites;
   const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts) state.assetPool.counts = { textures: /* @__PURE__ */ new Map(), sprites: counts, effects: /* @__PURE__ */ new Map() };
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: counts,
+      effects: /* @__PURE__ */ new Map()
+    };
   let entry = poolMap.get(key);
   if (!entry) {
     entry = { freeList: [], allocated: 0 };
@@ -749,7 +913,10 @@ function releaseSprite(state, key, sprite, disposeFn) {
   const free = entry.freeList;
   if (!free.includes(sprite)) free.push(sprite);
   const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  const strategy = _getStrategy(
+    state.assetPool.config.spriteOverflowStrategy,
+    "discard-oldest"
+  );
   if (strategy === "grow") return;
   while (free.length > max) {
     const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
@@ -804,7 +971,10 @@ function makeInitialState() {
 function updateTeamCount(state, oldTeam, newTeam) {
   try {
     if (oldTeam) {
-      state.teamCounts[oldTeam] = Math.max(0, (state.teamCounts[oldTeam] || 0) - 1);
+      state.teamCounts[oldTeam] = Math.max(
+        0,
+        (state.teamCounts[oldTeam] || 0) - 1
+      );
     }
     if (newTeam) {
       state.teamCounts[newTeam] = (state.teamCounts[newTeam] || 0) + 1;
@@ -825,6 +995,12 @@ var AI_THRESHOLDS = {
 // src/behavior.ts
 function len2(vx, vy) {
   return vx * vx + vy * vy;
+}
+var DEFAULT_BULLET_RANGE = typeof BULLET_DEFAULTS.range === "number" ? BULLET_DEFAULTS.range : 300;
+function withinRange(sx, sy, tx, ty, range) {
+  const dx = tx - sx;
+  const dy = ty - sy;
+  return dx * dx + dy * dy <= range * range;
 }
 function clampSpeed(s, max) {
   const v2 = len2(s.vx || 0, s.vy || 0);
@@ -855,6 +1031,15 @@ function tryFire(state, ship, target, dt) {
       if (typeof c.__cd !== "number") c.__cd = 0;
       c.__cd -= dt;
       if (c.__cd > 0) continue;
+      const range = typeof c.range === "number" ? c.range : DEFAULT_BULLET_RANGE;
+      if (!withinRange(
+        ship.x || 0,
+        ship.y || 0,
+        target.x || 0,
+        target.y || 0,
+        range
+      ))
+        continue;
       const spread = typeof c.spread === "number" ? c.spread : 0;
       const dir = aimWithSpread(ship, target, spread);
       const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
@@ -864,19 +1049,18 @@ function tryFire(state, ship, target, dt) {
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(
-          ship.x || 0,
-          ship.y || 0,
+        acquireBullet(state, {
+          x: ship.x || 0,
+          y: ship.y || 0,
           vx,
           vy,
-          ship.team || TEAM_DEFAULT,
-          ship.id || null,
-          dmg,
+          team: ship.team || TEAM_DEFAULT,
+          ownerId: ship.id || null,
+          damage: dmg,
           ttl
-        ),
+        }),
         { radius }
       );
-      state.bullets.push(b);
       const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
       c.__cd = 1 / rate;
     }
@@ -889,7 +1073,9 @@ function tryFire(state, ship, target, dt) {
       if (turret.__cd > 0) continue;
       let turretTarget = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -901,15 +1087,20 @@ function tryFire(state, ship, target, dt) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
-        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
+        if (enemies.length)
+          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
         if (ship.__ai && ship.__ai.targetId != null) {
           const tId = ship.__ai.targetId;
           turretTarget = state.shipMap && typeof tId !== "undefined" && tId !== null ? state.shipMap.get(Number(tId)) || null : (state.ships || []).find((sh) => sh && sh.id === tId) || null;
         }
       } else {
-        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        const enemies = (state.ships || []).filter(
+          (sh) => sh && sh.team !== ship.team
+        );
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -936,22 +1127,25 @@ function tryFire(state, ship, target, dt) {
       const [tx, ty] = pos;
       const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
       const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
+      const range = typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
+      const dxT = (turretTarget.x || 0) - turretX;
+      const dyT = (turretTarget.y || 0) - turretY;
+      if (dxT * dxT + dyT * dyT > range * range) continue;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
-        createBullet(
-          turretX,
-          turretY,
+        acquireBullet(state, {
+          x: turretX,
+          y: turretY,
           vx,
           vy,
-          ship.team || TEAM_DEFAULT,
-          ship.id || null,
-          dmg,
+          team: ship.team || TEAM_DEFAULT,
+          ownerId: ship.id || null,
+          damage: dmg,
           ttl
-        ),
+        }),
         { radius }
       );
-      state.bullets.push(b);
       turret.__cd = typeof turret.cooldown === "number" && turret.cooldown > 0 ? turret.cooldown : 1;
     }
   }
@@ -992,10 +1186,30 @@ function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
       if (ai.decisionTimer <= 0) {
         const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
         const rnd = srandom();
-        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow) ai.state = "evade";
+        if (hpFrac < AI_THRESHOLDS.hpEvadeThreshold || rnd < AI_THRESHOLDS.randomLow)
+          ai.state = "evade";
         else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = "engage";
         else ai.state = "idle";
         ai.decisionTimer = AI_THRESHOLDS.decisionTimerMin + srandom() * (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);
+        try {
+          if (ai.state !== "engage" && Array.isArray(s.cannons) && s.cannons.length > 0) {
+            for (const c of s.cannons) {
+              const ready = typeof c.__cd !== "number" || c.__cd <= 0;
+              const range = typeof c.range === "number" ? c.range : DEFAULT_BULLET_RANGE;
+              if (ready && target && withinRange(
+                s.x || 0,
+                s.y || 0,
+                target.x || 0,
+                target.y || 0,
+                range
+              )) {
+                ai.state = "engage";
+                break;
+              }
+            }
+          }
+        } catch (e) {
+        }
       }
       const dx = (target.x || 0) - (s.x || 0);
       const dy = (target.y || 0) - (s.y || 0);
@@ -1410,7 +1624,12 @@ function simulateStep(state, dtSeconds, bounds) {
           break;
       }
     }
-    if (remove) releaseBullet(state, b);
+    if (remove) {
+      try {
+        releaseBullet(state, b);
+      } catch (e) {
+      }
+    }
   }
   function pruneAll(state2, dtSeconds2, bounds2) {
     state2.particles = state2.particles || [];
@@ -1569,7 +1788,11 @@ function simulateStep(state, dtSeconds, bounds) {
         } catch (e) {
         }
         try {
-          if (rem[0] && rem[0].team) state.teamCounts[rem[0].team] = Math.max(0, (state.teamCounts[rem[0].team] || 0) - 1);
+          if (rem[0] && rem[0].team)
+            state.teamCounts[rem[0].team] = Math.max(
+              0,
+              (state.teamCounts[rem[0].team] || 0) - 1
+            );
         } catch (e) {
         }
       }
@@ -1596,7 +1819,10 @@ function simulateStep(state, dtSeconds, bounds) {
                 }
               }
               if (best) {
-                t.targetAngle = Math.atan2((best.y || 0) - (s.y || 0), (best.x || 0) - (s.x || 0));
+                t.targetAngle = Math.atan2(
+                  (best.y || 0) - (s.y || 0),
+                  (best.x || 0) - (s.x || 0)
+                );
               }
             } catch (e) {
             }
@@ -1619,7 +1845,8 @@ function simulateStep(state, dtSeconds, bounds) {
             let defaultTurn = Math.PI * 1.5;
             try {
               const td = assetsConfig_default.turretDefaults && assetsConfig_default.turretDefaults[t.kind || "basic"];
-              if (td && typeof td.turnRate === "number") defaultTurn = td.turnRate;
+              if (td && typeof td.turnRate === "number")
+                defaultTurn = td.turnRate;
             } catch (e) {
             }
             const maxTurn2 = (typeof t.turnRate === "number" ? t.turnRate : defaultTurn) * dtSeconds;
@@ -1647,7 +1874,9 @@ function simulateStep(state, dtSeconds, bounds) {
         const cooldown = Number(carrierCfg.fighterCooldown) || 1.5;
         if (s._carrierTimer >= cooldown) {
           s._carrierTimer = 0;
-          const existing = (state.ships || []).filter((sh) => sh && sh.parentId === s.id && sh.type === "fighter").length;
+          const existing = (state.ships || []).filter(
+            (sh) => sh && sh.parentId === s.id && sh.type === "fighter"
+          ).length;
           const maxF = Number(carrierCfg.maxFighters) || 0;
           const spawnPer = Number(carrierCfg.spawnPerCooldown) || 1;
           const canSpawn = Math.max(0, maxF - existing);
@@ -1696,7 +1925,15 @@ function simulateStep(state, dtSeconds, bounds) {
       const r = (s.radius || 6) + (b.radius || 1);
       const bxPrev = typeof b._prevX === "number" ? b._prevX : b.x - (b.vx || 0) * dtSeconds;
       const byPrev = typeof b._prevY === "number" ? b._prevY : b.y - (b.vy || 0) * dtSeconds;
-      const didHit = dist2(b, s) <= r * r || segmentIntersectsCircle2(bxPrev, byPrev, b.x || 0, b.y || 0, s.x || 0, s.y || 0, r);
+      const didHit = dist2(b, s) <= r * r || segmentIntersectsCircle2(
+        bxPrev,
+        byPrev,
+        b.x || 0,
+        b.y || 0,
+        s.x || 0,
+        s.y || 0,
+        r
+      );
       if (didHit) {
         const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? state.shipMap && state.shipMap.get(Number(b.ownerId)) : void 0;
         let dealtToShield = 0;
@@ -1709,14 +1946,16 @@ function simulateStep(state, dtSeconds, bounds) {
             (b.y || 0) - (s.y || 0),
             (b.x || 0) - (s.x || 0)
           );
-          (state.shieldHits ||= []).push(acquireShieldHit(state, {
-            id: s.id,
-            x: b.x,
-            y: b.y,
-            team: s.team,
-            amount: absorbed,
-            hitAngle
-          }));
+          (state.shieldHits ||= []).push(
+            acquireShieldHit(state, {
+              id: s.id,
+              x: b.x,
+              y: b.y,
+              team: s.team,
+              amount: absorbed,
+              hitAngle
+            })
+          );
           (state.damageEvents ||= []).push({
             id: s.id,
             type: "shield",
@@ -1732,13 +1971,15 @@ function simulateStep(state, dtSeconds, bounds) {
             const dmgMul = Math.max(0, 1 - 0.1 * armor);
             const dealt = Math.max(0, remaining * dmgMul);
             s.hp -= dealt;
-            (state.healthHits ||= []).push(acquireHealthHit(state, {
-              id: s.id,
-              x: b.x,
-              y: b.y,
-              team: s.team,
-              amount: dealt
-            }));
+            (state.healthHits ||= []).push(
+              acquireHealthHit(state, {
+                id: s.id,
+                x: b.x,
+                y: b.y,
+                team: s.team,
+                amount: dealt
+              })
+            );
             (state.damageEvents ||= []).push({
               id: s.id,
               type: "hp",
@@ -1752,19 +1993,24 @@ function simulateStep(state, dtSeconds, bounds) {
           dealtToShield = absorbed;
           const remainingAfterShield = Math.max(0, (b.damage || 0) - absorbed);
           const armorAfterShield = s.armor || 0;
-          dealtToHealth = Math.max(0, remainingAfterShield * Math.max(0, 1 - 0.1 * armorAfterShield));
+          dealtToHealth = Math.max(
+            0,
+            remainingAfterShield * Math.max(0, 1 - 0.1 * armorAfterShield)
+          );
         } else {
           const armor = s.armor || 0;
           const dmgMulNoShield = Math.max(0, 1 - 0.1 * armor);
           const dealtNoShield = Math.max(0, (b.damage || 0) * dmgMulNoShield);
           s.hp -= dealtNoShield;
-          (state.healthHits ||= []).push(acquireHealthHit(state, {
-            id: s.id,
-            x: b.x,
-            y: b.y,
-            team: s.team,
-            amount: dealtNoShield
-          }));
+          (state.healthHits ||= []).push(
+            acquireHealthHit(state, {
+              id: s.id,
+              x: b.x,
+              y: b.y,
+              team: s.team,
+              amount: dealtNoShield
+            })
+          );
           (state.damageEvents ||= []).push({
             id: s.id,
             type: "hp",
@@ -1828,7 +2074,14 @@ function simulateStep(state, dtSeconds, bounds) {
               attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
           }
         }
-        state.bullets.splice(bi, 1);
+        try {
+          releaseBullet(state, b);
+        } catch (e) {
+          try {
+            state.bullets.splice(bi, 1);
+          } catch (e2) {
+          }
+        }
         collided = true;
         if (s.hp <= 0) {
           if (attacker) {
@@ -1884,8 +2137,18 @@ function simulateStep(state, dtSeconds, bounds) {
                 attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
             }
           }
-          (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
-          const idx = (state.ships || []).findIndex((sh) => sh && sh.id === s.id);
+          (state.explosions ||= []).push(
+            acquireExplosion(state, {
+              x: s.x,
+              y: s.y,
+              team: s.team,
+              life: 0.5,
+              ttl: 0.5
+            })
+          );
+          const idx = (state.ships || []).findIndex(
+            (sh) => sh && sh.id === s.id
+          );
           if (idx >= 0) {
             state.ships.splice(idx, 1);
             try {
@@ -1893,7 +2156,11 @@ function simulateStep(state, dtSeconds, bounds) {
             } catch (e) {
             }
             try {
-              if (s && s.team) state.teamCounts[s.team] = Math.max(0, (state.teamCounts[s.team] || 0) - 1);
+              if (s && s.team)
+                state.teamCounts[s.team] = Math.max(
+                  0,
+                  (state.teamCounts[s.team] || 0) - 1
+                );
             } catch (e) {
             }
           }
@@ -1978,6 +2245,40 @@ var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 var flashes = [];
 var shieldFlashes = [];
 var healthFlashes = [];
+function acquireBullet(state, opts = {}) {
+  if (!state) state = makeInitialState();
+  state.bullets = state.bullets || [];
+  state.assetPool = state.assetPool || {
+    textures: /* @__PURE__ */ new Map(),
+    sprites: /* @__PURE__ */ new Map(),
+    effects: /* @__PURE__ */ new Map(),
+    counts: {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map()
+    },
+    config: {
+      texturePoolSize: 128,
+      spritePoolSize: 256,
+      effectPoolSize: 128,
+      textureOverflowStrategy: "discard-oldest",
+      spriteOverflowStrategy: "discard-oldest",
+      effectOverflowStrategy: "discard-oldest"
+    }
+  };
+  const key = "bullet";
+  const b = acquireSprite(
+    state,
+    key,
+    () => makePooled(
+      { ...opts, id: genId(), alive: true },
+      (o, initArgs) => Object.assign(o, initArgs)
+    ),
+    opts
+  );
+  (state.bullets ||= []).push(b);
+  return b;
+}
 function releaseBullet(state, b) {
   if (!b) return;
   if (!b.alive) return;
@@ -2856,7 +3157,101 @@ function rasterizeSvgToCanvas(svgText, outW, outH) {
   }
   return canvas;
 }
+function rasterizeSvgToCanvasAsync(svgText, outW, outH) {
+  const canvas = document.createElement("canvas");
+  canvas.width = outW;
+  canvas.height = outH;
+  return new Promise((resolve) => {
+    try {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(canvas);
+      const img = new Image();
+      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        try {
+          URL.revokeObjectURL(url);
+        } catch (e) {
+        }
+        resolve(canvas);
+      };
+      img.onload = () => {
+        try {
+          ctx.clearRect(0, 0, outW, outH);
+          ctx.drawImage(img, 0, 0, outW, outH);
+        } catch (e) {
+        }
+        done();
+      };
+      img.onerror = () => {
+        done();
+      };
+      try {
+        img.src = url;
+      } catch (e) {
+        done();
+      }
+      setTimeout(() => {
+        done();
+      }, 2500);
+    } catch (e) {
+      try {
+      } catch {
+      }
+      ;
+      resolve(canvas);
+    }
+  });
+}
 function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
+    const turrets = svg.querySelectorAll("rect.turret");
+    turrets.forEach((el) => el.parentNode?.removeChild(el));
+    try {
+      const vbAttr = svg.getAttribute("viewBox");
+      let vbW = 0, vbH = 0;
+      if (vbAttr) {
+        const parts = vbAttr.split(/\s+|,/).map((p) => parseFloat(p));
+        if (parts.length >= 4) {
+          vbW = parts[2];
+          vbH = parts[3];
+        }
+      } else {
+        vbW = parseFloat(svg.getAttribute("width") || "0") || 0;
+        vbH = parseFloat(svg.getAttribute("height") || "0") || 0;
+      }
+      if (vbW > 0 && vbH > 0) {
+        const rects = svg.querySelectorAll("rect");
+        rects.forEach((r) => {
+          try {
+            const rx = parseFloat(r.getAttribute("x") || "0") || 0;
+            const ry = parseFloat(r.getAttribute("y") || "0") || 0;
+            const rw = parseFloat(r.getAttribute("width") || "0") || 0;
+            const rh = parseFloat(r.getAttribute("height") || "0") || 0;
+            if (Math.abs(rx) < 1e-6 && Math.abs(ry) < 1e-6 && Math.abs(rw - vbW) < 1e-3 && Math.abs(rh - vbH) < 1e-3) {
+              r.parentNode?.removeChild(r);
+            }
+          } catch (e) {
+          }
+        });
+      }
+    } catch (e) {
+    }
+    const serializer = new XMLSerializer();
+    const hullOnlySvgText = serializer.serializeToString(svg);
+    return rasterizeSvgToCanvas(hullOnlySvgText, outW, outH);
+  } catch (e) {
+    return rasterizeSvgToCanvas(svgText, outW, outH);
+  }
+}
+async function rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, "image/svg+xml");
@@ -2866,11 +3261,98 @@ function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
     turrets.forEach((el) => el.parentNode?.removeChild(el));
     const serializer = new XMLSerializer();
     const hullOnlySvgText = serializer.serializeToString(svg);
-    return rasterizeSvgToCanvas(hullOnlySvgText, outW, outH);
+    return await rasterizeSvgToCanvasAsync(hullOnlySvgText, outW, outH);
   } catch (e) {
-    return rasterizeSvgToCanvas(svgText, outW, outH);
+    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
   }
 }
+
+// src/pools/tintedHullPool.ts
+var TintedHullPool = class {
+  map = /* @__PURE__ */ new Map();
+  teamMap = /* @__PURE__ */ new Map();
+  // teamColor -> array of keys (in insertion order)
+  // expose caps so callers/tests can read/update them if needed
+  globalCap;
+  perTeamCap;
+  constructor(opts) {
+    this.globalCap = opts?.globalCap ?? 256;
+    this.perTeamCap = opts?.perTeamCap ?? 64;
+  }
+  get size() {
+    return this.map.size;
+  }
+  has(key) {
+    return this.map.has(key);
+  }
+  get(key) {
+    return this.map.get(key);
+  }
+  // set a canvas and enforce caps
+  set(key, canvas) {
+    if (this.map.has(key)) {
+      this._removeKeyFromTeam(key);
+      this.map.delete(key);
+    }
+    const nodeEnv = typeof process !== "undefined" && (process.env && "production") ? "production" : typeof globalThis.NODE_ENV !== "undefined" ? globalThis.NODE_ENV : "development";
+    const throwFlag = typeof process !== "undefined" && process.env && process.env.THROW_ON_SHARED_TINT ? process.env.THROW_ON_SHARED_TINT : typeof globalThis.THROW_ON_SHARED_TINT !== "undefined" ? globalThis.THROW_ON_SHARED_TINT : void 0;
+    const shouldCheck = nodeEnv !== "production";
+    if (shouldCheck) {
+      for (const [k, v] of this.map.entries()) {
+        if (v === canvas && k !== key) {
+          const msg = `[TintedHullPool] Detected shared canvas instance across keys: existing='${k}' new='${key}'. Avoid reusing the same HTMLCanvasElement for different tinted keys.`;
+          if (throwFlag === "1" || String(throwFlag).toLowerCase() === "true") {
+            throw new Error(msg);
+          } else {
+            console.warn(msg);
+          }
+          break;
+        }
+      }
+    }
+    this.map.set(key, canvas);
+    const team = this._teamForKey(key);
+    if (!this.teamMap.has(team)) this.teamMap.set(team, []);
+    this.teamMap.get(team).push(key);
+    const arr = this.teamMap.get(team);
+    while (arr.length > this.perTeamCap) {
+      const oldestKey = arr.shift();
+      if (oldestKey) this.map.delete(oldestKey);
+    }
+    while (this.map.size > this.globalCap) {
+      const it = this.map.keys();
+      const oldest = it.next().value;
+      if (!oldest) break;
+      this._removeKeyFromTeam(oldest);
+      this.map.delete(oldest);
+    }
+    return this;
+  }
+  delete(key) {
+    this._removeKeyFromTeam(key);
+    return this.map.delete(key);
+  }
+  clear() {
+    this.map.clear();
+    this.teamMap.clear();
+  }
+  keys() {
+    return this.map.keys();
+  }
+  // Helper: extract team color from key formatted as "<shipType>::<teamColor>"
+  _teamForKey(key) {
+    const parts = key.split("::");
+    return parts.length >= 2 ? parts.slice(1).join("::") : "";
+  }
+  _removeKeyFromTeam(key) {
+    const team = this._teamForKey(key);
+    const arr = this.teamMap.get(team);
+    if (!arr) return;
+    const idx = arr.indexOf(key);
+    if (idx >= 0) arr.splice(idx, 1);
+    if (arr.length === 0) this.teamMap.delete(team);
+  }
+};
 
 // src/canvasrenderer.ts
 var CanvasRenderer = class {
@@ -2890,29 +3372,85 @@ var CanvasRenderer = class {
   _turretSpriteCache = null;
   // rasterized hull-only SVG cache: shipType -> offscreen canvas
   _svgHullCache = {};
-  // tinted hull cache implemented as an LRU Map to cap memory usage.
-  // Key: "<shipType>::<teamColor>" -> offscreen canvas
-  _tintedHullCache = null;
-  // maximum tinted cache entries (LRU cap)
-  _tintedHullCacheMax = 128;
+  // tinted hull cache implemented as a per-team capped pool for canvases
+  _tintedHullPool = null;
+  // Backwards-compatible Map-like facade for tests that expect _tintedHullCache
+  get _tintedHullCache() {
+    const self = this;
+    class MapWrapper {
+      [Symbol.toStringTag] = "Map";
+      constructor() {
+      }
+      get size() {
+        try {
+          return self._tintedHullPool ? self._tintedHullPool.size || 0 : 0;
+        } catch (e) {
+          return 0;
+        }
+      }
+      clear() {
+        if (self._tintedHullPool) self._tintedHullPool.clear();
+      }
+      delete(key) {
+        if (!self._tintedHullPool) return false;
+        return !!(self._tintedHullPool.has(key) && (self._tintedHullPool.delete(key), true));
+      }
+      forEach(cb, thisArg) {
+        if (!self._tintedHullPool) return;
+        for (const k of self._tintedHullPool.keys()) {
+          const v = self._tintedHullPool.get(k);
+          cb.call(thisArg, v, k, this);
+        }
+      }
+      get(key) {
+        return self._tintedHullPool ? self._tintedHullPool.get(key) : void 0;
+      }
+      has(key) {
+        return !!(self._tintedHullPool && self._tintedHullPool.has(key));
+      }
+      set(key, value) {
+        self._setTintedCanvas(key, value);
+        return this;
+      }
+      *entries() {
+        if (!self._tintedHullPool) return;
+        for (const k of self._tintedHullPool.keys()) {
+          yield [
+            k,
+            self._tintedHullPool.get(k)
+          ];
+        }
+      }
+      *keys() {
+        if (!self._tintedHullPool) return;
+        for (const k of self._tintedHullPool.keys()) yield k;
+      }
+      *values() {
+        if (!self._tintedHullPool) return;
+        for (const k of self._tintedHullPool.keys())
+          yield self._tintedHullPool.get(k);
+      }
+      [Symbol.iterator]() {
+        return this.entries();
+      }
+    }
+    return new MapWrapper();
+  }
   // Clear the tinted hull cache (useful when palette/team colors change)
   clearTintedHullCache() {
     try {
-      this._tintedHullCache && this._tintedHullCache.clear();
+      if (this._tintedHullPool) this._tintedHullPool.clear();
     } catch (e) {
     }
   }
   // Internal helper: set a tinted canvas in the Map and enforce LRU cap.
   _setTintedCanvas(key, canvas) {
-    if (!this._tintedHullCache) this._tintedHullCache = /* @__PURE__ */ new Map();
-    if (this._tintedHullCache.has(key)) this._tintedHullCache.delete(key);
-    this._tintedHullCache.set(key, canvas);
-    while (this._tintedHullCache.size > this._tintedHullCacheMax) {
-      const it = this._tintedHullCache.keys();
-      const oldest = it.next().value;
-      if (oldest) this._tintedHullCache.delete(oldest);
-      else break;
-    }
+    if (!this._tintedHullPool)
+      this._tintedHullPool = new TintedHullPool({
+        globalCap: 256,
+        perTeamCap: 64
+      });
+    this._tintedHullPool.set(key, canvas);
   }
   // Test helper: allow tests to inject entries deterministically without TS private access errors.
   // Kept separate so production code still uses private _setTintedCanvas.
@@ -2988,19 +3526,23 @@ var CanvasRenderer = class {
         if (p.shipAccent) teamColors.push(p.shipAccent);
       }
       try {
-        this._tintedHullCache = this._tintedHullCache || /* @__PURE__ */ new Map();
+        if (!this._tintedHullPool)
+          this._tintedHullPool = new TintedHullPool({
+            globalCap: 256,
+            perTeamCap: 64
+          });
         for (const shipType of Object.keys(svgAssets)) {
           try {
             for (const col of teamColors) {
               const k = `${shipType}::${col}`;
-              if (!this._tintedHullCache.has(k)) {
+              if (!this._tintedHullPool.has(k)) {
                 const pc = document.createElement("canvas");
                 pc.width = 16;
                 pc.height = 16;
                 try {
                   this._setTintedCanvas(k, pc);
                 } catch (e) {
-                  this._tintedHullCache.set(k, pc);
+                  if (this._tintedHullPool) this._tintedHullPool.set(k, pc);
                 }
               }
             }
@@ -3056,16 +3598,27 @@ var CanvasRenderer = class {
             let maxv = 0;
             if (shapeEntry.type === "compound" && Array.isArray(shapeEntry.parts)) {
               for (const p of shapeEntry.parts) {
-                if (p.type === "circle") maxv = Math.max(maxv, Math.abs(p.r || 0));
-                else if (p.type === "polygon") for (const pt of p.points || []) {
-                  maxv = Math.max(maxv, Math.abs(pt[0] || 0), Math.abs(pt[1] || 0));
-                }
+                if (p.type === "circle")
+                  maxv = Math.max(maxv, Math.abs(p.r || 0));
+                else if (p.type === "polygon")
+                  for (const pt of p.points || []) {
+                    maxv = Math.max(
+                      maxv,
+                      Math.abs(pt[0] || 0),
+                      Math.abs(pt[1] || 0)
+                    );
+                  }
               }
             } else if (shapeEntry.type === "polygon") {
               for (const pt of shapeEntry.points || []) {
-                maxv = Math.max(maxv, Math.abs(pt[0] || 0), Math.abs(pt[1] || 0));
+                maxv = Math.max(
+                  maxv,
+                  Math.abs(pt[0] || 0),
+                  Math.abs(pt[1] || 0)
+                );
               }
-            } else if (shapeEntry.type === "circle") maxv = Math.max(maxv, Math.abs(shapeEntry.r || 0));
+            } else if (shapeEntry.type === "circle")
+              maxv = Math.max(maxv, Math.abs(shapeEntry.r || 0));
             extent = maxv || 1;
           }
           const norm = mounts.map((m) => {
@@ -3084,7 +3637,20 @@ var CanvasRenderer = class {
           try {
             const outW = vb.w || 128;
             const outH = vb.h || 128;
-            const hullCanvas = rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+            let hullCanvas = void 0;
+            try {
+              if (typeof rasterizeHullOnlySvgToCanvasAsync === "function") {
+                hullCanvas = await rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH);
+              } else {
+                hullCanvas = rasterizeHullOnlySvgToCanvas(
+                  svgText,
+                  outW,
+                  outH
+                );
+              }
+            } catch (e) {
+              hullCanvas = void 0;
+            }
             if (hullCanvas) {
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[key] = hullCanvas;
@@ -3100,7 +3666,11 @@ var CanvasRenderer = class {
         }
       }
       try {
-        this._tintedHullCache = this._tintedHullCache || /* @__PURE__ */ new Map();
+        if (!this._tintedHullPool)
+          this._tintedHullPool = new TintedHullPool({
+            globalCap: 256,
+            perTeamCap: 64
+          });
         const teams2 = teamsConfig_default && teamsConfig_default.teams ? teamsConfig_default.teams : {};
         const teamColors2 = [];
         for (const tName of Object.keys(teams2)) {
@@ -3120,14 +3690,28 @@ var CanvasRenderer = class {
               try {
                 const rel = declaredSvgAssets[shipType];
                 if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
-                  const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(rel);
+                  const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(
+                    rel
+                  );
                   let outW = 128, outH = 128;
                   if (vbMatch) {
                     outW = parseInt(vbMatch[3]) || 128;
                     outH = parseInt(vbMatch[4]) || 128;
                   }
                   try {
-                    hullCanvas = rasterizeHullOnlySvgToCanvas(rel, outW, outH);
+                    if (typeof rasterizeHullOnlySvgToCanvasAsync === "function") {
+                      try {
+                        hullCanvas = await rasterizeHullOnlySvgToCanvasAsync(rel, outW, outH);
+                      } catch (e) {
+                        hullCanvas = void 0;
+                      }
+                    } else {
+                      hullCanvas = rasterizeHullOnlySvgToCanvas(
+                        rel,
+                        outW,
+                        outH
+                      );
+                    }
                   } catch (e) {
                     hullCanvas = void 0;
                   }
@@ -3151,7 +3735,7 @@ var CanvasRenderer = class {
             if (!hullCanvas) continue;
             for (const col of teamColors2) {
               const k = `${shipType}::${col}`;
-              if (this._tintedHullCache.has(k)) continue;
+              if (this._tintedHullPool && this._tintedHullPool.has(k)) continue;
               try {
                 const tc = document.createElement("canvas");
                 tc.width = hullCanvas.width;
@@ -3188,11 +3772,29 @@ var CanvasRenderer = class {
               this._svgHullCache[shipType] = ph;
               for (const col of teamColors2) {
                 const k = `${shipType}::${col}`;
-                if (!this._tintedHullCache.has(k)) {
-                  try {
-                    this._setTintedCanvas(k, ph);
-                  } catch (e) {
+                if (this._tintedHullPool && this._tintedHullPool.has(k))
+                  continue;
+                try {
+                  const tc = document.createElement("canvas");
+                  tc.width = ph.width;
+                  tc.height = ph.height;
+                  const tctx = tc.getContext("2d");
+                  if (tctx) {
+                    tctx.clearRect(0, 0, tc.width, tc.height);
+                    try {
+                      tctx.drawImage(ph, 0, 0);
+                    } catch (e) {
+                    }
+                    try {
+                      tctx.globalCompositeOperation = "source-atop";
+                      tctx.fillStyle = col;
+                      tctx.fillRect(0, 0, tc.width, tc.height);
+                      tctx.globalCompositeOperation = "source-over";
+                    } catch (e) {
+                    }
                   }
+                  this._setTintedCanvas(k, tc);
+                } catch (e) {
                 }
               }
             }
@@ -3203,14 +3805,19 @@ var CanvasRenderer = class {
       }
       try {
         this._turretSpriteCache = this._turretSpriteCache || {};
-        const turretDefs = assetsConfig_default.turretDefaults || { basic: { sprite: "turretBasic" } };
+        const turretDefs = assetsConfig_default.turretDefaults || {
+          basic: { sprite: "turretBasic" }
+        };
         const kinds = Object.keys(turretDefs);
         for (const k of kinds) {
           try {
             const spriteKey = turretDefs[k].sprite || "turretBasic";
             const tshape = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d[spriteKey];
             if (!tshape) continue;
-            const basePx = Math.max(24, Math.round(24 * rendererConfig_default.renderScale || 1));
+            const basePx = Math.max(
+              24,
+              Math.round(24 * rendererConfig_default.renderScale || 1)
+            );
             const canvas = document.createElement("canvas");
             const size = Math.max(16, basePx * 2);
             canvas.width = size;
@@ -3230,7 +3837,11 @@ var CanvasRenderer = class {
               const pts = tshape.points || [];
               if (pts.length) {
                 ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
-                for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+                for (let i = 1; i < pts.length; i++)
+                  ctx2.lineTo(
+                    (pts[i][0] || 0) * scale,
+                    (pts[i][1] || 0) * scale
+                  );
                 ctx2.closePath();
                 ctx2.fill();
               }
@@ -3244,8 +3855,15 @@ var CanvasRenderer = class {
                   ctx2.beginPath();
                   const pts = part.points || [];
                   if (pts.length) {
-                    ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
-                    for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+                    ctx2.moveTo(
+                      (pts[0][0] || 0) * scale,
+                      (pts[0][1] || 0) * scale
+                    );
+                    for (let i = 1; i < pts.length; i++)
+                      ctx2.lineTo(
+                        (pts[i][0] || 0) * scale,
+                        (pts[i][1] || 0) * scale
+                      );
                     ctx2.closePath();
                     ctx2.fill();
                   }
@@ -3272,7 +3890,13 @@ var CanvasRenderer = class {
           activeBufferCtx.strokeStyle = color;
           activeBufferCtx.lineWidth = thickness * renderScale;
           activeBufferCtx.beginPath();
-          activeBufferCtx.arc(x * renderScale, y * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
+          activeBufferCtx.arc(
+            x * renderScale,
+            y * renderScale,
+            Math.max(1, R * renderScale),
+            0,
+            Math.PI * 2
+          );
           activeBufferCtx.stroke();
         });
       } catch (e) {
@@ -3304,8 +3928,15 @@ var CanvasRenderer = class {
     function drawPolygon(points) {
       if (!points || points.length === 0) return;
       activeBufferCtx.beginPath();
-      activeBufferCtx.moveTo(points[0][0] * renderScale, points[0][1] * renderScale);
-      for (let i = 1; i < points.length; i++) activeBufferCtx.lineTo(points[i][0] * renderScale, points[i][1] * renderScale);
+      activeBufferCtx.moveTo(
+        points[0][0] * renderScale,
+        points[0][1] * renderScale
+      );
+      for (let i = 1; i < points.length; i++)
+        activeBufferCtx.lineTo(
+          points[i][0] * renderScale,
+          points[i][1] * renderScale
+        );
       activeBufferCtx.closePath();
       activeBufferCtx.fill();
     }
@@ -3313,7 +3944,13 @@ var CanvasRenderer = class {
       if (state.starCanvas) {
         withContext(() => {
           activeBufferCtx.globalAlpha = 0.5;
-          activeBufferCtx.drawImage(state.starCanvas, 0, 0, bufferW, bufferH);
+          activeBufferCtx.drawImage(
+            state.starCanvas,
+            0,
+            0,
+            bufferW,
+            bufferH
+          );
         });
       }
     }
@@ -3347,7 +3984,10 @@ var CanvasRenderer = class {
     function withShipContext(s, fn) {
       activeBufferCtx.save();
       try {
-        activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
+        activeBufferCtx.translate(
+          (s.x || 0) * renderScale,
+          (s.y || 0) * renderScale
+        );
         activeBufferCtx.rotate(s.angle || 0);
         fn();
       } finally {
@@ -3378,12 +4018,16 @@ var CanvasRenderer = class {
         if (!last || last.x !== s.x || last.y !== s.y) {
           s.trail.push({ x: s.x, y: s.y });
         }
-        const trailConfig = getEngineTrailConfig(s.type || getDefaultShipType());
+        const trailConfig = getEngineTrailConfig(
+          s.type || getDefaultShipType()
+        );
         const maxTrail = trailConfig?.maxLength || 40;
         while (s.trail.length > maxTrail) s.trail.shift();
       }
       if (Array.isArray(s.trail)) {
-        const trailConfig = getEngineTrailConfig(s.type || getDefaultShipType());
+        const trailConfig = getEngineTrailConfig(
+          s.type || getDefaultShipType()
+        );
         const color = trailConfig?.color || "#aee1ff";
         const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
@@ -3397,7 +4041,8 @@ var CanvasRenderer = class {
               const tAlpha = fade + (1 - fade) * (i / s.trail.length);
               const txx = tx * renderScale;
               const tyy = ty * renderScale;
-              if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
+              if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH)
+                continue;
               withContext(() => {
                 activeBufferCtx.globalAlpha = tAlpha;
                 activeBufferCtx.fillStyle = color;
@@ -3414,7 +4059,8 @@ var CanvasRenderer = class {
             const tAlpha = fade + (1 - fade) * (i / s.trail.length);
             const txx = tx * renderScale;
             const tyy = ty * renderScale;
-            if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
+            if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH)
+              continue;
             withContext(() => {
               activeBufferCtx.globalAlpha = tAlpha;
               activeBufferCtx.fillStyle = color;
@@ -3428,8 +4074,10 @@ var CanvasRenderer = class {
       const sprite = getSpriteAsset(s.type || getDefaultShipType());
       withShipContext(s, () => {
         let teamColor = assetsConfig_default.palette.shipHull || "#888";
-        if (s.team === "red" && teamsConfig_default.teams.red) teamColor = teamsConfig_default.teams.red.color;
-        else if (s.team === "blue" && teamsConfig_default.teams.blue) teamColor = teamsConfig_default.teams.blue.color;
+        if (s.team === "red" && teamsConfig_default.teams.red)
+          teamColor = teamsConfig_default.teams.red.color;
+        else if (s.team === "blue" && teamsConfig_default.teams.blue)
+          teamColor = teamsConfig_default.teams.blue.color;
         activeBufferCtx.fillStyle = teamColor;
         let hullDrawn = false;
         if (sprite.svg) {
@@ -3440,12 +4088,18 @@ var CanvasRenderer = class {
             try {
               const svgText = sprite.svg;
               let outW = 128, outH = 128;
-              const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(svgText);
+              const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(
+                svgText
+              );
               if (vbMatch) {
                 outW = parseInt(vbMatch[3]) || 128;
                 outH = parseInt(vbMatch[4]) || 128;
               }
-              hullCanvas = rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+              hullCanvas = rasterizeHullOnlySvgToCanvas(
+                svgText,
+                outW,
+                outH
+              );
               this._svgHullCache[cacheKey] = hullCanvas;
             } catch (e) {
               hullCanvas = void 0;
@@ -3453,14 +4107,18 @@ var CanvasRenderer = class {
           }
           if (hullCanvas) {
             const scale = (s.radius || 12) * renderScale / (hullCanvas.width / 2);
-            this._tintedHullCache = this._tintedHullCache || /* @__PURE__ */ new Map();
+            if (!this._tintedHullPool)
+              this._tintedHullPool = new TintedHullPool({
+                globalCap: 256,
+                perTeamCap: 64
+              });
             const tintedKey = `${cacheKey}::${teamColor}`;
             let tintedCanvas = void 0;
-            if (this._tintedHullCache.has(tintedKey)) {
-              const existing = this._tintedHullCache.get(tintedKey);
+            if (this._tintedHullPool.has(tintedKey)) {
+              const existing = this._tintedHullPool.get(tintedKey);
               if (existing) {
-                this._tintedHullCache.delete(tintedKey);
-                this._tintedHullCache.set(tintedKey, existing);
+                this._tintedHullPool.delete(tintedKey);
+                this._tintedHullPool.set(tintedKey, existing);
                 tintedCanvas = existing;
               }
             }
@@ -3473,7 +4131,7 @@ var CanvasRenderer = class {
                 if (tctx) {
                   tctx.clearRect(0, 0, tc.width, tc.height);
                   tctx.drawImage(hullCanvas, 0, 0);
-                  tctx.globalCompositeOperation = "source-atop";
+                  tctx.globalCompositeOperation = "source-in";
                   tctx.fillStyle = teamColor;
                   tctx.fillRect(0, 0, tc.width, tc.height);
                   tctx.globalCompositeOperation = "source-over";
@@ -3488,10 +4146,18 @@ var CanvasRenderer = class {
               activeBufferCtx.save();
               activeBufferCtx.scale(scale, scale);
               try {
-                activeBufferCtx.drawImage(tintedCanvas || hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+                activeBufferCtx.drawImage(
+                  tintedCanvas || hullCanvas,
+                  -hullCanvas.width / 2,
+                  -hullCanvas.height / 2
+                );
               } catch (e) {
                 try {
-                  activeBufferCtx.drawImage(hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+                  activeBufferCtx.drawImage(
+                    hullCanvas,
+                    -hullCanvas.width / 2,
+                    -hullCanvas.height / 2
+                  );
                 } catch (e2) {
                 }
               }
@@ -3505,7 +4171,13 @@ var CanvasRenderer = class {
           if (shape) {
             if (shape.type === "circle") {
               activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.arc(
+                0,
+                0,
+                (s.radius || 12) * renderScale,
+                0,
+                Math.PI * 2
+              );
               activeBufferCtx.fill();
             } else if (shape.type === "polygon") {
               drawPolygon(shape.points);
@@ -3513,7 +4185,13 @@ var CanvasRenderer = class {
               for (const part of shape.parts) {
                 if (part.type === "circle") {
                   activeBufferCtx.beginPath();
-                  activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                  activeBufferCtx.arc(
+                    0,
+                    0,
+                    (part.r || 1) * (s.radius || 12) * renderScale,
+                    0,
+                    Math.PI * 2
+                  );
                   activeBufferCtx.fill();
                 } else if (part.type === "polygon") {
                   drawPolygon(part.points);
@@ -3536,8 +4214,15 @@ var CanvasRenderer = class {
               activeBufferCtx.beginPath();
               const pts = engAnim.points || [];
               if (pts.length) {
-                activeBufferCtx.moveTo((pts[0][0] || 0) * radius * renderScale, (pts[0][1] || 0) * radius * renderScale);
-                for (let pi = 1; pi < pts.length; pi++) activeBufferCtx.lineTo((pts[pi][0] || 0) * radius * renderScale, (pts[pi][1] || 0) * radius * renderScale);
+                activeBufferCtx.moveTo(
+                  (pts[0][0] || 0) * radius * renderScale,
+                  (pts[0][1] || 0) * radius * renderScale
+                );
+                for (let pi = 1; pi < pts.length; pi++)
+                  activeBufferCtx.lineTo(
+                    (pts[pi][0] || 0) * radius * renderScale,
+                    (pts[pi][1] || 0) * radius * renderScale
+                  );
                 activeBufferCtx.closePath();
                 activeBufferCtx.fill();
               }
@@ -3580,7 +4265,13 @@ var CanvasRenderer = class {
                 try {
                   const pw = spriteCanvas.width;
                   const ph = spriteCanvas.height;
-                  activeBufferCtx.drawImage(spriteCanvas, -pw / 2, -ph / 2, pw, ph);
+                  activeBufferCtx.drawImage(
+                    spriteCanvas,
+                    -pw / 2,
+                    -ph / 2,
+                    pw,
+                    ph
+                  );
                   return;
                 } catch (e) {
                 }
@@ -3588,7 +4279,13 @@ var CanvasRenderer = class {
               activeBufferCtx.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
               if (turretShape.type === "circle") {
                 activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
+                activeBufferCtx.arc(
+                  0,
+                  0,
+                  (turretShape.r || 1) * turretScale,
+                  0,
+                  Math.PI * 2
+                );
                 activeBufferCtx.fill();
               } else if (turretShape.type === "polygon") {
                 withContext(() => {
@@ -3599,7 +4296,13 @@ var CanvasRenderer = class {
                 for (const part of turretShape.parts) {
                   if (part.type === "circle") {
                     activeBufferCtx.beginPath();
-                    activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
+                    activeBufferCtx.arc(
+                      0,
+                      0,
+                      (part.r || 1) * turretScale,
+                      0,
+                      Math.PI * 2
+                    );
                     activeBufferCtx.fill();
                   } else if (part.type === "polygon") {
                     withContext(() => {
@@ -3617,10 +4320,16 @@ var CanvasRenderer = class {
           const shAnim = assetsConfig_default.animations && assetsConfig_default.animations.shieldEffect;
           try {
             const pulse = shAnim && typeof shAnim.pulseRate === "number" ? 0.5 + 0.5 * Math.sin(now * shAnim.pulseRate) : 1;
-            const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
+            const shieldNorm = Math.max(
+              0,
+              Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1))
+            );
             const alphaBase = shAnim && typeof shAnim.alphaBase === "number" ? shAnim.alphaBase : shAnim && shAnim.alpha || 0.25;
             const alphaScale = shAnim && typeof shAnim.alphaScale === "number" ? shAnim.alphaScale : 0.75;
-            const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
+            const alpha = Math.max(
+              0,
+              Math.min(1, alphaBase + alphaScale * pulse * shieldNorm)
+            );
             const strokeColor = shAnim && shAnim.color || "#3ab6ff";
             const strokeWidth = shAnim && (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale || 3 * renderScale;
             const shipType2 = s.type || "fighter";
@@ -3636,8 +4345,15 @@ var CanvasRenderer = class {
                     const pts = shapeEntry2.points || [];
                     if (pts.length) {
                       activeBufferCtx.beginPath();
-                      activeBufferCtx.moveTo((pts[0][0] || 0) * (s.radius || 12) * renderScale, (pts[0][1] || 0) * (s.radius || 12) * renderScale);
-                      for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * (s.radius || 12) * renderScale, (pts[i][1] || 0) * (s.radius || 12) * renderScale);
+                      activeBufferCtx.moveTo(
+                        (pts[0][0] || 0) * (s.radius || 12) * renderScale,
+                        (pts[0][1] || 0) * (s.radius || 12) * renderScale
+                      );
+                      for (let i = 1; i < pts.length; i++)
+                        activeBufferCtx.lineTo(
+                          (pts[i][0] || 0) * (s.radius || 12) * renderScale,
+                          (pts[i][1] || 0) * (s.radius || 12) * renderScale
+                        );
                       activeBufferCtx.closePath();
                       activeBufferCtx.stroke();
                       stroked = true;
@@ -3648,22 +4364,41 @@ var CanvasRenderer = class {
                         const pts = part.points || [];
                         if (pts.length) {
                           activeBufferCtx.beginPath();
-                          activeBufferCtx.moveTo((pts[0][0] || 0) * (s.radius || 12) * renderScale, (pts[0][1] || 0) * (s.radius || 12) * renderScale);
-                          for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * (s.radius || 12) * renderScale, (pts[i][1] || 0) * (s.radius || 12) * renderScale);
+                          activeBufferCtx.moveTo(
+                            (pts[0][0] || 0) * (s.radius || 12) * renderScale,
+                            (pts[0][1] || 0) * (s.radius || 12) * renderScale
+                          );
+                          for (let i = 1; i < pts.length; i++)
+                            activeBufferCtx.lineTo(
+                              (pts[i][0] || 0) * (s.radius || 12) * renderScale,
+                              (pts[i][1] || 0) * (s.radius || 12) * renderScale
+                            );
                           activeBufferCtx.closePath();
                           activeBufferCtx.stroke();
                           stroked = true;
                         }
                       } else if (part.type === "circle") {
                         activeBufferCtx.beginPath();
-                        activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                        activeBufferCtx.arc(
+                          0,
+                          0,
+                          (part.r || 1) * (s.radius || 12) * renderScale,
+                          0,
+                          Math.PI * 2
+                        );
                         activeBufferCtx.stroke();
                         stroked = true;
                       }
                     }
                   } else if (shapeEntry2.type === "circle") {
                     activeBufferCtx.beginPath();
-                    activeBufferCtx.arc(0, 0, (shapeEntry2.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                    activeBufferCtx.arc(
+                      0,
+                      0,
+                      (shapeEntry2.r || 1) * (s.radius || 12) * renderScale,
+                      0,
+                      Math.PI * 2
+                    );
                     activeBufferCtx.stroke();
                     stroked = true;
                   }
@@ -3677,7 +4412,13 @@ var CanvasRenderer = class {
                 activeBufferCtx.strokeStyle = strokeColor;
                 activeBufferCtx.lineWidth = strokeWidth;
                 activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, Math.max(1, (s.radius || 12) * 1.2 * renderScale), 0, Math.PI * 2);
+                activeBufferCtx.arc(
+                  0,
+                  0,
+                  Math.max(1, (s.radius || 12) * 1.2 * renderScale),
+                  0,
+                  Math.PI * 2
+                );
                 activeBufferCtx.stroke();
               });
             }
@@ -3692,7 +4433,7 @@ var CanvasRenderer = class {
         const dx = typeof hbCfg.dx === "number" ? hbCfg.dx : -Math.round(baseW / 2);
         const dy = typeof hbCfg.dy === "number" ? hbCfg.dy : -(s.radius || 12) - baseH - 6;
         const hbBg = hbCfg.bg || "#222";
-        const hbFill = hbCfg.fill || (assetsConfig_default.palette.shipHull || "#4caf50");
+        const hbFill = hbCfg.fill || assetsConfig_default.palette.shipHull || "#4caf50";
         const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
         const shPct = typeof s.shieldPercent === "number" ? s.shieldPercent : typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
         const w = Math.max(1, Math.round(baseW * renderScale));
@@ -3705,11 +4446,21 @@ var CanvasRenderer = class {
           activeBufferCtx.fillStyle = hbBg;
           activeBufferCtx.fillRect(sx2 + ox, sy2 + oy, w, h);
           activeBufferCtx.fillStyle = hbFill;
-          activeBufferCtx.fillRect(sx2 + ox, sy2 + oy, Math.max(1, Math.round(w * hpPct)), h);
+          activeBufferCtx.fillRect(
+            sx2 + ox,
+            sy2 + oy,
+            Math.max(1, Math.round(w * hpPct)),
+            h
+          );
           if (shPct > 0) {
             const shH = Math.max(1, Math.round(h * 0.5));
             activeBufferCtx.fillStyle = assetsConfig_default.palette.shipAccent || "#3ab6ff";
-            activeBufferCtx.fillRect(sx2 + ox, sy2 + oy - shH - 2, Math.max(1, Math.round(w * shPct)), shH);
+            activeBufferCtx.fillRect(
+              sx2 + ox,
+              sy2 + oy - shH - 2,
+              Math.max(1, Math.round(w * shPct)),
+              shH
+            );
           }
         });
       } catch (e) {
@@ -3732,17 +4483,25 @@ var CanvasRenderer = class {
             }
           }
           if (flash) {
-            const pooledFlash = acquireEffect(state, "healthFlash", () => makePooled(
-              // Use typed factory to create base health effect and attach render fields via reset
-              createHealthHitEffect({ x: flash.x || s.x || 0, y: flash.y || s.y || 0 }),
-              (obj, initArgs) => {
-                resetHealthHitEffect(obj, initArgs);
-                obj.ttl = initArgs?.ttl ?? 0.4;
-                obj.life = initArgs?.life ?? obj.ttl;
-                obj.color = "#ff7766";
-                obj.radius = 6;
-              }
-            ), flash);
+            const pooledFlash = acquireEffect(
+              state,
+              "healthFlash",
+              () => makePooled(
+                // Use typed factory to create base health effect and attach render fields via reset
+                createHealthHitEffect({
+                  x: flash.x || s.x || 0,
+                  y: flash.y || s.y || 0
+                }),
+                (obj, initArgs) => {
+                  resetHealthHitEffect(obj, initArgs);
+                  obj.ttl = initArgs?.ttl ?? 0.4;
+                  obj.life = initArgs?.life ?? obj.ttl;
+                  obj.color = "#ff7766";
+                  obj.radius = 6;
+                }
+              ),
+              flash
+            );
             const pf = pooledFlash;
             const t = Math.max(0, Math.min(1, pf.life / pf.ttl));
             const R = pf.radius + (1 - t) * 18;
@@ -3755,7 +4514,13 @@ var CanvasRenderer = class {
                 activeBufferCtx.strokeStyle = pf.color;
                 activeBufferCtx.lineWidth = 2 * renderScale;
                 activeBufferCtx.beginPath();
-                activeBufferCtx.arc(fx, fy, Math.max(1, R * renderScale), 0, Math.PI * 2);
+                activeBufferCtx.arc(
+                  fx,
+                  fy,
+                  Math.max(1, R * renderScale),
+                  0,
+                  Math.PI * 2
+                );
                 activeBufferCtx.stroke();
               });
             }
@@ -3803,23 +4568,31 @@ var CanvasRenderer = class {
       const shapes = assetsConfig_default.shapes2d || {};
       for (const p of state.particles || []) {
         try {
-          const particle = acquireSprite(state, "particle", () => makePooled({
-            x: p.x || 0,
-            y: p.y || 0,
-            r: p.r || 1,
-            color: p.color || "#ffdca8",
-            age: p.age || 0,
-            lifetime: p.lifetime || 1,
-            assetShape: p.assetShape
-          }, (obj, initArgs) => {
-            obj.x = initArgs?.x ?? 0;
-            obj.y = initArgs?.y ?? 0;
-            obj.r = initArgs?.r ?? 1;
-            obj.color = initArgs?.color ?? "#ffdca8";
-            obj.age = initArgs?.age ?? 0;
-            obj.lifetime = initArgs?.lifetime ?? 1;
-            obj.assetShape = initArgs?.assetShape;
-          }), p);
+          const particle = acquireSprite(
+            state,
+            "particle",
+            () => makePooled(
+              {
+                x: p.x || 0,
+                y: p.y || 0,
+                r: p.r || 1,
+                color: p.color || "#ffdca8",
+                age: p.age || 0,
+                lifetime: p.lifetime || 1,
+                assetShape: p.assetShape
+              },
+              (obj, initArgs) => {
+                obj.x = initArgs?.x ?? 0;
+                obj.y = initArgs?.y ?? 0;
+                obj.r = initArgs?.r ?? 1;
+                obj.color = initArgs?.color ?? "#ffdca8";
+                obj.age = initArgs?.age ?? 0;
+                obj.lifetime = initArgs?.lifetime ?? 1;
+                obj.assetShape = initArgs?.assetShape;
+              }
+            ),
+            p
+          );
           const px = particle.x * renderScale;
           const py = particle.y * renderScale;
           if (px < 0 || px >= bufferW || py < 0 || py >= bufferH) continue;
@@ -3827,7 +4600,10 @@ var CanvasRenderer = class {
             const shapeName = particle.assetShape || (particle.r > 0.5 ? "particleMedium" : "particleSmall");
             const shape = shapes[shapeName];
             activeBufferCtx.fillStyle = particle.color;
-            activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - particle.age / particle.lifetime));
+            activeBufferCtx.globalAlpha = Math.max(
+              0,
+              Math.min(1, 1 - particle.age / particle.lifetime)
+            );
             activeBufferCtx.translate(px, py);
             if (shape) {
               if (shape.type === "circle") {
@@ -3839,8 +4615,15 @@ var CanvasRenderer = class {
                 activeBufferCtx.beginPath();
                 const pts = shape.points || [];
                 if (pts.length) {
-                  activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
-                  for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                  activeBufferCtx.moveTo(
+                    (pts[0][0] || 0) * renderScale,
+                    (pts[0][1] || 0) * renderScale
+                  );
+                  for (let i = 1; i < pts.length; i++)
+                    activeBufferCtx.lineTo(
+                      (pts[i][0] || 0) * renderScale,
+                      (pts[i][1] || 0) * renderScale
+                    );
                   activeBufferCtx.closePath();
                   activeBufferCtx.fill();
                 }
@@ -3855,8 +4638,15 @@ var CanvasRenderer = class {
                     activeBufferCtx.beginPath();
                     const pts = part.points || [];
                     if (pts.length) {
-                      activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
-                      for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                      activeBufferCtx.moveTo(
+                        (pts[0][0] || 0) * renderScale,
+                        (pts[0][1] || 0) * renderScale
+                      );
+                      for (let i = 1; i < pts.length; i++)
+                        activeBufferCtx.lineTo(
+                          (pts[i][0] || 0) * renderScale,
+                          (pts[i][1] || 0) * renderScale
+                        );
                       activeBufferCtx.closePath();
                       activeBufferCtx.fill();
                     }
@@ -3864,12 +4654,24 @@ var CanvasRenderer = class {
                 }
               } else {
                 activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
+                activeBufferCtx.arc(
+                  0,
+                  0,
+                  (particle.r || 2) * renderScale,
+                  0,
+                  Math.PI * 2
+                );
                 activeBufferCtx.fill();
               }
             } else {
               activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.arc(
+                0,
+                0,
+                (particle.r || 2) * renderScale,
+                0,
+                Math.PI * 2
+              );
               activeBufferCtx.fill();
             }
           });
@@ -3883,28 +4685,55 @@ var CanvasRenderer = class {
       const expShape = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d.explosionParticle;
       for (const ex of state.explosions || []) {
         try {
-          const effect = acquireEffect(state, "explosion", () => makePooled(
-            createExplosionEffect({ x: ex.x || 0, y: ex.y || 0, r: expShape && expShape.r || 0.32 }),
-            (obj, initArgs) => {
-              resetExplosionEffect(obj, initArgs);
-              obj.scale = initArgs?.scale ?? 1;
-              obj.color = initArgs?.color ?? "#ffd089";
-              obj.alpha = initArgs?.alpha ?? (1 - (ex.life || 0.5) / (ex.ttl || 0.5)) * 0.9;
-            }
-          ), ex);
+          const effect = acquireEffect(
+            state,
+            "explosion",
+            () => makePooled(
+              createExplosionEffect({
+                x: ex.x || 0,
+                y: ex.y || 0,
+                r: expShape && expShape.r || 0.32
+              }),
+              (obj, initArgs) => {
+                resetExplosionEffect(obj, initArgs);
+                obj.scale = initArgs?.scale ?? 1;
+                obj.color = initArgs?.color ?? "#ffd089";
+                obj.alpha = initArgs?.alpha ?? (1 - (ex.life || 0.5) / (ex.ttl || 0.5)) * 0.9;
+              }
+            ),
+            ex
+          );
           const ef = effect;
           withContext(() => {
             activeBufferCtx.globalAlpha = ef.alpha || 0;
-            activeBufferCtx.translate(ef.x * renderScale, ef.y * renderScale);
+            activeBufferCtx.translate(
+              ef.x * renderScale,
+              ef.y * renderScale
+            );
             activeBufferCtx.fillStyle = ef.color || "#ffd089";
             if (expShape && expShape.type === "circle") {
               const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
               activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, rr * (1 + (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
+              activeBufferCtx.arc(
+                0,
+                0,
+                rr * (1 + (1 - (ex.life || 0.5) / (ex.ttl || 0.5))),
+                0,
+                Math.PI * 2
+              );
               activeBufferCtx.fill();
             } else {
               activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, Math.max(2, (ef.scale || 1) * 12 * (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
+              activeBufferCtx.arc(
+                0,
+                0,
+                Math.max(
+                  2,
+                  (ef.scale || 1) * 12 * (1 - (ex.life || 0.5) / (ex.ttl || 0.5))
+                ),
+                0,
+                Math.PI * 2
+              );
               activeBufferCtx.fill();
             }
           });

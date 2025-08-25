@@ -122,6 +122,32 @@ export function rasterizeHullOnlySvgToCanvas(svgText: string, outW: number, outH
     // Remove all <rect> elements with class="turret"
     const turrets = svg.querySelectorAll('rect.turret');
     turrets.forEach(el => el.parentNode?.removeChild(el));
+    // Also remove any full-canvas background rects (fill covering the whole viewBox)
+    try {
+      const vbAttr = svg.getAttribute('viewBox');
+      let vbW = 0, vbH = 0;
+      if (vbAttr) {
+        const parts = vbAttr.split(/\s+|,/).map(p => parseFloat(p));
+        if (parts.length >= 4) { vbW = parts[2]; vbH = parts[3]; }
+      } else {
+        vbW = parseFloat(svg.getAttribute('width') || '0') || 0;
+        vbH = parseFloat(svg.getAttribute('height') || '0') || 0;
+      }
+      if (vbW > 0 && vbH > 0) {
+        const rects = svg.querySelectorAll('rect');
+        rects.forEach(r => {
+          try {
+            const rx = parseFloat(r.getAttribute('x') || '0') || 0;
+            const ry = parseFloat(r.getAttribute('y') || '0') || 0;
+            const rw = parseFloat(r.getAttribute('width') || '0') || 0;
+            const rh = parseFloat(r.getAttribute('height') || '0') || 0;
+            if (Math.abs(rx) < 1e-6 && Math.abs(ry) < 1e-6 && Math.abs(rw - vbW) < 1e-3 && Math.abs(rh - vbH) < 1e-3) {
+              r.parentNode?.removeChild(r);
+            }
+          } catch (e) {}
+        });
+      }
+    } catch (e) {}
     // Serialize back to string
     const serializer = new XMLSerializer();
     const hullOnlySvgText = serializer.serializeToString(svg);

@@ -2,6 +2,7 @@
 // Implements the public API expected by main.ts and tests.
 
 import { AssetsConfig, Shape2D } from "./config/assets/assetsConfig";
+import TeamsConfig from "./config/teamsConfig";
 import type { GameState } from "./types";
 import {
   acquireTexture,
@@ -78,7 +79,15 @@ export class WebGLRenderer {
       const ships = (state && state.ships) || [];
       for (const s of ships) {
         const type = (s && s.type) || "fighter";
-        this.bakeShapeToTexture(state, type);
+        // Determine team color (fall back to palette.shipHull)
+        let teamColor = (AssetsConfig as any).palette?.shipHull || "#b0b7c3";
+        try {
+          if (s && s.team && TeamsConfig && (TeamsConfig as any).teams) {
+            const t = (TeamsConfig as any).teams[s.team];
+            if (t && t.color) teamColor = t.color;
+          }
+        } catch {}
+        this.bakeShapeToTexture(state, type, teamColor);
         // Acquire a transient sprite object for this ship and rehydrate it.
         try {
           const key = `ship:${type}`;
@@ -173,9 +182,14 @@ export class WebGLRenderer {
   }
 
   // Internal: bake a simple 2D shape into a texture and cache it
-  private bakeShapeToTexture(state: GameState | null, key: string): WebGLTexture | null {
+  private bakeShapeToTexture(
+    state: GameState | null,
+    key: string,
+    teamColor?: string,
+  ): WebGLTexture | null {
     if (!this.gl) return null;
-    if (this.shapeTextures[key]) return this.shapeTextures[key];
+    const cacheKey = teamColor ? `${key}::${teamColor}` : key;
+    if (this.shapeTextures[cacheKey]) return this.shapeTextures[cacheKey];
     try {
       const gl = this.gl as WebGLRenderingContext;
       const shapes = (AssetsConfig as any).shapes2d || {};
@@ -191,7 +205,8 @@ export class WebGLRenderer {
       ctx.save();
       ctx.translate(size / 2, size / 2);
       const scale = size / 4;
-      ctx.fillStyle = (AssetsConfig.palette && (AssetsConfig.palette as any).shipHull) || "#b0b7c3";
+  // Use provided team color if present, otherwise fall back to palette
+  ctx.fillStyle = teamColor || (AssetsConfig.palette && (AssetsConfig.palette as any).shipHull) || "#b0b7c3";
       // Basic vector draw covering circle, polygon and compound
       if (!shape) {
         ctx.beginPath();
@@ -251,7 +266,7 @@ export class WebGLRenderer {
       let tex: WebGLTexture | null = null;
       if (state) {
         try {
-          tex = acquireTexture(state, key, createTex);
+          tex = acquireTexture(state, cacheKey, createTex);
         } catch {
           // Fallback to direct creation if pooling fails
           tex = createTex();
@@ -262,7 +277,7 @@ export class WebGLRenderer {
       if (!tex) return null;
       gl.bindTexture(gl.TEXTURE_2D, tex);
 
-      this.shapeTextures[key] = tex;
+      this.shapeTextures[cacheKey] = tex;
       return tex;
     } catch {
       return null;

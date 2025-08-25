@@ -64,6 +64,28 @@ export function acquireBullet(
   state: GameState,
   opts: Partial<Bullet> = {},
 ): Bullet {
+  // Defensive: accept minimal/mocked state objects in tests by ensuring
+  // required collections exist. Do not overwrite existing richer assetPool.
+  if (!state) state = makeInitialState() as GameState;
+  (state as any).bullets = (state as any).bullets || [];
+  (state as any).assetPool = (state as any).assetPool || {
+    textures: new Map(),
+    sprites: new Map(),
+    effects: new Map(),
+    counts: {
+      textures: new Map(),
+      sprites: new Map(),
+      effects: new Map(),
+    },
+    config: {
+      texturePoolSize: 128,
+      spritePoolSize: 256,
+      effectPoolSize: 128,
+      textureOverflowStrategy: "discard-oldest",
+      spriteOverflowStrategy: "discard-oldest",
+      effectOverflowStrategy: "discard-oldest",
+    },
+  };
   // Use state-backed sprite pool keyed by 'bullet'
   const key = "bullet";
   const b = acquireSprite(
@@ -523,7 +545,9 @@ export function createGameManager({
               state.teamCounts = { red: 0, blue: 0 };
               for (const s of state.ships || [])
                 if (s && typeof s.id !== "undefined") {
-                  try { normalizeTurrets(s); } catch (e) {}
+                  try {
+                    normalizeTurrets(s);
+                  } catch (e) {}
                   (state as any).shipMap.set(s.id, s);
                   try {
                     const t = String((s as any).team || "");
@@ -584,7 +608,9 @@ export function createGameManager({
               state.teamCounts = { red: 0, blue: 0 };
               for (const s of state.ships || [])
                 if (s && typeof s.id !== "undefined") {
-                  try { normalizeTurrets(s); } catch (e) {}
+                  try {
+                    normalizeTurrets(s);
+                  } catch (e) {}
                   (state as any).shipMap.set(s.id, s);
                   try {
                     const t = String((s as any).team || "");
@@ -1007,7 +1033,9 @@ export function createGameManager({
               state.teamCounts = { red: 0, blue: 0 };
               for (const s of state.ships || [])
                 if (s && typeof s.id !== "undefined") {
-                  try { normalizeTurrets(s); } catch (e) {}
+                  try {
+                    normalizeTurrets(s);
+                  } catch (e) {}
                   (state as any).shipMap.set(s.id, s);
                   try {
                     const t = String((s as any).team || "");
