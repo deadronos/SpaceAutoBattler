@@ -80,19 +80,20 @@ export const ShipConfig: ShipConfigMap = {
     dmg: 3,
     damage: 3,
     radius: 12,
-    cannons: [
-      {
-        damage: 3,
-        rate: 3,
-        spread: 0.1,
-        muzzleSpeed: 260, // was 300
-        bulletRadius: 1.5,
-        bulletTTL: 1.1, // was 1.2
-      },
-    ],
-    accel: 5,
-    turnRate: 6,
-    maxSpeed: 160,
+      cannons: [
+        {
+          damage: 3,
+          rate: 3,
+          spread: 0.1,
+    muzzleSpeed: 260, // reduced back (/10)
+          bulletRadius: 1.5,
+          bulletTTL: 1.1, // was 1.2
+        },
+      ],
+    // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
+      accel: 100, // ~10x accel
+      turnRate: 6,
+      maxSpeed: 2200, // ~10x maxSpeed
   },
   corvette: {
     maxHp: 50,
@@ -102,15 +103,15 @@ export const ShipConfig: ShipConfigMap = {
     dmg: 5,
     damage: 5,
     radius: 20,
-    accel: 5,
-    turnRate: 3.5, // was 3
-    maxSpeed: 145, // was 140
+      accel: 80,
+      turnRate: 3.5, // was 3
+      maxSpeed: 1800, // ~10x increased
     cannons: [
       {
         damage: 6,
         rate: 1.2,
         spread: 0.05,
-        muzzleSpeed: 180, // was 220
+    muzzleSpeed: 180, // reduced back (/10)
         bulletRadius: 2,
         bulletTTL: 1.8, // was 2.0
       },
@@ -129,14 +130,14 @@ export const ShipConfig: ShipConfigMap = {
         damage: 8,
         rate: 1.0,
         spread: 0.06,
-        muzzleSpeed: 180, // was 200
+    muzzleSpeed: 180, // reduced back (/10)
         bulletRadius: 2.5,
         bulletTTL: 2.0, // was 2.2
       },
     ],
-    accel: 5,
-    turnRate: 2.5, // was 2.2
-    maxSpeed: 125, // was 120
+      accel: 70,
+      turnRate: 2.5, // was 2.2
+      maxSpeed: 1500, // ~10x increased
   },
   destroyer: {
     maxHp: 120,
@@ -150,13 +151,13 @@ export const ShipConfig: ShipConfigMap = {
       damage: 6,
       rate: 0.8,
       spread: 0.08,
-      muzzleSpeed: 160, // was 240
+    muzzleSpeed: 160, // reduced back (/10)
       bulletRadius: 2.5,
       bulletTTL: 1.8, // was 2.4
     })),
-    accel: 5,
-    turnRate: 2.0, // was 1.6
-    maxSpeed: 110, // was 100
+      accel: 60,
+      turnRate: 2.0, // was 1.6
+      maxSpeed: 1300, // ~10x increased
     turrets: [
       {
         position: [1.2, 0.8],
@@ -208,13 +209,13 @@ export const ShipConfig: ShipConfigMap = {
       damage: 4,
       rate: 0.6,
       spread: 0.12,
-      muzzleSpeed: 140, // was 180
+    muzzleSpeed: 140, // reduced back (/10)
       bulletRadius: 3,
       bulletTTL: 2.2, // was 2.8
     })),
-    accel: 5,
-    turnRate: 1.2, // was 0.8
-    maxSpeed: 95, // was 80
+      accel: 55,
+      turnRate: 1.2, // was 0.8
+      maxSpeed: 1100, // ~10x increased
     carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
     turrets: [
       {
@@ -244,6 +245,12 @@ export const ShipConfig: ShipConfigMap = {
     ],
   },
 };
+// NOTE: The factory that creates Ship objects (`createShip` in src/entities.ts)
+// enforces a positive fallback for `maxSpeed` when the config is missing or
+// set to 0. This guards against malformed saved state or partial config
+// payloads which would otherwise clamp ship velocity to 0 and prevent
+// translation while still allowing rotation/firing (a common source of
+// confusing "ships rotate and shoot but don't move" bugs).
 export function getShipConfig() {
   return ShipConfig;
 }
@@ -253,7 +260,7 @@ export const BULLET_DEFAULTS = {
   damage: 1,
   ttl: 2.0,
   radius: 1.5,
-  muzzleSpeed: 240,
+  muzzleSpeed: 24,
 };
 
 // Particle defaults (used for generic effects)

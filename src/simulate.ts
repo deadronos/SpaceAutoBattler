@@ -29,9 +29,15 @@ export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds
   // Move bullets and handle boundary behavior
   for (let i = (state.bullets || []).length - 1; i >= 0; i--) {
     const b = state.bullets[i];
-  // store previous position for swept collision tests
-  b.prevX = typeof b.x === 'number' ? b.x : 0;
-  b.prevY = typeof b.y === 'number' ? b.y : 0;
+    // store previous position for swept collision tests (both legacy and
+    // internal names). Some compiled code reads _prevX/_prevY while other
+    // paths read prevX/prevY; keep them synchronized.
+    const prevXVal = typeof b.x === 'number' ? b.x : 0;
+    const prevYVal = typeof b.y === 'number' ? b.y : 0;
+    b.prevX = prevXVal;
+    b.prevY = prevYVal;
+    (b as any)._prevX = prevXVal;
+    (b as any)._prevY = prevYVal;
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
@@ -76,6 +82,12 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
   let writeBullet = 0;
   for (let read = 0; read < state.bullets.length; read++) {
     const b = state.bullets[read];
+    const prevXVal = typeof b.x === 'number' ? b.x : 0;
+    const prevYVal = typeof b.y === 'number' ? b.y : 0;
+    b.prevX = prevXVal;
+    b.prevY = prevYVal;
+    (b as any)._prevX = prevXVal;
+    (b as any)._prevY = prevYVal;
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;

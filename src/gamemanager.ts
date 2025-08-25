@@ -416,6 +416,45 @@ export function createGameManager({
       };
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
 
+      // When running the sim in a worker, render from the fresh snapshot the
+      // worker posts instead of rendering the (possibly stale) manager state
+      // during step(). This prevents a 1-frame lag where bullets may appear
+      // but ship positions are not yet updated in the renderer.
+      const _origWorkerSnapshotHandler = _workerSnapshotHandler;
+      _workerSnapshotHandler = (m: any) => {
+        try {
+          if (m && m.state) {
+            state = m.state;
+            try {
+              (state as any).shipMap = new Map<number, any>();
+              state.teamCounts = { red: 0, blue: 0 };
+              for (const s of (state.ships || [])) if (s && typeof s.id !== 'undefined') { (state as any).shipMap.set(s.id, s); try { const t = String((s as any).team || ''); state.teamCounts[t] = (state.teamCounts[t] || 0) + 1; } catch (e) {} }
+            } catch (e) {}
+            // Render the freshly-received snapshot so visuals reflect the
+            // worker-applied AI+physics immediately.
+            try {
+              if (renderer && typeof renderer.renderState === "function") {
+                try {
+                  renderer.renderState({
+                    ships: state.ships,
+                    bullets: state.bullets,
+                    flashes,
+                    shieldFlashes,
+                    healthFlashes,
+                    t: state.t,
+                  });
+                } catch (e) {
+                  // swallow render errors
+                }
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+      };
+      // replace the handler on the worker
+      simWorker.on && simWorker.off && simWorker.off("snapshot", _origWorkerSnapshotHandler);
+      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
+
       _workerReinforcementsHandler = (m: any) => {
         emit("reinforcements", m);
       };

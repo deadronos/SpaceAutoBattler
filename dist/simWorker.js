@@ -61,15 +61,18 @@ var init_entitiesConfig = __esm({
             rate: 3,
             spread: 0.1,
             muzzleSpeed: 260,
-            // was 300
+            // reduced back (/10)
             bulletRadius: 1.5,
             bulletTTL: 1.1
             // was 1.2
           }
         ],
-        accel: 5,
+        // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
+        accel: 100,
+        // ~10x accel
         turnRate: 6,
-        maxSpeed: 160
+        maxSpeed: 2200
+        // ~10x maxSpeed
       },
       corvette: {
         maxHp: 50,
@@ -79,18 +82,18 @@ var init_entitiesConfig = __esm({
         dmg: 5,
         damage: 5,
         radius: 20,
-        accel: 5,
+        accel: 80,
         turnRate: 3.5,
         // was 3
-        maxSpeed: 145,
-        // was 140
+        maxSpeed: 1800,
+        // ~10x increased
         cannons: [
           {
             damage: 6,
             rate: 1.2,
             spread: 0.05,
             muzzleSpeed: 180,
-            // was 220
+            // reduced back (/10)
             bulletRadius: 2,
             bulletTTL: 1.8
             // was 2.0
@@ -111,17 +114,17 @@ var init_entitiesConfig = __esm({
             rate: 1,
             spread: 0.06,
             muzzleSpeed: 180,
-            // was 200
+            // reduced back (/10)
             bulletRadius: 2.5,
             bulletTTL: 2
             // was 2.2
           }
         ],
-        accel: 5,
+        accel: 70,
         turnRate: 2.5,
         // was 2.2
-        maxSpeed: 125
-        // was 120
+        maxSpeed: 1500
+        // ~10x increased
       },
       destroyer: {
         maxHp: 120,
@@ -136,16 +139,16 @@ var init_entitiesConfig = __esm({
           rate: 0.8,
           spread: 0.08,
           muzzleSpeed: 160,
-          // was 240
+          // reduced back (/10)
           bulletRadius: 2.5,
           bulletTTL: 1.8
           // was 2.4
         })),
-        accel: 5,
+        accel: 60,
         turnRate: 2,
         // was 1.6
-        maxSpeed: 110,
-        // was 100
+        maxSpeed: 1300,
+        // ~10x increased
         turrets: [
           {
             position: [1.2, 0.8],
@@ -198,16 +201,16 @@ var init_entitiesConfig = __esm({
           rate: 0.6,
           spread: 0.12,
           muzzleSpeed: 140,
-          // was 180
+          // reduced back (/10)
           bulletRadius: 3,
           bulletTTL: 2.2
           // was 2.8
         })),
-        accel: 5,
+        accel: 55,
         turnRate: 1.2,
         // was 0.8
-        maxSpeed: 95,
-        // was 80
+        maxSpeed: 1100,
+        // ~10x increased
         carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
         turrets: [
           {
@@ -241,7 +244,7 @@ var init_entitiesConfig = __esm({
       damage: 1,
       ttl: 2,
       radius: 1.5,
-      muzzleSpeed: 240
+      muzzleSpeed: 24
     };
     PARTICLE_DEFAULTS = {
       ttl: 1,
@@ -419,7 +422,7 @@ function genId() {
   return nextId++;
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
-  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y };
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y, _prevX: x, _prevY: y };
 }
 function createExplosionEffect(init) {
   return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };
@@ -948,8 +951,12 @@ function simulateStep(state2, dtSeconds, bounds2) {
   state2.t = (state2.t || 0) + dtSeconds;
   for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {
     const b = state2.bullets[i];
-    b.prevX = typeof b.x === "number" ? b.x : 0;
-    b.prevY = typeof b.y === "number" ? b.y : 0;
+    const prevXVal = typeof b.x === "number" ? b.x : 0;
+    const prevYVal = typeof b.y === "number" ? b.y : 0;
+    b.prevX = prevXVal;
+    b.prevY = prevYVal;
+    b._prevX = prevXVal;
+    b._prevY = prevYVal;
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
@@ -991,6 +998,12 @@ function simulateStep(state2, dtSeconds, bounds2) {
     let writeBullet = 0;
     for (let read = 0; read < state3.bullets.length; read++) {
       const b = state3.bullets[read];
+      const prevXVal = typeof b.x === "number" ? b.x : 0;
+      const prevYVal = typeof b.y === "number" ? b.y : 0;
+      b.prevX = prevXVal;
+      b.prevY = prevYVal;
+      b._prevX = prevXVal;
+      b._prevY = prevYVal;
       b.x += (b.vx || 0) * dtSeconds2;
       b.y += (b.vy || 0) * dtSeconds2;
       b.ttl = (b.ttl || 0) - dtSeconds2;

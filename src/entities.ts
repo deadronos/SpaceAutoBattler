@@ -103,7 +103,11 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
     steering: 0,
     turnRate: cfg.turnRate || 0,
     radius: cfg.radius || 6,
-    maxSpeed: cfg.maxSpeed,
+  // Ensure maxSpeed is always a sensible positive number. Some saved state
+  // or malformed configs may have maxSpeed omitted or set to 0 which causes
+  // ships to never translate (they can still rotate/fire). Prefer the
+  // configured value but fall back to a safe default > 0.
+  maxSpeed: (typeof cfg.maxSpeed === 'number' && cfg.maxSpeed > 0) ? cfg.maxSpeed : 120,
     angle: 0,
     trail: undefined,
     shieldPercent: 1,
@@ -111,9 +115,11 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
   } as Ship;
 }
 
-export type Bullet = { id: number; x: number; y: number; vx: number; vy: number; team: string; ownerId?: number | null; damage: number; ttl: number; radius?: number; bulletRadius?: number; bulletTTL?: number; kind?: string; alive?: boolean; prevX?: number; prevY?: number };
+export type Bullet = { id: number; x: number; y: number; vx: number; vy: number; team: string; ownerId?: number | null; damage: number; ttl: number; radius?: number; bulletRadius?: number; bulletTTL?: number; kind?: string; alive?: boolean; prevX?: number; prevY?: number; _prevX?: number; _prevY?: number };
 export function createBullet(x: number, y: number, vx: number, vy: number, team = TEAM_DEFAULT, ownerId: number | null = null, damage = 1, ttl = 2.0): Bullet {
-  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y } as Bullet;
+  // Initialize both legacy prevX/prevY and internal _prevX/_prevY used by
+  // swept-collision code so either property is available depending on codepath.
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y, _prevX: x, _prevY: y } as Bullet;
 }
 
 export interface ExplosionEffect { x: number; y: number; r?: number; alive?: boolean; _pooled?: boolean; [key: string]: unknown }

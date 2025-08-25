@@ -243,7 +243,10 @@ export async function startApp(rootDocument: Document = document) {
   // Patch stepOnce to use multiplier
   if (gm && typeof gm.stepOnce === "function") {
     const origStepOnce = gm.stepOnce.bind(gm);
-    gm.stepOnce = (dt = 0.016) => origStepOnce(dt * simSpeedMultiplier);
+    // Use canonical SIM.DT_MS (millisecond timestep) converted to seconds
+    // as the default step size so the UI multiplier wraps the same base dt
+    // the simulation run-loop uses. This prevents hard-coded mismatches.
+    gm.stepOnce = (dt: number = SIM.DT_MS / 1000) => origStepOnce(dt * simSpeedMultiplier);
   }
 
   // Fleet formation logic
