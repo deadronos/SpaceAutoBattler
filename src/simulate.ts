@@ -243,7 +243,13 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           break;
       }
     }
-    if (remove) state.ships.splice(si, 1);
+    if (remove) {
+      const rem = state.ships.splice(si, 1);
+      if (rem && rem.length) {
+        try { (state as any).shipMap && (state as any).shipMap.delete(rem[0].id); } catch (e) {}
+        try { if (rem[0] && rem[0].team) state.teamCounts[rem[0].team] = Math.max(0, (state.teamCounts[rem[0].team] || 0) - 1); } catch (e) {}
+      }
+    }
   }
 
   // Bullet collisions
@@ -273,10 +279,9 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
         dist2(b, s) <= r * r ||
         segmentIntersectsCircle(bxPrev, byPrev, b.x || 0, b.y || 0, s.x || 0, s.y || 0, r);
       if (didHit) {
-        const attacker =
-          typeof b.ownerId === "number" || typeof b.ownerId === "string"
-            ? (state.ships || []).find((sh: any) => sh.id === b.ownerId)
-            : undefined;
+        const attacker = (typeof b.ownerId === "number" || typeof b.ownerId === "string")
+          ? (state as any).shipMap && (state as any).shipMap.get(Number(b.ownerId))
+          : (undefined as any);
         let dealtToShield = 0;
         let dealtToHealth = 0;
         const shield = s.shield || 0;
@@ -494,7 +499,11 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
           // remove from ships array and mark as removed for this frame
           const idx = (state.ships || []).findIndex((sh: any) => sh && sh.id === s.id);
-          if (idx >= 0) state.ships.splice(idx, 1);
+          if (idx >= 0) {
+            state.ships.splice(idx, 1);
+            try { (state as any).shipMap && (state as any).shipMap.delete(s.id); } catch (e) {}
+            try { if (s && s.team) state.teamCounts[s.team] = Math.max(0, (state.teamCounts[s.team] || 0) - 1); } catch (e) {}
+          }
           removedShipIds.add(s.id);
         }
         break;

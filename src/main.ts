@@ -484,8 +484,8 @@ export async function startApp(rootDocument: Document = document) {
       const s = gm.snapshot();
       ui.redScore.textContent = `Red ${gm.score.red}`;
       ui.blueScore.textContent = `Blue ${gm.score.blue}`;
-      const redCount = s.ships.filter((sh: any) => sh.team === "red").length;
-      const blueCount = s.ships.filter((sh: any) => sh.team === "blue").length;
+      const redCount = (s.teamCounts && (s.teamCounts as any).red) || 0;
+      const blueCount = (s.teamCounts && (s.teamCounts as any).blue) || 0;
       ui.stats.textContent =
         `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` +
         (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");

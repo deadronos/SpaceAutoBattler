@@ -4,6 +4,7 @@
 
 // Ported from gamemanager.js, now canonical TypeScript implementation
 import { makeInitialState, createShip, Ship, Bullet, genId, ExplosionEffect, ShieldHitEffect, HealthHitEffect, createExplosionEffect, resetExplosionEffect, createShieldHitEffect, resetShieldHitEffect, createHealthHitEffect, resetHealthHitEffect } from "./entities";
+import { updateTeamCount } from "./entities";
 import { PARTICLE_DEFAULTS } from "./config/entitiesConfig";
 import { applySimpleAI } from "./behavior";
 import { simulateStep } from "./simulate";
@@ -304,6 +305,8 @@ function evaluateReinforcement(
                 o.team || "red",
               );
               state.ships.push(ship);
+                  try { (state as any).shipMap && (state as any).shipMap.set(ship.id, ship); } catch (e) {}
+                  try { updateTeamCount(state, undefined, ship.team); } catch (e) {}
               spawned.push(ship);
             } catch (e) {}
           }
@@ -324,7 +327,11 @@ function evaluateReinforcement(
         FALLBACK_POSITIONS[1].team,
       );
       state.ships.push(r);
+  try { (state as any).shipMap && (state as any).shipMap.set(r.id, r); } catch (e) {}
+  try { updateTeamCount(state, undefined, String(r.team)); } catch (e) {}
       state.ships.push(b);
+  try { (state as any).shipMap && (state as any).shipMap.set(b.id, b); } catch (e) {}
+  try { updateTeamCount(state, undefined, String(b.team)); } catch (e) {}
       return { spawned: [r, b] };
     } catch (e) {
       return null;
@@ -398,7 +405,14 @@ export function createGameManager({
       simWorker.on && simWorker.on("ready", _workerReadyHandler);
 
       _workerSnapshotHandler = (m: any) => {
-        if (m && m.state) state = m.state;
+        if (m && m.state) {
+          state = m.state;
+          try {
+            (state as any).shipMap = new Map<number, any>();
+            state.teamCounts = { red: 0, blue: 0 };
+            for (const s of (state.ships || [])) if (s && typeof s.id !== 'undefined') { (state as any).shipMap.set(s.id, s); try { const t = String((s as any).team || ''); state.teamCounts[t] = (state.teamCounts[t] || 0) + 1; } catch (e) {} }
+          } catch (e) {}
+        }
       };
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
 
@@ -656,6 +670,8 @@ export function createGameManager({
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
       const ship = createShip(type, x, y, team);
       state.ships.push(ship);
+      try { (state as any).shipMap && (state as any).shipMap.set(ship.id, ship); } catch (e) {}
+  try { updateTeamCount(state, undefined, String(ship.team)); } catch (e) {}
       return ship;
     } catch (e) {
       return null;
@@ -666,13 +682,18 @@ export function createGameManager({
   function formFleets() {
     try {
       // Remove all ships
-      state.ships.length = 0;
+  // Clear ships and reset counts
+  state.ships.length = 0;
+  try { (state as any).shipMap && (state as any).shipMap.clear(); } catch (e) {}
+  try { state.teamCounts = { red: 0, blue: 0 }; } catch (e) {}
       // Use makeInitialFleets from teamsConfig (static import)
       const bounds = SIM.bounds;
       const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
       const ships = makeInitialFleets(seed, bounds, createShip);
       for (const ship of ships) {
         state.ships.push(ship);
+        try { (state as any).shipMap && (state as any).shipMap.set(ship.id, ship); } catch (e) {}
+        try { updateTeamCount(state, undefined, ship.team); } catch (e) {}
       }
     } catch (e) {
       /* ignore errors */
@@ -694,6 +715,7 @@ export function createGameManager({
       ships: state.ships.slice(),
       bullets: state.bullets.slice(),
       t: state.t,
+      teamCounts: { ...(state.teamCounts || {}) },
     };
   }
   const score = { red: 0, blue: 0 };
@@ -757,6 +779,13 @@ export function simulate(dt: number, W = 800, H = 600) {
   (base as any).healthFlashes = healthFlashes;
   (base as any).starCanvas = starCanvas || undefined;
   const state: GameState = base as any;
+  // Populate shipMap from backing ships array for O(1) lookups
+  try {
+    (state as any).shipMap = new Map<number, any>();
+    for (const s of (state.ships || [])) {
+      if (s && typeof s.id !== 'undefined') (state as any).shipMap.set(s.id, s);
+    }
+  } catch (e) {}
   // (Previously exposed state globally via _lastGameState for legacy helpers.)
   // We now pass `state` explicitly to pooling helpers to avoid global state.
   evaluateReinforcement(dt, state);

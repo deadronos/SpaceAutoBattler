@@ -18,6 +18,10 @@ export type { GameManagerOptions } from '../gamemanager';
 export interface GameState {
 	t: number;
 	ships: Ship[];
+	// Cached per-team counts to avoid per-frame array filtering in UI hot paths
+	teamCounts: { [team: string]: number };
+	// Map for fast ID -> Ship lookup to avoid O(n) searches in hot paths
+	shipMap?: Map<number, Ship>;
 	bullets: Bullet[];
 	explosions: any[];
 	shieldHits: any[];

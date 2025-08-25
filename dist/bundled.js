@@ -252,209 +252,6 @@ var init_entitiesConfig = __esm({
   }
 });
 
-// src/config/assets/assetsConfig.ts
-var assetsConfig_exports = {};
-__export(assetsConfig_exports, {
-  AssetsConfig: () => AssetsConfig,
-  default: () => assetsConfig_default,
-  getBulletAsset: () => getBulletAsset,
-  getEngineTrailConfig: () => getEngineTrailConfig,
-  getShipAsset: () => getShipAsset,
-  getSpriteAsset: () => getSpriteAsset,
-  getTurretAsset: () => getTurretAsset,
-  getVisualConfig: () => getVisualConfig
-});
-function getEngineTrailConfig(type) {
-  const vconf = getVisualConfig(type);
-  const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
-  return AssetsConfig.animations && AssetsConfig.animations[trailName] || AssetsConfig.animations && AssetsConfig.animations.engineTrail;
-}
-function getSpriteAsset(type) {
-  const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-  if (shapeEntry.svg) {
-    return { svg: shapeEntry.svg };
-  }
-  if (shapeEntry.model3d && shapeEntry.model3d.url) {
-    return { model3d: shapeEntry.model3d };
-  }
-  return { shape: shapeEntry };
-}
-function getVisualConfig(type) {
-  const shape = getShipAsset(type);
-  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
-  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
-}
-function getShipAsset(type) {
-  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-}
-function getBulletAsset(kind = "small") {
-  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
-  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
-  return AssetsConfig.shapes2d.bulletSmall;
-}
-function getTurretAsset(_kind = "basic") {
-  return AssetsConfig.shapes2d.turretBasic;
-}
-var AssetsConfig, assetsConfig_default;
-var init_assetsConfig = __esm({
-  "src/config/assets/assetsConfig.ts"() {
-    "use strict";
-    AssetsConfig = {
-      meta: {
-        orientation: "+X",
-        coordinateSystem: "topdown-2d"
-      },
-      palette: {
-        shipHull: "#b0b7c3",
-        shipAccent: "#6c7380",
-        bullet: "#ffd166",
-        turret: "#94a3b8",
-        // Scene background color used by renderers
-        background: "#0b1220"
-      },
-      // 2D vector shapes defined as polygons and circles. Points are unit-sized
-      // profiles (roughly radius 1). Renderer should multiply by entity radius or
-      // provided scale before drawing.
-      shapes2d: {
-        fighter: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
-            { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
-            { type: "circle", r: 0.5 }
-          ],
-          strokeWidth: 0.08,
-          model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
-        },
-        corvette: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
-            { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
-            { type: "circle", r: 0.6 }
-          ],
-          strokeWidth: 0.08,
-          model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
-        },
-        frigate: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
-            { type: "circle", r: 0.7 }
-          ],
-          strokeWidth: 0.1,
-          model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
-        },
-        destroyer: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
-            { type: "circle", r: 1 },
-            { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
-          ],
-          strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
-          turrets: [
-            { kind: "basic", position: [1.2, 0.8] },
-            { kind: "basic", position: [-1.2, 0.8] },
-            { kind: "basic", position: [1.2, -0.8] },
-            { kind: "basic", position: [-1.2, -0.8] },
-            { kind: "basic", position: [0, 1.5] },
-            { kind: "basic", position: [0, -1.5] }
-          ]
-        },
-        carrier: {
-          type: "compound",
-          parts: [
-            { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
-            { type: "circle", r: 1.2 },
-            { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
-          ],
-          strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
-          turrets: [
-            { kind: "basic", position: [2, 1.2] },
-            { kind: "basic", position: [-2, 1.2] },
-            { kind: "basic", position: [2, -1.2] },
-            { kind: "basic", position: [-2, -1.2] }
-          ]
-        },
-        bulletSmall: { type: "circle", r: 0.18 },
-        bulletMedium: { type: "circle", r: 0.25 },
-        bulletLarge: { type: "circle", r: 0.36 },
-        turretBasic: {
-          type: "compound",
-          parts: [
-            { type: "circle", r: 0.5 },
-            { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
-          ],
-          strokeWidth: 0.08
-        },
-        // Small effect/particle shapes for renderer-driven effects
-        particleSmall: { type: "circle", r: 0.12 },
-        particleMedium: { type: "circle", r: 0.22 },
-        explosionParticle: { type: "circle", r: 0.32 },
-        shieldRing: { type: "circle", r: 1.2 }
-      }
-    };
-    AssetsConfig.animations = {
-      engineFlare: {
-        type: "polygon",
-        points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
-        pulseRate: 8,
-        // configurable alpha multiplier for engine overlay
-        alpha: 0.4,
-        // local-space X offset (negative = behind ship)
-        offset: -0.9
-      },
-      shieldEffect: {
-        type: "circle",
-        r: 1.2,
-        strokeWidth: 0.1,
-        color: "#88ccff",
-        pulseRate: 2,
-        // map shieldPct -> alpha = base + scale * shieldPct
-        alphaBase: 0.25,
-        alphaScale: 0.75
-      },
-      damageParticles: {
-        type: "particles",
-        color: "#ff6b6b",
-        count: 6,
-        lifetime: 0.8,
-        spread: 0.6
-      },
-      engineTrail: {
-        type: "trail",
-        color: "#fffc00",
-        // bright yellow for high contrast
-        maxLength: 40,
-        // much longer trail
-        width: 0.35,
-        // thicker trail line
-        fade: 0.35
-        // slower fading, more persistent
-      }
-    };
-    AssetsConfig.damageStates = {
-      light: { opacity: 0.9, accentColor: "#b0b7c3" },
-      moderate: { opacity: 0.75, accentColor: "#d4a06a" },
-      heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
-    };
-    AssetsConfig.visualStateDefaults = {
-      fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-      carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
-    };
-    AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
-    AssetsConfig.shieldArcWidth = Math.PI / 12;
-    assetsConfig_default = AssetsConfig;
-  }
-});
-
 // src/entities.ts
 init_entitiesConfig();
 
@@ -753,7 +550,7 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
   };
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
-  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl };
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y };
 }
 function createExplosionEffect(init) {
   return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };
@@ -951,6 +748,10 @@ function makeInitialState() {
   return {
     t: 0,
     ships: [],
+    // fast lookup map kept in sync with ships[] where possible
+    shipMap: /* @__PURE__ */ new Map(),
+    // Cached counts per team to avoid per-frame filter allocations
+    teamCounts: { red: 0, blue: 0 },
     bullets: [],
     explosions: [],
     shieldHits: [],
@@ -975,6 +776,17 @@ function makeInitialState() {
       }
     }
   };
+}
+function updateTeamCount(state, oldTeam, newTeam) {
+  try {
+    if (oldTeam) {
+      state.teamCounts[oldTeam] = Math.max(0, (state.teamCounts[oldTeam] || 0) - 1);
+    }
+    if (newTeam) {
+      state.teamCounts[newTeam] = (state.teamCounts[newTeam] || 0) + 1;
+    }
+  } catch (e) {
+  }
 }
 
 // src/gamemanager.ts
@@ -1057,9 +869,7 @@ function tryFire(state, ship, target, dt) {
       if (turret.__cd > 0) continue;
       let turretTarget = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team
-        );
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -1071,21 +881,15 @@ function tryFire(state, ship, target, dt) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team
-        );
-        if (enemies.length)
-          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
         if (ship.__ai && ship.__ai.targetId != null) {
-          turretTarget = (state.ships || []).find(
-            (sh) => sh && sh.id === ship.__ai.targetId
-          ) || null;
+          const tId = ship.__ai.targetId;
+          turretTarget = state.shipMap && typeof tId !== "undefined" && tId !== null ? state.shipMap.get(Number(tId)) || null : (state.ships || []).find((sh) => sh && sh.id === tId) || null;
         }
       } else {
-        const enemies = (state.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team
-        );
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -1152,7 +956,7 @@ function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
     ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
     let target = null;
     if (ai.targetId != null)
-      target = (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
+      target = state.shipMap && typeof ai.targetId !== "undefined" && ai.targetId !== null ? state.shipMap.get(Number(ai.targetId)) || null : (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
     if (!target) target = chooseNewTarget(state, s);
     if (target) ai.targetId = target.id;
     const maxAccel = typeof s.accel === "number" ? s.accel : 100;
@@ -1222,7 +1026,8 @@ var SIM = {
   MAX_ACC_MS: 250,
   bounds: { W: 1920, H: 1080 },
   // Use LOGICAL_MAP for default bounds
-  friction: 0.98
+  friction: 0.98,
+  gridCellSize: 64
 };
 var boundaryBehavior = {
   ships: "wrap",
@@ -1233,7 +1038,103 @@ function getDefaultBounds() {
   return { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
 }
 
+// src/spatialGrid.ts
+var spatialGrid_exports = {};
+__export(spatialGrid_exports, {
+  default: () => SpatialGrid,
+  segmentIntersectsCircle: () => segmentIntersectsCircle
+});
+var SpatialGrid = class _SpatialGrid {
+  cellSize;
+  grid;
+  // simple pooled instances to avoid per-frame allocations
+  // pool keyed by cellSize to avoid reuse mismatch; cap instances per key
+  static _pools = /* @__PURE__ */ new Map();
+  static _perKeyCap = 4;
+  static acquire(cellSize = 64) {
+    const key = cellSize | 0;
+    const pool = this._pools.get(key) || [];
+    const inst = pool.pop();
+    if (inst) {
+      inst.cellSize = cellSize;
+      return inst;
+    }
+    return new _SpatialGrid(cellSize);
+  }
+  static release(inst) {
+    const key = (inst.cellSize || 64) | 0;
+    inst.clear();
+    let pool = this._pools.get(key);
+    if (!pool) {
+      pool = [];
+      this._pools.set(key, pool);
+    }
+    if (pool.length < this._perKeyCap) pool.push(inst);
+  }
+  constructor(cellSize = 64) {
+    this.cellSize = cellSize;
+    this.grid = /* @__PURE__ */ new Map();
+  }
+  key(cx, cy) {
+    return cx + "," + cy;
+  }
+  insert(entity) {
+    const cx = Math.floor((entity.x || 0) / this.cellSize);
+    const cy = Math.floor((entity.y || 0) / this.cellSize);
+    const k = this.key(cx, cy);
+    let bucket = this.grid.get(k);
+    if (!bucket) {
+      bucket = [];
+      this.grid.set(k, bucket);
+    }
+    bucket.push(entity);
+  }
+  queryRadius(x, y, radius) {
+    const minCx = Math.floor((x - radius) / this.cellSize);
+    const maxCx = Math.floor((x + radius) / this.cellSize);
+    const minCy = Math.floor((y - radius) / this.cellSize);
+    const maxCy = Math.floor((y + radius) / this.cellSize);
+    const results = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        const bucket = this.grid.get(this.key(cx, cy));
+        if (!bucket) continue;
+        for (const e of bucket) {
+          if (!seen.has(e)) {
+            seen.add(e);
+            results.push(e);
+          }
+        }
+      }
+    }
+    return results;
+  }
+  // clear internal storage for reuse
+  clear() {
+    this.grid.clear();
+  }
+};
+function segmentIntersectsCircle(x1, y1, x2, y2, cx, cy, r) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const fx = x1 - cx;
+  const fy = y1 - cy;
+  const a = dx * dx + dy * dy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - r * r;
+  let discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false;
+  discriminant = Math.sqrt(discriminant);
+  const t1 = (-b - discriminant) / (2 * a);
+  const t2 = (-b + discriminant) / (2 * a);
+  if (t1 >= 0 && t1 <= 1 || t2 >= 0 && t2 <= 1) return true;
+  return false;
+}
+
 // src/simulate.ts
+var SpatialGrid2 = SpatialGrid || spatialGrid_exports;
+var segmentIntersectsCircle2 = segmentIntersectsCircle;
 function dist2(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -1244,6 +1145,8 @@ function simulateStep(state, dtSeconds, bounds) {
   state.t = (state.t || 0) + dtSeconds;
   for (let i = (state.bullets || []).length - 1; i >= 0; i--) {
     const b = state.bullets[i];
+    b.prevX = typeof b.x === "number" ? b.x : 0;
+    b.prevY = typeof b.y === "number" ? b.y : 0;
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
@@ -1420,16 +1323,40 @@ function simulateStep(state, dtSeconds, bounds) {
           break;
       }
     }
-    if (remove) state.ships.splice(si, 1);
+    if (remove) {
+      const rem = state.ships.splice(si, 1);
+      if (rem && rem.length) {
+        try {
+          state.shipMap && state.shipMap.delete(rem[0].id);
+        } catch (e) {
+        }
+        try {
+          if (rem[0] && rem[0].team) state.teamCounts[rem[0].team] = Math.max(0, (state.teamCounts[rem[0].team] || 0) - 1);
+        } catch (e) {
+        }
+      }
+    }
   }
+  const cellSize = SIM && SIM.gridCellSize || 64;
+  const grid = SpatialGrid2.acquire(cellSize);
+  const ships = state.ships || [];
+  for (let i = 0; i < ships.length; i++) grid.insert(ships[i]);
+  const removedShipIds = /* @__PURE__ */ new Set();
   for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
     const b = state.bullets[bi];
-    for (let si = (state.ships || []).length - 1; si >= 0; si--) {
-      const s = state.ships[si];
+    const searchRadius = (b.radius || 1) + 64;
+    const candidates = grid.queryRadius(b.x || 0, b.y || 0, searchRadius);
+    let collided = false;
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const s = candidates[ci];
+      if (!s || removedShipIds.has(s.id)) continue;
       if (s.team === b.team) continue;
       const r = (s.radius || 6) + (b.radius || 1);
-      if (dist2(b, s) <= r * r) {
-        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? (state.ships || []).find((sh) => sh.id === b.ownerId) : void 0;
+      const bxPrev = typeof b._prevX === "number" ? b._prevX : b.x - (b.vx || 0) * dtSeconds;
+      const byPrev = typeof b._prevY === "number" ? b._prevY : b.y - (b.vy || 0) * dtSeconds;
+      const didHit = dist2(b, s) <= r * r || segmentIntersectsCircle2(bxPrev, byPrev, b.x || 0, b.y || 0, s.x || 0, s.y || 0, r);
+      if (didHit) {
+        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? state.shipMap && state.shipMap.get(Number(b.ownerId)) : void 0;
         let dealtToShield = 0;
         let dealtToHealth = 0;
         const shield = s.shield || 0;
@@ -1552,21 +1479,10 @@ function simulateStep(state, dtSeconds, bounds) {
           }
         }
         state.bullets.splice(bi, 1);
+        collided = true;
         if (s.hp <= 0) {
-          console.log(
-            "DEBUG: KILL BRANCH, attacker",
-            attacker && attacker.id,
-            "xp before",
-            attacker && attacker.xp
-          );
           if (attacker) {
             attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);
-            console.log(
-              "DEBUG: KILL XP AWARDED, attacker",
-              attacker.id,
-              "xp after",
-              attacker.xp
-            );
             while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
               attacker.xp -= progression.xpToLevel(attacker.level || 1);
               attacker.level = (attacker.level || 1) + 1;
@@ -1619,12 +1535,25 @@ function simulateStep(state, dtSeconds, bounds) {
             }
           }
           (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
-          state.ships.splice(si, 1);
+          const idx = (state.ships || []).findIndex((sh) => sh && sh.id === s.id);
+          if (idx >= 0) {
+            state.ships.splice(idx, 1);
+            try {
+              state.shipMap && state.shipMap.delete(s.id);
+            } catch (e) {
+            }
+            try {
+              if (s && s.team) state.teamCounts[s.team] = Math.max(0, (state.teamCounts[s.team] || 0) - 1);
+            } catch (e) {
+            }
+          }
+          removedShipIds.add(s.id);
         }
         break;
       }
     }
   }
+  SpatialGrid2.release(grid);
   for (const s of state.ships || []) {
     if (s.maxShield)
       s.shield = Math.min(
@@ -1816,6 +1745,14 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
                 o.team || "red"
               );
               state.ships.push(ship);
+              try {
+                state.shipMap && state.shipMap.set(ship.id, ship);
+              } catch (e) {
+              }
+              try {
+                updateTeamCount(state, void 0, ship.team);
+              } catch (e) {
+              }
               spawned.push(ship);
             } catch (e) {
             }
@@ -1837,7 +1774,23 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
         FALLBACK_POSITIONS[1].team
       );
       state.ships.push(r);
+      try {
+        state.shipMap && state.shipMap.set(r.id, r);
+      } catch (e) {
+      }
+      try {
+        updateTeamCount(state, void 0, String(r.team));
+      } catch (e) {
+      }
       state.ships.push(b);
+      try {
+        state.shipMap && state.shipMap.set(b.id, b);
+      } catch (e) {
+      }
+      try {
+        updateTeamCount(state, void 0, String(b.team));
+      } catch (e) {
+      }
       return { spawned: [r, b] };
     } catch (e) {
       return null;
@@ -1894,7 +1847,22 @@ function createGameManager({
       };
       simWorker.on && simWorker.on("ready", _workerReadyHandler);
       _workerSnapshotHandler = (m) => {
-        if (m && m.state) state = m.state;
+        if (m && m.state) {
+          state = m.state;
+          try {
+            state.shipMap = /* @__PURE__ */ new Map();
+            state.teamCounts = { red: 0, blue: 0 };
+            for (const s of state.ships || []) if (s && typeof s.id !== "undefined") {
+              state.shipMap.set(s.id, s);
+              try {
+                const t = String(s.team || "");
+                state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+              } catch (e) {
+              }
+            }
+          } catch (e) {
+          }
+        }
       };
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
       _workerReinforcementsHandler = (m) => {
@@ -2128,6 +2096,14 @@ function createGameManager({
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
       const ship = createShip(type, x, y, team);
       state.ships.push(ship);
+      try {
+        state.shipMap && state.shipMap.set(ship.id, ship);
+      } catch (e) {
+      }
+      try {
+        updateTeamCount(state, void 0, String(ship.team));
+      } catch (e) {
+      }
       return ship;
     } catch (e) {
       return null;
@@ -2136,11 +2112,27 @@ function createGameManager({
   function formFleets() {
     try {
       state.ships.length = 0;
+      try {
+        state.shipMap && state.shipMap.clear();
+      } catch (e) {
+      }
+      try {
+        state.teamCounts = { red: 0, blue: 0 };
+      } catch (e) {
+      }
       const bounds = SIM.bounds;
       const seed2 = Math.floor(srandom() * 4294967295) >>> 0;
       const ships = makeInitialFleets(seed2, bounds, createShip);
       for (const ship of ships) {
         state.ships.push(ship);
+        try {
+          state.shipMap && state.shipMap.set(ship.id, ship);
+        } catch (e) {
+        }
+        try {
+          updateTeamCount(state, void 0, ship.team);
+        } catch (e) {
+        }
       }
     } catch (e) {
     }
@@ -2161,7 +2153,8 @@ function createGameManager({
     return {
       ships: state.ships.slice(),
       bullets: state.bullets.slice(),
-      t: state.t
+      t: state.t,
+      teamCounts: { ...state.teamCounts || {} }
     };
   }
   const score = { red: 0, blue: 0 };
@@ -2228,9 +2221,193 @@ function getPreferredRenderer() {
 }
 var rendererConfig_default = RendererConfig;
 
+// src/config/assets/assetsConfig.ts
+function getEngineTrailConfig(type) {
+  const vconf = getVisualConfig(type);
+  const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
+  return AssetsConfig.animations && AssetsConfig.animations[trailName] || AssetsConfig.animations && AssetsConfig.animations.engineTrail;
+}
+function getSpriteAsset(type) {
+  const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+  if (shapeEntry.svg) {
+    return { svg: shapeEntry.svg };
+  }
+  if (shapeEntry.model3d && shapeEntry.model3d.url) {
+    return { model3d: shapeEntry.model3d };
+  }
+  return { shape: shapeEntry };
+}
+var AssetsConfig = {
+  meta: {
+    orientation: "+X",
+    coordinateSystem: "topdown-2d"
+  },
+  palette: {
+    shipHull: "#b0b7c3",
+    shipAccent: "#6c7380",
+    bullet: "#ffd166",
+    turret: "#94a3b8",
+    // Scene background color used by renderers
+    background: "#0b1220"
+  },
+  // 2D vector shapes defined as polygons and circles. Points are unit-sized
+  // profiles (roughly radius 1). Renderer should multiply by entity radius or
+  // provided scale before drawing.
+  shapes2d: {
+    fighter: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+        { type: "circle", r: 0.5 }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+    },
+    corvette: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+        { type: "circle", r: 0.6 }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+    },
+    frigate: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+        { type: "circle", r: 0.7 }
+      ],
+      strokeWidth: 0.1,
+      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+    },
+    destroyer: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+        { type: "circle", r: 1 },
+        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
+      turrets: [
+        { kind: "basic", position: [1.2, 0.8] },
+        { kind: "basic", position: [-1.2, 0.8] },
+        { kind: "basic", position: [1.2, -0.8] },
+        { kind: "basic", position: [-1.2, -0.8] },
+        { kind: "basic", position: [0, 1.5] },
+        { kind: "basic", position: [0, -1.5] }
+      ]
+    },
+    carrier: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+        { type: "circle", r: 1.2 },
+        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
+      turrets: [
+        { kind: "basic", position: [2, 1.2] },
+        { kind: "basic", position: [-2, 1.2] },
+        { kind: "basic", position: [2, -1.2] },
+        { kind: "basic", position: [-2, -1.2] }
+      ]
+    },
+    bulletSmall: { type: "circle", r: 0.18 },
+    bulletMedium: { type: "circle", r: 0.25 },
+    bulletLarge: { type: "circle", r: 0.36 },
+    turretBasic: {
+      type: "compound",
+      parts: [
+        { type: "circle", r: 0.5 },
+        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+      ],
+      strokeWidth: 0.08
+    },
+    // Small effect/particle shapes for renderer-driven effects
+    particleSmall: { type: "circle", r: 0.12 },
+    particleMedium: { type: "circle", r: 0.22 },
+    explosionParticle: { type: "circle", r: 0.32 },
+    shieldRing: { type: "circle", r: 1.2 }
+  }
+};
+AssetsConfig.animations = {
+  engineFlare: {
+    type: "polygon",
+    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+    pulseRate: 8,
+    // configurable alpha multiplier for engine overlay
+    alpha: 0.4,
+    // local-space X offset (negative = behind ship)
+    offset: -0.9
+  },
+  shieldEffect: {
+    type: "circle",
+    r: 1.2,
+    strokeWidth: 0.1,
+    color: "#88ccff",
+    pulseRate: 2,
+    // map shieldPct -> alpha = base + scale * shieldPct
+    alphaBase: 0.25,
+    alphaScale: 0.75
+  },
+  damageParticles: {
+    type: "particles",
+    color: "#ff6b6b",
+    count: 6,
+    lifetime: 0.8,
+    spread: 0.6
+  },
+  engineTrail: {
+    type: "trail",
+    color: "#fffc00",
+    // bright yellow for high contrast
+    maxLength: 40,
+    // much longer trail
+    width: 0.35,
+    // thicker trail line
+    fade: 0.35
+    // slower fading, more persistent
+  }
+};
+AssetsConfig.damageStates = {
+  light: { opacity: 0.9, accentColor: "#b0b7c3" },
+  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+};
+AssetsConfig.visualStateDefaults = {
+  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
+};
+AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
+AssetsConfig.shieldArcWidth = Math.PI / 12;
+function getVisualConfig(type) {
+  const shape = getShipAsset(type);
+  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
+}
+function getShipAsset(type) {
+  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+}
+function getBulletAsset(kind = "small") {
+  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
+  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
+  return AssetsConfig.shapes2d.bulletSmall;
+}
+function getTurretAsset(_kind = "basic") {
+  return AssetsConfig.shapes2d.turretBasic;
+}
+var assetsConfig_default = AssetsConfig;
+
 // src/canvasrenderer.ts
-init_assetsConfig();
-init_assetsConfig();
 init_entitiesConfig();
 var CanvasRenderer = class {
   canvas;
@@ -2294,14 +2471,14 @@ var CanvasRenderer = class {
   renderState(state, interpolation = 0) {
     function drawRing(x, y, R, color, alpha = 1, thickness = 2) {
       try {
-        bufferCtx.save();
-        bufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        bufferCtx.strokeStyle = color;
-        bufferCtx.lineWidth = thickness * renderScale;
-        bufferCtx.beginPath();
-        bufferCtx.arc(x * renderScale, y * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
-        bufferCtx.stroke();
-        bufferCtx.restore();
+        withContext(() => {
+          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+          activeBufferCtx.strokeStyle = color;
+          activeBufferCtx.lineWidth = thickness * renderScale;
+          activeBufferCtx.beginPath();
+          activeBufferCtx.arc(x * renderScale, y * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
+          activeBufferCtx.stroke();
+        });
       } catch (e) {
       }
     }
@@ -2324,10 +2501,10 @@ var CanvasRenderer = class {
     const activeBufferCtx = this.bufferCtx;
     activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
-    activeBufferCtx.save();
-    activeBufferCtx.fillStyle = assetsConfig_default.palette.background || "#0b1220";
-    activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
-    activeBufferCtx.restore();
+    withContext(() => {
+      activeBufferCtx.fillStyle = assetsConfig_default.palette.background || "#0b1220";
+      activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
+    });
     function drawPolygon(points) {
       if (!points || points.length === 0) return;
       activeBufferCtx.beginPath();
@@ -2337,12 +2514,11 @@ var CanvasRenderer = class {
       activeBufferCtx.fill();
     }
     if (state && state.starCanvas) {
-      try {
-        activeBufferCtx.save();
-        activeBufferCtx.globalCompositeOperation = "source-over";
-        activeBufferCtx.drawImage(state.starCanvas, 0, 0, bufferW, bufferH);
-        activeBufferCtx.restore();
-      } catch (e) {
+      if (state.starCanvas) {
+        withContext(() => {
+          activeBufferCtx.globalAlpha = 0.5;
+          activeBufferCtx.drawImage(state.starCanvas, 0, 0, bufferW, bufferH);
+        });
       }
     }
     const now = state && state.t || 0;
@@ -2372,6 +2548,30 @@ var CanvasRenderer = class {
       }
     } catch (e) {
     }
+    function withShipContext(s, fn) {
+      activeBufferCtx.save();
+      try {
+        activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
+        activeBufferCtx.rotate(s.angle || 0);
+        fn();
+      } finally {
+        try {
+          activeBufferCtx.restore();
+        } catch (e) {
+        }
+      }
+    }
+    function withContext(fn) {
+      activeBufferCtx.save();
+      try {
+        fn();
+      } finally {
+        try {
+          activeBufferCtx.restore();
+        } catch (e) {
+        }
+      }
+    }
     for (const s of state.ships || []) {
       const sx = (s.x || 0) * renderScale;
       const sy = (s.y || 0) * renderScale;
@@ -2382,12 +2582,12 @@ var CanvasRenderer = class {
         if (!last || last.x !== s.x || last.y !== s.y) {
           s.trail.push({ x: s.x, y: s.y });
         }
-        const trailConfig = (init_assetsConfig(), __toCommonJS(assetsConfig_exports)).getEngineTrailConfig(s.type || getDefaultShipType());
+        const trailConfig = getEngineTrailConfig(s.type || getDefaultShipType());
         const maxTrail = trailConfig?.maxLength || 40;
         while (s.trail.length > maxTrail) s.trail.shift();
       }
       if (Array.isArray(s.trail)) {
-        const trailConfig = (init_assetsConfig(), __toCommonJS(assetsConfig_exports)).getEngineTrailConfig(s.type || getDefaultShipType());
+        const trailConfig = getEngineTrailConfig(s.type || getDefaultShipType());
         const color = trailConfig?.color || "#aee1ff";
         const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
@@ -2398,91 +2598,111 @@ var CanvasRenderer = class {
           const txx = tx * renderScale;
           const tyy = ty * renderScale;
           if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
-          activeBufferCtx.save();
-          activeBufferCtx.globalAlpha = tAlpha;
-          activeBufferCtx.fillStyle = color;
-          activeBufferCtx.beginPath();
-          activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
-          activeBufferCtx.fill();
-          activeBufferCtx.restore();
+          withContext(() => {
+            activeBufferCtx.globalAlpha = tAlpha;
+            activeBufferCtx.fillStyle = color;
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          });
         }
       }
       const sprite = getSpriteAsset(s.type || getDefaultShipType());
-      activeBufferCtx.save();
-      activeBufferCtx.translate((s.x || 0) * renderScale, (s.y || 0) * renderScale);
-      activeBufferCtx.rotate(s.angle || 0);
-      let teamColor = assetsConfig_default.palette.shipHull || "#888";
-      if (s.team === "red" && teamsConfig_default.teams.red) teamColor = teamsConfig_default.teams.red.color;
-      else if (s.team === "blue" && teamsConfig_default.teams.blue) teamColor = teamsConfig_default.teams.blue.color;
-      activeBufferCtx.fillStyle = teamColor;
-      if (sprite.svg) {
-      }
-      if (sprite.model3d) {
-      }
-      const shape = sprite.shape;
-      if (shape) {
-        if (shape.type === "circle") {
-          activeBufferCtx.beginPath();
-          activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
-          activeBufferCtx.fill();
-        } else if (shape.type === "polygon") {
-          drawPolygon(shape.points);
-        } else if (shape.type === "compound") {
-          for (const part of shape.parts) {
-            if (part.type === "circle") {
-              activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
-              activeBufferCtx.fill();
-            } else if (part.type === "polygon") {
-              drawPolygon(part.points);
-            }
-          }
+      withShipContext(s, () => {
+        let teamColor = assetsConfig_default.palette.shipHull || "#888";
+        if (s.team === "red" && teamsConfig_default.teams.red) teamColor = teamsConfig_default.teams.red.color;
+        else if (s.team === "blue" && teamsConfig_default.teams.blue) teamColor = teamsConfig_default.teams.blue.color;
+        activeBufferCtx.fillStyle = teamColor;
+        if (sprite.svg) {
         }
-      }
-      if (Array.isArray(s.turrets) && s.turrets.length > 0) {
-        for (const turret of s.turrets) {
-          if (!turret || !turret.position) continue;
-          const turretShape = getTurretAsset(turret.kind || "basic");
-          const shipType = s.type || "fighter";
-          const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];
-          const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : s.radius || 12;
-          const turretScale = configRadius * renderScale * 0.5;
-          const angle = s.angle || 0;
-          const [tx, ty] = turret.position;
-          const turretX = Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
-          const turretY = Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
-          activeBufferCtx.save();
-          activeBufferCtx.translate(turretX, turretY);
-          activeBufferCtx.rotate(0);
-          activeBufferCtx.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
-          if (turretShape.type === "circle") {
+        if (sprite.model3d) {
+        }
+        const shape = sprite.shape;
+        if (shape) {
+          if (shape.type === "circle") {
             activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
+            activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
             activeBufferCtx.fill();
-          } else if (turretShape.type === "polygon") {
-            activeBufferCtx.save();
-            activeBufferCtx.scale(turretScale, turretScale);
-            drawPolygon(turretShape.points);
-            activeBufferCtx.restore();
-          } else if (turretShape.type === "compound") {
-            for (const part of turretShape.parts) {
+          } else if (shape.type === "polygon") {
+            drawPolygon(shape.points);
+          } else if (shape.type === "compound") {
+            for (const part of shape.parts) {
               if (part.type === "circle") {
                 activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
+                activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
                 activeBufferCtx.fill();
               } else if (part.type === "polygon") {
-                activeBufferCtx.save();
-                activeBufferCtx.scale(turretScale, turretScale);
                 drawPolygon(part.points);
-                activeBufferCtx.restore();
               }
             }
           }
-          activeBufferCtx.restore();
         }
-      }
-      if ((s.shield ?? 0) > 0) {
-        if (sx >= 0 && sx < bufferW && sy >= 0 && sy < bufferH) {
+        try {
+          const vconf = getVisualConfig(s.type || getDefaultShipType());
+          const engineName = vconf && vconf.visuals && vconf.visuals.engine ? vconf.visuals.engine : "engineFlare";
+          const engAnim = assetsConfig_default.animations && assetsConfig_default.animations[engineName];
+          if (engAnim && Array.isArray(engAnim.points)) {
+            const radius = s.radius || 12;
+            const offsetLocal = typeof engAnim.offset === "number" ? engAnim.offset * radius * renderScale : 0;
+            withContext(() => {
+              activeBufferCtx.translate(offsetLocal, 0);
+              activeBufferCtx.globalAlpha = typeof engAnim.alpha === "number" ? engAnim.alpha : 1;
+              activeBufferCtx.fillStyle = engAnim.color || "#ffffff";
+              activeBufferCtx.beginPath();
+              const pts = engAnim.points || [];
+              if (pts.length) {
+                activeBufferCtx.moveTo((pts[0][0] || 0) * radius * renderScale, (pts[0][1] || 0) * radius * renderScale);
+                for (let pi = 1; pi < pts.length; pi++) activeBufferCtx.lineTo((pts[pi][0] || 0) * radius * renderScale, (pts[pi][1] || 0) * radius * renderScale);
+                activeBufferCtx.closePath();
+                activeBufferCtx.fill();
+              }
+            });
+          }
+        } catch (e) {
+        }
+        if (Array.isArray(s.turrets) && s.turrets.length > 0) {
+          for (const turret of s.turrets) {
+            if (!turret || !turret.position) continue;
+            const turretShape = getTurretAsset(turret.kind || "basic");
+            const shipType = s.type || "fighter";
+            const shipCfg = getShipConfig()[shipType];
+            const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : s.radius || 12;
+            const turretScale = configRadius * renderScale * 0.5;
+            const angle = s.angle || 0;
+            const [tx, ty] = turret.position;
+            const turretX = Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
+            const turretY = Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
+            withContext(() => {
+              activeBufferCtx.translate(turretX, turretY);
+              activeBufferCtx.rotate(0);
+              activeBufferCtx.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
+              if (turretShape.type === "circle") {
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
+                activeBufferCtx.fill();
+              } else if (turretShape.type === "polygon") {
+                withContext(() => {
+                  activeBufferCtx.scale(turretScale, turretScale);
+                  drawPolygon(turretShape.points);
+                });
+              } else if (turretShape.type === "compound") {
+                for (const part of turretShape.parts) {
+                  if (part.type === "circle") {
+                    activeBufferCtx.beginPath();
+                    activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
+                    activeBufferCtx.fill();
+                  } else if (part.type === "polygon") {
+                    withContext(() => {
+                      activeBufferCtx.scale(turretScale, turretScale);
+                      drawPolygon(part.points);
+                    });
+                  }
+                }
+              }
+            });
+          }
+        }
+        if ((s.shield ?? 0) > 0) {
           const shAnim = assetsConfig_default.animations && assetsConfig_default.animations.shieldEffect;
           try {
             if (shAnim) {
@@ -2492,21 +2712,28 @@ var CanvasRenderer = class {
               const alphaScale = typeof shAnim.alphaScale === "number" ? shAnim.alphaScale : 0.75;
               const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
               const R = (shAnim.r || 1.2) * (s.radius || 12);
-              activeBufferCtx.save();
-              activeBufferCtx.globalAlpha = alpha;
-              activeBufferCtx.strokeStyle = shAnim.color || "#3ab6ff";
-              activeBufferCtx.lineWidth = (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale;
-              activeBufferCtx.beginPath();
-              activeBufferCtx.arc((s.x || 0) * renderScale, (s.y || 0) * renderScale, Math.max(1, R * renderScale), 0, Math.PI * 2);
-              activeBufferCtx.stroke();
-              activeBufferCtx.restore();
+              withContext(() => {
+                activeBufferCtx.globalAlpha = alpha;
+                activeBufferCtx.strokeStyle = shAnim.color || "#3ab6ff";
+                activeBufferCtx.lineWidth = (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale;
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, Math.max(1, R * renderScale), 0, Math.PI * 2);
+                activeBufferCtx.stroke();
+              });
             } else {
-              drawRing(s.x, s.y, (s.radius || 12) * 1.2, "#3ab6ff", 0.5, 3 * renderScale);
+              withContext(() => {
+                activeBufferCtx.globalAlpha = 0.5;
+                activeBufferCtx.strokeStyle = "#3ab6ff";
+                activeBufferCtx.lineWidth = 3 * renderScale;
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, Math.max(1, (s.radius || 12) * 1.2 * renderScale), 0, Math.PI * 2);
+                activeBufferCtx.stroke();
+              });
             }
           } catch (e) {
           }
         }
-      }
+      });
     }
     try {
       const nowT = state.t || 0;
@@ -2543,14 +2770,14 @@ var CanvasRenderer = class {
             const fx = pf.x * renderScale;
             const fy = pf.y * renderScale;
             if (fx >= 0 && fx < bufferW && fy >= 0 && fy < bufferH) {
-              activeBufferCtx.save();
-              activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
-              activeBufferCtx.strokeStyle = pf.color;
-              activeBufferCtx.lineWidth = 2 * renderScale;
-              activeBufferCtx.beginPath();
-              activeBufferCtx.arc(fx, fy, Math.max(1, R * renderScale), 0, Math.PI * 2);
-              activeBufferCtx.stroke();
-              activeBufferCtx.restore();
+              withContext(() => {
+                activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+                activeBufferCtx.strokeStyle = pf.color;
+                activeBufferCtx.lineWidth = 2 * renderScale;
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(fx, fy, Math.max(1, R * renderScale), 0, Math.PI * 2);
+                activeBufferCtx.stroke();
+              });
             }
             releaseEffect(state, "healthFlash", pooledFlash);
           }
@@ -2567,28 +2794,28 @@ var CanvasRenderer = class {
         const r = b.radius || b.bulletRadius || 1.5;
         const kind = typeof b.bulletRadius === "number" ? b.bulletRadius < 2 ? "small" : b.bulletRadius < 3 ? "medium" : "large" : "small";
         const shape = getBulletAsset(kind);
-        activeBufferCtx.save();
-        activeBufferCtx.translate(bx, by);
-        const px = Math.max(1, r * renderScale);
-        activeBufferCtx.fillStyle = assetsConfig_default.palette.bullet;
-        if (shape.type === "circle") {
-          activeBufferCtx.beginPath();
-          activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2);
-          activeBufferCtx.fill();
-        } else if (shape.type === "polygon") {
-          drawPolygon(shape.points);
-        } else if (shape.type === "compound") {
-          for (const part of shape.parts) {
-            if (part.type === "circle") {
-              activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, (part.r || 1) * px, 0, Math.PI * 2);
-              activeBufferCtx.fill();
-            } else if (part.type === "polygon") {
-              drawPolygon(part.points);
+        withContext(() => {
+          activeBufferCtx.translate(bx, by);
+          const px = Math.max(1, r * renderScale);
+          activeBufferCtx.fillStyle = assetsConfig_default.palette.bullet;
+          if (shape.type === "circle") {
+            activeBufferCtx.beginPath();
+            activeBufferCtx.arc(0, 0, px, 0, Math.PI * 2);
+            activeBufferCtx.fill();
+          } else if (shape.type === "polygon") {
+            drawPolygon(shape.points);
+          } else if (shape.type === "compound") {
+            for (const part of shape.parts) {
+              if (part.type === "circle") {
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, (part.r || 1) * px, 0, Math.PI * 2);
+                activeBufferCtx.fill();
+              } else if (part.type === "polygon") {
+                drawPolygon(part.points);
+              }
             }
           }
-        }
-        activeBufferCtx.restore();
+        });
       } catch (e) {
       }
     }
@@ -2616,56 +2843,56 @@ var CanvasRenderer = class {
           const px = particle.x * renderScale;
           const py = particle.y * renderScale;
           if (px < 0 || px >= bufferW || py < 0 || py >= bufferH) continue;
-          activeBufferCtx.save();
-          const shapeName = particle.assetShape || (particle.r > 0.5 ? "particleMedium" : "particleSmall");
-          const shape = shapes[shapeName];
-          activeBufferCtx.fillStyle = particle.color;
-          activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - particle.age / particle.lifetime));
-          activeBufferCtx.translate(px, py);
-          if (shape) {
-            if (shape.type === "circle") {
-              const rr = (shape.r || 0.12) * particle.r * renderScale * 6;
-              activeBufferCtx.beginPath();
-              activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
-              activeBufferCtx.fill();
-            } else if (shape.type === "polygon") {
-              activeBufferCtx.beginPath();
-              const pts = shape.points || [];
-              if (pts.length) {
-                activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
-                for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
-                activeBufferCtx.closePath();
+          withContext(() => {
+            const shapeName = particle.assetShape || (particle.r > 0.5 ? "particleMedium" : "particleSmall");
+            const shape = shapes[shapeName];
+            activeBufferCtx.fillStyle = particle.color;
+            activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, 1 - particle.age / particle.lifetime));
+            activeBufferCtx.translate(px, py);
+            if (shape) {
+              if (shape.type === "circle") {
+                const rr = (shape.r || 0.12) * particle.r * renderScale * 6;
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
                 activeBufferCtx.fill();
-              }
-            } else if (shape.type === "compound") {
-              for (const part of shape.parts || []) {
-                if (part.type === "circle") {
-                  const rr = (part.r || 0.12) * particle.r * renderScale * 6;
-                  activeBufferCtx.beginPath();
-                  activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
+              } else if (shape.type === "polygon") {
+                activeBufferCtx.beginPath();
+                const pts = shape.points || [];
+                if (pts.length) {
+                  activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
+                  for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                  activeBufferCtx.closePath();
                   activeBufferCtx.fill();
-                } else if (part.type === "polygon") {
-                  activeBufferCtx.beginPath();
-                  const pts = part.points || [];
-                  if (pts.length) {
-                    activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
-                    for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
-                    activeBufferCtx.closePath();
+                }
+              } else if (shape.type === "compound") {
+                for (const part of shape.parts || []) {
+                  if (part.type === "circle") {
+                    const rr = (part.r || 0.12) * particle.r * renderScale * 6;
+                    activeBufferCtx.beginPath();
+                    activeBufferCtx.arc(0, 0, rr, 0, Math.PI * 2);
                     activeBufferCtx.fill();
+                  } else if (part.type === "polygon") {
+                    activeBufferCtx.beginPath();
+                    const pts = part.points || [];
+                    if (pts.length) {
+                      activeBufferCtx.moveTo((pts[0][0] || 0) * renderScale, (pts[0][1] || 0) * renderScale);
+                      for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * renderScale, (pts[i][1] || 0) * renderScale);
+                      activeBufferCtx.closePath();
+                      activeBufferCtx.fill();
+                    }
                   }
                 }
+              } else {
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
+                activeBufferCtx.fill();
               }
             } else {
               activeBufferCtx.beginPath();
               activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
               activeBufferCtx.fill();
             }
-          } else {
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (particle.r || 2) * renderScale, 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          }
-          activeBufferCtx.restore();
+          });
           releaseSprite(state, "particle", particle);
         } catch (e) {
         }
@@ -2686,21 +2913,21 @@ var CanvasRenderer = class {
             }
           ), ex);
           const ef = effect;
-          activeBufferCtx.save();
-          activeBufferCtx.globalAlpha = ef.alpha || 0;
-          activeBufferCtx.translate(ef.x * renderScale, ef.y * renderScale);
-          activeBufferCtx.fillStyle = ef.color || "#ffd089";
-          if (expShape && expShape.type === "circle") {
-            const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, rr * (1 + (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          } else {
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, Math.max(2, (ef.scale || 1) * 12 * (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          }
-          activeBufferCtx.restore();
+          withContext(() => {
+            activeBufferCtx.globalAlpha = ef.alpha || 0;
+            activeBufferCtx.translate(ef.x * renderScale, ef.y * renderScale);
+            activeBufferCtx.fillStyle = ef.color || "#ffd089";
+            if (expShape && expShape.type === "circle") {
+              const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, rr * (1 + (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, Math.max(2, (ef.scale || 1) * 12 * (1 - (ex.life || 0.5) / (ex.ttl || 0.5))), 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            }
+          });
           releaseEffect(state, "explosion", effect);
         } catch (e) {
         }
@@ -2727,7 +2954,6 @@ var CanvasRenderer = class {
 };
 
 // src/webglrenderer.ts
-init_assetsConfig();
 var WebGLRenderer = class {
   canvas;
   gl = null;
@@ -3426,8 +3652,8 @@ async function startApp(rootDocument = document) {
       const s = gm.snapshot();
       ui.redScore.textContent = `Red ${gm.score.red}`;
       ui.blueScore.textContent = `Blue ${gm.score.blue}`;
-      const redCount = s.ships.filter((sh) => sh.team === "red").length;
-      const blueCount = s.ships.filter((sh) => sh.team === "blue").length;
+      const redCount = s.teamCounts && s.teamCounts.red || 0;
+      const blueCount = s.teamCounts && s.teamCounts.blue || 0;
       ui.stats.textContent = `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` + (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");
     } catch (e) {
     }

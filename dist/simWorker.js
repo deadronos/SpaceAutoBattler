@@ -270,7 +270,8 @@ var SIM = {
   MAX_ACC_MS: 250,
   bounds: { W: 1920, H: 1080 },
   // Use LOGICAL_MAP for default bounds
-  friction: 0.98
+  friction: 0.98,
+  gridCellSize: 64
 };
 var boundaryBehavior = {
   ships: "wrap",
@@ -418,7 +419,7 @@ function genId() {
   return nextId++;
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
-  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl };
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y };
 }
 function createExplosionEffect(init) {
   return { x: init?.x ?? 0, y: init?.y ?? 0, r: init?.r, alive: true, _pooled: false, ...init };
@@ -589,9 +590,7 @@ function tryFire(state2, ship, target, dt) {
       if (turret.__cd > 0) continue;
       let turretTarget = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state2.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team
-        );
+        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -603,21 +602,15 @@ function tryFire(state2, ship, target, dt) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state2.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team
-        );
-        if (enemies.length)
-          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
         if (ship.__ai && ship.__ai.targetId != null) {
-          turretTarget = (state2.ships || []).find(
-            (sh) => sh && sh.id === ship.__ai.targetId
-          ) || null;
+          const tId = ship.__ai.targetId;
+          turretTarget = state2.shipMap && typeof tId !== "undefined" && tId !== null ? state2.shipMap.get(Number(tId)) || null : (state2.ships || []).find((sh) => sh && sh.id === tId) || null;
         }
       } else {
-        const enemies = (state2.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team
-        );
+        const enemies = (state2.ships || []).filter((sh) => sh && sh.team !== ship.team);
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -684,7 +677,7 @@ function applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {
     ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
     let target = null;
     if (ai.targetId != null)
-      target = (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
+      target = state2.shipMap && typeof ai.targetId !== "undefined" && ai.targetId !== null ? state2.shipMap.get(Number(ai.targetId)) || null : (state2.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
     if (!target) target = chooseNewTarget(state2, s);
     if (target) ai.targetId = target.id;
     const maxAccel = typeof s.accel === "number" ? s.accel : 100;
@@ -848,7 +841,103 @@ function releaseParticle(state2, p) {
   if (idx !== -1) (state2.particles || []).splice(idx, 1);
 }
 
+// src/spatialGrid.ts
+var spatialGrid_exports = {};
+__export(spatialGrid_exports, {
+  default: () => SpatialGrid,
+  segmentIntersectsCircle: () => segmentIntersectsCircle
+});
+var SpatialGrid = class _SpatialGrid {
+  cellSize;
+  grid;
+  // simple pooled instances to avoid per-frame allocations
+  // pool keyed by cellSize to avoid reuse mismatch; cap instances per key
+  static _pools = /* @__PURE__ */ new Map();
+  static _perKeyCap = 4;
+  static acquire(cellSize = 64) {
+    const key = cellSize | 0;
+    const pool = this._pools.get(key) || [];
+    const inst = pool.pop();
+    if (inst) {
+      inst.cellSize = cellSize;
+      return inst;
+    }
+    return new _SpatialGrid(cellSize);
+  }
+  static release(inst) {
+    const key = (inst.cellSize || 64) | 0;
+    inst.clear();
+    let pool = this._pools.get(key);
+    if (!pool) {
+      pool = [];
+      this._pools.set(key, pool);
+    }
+    if (pool.length < this._perKeyCap) pool.push(inst);
+  }
+  constructor(cellSize = 64) {
+    this.cellSize = cellSize;
+    this.grid = /* @__PURE__ */ new Map();
+  }
+  key(cx, cy) {
+    return cx + "," + cy;
+  }
+  insert(entity) {
+    const cx = Math.floor((entity.x || 0) / this.cellSize);
+    const cy = Math.floor((entity.y || 0) / this.cellSize);
+    const k = this.key(cx, cy);
+    let bucket = this.grid.get(k);
+    if (!bucket) {
+      bucket = [];
+      this.grid.set(k, bucket);
+    }
+    bucket.push(entity);
+  }
+  queryRadius(x, y, radius) {
+    const minCx = Math.floor((x - radius) / this.cellSize);
+    const maxCx = Math.floor((x + radius) / this.cellSize);
+    const minCy = Math.floor((y - radius) / this.cellSize);
+    const maxCy = Math.floor((y + radius) / this.cellSize);
+    const results = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        const bucket = this.grid.get(this.key(cx, cy));
+        if (!bucket) continue;
+        for (const e of bucket) {
+          if (!seen.has(e)) {
+            seen.add(e);
+            results.push(e);
+          }
+        }
+      }
+    }
+    return results;
+  }
+  // clear internal storage for reuse
+  clear() {
+    this.grid.clear();
+  }
+};
+function segmentIntersectsCircle(x1, y1, x2, y2, cx, cy, r) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const fx = x1 - cx;
+  const fy = y1 - cy;
+  const a = dx * dx + dy * dy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - r * r;
+  let discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false;
+  discriminant = Math.sqrt(discriminant);
+  const t1 = (-b - discriminant) / (2 * a);
+  const t2 = (-b + discriminant) / (2 * a);
+  if (t1 >= 0 && t1 <= 1 || t2 >= 0 && t2 <= 1) return true;
+  return false;
+}
+
 // src/simulate.ts
+var SpatialGrid2 = SpatialGrid || spatialGrid_exports;
+var segmentIntersectsCircle2 = segmentIntersectsCircle;
 function dist2(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -859,6 +948,8 @@ function simulateStep(state2, dtSeconds, bounds2) {
   state2.t = (state2.t || 0) + dtSeconds;
   for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {
     const b = state2.bullets[i];
+    b.prevX = typeof b.x === "number" ? b.x : 0;
+    b.prevY = typeof b.y === "number" ? b.y : 0;
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
@@ -1035,16 +1126,40 @@ function simulateStep(state2, dtSeconds, bounds2) {
           break;
       }
     }
-    if (remove) state2.ships.splice(si, 1);
+    if (remove) {
+      const rem = state2.ships.splice(si, 1);
+      if (rem && rem.length) {
+        try {
+          state2.shipMap && state2.shipMap.delete(rem[0].id);
+        } catch (e) {
+        }
+        try {
+          if (rem[0] && rem[0].team) state2.teamCounts[rem[0].team] = Math.max(0, (state2.teamCounts[rem[0].team] || 0) - 1);
+        } catch (e) {
+        }
+      }
+    }
   }
+  const cellSize = SIM && SIM.gridCellSize || 64;
+  const grid = SpatialGrid2.acquire(cellSize);
+  const ships = state2.ships || [];
+  for (let i = 0; i < ships.length; i++) grid.insert(ships[i]);
+  const removedShipIds = /* @__PURE__ */ new Set();
   for (let bi = (state2.bullets || []).length - 1; bi >= 0; bi--) {
     const b = state2.bullets[bi];
-    for (let si = (state2.ships || []).length - 1; si >= 0; si--) {
-      const s = state2.ships[si];
+    const searchRadius = (b.radius || 1) + 64;
+    const candidates = grid.queryRadius(b.x || 0, b.y || 0, searchRadius);
+    let collided = false;
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const s = candidates[ci];
+      if (!s || removedShipIds.has(s.id)) continue;
       if (s.team === b.team) continue;
       const r = (s.radius || 6) + (b.radius || 1);
-      if (dist2(b, s) <= r * r) {
-        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? (state2.ships || []).find((sh) => sh.id === b.ownerId) : void 0;
+      const bxPrev = typeof b._prevX === "number" ? b._prevX : b.x - (b.vx || 0) * dtSeconds;
+      const byPrev = typeof b._prevY === "number" ? b._prevY : b.y - (b.vy || 0) * dtSeconds;
+      const didHit = dist2(b, s) <= r * r || segmentIntersectsCircle2(bxPrev, byPrev, b.x || 0, b.y || 0, s.x || 0, s.y || 0, r);
+      if (didHit) {
+        const attacker = typeof b.ownerId === "number" || typeof b.ownerId === "string" ? state2.shipMap && state2.shipMap.get(Number(b.ownerId)) : void 0;
         let dealtToShield = 0;
         let dealtToHealth = 0;
         const shield = s.shield || 0;
@@ -1167,21 +1282,10 @@ function simulateStep(state2, dtSeconds, bounds2) {
           }
         }
         state2.bullets.splice(bi, 1);
+        collided = true;
         if (s.hp <= 0) {
-          console.log(
-            "DEBUG: KILL BRANCH, attacker",
-            attacker && attacker.id,
-            "xp before",
-            attacker && attacker.xp
-          );
           if (attacker) {
             attacker.xp = (attacker.xp || 0) + (progression.xpPerKill || 0);
-            console.log(
-              "DEBUG: KILL XP AWARDED, attacker",
-              attacker.id,
-              "xp after",
-              attacker.xp
-            );
             while ((attacker.xp || 0) >= progression.xpToLevel(attacker.level || 1)) {
               attacker.xp -= progression.xpToLevel(attacker.level || 1);
               attacker.level = (attacker.level || 1) + 1;
@@ -1234,12 +1338,25 @@ function simulateStep(state2, dtSeconds, bounds2) {
             }
           }
           (state2.explosions ||= []).push(acquireExplosion(state2, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
-          state2.ships.splice(si, 1);
+          const idx = (state2.ships || []).findIndex((sh) => sh && sh.id === s.id);
+          if (idx >= 0) {
+            state2.ships.splice(idx, 1);
+            try {
+              state2.shipMap && state2.shipMap.delete(s.id);
+            } catch (e) {
+            }
+            try {
+              if (s && s.team) state2.teamCounts[s.team] = Math.max(0, (state2.teamCounts[s.team] || 0) - 1);
+            } catch (e) {
+            }
+          }
+          removedShipIds.add(s.id);
         }
         break;
       }
     }
   }
+  SpatialGrid2.release(grid);
   for (const s of state2.ships || []) {
     if (s.maxShield)
       s.shield = Math.min(
@@ -1336,10 +1453,32 @@ self.onmessage = (ev) => {
       case "command":
         if (msg.cmd === "spawnShip" && state) {
           state.ships.push(msg.args.ship);
+          try {
+            state.shipMap && state.shipMap.set(msg.args.ship.id, msg.args.ship);
+          } catch (e) {
+          }
+          try {
+            const tt = String(msg.args.ship.team || "");
+            state.teamCounts[tt] = (state.teamCounts[tt] || 0) + 1;
+          } catch (e) {
+          }
         } else if (msg.cmd === "spawnShipBullet" && state) {
           state.bullets.push(msg.args.bullet);
         } else if (msg.cmd === "setState") {
           state = msg.args.state;
+          try {
+            state.shipMap = /* @__PURE__ */ new Map();
+            state.teamCounts = { red: 0, blue: 0 };
+            for (const s of state.ships || []) if (s && typeof s.id !== "undefined") {
+              state.shipMap.set(s.id, s);
+              try {
+                const t = String(s.team || "");
+                state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+              } catch (e) {
+              }
+            }
+          } catch (e) {
+          }
         }
         break;
       default:

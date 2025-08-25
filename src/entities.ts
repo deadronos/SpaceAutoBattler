@@ -218,6 +218,10 @@ export function makeInitialState(): GameState {
   return {
     t: 0,
     ships: [],
+    // fast lookup map kept in sync with ships[] where possible
+    shipMap: new Map<number, Ship>(),
+    // Cached counts per team to avoid per-frame filter allocations
+    teamCounts: { red: 0, blue: 0 },
     bullets: [],
     explosions: [],
     shieldHits: [],
@@ -242,4 +246,16 @@ export function makeInitialState(): GameState {
       },
     },
   };
+}
+
+// Update team counts safely. oldTeam/newTeam may be undefined when adding or removing.
+export function updateTeamCount(state: GameState, oldTeam?: string, newTeam?: string) {
+  try {
+    if (oldTeam) {
+      state.teamCounts[oldTeam] = Math.max(0, (state.teamCounts[oldTeam] || 0) - 1);
+    }
+    if (newTeam) {
+      state.teamCounts[newTeam] = (state.teamCounts[newTeam] || 0) + 1;
+    }
+  } catch (e) {}
 }
