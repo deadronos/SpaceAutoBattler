@@ -597,6 +597,178 @@ function updateTeamCount(state2, oldTeam, newTeam) {
 // src/simulate.ts
 init_entitiesConfig();
 
+// src/config/assets/assetsConfig.ts
+var AssetsConfig = {
+  meta: {
+    orientation: "+X",
+    coordinateSystem: "topdown-2d"
+  },
+  palette: {
+    shipHull: "#b0b7c3",
+    shipAccent: "#6c7380",
+    bullet: "#ffd166",
+    turret: "#94a3b8",
+    // Scene background color used by renderers
+    background: "#0b1220"
+  },
+  // 2D vector shapes defined as polygons and circles. Points are unit-sized
+  // profiles (roughly radius 1). Renderer should multiply by entity radius or
+  // provided scale before drawing.
+  shapes2d: {
+    fighter: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+        { type: "circle", r: 0.5 }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+    },
+    corvette: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+        { type: "circle", r: 0.6 }
+      ],
+      strokeWidth: 0.08,
+      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+    },
+    frigate: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+        { type: "circle", r: 0.7 }
+      ],
+      strokeWidth: 0.1,
+      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+    },
+    destroyer: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+        { type: "circle", r: 1 },
+        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
+      turrets: [
+        { kind: "basic", position: [1.2, 0.8] },
+        { kind: "basic", position: [-1.2, 0.8] },
+        { kind: "basic", position: [1.2, -0.8] },
+        { kind: "basic", position: [-1.2, -0.8] },
+        { kind: "basic", position: [0, 1.5] },
+        { kind: "basic", position: [0, -1.5] }
+      ]
+    },
+    carrier: {
+      type: "compound",
+      parts: [
+        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+        { type: "circle", r: 1.2 },
+        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
+      ],
+      strokeWidth: 0.12,
+      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
+      turrets: [
+        { kind: "basic", position: [2, 1.2] },
+        { kind: "basic", position: [-2, 1.2] },
+        { kind: "basic", position: [2, -1.2] },
+        { kind: "basic", position: [-2, -1.2] }
+      ]
+    },
+    bulletSmall: { type: "circle", r: 0.18 },
+    bulletMedium: { type: "circle", r: 0.25 },
+    bulletLarge: { type: "circle", r: 0.36 },
+    turretBasic: {
+      type: "compound",
+      parts: [
+        { type: "circle", r: 0.5 },
+        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+      ],
+      strokeWidth: 0.08
+    },
+    // Small effect/particle shapes for renderer-driven effects
+    particleSmall: { type: "circle", r: 0.12 },
+    particleMedium: { type: "circle", r: 0.22 },
+    explosionParticle: { type: "circle", r: 0.32 },
+    shieldRing: { type: "circle", r: 1.2 }
+  }
+};
+if (typeof globalThis !== "undefined" && globalThis.__INLINE_SVG_ASSETS) {
+  AssetsConfig.svgAssets = globalThis.__INLINE_SVG_ASSETS;
+} else {
+  AssetsConfig.svgAssets = {
+    destroyer: "./svg/destroyer.svg",
+    carrier: "./svg/carrier.svg",
+    frigate: "./svg/frigate.svg",
+    corvette: "./svg/corvette.svg"
+  };
+}
+AssetsConfig.svgMounts = {
+  destroyer: AssetsConfig.shapes2d.destroyer.turrets ? AssetsConfig.shapes2d.destroyer.turrets.map((t) => t.position) : [],
+  carrier: AssetsConfig.shapes2d.carrier.turrets ? AssetsConfig.shapes2d.carrier.turrets.map((t) => t.position) : []
+};
+AssetsConfig.turretDefaults = {
+  basic: { turnRate: Math.PI * 1.5, sprite: "turretBasic" }
+};
+AssetsConfig.animations = {
+  engineFlare: {
+    type: "polygon",
+    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+    pulseRate: 8,
+    // configurable alpha multiplier for engine overlay
+    alpha: 0.4,
+    // local-space X offset (negative = behind ship)
+    offset: -0.9
+  },
+  shieldEffect: {
+    type: "circle",
+    r: 1.2,
+    strokeWidth: 0.1,
+    color: "#88ccff",
+    pulseRate: 2,
+    // map shieldPct -> alpha = base + scale * shieldPct
+    alphaBase: 0.25,
+    alphaScale: 0.75
+  },
+  damageParticles: {
+    type: "particles",
+    color: "#ff6b6b",
+    count: 6,
+    lifetime: 0.8,
+    spread: 0.6
+  },
+  engineTrail: {
+    type: "trail",
+    color: "#fffc00",
+    // bright yellow for high contrast
+    maxLength: 40,
+    // much longer trail
+    width: 0.35,
+    // thicker trail line
+    fade: 0.35
+    // slower fading, more persistent
+  }
+};
+AssetsConfig.damageStates = {
+  light: { opacity: 0.9, accentColor: "#b0b7c3" },
+  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+};
+AssetsConfig.visualStateDefaults = {
+  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
+};
+AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
+AssetsConfig.shieldArcWidth = Math.PI / 12;
+var assetsConfig_default = AssetsConfig;
+
 // src/config/progressionConfig.ts
 var progression = {
   xpPerDamage: 1,
@@ -1258,6 +1430,66 @@ function simulateStep(state2, dtSeconds, bounds2) {
         } catch (e) {
         }
       }
+    }
+    try {
+      try {
+        if (Array.isArray(state2.ships) && Array.isArray(s.turrets) && s.turrets.length) {
+          for (let ti = 0; ti < s.turrets.length; ti++) {
+            try {
+              const t = s.turrets[ti];
+              if (!t || Array.isArray(t)) continue;
+              if (typeof t.targetAngle === "number") continue;
+              let best = null;
+              let bestDist = Infinity;
+              for (const other of state2.ships || []) {
+                if (!other || other.id === s.id) continue;
+                if (other.team === s.team) continue;
+                const dx = (other.x || 0) - (s.x || 0);
+                const dy = (other.y || 0) - (s.y || 0);
+                const d2 = dx * dx + dy * dy;
+                if (d2 < bestDist) {
+                  bestDist = d2;
+                  best = other;
+                }
+              }
+              if (best) {
+                t.targetAngle = Math.atan2((best.y || 0) - (s.y || 0), (best.x || 0) - (s.x || 0));
+              }
+            } catch (e) {
+            }
+          }
+        }
+      } catch (e) {
+      }
+      if (Array.isArray(s.turrets) && s.turrets.length) {
+        const turretDefs = s.turrets;
+        for (let ti = 0; ti < turretDefs.length; ti++) {
+          try {
+            let t = turretDefs[ti];
+            if (Array.isArray(t) && t.length === 2) continue;
+            if (!t) continue;
+            t.angle = typeof t.angle === "number" ? t.angle : typeof s.turretAngle === "number" ? s.turretAngle : s.angle || 0;
+            t.targetAngle = typeof t.targetAngle === "number" ? t.targetAngle : typeof t.desiredAngle === "number" ? t.desiredAngle : t.angle;
+            let defaultTurn = Math.PI * 1.5;
+            try {
+              const td = assetsConfig_default.turretDefaults && assetsConfig_default.turretDefaults[t.kind || "basic"];
+              if (td && typeof td.turnRate === "number") defaultTurn = td.turnRate;
+            } catch (e) {
+            }
+            const maxTurn2 = (typeof t.turnRate === "number" ? t.turnRate : defaultTurn) * dtSeconds;
+            let diff = t.targetAngle - t.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            const step = Math.sign(diff) * Math.min(Math.abs(diff), maxTurn2);
+            t.angle = t.angle + step;
+            while (t.angle < -Math.PI) t.angle += Math.PI * 2;
+            while (t.angle > Math.PI) t.angle -= Math.PI * 2;
+            turretDefs[ti] = t;
+          } catch (e) {
+          }
+        }
+      }
+    } catch (e) {
     }
     try {
       const shipCfg = getShipConfig && typeof getShipConfig === "function" ? getShipConfig() : {};

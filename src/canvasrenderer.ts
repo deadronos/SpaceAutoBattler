@@ -18,7 +18,6 @@ import RendererConfig from './config/rendererConfig';
 import { getDefaultBounds } from './config/simConfig';
 import AssetsConfig, { getVisualConfig, getShipAsset, getBulletAsset, getTurretAsset, getEngineTrailConfig, getSpriteAsset } from './config/assets/assetsConfig';
 import * as svgLoader from './assets/svgLoader';
-const path = typeof require === 'function' ? require('path') : null;
 import TeamsConfig from './config/teamsConfig';
 import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 
@@ -104,24 +103,7 @@ export class CanvasRenderer {
           } catch (e) {
             svgText = '';
           }
-          // If fetch failed or not available, try reading from disk (Node/test)
-          if (!svgText) {
-            try {
-              const fs = require('fs');
-              const cleaned = String(rel).replace(/^\.\/?/, '');
-              const abs = path.resolve(process.cwd(), 'src', 'config', 'assets', cleaned);
-              svgText = fs.readFileSync(abs, 'utf8');
-            } catch (e) {
-              // Last resort: try exact rel path relative to process.cwd()
-              try {
-                const fs = require('fs');
-                const abs2 = path.resolve(process.cwd(), rel);
-                svgText = fs.readFileSync(abs2, 'utf8');
-              } catch (e2) {
-                svgText = '';
-              }
-            }
-          }
+          // If fetch failed or not available, skip Node-specific disk read in browser build
           if (!svgText) continue;
           const parsed = svgLoader.parseSvgForMounts(svgText);
           const mounts = parsed.mounts || [];
