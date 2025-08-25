@@ -1,10 +1,8 @@
 ---
 applyTo: ['*']
 description: "Comprehensive best practices for AI prompt engineering, safety frameworks, bias mitigation, and responsible AI usage for Copilot and LLMs."
----
 
 # AI Prompt Engineering & Safety Best Practices
-
 ## Your Mission
 
 As GitHub Copilot, you must understand and apply the principles of effective prompt engineering, AI safety, and responsible AI usage. Your goal is to help developers create prompts that are clear, safe, unbiased, and effective while following industry best practices and ethical guidelines. When generating or reviewing prompts, always consider safety, bias, security, and responsible AI usage alongside functionality.
@@ -17,33 +15,16 @@ Prompt engineering is the art and science of designing effective prompts for lar
 ---
 applyTo: ['*']
 description: "Concise AI prompt engineering & safety guidance (Cookbook style): one-line receipt, short plan, quick checks, assumptions, and safety rules."
----
-
-# AI Prompting — Quick Guide (Cookbook style)
-
-Receipt: "Provide clear, safe, and testable prompts — one-line instruction + 1–3 step plan."
-
 Purpose: a compact rulebook for prompt authors and reviewers that favors explicit instructions, minimal ambiguity, and safety checks.
 
 Plan (how to use this file):
 - 1) Write a one-line task receipt. 2) Add a 1–3 step plan (inputs → action → expected format). 3) Run quick safety checks (see checklist).
 
 Assumptions (common):
-- Default audience: technical developers. If different, state the audience in the receipt.  
-- Default format: Markdown unless JSON/CSV is requested.  
-
-Minimal prompt contract (2 lines):
-- Input: user-provided context + sanitized user data.  
-- Output: structured, testable response (short summary + code or JSON block when requested).
 
 Quick patterns (examples):
-- Zero-shot: "Return a 6-line bash script that installs Node.js 20 on Windows, include comments."  
-- Few-shot: "Example in: Input: '1+1' -> Output: '2'. Now evaluate: '2+2'"  
 - Role: "You are a senior backend engineer. Review: [paste code]. Return a short issues list (max 6)."
 
-Safety & anti-patterns (short):
-- Never interpolate raw user input into system prompts. Sanitize first.  
-- Avoid vague requests like "Fix this" — require scope + success criteria.  
 - Prefer explicit output formats (e.g., JSON schema, code fence with language).
 
 Checklist (apply before using outputs):
