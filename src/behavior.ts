@@ -112,9 +112,7 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       // Target selection per turret
       let turretTarget: ShipLike | null = null;
       if (turret.targeting === "nearest") {
-        const enemies = (state.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team,
-        );
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -126,24 +124,19 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
           }
         }
       } else if (turret.targeting === "random") {
-        const enemies = (state.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team,
-        );
-        if (enemies.length)
-          turretTarget = enemies[Math.floor(srandom() * enemies.length)];
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
+        if (enemies.length) turretTarget = enemies[Math.floor(srandom() * enemies.length)];
       } else if (turret.targeting === "focus") {
-        // Use ship's main target if available
+        // Use ship's main target if available (O(1) via shipMap)
         if (ship.__ai && ship.__ai.targetId != null) {
-          turretTarget =
-            (state.ships || []).find(
-              (sh) => sh && sh.id === ship.__ai.targetId,
-            ) || null;
+          const tId = ship.__ai.targetId as number | string | null;
+          turretTarget = (state as any).shipMap && typeof tId !== 'undefined' && tId !== null
+            ? (state as any).shipMap.get(Number(tId)) || null
+            : ((state.ships || []).find((sh) => sh && sh.id === tId) || null);
         }
       } else {
         // Default: nearest
-        const enemies = (state.ships || []).filter(
-          (sh) => sh && sh.team !== ship.team,
-        );
+        const enemies = (state.ships || []).filter((sh) => sh && sh.team !== ship.team);
         let minDist = Infinity;
         for (const enemy of enemies) {
           const dx = (enemy.x || 0) - (ship.x || 0);
@@ -250,8 +243,9 @@ export function applySimpleAI(
 
     let target: ShipLike | null = null;
     if (ai.targetId != null)
-      target =
-        (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
+        target = (state as any).shipMap && typeof ai.targetId !== 'undefined' && ai.targetId !== null
+          ? (state as any).shipMap.get(Number(ai.targetId)) || null
+          : ((state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null);
     if (!target) target = chooseNewTarget(state, s);
     if (target) ai.targetId = target.id;
 

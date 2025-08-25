@@ -9,18 +9,21 @@
 - Visual effects, particles, and UI overlays are parameterized via config.
 - Unit and smoke tests for progression and scaling pass; build outputs and runtime verified.
 - Config hygiene improved: STARS.background removed (use AssetsConfig.palette.background), arcWidth in SHIELD commented/TODO'd, TODO for unifying particle configs with assetsConfig.ts.
-- **2025-08-23: Major type/config tightening:**
-  - ShipSpec now requires `accel`, `radius`, and non-empty `cannons`.
-  - CannonSpec requires `damage` and supports new optional fields (`angle`, `rate`, `spread`, `muzzleSpeed`, `bulletRadius`, `bulletTTL`, `ttl`, `reload`, `range`).
-  - ShipConfigMap requires full ShipSpec objects (no partials).
-  - Legacy fields (e.g., `dmg`) maintained for compatibility; fallback logic added.
-  - All changes validated with TypeScript and tests.
-- **2025-01-02: Critical performance optimizations:**
-  - Fixed duplicate simulateStep invocation in GameManager.step (50% reduction in simulation work).
-  - Optimized release functions (releaseParticle, releaseShieldHit, releaseHealthHit) to use O(1) swap-pop instead of O(n) splice.
-  - Eliminated unnecessary array allocations in emitManagerEvent by removing arr.slice().
-  - Added comprehensive performance test suite (test/vitest/performance.spec.ts).
-  - All optimizations verified with stress tests and existing pooling tests.
+ - Config hygiene improved: STARS.background removed (use AssetsConfig.palette.background), arcWidth in SHIELD commented/TODO'd, TODO for unifying particle configs with assetsConfig.ts.
+ - **2025-08-23: Major type/config tightening:**
+   - ShipSpec now requires `accel`, `radius`, and non-empty `cannons`.
+   - CannonSpec requires `damage` and supports new optional fields (`angle`, `rate`, `spread`, `muzzleSpeed`, `bulletRadius`, `bulletTTL`, `ttl`, `reload`, `range`).
+   - ShipConfigMap requires full ShipSpec objects (no partials).
+   - Legacy fields (e.g., `dmg`) maintained for compatibility; fallback logic added.
+   - All changes validated with TypeScript and tests.
+ - **2025-08-25:** Fixed canvas renderer transform accumulation causing pooled effects (explosions/shields/health flashes) to appear offset from their ships by restoring the ship-local transform after per-ship drawing. Validated with `rendererflow.spec.ts`.
+ - **2025-08-25:** Audited `CanvasRenderer` for balanced save/restore usage and added a unit test `test/vitest/effect_coordinates.spec.ts` that verifies pooled explosion effects are rendered at correct world coordinates after ship drawing (prevents transform leakage). All related tests passed locally.
+ - **2025-01-02: Critical performance optimizations:**
+   - Fixed duplicate simulateStep invocation in GameManager.step (50% reduction in simulation work).
+   - Optimized release functions (releaseParticle, releaseShieldHit, releaseHealthHit) to use O(1) swap-pop instead of O(n) splice.
+   - Eliminated unnecessary array allocations in emitManagerEvent by removing arr.slice().
+   - Added comprehensive performance test suite (test/vitest/performance.spec.ts).
+   - All optimizations verified with stress tests and existing pooling tests.
 
 ## Current State
 

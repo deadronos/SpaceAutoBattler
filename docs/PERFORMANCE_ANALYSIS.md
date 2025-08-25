@@ -2,13 +2,14 @@
 
 ## Executive Summary
 
-Analysis of the dev branch reveals several performance bottlenecks that impact scaling behavior, particularly in collision detection, AI ship lookups, and UI update patterns. While the codebase has excellent object pooling and memory management in core areas, there are specific hot paths that create O(n²) complexity and unnecessary memory allocations.
+Analysis of the dev branch reveals several performance bottlenecks affecting collision detection, AI ship lookups, and UI update patterns. The codebase has strong pooling and memory management, but a few hot paths cause unnecessary allocations and algorithmic overhead.
 
 ## Critical Performance Bottlenecks
 
 ### 1. O(n²) Collision Detection [CRITICAL]
 
 **Location**: `src/simulate.ts:243-245`
+
 ```typescript
 // Current implementation - O(n²)
 for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
@@ -24,194 +25,85 @@ for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
 }
 ```
 
-**Impact**: With N ships and M bullets, this creates N×M distance calculations per frame.
+**Impact**: With N ships and M bullets, this creates N×M distance checks per frame.
+
 - 10 ships + 50 bullets = 500 distance checks
 - 50 ships + 200 bullets = 10,000 distance checks
 
-**Recommended Fix**: Spatial partitioning using uniform grid or quadtree
-```typescript
-// Suggested implementation
-class SpatialGrid {
-  private cellSize: number;
-  private grid: Map<string, Entity[]>;
-  
-  constructor(cellSize: number = 64) {
-    this.cellSize = cellSize;
-    this.grid = new Map();
-  }
-  
-  insert(entity: Entity) {
-    const cellX = Math.floor(entity.x / this.cellSize);
-    const cellY = Math.floor(entity.y / this.cellSize);
-    const key = `${cellX},${cellY}`;
-    
-    if (!this.grid.has(key)) this.grid.set(key, []);
-    this.grid.get(key)!.push(entity);
-  }
-  
-  queryRadius(x: number, y: number, radius: number): Entity[] {
-    // Return only entities in nearby cells
-  }
-}
-```
+**Recommended Fix**: Use spatial partitioning (uniform grid or quadtree) to limit collision checks to nearby entities.
 
 ### 2. Inefficient Ship Lookup in AI [HIGH]
 
 **Location**: `src/behavior.ts:138, 254`
-```typescript
-// Current - O(n) search per AI decision
-turretTarget = (state.ships || []).find(
-  (sh) => sh && sh.id === ship.__ai.targetId,
-) || null;
 
-target = (state.ships || []).find((sh) => sh && sh.id === ai.targetId) || null;
-```
+Current code often searches `state.ships` linearly; replace with an O(1) lookup via `state.shipMap`.
 
-**Impact**: For N ships, each making AI decisions = N×N lookups per frame
-**Recommended Fix**: Maintain ship lookup map in GameState
-```typescript
-// Add to GameState
-interface GameState {
-  ships: Ship[];
-  shipMap: Map<string | number, Ship>; // ID → Ship lookup
-  // ... other fields
-}
-
-// Update on ship creation/removal
-function addShip(state: GameState, ship: Ship) {
-  state.ships.push(ship);
-  state.shipMap.set(ship.id, ship);
-}
-
-// O(1) lookup in AI
-const target = state.shipMap.get(ai.targetId) || null;
-```
+Status: IMPLEMENTED — `shipMap` added to `GameState` and kept in sync; unit test `test/vitest/shipmap_sync.spec.ts` verifies correctness.
 
 ### 3. UI Array Operations in Hot Path [MEDIUM]
 
 **Location**: `src/main.ts:347-349`
-```typescript
-// Creates temporary arrays every frame
-const redCount = s.ships.filter((sh: any) => sh.team === 'red').length;
-const blueCount = s.ships.filter((sh: any) => sh.team === 'blue').length;
-```
 
-**Impact**: Memory allocation + GC pressure every frame
-**Recommended Fix**: Cache counts in GameState, update incrementally
-```typescript
-interface GameState {
-  teamCounts: { red: number; blue: number };
-}
+Problem: Filtering `state.ships` each frame creates temporary arrays and GC pressure.
 
-// Update counts when ships are added/removed/change teams
-function updateTeamCount(state: GameState, oldTeam?: string, newTeam?: string) {
-  if (oldTeam) state.teamCounts[oldTeam]--;
-  if (newTeam) state.teamCounts[newTeam]++;
-}
-```
+Recommended fix: Cache per-team counts in `GameState` and update them incrementally on ship add/remove/team-change.
+
+Status: IMPLEMENTED — `teamCounts` added to `GameState`; UI reads `state.teamCounts` instead of filtering. See `src/entities.ts`, `src/gamemanager.ts`, `src/simulate.ts`, `src/main.ts`. Tests: `test/vitest/teamcounts.spec.ts`, `test/vitest/team-switch.spec.ts`.
 
 ## Scaling Behavior Issues
 
 ### 4. Worker Callback Array Copying [MEDIUM]
 
-**Location**: `src/gamemanager.ts:432`
-```typescript
-// Unnecessary array copy
-for (const cb of workerReadyCbs.slice()) {
-  try { cb(); } catch (e) {}
-}
-```
-
-**Fix**: Direct iteration prevents allocation
-```typescript
-// Iterate directly without copying
-for (let i = 0; i < workerReadyCbs.length; i++) {
-  try { workerReadyCbs[i](); } catch (e) {}
-}
-```
+Avoid copying callback arrays (`workerReadyCbs.slice()`) in hot paths — iterate directly.
 
 ### 5. Render State Object Creation [MEDIUM]
 
-**Location**: `src/gamemanager.ts:497-504`
-```typescript
-// Creates new object every frame
-renderer.renderState({
-  ships: state.ships,
-  bullets: state.bullets,
-  flashes,
-  shieldFlashes,
-  healthFlashes,
-  t: state.t,
-});
-```
-
-**Fix**: Reuse render state object
-```typescript
-// Create once, reuse
-const renderState = {
-  ships: null,
-  bullets: null,
-  flashes: null,
-  shieldFlashes: null,
-  healthFlashes: null,
-  t: 0,
-};
-
-// Update properties only
-renderState.ships = state.ships;
-renderState.bullets = state.bullets;
-renderState.t = state.t;
-renderer.renderState(renderState);
-```
+Reuse a `renderState` object instead of allocating a new object each frame.
 
 ## Memory Leak Risks
 
 ### 6. Timer Management [LOW-MEDIUM]
 
-**Location**: `src/main.ts:251, 290`
-- setTimeout IDs stored in Set but error paths may not clean up
-- **Fix**: Wrap all timer operations in try-catch, ensure cleanup
+Ensure setTimeout IDs stored for cleanup are always cleared on error paths.
 
 ### 7. GPU Resource Management [LOW-MEDIUM]
 
-**Locations**: `src/webglrenderer.ts`, `src/canvasrenderer.ts`
-- WebGL textures/buffers may not be released on context loss
-- **Fix**: Implement proper cleanup methods in renderer classes
+Implement proper cleanup on WebGL context loss and explicit renderer shutdown.
 
 ## Implementation Priority
 
-### Phase 1 (Immediate - High Impact)
-1. **Spatial partitioning for collision detection** - Biggest performance gain
-2. **Ship lookup maps** - Eliminates AI performance cliff
-3. **UI team count caching** - Reduces GC pressure
+Phase 1 (Immediate - High Impact)
 
-### Phase 2 (Next - Medium Impact)
-4. **Worker callback optimization** - Minor allocation reduction
-5. **Render state reuse** - Reduces object creation
-6. **Timer cleanup hardening** - Prevents slow leaks
+1. Spatial partitioning for collision detection
+2. Ship lookup maps
+3. UI team count caching
 
-### Phase 3 (Later - Low Risk)
-7. **GPU resource cleanup** - Insurance against edge cases
+Phase 2 (Next - Medium Impact)
+
+1. Worker callback optimization
+2. Render state reuse
+3. Timer cleanup hardening
+
+Phase 3 (Later - Low Risk)
+
+1. GPU resource cleanup
 
 ## Recommended Benchmarks
 
-Add performance regression tests for:
-- Collision detection with varying entity counts (10, 50, 100, 200 ships)
+- Collision detection at 10/50/100/200 ships
 - AI decision time with large fleets
-- Memory usage over extended play sessions (30+ minutes)
+- Memory usage over extended sessions
 - Frame time consistency under load
 
 ## Measurement Strategy
 
-Before implementing fixes:
 1. Create baseline performance measurements
 2. Add console.time/timeEnd around hot paths
 3. Use Chrome DevTools Performance tab for memory profiling
-4. Implement automated performance test suite
+4. Implement automated performance tests
 
 ## Architecture Notes
 
-The codebase shows excellent performance discipline in:
 - ✅ Object pooling (bullets, particles, effects)
 - ✅ Swap-pop optimizations for array removal
 - ✅ Event system without array copying

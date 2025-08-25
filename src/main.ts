@@ -243,7 +243,10 @@ export async function startApp(rootDocument: Document = document) {
   // Patch stepOnce to use multiplier
   if (gm && typeof gm.stepOnce === "function") {
     const origStepOnce = gm.stepOnce.bind(gm);
-    gm.stepOnce = (dt = 0.016) => origStepOnce(dt * simSpeedMultiplier);
+    // Use canonical SIM.DT_MS (millisecond timestep) converted to seconds
+    // as the default step size so the UI multiplier wraps the same base dt
+    // the simulation run-loop uses. This prevents hard-coded mismatches.
+    gm.stepOnce = (dt: number = SIM.DT_MS / 1000) => origStepOnce(dt * simSpeedMultiplier);
   }
 
   // Fleet formation logic
@@ -484,8 +487,8 @@ export async function startApp(rootDocument: Document = document) {
       const s = gm.snapshot();
       ui.redScore.textContent = `Red ${gm.score.red}`;
       ui.blueScore.textContent = `Blue ${gm.score.blue}`;
-      const redCount = s.ships.filter((sh: any) => sh.team === "red").length;
-      const blueCount = s.ships.filter((sh: any) => sh.team === "blue").length;
+      const redCount = (s.teamCounts && (s.teamCounts as any).red) || 0;
+      const blueCount = (s.teamCounts && (s.teamCounts as any).blue) || 0;
       ui.stats.textContent =
         `Ships: ${s.ships.length} (R:${redCount} B:${blueCount}) Bullets: ${s.bullets.length}` +
         (lastReinforcementSummary ? ` | ${lastReinforcementSummary}` : "");

@@ -12,7 +12,7 @@ export const SIM: SimConfig = {
   DT_MS: 16,
   MAX_ACC_MS: 250,
   bounds: { W: 1920, H: 1080 }, // Use LOGICAL_MAP for default bounds
-  friction: 0.98,
+  friction: 0.99,
   gridCellSize: 64,
 };
 // boundaryBehavior: Tactical impact and pruning rationale

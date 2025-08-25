@@ -82,10 +82,13 @@ function tick() {
 			case 'command':
 				if (msg.cmd === 'spawnShip' && state) {
 					state.ships.push(msg.args.ship);
+					try { (state as any).shipMap && (state as any).shipMap.set(msg.args.ship.id, msg.args.ship); } catch (e) {}
+					try { const tt = String((msg.args.ship as any).team || ''); state.teamCounts[tt] = (state.teamCounts[tt] || 0) + 1; } catch (e) {}
 				} else if (msg.cmd === 'spawnShipBullet' && state) {
 					state.bullets.push(msg.args.bullet);
 				} else if (msg.cmd === 'setState') {
 					state = msg.args.state;
+					try { (state as any).shipMap = new Map<number, any>(); state.teamCounts = { red: 0, blue: 0 }; for (const s of (state.ships || [])) if (s && typeof s.id !== 'undefined') { (state as any).shipMap.set(s.id, s); try { const t = String((s as any).team || ''); state.teamCounts[t] = (state.teamCounts[t] || 0) + 1; } catch (e) {} } } catch (e) {}
 				}
 				break;
 			default:

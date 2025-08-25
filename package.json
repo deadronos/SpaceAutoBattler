@@ -34,10 +34,10 @@
     "pixelmatch": "^7.1.0",
     "pngjs": "^7.0.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2",
     "ts-node": "^10.9.1",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4",
-    "viz": "^1.2.0"
+    "viz": "^3.0.1"
   },
   "dependencies": {
     "glob": "^11.0.3",
