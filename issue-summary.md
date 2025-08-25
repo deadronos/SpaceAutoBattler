@@ -1,0 +1,1 @@
+The user's request is to summarize a GitHub issue, specifically deadronos/SpaceAutoBattler#28. The tools provided by mcp_azure_mcp_search seem unrelated to GitHub issue summarization. I need to use a different approach or tool to retrieve and summarize the issue details from GitHub directly.
