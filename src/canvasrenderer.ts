@@ -1,3 +1,12 @@
+// Helper: get SVG asset or warn if missing
+export function getSvgAssetOrWarn(type: string): string {
+  const assetsConfig = (typeof globalThis !== 'undefined' && (globalThis as any).AssetsConfig) ? (globalThis as any).AssetsConfig : undefined;
+  const svg = assetsConfig?.svgAssets?.[type] ?? '';
+  if (!svg) {
+    console.warn(`[CanvasRenderer] WARNING: SVG asset for type '${type}' is missing or empty.`);
+  }
+  return svg;
+}
 // src/canvasrenderer.ts - TypeScript port of the simple Canvas2D renderer.
 // This mirrors the behavior in src/canvasrenderer.js but provides types so
 // other parts of the codebase can be migrated safely.
@@ -8,6 +17,8 @@ import { acquireSprite, releaseSprite, acquireEffect, releaseEffect, makePooled,
 import RendererConfig from './config/rendererConfig';
 import { getDefaultBounds } from './config/simConfig';
 import AssetsConfig, { getVisualConfig, getShipAsset, getBulletAsset, getTurretAsset, getEngineTrailConfig, getSpriteAsset } from './config/assets/assetsConfig';
+import * as svgLoader from './assets/svgLoader';
+const path = typeof require === 'function' ? require('path') : null;
 import TeamsConfig from './config/teamsConfig';
 import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
 
@@ -20,6 +31,14 @@ export class CanvasRenderer {
   type = 'canvas';
   // ratio between backing store pixels and CSS (logical) pixels
   pixelRatio = 1;
+  // cache for svg-extracted turret mountpoints in ship-local radius units
+  _svgMountCache: Record<string, [number, number][]> | null = null;
+  // cache for svg-extracted engine mountpoints in ship-local radius units
+  _svgEngineMountCache: Record<string, [number, number][]> | null = null;
+  // rasterized turret sprite cache: kind -> offscreen canvas
+  _turretSpriteCache: Record<string, HTMLCanvasElement> | null = null;
+  // rasterized hull-only SVG cache: shipType -> offscreen canvas
+  _svgHullCache: Record<string, HTMLCanvasElement | undefined> = {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -55,7 +74,158 @@ export class CanvasRenderer {
     } catch (e) {
       this.pixelRatio = 1;
     }
+    // Kick off async preload of SVG assets to extract turret mountpoints.
+    // Run async but don't block init; cache will populate when ready.
+    try {
+      // call and ignore promise errors to avoid breaking init
+      (this as any).preloadAllAssets && (this as any).preloadAllAssets().catch(() => {});
+    } catch (e) {}
     return true;
+  }
+
+  // Preload SVG assets listed in AssetsConfig.svgAssets, extract mountpoints
+  // and normalize them into radius-unit coordinates compatible with shapes2d
+  async preloadAllAssets(): Promise<void> {
+    try {
+      const svgAssets = (AssetsConfig as any).svgAssets || {};
+      this._svgMountCache = this._svgMountCache || {};
+      for (const key of Object.keys(svgAssets)) {
+        try {
+          const rel = (svgAssets as any)[key];
+          let svgText = '';
+          // Try fetch first (browser environment)
+          try {
+            if (typeof fetch === 'function') {
+              const resp = await fetch(rel);
+              if (resp && resp.ok) {
+                svgText = await resp.text();
+              }
+            }
+          } catch (e) {
+            svgText = '';
+          }
+          // If fetch failed or not available, try reading from disk (Node/test)
+          if (!svgText) {
+            try {
+              const fs = require('fs');
+              const cleaned = String(rel).replace(/^\.\/?/, '');
+              const abs = path.resolve(process.cwd(), 'src', 'config', 'assets', cleaned);
+              svgText = fs.readFileSync(abs, 'utf8');
+            } catch (e) {
+              // Last resort: try exact rel path relative to process.cwd()
+              try {
+                const fs = require('fs');
+                const abs2 = path.resolve(process.cwd(), rel);
+                svgText = fs.readFileSync(abs2, 'utf8');
+              } catch (e2) {
+                svgText = '';
+              }
+            }
+          }
+          if (!svgText) continue;
+          const parsed = svgLoader.parseSvgForMounts(svgText);
+          const mounts = parsed.mounts || [];
+          const engineMounts = parsed.engineMounts || [];
+          const vb = parsed.viewBox || { w: 128, h: 128 };
+          // Compute shape extent from shapes2d config so that normalized coords
+          // map to the same scale used by shapes2d points. Fallback to 1.
+          const shapeEntry: any = AssetsConfig.shapes2d && (AssetsConfig as any).shapes2d[key];
+          let extent = 1;
+          if (shapeEntry) {
+            let maxv = 0;
+            if (shapeEntry.type === 'compound' && Array.isArray(shapeEntry.parts)) {
+              for (const p of shapeEntry.parts) {
+                if (p.type === 'circle') maxv = Math.max(maxv, Math.abs(p.r || 0));
+                else if (p.type === 'polygon') for (const pt of p.points || []) { maxv = Math.max(maxv, Math.abs(pt[0] || 0), Math.abs(pt[1] || 0)); }
+              }
+            } else if (shapeEntry.type === 'polygon') {
+              for (const pt of shapeEntry.points || []) { maxv = Math.max(maxv, Math.abs(pt[0] || 0), Math.abs(pt[1] || 0)); }
+            } else if (shapeEntry.type === 'circle') maxv = Math.max(maxv, Math.abs(shapeEntry.r || 0));
+            extent = maxv || 1;
+          }
+          // Normalize turret mountpoints: convert from SVG viewBox coords to shape units
+          const norm: [number, number][] = mounts.map((m: any) => {
+            const nx = ((m.x || 0) - (vb.w / 2)) / (vb.w / 2 || 1);
+            const ny = ((m.y || 0) - (vb.h / 2)) / (vb.h / 2 || 1);
+            return [nx * extent, ny * extent];
+          });
+          this._svgMountCache[key] = norm;
+          // Normalize engine mountpoints
+          const engineNorm: [number, number][] = engineMounts.map((m: any) => {
+            const nx = ((m.x || 0) - (vb.w / 2)) / (vb.w / 2 || 1);
+            const ny = ((m.y || 0) - (vb.h / 2)) / (vb.h / 2 || 1);
+            return [nx * extent, ny * extent];
+          });
+          this._svgEngineMountCache = this._svgEngineMountCache || {};
+          this._svgEngineMountCache[key] = engineNorm;
+          // Optionally, populate AssetsConfig.svgEngineMounts for backward compatibility
+          try { (AssetsConfig as any).svgEngineMounts = (AssetsConfig as any).svgEngineMounts || {}; (AssetsConfig as any).svgEngineMounts[key] = engineNorm; } catch (e) {}
+        } catch (e) {
+          // ignore per-asset errors
+          // console.warn('Failed to preload SVG for', key, e);
+        }
+      }
+      // Rasterize turret sprites for kinds listed in turretDefaults (or default 'basic')
+      try {
+        this._turretSpriteCache = this._turretSpriteCache || {};
+        const turretDefs = (AssetsConfig as any).turretDefaults || { basic: { sprite: 'turretBasic' } };
+        const kinds = Object.keys(turretDefs);
+        for (const k of kinds) {
+          try {
+            const spriteKey = (turretDefs as any)[k].sprite || 'turretBasic';
+            const tshape: any = (AssetsConfig as any).shapes2d && (AssetsConfig as any).shapes2d[spriteKey];
+            if (!tshape) continue;
+            // Create offscreen canvas sized using renderer renderScale and a modest base
+            const basePx = Math.max(24, Math.round(24 * (RendererConfig as any).renderScale || 1));
+            const canvas = document.createElement('canvas');
+            const size = Math.max(16, basePx * 2);
+            canvas.width = size;
+            canvas.height = size;
+            const ctx2 = canvas.getContext('2d');
+            if (!ctx2) continue;
+            ctx2.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2.translate(size / 2, size / 2);
+            ctx2.fillStyle = (AssetsConfig as any).palette.turret || '#94a3b8';
+            // Determine a scale factor to map shape unit coords into pixel space
+            const scale = (size / 2) / 2; // heuristic: shape unit ~2 units radius
+            if (tshape.type === 'circle') {
+              ctx2.beginPath();
+              ctx2.arc(0, 0, (tshape.r || 1) * scale, 0, Math.PI * 2);
+              ctx2.fill();
+            } else if (tshape.type === 'polygon') {
+              ctx2.beginPath();
+              const pts = tshape.points || [];
+              if (pts.length) {
+                ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+                for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+                ctx2.closePath();
+                ctx2.fill();
+              }
+            } else if (tshape.type === 'compound') {
+              for (const part of tshape.parts || []) {
+                if (part.type === 'circle') {
+                  ctx2.beginPath();
+                  ctx2.arc(0, 0, (part.r || 1) * scale, 0, Math.PI * 2);
+                  ctx2.fill();
+                } else if (part.type === 'polygon') {
+                  ctx2.beginPath();
+                  const pts = part.points || [];
+                  if (pts.length) {
+                    ctx2.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+                    for (let i = 1; i < pts.length; i++) ctx2.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+                    ctx2.closePath();
+                    ctx2.fill();
+                  }
+                }
+              }
+            }
+            this._turretSpriteCache[k] = canvas;
+          } catch (e) { /* ignore turret raster errors */ }
+        }
+      } catch (e) {}
+    } catch (e) {
+      // ignore global errors
+    }
   }
 
   isRunning(): boolean { return false; }
@@ -206,21 +376,47 @@ export class CanvasRenderer {
         const color = trailConfig?.color || '#aee1ff';
         const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
-        for (let i = 0; i < s.trail.length; i++) {
-          const tx = s.trail[i].x || 0;
-          const ty = s.trail[i].y || 0;
-          // Fade alpha from fade to 1.0
-          const tAlpha = fade + (1 - fade) * (i / s.trail.length);
-          const txx = tx * renderScale;
-          const tyy = ty * renderScale;
-          if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
-          withContext(() => {
-            activeBufferCtx.globalAlpha = tAlpha;
-            activeBufferCtx.fillStyle = color;
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          });
+        // Use SVG engine mountpoints if available
+        const engineMounts = this._svgEngineMountCache && this._svgEngineMountCache[s.type || getDefaultShipType()];
+        if (Array.isArray(engineMounts) && engineMounts.length > 0) {
+          for (const [emx, emy] of engineMounts) {
+            for (let i = 0; i < s.trail.length; i++) {
+              // Place trail at engine mount offset, rotated by ship angle
+              const angle = s.angle || 0;
+              const tx = s.x + (Math.cos(angle) * emx - Math.sin(angle) * emy) * (s.radius || 12);
+              const ty = s.y + (Math.sin(angle) * emx + Math.cos(angle) * emy) * (s.radius || 12);
+              // Fade alpha from fade to 1.0
+              const tAlpha = fade + (1 - fade) * (i / s.trail.length);
+              const txx = tx * renderScale;
+              const tyy = ty * renderScale;
+              if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
+              withContext(() => {
+                activeBufferCtx.globalAlpha = tAlpha;
+                activeBufferCtx.fillStyle = color;
+                activeBufferCtx.beginPath();
+                activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
+                activeBufferCtx.fill();
+              });
+            }
+          }
+        } else {
+          // Fallback: single trail at ship center
+          for (let i = 0; i < s.trail.length; i++) {
+            const tx = s.trail[i].x || 0;
+            const ty = s.trail[i].y || 0;
+            // Fade alpha from fade to 1.0
+            const tAlpha = fade + (1 - fade) * (i / s.trail.length);
+            const txx = tx * renderScale;
+            const tyy = ty * renderScale;
+            if (txx < 0 || txx >= bufferW || tyy < 0 || tyy >= bufferH) continue;
+            withContext(() => {
+              activeBufferCtx.globalAlpha = tAlpha;
+              activeBufferCtx.fillStyle = color;
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(txx, tyy, width, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            });
+          }
         }
       }
 
@@ -232,28 +428,56 @@ export class CanvasRenderer {
         if (s.team === 'red' && TeamsConfig.teams.red) teamColor = TeamsConfig.teams.red.color;
         else if (s.team === 'blue' && TeamsConfig.teams.blue) teamColor = TeamsConfig.teams.blue.color;
         activeBufferCtx.fillStyle = teamColor;
+        // --- SVG hull rendering ---
+        let hullDrawn = false;
         if (sprite.svg) {
-          // Future: render SVG (not implemented yet)
+          // Cache rasterized hull-only SVG per ship type
+          this._svgHullCache = this._svgHullCache || {};
+          const cacheKey = s.type || getDefaultShipType();
+          let hullCanvas = this._svgHullCache[cacheKey];
+          if (!hullCanvas) {
+            try {
+              // Use svgLoader to rasterize hull-only SVG
+              const svgText = sprite.svg;
+              // Use a reasonable size for rasterization (match viewBox or default)
+              let outW = 128, outH = 128;
+              const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(svgText);
+              if (vbMatch) { outW = parseInt(vbMatch[3]) || 128; outH = parseInt(vbMatch[4]) || 128; }
+              hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+              this._svgHullCache[cacheKey] = hullCanvas;
+            } catch (e) { hullCanvas = undefined; }
+          }
+          if (hullCanvas) {
+            // Center and scale hullCanvas to ship radius
+            const scale = (s.radius || 12) * renderScale / (hullCanvas.width / 2);
+            withContext(() => {
+              activeBufferCtx.save();
+              activeBufferCtx.scale(scale, scale);
+              activeBufferCtx.drawImage(hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+              activeBufferCtx.restore();
+            });
+            hullDrawn = true;
+          }
         }
-        if (sprite.model3d) {
-          // Future: render 3D model (not implemented yet)
-        }
-        const shape = sprite.shape;
-        if (shape) {
-          if (shape.type === 'circle') {
-            activeBufferCtx.beginPath();
-            activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
-            activeBufferCtx.fill();
-          } else if (shape.type === 'polygon') {
-            drawPolygon(shape.points as number[][]);
-          } else if (shape.type === 'compound') {
-            for (const part of shape.parts) {
-              if (part.type === 'circle') {
-                activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
-                activeBufferCtx.fill();
-              } else if (part.type === 'polygon') {
-                drawPolygon(part.points as number[][]);
+        // Fallback: draw shape if SVG hull not drawn
+        if (!hullDrawn) {
+          const shape = sprite.shape;
+          if (shape) {
+            if (shape.type === 'circle') {
+              activeBufferCtx.beginPath();
+              activeBufferCtx.arc(0, 0, (s.radius || 12) * renderScale, 0, Math.PI * 2);
+              activeBufferCtx.fill();
+            } else if (shape.type === 'polygon') {
+              drawPolygon(shape.points as number[][]);
+            } else if (shape.type === 'compound') {
+              for (const part of shape.parts) {
+                if (part.type === 'circle') {
+                  activeBufferCtx.beginPath();
+                  activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                  activeBufferCtx.fill();
+                } else if (part.type === 'polygon') {
+                  drawPolygon(part.points as number[][]);
+                }
               }
             }
           }
@@ -281,29 +505,63 @@ export class CanvasRenderer {
             });
           }
         } catch (e) { /* ignore engine flare draw errors */ }
-        // Draw turrets
-        if (Array.isArray((s as any).turrets) && (s as any).turrets.length > 0) {
-          for (const turret of (s as any).turrets) {
-            if (!turret || !turret.position) continue;
-            const turretShape = getTurretAsset(turret.kind || 'basic');
-            const shipType = s.type || 'fighter';
-            const shipCfg = getShipConfig()[shipType];
-            const configRadius = shipCfg && typeof shipCfg.radius === 'number' ? shipCfg.radius : (s.radius || 12);
-            const turretScale = configRadius * renderScale * 0.5;
+        // Draw turrets. Turrets may have independent angles (turret.angle) and
+        // turnRate. Mount positions can come from the ship instance, shapes2d
+        // config, or extracted from SVGs (svgMounts). We prefer instance
+        // positions, then shape config, then svgMounts as a last resort.
+        const shipType = s.type || 'fighter';
+        const shipCfg = getShipConfig()[shipType];
+        const configRadius = shipCfg && typeof shipCfg.radius === 'number' ? shipCfg.radius : (s.radius || 12);
+        const shapeEntry: any = AssetsConfig.shapes2d && (AssetsConfig.shapes2d as any)[shipType];
+        const svgMounts = (AssetsConfig as any).svgMounts && (AssetsConfig as any).svgMounts[shipType];
+        const instanceTurrets = Array.isArray((s as any).turrets) ? (s as any).turrets : (shapeEntry && shapeEntry.turrets) || [];
+        for (let ti = 0; ti < instanceTurrets.length; ti++) {
+          try {
+            const turret = instanceTurrets[ti];
+            // If turret is a simple position tuple from svgMounts, normalize to object
+            let turretObj: any = turret;
+            if (!turretObj) continue;
+            if (!turretObj.position && Array.isArray(turret) && turret.length === 2) {
+              turretObj = { kind: 'basic', position: turret };
+            }
+            // As a last resort, try to use svgMounts mapping for this index
+            if ((!turretObj.position || turretObj.position.length !== 2) && Array.isArray(svgMounts) && svgMounts[ti]) {
+              turretObj.position = svgMounts[ti];
+            }
+            if (!turretObj.position) continue;
+            const turretKind = turretObj.kind || 'basic';
+            const turretShape = getTurretAsset(turretKind as any);
+            // Turret angle: instance-provided turret.angle if present, else default to ship angle
+            const turretAngle = typeof turretObj.angle === 'number' ? turretObj.angle : (typeof (s as any).turretAngle === 'number' ? (s as any).turretAngle : (s.angle || 0));
+            // Turret turnRate: instance value, else assets-config default, else fallback
+            const turretTurnRate = typeof turretObj.turnRate === 'number' ? turretObj.turnRate : ((AssetsConfig as any).turretDefaults && (AssetsConfig as any).turretDefaults[turretKind] && (AssetsConfig as any).turretDefaults[turretKind].turnRate) || (Math.PI * 1.5);
+            const [tx, ty] = turretObj.position;
+            // Convert mount local coords (radius units) into ship-local pixels and rotate by ship heading
             const angle = (s.angle || 0);
-            const [tx, ty] = turret.position;
-            const turretX = Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
-            const turretY = Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
+            const turretX = (Math.cos(angle) * tx - Math.sin(angle) * ty) * configRadius * renderScale;
+            const turretY = (Math.sin(angle) * tx + Math.cos(angle) * ty) * configRadius * renderScale;
+            const turretScale = configRadius * renderScale * 0.5;
             withContext(() => {
               activeBufferCtx.translate(turretX, turretY);
-              activeBufferCtx.rotate(0);
+              // Rotate turret independently by turretAngle (relative to world)
+              activeBufferCtx.rotate(turretAngle - (s.angle || 0));
+              // Try to draw cached rasterized turret sprite for this kind
+              const spriteCanvas = this._turretSpriteCache && this._turretSpriteCache[turretKind];
+              if (spriteCanvas) {
+                try {
+                  const pw = spriteCanvas.width;
+                  const ph = spriteCanvas.height;
+                  activeBufferCtx.drawImage(spriteCanvas, -pw / 2, -ph / 2, pw, ph);
+                  return;
+                } catch (e) {}
+              }
+              // Fallback vector draw
               activeBufferCtx.fillStyle = AssetsConfig.palette.turret || '#94a3b8';
               if (turretShape.type === 'circle') {
                 activeBufferCtx.beginPath();
                 activeBufferCtx.arc(0, 0, (turretShape.r || 1) * turretScale, 0, Math.PI * 2);
                 activeBufferCtx.fill();
               } else if (turretShape.type === 'polygon') {
-                // Use withContext to scope the scale transform and avoid leaking transforms
                 withContext(() => {
                   activeBufferCtx.scale(turretScale, turretScale);
                   drawPolygon(turretShape.points as number[][]);
@@ -315,7 +573,6 @@ export class CanvasRenderer {
                     activeBufferCtx.arc(0, 0, (part.r || 1) * turretScale, 0, Math.PI * 2);
                     activeBufferCtx.fill();
                   } else if (part.type === 'polygon') {
-                    // Scope polygon scaling with withContext to keep transforms balanced
                     withContext(() => {
                       activeBufferCtx.scale(turretScale, turretScale);
                       drawPolygon(part.points as number[][]);
@@ -324,7 +581,7 @@ export class CanvasRenderer {
                 }
               }
             });
-          }
+          } catch (e) { /* ignore turret draw errors per turret */ }
         }
 
         // Draw shield effect (blue ring if shield > 0) in ship-local coords at 0,0
@@ -359,7 +616,51 @@ export class CanvasRenderer {
             }
           } catch (e) { /* ignore shield draw errors */ }
         }
+        // NOTE: HP/Shield bars were previously drawn in ship-local coords which
+        // caused them to rotate with the ship. Draw them in screen-space so
+        // they stay oriented parallel to the top of the screen (less distracting).
       });
+
+      // Draw per-ship HP / Shield bar in screen-space (non-rotating)
+      try {
+        const hbCfg = (RendererConfig && (RendererConfig as any).hpBar) || {};
+        // Allow bar size to scale with ship radius when not explicitly configured
+        const baseW = typeof hbCfg.w === 'number' ? hbCfg.w : Math.max(20, (s.radius || 12) * 1.6);
+        const baseH = typeof hbCfg.h === 'number' ? hbCfg.h : Math.max(4, Math.round((s.radius || 12) * 0.25));
+        const dx = typeof hbCfg.dx === 'number' ? hbCfg.dx : -Math.round(baseW / 2);
+        const dy = typeof hbCfg.dy === 'number' ? hbCfg.dy : -(s.radius || 12) - baseH - 6;
+        const hbBg = hbCfg.bg || '#222';
+        const hbFill = hbCfg.fill || ((AssetsConfig.palette as any).shipHull || '#4caf50');
+
+        const hpPct = (typeof (s as any).hpPercent === 'number')
+          ? (s as any).hpPercent
+          : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+        const shPct = (typeof (s as any).shieldPercent === 'number')
+          ? (s as any).shieldPercent
+          : (typeof s.maxShield === 'number' && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0);
+
+        const w = Math.max(1, Math.round(baseW * renderScale));
+        const h = Math.max(1, Math.round(baseH * renderScale));
+        const ox = Math.round((dx) * renderScale);
+        const oy = Math.round((dy) * renderScale);
+        const sx = Math.round((s.x || 0) * renderScale);
+        const sy = Math.round((s.y || 0) * renderScale);
+
+        withContext(() => {
+          // Background
+          activeBufferCtx.fillStyle = hbBg;
+          activeBufferCtx.fillRect(sx + ox, sy + oy, w, h);
+          // HP fill (left-to-right)
+          activeBufferCtx.fillStyle = hbFill;
+          activeBufferCtx.fillRect(sx + ox, sy + oy, Math.max(1, Math.round(w * hpPct)), h);
+          // Shield overlay: thin bar above HP bar
+          if (shPct > 0) {
+            const shH = Math.max(1, Math.round(h * 0.5));
+            activeBufferCtx.fillStyle = (AssetsConfig.palette as any).shipAccent || '#3ab6ff';
+            activeBufferCtx.fillRect(sx + ox, sy + oy - shH - 2, Math.max(1, Math.round(w * shPct)), shH);
+          }
+        });
+      } catch (e) { /* ignore bar draw errors */ }
     }
 
 
@@ -442,6 +743,7 @@ export class CanvasRenderer {
                 drawPolygon(part.points as number[][]);
               }
             }
+            
           }
         });
       } catch (e) {}

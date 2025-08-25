@@ -12,8 +12,10 @@
   <ellipse cx="64" cy="116" rx="6" ry="3" fill="#00ffea" opacity="0.8"/>
   <ellipse cx="58" cy="110" rx="3" ry="2" fill="#00ffae" opacity="0.6"/>
   <ellipse cx="70" cy="110" rx="3" ry="2" fill="#00ffae" opacity="0.6"/>
+  <!-- Engine mountpoints -->
+  <rect x="62" y="114" width="4" height="6" rx="2" fill="#00ffea" class="engine" />
   <!-- 1 Turret -->
-  <rect x="62" y="22" width="4" height="10" rx="2" fill="#fff" />
+  <rect x="62" y="22" width="4" height="10" rx="2" fill="#fff" class="turret" />
   <!-- Tech lines -->
   <polyline points="64,50 64,64 64,80" stroke="#caffff" stroke-width="2" fill="none" opacity="0.3"/>
 </svg>

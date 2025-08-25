@@ -2,6 +2,7 @@
 import { srange, srand, srandom } from "./rng";
 import { createShip, updateTeamCount } from "./entities";
 import { getShipConfig } from "./config/entitiesConfig";
+import AssetsConfig from './config/assets/assetsConfig';
 import { progression as progressionCfg } from "./config/progressionConfig";
 import { SIM, boundaryBehavior } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
@@ -264,6 +265,71 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
         try { if (rem[0] && rem[0].team) state.teamCounts[rem[0].team] = Math.max(0, (state.teamCounts[rem[0].team] || 0) - 1); } catch (e) {}
       }
     }
+    // --- Turret per-frame integration: advance turret.angle toward targetAngle using turnRate ---
+    try {
+      // Basic turret AI: if turret has no explicit targetAngle, aim at nearest enemy ship
+      try {
+        if (Array.isArray(state.ships) && Array.isArray((s as any).turrets) && (s as any).turrets.length) {
+          for (let ti = 0; ti < (s as any).turrets.length; ti++) {
+            try {
+              const t = (s as any).turrets[ti];
+              if (!t || Array.isArray(t)) continue; // skip tuple mounts
+              // If caller already provided a targetAngle, don't override
+              if (typeof t.targetAngle === 'number') continue;
+              // Find nearest enemy ship (team different from s.team)
+              let best: any = null;
+              let bestDist = Infinity;
+              for (const other of state.ships || []) {
+                if (!other || other.id === s.id) continue;
+                if (other.team === s.team) continue;
+                const dx = (other.x || 0) - (s.x || 0);
+                const dy = (other.y || 0) - (s.y || 0);
+                const d2 = dx * dx + dy * dy;
+                if (d2 < bestDist) {
+                  bestDist = d2;
+                  best = other;
+                }
+              }
+              if (best) {
+                t.targetAngle = Math.atan2((best.y || 0) - (s.y || 0), (best.x || 0) - (s.x || 0));
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      // Instance turrets can be an array of objects or tuples; normalize to objects with angle/targetAngle
+      if (Array.isArray((s as any).turrets) && (s as any).turrets.length) {
+        const turretDefs = (s as any).turrets;
+        for (let ti = 0; ti < turretDefs.length; ti++) {
+          try {
+            let t = turretDefs[ti];
+            // If turret is a simple tuple [x,y], skip (no state)
+            if (Array.isArray(t) && t.length === 2) continue;
+            if (!t) continue;
+            // Ensure numeric fields exist
+            t.angle = typeof t.angle === 'number' ? t.angle : (typeof (s as any).turretAngle === 'number' ? (s as any).turretAngle : s.angle || 0);
+            t.targetAngle = typeof t.targetAngle === 'number' ? t.targetAngle : (typeof t.desiredAngle === 'number' ? t.desiredAngle : t.angle);
+            // Determine turret turnRate: use instance value, else turretDefaults by kind, else fallback
+            let defaultTurn = Math.PI * 1.5;
+            try {
+              const td = (AssetsConfig as any).turretDefaults && (AssetsConfig as any).turretDefaults[t.kind || 'basic'];
+              if (td && typeof td.turnRate === 'number') defaultTurn = td.turnRate;
+            } catch (e) {}
+            const maxTurn = (typeof t.turnRate === 'number' ? t.turnRate : defaultTurn) * dtSeconds;
+            // Shortest angular difference
+            let diff = t.targetAngle - t.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            const step = Math.sign(diff) * Math.min(Math.abs(diff), maxTurn);
+            t.angle = t.angle + step;
+            // Normalize
+            while (t.angle < -Math.PI) t.angle += Math.PI * 2;
+            while (t.angle > Math.PI) t.angle -= Math.PI * 2;
+            turretDefs[ti] = t;
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
     // Carrier spawning: if this ship type has a carrier config, accumulate
     // a per-ship timer and spawn fighters as children up to maxFighters.
     try {

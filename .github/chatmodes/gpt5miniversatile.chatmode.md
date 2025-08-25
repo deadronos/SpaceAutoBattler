@@ -2,7 +2,7 @@
 model: GPT-5-mini
 description: "Versatile-Coding-Mode (VCM) for GPT-5-mini — adaptive spec→plan→fix→verify workflow. Optimized for safe, pragmatic coding with minimal, test-backed changes."
 
-tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'context7', 'playwright', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
+tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'terminalLastCommand', 'terminalSelection','runCommands', 'runTasks', 'context7', 'playwright', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
 ---
 
 # Versatile Coding Mode (Spec → Plan → Fix → Verify)

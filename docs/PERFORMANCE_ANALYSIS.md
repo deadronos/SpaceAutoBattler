@@ -1,113 +1,113 @@
-# SpaceAutoBattler Performance Analysis & Optimization Recommendations
+# Performance Analysis and Recommendations
 
-## Executive Summary
+This document analyses performance bottlenecks observed in the `dev` branch of the SpaceAutoBattler project (focus on `src/gamemanager.ts`, simulation loop, pooling, and renderer interaction) and provides prioritized actionable recommendations and tests.
 
-Analysis of the dev branch reveals several performance bottlenecks affecting collision detection, AI ship lookups, and UI update patterns. The codebase has strong pooling and memory management, but a few hot paths cause unnecessary allocations and algorithmic overhead.
+## Executive summary
 
-## Critical Performance Bottlenecks
+- Main hot paths: simulation fixed-step loop, renderer coupling, particle/explosion generation, and per-frame Map/array rebuilds.
+- Real-world symptoms: CPU spikes during catch-up frames, redundant renders per-frame, potential unbounded growth of global event arrays (flashes/particles) when pooling/release is inconsistent, and excessive O(n) work (map rebuilds) on every frame or snapshot.
+- Highest-impact fixes: (1) move rendering out of per-step logic so the renderer runs once per RAF, (2) throttle/coalesce worker snapshot-driven renders, (3) audit and harden pooling lifecycle to avoid leaks/double-free, (4) avoid rebuilding shipMap every frame.
 
-### 1. O(n²) Collision Detection [CRITICAL]
+## Findings (detailed)
 
-**Location**: `src/simulate.ts:243-245`
+1. Run loop and fixed-step catch-up
 
-```typescript
-// Current implementation - O(n²)
-for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
-  const b = state.bullets[bi];
-  for (let si = (state.ships || []).length - 1; si >= 0; si--) {
-    const s = state.ships[si];
-    if (s.team === b.team) continue;
-    const r = (s.radius || 6) + (b.radius || 1);
-    if (dist2(b, s) <= r * r) {
-      // Collision handling...
-    }
-  }
-}
-```
+- The manager uses an accumulator pattern in `runLoop()` and calls `step()` inside a while loop until accumulated time is consumed. Each `step()` currently runs simulation _and_ calls `renderer.renderState()` when no worker is used.
+- When the game lags, `acc` may contain several simulation steps (bounded by a clamp but still large), causing `step()` to be executed multiple times in a tight loop and invoking `renderer.renderState()` repeatedly inside the same animation frame. That produces CPU spikes and poor visual smoothness.
 
-**Impact**: With N ships and M bullets, this creates N×M distance checks per frame.
+2. Rendering and worker snapshot coupling
 
-- 10 ships + 50 bullets = 500 distance checks
-- 50 ships + 200 bullets = 10,000 distance checks
+- In worker mode the snapshot handler calls `renderer.renderState()` immediately for each snapshot received. If snapshots arrive faster than the renderer can paint (or than RAF), renders will queue and block the main thread.
+- No coalescing/back-pressure is used; the main thread renders every snapshot as it arrives.
 
-**Recommended Fix**: Use spatial partitioning (uniform grid or quadtree) to limit collision checks to nearby entities.
+3. Pooling inconsistencies and event array growth
 
-### 2. Inefficient Ship Lookup in AI [HIGH]
+- Pools exist (bullets, effects, particles) and helpers like `acquireParticle` push items to `state.particles`. Release functions sometimes set `.alive`/`._pooled` flags; others omit them or swallow errors inconsistently.
+- `simulate()` appends freshly-created explosion effects to a module-level `flashes` array, and similarly for shield/health flashes. If these arrays are not cleared/consumed consistently by the renderer, they can grow indefinitely.
+- Particle spawn rate per-explosion is high (e.g., 12 particles per explosion), which multiplies memory churn when explosions are dense.
 
-**Location**: `src/behavior.ts:138, 254`
+4. Per-frame O(n) rebuilds
 
-Current code often searches `state.ships` linearly; replace with an O(1) lookup via `state.shipMap`.
+- `simulate()` and worker snapshot handling rebuild `shipMap` by iterating `state.ships` to create a new Map each time. Recreating large Maps every frame scales linearly with number of ships and is avoidable.
 
-Status: IMPLEMENTED — `shipMap` added to `GameState` and kept in sync; unit test `test/vitest/shipmap_sync.spec.ts` verifies correctness.
+5. Other perf anti-patterns
 
-### 3. UI Array Operations in Hot Path [MEDIUM]
+- Frequent arr.slice() on listener arrays (emit) allocates temporary arrays per emit; small but notable under high emit rate.
+- Excessive try/catch blocks in hot paths may mask exceptions and add runtime overhead.
 
-**Location**: `src/main.ts:347-349`
+## Concrete prioritized TODO (with hints for fixes)
 
-Problem: Filtering `state.ships` each frame creates temporary arrays and GC pressure.
+1. Prevent rendering inside tight multi-step catch-up
 
-Recommended fix: Cache per-team counts in `GameState` and update them incrementally on ship add/remove/team-change.
+- Mark as high priority.
+- Move `renderer.renderState()` out of `step()` so that runLoop calls renderState once per animation frame after processing all accumulated steps.
+- Hint: change step() to only update state, and in runLoop after the while loop call renderer.renderState once, using the latest state (or the worker snapshot when worker mode).
 
-Status: IMPLEMENTED — `teamCounts` added to `GameState`; UI reads `state.teamCounts` instead of filtering. See `src/entities.ts`, `src/gamemanager.ts`, `src/simulate.ts`, `src/main.ts`. Tests: `test/vitest/teamcounts.spec.ts`, `test/vitest/team-switch.spec.ts`.
+2. Throttle renderer when using worker snapshots
 
-## Scaling Behavior Issues
+- High priority.
+- Throttle or drop snapshot-triggered renders if the previous render is still in progress or if frames are arriving faster than RAF. Use a lastRender timestamp or requestAnimationFrame-based flag to coalesce renders.
+- Hint: on snapshot, set a "pendingSnapshot" flag and schedule a single RAF to render the latest snapshot.
 
-### 4. Worker Callback Array Copying [MEDIUM]
+3. Ensure pooling is consistent and bug-free
 
-Avoid copying callback arrays (`workerReadyCbs.slice()`) in hot paths — iterate directly.
+- High priority.
+- Audit `acquire*` / `release*` functions to enforce consistent lifecycle: set .alive = true on acquire, set .alive = false and .\_pooled = true on release, remove from active arrays in release, and guard against double release.
+- Hint: centralize pool release logic in `entities.*` functions; have manager helpers call those and avoid manual arr.splice duplications.
 
-### 5. Render State Object Creation [MEDIUM]
+4. Avoid building shipMap every frame
 
-Reuse a `renderState` object instead of allocating a new object each frame.
+- Medium priority.
+- Maintain incremental shipMap updates: when ships are added/removed update the map; avoid recreating per-frame. Only rebuild when a structural change occurs.
+- Hint: patch createShip and destroy logic to call shipMap.set / shipMap.delete and keep consistent across worker snapshot handler (only rebuild when snapshot indicates ids changed).
 
-## Memory Leak Risks
+5. Reduce per-frame allocations/copies
 
-### 6. Timer Management [LOW-MEDIUM]
+- Medium priority.
+- Avoid arr.slice() in emitManagerEvent on hot paths unless needed. Instead iterate over array and handle concurrent mutation by defensive checks or store a small generation number.
+- Hint: if listeners may modify array during iteration, copy but try to minimize frequency (e.g., only copy if length>0 and emit rate high).
 
-Ensure setTimeout IDs stored for cleanup are always cleared on error paths.
+6. Bound particle/explosion spawn rate and add pooling back-pressure
 
-### 7. GPU Resource Management [LOW-MEDIUM]
+- Medium priority.
+- Limit number of particles per explosion or globally per-frame; reuse pooled particles instead of allocating new ones; ensure TTL-based pruning works and pool size caps exist.
+- Hint: maintain a maxParticles active count and drop extra spawns or reuse oldest particle.
 
-Implement proper cleanup on WebGL context loss and explicit renderer shutdown.
+7. Ensure global arrays are pruned and not duplicated
 
-## Implementation Priority
+- Medium priority.
+- Confirm that simulation prunes event arrays; ensure manager-level arrays (flashes, shieldFlashes, healthFlashes) are cleared or rotated after renderer consumes them. For long-running sessions ensure arrays don't accumulate.
+- Hint: have renderer consume and clear flashes after rendering, or move flashes to state and let simulate handle lifecycle.
 
-Phase 1 (Immediate - High Impact)
+8. Add diagnostics to detect leaks and hotspots
 
-1. Spatial partitioning for collision detection
-2. Ship lookup maps
-3. UI team count caching
+- Medium priority.
+- Instrument counts (ships.length, bullets.length, particles.length, pool sizes) periodically and log if growth is monotonic. Add unit tests that run long simulations to detect leaks.
+- Hint: add a debug mode with periodic heap snapshots or simple counters and alerts.
 
-Phase 2 (Next - Medium Impact)
+9. Review spatialGrid & collision complexity
 
-1. Worker callback optimization
-2. Render state reuse
-3. Timer cleanup hardening
+- Medium priority.
+- Confirm spatialGrid rebuild cost; prefer incremental updates or a loose grid with amortized cost. Optimize collision checks to avoid O(n^2).
+- Hint: if grid is rebuilt fully each frame, profile and consider incremental insertion/removal only when objects move past cell boundaries.
 
-Phase 3 (Later - Low Risk)
+10. Reduce try/catch in hot loops & unify error handling
 
-1. GPU resource cleanup
+- Low priority.
+- Excessive try/catch around hot code paths can add overhead and mask errors. Remove or narrow-scoped try/catch in inner loops; log or surface errors during development.
+- Hint: use a dev assert mode that allows exceptions to propagate in dev builds and swallow in production builds.
 
-## Recommended Benchmarks
+## Quick tests to run (manual)
 
-- Collision detection at 10/50/100/200 ships
-- AI decision time with large fleets
-- Memory usage over extended sessions
-- Frame time consistency under load
+- Run a stress sim with increasing ship counts (e.g., 100, 500, 1k) and measure:
+  - main thread CPU and average frame time.
+  - memory (heap) growth over 60s.
+  - active counts of pools and arrays (`ships.length`, `particles.length`, `bullets.length`, `flashes.length`).
+- Run with `useWorker: false` and `true` to compare behavior and snapshot rate.
+- Add a long-running test that spawns explosions and particles continuously and assert that particles.length stabilizes (does not grow unbounded).
 
-## Measurement Strategy
+## Final notes / next steps
 
-1. Create baseline performance measurements
-2. Add console.time/timeEnd around hot paths
-3. Use Chrome DevTools Performance tab for memory profiling
-4. Implement automated performance tests
-
-## Architecture Notes
-
-- ✅ Object pooling (bullets, particles, effects)
-- ✅ Swap-pop optimizations for array removal
-- ✅ Event system without array copying
-- ✅ Fixed duplicate simulation calls
-- ✅ Proper worker lifecycle management
-
-These optimizations create a solid foundation. The recommended fixes address the remaining algorithmic complexity issues.
+- Immediate highest-impact change: move rendering out of per-step to once-per-frame and add snapshot render throttling. That will reduce redundant renders and smooth CPU usage.
+- Follow-up: audit and tighten pooling lifecycle and limiting particle spawn rates to prevent leaks.
+- If you want, I can implement the recommended changes (runLoop/step refactor and worker snapshot coalescing), add debug counters, and add unit tests. Respond "implement" and I will prepare and apply the patch and run tests.

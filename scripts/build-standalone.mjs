@@ -54,7 +54,24 @@ async function buildStandalone() {
 		fs.readFile(files.js, 'utf8'),
 		fs.readFile(files.worker, 'utf8'),
 	]);
-	const inlined = inlineHtml({ html, css, js, workerJs });
+	 // Inline SVG assets
+	 const svgDir = path.join(repoRoot, 'src', 'config', 'assets', 'svg');
+	 const svgFiles = ['destroyer.svg', 'carrier.svg', 'frigate.svg', 'corvette.svg'];
+	 const svgAssets = {};
+	 for (const fname of svgFiles) {
+		 const fpath = path.join(svgDir, fname);
+		 try {
+			 svgAssets[fname.replace('.svg', '')] = await fs.readFile(fpath, 'utf8');
+		 } catch (e) {
+			 console.warn(`[build-standalone] WARNING: SVG asset missing: ${fpath}`);
+			 svgAssets[fname.replace('.svg', '')] = '';
+		 }
+	 }
+
+	 // Prepend JS code to inject SVG assets into globalThis
+	 const svgInject = `if (typeof globalThis !== 'undefined') { globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)}; }\n`;
+	 const jsWithSvg = svgInject + js;
+	 const inlined = inlineHtml({ html, css, js: jsWithSvg, workerJs });
 	const standalonePath = path.join(outDir, 'spaceautobattler_standalone.html');
 	await fs.writeFile(standalonePath, inlined, 'utf8');
 	console.log(`Standalone written: ${standalonePath}`);

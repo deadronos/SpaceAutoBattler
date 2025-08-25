@@ -60,6 +60,11 @@ export type TurretVisualConfig = {
   position: [number, number]; // relative to ship center, in radius units
 };
 
+export type TurretDefaultConfig = {
+  turnRate?: number; // radians per second default
+  sprite?: string; // optional sprite key to use for turret visuals
+};
+
 export type Model3D = {
   url?: string | undefined;
   scale?: number | undefined;
@@ -71,6 +76,13 @@ export type AssetsConfigType = {
   meta: { orientation: string; coordinateSystem: string };
   palette: Record<string, string>;
   shapes2d: Record<string, Shape2D & { turrets?: TurretVisualConfig[] }>;
+  // Optional mapping of ship type -> svg filename (for future svg-based rendering)
+  svgAssets?: Record<string, string>;
+  // Optional explicit mountpoints extracted from SVGs or authored here.
+  // Positions are in ship-local radius units (same space as shapes2d.turrets)
+  svgMounts?: Record<string, [number, number][]>;
+  // Defaults for turret kinds (turn rate, sprite override, etc.)
+  turretDefaults?: Record<string, TurretDefaultConfig>;
   animations?: Record<string, any>;
   damageStates?: Record<string, { opacity?: number; accentColor?: string }>;
   visualStateDefaults?: Record<string, { engine?: string; shield?: string; damageParticles?: string }>;
@@ -174,6 +186,34 @@ export const AssetsConfig: AssetsConfigType = {
     explosionParticle: { type: 'circle', r: 0.32 },
     shieldRing: { type: 'circle', r: 1.2 }
   }
+};
+
+// Optional mapping to ship SVGs (relative to this file path). These are
+// provided as a convenience for renderers that can load and parse the
+// inline SVGs to extract mountpoints or render higher-fidelity imagery.
+
+// For standalone builds, SVGs are inlined as strings. Use globalThis.__INLINE_SVG_ASSETS if present.
+if (typeof globalThis !== 'undefined' && (globalThis as any).__INLINE_SVG_ASSETS) {
+  (AssetsConfig as any).svgAssets = (globalThis as any).__INLINE_SVG_ASSETS;
+} else {
+  (AssetsConfig as any).svgAssets = {
+    destroyer: './svg/destroyer.svg',
+    carrier: './svg/carrier.svg',
+    frigate: './svg/frigate.svg',
+    corvette: './svg/corvette.svg'
+  };
+}
+
+// For environments where SVG mountpoint extraction isn't available yet we
+// provide an explicit mapping that mirrors the turrets defined in shapes2d.
+(AssetsConfig as any).svgMounts = {
+  destroyer: AssetsConfig.shapes2d.destroyer.turrets ? AssetsConfig.shapes2d.destroyer.turrets.map((t: any) => t.position) : [],
+  carrier: AssetsConfig.shapes2d.carrier.turrets ? AssetsConfig.shapes2d.carrier.turrets.map((t: any) => t.position) : []
+};
+
+// Turret defaults (radians per second) and optional sprite selection.
+(AssetsConfig as any).turretDefaults = {
+  basic: { turnRate: Math.PI * 1.5, sprite: 'turretBasic' }
 };
 
 // Animations and visual defaults (align with JS AssetsConfig)

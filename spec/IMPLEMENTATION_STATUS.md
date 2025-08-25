@@ -71,3 +71,16 @@ Notes: Local `npm install` encountered workspace and permission issues on this m
 - **Performance test framework outlined**: Stress tests for entity scaling, memory usage monitoring, regression detection
 
 **Key findings**: Excellent foundation with object pooling and previous optimizations. Remaining issues are primarily algorithmic complexity (collision detection) and lookup efficiency (AI systems). Recommended fixes should provide 10x-100x performance improvements for high entity counts.
+### 2025-08-26: SVG turret exclusion and hull-only rendering
+- Updated all ship SVG files to add class="turret" to turret <rect> elements.
+- Updated svgLoader to extract turret mountpoints from elements with class/id matching 'turret'.
+- Added svgLoader.rasterizeHullOnlySvgToCanvas to rasterize SVG hulls excluding turret rects.
+- Updated CanvasRenderer to use hull-only SVG for ship rendering, drawing turrets independently.
+- Added/adjusted tests for mountpoint extraction and hull rendering exclusion (svgLoader_hullonly.spec.ts).
+- All related tests pass; renderer and simulation logic validated.
+### 2025-08-26: Engine mountpoint SVG integration and config unification
+- Updated all ship SVG files (frigate, destroyer, corvette, carrier) to add <rect class="engine"> elements for engine trail mountpoints.
+- Updated svgLoader to extract engine mountpoints from elements with class/id matching 'engine'.
+- Added/adjusted tests for engine mountpoint extraction in svgLoader (svgLoader_hullonly.spec.ts).
+- Validated engine mountpoint extraction and hull-only rendering with full test suite (all tests passing).
+- Audited asset config for mountpoint unification; SVG and config mountpoints now consistent.

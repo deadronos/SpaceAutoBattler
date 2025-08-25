@@ -2898,6 +2898,35 @@ var CanvasRenderer = class {
           }
         }
       });
+      try {
+        const hbCfg = rendererConfig_default && rendererConfig_default.hpBar || {};
+        const baseW = typeof hbCfg.w === "number" ? hbCfg.w : Math.max(20, (s.radius || 12) * 1.6);
+        const baseH = typeof hbCfg.h === "number" ? hbCfg.h : Math.max(4, Math.round((s.radius || 12) * 0.25));
+        const dx = typeof hbCfg.dx === "number" ? hbCfg.dx : -Math.round(baseW / 2);
+        const dy = typeof hbCfg.dy === "number" ? hbCfg.dy : -(s.radius || 12) - baseH - 6;
+        const hbBg = hbCfg.bg || "#222";
+        const hbFill = hbCfg.fill || (assetsConfig_default.palette.shipHull || "#4caf50");
+        const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+        const shPct = typeof s.shieldPercent === "number" ? s.shieldPercent : typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
+        const w = Math.max(1, Math.round(baseW * renderScale));
+        const h = Math.max(1, Math.round(baseH * renderScale));
+        const ox = Math.round(dx * renderScale);
+        const oy = Math.round(dy * renderScale);
+        const sx2 = Math.round((s.x || 0) * renderScale);
+        const sy2 = Math.round((s.y || 0) * renderScale);
+        withContext(() => {
+          activeBufferCtx.fillStyle = hbBg;
+          activeBufferCtx.fillRect(sx2 + ox, sy2 + oy, w, h);
+          activeBufferCtx.fillStyle = hbFill;
+          activeBufferCtx.fillRect(sx2 + ox, sy2 + oy, Math.max(1, Math.round(w * hpPct)), h);
+          if (shPct > 0) {
+            const shH = Math.max(1, Math.round(h * 0.5));
+            activeBufferCtx.fillStyle = assetsConfig_default.palette.shipAccent || "#88ccff";
+            activeBufferCtx.fillRect(sx2 + ox, sy2 + oy - shH - 2, Math.max(1, Math.round(w * shPct)), shH);
+          }
+        });
+      } catch (e) {
+      }
     }
     try {
       const nowT = state.t || 0;

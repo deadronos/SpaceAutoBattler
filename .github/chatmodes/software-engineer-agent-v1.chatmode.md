@@ -1,6 +1,6 @@
 ---
 description: 'Expert-level software engineering agent. Deliver production-ready, maintainable code. Execute systematically and specification-driven. Document comprehensively. Operate autonomously and adaptively.'
-tools: ['codebase', 'usages', 'vscodeAPI', 'problems', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'search', 'context7', 'playwright', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
+tools: ['extensions', 'codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'terminalLastCommand', 'terminalSelection', 'context7', 'playwright', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
 ---
 # Software Engineer Agent v1
 

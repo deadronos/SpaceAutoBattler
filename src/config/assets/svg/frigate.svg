@@ -10,9 +10,12 @@
   <!-- Engine glows -->
   <ellipse cx="56" cy="112" rx="4" ry="2" fill="#53ffd8"/>
   <ellipse cx="72" cy="112" rx="4" ry="2" fill="#53ffd8"/>
+  <!-- Engine mountpoints -->
+  <rect x="54" y="110" width="4" height="6" rx="2" fill="#53ffd8" class="engine" />
+  <rect x="70" y="110" width="4" height="6" rx="2" fill="#53ffd8" class="engine" />
   <!-- 2 Turrets -->
-  <rect x="57" y="22" width="6" height="14" rx="2" fill="#fff" />
-  <rect x="65" y="22" width="6" height="14" rx="2" fill="#fff" />
+  <rect x="57" y="22" width="6" height="14" rx="2" fill="#fff" class="turret" />
+  <rect x="65" y="22" width="6" height="14" rx="2" fill="#fff" class="turret" />
   <!-- Tech panels -->
   <rect x="58" y="62" width="12" height="5" rx="2" fill="#fff" opacity="0.2"/>
   <rect x="58" y="70" width="12" height="5" rx="2" fill="#fff" opacity="0.2"/>
