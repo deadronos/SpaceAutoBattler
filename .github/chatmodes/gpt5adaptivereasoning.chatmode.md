@@ -6,7 +6,8 @@ description: >
   for multi-file or ambiguous tasks. Balances speed (Copilot-like completions)
   with rigor (test-backed, safe reasoning).
 
-tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'sequentialthinking', 'playwright', 'memory', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest', 'askAboutFile', 'runAndExtract', 'askFollowUp', 'researchTopic', 'deepResearch']
+tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'todos', 'runTests', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'context7', 'playwright', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence', 'copilotCodingAgent', 'activePullRequest', 'openPullRequest']
+---
 
 principles:
   - Adaptive depth:

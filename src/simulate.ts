@@ -5,6 +5,10 @@ import { SIM, boundaryBehavior } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
 import { acquireBullet, releaseBullet, acquireExplosion, releaseExplosion, acquireShieldHit, releaseShieldHit, acquireHealthHit, releaseHealthHit, releaseParticle } from "./gamemanager";
 import type { GameState } from "./types";
+import * as SpatialGridModule from "./spatialGrid";
+// typed as any to avoid strict import/typing issues in this hotpath
+const SpatialGrid: any = (SpatialGridModule as any).default || SpatialGridModule;
+const segmentIntersectsCircle: any = (SpatialGridModule as any).segmentIntersectsCircle;
 
 export type Bounds = { W: number; H: number };
 
@@ -25,6 +29,9 @@ export function simulateStep(state: GameState, dtSeconds: number, bounds: Bounds
   // Move bullets and handle boundary behavior
   for (let i = (state.bullets || []).length - 1; i >= 0; i--) {
     const b = state.bullets[i];
+  // store previous position for swept collision tests
+  b.prevX = typeof b.x === 'number' ? b.x : 0;
+  b.prevY = typeof b.y === 'number' ? b.y : 0;
     b.x += (b.vx || 0) * dtSeconds;
     b.y += (b.vy || 0) * dtSeconds;
     b.ttl = (b.ttl || 0) - dtSeconds;
@@ -240,13 +247,32 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
   }
 
   // Bullet collisions
+  // Use spatial grid to reduce collision checks from O(N*M) to local queries
+  // Acquire a pooled grid instance and reuse it between frames to avoid allocations
+  const cellSize = (SIM && (SIM as any).gridCellSize) || 64;
+  const grid = SpatialGrid.acquire(cellSize);
+  const ships = state.ships || [];
+  for (let i = 0; i < ships.length; i++) grid.insert(ships[i]);
+  // Track ships removed during collision processing to avoid double-collision
+  const removedShipIds = new Set<any>();
+
   for (let bi = (state.bullets || []).length - 1; bi >= 0; bi--) {
     const b = state.bullets[bi];
-    for (let si = (state.ships || []).length - 1; si >= 0; si--) {
-      const s = state.ships[si];
+    const searchRadius = (b.radius || 1) + 64; // conservative search radius (cell-sized)
+    const candidates = grid.queryRadius(b.x || 0, b.y || 0, searchRadius);
+    let collided = false;
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const s = candidates[ci];
+      if (!s || removedShipIds.has(s.id)) continue;
       if (s.team === b.team) continue;
       const r = (s.radius || 6) + (b.radius || 1);
-      if (dist2(b, s) <= r * r) {
+      // Swept collision: check segment from previous bullet pos (if available) to current pos
+  const bxPrev = typeof (b as any)._prevX === 'number' ? (b as any)._prevX : b.x - (b.vx || 0) * dtSeconds;
+  const byPrev = typeof (b as any)._prevY === 'number' ? (b as any)._prevY : b.y - (b.vy || 0) * dtSeconds;
+      const didHit =
+        dist2(b, s) <= r * r ||
+        segmentIntersectsCircle(bxPrev, byPrev, b.x || 0, b.y || 0, s.x || 0, s.y || 0, r);
+      if (didHit) {
         const attacker =
           typeof b.ownerId === "number" || typeof b.ownerId === "string"
             ? (state.ships || []).find((sh: any) => sh.id === b.ownerId)
@@ -396,31 +422,19 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
               attacker.shieldRegen = attacker.shieldRegen * (1 + regenScalar);
           }
         }
+
         state.bullets.splice(bi, 1);
+        collided = true;
+  // No need to check other candidates for this bullet
         if (s.hp <= 0) {
-          // eslint-disable-next-line no-console
-          console.log(
-            "DEBUG: KILL BRANCH, attacker",
-            attacker && attacker.id,
-            "xp before",
-            attacker && attacker.xp,
-          );
           if (attacker) {
             attacker.xp = (attacker.xp || 0) + (progressionCfg.xpPerKill || 0);
-            // eslint-disable-next-line no-console
-            console.log(
-              "DEBUG: KILL XP AWARDED, attacker",
-              attacker.id,
-              "xp after",
-              attacker.xp,
-            );
             while (
               (attacker.xp || 0) >=
               progressionCfg.xpToLevel(attacker.level || 1)
             ) {
               attacker.xp -= progressionCfg.xpToLevel(attacker.level || 1);
               attacker.level = (attacker.level || 1) + 1;
-              // Support function or number scalars for progression on kill XP
               const resolveScalar = (s: any, lvl: number) =>
                 typeof s === "function" ? s(lvl) : s || 0;
               const lvl = attacker.level || 1;
@@ -465,7 +479,6 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
                   if (typeof c.damage === "number") c.damage *= dmgMul;
                 }
               }
-              // Apply optional speed and shield regen increases
               if (
                 typeof speedScalar === "number" &&
                 typeof attacker.accel === "number"
@@ -479,12 +492,18 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             }
           }
           (state.explosions ||= []).push(acquireExplosion(state, { x: s.x, y: s.y, team: s.team, life: 0.5, ttl: 0.5 }));
-          state.ships.splice(si, 1);
+          // remove from ships array and mark as removed for this frame
+          const idx = (state.ships || []).findIndex((sh: any) => sh && sh.id === s.id);
+          if (idx >= 0) state.ships.splice(idx, 1);
+          removedShipIds.add(s.id);
         }
         break;
       }
     }
+    // continue to next bullet
   }
+  // release pooled grid for reuse next frame
+  SpatialGrid.release(grid);
 
   // Shield regen
   for (const s of state.ships || []) {

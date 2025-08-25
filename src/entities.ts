@@ -111,9 +111,9 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
   } as Ship;
 }
 
-export type Bullet = { id: number; x: number; y: number; vx: number; vy: number; team: string; ownerId?: number | null; damage: number; ttl: number; radius?: number; bulletRadius?: number; bulletTTL?: number; kind?: string; alive?: boolean };
+export type Bullet = { id: number; x: number; y: number; vx: number; vy: number; team: string; ownerId?: number | null; damage: number; ttl: number; radius?: number; bulletRadius?: number; bulletTTL?: number; kind?: string; alive?: boolean; prevX?: number; prevY?: number };
 export function createBullet(x: number, y: number, vx: number, vy: number, team = TEAM_DEFAULT, ownerId: number | null = null, damage = 1, ttl = 2.0): Bullet {
-  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl } as Bullet;
+  return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y } as Bullet;
 }
 
 export interface ExplosionEffect { x: number; y: number; r?: number; alive?: boolean; _pooled?: boolean; [key: string]: unknown }

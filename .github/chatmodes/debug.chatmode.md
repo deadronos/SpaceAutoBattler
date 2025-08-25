@@ -1,6 +1,6 @@
 ---
 description: 'Debug your application to find and fix a bug'
-tools: ['codebase', 'readFiles', 'editFiles', 'githubRepo', 'runCommands', 'fetch', 'search', 'usages', 'findTestFiles', 'get_errors', 'test_failure', 'run_in_terminal', 'get_terminal_output']
+tools: ['codebase', 'usages', 'think', 'problems', 'fetch', 'findTestFiles', 'githubRepo', 'todos', 'editFiles', 'search', 'runCommands', 'runTasks', 'search', 'playwright']
 ---
 
 # Debug Mode Instructions

@@ -5,6 +5,7 @@ export interface SimConfig {
   MAX_ACC_MS: number;
   bounds: { W: number; H: number };
   friction: number; // Velocity damping factor for ships
+  gridCellSize?: number; // spatial grid cell size (px)
 }
 
 export const SIM: SimConfig = {
@@ -12,6 +13,7 @@ export const SIM: SimConfig = {
   MAX_ACC_MS: 250,
   bounds: { W: 1920, H: 1080 }, // Use LOGICAL_MAP for default bounds
   friction: 0.98,
+  gridCellSize: 64,
 };
 // boundaryBehavior: Tactical impact and pruning rationale
 // - 'remove': Ships/bullets are eliminated at map edge; punishes edge play, rewards central control. Pruning is immediate for out-of-bounds entities.
