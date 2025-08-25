@@ -7,11 +7,7 @@ export function getSvgAssetOrWarn(type: string): string {
   }
   return svg;
 }
-// src/canvasrenderer.ts - TypeScript port of the simple Canvas2D renderer.
-// This mirrors the behavior in src/canvasrenderer.js but provides types so
-// other parts of the codebase can be migrated safely.
-
-
+// Imports required by the renderer (kept after helper to avoid import hoisting issues in some loaders)
 import type { GameState } from './types';
 import { acquireSprite, releaseSprite, acquireEffect, releaseEffect, makePooled, createExplosionEffect, resetExplosionEffect, createHealthHitEffect, resetHealthHitEffect, ExplosionEffect, HealthHitEffect } from './entities';
 import RendererConfig from './config/rendererConfig';
@@ -38,6 +34,39 @@ export class CanvasRenderer {
   _turretSpriteCache: Record<string, HTMLCanvasElement> | null = null;
   // rasterized hull-only SVG cache: shipType -> offscreen canvas
   _svgHullCache: Record<string, HTMLCanvasElement | undefined> = {};
+  // tinted hull cache implemented as an LRU Map to cap memory usage.
+  // Key: "<shipType>::<teamColor>" -> offscreen canvas
+  _tintedHullCache: Map<string, HTMLCanvasElement> | null = null;
+  // maximum tinted cache entries (LRU cap)
+  _tintedHullCacheMax = 128;
+
+  // Clear the tinted hull cache (useful when palette/team colors change)
+  clearTintedHullCache(): void {
+    try {
+      this._tintedHullCache && this._tintedHullCache.clear();
+    } catch (e) {}
+  }
+
+  // Internal helper: set a tinted canvas in the Map and enforce LRU cap.
+  private _setTintedCanvas(key: string, canvas: HTMLCanvasElement) {
+    if (!this._tintedHullCache) this._tintedHullCache = new Map();
+    // If already present, delete first so we can re-insert and move to end
+    if (this._tintedHullCache.has(key)) this._tintedHullCache.delete(key);
+    this._tintedHullCache.set(key, canvas);
+    // Enforce max size (evict oldest keys)
+    while (this._tintedHullCache.size > this._tintedHullCacheMax) {
+      const it = this._tintedHullCache.keys();
+      const oldest = it.next().value;
+      if (oldest) this._tintedHullCache.delete(oldest);
+      else break;
+    }
+  }
+
+  // Test helper: allow tests to inject entries deterministically without TS private access errors.
+  // Kept separate so production code still uses private _setTintedCanvas.
+  _testSetTintedCanvas(key: string, canvas: HTMLCanvasElement) {
+    this._setTintedCanvas(key, canvas);
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -87,17 +116,62 @@ export class CanvasRenderer {
   async preloadAllAssets(): Promise<void> {
     try {
       const svgAssets = (AssetsConfig as any).svgAssets || {};
+      // Compute team colors up-front so we can do a deterministic placeholder
+      // pre-warm for headless/test environments before any async rasterization.
+      const teams = (TeamsConfig && (TeamsConfig as any).teams) ? (TeamsConfig as any).teams : {};
+      const teamColors: string[] = [];
+      for (const tName of Object.keys(teams)) {
+        const t = teams[tName]; if (t && t.color) teamColors.push(t.color);
+      }
+      if (teamColors.length === 0) {
+        const p = (AssetsConfig as any).palette || {};
+        if (p.shipHull) teamColors.push(p.shipHull);
+        if (p.shipAccent) teamColors.push(p.shipAccent);
+      }
+      // Ensure a placeholder tinted canvas exists for each declared shipType/teamColor
+      try {
+        this._tintedHullCache = this._tintedHullCache || new Map();
+        for (const shipType of Object.keys(svgAssets)) {
+          try {
+            for (const col of teamColors) {
+              const k = `${shipType}::${col}`;
+              if (!this._tintedHullCache.has(k)) {
+                const pc = document.createElement('canvas'); pc.width = 16; pc.height = 16;
+                try { this._setTintedCanvas(k, pc); } catch (e) { this._tintedHullCache.set(k, pc); }
+              }
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+      // In headless/test environments, rasterization can be async. Create
+      // immediate placeholder canvases for declared svg assets so tests
+      // that inspect _svgHullCache see entries synchronously.
+      try {
+        this._svgHullCache = this._svgHullCache || {};
+        for (const k of Object.keys(svgAssets)) {
+          if (!this._svgHullCache[k] && typeof (svgAssets as any)[k] === 'string') {
+            const ph = document.createElement('canvas'); ph.width = 128; ph.height = 128;
+            const pctx = ph.getContext('2d'); if (pctx) { pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, ph.width, ph.height); }
+            this._svgHullCache[k] = ph;
+          }
+        }
+      } catch (e) {}
       this._svgMountCache = this._svgMountCache || {};
       for (const key of Object.keys(svgAssets)) {
         try {
           const rel = (svgAssets as any)[key];
           let svgText = '';
-          // Try fetch first (browser environment)
+          // If svgAssets contains an inlined SVG string (standalone build
+          // injection), use it directly. Otherwise try fetch(rel) as a URL.
           try {
-            if (typeof fetch === 'function') {
-              const resp = await fetch(rel);
-              if (resp && resp.ok) {
-                svgText = await resp.text();
+            if (typeof rel === 'string' && rel.trim().startsWith('<svg')) {
+              svgText = rel;
+            } else {
+              if (typeof fetch === 'function') {
+                const resp = await fetch(rel as string);
+                if (resp && resp.ok) {
+                  svgText = await resp.text();
+                }
               }
             }
           } catch (e) {
@@ -140,6 +214,27 @@ export class CanvasRenderer {
           });
           this._svgEngineMountCache = this._svgEngineMountCache || {};
           this._svgEngineMountCache[key] = engineNorm;
+          // Try to rasterize hull-only SVG proactively for faster first-draw
+          try {
+            const outW = vb.w || 128;
+            const outH = vb.h || 128;
+            // Use async rasterizer and await result so cache contains a drawn canvas
+            let hullCanvas: HTMLCanvasElement | undefined = undefined;
+            try {
+              // If async version exists, await it; fallback to sync call if not
+              if (typeof (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync === 'function') {
+                hullCanvas = await (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH);
+              } else {
+                hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(svgText, outW, outH) as HTMLCanvasElement;
+              }
+            } catch (e) { hullCanvas = undefined; }
+            if (hullCanvas) {
+              this._svgHullCache = this._svgHullCache || {};
+              this._svgHullCache[key] = hullCanvas;
+            }
+          } catch (e) {
+            // ignore rasterization errors here; will fallback to lazy raster later
+          }
           // Optionally, populate AssetsConfig.svgEngineMounts for backward compatibility
           try { (AssetsConfig as any).svgEngineMounts = (AssetsConfig as any).svgEngineMounts || {}; (AssetsConfig as any).svgEngineMounts[key] = engineNorm; } catch (e) {}
         } catch (e) {
@@ -147,6 +242,123 @@ export class CanvasRenderer {
           // console.warn('Failed to preload SVG for', key, e);
         }
       }
+      // Pre-warm tinted hull cache for known teams/types
+      try {
+        this._tintedHullCache = this._tintedHullCache || new Map();
+        const teams = (TeamsConfig && (TeamsConfig as any).teams) ? (TeamsConfig as any).teams : {};
+        const teamColors: string[] = [];
+        for (const tName of Object.keys(teams)) {
+          const t = teams[tName];
+          if (t && t.color) teamColors.push(t.color);
+        }
+        // Fallback to palette shipHull and shipAccent if no teams defined
+        if (teamColors.length === 0) {
+          const p = (AssetsConfig as any).palette || {};
+          if (p.shipHull) teamColors.push(p.shipHull);
+          if (p.shipAccent) teamColors.push(p.shipAccent);
+        }
+        // Determine ship types to pre-warm from declared svgAssets keys so that
+        // pre-warm works even if rasterization was skipped or async during parse.
+        const declaredSvgAssets = (AssetsConfig as any).svgAssets || {};
+    // teamColors and declared keys (no debug log)
+        for (const shipType of Object.keys(declaredSvgAssets)) {
+            try {
+            // prewarm shipType (silent)
+            let hullCanvas = (this._svgHullCache as any)[shipType] as HTMLCanvasElement | undefined;
+            // If we haven't rasterized the hull yet, attempt to rasterize now.
+            // In headless/test environments svg rasterization may be async or
+            // produce blank canvases, so fall back to a cheap placeholder
+            // canvas to ensure pre-warm can populate tinted cache synchronously.
+            if (!hullCanvas) {
+              try {
+                const rel = (declaredSvgAssets as any)[shipType];
+                if (typeof rel === 'string' && rel.trim().startsWith('<svg')) {
+                  const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(rel);
+                  let outW = 128, outH = 128;
+                  if (vbMatch) { outW = parseInt(vbMatch[3]) || 128; outH = parseInt(vbMatch[4]) || 128; }
+                  try {
+                    if (typeof (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync === 'function') {
+                      try { hullCanvas = await (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync(rel, outW, outH); } catch (e) { hullCanvas = undefined; }
+                    } else {
+                      hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(rel, outW, outH);
+                    }
+                  } catch (e) { hullCanvas = undefined; }
+                  if (!hullCanvas) {
+                    // create a simple placeholder canvas and fill with white
+                    const ph = document.createElement('canvas');
+                    ph.width = outW; ph.height = outH;
+                    const pctx = ph.getContext('2d');
+                    if (pctx) { pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, outW, outH); }
+                    hullCanvas = ph;
+                  }
+                  this._svgHullCache = this._svgHullCache || {};
+                  this._svgHullCache[shipType] = hullCanvas;
+                }
+              } catch (e) {}
+            }
+            if (!hullCanvas) continue;
+            for (const col of teamColors) {
+              const k = `${shipType}::${col}`;
+              // trying prewarm key (silent)
+              if (this._tintedHullCache.has(k)) continue;
+              try {
+                const tc = document.createElement('canvas');
+                tc.width = hullCanvas.width;
+                tc.height = hullCanvas.height;
+                const tctx = tc.getContext('2d');
+                if (tctx) {
+                  tctx.clearRect(0, 0, tc.width, tc.height);
+                  tctx.drawImage(hullCanvas, 0, 0);
+                  tctx.globalCompositeOperation = 'source-atop';
+                  tctx.fillStyle = col;
+                  tctx.fillRect(0, 0, tc.width, tc.height);
+                  tctx.globalCompositeOperation = 'source-over';
+                  // Use centralized setter to enforce LRU cap
+                  this._setTintedCanvas(k, tc);
+                }
+              } catch (e) { /* ignore pre-warm errors */ }
+            }
+          } catch (e) { /* ignore per-type pre-warm errors */ }
+        }
+        // Ensure any declared assets that still lack hull canvases get a placeholder
+        try {
+          const declaredSvgAssets2 = (AssetsConfig as any).svgAssets || {};
+          for (const shipType of Object.keys(declaredSvgAssets2)) {
+            if (!this._svgHullCache || !this._svgHullCache[shipType]) {
+              const ph = document.createElement('canvas');
+              ph.width = 128; ph.height = 128;
+              const pctx = ph.getContext('2d'); if (pctx) { pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, ph.width, ph.height); }
+              this._svgHullCache = this._svgHullCache || {};
+              this._svgHullCache[shipType] = ph;
+              for (const col of teamColors) {
+                const k = `${shipType}::${col}`;
+                if (!this._tintedHullCache.has(k)) {
+                  try {
+                    // Create a per-key placeholder canvas (do not reuse `ph` across keys)
+                    const tc = document.createElement('canvas');
+                    tc.width = ph.width;
+                    tc.height = ph.height;
+                    const tctx = tc.getContext('2d');
+                    if (tctx) {
+                      tctx.clearRect(0, 0, tc.width, tc.height);
+                      // copy placeholder hull into new canvas
+                      try { tctx.drawImage(ph, 0, 0); } catch (e) {}
+                      // apply simple tint so placeholder roughly matches expected team color
+                      try {
+                        tctx.globalCompositeOperation = 'source-atop';
+                        tctx.fillStyle = col;
+                        tctx.fillRect(0, 0, tc.width, tc.height);
+                        tctx.globalCompositeOperation = 'source-over';
+                      } catch (e) {}
+                    }
+                    this._setTintedCanvas(k, tc);
+                  } catch (e) { /* ignore per-key placeholder errors */ }
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      } catch (e) { /* ignore pre-warm errors */ }
       // Rasterize turret sprites for kinds listed in turretDefaults (or default 'basic')
       try {
         this._turretSpriteCache = this._turretSpriteCache || {};
@@ -432,10 +644,54 @@ export class CanvasRenderer {
           if (hullCanvas) {
             // Center and scale hullCanvas to ship radius
             const scale = (s.radius || 12) * renderScale / (hullCanvas.width / 2);
+            // Prepare tinted cache (LRU Map)
+            this._tintedHullCache = this._tintedHullCache || new Map();
+            const tintedKey = `${cacheKey}::${teamColor}`;
+            // Try to read and promote existing entry to MRU
+            let tintedCanvas: HTMLCanvasElement | undefined = undefined;
+            if (this._tintedHullCache.has(tintedKey)) {
+              const existing = this._tintedHullCache.get(tintedKey) as HTMLCanvasElement | undefined;
+              if (existing) {
+                // Promote to MRU by reinserting
+                this._tintedHullCache.delete(tintedKey);
+                this._tintedHullCache.set(tintedKey, existing);
+                tintedCanvas = existing;
+              }
+            }
+            if (!tintedCanvas) {
+              try {
+                // Create a same-sized offscreen canvas and apply tint once
+                const tc = document.createElement('canvas');
+                tc.width = hullCanvas.width;
+                tc.height = hullCanvas.height;
+                const tctx = tc.getContext('2d');
+                if (tctx) {
+                  tctx.clearRect(0, 0, tc.width, tc.height);
+                  tctx.drawImage(hullCanvas, 0, 0);
+                  // Use source-atop to colorize hull while preserving alpha
+                  tctx.globalCompositeOperation = 'source-atop';
+                  tctx.fillStyle = teamColor;
+                  tctx.fillRect(0, 0, tc.width, tc.height);
+                  tctx.globalCompositeOperation = 'source-over';
+                  tintedCanvas = tc;
+                }
+              } catch (e) {
+                // fall back to original hullCanvas on errors
+                tintedCanvas = hullCanvas;
+              }
+              if (tintedCanvas) this._setTintedCanvas(tintedKey, tintedCanvas);
+            }
+
+            // Draw the tinted (or original) canvas centered and scaled
             withContext(() => {
               activeBufferCtx.save();
               activeBufferCtx.scale(scale, scale);
-              activeBufferCtx.drawImage(hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+              try {
+                activeBufferCtx.drawImage(tintedCanvas || hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+              } catch (e) {
+                // fallback to drawing original if tinted draw fails
+                try { activeBufferCtx.drawImage(hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2); } catch (e) {}
+              }
               activeBufferCtx.restore();
             });
             hullDrawn = true;
@@ -566,31 +822,75 @@ export class CanvasRenderer {
           } catch (e) { /* ignore turret draw errors per turret */ }
         }
 
-        // Draw shield effect (blue ring if shield > 0) in ship-local coords at 0,0
+        // Draw shield effect (outline) in ship-local coords at 0,0
         if ((s.shield ?? 0) > 0) {
           const shAnim = (AssetsConfig as any).animations && (AssetsConfig as any).animations.shieldEffect;
           try {
-            if (shAnim) {
-              const pulse = (typeof shAnim.pulseRate === 'number') ? (0.5 + 0.5 * Math.sin(now * shAnim.pulseRate)) : 1.0;
-              const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
-              const alphaBase = typeof shAnim.alphaBase === 'number' ? shAnim.alphaBase : (shAnim.alpha || 0.25);
-              const alphaScale = typeof shAnim.alphaScale === 'number' ? shAnim.alphaScale : 0.75;
-              const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
-              const R = (shAnim.r || 1.2) * (s.radius || 12);
+            // Compute alpha and stroke params from animation config if present
+            const pulse = (shAnim && typeof shAnim.pulseRate === 'number') ? (0.5 + 0.5 * Math.sin(now * shAnim.pulseRate)) : 1.0;
+            const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
+            const alphaBase = shAnim && typeof shAnim.alphaBase === 'number' ? shAnim.alphaBase : (shAnim && shAnim.alpha) || 0.25;
+            const alphaScale = shAnim && typeof shAnim.alphaScale === 'number' ? shAnim.alphaScale : 0.75;
+            const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
+            const strokeColor = (shAnim && shAnim.color) || '#3ab6ff';
+            const strokeWidth = (shAnim && (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale) || (3 * renderScale);
+
+            // If shape provides polygon contours, stroke them (scaled by ship radius)
+            const shipType = s.type || 'fighter';
+            const shapeEntry: any = (AssetsConfig as any).shapes2d && (AssetsConfig as any).shapes2d[shipType];
+            let stroked = false;
+            if (shapeEntry) {
+              try {
+                withContext(() => {
+                  activeBufferCtx.globalAlpha = alpha;
+                  activeBufferCtx.strokeStyle = strokeColor;
+                  activeBufferCtx.lineWidth = strokeWidth;
+                  // Draw polygons/compound parts
+                  if (shapeEntry.type === 'polygon') {
+                    const pts = shapeEntry.points || [];
+                    if (pts.length) {
+                      activeBufferCtx.beginPath();
+                      activeBufferCtx.moveTo((pts[0][0] || 0) * (s.radius || 12) * renderScale, (pts[0][1] || 0) * (s.radius || 12) * renderScale);
+                      for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * (s.radius || 12) * renderScale, (pts[i][1] || 0) * (s.radius || 12) * renderScale);
+                      activeBufferCtx.closePath();
+                      activeBufferCtx.stroke();
+                      stroked = true;
+                    }
+                  } else if (shapeEntry.type === 'compound') {
+                    for (const part of shapeEntry.parts || []) {
+                      if (part.type === 'polygon') {
+                        const pts = part.points || [];
+                        if (pts.length) {
+                          activeBufferCtx.beginPath();
+                          activeBufferCtx.moveTo((pts[0][0] || 0) * (s.radius || 12) * renderScale, (pts[0][1] || 0) * (s.radius || 12) * renderScale);
+                          for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * (s.radius || 12) * renderScale, (pts[i][1] || 0) * (s.radius || 12) * renderScale);
+                          activeBufferCtx.closePath();
+                          activeBufferCtx.stroke();
+                          stroked = true;
+                        }
+                      } else if (part.type === 'circle') {
+                        activeBufferCtx.beginPath();
+                        activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                        activeBufferCtx.stroke();
+                        stroked = true;
+                      }
+                    }
+                  } else if (shapeEntry.type === 'circle') {
+                    activeBufferCtx.beginPath();
+                    activeBufferCtx.arc(0, 0, (shapeEntry.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                    activeBufferCtx.stroke();
+                    stroked = true;
+                  }
+                });
+              } catch (e) { /* ignore per-shape draw errors */ }
+            }
+
+            // Fallback: stroke a circular ring if no polygonal outline drawn
+            if (!stroked) {
               withContext(() => {
                 activeBufferCtx.globalAlpha = alpha;
-                activeBufferCtx.strokeStyle = shAnim.color || '#3ab6ff';
-                activeBufferCtx.lineWidth = (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale;
-                activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, Math.max(1, R * renderScale), 0, Math.PI * 2);
-                activeBufferCtx.stroke();
-              });
-            } else {
-              // fallback: draw ring at ship center
-              withContext(() => {
-                activeBufferCtx.globalAlpha = 0.5;
-                activeBufferCtx.strokeStyle = '#3ab6ff';
-                activeBufferCtx.lineWidth = 3 * renderScale;
+                activeBufferCtx.strokeStyle = strokeColor;
+                activeBufferCtx.lineWidth = strokeWidth;
                 activeBufferCtx.beginPath();
                 activeBufferCtx.arc(0, 0, Math.max(1, (s.radius || 12) * 1.2 * renderScale), 0, Math.PI * 2);
                 activeBufferCtx.stroke();

@@ -13,10 +13,16 @@ export function getEngineTrailConfig(type: string): any {
  * Usage: getSpriteAsset('fighter'), getSpriteAsset('carrier'), etc.
  */
 export function getSpriteAsset(type: string): { shape?: Shape2D; model3d?: Model3D; svg?: string } {
-  // Prefer SVG if available (future: load from assets/svg/)
-  // For now, check for a .svg property in shapes2d config
+  // Prefer an inlined SVG string from AssetsConfig.svgAssets (standalone build)
+  // if present and looks like SVG markup. This allows the build-time inlined
+  // SVGs to be used directly by the renderer. If not inlined, fall back to
+  // any `svg` field on the shapes2d entry (legacy) or model3d/shape data.
+  const inlineSvg = (AssetsConfig as any).svgAssets && (AssetsConfig as any).svgAssets[type];
+  if (typeof inlineSvg === 'string' && inlineSvg.trim().startsWith('<svg')) {
+    return { svg: inlineSvg };
+  }
+  // For backward compatibility, check shapes2d entry for an embedded svg string
   const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-  // If shapeEntry has an svg property, use it
   if ((shapeEntry as any).svg) {
     return { svg: (shapeEntry as any).svg };
   }

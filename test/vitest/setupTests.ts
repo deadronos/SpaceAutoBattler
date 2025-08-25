@@ -2,6 +2,9 @@
 // Explicitly initialize happy-dom globals for Vitest tests.
 import { Window } from 'happy-dom';
 
+// Import test helpers that should run before all tests (provides inline SVG assets)
+import './setup-inline-svgs';
+
 const happyWindow = new Window();
 globalThis.window = happyWindow as any;
 globalThis.document = (happyWindow.document as any);

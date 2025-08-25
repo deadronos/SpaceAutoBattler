@@ -3,7 +3,7 @@
 import { srandom, srange } from "./rng";
 import { createBullet } from "./entities";
 import { AI_THRESHOLDS, SHIP_MOVEMENT_DEFAULTS } from "./config/behaviorConfig";
-import { BULLET_DEFAULTS } from "./config/entitiesConfig";
+import { BULLET_DEFAULTS, getShipConfig } from "./config/entitiesConfig";
 import { TEAM_DEFAULT } from "./config/teamsConfig";
 
 type ShipLike = {
@@ -163,10 +163,16 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       // Always use config radius for turret position
       const angle = ship.angle || 0;
       // Get latest config radius for this ship type
-      const shipType = ship.type || "fighter";
-      const shipCfg = require("./config/entitiesConfig").getShipConfig()[shipType];
+  const shipType = ship.type || "fighter";
+  const shipCfg = getShipConfig()[shipType];
       const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : (ship.radius || 12);
-      const [tx, ty] = turret.position || [0, 0];
+      // Accept both object-style turrets ({ position: [x,y] }) and tuple-style
+      // shorthand ([x,y]) which the renderer commonly uses. Support both here
+      // so bullets spawn from the same mountpoints that are drawn.
+      const pos = Array.isArray(turret) && turret.length === 2
+        ? turret
+        : (turret && Array.isArray((turret as any).position) ? (turret as any).position : [0, 0]);
+      const [tx, ty] = pos;
       const turretX =
         (ship.x || 0) +
         Math.cos(angle) * tx * configRadius -

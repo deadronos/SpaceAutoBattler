@@ -2,6 +2,7 @@
 import { simulateStep } from './simulate';
 import { applySimpleAI } from './behavior';
 import { srand } from './rng';
+import { normalizeTurrets, normalizeStateShips } from './entities';
 import type { /* Bounds type can be extended in src/types if needed */ } from './types';
 
 type Bounds = { W: number; H: number };
@@ -65,7 +66,10 @@ function tick() {
 				if (typeof msg.seed === 'number') srand(msg.seed);
 				if (msg.bounds) bounds = msg.bounds;
 				if (typeof msg.simDtMs === 'number') simDtMs = msg.simDtMs;
-				if (msg.state) state = msg.state;
+				if (msg.state) {
+					state = msg.state;
+					try { normalizeStateShips(state); } catch (e) {}
+				}
 				postMessage({ type: 'ready' });
 				break;
 			case 'start':
@@ -73,14 +77,17 @@ function tick() {
 				running = true; acc = 0; last = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); tick();
 				break;
 			case 'stop':
-				running = false; break;
+				running = false;
+				break;
 			case 'snapshotRequest':
-				postSnapshot(); break;
+				postSnapshot();
+				break;
 			case 'setSeed':
 				if (typeof msg.seed === 'number') { srand(msg.seed); }
 				break;
 			case 'command':
 				if (msg.cmd === 'spawnShip' && state) {
+					try { normalizeTurrets(msg.args.ship); } catch (e) {}
 					state.ships.push(msg.args.ship);
 					try { (state as any).shipMap && (state as any).shipMap.set(msg.args.ship.id, msg.args.ship); } catch (e) {}
 					try { const tt = String((msg.args.ship as any).team || ''); state.teamCounts[tt] = (state.teamCounts[tt] || 0) + 1; } catch (e) {}
@@ -88,17 +95,17 @@ function tick() {
 					state.bullets.push(msg.args.bullet);
 				} else if (msg.cmd === 'setState') {
 					state = msg.args.state;
-					try { (state as any).shipMap = new Map<number, any>(); state.teamCounts = { red: 0, blue: 0 }; for (const s of (state.ships || [])) if (s && typeof s.id !== 'undefined') { (state as any).shipMap.set(s.id, s); try { const t = String((s as any).team || ''); state.teamCounts[t] = (state.teamCounts[t] || 0) + 1; } catch (e) {} } } catch (e) {}
+					try { normalizeStateShips(state); } catch (e) {}
 				}
 				break;
 			default:
 				// ignore
 				break;
 		}
-		} catch (err: any) {
-			const stack = err && (err as any).stack ? (err as any).stack : '';
-			postMessage({ type: 'error', message: String(err), stack });
-		}
+	} catch (err: any) {
+		const stack = err && (err as any).stack ? (err as any).stack : '';
+		postMessage({ type: 'error', message: String(err), stack });
+	}
 };
 
 export default null;

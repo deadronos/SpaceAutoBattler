@@ -81,6 +81,36 @@ export function rasterizeSvgToCanvas(svgText: string, outW: number, outH: number
   return canvas;
 }
 
+// Promise-based rasterizer: resolves when image draw completes (or on error)
+export function rasterizeSvgToCanvasAsync(svgText: string, outW: number, outH: number): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  return new Promise((resolve) => {
+    try {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(canvas);
+      const img = new Image();
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      let settled = false;
+      const done = () => {
+        if (settled) return; settled = true; try { URL.revokeObjectURL(url); } catch (e) {}
+        resolve(canvas);
+      };
+      img.onload = () => {
+        try { ctx.clearRect(0, 0, outW, outH); ctx.drawImage(img, 0, 0, outW, outH); } catch (e) {}
+        done();
+      };
+      img.onerror = () => { done(); };
+      // In some environments image decoding may be synchronous (rare), guard for that
+      try { img.src = url; } catch (e) { done(); }
+      // Fallback: if onload doesn't fire after a short timeout, resolve anyway
+      setTimeout(() => { done(); }, 2500);
+    } catch (e) { try { /* ignore */ } catch {} ; resolve(canvas); }
+  });
+}
+
 // Utility: rasterize hull-only SVG by removing turret <rect>s (class="turret")
 export function rasterizeHullOnlySvgToCanvas(svgText: string, outW: number, outH: number): HTMLCanvasElement {
   try {
@@ -99,6 +129,22 @@ export function rasterizeHullOnlySvgToCanvas(svgText: string, outW: number, outH
   } catch (e) {
     // Fallback: rasterize original SVG
     return rasterizeSvgToCanvas(svgText, outW, outH);
+  }
+}
+
+export async function rasterizeHullOnlySvgToCanvasAsync(svgText: string, outW: number, outH: number): Promise<HTMLCanvasElement> {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
+    const turrets = svg.querySelectorAll('rect.turret');
+    turrets.forEach(el => el.parentNode?.removeChild(el));
+    const serializer = new XMLSerializer();
+    const hullOnlySvgText = serializer.serializeToString(svg);
+    return await rasterizeSvgToCanvasAsync(hullOnlySvgText, outW, outH);
+  } catch (e) {
+    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
   }
 }
 

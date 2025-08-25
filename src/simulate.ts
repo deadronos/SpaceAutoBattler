@@ -1,6 +1,6 @@
 // simulate.ts - TypeScript implementation ported from simulate.js
 import { srange, srand, srandom } from "./rng";
-import { createShip, updateTeamCount } from "./entities";
+import { createShip, updateTeamCount, normalizeTurrets } from "./entities";
 import { getShipConfig } from "./config/entitiesConfig";
 import AssetsConfig from './config/assets/assetsConfig';
 import { progression as progressionCfg } from "./config/progressionConfig";
@@ -297,16 +297,19 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           }
         }
       } catch (e) {}
-      // Instance turrets can be an array of objects or tuples; normalize to objects with angle/targetAngle
+      // Normalize turret definitions via single helper so tuple shorthand
+      // ([x,y]) and object turrets are made consistent across systems.
+      try {
+        normalizeTurrets(s as any);
+      } catch (e) {}
+      // Ensure per-turret numeric fields and integrate turret angles
       if (Array.isArray((s as any).turrets) && (s as any).turrets.length) {
         const turretDefs = (s as any).turrets;
         for (let ti = 0; ti < turretDefs.length; ti++) {
           try {
-            let t = turretDefs[ti];
-            // If turret is a simple tuple [x,y], skip (no state)
-            if (Array.isArray(t) && t.length === 2) continue;
+            const t = turretDefs[ti];
             if (!t) continue;
-            // Ensure numeric fields exist
+            // Ensure numeric fields exist and perform per-turret integration
             t.angle = typeof t.angle === 'number' ? t.angle : (typeof (s as any).turretAngle === 'number' ? (s as any).turretAngle : s.angle || 0);
             t.targetAngle = typeof t.targetAngle === 'number' ? t.targetAngle : (typeof t.desiredAngle === 'number' ? t.desiredAngle : t.angle);
             // Determine turret turnRate: use instance value, else turretDefaults by kind, else fallback
@@ -322,7 +325,7 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             while (diff > Math.PI) diff -= Math.PI * 2;
             const step = Math.sign(diff) * Math.min(Math.abs(diff), maxTurn);
             t.angle = t.angle + step;
-            // Normalize
+            // Normalize angle into -PI..PI
             while (t.angle < -Math.PI) t.angle += Math.PI * 2;
             while (t.angle > Math.PI) t.angle -= Math.PI * 2;
             turretDefs[ti] = t;

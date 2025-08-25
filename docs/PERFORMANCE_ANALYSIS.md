@@ -110,4 +110,18 @@ This document analyses performance bottlenecks observed in the `dev` branch of t
 
 - Immediate highest-impact change: move rendering out of per-step to once-per-frame and add snapshot render throttling. That will reduce redundant renders and smooth CPU usage.
 - Follow-up: audit and tighten pooling lifecycle and limiting particle spawn rates to prevent leaks.
-- If you want, I can implement the recommended changes (runLoop/step refactor and worker snapshot coalescing), add debug counters, and add unit tests. Respond "implement" and I will prepare and apply the patch and run tests.
+- Status of recommended actions (updated):
+  - Refactor runLoop/step to render once per RAF (move render out of step): completed (runLoop now calls renderState once per animation frame after processing accumulated steps).
+  - Implement snapshot coalescing for worker mode (pendingSnapshot + RAF): completed (snapshot handler now sets a pending flag and schedules a single RAF to render the latest snapshot).
+  - Audit and harden pool acquire/release semantics: pending — requires a focused patch to centralize lifecycle and guard double-release; recommended next.
+  - Change shipMap rebuild to incremental updates on add/remove: pending — current code still rebuilds shipMap in some hot paths; convert to incremental updates.
+  - Limit particle spawn rates and add pooling back-pressure: pending — add maxParticles and per-explosion caps to avoid bursts.
+  - Ensure global arrays (flashes, shieldFlashes, healthFlashes) are pruned after render: pending — ensure renderer consumes and clears these arrays or move them into state with deterministic lifecycle.
+  - Reduce arr.slice() allocations for event emits: pending — optimize emit logic to avoid per-emit copies when possible.
+  - Add diagnostics/instrumentation for pool sizes and counts: pending — add periodic counters and a debug mode to detect monotonic growth.
+  - Review spatialGrid rebuild strategy and optimize collision checks: pending — consider incremental updates to grid and avoid full rebuilds each frame.
+  - Narrow try/catch in hot loops: pending — audit and reduce try/catch in inner loops.
+
+- I have applied the two highest-impact changes (runLoop/step refactor and snapshot coalescing). I can proceed to implement the remaining items in priority order, add unit tests (leak detection, stress sim), and run the test suite.
+
+- Next action: proceed to audit and harden pooling logic and add unit tests to validate no leaks. Reply "continue" to allow me to implement the pooling fixes and tests now.

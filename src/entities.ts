@@ -93,7 +93,7 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
   const sizeVal = (rawCfg as any).size || (rawCfg.radius && rawCfg.radius >= 36 ? 'large' : rawCfg.radius && rawCfg.radius >= 20 ? 'medium' : 'small');
   const sizeDefaults = getSizeDefaults(sizeVal as 'small'|'medium'|'large');
   const cfg = Object.assign({}, sizeDefaults, rawCfg) as Partial<ShipSpec>;
-  return {
+  const ship = {
     id: genId(),
     type: resolvedType,
     x,
@@ -111,6 +111,9 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
     xp: 0,
     level: 1,
     cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
+    // Keep raw turret defs here for now; we'll normalize below via helper so
+    // normalization logic is centralized and reusable by snapshot handlers.
+    turrets: (cfg.turrets || []),
     accel: cfg.accel || 0,
     currentAccel: 0,
     throttle: 0,
@@ -127,6 +130,57 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
     shieldPercent: 1,
     hpPercent: 1,
   } as Ship;
+  // Ensure turrets are normalized to the object shape (idempotent)
+  try { normalizeTurrets(ship as any); } catch (e) {}
+  return ship as Ship;
+}
+
+// normalizeTurrets
+// Converts turret shorthand arrays ([x,y]) into normalized turret objects
+// with default runtime fields. This function is idempotent and safe to call
+// on ships coming from snapshots or network/worker messages.
+export function normalizeTurrets(ship: any): void {
+  try {
+    if (!ship) return;
+    const tarr = ship.turrets;
+    if (!Array.isArray(tarr)) return;
+    ship.turrets = tarr.map((t: any) => {
+      if (Array.isArray(t) && t.length === 2) {
+        return { position: t, angle: 0, targetAngle: 0, kind: 'basic' };
+      }
+      // If it's already an object turret, shallow-copy to avoid mutating
+      // shared config objects from imports or serialized defaults.
+      if (t && typeof t === 'object') return Object.assign({}, t);
+      return t;
+    });
+  } catch (e) {}
+}
+
+// normalizeStateShips
+// Normalizes turrets for every ship in the provided state, rebuilds a
+// shipMap for quick lookups and recomputes teamCounts (keeps red/blue keys).
+export function normalizeStateShips(state: any): void {
+  if (!state || typeof state !== 'object') return;
+  try {
+    const ships = Array.isArray(state.ships) ? state.ships : [];
+    // Normalize each ship's turret defs
+    for (const s of ships) {
+      try { normalizeTurrets(s); } catch (e) {}
+    }
+    // Rebuild shipMap
+    try {
+      (state as any).shipMap = new Map<number, any>();
+      for (const s of ships) if (s && typeof s.id !== 'undefined') (state as any).shipMap.set(s.id, s);
+    } catch (e) {}
+    // Recompute teamCounts, preserve red/blue keys default
+    try {
+      const counts: Record<string, number> = { red: 0, blue: 0 };
+      for (const s of ships) {
+        try { const t = String((s && (s as any).team) || ''); if (t) counts[t] = (counts[t] || 0) + 1; } catch (e) {}
+      }
+      state.teamCounts = counts;
+    } catch (e) {}
+  } catch (e) {}
 }
 
 export type Bullet = { id: number; x: number; y: number; vx: number; vy: number; team: string; ownerId?: number | null; damage: number; ttl: number; radius?: number; bulletRadius?: number; bulletTTL?: number; kind?: string; alive?: boolean; prevX?: number; prevY?: number; _prevX?: number; _prevY?: number };

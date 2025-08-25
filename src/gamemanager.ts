@@ -3,7 +3,24 @@
 // circular alias issues. Types are defined in `gamemanager.d.ts`.
 
 // Ported from gamemanager.js, now canonical TypeScript implementation
-import { makeInitialState, createShip, Ship, Bullet, genId, ExplosionEffect, ShieldHitEffect, HealthHitEffect, createExplosionEffect, resetExplosionEffect, createShieldHitEffect, resetShieldHitEffect, createHealthHitEffect, resetHealthHitEffect } from "./entities";
+import {
+  makeInitialState,
+  createShip,
+  Ship,
+  Bullet,
+  genId,
+  ExplosionEffect,
+  ShieldHitEffect,
+  HealthHitEffect,
+  createExplosionEffect,
+  resetExplosionEffect,
+  createShieldHitEffect,
+  resetShieldHitEffect,
+  createHealthHitEffect,
+  resetHealthHitEffect,
+  normalizeTurrets,
+  normalizeStateShips,
+} from "./entities";
 import { updateTeamCount } from "./entities";
 import { PARTICLE_DEFAULTS } from "./config/entitiesConfig";
 import { applySimpleAI } from "./behavior";
@@ -11,7 +28,13 @@ import { simulateStep } from "./simulate";
 import { SIM } from "./config/simConfig";
 import { srand, srandom } from "./rng";
 import { createSimWorker } from "./createSimWorker";
-import { acquireEffect, releaseEffect, acquireSprite, releaseSprite, makePooled } from "./entities";
+import {
+  acquireEffect,
+  releaseEffect,
+  acquireSprite,
+  releaseSprite,
+  makePooled,
+} from "./entities";
 import {
   SHIELD,
   HEALTH,
@@ -37,10 +60,22 @@ export const healthFlashes: HealthHitEffect[] = [];
 // Bullet pooling
 // Bullets: support optional GameState-backed pooling. If `state` is provided,
 // use state.assetPool.sprites keyed by 'bullet', otherwise fallback to legacy in-memory pool.
-export function acquireBullet(state: GameState, opts: Partial<Bullet> = {}): Bullet {
+export function acquireBullet(
+  state: GameState,
+  opts: Partial<Bullet> = {},
+): Bullet {
   // Use state-backed sprite pool keyed by 'bullet'
-  const key = 'bullet';
-  const b = acquireSprite(state, key, () => makePooled({ ...opts, id: genId(), alive: true } as any, (o: any, initArgs?: any) => Object.assign(o, initArgs)), opts) as Bullet & any;
+  const key = "bullet";
+  const b = acquireSprite(
+    state,
+    key,
+    () =>
+      makePooled(
+        { ...opts, id: genId(), alive: true } as any,
+        (o: any, initArgs?: any) => Object.assign(o, initArgs),
+      ),
+    opts,
+  ) as Bullet & any;
   // push into the state-active array so simulation sees it
   (state.bullets ||= []).push(b as Bullet);
   return b;
@@ -51,16 +86,24 @@ export function releaseBullet(state: GameState, b?: Bullet): void {
   if (!b.alive) return; // Prevent double-free
   b.alive = false;
   // remove from the state's active bullets
-  const arr = state.bullets || [] as Bullet[];
+  const arr = state.bullets || ([] as Bullet[]);
   const idx = arr.indexOf(b as Bullet);
   if (idx !== -1) arr.splice(idx, 1);
-  releaseSprite(state, 'bullet', b as any, undefined);
+  releaseSprite(state, "bullet", b as any, undefined);
 }
 
 // Explosion pooling
-export function acquireExplosion(state: GameState, opts: Partial<ExplosionEffect> = {}): ExplosionEffect {
-  const key = 'explosion';
-  const e = acquireEffect<ExplosionEffect>(state, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);
+export function acquireExplosion(
+  state: GameState,
+  opts: Partial<ExplosionEffect> = {},
+): ExplosionEffect {
+  const key = "explosion";
+  const e = acquireEffect<ExplosionEffect>(
+    state,
+    key,
+    () => makePooled(createExplosionEffect(opts), resetExplosionEffect),
+    opts,
+  );
   (state.explosions ||= []).push(e);
   return e;
 }
@@ -71,16 +114,24 @@ export function releaseExplosion(state: GameState, e?: ExplosionEffect) {
   if (!e.alive) return;
   e.alive = false;
   e._pooled = true;
-  const arr = state.explosions || [] as ExplosionEffect[];
+  const arr = state.explosions || ([] as ExplosionEffect[]);
   const idx = arr.indexOf(e);
   if (idx !== -1) arr.splice(idx, 1);
-  releaseEffect(state, 'explosion', e, undefined);
+  releaseEffect(state, "explosion", e, undefined);
 }
 
 // ShieldHit pooling
-export function acquireShieldHit(state: GameState, opts: Partial<ShieldHitEffect> = {}): ShieldHitEffect {
-  const key = 'shieldHit';
-  const sh = acquireEffect<ShieldHitEffect>(state, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);
+export function acquireShieldHit(
+  state: GameState,
+  opts: Partial<ShieldHitEffect> = {},
+): ShieldHitEffect {
+  const key = "shieldHit";
+  const sh = acquireEffect<ShieldHitEffect>(
+    state,
+    key,
+    () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect),
+    opts,
+  );
   (state.shieldHits ||= []).push(sh);
   return sh;
 }
@@ -88,18 +139,26 @@ export function acquireShieldHit(state: GameState, opts: Partial<ShieldHitEffect
 export function releaseShieldHit(state: GameState, sh?: ShieldHitEffect) {
   if (!sh) return;
   if (sh._pooled) return;
-  const arr = state.shieldHits || [] as ShieldHitEffect[];
+  const arr = state.shieldHits || ([] as ShieldHitEffect[]);
   const i = arr.indexOf(sh);
   if (i !== -1) arr.splice(i, 1);
   sh.alive = false;
   sh._pooled = true;
-  releaseEffect(state, 'shieldHit', sh, undefined);
+  releaseEffect(state, "shieldHit", sh, undefined);
 }
 
 // HealthHit pooling
-export function acquireHealthHit(state: GameState, opts: Partial<HealthHitEffect> = {}): HealthHitEffect {
-  const key = 'healthHit';
-  const hh = acquireEffect<HealthHitEffect>(state, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);
+export function acquireHealthHit(
+  state: GameState,
+  opts: Partial<HealthHitEffect> = {},
+): HealthHitEffect {
+  const key = "healthHit";
+  const hh = acquireEffect<HealthHitEffect>(
+    state,
+    key,
+    () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect),
+    opts,
+  );
   (state.healthHits ||= []).push(hh);
   return hh;
 }
@@ -107,12 +166,12 @@ export function acquireHealthHit(state: GameState, opts: Partial<HealthHitEffect
 export function releaseHealthHit(state: GameState, hh?: HealthHitEffect) {
   if (!hh) return;
   if (hh._pooled) return;
-  const arr = state.healthHits || [] as HealthHitEffect[];
+  const arr = state.healthHits || ([] as HealthHitEffect[]);
   const i = arr.indexOf(hh);
   if (i !== -1) arr.splice(i, 1);
   hh.alive = false;
   hh._pooled = true;
-  releaseEffect(state, 'healthHit', hh, undefined);
+  releaseEffect(state, "healthHit", hh, undefined);
 }
 
 export const config = {
@@ -160,9 +219,39 @@ export class Particle {
   }
 }
 
-export function acquireParticle(state: GameState, x: number, y: number, opts: Partial<Particle> = {}): Particle {
-  const key = 'particle';
-  const p = acquireEffect(state, key, () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS.ttl, opts.color ?? PARTICLE_DEFAULTS.color, opts.size ?? PARTICLE_DEFAULTS.size), (o: any, initArgs?: any) => Object.assign(o, initArgs)), { x, y, vx: opts.vx ?? 0, vy: opts.vy ?? 0, ttl: opts.ttl ?? PARTICLE_DEFAULTS.ttl, color: opts.color ?? PARTICLE_DEFAULTS.color, size: opts.size ?? PARTICLE_DEFAULTS.size });
+export function acquireParticle(
+  state: GameState,
+  x: number,
+  y: number,
+  opts: Partial<Particle> = {},
+): Particle {
+  const key = "particle";
+  const p = acquireEffect(
+    state,
+    key,
+    () =>
+      makePooled(
+        new Particle(
+          x,
+          y,
+          opts.vx ?? 0,
+          opts.vy ?? 0,
+          opts.ttl ?? PARTICLE_DEFAULTS.ttl,
+          opts.color ?? PARTICLE_DEFAULTS.color,
+          opts.size ?? PARTICLE_DEFAULTS.size,
+        ),
+        (o: any, initArgs?: any) => Object.assign(o, initArgs),
+      ),
+    {
+      x,
+      y,
+      vx: opts.vx ?? 0,
+      vy: opts.vy ?? 0,
+      ttl: opts.ttl ?? PARTICLE_DEFAULTS.ttl,
+      color: opts.color ?? PARTICLE_DEFAULTS.color,
+      size: opts.size ?? PARTICLE_DEFAULTS.size,
+    },
+  );
   // rehydrate
   p.x = x;
   p.y = y;
@@ -179,8 +268,12 @@ export function acquireParticle(state: GameState, x: number, y: number, opts: Pa
 
 export function releaseParticle(state: GameState, p?: Particle) {
   if (!p) return;
-  const key = 'particle';
-  try { releaseEffect(state, key, p, (x) => { /* no-op */ }); } catch {}
+  const key = "particle";
+  try {
+    releaseEffect(state, key, p, (x) => {
+      /* no-op */
+    });
+  } catch {}
   const idx = (state.particles || []).indexOf(p);
   if (idx !== -1) (state.particles || []).splice(idx, 1);
 }
@@ -305,8 +398,13 @@ function evaluateReinforcement(
                 o.team || "red",
               );
               state.ships.push(ship);
-                  try { (state as any).shipMap && (state as any).shipMap.set(ship.id, ship); } catch (e) {}
-                  try { updateTeamCount(state, undefined, ship.team); } catch (e) {}
+              try {
+                (state as any).shipMap &&
+                  (state as any).shipMap.set(ship.id, ship);
+              } catch (e) {}
+              try {
+                updateTeamCount(state, undefined, ship.team);
+              } catch (e) {}
               spawned.push(ship);
             } catch (e) {}
           }
@@ -327,11 +425,19 @@ function evaluateReinforcement(
         FALLBACK_POSITIONS[1].team,
       );
       state.ships.push(r);
-  try { (state as any).shipMap && (state as any).shipMap.set(r.id, r); } catch (e) {}
-  try { updateTeamCount(state, undefined, String(r.team)); } catch (e) {}
+      try {
+        (state as any).shipMap && (state as any).shipMap.set(r.id, r);
+      } catch (e) {}
+      try {
+        updateTeamCount(state, undefined, String(r.team));
+      } catch (e) {}
       state.ships.push(b);
-  try { (state as any).shipMap && (state as any).shipMap.set(b.id, b); } catch (e) {}
-  try { updateTeamCount(state, undefined, String(b.team)); } catch (e) {}
+      try {
+        (state as any).shipMap && (state as any).shipMap.set(b.id, b);
+      } catch (e) {}
+      try {
+        updateTeamCount(state, undefined, String(b.team));
+      } catch (e) {}
       return { spawned: [r, b] };
     } catch (e) {
       return null;
@@ -370,6 +476,9 @@ export function createGameManager({
   };
   let continuous = false;
   let continuousOptions: any = {};
+  // Snapshot coalescing helpers for worker-rendered mode
+  let latestSnapshot: any = null;
+  let renderScheduled = false;
 
   function emit(type: string, msg: any) {
     emitManagerEvent(listeners, type, msg);
@@ -404,16 +513,61 @@ export function createGameManager({
       };
       simWorker.on && simWorker.on("ready", _workerReadyHandler);
 
-      _workerSnapshotHandler = (m: any) => {
-        if (m && m.state) {
-          state = m.state;
-          try {
-            (state as any).shipMap = new Map<number, any>();
-            state.teamCounts = { red: 0, blue: 0 };
-            for (const s of (state.ships || [])) if (s && typeof s.id !== 'undefined') { (state as any).shipMap.set(s.id, s); try { const t = String((s as any).team || ''); state.teamCounts[t] = (state.teamCounts[t] || 0) + 1; } catch (e) {} }
-          } catch (e) {}
-        }
+      // Create a reusable snapshot handler so tests can invoke it directly
+      const handleSnapshot = (m: any) => {
+        try {
+          if (m && m.state) {
+            state = m.state;
+            try {
+              (state as any).shipMap = new Map<number, any>();
+              state.teamCounts = { red: 0, blue: 0 };
+              for (const s of state.ships || [])
+                if (s && typeof s.id !== "undefined") {
+                  try { normalizeTurrets(s); } catch (e) {}
+                  (state as any).shipMap.set(s.id, s);
+                  try {
+                    const t = String((s as any).team || "");
+                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+                  } catch (e) {}
+                }
+            } catch (e) {}
+            // Instead of rendering every snapshot immediately, coalesce snapshots
+            // and schedule a single RAF render to avoid render backlog.
+            try {
+              if (renderer && typeof renderer.renderState === "function") {
+                // store latest snapshot refs in closure-scoped vars
+                latestSnapshot = state;
+                if (!renderScheduled) {
+                  renderScheduled = true;
+                  try {
+                    requestAnimationFrame(() => {
+                      renderScheduled = false;
+                      const s = latestSnapshot;
+                      try {
+                        renderer.renderState({
+                          ships: s.ships,
+                          bullets: s.bullets,
+                          flashes,
+                          shieldFlashes,
+                          healthFlashes,
+                          t: s.t,
+                        });
+                      } catch (e) {}
+                      // clear transient flash arrays after render
+                      flashes.length = 0;
+                      shieldFlashes.length = 0;
+                      healthFlashes.length = 0;
+                    });
+                  } catch (e) {
+                    renderScheduled = false;
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
       };
+      _workerSnapshotHandler = handleSnapshot;
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
 
       // When running the sim in a worker, render from the fresh snapshot the
@@ -428,23 +582,46 @@ export function createGameManager({
             try {
               (state as any).shipMap = new Map<number, any>();
               state.teamCounts = { red: 0, blue: 0 };
-              for (const s of (state.ships || [])) if (s && typeof s.id !== 'undefined') { (state as any).shipMap.set(s.id, s); try { const t = String((s as any).team || ''); state.teamCounts[t] = (state.teamCounts[t] || 0) + 1; } catch (e) {} }
+              for (const s of state.ships || [])
+                if (s && typeof s.id !== "undefined") {
+                  try { normalizeTurrets(s); } catch (e) {}
+                  (state as any).shipMap.set(s.id, s);
+                  try {
+                    const t = String((s as any).team || "");
+                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+                  } catch (e) {}
+                }
             } catch (e) {}
-            // Render the freshly-received snapshot so visuals reflect the
-            // worker-applied AI+physics immediately.
+            // Instead of rendering every snapshot immediately, coalesce snapshots
+            // and schedule a single RAF render to avoid render backlog.
             try {
               if (renderer && typeof renderer.renderState === "function") {
-                try {
-                  renderer.renderState({
-                    ships: state.ships,
-                    bullets: state.bullets,
-                    flashes,
-                    shieldFlashes,
-                    healthFlashes,
-                    t: state.t,
-                  });
-                } catch (e) {
-                  // swallow render errors
+                // store latest snapshot refs in closure-scoped vars
+                latestSnapshot = state;
+                if (!renderScheduled) {
+                  renderScheduled = true;
+                  try {
+                    requestAnimationFrame(() => {
+                      renderScheduled = false;
+                      const s = latestSnapshot;
+                      try {
+                        renderer.renderState({
+                          ships: s.ships,
+                          bullets: s.bullets,
+                          flashes,
+                          shieldFlashes,
+                          healthFlashes,
+                          t: s.t,
+                        });
+                      } catch (e) {}
+                      // clear transient flash arrays after render
+                      flashes.length = 0;
+                      shieldFlashes.length = 0;
+                      healthFlashes.length = 0;
+                    });
+                  } catch (e) {
+                    renderScheduled = false;
+                  }
                 }
               }
             } catch (e) {}
@@ -452,7 +629,9 @@ export function createGameManager({
         } catch (e) {}
       };
       // replace the handler on the worker
-      simWorker.on && simWorker.off && simWorker.off("snapshot", _origWorkerSnapshotHandler);
+      simWorker.on &&
+        simWorker.off &&
+        simWorker.off("snapshot", _origWorkerSnapshotHandler);
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
 
       _workerReinforcementsHandler = (m: any) => {
@@ -537,6 +716,27 @@ export function createGameManager({
       step(SIM.DT_MS / 1000);
       acc -= SIM.DT_MS;
     }
+    // Render once per RAF/frame using the latest state (avoid rendering inside step())
+    try {
+      if (renderer && typeof renderer.renderState === "function") {
+        try {
+          renderer.renderState({
+            ships: state.ships,
+            bullets: state.bullets,
+            flashes,
+            shieldFlashes,
+            healthFlashes,
+            t: state.t,
+          });
+          // Clear transient flash arrays after render to avoid unbounded growth
+          flashes.length = 0;
+          shieldFlashes.length = 0;
+          healthFlashes.length = 0;
+        } catch (e) {
+          // swallow render errors
+        }
+      }
+    } catch (e) {}
     try {
       requestAnimationFrame(runLoop);
     } catch (e) {
@@ -701,16 +901,20 @@ export function createGameManager({
     const i = workerReadyCbs.indexOf(cb);
     if (i !== -1) workerReadyCbs.splice(i, 1);
   }
-  function spawnShip(team: string = "red") {
+  function spawnShip(team: string = "red", type?: string) {
     try {
-      const type = getDefaultShipType();
+      const chosenType = type || getDefaultShipType();
       const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
-      const ship = createShip(type, x, y, team);
+      const ship = createShip(chosenType, x, y, team);
       state.ships.push(ship);
-      try { (state as any).shipMap && (state as any).shipMap.set(ship.id, ship); } catch (e) {}
-  try { updateTeamCount(state, undefined, String(ship.team)); } catch (e) {}
+      try {
+        (state as any).shipMap && (state as any).shipMap.set(ship.id, ship);
+      } catch (e) {}
+      try {
+        updateTeamCount(state, undefined, String(ship.team));
+      } catch (e) {}
       return ship;
     } catch (e) {
       return null;
@@ -721,18 +925,26 @@ export function createGameManager({
   function formFleets() {
     try {
       // Remove all ships
-  // Clear ships and reset counts
-  state.ships.length = 0;
-  try { (state as any).shipMap && (state as any).shipMap.clear(); } catch (e) {}
-  try { state.teamCounts = { red: 0, blue: 0 }; } catch (e) {}
+      // Clear ships and reset counts
+      state.ships.length = 0;
+      try {
+        (state as any).shipMap && (state as any).shipMap.clear();
+      } catch (e) {}
+      try {
+        state.teamCounts = { red: 0, blue: 0 };
+      } catch (e) {}
       // Use makeInitialFleets from teamsConfig (static import)
       const bounds = SIM.bounds;
       const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
       const ships = makeInitialFleets(seed, bounds, createShip);
       for (const ship of ships) {
         state.ships.push(ship);
-        try { (state as any).shipMap && (state as any).shipMap.set(ship.id, ship); } catch (e) {}
-        try { updateTeamCount(state, undefined, ship.team); } catch (e) {}
+        try {
+          (state as any).shipMap && (state as any).shipMap.set(ship.id, ship);
+        } catch (e) {}
+        try {
+          updateTeamCount(state, undefined, ship.team);
+        } catch (e) {}
       }
     } catch (e) {
       /* ignore errors */
@@ -777,6 +989,69 @@ export function createGameManager({
     isWorker,
     onWorkerReady,
     offWorkerReady,
+    // expose onSnapshot for test injection (simulate worker snapshot arrival)
+    onSnapshot: (m: any) => {
+      try {
+        if (typeof _workerSnapshotHandler === "function") {
+          try {
+            _workerSnapshotHandler(m);
+            return;
+          } catch (e) {}
+        }
+        // Fallback path when not using a worker: perform the same snapshot handling
+        try {
+          if (m && m.state) {
+            state = m.state;
+            try {
+              (state as any).shipMap = new Map<number, any>();
+              state.teamCounts = { red: 0, blue: 0 };
+              for (const s of state.ships || [])
+                if (s && typeof s.id !== "undefined") {
+                  try { normalizeTurrets(s); } catch (e) {}
+                  (state as any).shipMap.set(s.id, s);
+                  try {
+                    const t = String((s as any).team || "");
+                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+                  } catch (e) {}
+                }
+            } catch (e) {}
+            // Schedule a single RAF render and clear transient flash arrays after render
+            try {
+              if (renderer && typeof renderer.renderState === "function") {
+                requestAnimationFrame(() => {
+                  try {
+                    renderer.renderState({
+                      ships: state.ships,
+                      bullets: state.bullets,
+                      flashes,
+                      shieldFlashes,
+                      healthFlashes,
+                      t: state.t,
+                    });
+                  } catch (e) {}
+                  flashes.length = 0;
+                  shieldFlashes.length = 0;
+                  healthFlashes.length = 0;
+                });
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+      } catch (e) {}
+    },
+    // expose current state for tests (accessor to reflect updates)
+    get state() {
+      // Return the canonical GameState augmented with transient flash arrays
+      try {
+        return Object.assign({}, state, {
+          flashes: flashes,
+          shieldFlashes: shieldFlashes,
+          healthFlashes: healthFlashes,
+        });
+      } catch (e) {
+        return state;
+      }
+    },
     spawnShip,
     reseed: reseedManager,
     getLastReinforcement,
@@ -821,8 +1096,8 @@ export function simulate(dt: number, W = 800, H = 600) {
   // Populate shipMap from backing ships array for O(1) lookups
   try {
     (state as any).shipMap = new Map<number, any>();
-    for (const s of (state.ships || [])) {
-      if (s && typeof s.id !== 'undefined') (state as any).shipMap.set(s.id, s);
+    for (const s of state.ships || []) {
+      if (s && typeof s.id !== "undefined") (state as any).shipMap.set(s.id, s);
     }
   } catch (e) {}
   // (Previously exposed state globally via _lastGameState for legacy helpers.)

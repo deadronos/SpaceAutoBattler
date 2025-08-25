@@ -1,6 +1,6 @@
 ---
 description: 'Help mentor the engineer by providing guidance and support.'
-tools: ['research-and-thinking', 'codebase', 'usages', 'fetch', 'findTestFiles', 'githubRepo', 'search']
+tools: ['research-and-thinking', 'codebase', 'usages', 'fetch', 'findTestFiles', 'githubRepo', 'search', 'sequentialthinking', 'mcp-fetch', 'memory']
 ---
 # Mentor mode instructions
 

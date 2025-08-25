@@ -1,315 +1,254 @@
 var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/config/entitiesConfig.ts
-var entitiesConfig_exports = {};
-__export(entitiesConfig_exports, {
-  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
-  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
-  SIZE_DEFAULTS: () => SIZE_DEFAULTS,
-  ShipConfig: () => ShipConfig,
-  bulletKindForRadius: () => bulletKindForRadius,
-  default: () => entitiesConfig_default,
-  getDefaultShipType: () => getDefaultShipType,
-  getShipConfig: () => getShipConfig,
-  getSizeDefaults: () => getSizeDefaults,
-  setAllSizeDefaults: () => setAllSizeDefaults,
-  setSizeDefaults: () => setSizeDefaults
-});
+var ShipConfig = {
+  fighter: {
+    maxHp: 15,
+    // size classification used for armor/shield tuning
+    size: "small",
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1,
+    dmg: 3,
+    damage: 3,
+    radius: 12,
+    cannons: [
+      {
+        damage: 3,
+        rate: 3,
+        spread: 0.1,
+        muzzleSpeed: 260,
+        // reduced back (/10)
+        bulletRadius: 1.5,
+        bulletTTL: 1.1
+        // was 1.2
+      }
+    ],
+    // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
+    accel: 100,
+    // ~10x accel
+    turnRate: 6,
+    maxSpeed: 2200
+    // ~10x maxSpeed
+  },
+  corvette: {
+    maxHp: 50,
+    size: "medium",
+    armor: 0,
+    maxShield: Math.round(50 * 0.6),
+    shieldRegen: 0.5,
+    dmg: 5,
+    damage: 5,
+    radius: 20,
+    accel: 80,
+    turnRate: 3.5,
+    // was 3
+    maxSpeed: 1800,
+    // ~10x increased
+    cannons: [
+      {
+        damage: 6,
+        rate: 1.2,
+        spread: 0.05,
+        muzzleSpeed: 180,
+        // reduced back (/10)
+        bulletRadius: 2,
+        bulletTTL: 1.8
+        // was 2.0
+      }
+    ]
+  },
+  frigate: {
+    maxHp: 80,
+    size: "medium",
+    armor: 1,
+    maxShield: Math.round(80 * 0.6),
+    shieldRegen: 0.4,
+    dmg: 8,
+    damage: 8,
+    radius: 24,
+    cannons: [
+      {
+        damage: 8,
+        rate: 1,
+        spread: 0.06,
+        muzzleSpeed: 180,
+        // reduced back (/10)
+        bulletRadius: 2.5,
+        bulletTTL: 2
+        // was 2.2
+      }
+    ],
+    accel: 70,
+    turnRate: 2.5,
+    // was 2.2
+    maxSpeed: 1500
+    // ~10x increased
+  },
+  destroyer: {
+    maxHp: 120,
+    size: "large",
+    armor: 2,
+    maxShield: Math.round(120 * 0.6),
+    shieldRegen: 0.3,
+    dmg: 12,
+    damage: 12,
+    radius: 40,
+    cannons: new Array(6).fill(0).map(() => ({
+      damage: 6,
+      rate: 0.8,
+      spread: 0.08,
+      muzzleSpeed: 160,
+      // reduced back (/10)
+      bulletRadius: 2.5,
+      bulletTTL: 1.8
+      // was 2.4
+    })),
+    accel: 60,
+    turnRate: 2,
+    // was 1.6
+    maxSpeed: 1300,
+    // ~10x increased
+    turrets: [
+      {
+        position: [1.2, 0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [-1.2, 0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [1.2, -0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [-1.2, -0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [0, 1.5],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [0, -1.5],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      }
+    ]
+  },
+  carrier: {
+    maxHp: 200,
+    size: "large",
+    armor: 3,
+    maxShield: Math.round(200 * 0.6),
+    shieldRegen: 0.2,
+    dmg: 2,
+    damage: 2,
+    radius: 40,
+    cannons: new Array(4).fill(0).map(() => ({
+      damage: 4,
+      rate: 0.6,
+      spread: 0.12,
+      muzzleSpeed: 140,
+      // reduced back (/10)
+      bulletRadius: 3,
+      bulletTTL: 2.2
+      // was 2.8
+    })),
+    accel: 55,
+    turnRate: 1.2,
+    // was 0.8
+    maxSpeed: 1100,
+    // ~10x increased
+    carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+    turrets: [
+      {
+        position: [2, 1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [-2, 1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [2, -1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [-2, -1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      }
+    ]
+  }
+};
+var SIZE_DEFAULTS = {
+  small: {
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1,
+    radius: 12,
+    turnRate: 6,
+    accel: 100,
+    maxSpeed: 2200
+  },
+  medium: {
+    armor: 1,
+    maxShield: 40,
+    shieldRegen: 0.5,
+    radius: 24,
+    turnRate: 3.5,
+    accel: 80,
+    maxSpeed: 1800
+  },
+  large: {
+    armor: 2,
+    maxShield: 120,
+    shieldRegen: 0.25,
+    radius: 40,
+    turnRate: 2,
+    accel: 60,
+    maxSpeed: 1300
+  }
+};
 function getSizeDefaults(size) {
   return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
-}
-function setSizeDefaults(size, patch) {
-  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
-}
-function setAllSizeDefaults(patch) {
-  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
-  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
-  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
 }
 function getShipConfig() {
   return ShipConfig;
 }
-function bulletKindForRadius(r) {
-  if (r < 2) return "small";
-  if (r < 2.5) return "medium";
-  if (r < 3.5) return "large";
-  return "heavy";
-}
+var BULLET_DEFAULTS = {
+  damage: 1,
+  ttl: 2,
+  radius: 1.5,
+  muzzleSpeed: 24
+};
 function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
 }
-var ShipConfig, SIZE_DEFAULTS, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
-var init_entitiesConfig = __esm({
-  "src/config/entitiesConfig.ts"() {
-    "use strict";
-    ShipConfig = {
-      fighter: {
-        maxHp: 15,
-        // size classification used for armor/shield tuning
-        size: "small",
-        armor: 0,
-        maxShield: 8,
-        shieldRegen: 1,
-        dmg: 3,
-        damage: 3,
-        radius: 12,
-        cannons: [
-          {
-            damage: 3,
-            rate: 3,
-            spread: 0.1,
-            muzzleSpeed: 260,
-            // reduced back (/10)
-            bulletRadius: 1.5,
-            bulletTTL: 1.1
-            // was 1.2
-          }
-        ],
-        // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
-        accel: 100,
-        // ~10x accel
-        turnRate: 6,
-        maxSpeed: 2200
-        // ~10x maxSpeed
-      },
-      corvette: {
-        maxHp: 50,
-        size: "medium",
-        armor: 0,
-        maxShield: Math.round(50 * 0.6),
-        shieldRegen: 0.5,
-        dmg: 5,
-        damage: 5,
-        radius: 20,
-        accel: 80,
-        turnRate: 3.5,
-        // was 3
-        maxSpeed: 1800,
-        // ~10x increased
-        cannons: [
-          {
-            damage: 6,
-            rate: 1.2,
-            spread: 0.05,
-            muzzleSpeed: 180,
-            // reduced back (/10)
-            bulletRadius: 2,
-            bulletTTL: 1.8
-            // was 2.0
-          }
-        ]
-      },
-      frigate: {
-        maxHp: 80,
-        size: "medium",
-        armor: 1,
-        maxShield: Math.round(80 * 0.6),
-        shieldRegen: 0.4,
-        dmg: 8,
-        damage: 8,
-        radius: 24,
-        cannons: [
-          {
-            damage: 8,
-            rate: 1,
-            spread: 0.06,
-            muzzleSpeed: 180,
-            // reduced back (/10)
-            bulletRadius: 2.5,
-            bulletTTL: 2
-            // was 2.2
-          }
-        ],
-        accel: 70,
-        turnRate: 2.5,
-        // was 2.2
-        maxSpeed: 1500
-        // ~10x increased
-      },
-      destroyer: {
-        maxHp: 120,
-        size: "large",
-        armor: 2,
-        maxShield: Math.round(120 * 0.6),
-        shieldRegen: 0.3,
-        dmg: 12,
-        damage: 12,
-        radius: 40,
-        cannons: new Array(6).fill(0).map(() => ({
-          damage: 6,
-          rate: 0.8,
-          spread: 0.08,
-          muzzleSpeed: 160,
-          // reduced back (/10)
-          bulletRadius: 2.5,
-          bulletTTL: 1.8
-          // was 2.4
-        })),
-        accel: 60,
-        turnRate: 2,
-        // was 1.6
-        maxSpeed: 1300,
-        // ~10x increased
-        turrets: [
-          {
-            position: [1.2, 0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [-1.2, 0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [1.2, -0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [-1.2, -0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [0, 1.5],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [0, -1.5],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          }
-        ]
-      },
-      carrier: {
-        maxHp: 200,
-        size: "large",
-        armor: 3,
-        maxShield: Math.round(200 * 0.6),
-        shieldRegen: 0.2,
-        dmg: 2,
-        damage: 2,
-        radius: 40,
-        cannons: new Array(4).fill(0).map(() => ({
-          damage: 4,
-          rate: 0.6,
-          spread: 0.12,
-          muzzleSpeed: 140,
-          // reduced back (/10)
-          bulletRadius: 3,
-          bulletTTL: 2.2
-          // was 2.8
-        })),
-        accel: 55,
-        turnRate: 1.2,
-        // was 0.8
-        maxSpeed: 1100,
-        // ~10x increased
-        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
-        turrets: [
-          {
-            position: [2, 1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [-2, 1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [2, -1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [-2, -1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          }
-        ]
-      }
-    };
-    SIZE_DEFAULTS = {
-      small: {
-        armor: 0,
-        maxShield: 8,
-        shieldRegen: 1,
-        radius: 12,
-        turnRate: 6,
-        accel: 100,
-        maxSpeed: 2200
-      },
-      medium: {
-        armor: 1,
-        maxShield: 40,
-        shieldRegen: 0.5,
-        radius: 24,
-        turnRate: 3.5,
-        accel: 80,
-        maxSpeed: 1800
-      },
-      large: {
-        armor: 2,
-        maxShield: 120,
-        shieldRegen: 0.25,
-        radius: 40,
-        turnRate: 2,
-        accel: 60,
-        maxSpeed: 1300
-      }
-    };
-    BULLET_DEFAULTS = {
-      damage: 1,
-      ttl: 2,
-      radius: 1.5,
-      muzzleSpeed: 24
-    };
-    PARTICLE_DEFAULTS = {
-      ttl: 1,
-      color: "#fff",
-      size: 2
-    };
-    entitiesConfig_default = ShipConfig;
-  }
-});
-
-// src/entities.ts
-init_entitiesConfig();
-
-// src/config/teamsConfig.ts
-init_entitiesConfig();
 
 // src/rng.ts
 var _seed = 1;
@@ -576,7 +515,7 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
   const sizeVal = rawCfg.size || (rawCfg.radius && rawCfg.radius >= 36 ? "large" : rawCfg.radius && rawCfg.radius >= 20 ? "medium" : "small");
   const sizeDefaults = getSizeDefaults(sizeVal);
   const cfg = Object.assign({}, sizeDefaults, rawCfg);
-  return {
+  const ship = {
     id: genId(),
     type: resolvedType,
     x,
@@ -594,6 +533,9 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     xp: 0,
     level: 1,
     cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
+    // Keep raw turret defs here for now; we'll normalize below via helper so
+    // normalization logic is centralized and reusable by snapshot handlers.
+    turrets: cfg.turrets || [],
     accel: cfg.accel || 0,
     currentAccel: 0,
     throttle: 0,
@@ -610,6 +552,26 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     shieldPercent: 1,
     hpPercent: 1
   };
+  try {
+    normalizeTurrets(ship);
+  } catch (e) {
+  }
+  return ship;
+}
+function normalizeTurrets(ship) {
+  try {
+    if (!ship) return;
+    const tarr = ship.turrets;
+    if (!Array.isArray(tarr)) return;
+    ship.turrets = tarr.map((t) => {
+      if (Array.isArray(t) && t.length === 2) {
+        return { position: t, angle: 0, targetAngle: 0, kind: "basic" };
+      }
+      if (t && typeof t === "object") return Object.assign({}, t);
+      return t;
+    });
+  } catch (e) {
+  }
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
   return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y, _prevX: x, _prevY: y };
@@ -851,9 +813,6 @@ function updateTeamCount(state, oldTeam, newTeam) {
   }
 }
 
-// src/gamemanager.ts
-init_entitiesConfig();
-
 // src/config/behaviorConfig.ts
 var AI_THRESHOLDS = {
   decisionTimerMin: 0.5,
@@ -864,7 +823,6 @@ var AI_THRESHOLDS = {
 };
 
 // src/behavior.ts
-init_entitiesConfig();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -972,9 +930,10 @@ function tryFire(state, ship, target, dt) {
       const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
       const angle = ship.angle || 0;
       const shipType = ship.type || "fighter";
-      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];
+      const shipCfg = getShipConfig()[shipType];
       const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : ship.radius || 12;
-      const [tx, ty] = turret.position || [0, 0];
+      const pos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
+      const [tx, ty] = pos;
       const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
       const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
       const vx = dir.x * speed;
@@ -1070,9 +1029,6 @@ function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
   }
 }
 
-// src/simulate.ts
-init_entitiesConfig();
-
 // src/config/assets/assetsConfig.ts
 function getEngineTrailConfig(type) {
   const vconf = getVisualConfig(type);
@@ -1080,6 +1036,10 @@ function getEngineTrailConfig(type) {
   return AssetsConfig.animations && AssetsConfig.animations[trailName] || AssetsConfig.animations && AssetsConfig.animations.engineTrail;
 }
 function getSpriteAsset(type) {
+  const inlineSvg = AssetsConfig.svgAssets && AssetsConfig.svgAssets[type];
+  if (typeof inlineSvg === "string" && inlineSvg.trim().startsWith("<svg")) {
+    return { svg: inlineSvg };
+  }
   const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
   if (shapeEntry.svg) {
     return { svg: shapeEntry.svg };
@@ -1644,12 +1604,15 @@ function simulateStep(state, dtSeconds, bounds) {
         }
       } catch (e) {
       }
+      try {
+        normalizeTurrets(s);
+      } catch (e) {
+      }
       if (Array.isArray(s.turrets) && s.turrets.length) {
         const turretDefs = s.turrets;
         for (let ti = 0; ti < turretDefs.length; ti++) {
           try {
-            let t = turretDefs[ti];
-            if (Array.isArray(t) && t.length === 2) continue;
+            const t = turretDefs[ti];
             if (!t) continue;
             t.angle = typeof t.angle === "number" ? t.angle : typeof s.turretAngle === "number" ? s.turretAngle : s.angle || 0;
             t.targetAngle = typeof t.targetAngle === "number" ? t.targetAngle : typeof t.desiredAngle === "number" ? t.desiredAngle : t.angle;
@@ -2012,7 +1975,6 @@ var FALLBACK_POSITIONS = [
 var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
-init_entitiesConfig();
 var flashes = [];
 var shieldFlashes = [];
 var healthFlashes = [];
@@ -2027,7 +1989,12 @@ function releaseBullet(state, b) {
 }
 function acquireExplosion(state, opts = {}) {
   const key = "explosion";
-  const e = acquireEffect(state, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);
+  const e = acquireEffect(
+    state,
+    key,
+    () => makePooled(createExplosionEffect(opts), resetExplosionEffect),
+    opts
+  );
   (state.explosions ||= []).push(e);
   return e;
 }
@@ -2044,7 +2011,12 @@ function releaseExplosion(state, e) {
 }
 function acquireShieldHit(state, opts = {}) {
   const key = "shieldHit";
-  const sh = acquireEffect(state, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);
+  const sh = acquireEffect(
+    state,
+    key,
+    () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect),
+    opts
+  );
   (state.shieldHits ||= []).push(sh);
   return sh;
 }
@@ -2060,7 +2032,12 @@ function releaseShieldHit(state, sh) {
 }
 function acquireHealthHit(state, opts = {}) {
   const key = "healthHit";
-  const hh = acquireEffect(state, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);
+  const hh = acquireEffect(
+    state,
+    key,
+    () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect),
+    opts
+  );
   (state.healthHits ||= []).push(hh);
   return hh;
 }
@@ -2207,6 +2184,8 @@ function createGameManager({
   };
   let continuous = false;
   let continuousOptions = {};
+  let latestSnapshot = null;
+  let renderScheduled = false;
   function emit(type, msg) {
     emitManagerEvent(listeners, type, msg);
   }
@@ -2233,24 +2212,64 @@ function createGameManager({
         }
       };
       simWorker.on && simWorker.on("ready", _workerReadyHandler);
-      _workerSnapshotHandler = (m) => {
-        if (m && m.state) {
-          state = m.state;
-          try {
-            state.shipMap = /* @__PURE__ */ new Map();
-            state.teamCounts = { red: 0, blue: 0 };
-            for (const s of state.ships || []) if (s && typeof s.id !== "undefined") {
-              state.shipMap.set(s.id, s);
-              try {
-                const t = String(s.team || "");
-                state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-              } catch (e) {
-              }
+      const handleSnapshot = (m) => {
+        try {
+          if (m && m.state) {
+            state = m.state;
+            try {
+              state.shipMap = /* @__PURE__ */ new Map();
+              state.teamCounts = { red: 0, blue: 0 };
+              for (const s of state.ships || [])
+                if (s && typeof s.id !== "undefined") {
+                  try {
+                    normalizeTurrets(s);
+                  } catch (e) {
+                  }
+                  state.shipMap.set(s.id, s);
+                  try {
+                    const t = String(s.team || "");
+                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+                  } catch (e) {
+                  }
+                }
+            } catch (e) {
             }
-          } catch (e) {
+            try {
+              if (renderer && typeof renderer.renderState === "function") {
+                latestSnapshot = state;
+                if (!renderScheduled) {
+                  renderScheduled = true;
+                  try {
+                    requestAnimationFrame(() => {
+                      renderScheduled = false;
+                      const s = latestSnapshot;
+                      try {
+                        renderer.renderState({
+                          ships: s.ships,
+                          bullets: s.bullets,
+                          flashes,
+                          shieldFlashes,
+                          healthFlashes,
+                          t: s.t
+                        });
+                      } catch (e) {
+                      }
+                      flashes.length = 0;
+                      shieldFlashes.length = 0;
+                      healthFlashes.length = 0;
+                    });
+                  } catch (e) {
+                    renderScheduled = false;
+                  }
+                }
+              }
+            } catch (e) {
+            }
           }
+        } catch (e) {
         }
       };
+      _workerSnapshotHandler = handleSnapshot;
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
       const _origWorkerSnapshotHandler = _workerSnapshotHandler;
       _workerSnapshotHandler = (m) => {
@@ -2260,28 +2279,48 @@ function createGameManager({
             try {
               state.shipMap = /* @__PURE__ */ new Map();
               state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || []) if (s && typeof s.id !== "undefined") {
-                state.shipMap.set(s.id, s);
-                try {
-                  const t = String(s.team || "");
-                  state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                } catch (e) {
+              for (const s of state.ships || [])
+                if (s && typeof s.id !== "undefined") {
+                  try {
+                    normalizeTurrets(s);
+                  } catch (e) {
+                  }
+                  state.shipMap.set(s.id, s);
+                  try {
+                    const t = String(s.team || "");
+                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+                  } catch (e) {
+                  }
                 }
-              }
             } catch (e) {
             }
             try {
               if (renderer && typeof renderer.renderState === "function") {
-                try {
-                  renderer.renderState({
-                    ships: state.ships,
-                    bullets: state.bullets,
-                    flashes,
-                    shieldFlashes,
-                    healthFlashes,
-                    t: state.t
-                  });
-                } catch (e) {
+                latestSnapshot = state;
+                if (!renderScheduled) {
+                  renderScheduled = true;
+                  try {
+                    requestAnimationFrame(() => {
+                      renderScheduled = false;
+                      const s = latestSnapshot;
+                      try {
+                        renderer.renderState({
+                          ships: s.ships,
+                          bullets: s.bullets,
+                          flashes,
+                          shieldFlashes,
+                          healthFlashes,
+                          t: s.t
+                        });
+                      } catch (e) {
+                      }
+                      flashes.length = 0;
+                      shieldFlashes.length = 0;
+                      healthFlashes.length = 0;
+                    });
+                  } catch (e) {
+                    renderScheduled = false;
+                  }
                 }
               }
             } catch (e) {
@@ -2365,6 +2404,25 @@ function createGameManager({
     while (acc >= SIM.DT_MS) {
       step(SIM.DT_MS / 1e3);
       acc -= SIM.DT_MS;
+    }
+    try {
+      if (renderer && typeof renderer.renderState === "function") {
+        try {
+          renderer.renderState({
+            ships: state.ships,
+            bullets: state.bullets,
+            flashes,
+            shieldFlashes,
+            healthFlashes,
+            t: state.t
+          });
+          flashes.length = 0;
+          shieldFlashes.length = 0;
+          healthFlashes.length = 0;
+        } catch (e) {
+        }
+      }
+    } catch (e) {
     }
     try {
       requestAnimationFrame(runLoop);
@@ -2515,13 +2573,13 @@ function createGameManager({
     const i = workerReadyCbs.indexOf(cb);
     if (i !== -1) workerReadyCbs.splice(i, 1);
   }
-  function spawnShip(team = "red") {
+  function spawnShip(team = "red", type) {
     try {
-      const type = getDefaultShipType();
+      const chosenType = type || getDefaultShipType();
       const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
-      const ship = createShip(type, x, y, team);
+      const ship = createShip(chosenType, x, y, team);
       state.ships.push(ship);
       try {
         state.shipMap && state.shipMap.set(ship.id, ship);
@@ -2603,6 +2661,76 @@ function createGameManager({
     isWorker,
     onWorkerReady,
     offWorkerReady,
+    // expose onSnapshot for test injection (simulate worker snapshot arrival)
+    onSnapshot: (m) => {
+      try {
+        if (typeof _workerSnapshotHandler === "function") {
+          try {
+            _workerSnapshotHandler(m);
+            return;
+          } catch (e) {
+          }
+        }
+        try {
+          if (m && m.state) {
+            state = m.state;
+            try {
+              state.shipMap = /* @__PURE__ */ new Map();
+              state.teamCounts = { red: 0, blue: 0 };
+              for (const s of state.ships || [])
+                if (s && typeof s.id !== "undefined") {
+                  try {
+                    normalizeTurrets(s);
+                  } catch (e) {
+                  }
+                  state.shipMap.set(s.id, s);
+                  try {
+                    const t = String(s.team || "");
+                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
+                  } catch (e) {
+                  }
+                }
+            } catch (e) {
+            }
+            try {
+              if (renderer && typeof renderer.renderState === "function") {
+                requestAnimationFrame(() => {
+                  try {
+                    renderer.renderState({
+                      ships: state.ships,
+                      bullets: state.bullets,
+                      flashes,
+                      shieldFlashes,
+                      healthFlashes,
+                      t: state.t
+                    });
+                  } catch (e) {
+                  }
+                  flashes.length = 0;
+                  shieldFlashes.length = 0;
+                  healthFlashes.length = 0;
+                });
+              }
+            } catch (e) {
+            }
+          }
+        } catch (e) {
+        }
+      } catch (e) {
+      }
+    },
+    // expose current state for tests (accessor to reflect updates)
+    get state() {
+      try {
+        return Object.assign({}, state, {
+          flashes,
+          shieldFlashes,
+          healthFlashes
+        });
+      } catch (e) {
+        return state;
+      }
+    },
     spawnShip,
     reseed: reseedManager,
     getLastReinforcement,
@@ -2745,7 +2873,6 @@ function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
 }
 
 // src/canvasrenderer.ts
-init_entitiesConfig();
 var CanvasRenderer = class {
   canvas;
   ctx = null;
@@ -2763,6 +2890,35 @@ var CanvasRenderer = class {
   _turretSpriteCache = null;
   // rasterized hull-only SVG cache: shipType -> offscreen canvas
   _svgHullCache = {};
+  // tinted hull cache implemented as an LRU Map to cap memory usage.
+  // Key: "<shipType>::<teamColor>" -> offscreen canvas
+  _tintedHullCache = null;
+  // maximum tinted cache entries (LRU cap)
+  _tintedHullCacheMax = 128;
+  // Clear the tinted hull cache (useful when palette/team colors change)
+  clearTintedHullCache() {
+    try {
+      this._tintedHullCache && this._tintedHullCache.clear();
+    } catch (e) {
+    }
+  }
+  // Internal helper: set a tinted canvas in the Map and enforce LRU cap.
+  _setTintedCanvas(key, canvas) {
+    if (!this._tintedHullCache) this._tintedHullCache = /* @__PURE__ */ new Map();
+    if (this._tintedHullCache.has(key)) this._tintedHullCache.delete(key);
+    this._tintedHullCache.set(key, canvas);
+    while (this._tintedHullCache.size > this._tintedHullCacheMax) {
+      const it = this._tintedHullCache.keys();
+      const oldest = it.next().value;
+      if (oldest) this._tintedHullCache.delete(oldest);
+      else break;
+    }
+  }
+  // Test helper: allow tests to inject entries deterministically without TS private access errors.
+  // Kept separate so production code still uses private _setTintedCanvas.
+  _testSetTintedCanvas(key, canvas) {
+    this._setTintedCanvas(key, canvas);
+  }
   constructor(canvas) {
     this.canvas = canvas;
     this.bufferCanvas = document.createElement("canvas");
@@ -2820,16 +2976,70 @@ var CanvasRenderer = class {
   async preloadAllAssets() {
     try {
       const svgAssets = assetsConfig_default.svgAssets || {};
+      const teams = teamsConfig_default && teamsConfig_default.teams ? teamsConfig_default.teams : {};
+      const teamColors = [];
+      for (const tName of Object.keys(teams)) {
+        const t = teams[tName];
+        if (t && t.color) teamColors.push(t.color);
+      }
+      if (teamColors.length === 0) {
+        const p = assetsConfig_default.palette || {};
+        if (p.shipHull) teamColors.push(p.shipHull);
+        if (p.shipAccent) teamColors.push(p.shipAccent);
+      }
+      try {
+        this._tintedHullCache = this._tintedHullCache || /* @__PURE__ */ new Map();
+        for (const shipType of Object.keys(svgAssets)) {
+          try {
+            for (const col of teamColors) {
+              const k = `${shipType}::${col}`;
+              if (!this._tintedHullCache.has(k)) {
+                const pc = document.createElement("canvas");
+                pc.width = 16;
+                pc.height = 16;
+                try {
+                  this._setTintedCanvas(k, pc);
+                } catch (e) {
+                  this._tintedHullCache.set(k, pc);
+                }
+              }
+            }
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+      try {
+        this._svgHullCache = this._svgHullCache || {};
+        for (const k of Object.keys(svgAssets)) {
+          if (!this._svgHullCache[k] && typeof svgAssets[k] === "string") {
+            const ph = document.createElement("canvas");
+            ph.width = 128;
+            ph.height = 128;
+            const pctx = ph.getContext("2d");
+            if (pctx) {
+              pctx.fillStyle = "#fff";
+              pctx.fillRect(0, 0, ph.width, ph.height);
+            }
+            this._svgHullCache[k] = ph;
+          }
+        }
+      } catch (e) {
+      }
       this._svgMountCache = this._svgMountCache || {};
       for (const key of Object.keys(svgAssets)) {
         try {
           const rel = svgAssets[key];
           let svgText = "";
           try {
-            if (typeof fetch === "function") {
-              const resp = await fetch(rel);
-              if (resp && resp.ok) {
-                svgText = await resp.text();
+            if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
+              svgText = rel;
+            } else {
+              if (typeof fetch === "function") {
+                const resp = await fetch(rel);
+                if (resp && resp.ok) {
+                  svgText = await resp.text();
+                }
               }
             }
           } catch (e) {
@@ -2872,12 +3082,124 @@ var CanvasRenderer = class {
           this._svgEngineMountCache = this._svgEngineMountCache || {};
           this._svgEngineMountCache[key] = engineNorm;
           try {
+            const outW = vb.w || 128;
+            const outH = vb.h || 128;
+            const hullCanvas = rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+            if (hullCanvas) {
+              this._svgHullCache = this._svgHullCache || {};
+              this._svgHullCache[key] = hullCanvas;
+            }
+          } catch (e) {
+          }
+          try {
             assetsConfig_default.svgEngineMounts = assetsConfig_default.svgEngineMounts || {};
             assetsConfig_default.svgEngineMounts[key] = engineNorm;
           } catch (e) {
           }
         } catch (e) {
         }
+      }
+      try {
+        this._tintedHullCache = this._tintedHullCache || /* @__PURE__ */ new Map();
+        const teams2 = teamsConfig_default && teamsConfig_default.teams ? teamsConfig_default.teams : {};
+        const teamColors2 = [];
+        for (const tName of Object.keys(teams2)) {
+          const t = teams2[tName];
+          if (t && t.color) teamColors2.push(t.color);
+        }
+        if (teamColors2.length === 0) {
+          const p = assetsConfig_default.palette || {};
+          if (p.shipHull) teamColors2.push(p.shipHull);
+          if (p.shipAccent) teamColors2.push(p.shipAccent);
+        }
+        const declaredSvgAssets = assetsConfig_default.svgAssets || {};
+        for (const shipType of Object.keys(declaredSvgAssets)) {
+          try {
+            let hullCanvas = this._svgHullCache[shipType];
+            if (!hullCanvas) {
+              try {
+                const rel = declaredSvgAssets[shipType];
+                if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
+                  const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(rel);
+                  let outW = 128, outH = 128;
+                  if (vbMatch) {
+                    outW = parseInt(vbMatch[3]) || 128;
+                    outH = parseInt(vbMatch[4]) || 128;
+                  }
+                  try {
+                    hullCanvas = rasterizeHullOnlySvgToCanvas(rel, outW, outH);
+                  } catch (e) {
+                    hullCanvas = void 0;
+                  }
+                  if (!hullCanvas) {
+                    const ph = document.createElement("canvas");
+                    ph.width = outW;
+                    ph.height = outH;
+                    const pctx = ph.getContext("2d");
+                    if (pctx) {
+                      pctx.fillStyle = "#fff";
+                      pctx.fillRect(0, 0, outW, outH);
+                    }
+                    hullCanvas = ph;
+                  }
+                  this._svgHullCache = this._svgHullCache || {};
+                  this._svgHullCache[shipType] = hullCanvas;
+                }
+              } catch (e) {
+              }
+            }
+            if (!hullCanvas) continue;
+            for (const col of teamColors2) {
+              const k = `${shipType}::${col}`;
+              if (this._tintedHullCache.has(k)) continue;
+              try {
+                const tc = document.createElement("canvas");
+                tc.width = hullCanvas.width;
+                tc.height = hullCanvas.height;
+                const tctx = tc.getContext("2d");
+                if (tctx) {
+                  tctx.clearRect(0, 0, tc.width, tc.height);
+                  tctx.drawImage(hullCanvas, 0, 0);
+                  tctx.globalCompositeOperation = "source-atop";
+                  tctx.fillStyle = col;
+                  tctx.fillRect(0, 0, tc.width, tc.height);
+                  tctx.globalCompositeOperation = "source-over";
+                  this._setTintedCanvas(k, tc);
+                }
+              } catch (e) {
+              }
+            }
+          } catch (e) {
+          }
+        }
+        try {
+          const declaredSvgAssets2 = assetsConfig_default.svgAssets || {};
+          for (const shipType of Object.keys(declaredSvgAssets2)) {
+            if (!this._svgHullCache || !this._svgHullCache[shipType]) {
+              const ph = document.createElement("canvas");
+              ph.width = 128;
+              ph.height = 128;
+              const pctx = ph.getContext("2d");
+              if (pctx) {
+                pctx.fillStyle = "#fff";
+                pctx.fillRect(0, 0, ph.width, ph.height);
+              }
+              this._svgHullCache = this._svgHullCache || {};
+              this._svgHullCache[shipType] = ph;
+              for (const col of teamColors2) {
+                const k = `${shipType}::${col}`;
+                if (!this._tintedHullCache.has(k)) {
+                  try {
+                    this._setTintedCanvas(k, ph);
+                  } catch (e) {
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+        }
+      } catch (e) {
       }
       try {
         this._turretSpriteCache = this._turretSpriteCache || {};
@@ -3131,10 +3453,48 @@ var CanvasRenderer = class {
           }
           if (hullCanvas) {
             const scale = (s.radius || 12) * renderScale / (hullCanvas.width / 2);
+            this._tintedHullCache = this._tintedHullCache || /* @__PURE__ */ new Map();
+            const tintedKey = `${cacheKey}::${teamColor}`;
+            let tintedCanvas = void 0;
+            if (this._tintedHullCache.has(tintedKey)) {
+              const existing = this._tintedHullCache.get(tintedKey);
+              if (existing) {
+                this._tintedHullCache.delete(tintedKey);
+                this._tintedHullCache.set(tintedKey, existing);
+                tintedCanvas = existing;
+              }
+            }
+            if (!tintedCanvas) {
+              try {
+                const tc = document.createElement("canvas");
+                tc.width = hullCanvas.width;
+                tc.height = hullCanvas.height;
+                const tctx = tc.getContext("2d");
+                if (tctx) {
+                  tctx.clearRect(0, 0, tc.width, tc.height);
+                  tctx.drawImage(hullCanvas, 0, 0);
+                  tctx.globalCompositeOperation = "source-atop";
+                  tctx.fillStyle = teamColor;
+                  tctx.fillRect(0, 0, tc.width, tc.height);
+                  tctx.globalCompositeOperation = "source-over";
+                  tintedCanvas = tc;
+                }
+              } catch (e) {
+                tintedCanvas = hullCanvas;
+              }
+              if (tintedCanvas) this._setTintedCanvas(tintedKey, tintedCanvas);
+            }
             withContext(() => {
               activeBufferCtx.save();
               activeBufferCtx.scale(scale, scale);
-              activeBufferCtx.drawImage(hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+              try {
+                activeBufferCtx.drawImage(tintedCanvas || hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+              } catch (e) {
+                try {
+                  activeBufferCtx.drawImage(hullCanvas, -hullCanvas.width / 2, -hullCanvas.height / 2);
+                } catch (e2) {
+                }
+              }
               activeBufferCtx.restore();
             });
             hullDrawn = true;
@@ -3256,26 +3616,66 @@ var CanvasRenderer = class {
         if ((s.shield ?? 0) > 0) {
           const shAnim = assetsConfig_default.animations && assetsConfig_default.animations.shieldEffect;
           try {
-            if (shAnim) {
-              const pulse = typeof shAnim.pulseRate === "number" ? 0.5 + 0.5 * Math.sin(now * shAnim.pulseRate) : 1;
-              const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
-              const alphaBase = typeof shAnim.alphaBase === "number" ? shAnim.alphaBase : shAnim.alpha || 0.25;
-              const alphaScale = typeof shAnim.alphaScale === "number" ? shAnim.alphaScale : 0.75;
-              const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
-              const R = (shAnim.r || 1.2) * (s.radius || 12);
+            const pulse = shAnim && typeof shAnim.pulseRate === "number" ? 0.5 + 0.5 * Math.sin(now * shAnim.pulseRate) : 1;
+            const shieldNorm = Math.max(0, Math.min(1, (s.shield || 0) / (s.maxShield || s.shield || 1)));
+            const alphaBase = shAnim && typeof shAnim.alphaBase === "number" ? shAnim.alphaBase : shAnim && shAnim.alpha || 0.25;
+            const alphaScale = shAnim && typeof shAnim.alphaScale === "number" ? shAnim.alphaScale : 0.75;
+            const alpha = Math.max(0, Math.min(1, alphaBase + alphaScale * pulse * shieldNorm));
+            const strokeColor = shAnim && shAnim.color || "#3ab6ff";
+            const strokeWidth = shAnim && (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale || 3 * renderScale;
+            const shipType2 = s.type || "fighter";
+            const shapeEntry2 = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d[shipType2];
+            let stroked = false;
+            if (shapeEntry2) {
+              try {
+                withContext(() => {
+                  activeBufferCtx.globalAlpha = alpha;
+                  activeBufferCtx.strokeStyle = strokeColor;
+                  activeBufferCtx.lineWidth = strokeWidth;
+                  if (shapeEntry2.type === "polygon") {
+                    const pts = shapeEntry2.points || [];
+                    if (pts.length) {
+                      activeBufferCtx.beginPath();
+                      activeBufferCtx.moveTo((pts[0][0] || 0) * (s.radius || 12) * renderScale, (pts[0][1] || 0) * (s.radius || 12) * renderScale);
+                      for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * (s.radius || 12) * renderScale, (pts[i][1] || 0) * (s.radius || 12) * renderScale);
+                      activeBufferCtx.closePath();
+                      activeBufferCtx.stroke();
+                      stroked = true;
+                    }
+                  } else if (shapeEntry2.type === "compound") {
+                    for (const part of shapeEntry2.parts || []) {
+                      if (part.type === "polygon") {
+                        const pts = part.points || [];
+                        if (pts.length) {
+                          activeBufferCtx.beginPath();
+                          activeBufferCtx.moveTo((pts[0][0] || 0) * (s.radius || 12) * renderScale, (pts[0][1] || 0) * (s.radius || 12) * renderScale);
+                          for (let i = 1; i < pts.length; i++) activeBufferCtx.lineTo((pts[i][0] || 0) * (s.radius || 12) * renderScale, (pts[i][1] || 0) * (s.radius || 12) * renderScale);
+                          activeBufferCtx.closePath();
+                          activeBufferCtx.stroke();
+                          stroked = true;
+                        }
+                      } else if (part.type === "circle") {
+                        activeBufferCtx.beginPath();
+                        activeBufferCtx.arc(0, 0, (part.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                        activeBufferCtx.stroke();
+                        stroked = true;
+                      }
+                    }
+                  } else if (shapeEntry2.type === "circle") {
+                    activeBufferCtx.beginPath();
+                    activeBufferCtx.arc(0, 0, (shapeEntry2.r || 1) * (s.radius || 12) * renderScale, 0, Math.PI * 2);
+                    activeBufferCtx.stroke();
+                    stroked = true;
+                  }
+                });
+              } catch (e) {
+              }
+            }
+            if (!stroked) {
               withContext(() => {
                 activeBufferCtx.globalAlpha = alpha;
-                activeBufferCtx.strokeStyle = shAnim.color || "#3ab6ff";
-                activeBufferCtx.lineWidth = (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale;
-                activeBufferCtx.beginPath();
-                activeBufferCtx.arc(0, 0, Math.max(1, R * renderScale), 0, Math.PI * 2);
-                activeBufferCtx.stroke();
-              });
-            } else {
-              withContext(() => {
-                activeBufferCtx.globalAlpha = 0.5;
-                activeBufferCtx.strokeStyle = "#3ab6ff";
-                activeBufferCtx.lineWidth = 3 * renderScale;
+                activeBufferCtx.strokeStyle = strokeColor;
+                activeBufferCtx.lineWidth = strokeWidth;
                 activeBufferCtx.beginPath();
                 activeBufferCtx.arc(0, 0, Math.max(1, (s.radius || 12) * 1.2 * renderScale), 0, Math.PI * 2);
                 activeBufferCtx.stroke();
@@ -4172,12 +4572,61 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   try {
-    if (ui.addRed) addListener(ui.addRed, "click", () => gm.spawnShip("red"));
+    const cfg = getShipConfig();
+    const selectEl = rootDocument.getElementById("shipTypeSelect");
+    if (selectEl && cfg) {
+      selectEl.innerHTML = "";
+      for (const key of Object.keys(cfg)) {
+        try {
+          const opt = rootDocument.createElement("option");
+          opt.value = key;
+          opt.textContent = key;
+          selectEl.appendChild(opt);
+        } catch (e) {
+        }
+      }
+    }
+  } catch (e) {
+  }
+  function spawnSelected(team) {
+    try {
+      const selectEl = rootDocument.getElementById("shipTypeSelect");
+      const selectedType = selectEl ? selectEl.value : null;
+      try {
+        if (gm && typeof gm.spawnShip === "function") {
+          if (selectedType) {
+            try {
+              const maybe = gm.spawnShip(team, selectedType);
+              if (maybe) return maybe;
+            } catch (e) {
+            }
+          }
+          const ship = gm.spawnShip(team);
+          if (ship && selectedType) {
+            try {
+              ship.type = selectedType;
+              try {
+                const scfg = getShipConfig();
+                if (scfg && scfg[selectedType]) ship._config = scfg[selectedType];
+              } catch (e) {
+              }
+            } catch (e) {
+            }
+          }
+          return ship;
+        }
+      } catch (e) {
+      }
+    } catch (e) {
+    }
+    return null;
+  }
+  try {
+    if (ui.addRed) addListener(ui.addRed, "click", () => spawnSelected("red"));
   } catch (e) {
   }
   try {
-    if (ui.addBlue)
-      addListener(ui.addBlue, "click", () => gm.spawnShip("blue"));
+    if (ui.addBlue) addListener(ui.addBlue, "click", () => spawnSelected("blue"));
   } catch (e) {
   }
   function onSeedBtnClick() {

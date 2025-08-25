@@ -9,6 +9,7 @@ import { WebGLRenderer } from "./webglrenderer";
 import { getDefaultBounds } from "./config/simConfig";
 import { SIM } from "./config/simConfig";
 import { getPreferredRenderer, RendererConfig } from "./config/rendererConfig";
+import { getShipConfig } from "./config/entitiesConfig";
 
 // Allow temporary extension of window.gm used by the app during migration.
 declare global {
@@ -429,12 +430,64 @@ export async function startApp(rootDocument: Document = document) {
   try {
     if (ui.reset) addListener(ui.reset, "click", () => gm.reset());
   } catch (e) {}
+  // Populate ship type selector (for deterministic, seeded spawns)
   try {
-    if (ui.addRed) addListener(ui.addRed, "click", () => gm.spawnShip("red"));
+    const cfg = getShipConfig();
+    const selectEl = rootDocument.getElementById("shipTypeSelect") as HTMLSelectElement | null;
+    if (selectEl && cfg) {
+      // Clear existing
+      selectEl.innerHTML = "";
+      for (const key of Object.keys(cfg)) {
+        try {
+          const opt = rootDocument.createElement("option");
+          opt.value = key;
+          opt.textContent = key;
+          selectEl.appendChild(opt);
+        } catch (e) {}
+      }
+    }
+  } catch (e) {}
+
+  // Generic spawn helper that respects seeded RNG via gm.spawnShip's internal use of srandom
+  function spawnSelected(team: string) {
+    try {
+      const selectEl = rootDocument.getElementById("shipTypeSelect") as HTMLSelectElement | null;
+      const selectedType = selectEl ? selectEl.value : null;
+      // If gm.spawnShip supports (team, type) signature, prefer that
+      try {
+        if (gm && typeof gm.spawnShip === "function") {
+          // Try calling with (team, type) if supported
+          if (selectedType) {
+            try {
+              const maybe = (gm as any).spawnShip(team, selectedType);
+              if (maybe) return maybe;
+            } catch (e) {
+              // ignore and fall back
+            }
+          }
+          const ship = gm.spawnShip(team);
+          if (ship && selectedType) {
+            try {
+              ship.type = selectedType;
+              // attach config snapshot if available
+              try {
+                const scfg = getShipConfig();
+                if (scfg && scfg[selectedType]) (ship as any)._config = scfg[selectedType];
+              } catch (e) {}
+            } catch (e) {}
+          }
+          return ship;
+        }
+      } catch (e) {}
+    } catch (e) {}
+    return null;
+  }
+
+  try {
+    if (ui.addRed) addListener(ui.addRed, "click", () => spawnSelected("red"));
   } catch (e) {}
   try {
-    if (ui.addBlue)
-      addListener(ui.addBlue, "click", () => gm.spawnShip("blue"));
+    if (ui.addBlue) addListener(ui.addBlue, "click", () => spawnSelected("blue"));
   } catch (e) {}
   function onSeedBtnClick() {
     try {

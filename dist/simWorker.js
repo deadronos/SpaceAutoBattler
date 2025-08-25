@@ -1,309 +1,8 @@
 var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// src/config/entitiesConfig.ts
-var entitiesConfig_exports = {};
-__export(entitiesConfig_exports, {
-  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
-  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
-  SIZE_DEFAULTS: () => SIZE_DEFAULTS,
-  ShipConfig: () => ShipConfig,
-  bulletKindForRadius: () => bulletKindForRadius,
-  default: () => entitiesConfig_default,
-  getDefaultShipType: () => getDefaultShipType,
-  getShipConfig: () => getShipConfig,
-  getSizeDefaults: () => getSizeDefaults,
-  setAllSizeDefaults: () => setAllSizeDefaults,
-  setSizeDefaults: () => setSizeDefaults
-});
-function getSizeDefaults(size) {
-  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
-}
-function setSizeDefaults(size, patch) {
-  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
-}
-function setAllSizeDefaults(patch) {
-  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
-  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
-  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
-}
-function getShipConfig() {
-  return ShipConfig;
-}
-function bulletKindForRadius(r) {
-  if (r < 2) return "small";
-  if (r < 2.5) return "medium";
-  if (r < 3.5) return "large";
-  return "heavy";
-}
-function getDefaultShipType() {
-  return Object.keys(ShipConfig)[0] || "fighter";
-}
-var ShipConfig, SIZE_DEFAULTS, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
-var init_entitiesConfig = __esm({
-  "src/config/entitiesConfig.ts"() {
-    "use strict";
-    ShipConfig = {
-      fighter: {
-        maxHp: 15,
-        // size classification used for armor/shield tuning
-        size: "small",
-        armor: 0,
-        maxShield: 8,
-        shieldRegen: 1,
-        dmg: 3,
-        damage: 3,
-        radius: 12,
-        cannons: [
-          {
-            damage: 3,
-            rate: 3,
-            spread: 0.1,
-            muzzleSpeed: 260,
-            // reduced back (/10)
-            bulletRadius: 1.5,
-            bulletTTL: 1.1
-            // was 1.2
-          }
-        ],
-        // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
-        accel: 100,
-        // ~10x accel
-        turnRate: 6,
-        maxSpeed: 2200
-        // ~10x maxSpeed
-      },
-      corvette: {
-        maxHp: 50,
-        size: "medium",
-        armor: 0,
-        maxShield: Math.round(50 * 0.6),
-        shieldRegen: 0.5,
-        dmg: 5,
-        damage: 5,
-        radius: 20,
-        accel: 80,
-        turnRate: 3.5,
-        // was 3
-        maxSpeed: 1800,
-        // ~10x increased
-        cannons: [
-          {
-            damage: 6,
-            rate: 1.2,
-            spread: 0.05,
-            muzzleSpeed: 180,
-            // reduced back (/10)
-            bulletRadius: 2,
-            bulletTTL: 1.8
-            // was 2.0
-          }
-        ]
-      },
-      frigate: {
-        maxHp: 80,
-        size: "medium",
-        armor: 1,
-        maxShield: Math.round(80 * 0.6),
-        shieldRegen: 0.4,
-        dmg: 8,
-        damage: 8,
-        radius: 24,
-        cannons: [
-          {
-            damage: 8,
-            rate: 1,
-            spread: 0.06,
-            muzzleSpeed: 180,
-            // reduced back (/10)
-            bulletRadius: 2.5,
-            bulletTTL: 2
-            // was 2.2
-          }
-        ],
-        accel: 70,
-        turnRate: 2.5,
-        // was 2.2
-        maxSpeed: 1500
-        // ~10x increased
-      },
-      destroyer: {
-        maxHp: 120,
-        size: "large",
-        armor: 2,
-        maxShield: Math.round(120 * 0.6),
-        shieldRegen: 0.3,
-        dmg: 12,
-        damage: 12,
-        radius: 40,
-        cannons: new Array(6).fill(0).map(() => ({
-          damage: 6,
-          rate: 0.8,
-          spread: 0.08,
-          muzzleSpeed: 160,
-          // reduced back (/10)
-          bulletRadius: 2.5,
-          bulletTTL: 1.8
-          // was 2.4
-        })),
-        accel: 60,
-        turnRate: 2,
-        // was 1.6
-        maxSpeed: 1300,
-        // ~10x increased
-        turrets: [
-          {
-            position: [1.2, 0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [-1.2, 0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [1.2, -0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [-1.2, -0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [0, 1.5],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [0, -1.5],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          }
-        ]
-      },
-      carrier: {
-        maxHp: 200,
-        size: "large",
-        armor: 3,
-        maxShield: Math.round(200 * 0.6),
-        shieldRegen: 0.2,
-        dmg: 2,
-        damage: 2,
-        radius: 40,
-        cannons: new Array(4).fill(0).map(() => ({
-          damage: 4,
-          rate: 0.6,
-          spread: 0.12,
-          muzzleSpeed: 140,
-          // reduced back (/10)
-          bulletRadius: 3,
-          bulletTTL: 2.2
-          // was 2.8
-        })),
-        accel: 55,
-        turnRate: 1.2,
-        // was 0.8
-        maxSpeed: 1100,
-        // ~10x increased
-        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
-        turrets: [
-          {
-            position: [2, 1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [-2, 1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [2, -1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [-2, -1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          }
-        ]
-      }
-    };
-    SIZE_DEFAULTS = {
-      small: {
-        armor: 0,
-        maxShield: 8,
-        shieldRegen: 1,
-        radius: 12,
-        turnRate: 6,
-        accel: 100,
-        maxSpeed: 2200
-      },
-      medium: {
-        armor: 1,
-        maxShield: 40,
-        shieldRegen: 0.5,
-        radius: 24,
-        turnRate: 3.5,
-        accel: 80,
-        maxSpeed: 1800
-      },
-      large: {
-        armor: 2,
-        maxShield: 120,
-        shieldRegen: 0.25,
-        radius: 40,
-        turnRate: 2,
-        accel: 60,
-        maxSpeed: 1300
-      }
-    };
-    BULLET_DEFAULTS = {
-      damage: 1,
-      ttl: 2,
-      radius: 1.5,
-      muzzleSpeed: 24
-    };
-    PARTICLE_DEFAULTS = {
-      ttl: 1,
-      color: "#fff",
-      size: 2
-    };
-    entitiesConfig_default = ShipConfig;
-  }
-});
 
 // src/rng.ts
 var _seed = 1;
@@ -327,11 +26,253 @@ function srange(min, max) {
   return min + (max - min) * srandom();
 }
 
-// src/entities.ts
-init_entitiesConfig();
+// src/config/entitiesConfig.ts
+var ShipConfig = {
+  fighter: {
+    maxHp: 15,
+    // size classification used for armor/shield tuning
+    size: "small",
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1,
+    dmg: 3,
+    damage: 3,
+    radius: 12,
+    cannons: [
+      {
+        damage: 3,
+        rate: 3,
+        spread: 0.1,
+        muzzleSpeed: 260,
+        // reduced back (/10)
+        bulletRadius: 1.5,
+        bulletTTL: 1.1
+        // was 1.2
+      }
+    ],
+    // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
+    accel: 100,
+    // ~10x accel
+    turnRate: 6,
+    maxSpeed: 2200
+    // ~10x maxSpeed
+  },
+  corvette: {
+    maxHp: 50,
+    size: "medium",
+    armor: 0,
+    maxShield: Math.round(50 * 0.6),
+    shieldRegen: 0.5,
+    dmg: 5,
+    damage: 5,
+    radius: 20,
+    accel: 80,
+    turnRate: 3.5,
+    // was 3
+    maxSpeed: 1800,
+    // ~10x increased
+    cannons: [
+      {
+        damage: 6,
+        rate: 1.2,
+        spread: 0.05,
+        muzzleSpeed: 180,
+        // reduced back (/10)
+        bulletRadius: 2,
+        bulletTTL: 1.8
+        // was 2.0
+      }
+    ]
+  },
+  frigate: {
+    maxHp: 80,
+    size: "medium",
+    armor: 1,
+    maxShield: Math.round(80 * 0.6),
+    shieldRegen: 0.4,
+    dmg: 8,
+    damage: 8,
+    radius: 24,
+    cannons: [
+      {
+        damage: 8,
+        rate: 1,
+        spread: 0.06,
+        muzzleSpeed: 180,
+        // reduced back (/10)
+        bulletRadius: 2.5,
+        bulletTTL: 2
+        // was 2.2
+      }
+    ],
+    accel: 70,
+    turnRate: 2.5,
+    // was 2.2
+    maxSpeed: 1500
+    // ~10x increased
+  },
+  destroyer: {
+    maxHp: 120,
+    size: "large",
+    armor: 2,
+    maxShield: Math.round(120 * 0.6),
+    shieldRegen: 0.3,
+    dmg: 12,
+    damage: 12,
+    radius: 40,
+    cannons: new Array(6).fill(0).map(() => ({
+      damage: 6,
+      rate: 0.8,
+      spread: 0.08,
+      muzzleSpeed: 160,
+      // reduced back (/10)
+      bulletRadius: 2.5,
+      bulletTTL: 1.8
+      // was 2.4
+    })),
+    accel: 60,
+    turnRate: 2,
+    // was 1.6
+    maxSpeed: 1300,
+    // ~10x increased
+    turrets: [
+      {
+        position: [1.2, 0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [-1.2, 0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [1.2, -0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [-1.2, -0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [0, 1.5],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [0, -1.5],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      }
+    ]
+  },
+  carrier: {
+    maxHp: 200,
+    size: "large",
+    armor: 3,
+    maxShield: Math.round(200 * 0.6),
+    shieldRegen: 0.2,
+    dmg: 2,
+    damage: 2,
+    radius: 40,
+    cannons: new Array(4).fill(0).map(() => ({
+      damage: 4,
+      rate: 0.6,
+      spread: 0.12,
+      muzzleSpeed: 140,
+      // reduced back (/10)
+      bulletRadius: 3,
+      bulletTTL: 2.2
+      // was 2.8
+    })),
+    accel: 55,
+    turnRate: 1.2,
+    // was 0.8
+    maxSpeed: 1100,
+    // ~10x increased
+    carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+    turrets: [
+      {
+        position: [2, 1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [-2, 1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [2, -1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [-2, -1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      }
+    ]
+  }
+};
+var SIZE_DEFAULTS = {
+  small: {
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1,
+    radius: 12,
+    turnRate: 6,
+    accel: 100,
+    maxSpeed: 2200
+  },
+  medium: {
+    armor: 1,
+    maxShield: 40,
+    shieldRegen: 0.5,
+    radius: 24,
+    turnRate: 3.5,
+    accel: 80,
+    maxSpeed: 1800
+  },
+  large: {
+    armor: 2,
+    maxShield: 120,
+    shieldRegen: 0.25,
+    radius: 40,
+    turnRate: 2,
+    accel: 60,
+    maxSpeed: 1300
+  }
+};
+function getSizeDefaults(size) {
+  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
+}
+function getShipConfig() {
+  return ShipConfig;
+}
+var BULLET_DEFAULTS = {
+  damage: 1,
+  ttl: 2,
+  radius: 1.5,
+  muzzleSpeed: 24
+};
+function getDefaultShipType() {
+  return Object.keys(ShipConfig)[0] || "fighter";
+}
 
 // src/config/teamsConfig.ts
-init_entitiesConfig();
 var TeamsConfig = {
   teams: {
     red: { id: "red", color: "#ff4d4d", label: "Red" },
@@ -453,7 +394,7 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
   const sizeVal = rawCfg.size || (rawCfg.radius && rawCfg.radius >= 36 ? "large" : rawCfg.radius && rawCfg.radius >= 20 ? "medium" : "small");
   const sizeDefaults = getSizeDefaults(sizeVal);
   const cfg = Object.assign({}, sizeDefaults, rawCfg);
-  return {
+  const ship = {
     id: genId(),
     type: resolvedType,
     x,
@@ -471,6 +412,9 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     xp: 0,
     level: 1,
     cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
+    // Keep raw turret defs here for now; we'll normalize below via helper so
+    // normalization logic is centralized and reusable by snapshot handlers.
+    turrets: cfg.turrets || [],
     accel: cfg.accel || 0,
     currentAccel: 0,
     throttle: 0,
@@ -487,6 +431,56 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     shieldPercent: 1,
     hpPercent: 1
   };
+  try {
+    normalizeTurrets(ship);
+  } catch (e) {
+  }
+  return ship;
+}
+function normalizeTurrets(ship) {
+  try {
+    if (!ship) return;
+    const tarr = ship.turrets;
+    if (!Array.isArray(tarr)) return;
+    ship.turrets = tarr.map((t) => {
+      if (Array.isArray(t) && t.length === 2) {
+        return { position: t, angle: 0, targetAngle: 0, kind: "basic" };
+      }
+      if (t && typeof t === "object") return Object.assign({}, t);
+      return t;
+    });
+  } catch (e) {
+  }
+}
+function normalizeStateShips(state2) {
+  if (!state2 || typeof state2 !== "object") return;
+  try {
+    const ships = Array.isArray(state2.ships) ? state2.ships : [];
+    for (const s of ships) {
+      try {
+        normalizeTurrets(s);
+      } catch (e) {
+      }
+    }
+    try {
+      state2.shipMap = /* @__PURE__ */ new Map();
+      for (const s of ships) if (s && typeof s.id !== "undefined") state2.shipMap.set(s.id, s);
+    } catch (e) {
+    }
+    try {
+      const counts = { red: 0, blue: 0 };
+      for (const s of ships) {
+        try {
+          const t = String(s && s.team || "");
+          if (t) counts[t] = (counts[t] || 0) + 1;
+        } catch (e) {
+        }
+      }
+      state2.teamCounts = counts;
+    } catch (e) {
+    }
+  } catch (e) {
+  }
 }
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
   return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y, _prevX: x, _prevY: y };
@@ -593,9 +587,6 @@ function updateTeamCount(state2, oldTeam, newTeam) {
   } catch (e) {
   }
 }
-
-// src/simulate.ts
-init_entitiesConfig();
 
 // src/config/assets/assetsConfig.ts
 var AssetsConfig = {
@@ -805,7 +796,6 @@ var AI_THRESHOLDS = {
 };
 
 // src/behavior.ts
-init_entitiesConfig();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -913,9 +903,10 @@ function tryFire(state2, ship, target, dt) {
       const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
       const angle = ship.angle || 0;
       const shipType = ship.type || "fighter";
-      const shipCfg = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports)).getShipConfig()[shipType];
+      const shipCfg = getShipConfig()[shipType];
       const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : ship.radius || 12;
-      const [tx, ty] = turret.position || [0, 0];
+      const pos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
+      const [tx, ty] = pos;
       const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
       const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
       const vx = dir.x * speed;
@@ -1011,9 +1002,6 @@ function applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {
   }
 }
 
-// src/gamemanager.ts
-init_entitiesConfig();
-
 // src/config/gamemanagerConfig.ts
 var SHIELD = {
   ttl: 0.4,
@@ -1045,7 +1033,6 @@ var EXPLOSION = {
 var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
-init_entitiesConfig();
 function releaseBullet(state2, b) {
   if (!b) return;
   if (!b.alive) return;
@@ -1057,7 +1044,12 @@ function releaseBullet(state2, b) {
 }
 function acquireExplosion(state2, opts = {}) {
   const key = "explosion";
-  const e = acquireEffect(state2, key, () => makePooled(createExplosionEffect(opts), resetExplosionEffect), opts);
+  const e = acquireEffect(
+    state2,
+    key,
+    () => makePooled(createExplosionEffect(opts), resetExplosionEffect),
+    opts
+  );
   (state2.explosions ||= []).push(e);
   return e;
 }
@@ -1074,7 +1066,12 @@ function releaseExplosion(state2, e) {
 }
 function acquireShieldHit(state2, opts = {}) {
   const key = "shieldHit";
-  const sh = acquireEffect(state2, key, () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect), opts);
+  const sh = acquireEffect(
+    state2,
+    key,
+    () => makePooled(createShieldHitEffect(opts), resetShieldHitEffect),
+    opts
+  );
   (state2.shieldHits ||= []).push(sh);
   return sh;
 }
@@ -1090,7 +1087,12 @@ function releaseShieldHit(state2, sh) {
 }
 function acquireHealthHit(state2, opts = {}) {
   const key = "healthHit";
-  const hh = acquireEffect(state2, key, () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect), opts);
+  const hh = acquireEffect(
+    state2,
+    key,
+    () => makePooled(createHealthHitEffect(opts), resetHealthHitEffect),
+    opts
+  );
   (state2.healthHits ||= []).push(hh);
   return hh;
 }
@@ -1461,12 +1463,15 @@ function simulateStep(state2, dtSeconds, bounds2) {
         }
       } catch (e) {
       }
+      try {
+        normalizeTurrets(s);
+      } catch (e) {
+      }
       if (Array.isArray(s.turrets) && s.turrets.length) {
         const turretDefs = s.turrets;
         for (let ti = 0; ti < turretDefs.length; ti++) {
           try {
-            let t = turretDefs[ti];
-            if (Array.isArray(t) && t.length === 2) continue;
+            const t = turretDefs[ti];
             if (!t) continue;
             t.angle = typeof t.angle === "number" ? t.angle : typeof s.turretAngle === "number" ? s.turretAngle : s.angle || 0;
             t.targetAngle = typeof t.targetAngle === "number" ? t.targetAngle : typeof t.desiredAngle === "number" ? t.desiredAngle : t.angle;
@@ -1827,7 +1832,13 @@ self.onmessage = (ev) => {
         if (typeof msg.seed === "number") srand(msg.seed);
         if (msg.bounds) bounds = msg.bounds;
         if (typeof msg.simDtMs === "number") simDtMs = msg.simDtMs;
-        if (msg.state) state = msg.state;
+        if (msg.state) {
+          state = msg.state;
+          try {
+            normalizeStateShips(state);
+          } catch (e) {
+          }
+        }
         postMessage({ type: "ready" });
         break;
       case "start":
@@ -1853,6 +1864,10 @@ self.onmessage = (ev) => {
         break;
       case "command":
         if (msg.cmd === "spawnShip" && state) {
+          try {
+            normalizeTurrets(msg.args.ship);
+          } catch (e) {
+          }
           state.ships.push(msg.args.ship);
           try {
             state.shipMap && state.shipMap.set(msg.args.ship.id, msg.args.ship);
@@ -1868,16 +1883,7 @@ self.onmessage = (ev) => {
         } else if (msg.cmd === "setState") {
           state = msg.args.state;
           try {
-            state.shipMap = /* @__PURE__ */ new Map();
-            state.teamCounts = { red: 0, blue: 0 };
-            for (const s of state.ships || []) if (s && typeof s.id !== "undefined") {
-              state.shipMap.set(s.id, s);
-              try {
-                const t = String(s.team || "");
-                state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-              } catch (e) {
-              }
-            }
+            normalizeStateShips(state);
           } catch (e) {
           }
         }
