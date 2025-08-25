@@ -58,7 +58,7 @@ export function releaseEffect<T extends object>(state: GameState, key: string, e
 }
 // Overwrite file with a clean, consolidated implementation.
 import type { GameState } from './types';
-import { getShipConfig, getDefaultShipType } from './config/entitiesConfig';
+import { getShipConfig, getDefaultShipType, getSizeDefaults } from './config/entitiesConfig';
 import { TEAM_DEFAULT } from './config/teamsConfig';
 import type { ShipConfigMap, ShipSpec } from './types';
 
@@ -74,13 +74,25 @@ export type Ship = {
   shieldRegen?: number;
   shieldPercent?: number;
   hpPercent?: number;
+  armor?: number;
+  size?: 'small'|'medium'|'large';
+  // parentId is set on ships spawned by other entities (e.g. fighters launched by a carrier)
+  parentId?: number;
+  // Internal carrier timer accumulator (seconds). Not serialized.
+  _carrierTimer?: number;
 };
 
 export function createShip(type: string | undefined = undefined, x = 0, y = 0, team = TEAM_DEFAULT): Ship {
   const shipCfg = getShipConfig() as ShipConfigMap;
   const availableTypes = Object.keys(shipCfg || {});
   const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipType();
-  const cfg = (shipCfg[resolvedType] || shipCfg[getDefaultShipType()]) as Partial<ShipSpec>;
+  const rawCfg = (shipCfg[resolvedType] || shipCfg[getDefaultShipType()]) as Partial<ShipSpec>;
+  // Merge in per-size defaults for any fields not explicitly provided by the
+  // ship type config. This keeps configs concise while ensuring sensible
+  // defaults for armor/shields per size class.
+  const sizeVal = (rawCfg as any).size || (rawCfg.radius && rawCfg.radius >= 36 ? 'large' : rawCfg.radius && rawCfg.radius >= 20 ? 'medium' : 'small');
+  const sizeDefaults = getSizeDefaults(sizeVal as 'small'|'medium'|'large');
+  const cfg = Object.assign({}, sizeDefaults, rawCfg) as Partial<ShipSpec>;
   return {
     id: genId(),
     type: resolvedType,
@@ -93,6 +105,8 @@ export function createShip(type: string | undefined = undefined, x = 0, y = 0, t
     shield: cfg.maxShield ?? 0,
     maxShield: cfg.maxShield ?? 0,
     shieldRegen: cfg.shieldRegen ?? 0,
+  armor: cfg.armor ?? 0,
+  size: (cfg as any).size || sizeVal,
     team,
     xp: 0,
     level: 1,

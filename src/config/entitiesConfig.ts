@@ -48,6 +48,8 @@ export type ShipTypeCfg = {
   armor?: number;
   maxShield?: number;
   shieldRegen?: number;
+  // size classification for tuning: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large';
   dmg?: number;
   damage?: number;
   radius?: number;
@@ -74,6 +76,8 @@ export type ShipConfigMap = Record<string, ShipTypeCfg>;
 export const ShipConfig: ShipConfigMap = {
   fighter: {
     maxHp: 15,
+    // size classification used for armor/shield tuning
+    size: 'small',
     armor: 0,
     maxShield: 8,
     shieldRegen: 1.0,
@@ -97,6 +101,7 @@ export const ShipConfig: ShipConfigMap = {
   },
   corvette: {
     maxHp: 50,
+    size: 'medium',
     armor: 0,
     maxShield: Math.round(50 * 0.6),
     shieldRegen: 0.5,
@@ -119,6 +124,7 @@ export const ShipConfig: ShipConfigMap = {
   },
   frigate: {
     maxHp: 80,
+    size: 'medium',
     armor: 1,
     maxShield: Math.round(80 * 0.6),
     shieldRegen: 0.4,
@@ -141,6 +147,7 @@ export const ShipConfig: ShipConfigMap = {
   },
   destroyer: {
     maxHp: 120,
+    size: 'large',
     armor: 2,
     maxShield: Math.round(120 * 0.6),
     shieldRegen: 0.3,
@@ -199,6 +206,7 @@ export const ShipConfig: ShipConfigMap = {
   },
   carrier: {
     maxHp: 200,
+    size: 'large',
     armor: 3,
     maxShield: Math.round(200 * 0.6),
     shieldRegen: 0.2,
@@ -245,6 +253,54 @@ export const ShipConfig: ShipConfigMap = {
     ],
   },
 };
+
+// Per-size defaults to provide consistent tuning shortcuts. These values are
+// applied when a ShipTypeCfg omits explicit armor/shield tuning. They make it
+// easy to adjust broad balance by class (small/medium/large) in one place.
+export const SIZE_DEFAULTS: Record<'small'|'medium'|'large', Partial<ShipTypeCfg>> = {
+  small: {
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1.0,
+    radius: 12,
+    turnRate: 6,
+    accel: 100,
+    maxSpeed: 2200,
+  },
+  medium: {
+    armor: 1,
+    maxShield: 40,
+    shieldRegen: 0.5,
+    radius: 24,
+    turnRate: 3.5,
+    accel: 80,
+    maxSpeed: 1800,
+  },
+  large: {
+    armor: 2,
+    maxShield: 120,
+    shieldRegen: 0.25,
+    radius: 40,
+    turnRate: 2.0,
+    accel: 60,
+    maxSpeed: 1300,
+  },
+};
+
+export function getSizeDefaults(size: 'small'|'medium'|'large') {
+  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
+}
+
+// Runtime configuration helpers: update per-size defaults in-place.
+export function setSizeDefaults(size: 'small'|'medium'|'large', patch: Partial<ShipTypeCfg>) {
+  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
+}
+
+export function setAllSizeDefaults(patch: Partial<ShipTypeCfg>) {
+  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
+  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
+  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
+}
 // NOTE: The factory that creates Ship objects (`createShip` in src/entities.ts)
 // enforces a positive fallback for `maxSpeed` when the config is missing or
 // set to 0. This guards against malformed saved state or partial config

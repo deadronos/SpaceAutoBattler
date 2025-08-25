@@ -24,12 +24,27 @@ var entitiesConfig_exports = {};
 __export(entitiesConfig_exports, {
   BULLET_DEFAULTS: () => BULLET_DEFAULTS,
   PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
+  SIZE_DEFAULTS: () => SIZE_DEFAULTS,
   ShipConfig: () => ShipConfig,
   bulletKindForRadius: () => bulletKindForRadius,
   default: () => entitiesConfig_default,
   getDefaultShipType: () => getDefaultShipType,
-  getShipConfig: () => getShipConfig
+  getShipConfig: () => getShipConfig,
+  getSizeDefaults: () => getSizeDefaults,
+  setAllSizeDefaults: () => setAllSizeDefaults,
+  setSizeDefaults: () => setSizeDefaults
 });
+function getSizeDefaults(size) {
+  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
+}
+function setSizeDefaults(size, patch) {
+  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
+}
+function setAllSizeDefaults(patch) {
+  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
+  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
+  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
+}
 function getShipConfig() {
   return ShipConfig;
 }
@@ -42,13 +57,15 @@ function bulletKindForRadius(r) {
 function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
 }
-var ShipConfig, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
+var ShipConfig, SIZE_DEFAULTS, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
 var init_entitiesConfig = __esm({
   "src/config/entitiesConfig.ts"() {
     "use strict";
     ShipConfig = {
       fighter: {
         maxHp: 15,
+        // size classification used for armor/shield tuning
+        size: "small",
         armor: 0,
         maxShield: 8,
         shieldRegen: 1,
@@ -76,6 +93,7 @@ var init_entitiesConfig = __esm({
       },
       corvette: {
         maxHp: 50,
+        size: "medium",
         armor: 0,
         maxShield: Math.round(50 * 0.6),
         shieldRegen: 0.5,
@@ -102,6 +120,7 @@ var init_entitiesConfig = __esm({
       },
       frigate: {
         maxHp: 80,
+        size: "medium",
         armor: 1,
         maxShield: Math.round(80 * 0.6),
         shieldRegen: 0.4,
@@ -128,6 +147,7 @@ var init_entitiesConfig = __esm({
       },
       destroyer: {
         maxHp: 120,
+        size: "large",
         armor: 2,
         maxShield: Math.round(120 * 0.6),
         shieldRegen: 0.3,
@@ -190,6 +210,7 @@ var init_entitiesConfig = __esm({
       },
       carrier: {
         maxHp: 200,
+        size: "large",
         armor: 3,
         maxShield: Math.round(200 * 0.6),
         shieldRegen: 0.2,
@@ -240,6 +261,35 @@ var init_entitiesConfig = __esm({
         ]
       }
     };
+    SIZE_DEFAULTS = {
+      small: {
+        armor: 0,
+        maxShield: 8,
+        shieldRegen: 1,
+        radius: 12,
+        turnRate: 6,
+        accel: 100,
+        maxSpeed: 2200
+      },
+      medium: {
+        armor: 1,
+        maxShield: 40,
+        shieldRegen: 0.5,
+        radius: 24,
+        turnRate: 3.5,
+        accel: 80,
+        maxSpeed: 1800
+      },
+      large: {
+        armor: 2,
+        maxShield: 120,
+        shieldRegen: 0.25,
+        radius: 40,
+        turnRate: 2,
+        accel: 60,
+        maxSpeed: 1300
+      }
+    };
     BULLET_DEFAULTS = {
       damage: 1,
       ttl: 2,
@@ -254,32 +304,6 @@ var init_entitiesConfig = __esm({
     entitiesConfig_default = ShipConfig;
   }
 });
-
-// src/config/progressionConfig.ts
-var progression = {
-  xpPerDamage: 1,
-  xpPerKill: 50,
-  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),
-  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),
-  dmgPercentPerLevel: 0.08,
-  shieldPercentPerLevel: 0.06,
-  speedPercentPerLevel: 0.03,
-  regenPercentPerLevel: 0.04
-};
-
-// src/config/simConfig.ts
-var SIM = {
-  DT_MS: 16,
-  MAX_ACC_MS: 250,
-  bounds: { W: 1920, H: 1080 },
-  // Use LOGICAL_MAP for default bounds
-  friction: 0.99,
-  gridCellSize: 64
-};
-var boundaryBehavior = {
-  ships: "wrap",
-  bullets: "remove"
-};
 
 // src/rng.ts
 var _seed = 1;
@@ -421,6 +445,49 @@ var nextId = 1;
 function genId() {
   return nextId++;
 }
+function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
+  const shipCfg = getShipConfig();
+  const availableTypes = Object.keys(shipCfg || {});
+  const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipType();
+  const rawCfg = shipCfg[resolvedType] || shipCfg[getDefaultShipType()];
+  const sizeVal = rawCfg.size || (rawCfg.radius && rawCfg.radius >= 36 ? "large" : rawCfg.radius && rawCfg.radius >= 20 ? "medium" : "small");
+  const sizeDefaults = getSizeDefaults(sizeVal);
+  const cfg = Object.assign({}, sizeDefaults, rawCfg);
+  return {
+    id: genId(),
+    type: resolvedType,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    hp: cfg.maxHp ?? 0,
+    maxHp: cfg.maxHp ?? 0,
+    shield: cfg.maxShield ?? 0,
+    maxShield: cfg.maxShield ?? 0,
+    shieldRegen: cfg.shieldRegen ?? 0,
+    armor: cfg.armor ?? 0,
+    size: cfg.size || sizeVal,
+    team,
+    xp: 0,
+    level: 1,
+    cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
+    accel: cfg.accel || 0,
+    currentAccel: 0,
+    throttle: 0,
+    steering: 0,
+    turnRate: cfg.turnRate || 0,
+    radius: cfg.radius || 6,
+    // Ensure maxSpeed is always a sensible positive number. Some saved state
+    // or malformed configs may have maxSpeed omitted or set to 0 which causes
+    // ships to never translate (they can still rotate/fire). Prefer the
+    // configured value but fall back to a safe default > 0.
+    maxSpeed: typeof cfg.maxSpeed === "number" && cfg.maxSpeed > 0 ? cfg.maxSpeed : 120,
+    angle: 0,
+    trail: void 0,
+    shieldPercent: 1,
+    hpPercent: 1
+  };
+}
 function createBullet(x, y, vx, vy, team = TEAM_DEFAULT, ownerId = null, damage = 1, ttl = 2) {
   return { id: genId(), x, y, vx, vy, team, ownerId, damage, ttl, prevX: x, prevY: y, _prevX: x, _prevY: y };
 }
@@ -515,6 +582,46 @@ function releaseSprite(state2, key, sprite, disposeFn) {
     _incCount(counts, key, -1);
   }
 }
+function updateTeamCount(state2, oldTeam, newTeam) {
+  try {
+    if (oldTeam) {
+      state2.teamCounts[oldTeam] = Math.max(0, (state2.teamCounts[oldTeam] || 0) - 1);
+    }
+    if (newTeam) {
+      state2.teamCounts[newTeam] = (state2.teamCounts[newTeam] || 0) + 1;
+    }
+  } catch (e) {
+  }
+}
+
+// src/simulate.ts
+init_entitiesConfig();
+
+// src/config/progressionConfig.ts
+var progression = {
+  xpPerDamage: 1,
+  xpPerKill: 50,
+  xpToLevel: (level) => 100 * Math.pow(1.25, level - 1),
+  hpPercentPerLevel: (level) => Math.min(0.1, 0.05 + 0.05 / Math.sqrt(level)),
+  dmgPercentPerLevel: 0.08,
+  shieldPercentPerLevel: 0.06,
+  speedPercentPerLevel: 0.03,
+  regenPercentPerLevel: 0.04
+};
+
+// src/config/simConfig.ts
+var SIM = {
+  DT_MS: 16,
+  MAX_ACC_MS: 250,
+  bounds: { W: 1920, H: 1080 },
+  // Use LOGICAL_MAP for default bounds
+  friction: 0.99,
+  gridCellSize: 64
+};
+var boundaryBehavior = {
+  ships: "wrap",
+  bullets: "remove"
+};
 
 // src/config/behaviorConfig.ts
 var AI_THRESHOLDS = {
@@ -1152,6 +1259,47 @@ function simulateStep(state2, dtSeconds, bounds2) {
         }
       }
     }
+    try {
+      const shipCfg = getShipConfig && typeof getShipConfig === "function" ? getShipConfig() : {};
+      const typeCfg = shipCfg && s.type ? shipCfg[s.type] : void 0;
+      if (typeCfg && typeCfg.carrier) {
+        const carrierCfg = typeCfg.carrier;
+        s._carrierTimer = s._carrierTimer || 0;
+        s._carrierTimer += dtSeconds;
+        const cooldown = Number(carrierCfg.fighterCooldown) || 1.5;
+        if (s._carrierTimer >= cooldown) {
+          s._carrierTimer = 0;
+          const existing = (state2.ships || []).filter((sh) => sh && sh.parentId === s.id && sh.type === "fighter").length;
+          const maxF = Number(carrierCfg.maxFighters) || 0;
+          const spawnPer = Number(carrierCfg.spawnPerCooldown) || 1;
+          const canSpawn = Math.max(0, maxF - existing);
+          let toSpawn = Math.min(canSpawn, spawnPer);
+          while (toSpawn > 0) {
+            const angle2 = srandom() * Math.PI * 2;
+            const dist = (s.radius || 20) + 8 + srandom() * 8;
+            const nx = (s.x || 0) + Math.cos(angle2) * dist;
+            const ny = (s.y || 0) + Math.sin(angle2) * dist;
+            try {
+              const f = createShip("fighter", nx, ny, s.team);
+              f.parentId = s.id;
+              f.angle = s.angle;
+              (state2.ships ||= []).push(f);
+              try {
+                state2.shipMap && state2.shipMap.set(f.id, f);
+              } catch (e) {
+              }
+              try {
+                updateTeamCount(state2, void 0, String(f.team));
+              } catch (e) {
+              }
+            } catch (e) {
+            }
+            toSpawn--;
+          }
+        }
+      }
+    } catch (e) {
+    }
   }
   const cellSize = SIM && SIM.gridCellSize || 64;
   const grid = SpatialGrid2.acquire(cellSize);
@@ -1202,18 +1350,21 @@ function simulateStep(state2, dtSeconds, bounds2) {
           });
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
-            s.hp -= remaining;
+            const armor = s.armor || 0;
+            const dmgMul = Math.max(0, 1 - 0.1 * armor);
+            const dealt = Math.max(0, remaining * dmgMul);
+            s.hp -= dealt;
             (state2.healthHits ||= []).push(acquireHealthHit(state2, {
               id: s.id,
               x: b.x,
               y: b.y,
               team: s.team,
-              amount: remaining
+              amount: dealt
             }));
             (state2.damageEvents ||= []).push({
               id: s.id,
               type: "hp",
-              amount: remaining,
+              amount: dealt,
               x: b.x,
               y: b.y,
               team: s.team,
@@ -1221,26 +1372,31 @@ function simulateStep(state2, dtSeconds, bounds2) {
             });
           }
           dealtToShield = absorbed;
-          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
+          const remainingAfterShield = Math.max(0, (b.damage || 0) - absorbed);
+          const armorAfterShield = s.armor || 0;
+          dealtToHealth = Math.max(0, remainingAfterShield * Math.max(0, 1 - 0.1 * armorAfterShield));
         } else {
-          s.hp -= b.damage || 0;
+          const armor = s.armor || 0;
+          const dmgMulNoShield = Math.max(0, 1 - 0.1 * armor);
+          const dealtNoShield = Math.max(0, (b.damage || 0) * dmgMulNoShield);
+          s.hp -= dealtNoShield;
           (state2.healthHits ||= []).push(acquireHealthHit(state2, {
             id: s.id,
             x: b.x,
             y: b.y,
             team: s.team,
-            amount: b.damage || 0
+            amount: dealtNoShield
           }));
           (state2.damageEvents ||= []).push({
             id: s.id,
             type: "hp",
-            amount: b.damage || 0,
+            amount: dealtNoShield,
             x: b.x,
             y: b.y,
             team: s.team,
             attackerId: attacker && attacker.id
           });
-          dealtToHealth = b.damage || 0;
+          dealtToHealth = dealtNoShield;
         }
         s.hpPercent = Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
         s.shieldPercent = typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;

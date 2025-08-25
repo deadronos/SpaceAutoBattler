@@ -1,5 +1,7 @@
 // simulate.ts - TypeScript implementation ported from simulate.js
 import { srange, srand, srandom } from "./rng";
+import { createShip, updateTeamCount } from "./entities";
+import { getShipConfig } from "./config/entitiesConfig";
 import { progression as progressionCfg } from "./config/progressionConfig";
 import { SIM, boundaryBehavior } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
@@ -262,6 +264,43 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
         try { if (rem[0] && rem[0].team) state.teamCounts[rem[0].team] = Math.max(0, (state.teamCounts[rem[0].team] || 0) - 1); } catch (e) {}
       }
     }
+    // Carrier spawning: if this ship type has a carrier config, accumulate
+    // a per-ship timer and spawn fighters as children up to maxFighters.
+    try {
+      const shipCfg = getShipConfig && typeof getShipConfig === 'function' ? getShipConfig() : {};
+      const typeCfg = shipCfg && s.type ? shipCfg[s.type] : undefined;
+      if (typeCfg && (typeCfg as any).carrier) {
+        const carrierCfg = (typeCfg as any).carrier;
+        // ensure timer exists
+        (s as any)._carrierTimer = (s as any)._carrierTimer || 0;
+        (s as any)._carrierTimer += dtSeconds;
+        const cooldown = Number(carrierCfg.fighterCooldown) || 1.5;
+        if ((s as any)._carrierTimer >= cooldown) {
+          (s as any)._carrierTimer = 0;
+          // count existing fighters spawned by this carrier
+          const existing = (state.ships || []).filter((sh: any) => sh && sh.parentId === s.id && sh.type === 'fighter').length;
+          const maxF = Number(carrierCfg.maxFighters) || 0;
+          const spawnPer = Number(carrierCfg.spawnPerCooldown) || 1;
+          const canSpawn = Math.max(0, maxF - existing);
+          let toSpawn = Math.min(canSpawn, spawnPer);
+          while (toSpawn > 0) {
+            const angle = srandom() * Math.PI * 2;
+            const dist = (s.radius || 20) + 8 + srandom() * 8;
+            const nx = (s.x || 0) + Math.cos(angle) * dist;
+            const ny = (s.y || 0) + Math.sin(angle) * dist;
+            try {
+              const f = createShip('fighter', nx, ny, s.team);
+              f.parentId = s.id;
+              f.angle = s.angle;
+              (state.ships ||= []).push(f);
+              try { (state as any).shipMap && (state as any).shipMap.set(f.id, f); } catch (e) {}
+              try { updateTeamCount(state as any, undefined, String(f.team)); } catch (e) {}
+            } catch (e) {}
+            toSpawn--;
+          }
+        }
+      }
+    } catch (e) {}
   }
 
   // Bullet collisions
@@ -324,19 +363,24 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
           });
           const remaining = (b.damage || 0) - absorbed;
           if (remaining > 0) {
-            s.hp -= remaining;
+            // Apply armor reduction to damage dealt to hull. Each armor point
+            // reduces incoming hull damage by 10% (config uses small integers).
+            const armor = s.armor || 0;
+            const dmgMul = Math.max(0, 1 - 0.1 * armor);
+            const dealt = Math.max(0, remaining * dmgMul);
+            s.hp -= dealt;
             (state.healthHits ||= []).push(acquireHealthHit(state, {
               id: s.id,
               x: b.x,
               y: b.y,
               team: s.team,
-              amount: remaining,
+              amount: dealt,
             }));
             // expose damage event for renderer (health hit)
             (state.damageEvents ||= []).push({
               id: s.id,
               type: "hp",
-              amount: remaining,
+              amount: dealt,
               x: b.x,
               y: b.y,
               team: s.team,
@@ -344,27 +388,34 @@ function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
             });
           }
           dealtToShield = absorbed;
-          dealtToHealth = Math.max(0, (b.damage || 0) - absorbed);
+          // remaining damage after shields, reduced by armor
+          const remainingAfterShield = Math.max(0, (b.damage || 0) - absorbed);
+          const armorAfterShield = s.armor || 0;
+          dealtToHealth = Math.max(0, remainingAfterShield * Math.max(0, 1 - 0.1 * armorAfterShield));
         } else {
-          s.hp -= b.damage || 0;
+          // No shields - apply armor reduction directly to bullet damage
+          const armor = s.armor || 0;
+          const dmgMulNoShield = Math.max(0, 1 - 0.1 * armor);
+          const dealtNoShield = Math.max(0, (b.damage || 0) * dmgMulNoShield);
+          s.hp -= dealtNoShield;
             (state.healthHits ||= []).push(acquireHealthHit(state, {
               id: s.id,
               x: b.x,
               y: b.y,
               team: s.team,
-              amount: b.damage || 0,
+              amount: dealtNoShield,
             }));
           // expose damage event for renderer (health hit)
           (state.damageEvents ||= []).push({
             id: s.id,
             type: "hp",
-            amount: b.damage || 0,
+            amount: dealtNoShield,
             x: b.x,
             y: b.y,
             team: s.team,
             attackerId: attacker && attacker.id,
           });
-          dealtToHealth = b.damage || 0;
+          dealtToHealth = dealtNoShield;
         }
 
         // Update percent fields for renderer convenience
