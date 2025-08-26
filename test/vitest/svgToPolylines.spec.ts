@@ -31,4 +31,42 @@ describe('svgToPolylines', () => {
     const c = res.contours[0];
     expect(c.length).toBeGreaterThanOrEqual(3);
   });
+
+  it('flattens cubic bezier paths', () => {
+    const svg = `<svg viewBox="0 0 100 100"><path d="M10 80 C 40 10, 65 10, 95 80" /></svg>`;
+    const res = svgToPolylines(svg, { tolerance: 0.1 });
+    expect(res.contours.length).toBeGreaterThan(0);
+    const c = res.contours[0];
+    // Should produce multiple sampled points along curve
+    expect(c.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('flattens quadratic bezier paths', () => {
+    const svg = `<svg viewBox="0 0 100 100"><path d="M10 80 Q 52.5 10, 95 80" /></svg>`;
+    const res = svgToPolylines(svg, { tolerance: 0.1 });
+    expect(res.contours.length).toBeGreaterThan(0);
+    const c = res.contours[0];
+    expect(c.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('approximates arcs', () => {
+    const svg = `<svg viewBox="0 0 200 100"><path d="M 10 50 A 40 40 0 0 1 90 50" /></svg>`;
+    const res = svgToPolylines(svg, { tolerance: 0.1 });
+    expect(res.contours.length).toBeGreaterThan(0);
+    const c = res.contours[0];
+    expect(c.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('normalizes with non-zero viewBox origin', () => {
+    const svg = `<svg viewBox="100 50 200 200"><polygon points="110,60 290,60 200,240"/></svg>`;
+    const res = svgToPolylines(svg, { tolerance: 0.1 });
+    expect(res.contours.length).toBeGreaterThan(0);
+    const c = res.contours[0];
+    for (const [x, y] of c) {
+      expect(x).toBeGreaterThanOrEqual(-1.1);
+      expect(x).toBeLessThanOrEqual(1.1);
+      expect(y).toBeGreaterThanOrEqual(-1.1);
+      expect(y).toBeLessThanOrEqual(1.1);
+    }
+  });
 });

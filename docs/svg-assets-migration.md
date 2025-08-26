@@ -84,6 +84,7 @@ This document details the migration to SVG-based ship assets in SpaceAutoBattler
   - Expand turret AI to support target prioritization, predictive aiming, and multi-target tracking.
 - **Performance Optimization:**
   - Profile and optimize SVG parsing, rasterization, and rendering for large fleets.
+  - SVG caching: See `docs/svg-caching.md` for guidance on caching parsed contours and recommended use of `assetId` to enable efficient runtime caching. Prefer providing a stable `assetId` (filename or build-time content hash) when loading assets.
 - **WebGL Parity:**
   - Convert rasterized turret sprites to GL textures for use in WebGLRenderer.
 - **Replay/Determinism:**
@@ -92,6 +93,7 @@ This document details the migration to SVG-based ship assets in SpaceAutoBattler
 ---
 
 ## References & Further Reading
+
 - See `/docs/agentic-migration-workflow.md` for GameState migration and workflow.
 - See `/spec/IMPLEMENTATION_STATUS.md` for current status and migration progress.
 - See `/PR_NOTES/` and `.copilot-tracking/changes/` for decision records and granular change logs.

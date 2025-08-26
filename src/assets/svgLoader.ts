@@ -1,9 +1,42 @@
 import { svgToPolylines, SvgPolylinesResult } from './svgToPolylines';
+const path = require('path');
+const fs = require('fs');
+let _svgHashes: Record<string, string> | null = null;
+function loadSvgHashes() {
+  if (_svgHashes !== null) return _svgHashes;
+  try {
+    const p = path.join(__dirname, '..', 'config', 'assets', 'svg', 'svg-hashes.json');
+    if (fs.existsSync(p)) {
+      _svgHashes = JSON.parse(fs.readFileSync(p, 'utf8'));
+    } else {
+      _svgHashes = {};
+    }
+  } catch (e) { _svgHashes = {}; }
+  return _svgHashes;
+}
+
 // Utility: extract hull outline polylines from SVG for shield/collision
-export function getHullOutlineFromSvg(svgText: string, tolerance: number = 1.5): SvgPolylinesResult {
+// Accepts optional `assetFilename` parameter so callers can supply the source filename
+// (used to form an `assetId` that keys the svgToPolylines cache). Backwards compatible
+// call: `getHullOutlineFromSvg(svgText, tolerance)` still works.
+export function getHullOutlineFromSvg(svgText: string, tolerance: number = 1.5, assetFilename?: string): SvgPolylinesResult {
   // Optionally strip non-hull elements for cleaner outline
   const hullSvg = stripHullOnly(svgText);
-  return svgToPolylines(hullSvg, { tolerance });
+  try {
+    let assetId: string | undefined = undefined;
+    if (assetFilename) {
+      try {
+        const mapping = loadSvgHashes();
+        const base = path.basename(assetFilename);
+        const h = mapping && mapping[base];
+        assetId = h ? `${base}::${h}` : base;
+      } catch (e) { assetId = assetFilename; }
+    }
+    return svgToPolylines(hullSvg, assetId ? { tolerance, assetId } : { tolerance });
+  } catch (e) {
+    // fallback to best-effort parsing
+    return svgToPolylines(hullSvg, { tolerance });
+  }
 }
 /* eslint-disable */
 // Clean authoritative svgLoader implementation (single export)
