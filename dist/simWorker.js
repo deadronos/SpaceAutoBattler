@@ -593,6 +593,11 @@ function makeInitialState() {
     explosions: [],
     shieldHits: [],
     healthHits: [],
+    // optional event arrays used by GameState contract
+    particles: [],
+    flashes: [],
+    shieldFlashes: [],
+    healthFlashes: [],
     engineTrailsEnabled: true,
     assetPool: {
       textures: /* @__PURE__ */ new Map(),

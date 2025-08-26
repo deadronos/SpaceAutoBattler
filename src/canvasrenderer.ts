@@ -6,9 +6,18 @@ export function getSvgAssetOrWarn(type: string): string {
       : undefined;
   const svg = assetsConfig?.svgAssets?.[type] ?? "";
   if (!svg) {
-    console.warn(
-      `[CanvasRenderer] WARNING: SVG asset for type '${type}' is missing or empty.`,
-    );
+    try {
+      const _isProd =
+        (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') ||
+        (typeof (globalThis as any).NODE_ENV !== 'undefined' && (globalThis as any).NODE_ENV === 'production');
+      if (!_isProd) {
+        console.warn(
+          `[CanvasRenderer] WARNING: SVG asset for type '${type}' is missing or empty.`,
+        );
+      }
+    } catch (e) {
+      // ignore environment detection errors
+    }
   }
   return svg;
 }
@@ -430,39 +439,34 @@ export class CanvasRenderer {
           try {
             const outW = vb.w || 128;
             const outH = vb.h || 128;
-            // Use async rasterizer and await result so cache contains a drawn canvas
-            let hullCanvas: HTMLCanvasElement | undefined = undefined;
+            // Kick off background rasterization only when no placeholder exists
             try {
-              // If async version exists, await it; fallback to sync call if not
-              if (
-                typeof (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync ===
-                "function"
-              ) {
-                hullCanvas = await (
-                  svgLoader as any
-                ).rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH);
-              } else {
-                hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(
-                  svgText,
-                  outW,
-                  outH,
-                ) as HTMLCanvasElement;
+              if (!this._svgHullCache || !this._svgHullCache[key]) {
+                const outW = vb.w || 128;
+                const outH = vb.h || 128;
+                (async () => {
+                  try {
+                    let hullCanvas: HTMLCanvasElement | undefined = undefined;
+                    try {
+                      if (typeof (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync === 'function') {
+                        hullCanvas = await (svgLoader as any).rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH);
+                      } else {
+                        hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(svgText, outW, outH) as HTMLCanvasElement;
+                      }
+                    } catch (e) { hullCanvas = undefined; }
+                    if (hullCanvas) {
+                      try { this._svgHullCache = this._svgHullCache || {}; this._svgHullCache[key] = hullCanvas; } catch (e) {}
+                      try {
+                        const svgRenderer = require("./assets/svgRenderer");
+                        if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                          svgRenderer.cacheCanvasForAsset(key, {}, hullCanvas.width, hullCanvas.height, hullCanvas);
+                        }
+                      } catch (e) {}
+                    }
+                  } catch (e) {}
+                })();
               }
-            } catch (e) {
-              hullCanvas = undefined;
-            }
-            if (hullCanvas) {
-              this._svgHullCache = this._svgHullCache || {};
-              this._svgHullCache[key] = hullCanvas;
-              try {
-                // seed raster cache for hull-only canvas using svgRenderer cache API
-                const svgRenderer = require("./assets/svgRenderer");
-                if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                  // cache hull-only canvas with an empty mapping so hull-only cached key matches calls
-                  svgRenderer.cacheCanvasForAsset(key, {}, hullCanvas.width, hullCanvas.height, hullCanvas);
-                }
-              } catch (e) {}
-            }
+            } catch (e) {}
           } catch (e) {
             // ignore rasterization errors here; will fallback to lazy raster later
           }
@@ -1399,91 +1403,45 @@ export class CanvasRenderer {
             const strokeWidth =
               (shAnim &&
                 (shAnim.strokeWidth || 0.08) *
-                  (s.radius || 12) *
-                  renderScale) ||
+                  (s.radius || 12) * renderScale) ||
               3 * renderScale;
 
-            // If shape provides polygon contours, stroke them (scaled by ship radius)
-            const shipType = s.type || "fighter";
-            const shapeEntry: any =
-              (AssetsConfig as any).shapes2d &&
-              (AssetsConfig as any).shapes2d[shipType];
+            // Try to extract SVG hull outline for shield stroke
             let stroked = false;
-            if (shapeEntry) {
-              try {
-                withContext(() => {
-                  activeBufferCtx.globalAlpha = alpha;
-                  activeBufferCtx.strokeStyle = strokeColor;
-                  activeBufferCtx.lineWidth = strokeWidth;
-                  // Draw polygons/compound parts
-                  if (shapeEntry.type === "polygon") {
-                    const pts = shapeEntry.points || [];
-                    if (pts.length) {
-                      activeBufferCtx.beginPath();
-                      activeBufferCtx.moveTo(
-                        (pts[0][0] || 0) * (s.radius || 12) * renderScale,
-                        (pts[0][1] || 0) * (s.radius || 12) * renderScale,
-                      );
-                      for (let i = 1; i < pts.length; i++)
-                        activeBufferCtx.lineTo(
-                          (pts[i][0] || 0) * (s.radius || 12) * renderScale,
-                          (pts[i][1] || 0) * (s.radius || 12) * renderScale,
-                        );
-                      activeBufferCtx.closePath();
-                      activeBufferCtx.stroke();
-                      stroked = true;
-                    }
-                  } else if (shapeEntry.type === "compound") {
-                    for (const part of shapeEntry.parts || []) {
-                      if (part.type === "polygon") {
-                        const pts = part.points || [];
-                        if (pts.length) {
-                          activeBufferCtx.beginPath();
-                          activeBufferCtx.moveTo(
-                            (pts[0][0] || 0) * (s.radius || 12) * renderScale,
-                            (pts[0][1] || 0) * (s.radius || 12) * renderScale,
-                          );
-                          for (let i = 1; i < pts.length; i++)
-                            activeBufferCtx.lineTo(
-                              (pts[i][0] || 0) * (s.radius || 12) * renderScale,
-                              (pts[i][1] || 0) * (s.radius || 12) * renderScale,
-                            );
-                          activeBufferCtx.closePath();
-                          activeBufferCtx.stroke();
-                          stroked = true;
-                        }
-                      } else if (part.type === "circle") {
+            try {
+              const { getHullOutlineFromSvg } = require('./assets/svgLoader');
+              const svgText = getShipAsset(s.type);
+              if (svgText) {
+                const outline = getHullOutlineFromSvg(svgText, 1.5);
+                if (outline && outline.contours && outline.contours.length) {
+                  withContext(() => {
+                    activeBufferCtx.globalAlpha = alpha;
+                    activeBufferCtx.strokeStyle = strokeColor;
+                    activeBufferCtx.lineWidth = strokeWidth;
+                    for (const contour of outline.contours) {
+                      if (contour.length) {
                         activeBufferCtx.beginPath();
-                        activeBufferCtx.arc(
-                          0,
-                          0,
-                          (part.r || 1) * (s.radius || 12) * renderScale,
-                          0,
-                          Math.PI * 2,
+                        activeBufferCtx.moveTo(
+                          (contour[0][0] || 0) * (s.radius || 12) * renderScale,
+                          (contour[0][1] || 0) * (s.radius || 12) * renderScale,
                         );
+                        for (let i = 1; i < contour.length; i++)
+                          activeBufferCtx.lineTo(
+                            (contour[i][0] || 0) * (s.radius || 12) * renderScale,
+                            (contour[i][1] || 0) * (s.radius || 12) * renderScale,
+                          );
+                        activeBufferCtx.closePath();
                         activeBufferCtx.stroke();
-                        stroked = true;
                       }
                     }
-                  } else if (shapeEntry.type === "circle") {
-                    activeBufferCtx.beginPath();
-                    activeBufferCtx.arc(
-                      0,
-                      0,
-                      (shapeEntry.r || 1) * (s.radius || 12) * renderScale,
-                      0,
-                      Math.PI * 2,
-                    );
-                    activeBufferCtx.stroke();
-                    stroked = true;
-                  }
-                });
-              } catch (e) {
-                /* ignore per-shape draw errors */
+                  });
+                  stroked = true;
+                }
               }
+            } catch (e) {
+              /* ignore shield draw errors */
             }
-
-            // Fallback: stroke a circular ring if no polygonal outline drawn
+            // Fallback: legacy circle stroke if no polygon
             if (!stroked) {
               withContext(() => {
                 activeBufferCtx.globalAlpha = alpha;
@@ -1493,91 +1451,64 @@ export class CanvasRenderer {
                 activeBufferCtx.arc(
                   0,
                   0,
-                  Math.max(1, (s.radius || 12) * 1.2 * renderScale),
+                  (s.radius || 12) * renderScale,
                   0,
                   Math.PI * 2,
                 );
                 activeBufferCtx.stroke();
               });
             }
+            // HP/shield bar rendering (restored baseline)
+            const baseW = Math.max(20, (s.radius || 12) * 1.6);
+            const baseH = Math.max(4, Math.round((s.radius || 12) * 0.25));
+            const dx = -Math.round(baseW / 2);
+            const dy = -(s.radius || 12) - baseH - 6;
+            const hbBg = (AssetsConfig as any).palette?.background || "#222";
+            const hbFill = (AssetsConfig as any).palette?.shipHull || "#4caf50";
+            const hpPct = typeof (s as any).hpPercent === "number"
+              ? (s as any).hpPercent
+              : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
+            const shPct = typeof (s as any).shieldPercent === "number"
+              ? (s as any).shieldPercent
+              : typeof s.maxShield === "number" && s.maxShield > 0
+                ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield))
+                : 0;
+            const w = Math.max(1, Math.round(baseW * renderScale));
+            const h = Math.max(1, Math.round(baseH * renderScale));
+            const ox = Math.round(dx * renderScale);
+            const oy = Math.round(dy * renderScale);
+            const sx = Math.round((s.x || 0) * renderScale);
+            const sy = Math.round((s.y || 0) * renderScale);
+            withContext(() => {
+              // Background
+              activeBufferCtx.fillStyle = hbBg;
+              activeBufferCtx.fillRect(sx + ox, sy + oy, w, h);
+              // HP fill (left-to-right)
+              activeBufferCtx.fillStyle = hbFill;
+              activeBufferCtx.fillRect(
+                sx + ox,
+                sy + oy,
+                Math.max(1, Math.round(w * hpPct)),
+                h,
+              );
+              // Shield overlay: thin bar above HP bar
+              if (shPct > 0) {
+                const shH = Math.max(1, Math.round(h * 0.5));
+                activeBufferCtx.fillStyle = (AssetsConfig as any).palette?.shipAccent || "#3ab6ff";
+                activeBufferCtx.fillRect(
+                  sx + ox,
+                  sy + oy - shH - 2,
+                  Math.max(1, Math.round(w * shPct)),
+                  shH,
+                );
+              }
+            });
           } catch (e) {
             /* ignore shield draw errors */
           }
         }
-        // NOTE: HP/Shield bars were previously drawn in ship-local coords which
-        // caused them to rotate with the ship. Draw them in screen-space so
-        // they stay oriented parallel to the top of the screen (less distracting).
-      });
 
-      // Draw per-ship HP / Shield bar in screen-space (non-rotating)
-      try {
-        const hbCfg = (RendererConfig && (RendererConfig as any).hpBar) || {};
-        // Allow bar size to scale with ship radius when not explicitly configured
-        const baseW =
-          typeof hbCfg.w === "number"
-            ? hbCfg.w
-            : Math.max(20, (s.radius || 12) * 1.6);
-        const baseH =
-          typeof hbCfg.h === "number"
-            ? hbCfg.h
-            : Math.max(4, Math.round((s.radius || 12) * 0.25));
-        const dx =
-          typeof hbCfg.dx === "number" ? hbCfg.dx : -Math.round(baseW / 2);
-        const dy =
-          typeof hbCfg.dy === "number"
-            ? hbCfg.dy
-            : -(s.radius || 12) - baseH - 6;
-  const hbBg = hbCfg.bg || (AssetsConfig as any).palette?.background || "#222";
-        const hbFill =
-          hbCfg.fill || (AssetsConfig as any).palette?.shipHull || "#4caf50";
-
-        const hpPct =
-          typeof (s as any).hpPercent === "number"
-            ? (s as any).hpPercent
-            : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
-        const shPct =
-          typeof (s as any).shieldPercent === "number"
-            ? (s as any).shieldPercent
-            : typeof s.maxShield === "number" && s.maxShield > 0
-              ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield))
-              : 0;
-
-        const w = Math.max(1, Math.round(baseW * renderScale));
-        const h = Math.max(1, Math.round(baseH * renderScale));
-        const ox = Math.round(dx * renderScale);
-        const oy = Math.round(dy * renderScale);
-        const sx = Math.round((s.x || 0) * renderScale);
-        const sy = Math.round((s.y || 0) * renderScale);
-
-        withContext(() => {
-          // Background
-          activeBufferCtx.fillStyle = hbBg;
-          activeBufferCtx.fillRect(sx + ox, sy + oy, w, h);
-          // HP fill (left-to-right)
-          activeBufferCtx.fillStyle = hbFill;
-          activeBufferCtx.fillRect(
-            sx + ox,
-            sy + oy,
-            Math.max(1, Math.round(w * hpPct)),
-            h,
-          );
-          // Shield overlay: thin bar above HP bar
-          if (shPct > 0) {
-            const shH = Math.max(1, Math.round(h * 0.5));
-            activeBufferCtx.fillStyle =
-              (AssetsConfig as any).palette?.shipAccent || "#3ab6ff";
-            activeBufferCtx.fillRect(
-              sx + ox,
-              sy + oy - shH - 2,
-              Math.max(1, Math.round(w * shPct)),
-              shH,
-            );
-          }
-        });
-      } catch (e) {
-        /* ignore bar draw errors */
-      }
-    }
+        }); // end withShipContext for this ship
 
     // Health hits: render freshest per-ship health flash using index (reddish rings), pooled
     try {
@@ -1916,6 +1847,8 @@ export class CanvasRenderer {
     );
     ctx.restore();
   }
+}
+
 }
 
 export default CanvasRenderer;

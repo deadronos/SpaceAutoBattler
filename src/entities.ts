@@ -390,6 +390,11 @@ export function makeInitialState(): GameState {
     explosions: [],
     shieldHits: [],
     healthHits: [],
+    // optional event arrays used by GameState contract
+    particles: [],
+    flashes: [],
+    shieldFlashes: [],
+    healthFlashes: [],
     engineTrailsEnabled: true,
     assetPool: {
       textures: new Map<string, PoolEntry<WebGLTexture>>(),

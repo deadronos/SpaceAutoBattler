@@ -57,6 +57,20 @@ function ensureCacheLimit() {
  * If options.assetKey is provided, it is used as the stable asset identifier in the cache key.
  */
 export async function rasterizeSvgWithTeamColors(svgText: string, mapping: Record<string, string>, outW: number, outH: number, options?: { applyTo?: 'fill' | 'stroke' | 'both', assetKey?: string }): Promise<HTMLCanvasElement> {
+  // Fast-path for headless/test environments: if a 2D canvas context is
+  // not available, return a blank canvas immediately. This avoids waiting
+  // on image onload handlers that may never fire in environments like
+  // happy-dom or partial DOM shims used in tests.
+  // Detect headless/partial DOM where 2D context is unavailable. Don't return early;
+  // instead handle via cacheKey below so repeated calls with same key return the same placeholder.
+  let headlessNoCtx = false;
+  try {
+    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      const probe = document.createElement('canvas');
+      const ctx = (probe.getContext && probe.getContext('2d')) as CanvasRenderingContext2D | null;
+      if (!ctx) headlessNoCtx = true;
+    }
+  } catch (e) { headlessNoCtx = true; }
   // compute mapping hash and asset identifier
   const mappingStable = stableStringify(mapping || {});
   const mappingHash = djb2Hash(mappingStable);
@@ -103,6 +117,24 @@ export async function rasterizeSvgWithTeamColors(svgText: string, mapping: Recor
       } catch (e) {}
 
       const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
+      if (headlessNoCtx) {
+        // create a placeholder canvas and cache it so subsequent calls return same instance
+        const ph = ((): HTMLCanvasElement => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = outW || 1; c.height = outH || 1; return c;
+          } catch (e) {
+            // as a last resort, create a minimal object that looks like a canvas
+            const obj: any = { width: outW || 1, height: outH || 1 }; return obj as unknown as HTMLCanvasElement;
+          }
+        })();
+        entry.canvas = ph;
+        entry.promise = Promise.resolve(ph);
+        entry.lastAccess = Date.now();
+        rasterCache.set(cacheKey, entry);
+        ensureCacheLimit();
+        return ph;
+      }
       const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
       // store resolved canvas for synchronous reads
       entry.canvas = canvas;

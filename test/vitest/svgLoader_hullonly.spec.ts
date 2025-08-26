@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { rasterizeHullOnlySvgToCanvas, parseSvgForMounts } from '../../src/assets/svgLoader';
+import { svgToPolylines } from '../../src/assets/svgToPolylines';
 
 const frigateSvg = `<svg width="128" height="128" viewBox="0 0 128 128">
   <rect width="128" height="128" fill="#0d1622"/>
@@ -22,6 +23,12 @@ const frigateSvg = `<svg width="128" height="128" viewBox="0 0 128 128">
 </svg>`;
 
 describe('svgLoader hull-only rasterization and mountpoint extraction', () => {
+  it('extracts hull outline polylines from SVG', () => {
+    const result = svgToPolylines(frigateSvg);
+    expect(result).toHaveProperty('contours');
+    expect(Array.isArray(result.contours)).toBe(true);
+    expect(result).toHaveProperty('bbox');
+  });
   it('extracts turret mountpoints from class="turret" rects', () => {
     const result = parseSvgForMounts(frigateSvg);
     expect(result.mounts.length).toBe(2);
