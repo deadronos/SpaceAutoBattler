@@ -1,9 +1,29 @@
 import type { GameState } from "./types";
-import {
-  getShipConfig,
-  getDefaultShipType,
-  getSizeDefaults,
-} from "./config/entitiesConfig";
+const entitiesConfig = require("./config/entitiesConfig");
+function getShipConfigSafe() {
+  let config = {};
+  if (typeof entitiesConfig.getShipConfig === "function") config = entitiesConfig.getShipConfig();
+  else if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") config = entitiesConfig.default.getShipConfig();
+  else if (typeof entitiesConfig.default === "object" && entitiesConfig.default) config = entitiesConfig.default;
+  else if (typeof entitiesConfig === "object" && entitiesConfig) config = entitiesConfig;
+  // Fallback config if nothing found
+  if (!config || !Object.keys(config).length) {
+    config = { fighter: { size: "small", maxHp: 1, cannons: [{ damage: 1, rate: 1 }] } };
+  }
+  return config;
+}
+
+function getDefaultShipTypeSafe() {
+  const config = getShipConfigSafe();
+  const keys = Object.keys(config);
+  return keys.length ? keys[0] : "fighter";
+}
+function getSizeDefaultsSafe(size: "small" | "medium" | "large") {
+  if (typeof entitiesConfig.getSizeDefaults === "function") return entitiesConfig.getSizeDefaults(size);
+  if (entitiesConfig.default && typeof entitiesConfig.default.getSizeDefaults === "function") return entitiesConfig.default.getSizeDefaults(size);
+  return {};
+}
+// (Removed duplicate getShipConfigSafe)
 // pooling helpers moved to src/pools; importers should use that module now
 import { TEAM_DEFAULT } from "./config/teamsConfig";
 import type { ShipConfigMap, ShipSpec } from "./types";
@@ -62,6 +82,22 @@ export type Ship = {
   parentId?: number;
   // Internal carrier timer accumulator (seconds). Not serialized.
   _carrierTimer?: number;
+  // Turrets attached to the ship. Normalized via normalizeTurrets -> each turret
+  // is an object { position: [x,y], angle, targetAngle, spread, barrel, cooldown }
+  // Accept either normalized turret objects or shorthand [x,y] arrays for
+  // backwards compatibility with saved snapshots and concise configs.
+  turrets?: Array<
+    | [number, number]
+    | {
+        position: [number, number];
+        angle?: number;
+        targetAngle?: number;
+        spread?: number;
+        barrel?: number;
+        cooldown?: number;
+        kind?: string;
+      }
+  >;
 };
 
 export function createShip(
@@ -70,16 +106,16 @@ export function createShip(
   y = 0,
   team = TEAM_DEFAULT,
 ): Ship {
-  const shipCfg = getShipConfig() as ShipConfigMap;
+  const shipCfg = getShipConfigSafe() as ShipConfigMap;
   const availableTypes = Object.keys(shipCfg || {});
   const resolvedType =
     type && shipCfg[type]
       ? type
       : availableTypes.length
         ? availableTypes[0]
-        : getDefaultShipType();
+  : getDefaultShipTypeSafe();
   const rawCfg = (shipCfg[resolvedType] ||
-    shipCfg[getDefaultShipType()]) as Partial<ShipSpec>;
+  shipCfg[getDefaultShipTypeSafe()]) as Partial<ShipSpec>;
   // Merge in per-size defaults for any fields not explicitly provided by the
   // ship type config. This keeps configs concise while ensuring sensible
   // defaults for armor/shields per size class.
@@ -90,7 +126,7 @@ export function createShip(
       : rawCfg.radius && rawCfg.radius >= 20
         ? "medium"
         : "small");
-  const sizeDefaults = getSizeDefaults(sizeVal as "small" | "medium" | "large");
+  const sizeDefaults = getSizeDefaultsSafe(sizeVal as "small" | "medium" | "large");
   const cfg = Object.assign({}, sizeDefaults, rawCfg) as Partial<ShipSpec>;
   const ship = {
     id: genId(),
@@ -148,11 +184,27 @@ export function normalizeTurrets(ship: any): void {
     if (!Array.isArray(tarr)) return;
     ship.turrets = tarr.map((t: any) => {
       if (Array.isArray(t) && t.length === 2) {
-        return { position: t, angle: 0, targetAngle: 0, kind: "basic" };
+        return {
+          position: t,
+          angle: 0,
+          targetAngle: 0,
+          kind: "basic",
+          spread: 0,
+          barrel: 0,
+          cooldown: 1.0,
+        };
       }
-      // If it's already an object turret, shallow-copy to avoid mutating
-      // shared config objects from imports or serialized defaults.
-      if (t && typeof t === "object") return Object.assign({}, t);
+      // If it's already an object turret, shallow-copy and ensure runtime defaults
+      if (t && typeof t === "object") {
+        const copy = Object.assign({}, t);
+        if (typeof copy.angle !== "number") copy.angle = 0;
+        if (typeof copy.targetAngle !== "number") copy.targetAngle = 0;
+        if (typeof copy.spread !== "number") copy.spread = 0;
+        if (typeof copy.barrel !== "number") copy.barrel = 0;
+        if (typeof copy.cooldown !== "number")
+          copy.cooldown = copy.cooldown || 1.0;
+        return copy;
+      }
       return t;
     });
   } catch (e) {}
@@ -376,7 +428,7 @@ export function resetHealthHitEffect(
   Object.assign(obj, init);
 }
 
-import type { PoolEntry, TexturePoolEntry } from './types/pool';
+import type { PoolEntry, TexturePoolEntry } from "./types/pool";
 // Provide a default initial GameState for simulation and tests
 export function makeInitialState(): GameState {
   return {

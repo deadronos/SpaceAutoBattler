@@ -97,13 +97,13 @@ export function simulateStep(
   // Batched in-place pruning for all high-frequency event arrays
   function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
     // Ensure all event arrays are initialized
-  state.particles = state.particles || [];
-  state.explosions = state.explosions || [];
-  state.shieldHits = state.shieldHits || [];
-  state.healthHits = state.healthHits || [];
-  state.flashes = state.flashes || [];
-  state.shieldFlashes = state.shieldFlashes || [];
-  state.healthFlashes = state.healthFlashes || [];
+    state.particles = state.particles || [];
+    state.explosions = state.explosions || [];
+    state.shieldHits = state.shieldHits || [];
+    state.healthHits = state.healthHits || [];
+    state.flashes = state.flashes || [];
+    state.shieldFlashes = state.shieldFlashes || [];
+    state.healthFlashes = state.healthFlashes || [];
     // Bullets: prune expired/out-of-bounds
     let writeBullet = 0;
     for (let read = 0; read < state.bullets.length; read++) {
@@ -302,6 +302,11 @@ export function simulateStep(
     }
     // --- Turret per-frame integration: advance turret.angle toward targetAngle using turnRate ---
     try {
+      // Normalize turret definitions via single helper so tuple shorthand
+      // ([x,y]) and object turrets are made consistent across systems before AI
+      try {
+        normalizeTurrets(s as any);
+      } catch (e) {}
       // Basic turret AI: if turret has no explicit targetAngle, aim at nearest enemy ship
       try {
         if (
@@ -330,10 +335,32 @@ export function simulateStep(
                 }
               }
               if (best) {
-                t.targetAngle = Math.atan2(
-                  (best.y || 0) - (s.y || 0),
-                  (best.x || 0) - (s.x || 0),
+                // Compute desired world angle from turret mount to target
+                const mount = Array.isArray(t.position)
+                  ? {
+                      x:
+                        (Math.cos(s.angle || 0) * t.position[0] -
+                          Math.sin(s.angle || 0) * t.position[1]) *
+                          (s.radius || 12) +
+                        (s.x || 0),
+                      y:
+                        (Math.sin(s.angle || 0) * t.position[0] +
+                          Math.cos(s.angle || 0) * t.position[1]) *
+                          (s.radius || 12) +
+                        (s.y || 0),
+                    }
+                  : { x: s.x || 0, y: s.y || 0 };
+                const desiredWorld = Math.atan2(
+                  (best.y || 0) - mount.y,
+                  (best.x || 0) - mount.x,
                 );
+                // Store targetAngle as local angle relative to ship (so simulate integration uses local space)
+                // Store targetAngle as local angle relative to ship (so simulate integration uses local space)
+                // Note: ensure we normalize into -PI..PI to avoid opposite-angle miswrap
+                let local = desiredWorld - (s.angle || 0);
+                while (local < -Math.PI) local += Math.PI * 2;
+                while (local > Math.PI) local -= Math.PI * 2;
+                t.targetAngle = local;
               }
             } catch (e) {}
           }

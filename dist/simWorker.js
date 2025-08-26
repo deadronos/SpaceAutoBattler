@@ -268,6 +268,14 @@ var SIZE_DEFAULTS = {
 function getSizeDefaults(size) {
   return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
 }
+function setSizeDefaults(size, patch) {
+  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
+}
+function setAllSizeDefaults(patch) {
+  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
+  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
+  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
+}
 function getShipConfig() {
   Object.keys(ShipConfig).forEach((key) => {
     const cfg = ShipConfig[key];
@@ -300,8 +308,76 @@ var BULLET_DEFAULTS = {
   // default effective range (units)
   range: 300
 };
+var PARTICLE_DEFAULTS = {
+  ttl: 1,
+  color: "#fff",
+  size: 2
+};
+function bulletKindForRadius(r) {
+  if (r < 2) return "small";
+  if (r < 2.5) return "medium";
+  if (r < 3.5) return "large";
+  return "heavy";
+}
 function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
+}
+if (typeof module !== "undefined" && module.exports) {
+  try {
+    const existing = module.exports || {};
+    Object.defineProperty(existing, "ShipConfig", {
+      value: ShipConfig,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getShipConfig", {
+      value: getShipConfig,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "SIZE_DEFAULTS", {
+      value: SIZE_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getSizeDefaults", {
+      value: getSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "setSizeDefaults", {
+      value: setSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "setAllSizeDefaults", {
+      value: setAllSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "BULLET_DEFAULTS", {
+      value: BULLET_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
+      value: PARTICLE_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "bulletKindForRadius", {
+      value: bulletKindForRadius,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getDefaultShipType", {
+      value: getDefaultShipType,
+      enumerable: true
+    });
+    try {
+      Object.defineProperty(existing, "default", {
+        value: ShipConfig,
+        enumerable: true
+      });
+    } catch (e) {
+    }
+    try {
+      module.exports = existing;
+    } catch (e) {
+    }
+  } catch (e) {
+  }
 }
 
 // src/config/simConfig.ts
@@ -455,9 +531,26 @@ function normalizeTurrets(ship) {
     if (!Array.isArray(tarr)) return;
     ship.turrets = tarr.map((t) => {
       if (Array.isArray(t) && t.length === 2) {
-        return { position: t, angle: 0, targetAngle: 0, kind: "basic" };
+        return {
+          position: t,
+          angle: 0,
+          targetAngle: 0,
+          kind: "basic",
+          spread: 0,
+          barrel: 0,
+          cooldown: 1
+        };
       }
-      if (t && typeof t === "object") return Object.assign({}, t);
+      if (t && typeof t === "object") {
+        const copy = Object.assign({}, t);
+        if (typeof copy.angle !== "number") copy.angle = 0;
+        if (typeof copy.targetAngle !== "number") copy.targetAngle = 0;
+        if (typeof copy.spread !== "number") copy.spread = 0;
+        if (typeof copy.barrel !== "number") copy.barrel = 0;
+        if (typeof copy.cooldown !== "number")
+          copy.cooldown = copy.cooldown || 1;
+        return copy;
+      }
       return t;
     });
   } catch (e) {
@@ -1335,30 +1428,39 @@ function tryFire(state2, ship, target, dt) {
         }
       }
       if (!turretTarget) continue;
-      const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
-      const dir = aimWithSpread(ship, turretTarget, spread);
+      const spread = typeof turret.spread === "number" ? turret.spread : getShipConfig()[ship.type || "fighter"]?.turrets?.[i]?.spread ?? 0.05;
+      const mountPos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
+      const [mTx, mTy] = mountPos;
+      const shipAngle = ship.angle || 0;
+      const shipTypeLocal = ship.type || "fighter";
+      const shipCfgLocal = getShipConfig()[shipTypeLocal];
+      const configRadiusLocal = shipCfgLocal && typeof shipCfgLocal.radius === "number" ? shipCfgLocal.radius : ship.radius || 12;
+      const mountX = (ship.x || 0) + Math.cos(shipAngle) * mTx * configRadiusLocal - Math.sin(shipAngle) * mTy * configRadiusLocal;
+      const mountY = (ship.y || 0) + Math.sin(shipAngle) * mTx * configRadiusLocal + Math.cos(shipAngle) * mTy * configRadiusLocal;
+      const dir = aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
       const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
       const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : BULLET_DEFAULTS.damage;
       const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;
       const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
-      const angle = ship.angle || 0;
-      const shipType = ship.type || "fighter";
-      const shipCfg = getShipConfig()[shipType];
-      const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : ship.radius || 12;
-      const pos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
-      const [tx, ty] = pos;
-      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
-      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
       const range = typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
-      const dxT = (turretTarget.x || 0) - turretX;
-      const dyT = (turretTarget.y || 0) - turretY;
+      const dxT = (turretTarget.x || 0) - mountX;
+      const dyT = (turretTarget.y || 0) - mountY;
       if (dxT * dxT + dyT * dyT > range * range) continue;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      let spawnX = mountX;
+      let spawnY = mountY;
+      const barrelLen = turret && typeof turret.barrel === "number" ? turret.barrel : turret && turret.barrel && turret.barrel.length ? turret.barrel[0] : 0;
+      if (barrelLen && barrelLen > 0) {
+        const turretLocalAngle = turret && typeof turret.angle === "number" ? turret.angle : 0;
+        const turretWorldAngle = shipAngle + turretLocalAngle;
+        spawnX = mountX + Math.cos(turretWorldAngle) * barrelLen;
+        spawnY = mountY + Math.sin(turretWorldAngle) * barrelLen;
+      }
       const b = Object.assign(
         acquireBullet(state2, {
-          x: turretX,
-          y: turretY,
+          x: spawnX,
+          y: spawnY,
           vx,
           vy,
           team: ship.team || TEAM_DEFAULT,
@@ -1807,10 +1909,18 @@ function simulateStep(state2, dtSeconds, bounds2) {
                 }
               }
               if (best) {
-                t.targetAngle = Math.atan2(
-                  (best.y || 0) - (s.y || 0),
-                  (best.x || 0) - (s.x || 0)
+                const mount = Array.isArray(t.position) ? {
+                  x: (Math.cos(s.angle || 0) * t.position[0] - Math.sin(s.angle || 0) * t.position[1]) * (s.radius || 12) + (s.x || 0),
+                  y: (Math.sin(s.angle || 0) * t.position[0] + Math.cos(s.angle || 0) * t.position[1]) * (s.radius || 12) + (s.y || 0)
+                } : { x: s.x || 0, y: s.y || 0 };
+                const desiredWorld = Math.atan2(
+                  (best.y || 0) - mount.y,
+                  (best.x || 0) - mount.x
                 );
+                let local = desiredWorld - (s.angle || 0);
+                while (local < -Math.PI) local += Math.PI * 2;
+                while (local > Math.PI) local -= Math.PI * 2;
+                t.targetAngle = local;
               }
             } catch (e) {
             }

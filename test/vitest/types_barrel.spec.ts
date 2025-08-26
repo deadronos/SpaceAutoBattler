@@ -43,5 +43,8 @@ describe('Type barrel and config contracts', () => {
     // const cfg: ShipConfigMap = ShipConfig;
     // expect(cfg.fighter.maxHp).toBeGreaterThan(0);
   expect(typeof TeamsConfig.defaultFleet.counts.fighter).toBe('number');
+  expect(TeamsConfig.defaultFleet.counts.fighter).not.toBeUndefined();
+  expect(TeamsConfig.defaultFleet.counts.fighter).not.toBeNull();
+  expect(TeamsConfig.defaultFleet.counts.fighter).toBeGreaterThan(0);
   });
 });

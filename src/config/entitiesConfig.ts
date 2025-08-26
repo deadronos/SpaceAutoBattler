@@ -65,6 +65,8 @@ export type ShipTypeCfg = {
     spawnPerCooldown: number;
   };
   turrets?: Array<{
+    // runtime: spread and barrel length can be provided per-turret
+    // runtime: spread and barrel length can be provided per-turret
     position: [number, number]; // relative to ship center, in radius units
     kind: string; // turret asset kind
     targeting?: "nearest" | "random" | "focus" | "custom"; // targeting logic
@@ -72,6 +74,9 @@ export type ShipTypeCfg = {
     lastFired?: number; // timestamp of last shot
     // optional turret firing range (units)
     range?: number;
+    // optional per-turret defaults
+    spread?: number;
+    barrel?: number; // barrel length in radius units
   }>;
 };
 
@@ -393,3 +398,67 @@ export function getDefaultShipType(): string {
 }
 
 export default ShipConfig;
+
+// CommonJS shim for tests that use require() to import the TS module path directly.
+// This keeps runtime behavior identical while allowing `require("../../src/config/entitiesConfig")`
+// to access named exports in a CJS environment (Vitest/node require).
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+declare const module: any;
+if (typeof module !== "undefined" && module.exports) {
+  // assign named exports to module.exports for CommonJS consumers
+  try {
+    const existing = module.exports || {};
+    Object.defineProperty(existing, "ShipConfig", {
+      value: ShipConfig,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "getShipConfig", {
+      value: getShipConfig,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "SIZE_DEFAULTS", {
+      value: SIZE_DEFAULTS,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "getSizeDefaults", {
+      value: getSizeDefaults,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "setSizeDefaults", {
+      value: setSizeDefaults,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "setAllSizeDefaults", {
+      value: setAllSizeDefaults,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "BULLET_DEFAULTS", {
+      value: BULLET_DEFAULTS,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
+      value: PARTICLE_DEFAULTS,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "bulletKindForRadius", {
+      value: bulletKindForRadius,
+      enumerable: true,
+    });
+    Object.defineProperty(existing, "getDefaultShipType", {
+      value: getDefaultShipType,
+      enumerable: true,
+    });
+    // ensure default also exists without reassigning module.exports entirely
+    try {
+      Object.defineProperty(existing, "default", {
+        value: ShipConfig,
+        enumerable: true,
+      });
+    } catch (e) {}
+    // merge back to module.exports if possible
+    try {
+      module.exports = existing;
+    } catch (e) {}
+  } catch (e) {}
+}

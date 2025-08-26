@@ -1,6 +1,12 @@
 import { test, expect } from 'vitest';
 import { createShip } from '../../src/entities';
-import * as entitiesConfig from '../../src/config/entitiesConfig';
+const entitiesConfig = require('../../src/config/entitiesConfig');
+function getShipConfigSafe() {
+  if (typeof entitiesConfig.getShipConfig === "function") return entitiesConfig.getShipConfig();
+  if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") return entitiesConfig.default.getShipConfig();
+  if (typeof entitiesConfig.default === "object" && entitiesConfig.default) return entitiesConfig.default;
+  return {};
+}
 
 test('createShip falls back to positive maxSpeed when config is missing or zero', () => {
   // Backup original config

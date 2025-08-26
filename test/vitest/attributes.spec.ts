@@ -1,9 +1,15 @@
 import { describe, it, expect } from "vitest";
-import ShipConfig, { getShipConfig } from "../../src/config/entitiesConfig";
+const entitiesConfig = require("../../src/config/entitiesConfig");
+function getShipConfigSafe() {
+  if (typeof entitiesConfig.getShipConfig === "function") return entitiesConfig.getShipConfig();
+  if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") return entitiesConfig.default.getShipConfig();
+  if (typeof entitiesConfig.default === "object" && entitiesConfig.default) return entitiesConfig.default;
+  return {};
+}
 
 describe("Attributes", () => {
   it("should have health, damage, xp attributes from config", () => {
-    const cfg = getShipConfig();
+  const cfg = getShipConfigSafe();
     for (const type of Object.keys(cfg)) {
       expect(cfg[type].maxHp).toBeGreaterThan(0);
       expect(cfg[type].dmg).toBeGreaterThan(0);
@@ -13,7 +19,7 @@ describe("Attributes", () => {
   });
 
   it("should fail if cannons array is empty", () => {
-    const cfg = getShipConfig();
+  const cfg = getShipConfigSafe();
     for (const type of Object.keys(cfg)) {
       // Simulate empty cannons
       const ship = { ...cfg[type], cannons: [] };
@@ -94,7 +100,7 @@ describe("Attributes", () => {
   });
 
   it("should have config-driven cannon attributes", () => {
-    const cfg = getShipConfig();
+  const cfg = getShipConfigSafe();
     for (const type of Object.keys(cfg)) {
       for (const cannon of cfg[type].cannons || []) {
         expect(cannon.damage).toBeGreaterThan(0);

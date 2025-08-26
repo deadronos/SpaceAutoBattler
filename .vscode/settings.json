@@ -1005,9 +1005,15 @@
   "chat.mcp.serverSampling": {
     "SpaceAutoBattler/.vscode/mcp.json: mcp-compass": {
       "allowedModels": [
-        "copilot/gpt-4.1",
-        "copilot/gpt-5-mini"
+        "copilot/gpt-4.1"
       ]
     }
   },
+  "python-envs.pythonProjects": [
+    {
+      "path": "",
+      "envManager": "ms-python.python:system",
+      "packageManager": "ms-python.python:pip"
+    }
+  ],
 }

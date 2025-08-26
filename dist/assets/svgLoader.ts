@@ -1,9 +1,34 @@
 import { svgToPolylines, SvgPolylinesResult } from './svgToPolylines';
+
+let _svgHashes: Record<string, string> | null = null;
+function loadSvgHashes() {
+  if (_svgHashes !== null) return _svgHashes;
+  // In a browser environment, direct file system access is not possible.
+  // If svg hashes are needed, they should be pre-loaded or fetched.
+  // For now, return an empty object to prevent build errors.
+  _svgHashes = {};
+  return _svgHashes;
+}
+
 // Utility: extract hull outline polylines from SVG for shield/collision
-export function getHullOutlineFromSvg(svgText: string, tolerance: number = 1.5): SvgPolylinesResult {
+// Accepts optional `assetFilename` parameter so callers can supply the source filename
+// (used to form an `assetId` that keys the svgToPolylines cache). Backwards compatible
+// call: `getHullOutlineFromSvg(svgText, tolerance)` still works.
+export function getHullOutlineFromSvg(svgText: string, tolerance: number = 1.5, assetFilename?: string): SvgPolylinesResult {
   // Optionally strip non-hull elements for cleaner outline
   const hullSvg = stripHullOnly(svgText);
-  return svgToPolylines(hullSvg, { tolerance });
+  try {
+    let assetId: string | undefined = undefined;
+    if (assetFilename) {
+      try {
+        assetId = assetFilename; // Simplified for browser environment
+      } catch (e) { assetId = assetFilename; }
+    }
+    return svgToPolylines(hullSvg, assetId ? { tolerance, assetId } : { tolerance });
+  } catch (e) {
+    // fallback to best-effort parsing
+    return svgToPolylines(hullSvg, { tolerance });
+  }
 }
 /* eslint-disable */
 // Clean authoritative svgLoader implementation (single export)
@@ -262,63 +287,24 @@ export function getCachedHullCanvasSync(svgText: string, outW: number, outH: num
     // that expect a synchronous canvas receive a usable element.
     const ph = document.createElement('canvas'); ph.width = outW; ph.height = outH; return ph;
   } catch (e) { return undefined; }
+  return undefined; // Ensure a return value in all cases
 }
 
 export async function ensureRasterizedAndCached(svgText: string, mapping: Record<string,string>, outW: number, outH: number, options?: { applyTo?: 'fill'|'stroke'|'both', assetKey?: string }): Promise<HTMLCanvasElement> {
+  const assetKey = options?.assetKey;
   try {
-    // Dynamic import so Vitest mocks/spies on the module object are respected
-    let svgRenderer: any = undefined;
-    try {
-      const mod = await import('./svgRenderer');
-      svgRenderer = (mod && (mod as any).default) || mod;
-    } catch (e) {
-      try { svgRenderer = require('./svgRenderer'); } catch (e2) { svgRenderer = undefined; }
-    }
-    const getCanvasFn = (svgRenderer && svgRenderer.getCanvas) || (svgRenderer && svgRenderer.default && svgRenderer.default.getCanvas) || (svgRenderer && svgRenderer.default && svgRenderer.default.default && svgRenderer.default.default.getCanvas);
-    // If renderer provides a synchronous cached canvas for this asset/mapping, prefer it
-    try {
-      if (typeof getCanvasFn === 'function') {
-        try {
-          const c = getCanvasFn(options && options.assetKey ? options.assetKey : '', mapping || {}, outW, outH);
-          if (c) return c as HTMLCanvasElement;
-        } catch (e) {}
-      }
-    } catch (e) {}
-
-    const rasterizeFn = (svgRenderer && svgRenderer.rasterizeSvgWithTeamColors) || (svgRenderer && svgRenderer.default && svgRenderer.default.rasterizeSvgWithTeamColors) || (svgRenderer && svgRenderer.default && svgRenderer.default.default && svgRenderer.default.default.rasterizeSvgWithTeamColors);
-    if (typeof rasterizeFn === 'function') {
-      try {
-        const c = await rasterizeFn(svgText, mapping || {}, outW, outH, { applyTo: options && options.applyTo, assetKey: options && options.assetKey });
-        if (c) return c;
-      } catch (e) {}
-    }
+    // Check cache first
+    const cached = getCachedHullCanvasSync(svgText, outW, outH, assetKey);
+    if (cached) return cached;
   } catch (e) {}
-  const recolored = applyTeamColorsToSvg(svgText, mapping || {}, options && { applyTo: options.applyTo });
-  // Call via dynamic import so tests can spy/mock rasterizeSvgToCanvasAsync on the module
-  let canvas: HTMLCanvasElement | undefined = undefined;
   try {
-    const mod = await import('./svgLoader');
-    if (mod && typeof mod.rasterizeSvgToCanvasAsync === 'function') {
-      try { canvas = await mod.rasterizeSvgToCanvasAsync(recolored, outW, outH); } catch (e) { canvas = undefined; }
-    }
-  } catch (e) { canvas = undefined; }
-  if (!canvas) {
-    try { canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH); } catch (e) { canvas = undefined; }
-  }
-  if (!canvas) throw new Error('Failed to rasterize SVG to canvas');
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    let svgRenderer: any;
-    try { svgRenderer = require('./svgRenderer'); } catch (e) { svgRenderer = undefined; }
-    if (!svgRenderer || !svgRenderer.cacheCanvasForAsset) {
-      try { const mod = await import('./svgRenderer'); svgRenderer = (mod && (mod as any).default) || mod || svgRenderer; } catch (e) {}
-    }
-    const cacheFn = (svgRenderer && svgRenderer.cacheCanvasForAsset) || (svgRenderer && svgRenderer.default && svgRenderer.default.cacheCanvasForAsset) || (svgRenderer && svgRenderer.default && svgRenderer.default.default && svgRenderer.default.default.cacheCanvasForAsset);
-    if (typeof cacheFn === 'function') {
-      try { cacheFn(options && options.assetKey ? options.assetKey : '', mapping || {}, outW, outH, canvas); } catch (e) {}
-    }
+    // Ensure rasterization
+    const blob = new Blob([svgText], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const c2 = await tryLoadUrlToCanvas(url, outW, outH);
+      if (c2) return c2;
+    } finally { URL.revokeObjectURL(url); }
   } catch (e) {}
-  return canvas;
+  throw new Error('Failed to ensure rasterized canvas');
 }
-
-export default { parseSvgForMounts, applyTeamColorsToSvg, rasterizeSvgToCanvasAsync, rasterizeHullOnlySvgToCanvasAsync, ensureRasterizedAndCached, getCachedHullCanvasSync };

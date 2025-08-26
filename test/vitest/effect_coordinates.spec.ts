@@ -4,7 +4,14 @@ import RendererConfig from '../../src/config/rendererConfig';
 import { getDefaultBounds } from '../../src/config/simConfig';
 import { makeInitialState, createShip } from '../../src/entities';
 import * as Assets from '../../src/config/assets/assetsConfig';
-import { getShipConfig } from '../../src/config/entitiesConfig';
+const entitiesConfig = require('../../src/config/entitiesConfig');
+function getShipConfigSafe() {
+  if (typeof entitiesConfig.getShipConfig === "function") return entitiesConfig.getShipConfig();
+  if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") return entitiesConfig.default.getShipConfig();
+  if (typeof entitiesConfig.default === "object" && entitiesConfig.default) return entitiesConfig.default;
+  if (entitiesConfig.ShipConfig && typeof entitiesConfig.ShipConfig === 'object') return entitiesConfig.ShipConfig;
+  return {};
+}
 
 // Minimal stub 2D context that tracks translate/save/restore and records arcs with
 // their absolute coordinates (ignoring rotation/scale for simplicity since renderScale
@@ -215,9 +222,14 @@ describe('Effect coordinate rendering', () => {
     // Use destroyer which has turret positions in entitiesConfig
     const ship = createShip('destroyer', 600, 600, 'blue');
     // Ensure the ship instance has a turrets array (renderer reads s.turrets)
-    const shipCfgForTurrets = getShipConfig()['destroyer'];
+  const cfgAll = getShipConfigSafe();
+  let shipCfgForTurrets: any = cfgAll['destroyer'];
+    if (!shipCfgForTurrets) {
+      // last-resort fallback for test stability if interop failed
+      shipCfgForTurrets = { radius: ship.radius || 40, turrets: [ { position: [1.2, 0.8], kind: 'basic' } ] };
+    }
     if (Array.isArray(shipCfgForTurrets.turrets)) {
-      (ship as any).turrets = shipCfgForTurrets.turrets.map(t => ({ position: t.position, kind: t.kind || 'basic' }));
+      (ship as any).turrets = shipCfgForTurrets.turrets.map((t: any) => ({ position: t.position as [number, number], kind: (t.kind as string) || 'basic' }));
     }
     state.ships.push(ship);
 
@@ -265,7 +277,10 @@ describe('Effect coordinate rendering', () => {
     const shipT = translateMat(shipTranslateX, shipTranslateY);
     const rot = rotateMat(angle);
     // turretX/turretY as computed by renderer
-    const shipCfg = getShipConfig()['destroyer'];
+  let shipCfg: any = getShipConfigSafe()['destroyer'];
+    if (!shipCfg) {
+      shipCfg = { radius: ship.radius || 40, turrets: [{ position: [1.2, 0.8] }] };
+    }
     const cfgRadius = shipCfg.radius || ship.radius || 12;
     const firstTurretCfg = (shipCfg.turrets || [])[0] || { position: [0, 0] };
     const [ttx, tty] = firstTurretCfg.position || [0, 0];

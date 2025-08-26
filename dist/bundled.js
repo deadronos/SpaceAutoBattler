@@ -75,6 +75,14 @@ var init_polygon = __esm({
 });
 
 // src/assets/svgToPolylines.ts
+function hashStringToKey(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h.toString(36);
+}
 function parseViewBox(svgEl) {
   const vbAttr = svgEl && (svgEl.getAttribute && svgEl.getAttribute("viewBox"));
   if (vbAttr) {
@@ -92,6 +100,99 @@ function parseViewBox(svgEl) {
   }
   return { x: 0, y: 0, w: 128, h: 128 };
 }
+function multiplyMatrix(a, b) {
+  const [a1, a2, a3, a4, a5, a6] = a;
+  const [b1, b2, b3, b4, b5, b6] = b;
+  return [
+    a1 * b1 + a3 * b2,
+    a2 * b1 + a4 * b2,
+    a1 * b3 + a3 * b4,
+    a2 * b3 + a4 * b4,
+    a1 * b5 + a3 * b6 + a5,
+    a2 * b5 + a4 * b6 + a6
+  ];
+}
+function applyMatrixToPoint(m, x, y) {
+  const [a, b, c, d, e, f] = m;
+  return [a * x + c * y + e, b * x + d * y + f];
+}
+function applyMatrixToPoints(m, pts) {
+  for (let i = 0; i < pts.length; i++) {
+    const [x, y] = pts[i];
+    const p = applyMatrixToPoint(m, x, y);
+    pts[i][0] = p[0];
+    pts[i][1] = p[1];
+  }
+}
+function isIdentityMatrix(m) {
+  return m[0] === 1 && m[1] === 0 && m[2] === 0 && m[3] === 1 && m[4] === 0 && m[5] === 0;
+}
+function parseTransform(transformStr) {
+  if (!transformStr) return IDENTITY_MATRIX;
+  let m = IDENTITY_MATRIX;
+  const re = /([a-zA-Z]+)\s*\(([^)]+)\)/g;
+  let mm;
+  while (mm = re.exec(transformStr)) {
+    const cmd = mm[1].trim();
+    const raw = mm[2].trim();
+    const nums = raw.split(/[\s,]+/).filter(Boolean).map((s) => parseFloat(s));
+    let t = IDENTITY_MATRIX;
+    try {
+      if (cmd === "matrix" && nums.length >= 6) {
+        t = [nums[0], nums[1], nums[2], nums[3], nums[4], nums[5]];
+      } else if (cmd === "translate") {
+        const tx = nums[0] || 0;
+        const ty = nums[1] || 0;
+        t = [1, 0, 0, 1, tx, ty];
+      } else if (cmd === "scale") {
+        const sx = nums[0] || 1;
+        const sy = typeof nums[1] === "number" ? nums[1] : sx;
+        t = [sx, 0, 0, sy, 0, 0];
+      } else if (cmd === "rotate") {
+        const a = (nums[0] || 0) * Math.PI / 180;
+        const cosA = Math.cos(a), sinA = Math.sin(a);
+        if (nums.length >= 3) {
+          const cx = nums[1], cy = nums[2];
+          const to = [1, 0, 0, 1, cx, cy];
+          const rot = [cosA, sinA, -sinA, cosA, 0, 0];
+          const back = [1, 0, 0, 1, -cx, -cy];
+          t = multiplyMatrix(to, multiplyMatrix(rot, back));
+        } else {
+          t = [cosA, sinA, -sinA, cosA, 0, 0];
+        }
+      } else if (cmd === "skewX") {
+        const a = (nums[0] || 0) * Math.PI / 180;
+        t = [1, 0, Math.tan(a), 1, 0, 0];
+      } else if (cmd === "skewY") {
+        const a = (nums[0] || 0) * Math.PI / 180;
+        t = [1, Math.tan(a), 0, 1, 0, 0];
+      }
+    } catch (e) {
+      t = IDENTITY_MATRIX;
+    }
+    m = multiplyMatrix(m, t);
+  }
+  return m;
+}
+function computeCumulativeTransform(el, svgEl) {
+  let m = IDENTITY_MATRIX;
+  const chain = [];
+  let cur = el;
+  while (cur && cur !== svgEl && cur.nodeType === 1) {
+    chain.push(cur);
+    cur = cur.parentElement;
+  }
+  if (svgEl && svgEl !== el) chain.push(svgEl);
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const e = chain[i];
+    try {
+      const t = parseTransform(e.getAttribute && e.getAttribute("transform"));
+      m = multiplyMatrix(m, t);
+    } catch (e2) {
+    }
+  }
+  return m;
+}
 function parsePointsAttr(val) {
   const parts = val.trim().split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
   const pts = [];
@@ -103,9 +204,11 @@ function parsePointsAttr(val) {
   return pts;
 }
 function applyViewBoxNormalization(points, vb) {
-  const hw = vb.w / 2 || 1;
-  const hh = vb.h / 2 || 1;
-  return points.map(([x, y]) => [(x - hw) / hw, (y - hh) / hh]);
+  const hw = (vb.w || 1) / 2;
+  const hh = (vb.h || 1) / 2;
+  const cx = (vb.x || 0) + hw;
+  const cy = (vb.y || 0) + hh;
+  return points.map(([x, y]) => [(x - cx) / hw, (y - cy) / hh]);
 }
 function sampleCircle(cx, cy, r, segments = 48) {
   const pts = [];
@@ -115,39 +218,42 @@ function sampleCircle(cx, cy, r, segments = 48) {
   }
   return pts;
 }
-function parsePathCommands(d) {
+function parsePathCommands(d, tolerance) {
   const tokens = d.replace(/,/g, " ").replace(/\s+/g, " ").trim();
-  const cmdRe = /([MmLlHhVvZz])([^MmLlHhVvZz]*)/g;
+  const cmdRe = /([MmLlHhVvZzCcSsQqTtAa])([^MmLlHhVvZzCcSsQqTtAa]*)/g;
   const pts = [];
   let curX = 0, curY = 0;
+  let lastCpx = null, lastCpy = null;
   let m;
   while (m = cmdRe.exec(tokens)) {
     const cmd = m[1];
-    const args = m[2].trim().split(/[,\s]+/).filter(Boolean).map((s) => parseFloat(s));
+    const rawArgs = m[2].trim();
+    const args = rawArgs ? rawArgs.split(/[\s,]+/).filter(Boolean).map((s) => parseFloat(s)) : [];
+    let ai = 0;
     if (cmd === "Z" || cmd === "z") {
       continue;
     }
     if (cmd === "H" || cmd === "h") {
-      for (let i = 0; i < args.length; i++) {
-        const x = args[i];
-        if (cmd === "h") curX += x;
-        else curX = x;
+      while (ai < args.length) {
+        const x = args[ai++];
+        curX = cmd === "h" ? curX + x : x;
         pts.push([curX, curY]);
       }
+      lastCpx = lastCpy = null;
       continue;
     }
     if (cmd === "V" || cmd === "v") {
-      for (let i = 0; i < args.length; i++) {
-        const y = args[i];
-        if (cmd === "v") curY += y;
-        else curY = y;
+      while (ai < args.length) {
+        const y = args[ai++];
+        curY = cmd === "v" ? curY + y : y;
         pts.push([curX, curY]);
       }
+      lastCpx = lastCpy = null;
       continue;
     }
     if (cmd === "M" || cmd === "m" || cmd === "L" || cmd === "l") {
-      for (let i = 0; i + 1 < args.length; i += 2) {
-        const ax = args[i], ay = args[i + 1];
+      while (ai + 1 < args.length) {
+        const ax = args[ai++], ay = args[ai++];
         if (cmd === "m" || cmd === "l") {
           curX += ax;
           curY += ay;
@@ -157,13 +263,220 @@ function parsePathCommands(d) {
         }
         pts.push([curX, curY]);
       }
+      lastCpx = lastCpy = null;
+      continue;
+    }
+    if (cmd === "C" || cmd === "c") {
+      while (ai + 5 < args.length) {
+        const x1 = args[ai++], y1 = args[ai++], x2 = args[ai++], y2 = args[ai++], x = args[ai++], y = args[ai++];
+        const cp1x = cmd === "c" ? curX + x1 : x1;
+        const cp1y = cmd === "c" ? curY + y1 : y1;
+        const cp2x = cmd === "c" ? curX + x2 : x2;
+        const cp2y = cmd === "c" ? curY + y2 : y2;
+        const ex = cmd === "c" ? curX + x : x;
+        const ey = cmd === "c" ? curY + y : y;
+        const cubicPts = flattenCubicBezier([curX, curY], [cp1x, cp1y], [cp2x, cp2y], [ex, ey], tolerance);
+        for (let i = 1; i < cubicPts.length; i++) pts.push(cubicPts[i]);
+        curX = ex;
+        curY = ey;
+        lastCpx = cp2x;
+        lastCpy = cp2y;
+      }
+      continue;
+    }
+    if (cmd === "S" || cmd === "s") {
+      while (ai + 3 < args.length) {
+        const x2 = args[ai++], y2 = args[ai++], x = args[ai++], y = args[ai++];
+        let cp1x = curX, cp1y = curY;
+        if (lastCpx != null && lastCpy != null) {
+          cp1x = curX + (curX - lastCpx);
+          cp1y = curY + (curY - lastCpy);
+        }
+        const cp2x = cmd === "s" ? curX + x2 : x2;
+        const cp2y = cmd === "s" ? curY + y2 : y2;
+        const ex = cmd === "s" ? curX + x : x;
+        const ey = cmd === "s" ? curY + y : y;
+        const cubicPts2 = flattenCubicBezier([curX, curY], [cp1x, cp1y], [cp2x, cp2y], [ex, ey], tolerance);
+        for (let i = 1; i < cubicPts2.length; i++) pts.push(cubicPts2[i]);
+        lastCpx = cp2x;
+        lastCpy = cp2y;
+        curX = ex;
+        curY = ey;
+      }
+      continue;
+    }
+    if (cmd === "Q" || cmd === "q") {
+      while (ai + 3 < args.length) {
+        const x1 = args[ai++], y1 = args[ai++], x = args[ai++], y = args[ai++];
+        const qx1 = cmd === "q" ? curX + x1 : x1;
+        const qy1 = cmd === "q" ? curY + y1 : y1;
+        const ex = cmd === "q" ? curX + x : x;
+        const ey = cmd === "q" ? curY + y : y;
+        const qpts = flattenQuadraticBezier([curX, curY], [qx1, qy1], [ex, ey], tolerance);
+        for (let i = 1; i < qpts.length; i++) pts.push(qpts[i]);
+        lastCpx = qx1;
+        lastCpy = qy1;
+        curX = ex;
+        curY = ey;
+      }
+      continue;
+    }
+    if (cmd === "T" || cmd === "t") {
+      while (ai + 1 < args.length) {
+        const x = args[ai++], y = args[ai++];
+        let qx1 = curX, qy1 = curY;
+        if (lastCpx != null && lastCpy != null) {
+          qx1 = curX + (curX - lastCpx);
+          qy1 = curY + (curY - lastCpy);
+        }
+        const ex = cmd === "t" ? curX + x : x;
+        const ey = cmd === "t" ? curY + y : y;
+        const qpts2 = flattenQuadraticBezier([curX, curY], [qx1, qy1], [ex, ey], tolerance);
+        for (let i = 1; i < qpts2.length; i++) pts.push(qpts2[i]);
+        lastCpx = qx1;
+        lastCpy = qy1;
+        curX = ex;
+        curY = ey;
+      }
+      continue;
+    }
+    if (cmd === "A" || cmd === "a") {
+      while (ai + 6 < args.length) {
+        const rx = args[ai++], ry = args[ai++], xrot = args[ai++], laf = args[ai++], sf = args[ai++], x = args[ai++], y = args[ai++];
+        const ex = cmd === "a" ? curX + x : x;
+        const ey = cmd === "a" ? curY + y : y;
+        const arcPts = arcToPoints(curX, curY, ex, ey, rx, ry, xrot, laf ? 1 : 0, sf ? 1 : 0, Math.max(0.1, tolerance));
+        for (let i = 1; i < arcPts.length; i++) pts.push(arcPts[i]);
+        curX = ex;
+        curY = ey;
+        lastCpx = lastCpy = null;
+      }
       continue;
     }
   }
   return pts;
 }
+function distToSegmentSq(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  if (dx === 0 && dy === 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
+  const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+  if (t <= 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
+  if (t >= 1) return (px - x2) * (px - x2) + (py - y2) * (py - y2);
+  const projx = x1 + t * dx, projy = y1 + t * dy;
+  return (px - projx) * (px - projx) + (py - projy) * (py - projy);
+}
+function flattenCubicBezier(p0, p1, p2, p3, tolerance) {
+  const tolSq = tolerance * tolerance;
+  const out = [];
+  function recurse(a, b, c, d) {
+    const d1 = distToSegmentSq(b[0], b[1], a[0], a[1], d[0], d[1]);
+    const d2 = distToSegmentSq(c[0], c[1], a[0], a[1], d[0], d[1]);
+    if (Math.max(d1, d2) <= tolSq) {
+      out.push([d[0], d[1]]);
+      return;
+    }
+    const ab = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const bc = [(b[0] + c[0]) / 2, (b[1] + c[1]) / 2];
+    const cd = [(c[0] + d[0]) / 2, (c[1] + d[1]) / 2];
+    const abc = [(ab[0] + bc[0]) / 2, (ab[1] + bc[1]) / 2];
+    const bcd = [(bc[0] + cd[0]) / 2, (bc[1] + cd[1]) / 2];
+    const abcd = [(abc[0] + bcd[0]) / 2, (abc[1] + bcd[1]) / 2];
+    recurse(a, ab, abc, abcd);
+    recurse(abcd, bcd, cd, d);
+  }
+  out.push([p0[0], p0[1]]);
+  recurse(p0, p1, p2, p3);
+  return out;
+}
+function flattenQuadraticBezier(p0, p1, p2, tolerance) {
+  const cp1 = [p0[0] + 2 / 3 * (p1[0] - p0[0]), p0[1] + 2 / 3 * (p1[1] - p0[1])];
+  const cp2 = [p2[0] + 2 / 3 * (p1[0] - p2[0]), p2[1] + 2 / 3 * (p1[1] - p2[1])];
+  const pts = flattenCubicBezier(p0, cp1, cp2, p2, tolerance);
+  if (pts.length >= 4) return pts;
+  const samples = 4;
+  const out = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const mt = 1 - t;
+    const x = mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0];
+    const y = mt * mt * p0[1] + 2 * mt * t * p1[1] + t * t * p2[1];
+    out.push([x, y]);
+  }
+  return out;
+}
+function arcToPoints(x1, y1, x2, y2, rx, ry, angle, largeArcFlag, sweepFlag, tolerance) {
+  const rad = angle * Math.PI / 180;
+  const cosA = Math.cos(rad), sinA = Math.sin(rad);
+  if (rx === 0 || ry === 0) return [[x1, y1], [x2, y2]];
+  const dx = (x1 - x2) / 2, dy = (y1 - y2) / 2;
+  const x1p = cosA * dx + sinA * dy;
+  const y1p = -sinA * dx + cosA * dy;
+  let rxAbs = Math.abs(rx), ryAbs = Math.abs(ry);
+  const lambda = x1p * x1p / (rxAbs * rxAbs) + y1p * y1p / (ryAbs * ryAbs);
+  if (lambda > 1) {
+    const s = Math.sqrt(lambda);
+    rxAbs *= s;
+    ryAbs *= s;
+  }
+  const rx2 = rxAbs * rxAbs, ry2 = ryAbs * ryAbs;
+  const sign = largeArcFlag === sweepFlag ? -1 : 1;
+  const num = rx2 * ry2 - rx2 * y1p * y1p - ry2 * x1p * x1p;
+  const denom = rx2 * y1p * y1p + ry2 * x1p * x1p;
+  let cc = 0;
+  if (denom !== 0) cc = Math.max(0, num / denom);
+  const coef = sign * Math.sqrt(cc || 0);
+  const cxp = coef * (rxAbs * y1p) / ryAbs;
+  const cyp = coef * -(ryAbs * x1p) / rxAbs;
+  const cx = cosA * cxp - sinA * cyp + (x1 + x2) / 2;
+  const cy = sinA * cxp + cosA * cyp + (y1 + y2) / 2;
+  function angleBetween(ux2, uy2, vx2, vy2) {
+    const dot = ux2 * vx2 + uy2 * vy2;
+    const l = Math.hypot(ux2, uy2) * Math.hypot(vx2, vy2);
+    let a = Math.acos(Math.max(-1, Math.min(1, dot / (l || 1))));
+    if (ux2 * vy2 - uy2 * vx2 < 0) a = -a;
+    return a;
+  }
+  const ux = (x1p - cxp) / rxAbs, uy = (y1p - cyp) / ryAbs;
+  const vx = (-x1p - cxp) / rxAbs, vy = (-y1p - cyp) / ryAbs;
+  let startAng = angleBetween(1, 0, ux, uy);
+  let deltaAng = angleBetween(ux, uy, vx, vy);
+  if (!sweepFlag && deltaAng > 0) deltaAng -= 2 * Math.PI;
+  else if (sweepFlag && deltaAng < 0) deltaAng += 2 * Math.PI;
+  const r = Math.max(rxAbs, ryAbs);
+  const estLen = Math.abs(deltaAng) * r;
+  const segCount = Math.max(4, Math.ceil(estLen / Math.max(1, tolerance * 4)));
+  const pts = [];
+  for (let i = 0; i <= segCount; i++) {
+    const t = i / segCount;
+    const ang = startAng + t * deltaAng;
+    const cosAng = Math.cos(ang), sinAng = Math.sin(ang);
+    const xp = rxAbs * cosAng;
+    const yp = ryAbs * sinAng;
+    const x = cosA * xp - sinA * yp + cx;
+    const y = sinA * xp + cosA * yp + cy;
+    pts.push([x, y]);
+  }
+  return pts;
+}
 function svgToPolylines(svgString, options = {}) {
   const tolerance = typeof options.tolerance === "number" ? options.tolerance : 0.1;
+  try {
+    const key = options && options.assetId ? `${options.assetId}::${tolerance}` : hashStringToKey(svgString + "::" + tolerance);
+    const entry = SVG_POLY_CACHE.get(key);
+    if (entry) {
+      if (Date.now() - entry.ts < CACHE_MAX_AGE_MS) {
+        SVG_POLY_CACHE.delete(key);
+        SVG_POLY_CACHE.set(key, entry);
+        CACHE_HITS++;
+        return entry.value;
+      }
+      SVG_POLY_CACHE.delete(key);
+      CACHE_MISSES++;
+    } else {
+      CACHE_MISSES++;
+    }
+  } catch (e) {
+  }
   const DP = globalThis.DOMParser;
   if (!DP) {
     throw new Error("DOMParser not available in this environment");
@@ -187,6 +500,11 @@ function svgToPolylines(svgString, options = {}) {
   for (const el of polys) {
     const ptsAttr = el.getAttribute("points") || "";
     const pts = parsePointsAttr(ptsAttr);
+    try {
+      const mtx = computeCumulativeTransform(el, svgEl);
+      if (!isIdentityMatrix(mtx) && pts.length) applyMatrixToPoints(mtx, pts);
+    } catch (e) {
+    }
     pushContour(pts);
   }
   const rects = Array.from(doc.querySelectorAll("rect"));
@@ -196,6 +514,11 @@ function svgToPolylines(svgString, options = {}) {
     const w = parseFloat(r.getAttribute("width") || "0");
     const h = parseFloat(r.getAttribute("height") || "0");
     const pts = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    try {
+      const mtx = computeCumulativeTransform(r, svgEl);
+      if (!isIdentityMatrix(mtx)) applyMatrixToPoints(mtx, pts);
+    } catch (e) {
+    }
     pushContour(pts);
   }
   const circles = Array.from(doc.querySelectorAll("circle"));
@@ -203,7 +526,15 @@ function svgToPolylines(svgString, options = {}) {
     const cx = parseFloat(c.getAttribute("cx") || "0");
     const cy = parseFloat(c.getAttribute("cy") || "0");
     const r = parseFloat(c.getAttribute("r") || "0");
-    if (r > 0) pushContour(sampleCircle(cx, cy, r, 24));
+    if (r > 0) {
+      const pts = sampleCircle(cx, cy, r, 24);
+      try {
+        const mtx = computeCumulativeTransform(c, svgEl);
+        if (!isIdentityMatrix(mtx)) applyMatrixToPoints(mtx, pts);
+      } catch (ex) {
+      }
+      pushContour(pts);
+    }
   }
   const ellipses = Array.from(doc.querySelectorAll("ellipse"));
   for (const e of ellipses) {
@@ -218,6 +549,11 @@ function svgToPolylines(svgString, options = {}) {
         const a = i / segs * Math.PI * 2;
         pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
       }
+      try {
+        const mtx = computeCumulativeTransform(e, svgEl);
+        if (!isIdentityMatrix(mtx)) applyMatrixToPoints(mtx, pts);
+      } catch (ex) {
+      }
       pushContour(pts);
     }
   }
@@ -226,7 +562,12 @@ function svgToPolylines(svgString, options = {}) {
     const d = p.getAttribute("d") || "";
     if (!d.trim()) continue;
     try {
-      const pts = parsePathCommands(d);
+      const pts = parsePathCommands(d, tolerance);
+      try {
+        const mtx = computeCumulativeTransform(p, svgEl);
+        if (!isIdentityMatrix(mtx) && pts.length) applyMatrixToPoints(mtx, pts);
+      } catch (ex) {
+      }
       pushContour(pts);
     } catch (e) {
     }
@@ -246,229 +587,30 @@ function svgToPolylines(svgString, options = {}) {
     maxX = 0;
     maxY = 0;
   }
-  return { contours, bbox: { minX, minY, maxX, maxY } };
+  const result = { contours, bbox: { minX, minY, maxX, maxY } };
+  try {
+    const key = options && options.assetId ? `${options.assetId}::${tolerance}` : hashStringToKey(svgString + "::" + tolerance);
+    SVG_POLY_CACHE.set(key, { ts: Date.now(), value: result });
+    while (SVG_POLY_CACHE.size > CACHE_MAX_ENTRIES) {
+      const firstKey = SVG_POLY_CACHE.keys().next().value;
+      if (!firstKey) break;
+      SVG_POLY_CACHE.delete(firstKey);
+    }
+  } catch (e) {
+  }
+  return result;
 }
+var SVG_POLY_CACHE, CACHE_MAX_ENTRIES, CACHE_MAX_AGE_MS, CACHE_HITS, CACHE_MISSES, IDENTITY_MATRIX;
 var init_svgToPolylines = __esm({
   "src/assets/svgToPolylines.ts"() {
     "use strict";
     init_polygon();
-  }
-});
-
-// src/assets/svgRenderer.ts
-var svgRenderer_exports = {};
-__export(svgRenderer_exports, {
-  _clearRasterCache: () => _clearRasterCache,
-  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
-  cacheCanvasForAsset: () => cacheCanvasForAsset,
-  default: () => svgRenderer_default,
-  getCanvas: () => getCanvas,
-  getCanvasFromCache: () => getCanvasFromCache,
-  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
-  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
-  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
-});
-function stableStringify(obj) {
-  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
-  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
-}
-function djb2Hash(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (h << 5) + h + str.charCodeAt(i);
-    h = h & 4294967295;
-  }
-  return (h >>> 0).toString(16);
-}
-function ensureCacheLimit() {
-  try {
-    const now = Date.now();
-    if (rasterCacheMaxAgeMS > 0) {
-      for (const [k, v] of Array.from(rasterCache.entries())) {
-        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
-          rasterCache.delete(k);
-        }
-      }
-    }
-    while (rasterCache.size > rasterCacheMaxEntries) {
-      const it = rasterCache.keys().next();
-      if (it.done) break;
-      rasterCache.delete(it.value);
-    }
-  } catch (e) {
-  }
-}
-async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
-  let headlessNoCtx = false;
-  try {
-    if (typeof document !== "undefined" && typeof document.createElement === "function") {
-      const probe = document.createElement("canvas");
-      const ctx = probe.getContext && probe.getContext("2d");
-      if (!ctx) headlessNoCtx = true;
-    }
-  } catch (e) {
-    headlessNoCtx = true;
-  }
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  if (rasterCache.has(cacheKey)) {
-    const entry2 = rasterCache.get(cacheKey);
-    try {
-      entry2.lastAccess = Date.now();
-      rasterCache.delete(cacheKey);
-      rasterCache.set(cacheKey, entry2);
-    } catch (e) {
-    }
-    if (entry2.canvas) return Promise.resolve(entry2.canvas);
-    if (entry2.promise) return entry2.promise;
-  }
-  const entry = {
-    promise: null,
-    canvas: void 0,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-  const p = (async () => {
-    try {
-      let sourceSvg = svgText || "";
-      try {
-        if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === "function") {
-          try {
-            const resp = await fetch(sourceSvg);
-            if (resp && resp.ok) {
-              const txt = await resp.text();
-              if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
-            }
-          } catch (e) {
-          }
-        }
-      } catch (e) {
-      }
-      const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
-      if (headlessNoCtx) {
-        const ph = (() => {
-          try {
-            const c = document.createElement("canvas");
-            c.width = outW || 1;
-            c.height = outH || 1;
-            return c;
-          } catch (e) {
-            const obj = { width: outW || 1, height: outH || 1 };
-            return obj;
-          }
-        })();
-        entry.canvas = ph;
-        entry.promise = Promise.resolve(ph);
-        entry.lastAccess = Date.now();
-        rasterCache.set(cacheKey, entry);
-        ensureCacheLimit();
-        return ph;
-      }
-      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
-      entry.canvas = canvas;
-      entry.promise = Promise.resolve(canvas);
-      entry.lastAccess = Date.now();
-      return canvas;
-    } catch (e) {
-      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
-      entry.canvas = canvas;
-      entry.promise = Promise.resolve(canvas);
-      entry.lastAccess = Date.now();
-      return canvas;
-    }
-  })();
-  entry.promise = p;
-  rasterCache.set(cacheKey, entry);
-  ensureCacheLimit();
-  try {
-    const res = await p;
-    return res;
-  } catch (e) {
-    rasterCache.delete(cacheKey);
-    throw e;
-  }
-}
-function _clearRasterCache() {
-  rasterCache.clear();
-}
-function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = assetKey || djb2Hash(stableStringify(""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  try {
-    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
-  } catch (e) {
-  }
-  const entry = {
-    promise: Promise.resolve(canvas),
-    canvas,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-  rasterCache.set(cacheKey, entry);
-  ensureCacheLimit();
-}
-function _getRasterCacheKeysForTest() {
-  return Array.from(rasterCache.keys());
-}
-function setRasterCacheMaxEntries(n) {
-  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
-  ensureCacheLimit();
-}
-function setRasterCacheMaxAge(ms) {
-  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
-  ensureCacheLimit();
-}
-function getCanvasFromCache(assetKey, mapping, outW, outH) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = assetKey || djb2Hash(stableStringify(""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  const entry = rasterCache.get(cacheKey);
-  if (!entry) return void 0;
-  if (rasterCacheMaxAgeMS > 0) {
-    const now = Date.now();
-    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
-      rasterCache.delete(cacheKey);
-      return void 0;
-    }
-  }
-  entry.lastAccess = Date.now();
-  try {
-    rasterCache.delete(cacheKey);
-    rasterCache.set(cacheKey, entry);
-  } catch (e) {
-  }
-  return entry.canvas;
-}
-function getCanvas(assetKey, mapping, outW, outH) {
-  return getCanvasFromCache(assetKey, mapping, outW, outH);
-}
-var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRenderer_default;
-var init_svgRenderer = __esm({
-  "src/assets/svgRenderer.ts"() {
-    "use strict";
-    init_svgLoader();
-    rasterCache = /* @__PURE__ */ new Map();
-    rasterCacheMaxEntries = 256;
-    rasterCacheMaxAgeMS = 0;
-    svgRenderer_default = {
-      rasterizeSvgWithTeamColors,
-      _clearRasterCache,
-      cacheCanvasForAsset,
-      setRasterCacheMaxEntries,
-      setRasterCacheMaxAge,
-      getCanvasFromCache,
-      // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
-      getCanvas(assetKey, mapping, outW, outH) {
-        return getCanvasFromCache(assetKey, mapping, outW, outH);
-      }
-    };
+    SVG_POLY_CACHE = /* @__PURE__ */ new Map();
+    CACHE_MAX_ENTRIES = 200;
+    CACHE_MAX_AGE_MS = 1e3 * 60 * 60;
+    CACHE_HITS = 0;
+    CACHE_MISSES = 0;
+    IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
   }
 });
 
@@ -476,7 +618,6 @@ var init_svgRenderer = __esm({
 var svgLoader_exports = {};
 __export(svgLoader_exports, {
   applyTeamColorsToSvg: () => applyTeamColorsToSvg,
-  default: () => svgLoader_default,
   ensureRasterizedAndCached: () => ensureRasterizedAndCached,
   getCachedHullCanvasSync: () => getCachedHullCanvasSync,
   getHullOutlineFromSvg: () => getHullOutlineFromSvg,
@@ -486,9 +627,21 @@ __export(svgLoader_exports, {
   rasterizeSvgToCanvas: () => rasterizeSvgToCanvas,
   rasterizeSvgToCanvasAsync: () => rasterizeSvgToCanvasAsync
 });
-function getHullOutlineFromSvg(svgText, tolerance = 1.5) {
+function getHullOutlineFromSvg(svgText, tolerance = 1.5, assetFilename) {
   const hullSvg = stripHullOnly(svgText);
-  return svgToPolylines(hullSvg, { tolerance });
+  try {
+    let assetId = void 0;
+    if (assetFilename) {
+      try {
+        assetId = assetFilename;
+      } catch (e) {
+        assetId = assetFilename;
+      }
+    }
+    return svgToPolylines(hullSvg, assetId ? { tolerance, assetId } : { tolerance });
+  } catch (e) {
+    return svgToPolylines(hullSvg, { tolerance });
+  }
 }
 function parseSvgForMounts(svgText) {
   try {
@@ -785,94 +938,249 @@ function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
   } catch (e) {
     return void 0;
   }
+  return void 0;
 }
 async function ensureRasterizedAndCached(svgText, mapping, outW, outH, options) {
+  const assetKey = options?.assetKey;
   try {
-    let svgRenderer = void 0;
+    const cached = getCachedHullCanvasSync(svgText, outW, outH, assetKey);
+    if (cached) return cached;
+  } catch (e) {
+  }
+  try {
+    const blob = new Blob([svgText], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
     try {
-      const mod = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports));
-      svgRenderer = mod && mod.default || mod;
-    } catch (e) {
-      try {
-        svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
-      } catch (e2) {
-        svgRenderer = void 0;
-      }
-    }
-    const getCanvasFn = svgRenderer && svgRenderer.getCanvas || svgRenderer && svgRenderer.default && svgRenderer.default.getCanvas || svgRenderer && svgRenderer.default && svgRenderer.default.default && svgRenderer.default.default.getCanvas;
-    try {
-      if (typeof getCanvasFn === "function") {
-        try {
-          const c = getCanvasFn(options && options.assetKey ? options.assetKey : "", mapping || {}, outW, outH);
-          if (c) return c;
-        } catch (e) {
-        }
-      }
-    } catch (e) {
-    }
-    const rasterizeFn = svgRenderer && svgRenderer.rasterizeSvgWithTeamColors || svgRenderer && svgRenderer.default && svgRenderer.default.rasterizeSvgWithTeamColors || svgRenderer && svgRenderer.default && svgRenderer.default.default && svgRenderer.default.default.rasterizeSvgWithTeamColors;
-    if (typeof rasterizeFn === "function") {
-      try {
-        const c = await rasterizeFn(svgText, mapping || {}, outW, outH, { applyTo: options && options.applyTo, assetKey: options && options.assetKey });
-        if (c) return c;
-      } catch (e) {
-      }
+      const c2 = await tryLoadUrlToCanvas(url, outW, outH);
+      if (c2) return c2;
+    } finally {
+      URL.revokeObjectURL(url);
     }
   } catch (e) {
   }
-  const recolored = applyTeamColorsToSvg(svgText, mapping || {}, options && { applyTo: options.applyTo });
-  let canvas = void 0;
-  try {
-    const mod = await Promise.resolve().then(() => (init_svgLoader(), svgLoader_exports));
-    if (mod && typeof mod.rasterizeSvgToCanvasAsync === "function") {
-      try {
-        canvas = await mod.rasterizeSvgToCanvasAsync(recolored, outW, outH);
-      } catch (e) {
-        canvas = void 0;
-      }
-    }
-  } catch (e) {
-    canvas = void 0;
-  }
-  if (!canvas) {
-    try {
-      canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
-    } catch (e) {
-      canvas = void 0;
-    }
-  }
-  if (!canvas) throw new Error("Failed to rasterize SVG to canvas");
-  try {
-    let svgRenderer;
-    try {
-      svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
-    } catch (e) {
-      svgRenderer = void 0;
-    }
-    if (!svgRenderer || !svgRenderer.cacheCanvasForAsset) {
-      try {
-        const mod = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports));
-        svgRenderer = mod && mod.default || mod || svgRenderer;
-      } catch (e) {
-      }
-    }
-    const cacheFn = svgRenderer && svgRenderer.cacheCanvasForAsset || svgRenderer && svgRenderer.default && svgRenderer.default.cacheCanvasForAsset || svgRenderer && svgRenderer.default && svgRenderer.default.default && svgRenderer.default.default.cacheCanvasForAsset;
-    if (typeof cacheFn === "function") {
-      try {
-        cacheFn(options && options.assetKey ? options.assetKey : "", mapping || {}, outW, outH, canvas);
-      } catch (e) {
-      }
-    }
-  } catch (e) {
-  }
-  return canvas;
+  throw new Error("Failed to ensure rasterized canvas");
 }
-var svgLoader_default;
 var init_svgLoader = __esm({
   "src/assets/svgLoader.ts"() {
     "use strict";
     init_svgToPolylines();
-    svgLoader_default = { parseSvgForMounts, applyTeamColorsToSvg, rasterizeSvgToCanvasAsync, rasterizeHullOnlySvgToCanvasAsync, ensureRasterizedAndCached, getCachedHullCanvasSync };
+  }
+});
+
+// src/assets/svgRenderer.ts
+var svgRenderer_exports = {};
+__export(svgRenderer_exports, {
+  _clearRasterCache: () => _clearRasterCache,
+  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
+  cacheCanvasForAsset: () => cacheCanvasForAsset,
+  default: () => svgRenderer_default,
+  getCanvas: () => getCanvas,
+  getCanvasFromCache: () => getCanvasFromCache,
+  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
+  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
+  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
+});
+function stableStringify(obj) {
+  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
+  const keys = Object.keys(obj).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
+}
+function djb2Hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) + h + str.charCodeAt(i);
+    h = h & 4294967295;
+  }
+  return (h >>> 0).toString(16);
+}
+function ensureCacheLimit() {
+  try {
+    const now = Date.now();
+    if (rasterCacheMaxAgeMS > 0) {
+      for (const [k, v] of Array.from(rasterCache.entries())) {
+        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
+          rasterCache.delete(k);
+        }
+      }
+    }
+    while (rasterCache.size > rasterCacheMaxEntries) {
+      const it = rasterCache.keys().next();
+      if (it.done) break;
+      rasterCache.delete(it.value);
+    }
+  } catch (e) {
+  }
+}
+async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
+  let headlessNoCtx = false;
+  try {
+    if (typeof document !== "undefined" && typeof document.createElement === "function") {
+      const probe = document.createElement("canvas");
+      const ctx = probe.getContext && probe.getContext("2d");
+      if (!ctx) headlessNoCtx = true;
+    }
+  } catch (e) {
+    headlessNoCtx = true;
+  }
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  if (rasterCache.has(cacheKey)) {
+    const entry2 = rasterCache.get(cacheKey);
+    try {
+      entry2.lastAccess = Date.now();
+      rasterCache.delete(cacheKey);
+      rasterCache.set(cacheKey, entry2);
+    } catch (e) {
+    }
+    if (entry2.canvas) return Promise.resolve(entry2.canvas);
+    if (entry2.promise) return entry2.promise;
+  }
+  const entry = {
+    promise: null,
+    canvas: void 0,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  const p = (async () => {
+    try {
+      let sourceSvg = svgText || "";
+      try {
+        if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === "function") {
+          try {
+            const resp = await fetch(sourceSvg);
+            if (resp && resp.ok) {
+              const txt = await resp.text();
+              if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
+            }
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+      const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
+      if (headlessNoCtx) {
+        const ph = (() => {
+          try {
+            const c = document.createElement("canvas");
+            c.width = outW || 1;
+            c.height = outH || 1;
+            return c;
+          } catch (e) {
+            const obj = { width: outW || 1, height: outH || 1 };
+            return obj;
+          }
+        })();
+        entry.canvas = ph;
+        entry.promise = Promise.resolve(ph);
+        entry.lastAccess = Date.now();
+        rasterCache.set(cacheKey, entry);
+        ensureCacheLimit();
+        return ph;
+      }
+      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    } catch (e) {
+      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    }
+  })();
+  entry.promise = p;
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+  try {
+    const res = await p;
+    return res;
+  } catch (e) {
+    rasterCache.delete(cacheKey);
+    throw e;
+  }
+}
+function _clearRasterCache() {
+  rasterCache.clear();
+}
+function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  try {
+    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
+  } catch (e) {
+  }
+  const entry = {
+    promise: Promise.resolve(canvas),
+    canvas,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+}
+function _getRasterCacheKeysForTest() {
+  return Array.from(rasterCache.keys());
+}
+function setRasterCacheMaxEntries(n) {
+  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
+  ensureCacheLimit();
+}
+function setRasterCacheMaxAge(ms) {
+  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
+  ensureCacheLimit();
+}
+function getCanvasFromCache(assetKey, mapping, outW, outH) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  const entry = rasterCache.get(cacheKey);
+  if (!entry) return void 0;
+  if (rasterCacheMaxAgeMS > 0) {
+    const now = Date.now();
+    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
+      rasterCache.delete(cacheKey);
+      return void 0;
+    }
+  }
+  entry.lastAccess = Date.now();
+  try {
+    rasterCache.delete(cacheKey);
+    rasterCache.set(cacheKey, entry);
+  } catch (e) {
+  }
+  return entry.canvas;
+}
+function getCanvas(assetKey, mapping, outW, outH) {
+  return getCanvasFromCache(assetKey, mapping, outW, outH);
+}
+var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRenderer_default;
+var init_svgRenderer = __esm({
+  "src/assets/svgRenderer.ts"() {
+    "use strict";
+    init_svgLoader();
+    rasterCache = /* @__PURE__ */ new Map();
+    rasterCacheMaxEntries = 256;
+    rasterCacheMaxAgeMS = 0;
+    svgRenderer_default = {
+      rasterizeSvgWithTeamColors,
+      _clearRasterCache,
+      cacheCanvasForAsset,
+      setRasterCacheMaxEntries,
+      setRasterCacheMaxAge,
+      getCanvasFromCache,
+      // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
+      getCanvas(assetKey, mapping, outW, outH) {
+        return getCanvasFromCache(assetKey, mapping, outW, outH);
+      }
+    };
   }
 });
 
@@ -1118,6 +1426,14 @@ var SIZE_DEFAULTS = {
 function getSizeDefaults(size) {
   return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
 }
+function setSizeDefaults(size, patch) {
+  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
+}
+function setAllSizeDefaults(patch) {
+  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
+  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
+  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
+}
 function getShipConfig() {
   Object.keys(ShipConfig).forEach((key) => {
     const cfg = ShipConfig[key];
@@ -1150,8 +1466,76 @@ var BULLET_DEFAULTS = {
   // default effective range (units)
   range: 300
 };
+var PARTICLE_DEFAULTS = {
+  ttl: 1,
+  color: "#fff",
+  size: 2
+};
+function bulletKindForRadius(r) {
+  if (r < 2) return "small";
+  if (r < 2.5) return "medium";
+  if (r < 3.5) return "large";
+  return "heavy";
+}
 function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
+}
+if (typeof module !== "undefined" && module.exports) {
+  try {
+    const existing = module.exports || {};
+    Object.defineProperty(existing, "ShipConfig", {
+      value: ShipConfig,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getShipConfig", {
+      value: getShipConfig,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "SIZE_DEFAULTS", {
+      value: SIZE_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getSizeDefaults", {
+      value: getSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "setSizeDefaults", {
+      value: setSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "setAllSizeDefaults", {
+      value: setAllSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "BULLET_DEFAULTS", {
+      value: BULLET_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
+      value: PARTICLE_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "bulletKindForRadius", {
+      value: bulletKindForRadius,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getDefaultShipType", {
+      value: getDefaultShipType,
+      enumerable: true
+    });
+    try {
+      Object.defineProperty(existing, "default", {
+        value: ShipConfig,
+        enumerable: true
+      });
+    } catch (e) {
+    }
+    try {
+      module.exports = existing;
+    } catch (e) {
+    }
+  } catch (e) {
+  }
 }
 
 // src/config/simConfig.ts
@@ -1450,9 +1834,26 @@ function normalizeTurrets(ship) {
     if (!Array.isArray(tarr)) return;
     ship.turrets = tarr.map((t) => {
       if (Array.isArray(t) && t.length === 2) {
-        return { position: t, angle: 0, targetAngle: 0, kind: "basic" };
+        return {
+          position: t,
+          angle: 0,
+          targetAngle: 0,
+          kind: "basic",
+          spread: 0,
+          barrel: 0,
+          cooldown: 1
+        };
       }
-      if (t && typeof t === "object") return Object.assign({}, t);
+      if (t && typeof t === "object") {
+        const copy = Object.assign({}, t);
+        if (typeof copy.angle !== "number") copy.angle = 0;
+        if (typeof copy.targetAngle !== "number") copy.targetAngle = 0;
+        if (typeof copy.spread !== "number") copy.spread = 0;
+        if (typeof copy.barrel !== "number") copy.barrel = 0;
+        if (typeof copy.cooldown !== "number")
+          copy.cooldown = copy.cooldown || 1;
+        return copy;
+      }
       return t;
     });
   } catch (e) {
@@ -1759,30 +2160,39 @@ function tryFire(state, ship, target, dt) {
         }
       }
       if (!turretTarget) continue;
-      const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
-      const dir = aimWithSpread(ship, turretTarget, spread);
+      const spread = typeof turret.spread === "number" ? turret.spread : getShipConfig()[ship.type || "fighter"]?.turrets?.[i]?.spread ?? 0.05;
+      const mountPos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
+      const [mTx, mTy] = mountPos;
+      const shipAngle = ship.angle || 0;
+      const shipTypeLocal = ship.type || "fighter";
+      const shipCfgLocal = getShipConfig()[shipTypeLocal];
+      const configRadiusLocal = shipCfgLocal && typeof shipCfgLocal.radius === "number" ? shipCfgLocal.radius : ship.radius || 12;
+      const mountX = (ship.x || 0) + Math.cos(shipAngle) * mTx * configRadiusLocal - Math.sin(shipAngle) * mTy * configRadiusLocal;
+      const mountY = (ship.y || 0) + Math.sin(shipAngle) * mTx * configRadiusLocal + Math.cos(shipAngle) * mTy * configRadiusLocal;
+      const dir = aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
       const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
       const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : BULLET_DEFAULTS.damage;
       const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;
       const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
-      const angle = ship.angle || 0;
-      const shipType = ship.type || "fighter";
-      const shipCfg = getShipConfig()[shipType];
-      const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : ship.radius || 12;
-      const pos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
-      const [tx, ty] = pos;
-      const turretX = (ship.x || 0) + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
-      const turretY = (ship.y || 0) + Math.sin(angle) * tx * configRadius + Math.cos(angle) * ty * configRadius;
       const range = typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
-      const dxT = (turretTarget.x || 0) - turretX;
-      const dyT = (turretTarget.y || 0) - turretY;
+      const dxT = (turretTarget.x || 0) - mountX;
+      const dyT = (turretTarget.y || 0) - mountY;
       if (dxT * dxT + dyT * dyT > range * range) continue;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      let spawnX = mountX;
+      let spawnY = mountY;
+      const barrelLen = turret && typeof turret.barrel === "number" ? turret.barrel : turret && turret.barrel && turret.barrel.length ? turret.barrel[0] : 0;
+      if (barrelLen && barrelLen > 0) {
+        const turretLocalAngle = turret && typeof turret.angle === "number" ? turret.angle : 0;
+        const turretWorldAngle = shipAngle + turretLocalAngle;
+        spawnX = mountX + Math.cos(turretWorldAngle) * barrelLen;
+        spawnY = mountY + Math.sin(turretWorldAngle) * barrelLen;
+      }
       const b = Object.assign(
         acquireBullet(state, {
-          x: turretX,
-          y: turretY,
+          x: spawnX,
+          y: spawnY,
           vx,
           vy,
           team: ship.team || TEAM_DEFAULT,
@@ -2450,10 +2860,18 @@ function simulateStep(state, dtSeconds, bounds) {
                 }
               }
               if (best) {
-                t.targetAngle = Math.atan2(
-                  (best.y || 0) - (s.y || 0),
-                  (best.x || 0) - (s.x || 0)
+                const mount = Array.isArray(t.position) ? {
+                  x: (Math.cos(s.angle || 0) * t.position[0] - Math.sin(s.angle || 0) * t.position[1]) * (s.radius || 12) + (s.x || 0),
+                  y: (Math.sin(s.angle || 0) * t.position[0] + Math.cos(s.angle || 0) * t.position[1]) * (s.radius || 12) + (s.y || 0)
+                } : { x: s.x || 0, y: s.y || 0 };
+                const desiredWorld = Math.atan2(
+                  (best.y || 0) - mount.y,
+                  (best.x || 0) - mount.x
                 );
+                let local = desiredWorld - (s.angle || 0);
+                while (local < -Math.PI) local += Math.PI * 2;
+                while (local > Math.PI) local -= Math.PI * 2;
+                t.targetAngle = local;
               }
             } catch (e) {
             }
@@ -4236,7 +4654,13 @@ var CanvasRenderer = class {
               const outH = vb && vb.h || 128;
               (async () => {
                 try {
-                  const canvas = await svgRenderer.rasterizeSvgWithTeamColors(svgText, {}, outW, outH, { applyTo: "both", assetKey: key });
+                  const canvas = await svgRenderer.rasterizeSvgWithTeamColors(
+                    svgText,
+                    {},
+                    outW,
+                    outH,
+                    { applyTo: "both", assetKey: key }
+                  );
                   try {
                     this._svgHullCache = this._svgHullCache || {};
                     this._svgHullCache[key] = canvas;
@@ -4260,9 +4684,17 @@ var CanvasRenderer = class {
                     let hullCanvas = void 0;
                     try {
                       if (typeof rasterizeHullOnlySvgToCanvasAsync === "function") {
-                        hullCanvas = await rasterizeHullOnlySvgToCanvasAsync(svgText, outW2, outH2);
+                        hullCanvas = await rasterizeHullOnlySvgToCanvasAsync(
+                          svgText,
+                          outW2,
+                          outH2
+                        );
                       } else {
-                        hullCanvas = rasterizeHullOnlySvgToCanvas(svgText, outW2, outH2);
+                        hullCanvas = rasterizeHullOnlySvgToCanvas(
+                          svgText,
+                          outW2,
+                          outH2
+                        );
                       }
                     } catch (e) {
                       hullCanvas = void 0;
@@ -4276,7 +4708,13 @@ var CanvasRenderer = class {
                       try {
                         const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
                         if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                          svgRenderer.cacheCanvasForAsset(key, {}, hullCanvas.width, hullCanvas.height, hullCanvas);
+                          svgRenderer.cacheCanvasForAsset(
+                            key,
+                            {},
+                            hullCanvas.width,
+                            hullCanvas.height,
+                            hullCanvas
+                          );
                         }
                       } catch (e) {
                       }
@@ -4384,7 +4822,13 @@ var CanvasRenderer = class {
                   try {
                     const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                      svgRenderer.cacheCanvasForAsset(shipType, teamMapping(col), tc.width, tc.height, tc);
+                      svgRenderer.cacheCanvasForAsset(
+                        shipType,
+                        teamMapping(col),
+                        tc.width,
+                        tc.height,
+                        tc
+                      );
                     }
                   } catch (e) {
                   }
@@ -4436,7 +4880,13 @@ var CanvasRenderer = class {
                   try {
                     const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                      svgRenderer.cacheCanvasForAsset(shipType, teamMapping(col), tc.width, tc.height, tc);
+                      svgRenderer.cacheCanvasForAsset(
+                        shipType,
+                        teamMapping(col),
+                        tc.width,
+                        tc.height,
+                        tc
+                      );
                     }
                   } catch (e) {
                   }
@@ -4744,10 +5194,19 @@ var CanvasRenderer = class {
                 outW = parseInt(vbMatch[3]) || 128;
                 outH = parseInt(vbMatch[4]) || 128;
               }
-              hullCanvas = getCachedHullCanvasSync ? getCachedHullCanvasSync(svgText, outW, outH, cacheKey) : void 0;
+              hullCanvas = getCachedHullCanvasSync ? getCachedHullCanvasSync(
+                svgText,
+                outW,
+                outH,
+                cacheKey
+              ) : void 0;
               if (!hullCanvas) {
                 try {
-                  hullCanvas = rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+                  hullCanvas = rasterizeHullOnlySvgToCanvas(
+                    svgText,
+                    outW,
+                    outH
+                  );
                 } catch (e) {
                   hullCanvas = void 0;
                 }
@@ -4795,13 +5254,24 @@ var CanvasRenderer = class {
                   const assetKey = cacheKey;
                   const mapping = teamMapping(teamColor);
                   try {
-                    const c = svgRenderer.getCanvas(assetKey, mapping, hullCanvas.width, hullCanvas.height);
+                    const c = svgRenderer.getCanvas(
+                      assetKey,
+                      mapping,
+                      hullCanvas.width,
+                      hullCanvas.height
+                    );
                     if (c) {
                       tintedCanvas = c;
                       this._setTintedCanvas(tintedKey, c);
                     } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
                       try {
-                        ensureRasterizedAndCached && ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "both" });
+                        ensureRasterizedAndCached && ensureRasterizedAndCached(
+                          sprite.svg,
+                          mapping,
+                          hullCanvas.width,
+                          hullCanvas.height,
+                          { assetKey, applyTo: "both" }
+                        );
                       } catch (e) {
                       }
                     }
@@ -4938,7 +5408,7 @@ var CanvasRenderer = class {
             if (!turretObj.position) continue;
             const turretKind = turretObj.kind || "basic";
             const turretShape = getTurretAsset(turretKind);
-            const turretAngle = typeof turretObj.angle === "number" ? turretObj.angle : typeof s.turretAngle === "number" ? s.turretAngle : s.angle || 0;
+            const turretLocalAngle = typeof turretObj.angle === "number" ? turretObj.angle : typeof s.turretAngle === "number" ? s.turretAngle : 0;
             const turretTurnRate = typeof turretObj.turnRate === "number" ? turretObj.turnRate : assetsConfig_default.turretDefaults && assetsConfig_default.turretDefaults[turretKind] && assetsConfig_default.turretDefaults[turretKind].turnRate || Math.PI * 1.5;
             const [tx, ty] = turretObj.position;
             const angle = s.angle || 0;
@@ -4947,7 +5417,7 @@ var CanvasRenderer = class {
             const turretScale = configRadius * renderScale * 0.5;
             withContext(() => {
               activeBufferCtx.translate(turretX, turretY);
-              activeBufferCtx.rotate(turretAngle - (s.angle || 0));
+              activeBufferCtx.rotate(turretLocalAngle - (s.angle || 0));
               const spriteCanvas = this._turretSpriteCache && this._turretSpriteCache[turretKind];
               if (spriteCanvas) {
                 try {

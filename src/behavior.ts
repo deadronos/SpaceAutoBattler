@@ -33,7 +33,7 @@ type ShipLike = {
 };
 
 import type { GameState } from "./types";
-import { getDefaultBounds } from './config/simConfig';
+import { getDefaultBounds } from "./config/simConfig";
 type State = GameState;
 
 function len2(vx: number, vy: number) {
@@ -194,8 +194,35 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       }
       if (!turretTarget) continue;
       // Fire from turret position (relative to ship center, using config radius)
-      const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
-      const dir = aimWithSpread(ship, turretTarget, spread);
+      const spread =
+        typeof turret.spread === "number"
+          ? turret.spread
+          : (getShipConfig()[ship.type || "fighter"]?.turrets?.[i]?.spread ??
+            0.05); // use ship config turret spread if present
+      // Compute turret mount world position and aim from that mount
+      const mountPos =
+        Array.isArray(turret) && turret.length === 2
+          ? turret
+          : turret && Array.isArray((turret as any).position)
+            ? (turret as any).position
+            : [0, 0];
+      const [mTx, mTy] = mountPos;
+      const shipAngle = ship.angle || 0;
+      const shipTypeLocal = ship.type || "fighter";
+      const shipCfgLocal = getShipConfig()[shipTypeLocal];
+      const configRadiusLocal =
+        shipCfgLocal && typeof shipCfgLocal.radius === "number"
+          ? shipCfgLocal.radius
+          : ship.radius || 12;
+      const mountX =
+        (ship.x || 0) +
+        Math.cos(shipAngle) * mTx * configRadiusLocal -
+        Math.sin(shipAngle) * mTy * configRadiusLocal;
+      const mountY =
+        (ship.y || 0) +
+        Math.sin(shipAngle) * mTx * configRadiusLocal +
+        Math.cos(shipAngle) * mTy * configRadiusLocal;
+      const dir = aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
       const speed =
         typeof turret.muzzleSpeed === "number"
           ? turret.muzzleSpeed
@@ -214,44 +241,37 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
         typeof turret.bulletRadius === "number"
           ? turret.bulletRadius
           : BULLET_DEFAULTS.radius;
-      // Always use config radius for turret position
-      const angle = ship.angle || 0;
-      // Get latest config radius for this ship type
-      const shipType = ship.type || "fighter";
-      const shipCfg = getShipConfig()[shipType];
-      const configRadius =
-        shipCfg && typeof shipCfg.radius === "number"
-          ? shipCfg.radius
-          : ship.radius || 12;
-      // Accept both object-style turrets ({ position: [x,y] }) and tuple-style
-      // shorthand ([x,y]) which the renderer commonly uses. Support both here
-      // so bullets spawn from the same mountpoints that are drawn.
-      const pos =
-        Array.isArray(turret) && turret.length === 2
-          ? turret
-          : turret && Array.isArray((turret as any).position)
-            ? (turret as any).position
-            : [0, 0];
-      const [tx, ty] = pos;
-      const turretX =
-        (ship.x || 0) +
-        Math.cos(angle) * tx * configRadius -
-        Math.sin(angle) * ty * configRadius;
-      const turretY =
-        (ship.y || 0) +
-        Math.sin(angle) * tx * configRadius +
-        Math.cos(angle) * ty * configRadius;
+
       const range =
         typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
-      const dxT = (turretTarget.x || 0) - turretX;
-      const dyT = (turretTarget.y || 0) - turretY;
+      const dxT = (turretTarget.x || 0) - mountX;
+      const dyT = (turretTarget.y || 0) - mountY;
       if (dxT * dxT + dyT * dyT > range * range) continue;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      // If turret defines a barrel offset (in local turret coords), spawn from the tip
+      let spawnX = mountX;
+      let spawnY = mountY;
+      const barrelLen =
+        turret && typeof (turret as any).barrel === "number"
+          ? (turret as any).barrel
+          : turret && (turret as any).barrel && (turret as any).barrel.length
+            ? (turret as any).barrel[0]
+            : 0;
+      if (barrelLen && barrelLen > 0) {
+        // turret world angle: shipAngle + (turret.angle || 0)
+        const turretLocalAngle =
+          turret && typeof (turret as any).angle === "number"
+            ? (turret as any).angle
+            : 0;
+        const turretWorldAngle = shipAngle + turretLocalAngle;
+        spawnX = mountX + Math.cos(turretWorldAngle) * barrelLen;
+        spawnY = mountY + Math.sin(turretWorldAngle) * barrelLen;
+      }
       const b = Object.assign(
         acquireBullet(state, {
-          x: turretX,
-          y: turretY,
+          x: spawnX,
+          y: spawnY,
           vx,
           vy,
           team: ship.team || TEAM_DEFAULT,
@@ -383,6 +403,7 @@ export function applySimpleAI(
       // Calculate desired angle to target
       const dx = (target.x || 0) - (s.x || 0);
       const dy = (target.y || 0) - (s.y || 0);
+      // Ensure dx/dy order matches atan2(y, x) convention; atan2(dy, dx)
       const desiredAngle = Math.atan2(dy, dx);
       const currentAngle = typeof s.angle === "number" ? s.angle : 0;
       let da = desiredAngle - currentAngle;
