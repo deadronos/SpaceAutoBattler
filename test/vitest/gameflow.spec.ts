@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { RendererConfig } from '../../src/config/rendererConfig';
 import { getDefaultBounds } from '../../src/config/simConfig';
 import TeamsConfig from '../../src/config/teamsConfig';
-import ShipConfig from '../../src/config/entitiesConfig';
+import { getShipConfigSafe } from './utils/entitiesConfigSafe';
 import { simulateStep } from '../../src/simulate';
 import { makeInitialState } from '../../src/entities';
 
@@ -22,8 +22,9 @@ describe('Game Flow', () => {
   });
 
   it('should initialize entities from config', () => {
-    expect(typeof ShipConfig).toBe('object');
-    expect(Object.keys(ShipConfig).length).toBeGreaterThan(0);
+    const cfg = getShipConfigSafe();
+    expect(typeof cfg).toBe('object');
+    expect(Object.keys(cfg).length).toBeGreaterThan(0);
   });
 
 

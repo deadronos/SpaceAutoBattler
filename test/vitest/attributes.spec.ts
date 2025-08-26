@@ -1,11 +1,5 @@
 import { describe, it, expect } from "vitest";
-const entitiesConfig = require("../../src/config/entitiesConfig");
-function getShipConfigSafe() {
-  if (typeof entitiesConfig.getShipConfig === "function") return entitiesConfig.getShipConfig();
-  if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") return entitiesConfig.default.getShipConfig();
-  if (typeof entitiesConfig.default === "object" && entitiesConfig.default) return entitiesConfig.default;
-  return {};
-}
+import { getShipConfigSafe } from "./utils/entitiesConfigSafe";
 
 describe("Attributes", () => {
   it("should have health, damage, xp attributes from config", () => {

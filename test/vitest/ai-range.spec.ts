@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { applySimpleAI } from "../../src/behavior";
-import { getShipConfig } from "../../src/config/entitiesConfig";
+import { getShipConfigSafe } from "./utils/entitiesConfigSafe";
 
 // Minimal ship-like fixtures
 function makeShip(x: number, y: number, team = "A", type = "fighter") {
-  const cfg = getShipConfig()[type];
+  const cfg = getShipConfigSafe()[type];
   return {
     id: Math.floor(Math.random() * 100000),
     x,

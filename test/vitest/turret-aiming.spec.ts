@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createShip, normalizeTurrets } from "../../src/entities";
+import { getShipConfigSafe } from "./utils/entitiesConfigSafe";
 
 describe("turret mount math", () => {
   it("computes mount world position for rotated ship", () => {
@@ -18,14 +19,7 @@ describe("turret mount math", () => {
     const m = Array.isArray(effectiveTurret.position)
       ? effectiveTurret.position
       : effectiveTurret.position;
-    const entitiesConfig = require("../../src/config/entitiesConfig");
-    const cfg = typeof entitiesConfig.getShipConfig === "function"
-      ? entitiesConfig.getShipConfig()
-      : (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function"
-        ? entitiesConfig.default.getShipConfig()
-        : (entitiesConfig.ShipConfig && typeof entitiesConfig.ShipConfig === 'object'
-          ? entitiesConfig.ShipConfig
-          : entitiesConfig.default || {}));
+    const cfg = getShipConfigSafe();
   const radius = (cfg[ship.type] && cfg[ship.type].radius) || ship.radius || 40;
     const tx =
       (ship.x || 0) +

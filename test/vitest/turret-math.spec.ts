@@ -1,5 +1,5 @@
 import { normalizeTurrets } from "../../src/entities";
-import { getShipConfig } from "../../src/config/entitiesConfig";
+// Note: Use safe helper for interop if needed
 import { createShip } from "../../src/entities";
 
 // Simple tests for turret mount math

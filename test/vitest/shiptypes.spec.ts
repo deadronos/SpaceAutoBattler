@@ -1,13 +1,5 @@
 import { describe, it, expect } from "vitest";
-const entitiesConfig = require("../../src/config/entitiesConfig");
-function getShipConfigSafe() {
-  if (typeof entitiesConfig.getShipConfig === "function") return entitiesConfig.getShipConfig();
-  if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") return entitiesConfig.default.getShipConfig();
-  if (typeof entitiesConfig.default === "object" && entitiesConfig.default) return entitiesConfig.default;
-  // last-resort: some runners expose ShipConfig directly
-  if (entitiesConfig.ShipConfig && typeof entitiesConfig.ShipConfig === 'object') return entitiesConfig.ShipConfig;
-  return {};
-}
+import { getShipConfigSafe } from "./utils/entitiesConfigSafe";
 
 describe("ShipTypes", () => {
   it("should have all expected ship types", () => {

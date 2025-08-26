@@ -54,17 +54,9 @@ import AssetsConfig, {
 import * as svgLoader from "./assets/svgLoader";
 import TeamsConfig from "./config/teamsConfig";
 import TintedHullPool from "./pools/tintedHullPool";
-const entitiesConfig = require("./config/entitiesConfig");
+import { getRuntimeShipConfigSafe, getDefaultShipTypeSafe } from "./config/runtimeConfigResolver";
 function getShipConfigSafe() {
-  if (typeof entitiesConfig.getShipConfig === "function") return entitiesConfig.getShipConfig();
-  if (entitiesConfig.default && typeof entitiesConfig.default.getShipConfig === "function") return entitiesConfig.default.getShipConfig();
-  if (typeof entitiesConfig.default === "object" && entitiesConfig.default) return entitiesConfig.default;
-  return {};
-}
-function getDefaultShipTypeSafe() {
-  const cfg = getShipConfigSafe();
-  const keys = Object.keys(cfg || {});
-  return keys.length ? keys[0] : "fighter";
+  return getRuntimeShipConfigSafe() || {};
 }
 
 // Helper: produce a mapping object that maps common SVG data-team-slot

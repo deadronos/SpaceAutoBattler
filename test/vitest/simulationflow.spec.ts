@@ -39,7 +39,7 @@ describe("GameState serialization", () => {
     expect(typeof restored.t).toBe("number");
   });
 });
-import { getShipConfig } from '../../src/config/entitiesConfig';
+import { getShipConfigSafe } from './utils/entitiesConfigSafe';
 
 import { boundaryBehavior } from '../../src/config/simConfig';
 describe('Boundary Behavior', () => {
@@ -115,7 +115,7 @@ describe('Boundary Behavior', () => {
 });
 // ...existing code...
 import progression from "../../src/config/progressionConfig";
-import ShipConfig from "../../src/config/entitiesConfig";
+import { getShipConfigSafe as __getCfg } from './utils/entitiesConfigSafe';
 import { applySimpleAI } from "../../src/behavior";
 
 describe("Simulation Flow", () => {
@@ -173,9 +173,8 @@ describe("Simulation Flow", () => {
     // Run AI to fire turrets
     applySimpleAI(state, 0.2, { W: 1920, H: 1080 });
     // Get config radius and turret positions
-  // Use ES module import for config
-  // Use import * as for config module
-  const config = getShipConfig();
+  // Resolve config safely across ESM/CJS
+  const config = getShipConfigSafe();
   const configRadius = config[shipType].radius ?? 40;
   const turretDefs = config[shipType].turrets ?? [];
     // For each bullet, check it matches expected turret world position
@@ -195,14 +194,15 @@ describe("Simulation Flow", () => {
       expect(found).toBe(true);
     }
     // Now change config radius and verify new bullet positions
-    ShipConfig[shipType].radius = 60;
+  const __cfg = __getCfg();
+  __cfg[shipType].radius = 60;
     // Create a new ship with updated config
     const ship2 = createShip(shipType, 200, 200, "blue");
     ship2.angle = 0;
     state.ships = [ship2];
     state.bullets = [];
     applySimpleAI(state, 0.2, { W: 1920, H: 1080 });
-    const newRadius = ShipConfig[shipType].radius;
+  const newRadius = __cfg[shipType].radius;
     for (const bullet of state.bullets) {
       let found = false;
       for (const turret of turretDefs) {
@@ -217,7 +217,7 @@ describe("Simulation Flow", () => {
       expect(found).toBe(true);
     }
     // Restore config radius for other tests
-    ShipConfig[shipType].radius = 40;
+  __cfg[shipType].radius = 40;
   });
   it("should never move more than maxSpeed * dtSeconds per frame", () => {
     const state = makeInitialState();
@@ -303,10 +303,11 @@ describe("Simulation Flow", () => {
       "totalBulletsCreated",
       totalBulletsCreated,
       "turretCount",
-      (ShipConfig[shipType].turrets || []).length,
+  (__getCfg()[shipType].turrets || []).length,
     );
-    const turretCount = (ShipConfig[shipType].turrets || []).length;
-    expect(target.hp).toBeLessThanOrEqual(ShipConfig[targetType].maxHp);
+  const __cfg2 = __getCfg();
+  const turretCount = (__cfg2[shipType].turrets || []).length;
+  expect(target.hp).toBeLessThanOrEqual(__getCfg()[targetType].maxHp);
     expect(totalBulletsCreated).toBeGreaterThanOrEqual(turretCount);
   });
 
@@ -335,8 +336,9 @@ describe("Simulation Flow", () => {
       simulateStep(state, 0.1, { W: 1920, H: 1080 });
       targetAlive = state.ships.includes(target);
     }
-    const targetType = "fighter";
-    expect(target.hp).toBeLessThan(ShipConfig[targetType].maxHp); // Target should take damage
+  const targetType = "fighter";
+  const __cfg3 = __getCfg();
+  expect(target.hp).toBeLessThan(__cfg3[targetType].maxHp); // Target should take damage
     if (!targetAlive) {
       expect(ship.xp).toBeGreaterThanOrEqual(progression.xpPerKill);
       expect(ship.level).toBeGreaterThan(1);

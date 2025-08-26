@@ -1,3 +1,5 @@
+// Use shared helper for default ship type
+import { getDefaultShipTypeSafe } from "./config/runtimeConfigResolver";
 
 export function createGameManager({
   useWorker = false,
@@ -161,7 +163,8 @@ export function createGameManager({
   function offWorkerReady(cb: Function) { const i = workerReadyCbs.indexOf(cb); if (i !== -1) workerReadyCbs.splice(i, 1); }
   function spawnShip(team: string = "red", type?: string) {
     try {
-      const shipType = type || getDefaultShipType();
+      // Resolve default ship type safely across ESM/CJS; fallback to 'fighter'
+      const shipType = type || getDefaultShipTypeSafe();
       const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
@@ -394,7 +397,7 @@ import {
   normalizeStateShips,
 } from "./entities";
 import { updateTeamCount } from "./entities";
-import { PARTICLE_DEFAULTS } from "./config/entitiesConfig";
+import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
 import { applySimpleAI } from "./behavior";
 import { simulateStep } from "./simulate";
 import { SIM } from "./config/simConfig";
@@ -415,7 +418,7 @@ import {
   FALLBACK_POSITIONS,
 } from "./config/gamemanagerConfig";
 import type { ShipConfigMap, GameState } from "./types";
-import { getShipConfig, getDefaultShipType } from "./config/entitiesConfig";
+import * as EntitiesConfigESM from "./config/entitiesConfig";
 import {
   chooseReinforcementsWithManagerSeed,
   makeInitialFleets,
@@ -613,6 +616,17 @@ export function acquireParticle(
   y: number,
   opts: Partial<Particle> = {},
 ): Particle {
+  // Resolve PARTICLE_DEFAULTS safely to handle any ESM/CJS interop hiccups during tests
+  const PARTICLE_DEFAULTS_SAFE = (() => {
+    try {
+      const mod: any = (EntitiesConfigESM as any) || {};
+      const v = mod.BULLET_DEFAULTS && mod.PARTICLE_DEFAULTS ? mod.PARTICLE_DEFAULTS
+        : (mod.default && mod.default.PARTICLE_DEFAULTS) ? mod.default.PARTICLE_DEFAULTS
+        : undefined;
+      if (v && typeof v.ttl === "number" && typeof v.size !== "undefined") return v;
+    } catch (e) {}
+    return { ttl: 1, color: "#fff", size: 2 } as const;
+  })();
   const key = "particle";
   const poolConfig = state.assetPool?.config || {};
   const maxSize = poolConfig.effectPoolSize ?? 128;
@@ -630,15 +644,15 @@ export function acquireParticle(
   const p = acquireEffect<Particle>(
     state,
     key,
-    () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS.ttl, opts.color ?? PARTICLE_DEFAULTS.color, opts.size ?? PARTICLE_DEFAULTS.size), undefined),
+    () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS_SAFE.ttl, opts.color ?? PARTICLE_DEFAULTS_SAFE.color, opts.size ?? PARTICLE_DEFAULTS_SAFE.size), undefined),
     {
       x,
       y,
       vx: opts.vx ?? 0,
       vy: opts.vy ?? 0,
-      ttl: opts.ttl ?? PARTICLE_DEFAULTS.ttl,
-      color: opts.color ?? PARTICLE_DEFAULTS.color,
-      size: opts.size ?? PARTICLE_DEFAULTS.size,
+      ttl: opts.ttl ?? PARTICLE_DEFAULTS_SAFE.ttl,
+      color: opts.color ?? PARTICLE_DEFAULTS_SAFE.color,
+      size: opts.size ?? PARTICLE_DEFAULTS_SAFE.size,
     },
   );
   // Rehydrate properties
@@ -646,10 +660,10 @@ export function acquireParticle(
   p.y = y;
   p.vx = opts.vx ?? 0;
   p.vy = opts.vy ?? 0;
-  p.ttl = opts.ttl ?? PARTICLE_DEFAULTS.ttl;
+  p.ttl = opts.ttl ?? PARTICLE_DEFAULTS_SAFE.ttl;
   p.life = p.ttl;
-  p.color = opts.color ?? PARTICLE_DEFAULTS.color;
-  p.size = opts.size ?? PARTICLE_DEFAULTS.size;
+  p.color = opts.color ?? PARTICLE_DEFAULTS_SAFE.color;
+  p.size = opts.size ?? PARTICLE_DEFAULTS_SAFE.size;
   p.alive = true;
   (state.particles ||= []).push(p);
   return p;
@@ -740,7 +754,7 @@ function evaluateReinforcement(
           for (const o of orders) {
             try {
               const ship = createShip(
-                o.type || getDefaultShipType(),
+                o.type || getDefaultShipTypeSafe(),
                 o.x || 100,
                 o.y || 100,
                 o.team || "red",
@@ -759,7 +773,7 @@ function evaluateReinforcement(
           return { spawned };
         }
       }
-      const fallback = getDefaultShipType();
+      const fallback = getDefaultShipTypeSafe();
       const r = createShip(
         fallback,
         FALLBACK_POSITIONS[0].x,

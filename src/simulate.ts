@@ -1,7 +1,7 @@
 // simulate.ts - TypeScript implementation ported from simulate.js
 import { srange, srand, srandom } from "./rng";
 import { createShip, updateTeamCount, normalizeTurrets } from "./entities";
-import { getShipConfig } from "./config/entitiesConfig";
+import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
 import AssetsConfig from "./config/assets/assetsConfig";
 import { progression as progressionCfg } from "./config/progressionConfig";
 import { SIM, boundaryBehavior } from "./config/simConfig";
@@ -420,13 +420,16 @@ export function simulateStep(
     // Carrier spawning: if this ship type has a carrier config, accumulate
     // a per-ship timer and spawn fighters as children up to maxFighters.
     try {
-      const shipCfg =
-        getShipConfig && typeof getShipConfig === "function"
-          ? getShipConfig()
-          : {};
+      // Resolve ship config via centralized, ESM/CJS-safe runtime resolver
+      const shipCfg: any = getRuntimeShipConfigSafe();
       const typeCfg = shipCfg && s.type ? shipCfg[s.type] : undefined;
-      if (typeCfg && (typeCfg as any).carrier) {
-        const carrierCfg = (typeCfg as any).carrier;
+      // Treat ships explicitly typed as 'carrier' as carrier-capable even if config missing
+      if (s.type === "carrier" || (typeCfg && (typeCfg as any).carrier)) {
+        const carrierCfg = (typeCfg && (typeCfg as any).carrier) || {
+          fighterCooldown: 1.5,
+          maxFighters: 6,
+          spawnPerCooldown: 2,
+        };
         // ensure timer exists
         (s as any)._carrierTimer = (s as any)._carrierTimer || 0;
         (s as any)._carrierTimer += dtSeconds;

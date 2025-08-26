@@ -9,7 +9,7 @@ import { WebGLRenderer } from "./webglrenderer";
 import { getDefaultBounds } from "./config/simConfig";
 import { SIM } from "./config/simConfig";
 import { getPreferredRenderer, RendererConfig } from "./config/rendererConfig";
-import { getShipConfig } from "./config/entitiesConfig";
+import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
 
 // Allow temporary extension of window.gm used by the app during migration.
 declare global {
@@ -250,6 +250,35 @@ export async function startApp(rootDocument: Document = document) {
     } catch (e) {}
   } catch (e) {}
 
+  // Initialize dev overlay (toggle with ?devShipTable=1)
+  try {
+    if (typeof window !== "undefined") {
+      // Enable overlay in non-production builds or when URL param present
+      // Runtime-only check: enable overlay on localhost or when URL param devShipTable=1
+      const host = (location && location.hostname) || "";
+      const urlParams =
+        typeof URLSearchParams !== "undefined"
+          ? new URLSearchParams(location.search)
+          : null;
+      const enabled =
+        host === "127.0.0.1" ||
+        host === "localhost" ||
+        urlParams?.get("devShipTable") === "1";
+      if (enabled) {
+        // Lazy import to avoid affecting production bundles when tree-shaken
+        import("./dev/shipPipelineOverlay")
+          .then((m) => {
+            try {
+              m.default && m.default();
+            } catch (e) {}
+          })
+          .catch((e) => {
+            console.warn("Failed to load dev overlay", e);
+          });
+      }
+    }
+  } catch (e) {}
+
   // Speed multiplier logic
   let simSpeedMultiplier = 1;
   if (ui.speed) {
@@ -268,7 +297,8 @@ export async function startApp(rootDocument: Document = document) {
     // Use canonical SIM.DT_MS (millisecond timestep) converted to seconds
     // as the default step size so the UI multiplier wraps the same base dt
     // the simulation run-loop uses. This prevents hard-coded mismatches.
-    gm.stepOnce = (dt: number = SIM.DT_MS / 1000) => origStepOnce(dt * simSpeedMultiplier);
+    gm.stepOnce = (dt: number = SIM.DT_MS / 1000) =>
+      origStepOnce(dt * simSpeedMultiplier);
   }
 
   // Fleet formation logic
@@ -453,8 +483,10 @@ export async function startApp(rootDocument: Document = document) {
   } catch (e) {}
   // Populate ship type selector (for deterministic, seeded spawns)
   try {
-    const cfg = getShipConfig();
-    const selectEl = rootDocument.getElementById("shipTypeSelect") as HTMLSelectElement | null;
+    const cfg = getRuntimeShipConfigSafe();
+    const selectEl = rootDocument.getElementById(
+      "shipTypeSelect",
+    ) as HTMLSelectElement | null;
     if (selectEl && cfg) {
       // Clear existing
       selectEl.innerHTML = "";
@@ -472,7 +504,9 @@ export async function startApp(rootDocument: Document = document) {
   // Generic spawn helper that respects seeded RNG via gm.spawnShip's internal use of srandom
   function spawnSelected(team: string) {
     try {
-      const selectEl = rootDocument.getElementById("shipTypeSelect") as HTMLSelectElement | null;
+      const selectEl = rootDocument.getElementById(
+        "shipTypeSelect",
+      ) as HTMLSelectElement | null;
       const selectedType = selectEl ? selectEl.value : null;
       // If gm.spawnShip supports (team, type) signature, prefer that
       try {
@@ -492,8 +526,9 @@ export async function startApp(rootDocument: Document = document) {
               ship.type = selectedType;
               // attach config snapshot if available
               try {
-                const scfg = getShipConfig();
-                if (scfg && scfg[selectedType]) (ship as any)._config = scfg[selectedType];
+                const scfg = getRuntimeShipConfigSafe();
+                if (scfg && scfg[selectedType])
+                  (ship as any)._config = scfg[selectedType];
               } catch (e) {}
             } catch (e) {}
           }
@@ -508,7 +543,8 @@ export async function startApp(rootDocument: Document = document) {
     if (ui.addRed) addListener(ui.addRed, "click", () => spawnSelected("red"));
   } catch (e) {}
   try {
-    if (ui.addBlue) addListener(ui.addBlue, "click", () => spawnSelected("blue"));
+    if (ui.addBlue)
+      addListener(ui.addBlue, "click", () => spawnSelected("blue"));
   } catch (e) {}
   function onSeedBtnClick() {
     try {

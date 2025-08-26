@@ -27,6 +27,15 @@ module.exports = {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure'
   },
+  // Start a local static server that serves the repository root so tests can
+  // navigate to the built dist output deterministically. We build first to
+  // ensure dist/spaceautobattler.html exists, then serve the root on port 8080.
+  webServer: {
+    command: process.env.E2E_BUILD === 'false' ? 'npm run serve:dist' : 'npm run build && npm run serve:dist',
+    port: 8080,
+    reuseExistingServer: true,
+    timeout: 60 * 1000,
+  },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },

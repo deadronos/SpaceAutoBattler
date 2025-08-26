@@ -25,6 +25,594 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// src/config/entitiesConfig.ts
+var entitiesConfig_exports = {};
+__export(entitiesConfig_exports, {
+  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
+  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
+  SIZE_DEFAULTS: () => SIZE_DEFAULTS,
+  ShipConfig: () => ShipConfig,
+  bulletKindForRadius: () => bulletKindForRadius,
+  default: () => entitiesConfig_default,
+  getDefaultShipType: () => getDefaultShipType,
+  getShipConfig: () => getShipConfig,
+  getSizeDefaults: () => getSizeDefaults,
+  setAllSizeDefaults: () => setAllSizeDefaults,
+  setSizeDefaults: () => setSizeDefaults
+});
+function getSizeDefaults(size) {
+  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
+}
+function setSizeDefaults(size, patch) {
+  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
+}
+function setAllSizeDefaults(patch) {
+  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
+  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
+  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
+}
+function getShipConfig() {
+  Object.keys(ShipConfig).forEach((key) => {
+    const cfg = ShipConfig[key];
+    if (cfg.cannons) {
+      cfg.cannons.forEach((c) => {
+        if (c.range == null) {
+          const ms = c.muzzleSpeed ?? BULLET_DEFAULTS.muzzleSpeed;
+          const ttl = c.bulletTTL ?? BULLET_DEFAULTS.ttl;
+          const computed = Number.isFinite(ms) && Number.isFinite(ttl) ? Math.round(ms * ttl) : BULLET_DEFAULTS.range;
+          c.range = computed || BULLET_DEFAULTS.range;
+        }
+      });
+    }
+    if (cfg.turrets) {
+      const firstCannonRange = cfg.cannons && cfg.cannons.length ? cfg.cannons[0].range || BULLET_DEFAULTS.range : BULLET_DEFAULTS.range;
+      cfg.turrets.forEach((t) => {
+        if (t.range == null) {
+          t.range = firstCannonRange;
+        }
+      });
+    }
+  });
+  return ShipConfig;
+}
+function bulletKindForRadius(r) {
+  if (r < 2) return "small";
+  if (r < 2.5) return "medium";
+  if (r < 3.5) return "large";
+  return "heavy";
+}
+function getDefaultShipType() {
+  return Object.keys(ShipConfig)[0] || "fighter";
+}
+var ShipConfig, SIZE_DEFAULTS, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
+var init_entitiesConfig = __esm({
+  "src/config/entitiesConfig.ts"() {
+    "use strict";
+    ShipConfig = {
+      fighter: {
+        maxHp: 15,
+        // size classification used for armor/shield tuning
+        size: "small",
+        armor: 0,
+        maxShield: 8,
+        shieldRegen: 1,
+        dmg: 3,
+        damage: 3,
+        radius: 12,
+        cannons: [
+          {
+            damage: 3,
+            rate: 3,
+            spread: 0.1,
+            muzzleSpeed: 260,
+            // reduced back (/10)
+            bulletRadius: 1.5,
+            bulletTTL: 1.1,
+            // was 1.2
+            // effective range (muzzleSpeed * bulletTTL) scaled to engine units
+            range: Math.round(260 * 1.1)
+          }
+        ],
+        // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
+        accel: 100,
+        // ~10x accel
+        turnRate: 6,
+        maxSpeed: 2200
+        // ~10x maxSpeed
+      },
+      corvette: {
+        maxHp: 50,
+        size: "medium",
+        armor: 0,
+        maxShield: Math.round(50 * 0.6),
+        shieldRegen: 0.5,
+        dmg: 5,
+        damage: 5,
+        radius: 20,
+        accel: 80,
+        turnRate: 3.5,
+        // was 3
+        maxSpeed: 1800,
+        // ~10x increased
+        cannons: [
+          {
+            damage: 6,
+            rate: 1.2,
+            spread: 0.05,
+            muzzleSpeed: 180,
+            // reduced back (/10)
+            bulletRadius: 2,
+            bulletTTL: 1.8,
+            // was 2.0
+            range: Math.round(180 * 1.8)
+          }
+        ]
+      },
+      frigate: {
+        maxHp: 80,
+        size: "medium",
+        armor: 1,
+        maxShield: Math.round(80 * 0.6),
+        shieldRegen: 0.4,
+        dmg: 8,
+        damage: 8,
+        radius: 24,
+        cannons: [
+          {
+            damage: 8,
+            rate: 1,
+            spread: 0.06,
+            muzzleSpeed: 180,
+            // reduced back (/10)
+            bulletRadius: 2.5,
+            bulletTTL: 2,
+            // was 2.2
+            range: Math.round(180 * 2)
+          }
+        ],
+        accel: 70,
+        turnRate: 2.5,
+        // was 2.2
+        maxSpeed: 1500
+        // ~10x increased
+      },
+      destroyer: {
+        maxHp: 120,
+        size: "large",
+        armor: 2,
+        maxShield: Math.round(120 * 0.6),
+        shieldRegen: 0.3,
+        dmg: 12,
+        damage: 12,
+        radius: 40,
+        cannons: new Array(6).fill(0).map(() => ({
+          damage: 6,
+          rate: 0.8,
+          spread: 0.08,
+          muzzleSpeed: 160,
+          // reduced back (/10)
+          bulletRadius: 2.5,
+          bulletTTL: 1.8,
+          // was 2.4
+          range: Math.round(160 * 1.8)
+        })),
+        accel: 60,
+        turnRate: 2,
+        // was 1.6
+        maxSpeed: 1300,
+        // ~10x increased
+        turrets: [
+          {
+            position: [1.2, 0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8,
+            // turret effective range (units)
+            range: 300
+          },
+          {
+            position: [-1.2, 0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [1.2, -0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [-1.2, -0.8],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [0, 1.5],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          },
+          {
+            position: [0, -1.5],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 0.8
+          }
+        ]
+      },
+      carrier: {
+        maxHp: 200,
+        size: "large",
+        armor: 3,
+        maxShield: Math.round(200 * 0.6),
+        shieldRegen: 0.2,
+        dmg: 2,
+        damage: 2,
+        radius: 40,
+        cannons: new Array(4).fill(0).map(() => ({
+          damage: 4,
+          rate: 0.6,
+          spread: 0.12,
+          muzzleSpeed: 140,
+          // reduced back (/10)
+          bulletRadius: 3,
+          bulletTTL: 2.2,
+          // was 2.8
+          range: Math.round(140 * 2.2)
+        })),
+        accel: 55,
+        turnRate: 1.2,
+        // was 0.8
+        maxSpeed: 1100,
+        // ~10x increased
+        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+        turrets: [
+          {
+            position: [2, 1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1,
+            range: 300
+          },
+          {
+            position: [-2, 1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [2, -1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          },
+          {
+            position: [-2, -1.2],
+            kind: "basic",
+            targeting: "nearest",
+            cooldown: 1
+          }
+        ]
+      }
+    };
+    SIZE_DEFAULTS = {
+      small: {
+        armor: 0,
+        maxShield: 8,
+        shieldRegen: 1,
+        radius: 12,
+        turnRate: 6,
+        accel: 100,
+        maxSpeed: 2200
+      },
+      medium: {
+        armor: 1,
+        maxShield: 40,
+        shieldRegen: 0.5,
+        radius: 24,
+        turnRate: 3.5,
+        accel: 80,
+        maxSpeed: 1800
+      },
+      large: {
+        armor: 2,
+        maxShield: 120,
+        shieldRegen: 0.25,
+        radius: 40,
+        turnRate: 2,
+        accel: 60,
+        maxSpeed: 1300
+      }
+    };
+    BULLET_DEFAULTS = {
+      damage: 1,
+      ttl: 2,
+      radius: 1.5,
+      muzzleSpeed: 24,
+      // default effective range (units)
+      range: 300
+    };
+    PARTICLE_DEFAULTS = {
+      ttl: 1,
+      color: "#fff",
+      size: 2
+    };
+    entitiesConfig_default = ShipConfig;
+    if (typeof module !== "undefined" && module.exports) {
+      try {
+        const existing = module.exports || {};
+        Object.defineProperty(existing, "ShipConfig", {
+          value: ShipConfig,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "getShipConfig", {
+          value: getShipConfig,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "SIZE_DEFAULTS", {
+          value: SIZE_DEFAULTS,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "getSizeDefaults", {
+          value: getSizeDefaults,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "setSizeDefaults", {
+          value: setSizeDefaults,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "setAllSizeDefaults", {
+          value: setAllSizeDefaults,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "BULLET_DEFAULTS", {
+          value: BULLET_DEFAULTS,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
+          value: PARTICLE_DEFAULTS,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "bulletKindForRadius", {
+          value: bulletKindForRadius,
+          enumerable: true
+        });
+        Object.defineProperty(existing, "getDefaultShipType", {
+          value: getDefaultShipType,
+          enumerable: true
+        });
+        try {
+          Object.defineProperty(existing, "default", {
+            value: ShipConfig,
+            enumerable: true
+          });
+        } catch (e) {
+        }
+        try {
+          module.exports = existing;
+        } catch (e) {
+        }
+      } catch (e) {
+      }
+    }
+  }
+});
+
+// src/config/assets/assetsConfig.ts
+function getEngineTrailConfig(type) {
+  const vconf = getVisualConfig(type);
+  const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
+  return AssetsConfig.animations && AssetsConfig.animations[trailName] || AssetsConfig.animations && AssetsConfig.animations.engineTrail;
+}
+function getSpriteAsset(type) {
+  const inlineSvg = AssetsConfig.svgAssets && AssetsConfig.svgAssets[type];
+  if (typeof inlineSvg === "string" && inlineSvg.trim().startsWith("<svg")) {
+    return { svg: inlineSvg };
+  }
+  const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+  if (shapeEntry.svg) {
+    return { svg: shapeEntry.svg };
+  }
+  if (shapeEntry.model3d && shapeEntry.model3d.url) {
+    return { model3d: shapeEntry.model3d };
+  }
+  return { shape: shapeEntry };
+}
+function getVisualConfig(type) {
+  const shape = getShipAsset(type);
+  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
+  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
+}
+function getShipAsset(type) {
+  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
+}
+function getBulletAsset(kind = "small") {
+  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
+  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
+  return AssetsConfig.shapes2d.bulletSmall;
+}
+function getTurretAsset(_kind = "basic") {
+  return AssetsConfig.shapes2d.turretBasic;
+}
+var AssetsConfig, assetsConfig_default;
+var init_assetsConfig = __esm({
+  "src/config/assets/assetsConfig.ts"() {
+    "use strict";
+    AssetsConfig = {
+      meta: {
+        orientation: "+X",
+        coordinateSystem: "topdown-2d"
+      },
+      palette: {
+        shipHull: "#b0b7c3",
+        shipAccent: "#6c7380",
+        bullet: "#ffd166",
+        turret: "#94a3b8",
+        // Scene background color used by renderers
+        background: "#0b1220"
+      },
+      // 2D vector shapes defined as polygons and circles. Points are unit-sized
+      // profiles (roughly radius 1). Renderer should multiply by entity radius or
+      // provided scale before drawing.
+      shapes2d: {
+        fighter: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
+            { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
+            { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
+            { type: "circle", r: 0.5 }
+          ],
+          strokeWidth: 0.08,
+          model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+        },
+        corvette: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
+            { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
+            { type: "circle", r: 0.6 }
+          ],
+          strokeWidth: 0.08,
+          model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+        },
+        frigate: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
+            { type: "circle", r: 0.7 }
+          ],
+          strokeWidth: 0.1,
+          model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+        },
+        destroyer: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
+            { type: "circle", r: 1 },
+            { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
+          ],
+          strokeWidth: 0.12,
+          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
+          turrets: [
+            { kind: "basic", position: [1.2, 0.8] },
+            { kind: "basic", position: [-1.2, 0.8] },
+            { kind: "basic", position: [1.2, -0.8] },
+            { kind: "basic", position: [-1.2, -0.8] },
+            { kind: "basic", position: [0, 1.5] },
+            { kind: "basic", position: [0, -1.5] }
+          ]
+        },
+        carrier: {
+          type: "compound",
+          parts: [
+            { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
+            { type: "circle", r: 1.2 },
+            { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
+          ],
+          strokeWidth: 0.12,
+          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
+          turrets: [
+            { kind: "basic", position: [2, 1.2] },
+            { kind: "basic", position: [-2, 1.2] },
+            { kind: "basic", position: [2, -1.2] },
+            { kind: "basic", position: [-2, -1.2] }
+          ]
+        },
+        bulletSmall: { type: "circle", r: 0.18 },
+        bulletMedium: { type: "circle", r: 0.25 },
+        bulletLarge: { type: "circle", r: 0.36 },
+        turretBasic: {
+          type: "compound",
+          parts: [
+            { type: "circle", r: 0.5 },
+            { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
+          ],
+          strokeWidth: 0.08
+        },
+        // Small effect/particle shapes for renderer-driven effects
+        particleSmall: { type: "circle", r: 0.12 },
+        particleMedium: { type: "circle", r: 0.22 },
+        explosionParticle: { type: "circle", r: 0.32 },
+        shieldRing: { type: "circle", r: 1.2 }
+      }
+    };
+    if (typeof globalThis !== "undefined" && globalThis.__INLINE_SVG_ASSETS) {
+      AssetsConfig.svgAssets = globalThis.__INLINE_SVG_ASSETS;
+    } else {
+      AssetsConfig.svgAssets = {
+        destroyer: "./svg/destroyer.svg",
+        carrier: "./svg/carrier.svg",
+        frigate: "./svg/frigate.svg",
+        corvette: "./svg/corvette.svg"
+      };
+    }
+    AssetsConfig.svgMounts = {
+      destroyer: AssetsConfig.shapes2d.destroyer.turrets ? AssetsConfig.shapes2d.destroyer.turrets.map((t) => t.position) : [],
+      carrier: AssetsConfig.shapes2d.carrier.turrets ? AssetsConfig.shapes2d.carrier.turrets.map((t) => t.position) : []
+    };
+    AssetsConfig.turretDefaults = {
+      basic: { turnRate: Math.PI * 1.5, sprite: "turretBasic" }
+    };
+    AssetsConfig.animations = {
+      engineFlare: {
+        type: "polygon",
+        points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
+        pulseRate: 8,
+        // configurable alpha multiplier for engine overlay
+        alpha: 0.4,
+        // local-space X offset (negative = behind ship)
+        offset: -0.9
+      },
+      shieldEffect: {
+        type: "circle",
+        r: 1.2,
+        strokeWidth: 0.1,
+        color: "#88ccff",
+        pulseRate: 2,
+        // map shieldPct -> alpha = base + scale * shieldPct
+        alphaBase: 0.25,
+        alphaScale: 0.75
+      },
+      damageParticles: {
+        type: "particles",
+        color: "#ff6b6b",
+        count: 6,
+        lifetime: 0.8,
+        spread: 0.6
+      },
+      engineTrail: {
+        type: "trail",
+        color: "#fff0a0",
+        // brighter, warm highlight for good contrast
+        maxLength: 120,
+        // longer trail (was 40)
+        width: 0.9,
+        // thicker trail line (was 0.35)
+        fade: 0.6
+        // older points remain more visible (was 0.35)
+      }
+    };
+    AssetsConfig.damageStates = {
+      light: { opacity: 0.9, accentColor: "#b0b7c3" },
+      moderate: { opacity: 0.75, accentColor: "#d4a06a" },
+      heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
+    };
+    AssetsConfig.visualStateDefaults = {
+      fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
+      carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
+    };
+    AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
+    AssetsConfig.shieldArcWidth = Math.PI / 12;
+    assetsConfig_default = AssetsConfig;
+  }
+});
+
 // src/math/polygon.ts
 function polygonSimplify(points, tolerance) {
   if (points.length < 3) return points;
@@ -1184,359 +1772,143 @@ var init_svgRenderer = __esm({
   }
 });
 
-// src/config/entitiesConfig.ts
-var ShipConfig = {
-  fighter: {
-    maxHp: 15,
-    // size classification used for armor/shield tuning
-    size: "small",
-    armor: 0,
-    maxShield: 8,
-    shieldRegen: 1,
-    dmg: 3,
-    damage: 3,
-    radius: 12,
-    cannons: [
-      {
-        damage: 3,
-        rate: 3,
-        spread: 0.1,
-        muzzleSpeed: 260,
-        // reduced back (/10)
-        bulletRadius: 1.5,
-        bulletTTL: 1.1,
-        // was 1.2
-        // effective range (muzzleSpeed * bulletTTL) scaled to engine units
-        range: Math.round(260 * 1.1)
-      }
-    ],
-    // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
-    accel: 100,
-    // ~10x accel
-    turnRate: 6,
-    maxSpeed: 2200
-    // ~10x maxSpeed
-  },
-  corvette: {
-    maxHp: 50,
-    size: "medium",
-    armor: 0,
-    maxShield: Math.round(50 * 0.6),
-    shieldRegen: 0.5,
-    dmg: 5,
-    damage: 5,
-    radius: 20,
-    accel: 80,
-    turnRate: 3.5,
-    // was 3
-    maxSpeed: 1800,
-    // ~10x increased
-    cannons: [
-      {
-        damage: 6,
-        rate: 1.2,
-        spread: 0.05,
-        muzzleSpeed: 180,
-        // reduced back (/10)
-        bulletRadius: 2,
-        bulletTTL: 1.8,
-        // was 2.0
-        range: Math.round(180 * 1.8)
-      }
-    ]
-  },
-  frigate: {
-    maxHp: 80,
-    size: "medium",
-    armor: 1,
-    maxShield: Math.round(80 * 0.6),
-    shieldRegen: 0.4,
-    dmg: 8,
-    damage: 8,
-    radius: 24,
-    cannons: [
-      {
-        damage: 8,
-        rate: 1,
-        spread: 0.06,
-        muzzleSpeed: 180,
-        // reduced back (/10)
-        bulletRadius: 2.5,
-        bulletTTL: 2,
-        // was 2.2
-        range: Math.round(180 * 2)
-      }
-    ],
-    accel: 70,
-    turnRate: 2.5,
-    // was 2.2
-    maxSpeed: 1500
-    // ~10x increased
-  },
-  destroyer: {
-    maxHp: 120,
-    size: "large",
-    armor: 2,
-    maxShield: Math.round(120 * 0.6),
-    shieldRegen: 0.3,
-    dmg: 12,
-    damage: 12,
-    radius: 40,
-    cannons: new Array(6).fill(0).map(() => ({
-      damage: 6,
-      rate: 0.8,
-      spread: 0.08,
-      muzzleSpeed: 160,
-      // reduced back (/10)
-      bulletRadius: 2.5,
-      bulletTTL: 1.8,
-      // was 2.4
-      range: Math.round(160 * 1.8)
-    })),
-    accel: 60,
-    turnRate: 2,
-    // was 1.6
-    maxSpeed: 1300,
-    // ~10x increased
-    turrets: [
-      {
-        position: [1.2, 0.8],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 0.8,
-        // turret effective range (units)
-        range: 300
-      },
-      {
-        position: [-1.2, 0.8],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 0.8
-      },
-      {
-        position: [1.2, -0.8],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 0.8
-      },
-      {
-        position: [-1.2, -0.8],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 0.8
-      },
-      {
-        position: [0, 1.5],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 0.8
-      },
-      {
-        position: [0, -1.5],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 0.8
-      }
-    ]
-  },
-  carrier: {
-    maxHp: 200,
-    size: "large",
-    armor: 3,
-    maxShield: Math.round(200 * 0.6),
-    shieldRegen: 0.2,
-    dmg: 2,
-    damage: 2,
-    radius: 40,
-    cannons: new Array(4).fill(0).map(() => ({
-      damage: 4,
-      rate: 0.6,
-      spread: 0.12,
-      muzzleSpeed: 140,
-      // reduced back (/10)
-      bulletRadius: 3,
-      bulletTTL: 2.2,
-      // was 2.8
-      range: Math.round(140 * 2.2)
-    })),
-    accel: 55,
-    turnRate: 1.2,
-    // was 0.8
-    maxSpeed: 1100,
-    // ~10x increased
-    carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
-    turrets: [
-      {
-        position: [2, 1.2],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 1,
-        range: 300
-      },
-      {
-        position: [-2, 1.2],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 1
-      },
-      {
-        position: [2, -1.2],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 1
-      },
-      {
-        position: [-2, -1.2],
-        kind: "basic",
-        targeting: "nearest",
-        cooldown: 1
-      }
-    ]
+// src/dev/shipPipelineOverlay.ts
+var shipPipelineOverlay_exports = {};
+__export(shipPipelineOverlay_exports, {
+  default: () => initShipPipelineOverlay
+});
+function detectPipeline(type) {
+  const sprite = getSpriteAsset(type);
+  if (sprite.svg) return { pipeline: "svg", source: sprite.svg };
+  if (sprite.model3d && sprite.model3d.url)
+    return { pipeline: "mesh3d", source: sprite.model3d.url };
+  if (sprite.shape) return { pipeline: "shape2d", source: "shapes2d" };
+  return { pipeline: "unknown", source: "-" };
+}
+function createOverlay() {
+  if (typeof document === "undefined") return null;
+  const host = location && location.hostname || "";
+  const urlParams = typeof URLSearchParams !== "undefined" ? new URLSearchParams(location.search) : null;
+  const enabled = urlParams?.get("devShipTable") === "1" || host === "127.0.0.1" || host === "localhost";
+  if (!enabled) return null;
+  const container = document.createElement("div");
+  container.id = "ship-pipeline-overlay";
+  container.style.position = "fixed";
+  container.style.top = "8px";
+  container.style.right = "8px";
+  container.style.zIndex = "99999";
+  container.style.fontFamily = "sans-serif";
+  container.style.fontSize = "12px";
+  container.style.color = "#fff";
+  const badge = document.createElement("div");
+  badge.id = "ship-pipeline-badge";
+  badge.style.background = "rgba(20,20,30,0.9)";
+  badge.style.padding = "6px 10px";
+  badge.style.borderRadius = "6px";
+  badge.style.cursor = "pointer";
+  badge.style.userSelect = "none";
+  badge.style.boxShadow = "0 2px 8px rgba(0,0,0,0.6)";
+  badge.textContent = "Pipelines";
+  badge.setAttribute("role", "button");
+  badge.tabIndex = 0;
+  const panel = document.createElement("div");
+  panel.id = "ship-pipeline-panel";
+  panel.style.marginTop = "8px";
+  panel.style.background = "rgba(8,10,16,0.95)";
+  panel.style.border = "1px solid rgba(255,255,255,0.06)";
+  panel.style.padding = "8px";
+  panel.style.borderRadius = "6px";
+  panel.style.maxHeight = "320px";
+  panel.style.overflowY = "auto";
+  panel.style.minWidth = "220px";
+  panel.style.display = "none";
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  ["Ship", "Pipeline", "Source"].forEach((h) => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    th.style.textAlign = "left";
+    th.style.padding = "4px 6px";
+    th.style.fontSize = "11px";
+    th.style.opacity = "0.9";
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  const types = /* @__PURE__ */ new Set([
+    ...Object.keys(AssetsConfig.shapes2d || {}),
+    ...Object.keys(AssetsConfig.svgAssets || {})
+  ]);
+  for (const t of Array.from(types).sort()) {
+    const res = detectPipeline(t);
+    const tr = document.createElement("tr");
+    const nameTd = document.createElement("td");
+    nameTd.textContent = t;
+    nameTd.style.padding = "4px 6px";
+    const pTd = document.createElement("td");
+    pTd.textContent = res.pipeline;
+    pTd.style.padding = "4px 6px";
+    pTd.style.opacity = "0.95";
+    const sTd = document.createElement("td");
+    sTd.textContent = String(res.source).replace(/^\s+|\s+$/g, "");
+    sTd.style.padding = "4px 6px";
+    sTd.style.opacity = "0.8";
+    tr.appendChild(nameTd);
+    tr.appendChild(pTd);
+    tr.appendChild(sTd);
+    tbody.appendChild(tr);
   }
-};
-var SIZE_DEFAULTS = {
-  small: {
-    armor: 0,
-    maxShield: 8,
-    shieldRegen: 1,
-    radius: 12,
-    turnRate: 6,
-    accel: 100,
-    maxSpeed: 2200
-  },
-  medium: {
-    armor: 1,
-    maxShield: 40,
-    shieldRegen: 0.5,
-    radius: 24,
-    turnRate: 3.5,
-    accel: 80,
-    maxSpeed: 1800
-  },
-  large: {
-    armor: 2,
-    maxShield: 120,
-    shieldRegen: 0.25,
-    radius: 40,
-    turnRate: 2,
-    accel: 60,
-    maxSpeed: 1300
-  }
-};
-function getSizeDefaults(size) {
-  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
-}
-function setSizeDefaults(size, patch) {
-  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
-}
-function setAllSizeDefaults(patch) {
-  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
-  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
-  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
-}
-function getShipConfig() {
-  Object.keys(ShipConfig).forEach((key) => {
-    const cfg = ShipConfig[key];
-    if (cfg.cannons) {
-      cfg.cannons.forEach((c) => {
-        if (c.range == null) {
-          const ms = c.muzzleSpeed ?? BULLET_DEFAULTS.muzzleSpeed;
-          const ttl = c.bulletTTL ?? BULLET_DEFAULTS.ttl;
-          const computed = Number.isFinite(ms) && Number.isFinite(ttl) ? Math.round(ms * ttl) : BULLET_DEFAULTS.range;
-          c.range = computed || BULLET_DEFAULTS.range;
-        }
-      });
+  table.appendChild(tbody);
+  panel.appendChild(table);
+  let open = false;
+  function setOpen(v) {
+    open = !!v;
+    panel.style.display = open ? "block" : "none";
+    badge.style.background = open ? "rgba(60,60,70,0.95)" : "rgba(20,20,30,0.9)";
+    try {
+      localStorage.setItem("shipPipelineOpen", open ? "1" : "0");
+    } catch (e) {
     }
-    if (cfg.turrets) {
-      const firstCannonRange = cfg.cannons && cfg.cannons.length ? cfg.cannons[0].range || BULLET_DEFAULTS.range : BULLET_DEFAULTS.range;
-      cfg.turrets.forEach((t) => {
-        if (t.range == null) {
-          t.range = firstCannonRange;
-        }
-      });
+  }
+  badge.addEventListener("click", () => setOpen(!open));
+  badge.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      setOpen(!open);
     }
   });
-  return ShipConfig;
-}
-var BULLET_DEFAULTS = {
-  damage: 1,
-  ttl: 2,
-  radius: 1.5,
-  muzzleSpeed: 24,
-  // default effective range (units)
-  range: 300
-};
-var PARTICLE_DEFAULTS = {
-  ttl: 1,
-  color: "#fff",
-  size: 2
-};
-function bulletKindForRadius(r) {
-  if (r < 2) return "small";
-  if (r < 2.5) return "medium";
-  if (r < 3.5) return "large";
-  return "heavy";
-}
-function getDefaultShipType() {
-  return Object.keys(ShipConfig)[0] || "fighter";
-}
-if (typeof module !== "undefined" && module.exports) {
   try {
-    const existing = module.exports || {};
-    Object.defineProperty(existing, "ShipConfig", {
-      value: ShipConfig,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "getShipConfig", {
-      value: getShipConfig,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "SIZE_DEFAULTS", {
-      value: SIZE_DEFAULTS,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "getSizeDefaults", {
-      value: getSizeDefaults,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "setSizeDefaults", {
-      value: setSizeDefaults,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "setAllSizeDefaults", {
-      value: setAllSizeDefaults,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "BULLET_DEFAULTS", {
-      value: BULLET_DEFAULTS,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
-      value: PARTICLE_DEFAULTS,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "bulletKindForRadius", {
-      value: bulletKindForRadius,
-      enumerable: true
-    });
-    Object.defineProperty(existing, "getDefaultShipType", {
-      value: getDefaultShipType,
-      enumerable: true
-    });
-    try {
-      Object.defineProperty(existing, "default", {
-        value: ShipConfig,
-        enumerable: true
-      });
-    } catch (e) {
-    }
-    try {
-      module.exports = existing;
-    } catch (e) {
-    }
+    if (localStorage.getItem("shipPipelineOpen") === "1") setOpen(true);
   } catch (e) {
   }
+  container.appendChild(badge);
+  container.appendChild(panel);
+  document.body.appendChild(container);
+  return { container, badge, panel };
 }
+function initShipPipelineOverlay() {
+  try {
+    createOverlay();
+  } catch (e) {
+    console.warn("shipPipelineOverlay init failed", e);
+  }
+}
+var init_shipPipelineOverlay = __esm({
+  "src/dev/shipPipelineOverlay.ts"() {
+    "use strict";
+    init_assetsConfig();
+  }
+});
+
+// src/entities.ts
+init_entitiesConfig();
+
+// src/config/teamsConfig.ts
+init_entitiesConfig();
 
 // src/config/simConfig.ts
 var SIM = {
@@ -1586,8 +1958,13 @@ var TeamsConfig = {
   },
   defaultFleet: {
     counts: (() => {
-      const shipCfg = getShipConfig();
-      const types = Object.keys(shipCfg || {});
+      const shipCfg = typeof getShipConfig === "function" && getShipConfig() || // if imported as default-only: try default export object/function
+      typeof getShipConfig?.default === "function" && getShipConfig.default() || typeof getShipConfig?.default === "object" && getShipConfig.default || // some bundlers may bind getShipConfig to the config object itself
+      typeof getShipConfig === "object" && getShipConfig || {};
+      let types = Object.keys(shipCfg || {});
+      if (types.length === 0) {
+        types = ["fighter", "corvette", "frigate", "destroyer", "carrier"];
+      }
       const defaultCounts = {};
       for (const t of types) {
         if (t === "fighter") defaultCounts[t] = 8;
@@ -1659,13 +2036,7 @@ function generateFleetForTeam(seed = 0, teamId = "red", bounds, shipFactory, opt
 function makeInitialFleets(seed = 0, bounds, shipFactory, options = {}) {
   const b = bounds || getDefaultBounds();
   const red = generateFleetForTeam(seed, "red", b, shipFactory, options);
-  const blue = generateFleetForTeam(
-    seed + 1,
-    "blue",
-    b,
-    shipFactory,
-    options
-  );
+  const blue = generateFleetForTeam(seed + 1, "blue", b, shipFactory, options);
   return red.concat(blue);
 }
 function chooseReinforcements(seed = 0, state = {}, options = {}) {
@@ -1772,17 +2143,54 @@ var Pool = class {
 };
 
 // src/entities.ts
+var entitiesConfig = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports));
+function getShipConfigSafe() {
+  let config2 = {};
+  if (typeof getShipConfig === "function") {
+    try {
+      config2 = getShipConfig();
+    } catch {
+    }
+  }
+  if (!config2 || !Object.keys(config2).length) {
+    if (typeof entitiesConfig.getShipConfig === "function") {
+      try {
+        config2 = entitiesConfig.getShipConfig();
+      } catch {
+      }
+    }
+  }
+  if (!config2 || !Object.keys(config2).length) {
+    if (entitiesConfig_exports && typeof entitiesConfig_default === "object") config2 = entitiesConfig_default;
+    else if (typeof entitiesConfig.default === "object" && entitiesConfig.default) config2 = entitiesConfig.default;
+    else if (typeof entitiesConfig === "object" && entitiesConfig) config2 = entitiesConfig;
+  }
+  if (!config2 || !Object.keys(config2).length) {
+    config2 = { fighter: { size: "small", maxHp: 1, cannons: [{ damage: 1, rate: 1 }] } };
+  }
+  return config2;
+}
+function getDefaultShipTypeSafe() {
+  const config2 = getShipConfigSafe();
+  const keys = Object.keys(config2);
+  return keys.length ? keys[0] : "fighter";
+}
+function getSizeDefaultsSafe(size) {
+  if (typeof entitiesConfig.getSizeDefaults === "function") return entitiesConfig.getSizeDefaults(size);
+  if (entitiesConfig.default && typeof entitiesConfig.default.getSizeDefaults === "function") return entitiesConfig.default.getSizeDefaults(size);
+  return {};
+}
 var nextId = 1;
 function genId() {
   return nextId++;
 }
 function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
-  const shipCfg = getShipConfig();
+  const shipCfg = getShipConfigSafe();
   const availableTypes = Object.keys(shipCfg || {});
-  const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipType();
-  const rawCfg = shipCfg[resolvedType] || shipCfg[getDefaultShipType()];
+  const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipTypeSafe();
+  const rawCfg = shipCfg[resolvedType] || shipCfg[getDefaultShipTypeSafe()];
   const sizeVal = rawCfg.size || (rawCfg.radius && rawCfg.radius >= 36 ? "large" : rawCfg.radius && rawCfg.radius >= 20 ? "medium" : "small");
-  const sizeDefaults = getSizeDefaults(sizeVal);
+  const sizeDefaults = getSizeDefaultsSafe(sizeVal);
   const cfg = Object.assign({}, sizeDefaults, rawCfg);
   const ship = {
     id: genId(),
@@ -2030,6 +2438,9 @@ function updateTeamCount(state, oldTeam, newTeam) {
   }
 }
 
+// src/gamemanager.ts
+init_entitiesConfig();
+
 // src/config/behaviorConfig.ts
 var AI_THRESHOLDS = {
   decisionTimerMin: 0.5,
@@ -2040,10 +2451,19 @@ var AI_THRESHOLDS = {
 };
 
 // src/behavior.ts
+init_entitiesConfig();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
-var DEFAULT_BULLET_RANGE = typeof BULLET_DEFAULTS.range === "number" ? BULLET_DEFAULTS.range : 300;
+var DEFAULT_BULLET_RANGE = (
+  // Guard against undefined export in certain CJS/ESM interop paths
+  typeof BULLET_DEFAULTS?.range === "number" ? BULLET_DEFAULTS.range : 300
+);
+function getBulletDefaultsSafe() {
+  const fallback = { damage: 1, ttl: 2, radius: 1.5, muzzleSpeed: 24, range: 300 };
+  const src = BULLET_DEFAULTS;
+  return src && typeof src === "object" ? src : fallback;
+}
 function withinRange(sx, sy, tx, ty, range) {
   const dx = tx - sx;
   const dy = ty - sy;
@@ -2089,10 +2509,10 @@ function tryFire(state, ship, target, dt) {
         continue;
       const spread = typeof c.spread === "number" ? c.spread : 0;
       const dir = aimWithSpread(ship, target, spread);
-      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
-      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : BULLET_DEFAULTS.damage;
-      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : BULLET_DEFAULTS.ttl;
-      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : BULLET_DEFAULTS.radius;
+      const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : getBulletDefaultsSafe().muzzleSpeed;
+      const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : getBulletDefaultsSafe().damage;
+      const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : getBulletDefaultsSafe().ttl;
+      const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : getBulletDefaultsSafe().radius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
       const b = Object.assign(
@@ -2160,20 +2580,18 @@ function tryFire(state, ship, target, dt) {
         }
       }
       if (!turretTarget) continue;
-      const spread = typeof turret.spread === "number" ? turret.spread : getShipConfig()[ship.type || "fighter"]?.turrets?.[i]?.spread ?? 0.05;
+      const spread = typeof turret.spread === "number" ? turret.spread : 0.05;
       const mountPos = Array.isArray(turret) && turret.length === 2 ? turret : turret && Array.isArray(turret.position) ? turret.position : [0, 0];
       const [mTx, mTy] = mountPos;
       const shipAngle = ship.angle || 0;
-      const shipTypeLocal = ship.type || "fighter";
-      const shipCfgLocal = getShipConfig()[shipTypeLocal];
-      const configRadiusLocal = shipCfgLocal && typeof shipCfgLocal.radius === "number" ? shipCfgLocal.radius : ship.radius || 12;
+      const configRadiusLocal = typeof ship.radius === "number" && ship.radius > 0 ? ship.radius : 12;
       const mountX = (ship.x || 0) + Math.cos(shipAngle) * mTx * configRadiusLocal - Math.sin(shipAngle) * mTy * configRadiusLocal;
       const mountY = (ship.y || 0) + Math.sin(shipAngle) * mTx * configRadiusLocal + Math.cos(shipAngle) * mTy * configRadiusLocal;
       const dir = aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
-      const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : BULLET_DEFAULTS.muzzleSpeed;
-      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : BULLET_DEFAULTS.damage;
-      const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : BULLET_DEFAULTS.ttl;
-      const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : BULLET_DEFAULTS.radius;
+      const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : getBulletDefaultsSafe().muzzleSpeed;
+      const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : getBulletDefaultsSafe().damage;
+      const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : getBulletDefaultsSafe().ttl;
+      const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : getBulletDefaultsSafe().radius;
       const range = typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
       const dxT = (turretTarget.x || 0) - mountX;
       const dyT = (turretTarget.y || 0) - mountY;
@@ -2299,212 +2717,10 @@ function applySimpleAI(state, dt, bounds = getDefaultBounds()) {
   }
 }
 
-// src/config/assets/assetsConfig.ts
-function getEngineTrailConfig(type) {
-  const vconf = getVisualConfig(type);
-  const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
-  return AssetsConfig.animations && AssetsConfig.animations[trailName] || AssetsConfig.animations && AssetsConfig.animations.engineTrail;
-}
-function getSpriteAsset(type) {
-  const inlineSvg = AssetsConfig.svgAssets && AssetsConfig.svgAssets[type];
-  if (typeof inlineSvg === "string" && inlineSvg.trim().startsWith("<svg")) {
-    return { svg: inlineSvg };
-  }
-  const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-  if (shapeEntry.svg) {
-    return { svg: shapeEntry.svg };
-  }
-  if (shapeEntry.model3d && shapeEntry.model3d.url) {
-    return { model3d: shapeEntry.model3d };
-  }
-  return { shape: shapeEntry };
-}
-var AssetsConfig = {
-  meta: {
-    orientation: "+X",
-    coordinateSystem: "topdown-2d"
-  },
-  palette: {
-    shipHull: "#b0b7c3",
-    shipAccent: "#6c7380",
-    bullet: "#ffd166",
-    turret: "#94a3b8",
-    // Scene background color used by renderers
-    background: "#0b1220"
-  },
-  // 2D vector shapes defined as polygons and circles. Points are unit-sized
-  // profiles (roughly radius 1). Renderer should multiply by entity radius or
-  // provided scale before drawing.
-  shapes2d: {
-    fighter: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.2, 0], [-0.8, 0.6], [-0.5, 0], [-0.8, -0.6]] },
-        { type: "polygon", points: [[0, 0.35], [-0.6, 0.65], [-0.35, 0]] },
-        { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
-        { type: "circle", r: 0.5 }
-      ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
-    },
-    corvette: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.2, 0], [0.4, 0.7], [-1, 0.6], [-1.2, 0], [-1, -0.6], [0.4, -0.7]] },
-        { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
-        { type: "circle", r: 0.6 }
-      ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
-    },
-    frigate: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
-        { type: "circle", r: 0.7 }
-      ],
-      strokeWidth: 0.1,
-      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
-    },
-    destroyer: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[1.8, 0], [1, 0.7], [0.2, 1], [-0.8, 0.9], [-1.8, 0.6], [-1.8, -0.6], [-0.8, -0.9], [0.2, -1], [1, -0.7]] },
-        { type: "circle", r: 1 },
-        { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
-      ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
-      turrets: [
-        { kind: "basic", position: [1.2, 0.8] },
-        { kind: "basic", position: [-1.2, 0.8] },
-        { kind: "basic", position: [1.2, -0.8] },
-        { kind: "basic", position: [-1.2, -0.8] },
-        { kind: "basic", position: [0, 1.5] },
-        { kind: "basic", position: [0, -1.5] }
-      ]
-    },
-    carrier: {
-      type: "compound",
-      parts: [
-        { type: "polygon", points: [[2.2, 0], [1.2, 1.2], [-1, 1.6], [-2.8, 1.2], [-3.2, 0], [-2.8, -1.2], [-1, -1.6], [1.2, -1.2]] },
-        { type: "circle", r: 1.2 },
-        { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
-      ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
-      turrets: [
-        { kind: "basic", position: [2, 1.2] },
-        { kind: "basic", position: [-2, 1.2] },
-        { kind: "basic", position: [2, -1.2] },
-        { kind: "basic", position: [-2, -1.2] }
-      ]
-    },
-    bulletSmall: { type: "circle", r: 0.18 },
-    bulletMedium: { type: "circle", r: 0.25 },
-    bulletLarge: { type: "circle", r: 0.36 },
-    turretBasic: {
-      type: "compound",
-      parts: [
-        { type: "circle", r: 0.5 },
-        { type: "polygon", points: [[-0.2, 0.2], [0.7, 0.2], [0.7, -0.2], [-0.2, -0.2]] }
-      ],
-      strokeWidth: 0.08
-    },
-    // Small effect/particle shapes for renderer-driven effects
-    particleSmall: { type: "circle", r: 0.12 },
-    particleMedium: { type: "circle", r: 0.22 },
-    explosionParticle: { type: "circle", r: 0.32 },
-    shieldRing: { type: "circle", r: 1.2 }
-  }
-};
-if (typeof globalThis !== "undefined" && globalThis.__INLINE_SVG_ASSETS) {
-  AssetsConfig.svgAssets = globalThis.__INLINE_SVG_ASSETS;
-} else {
-  AssetsConfig.svgAssets = {
-    destroyer: "./svg/destroyer.svg",
-    carrier: "./svg/carrier.svg",
-    frigate: "./svg/frigate.svg",
-    corvette: "./svg/corvette.svg"
-  };
-}
-AssetsConfig.svgMounts = {
-  destroyer: AssetsConfig.shapes2d.destroyer.turrets ? AssetsConfig.shapes2d.destroyer.turrets.map((t) => t.position) : [],
-  carrier: AssetsConfig.shapes2d.carrier.turrets ? AssetsConfig.shapes2d.carrier.turrets.map((t) => t.position) : []
-};
-AssetsConfig.turretDefaults = {
-  basic: { turnRate: Math.PI * 1.5, sprite: "turretBasic" }
-};
-AssetsConfig.animations = {
-  engineFlare: {
-    type: "polygon",
-    points: [[0, 0], [-0.3, 0.15], [-0.5, 0], [-0.3, -0.15]],
-    pulseRate: 8,
-    // configurable alpha multiplier for engine overlay
-    alpha: 0.4,
-    // local-space X offset (negative = behind ship)
-    offset: -0.9
-  },
-  shieldEffect: {
-    type: "circle",
-    r: 1.2,
-    strokeWidth: 0.1,
-    color: "#88ccff",
-    pulseRate: 2,
-    // map shieldPct -> alpha = base + scale * shieldPct
-    alphaBase: 0.25,
-    alphaScale: 0.75
-  },
-  damageParticles: {
-    type: "particles",
-    color: "#ff6b6b",
-    count: 6,
-    lifetime: 0.8,
-    spread: 0.6
-  },
-  engineTrail: {
-    type: "trail",
-    color: "#fff0a0",
-    // brighter, warm highlight for good contrast
-    maxLength: 120,
-    // longer trail (was 40)
-    width: 0.9,
-    // thicker trail line (was 0.35)
-    fade: 0.6
-    // older points remain more visible (was 0.35)
-  }
-};
-AssetsConfig.damageStates = {
-  light: { opacity: 0.9, accentColor: "#b0b7c3" },
-  moderate: { opacity: 0.75, accentColor: "#d4a06a" },
-  heavy: { opacity: 0.5, accentColor: "#ff6b6b" }
-};
-AssetsConfig.visualStateDefaults = {
-  fighter: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  corvette: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  frigate: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  destroyer: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 },
-  carrier: { engine: "engineFlare", shield: "shieldEffect", damageParticles: "damageParticles", engineTrail: "engineTrail", arcWidth: Math.PI / 12 }
-};
-AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
-AssetsConfig.shieldArcWidth = Math.PI / 12;
-function getVisualConfig(type) {
-  const shape = getShipAsset(type);
-  const visuals = AssetsConfig.visualStateDefaults[type] || AssetsConfig.visualStateDefaults.fighter;
-  return { shape, visuals, palette: AssetsConfig.palette, animations: AssetsConfig.animations, damageStates: AssetsConfig.damageStates };
-}
-function getShipAsset(type) {
-  return AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
-}
-function getBulletAsset(kind = "small") {
-  if (kind === "large") return AssetsConfig.shapes2d.bulletLarge;
-  if (kind === "medium") return AssetsConfig.shapes2d.bulletMedium;
-  return AssetsConfig.shapes2d.bulletSmall;
-}
-function getTurretAsset(_kind = "basic") {
-  return AssetsConfig.shapes2d.turretBasic;
-}
-var assetsConfig_default = AssetsConfig;
+// src/simulate.ts
+init_entitiesConfig();
+init_entitiesConfig();
+init_assetsConfig();
 
 // src/config/progressionConfig.ts
 var progression = {
@@ -2840,6 +3056,10 @@ function simulateStep(state, dtSeconds, bounds) {
     }
     try {
       try {
+        normalizeTurrets(s);
+      } catch (e) {
+      }
+      try {
         if (Array.isArray(state.ships) && Array.isArray(s.turrets) && s.turrets.length) {
           for (let ti = 0; ti < s.turrets.length; ti++) {
             try {
@@ -2914,7 +3134,21 @@ function simulateStep(state, dtSeconds, bounds) {
     } catch (e) {
     }
     try {
-      const shipCfg = getShipConfig && typeof getShipConfig === "function" ? getShipConfig() : {};
+      let shipCfg = {};
+      if (typeof getShipConfig === "function") {
+        try {
+          shipCfg = getShipConfig();
+        } catch {
+        }
+      }
+      if (!shipCfg || !Object.keys(shipCfg).length) {
+        try {
+          const esm = entitiesConfig_exports;
+          if (esm && typeof esm.getShipConfig === "function") shipCfg = esm.getShipConfig();
+          else if (esm && esm.default && typeof esm.default === "object") shipCfg = esm.default;
+        } catch {
+        }
+      }
       const typeCfg = shipCfg && s.type ? shipCfg[s.type] : void 0;
       if (typeCfg && typeCfg.carrier) {
         const carrierCfg = typeCfg.carrier;
@@ -3562,6 +3796,8 @@ var FALLBACK_POSITIONS = [
 var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
+init_entitiesConfig();
+init_entitiesConfig();
 function createGameManager({
   useWorker = false,
   renderer = null,
@@ -3778,7 +4014,23 @@ function createGameManager({
   }
   function spawnShip(team = "red", type) {
     try {
-      const shipType = type || getDefaultShipType();
+      const shipType = (() => {
+        if (type) return type;
+        try {
+          if (typeof getDefaultShipType === "function") return getDefaultShipType();
+        } catch {
+        }
+        try {
+          const esm = entitiesConfig_exports;
+          if (esm && typeof esm.getDefaultShipType === "function") return esm.getDefaultShipType();
+          if (esm && esm.default && typeof esm.default === "object") {
+            const keys = Object.keys(esm.default || {});
+            if (keys.length) return keys[0];
+          }
+        } catch {
+        }
+        return "fighter";
+      })();
       const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
@@ -4261,6 +4513,7 @@ function getPreferredRenderer() {
 var rendererConfig_default = RendererConfig;
 
 // src/canvasrenderer.ts
+init_assetsConfig();
 init_svgLoader();
 
 // src/pools/tintedHullPool.ts
@@ -4351,6 +4604,18 @@ var TintedHullPool = class {
 };
 
 // src/canvasrenderer.ts
+var entitiesConfig2 = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports));
+function getShipConfigSafe2() {
+  if (typeof entitiesConfig2.getShipConfig === "function") return entitiesConfig2.getShipConfig();
+  if (entitiesConfig2.default && typeof entitiesConfig2.default.getShipConfig === "function") return entitiesConfig2.default.getShipConfig();
+  if (typeof entitiesConfig2.default === "object" && entitiesConfig2.default) return entitiesConfig2.default;
+  return {};
+}
+function getDefaultShipTypeSafe2() {
+  const cfg = getShipConfigSafe2();
+  const keys = Object.keys(cfg || {});
+  return keys.length ? keys[0] : "fighter";
+}
 function teamMapping(color) {
   return {
     primary: color,
@@ -5115,19 +5380,19 @@ var CanvasRenderer = class {
           s.trail.push({ x: s.x, y: s.y });
         }
         const trailConfig = getEngineTrailConfig(
-          s.type || getDefaultShipType()
+          s.type || getDefaultShipTypeSafe2()
         );
         const maxTrail = trailConfig?.maxLength || 40;
         while (s.trail.length > maxTrail) s.trail.shift();
       }
       if (Array.isArray(s.trail)) {
         const trailConfig = getEngineTrailConfig(
-          s.type || getDefaultShipType()
+          s.type || getDefaultShipTypeSafe2()
         );
         const color = trailConfig?.color || assetsConfig_default.palette?.bullet || "#aee1ff";
         const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
-        const engineMounts = this._svgEngineMountCache && this._svgEngineMountCache[s.type || getDefaultShipType()];
+        const engineMounts = this._svgEngineMountCache && this._svgEngineMountCache[s.type || getDefaultShipTypeSafe2()];
         if (Array.isArray(engineMounts) && engineMounts.length > 0) {
           for (const [emx, emy] of engineMounts) {
             for (let i = 0; i < s.trail.length; i++) {
@@ -5167,7 +5432,7 @@ var CanvasRenderer = class {
           }
         }
       }
-      const sprite = getSpriteAsset(s.type || getDefaultShipType());
+      const sprite = getSpriteAsset(s.type || getDefaultShipTypeSafe2());
       withShipContext(s, () => {
         let teamColor = assetsConfig_default.palette?.shipHull || "#888";
         try {
@@ -5181,7 +5446,7 @@ var CanvasRenderer = class {
         let hullDrawn = false;
         if (sprite.svg) {
           this._svgHullCache = this._svgHullCache || {};
-          const cacheKey = s.type || getDefaultShipType();
+          const cacheKey = s.type || getDefaultShipTypeSafe2();
           let hullCanvas = this._svgHullCache[cacheKey];
           if (!hullCanvas) {
             try {
@@ -5359,7 +5624,7 @@ var CanvasRenderer = class {
           }
         }
         try {
-          const vconf = getVisualConfig(s.type || getDefaultShipType());
+          const vconf = getVisualConfig(s.type || getDefaultShipTypeSafe2());
           const engineName = vconf && vconf.visuals && vconf.visuals.engine ? vconf.visuals.engine : "engineFlare";
           const engAnim = assetsConfig_default.animations && assetsConfig_default.animations[engineName];
           if (engAnim && Array.isArray(engAnim.points)) {
@@ -5389,7 +5654,7 @@ var CanvasRenderer = class {
         } catch (e) {
         }
         const shipType = s.type || "fighter";
-        const shipCfg = getShipConfig()[shipType];
+        const shipCfg = getShipConfigSafe2()[shipType];
         const configRadius = shipCfg && typeof shipCfg.radius === "number" ? shipCfg.radius : s.radius || 12;
         const shapeEntry = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d[shipType];
         const svgMounts = assetsConfig_default.svgMounts && assetsConfig_default.svgMounts[shipType];
@@ -5876,6 +6141,7 @@ var CanvasRenderer = class {
 };
 
 // src/webglrenderer.ts
+init_assetsConfig();
 var WebGLRenderer = class {
   canvas;
   gl = null;
@@ -6150,6 +6416,7 @@ var WebGLRenderer = class {
 };
 
 // src/main.ts
+init_entitiesConfig();
 async function startApp(rootDocument = document) {
   const gameState = makeInitialState();
   let canvas = rootDocument.getElementById("world");
@@ -6353,6 +6620,24 @@ async function startApp(rootDocument = document) {
     }
   } catch (e) {
   }
+  try {
+    if (typeof window !== "undefined") {
+      const host = location && location.hostname || "";
+      const urlParams = typeof URLSearchParams !== "undefined" ? new URLSearchParams(location.search) : null;
+      const enabled = host === "127.0.0.1" || host === "localhost" || urlParams?.get("devShipTable") === "1";
+      if (enabled) {
+        Promise.resolve().then(() => (init_shipPipelineOverlay(), shipPipelineOverlay_exports)).then((m) => {
+          try {
+            m.default && m.default();
+          } catch (e) {
+          }
+        }).catch((e) => {
+          console.warn("Failed to load dev overlay", e);
+        });
+      }
+    }
+  } catch (e) {
+  }
   let simSpeedMultiplier = 1;
   if (ui.speed) {
     const onSpeedClick = () => {
@@ -6543,7 +6828,9 @@ async function startApp(rootDocument = document) {
   }
   try {
     const cfg = getShipConfig();
-    const selectEl = rootDocument.getElementById("shipTypeSelect");
+    const selectEl = rootDocument.getElementById(
+      "shipTypeSelect"
+    );
     if (selectEl && cfg) {
       selectEl.innerHTML = "";
       for (const key of Object.keys(cfg)) {
@@ -6560,7 +6847,9 @@ async function startApp(rootDocument = document) {
   }
   function spawnSelected(team) {
     try {
-      const selectEl = rootDocument.getElementById("shipTypeSelect");
+      const selectEl = rootDocument.getElementById(
+        "shipTypeSelect"
+      );
       const selectedType = selectEl ? selectEl.value : null;
       try {
         if (gm && typeof gm.spawnShip === "function") {
@@ -6577,7 +6866,8 @@ async function startApp(rootDocument = document) {
               ship.type = selectedType;
               try {
                 const scfg = getShipConfig();
-                if (scfg && scfg[selectedType]) ship._config = scfg[selectedType];
+                if (scfg && scfg[selectedType])
+                  ship._config = scfg[selectedType];
               } catch (e) {
               }
             } catch (e) {
@@ -6596,7 +6886,8 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   try {
-    if (ui.addBlue) addListener(ui.addBlue, "click", () => spawnSelected("blue"));
+    if (ui.addBlue)
+      addListener(ui.addBlue, "click", () => spawnSelected("blue"));
   } catch (e) {
   }
   function onSeedBtnClick() {

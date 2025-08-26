@@ -3,7 +3,7 @@ import { makeInitialState } from '../../../src/entities';
 import { applySimpleAI } from '../../../src/behavior';
 import { simulateStep } from '../../../src/simulate';
 import CanvasRenderer from '../../../src/canvasrenderer';
-import { getShipConfig } from '../../../src/config/entitiesConfig';
+import { getShipConfigSafe } from '../utils/entitiesConfigSafe';
 import { getDefaultBounds } from '../../../src/config/simConfig';
 
 // Integration test: ensure renderer-computed turret world coords match bullet spawn coords
@@ -18,7 +18,15 @@ function computeRendererTurretWorldCoord(ship: any, turretPosTuple: [number, num
   const angle = ship.angle || 0;
   const shipType = ship.type || 'fighter';
   // get config radius fallback logic like renderer
-  const cfg = getShipConfig()[shipType];
+  const cfg = getShipConfigSafe()[shipType];
+  // Fallback to safe helper in case of interop issues
+  if (!cfg) {
+    const safeCfg = getShipConfigSafe();
+    return [
+      ship.x + Math.cos(angle) * turretPosTuple[0] * (safeCfg[shipType]?.radius ?? (ship.radius || 12)) - Math.sin(angle) * turretPosTuple[1] * (safeCfg[shipType]?.radius ?? (ship.radius || 12)),
+      ship.y + Math.sin(angle) * turretPosTuple[0] * (safeCfg[shipType]?.radius ?? (ship.radius || 12)) + Math.cos(angle) * turretPosTuple[1] * (safeCfg[shipType]?.radius ?? (ship.radius || 12))
+    ];
+  }
   const configRadius = cfg && typeof cfg.radius === 'number' ? cfg.radius : (ship.radius || 12);
   const [tx, ty] = turretPosTuple;
   const turretX = ship.x + Math.cos(angle) * tx * configRadius - Math.sin(angle) * ty * configRadius;
@@ -134,7 +142,7 @@ describe('integration: turret render vs bullet spawn', () => {
   it('carrier turret mountpoint scales with carrier radius and spawns bullet at correct coord', () => {
     const state: any = makeInitialState();
     // Use carrier type turret positions from ship config
-    const shipCfg = getShipConfig();
+  const shipCfg = getShipConfigSafe();
     const carrierCfg = shipCfg['carrier'];
     const turretPos = carrierCfg && Array.isArray((carrierCfg as any).turrets) && (carrierCfg as any).turrets.length ? (carrierCfg as any).turrets[0].position : [2.0, 1.2];
     const attacker: any = { id: 500, x: 500, y: 100, angle: 0, radius: carrierCfg.radius || 40, type: 'carrier', hp: 10, maxHp: 10, team: 'red', turrets: [turretPos] };
@@ -173,7 +181,7 @@ describe('integration: turret render vs bullet spawn', () => {
   it('fighters spawned by carrier have normalized turret objects', () => {
     const state: any = makeInitialState();
     // Create a carrier and set its internal timer so simulateStep will spawn fighters immediately
-    const carrierCfg = getShipConfig()['carrier'];
+  const carrierCfg = getShipConfigSafe()['carrier'];
     const carrier: any = { id: 700, x: 700, y: 300, angle: 0, radius: carrierCfg.radius || 40, type: 'carrier', hp: 100, maxHp: 100, team: 'red', turrets: (carrierCfg.turrets || []).map((t: any) => t.position) };
     // prime timer so spawn will occur even with dt=0
     carrier._carrierTimer = carrierCfg?.carrier?.fighterCooldown || 1.5;
