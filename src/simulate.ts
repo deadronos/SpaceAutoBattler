@@ -97,10 +97,13 @@ export function simulateStep(
   // Batched in-place pruning for all high-frequency event arrays
   function pruneAll(state: GameState, dtSeconds: number, bounds: Bounds) {
     // Ensure all event arrays are initialized
-    state.particles = state.particles || [];
-    state.explosions = state.explosions || [];
-    state.shieldHits = state.shieldHits || [];
-    state.healthHits = state.healthHits || [];
+  state.particles = state.particles || [];
+  state.explosions = state.explosions || [];
+  state.shieldHits = state.shieldHits || [];
+  state.healthHits = state.healthHits || [];
+  state.flashes = state.flashes || [];
+  state.shieldFlashes = state.shieldFlashes || [];
+  state.healthFlashes = state.healthFlashes || [];
     // Bullets: prune expired/out-of-bounds
     let writeBullet = 0;
     for (let read = 0; read < state.bullets.length; read++) {

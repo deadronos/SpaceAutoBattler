@@ -213,267 +213,61 @@ function parseSvgForMounts(svgText) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, "image/svg+xml");
     const svg = doc.querySelector("svg");
-    if (!svg) return { mounts: [], engineMounts: [], viewBox: null };
-    const vb = svg.getAttribute("viewBox");
-    let vbw = 0, vbh = 0;
-    if (vb) {
-      const parts = vb.split(/\s+|,/).map((p) => parseFloat(p));
-      if (parts.length >= 4) {
-        vbw = parts[2];
-        vbh = parts[3];
-      }
-    } else {
-      vbw = parseFloat(svg.getAttribute("width") || "0") || 0;
-      vbh = parseFloat(svg.getAttribute("height") || "0") || 0;
-    }
-    const mounts = [];
-    const engineMounts = [];
-    const colorRegions = [];
-    const candidates = Array.from(svg.querySelectorAll("[id],[class]"));
-    for (const el of candidates) {
-      try {
-        const id = el.getAttribute("id") || "";
-        const cls = el.getAttribute("class") || "";
-        if (/mount|turret|gun/i.test(id + " " + cls)) {
-          const bbox = el.getBBox ? el.getBBox() : null;
-          if (bbox) {
-            mounts.push({ x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 });
-          } else {
-            const cx = parseFloat(el.getAttribute && el.getAttribute("cx")) || parseFloat(el.getAttribute && el.getAttribute("x")) || 0;
-            const cy = parseFloat(el.getAttribute && el.getAttribute("cy")) || parseFloat(el.getAttribute && el.getAttribute("y")) || 0;
-            mounts.push({ x: cx, y: cy });
-          }
-        }
-        if (/engine/i.test(id + " " + cls)) {
-          const bbox = el.getBBox ? el.getBBox() : null;
-          if (bbox) {
-            engineMounts.push({ x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 });
-          } else {
-            const cx = parseFloat(el.getAttribute && el.getAttribute("cx")) || parseFloat(el.getAttribute && el.getAttribute("x")) || 0;
-            const cy = parseFloat(el.getAttribute && el.getAttribute("cy")) || parseFloat(el.getAttribute && el.getAttribute("y")) || 0;
-            engineMounts.push({ x: cx, y: cy });
-          }
-        }
-      } catch (e) {
-        continue;
+    if (!svg) return { mounts: [], engineMounts: [], viewBox: null, colorRegions: [] };
+    const vbAttr = svg.getAttribute("viewBox");
+    let viewBox = null;
+    if (vbAttr) {
+      const parts = vbAttr.trim().split(/[\s,]+/).map((s) => parseFloat(s));
+      if (parts.length >= 4 && !isNaN(parts[2]) && !isNaN(parts[3])) {
+        viewBox = { w: parts[2], h: parts[3] };
       }
     }
-    try {
-      const colorEls = Array.from(svg.querySelectorAll("[data-team],[data-team-slot]"));
-      for (const el of colorEls) {
-        try {
-          const role = (el.getAttribute("data-team") || el.getAttribute("data-team-slot") || "").trim();
-          const id = el.getAttribute("id") || void 0;
-          const cls = el.getAttribute("class") || void 0;
-          let bboxVal;
-          const bbox = el.getBBox ? el.getBBox() : null;
-          if (bbox) bboxVal = { x: bbox.x, y: bbox.y, w: bbox.width, h: bbox.height };
-          colorRegions.push({ role, id, class: cls, bbox: bboxVal });
-        } catch (e) {
-          continue;
-        }
-      }
-    } catch (e) {
-    }
-    return { mounts, engineMounts, viewBox: vbw && vbh ? { w: vbw, h: vbh } : null, colorRegions };
-  } catch (e) {
-    return { mounts: [], engineMounts: [], viewBox: null };
-  }
-}
-function rasterizeSvgToCanvas(svgText, outW, outH) {
-  const canvas = document.createElement("canvas");
-  canvas.width = outW;
-  canvas.height = outH;
-  try {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return canvas;
-    const img = new Image();
-    let svgSource = svgText;
-    try {
-      if (/\<svg[\s>]/i.test(svgSource) && !/xmlns\s*=\s*"http:\/\/www\.w3\.org\/2000\/svg"/i.test(svgSource)) {
-        svgSource = svgSource.replace(/<svg(\s|>)/i, '<svg xmlns="http://www.w3.org/2000/svg"$1');
-      }
-    } catch (e) {
-    }
-    const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgSource);
-    const url = dataUrl;
-    img.onload = () => {
-      try {
-        ctx.drawImage(img, 0, 0, outW, outH);
-      } catch (e) {
-      }
-      URL.revokeObjectURL(url);
+    const toNumber = (v) => {
+      const n = v == null ? NaN : parseFloat(v);
+      return isNaN(n) ? null : n;
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
+    const mountEls = Array.from(svg.querySelectorAll("[data-mount], .turret"));
+    const mounts = mountEls.map((el) => {
+      const slot = el.getAttribute("data-mount") || el.classList && (el.classList.contains("turret") ? "turret" : null);
+      const xAttr = el.getAttribute("cx") || el.getAttribute("x");
+      const yAttr = el.getAttribute("cy") || el.getAttribute("y");
+      let x = toNumber(xAttr);
+      let y = toNumber(yAttr);
+      if ((x == null || y == null) && el.getAttribute("width") && el.getAttribute("height")) {
+        const rx = toNumber(el.getAttribute("x"));
+        const ry = toNumber(el.getAttribute("y"));
+        const rw = toNumber(el.getAttribute("width"));
+        const rh = toNumber(el.getAttribute("height"));
+        if (rx != null && rw != null) x = rx + rw / 2;
+        if (ry != null && rh != null) y = ry + rh / 2;
+      }
+      return { x, y, slot };
+    });
+    const engineEls = Array.from(svg.querySelectorAll("[data-engine-mount], .engine"));
+    const engineMounts = engineEls.map((el) => {
+      const slot = el.getAttribute("data-engine-mount") || el.classList && (el.classList.contains("engine") ? "engine" : null);
+      const xAttr = el.getAttribute("cx") || el.getAttribute("x");
+      const yAttr = el.getAttribute("cy") || el.getAttribute("y");
+      let x = toNumber(xAttr);
+      let y = toNumber(yAttr);
+      if ((x == null || y == null) && el.getAttribute("width") && el.getAttribute("height")) {
+        const rx = toNumber(el.getAttribute("x"));
+        const ry = toNumber(el.getAttribute("y"));
+        const rw = toNumber(el.getAttribute("width"));
+        const rh = toNumber(el.getAttribute("height"));
+        if (rx != null && rw != null) x = rx + rw / 2;
+        if (ry != null && rh != null) y = ry + rh / 2;
+      }
+      return { x, y, slot };
+    });
+    const colorRegions = Array.from(svg.querySelectorAll('[data-team],[data-team-slot],[class*="team-fill-"]')).map((el) => ({
+      tag: el.tagName,
+      id: el.id || null,
+      role: el.getAttribute("data-team") || el.getAttribute("data-team-slot") || null
+    }));
+    return { mounts, engineMounts, viewBox, colorRegions };
   } catch (e) {
-  }
-  return canvas;
-}
-function rasterizeSvgToCanvasAsync(svgText, outW, outH) {
-  const canvas = document.createElement("canvas");
-  canvas.width = outW;
-  canvas.height = outH;
-  return new Promise((resolve) => {
-    try {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return resolve(canvas);
-      const img = new Image();
-      let svgSource = svgText;
-      try {
-        if (/\<svg[\s>]/i.test(svgSource) && !/xmlns\s*=\s*"http:\/\/www\.w3\.org\/2000\/svg"/i.test(svgSource)) {
-          svgSource = svgSource.replace(/<svg(\s|>)/i, '<svg xmlns="http://www.w3.org/2000/svg"$1');
-        }
-      } catch (e) {
-      }
-      const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgSource);
-      const url = dataUrl;
-      let settled = false;
-      const done = () => {
-        if (settled) return;
-        settled = true;
-        try {
-          URL.revokeObjectURL(url);
-        } catch (e) {
-        }
-        resolve(canvas);
-      };
-      img.onload = () => {
-        try {
-          ctx.clearRect(0, 0, outW, outH);
-          ctx.drawImage(img, 0, 0, outW, outH);
-        } catch (e) {
-        }
-        done();
-      };
-      img.onerror = () => {
-        done();
-      };
-      try {
-        img.src = url;
-      } catch (e) {
-        done();
-      }
-      setTimeout(() => {
-        done();
-      }, 2500);
-    } catch (e) {
-      try {
-      } catch {
-      }
-      ;
-      resolve(canvas);
-    }
-  });
-}
-function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, "image/svg+xml");
-    const svg = doc.querySelector("svg");
-    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
-    const turrets = svg.querySelectorAll("rect.turret");
-    turrets.forEach((el) => el.parentNode?.removeChild(el));
-    try {
-      const vbAttr = svg.getAttribute("viewBox");
-      let vbW = 0, vbH = 0;
-      if (vbAttr) {
-        const parts = vbAttr.split(/\s+|,/).map((p) => parseFloat(p));
-        if (parts.length >= 4) {
-          vbW = parts[2];
-          vbH = parts[3];
-        }
-      } else {
-        vbW = parseFloat(svg.getAttribute("width") || "0") || 0;
-        vbH = parseFloat(svg.getAttribute("height") || "0") || 0;
-      }
-      if (vbW > 0 && vbH > 0) {
-        const rects = svg.querySelectorAll("rect");
-        rects.forEach((r) => {
-          try {
-            const rx = parseFloat(r.getAttribute("x") || "0") || 0;
-            const ry = parseFloat(r.getAttribute("y") || "0") || 0;
-            const rw = parseFloat(r.getAttribute("width") || "0") || 0;
-            const rh = parseFloat(r.getAttribute("height") || "0") || 0;
-            if (Math.abs(rx) < 1e-6 && Math.abs(ry) < 1e-6 && Math.abs(rw - vbW) < 1e-3 && Math.abs(rh - vbH) < 1e-3) {
-              r.parentNode?.removeChild(r);
-            }
-          } catch (e) {
-          }
-        });
-      }
-    } catch (e) {
-    }
-    const serializer = new XMLSerializer();
-    const hullOnlySvgText = serializer.serializeToString(svg);
-    return rasterizeSvgToCanvas(hullOnlySvgText, outW, outH);
-  } catch (e) {
-    return rasterizeSvgToCanvas(svgText, outW, outH);
-  }
-}
-async function rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, "image/svg+xml");
-    const svg = doc.querySelector("svg");
-    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
-    const turrets = svg.querySelectorAll("rect.turret");
-    turrets.forEach((el) => el.parentNode?.removeChild(el));
-    const serializer = new XMLSerializer();
-    const hullOnlySvgText = serializer.serializeToString(svg);
-    return await rasterizeSvgToCanvasAsync(hullOnlySvgText, outW, outH);
-  } catch (e) {
-    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
-  }
-}
-function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
-  try {
-    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
-    if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
-      try {
-        const canvas = svgRenderer.getCanvas(assetKey || "", {}, outW, outH);
-        if (canvas) return canvas;
-      } catch (e) {
-      }
-    }
-  } catch (e) {
-  }
-  try {
-    return rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
-  } catch (e) {
-    return void 0;
-  }
-}
-async function ensureRasterizedAndCached(svgText, mapping, outW, outH, options) {
-  try {
-    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
-    if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
-      try {
-        const canvas = await svgRenderer.rasterizeSvgWithTeamColors(svgText, mapping || {}, outW, outH, { applyTo: options && options.applyTo, assetKey: options && options.assetKey });
-        return canvas;
-      } catch (e) {
-      }
-    }
-  } catch (e) {
-  }
-  try {
-    const recolored = applyTeamColorsToSvg(svgText, mapping || {}, options && { applyTo: options.applyTo });
-    const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
-    try {
-      const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
-      if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-        try {
-          svgRenderer.cacheCanvasForAsset(options && options.assetKey ? options.assetKey : "", mapping || {}, outW, outH, canvas);
-        } catch (e) {
-        }
-      }
-    } catch (e) {
-    }
-    return canvas;
-  } catch (e) {
-    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+    return { mounts: [], engineMounts: [], viewBox: null, colorRegions: [] };
   }
 }
 function applyTeamColorsToSvg(svgText, mapping, options) {
@@ -483,7 +277,7 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
     const svg = doc.querySelector("svg");
     if (!svg) return svgText;
     const applyDefault = options && options.applyTo ? options.applyTo : "both";
-    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot], [class*="team-fill-"]'));
+    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot],[data-team-slot-fill],[data-team-slot-stroke],[class*="team-fill-"]'));
     for (const el of els) {
       try {
         const role = (el.getAttribute("data-team") || el.getAttribute("data-team-slot") || "").trim();
@@ -495,6 +289,7 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
           const m = cls.match(/team-fill-([a-z0-9_-]+)/i);
           if (m) classRole = m[1];
         } catch (e) {
+          classRole = void 0;
         }
         const resolvedFillRole = fillRoleAttr || role || classRole || "primary";
         const resolvedStrokeRole = strokeRoleAttr || role || classRole || "trim";
@@ -524,11 +319,181 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
         continue;
       }
     }
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(svg);
+    return new XMLSerializer().serializeToString(svg);
   } catch (e) {
     return svgText;
   }
+}
+function encodeSvgDataUrl(svgText) {
+  try {
+    return "data:image/svg+xml;utf8," + encodeURIComponent(svgText);
+  } catch (e) {
+    return "data:image/svg+xml;utf8," + svgText;
+  }
+}
+async function tryLoadUrlToCanvas(url, outW, outH) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement("canvas");
+          c.width = outW;
+          c.height = outH;
+          const ctx = c.getContext("2d");
+          if (!ctx) return resolve(void 0);
+          ctx.clearRect(0, 0, outW, outH);
+          ctx.drawImage(img, 0, 0, outW, outH);
+          resolve(c);
+        } catch (e) {
+          resolve(void 0);
+        }
+      };
+      img.onerror = () => resolve(void 0);
+      img.src = url;
+    } catch (e) {
+      resolve(void 0);
+    }
+  });
+}
+function canvasHasOpaquePixels(c, thresholdAlpha = 8) {
+  try {
+    const ctx = c.getContext("2d");
+    if (!ctx) return false;
+    const w = Math.max(1, Math.min(16, c.width));
+    const h = Math.max(1, Math.min(16, c.height));
+    const data = ctx.getImageData(0, 0, w, h).data;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > thresholdAlpha) return true;
+  } catch (e) {
+    return true;
+  }
+  return false;
+}
+async function rasterizeSvgToCanvasAsync(svgText, outW, outH) {
+  const dataUrl = encodeSvgDataUrl(svgText);
+  let canvas = await tryLoadUrlToCanvas(dataUrl, outW, outH);
+  if (canvas && canvasHasOpaquePixels(canvas)) return canvas;
+  try {
+    const blob = new Blob([svgText], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    try {
+      const c2 = await tryLoadUrlToCanvas(url, outW, outH);
+      if (c2 && canvasHasOpaquePixels(c2)) return c2;
+      if (c2) return c2;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch (e) {
+  }
+  if (canvas) return canvas;
+  throw new Error("Failed to rasterize SVG to canvas");
+}
+function rasterizeSvgToCanvas(svgText, outW, outH) {
+  try {
+    const dataUrl = encodeSvgDataUrl(svgText);
+    const img = new Image();
+    img.src = dataUrl;
+    if (!img.complete) return void 0;
+    const c = document.createElement("canvas");
+    c.width = outW;
+    c.height = outH;
+    const ctx = c.getContext("2d");
+    if (!ctx) return void 0;
+    ctx.drawImage(img, 0, 0, outW, outH);
+    return c;
+  } catch (e) {
+    return void 0;
+  }
+}
+function stripHullOnly(svgText) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return svgText;
+    const rects = Array.from(svg.querySelectorAll("rect"));
+    for (const r of rects) {
+      try {
+        const cls = (r.getAttribute("class") || "").toLowerCase();
+        if (cls.includes("backdrop") || cls.includes("bg")) r.remove();
+        const w = parseFloat(r.getAttribute("width") || "0");
+        const h = parseFloat(r.getAttribute("height") || "0");
+        if (!isNaN(w) && !isNaN(h) && (w > 1e3 || h > 1e3)) r.remove();
+      } catch (e) {
+      }
+    }
+    const turrets = Array.from(svg.querySelectorAll("[data-turret]"));
+    for (const t of turrets) try {
+      t.remove();
+    } catch (e) {
+    }
+    return new XMLSerializer().serializeToString(svg);
+  } catch (e) {
+    return svgText;
+  }
+}
+async function rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) {
+  const hull = stripHullOnly(svgText);
+  return await rasterizeSvgToCanvasAsync(hull, outW, outH);
+}
+function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
+  try {
+    const c = getCachedHullCanvasSync(svgText, outW, outH);
+    if (c) return c;
+    const hull = stripHullOnly(svgText);
+    const rc = rasterizeSvgToCanvas(hull, outW, outH);
+    if (rc) return rc;
+  } catch (e) {
+  }
+  const empty = document.createElement("canvas");
+  empty.width = outW;
+  empty.height = outH;
+  return empty;
+}
+function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
+  try {
+    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+    if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
+      try {
+        const c = svgRenderer.getCanvas(assetKey || "", {}, outW, outH);
+        if (c) return c;
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  try {
+    const hull = stripHullOnly(svgText);
+    return rasterizeSvgToCanvas(hull, outW, outH);
+  } catch (e) {
+    return void 0;
+  }
+}
+async function ensureRasterizedAndCached(svgText, mapping, outW, outH, options) {
+  try {
+    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+    if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
+      try {
+        const c = await svgRenderer.rasterizeSvgWithTeamColors(svgText, mapping || {}, outW, outH, { applyTo: options && options.applyTo, assetKey: options && options.assetKey });
+        if (c) return c;
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  const recolored = applyTeamColorsToSvg(svgText, mapping || {}, options && { applyTo: options.applyTo });
+  const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+  try {
+    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+    if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+      try {
+        svgRenderer.cacheCanvasForAsset(options && options.assetKey ? options.assetKey : "", mapping || {}, outW, outH, canvas);
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  return canvas;
 }
 var init_svgLoader = __esm({
   "src/assets/svgLoader.ts"() {
@@ -1887,6 +1852,9 @@ function simulateStep(state, dtSeconds, bounds) {
     state2.explosions = state2.explosions || [];
     state2.shieldHits = state2.shieldHits || [];
     state2.healthHits = state2.healthHits || [];
+    state2.flashes = state2.flashes || [];
+    state2.shieldFlashes = state2.shieldFlashes || [];
+    state2.healthFlashes = state2.healthFlashes || [];
     let writeBullet = 0;
     for (let read = 0; read < state2.bullets.length; read++) {
       const b = state2.bullets[read];
@@ -2764,9 +2732,342 @@ var FALLBACK_POSITIONS = [
 var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
-var flashes = [];
-var shieldFlashes = [];
-var healthFlashes = [];
+function createGameManager({
+  useWorker = false,
+  renderer = null,
+  seed = 12345,
+  createSimWorker: createSimWorkerFactory
+} = {}) {
+  function _evaluateAndEmit(dt) {
+    const result = evaluateReinforcement(dt, state, continuousOptions);
+    if (result && Array.isArray(result.spawned) && result.spawned.length) {
+      lastReinforcement = {
+        spawned: result.spawned,
+        timestamp: Date.now(),
+        options: { ...continuousOptions }
+      };
+      emit("reinforcements", { spawned: result.spawned });
+    }
+  }
+  let state = makeInitialState();
+  let running = false;
+  const listeners = /* @__PURE__ */ new Map();
+  const workerReadyCbs = [];
+  let simWorker = null;
+  let _workerReadyHandler = null;
+  let _workerSnapshotHandler = null;
+  let _workerReinforcementsHandler = null;
+  let workerReady = false;
+  let lastReinforcement = {
+    spawned: [],
+    timestamp: 0,
+    options: {}
+  };
+  let continuous = false;
+  let continuousOptions = {};
+  let last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  let acc = 0;
+  const score = { red: 0, blue: 0 };
+  const internal = { state, bounds: SIM.bounds };
+  function emit(type, msg) {
+    emitManagerEvent(listeners, type, msg);
+  }
+  function on(evt, cb) {
+    const arr = listeners.get(evt) || [];
+    arr.push(cb);
+    listeners.set(evt, arr);
+  }
+  function off(evt, cb) {
+    const arr = listeners.get(evt) || [];
+    const i = arr.indexOf(cb);
+    if (i !== -1) arr.splice(i, 1);
+  }
+  function destroy() {
+    running = false;
+    try {
+      if (simWorker) {
+        try {
+          if (typeof simWorker.off === "function") {
+            try {
+              if (_workerReadyHandler) simWorker.off("ready", _workerReadyHandler);
+            } catch (e) {
+            }
+            try {
+              if (_workerSnapshotHandler) simWorker.off("snapshot", _workerSnapshotHandler);
+            } catch (e) {
+            }
+            try {
+              if (_workerReinforcementsHandler) simWorker.off("reinforcements", _workerReinforcementsHandler);
+            } catch (e) {
+            }
+          }
+        } catch (e) {
+        }
+        try {
+          if (typeof simWorker.terminate === "function") simWorker.terminate();
+          else if (typeof simWorker.close === "function") simWorker.close();
+          else if (typeof simWorker.post === "function") simWorker.post({ type: "stop" });
+        } catch (e) {
+        }
+        simWorker = null;
+      }
+    } catch (e) {
+    }
+    workerReady = false;
+    workerReadyCbs.length = 0;
+  }
+  function start() {
+    if (!running) {
+      running = true;
+      last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      runLoop();
+    }
+  }
+  function pause() {
+    running = false;
+  }
+  function resetManager() {
+    state = makeInitialState();
+    if (simWorker)
+      try {
+        simWorker.post({ type: "command", cmd: "setState", args: { state } });
+      } catch (e) {
+      }
+  }
+  function stepOnce(dt = SIM.DT_MS / 1e3) {
+    const n = Number(dt) || SIM.DT_MS / 1e3;
+    step(n);
+  }
+  function step(dtSeconds) {
+    const clampedDt = Math.min(dtSeconds, 0.05);
+    if (!simWorker) {
+      try {
+        applySimpleAI(state, clampedDt, SIM.bounds);
+      } catch (e) {
+      }
+      try {
+        simulateStep(state, clampedDt, SIM.bounds);
+      } catch (e) {
+      }
+    } else {
+      try {
+        simWorker.post && simWorker.post({ type: "snapshotRequest" });
+      } catch (e) {
+      }
+    }
+    _evaluateAndEmit(clampedDt);
+    if (renderer && typeof renderer.renderState === "function") {
+      try {
+        renderer.renderState({
+          ships: state.ships,
+          bullets: state.bullets,
+          flashes: state.flashes,
+          shieldFlashes: state.shieldFlashes,
+          healthFlashes: state.healthFlashes,
+          t: state.t
+        });
+      } catch (e) {
+      }
+    }
+  }
+  function runLoop() {
+    if (!running) return;
+    const now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    acc += now - last;
+    last = now;
+    if (acc > 250) acc = 250;
+    while (acc >= SIM.DT_MS) {
+      step(SIM.DT_MS / 1e3);
+      acc -= SIM.DT_MS;
+    }
+    try {
+      requestAnimationFrame(runLoop);
+    } catch (e) {
+      setTimeout(runLoop, SIM.DT_MS);
+    }
+  }
+  function setContinuousEnabled(v = false) {
+    continuous = !!v;
+    if (simWorker) {
+      try {
+        simWorker.post({ type: "setContinuous", value: !!v });
+      } catch (e) {
+      }
+    } else {
+      if (continuous) {
+        const result = evaluateReinforcement(SIM.DT_MS / 1e3, state, continuousOptions);
+        if (result && Array.isArray(result.spawned) && result.spawned.length) {
+          lastReinforcement = {
+            spawned: result.spawned,
+            timestamp: Date.now(),
+            options: { ...continuousOptions }
+          };
+          emit("reinforcements", { spawned: result.spawned });
+        }
+      }
+    }
+  }
+  function isContinuousEnabled() {
+    return !!continuous;
+  }
+  function setContinuousOptions(opts = {}) {
+    continuousOptions = { ...continuousOptions, ...opts };
+    if (simWorker)
+      try {
+        simWorker.post({ type: "setContinuousOptions", opts: continuousOptions });
+      } catch (e) {
+      }
+  }
+  function getContinuousOptions() {
+    return { ...continuousOptions };
+  }
+  function setReinforcementIntervalManager(seconds) {
+    setReinforcementInterval(seconds);
+    if (simWorker)
+      try {
+        simWorker.post({ type: "setReinforcementInterval", seconds });
+      } catch (e) {
+      }
+  }
+  function getReinforcementIntervalManager() {
+    return getReinforcementInterval();
+  }
+  function isRunning() {
+    return running;
+  }
+  function isWorker() {
+    return !!simWorker && !!workerReady;
+  }
+  function onWorkerReady(cb) {
+    if (typeof cb === "function") workerReadyCbs.push(cb);
+  }
+  function offWorkerReady(cb) {
+    const i = workerReadyCbs.indexOf(cb);
+    if (i !== -1) workerReadyCbs.splice(i, 1);
+  }
+  function spawnShip(team = "red", type) {
+    try {
+      const shipType = type || getDefaultShipType();
+      const b = SIM.bounds;
+      const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
+      const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
+      const ship = createShip(shipType, x, y, team);
+      state.ships.push(ship);
+      return ship;
+    } catch (e) {
+      return null;
+    }
+  }
+  function formFleets() {
+    try {
+      state.ships.length = 0;
+      const bounds = SIM.bounds;
+      const seedVal = Math.floor(srandom() * 4294967295) >>> 0;
+      const ships = makeInitialFleets(seedVal, bounds, createShip);
+      for (const ship of ships) {
+        state.ships.push(ship);
+      }
+    } catch (e) {
+    }
+  }
+  function reseedManager(newSeed = Math.floor(srandom() * 4294967295)) {
+    _seed2 = newSeed >>> 0;
+    srand(_seed2);
+    if (simWorker)
+      try {
+        simWorker.post({ type: "setSeed", seed: _seed2 });
+      } catch (e) {
+      }
+  }
+  function getLastReinforcement() {
+    return { ...lastReinforcement };
+  }
+  function snapshot() {
+    return {
+      ships: state.ships.slice(),
+      bullets: state.bullets.slice(),
+      t: state.t,
+      teamCounts: state.teamCounts ? { ...state.teamCounts } : {},
+      flashes: state.flashes ? state.flashes.slice() : [],
+      shieldFlashes: state.shieldFlashes ? state.shieldFlashes.slice() : [],
+      healthFlashes: state.healthFlashes ? state.healthFlashes.slice() : []
+    };
+  }
+  try {
+    if (useWorker) {
+      const factory = createSimWorkerFactory || createSimWorker;
+      let simWorkerUrl;
+      try {
+        simWorkerUrl = typeof import.meta !== "undefined" && import.meta.url ? new URL("./simWorker.js", import.meta.url).href : "./simWorker.js";
+      } catch (e) {
+        simWorkerUrl = "./simWorker.js";
+      }
+      simWorker = factory(simWorkerUrl);
+      _workerReadyHandler = () => {
+        workerReady = true;
+        for (const cb of workerReadyCbs.slice()) {
+          try {
+            cb();
+          } catch (e) {
+          }
+        }
+      };
+      simWorker.on && simWorker.on("ready", _workerReadyHandler);
+      _workerSnapshotHandler = (m) => {
+        if (m && m.state) state = m.state;
+      };
+      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
+      _workerReinforcementsHandler = (m) => {
+        emit("reinforcements", m);
+      };
+      simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
+      try {
+        simWorker.post({ type: "init", seed, bounds: SIM.bounds, simDtMs: SIM.DT_MS, state });
+        simWorker.post({ type: "start" });
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+    simWorker = null;
+  }
+  return {
+    on,
+    off,
+    start,
+    pause,
+    reset: resetManager,
+    stepOnce,
+    setContinuousEnabled,
+    isContinuousEnabled,
+    setContinuousOptions,
+    getContinuousOptions,
+    setReinforcementInterval: setReinforcementIntervalManager,
+    getReinforcementInterval: getReinforcementIntervalManager,
+    isRunning,
+    isWorker,
+    onWorkerReady,
+    offWorkerReady,
+    spawnShip,
+    reseed: reseedManager,
+    getLastReinforcement,
+    snapshot,
+    score,
+    formFleets,
+    destroy,
+    _internal: internal
+  };
+}
+function releaseParticle(state, p) {
+  if (!p) return;
+  const key = "particle";
+  try {
+    releaseEffect(state, key, p, (x) => {
+    });
+  } catch {
+  }
+  const idx = (state.particles || []).indexOf(p);
+  if (idx !== -1) (state.particles || []).splice(idx, 1);
+}
 function acquireBullet(state, opts = {}) {
   if (!state) state = makeInitialState();
   state.bullets = state.bullets || [];
@@ -2883,18 +3184,6 @@ var config = {
 var _seed2 = null;
 var _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;
 var _reinforcementAccumulator = 0;
-var starCanvas = null;
-function releaseParticle(state, p) {
-  if (!p) return;
-  const key = "particle";
-  try {
-    releaseEffect(state, key, p, (x) => {
-    });
-  } catch {
-  }
-  const idx = (state.particles || []).indexOf(p);
-  if (idx !== -1) (state.particles || []).splice(idx, 1);
-}
 function setReinforcementInterval(seconds) {
   _reinforcementInterval = Number(seconds) || (TeamsConfig.continuousReinforcement?.interval ?? 5);
 }
@@ -2984,585 +3273,6 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
     }
   }
   return null;
-}
-function createGameManager({
-  useWorker = true,
-  renderer = null,
-  seed = 12345,
-  createSimWorker: createSimWorkerFactory
-} = {}) {
-  let state = makeInitialState();
-  let running = false;
-  const listeners = /* @__PURE__ */ new Map();
-  const workerReadyCbs = [];
-  let simWorker = null;
-  let _workerReadyHandler = null;
-  let _workerSnapshotHandler = null;
-  let _workerReinforcementsHandler = null;
-  let workerReady = false;
-  let lastReinforcement = {
-    spawned: [],
-    timestamp: 0,
-    options: {}
-  };
-  let continuous = false;
-  let continuousOptions = {};
-  let latestSnapshot = null;
-  let renderScheduled = false;
-  function emit(type, msg) {
-    emitManagerEvent(listeners, type, msg);
-  }
-  function _mgr_random() {
-    return srandom();
-  }
-  try {
-    if (useWorker) {
-      const factory = createSimWorkerFactory || createSimWorker;
-      let simWorkerUrl;
-      try {
-        simWorkerUrl = typeof import.meta !== "undefined" && import.meta.url ? new URL("./simWorker.js", import.meta.url).href : "./simWorker.js";
-      } catch (e) {
-        simWorkerUrl = "./simWorker.js";
-      }
-      simWorker = factory(simWorkerUrl);
-      _workerReadyHandler = () => {
-        workerReady = true;
-        for (const cb of workerReadyCbs.slice()) {
-          try {
-            cb();
-          } catch (e) {
-          }
-        }
-      };
-      simWorker.on && simWorker.on("ready", _workerReadyHandler);
-      const handleSnapshot = (m) => {
-        try {
-          if (m && m.state) {
-            state = m.state;
-            try {
-              state.shipMap = /* @__PURE__ */ new Map();
-              state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || [])
-                if (s && typeof s.id !== "undefined") {
-                  try {
-                    normalizeTurrets(s);
-                  } catch (e) {
-                  }
-                  state.shipMap.set(s.id, s);
-                  try {
-                    const t = String(s.team || "");
-                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                  } catch (e) {
-                  }
-                }
-            } catch (e) {
-            }
-            try {
-              if (renderer && typeof renderer.renderState === "function") {
-                latestSnapshot = state;
-                if (!renderScheduled) {
-                  renderScheduled = true;
-                  try {
-                    requestAnimationFrame(() => {
-                      renderScheduled = false;
-                      const s = latestSnapshot;
-                      try {
-                        renderer.renderState({
-                          ships: s.ships,
-                          bullets: s.bullets,
-                          flashes,
-                          shieldFlashes,
-                          healthFlashes,
-                          t: s.t
-                        });
-                      } catch (e) {
-                      }
-                      flashes.length = 0;
-                      shieldFlashes.length = 0;
-                      healthFlashes.length = 0;
-                    });
-                  } catch (e) {
-                    renderScheduled = false;
-                  }
-                }
-              }
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-      };
-      _workerSnapshotHandler = handleSnapshot;
-      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
-      const _origWorkerSnapshotHandler = _workerSnapshotHandler;
-      _workerSnapshotHandler = (m) => {
-        try {
-          if (m && m.state) {
-            state = m.state;
-            try {
-              state.shipMap = /* @__PURE__ */ new Map();
-              state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || [])
-                if (s && typeof s.id !== "undefined") {
-                  try {
-                    normalizeTurrets(s);
-                  } catch (e) {
-                  }
-                  state.shipMap.set(s.id, s);
-                  try {
-                    const t = String(s.team || "");
-                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                  } catch (e) {
-                  }
-                }
-            } catch (e) {
-            }
-            try {
-              if (renderer && typeof renderer.renderState === "function") {
-                latestSnapshot = state;
-                if (!renderScheduled) {
-                  renderScheduled = true;
-                  try {
-                    requestAnimationFrame(() => {
-                      renderScheduled = false;
-                      const s = latestSnapshot;
-                      try {
-                        renderer.renderState({
-                          ships: s.ships,
-                          bullets: s.bullets,
-                          flashes,
-                          shieldFlashes,
-                          healthFlashes,
-                          t: s.t
-                        });
-                      } catch (e) {
-                      }
-                      flashes.length = 0;
-                      shieldFlashes.length = 0;
-                      healthFlashes.length = 0;
-                    });
-                  } catch (e) {
-                    renderScheduled = false;
-                  }
-                }
-              }
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-      };
-      simWorker.on && simWorker.off && simWorker.off("snapshot", _origWorkerSnapshotHandler);
-      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
-      _workerReinforcementsHandler = (m) => {
-        emit("reinforcements", m);
-      };
-      simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
-      try {
-        simWorker.post({
-          type: "init",
-          seed,
-          bounds: SIM.bounds,
-          simDtMs: SIM.DT_MS,
-          state
-        });
-        simWorker.post({ type: "start" });
-      } catch (e) {
-      }
-    }
-  } catch (e) {
-    simWorker = null;
-  }
-  function _evaluateAndEmit(dt) {
-    const result = evaluateReinforcement(dt, state, continuousOptions);
-    if (result && Array.isArray(result.spawned) && result.spawned.length) {
-      lastReinforcement = {
-        spawned: result.spawned,
-        timestamp: Date.now(),
-        options: { ...continuousOptions }
-      };
-      emit("reinforcements", { spawned: result.spawned });
-    }
-  }
-  function step(dtSeconds) {
-    const clampedDt = Math.min(dtSeconds, 0.05);
-    if (!simWorker) {
-      try {
-        applySimpleAI(state, clampedDt, SIM.bounds);
-      } catch (e) {
-      }
-      try {
-        simulateStep(state, clampedDt, SIM.bounds);
-      } catch (e) {
-      }
-    } else {
-      try {
-        simWorker.post && simWorker.post({ type: "snapshotRequest" });
-      } catch (e) {
-      }
-    }
-    _evaluateAndEmit(clampedDt);
-    if (renderer && typeof renderer.renderState === "function") {
-      try {
-        renderer.renderState({
-          ships: state.ships,
-          bullets: state.bullets,
-          flashes,
-          shieldFlashes,
-          healthFlashes,
-          t: state.t
-        });
-      } catch (e) {
-      }
-    }
-  }
-  let last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-  let acc = 0;
-  function runLoop() {
-    if (!running) return;
-    const now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-    acc += now - last;
-    last = now;
-    if (acc > 250) acc = 250;
-    while (acc >= SIM.DT_MS) {
-      step(SIM.DT_MS / 1e3);
-      acc -= SIM.DT_MS;
-    }
-    try {
-      if (renderer && typeof renderer.renderState === "function") {
-        try {
-          renderer.renderState({
-            ships: state.ships,
-            bullets: state.bullets,
-            flashes,
-            shieldFlashes,
-            healthFlashes,
-            t: state.t
-          });
-          flashes.length = 0;
-          shieldFlashes.length = 0;
-          healthFlashes.length = 0;
-        } catch (e) {
-        }
-      }
-    } catch (e) {
-    }
-    try {
-      requestAnimationFrame(runLoop);
-    } catch (e) {
-      setTimeout(runLoop, SIM.DT_MS);
-    }
-  }
-  function on(evt, cb) {
-    const arr = listeners.get(evt) || [];
-    arr.push(cb);
-    listeners.set(evt, arr);
-  }
-  function off(evt, cb) {
-    const arr = listeners.get(evt) || [];
-    const i = arr.indexOf(cb);
-    if (i !== -1) arr.splice(i, 1);
-  }
-  function destroy() {
-    running = false;
-    try {
-      if (simWorker) {
-        try {
-          if (typeof simWorker.off === "function") {
-            try {
-              if (_workerReadyHandler)
-                simWorker.off("ready", _workerReadyHandler);
-            } catch (e) {
-            }
-            try {
-              if (_workerSnapshotHandler)
-                simWorker.off("snapshot", _workerSnapshotHandler);
-            } catch (e) {
-            }
-            try {
-              if (_workerReinforcementsHandler)
-                simWorker.off("reinforcements", _workerReinforcementsHandler);
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-        try {
-          if (typeof simWorker.terminate === "function") simWorker.terminate();
-          else if (typeof simWorker.close === "function") simWorker.close();
-          else if (typeof simWorker.post === "function")
-            simWorker.post({ type: "stop" });
-        } catch (e) {
-        }
-        simWorker = null;
-      }
-    } catch (e) {
-    }
-    workerReady = false;
-    workerReadyCbs.length = 0;
-    if (renderer && typeof renderer.dispose === "function") {
-      try {
-        renderer.dispose();
-      } catch (e) {
-      }
-    }
-    starCanvas = null;
-  }
-  function start() {
-    if (!running) {
-      running = true;
-      last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-      runLoop();
-    }
-  }
-  function pause() {
-    running = false;
-  }
-  function resetManager() {
-    state = makeInitialState();
-    if (simWorker)
-      try {
-        simWorker.post({ type: "command", cmd: "setState", args: { state } });
-      } catch (e) {
-      }
-  }
-  function stepOnce(dt = SIM.DT_MS / 1e3) {
-    const n = Number(dt) || SIM.DT_MS / 1e3;
-    step(n);
-  }
-  function setContinuousEnabled(v = false) {
-    continuous = !!v;
-    if (simWorker) {
-      try {
-        simWorker.post({ type: "setContinuous", value: !!v });
-      } catch (e) {
-      }
-    } else {
-      if (continuous) {
-        const result = evaluateReinforcement(
-          SIM.DT_MS / 1e3,
-          state,
-          continuousOptions
-        );
-        if (result && Array.isArray(result.spawned) && result.spawned.length) {
-          lastReinforcement = {
-            spawned: result.spawned,
-            timestamp: Date.now(),
-            options: { ...continuousOptions }
-          };
-          emit("reinforcements", { spawned: result.spawned });
-        }
-      }
-    }
-  }
-  function isContinuousEnabled() {
-    return !!continuous;
-  }
-  function setContinuousOptions(opts = {}) {
-    continuousOptions = { ...continuousOptions, ...opts };
-    if (simWorker)
-      try {
-        simWorker.post({
-          type: "setContinuousOptions",
-          opts: continuousOptions
-        });
-      } catch (e) {
-      }
-  }
-  function getContinuousOptions() {
-    return { ...continuousOptions };
-  }
-  function setReinforcementIntervalManager(seconds) {
-    setReinforcementInterval(seconds);
-    if (simWorker)
-      try {
-        simWorker.post({ type: "setReinforcementInterval", seconds });
-      } catch (e) {
-      }
-  }
-  function getReinforcementIntervalManager() {
-    return getReinforcementInterval();
-  }
-  function isRunning() {
-    return running;
-  }
-  function isWorker() {
-    return !!simWorker && !!workerReady;
-  }
-  function onWorkerReady(cb) {
-    if (typeof cb === "function") workerReadyCbs.push(cb);
-  }
-  function offWorkerReady(cb) {
-    const i = workerReadyCbs.indexOf(cb);
-    if (i !== -1) workerReadyCbs.splice(i, 1);
-  }
-  function spawnShip(team = "red", type) {
-    try {
-      const chosenType = type || getDefaultShipType();
-      const b = SIM.bounds;
-      const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
-      const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
-      const ship = createShip(chosenType, x, y, team);
-      state.ships.push(ship);
-      try {
-        state.shipMap && state.shipMap.set(ship.id, ship);
-      } catch (e) {
-      }
-      try {
-        updateTeamCount(state, void 0, String(ship.team));
-      } catch (e) {
-      }
-      return ship;
-    } catch (e) {
-      return null;
-    }
-  }
-  function formFleets() {
-    try {
-      state.ships.length = 0;
-      try {
-        state.shipMap && state.shipMap.clear();
-      } catch (e) {
-      }
-      try {
-        state.teamCounts = { red: 0, blue: 0 };
-      } catch (e) {
-      }
-      const bounds = SIM.bounds;
-      const seed2 = Math.floor(srandom() * 4294967295) >>> 0;
-      const ships = makeInitialFleets(seed2, bounds, createShip);
-      for (const ship of ships) {
-        state.ships.push(ship);
-        try {
-          state.shipMap && state.shipMap.set(ship.id, ship);
-        } catch (e) {
-        }
-        try {
-          updateTeamCount(state, void 0, ship.team);
-        } catch (e) {
-        }
-      }
-    } catch (e) {
-    }
-  }
-  function reseedManager(newSeed = Math.floor(srandom() * 4294967295)) {
-    _seed2 = newSeed >>> 0;
-    srand(_seed2);
-    if (simWorker)
-      try {
-        simWorker.post({ type: "setSeed", seed: _seed2 });
-      } catch (e) {
-      }
-  }
-  function getLastReinforcement() {
-    return { ...lastReinforcement };
-  }
-  function snapshot() {
-    return {
-      ships: state.ships.slice(),
-      bullets: state.bullets.slice(),
-      t: state.t,
-      teamCounts: { ...state.teamCounts || {} }
-    };
-  }
-  const score = { red: 0, blue: 0 };
-  const internal = { state, bounds: SIM.bounds };
-  return {
-    on,
-    off,
-    start,
-    pause,
-    reset: resetManager,
-    stepOnce,
-    setContinuousEnabled,
-    isContinuousEnabled,
-    setContinuousOptions,
-    getContinuousOptions,
-    setReinforcementInterval: setReinforcementIntervalManager,
-    getReinforcementInterval: getReinforcementIntervalManager,
-    isRunning,
-    isWorker,
-    onWorkerReady,
-    offWorkerReady,
-    // expose onSnapshot for test injection (simulate worker snapshot arrival)
-    onSnapshot: (m) => {
-      try {
-        if (typeof _workerSnapshotHandler === "function") {
-          try {
-            _workerSnapshotHandler(m);
-            return;
-          } catch (e) {
-          }
-        }
-        try {
-          if (m && m.state) {
-            state = m.state;
-            try {
-              state.shipMap = /* @__PURE__ */ new Map();
-              state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || [])
-                if (s && typeof s.id !== "undefined") {
-                  try {
-                    normalizeTurrets(s);
-                  } catch (e) {
-                  }
-                  state.shipMap.set(s.id, s);
-                  try {
-                    const t = String(s.team || "");
-                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                  } catch (e) {
-                  }
-                }
-            } catch (e) {
-            }
-            try {
-              if (renderer && typeof renderer.renderState === "function") {
-                requestAnimationFrame(() => {
-                  try {
-                    renderer.renderState({
-                      ships: state.ships,
-                      bullets: state.bullets,
-                      flashes,
-                      shieldFlashes,
-                      healthFlashes,
-                      t: state.t
-                    });
-                  } catch (e) {
-                  }
-                  flashes.length = 0;
-                  shieldFlashes.length = 0;
-                  healthFlashes.length = 0;
-                });
-              }
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-      } catch (e) {
-      }
-    },
-    // expose current state for tests (accessor to reflect updates)
-    get state() {
-      try {
-        return Object.assign({}, state, {
-          flashes,
-          shieldFlashes,
-          healthFlashes
-        });
-      } catch (e) {
-        return state;
-      }
-    },
-    spawnShip,
-    reseed: reseedManager,
-    getLastReinforcement,
-    snapshot,
-    score,
-    formFleets,
-    destroy,
-    _internal: internal
-  };
 }
 
 // src/config/displayConfig.ts
@@ -5277,8 +4987,8 @@ var WebGLRenderer = class {
         }
       }
       try {
-        const flashes2 = state.flashes || [];
-        for (const f of flashes2) {
+        const flashes = state.flashes || [];
+        for (const f of flashes) {
           try {
             const key = `flash`;
             const pooled = acquireEffect(this.gameState || state, key, () => makePooled(

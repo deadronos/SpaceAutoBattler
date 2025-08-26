@@ -12,7 +12,7 @@ export type { RendererConfig } from '../config/rendererConfig';
 
 // Domain types
 export type { Cannon, Ship, Bullet } from '../entities';
-export type { GameManagerOptions } from '../gamemanager';
+export type { GameManagerOptions } from '../gamemanager.d';
 // Re-export pool types as type-only to make them discoverable from the barrel.
 export type { PoolEntry, TexturePoolEntry } from './pool';
 export type { OverflowStrategy } from './pool';
@@ -34,11 +34,11 @@ export interface GameState {
 	shieldHits: any[];
 	healthHits: any[];
 	// Optional/extended event arrays (add as needed)
-	particles?: any[];
-	stars?: any[];
-	flashes?: any[];
-	shieldFlashes?: any[];
-	healthFlashes?: any[];
+	 particles: any[];
+	 stars?: any[];
+	 flashes: any[];
+	 shieldFlashes: any[];
+	 healthFlashes: any[];
 	engineTrailsEnabled?: boolean;
 	damageEvents?: any[];
 	starCanvas?: HTMLCanvasElement;

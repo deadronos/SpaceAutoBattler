@@ -1074,6 +1074,17 @@ var EXPLOSION = {
 var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
+function releaseParticle(state2, p) {
+  if (!p) return;
+  const key = "particle";
+  try {
+    releaseEffect(state2, key, p, (x) => {
+    });
+  } catch {
+  }
+  const idx = (state2.particles || []).indexOf(p);
+  if (idx !== -1) (state2.particles || []).splice(idx, 1);
+}
 function acquireBullet(state2, opts = {}) {
   if (!state2) state2 = makeInitialState();
   state2.bullets = state2.bullets || [];
@@ -1188,17 +1199,6 @@ var config = {
   stars: { ...STARS }
 };
 var _reinforcementInterval = TeamsConfig.continuousReinforcement?.interval ?? 5;
-function releaseParticle(state2, p) {
-  if (!p) return;
-  const key = "particle";
-  try {
-    releaseEffect(state2, key, p, (x) => {
-    });
-  } catch {
-  }
-  const idx = (state2.particles || []).indexOf(p);
-  if (idx !== -1) (state2.particles || []).splice(idx, 1);
-}
 
 // src/config/behaviorConfig.ts
 var AI_THRESHOLDS = {
@@ -1616,6 +1616,9 @@ function simulateStep(state2, dtSeconds, bounds2) {
     state3.explosions = state3.explosions || [];
     state3.shieldHits = state3.shieldHits || [];
     state3.healthHits = state3.healthHits || [];
+    state3.flashes = state3.flashes || [];
+    state3.shieldFlashes = state3.shieldFlashes || [];
+    state3.healthFlashes = state3.healthFlashes || [];
     let writeBullet = 0;
     for (let read = 0; read < state3.bullets.length; read++) {
       const b = state3.bullets[read];

@@ -1,3 +1,268 @@
+
+export function createGameManager({
+  useWorker = false,
+  renderer = null,
+  seed = 12345,
+  createSimWorker: createSimWorkerFactory,
+}: any = {}) {
+  function _evaluateAndEmit(dt: number) {
+    const result = evaluateReinforcement(dt, state, continuousOptions);
+    if (result && Array.isArray(result.spawned) && result.spawned.length) {
+      lastReinforcement = {
+        spawned: result.spawned,
+        timestamp: Date.now(),
+        options: { ...continuousOptions },
+      };
+      emit("reinforcements", { spawned: result.spawned });
+    }
+  }
+  let state: GameState = makeInitialState();
+  let running = false;
+  const listeners = new Map<string, Function[]>();
+  const workerReadyCbs: Function[] = [];
+  let simWorker: any = null;
+  let _workerReadyHandler: Function | null = null;
+  let _workerSnapshotHandler: Function | null = null;
+  let _workerReinforcementsHandler: Function | null = null;
+  let workerReady = false;
+  let lastReinforcement: { spawned: any[]; timestamp: number; options: any } = {
+    spawned: [],
+    timestamp: 0,
+    options: {},
+  };
+  let continuous = false;
+  let continuousOptions: any = {};
+  let last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  let acc = 0;
+  const score = { red: 0, blue: 0 };
+  const internal = { state, bounds: SIM.bounds };
+
+  function emit(type: string, msg: any) {
+    emitManagerEvent(listeners, type, msg);
+  }
+  function on(evt: string, cb: Function) {
+    const arr = listeners.get(evt) || [];
+    arr.push(cb);
+    listeners.set(evt, arr);
+  }
+  function off(evt: string, cb: Function) {
+    const arr = listeners.get(evt) || [];
+    const i = arr.indexOf(cb);
+    if (i !== -1) arr.splice(i, 1);
+  }
+  function destroy() {
+    running = false;
+    try {
+      if (simWorker) {
+        try {
+          if (typeof simWorker.off === "function") {
+            try { if (_workerReadyHandler) simWorker.off("ready", _workerReadyHandler); } catch (e) {}
+            try { if (_workerSnapshotHandler) simWorker.off("snapshot", _workerSnapshotHandler); } catch (e) {}
+            try { if (_workerReinforcementsHandler) simWorker.off("reinforcements", _workerReinforcementsHandler); } catch (e) {}
+          }
+        } catch (e) {}
+        try { if (typeof simWorker.terminate === "function") simWorker.terminate(); else if (typeof simWorker.close === "function") simWorker.close(); else if (typeof simWorker.post === "function") simWorker.post({ type: "stop" }); } catch (e) {}
+        simWorker = null;
+      }
+    } catch (e) {}
+    workerReady = false;
+    workerReadyCbs.length = 0;
+  }
+  function start() {
+    if (!running) {
+      running = true;
+      last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      runLoop();
+    }
+  }
+  function pause() {
+    running = false;
+  }
+  function resetManager() {
+    state = makeInitialState();
+    if (simWorker)
+      try {
+        simWorker.post({ type: "command", cmd: "setState", args: { state } });
+      } catch (e) {}
+  }
+  function stepOnce(dt = SIM.DT_MS / 1000) {
+    const n = Number(dt) || SIM.DT_MS / 1000;
+    step(n);
+  }
+  function step(dtSeconds: number) {
+    const clampedDt = Math.min(dtSeconds, 0.05);
+    if (!simWorker) {
+      try { applySimpleAI(state, clampedDt, SIM.bounds); } catch (e) {}
+      try { simulateStep(state, clampedDt, SIM.bounds); } catch (e) {}
+    } else {
+      try { simWorker.post && simWorker.post({ type: "snapshotRequest" }); } catch (e) {}
+    }
+    _evaluateAndEmit(clampedDt);
+    if (renderer && typeof renderer.renderState === "function") {
+      try {
+        renderer.renderState({
+          ships: state.ships,
+          bullets: state.bullets,
+          flashes: state.flashes,
+          shieldFlashes: state.shieldFlashes,
+          healthFlashes: state.healthFlashes,
+          t: state.t,
+        });
+      } catch (e) {}
+    }
+  }
+  function runLoop() {
+    if (!running) return;
+    const now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    acc += now - last;
+    last = now;
+    if (acc > 250) acc = 250;
+    while (acc >= SIM.DT_MS) {
+      step(SIM.DT_MS / 1000);
+      acc -= SIM.DT_MS;
+    }
+    try { requestAnimationFrame(runLoop); } catch (e) { setTimeout(runLoop, SIM.DT_MS); }
+  }
+  function setContinuousEnabled(v: boolean = false) {
+    continuous = !!v;
+    if (simWorker) {
+      try { simWorker.post({ type: "setContinuous", value: !!v }); } catch (e) {}
+    } else {
+      if (continuous) {
+        const result = evaluateReinforcement(SIM.DT_MS / 1000, state, continuousOptions);
+        if (result && Array.isArray(result.spawned) && result.spawned.length) {
+          lastReinforcement = {
+            spawned: result.spawned,
+            timestamp: Date.now(),
+            options: { ...continuousOptions },
+          };
+          emit("reinforcements", { spawned: result.spawned });
+        }
+      }
+    }
+  }
+  function isContinuousEnabled() { return !!continuous; }
+  function setContinuousOptions(opts: any = {}) {
+    continuousOptions = { ...continuousOptions, ...opts };
+    if (simWorker)
+      try { simWorker.post({ type: "setContinuousOptions", opts: continuousOptions }); } catch (e) {}
+  }
+  function getContinuousOptions() { return { ...continuousOptions }; }
+  function setReinforcementIntervalManager(seconds: number) {
+    setReinforcementInterval(seconds);
+    if (simWorker)
+      try { simWorker.post({ type: "setReinforcementInterval", seconds }); } catch (e) {}
+  }
+  function getReinforcementIntervalManager() { return getReinforcementInterval(); }
+  function isRunning() { return running; }
+  function isWorker() { return !!simWorker && !!workerReady; }
+  function onWorkerReady(cb: Function) { if (typeof cb === "function") workerReadyCbs.push(cb); }
+  function offWorkerReady(cb: Function) { const i = workerReadyCbs.indexOf(cb); if (i !== -1) workerReadyCbs.splice(i, 1); }
+  function spawnShip(team: string = "red", type?: string) {
+    try {
+      const shipType = type || getDefaultShipType();
+      const b = SIM.bounds;
+      const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
+      const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
+      const ship = createShip(shipType, x, y, team);
+      state.ships.push(ship);
+      return ship;
+    } catch (e) { return null; }
+  }
+  function formFleets() {
+    try {
+      state.ships.length = 0;
+      const bounds = SIM.bounds;
+      const seedVal = Math.floor(srandom() * 0xffffffff) >>> 0;
+      const ships = makeInitialFleets(seedVal, bounds, createShip);
+      for (const ship of ships) {
+        state.ships.push(ship);
+      }
+    } catch (e) {}
+  }
+  function reseedManager(newSeed: number = Math.floor(srandom() * 0xffffffff)) {
+    _seed = newSeed >>> 0;
+    srand(_seed);
+    if (simWorker)
+      try { simWorker.post({ type: "setSeed", seed: _seed }); } catch (e) {}
+  }
+  function getLastReinforcement() { return { ...lastReinforcement }; }
+  function snapshot() {
+    return {
+      ships: state.ships.slice(),
+      bullets: state.bullets.slice(),
+      t: state.t,
+      teamCounts: state.teamCounts ? { ...state.teamCounts } : {},
+      flashes: state.flashes ? state.flashes.slice() : [],
+      shieldFlashes: state.shieldFlashes ? state.shieldFlashes.slice() : [],
+      healthFlashes: state.healthFlashes ? state.healthFlashes.slice() : [],
+    };
+  }
+  // Worker setup (optional, not used in current UI)
+  try {
+    if (useWorker) {
+      const factory = createSimWorkerFactory || createSimWorker;
+      let simWorkerUrl;
+      try {
+        simWorkerUrl = typeof import.meta !== "undefined" && import.meta.url ? new URL("./simWorker.js", import.meta.url).href : "./simWorker.js";
+      } catch (e) { simWorkerUrl = "./simWorker.js"; }
+      simWorker = factory(simWorkerUrl);
+      _workerReadyHandler = () => {
+        workerReady = true;
+        for (const cb of workerReadyCbs.slice()) { try { cb(); } catch (e) {} }
+      };
+      simWorker.on && simWorker.on("ready", _workerReadyHandler);
+      _workerSnapshotHandler = (m: any) => { if (m && m.state) state = m.state; };
+      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
+      _workerReinforcementsHandler = (m: any) => { emit("reinforcements", m); };
+      simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
+      try {
+        simWorker.post({ type: "init", seed, bounds: SIM.bounds, simDtMs: SIM.DT_MS, state });
+        simWorker.post({ type: "start" });
+      } catch (e) {}
+    }
+  } catch (e) { simWorker = null; }
+
+  return {
+    on,
+    off,
+    start,
+    pause,
+    reset: resetManager,
+    stepOnce,
+    setContinuousEnabled,
+    isContinuousEnabled,
+    setContinuousOptions,
+    getContinuousOptions,
+    setReinforcementInterval: setReinforcementIntervalManager,
+    getReinforcementInterval: getReinforcementIntervalManager,
+    isRunning,
+    isWorker,
+    onWorkerReady,
+    offWorkerReady,
+    spawnShip,
+    reseed: reseedManager,
+    getLastReinforcement,
+    snapshot,
+    score,
+    formFleets,
+    destroy,
+    _internal: internal,
+  };
+}
+
+export default createGameManager;
+export function releaseParticle(state: GameState, p?: Particle) {
+  if (!p) return;
+  const key = "particle";
+  try {
+    releaseEffect(state, key, p, (x) => {
+      /* no-op */
+    });
+  } catch {}
+  const idx = (state.particles || []).indexOf(p);
+  if (idx !== -1) (state.particles || []).splice(idx, 1);
+}
 // Minimal TypeScript shim that re-exports the existing JavaScript runtime implementation.
 // Import the runtime as a namespace and re-export value bindings to avoid
 // circular alias issues. Types are defined in `gamemanager.d.ts`.
@@ -50,13 +315,7 @@ import {
   TeamsConfig,
 } from "./config/teamsConfig";
 
-export const ships: Ship[] = [];
-export const bullets: Bullet[] = [];
-export const particles: Particle[] = [];
-export const stars: Array<Record<string, unknown>> = [];
-export const flashes: ExplosionEffect[] = [];
-export const shieldFlashes: ShieldHitEffect[] = [];
-export const healthFlashes: HealthHitEffect[] = [];
+// All runtime arrays are now managed via GameState for determinism and lifecycle control.
 // Bullet pooling
 // Bullets: support optional GameState-backed pooling. If `state` is provided,
 // use state.assetPool.sprites keyed by 'bullet', otherwise fallback to legacy in-memory pool.
@@ -248,22 +507,23 @@ export function acquireParticle(
   opts: Partial<Particle> = {},
 ): Particle {
   const key = "particle";
-  const p = acquireEffect(
+  const poolConfig = state.assetPool?.config || {};
+  const maxSize = poolConfig.effectPoolSize ?? 128;
+  const overflowStrategy = poolConfig.effectOverflowStrategy ?? "discard-oldest";
+  // Defensive: prune oldest if pool is full
+  if ((state.particles?.length ?? 0) >= maxSize) {
+    if (overflowStrategy === "discard-oldest" && state.particles?.length) {
+      state.particles?.shift();
+    } else if (overflowStrategy === "error") {
+      // Do not add new particle, return null
+      return null as any;
+    } // "grow" allows pool to grow
+  }
+  // Create a pooled Particle instance
+  const p = acquireEffect<Particle>(
     state,
     key,
-    () =>
-      makePooled(
-        new Particle(
-          x,
-          y,
-          opts.vx ?? 0,
-          opts.vy ?? 0,
-          opts.ttl ?? PARTICLE_DEFAULTS.ttl,
-          opts.color ?? PARTICLE_DEFAULTS.color,
-          opts.size ?? PARTICLE_DEFAULTS.size,
-        ),
-        (o: any, initArgs?: any) => Object.assign(o, initArgs),
-      ),
+    () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS.ttl, opts.color ?? PARTICLE_DEFAULTS.color, opts.size ?? PARTICLE_DEFAULTS.size), undefined),
     {
       x,
       y,
@@ -274,7 +534,7 @@ export function acquireParticle(
       size: opts.size ?? PARTICLE_DEFAULTS.size,
     },
   );
-  // rehydrate
+  // Rehydrate properties
   p.x = x;
   p.y = y;
   p.vx = opts.vx ?? 0;
@@ -286,47 +546,6 @@ export function acquireParticle(
   p.alive = true;
   (state.particles ||= []).push(p);
   return p;
-}
-
-export function releaseParticle(state: GameState, p?: Particle) {
-  if (!p) return;
-  const key = "particle";
-  try {
-    releaseEffect(state, key, p, (x) => {
-      /* no-op */
-    });
-  } catch {}
-  const idx = (state.particles || []).indexOf(p);
-  if (idx !== -1) (state.particles || []).splice(idx, 1);
-}
-
-export function reset(seedValue: number | null = null) {
-  ships.length = 0;
-  bullets.length = 0;
-  particles.length = 0;
-  stars.length = 0;
-  flashes.length = 0;
-  shieldFlashes.length = 0;
-  healthFlashes.length = 0;
-  _reinforcementAccumulator = 0;
-  if (typeof seedValue === "number") {
-    _seed = seedValue >>> 0;
-    srand(_seed);
-  }
-}
-
-export function initStars(state: GameState, W = 800, H = 600, count = 140) {
-  if (!state || !Array.isArray(state.stars)) return;
-  state.stars.length = 0;
-  for (let i = 0; i < count; i++) {
-    const x = srandom() * W;
-    const y = srandom() * H;
-    const r = 0.3 + srandom() * 1.3;
-    const a = 0.3 + srandom() * 0.7;
-    const twPhase = srandom() * Math.PI * 2;
-    const twSpeed = 0.5 + srandom() * 1.5;
-    state.stars.push({ x, y, r, a, baseA: a, twPhase, twSpeed });
-  }
 }
 
 export function createStarCanvas(
@@ -468,629 +687,6 @@ function evaluateReinforcement(
   return null;
 }
 
-export interface GameManagerOptions {
-  useWorker?: boolean;
-  renderer?: any;
-  seed?: number;
-  createSimWorker?: typeof createSimWorker;
-}
-
-export function createGameManager({
-  useWorker = true,
-  renderer = null,
-  seed = 12345,
-  createSimWorker: createSimWorkerFactory,
-}: GameManagerOptions = {}) {
-  let state: GameState = makeInitialState();
-  let running = false;
-  const listeners = new Map<string, Function[]>();
-  const workerReadyCbs: Function[] = [];
-  let simWorker: any = null;
-  // Worker event handler refs (declared here so destroy() can unregister them)
-  let _workerReadyHandler: Function | null = null;
-  let _workerSnapshotHandler: Function | null = null;
-  let _workerReinforcementsHandler: Function | null = null;
-  let workerReady = false;
-  let lastReinforcement: { spawned: any[]; timestamp: number; options: any } = {
-    spawned: [],
-    timestamp: 0,
-    options: {},
-  };
-  let continuous = false;
-  let continuousOptions: any = {};
-  // Snapshot coalescing helpers for worker-rendered mode
-  let latestSnapshot: any = null;
-  let renderScheduled = false;
-
-  function emit(type: string, msg: any) {
-    emitManagerEvent(listeners, type, msg);
-  }
-  function _mgr_random() {
-    return srandom();
-  }
-
-  try {
-    if (useWorker) {
-      const factory = createSimWorkerFactory || createSimWorker;
-      let simWorkerUrl;
-      try {
-        // Only use import.meta.url if available (ES2022+)
-        simWorkerUrl =
-          typeof import.meta !== "undefined" && import.meta.url
-            ? new URL("./simWorker.js", import.meta.url).href
-            : "./simWorker.js";
-      } catch (e) {
-        simWorkerUrl = "./simWorker.js";
-      }
-      simWorker = factory(simWorkerUrl);
-      // Keep references to worker handler functions so they can be removed on destroy
-
-      _workerReadyHandler = () => {
-        workerReady = true;
-        for (const cb of workerReadyCbs.slice()) {
-          try {
-            cb();
-          } catch (e) {}
-        }
-      };
-      simWorker.on && simWorker.on("ready", _workerReadyHandler);
-
-      // Create a reusable snapshot handler so tests can invoke it directly
-      const handleSnapshot = (m: any) => {
-        try {
-          if (m && m.state) {
-            state = m.state;
-            try {
-              (state as any).shipMap = new Map<number, any>();
-              state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || [])
-                if (s && typeof s.id !== "undefined") {
-                  try {
-                    normalizeTurrets(s);
-                  } catch (e) {}
-                  (state as any).shipMap.set(s.id, s);
-                  try {
-                    const t = String((s as any).team || "");
-                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                  } catch (e) {}
-                }
-            } catch (e) {}
-            // Instead of rendering every snapshot immediately, coalesce snapshots
-            // and schedule a single RAF render to avoid render backlog.
-            try {
-              if (renderer && typeof renderer.renderState === "function") {
-                // store latest snapshot refs in closure-scoped vars
-                latestSnapshot = state;
-                if (!renderScheduled) {
-                  renderScheduled = true;
-                  try {
-                    requestAnimationFrame(() => {
-                      renderScheduled = false;
-                      const s = latestSnapshot;
-                      try {
-                        renderer.renderState({
-                          ships: s.ships,
-                          bullets: s.bullets,
-                          flashes,
-                          shieldFlashes,
-                          healthFlashes,
-                          t: s.t,
-                        });
-                      } catch (e) {}
-                      // clear transient flash arrays after render
-                      flashes.length = 0;
-                      shieldFlashes.length = 0;
-                      healthFlashes.length = 0;
-                    });
-                  } catch (e) {
-                    renderScheduled = false;
-                  }
-                }
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-      };
-      _workerSnapshotHandler = handleSnapshot;
-      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
-
-      // When running the sim in a worker, render from the fresh snapshot the
-      // worker posts instead of rendering the (possibly stale) manager state
-      // during step(). This prevents a 1-frame lag where bullets may appear
-      // but ship positions are not yet updated in the renderer.
-      const _origWorkerSnapshotHandler = _workerSnapshotHandler;
-      _workerSnapshotHandler = (m: any) => {
-        try {
-          if (m && m.state) {
-            state = m.state;
-            try {
-              (state as any).shipMap = new Map<number, any>();
-              state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || [])
-                if (s && typeof s.id !== "undefined") {
-                  try {
-                    normalizeTurrets(s);
-                  } catch (e) {}
-                  (state as any).shipMap.set(s.id, s);
-                  try {
-                    const t = String((s as any).team || "");
-                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                  } catch (e) {}
-                }
-            } catch (e) {}
-            // Instead of rendering every snapshot immediately, coalesce snapshots
-            // and schedule a single RAF render to avoid render backlog.
-            try {
-              if (renderer && typeof renderer.renderState === "function") {
-                // store latest snapshot refs in closure-scoped vars
-                latestSnapshot = state;
-                if (!renderScheduled) {
-                  renderScheduled = true;
-                  try {
-                    requestAnimationFrame(() => {
-                      renderScheduled = false;
-                      const s = latestSnapshot;
-                      try {
-                        renderer.renderState({
-                          ships: s.ships,
-                          bullets: s.bullets,
-                          flashes,
-                          shieldFlashes,
-                          healthFlashes,
-                          t: s.t,
-                        });
-                      } catch (e) {}
-                      // clear transient flash arrays after render
-                      flashes.length = 0;
-                      shieldFlashes.length = 0;
-                      healthFlashes.length = 0;
-                    });
-                  } catch (e) {
-                    renderScheduled = false;
-                  }
-                }
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-      };
-      // replace the handler on the worker
-      simWorker.on &&
-        simWorker.off &&
-        simWorker.off("snapshot", _origWorkerSnapshotHandler);
-      simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
-
-      _workerReinforcementsHandler = (m: any) => {
-        emit("reinforcements", m);
-      };
-      simWorker.on &&
-        simWorker.on("reinforcements", _workerReinforcementsHandler);
-      try {
-        simWorker.post({
-          type: "init",
-          seed,
-          bounds: SIM.bounds,
-          simDtMs: SIM.DT_MS,
-          state,
-        });
-        simWorker.post({ type: "start" });
-      } catch (e) {}
-    }
-  } catch (e) {
-    simWorker = null;
-  }
-
-  function _evaluateAndEmit(dt: number) {
-    const result = evaluateReinforcement(dt, state, continuousOptions);
-    if (result && Array.isArray(result.spawned) && result.spawned.length) {
-      lastReinforcement = {
-        spawned: result.spawned,
-        timestamp: Date.now(),
-        options: { ...continuousOptions },
-      };
-      emit("reinforcements", { spawned: result.spawned });
-    }
-  }
-
-  function step(dtSeconds: number) {
-    // Clamp dtSeconds to a max of 0.05 to prevent teleportation on lag spikes
-    const clampedDt = Math.min(dtSeconds, 0.05);
-    if (!simWorker) {
-      // Run AI logic before simulation step
-      try {
-        applySimpleAI(state, clampedDt, SIM.bounds);
-      } catch (e) {}
-      try {
-        simulateStep(state, clampedDt, SIM.bounds);
-      } catch (e) {}
-    } else {
-      try {
-        simWorker.post && simWorker.post({ type: "snapshotRequest" });
-      } catch (e) {}
-    }
-    _evaluateAndEmit(clampedDt);
-    // Flashes and event arrays are pruned by simulation now; no need for decay/splice/filter here.
-    if (renderer && typeof renderer.renderState === "function") {
-      try {
-        renderer.renderState({
-          ships: state.ships,
-          bullets: state.bullets,
-          flashes,
-          shieldFlashes,
-          healthFlashes,
-          t: state.t,
-        });
-      } catch (e) {}
-    }
-  }
-
-  let last =
-    typeof performance !== "undefined" && performance.now
-      ? performance.now()
-      : Date.now();
-  let acc = 0;
-  function runLoop() {
-    if (!running) return;
-    const now =
-      typeof performance !== "undefined" && performance.now
-        ? performance.now()
-        : Date.now();
-    acc += now - last;
-    last = now;
-    if (acc > 250) acc = 250;
-    while (acc >= SIM.DT_MS) {
-      step(SIM.DT_MS / 1000);
-      acc -= SIM.DT_MS;
-    }
-    // Render once per RAF/frame using the latest state (avoid rendering inside step())
-    try {
-      if (renderer && typeof renderer.renderState === "function") {
-        try {
-          renderer.renderState({
-            ships: state.ships,
-            bullets: state.bullets,
-            flashes,
-            shieldFlashes,
-            healthFlashes,
-            t: state.t,
-          });
-          // Clear transient flash arrays after render to avoid unbounded growth
-          flashes.length = 0;
-          shieldFlashes.length = 0;
-          healthFlashes.length = 0;
-        } catch (e) {
-          // swallow render errors
-        }
-      }
-    } catch (e) {}
-    try {
-      requestAnimationFrame(runLoop);
-    } catch (e) {
-      setTimeout(runLoop, SIM.DT_MS);
-    }
-  }
-
-  function on(evt: string, cb: Function) {
-    const arr = listeners.get(evt) || [];
-    arr.push(cb);
-    listeners.set(evt, arr);
-  }
-  function off(evt: string, cb: Function) {
-    const arr = listeners.get(evt) || [];
-    const i = arr.indexOf(cb);
-    if (i !== -1) arr.splice(i, 1);
-  }
-  /**
-   * destroy()
-   * ---------
-   * Tear down all internal resources owned by the GameManager.
-   * - Stops the run loop (idempotent).
-   * - Unregisters any internal worker event handlers that were attached
-   *   to the sim worker so external references are not retained.
-   * - Terminates/closes the sim worker if possible, or posts a stop
-   *   message as a best-effort fallback.
-   * - Clears internal worker-ready callbacks and resets worker state.
-   *
-   * Contract and guarantees:
-   * - Safe to call multiple times (idempotent).
-   * - Will not throw on missing or partially-initialized worker.
-   * - Designed to be called before higher-level cleanup (e.g. UI dispose)
-   *   so that worker-side handlers are removed while manager internals
-   *   are still available.
-   */
-  function destroy() {
-    // Stop running loop
-    running = false;
-    // Tear down worker and its handlers
-    try {
-      if (simWorker) {
-        try {
-          if (typeof simWorker.off === "function") {
-            try {
-              if (_workerReadyHandler)
-                simWorker.off("ready", _workerReadyHandler);
-            } catch (e) {}
-            try {
-              if (_workerSnapshotHandler)
-                simWorker.off("snapshot", _workerSnapshotHandler);
-            } catch (e) {}
-            try {
-              if (_workerReinforcementsHandler)
-                simWorker.off("reinforcements", _workerReinforcementsHandler);
-            } catch (e) {}
-          }
-        } catch (e) {}
-        try {
-          if (typeof simWorker.terminate === "function") simWorker.terminate();
-          else if (typeof simWorker.close === "function") simWorker.close();
-          else if (typeof simWorker.post === "function")
-            simWorker.post({ type: "stop" });
-        } catch (e) {}
-        simWorker = null;
-      }
-    } catch (e) {}
-    workerReady = false;
-    workerReadyCbs.length = 0;
-    // Dispose renderer assets if possible
-    if (renderer && typeof renderer.dispose === "function") {
-      try {
-        renderer.dispose();
-      } catch (e) {}
-    }
-    // Clear asset references in GameState
-    starCanvas = null;
-  }
-  function start() {
-    if (!running) {
-      running = true;
-      last =
-        typeof performance !== "undefined" && performance.now
-          ? performance.now()
-          : Date.now();
-      runLoop();
-    }
-  }
-  function pause() {
-    running = false;
-  }
-  function resetManager() {
-    state = makeInitialState();
-    if (simWorker)
-      try {
-        simWorker.post({ type: "command", cmd: "setState", args: { state } });
-      } catch (e) {}
-  }
-  function stepOnce(dt = SIM.DT_MS / 1000) {
-    const n = Number(dt) || SIM.DT_MS / 1000;
-    step(n);
-  }
-  function setContinuousEnabled(v: boolean = false) {
-    continuous = !!v;
-    if (simWorker) {
-      try {
-        simWorker.post({ type: "setContinuous", value: !!v });
-      } catch (e) {}
-    } else {
-      if (continuous) {
-        const result = evaluateReinforcement(
-          SIM.DT_MS / 1000,
-          state,
-          continuousOptions,
-        );
-        if (result && Array.isArray(result.spawned) && result.spawned.length) {
-          lastReinforcement = {
-            spawned: result.spawned,
-            timestamp: Date.now(),
-            options: { ...continuousOptions },
-          };
-          emit("reinforcements", { spawned: result.spawned });
-        }
-      }
-    }
-  }
-  function isContinuousEnabled() {
-    return !!continuous;
-  }
-  function setContinuousOptions(opts: any = {}) {
-    continuousOptions = { ...continuousOptions, ...opts };
-    if (simWorker)
-      try {
-        simWorker.post({
-          type: "setContinuousOptions",
-          opts: continuousOptions,
-        });
-      } catch (e) {}
-  }
-  function getContinuousOptions() {
-    return { ...continuousOptions };
-  }
-  function setReinforcementIntervalManager(seconds: number) {
-    setReinforcementInterval(seconds);
-    if (simWorker)
-      try {
-        simWorker.post({ type: "setReinforcementInterval", seconds });
-      } catch (e) {}
-  }
-  function getReinforcementIntervalManager() {
-    return getReinforcementInterval();
-  }
-  function isRunning() {
-    return running;
-  }
-  function isWorker() {
-    return !!simWorker && !!workerReady;
-  }
-  function onWorkerReady(cb: Function) {
-    if (typeof cb === "function") workerReadyCbs.push(cb);
-  }
-  function offWorkerReady(cb: Function) {
-    const i = workerReadyCbs.indexOf(cb);
-    if (i !== -1) workerReadyCbs.splice(i, 1);
-  }
-  function spawnShip(team: string = "red", type?: string) {
-    try {
-      const chosenType = type || getDefaultShipType();
-      const b = SIM.bounds;
-      const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
-      const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
-      const ship = createShip(chosenType, x, y, team);
-      state.ships.push(ship);
-      try {
-        (state as any).shipMap && (state as any).shipMap.set(ship.id, ship);
-      } catch (e) {}
-      try {
-        updateTeamCount(state, undefined, String(ship.team));
-      } catch (e) {}
-      return ship;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // Fleet formation (config-driven)
-  function formFleets() {
-    try {
-      // Remove all ships
-      // Clear ships and reset counts
-      state.ships.length = 0;
-      try {
-        (state as any).shipMap && (state as any).shipMap.clear();
-      } catch (e) {}
-      try {
-        state.teamCounts = { red: 0, blue: 0 };
-      } catch (e) {}
-      // Use makeInitialFleets from teamsConfig (static import)
-      const bounds = SIM.bounds;
-      const seed = Math.floor(srandom() * 0xffffffff) >>> 0;
-      const ships = makeInitialFleets(seed, bounds, createShip);
-      for (const ship of ships) {
-        state.ships.push(ship);
-        try {
-          (state as any).shipMap && (state as any).shipMap.set(ship.id, ship);
-        } catch (e) {}
-        try {
-          updateTeamCount(state, undefined, ship.team);
-        } catch (e) {}
-      }
-    } catch (e) {
-      /* ignore errors */
-    }
-  }
-  function reseedManager(newSeed: number = Math.floor(srandom() * 0xffffffff)) {
-    _seed = newSeed >>> 0;
-    srand(_seed);
-    if (simWorker)
-      try {
-        simWorker.post({ type: "setSeed", seed: _seed });
-      } catch (e) {}
-  }
-  function getLastReinforcement() {
-    return { ...lastReinforcement };
-  }
-  function snapshot() {
-    return {
-      ships: state.ships.slice(),
-      bullets: state.bullets.slice(),
-      t: state.t,
-      teamCounts: { ...(state.teamCounts || {}) },
-    };
-  }
-  const score = { red: 0, blue: 0 };
-  const internal = { state, bounds: SIM.bounds };
-
-  return {
-    on,
-    off,
-    start,
-    pause,
-    reset: resetManager,
-    stepOnce,
-    setContinuousEnabled,
-    isContinuousEnabled,
-    setContinuousOptions,
-    getContinuousOptions,
-    setReinforcementInterval: setReinforcementIntervalManager,
-    getReinforcementInterval: getReinforcementIntervalManager,
-    isRunning,
-    isWorker,
-    onWorkerReady,
-    offWorkerReady,
-    // expose onSnapshot for test injection (simulate worker snapshot arrival)
-    onSnapshot: (m: any) => {
-      try {
-        if (typeof _workerSnapshotHandler === "function") {
-          try {
-            _workerSnapshotHandler(m);
-            return;
-          } catch (e) {}
-        }
-        // Fallback path when not using a worker: perform the same snapshot handling
-        try {
-          if (m && m.state) {
-            state = m.state;
-            try {
-              (state as any).shipMap = new Map<number, any>();
-              state.teamCounts = { red: 0, blue: 0 };
-              for (const s of state.ships || [])
-                if (s && typeof s.id !== "undefined") {
-                  try {
-                    normalizeTurrets(s);
-                  } catch (e) {}
-                  (state as any).shipMap.set(s.id, s);
-                  try {
-                    const t = String((s as any).team || "");
-                    state.teamCounts[t] = (state.teamCounts[t] || 0) + 1;
-                  } catch (e) {}
-                }
-            } catch (e) {}
-            // Schedule a single RAF render and clear transient flash arrays after render
-            try {
-              if (renderer && typeof renderer.renderState === "function") {
-                requestAnimationFrame(() => {
-                  try {
-                    renderer.renderState({
-                      ships: state.ships,
-                      bullets: state.bullets,
-                      flashes,
-                      shieldFlashes,
-                      healthFlashes,
-                      t: state.t,
-                    });
-                  } catch (e) {}
-                  flashes.length = 0;
-                  shieldFlashes.length = 0;
-                  healthFlashes.length = 0;
-                });
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-      } catch (e) {}
-    },
-    // expose current state for tests (accessor to reflect updates)
-    get state() {
-      // Return the canonical GameState augmented with transient flash arrays
-      try {
-        return Object.assign({}, state, {
-          flashes: flashes,
-          shieldFlashes: shieldFlashes,
-          healthFlashes: healthFlashes,
-        });
-      } catch (e) {
-        return state;
-      }
-    },
-    spawnShip,
-    reseed: reseedManager,
-    getLastReinforcement,
-    snapshot,
-    score,
-    formFleets,
-    destroy,
-    _internal: internal,
-  };
-}
-
 export function simulate(dt: number, W = 800, H = 600) {
   try {
     const now =
@@ -1107,71 +703,18 @@ export function simulate(dt: number, W = 800, H = 600) {
     _lastSimulateFrameId = frame;
   } catch (e) {}
   // Build a canonical GameState using makeInitialState to ensure assetPool exists
-  const base = makeInitialState();
-  (base as any).t = 0;
-  (base as any).ships = ships;
-  (base as any).bullets = bullets;
-  (base as any).explosions = [];
-  (base as any).shieldHits = [];
-  (base as any).healthHits = [];
-  (base as any).particles = particles;
-  (base as any).stars = stars;
-  (base as any).flashes = flashes;
-  (base as any).shieldFlashes = shieldFlashes;
-  (base as any).healthFlashes = healthFlashes;
-  (base as any).starCanvas = starCanvas || undefined;
-  const state: GameState = base as any;
-  // Populate shipMap from backing ships array for O(1) lookups
-  try {
-    (state as any).shipMap = new Map<number, any>();
-    for (const s of state.ships || []) {
-      if (s && typeof s.id !== "undefined") (state as any).shipMap.set(s.id, s);
-    }
-  } catch (e) {}
-  // (Previously exposed state globally via _lastGameState for legacy helpers.)
-  // We now pass `state` explicitly to pooling helpers to avoid global state.
+  const state: GameState = makeInitialState();
+  (state as any).t = 0;
+  // No global arrays; all arrays are managed via GameState
   evaluateReinforcement(dt, state);
   try {
     simulateStep(state, dt, SIM.bounds);
   } catch (e) {}
-  for (const ex of state.explosions) {
-    if (ex && typeof ex === "object") flashes.push(ex);
-    try {
-      const count = 12;
-      for (let i = 0; i < count; i++) {
-        const ang = srandom() * Math.PI * 2;
-        const sp = 30 + srandom() * 90;
-        acquireParticle(state, (ex as any).x || 0, (ex as any).y || 0, {
-          vx: Math.cos(ang) * sp,
-          vy: Math.sin(ang) * sp,
-          ttl: 0.6,
-          color: "rgba(255,200,100,0.95)",
-          size: 3,
-        });
-      }
-    } catch (e) {}
-  }
-  for (const h of state.shieldHits) {
-    if (h && typeof h === "object") shieldFlashes.push(h);
-  }
-  for (const h of state.healthHits) {
-    if (h && typeof h === "object") healthFlashes.push(h);
-  }
   // No global state to clear; callers should pass `state` explicitly to helpers.
-  return {
-    ships,
-    bullets,
-    particles,
-    flashes,
-    shieldFlashes,
-    healthFlashes,
-    stars,
-    starCanvas,
-  };
+  return state;
 }
+
 
 export function processStateEvents(state: any, dt: number = 0) {
   return state;
 }
-
-export default createGameManager;

@@ -107,8 +107,8 @@ export class WebGLRenderer {
       }
       // Process visual flashes/effects and use effect pooling for transient objects
       try {
-        const flashes = (state as any).flashes || [];
-        for (const f of flashes) {
+    const flashes = state.flashes || [];
+    for (const f of flashes) {
           try {
             const key = `flash`;
             const pooled = acquireEffect(this.gameState || (state as any), key, () => makePooled(
