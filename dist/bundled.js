@@ -288,8 +288,15 @@ function rasterizeSvgToCanvas(svgText, outW, outH) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return canvas;
     const img = new Image();
-    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
+    let svgSource = svgText;
+    try {
+      if (/\<svg[\s>]/i.test(svgSource) && !/xmlns\s*=\s*"http:\/\/www\.w3\.org\/2000\/svg"/i.test(svgSource)) {
+        svgSource = svgSource.replace(/<svg(\s|>)/i, '<svg xmlns="http://www.w3.org/2000/svg"$1');
+      }
+    } catch (e) {
+    }
+    const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgSource);
+    const url = dataUrl;
     img.onload = () => {
       try {
         ctx.drawImage(img, 0, 0, outW, outH);
@@ -314,8 +321,15 @@ function rasterizeSvgToCanvasAsync(svgText, outW, outH) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return resolve(canvas);
       const img = new Image();
-      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
+      let svgSource = svgText;
+      try {
+        if (/\<svg[\s>]/i.test(svgSource) && !/xmlns\s*=\s*"http:\/\/www\.w3\.org\/2000\/svg"/i.test(svgSource)) {
+          svgSource = svgSource.replace(/<svg(\s|>)/i, '<svg xmlns="http://www.w3.org/2000/svg"$1');
+        }
+      } catch (e) {
+      }
+      const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgSource);
+      const url = dataUrl;
       let settled = false;
       const done = () => {
         if (settled) return;
@@ -469,13 +483,24 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
     const svg = doc.querySelector("svg");
     if (!svg) return svgText;
     const applyDefault = options && options.applyTo ? options.applyTo : "both";
-    const els = Array.from(svg.querySelectorAll("[data-team],[data-team-slot]"));
+    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot], [class*="team-fill-"]'));
     for (const el of els) {
       try {
         const role = (el.getAttribute("data-team") || el.getAttribute("data-team-slot") || "").trim();
-        if (!role) continue;
-        const color = mapping[role];
-        if (!color) continue;
+        const fillRoleAttr = (el.getAttribute("data-team-slot-fill") || "").trim();
+        const strokeRoleAttr = (el.getAttribute("data-team-slot-stroke") || "").trim();
+        const cls = el.getAttribute("class") || "";
+        let classRole;
+        try {
+          const m = cls.match(/team-fill-([a-z0-9_-]+)/i);
+          if (m) classRole = m[1];
+        } catch (e) {
+        }
+        const resolvedFillRole = fillRoleAttr || role || classRole || "primary";
+        const resolvedStrokeRole = strokeRoleAttr || role || classRole || "trim";
+        const fillColor = mapping[resolvedFillRole];
+        const strokeColor = mapping[resolvedStrokeRole] || fillColor;
+        if (!fillColor && !strokeColor) continue;
         const applyAttr = (el.getAttribute("data-team-apply") || "").trim().toLowerCase();
         const apply = applyAttr === "fill" || applyAttr === "stroke" ? applyAttr : applyDefault;
         const setStyleProp = (prop, value) => {
@@ -493,8 +518,8 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
           } catch (e) {
           }
         };
-        if (apply === "fill" || apply === "both") setStyleProp("fill", color);
-        if (apply === "stroke" || apply === "both") setStyleProp("stroke", color);
+        if ((apply === "fill" || apply === "both") && fillColor) setStyleProp("fill", fillColor);
+        if ((apply === "stroke" || apply === "both") && strokeColor) setStyleProp("stroke", strokeColor);
       } catch (e) {
         continue;
       }
@@ -789,6 +814,24 @@ function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
 }
 
+// src/config/simConfig.ts
+var SIM = {
+  DT_MS: 16,
+  MAX_ACC_MS: 250,
+  bounds: { W: 1920, H: 1080 },
+  // Use LOGICAL_MAP for default bounds
+  friction: 0.99,
+  gridCellSize: 64
+};
+var boundaryBehavior = {
+  ships: "wrap",
+  bullets: "remove"
+};
+var LOGICAL_MAP = { W: 1920, H: 1080 };
+function getDefaultBounds() {
+  return { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
+}
+
 // src/rng.ts
 var _seed = 1;
 function srand(seed = 1) {
@@ -865,12 +908,13 @@ function hashStringToInt(s) {
   }
   return h >>> 0;
 }
-function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
+function generateFleetForTeam(seed = 0, teamId = "red", bounds, shipFactory, options = {}) {
+  const b = bounds || getDefaultBounds();
   const cfg = Object.assign({}, TeamsConfig.defaultFleet, options.fleet || {});
   const spacing = options.spacing ?? cfg.spacing;
   const jitter = Object.assign({}, cfg.jitter, options.jitter || {});
-  const centerY = bounds.H / 2;
-  const baseX = teamId === "red" ? bounds.W * 0.22 : bounds.W * 0.78;
+  const centerY = b.H / 2;
+  const baseX = teamId === "red" ? b.W * 0.22 : b.W * 0.78;
   const rng = mulberry322((seed >>> 0) + hashStringToInt(teamId));
   const out = [];
   for (const [type, count] of Object.entries(cfg.counts)) {
@@ -879,8 +923,8 @@ function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 60
       const angle = rng() * Math.PI * 2;
       const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
       const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
-      const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
-      const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
+      const x = Math.max(0, Math.min(b.W - 1e-6, baseX + dx));
+      const y = Math.max(0, Math.min(b.H - 1e-6, centerY + dy));
       if (typeof shipFactory === "function")
         out.push(shipFactory(type, x, y, teamId));
       else out.push({ type, x, y, team: teamId });
@@ -888,12 +932,13 @@ function generateFleetForTeam(seed = 0, teamId = "red", bounds = { W: 800, H: 60
   }
   return out;
 }
-function makeInitialFleets(seed = 0, bounds = { W: 800, H: 600 }, shipFactory, options = {}) {
-  const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
+function makeInitialFleets(seed = 0, bounds, shipFactory, options = {}) {
+  const b = bounds || getDefaultBounds();
+  const red = generateFleetForTeam(seed, "red", b, shipFactory, options);
   const blue = generateFleetForTeam(
     seed + 1,
     "blue",
-    bounds,
+    b,
     shipFactory,
     options
   );
@@ -948,7 +993,7 @@ function chooseReinforcements(seed = 0, state = {}, options = {}) {
     };
     const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
     const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
-    const b = options.bounds || { W: 800, H: 600 };
+    const b = options.bounds || getDefaultBounds();
     const centerY = b.H / 2;
     const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {
@@ -1388,7 +1433,7 @@ function chooseNewTarget(state, ship) {
   const idx = Math.floor(srandom() * enemies.length);
   return enemies[idx];
 }
-function applySimpleAI(state, dt, bounds = { W: 800, H: 600 }) {
+function applySimpleAI(state, dt, bounds = getDefaultBounds()) {
   if (!state || !Array.isArray(state.ships)) return;
   for (const s of state.ships) {
     const ai = ensureShipAiState(s);
@@ -1685,24 +1730,6 @@ var progression = {
   speedPercentPerLevel: 0.03,
   regenPercentPerLevel: 0.04
 };
-
-// src/config/simConfig.ts
-var SIM = {
-  DT_MS: 16,
-  MAX_ACC_MS: 250,
-  bounds: { W: 1920, H: 1080 },
-  // Use LOGICAL_MAP for default bounds
-  friction: 0.99,
-  gridCellSize: 64
-};
-var boundaryBehavior = {
-  ships: "wrap",
-  bullets: "remove"
-};
-var LOGICAL_MAP = { W: 1920, H: 1080 };
-function getDefaultBounds() {
-  return { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
-}
 
 // src/spatialGrid.ts
 var spatialGrid_exports = {};
@@ -3663,6 +3690,23 @@ var TintedHullPool = class {
 };
 
 // src/canvasrenderer.ts
+function teamMapping(color) {
+  return {
+    primary: color,
+    hull: color,
+    trim: color,
+    hangar: color,
+    launch: color,
+    engine: color,
+    glow: color,
+    turret: color,
+    panel: color,
+    secondary: color,
+    accent: color,
+    weapon: color,
+    detail: color
+  };
+}
 var CanvasRenderer = class {
   canvas;
   ctx = null;
@@ -3943,6 +3987,25 @@ var CanvasRenderer = class {
           this._svgEngineMountCache = this._svgEngineMountCache || {};
           this._svgEngineMountCache[key] = engineNorm;
           try {
+            const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+            if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
+              const outW = vb && vb.w || 128;
+              const outH = vb && vb.h || 128;
+              (async () => {
+                try {
+                  const canvas = await svgRenderer.rasterizeSvgWithTeamColors(svgText, {}, outW, outH, { applyTo: "both", assetKey: key });
+                  try {
+                    this._svgHullCache = this._svgHullCache || {};
+                    this._svgHullCache[key] = canvas;
+                  } catch (e) {
+                  }
+                } catch (e) {
+                }
+              })();
+            }
+          } catch (e) {
+          }
+          try {
             const outW = vb.w || 128;
             const outH = vb.h || 128;
             let hullCanvas = void 0;
@@ -4067,7 +4130,7 @@ var CanvasRenderer = class {
                   try {
                     const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                      svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                      svgRenderer.cacheCanvasForAsset(shipType, teamMapping(col), tc.width, tc.height, tc);
                     }
                   } catch (e) {
                   }
@@ -4119,7 +4182,7 @@ var CanvasRenderer = class {
                   try {
                     const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                      svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                      svgRenderer.cacheCanvasForAsset(shipType, teamMapping(col), tc.width, tc.height, tc);
                     }
                   } catch (e) {
                   }
@@ -4155,7 +4218,7 @@ var CanvasRenderer = class {
             if (!ctx2) continue;
             ctx2.clearRect(0, 0, canvas.width, canvas.height);
             ctx2.translate(size / 2, size / 2);
-            ctx2.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
+            ctx2.fillStyle = assetsConfig_default.palette?.turret || "#94a3b8";
             const scale = size / 2 / 2;
             if (tshape.type === "circle") {
               ctx2.beginPath();
@@ -4251,7 +4314,7 @@ var CanvasRenderer = class {
     activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
     withContext(() => {
-      activeBufferCtx.fillStyle = assetsConfig_default.palette.background || "#0b1220";
+      activeBufferCtx.fillStyle = assetsConfig_default.palette?.background || "#0b1220";
       activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     });
     function drawPolygon(points) {
@@ -4299,7 +4362,7 @@ var CanvasRenderer = class {
               vx: Math.cos(angle) * speed,
               vy: Math.sin(angle) * speed,
               r: 0.6 + Math.random() * 0.8,
-              color: dmgAnim.color || "#ff6b6b",
+              color: dmgAnim.color || assetsConfig_default.palette?.shipAccent || "#ff6b6b",
               lifetime: dmgAnim.lifetime || 0.8,
               age: 0,
               shape: "circle"
@@ -4357,7 +4420,7 @@ var CanvasRenderer = class {
         const trailConfig = getEngineTrailConfig(
           s.type || getDefaultShipType()
         );
-        const color = trailConfig?.color || "#aee1ff";
+        const color = trailConfig?.color || assetsConfig_default.palette?.bullet || "#aee1ff";
         const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
         const engineMounts = this._svgEngineMountCache && this._svgEngineMountCache[s.type || getDefaultShipType()];
@@ -4452,9 +4515,23 @@ var CanvasRenderer = class {
             if (this._tintedHullPool.has(tintedKey)) {
               const existing = this._tintedHullPool.get(tintedKey);
               if (existing) {
-                this._tintedHullPool.delete(tintedKey);
-                this._tintedHullPool.set(tintedKey, existing);
-                tintedCanvas = existing;
+                try {
+                  if (existing.width === hullCanvas.width && existing.height === hullCanvas.height) {
+                    this._tintedHullPool.delete(tintedKey);
+                    this._tintedHullPool.set(tintedKey, existing);
+                    tintedCanvas = existing;
+                  } else {
+                    try {
+                      this._tintedHullPool.delete(tintedKey);
+                    } catch (ee) {
+                    }
+                  }
+                } catch (e) {
+                  try {
+                    this._tintedHullPool.delete(tintedKey);
+                  } catch (ee) {
+                  }
+                }
               }
             }
             if (!tintedCanvas) {
@@ -4462,7 +4539,7 @@ var CanvasRenderer = class {
                 const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
                 if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
                   const assetKey = cacheKey;
-                  const mapping = { primary: teamColor };
+                  const mapping = teamMapping(teamColor);
                   try {
                     const c = svgRenderer.getCanvas(assetKey, mapping, hullCanvas.width, hullCanvas.height);
                     if (c) {
@@ -4470,7 +4547,7 @@ var CanvasRenderer = class {
                       this._setTintedCanvas(tintedKey, c);
                     } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
                       try {
-                        ensureRasterizedAndCached && ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "fill" });
+                        ensureRasterizedAndCached && ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "both" });
                       } catch (e) {
                       }
                     }
@@ -4567,7 +4644,7 @@ var CanvasRenderer = class {
             withContext(() => {
               activeBufferCtx.translate(offsetLocal, 0);
               activeBufferCtx.globalAlpha = typeof engAnim.alpha === "number" ? engAnim.alpha : 1;
-              activeBufferCtx.fillStyle = engAnim.color || "#ffffff";
+              activeBufferCtx.fillStyle = engAnim.color || assetsConfig_default.palette?.shipAccent || "#ffffff";
               activeBufferCtx.beginPath();
               const pts = engAnim.points || [];
               if (pts.length) {
@@ -4633,7 +4710,7 @@ var CanvasRenderer = class {
                 } catch (e) {
                 }
               }
-              activeBufferCtx.fillStyle = assetsConfig_default.palette.turret || "#94a3b8";
+              activeBufferCtx.fillStyle = assetsConfig_default.palette?.turret || "#94a3b8";
               if (turretShape.type === "circle") {
                 activeBufferCtx.beginPath();
                 activeBufferCtx.arc(
@@ -4687,7 +4764,7 @@ var CanvasRenderer = class {
               0,
               Math.min(1, alphaBase + alphaScale * pulse * shieldNorm)
             );
-            const strokeColor = shAnim && shAnim.color || "#3ab6ff";
+            const strokeColor = shAnim && shAnim.color || assetsConfig_default.palette?.shipAccent || "#3ab6ff";
             const strokeWidth = shAnim && (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale || 3 * renderScale;
             const shipType2 = s.type || "fighter";
             const shapeEntry2 = assetsConfig_default.shapes2d && assetsConfig_default.shapes2d[shipType2];
@@ -4789,8 +4866,8 @@ var CanvasRenderer = class {
         const baseH = typeof hbCfg.h === "number" ? hbCfg.h : Math.max(4, Math.round((s.radius || 12) * 0.25));
         const dx = typeof hbCfg.dx === "number" ? hbCfg.dx : -Math.round(baseW / 2);
         const dy = typeof hbCfg.dy === "number" ? hbCfg.dy : -(s.radius || 12) - baseH - 6;
-        const hbBg = hbCfg.bg || "#222";
-        const hbFill = hbCfg.fill || assetsConfig_default.palette.shipHull || "#4caf50";
+        const hbBg = hbCfg.bg || assetsConfig_default.palette?.background || "#222";
+        const hbFill = hbCfg.fill || assetsConfig_default.palette?.shipHull || "#4caf50";
         const hpPct = typeof s.hpPercent === "number" ? s.hpPercent : Math.max(0, Math.min(1, (s.hp || 0) / (s.maxHp || 1)));
         const shPct = typeof s.shieldPercent === "number" ? s.shieldPercent : typeof s.maxShield === "number" && s.maxShield > 0 ? Math.max(0, Math.min(1, (s.shield || 0) / s.maxShield)) : 0;
         const w = Math.max(1, Math.round(baseW * renderScale));
@@ -4811,7 +4888,7 @@ var CanvasRenderer = class {
           );
           if (shPct > 0) {
             const shH = Math.max(1, Math.round(h * 0.5));
-            activeBufferCtx.fillStyle = assetsConfig_default.palette.shipAccent || "#3ab6ff";
+            activeBufferCtx.fillStyle = assetsConfig_default.palette?.shipAccent || "#3ab6ff";
             activeBufferCtx.fillRect(
               sx2 + ox,
               sy2 + oy - shH - 2,
@@ -4933,7 +5010,7 @@ var CanvasRenderer = class {
                 x: p.x || 0,
                 y: p.y || 0,
                 r: p.r || 1,
-                color: p.color || "#ffdca8",
+                color: p.color || assetsConfig_default.palette?.bullet || "#ffdca8",
                 age: p.age || 0,
                 lifetime: p.lifetime || 1,
                 assetShape: p.assetShape
@@ -5067,7 +5144,7 @@ var CanvasRenderer = class {
               ef.x * renderScale,
               ef.y * renderScale
             );
-            activeBufferCtx.fillStyle = ef.color || "#ffd089";
+            activeBufferCtx.fillStyle = ef.color || assetsConfig_default.palette?.bullet || "#ffd089";
             if (expShape && expShape.type === "circle") {
               const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
               activeBufferCtx.beginPath();
@@ -5576,6 +5653,25 @@ async function startApp(rootDocument = document) {
   try {
     if (typeof window !== "undefined" && window.gm)
       Object.assign(window.gm, gm);
+    try {
+      const host = location && location.hostname || "";
+      if (host === "127.0.0.1" || host === "localhost") {
+        try {
+          Object.defineProperty(window, "__renderer", {
+            value: renderer,
+            writable: false,
+            configurable: true,
+            enumerable: false
+          });
+        } catch (e) {
+          try {
+            window.__renderer = renderer;
+          } catch (err) {
+          }
+        }
+      }
+    } catch (e) {
+    }
   } catch (e) {
   }
   let simSpeedMultiplier = 1;

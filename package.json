@@ -15,8 +15,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:playwright": "playwright test -c playwright.config.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "validate-config": "node ./scripts/validate-config.mjs"
-    ,
+    "validate-config": "node ./scripts/validate-config.mjs",
     "generate-memory-index": "node ./scripts/generate_memory_index.mjs",
     "add-memory-node": "node ./scripts/add_memory_node.mjs"
   },
@@ -40,7 +39,7 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
-    "viz": "^3.0.1"
+    "viz": "^1.2.0"
   },
   "dependencies": {
     "glob": "^11.0.3",

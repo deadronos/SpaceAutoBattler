@@ -90,8 +90,18 @@ export function rasterizeSvgToCanvas(svgText: string, outW: number, outH: number
     const ctx = canvas.getContext('2d');
     if (!ctx) return canvas;
     const img = new Image();
-    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+    // Ensure SVG has xmlns so Image() can render it in all browsers
+    let svgSource = svgText;
+    try {
+      if (/\<svg[\s>]/i.test(svgSource) && !/xmlns\s*=\s*"http:\/\/www\.w3\.org\/2000\/svg"/i.test(svgSource)) {
+        svgSource = svgSource.replace(/<svg(\s|>)/i, '<svg xmlns="http://www.w3.org/2000/svg"$1');
+      }
+    } catch (e) {}
+  // Use data URL encoded SVG as it can be more robust in some runtimes
+  // (Blob URLs sometimes fail to load in headless contexts). Encode the
+  // SVG to ensure safe transmission.
+  const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgSource);
+  const url = dataUrl;
     img.onload = () => {
       try { ctx.drawImage(img, 0, 0, outW, outH); } catch (e) {}
       URL.revokeObjectURL(url);
@@ -113,8 +123,16 @@ export function rasterizeSvgToCanvasAsync(svgText: string, outW: number, outH: n
       const ctx = canvas.getContext('2d');
       if (!ctx) return resolve(canvas);
       const img = new Image();
-      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
+      // Ensure SVG has xmlns so Image() can render it in all browsers
+      let svgSource = svgText;
+      try {
+        if (/\<svg[\s>]/i.test(svgSource) && !/xmlns\s*=\s*"http:\/\/www\.w3\.org\/2000\/svg"/i.test(svgSource)) {
+          svgSource = svgSource.replace(/<svg(\s|>)/i, '<svg xmlns="http://www.w3.org/2000/svg"$1');
+        }
+      } catch (e) {}
+        // Use data URL encoded SVG for better compatibility in headless browsers
+        const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgSource);
+        const url = dataUrl;
       let settled = false;
       const done = () => {
         if (settled) return; settled = true; try { URL.revokeObjectURL(url); } catch (e) {}
@@ -268,15 +286,35 @@ export function applyTeamColorsToSvg(svgText: string, mapping: Record<string, st
     const svg = doc.querySelector('svg');
     if (!svg) return svgText;
     const applyDefault = options && options.applyTo ? options.applyTo : 'both';
-    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot]')) as Element[];
+    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot], [class*="team-fill-"]')) as Element[];
     for (const el of els) {
       try {
+        // Determine candidate roles:
+        // - explicit data-team / data-team-slot (legacy/new)
+        // - explicit per-attribute overrides: data-team-slot-fill / data-team-slot-stroke
+        // - class-based marker: team-fill-<role>
         const role = (el.getAttribute('data-team') || el.getAttribute('data-team-slot') || '').trim();
-        if (!role) continue;
-        const color = mapping[role];
-        if (!color) continue;
+        const fillRoleAttr = (el.getAttribute('data-team-slot-fill') || '').trim();
+        const strokeRoleAttr = (el.getAttribute('data-team-slot-stroke') || '').trim();
+        const cls = el.getAttribute('class') || '';
+        // class marker like team-fill-primary or team-fill-accent
+        let classRole: string | undefined;
+        try {
+          const m = cls.match(/team-fill-([a-z0-9_-]+)/i);
+          if (m) classRole = m[1];
+        } catch (e) {}
+
+        // Resolve fill and stroke roles with fallbacks
+        const resolvedFillRole = fillRoleAttr || role || classRole || 'primary';
+        const resolvedStrokeRole = strokeRoleAttr || role || classRole || 'trim';
+
+        const fillColor = mapping[resolvedFillRole];
+        const strokeColor = mapping[resolvedStrokeRole] || fillColor;
+
+        if (!fillColor && !strokeColor) continue; // nothing to apply
+
         const applyAttr = (el.getAttribute('data-team-apply') || '').trim().toLowerCase();
-        const apply = applyAttr === 'fill' || applyAttr === 'stroke' ? applyAttr as 'fill' | 'stroke' : applyDefault;
+        const apply = applyAttr === 'fill' || applyAttr === 'stroke' ? (applyAttr as 'fill' | 'stroke') : applyDefault;
 
         const setStyleProp = (prop: 'fill' | 'stroke', value: string) => {
           try {
@@ -296,8 +334,8 @@ export function applyTeamColorsToSvg(svgText: string, mapping: Record<string, st
           } catch (e) { /* ignore style merge failures */ }
         };
 
-        if (apply === 'fill' || apply === 'both') setStyleProp('fill', color);
-        if (apply === 'stroke' || apply === 'both') setStyleProp('stroke', color);
+        if ((apply === 'fill' || apply === 'both') && fillColor) setStyleProp('fill', fillColor);
+        if ((apply === 'stroke' || apply === 'both') && strokeColor) setStyleProp('stroke', strokeColor);
       } catch (e) { continue; }
     }
     const serializer = new XMLSerializer();

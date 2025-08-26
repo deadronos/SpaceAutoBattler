@@ -227,6 +227,27 @@ export async function startApp(rootDocument: Document = document) {
   try {
     if (typeof window !== "undefined" && (window as any).gm)
       Object.assign((window as any).gm, gm);
+    // Expose renderer for debugging on localhost only. This allows us to
+    // inspect caches and mapping at runtime without permanently leaking
+    // internals in production bundles.
+    try {
+      const host = (location && location.hostname) || "";
+      if (host === "127.0.0.1" || host === "localhost") {
+        try {
+          // Attach a non-enumerable debug handle
+          Object.defineProperty(window, "__renderer", {
+            value: renderer,
+            writable: false,
+            configurable: true,
+            enumerable: false,
+          });
+        } catch (e) {
+          try {
+            (window as any).__renderer = renderer;
+          } catch (err) {}
+        }
+      }
+    } catch (e) {}
   } catch (e) {}
 
   // Speed multiplier logic

@@ -44,6 +44,28 @@ import TeamsConfig from "./config/teamsConfig";
 import TintedHullPool from "./pools/tintedHullPool";
 import { getShipConfig, getDefaultShipType } from "./config/entitiesConfig";
 
+// Helper: produce a mapping object that maps common SVG data-team-slot
+// role names to the provided team color. Many SVGs use different role
+// names (hull, primary, hangar, trim, etc.) — map them all so a single
+// team color will recolor any of those slots.
+function teamMapping(color: string) {
+  return {
+    primary: color,
+    hull: color,
+    trim: color,
+    hangar: color,
+    launch: color,
+    engine: color,
+    glow: color,
+    turret: color,
+    panel: color,
+    secondary: color,
+    accent: color,
+    weapon: color,
+    detail: color,
+  } as Record<string, string>;
+}
+
 export class CanvasRenderer {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D | null = null;
@@ -377,6 +399,33 @@ export class CanvasRenderer {
           });
           this._svgEngineMountCache = this._svgEngineMountCache || {};
           this._svgEngineMountCache[key] = engineNorm;
+          // Attempt to asynchronously rasterize and cache a hull-only canvas
+          // using the higher-level svgRenderer. This ensures _svgHullCache
+          // is populated with a resolved canvas (not a blank placeholder)
+          // so sync reads later (getCachedHullCanvasSync) can draw immediately.
+          try {
+            const svgRenderer = require("./assets/svgRenderer");
+            if (
+              svgRenderer &&
+              typeof svgRenderer.rasterizeSvgWithTeamColors === "function"
+            ) {
+              // Use the viewBox dimensions if available
+              const outW = (vb && vb.w) || 128;
+              const outH = (vb && vb.h) || 128;
+              // Request rasterization with no mapping (hull-only baseline)
+              (async () => {
+                try {
+                  const canvas = await svgRenderer.rasterizeSvgWithTeamColors(svgText, {}, outW, outH, { applyTo: 'both', assetKey: key });
+                  try {
+                    this._svgHullCache = this._svgHullCache || {};
+                    this._svgHullCache[key] = canvas;
+                  } catch (e) {}
+                } catch (e) {
+                  // ignore async raster errors — fallback placeholders remain
+                }
+              })();
+            }
+          } catch (e) {}
           // Try to rasterize hull-only SVG proactively for faster first-draw
           try {
             const outW = vb.w || 128;
@@ -409,7 +458,7 @@ export class CanvasRenderer {
                 // seed raster cache for hull-only canvas using svgRenderer cache API
                 const svgRenderer = require("./assets/svgRenderer");
                 if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                  // use bare assetKey and an empty mapping so hull-only cached key matches calls
+                  // cache hull-only canvas with an empty mapping so hull-only cached key matches calls
                   svgRenderer.cacheCanvasForAsset(key, {}, hullCanvas.width, hullCanvas.height, hullCanvas);
                 }
               } catch (e) {}
@@ -528,7 +577,7 @@ export class CanvasRenderer {
                   try {
                     const svgRenderer = require("./assets/svgRenderer");
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                      svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                      svgRenderer.cacheCanvasForAsset(shipType, teamMapping(col), tc.width, tc.height, tc);
                     }
                   } catch (e) {}
                 }
@@ -578,11 +627,11 @@ export class CanvasRenderer {
                     }
                     this._setTintedCanvas(k, tc);
                     try {
-                      const svgRenderer = require("./assets/svgRenderer");
-                      if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                        svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
-                      }
-                    } catch (e) {}
+                    const svgRenderer = require("./assets/svgRenderer");
+                    if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                      svgRenderer.cacheCanvasForAsset(shipType, teamMapping(col), tc.width, tc.height, tc);
+                    }
+                  } catch (e) {}
                 } catch (e) {
                   /* ignore per-key placeholder errors */
                 }
@@ -1013,10 +1062,24 @@ export class CanvasRenderer {
                 | HTMLCanvasElement
                 | undefined;
               if (existing) {
-                // Promote to MRU by re-setting the entry
-                this._tintedHullPool.delete(tintedKey);
-                this._tintedHullPool.set(tintedKey, existing);
-                tintedCanvas = existing;
+                // If the existing cached canvas matches the desired size,
+                // promote to MRU and use it. If it doesn't match (e.g. a
+                // small placeholder pre-warmed during init), remove it so
+                // we can generate or fetch a correctly-sized tinted canvas.
+                try {
+                  if (existing.width === hullCanvas.width && existing.height === hullCanvas.height) {
+                    // Promote to MRU by re-setting the entry
+                    this._tintedHullPool.delete(tintedKey);
+                    this._tintedHullPool.set(tintedKey, existing);
+                    tintedCanvas = existing;
+                  } else {
+                    // size mismatch -> remove placeholder so we can create real one
+                    try { this._tintedHullPool.delete(tintedKey); } catch (ee) {}
+                  }
+                } catch (e) {
+                  // On any errors, fall back to treating as missing
+                  try { this._tintedHullPool.delete(tintedKey); } catch (ee) {}
+                }
               }
             }
             if (!tintedCanvas) {
@@ -1025,7 +1088,7 @@ export class CanvasRenderer {
                 const svgRenderer = require("./assets/svgRenderer");
                 if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
                   const assetKey = cacheKey; // reuse cacheKey (shipType)
-                  const mapping = { primary: teamColor };
+                  const mapping = teamMapping(teamColor);
                   // Prefer synchronous cached canvas if available
                   try {
                     const c = svgRenderer.getCanvas(assetKey, mapping, hullCanvas.width, hullCanvas.height);
@@ -1035,7 +1098,7 @@ export class CanvasRenderer {
                     } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
                       // Trigger svgLoader.ensureRasterizedAndCached to populate cache async
                       try {
-                        (svgLoader as any).ensureRasterizedAndCached && (svgLoader as any).ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: 'fill' });
+                        (svgLoader as any).ensureRasterizedAndCached && (svgLoader as any).ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: 'both' });
                       } catch (e) {}
                     }
                   } catch (e) {

@@ -304,6 +304,24 @@ function getDefaultShipType() {
   return Object.keys(ShipConfig)[0] || "fighter";
 }
 
+// src/config/simConfig.ts
+var SIM = {
+  DT_MS: 16,
+  MAX_ACC_MS: 250,
+  bounds: { W: 1920, H: 1080 },
+  // Use LOGICAL_MAP for default bounds
+  friction: 0.99,
+  gridCellSize: 64
+};
+var boundaryBehavior = {
+  ships: "wrap",
+  bullets: "remove"
+};
+var LOGICAL_MAP = { W: 1920, H: 1080 };
+function getDefaultBounds() {
+  return { W: LOGICAL_MAP.W, H: LOGICAL_MAP.H };
+}
+
 // src/config/teamsConfig.ts
 var TeamsConfig = {
   teams: {
@@ -793,20 +811,6 @@ var progression = {
   shieldPercentPerLevel: 0.06,
   speedPercentPerLevel: 0.03,
   regenPercentPerLevel: 0.04
-};
-
-// src/config/simConfig.ts
-var SIM = {
-  DT_MS: 16,
-  MAX_ACC_MS: 250,
-  bounds: { W: 1920, H: 1080 },
-  // Use LOGICAL_MAP for default bounds
-  friction: 0.99,
-  gridCellSize: 64
-};
-var boundaryBehavior = {
-  ships: "wrap",
-  bullets: "remove"
 };
 
 // src/pools/PoolManager.ts
@@ -1377,7 +1381,7 @@ function chooseNewTarget(state2, ship) {
   const idx = Math.floor(srandom() * enemies.length);
   return enemies[idx];
 }
-function applySimpleAI(state2, dt, bounds2 = { W: 800, H: 600 }) {
+function applySimpleAI(state2, dt, bounds2 = getDefaultBounds()) {
   if (!state2 || !Array.isArray(state2.ships)) return;
   for (const s of state2.ships) {
     const ai = ensureShipAiState(s);
@@ -2163,7 +2167,7 @@ function simulateStep(state2, dtSeconds, bounds2) {
 
 // src/simWorker.ts
 var state = null;
-var bounds = { W: 800, H: 600 };
+var bounds = getDefaultBounds();
 var simDtMs = 16;
 var running = false;
 var acc = 0;
