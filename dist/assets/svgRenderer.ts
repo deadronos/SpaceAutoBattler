@@ -86,7 +86,23 @@ export async function rasterizeSvgWithTeamColors(svgText: string, mapping: Recor
 
   const p = (async () => {
     try {
-      const recolored = applyTeamColorsToSvg(svgText, mapping, options && { applyTo: options?.applyTo });
+      // If caller passed a path/URL instead of inline SVG markup, try to fetch it
+      let sourceSvg = svgText || '';
+      try {
+        if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === 'function') {
+          try {
+            const resp = await fetch(sourceSvg);
+            if (resp && resp.ok) {
+              const txt = await resp.text();
+              if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
+            }
+          } catch (e) {
+            // ignore fetch errors and continue with original string
+          }
+        }
+      } catch (e) {}
+
+      const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
       const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
       // store resolved canvas for synchronous reads
       entry.canvas = canvas;

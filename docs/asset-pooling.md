@@ -97,3 +97,71 @@ Pools are in-memory and not thread-safe. If simulation runs in a worker and the 
 - Unit tests should validate reuse, double-free prevention, trimming and disposer invocation, and behavior under different overflow strategies.
 
 - Add stress tests simulating high churn and assert pool size stability.
+
+## Rasterization cache contract (SVG -> Canvas)
+
+This project uses a small, renderer-facing cache contract to store rasterized SVGs as canvas-like objects. The contract intentionally keeps the implementation surface small so it can be implemented either by the renderer (preferred) or by `svgLoader` as a fallback.
+
+Purpose: avoid repeated rasterization of identical SVG assets, reduce CPU work, and provide stable canvas objects for pooling and rendering.
+
+API (renderer-facing helpers)
+
+- `getCanvas(assetKey: string): HTMLCanvasElement | null`
+  - Returns a cached canvas-like object previously stored for `assetKey`, or `null` if none exists.
+  - Implementations should return `null` on cache miss. The caller will proceed to rasterize and then call `cacheCanvasForAsset`.
+
+- `cacheCanvasForAsset(assetKey: string, canvas: HTMLCanvasElement): void`
+  - Stores the provided canvas-like object under `assetKey` for future `getCanvas` hits.
+  - Implementations may choose to clone/transform the canvas; prefer storing the exact object if pooling/lease semantics are used.
+
+- `_clearRasterCache(): void`
+  - (Test / admin helper) Clears the raster cache. Used by tests to guarantee deterministic cache state.
+
+Expected object shape
+
+- The cached value should behave like a canvas: at minimum it must expose numeric `width` and `height` properties. A real `HTMLCanvasElement` is preferred when running in browser environments, but a plain object with `width`/`height` is accepted for unit tests and headless runners.
+- Example minimal shape (TypeScript):
+
+```ts
+type CanvasLike = { width: number; height: number; /* optional: getContext, toDataURL, etc. */ };
+```
+
+Error modes and behavior
+
+- `getCanvas` must not throw; it should return `null` on miss. This keeps callers simple and deterministic.
+- `cacheCanvasForAsset` should accept and store valid canvas-like objects. If a cache replacement policy triggers disposal (e.g., trimming older entries), the implementation should call any appropriate cleanup (for example, `gl.deleteTexture` for GPU-backed textures maintained alongside a canvas).
+- Implementations must guard against storing `null` or invalid shapes; prefer throwing early in dev but ensure tests mock the behavior safely.
+
+Usage pattern (caller-side semantics)
+
+1. Caller invokes `getCanvas(assetKey)`.
+   - If non-null is returned, use it directly (cache hit).
+   - If `null`, rasterize the SVG (async or sync), then call `cacheCanvasForAsset(assetKey, canvas)` with the produced canvas-like object.
+
+2. The loader/renderer should avoid assuming exclusive ownership of cached canvases. If your renderer needs to mutate canvases, consider returning a shallow copy or clone from the cache and keep a documented lease protocol.
+
+Example (pseudo-code)
+
+```ts
+const existing = renderer.getCanvas(assetKey);
+if (existing) {
+  // cache hit — use existing canvas
+  drawCanvas(existing);
+} else {
+  // cache miss — rasterize then store
+  const produced = await rasterizeSvgToCanvas(svgString, outW, outH);
+  renderer.cacheCanvasForAsset(assetKey, produced);
+  drawCanvas(produced);
+}
+```
+
+Testing notes
+
+- Unit tests should mock `getCanvas` to return `null` (cache miss) and assert that rasterization occurs and `cacheCanvasForAsset` is invoked with a canvas-like object. The existing test `test/vitest/svgLoader_ensureRasterizedAndCached.spec.ts` follows this pattern.
+- Add a complementary cache-hit test that mocks `getCanvas` to return a canvas-like object and asserts the rasterizer is not called (see `test/vitest/svgLoader_cacheHit.spec.ts`).
+
+Implementation suggestions
+
+- Renderer implementation (browser): store real `HTMLCanvasElement` objects and optionally maintain `WeakMap` metadata for lease/counts.
+- Node-based CI: return a plain object with `width`/`height` for speed and to avoid depending on canvas polyfills in fast unit tests.
+

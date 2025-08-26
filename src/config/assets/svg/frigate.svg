@@ -9,8 +9,8 @@
   <rect x="54" y="55" width="20" height="40" rx="6" fill="#2a9fbb" opacity="0.8" class="panel team-fill-detail" data-team-slot="panel"/>
   <rect x="50" y="80" width="28" height="12" rx="6" fill="#2abfff" opacity="0.5" class="panel team-fill-detail" data-team-slot="panel"/>
   <!-- Engine glows -->
-  <ellipse cx="56" cy="112" rx="4" ry="2" fill="#53ffd8" class="engine-glow team-fill-glow"/>
-  <ellipse cx="72" cy="112" rx="4" ry="2" fill="#53ffd8" class="engine-glow team-fill-glow"/>
+  <ellipse cx="56" cy="112" rx="4" ry="2" fill="#53ffd8" class="engine-glow team-fill-glow" data-team-slot="glow"/>
+  <ellipse cx="72" cy="112" rx="4" ry="2" fill="#53ffd8" class="engine-glow team-fill-glow" data-team-slot="glow"/>
   <!-- Engine mountpoints -->
   <rect x="54" y="110" width="4" height="6" rx="2" fill="#53ffd8" class="engine team-fill-accent" data-team-slot="engine" />
   <rect x="70" y="110" width="4" height="6" rx="2" fill="#53ffd8" class="engine team-fill-accent" data-team-slot="engine" />

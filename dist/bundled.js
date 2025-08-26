@@ -19,6 +19,194 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// src/assets/svgRenderer.ts
+var svgRenderer_exports = {};
+__export(svgRenderer_exports, {
+  _clearRasterCache: () => _clearRasterCache,
+  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
+  cacheCanvasForAsset: () => cacheCanvasForAsset,
+  default: () => svgRenderer_default,
+  getCanvas: () => getCanvas,
+  getCanvasFromCache: () => getCanvasFromCache,
+  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
+  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
+  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
+});
+function stableStringify(obj) {
+  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
+  const keys = Object.keys(obj).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
+}
+function djb2Hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) + h + str.charCodeAt(i);
+    h = h & 4294967295;
+  }
+  return (h >>> 0).toString(16);
+}
+function ensureCacheLimit() {
+  try {
+    const now = Date.now();
+    if (rasterCacheMaxAgeMS > 0) {
+      for (const [k, v] of Array.from(rasterCache.entries())) {
+        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
+          rasterCache.delete(k);
+        }
+      }
+    }
+    while (rasterCache.size > rasterCacheMaxEntries) {
+      const it = rasterCache.keys().next();
+      if (it.done) break;
+      rasterCache.delete(it.value);
+    }
+  } catch (e) {
+  }
+}
+async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  if (rasterCache.has(cacheKey)) {
+    const entry2 = rasterCache.get(cacheKey);
+    try {
+      entry2.lastAccess = Date.now();
+      rasterCache.delete(cacheKey);
+      rasterCache.set(cacheKey, entry2);
+    } catch (e) {
+    }
+    if (entry2.canvas) return Promise.resolve(entry2.canvas);
+    if (entry2.promise) return entry2.promise;
+  }
+  const entry = {
+    promise: null,
+    canvas: void 0,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  const p = (async () => {
+    try {
+      let sourceSvg = svgText || "";
+      try {
+        if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === "function") {
+          try {
+            const resp = await fetch(sourceSvg);
+            if (resp && resp.ok) {
+              const txt = await resp.text();
+              if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
+            }
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+      const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
+      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    } catch (e) {
+      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    }
+  })();
+  entry.promise = p;
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+  try {
+    const res = await p;
+    return res;
+  } catch (e) {
+    rasterCache.delete(cacheKey);
+    throw e;
+  }
+}
+function _clearRasterCache() {
+  rasterCache.clear();
+}
+function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  try {
+    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
+  } catch (e) {
+  }
+  const entry = {
+    promise: Promise.resolve(canvas),
+    canvas,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+}
+function _getRasterCacheKeysForTest() {
+  return Array.from(rasterCache.keys());
+}
+function setRasterCacheMaxEntries(n) {
+  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
+  ensureCacheLimit();
+}
+function setRasterCacheMaxAge(ms) {
+  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
+  ensureCacheLimit();
+}
+function getCanvasFromCache(assetKey, mapping, outW, outH) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  const entry = rasterCache.get(cacheKey);
+  if (!entry) return void 0;
+  if (rasterCacheMaxAgeMS > 0) {
+    const now = Date.now();
+    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
+      rasterCache.delete(cacheKey);
+      return void 0;
+    }
+  }
+  entry.lastAccess = Date.now();
+  try {
+    rasterCache.delete(cacheKey);
+    rasterCache.set(cacheKey, entry);
+  } catch (e) {
+  }
+  return entry.canvas;
+}
+function getCanvas(assetKey, mapping, outW, outH) {
+  return getCanvasFromCache(assetKey, mapping, outW, outH);
+}
+var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRenderer_default;
+var init_svgRenderer = __esm({
+  "src/assets/svgRenderer.ts"() {
+    "use strict";
+    init_svgLoader();
+    rasterCache = /* @__PURE__ */ new Map();
+    rasterCacheMaxEntries = 256;
+    rasterCacheMaxAgeMS = 0;
+    svgRenderer_default = {
+      rasterizeSvgWithTeamColors,
+      _clearRasterCache,
+      cacheCanvasForAsset,
+      setRasterCacheMaxEntries,
+      setRasterCacheMaxAge,
+      getCanvasFromCache,
+      // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
+      getCanvas(assetKey, mapping, outW, outH) {
+        return getCanvasFromCache(assetKey, mapping, outW, outH);
+      }
+    };
+  }
+});
+
 // src/assets/svgLoader.ts
 function parseSvgForMounts(svgText) {
   try {
@@ -71,10 +259,10 @@ function parseSvgForMounts(svgText) {
       }
     }
     try {
-      const colorEls = Array.from(svg.querySelectorAll("[data-team]"));
+      const colorEls = Array.from(svg.querySelectorAll("[data-team],[data-team-slot]"));
       for (const el of colorEls) {
         try {
-          const role = (el.getAttribute("data-team") || "").trim();
+          const role = (el.getAttribute("data-team") || el.getAttribute("data-team-slot") || "").trim();
           const id = el.getAttribute("id") || void 0;
           const cls = el.getAttribute("class") || void 0;
           let bboxVal;
@@ -226,6 +414,54 @@ async function rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) {
     return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
   }
 }
+function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
+  try {
+    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+    if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
+      try {
+        const canvas = svgRenderer.getCanvas(assetKey || "", {}, outW, outH);
+        if (canvas) return canvas;
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  try {
+    return rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+  } catch (e) {
+    return void 0;
+  }
+}
+async function ensureRasterizedAndCached(svgText, mapping, outW, outH, options) {
+  try {
+    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+    if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
+      try {
+        const canvas = await svgRenderer.rasterizeSvgWithTeamColors(svgText, mapping || {}, outW, outH, { applyTo: options && options.applyTo, assetKey: options && options.assetKey });
+        return canvas;
+      } catch (e) {
+      }
+    }
+  } catch (e) {
+  }
+  try {
+    const recolored = applyTeamColorsToSvg(svgText, mapping || {}, options && { applyTo: options.applyTo });
+    const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+    try {
+      const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+      if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+        try {
+          svgRenderer.cacheCanvasForAsset(options && options.assetKey ? options.assetKey : "", mapping || {}, outW, outH, canvas);
+        } catch (e) {
+        }
+      }
+    } catch (e) {
+    }
+    return canvas;
+  } catch (e) {
+    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+  }
+}
 function applyTeamColorsToSvg(svgText, mapping, options) {
   try {
     const parser = new DOMParser();
@@ -233,10 +469,10 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
     const svg = doc.querySelector("svg");
     if (!svg) return svgText;
     const applyDefault = options && options.applyTo ? options.applyTo : "both";
-    const els = Array.from(svg.querySelectorAll("[data-team]"));
+    const els = Array.from(svg.querySelectorAll("[data-team],[data-team-slot]"));
     for (const el of els) {
       try {
-        const role = (el.getAttribute("data-team") || "").trim();
+        const role = (el.getAttribute("data-team") || el.getAttribute("data-team-slot") || "").trim();
         if (!role) continue;
         const color = mapping[role];
         if (!color) continue;
@@ -272,180 +508,6 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
 var init_svgLoader = __esm({
   "src/assets/svgLoader.ts"() {
     "use strict";
-  }
-});
-
-// src/assets/svgRenderer.ts
-var svgRenderer_exports = {};
-__export(svgRenderer_exports, {
-  _clearRasterCache: () => _clearRasterCache,
-  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
-  cacheCanvasForAsset: () => cacheCanvasForAsset,
-  default: () => svgRenderer_default,
-  getCanvas: () => getCanvas,
-  getCanvasFromCache: () => getCanvasFromCache,
-  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
-  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
-  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
-});
-function stableStringify(obj) {
-  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
-  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
-}
-function djb2Hash(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (h << 5) + h + str.charCodeAt(i);
-    h = h & 4294967295;
-  }
-  return (h >>> 0).toString(16);
-}
-function ensureCacheLimit() {
-  try {
-    const now = Date.now();
-    if (rasterCacheMaxAgeMS > 0) {
-      for (const [k, v] of Array.from(rasterCache.entries())) {
-        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
-          rasterCache.delete(k);
-        }
-      }
-    }
-    while (rasterCache.size > rasterCacheMaxEntries) {
-      const it = rasterCache.keys().next();
-      if (it.done) break;
-      rasterCache.delete(it.value);
-    }
-  } catch (e) {
-  }
-}
-async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  if (rasterCache.has(cacheKey)) {
-    const entry2 = rasterCache.get(cacheKey);
-    try {
-      entry2.lastAccess = Date.now();
-      rasterCache.delete(cacheKey);
-      rasterCache.set(cacheKey, entry2);
-    } catch (e) {
-    }
-    if (entry2.canvas) return Promise.resolve(entry2.canvas);
-    if (entry2.promise) return entry2.promise;
-  }
-  const entry = {
-    promise: null,
-    canvas: void 0,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-  const p = (async () => {
-    try {
-      const recolored = applyTeamColorsToSvg(svgText, mapping, options && { applyTo: options?.applyTo });
-      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
-      entry.canvas = canvas;
-      entry.promise = Promise.resolve(canvas);
-      entry.lastAccess = Date.now();
-      return canvas;
-    } catch (e) {
-      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
-      entry.canvas = canvas;
-      entry.promise = Promise.resolve(canvas);
-      entry.lastAccess = Date.now();
-      return canvas;
-    }
-  })();
-  entry.promise = p;
-  rasterCache.set(cacheKey, entry);
-  ensureCacheLimit();
-  try {
-    const res = await p;
-    return res;
-  } catch (e) {
-    rasterCache.delete(cacheKey);
-    throw e;
-  }
-}
-function _clearRasterCache() {
-  rasterCache.clear();
-}
-function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = assetKey || djb2Hash(stableStringify(""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  try {
-    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
-  } catch (e) {
-  }
-  const entry = {
-    promise: Promise.resolve(canvas),
-    canvas,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-  rasterCache.set(cacheKey, entry);
-  ensureCacheLimit();
-}
-function _getRasterCacheKeysForTest() {
-  return Array.from(rasterCache.keys());
-}
-function setRasterCacheMaxEntries(n) {
-  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
-  ensureCacheLimit();
-}
-function setRasterCacheMaxAge(ms) {
-  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
-  ensureCacheLimit();
-}
-function getCanvasFromCache(assetKey, mapping, outW, outH) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = assetKey || djb2Hash(stableStringify(""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  const entry = rasterCache.get(cacheKey);
-  if (!entry) return void 0;
-  if (rasterCacheMaxAgeMS > 0) {
-    const now = Date.now();
-    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
-      rasterCache.delete(cacheKey);
-      return void 0;
-    }
-  }
-  entry.lastAccess = Date.now();
-  try {
-    rasterCache.delete(cacheKey);
-    rasterCache.set(cacheKey, entry);
-  } catch (e) {
-  }
-  return entry.canvas;
-}
-function getCanvas(assetKey, mapping, outW, outH) {
-  return getCanvasFromCache(assetKey, mapping, outW, outH);
-}
-var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRenderer_default;
-var init_svgRenderer = __esm({
-  "src/assets/svgRenderer.ts"() {
-    "use strict";
-    init_svgLoader();
-    rasterCache = /* @__PURE__ */ new Map();
-    rasterCacheMaxEntries = 256;
-    rasterCacheMaxAgeMS = 0;
-    svgRenderer_default = {
-      rasterizeSvgWithTeamColors,
-      _clearRasterCache,
-      cacheCanvasForAsset,
-      setRasterCacheMaxEntries,
-      setRasterCacheMaxAge,
-      getCanvasFromCache,
-      // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
-      getCanvas(assetKey, mapping, outW, outH) {
-        return getCanvasFromCache(assetKey, mapping, outW, outH);
-      }
-    };
   }
 });
 
@@ -2369,15 +2431,114 @@ function createSimWorker(url = "./simWorker.js") {
   };
 }
 
-// src/pools/assetPool.ts
-function _getStrategy(v, def) {
-  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
-}
+// src/pools/PoolManager.ts
+var DEFAULT_CONFIG = {
+  max: void 0,
+  strategy: "discard-oldest",
+  min: 0
+};
 function _incCount(map, key, delta) {
+  if (!map) return;
   const cur = map.get(key) || 0;
   const next = cur + delta;
   if (next <= 0) map.delete(key);
   else map.set(key, next);
+}
+function makePoolEntry(opts) {
+  return {
+    freeList: [],
+    allocated: 0,
+    config: Object.assign({}, DEFAULT_CONFIG, opts?.config || {}),
+    disposer: opts?.disposer
+  };
+}
+function acquireItem(params) {
+  const { map, counts, key, createFn, globalMax, globalStrategy, initFn, initArgs } = params;
+  let entry = map.get(key);
+  if (!entry) {
+    entry = makePoolEntry({ config: { max: globalMax, strategy: globalStrategy } });
+    map.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (initFn) initFn(obj, initArgs);
+      else if (initArgs && typeof obj === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = entry.config && typeof entry.config.max === "number" ? entry.config.max : globalMax ?? Infinity;
+  const strategy = entry.config?.strategy ?? globalStrategy ?? "discard-oldest";
+  const total = entry.allocated || (counts ? counts.get(key) || 0 : 0);
+  if (total < (max || Infinity) || strategy === "grow") {
+    const e2 = createFn();
+    try {
+      if (initFn) initFn(e2, initArgs);
+      else if (initArgs && typeof e2 === "object") Object.assign(e2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    if (counts) _incCount(counts, key, 1);
+    return e2;
+  }
+  if (strategy === "error") throw new Error(`Pool exhausted for key "${key}" (max=${max})`);
+  const e = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  if (counts) _incCount(counts, key, 1);
+  return e;
+}
+function releaseItem(params) {
+  const { map, counts, key, item, disposeFn, globalMax, globalStrategy } = params;
+  let entry = map.get(key);
+  if (!entry) {
+    entry = makePoolEntry({ config: { max: globalMax, strategy: globalStrategy } });
+    map.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(item)) free.push(item);
+  const max = entry.config && typeof entry.config.max === "number" ? entry.config.max : globalMax ?? Infinity;
+  const strategy = entry.config?.strategy ?? globalStrategy ?? "discard-oldest";
+  if (strategy === "grow") return;
+  const countsMap = counts || void 0;
+  while (free.length > (max || Infinity)) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (entry.disposer) entry.disposer(victim);
+      else if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    if (countsMap) _incCount(countsMap, key, -1);
+    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
+  }
+  if (strategy === "error" && free.length > (max || Infinity)) {
+    const victim = free.pop();
+    try {
+      if (entry.disposer) entry.disposer(victim);
+      else if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    if (countsMap) _incCount(countsMap, key, -1);
+    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
+  }
+}
+
+// src/pools/assetPool.ts
+function _getStrategy(v, def) {
+  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
+}
+function entryConfigOr(state, key, globalName) {
+  const poolMap = globalName === "texturePoolSize" ? state.assetPool.textures : globalName === "spritePoolSize" ? state.assetPool.sprites : state.assetPool.effects;
+  const entry = poolMap && poolMap.get ? poolMap.get(key) : void 0;
+  if (entry && entry.config && typeof entry.config.max === "number") return entry.config.max;
+  return state.assetPool.config ? state.assetPool.config[globalName] : void 0;
+}
+function entryStrategyOr(state, key, globalName) {
+  const poolMap = globalName === "textureOverflowStrategy" ? state.assetPool.textures : globalName === "spriteOverflowStrategy" ? state.assetPool.sprites : state.assetPool.effects;
+  const entry = poolMap && poolMap.get ? poolMap.get(key) : void 0;
+  if (entry && entry.config && entry.config.strategy) return entry.config.strategy;
+  return state.assetPool.config ? state.assetPool.config[globalName] : void 0;
 }
 function makePooled(obj, resetFn) {
   const o = obj;
@@ -2440,228 +2601,105 @@ function ensureAssetPool(state) {
 function acquireEffect(state, key, createFn, initArgs) {
   ensureAssetPool(state);
   const poolMap = state.assetPool.effects;
-  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: /* @__PURE__ */ new Map(),
-      effects: counts
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) {
-    const obj = free.pop();
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
-    } catch {
-    }
-    return obj;
-  }
-  const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const e2 = createFn();
-    try {
-      if (typeof e2.reset === "function") e2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(e2, initArgs);
-    } catch {
-    }
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return e2;
-  }
-  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
-  const e = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return e;
+  state.assetPool.counts = state.assetPool.counts || { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  const counts = state.assetPool.counts.effects;
+  return acquireItem({
+    map: poolMap,
+    counts,
+    key,
+    createFn,
+    globalMax: state.assetPool.config.effectPoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest"),
+    initFn: (obj, args) => {
+      try {
+        if (typeof obj.reset === "function") obj.reset(args);
+        else if (args && typeof args === "object") Object.assign(obj, args);
+      } catch {
+      }
+    },
+    initArgs
+  });
 }
 function releaseEffect(state, key, effect, disposeFn) {
   ensureAssetPool(state);
   const poolMap = state.assetPool.effects;
-  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: /* @__PURE__ */ new Map(),
-      effects: counts
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(effect)) free.push(effect);
-  const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
+  state.assetPool.counts = state.assetPool.counts || { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  const counts = state.assetPool.counts.effects;
+  return releaseItem({
+    map: poolMap,
+    counts,
+    key,
+    item: effect,
+    disposeFn,
+    globalMax: state.assetPool.config.effectPoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest")
+  });
 }
 function acquireTexture(state, key, createFn) {
   ensureAssetPool(state);
   const poolMap = state.assetPool.textures;
-  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) return free.pop();
-  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const tex2 = createFn();
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return tex2;
-  }
-  if (strategy === "error") throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
-  const tex = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return tex;
+  state.assetPool.counts = state.assetPool.counts || { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  const counts = state.assetPool.counts.textures;
+  return acquireItem({
+    map: poolMap,
+    counts,
+    key,
+    createFn,
+    globalMax: entryConfigOr(state, key, "texturePoolSize"),
+    globalStrategy: entryStrategyOr(state, key, "textureOverflowStrategy")
+  });
 }
 function releaseTexture(state, key, tex, disposeFn) {
   ensureAssetPool(state);
   const poolMap = state.assetPool.textures;
-  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(tex)) free.push(tex);
-  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
-  const countsMap = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (entry.disposer) entry.disposer(victim);
-      else if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(countsMap, key, -1);
-    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (entry.disposer) entry.disposer(victim);
-      else if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(countsMap, key, -1);
-    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
-  }
+  state.assetPool.counts = state.assetPool.counts || { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
+  const counts = state.assetPool.counts.textures;
+  return releaseItem({
+    map: poolMap,
+    counts,
+    key,
+    item: tex,
+    disposeFn,
+    globalMax: entryConfigOr(state, key, "texturePoolSize"),
+    globalStrategy: entryStrategyOr(state, key, "textureOverflowStrategy")
+  });
 }
 function acquireSprite(state, key, createFn, initArgs) {
   ensureAssetPool(state);
+  state.assetPool.counts = state.assetPool.counts || { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
   const poolMap = state.assetPool.sprites;
-  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: counts,
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) {
-    const obj = free.pop();
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
-    } catch {
-    }
-    return obj;
-  }
-  const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const s2 = createFn();
-    try {
-      if (typeof s2.reset === "function") s2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(s2, initArgs);
-    } catch {
-    }
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return s2;
-  }
-  if (strategy === "error") throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
-  const s = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return s;
+  const counts = state.assetPool.counts.sprites;
+  return acquireItem({
+    map: poolMap,
+    counts,
+    key,
+    createFn,
+    globalMax: state.assetPool.config.spritePoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest"),
+    initFn: (obj, args) => {
+      try {
+        if (typeof obj.reset === "function") obj.reset(args);
+        else if (args && typeof args === "object") Object.assign(obj, args);
+      } catch {
+      }
+    },
+    initArgs
+  });
 }
 function releaseSprite(state, key, sprite, disposeFn) {
   ensureAssetPool(state);
+  state.assetPool.counts = state.assetPool.counts || { textures: /* @__PURE__ */ new Map(), sprites: /* @__PURE__ */ new Map(), effects: /* @__PURE__ */ new Map() };
   const poolMap = state.assetPool.sprites;
-  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: counts,
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(sprite)) free.push(sprite);
-  const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
+  const counts = state.assetPool.counts.sprites;
+  return releaseItem({
+    map: poolMap,
+    counts,
+    key,
+    item: sprite,
+    disposeFn,
+    globalMax: state.assetPool.config.spritePoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest")
+  });
 }
 
 // src/config/gamemanagerConfig.ts
@@ -4389,11 +4427,14 @@ var CanvasRenderer = class {
                 outW = parseInt(vbMatch[3]) || 128;
                 outH = parseInt(vbMatch[4]) || 128;
               }
-              hullCanvas = rasterizeHullOnlySvgToCanvas(
-                svgText,
-                outW,
-                outH
-              );
+              hullCanvas = getCachedHullCanvasSync ? getCachedHullCanvasSync(svgText, outW, outH, cacheKey) : void 0;
+              if (!hullCanvas) {
+                try {
+                  hullCanvas = rasterizeHullOnlySvgToCanvas(svgText, outW, outH);
+                } catch (e) {
+                  hullCanvas = void 0;
+                }
+              }
               this._svgHullCache[cacheKey] = hullCanvas;
             } catch (e) {
               hullCanvas = void 0;
@@ -4428,12 +4469,9 @@ var CanvasRenderer = class {
                       tintedCanvas = c;
                       this._setTintedCanvas(tintedKey, c);
                     } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
-                      const p = svgRenderer.rasterizeSvgWithTeamColors(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "fill" });
-                      if (p && typeof p.then === "function") {
-                        p.then((resolved) => {
-                          if (resolved) this._setTintedCanvas(tintedKey, resolved);
-                        }).catch(() => {
-                        });
+                      try {
+                        ensureRasterizedAndCached && ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "fill" });
+                      } catch (e) {
                       }
                     }
                   } catch (e) {

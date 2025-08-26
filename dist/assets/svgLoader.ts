@@ -61,12 +61,13 @@ export function parseSvgForMounts(svgText: string): {
         }
       } catch (e) { continue; }
     }
-    // Detect colorable regions marked with data-team (e.g. data-team="primary" or data-team="accent")
+    // Detect colorable regions marked with data-team or data-team-slot
     try {
-      const colorEls = Array.from(svg.querySelectorAll('[data-team]'));
+      const colorEls = Array.from(svg.querySelectorAll('[data-team],[data-team-slot]'));
       for (const el of colorEls) {
         try {
-          const role = (el.getAttribute('data-team') || '').trim();
+          // support both attribute names (data-team is legacy; data-team-slot is the newer semantic name)
+          const role = (el.getAttribute('data-team') || el.getAttribute('data-team-slot') || '').trim();
           const id = el.getAttribute('id') || undefined;
           const cls = el.getAttribute('class') || undefined;
           // attempt to compute bbox if available
@@ -196,6 +197,66 @@ export async function rasterizeHullOnlySvgToCanvasAsync(svgText: string, outW: n
 }
 
 /**
+ * Try to obtain a synchronously-available cached canvas from the higher-level
+ * svgRenderer cache. If not present, fall back to rasterizing the hull-only SVG
+ * synchronously via rasterizeHullOnlySvgToCanvas.
+ * assetKey is optional and used to look up renderer cache entries.
+ */
+export function getCachedHullCanvasSync(svgText: string, outW: number, outH: number, assetKey?: string): HTMLCanvasElement | undefined {
+  try {
+    const svgRenderer = require('./svgRenderer');
+    if (svgRenderer && typeof svgRenderer.getCanvas === 'function') {
+      try {
+        const canvas = svgRenderer.getCanvas(assetKey || '', {}, outW, outH);
+        if (canvas) return canvas as HTMLCanvasElement;
+      } catch (e) {
+        // continue to fallback
+      }
+    }
+  } catch (e) {}
+  // Fallback to local synchronous rasterization
+  try {
+    return rasterizeHullOnlySvgToCanvas(svgText, outW, outH) as HTMLCanvasElement;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+/**
+ * Ensure an asynchronously rasterized canvas for the provided SVG + mapping is
+ * available and cached via svgRenderer. Returns a promise that resolves to the canvas.
+ */
+export async function ensureRasterizedAndCached(svgText: string, mapping: Record<string,string>, outW: number, outH: number, options?: { applyTo?: 'fill'|'stroke'|'both', assetKey?: string }): Promise<HTMLCanvasElement> {
+  try {
+    const svgRenderer = require('./svgRenderer');
+    if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === 'function') {
+      try {
+        const canvas = await svgRenderer.rasterizeSvgWithTeamColors(svgText, mapping || {}, outW, outH, { applyTo: options && options.applyTo, assetKey: options && options.assetKey });
+        return canvas;
+      } catch (e) {
+        // fallthrough
+      }
+    }
+  } catch (e) {}
+  // Fallback: apply mapping locally and rasterize
+  try {
+    const recolored = applyTeamColorsToSvg(svgText, mapping || {}, options && { applyTo: options.applyTo });
+    const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+    // If svgRenderer supports caching, store this canvas
+    try {
+      const svgRenderer = require('./svgRenderer');
+      if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === 'function') {
+        try { svgRenderer.cacheCanvasForAsset(options && options.assetKey ? options.assetKey : '', mapping || {}, outW, outH, canvas); } catch (e) {}
+      }
+    } catch (e) {}
+    return canvas;
+  } catch (e) {
+    // Last-resort: rasterize original
+    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+  }
+}
+
+/**
  * Apply team colors to SVG elements that are annotated with `data-team`.
  * mapping: { roleName: color }
  * options.applyTo: 'fill' | 'stroke' | 'both' (default: 'both')
@@ -207,10 +268,10 @@ export function applyTeamColorsToSvg(svgText: string, mapping: Record<string, st
     const svg = doc.querySelector('svg');
     if (!svg) return svgText;
     const applyDefault = options && options.applyTo ? options.applyTo : 'both';
-    const els = Array.from(svg.querySelectorAll('[data-team]')) as Element[];
+    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot]')) as Element[];
     for (const el of els) {
       try {
-        const role = (el.getAttribute('data-team') || '').trim();
+        const role = (el.getAttribute('data-team') || el.getAttribute('data-team-slot') || '').trim();
         if (!role) continue;
         const color = mapping[role];
         if (!color) continue;

@@ -14,34 +14,34 @@ const repoRoot = path.resolve(__dirname, '..');
 // No longer needed: escapeHtml (unused)
 
 function inlineHtml({ html, css, js, workerJs }) {
-		// Inject CSS inside a <style> tag
-		let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, () => `<style>\n${css}\n</style>`);
+    // Inject CSS inside a <style> tag
+    let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, () => `<style>\n${css}\n</style>`);
 
 
-		// Replace module script src with inline code after adding a worker loader shim.
-		// Monkey-patch Worker to handle URL('./simWorker.js', import.meta.url) by serving from an inline blob.
-		const workerLoader = `
-			const __workerCode = ${JSON.stringify(workerJs)};
-			const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
-			const __workerUrl = URL.createObjectURL(__workerBlob);
-			const __OrigWorker = window.Worker;
-			window.Worker = class extends __OrigWorker {
-				constructor(url, opts) {
-					try {
-						const s = typeof url === 'string' ? url : String(url);
-						if (s.endsWith('simWorker.js')) {
-							super(__workerUrl, { type: 'module', ...(opts||{}) });
-							return;
-						}
-					} catch {}
-					super(url, opts);
-				}
-			};
-		`;
+    // Replace module script src with inline code after adding a worker loader shim.
+    // Monkey-patch Worker to handle URL('./simWorker.js', import.meta.url) by serving from an inline blob.
+    const workerLoader = `
+        const __workerCode = ${JSON.stringify(workerJs)};
+        const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
+        const __workerUrl = URL.createObjectURL(__workerBlob);
+        const __OrigWorker = window.Worker;
+        window.Worker = class extends __OrigWorker {
+            constructor(url, opts) {
+                try {
+                    const s = typeof url === 'string' ? url : String(url);
+                    if (s.endsWith('simWorker.js')) {
+                        super(__workerUrl, { type: 'module', ...(opts||{}) });
+                        return;
+                    }
+                } catch {}
+                super(url, opts);
+            }
+        };
+    `;
 
-		const jsInline = `${workerLoader}\n${js}`;
-		out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, () => `<script type="module">\n${jsInline}\n<\/script>`);
-		return out;
+    const jsInline = `${workerLoader}\n${js}`;
+    out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, () => `<script type="module">\n${jsInline}\n<\/script>`);
+    return out;
 }
 
 
@@ -68,13 +68,39 @@ async function buildStandalone() {
 		 }
 	 }
 
-	 // Prepend JS code to inject SVG assets into globalThis
-	 const svgInject = `if (typeof globalThis !== 'undefined') { globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)}; }\n`;
-	 const jsWithSvg = svgInject + js;
-	 const inlined = inlineHtml({ html, css, js: jsWithSvg, workerJs });
-	const standalonePath = path.join(outDir, 'spaceautobattler_standalone.html');
-	await fs.writeFile(standalonePath, inlined, 'utf8');
-	console.log(`Standalone written: ${standalonePath}`);
+    // Create a dedicated inline <script> that assigns the inlined SVG assets
+    const inlineSvgScript = `<script>if (typeof globalThis !== 'undefined') { globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)}; }</script>`;
+
+    // Produce the inlined HTML normally (without prefixing the main JS)
+    const inlined = inlineHtml({ html, css, js, workerJs });
+
+    // Insert the inlineSvgScript before </body> if present, otherwise append
+    let final = inlined;
+    if (final.includes('</body>')) {
+        final = final.replace('</body>', `${inlineSvgScript}\n</body>`);
+    } else {
+        final = final + '\n' + inlineSvgScript;
+    }
+
+    const standalonePath = path.join(outDir, 'spaceautobattler_standalone.html');
+    await fs.writeFile(standalonePath, final, 'utf8');
+    console.log(`Standalone written: ${standalonePath}`);
+
+    // Post-write verification: ensure the standalone contains the injection and at least one expected asset key
+    try {
+        const written = await fs.readFile(standalonePath, 'utf8');
+        if (!written.includes('__INLINE_SVG_ASSETS')) {
+            console.error('[build-standalone] ERROR: __INLINE_SVG_ASSETS not found in generated standalone HTML');
+            process.exitCode = 2;
+        } else if (!written.includes('"frigate"')) {
+            console.error('[build-standalone] ERROR: expected asset key "frigate" not found in generated standalone HTML');
+            process.exitCode = 3;
+        } else {
+            console.log('[build-standalone] Verified: inline SVG assets present in standalone HTML');
+        }
+    } catch (e) {
+        console.warn('[build-standalone] WARNING: failed to verify standalone HTML for inline SVG assets', e && e.message);
+    }
 }
 
 
