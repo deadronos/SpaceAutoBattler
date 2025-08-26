@@ -356,13 +356,15 @@ var Pool = class {
     this.created = this.stack.length;
   }
   acquire() {
-    const obj = this.stack.pop() || this.factory();
-    if (!this.stack.includes(obj)) this.created++;
-    return obj;
+    const obj = this.stack.pop();
+    if (typeof obj !== "undefined") return obj;
+    const newObj = this.factory();
+    this.created++;
+    return newObj;
   }
   release(obj) {
     if (this.reset) this.reset(obj);
-    this.stack.push(obj);
+    if (!this.stack.includes(obj)) this.stack.push(obj);
   }
   size() {
     return this.stack.length;
@@ -373,95 +375,6 @@ var Pool = class {
 };
 
 // src/entities.ts
-function acquireEffect(state2, key, createFn, initArgs) {
-  const poolMap = state2.assetPool.effects;
-  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state2.assetPool.counts)
-    state2.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: /* @__PURE__ */ new Map(),
-      effects: counts
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) {
-    const obj = free.pop();
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(obj, initArgs);
-    } catch {
-    }
-    return obj;
-  }
-  const max = state2.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(
-    state2.assetPool.config.effectOverflowStrategy,
-    "discard-oldest"
-  );
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const e2 = createFn();
-    try {
-      if (typeof e2.reset === "function") e2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(e2, initArgs);
-    } catch {
-    }
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return e2;
-  }
-  if (strategy === "error")
-    throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
-  const e = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return e;
-}
-function releaseEffect(state2, key, effect, disposeFn) {
-  const poolMap = state2.assetPool.effects;
-  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state2.assetPool.counts)
-    state2.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: /* @__PURE__ */ new Map(),
-      effects: counts
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(effect)) free.push(effect);
-  const max = state2.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(
-    state2.assetPool.config.effectOverflowStrategy,
-    "discard-oldest"
-  );
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-}
 var nextId = 1;
 function genId() {
   return nextId++;
@@ -649,123 +562,6 @@ function resetHealthHitEffect(obj, init) {
   obj.alive = true;
   obj._pooled = false;
   Object.assign(obj, init);
-}
-function makePooled(obj, resetFn) {
-  const o = obj;
-  if (typeof o.reset !== "function") {
-    if (typeof resetFn === "function") {
-      o.reset = function(initArgs) {
-        try {
-          resetFn(o, initArgs);
-        } catch {
-        }
-      };
-    } else {
-      o.reset = function(initArgs) {
-        if (initArgs && typeof initArgs === "object")
-          Object.assign(o, initArgs);
-      };
-    }
-  }
-  return o;
-}
-function _getStrategy(v, def) {
-  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
-}
-function _incCount(map, key, delta) {
-  const cur = map.get(key) || 0;
-  const next = cur + delta;
-  if (next <= 0) map.delete(key);
-  else map.set(key, next);
-}
-function acquireSprite(state2, key, createFn, initArgs) {
-  const poolMap = state2.assetPool.sprites;
-  const counts = state2.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state2.assetPool.counts)
-    state2.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: counts,
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) {
-    const obj = free.pop();
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(obj, initArgs);
-    } catch {
-    }
-    return obj;
-  }
-  const max = state2.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(
-    state2.assetPool.config.spriteOverflowStrategy,
-    "discard-oldest"
-  );
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const s2 = createFn();
-    try {
-      if (typeof s2.reset === "function") s2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(s2, initArgs);
-    } catch {
-    }
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return s2;
-  }
-  if (strategy === "error")
-    throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
-  const s = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return s;
-}
-function releaseSprite(state2, key, sprite, disposeFn) {
-  const poolMap = state2.assetPool.sprites;
-  const counts = state2.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state2.assetPool.counts)
-    state2.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: counts,
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(sprite)) free.push(sprite);
-  const max = state2.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(
-    state2.assetPool.config.spriteOverflowStrategy,
-    "discard-oldest"
-  );
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
 }
 function makeInitialState() {
   return {
@@ -961,14 +757,14 @@ AssetsConfig.animations = {
   },
   engineTrail: {
     type: "trail",
-    color: "#fffc00",
-    // bright yellow for high contrast
-    maxLength: 40,
-    // much longer trail
-    width: 0.35,
-    // thicker trail line
-    fade: 0.35
-    // slower fading, more persistent
+    color: "#fff0a0",
+    // brighter, warm highlight for good contrast
+    maxLength: 120,
+    // longer trail (was 40)
+    width: 0.9,
+    // thicker trail line (was 0.35)
+    fade: 0.6
+    // older points remain more visible (was 0.35)
   }
 };
 AssetsConfig.damageStates = {
@@ -1012,6 +808,239 @@ var boundaryBehavior = {
   ships: "wrap",
   bullets: "remove"
 };
+
+// src/pools/assetPool.ts
+function _getStrategy(v, def) {
+  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
+}
+function _incCount(map, key, delta) {
+  const cur = map.get(key) || 0;
+  const next = cur + delta;
+  if (next <= 0) map.delete(key);
+  else map.set(key, next);
+}
+function makePooled(obj, resetFn) {
+  const o = obj;
+  if (typeof o.reset !== "function") {
+    if (typeof resetFn === "function") {
+      o.reset = function(initArgs) {
+        try {
+          resetFn(o, initArgs);
+        } catch {
+        }
+      };
+    } else {
+      o.reset = function(initArgs) {
+        if (initArgs && typeof initArgs === "object") Object.assign(o, initArgs);
+      };
+    }
+  }
+  return o;
+}
+function ensureAssetPool(state2) {
+  if (!state2) return;
+  if (!state2.assetPool || typeof state2.assetPool !== "object") {
+    state2.assetPool = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map(),
+      counts: {
+        textures: /* @__PURE__ */ new Map(),
+        sprites: /* @__PURE__ */ new Map(),
+        effects: /* @__PURE__ */ new Map()
+      },
+      config: {
+        texturePoolSize: 128,
+        spritePoolSize: 256,
+        effectPoolSize: 128,
+        textureOverflowStrategy: "discard-oldest",
+        spriteOverflowStrategy: "discard-oldest",
+        effectOverflowStrategy: "discard-oldest"
+      }
+    };
+  } else {
+    state2.assetPool.textures = state2.assetPool.textures || /* @__PURE__ */ new Map();
+    state2.assetPool.sprites = state2.assetPool.sprites || /* @__PURE__ */ new Map();
+    state2.assetPool.effects = state2.assetPool.effects || /* @__PURE__ */ new Map();
+    state2.assetPool.counts = state2.assetPool.counts || {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map()
+    };
+    state2.assetPool.config = state2.assetPool.config || {
+      texturePoolSize: 128,
+      spritePoolSize: 256,
+      effectPoolSize: 128,
+      textureOverflowStrategy: "discard-oldest",
+      spriteOverflowStrategy: "discard-oldest",
+      effectOverflowStrategy: "discard-oldest"
+    };
+  }
+}
+function acquireEffect(state2, key, createFn, initArgs) {
+  ensureAssetPool(state2);
+  const poolMap = state2.assetPool.effects;
+  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts)
+    state2.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: counts
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state2.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state2.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const e2 = createFn();
+    try {
+      if (typeof e2.reset === "function") e2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(e2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return e2;
+  }
+  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
+  const e = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return e;
+}
+function releaseEffect(state2, key, effect, disposeFn) {
+  ensureAssetPool(state2);
+  const poolMap = state2.assetPool.effects;
+  const counts = state2.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts)
+    state2.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: counts
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(effect)) free.push(effect);
+  const max = state2.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state2.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+}
+function acquireSprite(state2, key, createFn, initArgs) {
+  ensureAssetPool(state2);
+  const poolMap = state2.assetPool.sprites;
+  const counts = state2.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts)
+    state2.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: counts,
+      effects: /* @__PURE__ */ new Map()
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state2.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state2.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const s2 = createFn();
+    try {
+      if (typeof s2.reset === "function") s2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(s2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return s2;
+  }
+  if (strategy === "error") throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
+  const s = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return s;
+}
+function releaseSprite(state2, key, sprite, disposeFn) {
+  ensureAssetPool(state2);
+  const poolMap = state2.assetPool.sprites;
+  const counts = state2.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state2.assetPool.counts)
+    state2.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: counts,
+      effects: /* @__PURE__ */ new Map()
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(sprite)) free.push(sprite);
+  const max = state2.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state2.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+}
 
 // src/config/gamemanagerConfig.ts
 var SHIELD = {

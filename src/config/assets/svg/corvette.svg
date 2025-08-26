@@ -1,21 +1,23 @@
 <svg width="128" height="128" viewBox="0 0 128 128">
   <rect width="128" height="128" fill="#080d1a"/>
   <!-- Main hull -->
-  <polygon points="64,18 88,64 64,110 40,64" fill="#36d8ff" stroke="#1c5a7d" stroke-width="3"/>
+  <polygon points="64,18 88,64 64,110 40,64" fill="#36d8ff" stroke="#1c5a7d" stroke-width="3"
+           class="hull team-fill-primary" data-team-slot="hull" data-team-slot-stroke="trim" />
   <!-- Cockpit -->
-  <ellipse cx="64" cy="40" rx="8" ry="12" fill="#82ffe6" stroke="#0ff" stroke-width="2"/>
+  <ellipse cx="64" cy="40" rx="8" ry="12" fill="#82ffe6" stroke="#0ff" stroke-width="2"
+           class="cockpit team-fill-secondary" data-team-slot="hangar" />
   <!-- Hull panels -->
-  <polygon points="64,30 72,64 64,98 56,64" fill="#1b7fa6" opacity="0.6"/>
+  <polygon points="64,30 72,64 64,98 56,64" fill="#1b7fa6" opacity="0.6" class="panel team-fill-detail" data-team-slot="panel" />
   <!-- Side detailing -->
-  <rect x="52" y="72" width="24" height="8" rx="4" fill="#b0eaff" opacity="0.5"/>
+  <rect x="52" y="72" width="24" height="8" rx="4" fill="#b0eaff" opacity="0.5" class="side-detail team-fill-detail" data-team-slot="panel"/>
   <!-- Engine glows -->
-  <ellipse cx="64" cy="116" rx="6" ry="3" fill="#00ffea" opacity="0.8"/>
-  <ellipse cx="58" cy="110" rx="3" ry="2" fill="#00ffae" opacity="0.6"/>
-  <ellipse cx="70" cy="110" rx="3" ry="2" fill="#00ffae" opacity="0.6"/>
+  <ellipse cx="64" cy="116" rx="6" ry="3" fill="#00ffea" opacity="0.8" class="engine-glow team-fill-glow" data-team-slot="glow"/>
+  <ellipse cx="58" cy="110" rx="3" ry="2" fill="#00ffae" opacity="0.6" class="engine-glow team-fill-glow" data-team-slot="glow"/>
+  <ellipse cx="70" cy="110" rx="3" ry="2" fill="#00ffae" opacity="0.6" class="engine-glow team-fill-glow" data-team-slot="glow"/>
   <!-- Engine mountpoints -->
-  <rect x="62" y="114" width="4" height="6" rx="2" fill="#00ffea" class="engine" />
+  <rect x="62" y="114" width="4" height="6" rx="2" fill="#00ffea" class="engine team-fill-accent" data-team-slot="engine" />
   <!-- 1 Turret -->
-  <rect x="62" y="22" width="4" height="10" rx="2" fill="#fff" class="turret" />
+  <rect x="62" y="22" width="4" height="10" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
   <!-- Tech lines -->
-  <polyline points="64,50 64,64 64,80" stroke="#caffff" stroke-width="2" fill="none" opacity="0.3"/>
+  <polyline points="64,50 64,64 64,80" stroke="#caffff" stroke-width="2" fill="none" opacity="0.3" class="tech-lines team-fill-detail" data-team-slot="panel"/>
 </svg>

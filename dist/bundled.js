@@ -1,8 +1,453 @@
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/assets/svgLoader.ts
+function parseSvgForMounts(svgText) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return { mounts: [], engineMounts: [], viewBox: null };
+    const vb = svg.getAttribute("viewBox");
+    let vbw = 0, vbh = 0;
+    if (vb) {
+      const parts = vb.split(/\s+|,/).map((p) => parseFloat(p));
+      if (parts.length >= 4) {
+        vbw = parts[2];
+        vbh = parts[3];
+      }
+    } else {
+      vbw = parseFloat(svg.getAttribute("width") || "0") || 0;
+      vbh = parseFloat(svg.getAttribute("height") || "0") || 0;
+    }
+    const mounts = [];
+    const engineMounts = [];
+    const colorRegions = [];
+    const candidates = Array.from(svg.querySelectorAll("[id],[class]"));
+    for (const el of candidates) {
+      try {
+        const id = el.getAttribute("id") || "";
+        const cls = el.getAttribute("class") || "";
+        if (/mount|turret|gun/i.test(id + " " + cls)) {
+          const bbox = el.getBBox ? el.getBBox() : null;
+          if (bbox) {
+            mounts.push({ x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 });
+          } else {
+            const cx = parseFloat(el.getAttribute && el.getAttribute("cx")) || parseFloat(el.getAttribute && el.getAttribute("x")) || 0;
+            const cy = parseFloat(el.getAttribute && el.getAttribute("cy")) || parseFloat(el.getAttribute && el.getAttribute("y")) || 0;
+            mounts.push({ x: cx, y: cy });
+          }
+        }
+        if (/engine/i.test(id + " " + cls)) {
+          const bbox = el.getBBox ? el.getBBox() : null;
+          if (bbox) {
+            engineMounts.push({ x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 });
+          } else {
+            const cx = parseFloat(el.getAttribute && el.getAttribute("cx")) || parseFloat(el.getAttribute && el.getAttribute("x")) || 0;
+            const cy = parseFloat(el.getAttribute && el.getAttribute("cy")) || parseFloat(el.getAttribute && el.getAttribute("y")) || 0;
+            engineMounts.push({ x: cx, y: cy });
+          }
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    try {
+      const colorEls = Array.from(svg.querySelectorAll("[data-team]"));
+      for (const el of colorEls) {
+        try {
+          const role = (el.getAttribute("data-team") || "").trim();
+          const id = el.getAttribute("id") || void 0;
+          const cls = el.getAttribute("class") || void 0;
+          let bboxVal;
+          const bbox = el.getBBox ? el.getBBox() : null;
+          if (bbox) bboxVal = { x: bbox.x, y: bbox.y, w: bbox.width, h: bbox.height };
+          colorRegions.push({ role, id, class: cls, bbox: bboxVal });
+        } catch (e) {
+          continue;
+        }
+      }
+    } catch (e) {
+    }
+    return { mounts, engineMounts, viewBox: vbw && vbh ? { w: vbw, h: vbh } : null, colorRegions };
+  } catch (e) {
+    return { mounts: [], engineMounts: [], viewBox: null };
+  }
+}
+function rasterizeSvgToCanvas(svgText, outW, outH) {
+  const canvas = document.createElement("canvas");
+  canvas.width = outW;
+  canvas.height = outH;
+  try {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas;
+    const img = new Image();
+    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    img.onload = () => {
+      try {
+        ctx.drawImage(img, 0, 0, outW, outH);
+      } catch (e) {
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  } catch (e) {
+  }
+  return canvas;
+}
+function rasterizeSvgToCanvasAsync(svgText, outW, outH) {
+  const canvas = document.createElement("canvas");
+  canvas.width = outW;
+  canvas.height = outH;
+  return new Promise((resolve) => {
+    try {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(canvas);
+      const img = new Image();
+      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        try {
+          URL.revokeObjectURL(url);
+        } catch (e) {
+        }
+        resolve(canvas);
+      };
+      img.onload = () => {
+        try {
+          ctx.clearRect(0, 0, outW, outH);
+          ctx.drawImage(img, 0, 0, outW, outH);
+        } catch (e) {
+        }
+        done();
+      };
+      img.onerror = () => {
+        done();
+      };
+      try {
+        img.src = url;
+      } catch (e) {
+        done();
+      }
+      setTimeout(() => {
+        done();
+      }, 2500);
+    } catch (e) {
+      try {
+      } catch {
+      }
+      ;
+      resolve(canvas);
+    }
+  });
+}
+function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
+    const turrets = svg.querySelectorAll("rect.turret");
+    turrets.forEach((el) => el.parentNode?.removeChild(el));
+    try {
+      const vbAttr = svg.getAttribute("viewBox");
+      let vbW = 0, vbH = 0;
+      if (vbAttr) {
+        const parts = vbAttr.split(/\s+|,/).map((p) => parseFloat(p));
+        if (parts.length >= 4) {
+          vbW = parts[2];
+          vbH = parts[3];
+        }
+      } else {
+        vbW = parseFloat(svg.getAttribute("width") || "0") || 0;
+        vbH = parseFloat(svg.getAttribute("height") || "0") || 0;
+      }
+      if (vbW > 0 && vbH > 0) {
+        const rects = svg.querySelectorAll("rect");
+        rects.forEach((r) => {
+          try {
+            const rx = parseFloat(r.getAttribute("x") || "0") || 0;
+            const ry = parseFloat(r.getAttribute("y") || "0") || 0;
+            const rw = parseFloat(r.getAttribute("width") || "0") || 0;
+            const rh = parseFloat(r.getAttribute("height") || "0") || 0;
+            if (Math.abs(rx) < 1e-6 && Math.abs(ry) < 1e-6 && Math.abs(rw - vbW) < 1e-3 && Math.abs(rh - vbH) < 1e-3) {
+              r.parentNode?.removeChild(r);
+            }
+          } catch (e) {
+          }
+        });
+      }
+    } catch (e) {
+    }
+    const serializer = new XMLSerializer();
+    const hullOnlySvgText = serializer.serializeToString(svg);
+    return rasterizeSvgToCanvas(hullOnlySvgText, outW, outH);
+  } catch (e) {
+    return rasterizeSvgToCanvas(svgText, outW, outH);
+  }
+}
+async function rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
+    const turrets = svg.querySelectorAll("rect.turret");
+    turrets.forEach((el) => el.parentNode?.removeChild(el));
+    const serializer = new XMLSerializer();
+    const hullOnlySvgText = serializer.serializeToString(svg);
+    return await rasterizeSvgToCanvasAsync(hullOnlySvgText, outW, outH);
+  } catch (e) {
+    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+  }
+}
+function applyTeamColorsToSvg(svgText, mapping, options) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return svgText;
+    const applyDefault = options && options.applyTo ? options.applyTo : "both";
+    const els = Array.from(svg.querySelectorAll("[data-team]"));
+    for (const el of els) {
+      try {
+        const role = (el.getAttribute("data-team") || "").trim();
+        if (!role) continue;
+        const color = mapping[role];
+        if (!color) continue;
+        const applyAttr = (el.getAttribute("data-team-apply") || "").trim().toLowerCase();
+        const apply = applyAttr === "fill" || applyAttr === "stroke" ? applyAttr : applyDefault;
+        const setStyleProp = (prop, value) => {
+          try {
+            el.setAttribute(prop, value);
+            const cur = el.getAttribute("style") || "";
+            const re = new RegExp("(^|;)\\s*" + prop + "\\s*:\\s*[^;]+", "i");
+            if (re.test(cur)) {
+              const replaced = cur.replace(re, `$1 ${prop}: ${value}`);
+              el.setAttribute("style", replaced);
+            } else {
+              const next = cur ? cur + `; ${prop}: ${value}` : `${prop}: ${value}`;
+              el.setAttribute("style", next);
+            }
+          } catch (e) {
+          }
+        };
+        if (apply === "fill" || apply === "both") setStyleProp("fill", color);
+        if (apply === "stroke" || apply === "both") setStyleProp("stroke", color);
+      } catch (e) {
+        continue;
+      }
+    }
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(svg);
+  } catch (e) {
+    return svgText;
+  }
+}
+var init_svgLoader = __esm({
+  "src/assets/svgLoader.ts"() {
+    "use strict";
+  }
+});
+
+// src/assets/svgRenderer.ts
+var svgRenderer_exports = {};
+__export(svgRenderer_exports, {
+  _clearRasterCache: () => _clearRasterCache,
+  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
+  cacheCanvasForAsset: () => cacheCanvasForAsset,
+  default: () => svgRenderer_default,
+  getCanvas: () => getCanvas,
+  getCanvasFromCache: () => getCanvasFromCache,
+  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
+  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
+  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
+});
+function stableStringify(obj) {
+  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
+  const keys = Object.keys(obj).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
+}
+function djb2Hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) + h + str.charCodeAt(i);
+    h = h & 4294967295;
+  }
+  return (h >>> 0).toString(16);
+}
+function ensureCacheLimit() {
+  try {
+    const now = Date.now();
+    if (rasterCacheMaxAgeMS > 0) {
+      for (const [k, v] of Array.from(rasterCache.entries())) {
+        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
+          rasterCache.delete(k);
+        }
+      }
+    }
+    while (rasterCache.size > rasterCacheMaxEntries) {
+      const it = rasterCache.keys().next();
+      if (it.done) break;
+      rasterCache.delete(it.value);
+    }
+  } catch (e) {
+  }
+}
+async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  if (rasterCache.has(cacheKey)) {
+    const entry2 = rasterCache.get(cacheKey);
+    try {
+      entry2.lastAccess = Date.now();
+      rasterCache.delete(cacheKey);
+      rasterCache.set(cacheKey, entry2);
+    } catch (e) {
+    }
+    if (entry2.canvas) return Promise.resolve(entry2.canvas);
+    if (entry2.promise) return entry2.promise;
+  }
+  const entry = {
+    promise: null,
+    canvas: void 0,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  const p = (async () => {
+    try {
+      const recolored = applyTeamColorsToSvg(svgText, mapping, options && { applyTo: options?.applyTo });
+      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    } catch (e) {
+      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    }
+  })();
+  entry.promise = p;
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+  try {
+    const res = await p;
+    return res;
+  } catch (e) {
+    rasterCache.delete(cacheKey);
+    throw e;
+  }
+}
+function _clearRasterCache() {
+  rasterCache.clear();
+}
+function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  try {
+    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
+  } catch (e) {
+  }
+  const entry = {
+    promise: Promise.resolve(canvas),
+    canvas,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+}
+function _getRasterCacheKeysForTest() {
+  return Array.from(rasterCache.keys());
+}
+function setRasterCacheMaxEntries(n) {
+  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
+  ensureCacheLimit();
+}
+function setRasterCacheMaxAge(ms) {
+  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
+  ensureCacheLimit();
+}
+function getCanvasFromCache(assetKey, mapping, outW, outH) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  const entry = rasterCache.get(cacheKey);
+  if (!entry) return void 0;
+  if (rasterCacheMaxAgeMS > 0) {
+    const now = Date.now();
+    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
+      rasterCache.delete(cacheKey);
+      return void 0;
+    }
+  }
+  entry.lastAccess = Date.now();
+  try {
+    rasterCache.delete(cacheKey);
+    rasterCache.set(cacheKey, entry);
+  } catch (e) {
+  }
+  return entry.canvas;
+}
+function getCanvas(assetKey, mapping, outW, outH) {
+  return getCanvasFromCache(assetKey, mapping, outW, outH);
+}
+var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRenderer_default;
+var init_svgRenderer = __esm({
+  "src/assets/svgRenderer.ts"() {
+    "use strict";
+    init_svgLoader();
+    rasterCache = /* @__PURE__ */ new Map();
+    rasterCacheMaxEntries = 256;
+    rasterCacheMaxAgeMS = 0;
+    svgRenderer_default = {
+      rasterizeSvgWithTeamColors,
+      _clearRasterCache,
+      cacheCanvasForAsset,
+      setRasterCacheMaxEntries,
+      setRasterCacheMaxAge,
+      getCanvasFromCache,
+      // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
+      getCanvas(assetKey, mapping, outW, outH) {
+        return getCanvasFromCache(assetKey, mapping, outW, outH);
+      }
+    };
+  }
+});
 
 // src/config/entitiesConfig.ts
 var ShipConfig = {
@@ -477,13 +922,15 @@ var Pool = class {
     this.created = this.stack.length;
   }
   acquire() {
-    const obj = this.stack.pop() || this.factory();
-    if (!this.stack.includes(obj)) this.created++;
-    return obj;
+    const obj = this.stack.pop();
+    if (typeof obj !== "undefined") return obj;
+    const newObj = this.factory();
+    this.created++;
+    return newObj;
   }
   release(obj) {
     if (this.reset) this.reset(obj);
-    this.stack.push(obj);
+    if (!this.stack.includes(obj)) this.stack.push(obj);
   }
   size() {
     return this.stack.length;
@@ -494,95 +941,6 @@ var Pool = class {
 };
 
 // src/entities.ts
-function acquireEffect(state, key, createFn, initArgs) {
-  const poolMap = state.assetPool.effects;
-  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: /* @__PURE__ */ new Map(),
-      effects: counts
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) {
-    const obj = free.pop();
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(obj, initArgs);
-    } catch {
-    }
-    return obj;
-  }
-  const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(
-    state.assetPool.config.effectOverflowStrategy,
-    "discard-oldest"
-  );
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const e2 = createFn();
-    try {
-      if (typeof e2.reset === "function") e2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(e2, initArgs);
-    } catch {
-    }
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return e2;
-  }
-  if (strategy === "error")
-    throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
-  const e = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return e;
-}
-function releaseEffect(state, key, effect, disposeFn) {
-  const poolMap = state.assetPool.effects;
-  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: /* @__PURE__ */ new Map(),
-      effects: counts
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(effect)) free.push(effect);
-  const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(
-    state.assetPool.config.effectOverflowStrategy,
-    "discard-oldest"
-  );
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-}
 var nextId = 1;
 function genId() {
   return nextId++;
@@ -738,202 +1096,6 @@ function resetHealthHitEffect(obj, init) {
   obj.alive = true;
   obj._pooled = false;
   Object.assign(obj, init);
-}
-function makePooled(obj, resetFn) {
-  const o = obj;
-  if (typeof o.reset !== "function") {
-    if (typeof resetFn === "function") {
-      o.reset = function(initArgs) {
-        try {
-          resetFn(o, initArgs);
-        } catch {
-        }
-      };
-    } else {
-      o.reset = function(initArgs) {
-        if (initArgs && typeof initArgs === "object")
-          Object.assign(o, initArgs);
-      };
-    }
-  }
-  return o;
-}
-function _getStrategy(v, def) {
-  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
-}
-function _incCount(map, key, delta) {
-  const cur = map.get(key) || 0;
-  const next = cur + delta;
-  if (next <= 0) map.delete(key);
-  else map.set(key, next);
-}
-function acquireTexture(state, key, createFn) {
-  const poolMap = state.assetPool.textures;
-  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: counts,
-      sprites: /* @__PURE__ */ new Map(),
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) return free.pop();
-  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(
-    state.assetPool.config.textureOverflowStrategy,
-    "discard-oldest"
-  );
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const tex2 = createFn();
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return tex2;
-  }
-  if (strategy === "error")
-    throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
-  const tex = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return tex;
-}
-function releaseTexture(state, key, tex, disposeFn) {
-  const poolMap = state.assetPool.textures;
-  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: counts,
-      sprites: /* @__PURE__ */ new Map(),
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(tex)) free.push(tex);
-  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(
-    state.assetPool.config.textureOverflowStrategy,
-    "discard-oldest"
-  );
-  const countsMap = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (entry.disposer) entry.disposer(victim);
-      else if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(countsMap, key, -1);
-    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (entry.disposer) entry.disposer(victim);
-      else if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(countsMap, key, -1);
-    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
-  }
-}
-function acquireSprite(state, key, createFn, initArgs) {
-  const poolMap = state.assetPool.sprites;
-  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: counts,
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) {
-    const obj = free.pop();
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(obj, initArgs);
-    } catch {
-    }
-    return obj;
-  }
-  const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(
-    state.assetPool.config.spriteOverflowStrategy,
-    "discard-oldest"
-  );
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const s2 = createFn();
-    try {
-      if (typeof s2.reset === "function") s2.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object")
-        Object.assign(s2, initArgs);
-    } catch {
-    }
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return s2;
-  }
-  if (strategy === "error")
-    throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
-  const s = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return s;
-}
-function releaseSprite(state, key, sprite, disposeFn) {
-  const poolMap = state.assetPool.sprites;
-  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: /* @__PURE__ */ new Map(),
-      sprites: counts,
-      effects: /* @__PURE__ */ new Map()
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(sprite)) free.push(sprite);
-  const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(
-    state.assetPool.config.spriteOverflowStrategy,
-    "discard-oldest"
-  );
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop();
-    try {
-      if (disposeFn) disposeFn(victim);
-    } catch {
-    }
-    _incCount(counts, key, -1);
-  }
 }
 function makeInitialState() {
   return {
@@ -1408,14 +1570,14 @@ AssetsConfig.animations = {
   },
   engineTrail: {
     type: "trail",
-    color: "#fffc00",
-    // bright yellow for high contrast
-    maxLength: 40,
-    // much longer trail
-    width: 0.35,
-    // thicker trail line
-    fade: 0.35
-    // slower fading, more persistent
+    color: "#fff0a0",
+    // brighter, warm highlight for good contrast
+    maxLength: 120,
+    // longer trail (was 40)
+    width: 0.9,
+    // thicker trail line (was 0.35)
+    fade: 0.6
+    // older points remain more visible (was 0.35)
   }
 };
 AssetsConfig.damageStates = {
@@ -2205,6 +2367,301 @@ function createSimWorker(url = "./simWorker.js") {
       worker.terminate();
     }
   };
+}
+
+// src/pools/assetPool.ts
+function _getStrategy(v, def) {
+  return v === "grow" || v === "error" || v === "discard-oldest" ? v : def;
+}
+function _incCount(map, key, delta) {
+  const cur = map.get(key) || 0;
+  const next = cur + delta;
+  if (next <= 0) map.delete(key);
+  else map.set(key, next);
+}
+function makePooled(obj, resetFn) {
+  const o = obj;
+  if (typeof o.reset !== "function") {
+    if (typeof resetFn === "function") {
+      o.reset = function(initArgs) {
+        try {
+          resetFn(o, initArgs);
+        } catch {
+        }
+      };
+    } else {
+      o.reset = function(initArgs) {
+        if (initArgs && typeof initArgs === "object") Object.assign(o, initArgs);
+      };
+    }
+  }
+  return o;
+}
+function ensureAssetPool(state) {
+  if (!state) return;
+  if (!state.assetPool || typeof state.assetPool !== "object") {
+    state.assetPool = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map(),
+      counts: {
+        textures: /* @__PURE__ */ new Map(),
+        sprites: /* @__PURE__ */ new Map(),
+        effects: /* @__PURE__ */ new Map()
+      },
+      config: {
+        texturePoolSize: 128,
+        spritePoolSize: 256,
+        effectPoolSize: 128,
+        textureOverflowStrategy: "discard-oldest",
+        spriteOverflowStrategy: "discard-oldest",
+        effectOverflowStrategy: "discard-oldest"
+      }
+    };
+  } else {
+    state.assetPool.textures = state.assetPool.textures || /* @__PURE__ */ new Map();
+    state.assetPool.sprites = state.assetPool.sprites || /* @__PURE__ */ new Map();
+    state.assetPool.effects = state.assetPool.effects || /* @__PURE__ */ new Map();
+    state.assetPool.counts = state.assetPool.counts || {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: /* @__PURE__ */ new Map()
+    };
+    state.assetPool.config = state.assetPool.config || {
+      texturePoolSize: 128,
+      spritePoolSize: 256,
+      effectPoolSize: 128,
+      textureOverflowStrategy: "discard-oldest",
+      spriteOverflowStrategy: "discard-oldest",
+      effectOverflowStrategy: "discard-oldest"
+    };
+  }
+}
+function acquireEffect(state, key, createFn, initArgs) {
+  ensureAssetPool(state);
+  const poolMap = state.assetPool.effects;
+  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: counts
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const e2 = createFn();
+    try {
+      if (typeof e2.reset === "function") e2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(e2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return e2;
+  }
+  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
+  const e = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return e;
+}
+function releaseEffect(state, key, effect, disposeFn) {
+  ensureAssetPool(state);
+  const poolMap = state.assetPool.effects;
+  const counts = state.assetPool.counts?.effects || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: /* @__PURE__ */ new Map(),
+      effects: counts
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(effect)) free.push(effect);
+  const max = state.assetPool.config.effectPoolSize || 128;
+  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+}
+function acquireTexture(state, key, createFn) {
+  ensureAssetPool(state);
+  const poolMap = state.assetPool.textures;
+  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) return free.pop();
+  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
+  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const tex2 = createFn();
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return tex2;
+  }
+  if (strategy === "error") throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
+  const tex = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return tex;
+}
+function releaseTexture(state, key, tex, disposeFn) {
+  ensureAssetPool(state);
+  const poolMap = state.assetPool.textures;
+  const counts = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(tex)) free.push(tex);
+  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
+  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
+  const countsMap = state.assetPool.counts?.textures || /* @__PURE__ */ new Map();
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (entry.disposer) entry.disposer(victim);
+      else if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(countsMap, key, -1);
+    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (entry.disposer) entry.disposer(victim);
+      else if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(countsMap, key, -1);
+    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
+  }
+}
+function acquireSprite(state, key, createFn, initArgs) {
+  ensureAssetPool(state);
+  const poolMap = state.assetPool.sprites;
+  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: counts,
+      effects: /* @__PURE__ */ new Map()
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (free.length) {
+    const obj = free.pop();
+    try {
+      if (typeof obj.reset === "function") obj.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
+    } catch {
+    }
+    return obj;
+  }
+  const max = state.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  const total = entry.allocated || counts.get(key) || 0;
+  if (total < max || strategy === "grow") {
+    const s2 = createFn();
+    try {
+      if (typeof s2.reset === "function") s2.reset(initArgs);
+      else if (initArgs && typeof initArgs === "object") Object.assign(s2, initArgs);
+    } catch {
+    }
+    entry.allocated = (entry.allocated || 0) + 1;
+    _incCount(counts, key, 1);
+    return s2;
+  }
+  if (strategy === "error") throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
+  const s = createFn();
+  entry.allocated = (entry.allocated || 0) + 1;
+  _incCount(counts, key, 1);
+  return s;
+}
+function releaseSprite(state, key, sprite, disposeFn) {
+  ensureAssetPool(state);
+  const poolMap = state.assetPool.sprites;
+  const counts = state.assetPool.counts?.sprites || /* @__PURE__ */ new Map();
+  if (!state.assetPool.counts)
+    state.assetPool.counts = {
+      textures: /* @__PURE__ */ new Map(),
+      sprites: counts,
+      effects: /* @__PURE__ */ new Map()
+    };
+  let entry = poolMap.get(key);
+  if (!entry) {
+    entry = { freeList: [], allocated: 0 };
+    poolMap.set(key, entry);
+  }
+  const free = entry.freeList;
+  if (!free.includes(sprite)) free.push(sprite);
+  const max = state.assetPool.config.spritePoolSize || 256;
+  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
+  if (strategy === "grow") return;
+  while (free.length > max) {
+    const victim = strategy === "discard-oldest" ? free.shift() : free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
+  if (strategy === "error" && free.length > max) {
+    const victim = free.pop();
+    try {
+      if (disposeFn) disposeFn(victim);
+    } catch {
+    }
+    _incCount(counts, key, -1);
+  }
 }
 
 // src/config/gamemanagerConfig.ts
@@ -3077,195 +3534,8 @@ function getPreferredRenderer() {
 }
 var rendererConfig_default = RendererConfig;
 
-// src/assets/svgLoader.ts
-function parseSvgForMounts(svgText) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, "image/svg+xml");
-    const svg = doc.querySelector("svg");
-    if (!svg) return { mounts: [], engineMounts: [], viewBox: null };
-    const vb = svg.getAttribute("viewBox");
-    let vbw = 0, vbh = 0;
-    if (vb) {
-      const parts = vb.split(/\s+|,/).map((p) => parseFloat(p));
-      if (parts.length >= 4) {
-        vbw = parts[2];
-        vbh = parts[3];
-      }
-    } else {
-      vbw = parseFloat(svg.getAttribute("width") || "0") || 0;
-      vbh = parseFloat(svg.getAttribute("height") || "0") || 0;
-    }
-    const mounts = [];
-    const engineMounts = [];
-    const candidates = Array.from(svg.querySelectorAll("[id],[class]"));
-    for (const el of candidates) {
-      try {
-        const id = el.getAttribute("id") || "";
-        const cls = el.getAttribute("class") || "";
-        if (/mount|turret|gun/i.test(id + " " + cls)) {
-          const bbox = el.getBBox ? el.getBBox() : null;
-          if (bbox) {
-            mounts.push({ x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 });
-          } else {
-            const cx = parseFloat(el.getAttribute && el.getAttribute("cx")) || parseFloat(el.getAttribute && el.getAttribute("x")) || 0;
-            const cy = parseFloat(el.getAttribute && el.getAttribute("cy")) || parseFloat(el.getAttribute && el.getAttribute("y")) || 0;
-            mounts.push({ x: cx, y: cy });
-          }
-        }
-        if (/engine/i.test(id + " " + cls)) {
-          const bbox = el.getBBox ? el.getBBox() : null;
-          if (bbox) {
-            engineMounts.push({ x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 });
-          } else {
-            const cx = parseFloat(el.getAttribute && el.getAttribute("cx")) || parseFloat(el.getAttribute && el.getAttribute("x")) || 0;
-            const cy = parseFloat(el.getAttribute && el.getAttribute("cy")) || parseFloat(el.getAttribute && el.getAttribute("y")) || 0;
-            engineMounts.push({ x: cx, y: cy });
-          }
-        }
-      } catch (e) {
-        continue;
-      }
-    }
-    return { mounts, engineMounts, viewBox: vbw && vbh ? { w: vbw, h: vbh } : null };
-  } catch (e) {
-    return { mounts: [], engineMounts: [], viewBox: null };
-  }
-}
-function rasterizeSvgToCanvas(svgText, outW, outH) {
-  const canvas = document.createElement("canvas");
-  canvas.width = outW;
-  canvas.height = outH;
-  try {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return canvas;
-    const img = new Image();
-    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    img.onload = () => {
-      try {
-        ctx.drawImage(img, 0, 0, outW, outH);
-      } catch (e) {
-      }
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  } catch (e) {
-  }
-  return canvas;
-}
-function rasterizeSvgToCanvasAsync(svgText, outW, outH) {
-  const canvas = document.createElement("canvas");
-  canvas.width = outW;
-  canvas.height = outH;
-  return new Promise((resolve) => {
-    try {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return resolve(canvas);
-      const img = new Image();
-      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
-      let settled = false;
-      const done = () => {
-        if (settled) return;
-        settled = true;
-        try {
-          URL.revokeObjectURL(url);
-        } catch (e) {
-        }
-        resolve(canvas);
-      };
-      img.onload = () => {
-        try {
-          ctx.clearRect(0, 0, outW, outH);
-          ctx.drawImage(img, 0, 0, outW, outH);
-        } catch (e) {
-        }
-        done();
-      };
-      img.onerror = () => {
-        done();
-      };
-      try {
-        img.src = url;
-      } catch (e) {
-        done();
-      }
-      setTimeout(() => {
-        done();
-      }, 2500);
-    } catch (e) {
-      try {
-      } catch {
-      }
-      ;
-      resolve(canvas);
-    }
-  });
-}
-function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, "image/svg+xml");
-    const svg = doc.querySelector("svg");
-    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
-    const turrets = svg.querySelectorAll("rect.turret");
-    turrets.forEach((el) => el.parentNode?.removeChild(el));
-    try {
-      const vbAttr = svg.getAttribute("viewBox");
-      let vbW = 0, vbH = 0;
-      if (vbAttr) {
-        const parts = vbAttr.split(/\s+|,/).map((p) => parseFloat(p));
-        if (parts.length >= 4) {
-          vbW = parts[2];
-          vbH = parts[3];
-        }
-      } else {
-        vbW = parseFloat(svg.getAttribute("width") || "0") || 0;
-        vbH = parseFloat(svg.getAttribute("height") || "0") || 0;
-      }
-      if (vbW > 0 && vbH > 0) {
-        const rects = svg.querySelectorAll("rect");
-        rects.forEach((r) => {
-          try {
-            const rx = parseFloat(r.getAttribute("x") || "0") || 0;
-            const ry = parseFloat(r.getAttribute("y") || "0") || 0;
-            const rw = parseFloat(r.getAttribute("width") || "0") || 0;
-            const rh = parseFloat(r.getAttribute("height") || "0") || 0;
-            if (Math.abs(rx) < 1e-6 && Math.abs(ry) < 1e-6 && Math.abs(rw - vbW) < 1e-3 && Math.abs(rh - vbH) < 1e-3) {
-              r.parentNode?.removeChild(r);
-            }
-          } catch (e) {
-          }
-        });
-      }
-    } catch (e) {
-    }
-    const serializer = new XMLSerializer();
-    const hullOnlySvgText = serializer.serializeToString(svg);
-    return rasterizeSvgToCanvas(hullOnlySvgText, outW, outH);
-  } catch (e) {
-    return rasterizeSvgToCanvas(svgText, outW, outH);
-  }
-}
-async function rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, "image/svg+xml");
-    const svg = doc.querySelector("svg");
-    if (!svg) return rasterizeSvgToCanvas(svgText, outW, outH);
-    const turrets = svg.querySelectorAll("rect.turret");
-    turrets.forEach((el) => el.parentNode?.removeChild(el));
-    const serializer = new XMLSerializer();
-    const hullOnlySvgText = serializer.serializeToString(svg);
-    return await rasterizeSvgToCanvasAsync(hullOnlySvgText, outW, outH);
-  } catch (e) {
-    return await rasterizeSvgToCanvasAsync(svgText, outW, outH);
-  }
-}
+// src/canvasrenderer.ts
+init_svgLoader();
 
 // src/pools/tintedHullPool.ts
 var TintedHullPool = class {
@@ -3654,6 +3924,13 @@ var CanvasRenderer = class {
             if (hullCanvas) {
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[key] = hullCanvas;
+              try {
+                const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                  svgRenderer.cacheCanvasForAsset(key, {}, hullCanvas.width, hullCanvas.height, hullCanvas);
+                }
+              } catch (e) {
+              }
             }
           } catch (e) {
           }
@@ -3749,6 +4026,13 @@ var CanvasRenderer = class {
                   tctx.fillRect(0, 0, tc.width, tc.height);
                   tctx.globalCompositeOperation = "source-over";
                   this._setTintedCanvas(k, tc);
+                  try {
+                    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                    if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                      svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                    }
+                  } catch (e) {
+                  }
                 }
               } catch (e) {
               }
@@ -3794,6 +4078,13 @@ var CanvasRenderer = class {
                     }
                   }
                   this._setTintedCanvas(k, tc);
+                  try {
+                    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                    if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                      svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                    }
+                  } catch (e) {
+                  }
                 } catch (e) {
                 }
               }
@@ -4127,23 +4418,48 @@ var CanvasRenderer = class {
             }
             if (!tintedCanvas) {
               try {
-                const tc = document.createElement("canvas");
-                tc.width = hullCanvas.width;
-                tc.height = hullCanvas.height;
-                const tctx = tc.getContext("2d");
-                if (tctx) {
-                  tctx.clearRect(0, 0, tc.width, tc.height);
-                  tctx.drawImage(hullCanvas, 0, 0);
-                  tctx.globalCompositeOperation = "source-in";
-                  tctx.fillStyle = teamColor;
-                  tctx.fillRect(0, 0, tc.width, tc.height);
-                  tctx.globalCompositeOperation = "source-over";
-                  tintedCanvas = tc;
+                const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
+                  const assetKey = cacheKey;
+                  const mapping = { primary: teamColor };
+                  try {
+                    const c = svgRenderer.getCanvas(assetKey, mapping, hullCanvas.width, hullCanvas.height);
+                    if (c) {
+                      tintedCanvas = c;
+                      this._setTintedCanvas(tintedKey, c);
+                    } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
+                      const p = svgRenderer.rasterizeSvgWithTeamColors(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "fill" });
+                      if (p && typeof p.then === "function") {
+                        p.then((resolved) => {
+                          if (resolved) this._setTintedCanvas(tintedKey, resolved);
+                        }).catch(() => {
+                        });
+                      }
+                    }
+                  } catch (e) {
+                  }
                 }
               } catch (e) {
-                tintedCanvas = hullCanvas;
               }
-              if (tintedCanvas) this._setTintedCanvas(tintedKey, tintedCanvas);
+              if (!tintedCanvas) {
+                try {
+                  const tc = document.createElement("canvas");
+                  tc.width = hullCanvas.width;
+                  tc.height = hullCanvas.height;
+                  const tctx = tc.getContext("2d");
+                  if (tctx) {
+                    tctx.clearRect(0, 0, tc.width, tc.height);
+                    tctx.drawImage(hullCanvas, 0, 0);
+                    tctx.globalCompositeOperation = "source-in";
+                    tctx.fillStyle = teamColor;
+                    tctx.fillRect(0, 0, tc.width, tc.height);
+                    tctx.globalCompositeOperation = "source-over";
+                    tintedCanvas = tc;
+                    this._setTintedCanvas(tintedKey, tc);
+                  }
+                } catch (e) {
+                }
+              }
             }
             withContext(() => {
               activeBufferCtx.save();

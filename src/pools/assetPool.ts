@@ -1,4 +1,5 @@
 import type { GameState } from "../types";
+import { acquireItem, releaseItem } from './PoolManager';
 
 // PoolEntry and Pooled types
 export type PoolEntry<T> = {
@@ -23,6 +24,21 @@ function _incCount(map: Map<string, number>, key: string, delta: number) {
   const next = cur + delta;
   if (next <= 0) map.delete(key);
   else map.set(key, next);
+}
+
+// Helper: prefer per-entry config.max if set, otherwise use the named global config
+function entryConfigOr(state: any, key: string, globalName: 'texturePoolSize' | 'spritePoolSize' | 'effectPoolSize') {
+  const poolMap = (globalName === 'texturePoolSize' ? state.assetPool.textures : globalName === 'spritePoolSize' ? state.assetPool.sprites : state.assetPool.effects) as Map<string, PoolEntry<any>>;
+  const entry = poolMap && poolMap.get ? poolMap.get(key) : undefined;
+  if (entry && entry.config && typeof entry.config.max === 'number') return entry.config.max;
+  return state.assetPool.config ? state.assetPool.config[globalName] : undefined;
+}
+
+function entryStrategyOr(state: any, key: string, globalName: 'textureOverflowStrategy' | 'spriteOverflowStrategy' | 'effectOverflowStrategy') {
+  const poolMap = (globalName === 'textureOverflowStrategy' ? state.assetPool.textures : globalName === 'spriteOverflowStrategy' ? state.assetPool.sprites : state.assetPool.effects) as Map<string, PoolEntry<any>>;
+  const entry = poolMap && poolMap.get ? poolMap.get(key) : undefined;
+  if (entry && entry.config && entry.config.strategy) return entry.config.strategy;
+  return state.assetPool.config ? state.assetPool.config[globalName] : undefined;
 }
 
 export function makePooled<T extends object>(
@@ -109,46 +125,25 @@ export function acquireEffect<T extends object>(
   initArgs?: Partial<T>,
 ): T & Pooled<T> {
   ensureAssetPool(state);
+  // Delegate to PoolManager.acquireItem to centralize overflow semantics
   const poolMap = state.assetPool.effects as Map<string, PoolEntry<T & Pooled<T>>>;
-  const counts = state.assetPool.counts?.effects || new Map<string, number>();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: new Map(),
-      sprites: new Map(),
-      effects: counts,
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList as Array<T & Pooled<T>>;
-  if (free.length) {
-    const obj = free.pop()! as T & Pooled<T>;
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
-    } catch {}
-    return obj;
-  }
-  const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const e = createFn() as T & Pooled<T>;
-    try {
-      if (typeof e.reset === "function") e.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(e, initArgs);
-    } catch {}
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return e;
-  }
-  if (strategy === "error") throw new Error(`Effect pool exhausted for key "${key}" (max=${max})`);
-  const e = createFn() as T & Pooled<T>;
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return e;
+  state.assetPool.counts = state.assetPool.counts || { textures: new Map(), sprites: new Map(), effects: new Map() } as any;
+  const counts = state.assetPool.counts!.effects as Map<string, number>;
+  return acquireItem<T & Pooled<T>>({
+    map: poolMap,
+    counts,
+    key,
+    createFn: createFn as any,
+    globalMax: state.assetPool.config.effectPoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.effectOverflowStrategy, 'discard-oldest'),
+    initFn: (obj: T & Pooled<T>, args?: Partial<T>) => {
+      try {
+        if (typeof obj.reset === 'function') obj.reset(args);
+        else if (args && typeof args === 'object') Object.assign(obj as any, args);
+      } catch {}
+    },
+    initArgs,
+  }) as T & Pooled<T>;
 }
 
 export function releaseEffect<T extends object>(
@@ -159,37 +154,17 @@ export function releaseEffect<T extends object>(
 ) {
   ensureAssetPool(state);
   const poolMap = state.assetPool.effects as Map<string, PoolEntry<T & Pooled<T>>>;
-  const counts = state.assetPool.counts?.effects || new Map<string, number>();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: new Map(),
-      sprites: new Map(),
-      effects: counts,
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList as Array<T & Pooled<T>>;
-  if (!free.includes(effect)) free.push(effect as T & Pooled<T>);
-  const max = state.assetPool.config.effectPoolSize || 128;
-  const strategy = _getStrategy(state.assetPool.config.effectOverflowStrategy, "discard-oldest");
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift()! : free.pop()!;
-    try {
-      if (disposeFn) disposeFn(victim as any);
-    } catch {}
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop()!;
-    try {
-      if (disposeFn) disposeFn(victim as any);
-    } catch {}
-    _incCount(counts, key, -1);
-  }
+  state.assetPool.counts = state.assetPool.counts || { textures: new Map(), sprites: new Map(), effects: new Map() } as any;
+  const counts = state.assetPool.counts!.effects as Map<string, number>;
+  return releaseItem<T & Pooled<T>>({
+    map: poolMap,
+    counts,
+    key,
+    item: effect,
+    disposeFn: disposeFn as any,
+    globalMax: state.assetPool.config.effectPoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.effectOverflowStrategy, 'discard-oldest'),
+  });
 }
 
 export function acquireTexture(
@@ -199,28 +174,16 @@ export function acquireTexture(
 ): WebGLTexture {
   ensureAssetPool(state);
   const poolMap = state.assetPool.textures as Map<string, TexturePoolEntry>;
-  const counts = state.assetPool.counts?.textures || new Map<string, number>();
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (free.length) return free.pop()!;
-  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const tex = createFn();
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return tex;
-  }
-  if (strategy === "error") throw new Error(`Texture pool exhausted for key "${key}" (max=${max})`);
-  const tex = createFn();
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return tex;
+  state.assetPool.counts = state.assetPool.counts || { textures: new Map(), sprites: new Map(), effects: new Map() } as any;
+  const counts = state.assetPool.counts!.textures as Map<string, number>;
+  return acquireItem<WebGLTexture>({
+    map: poolMap,
+    counts,
+    key,
+    createFn: createFn as any,
+    globalMax: entryConfigOr(state, key, 'texturePoolSize'),
+    globalStrategy: entryStrategyOr(state, key, 'textureOverflowStrategy'),
+  });
 }
 
 export function releaseTexture(
@@ -231,36 +194,17 @@ export function releaseTexture(
 ) {
   ensureAssetPool(state);
   const poolMap = state.assetPool.textures as Map<string, TexturePoolEntry>;
-  const counts = state.assetPool.counts?.textures || new Map<string, number>();
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList;
-  if (!free.includes(tex)) free.push(tex);
-  const max = (entry.config?.max ?? state.assetPool.config.texturePoolSize) || 128;
-  const strategy = entry.config?.strategy ?? _getStrategy(state.assetPool.config.textureOverflowStrategy, "discard-oldest");
-  const countsMap = state.assetPool.counts?.textures || new Map<string, number>();
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift()! : free.pop()!;
-    try {
-      if (entry!.disposer) entry!.disposer(victim as any);
-      else if (disposeFn) disposeFn(victim as any);
-    } catch {}
-    _incCount(countsMap, key, -1);
-    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop()!;
-    try {
-      if (entry!.disposer) entry!.disposer(victim as any);
-      else if (disposeFn) disposeFn(victim as any);
-    } catch {}
-    _incCount(countsMap, key, -1);
-    entry.allocated = Math.max(0, (entry.allocated || 0) - 1);
-  }
+  state.assetPool.counts = state.assetPool.counts || { textures: new Map(), sprites: new Map(), effects: new Map() } as any;
+  const counts = state.assetPool.counts!.textures as Map<string, number>;
+  return releaseItem<WebGLTexture>({
+    map: poolMap,
+    counts,
+    key,
+    item: tex,
+    disposeFn: disposeFn as any,
+    globalMax: entryConfigOr(state, key, 'texturePoolSize'),
+    globalStrategy: entryStrategyOr(state, key, 'textureOverflowStrategy'),
+  });
 }
 
 export function acquireSprite<T extends object>(
@@ -270,46 +214,24 @@ export function acquireSprite<T extends object>(
   initArgs?: Partial<T>,
 ): T & Pooled<T> {
   ensureAssetPool(state);
+  state.assetPool.counts = state.assetPool.counts || { textures: new Map(), sprites: new Map(), effects: new Map() } as any;
   const poolMap = state.assetPool.sprites as Map<string, PoolEntry<T & Pooled<T>>>;
-  const counts = state.assetPool.counts?.sprites || new Map<string, number>();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: new Map(),
-      sprites: counts,
-      effects: new Map(),
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList as Array<T & Pooled<T>>;
-  if (free.length) {
-    const obj = free.pop()! as T & Pooled<T>;
-    try {
-      if (typeof obj.reset === "function") obj.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(obj, initArgs);
-    } catch {}
-    return obj;
-  }
-  const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
-  const total = entry.allocated || counts.get(key) || 0;
-  if (total < max || strategy === "grow") {
-    const s = createFn() as T & Pooled<T>;
-    try {
-      if (typeof s.reset === "function") s.reset(initArgs);
-      else if (initArgs && typeof initArgs === "object") Object.assign(s, initArgs);
-    } catch {}
-    entry.allocated = (entry.allocated || 0) + 1;
-    _incCount(counts, key, 1);
-    return s;
-  }
-  if (strategy === "error") throw new Error(`Sprite pool exhausted for key "${key}" (max=${max})`);
-  const s = createFn() as T & Pooled<T>;
-  entry.allocated = (entry.allocated || 0) + 1;
-  _incCount(counts, key, 1);
-  return s;
+  const counts = state.assetPool.counts!.sprites as Map<string, number>;
+  return acquireItem<T & Pooled<T>>({
+    map: poolMap,
+    counts,
+    key,
+    createFn: createFn as any,
+    globalMax: state.assetPool.config.spritePoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.spriteOverflowStrategy, 'discard-oldest'),
+    initFn: (obj: T & Pooled<T>, args?: Partial<T>) => {
+      try {
+        if (typeof obj.reset === 'function') obj.reset(args);
+        else if (args && typeof args === 'object') Object.assign(obj as any, args);
+      } catch {}
+    },
+    initArgs,
+  }) as T & Pooled<T>;
 }
 
 export function releaseSprite<T extends object>(
@@ -319,38 +241,18 @@ export function releaseSprite<T extends object>(
   disposeFn?: (s: T) => void,
 ) {
   ensureAssetPool(state);
+  state.assetPool.counts = state.assetPool.counts || { textures: new Map(), sprites: new Map(), effects: new Map() } as any;
   const poolMap = state.assetPool.sprites as Map<string, PoolEntry<T & Pooled<T>>>;
-  const counts = state.assetPool.counts?.sprites || new Map<string, number>();
-  if (!state.assetPool.counts)
-    state.assetPool.counts = {
-      textures: new Map(),
-      sprites: counts,
-      effects: new Map(),
-    };
-  let entry = poolMap.get(key);
-  if (!entry) {
-    entry = { freeList: [], allocated: 0 };
-    poolMap.set(key, entry);
-  }
-  const free = entry.freeList as Array<T & Pooled<T>>;
-  if (!free.includes(sprite)) free.push(sprite as T & Pooled<T>);
-  const max = state.assetPool.config.spritePoolSize || 256;
-  const strategy = _getStrategy(state.assetPool.config.spriteOverflowStrategy, "discard-oldest");
-  if (strategy === "grow") return;
-  while (free.length > max) {
-    const victim = strategy === "discard-oldest" ? free.shift()! : free.pop()!;
-    try {
-      if (disposeFn) disposeFn(victim as any);
-    } catch {}
-    _incCount(counts, key, -1);
-  }
-  if (strategy === "error" && free.length > max) {
-    const victim = free.pop()!;
-    try {
-      if (disposeFn) disposeFn(victim as any);
-    } catch {}
-    _incCount(counts, key, -1);
-  }
+  const counts = state.assetPool.counts!.sprites as Map<string, number>;
+  return releaseItem<T & Pooled<T>>({
+    map: poolMap,
+    counts,
+    key,
+    item: sprite,
+    disposeFn: disposeFn as any,
+    globalMax: state.assetPool.config.spritePoolSize,
+    globalStrategy: _getStrategy(state.assetPool.config.spriteOverflowStrategy, 'discard-oldest'),
+  });
 }
 
 export default {} as any;

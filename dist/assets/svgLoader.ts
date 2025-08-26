@@ -4,10 +4,13 @@
 
 export type MountPoint = { x: number; y: number };
 
+export type ColorRegion = { role: string; id?: string; class?: string; bbox?: { x: number; y: number; w: number; h: number } };
+
 export function parseSvgForMounts(svgText: string): {
   mounts: MountPoint[];
   engineMounts: MountPoint[];
   viewBox: { w: number; h: number } | null;
+  colorRegions?: ColorRegion[];
 } {
   try {
     const parser = new DOMParser();
@@ -24,11 +27,13 @@ export function parseSvgForMounts(svgText: string): {
       vbw = parseFloat(svg.getAttribute('width') || '0') || 0;
       vbh = parseFloat(svg.getAttribute('height') || '0') || 0;
     }
-    const mounts: MountPoint[] = [];
-    const engineMounts: MountPoint[] = [];
+  const mounts: MountPoint[] = [];
+  const engineMounts: MountPoint[] = [];
+  const colorRegions: ColorRegion[] = [];
     // Search for elements that might indicate turret or engine mountpoints by id/class
-    const candidates = Array.from(svg.querySelectorAll('[id],[class]'));
-    for (const el of candidates) {
+  // Candidates for mounts / mounts detection
+  const candidates = Array.from(svg.querySelectorAll('[id],[class]'));
+  for (const el of candidates) {
       try {
         const id = el.getAttribute('id') || '';
         const cls = el.getAttribute('class') || '';
@@ -56,7 +61,23 @@ export function parseSvgForMounts(svgText: string): {
         }
       } catch (e) { continue; }
     }
-    return { mounts, engineMounts, viewBox: vbw && vbh ? { w: vbw, h: vbh } : null };
+    // Detect colorable regions marked with data-team (e.g. data-team="primary" or data-team="accent")
+    try {
+      const colorEls = Array.from(svg.querySelectorAll('[data-team]'));
+      for (const el of colorEls) {
+        try {
+          const role = (el.getAttribute('data-team') || '').trim();
+          const id = el.getAttribute('id') || undefined;
+          const cls = el.getAttribute('class') || undefined;
+          // attempt to compute bbox if available
+          let bboxVal: { x: number; y: number; w: number; h: number } | undefined;
+          const bbox = (el as SVGGraphicsElement).getBBox ? (el as SVGGraphicsElement).getBBox() : null;
+          if (bbox) bboxVal = { x: bbox.x, y: bbox.y, w: bbox.width, h: bbox.height };
+          colorRegions.push({ role, id, class: cls, bbox: bboxVal });
+        } catch (e) { continue; }
+      }
+    } catch (e) {}
+    return { mounts, engineMounts, viewBox: vbw && vbh ? { w: vbw, h: vbh } : null, colorRegions };
   } catch (e) { return { mounts: [], engineMounts: [], viewBox: null }; }
 }
 
@@ -174,4 +195,55 @@ export async function rasterizeHullOnlySvgToCanvasAsync(svgText: string, outW: n
   }
 }
 
-export default { parseSvgForMounts, rasterizeSvgToCanvas };
+/**
+ * Apply team colors to SVG elements that are annotated with `data-team`.
+ * mapping: { roleName: color }
+ * options.applyTo: 'fill' | 'stroke' | 'both' (default: 'both')
+ */
+export function applyTeamColorsToSvg(svgText: string, mapping: Record<string, string>, options?: { applyTo?: 'fill' | 'stroke' | 'both' }): string {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return svgText;
+    const applyDefault = options && options.applyTo ? options.applyTo : 'both';
+    const els = Array.from(svg.querySelectorAll('[data-team]')) as Element[];
+    for (const el of els) {
+      try {
+        const role = (el.getAttribute('data-team') || '').trim();
+        if (!role) continue;
+        const color = mapping[role];
+        if (!color) continue;
+        const applyAttr = (el.getAttribute('data-team-apply') || '').trim().toLowerCase();
+        const apply = applyAttr === 'fill' || applyAttr === 'stroke' ? applyAttr as 'fill' | 'stroke' : applyDefault;
+
+        const setStyleProp = (prop: 'fill' | 'stroke', value: string) => {
+          try {
+            // Set presentation attribute
+            (el as Element).setAttribute(prop, value);
+            // Merge into style attribute (so inline styles reflect it)
+            const cur = el.getAttribute('style') || '';
+            // replace existing prop in style or append
+            const re = new RegExp('(^|;)\\s*' + prop + '\\s*:\\s*[^;]+', 'i');
+            if (re.test(cur)) {
+              const replaced = cur.replace(re, `$1 ${prop}: ${value}`);
+              el.setAttribute('style', replaced);
+            } else {
+              const next = cur ? (cur + `; ${prop}: ${value}`) : `${prop}: ${value}`;
+              el.setAttribute('style', next);
+            }
+          } catch (e) { /* ignore style merge failures */ }
+        };
+
+        if (apply === 'fill' || apply === 'both') setStyleProp('fill', color);
+        if (apply === 'stroke' || apply === 'both') setStyleProp('stroke', color);
+      } catch (e) { continue; }
+    }
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(svg);
+  } catch (e) {
+    return svgText;
+  }
+}
+
+export default { parseSvgForMounts, rasterizeSvgToCanvas, applyTeamColorsToSvg };

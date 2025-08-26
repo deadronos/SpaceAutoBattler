@@ -978,11 +978,18 @@ export class CanvasRenderer {
                 outW = parseInt(vbMatch[3]) || 128;
                 outH = parseInt(vbMatch[4]) || 128;
               }
-              hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(
-                svgText,
-                outW,
-                outH,
-              );
+              // Prefer a synchronously-available cached canvas from svgRenderer
+              hullCanvas = (svgLoader as any).getCachedHullCanvasSync
+                ? (svgLoader as any).getCachedHullCanvasSync(svgText, outW, outH, cacheKey)
+                : undefined;
+              if (!hullCanvas) {
+                // If no sync cached canvas, try local synchronous rasterization as a fallback
+                try {
+                  hullCanvas = svgLoader.rasterizeHullOnlySvgToCanvas(svgText, outW, outH) as HTMLCanvasElement;
+                } catch (e) {
+                  hullCanvas = undefined;
+                }
+              }
               this._svgHullCache[cacheKey] = hullCanvas;
             } catch (e) {
               hullCanvas = undefined;
@@ -1026,13 +1033,10 @@ export class CanvasRenderer {
                       tintedCanvas = c;
                       this._setTintedCanvas(tintedKey, c);
                     } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
-                      // Trigger async rasterization to populate cache for future frames
-                      const p = svgRenderer.rasterizeSvgWithTeamColors(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "fill" });
-                      if (p && typeof p.then === "function") {
-                        p.then((resolved: any) => {
-                          if (resolved) this._setTintedCanvas(tintedKey, resolved);
-                        }).catch(() => {});
-                      }
+                      // Trigger svgLoader.ensureRasterizedAndCached to populate cache async
+                      try {
+                        (svgLoader as any).ensureRasterizedAndCached && (svgLoader as any).ensureRasterizedAndCached(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: 'fill' });
+                      } catch (e) {}
                     }
                   } catch (e) {
                     /* ignore cache lookup errors */

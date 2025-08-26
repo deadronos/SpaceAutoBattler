@@ -1,24 +1,47 @@
 <svg width="128" height="128" viewBox="0 0 128 128">
+  <!--
+    Team-color slots (data-team-slot):
+      - hull: main body
+      - trim: stroke/outline accents
+      - hangar: secondary panels (hangar deck)
+      - launch: launch bays / weapon accents
+      - engine: engine mountpoints
+      - glow: engine glows / emissive
+      - turret: weapon turrets
+      - panel: tech/detail panels
+
+    Elements keep their original `fill`/`stroke` values as fallbacks so
+    the SVG renders unchanged if the renderer doesn't apply overrides.
+    The renderer can target elements by `[data-team-slot="..."]` or
+    by the `team-fill-*` classes added below.
+  -->
   <rect width="128" height="128" fill="#181a20"/>
   <!-- Main hull -->
-  <rect x="18" y="36" width="92" height="56" rx="28" fill="#ffee9a" stroke="#b0974b" stroke-width="6"/>
+  <rect x="18" y="36" width="92" height="56" rx="28"
+        fill="#ffee9a" stroke="#b0974b" stroke-width="6"
+        class="hull team-fill-primary" data-team-slot="hull" data-team-slot-stroke="trim"/>
   <!-- Hangar deck -->
-  <rect x="32" y="52" width="64" height="24" rx="8" fill="#f8b349" opacity="0.8"/>
+  <rect x="32" y="52" width="64" height="24" rx="8" fill="#f8b349" opacity="0.8"
+        class="hangar team-fill-secondary" data-team-slot="hangar"/>
   <!-- Launch bays -->
-  <rect x="38" y="80" width="12" height="14" rx="4" fill="#3ac4e6"/>
-  <rect x="78" y="80" width="12" height="14" rx="4" fill="#3ac4e6"/>
+  <rect x="38" y="80" width="12" height="14" rx="4" fill="#3ac4e6"
+        class="launchbay team-fill-accent" data-team-slot="launch"/>
+  <rect x="78" y="80" width="12" height="14" rx="4" fill="#3ac4e6"
+        class="launchbay team-fill-accent" data-team-slot="launch"/>
   <!-- Engine glows -->
-  <ellipse cx="38" cy="104" rx="7" ry="4" fill="#fff3a6"/>
-  <ellipse cx="90" cy="104" rx="7" ry="4" fill="#fff3a6"/>
+  <ellipse cx="38" cy="104" rx="7" ry="4" fill="#fff3a6"
+           class="engine-glow team-fill-glow" data-team-slot="glow"/>
+  <ellipse cx="90" cy="104" rx="7" ry="4" fill="#fff3a6"
+           class="engine-glow team-fill-glow" data-team-slot="glow"/>
   <!-- Engine mountpoints -->
-  <circle cx="38" cy="104" r="2" fill="#00faae" opacity="0.7" class="engine" />
-  <circle cx="90" cy="104" r="2" fill="#00faae" opacity="0.7" class="engine" />
+  <circle cx="38" cy="104" r="2" fill="#00faae" opacity="0.7" class="engine team-fill-accent" data-team-slot="engine" />
+  <circle cx="90" cy="104" r="2" fill="#00faae" opacity="0.7" class="engine team-fill-accent" data-team-slot="engine" />
   <!-- 4 Turrets -->
-  <rect x="44" y="44" width="8" height="10" rx="2" fill="#fff" class="turret" />
-  <rect x="76" y="44" width="8" height="10" rx="2" fill="#fff" class="turret" />
-  <rect x="60" y="36" width="8" height="10" rx="2" fill="#fff" class="turret" />
-  <rect x="60" y="62" width="8" height="10" rx="2" fill="#fff" class="turret" />
+  <rect x="44" y="44" width="8" height="10" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
+  <rect x="76" y="44" width="8" height="10" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
+  <rect x="60" y="36" width="8" height="10" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
+  <rect x="60" y="62" width="8" height="10" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
   <!-- Tech panels -->
-  <rect x="50" y="62" width="28" height="6" rx="2" fill="#fff" opacity="0.2"/>
-  <rect x="50" y="70" width="28" height="6" rx="2" fill="#fff" opacity="0.2"/>
+  <rect x="50" y="62" width="28" height="6" rx="2" fill="#fff" opacity="0.2" class="tech-panel team-fill-detail" data-team-slot="panel"/>
+  <rect x="50" y="70" width="28" height="6" rx="2" fill="#fff" opacity="0.2" class="tech-panel team-fill-detail" data-team-slot="panel"/>
 </svg>
