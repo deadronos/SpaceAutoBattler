@@ -34,13 +34,7 @@ Integration points
 - Scripts: `scripts/smoke-turret-svg.ts` demonstrates usage.
 - Build output: `dist/assets/svgLoader.ts` mirrors source for runtime.
 
-Pitfalls & Recommendations
-
-- Asynchronous rasterization: callers needing rendered pixels should wait for onload. Recommend adding a Promise-based API: `rasterizeSvgToCanvasAsync(svgText,w,h): Promise<HTMLCanvasElement>` which resolves after draw and revokes the URL.
-- getBBox availability and exceptions: ensure tests cover environments without getBBox; code already falls back but tests should validate.
-- Mount detection is heuristic-based on id/class; document required naming conventions or prefer explicit data-\* attributes (e.g., `data-mount="turret"`) in SVG assets.
-- Hull-only removal assumes turret elements are `rect.turret`; broaden selectors or document asset rules.
-- Blob URL revocation: good practice, but add a timeout fallback to revoke if onload never fires.
+- Team-color regions: prefer marking SVG elements that should be recolored using a `data-team` attribute. Examples: `data-team="primary"` for hull, `data-team="accent"` for highlights. The loader will expose these as `colorRegions` with optional bbox/id/class to help the renderer apply tints.
 
 Suggested small changes (candidate PRs)
 

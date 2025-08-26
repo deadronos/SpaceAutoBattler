@@ -4073,11 +4073,14 @@ var CanvasRenderer = class {
       }
       const sprite = getSpriteAsset(s.type || getDefaultShipType());
       withShipContext(s, () => {
-        let teamColor = assetsConfig_default.palette.shipHull || "#888";
-        if (s.team === "red" && teamsConfig_default.teams.red)
-          teamColor = teamsConfig_default.teams.red.color;
-        else if (s.team === "blue" && teamsConfig_default.teams.blue)
-          teamColor = teamsConfig_default.teams.blue.color;
+        let teamColor = assetsConfig_default.palette?.shipHull || "#888";
+        try {
+          if (s && s.team && teamsConfig_default && teamsConfig_default.teams) {
+            const teamEntry = teamsConfig_default.teams[s.team];
+            if (teamEntry && teamEntry.color) teamColor = teamEntry.color;
+          }
+        } catch {
+        }
         activeBufferCtx.fillStyle = teamColor;
         let hullDrawn = false;
         if (sprite.svg) {
@@ -4816,7 +4819,15 @@ var WebGLRenderer = class {
       const ships = state && state.ships || [];
       for (const s of ships) {
         const type = s && s.type || "fighter";
-        this.bakeShapeToTexture(state, type);
+        let teamColor = AssetsConfig.palette?.shipHull || "#b0b7c3";
+        try {
+          if (s && s.team && teamsConfig_default && teamsConfig_default.teams) {
+            const t = teamsConfig_default.teams[s.team];
+            if (t && t.color) teamColor = t.color;
+          }
+        } catch {
+        }
+        this.bakeShapeToTexture(state, type, teamColor);
         try {
           const key = `ship:${type}`;
           const sprite = acquireSprite(this.gameState || state, key, () => ({ type }));
@@ -4932,9 +4943,10 @@ var WebGLRenderer = class {
     this.gl = null;
   }
   // Internal: bake a simple 2D shape into a texture and cache it
-  bakeShapeToTexture(state, key) {
+  bakeShapeToTexture(state, key, teamColor) {
     if (!this.gl) return null;
-    if (this.shapeTextures[key]) return this.shapeTextures[key];
+    const cacheKey = teamColor ? `${key}::${teamColor}` : key;
+    if (this.shapeTextures[cacheKey]) return this.shapeTextures[cacheKey];
     try {
       const gl = this.gl;
       const shapes = AssetsConfig.shapes2d || {};
@@ -4949,7 +4961,7 @@ var WebGLRenderer = class {
       ctx.save();
       ctx.translate(size / 2, size / 2);
       const scale = size / 4;
-      ctx.fillStyle = AssetsConfig.palette && AssetsConfig.palette.shipHull || "#b0b7c3";
+      ctx.fillStyle = teamColor || AssetsConfig.palette && AssetsConfig.palette.shipHull || "#b0b7c3";
       if (!shape) {
         ctx.beginPath();
         ctx.arc(0, 0, Math.max(4, size * 0.12), 0, Math.PI * 2);
@@ -5005,7 +5017,7 @@ var WebGLRenderer = class {
       let tex = null;
       if (state) {
         try {
-          tex = acquireTexture(state, key, createTex);
+          tex = acquireTexture(state, cacheKey, createTex);
         } catch {
           tex = createTex();
         }
@@ -5014,7 +5026,7 @@ var WebGLRenderer = class {
       }
       if (!tex) return null;
       gl.bindTexture(gl.TEXTURE_2D, tex);
-      this.shapeTextures[key] = tex;
+      this.shapeTextures[cacheKey] = tex;
       return tex;
     } catch {
       return null;

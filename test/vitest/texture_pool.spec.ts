@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { makeInitialState, acquireTexture, releaseTexture } from '../../src/entities'
+import { makeInitialState } from '../../src/entities'
+import { acquireTexture, releaseTexture } from '../../src/pools'
 import type { GameState } from '../../src/types'
 import { expectPoolMaxFreeList, expectDisposedAtLeast } from './utils/poolAssert'
 

@@ -84,3 +84,10 @@ Notes: Local `npm install` encountered workspace and permission issues on this m
 - Added/adjusted tests for engine mountpoint extraction in svgLoader (svgLoader_hullonly.spec.ts).
 - Validated engine mountpoint extraction and hull-only rendering with full test suite (all tests passing).
 - Audited asset config for mountpoint unification; SVG and config mountpoints now consistent.
+
+### 2025-08-26: Pooling helpers migration
+
+- Moved pooling helper functions (acquireTexture/releaseTexture, acquireSprite/releaseSprite, acquireEffect/releaseEffect, makePooled, createPooledFactory, ensureAssetPool) out of `src/entities.ts` into a dedicated module at `src/pools/assetPool.ts` and re-exported them via `src/pools/index.ts`.
+- Rationale: centralizes pooling logic, makes pooling easier to test and reason about, and separates entity definitions from pooling utilities.
+- Migration note: update imports from `./entities` to `./pools` for pooling helpers. A thin compatibility re-export shim has been added to `src/entities.ts` to avoid breaking downstream consumers; prefer importing from `src/pools` going forward.
+

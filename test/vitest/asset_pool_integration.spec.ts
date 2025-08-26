@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { makeInitialState, acquireTexture, releaseTexture, acquireSprite, releaseSprite, acquireEffect, releaseEffect, createPooledFactory, makePooled } from '../../src/entities'
+import { makeInitialState } from '../../src/entities'
+import { acquireTexture, releaseTexture, acquireSprite, releaseSprite, acquireEffect, releaseEffect, createPooledFactory, makePooled } from '../../src/pools'
 import type { GameState } from '../../src/types'
 import { makeGLStub, makeSpriteFactory } from './utils/glStub'
 import { expectPoolMaxFreeList, expectDisposedAtLeast } from './utils/poolAssert'

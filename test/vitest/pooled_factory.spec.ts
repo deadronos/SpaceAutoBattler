@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { makeInitialState, acquireEffect, releaseEffect, createPooledFactory, makePooled } from "../../src/entities";
+import { makeInitialState } from "../../src/entities";
+import { acquireEffect, releaseEffect, createPooledFactory, makePooled } from "../../src/pools";
 
 describe("Pooled factory helper", () => {
   let state: any;

@@ -23,3 +23,16 @@ Follow-ups
 - Consider adding a small helper to build minimal GameState fixtures used across tests to avoid defensive code in production logic.
 
 Author: opencode
+
+Edits 2025-08-26 (added by automation)
+
+- Moved `ensureAssetPool` into `src/assetPool.ts` and exported a typed named helper used by pooling helpers. This centralizes defensive defaults and avoids duplication across pooling helpers.
+- Fixed generic `Pool` implementation in `src/pools/pool.ts` to: (1) correctly increment the `created` counter only when new objects are allocated, and (2) avoid duplicate pushes when the same object is released twice (prevents double-free duplication in pool free lists).
+- Added unit tests under `test/vitest/`:
+	- `pool_class.spec.ts` — verifies Pool created counting and duplicate-release prevention.
+	- `pool_overflow.spec.ts` — additional overflow/duplicate release checks.
+	- `assetpool_defaults.spec.ts` — ensures `acquireSprite` creates `assetPool` on minimal GameState fixtures.
+	- `texture_pool_disposer.spec.ts`, `texture_pool_entry_disposer.spec.ts`, `texture_pool_error_strategy.spec.ts` — verify texture pool disposer behavior and overflow strategies ('discard-oldest', 'grow', 'error').
+
+Validation: Ran local TypeScript check and full test suite; all tests passed locally.
+

@@ -13,6 +13,13 @@ export type { RendererConfig } from '../config/rendererConfig';
 // Domain types
 export type { Cannon, Ship, Bullet } from '../entities';
 export type { GameManagerOptions } from '../gamemanager';
+// Re-export pool types as type-only to make them discoverable from the barrel.
+export type { PoolEntry, TexturePoolEntry } from './pool';
+export type { OverflowStrategy } from './pool';
+// Re-export pooled helper types from entities for convenience (type-only)
+// Pooled helper types are defined in the pools implementation; re-export them
+// type-only from that module so callers can import from the barrel.
+export type { Pooled, PooledFactory } from '../pools/assetPool';
 
 // Canonical GameState type for simulation and renderer contract
 export interface GameState {

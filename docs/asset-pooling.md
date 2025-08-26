@@ -69,6 +69,8 @@ The entities module exports helper functions:
 - acquireEffect(state, key, createFn)
 - releaseEffect(state, key, effect, disposeFn?)
 
+Note: these pooling helpers are now exported from `src/pools` (preferred). A thin compatibility re-export exists on `src/entities` for the short term, but please import from `src/pools` in new code.
+
 ## Notes and behavior
 
 - acquire* prefers an object from the free list for `key`. If none free, it will create one using `createFn` subject to pool capacity.

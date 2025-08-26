@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeInitialState } from '../../src/entities';
-import { acquireTexture, releaseTexture } from '../../src/entities';
+import { acquireTexture, releaseTexture } from '../../src/pools';
 
 // Minimal GL stub that counts create/delete calls
 class GLMock {

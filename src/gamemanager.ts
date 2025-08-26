@@ -34,7 +34,7 @@ import {
   acquireSprite,
   releaseSprite,
   makePooled,
-} from "./entities";
+} from "./pools";
 import {
   SHIELD,
   HEALTH,

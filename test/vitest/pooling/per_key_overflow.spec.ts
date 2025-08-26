@@ -1,4 +1,4 @@
-import { acquireSprite, releaseSprite, acquireEffect, releaseEffect } from '../../../src/entities';
+import { acquireSprite, releaseSprite, acquireEffect, releaseEffect } from '../../../src/pools';
 
 describe('pooling per-key overflow strategies (sprites)', () => {
   let state: any;
@@ -84,7 +84,8 @@ describe('pooling per-key overflow strategies (effects)', () => {
   });
 });
 import { describe, it, expect, beforeEach } from 'vitest';
-import { makeInitialState, acquireTexture, releaseTexture } from '../../../src/entities';
+import { makeInitialState } from '../../../src/entities';
+import { acquireTexture, releaseTexture } from '../../../src/pools';
 import { makeGLStub } from '../utils/glStub';
 import { expectPoolMaxFreeList } from '../utils/poolAssert';
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { makeInitialState, acquireSprite, releaseSprite, acquireEffect, releaseEffect } from '../../src/entities';
+import { makeInitialState } from '../../src/entities';
+import { acquireSprite, releaseSprite, acquireEffect, releaseEffect } from '../../src/pools';
 
 describe('Pooling stress test', () => {
   it('handles high churn across many keys without unbounded growth', () => {

@@ -15,11 +15,6 @@ export function getSvgAssetOrWarn(type: string): string {
 // Imports required by the renderer (kept after helper to avoid import hoisting issues in some loaders)
 import type { GameState } from "./types";
 import {
-  acquireSprite,
-  releaseSprite,
-  acquireEffect,
-  releaseEffect,
-  makePooled,
   createExplosionEffect,
   resetExplosionEffect,
   createHealthHitEffect,
@@ -27,6 +22,13 @@ import {
   ExplosionEffect,
   HealthHitEffect,
 } from "./entities";
+import {
+  acquireSprite,
+  releaseSprite,
+  acquireEffect,
+  releaseEffect,
+  makePooled,
+} from "./pools";
 import RendererConfig from "./config/rendererConfig";
 import { getDefaultBounds } from "./config/simConfig";
 import AssetsConfig, {
@@ -403,6 +405,14 @@ export class CanvasRenderer {
             if (hullCanvas) {
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[key] = hullCanvas;
+              try {
+                // seed raster cache for hull-only canvas using svgRenderer cache API
+                const svgRenderer = require("./assets/svgRenderer");
+                if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                  // use bare assetKey and an empty mapping so hull-only cached key matches calls
+                  svgRenderer.cacheCanvasForAsset(key, {}, hullCanvas.width, hullCanvas.height, hullCanvas);
+                }
+              } catch (e) {}
             }
           } catch (e) {
             // ignore rasterization errors here; will fallback to lazy raster later
@@ -515,6 +525,12 @@ export class CanvasRenderer {
                   tctx.fillRect(0, 0, tc.width, tc.height);
                   tctx.globalCompositeOperation = "source-over";
                   this._setTintedCanvas(k, tc);
+                  try {
+                    const svgRenderer = require("./assets/svgRenderer");
+                    if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                      svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                    }
+                  } catch (e) {}
                 }
               } catch (e) {
                 /* ignore pre-warm errors */
@@ -549,18 +565,24 @@ export class CanvasRenderer {
                   tc.height = ph.height;
                   const tctx = tc.getContext("2d");
                   if (tctx) {
-                    tctx.clearRect(0, 0, tc.width, tc.height);
+                      tctx.clearRect(0, 0, tc.width, tc.height);
+                      try {
+                        tctx.drawImage(ph, 0, 0);
+                      } catch (e) {}
+                      try {
+                        tctx.globalCompositeOperation = "source-atop";
+                        tctx.fillStyle = col;
+                        tctx.fillRect(0, 0, tc.width, tc.height);
+                        tctx.globalCompositeOperation = "source-over";
+                      } catch (e) {}
+                    }
+                    this._setTintedCanvas(k, tc);
                     try {
-                      tctx.drawImage(ph, 0, 0);
+                      const svgRenderer = require("./assets/svgRenderer");
+                      if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
+                        svgRenderer.cacheCanvasForAsset(shipType, { primary: col }, tc.width, tc.height, tc);
+                      }
                     } catch (e) {}
-                    try {
-                      tctx.globalCompositeOperation = "source-atop";
-                      tctx.fillStyle = col;
-                      tctx.fillRect(0, 0, tc.width, tc.height);
-                      tctx.globalCompositeOperation = "source-over";
-                    } catch (e) {}
-                  }
-                  this._setTintedCanvas(k, tc);
                 } catch (e) {
                   /* ignore per-key placeholder errors */
                 }
@@ -992,28 +1014,55 @@ export class CanvasRenderer {
             }
             if (!tintedCanvas) {
               try {
-                // Create a same-sized offscreen canvas and apply tint once
-                const tc = document.createElement("canvas");
-                tc.width = hullCanvas.width;
-                tc.height = hullCanvas.height;
-                const tctx = tc.getContext("2d");
-                if (tctx) {
-                  tctx.clearRect(0, 0, tc.width, tc.height);
-                  tctx.drawImage(hullCanvas, 0, 0);
-                  // Use 'source-in' so the fill replaces the drawn pixels' color
-                  // while preserving their alpha (background rects should be removed
-                  // by the rasterizer to avoid tinting the full canvas).
-                  tctx.globalCompositeOperation = "source-in";
-                  tctx.fillStyle = teamColor;
-                  tctx.fillRect(0, 0, tc.width, tc.height);
-                  tctx.globalCompositeOperation = "source-over";
-                  tintedCanvas = tc;
+                // lazy require to avoid circular imports at module load time
+                const svgRenderer = require("./assets/svgRenderer");
+                if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
+                  const assetKey = cacheKey; // reuse cacheKey (shipType)
+                  const mapping = { primary: teamColor };
+                  // Prefer synchronous cached canvas if available
+                  try {
+                    const c = svgRenderer.getCanvas(assetKey, mapping, hullCanvas.width, hullCanvas.height);
+                    if (c) {
+                      tintedCanvas = c;
+                      this._setTintedCanvas(tintedKey, c);
+                    } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
+                      // Trigger async rasterization to populate cache for future frames
+                      const p = svgRenderer.rasterizeSvgWithTeamColors(sprite.svg, mapping, hullCanvas.width, hullCanvas.height, { assetKey, applyTo: "fill" });
+                      if (p && typeof p.then === "function") {
+                        p.then((resolved: any) => {
+                          if (resolved) this._setTintedCanvas(tintedKey, resolved);
+                        }).catch(() => {});
+                      }
+                    }
+                  } catch (e) {
+                    /* ignore cache lookup errors */
+                  }
                 }
-              } catch (e) {
-                // fall back to original hullCanvas on errors
-                tintedCanvas = hullCanvas;
+              } catch (e) {}
+
+              // If the raster cache did not provide a synchronous canvas, create
+              // a local tinted copy so we can draw this frame while the async
+              // cached raster is produced for future frames.
+              if (!tintedCanvas) {
+                try {
+                  const tc = document.createElement("canvas");
+                  tc.width = hullCanvas.width;
+                  tc.height = hullCanvas.height;
+                  const tctx = tc.getContext("2d");
+                    if (tctx) {
+                    tctx.clearRect(0, 0, tc.width, tc.height);
+                    tctx.drawImage(hullCanvas, 0, 0);
+                    tctx.globalCompositeOperation = "source-in";
+                    tctx.fillStyle = teamColor;
+                    tctx.fillRect(0, 0, tc.width, tc.height);
+                    tctx.globalCompositeOperation = "source-over";
+                    tintedCanvas = tc;
+                    this._setTintedCanvas(tintedKey, tc);
+                  }
+                } catch (e) {
+                  /* ignore local tint errors */
+                }
               }
-              if (tintedCanvas) this._setTintedCanvas(tintedKey, tintedCanvas);
             }
 
             // Draw the tinted (or original) canvas centered and scaled

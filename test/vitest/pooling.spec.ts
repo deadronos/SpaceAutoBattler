@@ -13,6 +13,7 @@ import {
   reset,
 } from "../../src/gamemanager";
 import { makeInitialState } from "../../src/entities";
+import { acquireSprite, releaseSprite, acquireEffect, releaseEffect } from '../../src/pools';
 
 describe("Object Pooling", () => {
   beforeEach(() => {

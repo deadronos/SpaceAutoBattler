@@ -16,6 +16,9 @@
     "test:playwright": "playwright test -c playwright.config.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "validate-config": "node ./scripts/validate-config.mjs"
+    ,
+    "generate-memory-index": "node ./scripts/generate_memory_index.mjs",
+    "add-memory-node": "node ./scripts/add_memory_node.mjs"
   },
   "devDependencies": {
     "@babel/preset-env": "latest",

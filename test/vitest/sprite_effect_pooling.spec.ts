@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { makeInitialState, acquireSprite, releaseSprite, acquireEffect, releaseEffect } from "../../src/entities";
+import { makeInitialState } from "../../src/entities";
+import { acquireSprite, releaseSprite, acquireEffect, releaseEffect } from "../../src/pools";
 
 describe("Sprite/Effect Pooling", () => {
   let state: any;

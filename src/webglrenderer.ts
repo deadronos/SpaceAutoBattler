@@ -5,6 +5,11 @@ import { AssetsConfig, Shape2D } from "./config/assets/assetsConfig";
 import TeamsConfig from "./config/teamsConfig";
 import type { GameState } from "./types";
 import {
+  createExplosionEffect,
+  resetExplosionEffect,
+  ExplosionEffect,
+} from "./entities";
+import {
   acquireTexture,
   releaseTexture,
   acquireSprite,
@@ -12,10 +17,7 @@ import {
   acquireEffect,
   releaseEffect,
   makePooled,
-  createExplosionEffect,
-  resetExplosionEffect,
-  ExplosionEffect,
-} from "./entities";
+} from "./pools";
 
 export class WebGLRenderer {
   private canvas: HTMLCanvasElement;

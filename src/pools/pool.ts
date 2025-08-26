@@ -14,14 +14,18 @@ export default class Pool<T> {
   }
 
   acquire(): T {
-    const obj = this.stack.pop() || this.factory();
-    if (!this.stack.includes(obj)) this.created++;
-    return obj;
+    const obj = this.stack.pop();
+    if (typeof obj !== "undefined") return obj;
+    const newObj = this.factory();
+    this.created++;
+    return newObj;
   }
 
   release(obj: T): void {
     if (this.reset) this.reset(obj);
-    this.stack.push(obj);
+    // Avoid pushing the same object twice which can lead to duplicate
+    // references in the pool and subtle reuse bugs.
+    if (!this.stack.includes(obj)) this.stack.push(obj);
   }
 
   size(): number {

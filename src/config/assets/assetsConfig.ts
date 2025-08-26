@@ -253,10 +253,10 @@ if (typeof globalThis !== 'undefined' && (globalThis as any).__INLINE_SVG_ASSETS
   ,
   engineTrail: {
     type: 'trail',
-    color: '#fffc00', // bright yellow for high contrast
-  maxLength: 40,    // much longer trail
-    width: 0.35,      // thicker trail line
-    fade: 0.35        // slower fading, more persistent
+    color: '#fff0a0', // brighter, warm highlight for good contrast
+    maxLength: 120,   // longer trail (was 40)
+    width: 0.9,       // thicker trail line (was 0.35)
+    fade: 0.6         // older points remain more visible (was 0.35)
   }
 };
 

@@ -1,0 +1,208 @@
+import { applyTeamColorsToSvg, rasterizeSvgToCanvasAsync } from './svgLoader';
+
+// Simple stable stringify for objects (sort keys) to generate deterministic mapping key
+function stableStringify(obj: any): string {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+}
+
+// Simple djb2 hash to produce a compact hex string from input
+function djb2Hash(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) { h = ((h << 5) + h) + str.charCodeAt(i); h = h & 0xffffffff; }
+  // convert to unsigned and hex
+  return (h >>> 0).toString(16);
+}
+
+// Cache of in-flight and completed rasterizations. Keyed by computed cacheKey.
+// Each entry stores metadata so we can expose a synchronous getter and TTL info.
+type CacheEntry = {
+  promise: Promise<HTMLCanvasElement> | null;
+  canvas?: HTMLCanvasElement;
+  createdAt: number;
+  lastAccess: number;
+};
+const rasterCache: Map<string, CacheEntry> = new Map();
+let rasterCacheMaxEntries = 256;
+let rasterCacheMaxAgeMS = 0; // 0 means disabled
+
+function ensureCacheLimit() {
+  try {
+    const now = Date.now();
+    // Evict by TTL first
+    if (rasterCacheMaxAgeMS > 0) {
+      for (const [k, v] of Array.from(rasterCache.entries())) {
+        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
+          rasterCache.delete(k);
+        }
+      }
+    }
+    // Then evict oldest entries until under limit
+    while (rasterCache.size > rasterCacheMaxEntries) {
+      const it = rasterCache.keys().next();
+      if (it.done) break;
+      rasterCache.delete(it.value);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Rasterize an SVG with team colors applied.
+ * svgText: original svg source
+ * mapping: { role: color }
+ * outW,outH: output canvas size
+ * options: { applyTo?: 'fill'|'stroke'|'both', assetKey?: string }
+ * If options.assetKey is provided, it is used as the stable asset identifier in the cache key.
+ */
+export async function rasterizeSvgWithTeamColors(svgText: string, mapping: Record<string, string>, outW: number, outH: number, options?: { applyTo?: 'fill' | 'stroke' | 'both', assetKey?: string }): Promise<HTMLCanvasElement> {
+  // compute mapping hash and asset identifier
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ''));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+
+  if (rasterCache.has(cacheKey)) {
+    const entry = rasterCache.get(cacheKey)!;
+    // update lastAccess and promote to MRU
+    try {
+      entry.lastAccess = Date.now();
+      rasterCache.delete(cacheKey);
+      rasterCache.set(cacheKey, entry);
+    } catch (e) {}
+    // If a resolved canvas is present, return it quickly
+    if (entry.canvas) return Promise.resolve(entry.canvas);
+    // otherwise return the in-flight promise
+    if (entry.promise) return entry.promise;
+  }
+
+  const entry: CacheEntry = {
+    promise: null,
+    canvas: undefined,
+    createdAt: Date.now(),
+    lastAccess: Date.now(),
+  };
+
+  const p = (async () => {
+    try {
+      const recolored = applyTeamColorsToSvg(svgText, mapping, options && { applyTo: options?.applyTo });
+      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+      // store resolved canvas for synchronous reads
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    } catch (e) {
+      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    }
+  })();
+
+  entry.promise = p;
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+  try {
+    const res = await p;
+    return res;
+  } catch (e) {
+    // on error, remove from cache so future attempts can retry
+    rasterCache.delete(cacheKey);
+    throw e;
+  }
+}
+
+export function _clearRasterCache() {
+  rasterCache.clear();
+}
+
+/**
+ * Store an already-rendered canvas into the raster cache for the given asset/mapping/size.
+ * Useful for synchronous renderer code that produces canvases and wants them cached for later reuse.
+ */
+export function cacheCanvasForAsset(assetKey: string, mapping: Record<string, string>, outW: number, outH: number, canvas: HTMLCanvasElement) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(''));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  // Insert and promote to MRU, storing metadata for sync reads
+  try {
+    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
+  } catch (e) {}
+  const entry: CacheEntry = {
+    promise: Promise.resolve(canvas),
+    canvas,
+    createdAt: Date.now(),
+    lastAccess: Date.now(),
+  };
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+}
+
+// Test helper: return current cache keys in insertion order (oldest -> newest)
+export function _getRasterCacheKeysForTest(): string[] {
+  return Array.from(rasterCache.keys());
+}
+
+export function setRasterCacheMaxEntries(n: number) {
+  // Allow small sizes for tests; enforce at least 1 entry
+  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
+  ensureCacheLimit();
+}
+
+/**
+ * Set maximum age for cache entries in milliseconds. 0 disables TTL.
+ */
+export function setRasterCacheMaxAge(ms: number) {
+  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
+  ensureCacheLimit();
+}
+
+/**
+ * Synchronous getter: return an already-resolved canvas for the given key if present.
+ * This allows renderers to prefer cached canvases without awaiting a Promise.
+ */
+export function getCanvasFromCache(assetKey: string, mapping: Record<string, string>, outW: number, outH: number): HTMLCanvasElement | undefined {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(''));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  const entry = rasterCache.get(cacheKey);
+  if (!entry) return undefined;
+  // Evict if expired
+  if (rasterCacheMaxAgeMS > 0) {
+    const now = Date.now();
+    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
+      rasterCache.delete(cacheKey);
+      return undefined;
+    }
+  }
+  entry.lastAccess = Date.now();
+  // Promote to MRU
+  try {
+    rasterCache.delete(cacheKey);
+    rasterCache.set(cacheKey, entry);
+  } catch (e) {}
+  return entry.canvas;
+}
+
+// Named convenience export for clearer imports
+export function getCanvas(assetKey: string, mapping: Record<string, string>, outW: number, outH: number) {
+  return getCanvasFromCache(assetKey, mapping, outW, outH);
+}
+
+export default {
+  rasterizeSvgWithTeamColors,
+  _clearRasterCache,
+  cacheCanvasForAsset,
+  setRasterCacheMaxEntries,
+  setRasterCacheMaxAge,
+  getCanvasFromCache,
+  // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
+  getCanvas(assetKey: string, mapping: Record<string, string>, outW: number, outH: number) {
+    return getCanvasFromCache(assetKey, mapping, outW, outH);
+  },
+};
