@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { makeInitialState, createShip } from '../../src/entities';
 import { applySimpleAI } from '../../src/behavior';
 import { simulateStep } from '../../src/simulate';
+import { getDefaultBounds } from '../../src/config/simConfig';
 
 // Quick smoke test: create two ships, run AI and simulation for a few steps,
 // verify throttle/steering from AI produces changes in velocity and position.
@@ -18,8 +19,9 @@ describe('Smoke AI + Simulation', () => {
     // Run several frames: apply AI then simulate
     let moved = false;
     for (let i = 0; i < 20; i++) {
-      applySimpleAI(state as any, dt, { W: 800, H: 600 });
-      simulateStep(state as any, dt, { W: 800, H: 600 });
+  const bounds = getDefaultBounds();
+  applySimpleAI(state as any, dt, bounds);
+  simulateStep(state as any, dt, bounds);
       // If any ship gained non-zero velocity and moved position, mark moved
       for (const s of state.ships) {
         if ((s.vx || 0) !== 0 || (s.vy || 0) !== 0) {

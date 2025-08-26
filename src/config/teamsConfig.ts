@@ -1,5 +1,6 @@
 // teamsConfig.ts - Teams and fleet helpers (typed)
 import { getDefaultShipType, getShipConfig } from "./entitiesConfig"; // should be './config/entitiesConfig'
+import { getDefaultBounds } from "./simConfig";
 export type Team = { id: string; color: string; label?: string };
 export const TeamsConfig = {
   teams: {
@@ -64,15 +65,16 @@ function hashStringToInt(s: string) {
 export function generateFleetForTeam(
   seed = 0,
   teamId: "red" | "blue" = "red",
-  bounds = { W: 800, H: 600 },
+  bounds?: { W: number; H: number },
   shipFactory?: (type: string, x: number, y: number, team: string) => any,
   options: any = {},
 ) {
+  const b = bounds || getDefaultBounds();
   const cfg = Object.assign({}, TeamsConfig.defaultFleet, options.fleet || {});
   const spacing = options.spacing ?? cfg.spacing;
   const jitter = Object.assign({}, cfg.jitter, options.jitter || {});
-  const centerY = bounds.H / 2;
-  const baseX = teamId === "red" ? bounds.W * 0.22 : bounds.W * 0.78;
+  const centerY = b.H / 2;
+  const baseX = teamId === "red" ? b.W * 0.22 : b.W * 0.78;
   const rng = mulberry32((seed >>> 0) + hashStringToInt(teamId));
   const out: any[] = [];
   for (const [type, count] of Object.entries(cfg.counts)) {
@@ -81,8 +83,8 @@ export function generateFleetForTeam(
       const angle = rng() * Math.PI * 2;
       const dx = Math.cos(angle) * r + (rng() - 0.5) * (jitter.x ?? 0);
       const dy = Math.sin(angle) * r + (rng() - 0.5) * (jitter.y ?? 0);
-      const x = Math.max(0, Math.min(bounds.W - 1e-6, baseX + dx));
-      const y = Math.max(0, Math.min(bounds.H - 1e-6, centerY + dy));
+  const x = Math.max(0, Math.min(b.W - 1e-6, baseX + dx));
+  const y = Math.max(0, Math.min(b.H - 1e-6, centerY + dy));
       if (typeof shipFactory === "function")
         out.push(shipFactory(type, x, y, teamId));
       else out.push({ type, x, y, team: teamId });
@@ -93,15 +95,16 @@ export function generateFleetForTeam(
 
 export function makeInitialFleets(
   seed = 0,
-  bounds = { W: 800, H: 600 },
+  bounds?: { W: number; H: number },
   shipFactory?: (type: string, x: number, y: number, team: string) => any,
   options: any = {},
 ) {
-  const red = generateFleetForTeam(seed, "red", bounds, shipFactory, options);
+  const b = bounds || getDefaultBounds();
+  const red = generateFleetForTeam(seed, "red", b, shipFactory, options);
   const blue = generateFleetForTeam(
     seed + 1,
     "blue",
-    bounds,
+    b,
     shipFactory,
     options,
   );
@@ -176,7 +179,7 @@ export function chooseReinforcements(
     const maxPerTick = Math.max(1, Math.floor(Number(cfg.perTick) || 1));
     const spawnCount = Math.max(1, Math.floor(rng() * maxPerTick) + 1);
     // spawnCount computed deterministically from the provided seed
-    const b = options.bounds || { W: 800, H: 600 };
+  const b = options.bounds || getDefaultBounds();
     const centerY = b.H / 2;
     const baseX = weakest === "red" ? b.W * 0.18 : b.W * 0.82;
     for (let i = 0; i < spawnCount; i++) {

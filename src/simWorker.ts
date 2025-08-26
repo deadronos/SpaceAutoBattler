@@ -4,11 +4,12 @@ import { applySimpleAI } from './behavior';
 import { srand } from './rng';
 import { normalizeTurrets, normalizeStateShips } from './entities';
 import type { /* Bounds type can be extended in src/types if needed */ } from './types';
+import { getDefaultBounds } from './config/simConfig';
 
 type Bounds = { W: number; H: number };
 
 let state: any = null;
-let bounds: Bounds = { W: 800, H: 600 };
+let bounds: Bounds = getDefaultBounds();
 let simDtMs = 16;
 let running = false;
 let acc = 0;

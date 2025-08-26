@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeInitialState, createShip } from '../../src/entities';
 import { simulateStep } from '../../src/simulate';
+import { getDefaultBounds } from '../../src/config/simConfig';
 import { SIM } from '../../src/config/simConfig';
 
 // Deterministic physics test: with friction disabled (1.0) and throttle=1, ship should gain velocity = accel * dt
@@ -22,7 +23,8 @@ describe('Physics acceleration', () => {
       // accel should come from ship cfg (fighter default 5)
       const accel = ship.accel || 0;
       const dt = 0.1; // seconds
-      simulateStep(state as any, dt, { W: 800, H: 600 });
+  const bounds = getDefaultBounds();
+  simulateStep(state as any, dt, bounds);
       // After one step, vx should be approx accel * dt
       const expectedVx = accel * dt;
       expect(Math.abs((ship.vx || 0) - expectedVx) < 1e-6).toBeTruthy();

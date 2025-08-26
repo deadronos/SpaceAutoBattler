@@ -4,6 +4,7 @@ import { applySimpleAI } from '../../../src/behavior';
 import { simulateStep } from '../../../src/simulate';
 import CanvasRenderer from '../../../src/canvasrenderer';
 import { getShipConfig } from '../../../src/config/entitiesConfig';
+import { getDefaultBounds } from '../../../src/config/simConfig';
 
 // Integration test: ensure renderer-computed turret world coords match bullet spawn coords
 // Steps:
@@ -33,10 +34,10 @@ describe('integration: turret render vs bullet spawn', () => {
     state.ships = [attacker, defender];
 
     // Run AI step that should cause attacker to fire
-    applySimpleAI(state, 1.0, { W: 800, H: 600 });
+  applySimpleAI(state, 1.0, getDefaultBounds());
   // simulateStep will normalize turrets and leave bullets in state.bullets
   // Use dt=0 so bullets are not advanced by pruneAll (we want the spawn coords)
-  simulateStep(state, 0, { W: 800, H: 600 });
+  simulateStep(state, 0, getDefaultBounds());
 
     expect(Array.isArray(state.bullets)).toBe(true);
     expect(state.bullets.length).toBeGreaterThan(0);
@@ -57,8 +58,8 @@ describe('integration: turret render vs bullet spawn', () => {
     const defender: any = { id: 201, x: 200, y: 240, angle: 0, radius: 12, hp: 10, maxHp: 10, team: 'blue' };
     state.ships = [attacker, defender];
 
-    applySimpleAI(state, 1.0, { W: 800, H: 600 });
-    simulateStep(state, 0, { W: 800, H: 600 });
+  applySimpleAI(state, 1.0, getDefaultBounds());
+  simulateStep(state, 0, getDefaultBounds());
 
     expect(Array.isArray(state.bullets)).toBe(true);
     expect(state.bullets.length).toBeGreaterThan(0);
@@ -76,8 +77,8 @@ describe('integration: turret render vs bullet spawn', () => {
     const defender: any = { id: 301, x: 340, y: 300, angle: 0, radius: 12, hp: 10, maxHp: 10, team: 'blue' };
     state.ships = [attacker, defender];
 
-    applySimpleAI(state, 1.0, { W: 800, H: 600 });
-    simulateStep(state, 0, { W: 800, H: 600 });
+  applySimpleAI(state, 1.0, getDefaultBounds());
+  simulateStep(state, 0, getDefaultBounds());
 
     expect(Array.isArray(state.bullets)).toBe(true);
     expect(state.bullets.length).toBeGreaterThanOrEqual(1);
@@ -114,8 +115,8 @@ describe('integration: turret render vs bullet spawn', () => {
     const defender: any = { id: 401, x: 440, y: 140, angle: 0, radius: 12, hp: 10, maxHp: 10, team: 'blue' };
     state.ships = [attacker, defender];
 
-    applySimpleAI(state, 1.0, { W: 800, H: 600 });
-    simulateStep(state, 0, { W: 800, H: 600 });
+  applySimpleAI(state, 1.0, getDefaultBounds());
+  simulateStep(state, 0, getDefaultBounds());
 
     expect(Array.isArray(state.bullets)).toBe(true);
     expect(state.bullets.length).toBeGreaterThanOrEqual(1);

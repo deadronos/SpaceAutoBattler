@@ -620,7 +620,7 @@ export class CanvasRenderer {
             if (!ctx2) continue;
             ctx2.clearRect(0, 0, canvas.width, canvas.height);
             ctx2.translate(size / 2, size / 2);
-            ctx2.fillStyle = (AssetsConfig as any).palette.turret || "#94a3b8";
+            ctx2.fillStyle = (AssetsConfig as any).palette?.turret || "#94a3b8";
             // Determine a scale factor to map shape unit coords into pixel space
             const scale = size / 2 / 2; // heuristic: shape unit ~2 units radius
             if (tshape.type === "circle") {
@@ -755,7 +755,7 @@ export class CanvasRenderer {
     activeBufferCtx.clearRect(0, 0, bufferW, bufferH);
     withContext(() => {
       activeBufferCtx.fillStyle =
-        (AssetsConfig.palette as any).background || "#0b1220";
+  (AssetsConfig as any).palette?.background || "#0b1220";
       activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     });
 
@@ -812,7 +812,7 @@ export class CanvasRenderer {
               vx: Math.cos(angle) * speed,
               vy: Math.sin(angle) * speed,
               r: 0.6 + Math.random() * 0.8,
-              color: dmgAnim.color || "#ff6b6b",
+              color: dmgAnim.color || (AssetsConfig as any).palette?.shipAccent || "#ff6b6b",
               lifetime: dmgAnim.lifetime || 0.8,
               age: 0,
               shape: "circle",
@@ -885,7 +885,7 @@ export class CanvasRenderer {
         const trailConfig = getEngineTrailConfig(
           s.type || getDefaultShipType(),
         );
-        const color = trailConfig?.color || "#aee1ff";
+  const color = trailConfig?.color || (AssetsConfig as any).palette?.bullet || "#aee1ff";
         const width =
           (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
@@ -948,7 +948,7 @@ export class CanvasRenderer {
       const sprite = getSpriteAsset(s.type || getDefaultShipType());
       withShipContext(s, () => {
         // Resolve team color via TeamsConfig if available; fall back to palette
-        let teamColor = (AssetsConfig as any).palette?.shipHull || "#888";
+  let teamColor = (AssetsConfig as any).palette?.shipHull || "#888";
         try {
           if (s && s.team && TeamsConfig && (TeamsConfig as any).teams) {
             const teamEntry = (TeamsConfig as any).teams[s.team];
@@ -1149,7 +1149,7 @@ export class CanvasRenderer {
               activeBufferCtx.translate(offsetLocal, 0);
               activeBufferCtx.globalAlpha =
                 typeof engAnim.alpha === "number" ? engAnim.alpha : 1.0;
-              activeBufferCtx.fillStyle = engAnim.color || "#ffffff";
+              activeBufferCtx.fillStyle = engAnim.color || (AssetsConfig as any).palette?.shipAccent || "#ffffff";
               activeBufferCtx.beginPath();
               const pts: number[][] = engAnim.points || [];
               if (pts.length) {
@@ -1263,7 +1263,7 @@ export class CanvasRenderer {
               }
               // Fallback vector draw
               activeBufferCtx.fillStyle =
-                AssetsConfig.palette.turret || "#94a3b8";
+                (AssetsConfig as any).palette?.turret || "#94a3b8";
               if (turretShape.type === "circle") {
                 activeBufferCtx.beginPath();
                 activeBufferCtx.arc(
@@ -1332,7 +1332,7 @@ export class CanvasRenderer {
               0,
               Math.min(1, alphaBase + alphaScale * pulse * shieldNorm),
             );
-            const strokeColor = (shAnim && shAnim.color) || "#3ab6ff";
+            const strokeColor = (shAnim && shAnim.color) || (AssetsConfig as any).palette?.shipAccent || "#3ab6ff";
             const strokeWidth =
               (shAnim &&
                 (shAnim.strokeWidth || 0.08) *
@@ -1464,9 +1464,9 @@ export class CanvasRenderer {
           typeof hbCfg.dy === "number"
             ? hbCfg.dy
             : -(s.radius || 12) - baseH - 6;
-        const hbBg = hbCfg.bg || "#222";
+  const hbBg = hbCfg.bg || (AssetsConfig as any).palette?.background || "#222";
         const hbFill =
-          hbCfg.fill || (AssetsConfig.palette as any).shipHull || "#4caf50";
+          hbCfg.fill || (AssetsConfig as any).palette?.shipHull || "#4caf50";
 
         const hpPct =
           typeof (s as any).hpPercent === "number"
@@ -1502,7 +1502,7 @@ export class CanvasRenderer {
           if (shPct > 0) {
             const shH = Math.max(1, Math.round(h * 0.5));
             activeBufferCtx.fillStyle =
-              (AssetsConfig.palette as any).shipAccent || "#3ab6ff";
+              (AssetsConfig as any).palette?.shipAccent || "#3ab6ff";
             activeBufferCtx.fillRect(
               sx + ox,
               sy + oy - shH - 2,
@@ -1648,7 +1648,7 @@ export class CanvasRenderer {
                   x: p.x || 0,
                   y: p.y || 0,
                   r: p.r || 1,
-                  color: p.color || "#ffdca8",
+                  color: p.color || (AssetsConfig as any).palette?.bullet || "#ffdca8",
                   age: p.age || 0,
                   lifetime: p.lifetime || 1,
                   assetShape: p.assetShape,
@@ -1799,7 +1799,7 @@ export class CanvasRenderer {
               (ef.x as number) * renderScale,
               (ef.y as number) * renderScale,
             );
-            activeBufferCtx.fillStyle = ef.color || "#ffd089";
+            activeBufferCtx.fillStyle = ef.color || (AssetsConfig as any).palette?.bullet || "#ffd089";
             if (expShape && expShape.type === "circle") {
               const rr = (ef.r || 0.32) * (ef.scale || 1) * renderScale * 6;
               activeBufferCtx.beginPath();

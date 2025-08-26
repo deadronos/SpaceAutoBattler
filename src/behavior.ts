@@ -33,6 +33,7 @@ type ShipLike = {
 };
 
 import type { GameState } from "./types";
+import { getDefaultBounds } from './config/simConfig';
 type State = GameState;
 
 function len2(vx: number, vy: number) {
@@ -303,7 +304,7 @@ function steerAway(
 export function applySimpleAI(
   state: State,
   dt: number,
-  bounds = { W: 800, H: 600 },
+  bounds = getDefaultBounds(),
 ) {
   if (!state || !Array.isArray(state.ships)) return;
   for (const s of state.ships) {

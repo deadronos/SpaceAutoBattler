@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeInitialState, createShip, createBullet, genId } from '../../src/entities';
 import simulate from '../../src/simulate';
+import { getDefaultBounds } from '../../src/config/simConfig';
 
 import type { GameState } from '../../src/types';
 
@@ -31,8 +32,8 @@ describe('Armor and Shields', () => {
     const incoming = (initialShield || 0) + 10; // ensure some goes to hull
     hitShipWithBullet(state, ship.id, incoming);
 
-    // Run simulation step small dt so collision processed
-    simulate.simulateStep(state, 0.016, { W: 800, H: 600 });
+  // Run simulation step small dt so collision processed
+  simulate.simulateStep(state, 0.016, getDefaultBounds());
 
     // After step, shields should be reduced to 0 and some hull damage applied
     expect(ship.shield).toBeLessThan(initialShield);
@@ -59,7 +60,7 @@ describe('Armor and Shields', () => {
     const initialHp = ship.hp;
     const dmg = 10;
     hitShipWithBullet(state, ship.id, dmg);
-    simulate.simulateStep(state, 0.016, { W: 800, H: 600 });
+  simulate.simulateStep(state, 0.016, getDefaultBounds());
     const armor = ship.armor || 0;
     const expected = initialHp - dmg * Math.max(0, 1 - 0.1 * armor);
     expect(Math.abs((ship.hp || 0) - expected)).toBeLessThan(1e-6);

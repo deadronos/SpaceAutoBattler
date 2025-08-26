@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeInitialState, createBullet } from '../../src/entities';
 import { simulateStep } from '../../src/simulate';
+import { getDefaultBounds } from '../../src/config/simConfig';
 
 // Ensure bullets initialize and simulatePath sets both prevX/prevY and _prevX/_prevY
 
@@ -13,7 +14,8 @@ describe('Bullet previous position fields', () => {
     expect(typeof (b as any).prevX === 'number').toBeTruthy();
     expect(typeof (b as any)._prevX === 'number').toBeTruthy();
     // run a small step
-    simulateStep(state as any, 0.016, { W: 800, H: 600 });
+  const bounds = getDefaultBounds();
+  simulateStep(state as any, 0.016, bounds);
     const nb = state.bullets[0] as any;
     // after simulate, both legacy and internal fields should be present and numeric
     expect(typeof nb.prevX === 'number').toBeTruthy();
