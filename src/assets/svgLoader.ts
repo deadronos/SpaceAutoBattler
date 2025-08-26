@@ -7,22 +7,61 @@ export function parseSvgForMounts(svgText: string) {
     const doc = parser.parseFromString(svgText, 'image/svg+xml');
     const svg = doc.querySelector('svg');
     if (!svg) return { mounts: [], engineMounts: [], viewBox: null, colorRegions: [] };
-    const viewBox = svg.getAttribute('viewBox');
-    const mounts = Array.from(svg.querySelectorAll('[data-mount]')).map((el) => ({
-      x: el.getAttribute('x') || el.getAttribute('cx') || null,
-      y: el.getAttribute('y') || el.getAttribute('cy') || null,
-      slot: el.getAttribute('data-mount') || null,
-    }));
-    const engineMounts = Array.from(svg.querySelectorAll('[data-engine-mount]')).map((el) => ({
-      x: el.getAttribute('x') || null,
-      y: el.getAttribute('y') || null,
-      slot: el.getAttribute('data-engine-mount') || null,
-    }));
+    const vbAttr = svg.getAttribute('viewBox');
+    let viewBox: { w: number; h: number } | null = null;
+    if (vbAttr) {
+      // viewBox syntax: minX minY width height
+      const parts = vbAttr.trim().split(/[\s,]+/).map((s) => parseFloat(s));
+      if (parts.length >= 4 && !isNaN(parts[2]) && !isNaN(parts[3])) {
+        viewBox = { w: parts[2], h: parts[3] };
+      }
+    }
+    const toNumber = (v: string | null) => { const n = v == null ? NaN : parseFloat(v); return isNaN(n) ? null : n; };
+
+    // Mounts: data-mount or class 'turret'
+    const mountEls = Array.from(svg.querySelectorAll('[data-mount], .turret')) as Element[];
+    const mounts = mountEls.map((el) => {
+      const slot = el.getAttribute('data-mount') || (el.classList && (el.classList.contains('turret') ? 'turret' : null));
+      // center calculation for rects: x + width/2, y + height/2. For circles/ellipses use cx/cy.
+      const xAttr = el.getAttribute('cx') || el.getAttribute('x');
+      const yAttr = el.getAttribute('cy') || el.getAttribute('y');
+      let x = toNumber(xAttr);
+      let y = toNumber(yAttr);
+      if ((x == null || y == null) && el.getAttribute('width') && el.getAttribute('height')) {
+        const rx = toNumber(el.getAttribute('x'));
+        const ry = toNumber(el.getAttribute('y'));
+        const rw = toNumber(el.getAttribute('width'));
+        const rh = toNumber(el.getAttribute('height'));
+        if (rx != null && rw != null) x = rx + rw / 2;
+        if (ry != null && rh != null) y = ry + rh / 2;
+      }
+      return { x, y, slot };
+    });
+
+    // Engine mounts: data-engine-mount or class 'engine'
+    const engineEls = Array.from(svg.querySelectorAll('[data-engine-mount], .engine')) as Element[];
+    const engineMounts = engineEls.map((el) => {
+      const slot = el.getAttribute('data-engine-mount') || (el.classList && (el.classList.contains('engine') ? 'engine' : null));
+      const xAttr = el.getAttribute('cx') || el.getAttribute('x');
+      const yAttr = el.getAttribute('cy') || el.getAttribute('y');
+      let x = toNumber(xAttr);
+      let y = toNumber(yAttr);
+      if ((x == null || y == null) && el.getAttribute('width') && el.getAttribute('height')) {
+        const rx = toNumber(el.getAttribute('x'));
+        const ry = toNumber(el.getAttribute('y'));
+        const rw = toNumber(el.getAttribute('width'));
+        const rh = toNumber(el.getAttribute('height'));
+        if (rx != null && rw != null) x = rx + rw / 2;
+        if (ry != null && rh != null) y = ry + rh / 2;
+      }
+      return { x, y, slot };
+    });
     const colorRegions = Array.from(svg.querySelectorAll('[data-team],[data-team-slot],[class*="team-fill-"]')).map((el) => ({
       tag: el.tagName,
+      id: (el as Element).id || null,
       role: el.getAttribute('data-team') || el.getAttribute('data-team-slot') || null,
     }));
-    return { mounts, engineMounts, viewBox, colorRegions };
+  return { mounts, engineMounts, viewBox, colorRegions };
   } catch (e) {
     return { mounts: [], engineMounts: [], viewBox: null, colorRegions: [] };
   }
@@ -153,6 +192,21 @@ export async function rasterizeHullOnlySvgToCanvasAsync(svgText: string, outW: n
   const hull = stripHullOnly(svgText); return await rasterizeSvgToCanvasAsync(hull, outW, outH);
 }
 
+// Backwards-compatible sync wrapper: best-effort synchronous rasterization for callers that expect it.
+export function rasterizeHullOnlySvgToCanvas(svgText: string, outW: number, outH: number): HTMLCanvasElement {
+  try {
+    // Try to use renderer cached canvas first
+    const c = getCachedHullCanvasSync(svgText, outW, outH);
+    if (c) return c;
+    // Try synchronous rasterize path
+    const hull = stripHullOnly(svgText);
+    const rc = rasterizeSvgToCanvas(hull, outW, outH);
+    if (rc) return rc;
+  } catch (e) {}
+  // Fallback: return an empty transparent canvas to preserve caller expectations
+  const empty = document.createElement('canvas'); empty.width = outW; empty.height = outH; return empty;
+}
+
 export function getCachedHullCanvasSync(svgText: string, outW: number, outH: number, assetKey?: string): HTMLCanvasElement | undefined {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -161,7 +215,10 @@ export function getCachedHullCanvasSync(svgText: string, outW: number, outH: num
       try { const c = svgRenderer.getCanvas(assetKey || '', {}, outW, outH); if (c) return c as HTMLCanvasElement; } catch (e) {}
     }
   } catch (e) {}
-  try { return rasterizeHullOnlySvgToCanvasAsync(svgText, outW, outH) as unknown as HTMLCanvasElement; } catch (e) { return undefined; }
+  try {
+    const hull = stripHullOnly(svgText);
+    return rasterizeSvgToCanvas(hull, outW, outH) as HTMLCanvasElement | undefined;
+  } catch (e) { return undefined; }
 }
 
 export async function ensureRasterizedAndCached(svgText: string, mapping: Record<string,string>, outW: number, outH: number, options?: { applyTo?: 'fill'|'stroke'|'both', assetKey?: string }): Promise<HTMLCanvasElement> {
@@ -185,37 +242,3 @@ export async function ensureRasterizedAndCached(svgText: string, mapping: Record
 }
 
 export default { parseSvgForMounts, applyTeamColorsToSvg, rasterizeSvgToCanvasAsync, rasterizeHullOnlySvgToCanvasAsync, ensureRasterizedAndCached, getCachedHullCanvasSync };
-
-                const applyAttr = (el.getAttribute('data-team-apply') || '').trim().toLowerCase();
-                const apply = applyAttr === 'fill' || applyAttr === 'stroke' ? (applyAttr as 'fill' | 'stroke') : applyDefault;
-
-                const setStyleProp = (prop: 'fill' | 'stroke', value: string) => {
-                  try {
-                    // Set presentation attribute
-                    (el as Element).setAttribute(prop, value);
-                    // Merge into style attribute (so inline styles reflect it)
-                    const cur = el.getAttribute('style') || '';
-                    // replace existing prop in style or append
-                    const re = new RegExp('(^|;)\\s*' + prop + '\\s*:\\s*[^;]+', 'i');
-                    if (re.test(cur)) {
-                      const replaced = cur.replace(re, `$1 ${prop}: ${value}`);
-                      el.setAttribute('style', replaced);
-                    } else {
-                      const next = cur ? (cur + `; ${prop}: ${value}`) : `${prop}: ${value}`;
-                      el.setAttribute('style', next);
-                    }
-                  } catch (e) { /* ignore style merge failures */ }
-                };
-
-                if ((apply === 'fill' || apply === 'both') && fillColor) setStyleProp('fill', fillColor);
-                if ((apply === 'stroke' || apply === 'both') && strokeColor) setStyleProp('stroke', strokeColor);
-              } catch (e) { continue; }
-            }
-            const serializer = new XMLSerializer();
-            return serializer.serializeToString(svg);
-          } catch (e) {
-            return svgText;
-          }
-        }
-
-        export default { parseSvgForMounts, rasterizeSvgToCanvas, applyTeamColorsToSvg };
