@@ -1,4 +1,3 @@
-
 <!--
 SpaceAutoBattler — Copilot Quick Reference
 
@@ -19,6 +18,8 @@ For a complete overview of the `/src` directory structure and module organizatio
 
 ## Workflow & safety checklist
 
+Agents must also follow multi-agent coordination rules when present in the repository (see `AGENTS.md` and optional `agent-config.json`). Before editing files agents MUST check for `.ai-lock.json` lockfiles and behave as described below.
+
 1. Plan the smallest change that solves the user's request.
 2. Update or add TypeScript in `src/` only; keep the change minimal and well-scoped.
 3. Add or update unit tests under `test/vitest/` for the change (happy path + 1-2 edge cases). Use the shared test helpers in `test/vitest/utils/` (e.g., `glStub`, `poolAssert`) where relevant.
@@ -38,11 +39,11 @@ npm test
 - **Rapier3D Physics**: Physics bodies and colliders should be managed separately from visual representations. Use physics simulation in Web Worker for performance.
 - **Postprocessing**: Apply postprocessing effects (bloom, tone mapping, etc.) through Three.js EffectComposer. Configure effects in renderer config, not hardcoded.
 - **Asset Management**: Use `GameState.assetPool` for Three.js textures, geometries, and materials. Implement proper cleanup with `texture.dispose()`, `geometry.dispose()`, `material.dispose()`.
-- **Renderer-Physics Separation**: 
+- **Renderer-Physics Separation**:
   - Simulation Worker: Handles Rapier3D physics world, collision detection, rigid body updates
   - Main Thread: Updates Three.js Object3D transforms from physics data, manages rendering
   - Never access Three.js objects from physics worker thread
-- **Pooling Strategy**: 
+- **Pooling Strategy**:
   - Pool Three.js Meshes and Materials for frequently created/destroyed objects (bullets, particles, effects)
   - Use Object3D pooling for complex hierarchies
   - Implement pool warming for critical assets to avoid frame drops
@@ -68,10 +69,10 @@ npm test
 - Keep commits small and focused. Each PR should implement one measurable change (API + tests + docs if needed).
 - PR description template:
 
-1) Goal: one-line summary.
-2) Files changed: list key files.
-3) Tests: list tests added or updated and how to run them.
-4) Validation: `npx tsc --noEmit` and `npm test` output summary (pass/fail).
+1. Goal: one-line summary.
+2. Files changed: list key files.
+3. Tests: list tests added or updated and how to run them.
+4. Validation: `npx tsc --noEmit` and `npm test` output summary (pass/fail).
 
 ---
 
@@ -80,5 +81,3 @@ npm test
 - Owner: deadronos
 - Main branch: `main`
 - Project Structure: See `spec/src-structure.md` for complete `/src` directory overview
-
-

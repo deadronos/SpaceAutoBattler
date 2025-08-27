@@ -40,3 +40,51 @@ Quick notes:
 - No runtime dependencies; devDependencies allowed.
 - For breaking type/config changes, create a decision record in /PR_NOTES/ and migrate with fallbacks.
 - Owner: deadronos, main branch: main
+
+Locking & multi-agent coordination
+
+- Purpose: provide machine-readable rules and a simple lockfile protocol so multiple AI agents can safely share the repository without stepping on each other's edits.
+- Recommended lockfile: `.ai-lock.json` at repo root (or per-directory `.ai-lock.json`). JSON schema example:
+
+  {
+  "owner": "agent-id",
+  "session": "uuid",
+  "timestamp": "2025-08-28T12:00:00Z",
+  "ttl_seconds": 300,
+  "files": ["src/foo.ts","src/bar.ts"],
+  "intent": "refactor:extract-function"
+  }
+
+- Acquire semantics: create `.ai-lock.json` atomically (write temp + rename) and include `files` scope. Use git status to ensure working tree is clean before acquiring.
+- Release semantics: remove lockfile after commit or on failure; provide an audit entry under `.ai-history/` containing the lock metadata and diff.
+- Backoff policy: if a lock exists and owner != you, back off exponentially and retry until TTL expiry. If TTL expired, attempt to claim after verification.
+- Skip/ignore: agents should respect `agent-config.json` ignorePaths and skip files with active locks they cannot claim. Prefer proposing changes (branch/PR) instead of forcing edits.
+- Observability: log lock events (acquire/release/claim-failed) to console and `.ai-history/log.json`.
+
+Simple recommended runtime behavior for agents
+
+1. On start: read `AGENTS.md` and optional `agent-config.json` for repo policies.
+2. Before editing a file:
+   - Ensure working tree clean for files you'll change (git status).
+   - Check for `.ai-lock.json` scope overlap.
+   - If no lock, create `.ai-lock.json` with intent and files (atomic write+rename).
+   - Make changes in a temporary branch, run `npx tsc --noEmit` and `npm test`.
+   - Commit changes, push to remote or create a PR, then remove the lock and write an audit entry.
+3. If a lock is present and owned by another agent: back off, or create a change proposal (branch + PR) instead of direct edits.
+
+Failure modes & mitigations
+
+- Stale locks: TTL + heartbeat recommended. Allow manual forced-clear with human confirmation.
+- Race conditions: prefer atomic filesystem rename when creating locks; if not available use VCS arbitration (first commit wins) and surface conflicts for manual resolution.
+- Partial commits: always stage and run tests on branch before merging; keep commits small.
+
+Security & trust
+
+- Include `owner` and `session` in lockfile; sign or include agent metadata if available to avoid spoofing.
+- Prefer per-file or per-directory locks to avoid global blocking.
+
+Where to put coordination config
+
+- `AGENTS.md` (human-readable policy)
+- `.github/copilot-instructions.md` (agent guidance)
+- Optional `agent-config.json` (machine-readable repo policy with keys: ttl_seconds, ignorePaths, max_retries, backoff_ms)
