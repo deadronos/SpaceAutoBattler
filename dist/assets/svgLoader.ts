@@ -351,13 +351,18 @@ function stripHullOnly(svgText: string) {
         if (!isNaN(w) && !isNaN(h) && (w > 1000 || h > 1000)) r.remove();
       } catch (e) {}
     }
-    const turrets = Array.from(
-      svg.querySelectorAll("[data-turret]"),
-    ) as Element[];
-    for (const t of turrets)
+    // Remove turret (and weapon) artwork which is rendered separately by the
+    // renderer (turrets are handled as independent sprites). Be conservative
+    // and remove elements explicitly marked as turret/weapon by attribute or
+    // class. Mount extraction runs before stripHullOnly during preload so
+    // removing these elements here won't prevent mount detection earlier.
+    const turretSelectors = '[data-turret], .turret, [data-weapon], .weapon, [data-turret-slot], [data-weapon-slot]';
+    const turrets = Array.from(svg.querySelectorAll(turretSelectors)) as Element[];
+    for (const t of turrets) {
       try {
         t.remove();
       } catch (e) {}
+    }
     return new XMLSerializer().serializeToString(svg);
   } catch (e) {
     return svgText;
@@ -433,6 +438,26 @@ export function getCachedHullCanvasSync(
     const getCanvasFn =
       (svgRenderer && svgRenderer.getCanvas) ||
       (svgRenderer && svgRenderer.default && svgRenderer.default.getCanvas);
+    // If require-based resolution failed to find a shared svgRenderer instance,
+    // try the global shared helper exposed by src/assets/svgRenderer.ts so that
+    // different module instances (bundled vs. runtime) can share the same cache.
+    try {
+      if (!getCanvasFn && typeof globalThis !== 'undefined') {
+        const g = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+        if (g && typeof g.getCanvas === 'function') {
+          try {
+            const c = g.getCanvas(assetKey || '', {}, outW, outH);
+            try {
+              if (c && typeof (globalThis as any).window !== 'undefined' && (globalThis as any).window.__SAB_DEBUG_SVG) {
+                // eslint-disable-next-line no-console
+                console.debug('[svgLoader] global bridge provided canvas', { assetKey, outW, outH });
+              }
+            } catch (e) {}
+            if (c) return c as HTMLCanvasElement;
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
     if (getCanvasFn && typeof getCanvasFn === "function") {
       try {
         const c = getCanvasFn(assetKey || "", {}, outW, outH);

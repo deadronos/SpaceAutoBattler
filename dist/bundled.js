@@ -1168,14 +1168,14 @@ function stripHullOnly(svgText) {
       } catch (e) {
       }
     }
-    const turrets = Array.from(
-      svg.querySelectorAll("[data-turret]")
-    );
-    for (const t of turrets)
+    const turretSelectors = "[data-turret], .turret, [data-weapon], .weapon, [data-turret-slot], [data-weapon-slot]";
+    const turrets = Array.from(svg.querySelectorAll(turretSelectors));
+    for (const t of turrets) {
       try {
         t.remove();
       } catch (e) {
       }
+    }
     return new XMLSerializer().serializeToString(svg);
   } catch (e) {
     return svgText;
@@ -1223,6 +1223,25 @@ function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
       }
     }
     const getCanvasFn = svgRenderer && svgRenderer.getCanvas || svgRenderer && svgRenderer.default && svgRenderer.default.getCanvas;
+    try {
+      if (!getCanvasFn && typeof globalThis !== "undefined") {
+        const g = globalThis.__SpaceAutoBattler_svgRenderer;
+        if (g && typeof g.getCanvas === "function") {
+          try {
+            const c = g.getCanvas(assetKey || "", {}, outW, outH);
+            try {
+              if (c && typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
+                console.debug("[svgLoader] global bridge provided canvas", { assetKey, outW, outH });
+              }
+            } catch (e) {
+            }
+            if (c) return c;
+          } catch (e) {
+          }
+        }
+      }
+    } catch (e) {
+    }
     if (getCanvasFn && typeof getCanvasFn === "function") {
       try {
         const c = getCanvasFn(assetKey || "", {}, outW, outH);
@@ -1449,6 +1468,12 @@ function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
   };
   rasterCache.set(cacheKey, entry);
   ensureCacheLimit();
+  try {
+    if (typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
+      console.debug("[svgRenderer] cacheCanvasForAsset set", { assetKey, mappingHash, outW, outH });
+    }
+  } catch (e) {
+  }
 }
 function _getRasterCacheKeysForTest() {
   return Array.from(rasterCache.keys());
@@ -1467,6 +1492,12 @@ function getCanvasFromCache(assetKey, mapping, outW, outH) {
   const assetId = assetKey || djb2Hash(stableStringify(""));
   const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
   const entry = rasterCache.get(cacheKey);
+  try {
+    if (typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
+      console.debug("[svgRenderer] getCanvasFromCache lookup", { assetKey, mappingHash, outW, outH, present: !!entry });
+    }
+  } catch (e) {
+  }
   if (!entry) return void 0;
   if (rasterCacheMaxAgeMS > 0) {
     const now = Date.now();
@@ -1486,7 +1517,7 @@ function getCanvasFromCache(assetKey, mapping, outW, outH) {
 function getCanvas(assetKey, mapping, outW, outH) {
   return getCanvasFromCache(assetKey, mapping, outW, outH);
 }
-var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRenderer_default;
+var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRendererAPI, svgRenderer_default;
 var init_svgRenderer = __esm({
   "src/assets/svgRenderer.ts"() {
     "use strict";
@@ -1494,18 +1525,106 @@ var init_svgRenderer = __esm({
     rasterCache = /* @__PURE__ */ new Map();
     rasterCacheMaxEntries = 256;
     rasterCacheMaxAgeMS = 0;
-    svgRenderer_default = {
+    svgRendererAPI = {
       rasterizeSvgWithTeamColors,
       _clearRasterCache,
       cacheCanvasForAsset,
       setRasterCacheMaxEntries,
       setRasterCacheMaxAge,
       getCanvasFromCache,
-      // synchronous alias for convenience: prefer calling svgRenderer.getCanvas(...)
       getCanvas(assetKey, mapping, outW, outH) {
         return getCanvasFromCache(assetKey, mapping, outW, outH);
+      },
+      /**
+       * Pre-warm a small set of assets into the raster cache. assetKeys are keys
+       * from AssetsConfig.svgAssets (or direct SVG/URL strings). teamColors is an
+       * array of color hex strings to generate tinted variants for. This helper
+       * kicks off async rasterization and awaits completion so subsequent
+       * synchronous getCanvas calls can find entries.
+       */
+      async prewarmAssets(assetKeys, teamColors = [], outW = 128, outH = 128) {
+        try {
+          const assetsConfig = typeof globalThis !== "undefined" && globalThis.AssetsConfig ? globalThis.AssetsConfig : void 0;
+          for (const key of assetKeys) {
+            try {
+              const rel = assetsConfig && assetsConfig.svgAssets && assetsConfig.svgAssets[key] ? assetsConfig.svgAssets[key] : key;
+              try {
+                const ph = (() => {
+                  try {
+                    const c = document.createElement("canvas");
+                    c.width = outW || 1;
+                    c.height = outH || 1;
+                    return c;
+                  } catch (e) {
+                    const obj = { width: outW || 1, height: outH || 1 };
+                    return obj;
+                  }
+                })();
+                try {
+                  cacheCanvasForAsset(key, {}, outW, outH, ph);
+                } catch (e) {
+                }
+              } catch (e) {
+              }
+              (async () => {
+                try {
+                  const canvas = await rasterizeSvgWithTeamColors(rel, {}, outW, outH, { applyTo: "both", assetKey: key });
+                  try {
+                    cacheCanvasForAsset(key, {}, outW, outH, canvas);
+                  } catch (e) {
+                  }
+                } catch (e) {
+                }
+              })();
+              for (const col of teamColors || []) {
+                try {
+                  const mapping = { primary: col, hull: col };
+                  try {
+                    const ph2 = (() => {
+                      try {
+                        const c = document.createElement("canvas");
+                        c.width = outW || 1;
+                        c.height = outH || 1;
+                        return c;
+                      } catch (e) {
+                        const obj = { width: outW || 1, height: outH || 1 };
+                        return obj;
+                      }
+                    })();
+                    try {
+                      cacheCanvasForAsset(key, mapping, outW, outH, ph2);
+                    } catch (e) {
+                    }
+                  } catch (e) {
+                  }
+                  (async () => {
+                    try {
+                      const canvas = await rasterizeSvgWithTeamColors(rel, mapping, outW, outH, { applyTo: "both", assetKey: key });
+                      try {
+                        cacheCanvasForAsset(key, mapping, outW, outH, canvas);
+                      } catch (e) {
+                      }
+                    } catch (e) {
+                    }
+                  })();
+                } catch (e) {
+                }
+              }
+            } catch (e) {
+            }
+          }
+        } catch (e) {
+        }
       }
     };
+    try {
+      if (typeof globalThis !== "undefined") {
+        globalThis.__SpaceAutoBattler_svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer || {};
+        Object.assign(globalThis.__SpaceAutoBattler_svgRenderer, svgRendererAPI);
+      }
+    } catch (e) {
+    }
+    svgRenderer_default = svgRendererAPI;
   }
 });
 
@@ -5162,6 +5281,12 @@ var CanvasRenderer = class _CanvasRenderer {
                 svgRenderer = void 0;
               }
             }
+            try {
+              if (!svgRenderer && globalThis.__SpaceAutoBattler_svgRenderer) {
+                svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer;
+              }
+            } catch (e) {
+            }
             if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
               const outW = vb && vb.w || 128;
               const outH = vb && vb.h || 128;
@@ -5226,6 +5351,12 @@ var CanvasRenderer = class _CanvasRenderer {
                           );
                         } catch (e) {
                           svgRenderer = void 0;
+                        }
+                        try {
+                          if (!svgRenderer && globalThis.__SpaceAutoBattler_svgRenderer) {
+                            svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer;
+                          }
+                        } catch (e) {
                         }
                         if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
                           svgRenderer.cacheCanvasForAsset(
@@ -5344,7 +5475,18 @@ var CanvasRenderer = class _CanvasRenderer {
                   tctx.globalCompositeOperation = "source-over";
                   this._setTintedCanvas(k, tc);
                   try {
-                    const svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then((m) => m.default || m);
+                    let svgRenderer = void 0;
+                    try {
+                      svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then((m) => m.default || m);
+                    } catch (e) {
+                      svgRenderer = void 0;
+                    }
+                    try {
+                      if (!svgRenderer && globalThis.__SpaceAutoBattler_svgRenderer) {
+                        svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer;
+                      }
+                    } catch (e) {
+                    }
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
                       svgRenderer.cacheCanvasForAsset(
                         shipType,
@@ -5551,26 +5693,26 @@ var CanvasRenderer = class _CanvasRenderer {
     });
     try {
       const STAR_COOLDOWN_DEFAULT = 300;
-      if (state && !state.starCanvas) {
-        state._starCooldown = state._starCooldown || 0;
-      }
-      if (state && state.starCanvas === void 0) {
-        state.starCanvas = null;
-      }
-      if (state && state._starCooldown > 0) {
+      if (this._starCanvas === void 0)
+        this._starCanvas = null;
+      if (this._starBloomCanvas === void 0)
+        this._starBloomCanvas = null;
+      if (this._starCooldownMs === void 0)
+        this._starCooldownMs = 0;
+      if (this._starCooldownMs > 0) {
         const rawDt = typeof state.dt === "number" ? state.dt : typeof state.simDt === "number" ? state.simDt : 1 / 60;
         const dtMs = rawDt > 1 ? rawDt : rawDt * 1e3;
-        const before = state._starCooldown;
-        state._starCooldown = Math.max(
+        const before = this._starCooldownMs;
+        this._starCooldownMs = Math.max(
           0,
-          state._starCooldown - dtMs
+          this._starCooldownMs - dtMs
         );
         try {
           const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
           if (!isTest) {
-            console.log("canvasrenderer: starCooldown", {
+            console.log("canvasrenderer: starCooldown (renderer)", {
               before,
-              after: state._starCooldown,
+              after: this._starCooldownMs,
               rawDt,
               dtMs,
               t: state && state.t
@@ -5579,7 +5721,7 @@ var CanvasRenderer = class _CanvasRenderer {
         } catch (e) {
         }
       }
-      if (state && !state.starCanvas && state._starCooldown <= 0) {
+      if (!this._starCanvas && this._starCooldownMs <= 0) {
         const size = Math.max(1024, Math.max(bufferW, bufferH));
         const sc = document.createElement("canvas");
         sc.width = size;
@@ -5625,17 +5767,17 @@ var CanvasRenderer = class _CanvasRenderer {
         bctx.globalAlpha = 0.85;
         bctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, size, size);
         bctx.globalAlpha = 1;
-        state.starCanvas = sc;
-        state.starBloomCanvas = bc;
+        this._starCanvas = sc;
+        this._starBloomCanvas = bc;
         try {
-          console.log("canvasrenderer: regenerated starfield", {
-            width: state.starCanvas?.width,
-            height: state.starCanvas?.height,
+          console.log("canvasrenderer: regenerated starfield (renderer)", {
+            width: this._starCanvas?.width,
+            height: this._starCanvas?.height,
             time: typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()
           });
         } catch (e) {
         }
-        state._starCooldown = STAR_COOLDOWN_DEFAULT;
+        this._starCooldownMs = STAR_COOLDOWN_DEFAULT;
       }
     } catch (e) {
     }
@@ -5912,10 +6054,13 @@ var CanvasRenderer = class _CanvasRenderer {
                       hullCanvas.width,
                       hullCanvas.height
                     );
-                    if (c) {
-                      tintedCanvas = c;
-                      this._setTintedCanvas(tintedKey, c);
-                    } else if (typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
+                    if (c && (c.width === hullCanvas.width && c.height === hullCanvas.height)) {
+                      try {
+                        this._setTintedCanvas(tintedKey, c);
+                        tintedCanvas = c;
+                      } catch (e) {
+                        tintedCanvas = c;
+                      }
                       try {
                         ensureRasterizedAndCached && ensureRasterizedAndCached(
                           sprite.svg,
@@ -5924,6 +6069,130 @@ var CanvasRenderer = class _CanvasRenderer {
                           hullCanvas.height,
                           { assetKey, applyTo: "both" }
                         );
+                      } catch (e) {
+                      }
+                    } else {
+                      try {
+                        const tc = document.createElement("canvas");
+                        tc.width = hullCanvas.width;
+                        tc.height = hullCanvas.height;
+                        const tctx = tc.getContext("2d");
+                        const col = teamColor;
+                        const k = tintedKey;
+                        if (tctx) {
+                          try {
+                            tctx.clearRect(0, 0, tc.width, tc.height);
+                            tctx.drawImage(hullCanvas, 0, 0);
+                            const hexToRgb = (hex) => {
+                              if (!hex) return null;
+                              let h = hex.replace(/^#/, "");
+                              if (h.length === 3)
+                                h = h.split("").map((c2) => c2 + c2).join("");
+                              if (h.length !== 6) return null;
+                              const r = parseInt(h.substring(0, 2), 16);
+                              const g = parseInt(h.substring(2, 4), 16);
+                              const b = parseInt(h.substring(4, 6), 16);
+                              return { r, g, b };
+                            };
+                            const rgbToHsl = (r, g, b) => {
+                              r /= 255;
+                              g /= 255;
+                              b /= 255;
+                              const max = Math.max(r, g, b);
+                              const min = Math.min(r, g, b);
+                              let h = 0;
+                              let s2 = 0;
+                              const l = (max + min) / 2;
+                              if (max !== min) {
+                                const d = max - min;
+                                s2 = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                                switch (max) {
+                                  case r:
+                                    h = (g - b) / d + (g < b ? 6 : 0);
+                                    break;
+                                  case g:
+                                    h = (b - r) / d + 2;
+                                    break;
+                                  case b:
+                                    h = (r - g) / d + 4;
+                                    break;
+                                }
+                                h = h * 60;
+                              }
+                              return [h, s2, l];
+                            };
+                            const hslToRgb = (h, s2, l) => {
+                              h = (h % 360 + 360) % 360;
+                              const c2 = (1 - Math.abs(2 * l - 1)) * s2;
+                              const x = c2 * (1 - Math.abs(h / 60 % 2 - 1));
+                              const m = l - c2 / 2;
+                              let r1 = 0, g1 = 0, b1 = 0;
+                              if (h < 60) {
+                                r1 = c2;
+                                g1 = x;
+                                b1 = 0;
+                              } else if (h < 120) {
+                                r1 = x;
+                                g1 = c2;
+                                b1 = 0;
+                              } else if (h < 180) {
+                                r1 = 0;
+                                g1 = c2;
+                                b1 = x;
+                              } else if (h < 240) {
+                                r1 = 0;
+                                g1 = x;
+                                b1 = c2;
+                              } else if (h < 300) {
+                                r1 = x;
+                                g1 = 0;
+                                b1 = c2;
+                              } else {
+                                r1 = c2;
+                                g1 = 0;
+                                b1 = x;
+                              }
+                              const r = Math.round((r1 + m) * 255);
+                              const g = Math.round((g1 + m) * 255);
+                              const b = Math.round((b1 + m) * 255);
+                              return [r, g, b];
+                            };
+                            const teamRgb = hexToRgb(col);
+                            let teamHue = 0;
+                            if (teamRgb) {
+                              teamHue = rgbToHsl(teamRgb.r, teamRgb.g, teamRgb.b)[0];
+                            }
+                            try {
+                              const img = tctx.getImageData(0, 0, tc.width, tc.height);
+                              const data = img.data;
+                              for (let i = 0; i < data.length; i += 4) {
+                                const alpha = data[i + 3];
+                                if (alpha < 8) continue;
+                                const r = data[i];
+                                const g = data[i + 1];
+                                const b = data[i + 2];
+                                const [h, s2, l] = rgbToHsl(r, g, b);
+                                const [nr, ng, nb] = hslToRgb(teamHue, s2, l);
+                                data[i] = nr;
+                                data[i + 1] = ng;
+                                data[i + 2] = nb;
+                              }
+                              tctx.putImageData(img, 0, 0);
+                              this._setTintedCanvas(k, tc);
+                              tintedCanvas = tc;
+                            } catch (e) {
+                              tctx.clearRect(0, 0, tc.width, tc.height);
+                              tctx.drawImage(hullCanvas, 0, 0);
+                              tctx.globalCompositeOperation = "source-atop";
+                              tctx.fillStyle = col;
+                              tctx.fillRect(0, 0, tc.width, tc.height);
+                              tctx.globalCompositeOperation = "source-over";
+                              this._setTintedCanvas(k, tc);
+                              tintedCanvas = tc;
+                            }
+                          } catch (e) {
+                          }
+                        }
                       } catch (e) {
                       }
                     }
@@ -6984,6 +7253,9 @@ var WebGLRenderer = class {
 
 // src/main.ts
 init_rendererConfig();
+init_svgRenderer();
+init_svgRenderer();
+init_assetsConfig();
 async function startApp(rootDocument = document) {
   const gameState = makeInitialState();
   let canvas = rootDocument.getElementById("world");
@@ -7144,6 +7416,47 @@ async function startApp(rootDocument = document) {
       renderer.preloadAllAssets();
     } catch (e) {
     }
+  }
+  try {
+    if (typeof window !== "undefined" && svgRenderer_default && typeof svgRenderer_default.prewarmAssets === "function") {
+      try {
+        const assetsConfig = assetsConfig_default || globalThis.AssetsConfig || {};
+        const svgAssets = assetsConfig.svgAssets || {};
+        const keys = Object.keys(svgAssets).slice(0, 8);
+        const teams = globalThis.TeamsConfig && globalThis.TeamsConfig.teams ? globalThis.TeamsConfig.teams : {};
+        const teamColors = [];
+        for (const tName of Object.keys(teams)) {
+          const t = teams[tName];
+          if (t && t.color) teamColors.push(t.color);
+        }
+        if (teamColors.length === 0) {
+          const p = assetsConfig.palette || {};
+          if (p.shipHull) teamColors.push(p.shipHull);
+          if (p.shipAccent) teamColors.push(p.shipAccent);
+        }
+        try {
+          const g = globalThis.__SpaceAutoBattler_svgRenderer;
+          if (g && typeof g.prewarmAssets === "function") {
+            try {
+              g.prewarmAssets(keys, teamColors, 128, 128).catch(() => {
+              });
+            } catch (e) {
+            }
+          } else {
+            svgRenderer_default.prewarmAssets(keys, teamColors).catch(() => {
+            });
+          }
+        } catch (e) {
+          try {
+            svgRenderer_default.prewarmAssets(keys, teamColors).catch(() => {
+            });
+          } catch (ee) {
+          }
+        }
+      } catch (e) {
+      }
+    }
+  } catch (e) {
   }
   if (!renderer) {
     renderer = {

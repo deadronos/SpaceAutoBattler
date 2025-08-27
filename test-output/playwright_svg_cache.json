@@ -1,0 +1,45 @@
+{
+  "report": {
+    "timestamp": 1756283879461,
+    "bridge": true,
+    "lookups": [
+      {
+        "asset": "destroyer",
+        "bridgeCanvas": true
+      },
+      {
+        "asset": "carrier",
+        "bridgeCanvas": true
+      },
+      {
+        "asset": "frigate",
+        "bridgeCanvas": true
+      }
+    ],
+    "bridgeKeys": [
+      "rasterizeSvgWithTeamColors",
+      "_clearRasterCache",
+      "cacheCanvasForAsset",
+      "setRasterCacheMaxEntries",
+      "setRasterCacheMaxAge",
+      "getCanvasFromCache",
+      "getCanvas",
+      "prewarmAssets"
+    ],
+    "svgLoaderSync": null
+  },
+  "logs": [
+    {
+      "type": "debug",
+      "text": "[svgRenderer] getCanvasFromCache lookup {assetKey: destroyer, mappingHash: 597a9d, outW: 128, outH: 128, present: true}"
+    },
+    {
+      "type": "debug",
+      "text": "[svgRenderer] getCanvasFromCache lookup {assetKey: carrier, mappingHash: 597a9d, outW: 128, outH: 128, present: true}"
+    },
+    {
+      "type": "debug",
+      "text": "[svgRenderer] getCanvasFromCache lookup {assetKey: frigate, mappingHash: 597a9d, outW: 128, outH: 128, present: true}"
+    }
+  ]
+}

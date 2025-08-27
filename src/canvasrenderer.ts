@@ -482,6 +482,14 @@ export class CanvasRenderer {
                 svgRenderer = undefined;
               }
             }
+            // If the dynamic import didn't produce a usable module (bundling/module
+            // instance isolation), try the global bridge which other bundles may
+            // have populated so we can discover cached canvases across instances.
+            try {
+              if (!svgRenderer && (globalThis as any).__SpaceAutoBattler_svgRenderer) {
+                svgRenderer = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+              }
+            } catch (e) {}
             if (
               svgRenderer &&
               typeof svgRenderer.rasterizeSvgWithTeamColors === "function"
@@ -557,6 +565,11 @@ export class CanvasRenderer {
                         } catch (e) {
                           svgRenderer = undefined;
                         }
+                        try {
+                          if (!svgRenderer && (globalThis as any).__SpaceAutoBattler_svgRenderer) {
+                            svgRenderer = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+                          }
+                        } catch (e) {}
                         if (
                           svgRenderer &&
                           typeof svgRenderer.cacheCanvasForAsset === "function"
@@ -689,23 +702,33 @@ export class CanvasRenderer {
                   tctx.fillRect(0, 0, tc.width, tc.height);
                   tctx.globalCompositeOperation = "source-over";
                   this._setTintedCanvas(k, tc);
-                  try {
-                    const svgRenderer = await import(
-                      "./assets/svgRenderer"
-                    ).then((m) => m.default || m);
-                    if (
-                      svgRenderer &&
-                      typeof svgRenderer.cacheCanvasForAsset === "function"
-                    ) {
-                      svgRenderer.cacheCanvasForAsset(
-                        shipType,
-                        teamMapping(col),
-                        tc.width,
-                        tc.height,
-                        tc,
-                      );
-                    }
-                  } catch (e) {}
+                    try {
+                      let svgRenderer: any = undefined;
+                      try {
+                        svgRenderer = await import(
+                          "./assets/svgRenderer"
+                        ).then((m) => m.default || m);
+                      } catch (e) {
+                        svgRenderer = undefined;
+                      }
+                      try {
+                        if (!svgRenderer && (globalThis as any).__SpaceAutoBattler_svgRenderer) {
+                          svgRenderer = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+                        }
+                      } catch (e) {}
+                      if (
+                        svgRenderer &&
+                        typeof svgRenderer.cacheCanvasForAsset === "function"
+                      ) {
+                        svgRenderer.cacheCanvasForAsset(
+                          shipType,
+                          teamMapping(col),
+                          tc.width,
+                          tc.height,
+                          tc,
+                        );
+                      }
+                    } catch (e) {}
                 }
               } catch (e) {
                 /* ignore pre-warm errors */
@@ -1338,6 +1361,12 @@ export class CanvasRenderer {
                   hullCanvas = undefined;
                 }
               }
+              // If the returned canvas is a placeholder (pre-warm), treat it as missing
+              try {
+                if (hullCanvas && (hullCanvas as any)._placeholder) {
+                  hullCanvas = undefined;
+                }
+              } catch (e) {}
               this._svgHullCache[cacheKey] = hullCanvas;
             } catch (e) {
               hullCanvas = undefined;
@@ -1390,14 +1419,32 @@ export class CanvasRenderer {
             }
             if (!tintedCanvas) {
               try {
-                // lazy require to avoid circular imports at module load time
+                // Resolve svgRenderer via the singleton helper first (preferred)
                 let svgRenderer: any = undefined;
                 try {
-                  import("./assets/svgRenderer").then(
-                    (m) => (svgRenderer = m.default || m),
-                  );
+                  // eslint-disable-next-line @typescript-eslint/no-var-requires
+                  const helper = require("./assets/svgRendererSingleton");
+                  if (helper && typeof helper.getSvgRendererSync === "function") {
+                    svgRenderer = helper.getSvgRendererSync();
+                  }
                 } catch (e) {
                   svgRenderer = undefined;
+                }
+                // If singleton sync resolution didn't work, fall back to dynamic import
+                if (!svgRenderer) {
+                  try {
+                    import("./assets/svgRenderer").then(
+                      (m) => (svgRenderer = m.default || m),
+                    );
+                  } catch (e) {
+                    svgRenderer = undefined;
+                  }
+                }
+                if (!svgRenderer) {
+                  try {
+                    if ((globalThis as any).__SpaceAutoBattler_svgRenderer)
+                      svgRenderer = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+                  } catch (e) {}
                 }
                 if (
                   svgRenderer &&
@@ -1413,14 +1460,18 @@ export class CanvasRenderer {
                       hullCanvas.width,
                       hullCanvas.height,
                     );
-                    if (c) {
-                      tintedCanvas = c;
-                      this._setTintedCanvas(tintedKey, c);
-                    } else if (
-                      typeof svgRenderer.rasterizeSvgWithTeamColors ===
-                      "function"
-                    ) {
-                      // Trigger svgLoader.ensureRasterizedAndCached to populate cache async
+                    // If the svgRenderer returned a ready-to-use canvas that matches
+                    // the desired size, use it directly. Otherwise create a local
+                    // tinted canvas from the hullCanvas so we can draw this frame.
+                    if (c && (c.width === hullCanvas.width && c.height === hullCanvas.height) && !(c as any)._placeholder) {
+                      try {
+                        // Promote to cached tinted canvas for this key
+                        this._setTintedCanvas(tintedKey, c as HTMLCanvasElement);
+                        tintedCanvas = c as HTMLCanvasElement;
+                      } catch (e) {
+                        // ignore set/cache errors and fall through to local tint
+                        tintedCanvas = c as HTMLCanvasElement;
+                      }
                       try {
                         (svgLoader as any).ensureRasterizedAndCached &&
                           (svgLoader as any).ensureRasterizedAndCached(
@@ -1431,6 +1482,150 @@ export class CanvasRenderer {
                             { assetKey, applyTo: "both" },
                           );
                       } catch (e) {}
+                    } else {
+                      // No synchronous cached canvas available (or size mismatch).
+                      // Create a temporary canvas and attempt a multiply+mask tint
+                      // which preserves luminosity. Fall back to source-atop if
+                      // composite operations fail.
+                      try {
+                        const tc = document.createElement("canvas");
+                        tc.width = hullCanvas.width;
+                        tc.height = hullCanvas.height;
+                        const tctx = tc.getContext("2d");
+                        const col = teamColor;
+                        const k = tintedKey;
+                        if (tctx) {
+                              try {
+                                // HSL hue-shift approach: preserve per-pixel lightness
+                                // while changing hue to the team color. This tends to
+                                // preserve highlights/dark regions better than simple
+                                // multiply composites.
+                                tctx.clearRect(0, 0, tc.width, tc.height);
+                                tctx.drawImage(hullCanvas, 0, 0);
+
+                                // Helper: parse hex color to rgb
+                                const hexToRgb = (hex: string) => {
+                                  if (!hex) return null;
+                                  let h = hex.replace(/^#/, "");
+                                  if (h.length === 3)
+                                    h = h.split("").map((c) => c + c).join("");
+                                  if (h.length !== 6) return null;
+                                  const r = parseInt(h.substring(0, 2), 16);
+                                  const g = parseInt(h.substring(2, 4), 16);
+                                  const b = parseInt(h.substring(4, 6), 16);
+                                  return { r, g, b };
+                                };
+
+                                const rgbToHsl = (r: number, g: number, b: number) => {
+                                  r /= 255;
+                                  g /= 255;
+                                  b /= 255;
+                                  const max = Math.max(r, g, b);
+                                  const min = Math.min(r, g, b);
+                                  let h = 0;
+                                  let s = 0;
+                                  const l = (max + min) / 2;
+                                  if (max !== min) {
+                                    const d = max - min;
+                                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                                    switch (max) {
+                                      case r:
+                                        h = (g - b) / d + (g < b ? 6 : 0);
+                                        break;
+                                      case g:
+                                        h = (b - r) / d + 2;
+                                        break;
+                                      case b:
+                                        h = (r - g) / d + 4;
+                                        break;
+                                    }
+                                    h = h * 60;
+                                  }
+                                  return [h, s, l] as [number, number, number];
+                                };
+
+                                const hslToRgb = (h: number, s: number, l: number) => {
+                                  h = (h % 360 + 360) % 360;
+                                  const c = (1 - Math.abs(2 * l - 1)) * s;
+                                  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+                                  const m = l - c / 2;
+                                  let r1 = 0,
+                                    g1 = 0,
+                                    b1 = 0;
+                                  if (h < 60) {
+                                    r1 = c;
+                                    g1 = x;
+                                    b1 = 0;
+                                  } else if (h < 120) {
+                                    r1 = x;
+                                    g1 = c;
+                                    b1 = 0;
+                                  } else if (h < 180) {
+                                    r1 = 0;
+                                    g1 = c;
+                                    b1 = x;
+                                  } else if (h < 240) {
+                                    r1 = 0;
+                                    g1 = x;
+                                    b1 = c;
+                                  } else if (h < 300) {
+                                    r1 = x;
+                                    g1 = 0;
+                                    b1 = c;
+                                  } else {
+                                    r1 = c;
+                                    g1 = 0;
+                                    b1 = x;
+                                  }
+                                  const r = Math.round((r1 + m) * 255);
+                                  const g = Math.round((g1 + m) * 255);
+                                  const b = Math.round((b1 + m) * 255);
+                                  return [r, g, b] as [number, number, number];
+                                };
+
+                                const teamRgb = hexToRgb(col);
+                                let teamHue = 0;
+                                if (teamRgb) {
+                                  teamHue = rgbToHsl(teamRgb.r, teamRgb.g, teamRgb.b)[0];
+                                }
+
+                                try {
+                                  const img = tctx.getImageData(0, 0, tc.width, tc.height);
+                                  const data = img.data;
+                                  for (let i = 0; i < data.length; i += 4) {
+                                    const alpha = data[i + 3];
+                                    if (alpha < 8) continue; // skip near-transparent
+                                    const r = data[i];
+                                    const g = data[i + 1];
+                                    const b = data[i + 2];
+                                    const [h, s, l] = rgbToHsl(r, g, b);
+                                    // Replace hue with team hue; keep original saturation and lightness
+                                    const [nr, ng, nb] = hslToRgb(teamHue, s, l);
+                                    data[i] = nr;
+                                    data[i + 1] = ng;
+                                    data[i + 2] = nb;
+                                  }
+                                  tctx.putImageData(img, 0, 0);
+                                  this._setTintedCanvas(k, tc);
+                                  tintedCanvas = tc;
+                                } catch (e) {
+                                  // If pixel manipulation fails, fallback to source-atop
+                                  tctx.clearRect(0, 0, tc.width, tc.height);
+                                  tctx.drawImage(hullCanvas, 0, 0);
+                                  tctx.globalCompositeOperation = "source-atop";
+                                  tctx.fillStyle = col;
+                                  tctx.fillRect(0, 0, tc.width, tc.height);
+                                  tctx.globalCompositeOperation = "source-over";
+                                  this._setTintedCanvas(k, tc);
+                                  tintedCanvas = tc;
+                                }
+                              } catch (e) {
+                                // Give up on local tint; leave tintedCanvas undefined
+                              }
+                        }
+                      } catch (e) {
+                        /* ignore local tint errors */
+                      }
                     }
                   } catch (e) {
                     /* ignore cache lookup errors */

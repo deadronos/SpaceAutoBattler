@@ -10,6 +10,12 @@ import { getDefaultBounds } from "./config/simConfig";
 import { SIM } from "./config/simConfig";
 import { getPreferredRenderer, RendererConfig } from "./config/rendererConfig";
 import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
+// Ensure svgRenderer module evaluates and installs its global bridge at startup.
+// This side-effect import makes globalThis.__SpaceAutoBattler_svgRenderer available
+// before renderers attempt to consult it (helps with cross-bundle cache discovery).
+import "./assets/svgRenderer";
+import svgRenderer from "./assets/svgRenderer";
+import AssetsConfig from "./config/assets/assetsConfig";
 
 // Allow temporary extension of window.gm used by the app during migration.
 declare global {
@@ -205,6 +211,46 @@ export async function startApp(rootDocument: Document = document) {
       renderer.preloadAllAssets();
     } catch (e) {}
   }
+  // Kick off a lightweight pre-warm of the svg raster cache so synchronous
+  // lookups performed by svgLoader.getCachedHullCanvasSync can succeed on
+  // first draw. Only run in browser environments.
+  try {
+    if (typeof window !== 'undefined' && svgRenderer && typeof svgRenderer.prewarmAssets === 'function') {
+      try {
+  const assetsConfig = AssetsConfig || (globalThis as any).AssetsConfig || {};
+  const svgAssets = assetsConfig.svgAssets || {};
+        // Pick a small set of commonly used ship types (fallback to keys)
+        const keys = Object.keys(svgAssets).slice(0, 8);
+        // Gather declared team colors
+        const teams = (globalThis as any).TeamsConfig && (globalThis as any).TeamsConfig.teams ? (globalThis as any).TeamsConfig.teams : {};
+        const teamColors: string[] = [];
+        for (const tName of Object.keys(teams)) {
+          const t = teams[tName]; if (t && t.color) teamColors.push(t.color);
+        }
+        if (teamColors.length === 0) {
+          const p = assetsConfig.palette || {};
+          if (p.shipHull) teamColors.push(p.shipHull);
+          if (p.shipAccent) teamColors.push(p.shipAccent);
+        }
+        // Don't await on startup; let it run in background but call to ensure
+        // module loads and global bridge is used early. Prefer the global
+        // bridge object so the exact same raster cache instance is populated
+        // that svgLoader.getCachedHullCanvasSync will consult.
+        try {
+          const g = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+          if (g && typeof g.prewarmAssets === 'function') {
+            try {
+              g.prewarmAssets(keys, teamColors, 128, 128).catch(() => {});
+            } catch (e) {}
+          } else {
+            svgRenderer.prewarmAssets(keys, teamColors).catch(() => {});
+          }
+        } catch (e) {
+          try { svgRenderer.prewarmAssets(keys, teamColors).catch(() => {}); } catch (ee) {}
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
   // If we don't have a canvas (or renderer failed), provide a minimal no-op renderer
   if (!renderer) {
     renderer = {
