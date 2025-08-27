@@ -1,0 +1,25 @@
+{
+  "results": {
+    "destroyer": {
+      "spawnedScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\destroyer-spawned-1756292016357.png",
+      "afterScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\destroyer-after-start-1756292017639.png",
+      "ships": null
+    },
+    "frigate": {
+      "spawnedScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\frigate-spawned-1756292019035.png",
+      "afterScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\frigate-after-start-1756292020105.png",
+      "ships": null
+    },
+    "corvette": {
+      "spawnedScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\corvette-spawned-1756292021468.png",
+      "afterScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\corvette-after-start-1756292022570.png",
+      "ships": null
+    },
+    "carrier": {
+      "spawnedScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\carrier-spawned-1756292023949.png",
+      "afterScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\carrier-after-start-1756292025020.png",
+      "ships": null
+    }
+  },
+  "afterScreenshot": "D:\\GitHub\\SpaceAutoBattler\\playwright-debug\\after-start-1756292026373.png"
+}

@@ -347,36 +347,126 @@ export class CanvasRenderer {
           } catch (e) {}
         }
       } catch (e) {}
-      // In headless/test environments, rasterization can be async. Create
-      // immediate placeholder canvases for declared svg assets so tests
-      // that inspect _svgHullCache see entries synchronously.
+      // In some environments rasterization is async. If a test requests
+      // deterministic pre-warm by setting window.__AWAIT_SVG_PREWARM, prefer
+      // to await real SVG rasterization instead of inserting immediate
+      // placeholder canvases. If prewarm isn't available or fails, fall
+      // back to creating placeholders so runtime remains robust.
       try {
         this._svgHullCache = this._svgHullCache || {};
-        for (const k of Object.keys(svgAssets)) {
-          if (
-            !this._svgHullCache[k] &&
-            typeof (svgAssets as any)[k] === "string"
-          ) {
-            const ph = document.createElement("canvas");
-            ph.width = 128;
-            ph.height = 128;
-            const pctx = ph.getContext("2d");
-            if (pctx) {
-              pctx.fillStyle = "#fff";
-              pctx.fillRect(0, 0, ph.width, ph.height);
+        const awaitPrewarm =
+          typeof (globalThis as any).window !== 'undefined' &&
+          !!(globalThis as any).window.__AWAIT_SVG_PREWARM;
+
+  if (awaitPrewarm) {
+          try {
+            // Prefer global bridge if present, otherwise try dynamic import
+            let svgRenderer: any = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+            if (!svgRenderer) {
+              try {
+                svgRenderer = await import('./assets/svgRenderer').then((m) => m.default || m);
+              } catch (e) {
+                svgRenderer = undefined;
+              }
             }
-            // Tag as placeholder so runtime draw can skip using it as a real hull
+            if (svgRenderer && typeof svgRenderer.prewarmAssets === 'function') {
+              try {
+                // Request prewarm without inserting placeholders so tests that
+                // opt in can obtain real rasterized canvases deterministically.
+                await svgRenderer.prewarmAssets(Object.keys(svgAssets), teamColors, 128, 128, false);
+                // Populate any resolved canvases into _svgHullCache for sync reads
+                for (const k of Object.keys(svgAssets)) {
+                  try {
+                    const c = svgRenderer.getCanvas(k, {}, 128, 128);
+                    if (c) this._svgHullCache[k] = c;
+                  } catch (e) {}
+                }
+              } catch (e) {
+                // If prewarm fails, emit a single diagnostic but avoid creating
+                // large visual placeholders by default; use a tiny minimal canvas
+                // so code paths expecting a canvas don't break.
+                try { console.warn('[CanvasRenderer] prewarmAssets failed; continuing without placeholders', e); } catch (ee) {}
+                for (const k of Object.keys(svgAssets)) {
+                  try {
+                    if (!this._svgHullCache[k] && typeof (svgAssets as any)[k] === 'string') {
+                      const ph = document.createElement('canvas');
+                      ph.width = 4;
+                      ph.height = 4;
+                      this._svgHullCache[k] = ph;
+                    }
+                  } catch (e) {}
+                }
+              }
+            } else {
+              // No prewarm capability found; avoid creating large placeholders.
+              // Insert tiny canvases so synchronous code has a valid canvas to
+              // operate on; real rasterization will populate cache asynchronously.
+              for (const k of Object.keys(svgAssets)) {
+                try {
+                  if (!this._svgHullCache[k] && typeof (svgAssets as any)[k] === 'string') {
+                    const ph = document.createElement('canvas');
+                    ph.width = 4;
+                    ph.height = 4;
+                    this._svgHullCache[k] = ph;
+                  }
+                } catch (e) {}
+              }
+            }
+          } catch (e) {
+            // On any unexpected error, fall back to creating placeholders
+            for (const k of Object.keys(svgAssets)) {
+              try {
+                if (!this._svgHullCache[k] && typeof (svgAssets as any)[k] === 'string') {
+                  const ph = document.createElement('canvas');
+                  ph.width = 128;
+                  ph.height = 128;
+                  const pctx = ph.getContext('2d');
+                  if (pctx) {
+                    pctx.fillStyle = '#fff';
+                    pctx.fillRect(0, 0, ph.width, ph.height);
+                  }
+                  try { (ph as any)._placeholder = true; } catch (ee) {}
+                  this._svgHullCache[k] = ph;
+                }
+              } catch (ee) {}
+            }
+          }
+        } else {
+          // Non-test/default behavior: create immediate placeholders so
+          // synchronous reads find entries without waiting for async raster.
+          for (const k of Object.keys(svgAssets)) {
             try {
-              (ph as any)._placeholder = true;
+              if (!this._svgHullCache[k] && typeof (svgAssets as any)[k] === 'string') {
+                const ph = document.createElement('canvas');
+                ph.width = 128;
+                ph.height = 128;
+                const pctx = ph.getContext('2d');
+                if (pctx) {
+                  pctx.fillStyle = '#fff';
+                  pctx.fillRect(0, 0, ph.width, ph.height);
+                }
+                try { (ph as any)._placeholder = true; } catch (e) {}
+                try {
+                  if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('[CanvasRenderer] preloaded placeholder hull canvas for', k);
+                  }
+                } catch (e) {}
+                this._svgHullCache[k] = ph;
+              }
             } catch (e) {}
-            this._svgHullCache[k] = ph;
           }
         }
       } catch (e) {}
       this._svgMountCache = this._svgMountCache || {};
       for (const key of Object.keys(svgAssets)) {
         try {
-          const rel = (svgAssets as any)[key];
+          let rel = (svgAssets as any)[key];
+          // Normalize bare asset keys (e.g. 'destroyer') to relative svg paths
+          try {
+            if (typeof rel === 'string' && !rel.startsWith('<svg') && !rel.includes('/') && !rel.includes('.')) {
+              rel = `./svg/${rel}.svg`;
+            }
+          } catch (e) {}
           let svgText = "";
           // If svgAssets contains an inlined SVG string (standalone build
           // injection), use it directly. Otherwise try fetch(rel) as a URL.
@@ -632,7 +722,13 @@ export class CanvasRenderer {
               | undefined;
             if (!hullCanvas) {
               try {
-                const rel = (declaredSvgAssets as any)[shipType];
+                let rel = (declaredSvgAssets as any)[shipType];
+                // Normalize bare keys to relative svg paths for fetch/rasterization
+                try {
+                  if (typeof rel === 'string' && !rel.startsWith('<svg') && !rel.includes('/') && !rel.includes('.')) {
+                    rel = `./svg/${rel}.svg`;
+                  }
+                } catch (e) {}
                 if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
                   const vbMatch =
                     /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(
@@ -738,22 +834,14 @@ export class CanvasRenderer {
             /* ignore per-type pre-warm errors */
           }
         }
-        // Ensure any declared assets that still lack hull canvases get a placeholder
+        // Ensure any declared assets that still lack hull canvases get a tiny fallback
         try {
           const declaredSvgAssets2 = (AssetsConfig as any).svgAssets || {};
           for (const shipType of Object.keys(declaredSvgAssets2)) {
             if (!this._svgHullCache || !this._svgHullCache[shipType]) {
-              const ph = document.createElement("canvas");
-              ph.width = 128;
-              ph.height = 128;
-              const pctx = ph.getContext("2d");
-              if (pctx) {
-                pctx.fillStyle = "#fff";
-                pctx.fillRect(0, 0, ph.width, ph.height);
-              }
-              try {
-                (ph as any)._placeholder = true;
-              } catch (e) {}
+              const ph = document.createElement('canvas');
+              ph.width = 4;
+              ph.height = 4;
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[shipType] = ph;
               for (const col of teamColors) {
@@ -761,43 +849,11 @@ export class CanvasRenderer {
                 if (this._tintedHullPool && this._tintedHullPool.has(k))
                   continue;
                 try {
-                  const tc = document.createElement("canvas");
+                  const tc = document.createElement('canvas');
                   tc.width = ph.width;
                   tc.height = ph.height;
-                  const tctx = tc.getContext("2d");
-                  if (tctx) {
-                    tctx.clearRect(0, 0, tc.width, tc.height);
-                    try {
-                      tctx.drawImage(ph, 0, 0);
-                    } catch (e) {}
-                    try {
-                      tctx.globalCompositeOperation = "source-atop";
-                      tctx.fillStyle = col;
-                      tctx.fillRect(0, 0, tc.width, tc.height);
-                      tctx.globalCompositeOperation = "source-over";
-                    } catch (e) {}
-                  }
                   this._setTintedCanvas(k, tc);
-                  try {
-                    const svgRenderer = await import(
-                      "./assets/svgRenderer"
-                    ).then((m) => m.default || m);
-                    if (
-                      svgRenderer &&
-                      typeof svgRenderer.cacheCanvasForAsset === "function"
-                    ) {
-                      svgRenderer.cacheCanvasForAsset(
-                        shipType,
-                        teamMapping(col),
-                        tc.width,
-                        tc.height,
-                        tc,
-                      );
-                    }
-                  } catch (e) {}
-                } catch (e) {
-                  /* ignore per-key placeholder errors */
-                }
+                } catch (e) {}
               }
             }
           }
@@ -1322,6 +1378,11 @@ export class CanvasRenderer {
         let hullCanvas = this._svgHullCache[cacheKey];
         // Detect and ignore placeholder canvases (blank prewarm) to avoid drawing them
         if (hullCanvas && (hullCanvas as any)._placeholder) {
+          try {
+            if (typeof console !== 'undefined' && console.warn) {
+              console.warn('[CanvasRenderer] detected placeholder hull canvas for', cacheKey);
+            }
+          } catch (e) {}
           hullCanvas = undefined;
         }
         if (sprite.svg || hullCanvas) {

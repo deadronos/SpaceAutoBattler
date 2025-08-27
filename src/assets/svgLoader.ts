@@ -458,6 +458,25 @@ export function getCachedHullCanvasSync(
     const ph = document.createElement("canvas");
     ph.width = outW;
     ph.height = outH;
+    try {
+      const pctx = ph.getContext('2d');
+      if (pctx) {
+        pctx.fillStyle = "#fff";
+        pctx.fillRect(0, 0, ph.width, ph.height);
+      }
+    } catch (e) {}
+    try {
+      // mark placeholder so callers can detect and skip drawing it
+      (ph as any)._placeholder = true;
+    } catch (e) {}
+    try {
+      // Emit a lightweight console message to aid debug during headed Playwright runs
+      // (gated by presence of console). This helps identify when synchronous
+      // fallback rasterization returns a placeholder canvas.
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[svgLoader] getCachedHullCanvasSync returning placeholder canvas', { outW, outH, assetKey });
+      }
+    } catch (e) {}
     return ph;
   } catch (e) {
     return undefined;

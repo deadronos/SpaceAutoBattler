@@ -928,7 +928,6 @@ var AssetsConfig = {
     shipAccent: "#6c7380",
     bullet: "#ffd166",
     turret: "#94a3b8",
-    // Scene background color used by renderers
     background: "#0b1220"
   },
   // 2D vector shapes defined as polygons and circles. Points are unit-sized
@@ -943,8 +942,7 @@ var AssetsConfig = {
         { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
         { type: "circle", r: 0.5 }
       ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+      strokeWidth: 0.08
     },
     corvette: {
       type: "compound",
@@ -953,8 +951,7 @@ var AssetsConfig = {
         { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
         { type: "circle", r: 0.6 }
       ],
-      strokeWidth: 0.08,
-      model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+      strokeWidth: 0.08
     },
     frigate: {
       type: "compound",
@@ -962,8 +959,7 @@ var AssetsConfig = {
         { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
         { type: "circle", r: 0.7 }
       ],
-      strokeWidth: 0.1,
-      model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+      strokeWidth: 0.1
     },
     destroyer: {
       type: "compound",
@@ -972,8 +968,6 @@ var AssetsConfig = {
         { type: "circle", r: 1 },
         { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
       ],
-      strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
       turrets: [
         { kind: "basic", position: [1.2, 0.8] },
         { kind: "basic", position: [-1.2, 0.8] },
@@ -991,7 +985,6 @@ var AssetsConfig = {
         { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
       ],
       strokeWidth: 0.12,
-      model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
       turrets: [
         { kind: "basic", position: [2, 1.2] },
         { kind: "basic", position: [-2, 1.2] },
@@ -1021,6 +1014,7 @@ if (typeof globalThis !== "undefined" && globalThis.__INLINE_SVG_ASSETS) {
   AssetsConfig.svgAssets = globalThis.__INLINE_SVG_ASSETS;
 } else {
   AssetsConfig.svgAssets = {
+    fighter: "./svg/fighter.svg",
     destroyer: "./svg/destroyer.svg",
     carrier: "./svg/carrier.svg",
     frigate: "./svg/frigate.svg",

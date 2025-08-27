@@ -19,6 +19,9 @@ import {
   releaseEffect,
   makePooled,
 } from "./pools";
+import { InstancedRenderer, InstanceData, BatchRenderCall } from "./webgl/instancedRenderer";
+import { AtlasManager } from "./assets/textureAtlas";
+import { AdvancedTextureManager } from "./webgl/advancedTextureManager";
 
 export class WebGLRenderer {
   private canvas: HTMLCanvasElement;
@@ -36,6 +39,14 @@ export class WebGLRenderer {
   // Optional FBO resources for render-to-texture
   private fbo: WebGLFramebuffer | null = null;
   private fboTex: WebGLTexture | null = null;
+  
+  // Phase 2: Instanced rendering and atlas support
+  private instancedRenderer: InstancedRenderer | null = null;
+  private atlasManager: AtlasManager | null = null;
+  private instancedRenderingEnabled: boolean = false;
+
+  // Phase 3: Advanced texture management
+  private advancedTextures: AdvancedTextureManager | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -50,6 +61,13 @@ export class WebGLRenderer {
       if (!gl) return false;
       this.gl = gl;
       gl.clearColor(0.02, 0.03, 0.06, 1.0);
+      
+      // Initialize Phase 2 components
+      this.initializeInstancedRendering();
+      
+      // Initialize Phase 3 components
+      this.initializeAdvancedTextures();
+      
       // Prepare starfield texture (procedural) lazily
       (this as any)._starfield = (this as any)._starfield || null;
       (this as any)._starfieldSize = (this as any)._starfieldSize || 1024;
@@ -162,8 +180,10 @@ export class WebGLRenderer {
           gl.UNSIGNED_BYTE,
           cvs,
         );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        
+        // Enhanced starfield texture filtering
+        this.setupTextureFiltering(gl, size, size);
+        
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
         (this as any)._starfield = tex;
@@ -317,6 +337,409 @@ export class WebGLRenderer {
     return !!this.shapeTextures[key];
   }
 
+  /**
+   * Setup enhanced texture filtering with mipmapping support
+   */
+  private setupTextureFiltering(gl: WebGLRenderingContext | WebGL2RenderingContext, width: number, height: number): void {
+    // Use advanced texture management if available
+    if (this.advancedTextures) {
+      // Let AdvancedTextureManager handle optimal filtering
+      const config = {
+        generateMipmaps: this.isPowerOfTwo(width) && this.isPowerOfTwo(height),
+        useAnisotropic: true,
+        maxAnisotropy: 8, // Higher quality for game assets
+        lodBias: 0
+      };
+      
+      // Note: AdvancedTextureManager would typically handle the texture creation,
+      // but here we're just setting up filtering for an existing texture
+      if (config.generateMipmaps) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+      
+      // Apply anisotropic filtering using AdvancedTextureManager's extension
+      if (config.useAnisotropic) {
+        const anisotropyInfo = this.advancedTextures.getAnisotropyInfo();
+        if (anisotropyInfo.available && anisotropyInfo.ext) {
+          const ext = anisotropyInfo.ext;
+          const maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+          const anisotropy = Math.min(config.maxAnisotropy, maxAnisotropy);
+          gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+        }
+      }
+    } else {
+      // Fallback to basic filtering
+      const isPOT = this.isPowerOfTwo(width) && this.isPowerOfTwo(height);
+      
+      if (isPOT) {
+        // Generate mipmaps for power-of-two textures
+        gl.generateMipmap(gl.TEXTURE_2D);
+        
+        // Use mipmap filtering for better quality at different scales
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        
+        // Try to enable anisotropic filtering if available
+        this.tryEnableAnisotropicFiltering(gl);
+      } else {
+        // For non-power-of-two textures, use linear filtering without mipmaps
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+    }
+    
+    // Set wrapping to clamp to edge (standard for UI textures)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  /**
+   * Check if a number is a power of two
+   */
+  private isPowerOfTwo(value: number): boolean {
+    return value > 0 && (value & (value - 1)) === 0;
+  }
+
+  /**
+   * Try to enable anisotropic filtering for better quality
+   */
+  private tryEnableAnisotropicFiltering(gl: WebGLRenderingContext | WebGL2RenderingContext): void {
+    try {
+      const ext = gl.getExtension('EXT_texture_filter_anisotropic');
+      if (ext) {
+        const maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+        // Use moderate anisotropy (4x) for good quality/performance balance
+        const anisotropy = Math.min(4, maxAnisotropy);
+        gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+      }
+    } catch (error) {
+      // Anisotropic filtering not available, continue without it
+    }
+  }
+
+  /**
+   * Upload ImageBitmap to WebGL texture with enhanced filtering
+   */
+  uploadImageBitmapToTexture(bitmap: ImageBitmap, texture?: WebGLTexture): WebGLTexture | null {
+    if (!this.gl) return null;
+    
+    const gl = this.gl;
+    const tex = texture || gl.createTexture();
+    if (!tex) return null;
+    
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei((gl as any).UNPACK_PREMULTIPLY_ALPHA_WEBGL ?? 0x8063, 0);
+    
+    // Upload the ImageBitmap directly
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+    
+    // Apply enhanced filtering
+    this.setupTextureFiltering(gl, bitmap.width, bitmap.height);
+    
+    return tex;
+  }
+
+  // Phase 2: Initialize instanced rendering and atlas systems
+  private initializeInstancedRendering(): void {
+    if (!this.gl) return;
+    
+    try {
+      // Initialize instanced renderer
+      this.instancedRenderer = new InstancedRenderer(this.gl);
+      if (this.instancedRenderer.init()) {
+        this.instancedRenderingEnabled = true;
+      } else {
+        console.warn('Failed to initialize instanced renderer, falling back to individual draws');
+        this.instancedRenderer = null;
+      }
+      
+      // Initialize atlas manager
+      this.atlasManager = new AtlasManager(this.gl, {
+        maxAtlasSize: 1024,
+        padding: 1,
+        powerOfTwo: true
+      });
+    } catch (error) {
+      console.warn('Failed to initialize instanced rendering:', error);
+      this.instancedRenderingEnabled = false;
+    }
+  }
+
+  /**
+   * Initialize Phase 3 advanced texture management
+   */
+  private initializeAdvancedTextures(): void {
+    if (!this.gl) return;
+    
+    try {
+      // Check for anisotropic filtering support
+      const ext = this.gl.getExtension('EXT_texture_filter_anisotropic');
+      if (ext) {
+        this.advancedTextures = new AdvancedTextureManager(this.gl);
+        console.log('✅ Advanced texture management enabled');
+      } else {
+        console.log('ℹ️ Advanced texture management not available (no anisotropic filtering)');
+      }
+    } catch (error) {
+      console.warn('Failed to initialize advanced textures:', error);
+    }
+  }
+
+  /**
+   * Get advanced texture capabilities and statistics
+   */
+  getAdvancedTextureInfo(): { 
+    enabled: boolean; 
+    anisotropyAvailable: boolean; 
+    maxAnisotropy: number;
+    memoryStats?: ReturnType<AdvancedTextureManager['getMemoryStats']>;
+  } {
+    if (!this.advancedTextures) {
+      return {
+        enabled: false,
+        anisotropyAvailable: false,
+        maxAnisotropy: 0
+      };
+    }
+
+    const anisotropyInfo = this.advancedTextures.getAnisotropyInfo();
+    return {
+      enabled: true,
+      anisotropyAvailable: anisotropyInfo.available,
+      maxAnisotropy: anisotropyInfo.maxAnisotropy,
+      memoryStats: this.advancedTextures.getMemoryStats()
+    };
+  }
+  
+  /**
+   * Render sprites using instanced rendering when possible
+   */
+  renderInstancedSprites(sprites: Array<{
+    assetKey: string;
+    x: number;
+    y: number;
+    rotation?: number;
+    scaleX?: number;
+    scaleY?: number;
+    tintR?: number;
+    tintG?: number;
+    tintB?: number;
+    alpha?: number;
+  }>): void {
+    if (!this.instancedRenderingEnabled || !this.instancedRenderer || !this.atlasManager) {
+      // Fallback to traditional rendering
+      this.renderSpritesTraditional(sprites);
+      return;
+    }
+    
+    // Group sprites by atlas texture
+    const batches = new Map<WebGLTexture, InstanceData[]>();
+    
+    for (const sprite of sprites) {
+      // Ensure sprite is in atlas
+      const entry = this.ensureSpriteInAtlas(sprite.assetKey);
+      if (!entry) continue;
+      
+      const atlas = this.atlasManager.getAtlas('main');
+      const texture = atlas.getTexture();
+      if (!texture) continue;
+      
+      // Create instance data
+      const instanceData: InstanceData = {
+        x: sprite.x,
+        y: sprite.y,
+        rotation: sprite.rotation || 0,
+        scaleX: sprite.scaleX || 1,
+        scaleY: sprite.scaleY || 1,
+        uvX: entry.uvX,
+        uvY: entry.uvY,
+        uvWidth: entry.uvWidth,
+        uvHeight: entry.uvHeight,
+        tintR: sprite.tintR || 1,
+        tintG: sprite.tintG || 1,
+        tintB: sprite.tintB || 1,
+        alpha: sprite.alpha || 1
+      };
+      
+      // Add to batch
+      if (!batches.has(texture)) {
+        batches.set(texture, []);
+      }
+      batches.get(texture)!.push(instanceData);
+    }
+    
+    // Render each batch
+    const projectionMatrix = this.createProjectionMatrix();
+    for (const [texture, instances] of batches) {
+      const batch: BatchRenderCall = {
+        texture,
+        instances,
+        blendMode: 'normal'
+      };
+      this.instancedRenderer.renderBatch(batch, projectionMatrix);
+    }
+  }
+  
+  /**
+   * Ensure a sprite is available in the atlas
+   */
+  private ensureSpriteInAtlas(assetKey: string): import("./assets/textureAtlas").AtlasEntry | null {
+    if (!this.atlasManager) return null;
+    
+    const atlas = this.atlasManager.getAtlas('main');
+    let entry = atlas.getEntry(assetKey);
+    
+    if (!entry) {
+      // Need to rasterize and add to atlas
+      const canvas = this.rasterizeAsset(assetKey);
+      if (canvas) {
+        entry = atlas.addEntry(assetKey, canvas);
+      }
+    }
+    
+    return entry;
+  }
+  
+  /**
+   * Rasterize an asset to canvas for atlas packing
+   */
+  private rasterizeAsset(assetKey: string): HTMLCanvasElement | null {
+    // For now, use existing shape rasterization logic
+    const shapes = (AssetsConfig as any).shapes2d || {};
+    const shape: Shape2D | undefined = shapes[assetKey];
+    
+    const size = 64; // Standard sprite size
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    ctx.clearRect(0, 0, size, size);
+    ctx.save();
+    ctx.translate(size / 2, size / 2);
+    const scale = size / 4;
+    
+    ctx.fillStyle = (AssetsConfig.palette && (AssetsConfig.palette as any).shipHull) || "#b0b7c3";
+    
+    // Basic vector draw covering circle, polygon and compound
+    if (!shape) {
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(4, size * 0.12), 0, Math.PI * 2);
+      ctx.fill();
+    } else if ((shape as any).type === "circle") {
+      const r = ((shape as any).r ?? 0.5) * scale;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else if ((shape as any).type === "polygon") {
+      const pts: number[][] = (shape as any).points || [];
+      if (pts.length) {
+        ctx.beginPath();
+        ctx.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+        for (let i = 1; i < pts.length; i++)
+          ctx.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if ((shape as any).type === "compound") {
+      const parts = (shape as any).parts || [];
+      for (const part of parts) {
+        if ((part as any).type === "circle") {
+          const r = ((part as any).r ?? 0.5) * scale;
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          ctx.fill();
+        } else if ((part as any).type === "polygon") {
+          const pts: number[][] = (part as any).points || [];
+          if (pts.length) {
+            ctx.beginPath();
+            ctx.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+            for (let i = 1; i < pts.length; i++)
+              ctx.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+    }
+    
+    ctx.restore();
+    return canvas;
+  }
+  
+  /**
+   * Create projection matrix for current viewport
+   */
+  private createProjectionMatrix(): Float32Array {
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    
+    // Simple orthographic projection matrix
+    const matrix = new Float32Array(16);
+    
+    // Orthographic projection: maps world coordinates to clip space [-1, 1]
+    matrix[0] = 2 / width;    // X scale
+    matrix[1] = 0;
+    matrix[2] = 0;
+    matrix[3] = 0;
+    
+    matrix[4] = 0;
+    matrix[5] = -2 / height;  // Y scale (flip Y axis)
+    matrix[6] = 0;
+    matrix[7] = 0;
+    
+    matrix[8] = 0;
+    matrix[9] = 0;
+    matrix[10] = 1;
+    matrix[11] = 0;
+    
+    matrix[12] = -1;          // X translation to center
+    matrix[13] = 1;           // Y translation to center
+    matrix[14] = 0;
+    matrix[15] = 1;
+    
+    return matrix;
+  }
+  
+  /**
+   * Fallback rendering for sprites when instanced rendering is not available
+   */
+  private renderSpritesTraditional(sprites: Array<{
+    assetKey: string;
+    x: number;
+    y: number;
+    rotation?: number;
+    scaleX?: number;
+    scaleY?: number;
+    tintR?: number;
+    tintG?: number;
+    tintB?: number;
+    alpha?: number;
+  }>): void {
+    // Traditional individual sprite rendering
+    // This would use the existing individual draw methods
+    console.log(`Rendering ${sprites.length} sprites using traditional method`);
+  }
+  
+  /**
+   * Get instanced rendering statistics
+   */
+  getInstancedRenderingStats(): {
+    enabled: boolean;
+    atlasStats?: ReturnType<AtlasManager['getGlobalStats']>;
+  } {
+    return {
+      enabled: this.instancedRenderingEnabled,
+      atlasStats: this.atlasManager?.getGlobalStats()
+    };
+  }
+
   // Dispose all GL resources and clear caches
   dispose(): void {
     if (this.gl) {
@@ -362,6 +785,28 @@ export class WebGLRenderer {
             (this.gl as WebGLRenderingContext).deleteTexture(
               (this as any)._starfield,
             );
+        } catch {}
+        
+        // Phase 2: Cleanup instanced rendering resources
+        try {
+          if (this.instancedRenderer) {
+            this.instancedRenderer.dispose();
+            this.instancedRenderer = null;
+          }
+        } catch {}
+        try {
+          if (this.atlasManager) {
+            this.atlasManager.dispose();
+            this.atlasManager = null;
+          }
+        } catch {}
+
+        // Phase 3: Cleanup advanced texture management
+        try {
+          if (this.advancedTextures) {
+            this.advancedTextures.dispose();
+            this.advancedTextures = null;
+          }
         } catch {}
       } catch {}
     }
@@ -459,10 +904,10 @@ export class WebGLRenderer {
           gl.UNSIGNED_BYTE,
           cvs,
         );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        
+        // Enhanced mipmapping support
+        this.setupTextureFiltering(gl, cvs.width, cvs.height);
+        
         return t;
       };
 

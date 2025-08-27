@@ -9,14 +9,14 @@ export function getEngineTrailConfig(type: string): any {
 }
 /**
  * Asset-agnostic sprite provider: returns a sprite object for a given type.
- * Supports fallback to vector shapes, 3D models, or SVG files.
+ * Supports fallback to vector shapes or SVG files.
  * Usage: getSpriteAsset('fighter'), getSpriteAsset('carrier'), etc.
  */
-export function getSpriteAsset(type: string): { shape?: Shape2D; model3d?: Model3D; svg?: string } {
+export function getSpriteAsset(type: string): { shape?: Shape2D; svg?: string } {
   // Prefer an inlined SVG string from AssetsConfig.svgAssets (standalone build)
   // if present and looks like SVG markup. This allows the build-time inlined
   // SVGs to be used directly by the renderer. If not inlined, fall back to
-  // any `svg` field on the shapes2d entry (legacy) or model3d/shape data.
+  // any `svg` field on the shapes2d entry (legacy) or vector shape data.
   const inlineSvg = (AssetsConfig as any).svgAssets && (AssetsConfig as any).svgAssets[type];
   if (typeof inlineSvg === 'string' && inlineSvg.trim().startsWith('<svg')) {
     return { svg: inlineSvg };
@@ -26,14 +26,10 @@ export function getSpriteAsset(type: string): { shape?: Shape2D; model3d?: Model
   if ((shapeEntry as any).svg) {
     return { svg: (shapeEntry as any).svg };
   }
-  // If model3d is present, use it
-  if (shapeEntry.model3d && shapeEntry.model3d.url) {
-    return { model3d: shapeEntry.model3d };
-  }
   // Fallback to vector shape
   return { shape: shapeEntry };
 }
-// Basic asset templates for 2D top-down rendering with future 3D model placeholders.
+// Basic asset templates for 2D top-down rendering.
 // Orientation: shapes face +X (to the right). Scale is in logical units; renderer
 // should scale to entity radius and rotate by entity heading if present.
 
@@ -41,14 +37,12 @@ export type PolygonShape = {
   type: 'polygon';
   points: number[][]; // [[x,y], ...]
   strokeWidth?: number;
-  model3d?: Model3D | undefined;
 };
 
 export type CircleShape = {
   type: 'circle';
   r: number;
   strokeWidth?: number;
-  model3d?: Model3D | undefined;
 };
 
 export type CompoundPart = PolygonShape | CircleShape;
@@ -57,7 +51,6 @@ export type CompoundShape = {
   type: 'compound';
   parts: CompoundPart[];
   strokeWidth?: number;
-  model3d?: Model3D | undefined;
 };
 
 export type Shape2D = PolygonShape | CircleShape | CompoundShape;
@@ -69,13 +62,6 @@ export type TurretVisualConfig = {
 export type TurretDefaultConfig = {
   turnRate?: number; // radians per second default
   sprite?: string; // optional sprite key to use for turret visuals
-};
-
-export type Model3D = {
-  url?: string | undefined;
-  scale?: number | undefined;
-  type?: string | undefined;
-  mesh?: string | undefined;
 };
 
 export type AssetsConfigType = {
@@ -104,8 +90,7 @@ export const AssetsConfig: AssetsConfigType = {
     shipAccent: '#6c7380',
     bullet: '#ffd166',
     turret: '#94a3b8',
-    // Scene background color used by renderers
-    background: '#0b1220',
+    background: '#0b1220'
   },
   // 2D vector shapes defined as polygons and circles. Points are unit-sized
   // profiles (roughly radius 1). Renderer should multiply by entity radius or
@@ -119,8 +104,7 @@ export const AssetsConfig: AssetsConfigType = {
         { type: 'polygon', points: [[0.0, -0.35], [-0.35, 0.0], [-0.6, -0.65]] },
         { type: 'circle', r: 0.5 }
       ],
-      strokeWidth: 0.08,
-      model3d: { url: undefined, scale: 1, type: 'gltf', mesh: undefined }
+      strokeWidth: 0.08
     },
     corvette: {
       type: 'compound',
@@ -129,8 +113,7 @@ export const AssetsConfig: AssetsConfigType = {
         { type: 'polygon', points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
         { type: 'circle', r: 0.6 }
       ],
-      strokeWidth: 0.08,
-      model3d: { url: undefined, scale: 1.4, type: 'gltf', mesh: undefined }
+      strokeWidth: 0.08
     },
     frigate: {
       type: 'compound',
@@ -138,8 +121,7 @@ export const AssetsConfig: AssetsConfigType = {
         { type: 'polygon', points: [[1.3, 0], [0.7, 0.65], [-0.3, 1.0], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1.0], [0.7, -0.65]] },
         { type: 'circle', r: 0.7 }
       ],
-      strokeWidth: 0.1,
-      model3d: { url: undefined, scale: 1.8, type: 'gltf', mesh: undefined }
+      strokeWidth: 0.1
     },
     destroyer: {
       type: 'compound',
@@ -148,8 +130,6 @@ export const AssetsConfig: AssetsConfigType = {
         { type: 'circle', r: 1.0 },
         { type: 'polygon', points: [[2.0, 0.3], [1.8, 0.2], [1.8, -0.2], [2.0, -0.3]] }
       ],
-      strokeWidth: 0.12,
-      model3d: { url: undefined, scale: 2.2, type: 'gltf', mesh: undefined },
       turrets: [
         { kind: 'basic', position: [1.2, 0.8] },
         { kind: 'basic', position: [-1.2, 0.8] },
@@ -167,7 +147,6 @@ export const AssetsConfig: AssetsConfigType = {
         { type: 'polygon', points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
       ],
       strokeWidth: 0.12,
-      model3d: { url: undefined, scale: 3.0, type: 'gltf', mesh: undefined },
       turrets: [
         { kind: 'basic', position: [2.0, 1.2] },
         { kind: 'basic', position: [-2.0, 1.2] },
@@ -203,6 +182,7 @@ if (typeof globalThis !== 'undefined' && (globalThis as any).__INLINE_SVG_ASSETS
   (AssetsConfig as any).svgAssets = (globalThis as any).__INLINE_SVG_ASSETS;
 } else {
   (AssetsConfig as any).svgAssets = {
+    fighter: './svg/fighter.svg',
     destroyer: './svg/destroyer.svg',
     carrier: './svg/carrier.svg',
     frigate: './svg/frigate.svg',

@@ -26,6 +26,17 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/config/assets/assetsConfig.ts
+var assetsConfig_exports = {};
+__export(assetsConfig_exports, {
+  AssetsConfig: () => AssetsConfig,
+  default: () => assetsConfig_default,
+  getBulletAsset: () => getBulletAsset,
+  getEngineTrailConfig: () => getEngineTrailConfig,
+  getShipAsset: () => getShipAsset,
+  getSpriteAsset: () => getSpriteAsset,
+  getTurretAsset: () => getTurretAsset,
+  getVisualConfig: () => getVisualConfig
+});
 function getEngineTrailConfig(type) {
   const vconf = getVisualConfig(type);
   const trailName = vconf.visuals && vconf.visuals.engineTrail || "engineTrail";
@@ -39,9 +50,6 @@ function getSpriteAsset(type) {
   const shapeEntry = AssetsConfig.shapes2d[type] || AssetsConfig.shapes2d.fighter;
   if (shapeEntry.svg) {
     return { svg: shapeEntry.svg };
-  }
-  if (shapeEntry.model3d && shapeEntry.model3d.url) {
-    return { model3d: shapeEntry.model3d };
   }
   return { shape: shapeEntry };
 }
@@ -75,7 +83,6 @@ var init_assetsConfig = __esm({
         shipAccent: "#6c7380",
         bullet: "#ffd166",
         turret: "#94a3b8",
-        // Scene background color used by renderers
         background: "#0b1220"
       },
       // 2D vector shapes defined as polygons and circles. Points are unit-sized
@@ -90,8 +97,7 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[0, -0.35], [-0.35, 0], [-0.6, -0.65]] },
             { type: "circle", r: 0.5 }
           ],
-          strokeWidth: 0.08,
-          model3d: { url: void 0, scale: 1, type: "gltf", mesh: void 0 }
+          strokeWidth: 0.08
         },
         corvette: {
           type: "compound",
@@ -100,8 +106,7 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[1.4, 0.22], [1.2, 0.12], [1.2, -0.12], [1.4, -0.22]] },
             { type: "circle", r: 0.6 }
           ],
-          strokeWidth: 0.08,
-          model3d: { url: void 0, scale: 1.4, type: "gltf", mesh: void 0 }
+          strokeWidth: 0.08
         },
         frigate: {
           type: "compound",
@@ -109,8 +114,7 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[1.3, 0], [0.7, 0.65], [-0.3, 1], [-1.3, 0.55], [-1.3, -0.55], [-0.3, -1], [0.7, -0.65]] },
             { type: "circle", r: 0.7 }
           ],
-          strokeWidth: 0.1,
-          model3d: { url: void 0, scale: 1.8, type: "gltf", mesh: void 0 }
+          strokeWidth: 0.1
         },
         destroyer: {
           type: "compound",
@@ -119,8 +123,6 @@ var init_assetsConfig = __esm({
             { type: "circle", r: 1 },
             { type: "polygon", points: [[2, 0.3], [1.8, 0.2], [1.8, -0.2], [2, -0.3]] }
           ],
-          strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 2.2, type: "gltf", mesh: void 0 },
           turrets: [
             { kind: "basic", position: [1.2, 0.8] },
             { kind: "basic", position: [-1.2, 0.8] },
@@ -138,7 +140,6 @@ var init_assetsConfig = __esm({
             { type: "polygon", points: [[2.6, 0.5], [2.2, 0.3], [2.2, -0.3], [2.6, -0.5]] }
           ],
           strokeWidth: 0.12,
-          model3d: { url: void 0, scale: 3, type: "gltf", mesh: void 0 },
           turrets: [
             { kind: "basic", position: [2, 1.2] },
             { kind: "basic", position: [-2, 1.2] },
@@ -168,6 +169,7 @@ var init_assetsConfig = __esm({
       AssetsConfig.svgAssets = globalThis.__INLINE_SVG_ASSETS;
     } else {
       AssetsConfig.svgAssets = {
+        fighter: "./svg/fighter.svg",
         destroyer: "./svg/destroyer.svg",
         carrier: "./svg/carrier.svg",
         frigate: "./svg/frigate.svg",
@@ -889,6 +891,521 @@ var init_svgToPolylines = __esm({
   }
 });
 
+// src/assets/svgRenderer.ts
+var svgRenderer_exports = {};
+__export(svgRenderer_exports, {
+  _clearRasterCache: () => _clearRasterCache,
+  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
+  cacheCanvasForAsset: () => cacheCanvasForAsset,
+  default: () => svgRenderer_default,
+  getCanvas: () => getCanvas,
+  getCanvasFromCache: () => getCanvasFromCache,
+  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
+  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
+  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
+});
+function stableStringify(obj) {
+  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
+  const keys = Object.keys(obj).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
+}
+function djb2Hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) + h + str.charCodeAt(i);
+    h = h & 4294967295;
+  }
+  return (h >>> 0).toString(16);
+}
+function ensureCacheLimit() {
+  try {
+    if (rasterCacheMaxAgeMS > 0) {
+      const now = Date.now();
+      for (const [k, e] of Array.from(rasterCache.entries())) {
+        try {
+          if (now - e.lastAccess > rasterCacheMaxAgeMS || now - e.createdAt > rasterCacheMaxAgeMS) {
+            rasterCache.delete(k);
+          }
+        } catch (ee) {
+        }
+      }
+    }
+    while (rasterCache.size > rasterCacheMaxEntries) {
+      const it = rasterCache.keys();
+      const oldest = it.next().value;
+      if (!oldest) break;
+      rasterCache.delete(oldest);
+    }
+  } catch (e) {
+  }
+}
+async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
+  let headlessNoCtx = false;
+  try {
+    if (typeof document !== "undefined" && typeof document.createElement === "function") {
+      const probe = document.createElement("canvas");
+      const ctx = probe.getContext && probe.getContext("2d");
+      if (!ctx) headlessNoCtx = true;
+    }
+  } catch (e) {
+    headlessNoCtx = true;
+  }
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  if (rasterCache.has(cacheKey)) {
+    const entry2 = rasterCache.get(cacheKey);
+    try {
+      entry2.lastAccess = Date.now();
+      rasterCache.delete(cacheKey);
+      rasterCache.set(cacheKey, entry2);
+    } catch (e) {
+    }
+    if (entry2.canvas) return Promise.resolve(entry2.canvas);
+    if (entry2.promise) return entry2.promise;
+  }
+  const entry = {
+    promise: null,
+    canvas: void 0,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  const p = (async () => {
+    try {
+      let sourceSvg = svgText || "";
+      try {
+        if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === "function") {
+          try {
+            try {
+              if (typeof sourceSvg === "string" && !sourceSvg.includes("/") && !sourceSvg.includes(".") && typeof console !== "undefined" && console.warn) {
+                console.warn("[svgRenderer] fetch called with bare source string:", sourceSvg);
+              }
+            } catch (e) {
+            }
+            const resp = await fetch(sourceSvg);
+            if (resp && resp.ok) {
+              const txt = await resp.text();
+              if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
+            } else {
+              try {
+                const isProd = typeof process !== "undefined" && process.env && true;
+                const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
+                if (!isProd && !isTest) {
+                  console.warn(`[svgRenderer] fetch failed for SVG url '${sourceSvg}'. Status: ${resp && resp.status}`);
+                }
+              } catch (e) {
+              }
+            }
+          } catch (e) {
+            try {
+              const isProd = typeof process !== "undefined" && process.env && true;
+              const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
+              if (!isProd && !isTest) {
+                console.warn(`[svgRenderer] fetch threw for '${sourceSvg}', continuing with original string`, e);
+              }
+            } catch (ee) {
+            }
+          }
+        }
+      } catch (e) {
+      }
+      const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
+      if (headlessNoCtx) {
+        const ph = (() => {
+          try {
+            const c = document.createElement("canvas");
+            c.width = outW || 1;
+            c.height = outH || 1;
+            return c;
+          } catch (e) {
+            const obj = { width: outW || 1, height: outH || 1 };
+            return obj;
+          }
+        })();
+        entry.canvas = ph;
+        entry.promise = Promise.resolve(ph);
+        entry.lastAccess = Date.now();
+        rasterCache.set(cacheKey, entry);
+        ensureCacheLimit();
+        return ph;
+      }
+      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    } catch (e) {
+      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
+      entry.canvas = canvas;
+      entry.promise = Promise.resolve(canvas);
+      entry.lastAccess = Date.now();
+      return canvas;
+    }
+  })();
+  entry.promise = p;
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+  try {
+    const res = await p;
+    return res;
+  } catch (e) {
+    rasterCache.delete(cacheKey);
+    throw e;
+  }
+}
+function _clearRasterCache() {
+  rasterCache.clear();
+}
+function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  try {
+    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
+  } catch (e) {
+  }
+  const entry = {
+    promise: Promise.resolve(canvas),
+    canvas,
+    createdAt: Date.now(),
+    lastAccess: Date.now()
+  };
+  rasterCache.set(cacheKey, entry);
+  ensureCacheLimit();
+  try {
+    if (typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
+      console.debug("[svgRenderer] cacheCanvasForAsset set", { assetKey, mappingHash, outW, outH });
+    }
+  } catch (e) {
+  }
+}
+function _getRasterCacheKeysForTest() {
+  return Array.from(rasterCache.keys());
+}
+function setRasterCacheMaxEntries(n) {
+  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
+  ensureCacheLimit();
+}
+function setRasterCacheMaxAge(ms) {
+  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
+  ensureCacheLimit();
+}
+function getCanvasFromCache(assetKey, mapping, outW, outH) {
+  const mappingStable = stableStringify(mapping || {});
+  const mappingHash = djb2Hash(mappingStable);
+  const assetId = assetKey || djb2Hash(stableStringify(""));
+  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
+  const entry = rasterCache.get(cacheKey);
+  try {
+    if (typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
+      console.debug("[svgRenderer] getCanvasFromCache lookup", { assetKey, mappingHash, outW, outH, present: !!entry });
+    }
+  } catch (e) {
+  }
+  if (!entry) return void 0;
+  if (rasterCacheMaxAgeMS > 0) {
+    const now = Date.now();
+    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
+      rasterCache.delete(cacheKey);
+      return void 0;
+    }
+  }
+  entry.lastAccess = Date.now();
+  try {
+    rasterCache.delete(cacheKey);
+    rasterCache.set(cacheKey, entry);
+  } catch (e) {
+  }
+  return entry.canvas;
+}
+function getCanvas(assetKey, mapping, outW, outH) {
+  return getCanvasFromCache(assetKey, mapping, outW, outH);
+}
+var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRendererAPI, svgRenderer_default;
+var init_svgRenderer = __esm({
+  "src/assets/svgRenderer.ts"() {
+    "use strict";
+    init_svgLoader();
+    rasterCache = /* @__PURE__ */ new Map();
+    rasterCacheMaxEntries = 256;
+    rasterCacheMaxAgeMS = 0;
+    svgRendererAPI = {
+      rasterizeSvgWithTeamColors,
+      _clearRasterCache,
+      cacheCanvasForAsset,
+      setRasterCacheMaxEntries,
+      setRasterCacheMaxAge,
+      getCanvasFromCache,
+      getCanvas(assetKey, mapping, outW, outH) {
+        return getCanvasFromCache(assetKey, mapping, outW, outH);
+      },
+      /**
+       * Test helper: wait for an asset (assetKey + mapping + size) to be rasterized
+       * and present in the cache as a non-placeholder canvas. Resolves to the
+       * canvas or undefined on timeout.
+       */
+      async _waitForAssetReady(assetKey, mapping, outW, outH, timeoutMs = 5e3) {
+        const start = Date.now();
+        const interval = 50;
+        while (Date.now() - start < timeoutMs) {
+          try {
+            const c = getCanvasFromCache(assetKey, mapping, outW, outH);
+            if (c && !c._placeholder) return c;
+          } catch (e) {
+          }
+          await new Promise((res) => setTimeout(res, interval));
+        }
+        return void 0;
+      },
+      /**
+       * Pre-warm a small set of assets into the raster cache. assetKeys are keys
+       * from AssetsConfig.svgAssets (or direct SVG/URL strings). teamColors is an
+       * array of color hex strings to generate tinted variants for. This helper
+       * kicks off async rasterization and awaits completion so subsequent
+       * synchronous getCanvas calls can find entries.
+       */
+      async prewarmAssets(assetKeys, teamColors = [], outW = 128, outH = 128, insertPlaceholders = false) {
+        try {
+          let assetsConfig = typeof globalThis !== "undefined" && globalThis.AssetsConfig ? globalThis.AssetsConfig : void 0;
+          if (!assetsConfig) {
+            try {
+              const mod = await Promise.resolve().then(() => (init_assetsConfig(), assetsConfig_exports));
+              assetsConfig = mod && mod.default ? mod.default : mod;
+            } catch (e) {
+              assetsConfig = void 0;
+            }
+          }
+          const promises = [];
+          for (const key of assetKeys) {
+            try {
+              let rel = void 0;
+              try {
+                rel = assetsConfig && assetsConfig.svgAssets && assetsConfig.svgAssets[key] ? assetsConfig.svgAssets[key] : void 0;
+              } catch (e) {
+                rel = void 0;
+              }
+              if (!rel) rel = key;
+              try {
+                if (typeof rel === "string" && !rel.startsWith("<svg") && !rel.includes("/") && !rel.includes(".")) {
+                  rel = `./svg/${rel}.svg`;
+                }
+              } catch (e) {
+              }
+              try {
+                if (insertPlaceholders) {
+                  const ph = (() => {
+                    try {
+                      const c = document.createElement("canvas");
+                      c.width = outW || 1;
+                      c.height = outH || 1;
+                      try {
+                        c._placeholder = true;
+                      } catch (e) {
+                      }
+                      return c;
+                    } catch (e) {
+                      const obj = { width: outW || 1, height: outH || 1 };
+                      try {
+                        obj._placeholder = true;
+                      } catch (ee) {
+                      }
+                      return obj;
+                    }
+                  })();
+                  try {
+                    cacheCanvasForAsset(key, {}, outW, outH, ph);
+                  } catch (e) {
+                  }
+                }
+              } catch (e) {
+              }
+              const p = (async () => {
+                try {
+                  let sourceForRaster = void 0;
+                  try {
+                    if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
+                      sourceForRaster = stripHullOnly(rel);
+                    } else if (typeof fetch === "function" && typeof rel === "string") {
+                      try {
+                        const resp = await fetch(rel);
+                        if (resp && resp.ok) {
+                          const txt = await resp.text();
+                          if (txt && /<svg[\s>]/i.test(txt)) {
+                            sourceForRaster = stripHullOnly(txt);
+                          }
+                        }
+                      } catch (e) {
+                      }
+                    }
+                  } catch (e) {
+                  }
+                  const toRaster = sourceForRaster || rel;
+                  const canvas = await rasterizeSvgWithTeamColors(toRaster, {}, outW, outH, { applyTo: "both", assetKey: key });
+                  try {
+                    cacheCanvasForAsset(key, {}, outW, outH, canvas);
+                  } catch (e) {
+                  }
+                } catch (e) {
+                }
+              })();
+              promises.push(p);
+              for (const col of teamColors || []) {
+                try {
+                  const mapping = { primary: col, hull: col };
+                  try {
+                    if (insertPlaceholders) {
+                      const ph2 = (() => {
+                        try {
+                          const c = document.createElement("canvas");
+                          c.width = outW || 1;
+                          c.height = outH || 1;
+                          try {
+                            c._placeholder = true;
+                          } catch (e) {
+                          }
+                          return c;
+                        } catch (e) {
+                          const obj = { width: outW || 1, height: outH || 1 };
+                          try {
+                            obj._placeholder = true;
+                          } catch (ee) {
+                          }
+                          return obj;
+                        }
+                      })();
+                      try {
+                        cacheCanvasForAsset(key, mapping, outW, outH, ph2);
+                      } catch (e) {
+                      }
+                    }
+                  } catch (e) {
+                  }
+                  const pt = (async () => {
+                    try {
+                      let sourceForTint = void 0;
+                      try {
+                        if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
+                          sourceForTint = stripHullOnly(rel);
+                        } else if (typeof fetch === "function" && typeof rel === "string") {
+                          try {
+                            try {
+                              if (typeof rel === "string" && !rel.includes("/") && !rel.includes(".") && typeof console !== "undefined" && console.warn) {
+                                console.warn("[svgRenderer] prewarm tinted fetch using bare rel:", rel);
+                              }
+                            } catch (e) {
+                            }
+                            const resp = await fetch(rel);
+                            if (resp && resp.ok) {
+                              const txt = await resp.text();
+                              if (txt && /<svg[\s>]/i.test(txt)) {
+                                sourceForTint = stripHullOnly(txt);
+                              }
+                            }
+                          } catch (e) {
+                          }
+                        }
+                      } catch (e) {
+                      }
+                      const toRasterTint = sourceForTint || rel;
+                      const canvas = await rasterizeSvgWithTeamColors(toRasterTint, mapping, outW, outH, { applyTo: "both", assetKey: key });
+                      try {
+                        cacheCanvasForAsset(key, mapping, outW, outH, canvas);
+                      } catch (e) {
+                      }
+                    } catch (e) {
+                    }
+                  })();
+                  promises.push(pt);
+                } catch (e) {
+                }
+              }
+            } catch (e) {
+            }
+          }
+          try {
+            await Promise.all(promises);
+          } catch (e) {
+          }
+        } catch (e) {
+        }
+      }
+    };
+    try {
+      if (typeof globalThis !== "undefined") {
+        globalThis.__SpaceAutoBattler_svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer || {};
+        Object.assign(globalThis.__SpaceAutoBattler_svgRenderer, svgRendererAPI);
+      }
+    } catch (e) {
+    }
+    svgRenderer_default = svgRendererAPI;
+  }
+});
+
+// src/assets/svgRendererSingleton.ts
+var svgRendererSingleton_exports = {};
+__export(svgRendererSingleton_exports, {
+  getSvgRenderer: () => getSvgRenderer,
+  getSvgRendererSync: () => getSvgRendererSync
+});
+function getSvgRendererSync() {
+  try {
+    if (typeof globalThis !== "undefined") {
+      const g = globalThis.__SpaceAutoBattler_svgRenderer;
+      if (g) return g;
+    }
+  } catch (e) {
+  }
+  try {
+    if (typeof __require === "function") {
+      const candidates = [
+        "./svgRenderer",
+        "../assets/svgRenderer",
+        "../../src/assets/svgRenderer",
+        "src/assets/svgRenderer"
+      ];
+      for (const p of candidates) {
+        try {
+          const mod = __require(p);
+          if (mod) return mod.default || mod;
+        } catch (e) {
+        }
+      }
+    }
+  } catch (e) {
+  }
+  return void 0;
+}
+async function getSvgRenderer() {
+  const s = getSvgRendererSync();
+  if (s) return s;
+  try {
+    const m = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports));
+    const inst = m && (m.default || m);
+    try {
+      if (typeof globalThis !== "undefined") {
+        const g = globalThis.__SpaceAutoBattler_svgRenderer;
+        if (g) return g;
+      }
+    } catch (e) {
+    }
+    return inst;
+  } catch (e) {
+    try {
+      if (typeof globalThis !== "undefined") return globalThis.__SpaceAutoBattler_svgRenderer;
+    } catch (ee) {
+    }
+  }
+  return void 0;
+}
+var init_svgRendererSingleton = __esm({
+  "src/assets/svgRendererSingleton.ts"() {
+    "use strict";
+  }
+});
+
 // src/assets/svgLoader.ts
 var svgLoader_exports = {};
 __export(svgLoader_exports, {
@@ -900,7 +1417,8 @@ __export(svgLoader_exports, {
   rasterizeHullOnlySvgToCanvas: () => rasterizeHullOnlySvgToCanvas,
   rasterizeHullOnlySvgToCanvasAsync: () => rasterizeHullOnlySvgToCanvasAsync,
   rasterizeSvgToCanvas: () => rasterizeSvgToCanvas,
-  rasterizeSvgToCanvasAsync: () => rasterizeSvgToCanvasAsync
+  rasterizeSvgToCanvasAsync: () => rasterizeSvgToCanvasAsync,
+  stripHullOnly: () => stripHullOnly
 });
 function getHullOutlineFromSvg(svgText, tolerance = 1.5, assetFilename) {
   const hullSvg = stripHullOnly(svgText);
@@ -1201,40 +1719,24 @@ function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
 }
 function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
   try {
-    let svgRenderer = void 0;
-    const candidates = [
-      "./svgRenderer",
-      "../assets/svgRenderer",
-      "../../src/assets/svgRenderer",
-      "src/assets/svgRenderer"
-    ];
-    for (const cpath of candidates) {
-      try {
-        svgRenderer = typeof __require === "function" ? (function() {
-          try {
-            return __require(cpath);
-          } catch (e) {
-            return void 0;
-          }
-        })() : void 0;
-        if (svgRenderer) break;
-      } catch (e) {
-        svgRenderer = svgRenderer || void 0;
+    let singleton = void 0;
+    try {
+      const helper = (init_svgRendererSingleton(), __toCommonJS(svgRendererSingleton_exports));
+      if (helper && typeof helper.getSvgRendererSync === "function") {
+        singleton = helper.getSvgRendererSync();
       }
+    } catch (e) {
     }
-    const getCanvasFn = svgRenderer && svgRenderer.getCanvas || svgRenderer && svgRenderer.default && svgRenderer.default.getCanvas;
+    let getCanvasFn = void 0;
+    if (singleton) {
+      getCanvasFn = singleton.getCanvas || singleton.default && singleton.default.getCanvas;
+    }
     try {
       if (!getCanvasFn && typeof globalThis !== "undefined") {
         const g = globalThis.__SpaceAutoBattler_svgRenderer;
         if (g && typeof g.getCanvas === "function") {
           try {
             const c = g.getCanvas(assetKey || "", {}, outW, outH);
-            try {
-              if (c && typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
-                console.debug("[svgLoader] global bridge provided canvas", { assetKey, outW, outH });
-              }
-            } catch (e) {
-            }
             if (c) return c;
           } catch (e) {
           }
@@ -1261,6 +1763,24 @@ function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
     const ph = document.createElement("canvas");
     ph.width = outW;
     ph.height = outH;
+    try {
+      const pctx = ph.getContext("2d");
+      if (pctx) {
+        pctx.fillStyle = "#fff";
+        pctx.fillRect(0, 0, ph.width, ph.height);
+      }
+    } catch (e) {
+    }
+    try {
+      ph._placeholder = true;
+    } catch (e) {
+    }
+    try {
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("[svgLoader] getCachedHullCanvasSync returning placeholder canvas", { outW, outH, assetKey });
+      }
+    } catch (e) {
+    }
     return ph;
   } catch (e) {
     return void 0;
@@ -1294,340 +1814,6 @@ var init_svgLoader = __esm({
   }
 });
 
-// src/assets/svgRenderer.ts
-var svgRenderer_exports = {};
-__export(svgRenderer_exports, {
-  _clearRasterCache: () => _clearRasterCache,
-  _getRasterCacheKeysForTest: () => _getRasterCacheKeysForTest,
-  cacheCanvasForAsset: () => cacheCanvasForAsset,
-  default: () => svgRenderer_default,
-  getCanvas: () => getCanvas,
-  getCanvasFromCache: () => getCanvasFromCache,
-  rasterizeSvgWithTeamColors: () => rasterizeSvgWithTeamColors,
-  setRasterCacheMaxAge: () => setRasterCacheMaxAge,
-  setRasterCacheMaxEntries: () => setRasterCacheMaxEntries
-});
-function stableStringify(obj) {
-  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
-  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
-}
-function djb2Hash(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (h << 5) + h + str.charCodeAt(i);
-    h = h & 4294967295;
-  }
-  return (h >>> 0).toString(16);
-}
-function ensureCacheLimit() {
-  try {
-    const now = Date.now();
-    if (rasterCacheMaxAgeMS > 0) {
-      for (const [k, v] of Array.from(rasterCache.entries())) {
-        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
-          rasterCache.delete(k);
-        }
-      }
-    }
-    while (rasterCache.size > rasterCacheMaxEntries) {
-      const it = rasterCache.keys().next();
-      if (it.done) break;
-      rasterCache.delete(it.value);
-    }
-  } catch (e) {
-  }
-}
-async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options) {
-  let headlessNoCtx = false;
-  try {
-    if (typeof document !== "undefined" && typeof document.createElement === "function") {
-      const probe = document.createElement("canvas");
-      const ctx = probe.getContext && probe.getContext("2d");
-      if (!ctx) headlessNoCtx = true;
-    }
-  } catch (e) {
-    headlessNoCtx = true;
-  }
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = options && options.assetKey ? options.assetKey : djb2Hash(stableStringify(svgText || ""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  if (rasterCache.has(cacheKey)) {
-    const entry2 = rasterCache.get(cacheKey);
-    try {
-      entry2.lastAccess = Date.now();
-      rasterCache.delete(cacheKey);
-      rasterCache.set(cacheKey, entry2);
-    } catch (e) {
-    }
-    if (entry2.canvas) return Promise.resolve(entry2.canvas);
-    if (entry2.promise) return entry2.promise;
-  }
-  const entry = {
-    promise: null,
-    canvas: void 0,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-  const p = (async () => {
-    try {
-      let sourceSvg = svgText || "";
-      try {
-        if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === "function") {
-          try {
-            const resp = await fetch(sourceSvg);
-            if (resp && resp.ok) {
-              const txt = await resp.text();
-              if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
-            } else {
-              try {
-                const isProd = typeof process !== "undefined" && process.env && true;
-                const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
-                if (!isProd && !isTest) {
-                  console.warn(`[svgRenderer] fetch failed for SVG url '${sourceSvg}'. Status: ${resp && resp.status}`);
-                }
-              } catch (e) {
-              }
-            }
-          } catch (e) {
-            try {
-              const isProd = typeof process !== "undefined" && process.env && true;
-              const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
-              if (!isProd && !isTest) {
-                console.warn(`[svgRenderer] fetch threw for '${sourceSvg}', continuing with original string`, e);
-              }
-            } catch (ee) {
-            }
-          }
-        }
-      } catch (e) {
-      }
-      const recolored = applyTeamColorsToSvg(sourceSvg, mapping, options && { applyTo: options?.applyTo });
-      if (headlessNoCtx) {
-        const ph = (() => {
-          try {
-            const c = document.createElement("canvas");
-            c.width = outW || 1;
-            c.height = outH || 1;
-            return c;
-          } catch (e) {
-            const obj = { width: outW || 1, height: outH || 1 };
-            return obj;
-          }
-        })();
-        entry.canvas = ph;
-        entry.promise = Promise.resolve(ph);
-        entry.lastAccess = Date.now();
-        rasterCache.set(cacheKey, entry);
-        ensureCacheLimit();
-        return ph;
-      }
-      const canvas = await rasterizeSvgToCanvasAsync(recolored, outW, outH);
-      entry.canvas = canvas;
-      entry.promise = Promise.resolve(canvas);
-      entry.lastAccess = Date.now();
-      return canvas;
-    } catch (e) {
-      const canvas = await rasterizeSvgToCanvasAsync(svgText, outW, outH);
-      entry.canvas = canvas;
-      entry.promise = Promise.resolve(canvas);
-      entry.lastAccess = Date.now();
-      return canvas;
-    }
-  })();
-  entry.promise = p;
-  rasterCache.set(cacheKey, entry);
-  ensureCacheLimit();
-  try {
-    const res = await p;
-    return res;
-  } catch (e) {
-    rasterCache.delete(cacheKey);
-    throw e;
-  }
-}
-function _clearRasterCache() {
-  rasterCache.clear();
-}
-function cacheCanvasForAsset(assetKey, mapping, outW, outH, canvas) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = assetKey || djb2Hash(stableStringify(""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  try {
-    if (rasterCache.has(cacheKey)) rasterCache.delete(cacheKey);
-  } catch (e) {
-  }
-  const entry = {
-    promise: Promise.resolve(canvas),
-    canvas,
-    createdAt: Date.now(),
-    lastAccess: Date.now()
-  };
-  rasterCache.set(cacheKey, entry);
-  ensureCacheLimit();
-  try {
-    if (typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
-      console.debug("[svgRenderer] cacheCanvasForAsset set", { assetKey, mappingHash, outW, outH });
-    }
-  } catch (e) {
-  }
-}
-function _getRasterCacheKeysForTest() {
-  return Array.from(rasterCache.keys());
-}
-function setRasterCacheMaxEntries(n) {
-  rasterCacheMaxEntries = Math.max(1, Math.floor(n) || 256);
-  ensureCacheLimit();
-}
-function setRasterCacheMaxAge(ms) {
-  rasterCacheMaxAgeMS = Math.max(0, Math.floor(ms) || 0);
-  ensureCacheLimit();
-}
-function getCanvasFromCache(assetKey, mapping, outW, outH) {
-  const mappingStable = stableStringify(mapping || {});
-  const mappingHash = djb2Hash(mappingStable);
-  const assetId = assetKey || djb2Hash(stableStringify(""));
-  const cacheKey = `${assetId}:${mappingHash}:${outW}x${outH}`;
-  const entry = rasterCache.get(cacheKey);
-  try {
-    if (typeof globalThis.window !== "undefined" && globalThis.window.__SAB_DEBUG_SVG) {
-      console.debug("[svgRenderer] getCanvasFromCache lookup", { assetKey, mappingHash, outW, outH, present: !!entry });
-    }
-  } catch (e) {
-  }
-  if (!entry) return void 0;
-  if (rasterCacheMaxAgeMS > 0) {
-    const now = Date.now();
-    if (now - entry.lastAccess > rasterCacheMaxAgeMS || now - entry.createdAt > rasterCacheMaxAgeMS) {
-      rasterCache.delete(cacheKey);
-      return void 0;
-    }
-  }
-  entry.lastAccess = Date.now();
-  try {
-    rasterCache.delete(cacheKey);
-    rasterCache.set(cacheKey, entry);
-  } catch (e) {
-  }
-  return entry.canvas;
-}
-function getCanvas(assetKey, mapping, outW, outH) {
-  return getCanvasFromCache(assetKey, mapping, outW, outH);
-}
-var rasterCache, rasterCacheMaxEntries, rasterCacheMaxAgeMS, svgRendererAPI, svgRenderer_default;
-var init_svgRenderer = __esm({
-  "src/assets/svgRenderer.ts"() {
-    "use strict";
-    init_svgLoader();
-    rasterCache = /* @__PURE__ */ new Map();
-    rasterCacheMaxEntries = 256;
-    rasterCacheMaxAgeMS = 0;
-    svgRendererAPI = {
-      rasterizeSvgWithTeamColors,
-      _clearRasterCache,
-      cacheCanvasForAsset,
-      setRasterCacheMaxEntries,
-      setRasterCacheMaxAge,
-      getCanvasFromCache,
-      getCanvas(assetKey, mapping, outW, outH) {
-        return getCanvasFromCache(assetKey, mapping, outW, outH);
-      },
-      /**
-       * Pre-warm a small set of assets into the raster cache. assetKeys are keys
-       * from AssetsConfig.svgAssets (or direct SVG/URL strings). teamColors is an
-       * array of color hex strings to generate tinted variants for. This helper
-       * kicks off async rasterization and awaits completion so subsequent
-       * synchronous getCanvas calls can find entries.
-       */
-      async prewarmAssets(assetKeys, teamColors = [], outW = 128, outH = 128) {
-        try {
-          const assetsConfig = typeof globalThis !== "undefined" && globalThis.AssetsConfig ? globalThis.AssetsConfig : void 0;
-          for (const key of assetKeys) {
-            try {
-              const rel = assetsConfig && assetsConfig.svgAssets && assetsConfig.svgAssets[key] ? assetsConfig.svgAssets[key] : key;
-              try {
-                const ph = (() => {
-                  try {
-                    const c = document.createElement("canvas");
-                    c.width = outW || 1;
-                    c.height = outH || 1;
-                    return c;
-                  } catch (e) {
-                    const obj = { width: outW || 1, height: outH || 1 };
-                    return obj;
-                  }
-                })();
-                try {
-                  cacheCanvasForAsset(key, {}, outW, outH, ph);
-                } catch (e) {
-                }
-              } catch (e) {
-              }
-              (async () => {
-                try {
-                  const canvas = await rasterizeSvgWithTeamColors(rel, {}, outW, outH, { applyTo: "both", assetKey: key });
-                  try {
-                    cacheCanvasForAsset(key, {}, outW, outH, canvas);
-                  } catch (e) {
-                  }
-                } catch (e) {
-                }
-              })();
-              for (const col of teamColors || []) {
-                try {
-                  const mapping = { primary: col, hull: col };
-                  try {
-                    const ph2 = (() => {
-                      try {
-                        const c = document.createElement("canvas");
-                        c.width = outW || 1;
-                        c.height = outH || 1;
-                        return c;
-                      } catch (e) {
-                        const obj = { width: outW || 1, height: outH || 1 };
-                        return obj;
-                      }
-                    })();
-                    try {
-                      cacheCanvasForAsset(key, mapping, outW, outH, ph2);
-                    } catch (e) {
-                    }
-                  } catch (e) {
-                  }
-                  (async () => {
-                    try {
-                      const canvas = await rasterizeSvgWithTeamColors(rel, mapping, outW, outH, { applyTo: "both", assetKey: key });
-                      try {
-                        cacheCanvasForAsset(key, mapping, outW, outH, canvas);
-                      } catch (e) {
-                      }
-                    } catch (e) {
-                    }
-                  })();
-                } catch (e) {
-                }
-              }
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-      }
-    };
-    try {
-      if (typeof globalThis !== "undefined") {
-        globalThis.__SpaceAutoBattler_svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer || {};
-        Object.assign(globalThis.__SpaceAutoBattler_svgRenderer, svgRendererAPI);
-      }
-    } catch (e) {
-    }
-    svgRenderer_default = svgRendererAPI;
-  }
-});
-
 // src/dev/shipPipelineOverlay.ts
 var shipPipelineOverlay_exports = {};
 __export(shipPipelineOverlay_exports, {
@@ -1636,8 +1822,6 @@ __export(shipPipelineOverlay_exports, {
 function detectPipeline(type) {
   const sprite = getSpriteAsset(type);
   if (sprite.svg) return { pipeline: "svg", source: sprite.svg };
-  if (sprite.model3d && sprite.model3d.url)
-    return { pipeline: "mesh3d", source: sprite.model3d.url };
   if (sprite.shape) return { pipeline: "shape2d", source: "shapes2d" };
   return { pipeline: "unknown", source: "-" };
 }
@@ -5171,21 +5355,105 @@ var CanvasRenderer = class _CanvasRenderer {
       }
       try {
         this._svgHullCache = this._svgHullCache || {};
-        for (const k of Object.keys(svgAssets)) {
-          if (!this._svgHullCache[k] && typeof svgAssets[k] === "string") {
-            const ph = document.createElement("canvas");
-            ph.width = 128;
-            ph.height = 128;
-            const pctx = ph.getContext("2d");
-            if (pctx) {
-              pctx.fillStyle = "#fff";
-              pctx.fillRect(0, 0, ph.width, ph.height);
+        const awaitPrewarm = typeof globalThis.window !== "undefined" && !!globalThis.window.__AWAIT_SVG_PREWARM;
+        if (awaitPrewarm) {
+          try {
+            let svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer;
+            if (!svgRenderer) {
+              try {
+                svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then((m) => m.default || m);
+              } catch (e) {
+                svgRenderer = void 0;
+              }
             }
+            if (svgRenderer && typeof svgRenderer.prewarmAssets === "function") {
+              try {
+                await svgRenderer.prewarmAssets(Object.keys(svgAssets), teamColors, 128, 128, false);
+                for (const k of Object.keys(svgAssets)) {
+                  try {
+                    const c = svgRenderer.getCanvas(k, {}, 128, 128);
+                    if (c) this._svgHullCache[k] = c;
+                  } catch (e) {
+                  }
+                }
+              } catch (e) {
+                try {
+                  console.warn("[CanvasRenderer] prewarmAssets failed; continuing without placeholders", e);
+                } catch (ee) {
+                }
+                for (const k of Object.keys(svgAssets)) {
+                  try {
+                    if (!this._svgHullCache[k] && typeof svgAssets[k] === "string") {
+                      const ph = document.createElement("canvas");
+                      ph.width = 4;
+                      ph.height = 4;
+                      this._svgHullCache[k] = ph;
+                    }
+                  } catch (e2) {
+                  }
+                }
+              }
+            } else {
+              for (const k of Object.keys(svgAssets)) {
+                try {
+                  if (!this._svgHullCache[k] && typeof svgAssets[k] === "string") {
+                    const ph = document.createElement("canvas");
+                    ph.width = 4;
+                    ph.height = 4;
+                    this._svgHullCache[k] = ph;
+                  }
+                } catch (e) {
+                }
+              }
+            }
+          } catch (e) {
+            for (const k of Object.keys(svgAssets)) {
+              try {
+                if (!this._svgHullCache[k] && typeof svgAssets[k] === "string") {
+                  const ph = document.createElement("canvas");
+                  ph.width = 128;
+                  ph.height = 128;
+                  const pctx = ph.getContext("2d");
+                  if (pctx) {
+                    pctx.fillStyle = "#fff";
+                    pctx.fillRect(0, 0, ph.width, ph.height);
+                  }
+                  try {
+                    ph._placeholder = true;
+                  } catch (ee) {
+                  }
+                  this._svgHullCache[k] = ph;
+                }
+              } catch (ee) {
+              }
+            }
+          }
+        } else {
+          for (const k of Object.keys(svgAssets)) {
             try {
-              ph._placeholder = true;
+              if (!this._svgHullCache[k] && typeof svgAssets[k] === "string") {
+                const ph = document.createElement("canvas");
+                ph.width = 128;
+                ph.height = 128;
+                const pctx = ph.getContext("2d");
+                if (pctx) {
+                  pctx.fillStyle = "#fff";
+                  pctx.fillRect(0, 0, ph.width, ph.height);
+                }
+                try {
+                  ph._placeholder = true;
+                } catch (e) {
+                }
+                try {
+                  if (typeof console !== "undefined" && console.warn) {
+                    console.warn("[CanvasRenderer] preloaded placeholder hull canvas for", k);
+                  }
+                } catch (e) {
+                }
+                this._svgHullCache[k] = ph;
+              }
             } catch (e) {
             }
-            this._svgHullCache[k] = ph;
           }
         }
       } catch (e) {
@@ -5193,7 +5461,13 @@ var CanvasRenderer = class _CanvasRenderer {
       this._svgMountCache = this._svgMountCache || {};
       for (const key of Object.keys(svgAssets)) {
         try {
-          const rel = svgAssets[key];
+          let rel = svgAssets[key];
+          try {
+            if (typeof rel === "string" && !rel.startsWith("<svg") && !rel.includes("/") && !rel.includes(".")) {
+              rel = `./svg/${rel}.svg`;
+            }
+          } catch (e) {
+          }
           let svgText = "";
           try {
             if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
@@ -5409,7 +5683,13 @@ var CanvasRenderer = class _CanvasRenderer {
             let hullCanvas = this._svgHullCache[shipType];
             if (!hullCanvas) {
               try {
-                const rel = declaredSvgAssets[shipType];
+                let rel = declaredSvgAssets[shipType];
+                try {
+                  if (typeof rel === "string" && !rel.startsWith("<svg") && !rel.includes("/") && !rel.includes(".")) {
+                    rel = `./svg/${rel}.svg`;
+                  }
+                } catch (e) {
+                }
                 if (typeof rel === "string" && rel.trim().startsWith("<svg")) {
                   const vbMatch = /viewBox\s*=\s*"(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)"/.exec(
                     rel
@@ -5510,17 +5790,8 @@ var CanvasRenderer = class _CanvasRenderer {
           for (const shipType of Object.keys(declaredSvgAssets2)) {
             if (!this._svgHullCache || !this._svgHullCache[shipType]) {
               const ph = document.createElement("canvas");
-              ph.width = 128;
-              ph.height = 128;
-              const pctx = ph.getContext("2d");
-              if (pctx) {
-                pctx.fillStyle = "#fff";
-                pctx.fillRect(0, 0, ph.width, ph.height);
-              }
-              try {
-                ph._placeholder = true;
-              } catch (e) {
-              }
+              ph.width = 4;
+              ph.height = 4;
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[shipType] = ph;
               for (const col of teamColors2) {
@@ -5531,35 +5802,7 @@ var CanvasRenderer = class _CanvasRenderer {
                   const tc = document.createElement("canvas");
                   tc.width = ph.width;
                   tc.height = ph.height;
-                  const tctx = tc.getContext("2d");
-                  if (tctx) {
-                    tctx.clearRect(0, 0, tc.width, tc.height);
-                    try {
-                      tctx.drawImage(ph, 0, 0);
-                    } catch (e) {
-                    }
-                    try {
-                      tctx.globalCompositeOperation = "source-atop";
-                      tctx.fillStyle = col;
-                      tctx.fillRect(0, 0, tc.width, tc.height);
-                      tctx.globalCompositeOperation = "source-over";
-                    } catch (e) {
-                    }
-                  }
                   this._setTintedCanvas(k, tc);
-                  try {
-                    const svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then((m) => m.default || m);
-                    if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
-                      svgRenderer.cacheCanvasForAsset(
-                        shipType,
-                        teamMapping(col),
-                        tc.width,
-                        tc.height,
-                        tc
-                      );
-                    }
-                  } catch (e) {
-                  }
                 } catch (e) {
                 }
               }
@@ -5966,6 +6209,12 @@ var CanvasRenderer = class _CanvasRenderer {
         const cacheKey = s.type || getDefaultShipTypeSafe();
         let hullCanvas = this._svgHullCache[cacheKey];
         if (hullCanvas && hullCanvas._placeholder) {
+          try {
+            if (typeof console !== "undefined" && console.warn) {
+              console.warn("[CanvasRenderer] detected placeholder hull canvas for", cacheKey);
+            }
+          } catch (e) {
+          }
           hullCanvas = void 0;
         }
         if (sprite.svg || hullCanvas) {
@@ -5996,6 +6245,12 @@ var CanvasRenderer = class _CanvasRenderer {
                 } catch (e) {
                   hullCanvas = void 0;
                 }
+              }
+              try {
+                if (hullCanvas && hullCanvas._placeholder) {
+                  hullCanvas = void 0;
+                }
+              } catch (e) {
               }
               this._svgHullCache[cacheKey] = hullCanvas;
             } catch (e) {
@@ -6038,11 +6293,28 @@ var CanvasRenderer = class _CanvasRenderer {
               try {
                 let svgRenderer = void 0;
                 try {
-                  Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then(
-                    (m) => svgRenderer = m.default || m
-                  );
+                  const helper = (init_svgRendererSingleton(), __toCommonJS(svgRendererSingleton_exports));
+                  if (helper && typeof helper.getSvgRendererSync === "function") {
+                    svgRenderer = helper.getSvgRendererSync();
+                  }
                 } catch (e) {
                   svgRenderer = void 0;
+                }
+                if (!svgRenderer) {
+                  try {
+                    Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then(
+                      (m) => svgRenderer = m.default || m
+                    );
+                  } catch (e) {
+                    svgRenderer = void 0;
+                  }
+                }
+                if (!svgRenderer) {
+                  try {
+                    if (globalThis.__SpaceAutoBattler_svgRenderer)
+                      svgRenderer = globalThis.__SpaceAutoBattler_svgRenderer;
+                  } catch (e) {
+                  }
                 }
                 if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
                   const assetKey = cacheKey;
@@ -6054,7 +6326,7 @@ var CanvasRenderer = class _CanvasRenderer {
                       hullCanvas.width,
                       hullCanvas.height
                     );
-                    if (c && (c.width === hullCanvas.width && c.height === hullCanvas.height)) {
+                    if (c && (c.width === hullCanvas.width && c.height === hullCanvas.height) && !c._placeholder) {
                       try {
                         this._setTintedCanvas(tintedKey, c);
                         tintedCanvas = c;
@@ -6808,6 +7080,662 @@ var CanvasRenderer = class _CanvasRenderer {
 // src/webglrenderer.ts
 init_assetsConfig();
 init_rendererConfig();
+
+// src/webgl/instancedRenderer.ts
+var InstancedRenderer = class {
+  gl;
+  shaderProgram = null;
+  quadVAO = null;
+  instanceVBO = null;
+  quadVBO = null;
+  // Shader attribute/uniform locations
+  locations = {};
+  // Maximum instances per batch (WebGL limits)
+  maxInstancesPerBatch = 1e3;
+  instanceBuffer;
+  constructor(gl) {
+    this.gl = gl;
+    this.instanceBuffer = new Float32Array(this.maxInstancesPerBatch * this.getInstanceDataSize());
+  }
+  /**
+   * Initialize the instanced renderer with shaders and buffers
+   */
+  init() {
+    try {
+      if (!this.createShaderProgram()) return false;
+      if (!this.createBuffers()) return false;
+      if (!this.setupVertexArrays()) return false;
+      return true;
+    } catch (error) {
+      console.error("Failed to initialize instanced renderer:", error);
+      return false;
+    }
+  }
+  /**
+   * Render a batch of instances with the same texture
+   */
+  renderBatch(batch, projectionMatrix) {
+    if (!this.shaderProgram || !this.quadVAO || batch.instances.length === 0) return;
+    const gl = this.gl;
+    gl.useProgram(this.shaderProgram);
+    if (this.locations.uProjectionMatrix) {
+      gl.uniformMatrix4fv(this.locations.uProjectionMatrix, false, projectionMatrix);
+    }
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, batch.texture);
+    if (this.locations.uTexture) {
+      gl.uniform1i(this.locations.uTexture, 0);
+    }
+    this.setBlendMode(batch.blendMode || "normal");
+    if (this.gl instanceof WebGL2RenderingContext && this.quadVAO) {
+      gl.bindVertexArray(this.quadVAO);
+    }
+    const instanceCount = batch.instances.length;
+    let processedInstances = 0;
+    while (processedInstances < instanceCount) {
+      const batchSize = Math.min(this.maxInstancesPerBatch, instanceCount - processedInstances);
+      const instanceSlice = batch.instances.slice(processedInstances, processedInstances + batchSize);
+      this.uploadInstanceData(instanceSlice);
+      if (this.gl instanceof WebGL2RenderingContext) {
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, batchSize);
+      } else {
+        const ext = gl.getExtension("ANGLE_instanced_arrays");
+        if (ext) {
+          ext.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, batchSize);
+        } else {
+          this.fallbackNonInstancedDraw(instanceSlice, projectionMatrix);
+        }
+      }
+      processedInstances += batchSize;
+    }
+    if (this.gl instanceof WebGL2RenderingContext && this.quadVAO) {
+      gl.bindVertexArray(null);
+    }
+  }
+  /**
+   * Dispose of WebGL resources
+   */
+  dispose() {
+    const gl = this.gl;
+    if (this.shaderProgram) {
+      gl.deleteProgram(this.shaderProgram);
+      this.shaderProgram = null;
+    }
+    if (this.quadVAO && this.gl instanceof WebGL2RenderingContext) {
+      gl.deleteVertexArray(this.quadVAO);
+      this.quadVAO = null;
+    }
+    if (this.instanceVBO) {
+      gl.deleteBuffer(this.instanceVBO);
+      this.instanceVBO = null;
+    }
+    if (this.quadVBO) {
+      gl.deleteBuffer(this.quadVBO);
+      this.quadVBO = null;
+    }
+  }
+  // -- Private implementation methods --
+  createShaderProgram() {
+    const gl = this.gl;
+    const vertexShaderSource = this.getVertexShaderSource();
+    const fragmentShaderSource = this.getFragmentShaderSource();
+    const vertexShader = this.compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = this.compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+    if (!vertexShader || !fragmentShader) return false;
+    this.shaderProgram = gl.createProgram();
+    if (!this.shaderProgram) return false;
+    gl.attachShader(this.shaderProgram, vertexShader);
+    gl.attachShader(this.shaderProgram, fragmentShader);
+    gl.linkProgram(this.shaderProgram);
+    if (!gl.getProgramParameter(this.shaderProgram, gl.LINK_STATUS)) {
+      console.error("Shader program link error:", gl.getProgramInfoLog(this.shaderProgram));
+      return false;
+    }
+    this.locations.aPosition = gl.getAttribLocation(this.shaderProgram, "aPosition");
+    this.locations.aUV = gl.getAttribLocation(this.shaderProgram, "aUV");
+    this.locations.aInstanceTransform = gl.getAttribLocation(this.shaderProgram, "aInstanceTransform");
+    this.locations.aInstanceUV = gl.getAttribLocation(this.shaderProgram, "aInstanceUV");
+    this.locations.aInstanceTint = gl.getAttribLocation(this.shaderProgram, "aInstanceTint");
+    this.locations.uProjectionMatrix = gl.getUniformLocation(this.shaderProgram, "uProjectionMatrix");
+    this.locations.uTexture = gl.getUniformLocation(this.shaderProgram, "uTexture");
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+    return true;
+  }
+  getVertexShaderSource() {
+    const isWebGL2 = this.gl instanceof WebGL2RenderingContext;
+    const version = isWebGL2 ? "#version 300 es" : "";
+    const inKeyword = isWebGL2 ? "in" : "attribute";
+    const outKeyword = isWebGL2 ? "out" : "varying";
+    return `${version}
+      precision highp float;
+      
+      // Quad vertex attributes
+      ${inKeyword} vec2 aPosition;
+      ${inKeyword} vec2 aUV;
+      
+      // Per-instance attributes
+      ${inKeyword} vec4 aInstanceTransform; // x, y, rotation, scale
+      ${inKeyword} vec4 aInstanceUV;        // uvX, uvY, uvWidth, uvHeight
+      ${inKeyword} vec4 aInstanceTint;      // r, g, b, alpha
+      
+      // Uniforms
+      uniform mat4 uProjectionMatrix;
+      
+      // Output to fragment shader
+      ${outKeyword} vec2 vUV;
+      ${outKeyword} vec4 vTint;
+      
+      void main() {
+        // Extract instance data
+        vec2 instancePos = aInstanceTransform.xy;
+        float rotation = aInstanceTransform.z;
+        float scale = aInstanceTransform.w;
+        
+        // Apply rotation and scale to quad vertex
+        float cos_r = cos(rotation);
+        float sin_r = sin(rotation);
+        vec2 rotatedPos = vec2(
+          aPosition.x * cos_r - aPosition.y * sin_r,
+          aPosition.x * sin_r + aPosition.y * cos_r
+        ) * scale;
+        
+        // Final world position
+        vec2 worldPos = instancePos + rotatedPos;
+        
+        // Transform to clip space
+        gl_Position = uProjectionMatrix * vec4(worldPos, 0.0, 1.0);
+        
+        // Calculate UV coordinates within atlas
+        vUV = aInstanceUV.xy + aUV * aInstanceUV.zw;
+        vTint = aInstanceTint;
+      }
+    `;
+  }
+  getFragmentShaderSource() {
+    const isWebGL2 = this.gl instanceof WebGL2RenderingContext;
+    const version = isWebGL2 ? "#version 300 es" : "";
+    const inKeyword = isWebGL2 ? "in" : "varying";
+    const outColor = isWebGL2 ? "out vec4 fragColor;" : "";
+    const gl_FragColor = isWebGL2 ? "fragColor" : "gl_FragColor";
+    return `${version}
+      precision highp float;
+      
+      ${inKeyword} vec2 vUV;
+      ${inKeyword} vec4 vTint;
+      
+      uniform sampler2D uTexture;
+      
+      ${outColor}
+      
+      void main() {
+        vec4 texColor = texture2D(uTexture, vUV);
+        ${gl_FragColor} = texColor * vTint;
+      }
+    `;
+  }
+  compileShader(type, source) {
+    const gl = this.gl;
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error("Shader compile error:", gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+  createBuffers() {
+    const gl = this.gl;
+    this.quadVBO = gl.createBuffer();
+    if (!this.quadVBO) return false;
+    const quadVertices = new Float32Array([
+      // Triangle 1
+      -0.5,
+      -0.5,
+      0,
+      1,
+      // Bottom-left
+      0.5,
+      -0.5,
+      1,
+      1,
+      // Bottom-right
+      -0.5,
+      0.5,
+      0,
+      0,
+      // Top-left
+      // Triangle 2
+      0.5,
+      -0.5,
+      1,
+      1,
+      // Bottom-right
+      0.5,
+      0.5,
+      1,
+      0,
+      // Top-right
+      -0.5,
+      0.5,
+      0,
+      0
+      // Top-left
+    ]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+    this.instanceVBO = gl.createBuffer();
+    if (!this.instanceVBO) return false;
+    return true;
+  }
+  setupVertexArrays() {
+    const gl = this.gl;
+    if (this.gl instanceof WebGL2RenderingContext) {
+      const gl2 = this.gl;
+      this.quadVAO = gl2.createVertexArray();
+      if (!this.quadVAO) return false;
+      gl2.bindVertexArray(this.quadVAO);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+      if (this.locations.aPosition !== void 0 && this.locations.aPosition >= 0) {
+        gl.enableVertexAttribArray(this.locations.aPosition);
+        gl.vertexAttribPointer(this.locations.aPosition, 2, gl.FLOAT, false, 16, 0);
+      }
+      if (this.locations.aUV !== void 0 && this.locations.aUV >= 0) {
+        gl.enableVertexAttribArray(this.locations.aUV);
+        gl.vertexAttribPointer(this.locations.aUV, 2, gl.FLOAT, false, 16, 8);
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceVBO);
+      const stride = this.getInstanceDataSize() * 4;
+      if (this.locations.aInstanceTransform !== void 0 && this.locations.aInstanceTransform >= 0) {
+        gl.enableVertexAttribArray(this.locations.aInstanceTransform);
+        gl.vertexAttribPointer(this.locations.aInstanceTransform, 4, gl.FLOAT, false, stride, 0);
+        gl2.vertexAttribDivisor(this.locations.aInstanceTransform, 1);
+      }
+      if (this.locations.aInstanceUV !== void 0 && this.locations.aInstanceUV >= 0) {
+        gl.enableVertexAttribArray(this.locations.aInstanceUV);
+        gl.vertexAttribPointer(this.locations.aInstanceUV, 4, gl.FLOAT, false, stride, 16);
+        gl2.vertexAttribDivisor(this.locations.aInstanceUV, 1);
+      }
+      if (this.locations.aInstanceTint !== void 0 && this.locations.aInstanceTint >= 0) {
+        gl.enableVertexAttribArray(this.locations.aInstanceTint);
+        gl.vertexAttribPointer(this.locations.aInstanceTint, 4, gl.FLOAT, false, stride, 32);
+        gl2.vertexAttribDivisor(this.locations.aInstanceTint, 1);
+      }
+      gl2.bindVertexArray(null);
+    }
+    return true;
+  }
+  getInstanceDataSize() {
+    return 12;
+  }
+  uploadInstanceData(instances) {
+    const gl = this.gl;
+    const dataSize = this.getInstanceDataSize();
+    for (let i = 0; i < instances.length; i++) {
+      const instance = instances[i];
+      const offset = i * dataSize;
+      this.instanceBuffer[offset + 0] = instance.x;
+      this.instanceBuffer[offset + 1] = instance.y;
+      this.instanceBuffer[offset + 2] = instance.rotation;
+      this.instanceBuffer[offset + 3] = Math.max(instance.scaleX, instance.scaleY);
+      this.instanceBuffer[offset + 4] = instance.uvX;
+      this.instanceBuffer[offset + 5] = instance.uvY;
+      this.instanceBuffer[offset + 6] = instance.uvWidth;
+      this.instanceBuffer[offset + 7] = instance.uvHeight;
+      this.instanceBuffer[offset + 8] = instance.tintR ?? 1;
+      this.instanceBuffer[offset + 9] = instance.tintG ?? 1;
+      this.instanceBuffer[offset + 10] = instance.tintB ?? 1;
+      this.instanceBuffer[offset + 11] = instance.alpha ?? 1;
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, this.instanceBuffer.subarray(0, instances.length * dataSize), gl.DYNAMIC_DRAW);
+  }
+  setBlendMode(mode) {
+    const gl = this.gl;
+    gl.enable(gl.BLEND);
+    switch (mode) {
+      case "additive":
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        break;
+      case "multiply":
+        gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+        break;
+      case "normal":
+      default:
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    }
+  }
+  fallbackNonInstancedDraw(instances, projectionMatrix) {
+    const gl = this.gl;
+    for (const instance of instances) {
+      const modelMatrix = this.createModelMatrix(instance);
+      console.warn("Non-instanced fallback not fully implemented");
+    }
+  }
+  createModelMatrix(instance) {
+    const matrix = new Float32Array(16);
+    const cos_r = Math.cos(instance.rotation);
+    const sin_r = Math.sin(instance.rotation);
+    const scaleX = instance.scaleX;
+    const scaleY = instance.scaleY;
+    matrix[0] = cos_r * scaleX;
+    matrix[1] = sin_r * scaleX;
+    matrix[2] = 0;
+    matrix[3] = 0;
+    matrix[4] = -sin_r * scaleY;
+    matrix[5] = cos_r * scaleY;
+    matrix[6] = 0;
+    matrix[7] = 0;
+    matrix[8] = 0;
+    matrix[9] = 0;
+    matrix[10] = 1;
+    matrix[11] = 0;
+    matrix[12] = instance.x;
+    matrix[13] = instance.y;
+    matrix[14] = 0;
+    matrix[15] = 1;
+    return matrix;
+  }
+};
+
+// src/assets/textureAtlas.ts
+var TextureAtlas = class {
+  gl;
+  atlasTexture = null;
+  atlasCanvas = null;
+  atlasContext = null;
+  entries = /* @__PURE__ */ new Map();
+  // Atlas configuration
+  atlasWidth = 1024;
+  atlasHeight = 1024;
+  padding = 1;
+  nextAtlasId = 0;
+  // Packing state
+  shelves = [];
+  usedHeight = 0;
+  isDirty = false;
+  constructor(gl, options = {}) {
+    this.gl = gl;
+    this.atlasWidth = this.findPowerOfTwo(options.maxAtlasSize || 1024);
+    this.atlasHeight = this.atlasWidth;
+    this.padding = options.padding || 1;
+    this.initializeAtlas();
+  }
+  /**
+   * Add an image/canvas to the atlas
+   */
+  addEntry(key, source, width, height) {
+    if (this.entries.has(key)) {
+      return this.entries.get(key);
+    }
+    const sourceWidth = width || source.width;
+    const sourceHeight = height || source.height;
+    const position = this.findSpace(sourceWidth, sourceHeight);
+    if (!position) {
+      console.warn(`Cannot fit ${key} (${sourceWidth}x${sourceHeight}) in atlas`);
+      return null;
+    }
+    const entry = {
+      x: position.x,
+      y: position.y,
+      width: sourceWidth,
+      height: sourceHeight,
+      uvX: position.x / this.atlasWidth,
+      uvY: position.y / this.atlasHeight,
+      uvWidth: sourceWidth / this.atlasWidth,
+      uvHeight: sourceHeight / this.atlasHeight,
+      key,
+      originalWidth: sourceWidth,
+      originalHeight: sourceHeight
+    };
+    if (this.atlasContext) {
+      this.atlasContext.drawImage(
+        source,
+        0,
+        0,
+        sourceWidth,
+        sourceHeight,
+        position.x,
+        position.y,
+        sourceWidth,
+        sourceHeight
+      );
+    }
+    this.entries.set(key, entry);
+    this.isDirty = true;
+    return entry;
+  }
+  /**
+   * Get an atlas entry by key
+   */
+  getEntry(key) {
+    return this.entries.get(key) || null;
+  }
+  /**
+   * Get all atlas entries
+   */
+  getAllEntries() {
+    return Array.from(this.entries.values());
+  }
+  /**
+   * Get the WebGL texture for this atlas
+   */
+  getTexture() {
+    if (this.isDirty) {
+      this.updateGLTexture();
+    }
+    return this.atlasTexture;
+  }
+  /**
+   * Get atlas statistics
+   */
+  getStats() {
+    const totalPixels = this.atlasWidth * this.atlasHeight;
+    const usedPixels = Array.from(this.entries.values()).reduce((sum, entry) => sum + entry.width * entry.height, 0);
+    return {
+      atlasSize: { width: this.atlasWidth, height: this.atlasHeight },
+      entryCount: this.entries.size,
+      utilization: usedPixels / totalPixels,
+      freeSpace: totalPixels - usedPixels
+    };
+  }
+  /**
+   * Clear all entries and reset atlas
+   */
+  clear() {
+    this.entries.clear();
+    this.shelves = [];
+    this.usedHeight = 0;
+    this.isDirty = false;
+    if (this.atlasContext) {
+      this.atlasContext.clearRect(0, 0, this.atlasWidth, this.atlasHeight);
+    }
+  }
+  /**
+   * Create a debug visualization of the atlas
+   */
+  createDebugCanvas() {
+    if (!this.atlasCanvas) return null;
+    const debugCanvas = document.createElement("canvas");
+    debugCanvas.width = this.atlasWidth;
+    debugCanvas.height = this.atlasHeight;
+    const ctx = debugCanvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(this.atlasCanvas, 0, 0);
+    ctx.strokeStyle = "#ff0000";
+    ctx.lineWidth = 1;
+    for (const entry of this.entries.values()) {
+      ctx.strokeRect(entry.x, entry.y, entry.width, entry.height);
+      ctx.fillStyle = "#ffff00";
+      ctx.font = "12px Arial";
+      ctx.fillText(entry.key, entry.x + 2, entry.y + 12);
+    }
+    ctx.strokeStyle = "#00ff00";
+    for (const shelf of this.shelves) {
+      ctx.strokeRect(0, shelf.y, shelf.usedWidth, shelf.height);
+    }
+    return debugCanvas;
+  }
+  /**
+   * Dispose WebGL resources
+   */
+  dispose() {
+    if (this.atlasTexture) {
+      this.gl.deleteTexture(this.atlasTexture);
+      this.atlasTexture = null;
+    }
+    this.atlasCanvas = null;
+    this.atlasContext = null;
+    this.entries.clear();
+    this.shelves = [];
+  }
+  // -- Private implementation methods --
+  initializeAtlas() {
+    this.atlasCanvas = document.createElement("canvas");
+    this.atlasCanvas.width = this.atlasWidth;
+    this.atlasCanvas.height = this.atlasHeight;
+    this.atlasContext = this.atlasCanvas.getContext("2d");
+    if (!this.atlasContext) {
+      throw new Error("Failed to create 2D context for atlas canvas");
+    }
+    this.atlasContext.clearRect(0, 0, this.atlasWidth, this.atlasHeight);
+    this.atlasTexture = this.gl.createTexture();
+    if (!this.atlasTexture) {
+      throw new Error("Failed to create WebGL texture for atlas");
+    }
+  }
+  findSpace(width, height) {
+    const paddedWidth = width + this.padding * 2;
+    const paddedHeight = height + this.padding * 2;
+    for (const shelf of this.shelves) {
+      if (shelf.height >= paddedHeight && shelf.width - shelf.usedWidth >= paddedWidth) {
+        const position = {
+          x: shelf.usedWidth + this.padding,
+          y: shelf.y + this.padding
+        };
+        shelf.usedWidth += paddedWidth;
+        return position;
+      }
+    }
+    if (this.usedHeight + paddedHeight <= this.atlasHeight) {
+      const shelf = {
+        y: this.usedHeight,
+        height: paddedHeight,
+        width: this.atlasWidth,
+        usedWidth: paddedWidth
+      };
+      this.shelves.push(shelf);
+      this.usedHeight += paddedHeight;
+      return {
+        x: this.padding,
+        y: shelf.y + this.padding
+      };
+    }
+    return null;
+  }
+  updateGLTexture() {
+    if (!this.atlasTexture || !this.atlasCanvas) return;
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.atlasTexture);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL ?? 32867, 0);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      this.atlasCanvas
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if (this.isPowerOfTwo(this.atlasWidth) && this.isPowerOfTwo(this.atlasHeight)) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    }
+    this.isDirty = false;
+  }
+  findPowerOfTwo(size) {
+    let result = 1;
+    while (result < size) {
+      result *= 2;
+    }
+    return Math.min(result, 4096);
+  }
+  isPowerOfTwo(value) {
+    return value > 0 && (value & value - 1) === 0;
+  }
+};
+var AtlasManager = class {
+  gl;
+  atlases = /* @__PURE__ */ new Map();
+  defaultOptions;
+  constructor(gl, options = {}) {
+    this.gl = gl;
+    this.defaultOptions = {
+      maxAtlasSize: 1024,
+      padding: 1,
+      powerOfTwo: true,
+      allowRotation: false,
+      ...options
+    };
+  }
+  /**
+   * Get or create an atlas with the given name
+   */
+  getAtlas(name) {
+    if (!this.atlases.has(name)) {
+      this.atlases.set(name, new TextureAtlas(this.gl, this.defaultOptions));
+    }
+    return this.atlases.get(name);
+  }
+  /**
+   * Add an entry to a specific atlas
+   */
+  addToAtlas(atlasName, key, source, width, height) {
+    const atlas = this.getAtlas(atlasName);
+    return atlas.addEntry(key, source, width, height);
+  }
+  /**
+   * Find which atlas contains a given key
+   */
+  findEntry(key) {
+    for (const atlas of this.atlases.values()) {
+      const entry = atlas.getEntry(key);
+      if (entry) {
+        return { atlas, entry };
+      }
+    }
+    return null;
+  }
+  /**
+   * Get combined statistics for all atlases
+   */
+  getGlobalStats() {
+    const stats = Array.from(this.atlases.values()).map((atlas) => atlas.getStats());
+    return {
+      atlasCount: this.atlases.size,
+      totalEntries: stats.reduce((sum, stat) => sum + stat.entryCount, 0),
+      averageUtilization: stats.length > 0 ? stats.reduce((sum, stat) => sum + stat.utilization, 0) / stats.length : 0
+    };
+  }
+  /**
+   * Dispose all atlases
+   */
+  dispose() {
+    for (const atlas of this.atlases.values()) {
+      atlas.dispose();
+    }
+    this.atlases.clear();
+  }
+};
+
+// src/webglrenderer.ts
 var WebGLRenderer = class {
   canvas;
   gl = null;
@@ -6823,6 +7751,10 @@ var WebGLRenderer = class {
   // Optional FBO resources for render-to-texture
   fbo = null;
   fboTex = null;
+  // Phase 2: Instanced rendering and atlas support
+  instancedRenderer = null;
+  atlasManager = null;
+  instancedRenderingEnabled = false;
   constructor(canvas) {
     this.canvas = canvas;
   }
@@ -6833,6 +7765,7 @@ var WebGLRenderer = class {
       if (!gl) return false;
       this.gl = gl;
       gl.clearColor(0.02, 0.03, 0.06, 1);
+      this.initializeInstancedRendering();
       this._starfield = this._starfield || null;
       this._starfieldSize = this._starfieldSize || 1024;
       return true;
@@ -6947,8 +7880,7 @@ var WebGLRenderer = class {
           gl.UNSIGNED_BYTE,
           cvs
         );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        this.setupTextureFiltering(gl, size, size);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
         this._starfield = tex;
@@ -7084,6 +8016,238 @@ var WebGLRenderer = class {
   hasCachedTexture(key) {
     return !!this.shapeTextures[key];
   }
+  /**
+   * Setup enhanced texture filtering with mipmapping support
+   */
+  setupTextureFiltering(gl, width, height) {
+    const isPOT = this.isPowerOfTwo(width) && this.isPowerOfTwo(height);
+    if (isPOT) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      this.tryEnableAnisotropicFiltering(gl);
+    } else {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+  /**
+   * Check if a number is a power of two
+   */
+  isPowerOfTwo(value) {
+    return value > 0 && (value & value - 1) === 0;
+  }
+  /**
+   * Try to enable anisotropic filtering for better quality
+   */
+  tryEnableAnisotropicFiltering(gl) {
+    try {
+      const ext = gl.getExtension("EXT_texture_filter_anisotropic");
+      if (ext) {
+        const maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+        const anisotropy = Math.min(4, maxAnisotropy);
+        gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+      }
+    } catch (error) {
+    }
+  }
+  /**
+   * Upload ImageBitmap to WebGL texture with enhanced filtering
+   */
+  uploadImageBitmapToTexture(bitmap, texture) {
+    if (!this.gl) return null;
+    const gl = this.gl;
+    const tex = texture || gl.createTexture();
+    if (!tex) return null;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL ?? 32867, 0);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+    this.setupTextureFiltering(gl, bitmap.width, bitmap.height);
+    return tex;
+  }
+  // Phase 2: Initialize instanced rendering and atlas systems
+  initializeInstancedRendering() {
+    if (!this.gl) return;
+    try {
+      this.instancedRenderer = new InstancedRenderer(this.gl);
+      if (this.instancedRenderer.init()) {
+        this.instancedRenderingEnabled = true;
+      } else {
+        console.warn("Failed to initialize instanced renderer, falling back to individual draws");
+        this.instancedRenderer = null;
+      }
+      this.atlasManager = new AtlasManager(this.gl, {
+        maxAtlasSize: 1024,
+        padding: 1,
+        powerOfTwo: true
+      });
+    } catch (error) {
+      console.warn("Failed to initialize instanced rendering:", error);
+      this.instancedRenderingEnabled = false;
+    }
+  }
+  /**
+   * Render sprites using instanced rendering when possible
+   */
+  renderInstancedSprites(sprites) {
+    if (!this.instancedRenderingEnabled || !this.instancedRenderer || !this.atlasManager) {
+      this.renderSpritesTraditional(sprites);
+      return;
+    }
+    const batches = /* @__PURE__ */ new Map();
+    for (const sprite of sprites) {
+      const entry = this.ensureSpriteInAtlas(sprite.assetKey);
+      if (!entry) continue;
+      const atlas = this.atlasManager.getAtlas("main");
+      const texture = atlas.getTexture();
+      if (!texture) continue;
+      const instanceData = {
+        x: sprite.x,
+        y: sprite.y,
+        rotation: sprite.rotation || 0,
+        scaleX: sprite.scaleX || 1,
+        scaleY: sprite.scaleY || 1,
+        uvX: entry.uvX,
+        uvY: entry.uvY,
+        uvWidth: entry.uvWidth,
+        uvHeight: entry.uvHeight,
+        tintR: sprite.tintR || 1,
+        tintG: sprite.tintG || 1,
+        tintB: sprite.tintB || 1,
+        alpha: sprite.alpha || 1
+      };
+      if (!batches.has(texture)) {
+        batches.set(texture, []);
+      }
+      batches.get(texture).push(instanceData);
+    }
+    const projectionMatrix = this.createProjectionMatrix();
+    for (const [texture, instances] of batches) {
+      const batch = {
+        texture,
+        instances,
+        blendMode: "normal"
+      };
+      this.instancedRenderer.renderBatch(batch, projectionMatrix);
+    }
+  }
+  /**
+   * Ensure a sprite is available in the atlas
+   */
+  ensureSpriteInAtlas(assetKey) {
+    if (!this.atlasManager) return null;
+    const atlas = this.atlasManager.getAtlas("main");
+    let entry = atlas.getEntry(assetKey);
+    if (!entry) {
+      const canvas = this.rasterizeAsset(assetKey);
+      if (canvas) {
+        entry = atlas.addEntry(assetKey, canvas);
+      }
+    }
+    return entry;
+  }
+  /**
+   * Rasterize an asset to canvas for atlas packing
+   */
+  rasterizeAsset(assetKey) {
+    const shapes = AssetsConfig.shapes2d || {};
+    const shape = shapes[assetKey];
+    const size = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, size, size);
+    ctx.save();
+    ctx.translate(size / 2, size / 2);
+    const scale = size / 4;
+    ctx.fillStyle = AssetsConfig.palette && AssetsConfig.palette.shipHull || "#b0b7c3";
+    if (!shape) {
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(4, size * 0.12), 0, Math.PI * 2);
+      ctx.fill();
+    } else if (shape.type === "circle") {
+      const r = (shape.r ?? 0.5) * scale;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (shape.type === "polygon") {
+      const pts = shape.points || [];
+      if (pts.length) {
+        ctx.beginPath();
+        ctx.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+        for (let i = 1; i < pts.length; i++)
+          ctx.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (shape.type === "compound") {
+      const parts = shape.parts || [];
+      for (const part of parts) {
+        if (part.type === "circle") {
+          const r = (part.r ?? 0.5) * scale;
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (part.type === "polygon") {
+          const pts = part.points || [];
+          if (pts.length) {
+            ctx.beginPath();
+            ctx.moveTo((pts[0][0] || 0) * scale, (pts[0][1] || 0) * scale);
+            for (let i = 1; i < pts.length; i++)
+              ctx.lineTo((pts[i][0] || 0) * scale, (pts[i][1] || 0) * scale);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+    }
+    ctx.restore();
+    return canvas;
+  }
+  /**
+   * Create projection matrix for current viewport
+   */
+  createProjectionMatrix() {
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const matrix = new Float32Array(16);
+    matrix[0] = 2 / width;
+    matrix[1] = 0;
+    matrix[2] = 0;
+    matrix[3] = 0;
+    matrix[4] = 0;
+    matrix[5] = -2 / height;
+    matrix[6] = 0;
+    matrix[7] = 0;
+    matrix[8] = 0;
+    matrix[9] = 0;
+    matrix[10] = 1;
+    matrix[11] = 0;
+    matrix[12] = -1;
+    matrix[13] = 1;
+    matrix[14] = 0;
+    matrix[15] = 1;
+    return matrix;
+  }
+  /**
+   * Fallback rendering for sprites when instanced rendering is not available
+   */
+  renderSpritesTraditional(sprites) {
+    console.log(`Rendering ${sprites.length} sprites using traditional method`);
+  }
+  /**
+   * Get instanced rendering statistics
+   */
+  getInstancedRenderingStats() {
+    return {
+      enabled: this.instancedRenderingEnabled,
+      atlasStats: this.atlasManager?.getGlobalStats()
+    };
+  }
   // Dispose all GL resources and clear caches
   dispose() {
     if (this.gl) {
@@ -7134,6 +8298,20 @@ var WebGLRenderer = class {
             this.gl.deleteTexture(
               this._starfield
             );
+        } catch {
+        }
+        try {
+          if (this.instancedRenderer) {
+            this.instancedRenderer.dispose();
+            this.instancedRenderer = null;
+          }
+        } catch {
+        }
+        try {
+          if (this.atlasManager) {
+            this.atlasManager.dispose();
+            this.atlasManager = null;
+          }
         } catch {
         }
       } catch {
@@ -7220,10 +8398,7 @@ var WebGLRenderer = class {
           gl.UNSIGNED_BYTE,
           cvs
         );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        this.setupTextureFiltering(gl, cvs.width, cvs.height);
         return t;
       };
       let tex = null;
@@ -7422,7 +8597,8 @@ async function startApp(rootDocument = document) {
       try {
         const assetsConfig = assetsConfig_default || globalThis.AssetsConfig || {};
         const svgAssets = assetsConfig.svgAssets || {};
-        const keys = Object.keys(svgAssets).slice(0, 8);
+        const allKeys = Object.keys(svgAssets);
+        const keys = ["fighter", ...allKeys.filter((k) => k !== "fighter")].slice(0, 8);
         const teams = globalThis.TeamsConfig && globalThis.TeamsConfig.teams ? globalThis.TeamsConfig.teams : {};
         const teamColors = [];
         for (const tName of Object.keys(teams)) {
@@ -7436,15 +8612,22 @@ async function startApp(rootDocument = document) {
         }
         try {
           const g = globalThis.__SpaceAutoBattler_svgRenderer;
+          const shouldAwait = typeof globalThis.__AWAIT_SVG_PREWARM !== "undefined" ? !!globalThis.__AWAIT_SVG_PREWARM : false;
           if (g && typeof g.prewarmAssets === "function") {
             try {
-              g.prewarmAssets(keys, teamColors, 128, 128).catch(() => {
-              });
+              const res = g.prewarmAssets(keys, teamColors, 128, 128);
+              if (shouldAwait && res && typeof res.then === "function") {
+                await res.catch(() => {
+                });
+              }
             } catch (e) {
             }
           } else {
-            svgRenderer_default.prewarmAssets(keys, teamColors).catch(() => {
-            });
+            const res = svgRenderer_default.prewarmAssets(keys, teamColors);
+            if (shouldAwait && res && typeof res.then === "function") {
+              await res.catch(() => {
+              });
+            }
           }
         } catch (e) {
           try {

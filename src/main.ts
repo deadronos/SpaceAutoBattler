@@ -219,8 +219,9 @@ export async function startApp(rootDocument: Document = document) {
       try {
   const assetsConfig = AssetsConfig || (globalThis as any).AssetsConfig || {};
   const svgAssets = assetsConfig.svgAssets || {};
-        // Pick a small set of commonly used ship types (fallback to keys)
-        const keys = Object.keys(svgAssets).slice(0, 8);
+        // Pick a small set of commonly used ship types (prioritize fighter)
+        const allKeys = Object.keys(svgAssets);
+        const keys = ['fighter', ...allKeys.filter(k => k !== 'fighter')].slice(0, 8);
         // Gather declared team colors
         const teams = (globalThis as any).TeamsConfig && (globalThis as any).TeamsConfig.teams ? (globalThis as any).TeamsConfig.teams : {};
         const teamColors: string[] = [];
@@ -238,12 +239,20 @@ export async function startApp(rootDocument: Document = document) {
         // that svgLoader.getCachedHullCanvasSync will consult.
         try {
           const g = (globalThis as any).__SpaceAutoBattler_svgRenderer;
+          const shouldAwait = typeof (globalThis as any).__AWAIT_SVG_PREWARM !== 'undefined' ? !!(globalThis as any).__AWAIT_SVG_PREWARM : false;
           if (g && typeof g.prewarmAssets === 'function') {
             try {
-              g.prewarmAssets(keys, teamColors, 128, 128).catch(() => {});
+              const res = g.prewarmAssets(keys, teamColors, 128, 128);
+              if (shouldAwait && res && typeof res.then === 'function') {
+                // allow callers/tests to opt into waiting for rasterization
+                await res.catch(() => {});
+              }
             } catch (e) {}
           } else {
-            svgRenderer.prewarmAssets(keys, teamColors).catch(() => {});
+            const res = svgRenderer.prewarmAssets(keys, teamColors);
+            if (shouldAwait && res && typeof res.then === 'function') {
+              await res.catch(() => {});
+            }
           }
         } catch (e) {
           try { svgRenderer.prewarmAssets(keys, teamColors).catch(() => {}); } catch (ee) {}

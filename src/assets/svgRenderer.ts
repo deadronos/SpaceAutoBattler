@@ -16,37 +16,44 @@ function djb2Hash(str: string): string {
   return (h >>> 0).toString(16);
 }
 
-// Cache of in-flight and completed rasterizations. Keyed by computed cacheKey.
-// Each entry stores metadata so we can expose a synchronous getter and TTL info.
+// --- Raster cache infrastructure (was accidentally removed in a previous edit) ---
 type CacheEntry = {
   promise: Promise<HTMLCanvasElement> | null;
   canvas?: HTMLCanvasElement;
   createdAt: number;
   lastAccess: number;
 };
+
+// Map key -> CacheEntry. Map preserves insertion order so we can evict LRU
 const rasterCache: Map<string, CacheEntry> = new Map();
+
+// Configurable limits (tests may tweak these)
 let rasterCacheMaxEntries = 256;
-let rasterCacheMaxAgeMS = 0; // 0 means disabled
+let rasterCacheMaxAgeMS = 0; // 0 disables TTL
 
 function ensureCacheLimit() {
   try {
-    const now = Date.now();
-    // Evict by TTL first
     if (rasterCacheMaxAgeMS > 0) {
-      for (const [k, v] of Array.from(rasterCache.entries())) {
-        if (now - v.lastAccess > rasterCacheMaxAgeMS || now - v.createdAt > rasterCacheMaxAgeMS) {
-          rasterCache.delete(k);
-        }
+      const now = Date.now();
+      for (const [k, e] of Array.from(rasterCache.entries())) {
+        try {
+          if (now - e.lastAccess > rasterCacheMaxAgeMS || now - e.createdAt > rasterCacheMaxAgeMS) {
+            rasterCache.delete(k);
+          }
+        } catch (ee) {}
       }
     }
-    // Then evict oldest entries until under limit
     while (rasterCache.size > rasterCacheMaxEntries) {
-      const it = rasterCache.keys().next();
-      if (it.done) break;
-      rasterCache.delete(it.value);
+      const it = rasterCache.keys();
+      const oldest = it.next().value as string | undefined;
+      if (!oldest) break;
+      rasterCache.delete(oldest);
     }
-  } catch (e) {}
+  } catch (e) {
+    // swallow; cache is best-effort
+  }
 }
+
 
 /**
  * Rasterize an SVG with team colors applied.
@@ -105,6 +112,11 @@ export async function rasterizeSvgWithTeamColors(svgText: string, mapping: Recor
       try {
         if (!/<svg[\s>]/i.test(sourceSvg) && typeof fetch === 'function') {
           try {
+            try {
+              if (typeof sourceSvg === 'string' && !sourceSvg.includes('/') && !sourceSvg.includes('.') && typeof console !== 'undefined' && console.warn) {
+                console.warn('[svgRenderer] fetch called with bare source string:', sourceSvg);
+              }
+            } catch (e) {}
             const resp = await fetch(sourceSvg);
             if (resp && resp.ok) {
               const txt = await resp.text();
@@ -287,23 +299,66 @@ const svgRendererAPI = {
     return getCanvasFromCache(assetKey, mapping, outW, outH);
   },
   /**
+   * Test helper: wait for an asset (assetKey + mapping + size) to be rasterized
+   * and present in the cache as a non-placeholder canvas. Resolves to the
+   * canvas or undefined on timeout.
+   */
+  async _waitForAssetReady(assetKey: string, mapping: Record<string, string>, outW: number, outH: number, timeoutMs = 5000): Promise<HTMLCanvasElement | undefined> {
+    const start = Date.now();
+    const interval = 50;
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const c = getCanvasFromCache(assetKey, mapping, outW, outH);
+        if (c && !(c as any)._placeholder) return c;
+      } catch (e) {}
+      await new Promise((res) => setTimeout(res, interval));
+    }
+    return undefined;
+  },
+  /**
    * Pre-warm a small set of assets into the raster cache. assetKeys are keys
    * from AssetsConfig.svgAssets (or direct SVG/URL strings). teamColors is an
    * array of color hex strings to generate tinted variants for. This helper
    * kicks off async rasterization and awaits completion so subsequent
    * synchronous getCanvas calls can find entries.
    */
-  async prewarmAssets(assetKeys: string[], teamColors: string[] = [], outW = 128, outH = 128) {
+  async prewarmAssets(assetKeys: string[], teamColors: string[] = [], outW = 128, outH = 128, insertPlaceholders = false) {
     try {
-      // Attempt to resolve AssetsConfig from globalThis if available
-      const assetsConfig = (typeof globalThis !== 'undefined' && (globalThis as any).AssetsConfig) ? (globalThis as any).AssetsConfig : undefined;
+      // Attempt to resolve AssetsConfig from globalThis if available; if not, try a dynamic import as a fallback
+      let assetsConfig: any = (typeof globalThis !== 'undefined' && (globalThis as any).AssetsConfig) ? (globalThis as any).AssetsConfig : undefined;
+      if (!assetsConfig) {
+        try {
+          // dynamic import to avoid circular static imports at module eval time
+          const mod = await import('../config/assets/assetsConfig');
+          assetsConfig = mod && mod.default ? mod.default : mod;
+        } catch (e) {
+          assetsConfig = undefined;
+        }
+      }
+
+      const promises: Promise<any>[] = [];
       for (const key of assetKeys) {
+        try {
+          // Resolve declared rel or fall back to the provided key
+          let rel: string | undefined = undefined;
           try {
-            const rel = assetsConfig && assetsConfig.svgAssets && assetsConfig.svgAssets[key] ? assetsConfig.svgAssets[key] : key;
-            // Insert a placeholder canvas synchronously so getCanvasFromCache can
-            // return a usable element immediately. Mark it as a placeholder so
-            // callers can detect and ignore it when they need a real raster.
-            try {
+            rel = assetsConfig && assetsConfig.svgAssets && assetsConfig.svgAssets[key] ? assetsConfig.svgAssets[key] : undefined;
+          } catch (e) {
+            rel = undefined;
+          }
+          if (!rel) rel = key;
+          // Normalize bare keys (e.g. 'destroyer') to a relative svg path when possible
+          try {
+            if (typeof rel === 'string' && !rel.startsWith('<svg') && !rel.includes('/') && !rel.includes('.')) {
+              rel = `./svg/${rel}.svg`;
+            }
+          } catch (e) {}
+
+          // Optionally insert a placeholder canvas synchronously so getCanvasFromCache
+          // can return a usable element immediately. Tests can disable placeholder
+          // insertion by calling prewarmAssets(..., insertPlaceholders=false).
+          try {
+            if (insertPlaceholders) {
               const ph = ((): HTMLCanvasElement => {
                 try {
                   const c = document.createElement('canvas');
@@ -317,41 +372,45 @@ const svgRendererAPI = {
                 }
               })();
               try { cacheCanvasForAsset(key, {}, outW, outH, ph); } catch (e) {}
-            } catch (e) {}
-            // Kick off async rasterization to populate/replace the cache
-            (async () => {
-              try {
-                // If rel is an inline SVG string, strip turret/artwork first so
-                // the cached hull canvas contains only the hull elements.
-                let sourceForRaster: string | undefined = undefined;
-                try {
-                  if (typeof rel === 'string' && rel.trim().startsWith('<svg')) {
-                    sourceForRaster = stripHullOnly(rel as string);
-                  } else if (typeof fetch === 'function' && typeof rel === 'string') {
-                    // Try fetching the URL and strip it if possible
-                    try {
-                      const resp = await fetch(rel as string);
-                      if (resp && resp.ok) {
-                        const txt = await resp.text();
-                        if (txt && /<svg[\s>]/i.test(txt)) {
-                          sourceForRaster = stripHullOnly(txt);
-                        }
-                      }
-                    } catch (e) {
-                      // ignore fetch errors and fall back to passing original rel
-                    }
-                  }
-                } catch (e) {}
-                const toRaster = sourceForRaster || rel;
-                const canvas = await rasterizeSvgWithTeamColors(toRaster as string, {}, outW, outH, { applyTo: 'both', assetKey: key });
-                try { cacheCanvasForAsset(key, {}, outW, outH, canvas); } catch (e) {}
-              } catch (e) {}
-            })();
-          // Rasterize tinted variants for provided team colors (placeholder then async)
-              for (const col of teamColors || []) {
+            }
+          } catch (e) {}
+
+          // Kick off async rasterization to populate/replace the cache and collect promises
+          const p = (async () => {
             try {
-                const mapping = { primary: col, hull: col } as Record<string, string>;
-                try {
+              // If rel is an inline SVG string, strip turret/artwork first so
+              // the cached hull canvas contains only the hull elements.
+              let sourceForRaster: string | undefined = undefined;
+              try {
+                if (typeof rel === 'string' && rel.trim().startsWith('<svg')) {
+                  sourceForRaster = stripHullOnly(rel as string);
+                } else if (typeof fetch === 'function' && typeof rel === 'string') {
+                  try {
+                    const resp = await fetch(rel as string);
+                        if (resp && resp.ok) {
+                          const txt = await resp.text();
+                          if (txt && /<svg[\s>]/i.test(txt)) {
+                            sourceForRaster = stripHullOnly(txt);
+                          }
+                        }
+                  } catch (e) {
+                    // ignore fetch errors and fall back to passing original rel
+                  }
+                }
+              } catch (e) {}
+              const toRaster = sourceForRaster || rel;
+              const canvas = await rasterizeSvgWithTeamColors(toRaster as string, {}, outW, outH, { applyTo: 'both', assetKey: key });
+              try { cacheCanvasForAsset(key, {}, outW, outH, canvas); } catch (e) {}
+            } catch (e) {}
+          })();
+          promises.push(p);
+
+          // Rasterize tinted variants for provided team colors (placeholder then async)
+          for (const col of teamColors || []) {
+            try {
+              const mapping = { primary: col, hull: col } as Record<string, string>;
+              try {
+                if (insertPlaceholders) {
                   const ph2 = ((): HTMLCanvasElement => {
                     try {
                       const c = document.createElement('canvas');
@@ -365,35 +424,46 @@ const svgRendererAPI = {
                     }
                   })();
                   try { cacheCanvasForAsset(key, mapping, outW, outH, ph2); } catch (e) {}
-                } catch (e) {}
-                (async () => {
+                }
+              } catch (e) {}
+              const pt = (async () => {
+                try {
+                  // For tinted variants, prefer stripping hull first when possible
+                  let sourceForTint: string | undefined = undefined;
                   try {
-                    // For tinted variants, prefer stripping hull first when possible
-                    let sourceForTint: string | undefined = undefined;
-                    try {
-                      if (typeof rel === 'string' && rel.trim().startsWith('<svg')) {
-                        sourceForTint = stripHullOnly(rel as string);
-                      } else if (typeof fetch === 'function' && typeof rel === 'string') {
+                    if (typeof rel === 'string' && rel.trim().startsWith('<svg')) {
+                      sourceForTint = stripHullOnly(rel as string);
+                    } else if (typeof fetch === 'function' && typeof rel === 'string') {
+                      try {
                         try {
-                          const resp = await fetch(rel as string);
-                          if (resp && resp.ok) {
-                            const txt = await resp.text();
-                            if (txt && /<svg[\s>]/i.test(txt)) {
-                              sourceForTint = stripHullOnly(txt);
-                            }
+                          if (typeof rel === 'string' && !rel.includes('/') && !rel.includes('.') && typeof console !== 'undefined' && console.warn) {
+                            console.warn('[svgRenderer] prewarm tinted fetch using bare rel:', rel);
                           }
                         } catch (e) {}
-                      }
-                    } catch (e) {}
-                    const toRasterTint = sourceForTint || rel;
-                    const canvas = await rasterizeSvgWithTeamColors(toRasterTint as string, mapping, outW, outH, { applyTo: 'both', assetKey: key });
-                    try { cacheCanvasForAsset(key, mapping, outW, outH, canvas); } catch (e) {}
+                        const resp = await fetch(rel as string);
+                        if (resp && resp.ok) {
+                          const txt = await resp.text();
+                          if (txt && /<svg[\s>]/i.test(txt)) {
+                            sourceForTint = stripHullOnly(txt);
+                          }
+                        }
+                      } catch (e) {}
+                    }
                   } catch (e) {}
-                })();
+                  const toRasterTint = sourceForTint || rel;
+                  const canvas = await rasterizeSvgWithTeamColors(toRasterTint as string, mapping, outW, outH, { applyTo: 'both', assetKey: key });
+                  try { cacheCanvasForAsset(key, mapping, outW, outH, canvas); } catch (e) {}
+                } catch (e) {}
+              })();
+              promises.push(pt);
             } catch (e) {}
           }
         } catch (e) {}
       }
+      // Await all rasterization tasks to allow callers to deterministically wait for cache population
+      try {
+        await Promise.all(promises);
+      } catch (e) {}
     } catch (e) {}
   }
 };

@@ -335,7 +335,7 @@ export function rasterizeSvgToCanvas(
   }
 }
 
-function stripHullOnly(svgText: string) {
+export function stripHullOnly(svgText: string) {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, "image/svg+xml");
@@ -407,52 +407,31 @@ export function getCachedHullCanvasSync(
   assetKey?: string,
 ): HTMLCanvasElement | undefined {
   try {
-    // Prefer require (synchronous) so this function stays sync and Vitest mocks are visible
-    // Try multiple candidate module specifiers to match how tests may mock the module
+    // Prefer singleton helper for cross-bundle consistent resolution
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    let svgRenderer: any = undefined;
-    const candidates = [
-      "./svgRenderer",
-      "../assets/svgRenderer",
-      "../../src/assets/svgRenderer",
-      "src/assets/svgRenderer",
-    ];
-    for (const cpath of candidates) {
-      try {
-        svgRenderer = (
-          typeof require === "function"
-            ? (function () {
-                try {
-                  return require(cpath);
-                } catch (e) {
-                  return undefined;
-                }
-              })()
-            : undefined
-        ) as any;
-        if (svgRenderer) break;
-      } catch (e) {
-        svgRenderer = svgRenderer || undefined;
+    let singleton: any = undefined;
+    try {
+      const helper = require("./svgRendererSingleton");
+      if (helper && typeof helper.getSvgRendererSync === "function") {
+        singleton = helper.getSvgRendererSync();
       }
+    } catch (e) {
+      // ignore
     }
-    const getCanvasFn =
-      (svgRenderer && svgRenderer.getCanvas) ||
-      (svgRenderer && svgRenderer.default && svgRenderer.default.getCanvas);
+    let getCanvasFn: any = undefined;
+    if (singleton) {
+      getCanvasFn = singleton.getCanvas || (singleton.default && singleton.default.getCanvas);
+    }
     // If require-based resolution failed to find a shared svgRenderer instance,
     // try the global shared helper exposed by src/assets/svgRenderer.ts so that
     // different module instances (bundled vs. runtime) can share the same cache.
+    // Fallback: use global bridge directly if singleton didn't resolve
     try {
       if (!getCanvasFn && typeof globalThis !== 'undefined') {
         const g = (globalThis as any).__SpaceAutoBattler_svgRenderer;
         if (g && typeof g.getCanvas === 'function') {
           try {
             const c = g.getCanvas(assetKey || '', {}, outW, outH);
-            try {
-              if (c && typeof (globalThis as any).window !== 'undefined' && (globalThis as any).window.__SAB_DEBUG_SVG) {
-                // eslint-disable-next-line no-console
-                console.debug('[svgLoader] global bridge provided canvas', { assetKey, outW, outH });
-              }
-            } catch (e) {}
             if (c) return c as HTMLCanvasElement;
           } catch (e) {}
         }
@@ -479,6 +458,25 @@ export function getCachedHullCanvasSync(
     const ph = document.createElement("canvas");
     ph.width = outW;
     ph.height = outH;
+    try {
+      const pctx = ph.getContext('2d');
+      if (pctx) {
+        pctx.fillStyle = "#fff";
+        pctx.fillRect(0, 0, ph.width, ph.height);
+      }
+    } catch (e) {}
+    try {
+      // mark placeholder so callers can detect and skip drawing it
+      (ph as any)._placeholder = true;
+    } catch (e) {}
+    try {
+      // Emit a lightweight console message to aid debug during headed Playwright runs
+      // (gated by presence of console). This helps identify when synchronous
+      // fallback rasterization returns a placeholder canvas.
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[svgLoader] getCachedHullCanvasSync returning placeholder canvas', { outW, outH, assetKey });
+      }
+    } catch (e) {}
     return ph;
   } catch (e) {
     return undefined;

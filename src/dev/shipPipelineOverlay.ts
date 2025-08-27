@@ -3,8 +3,6 @@ import { AssetsConfig, getSpriteAsset } from "../config/assets/assetsConfig";
 function detectPipeline(type: string) {
   const sprite = getSpriteAsset(type);
   if (sprite.svg) return { pipeline: "svg", source: sprite.svg };
-  if (sprite.model3d && sprite.model3d.url)
-    return { pipeline: "mesh3d", source: sprite.model3d.url };
   if (sprite.shape) return { pipeline: "shape2d", source: "shapes2d" };
   return { pipeline: "unknown", source: "-" };
 }

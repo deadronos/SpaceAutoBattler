@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-32 -32 64 64">
+  <!-- Simple top-down fighter hull: central body + wings + cockpit accent -->
+  <g id="hull" fill="#b0b7c3" stroke="#6c7380" stroke-width="1">
+    <polygon points="20,0  -10,12 -6,0 -10,-12" />
+    <polygon points="0,10 -8,18 -12,12" />
+    <polygon points="0,-10 -12,-12 -8,-18" />
+    <circle cx="-4" cy="0" r="6" fill="#6c7380" />
+  </g>
+  <!-- Accent details that can be tinted by rasterizer -->
+  <g id="accent" fill="#94a3b8">
+    <rect x="12" y="-3" width="6" height="6" rx="1" />
+  </g>
+</svg>
