@@ -4,6 +4,15 @@ export type Team = 'red' | 'blue';
 
 export type ShipClass = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carrier';
 
+export type BoundaryBehavior = 'bounce' | 'wrap' | 'remove';
+
+export interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+// Keep Vector2 for backward compatibility and 2D operations
 export interface Vector2 {
   x: number;
   y: number;
@@ -40,14 +49,15 @@ export interface ShipClassConfig {
 export interface SimBounds {
   width: number;
   height: number;
+  depth: number;
 }
 
 export interface Bullet {
   id: EntityId;
   ownerShipId: EntityId;
   ownerTeam: Team;
-  pos: Vector2;
-  vel: Vector2;
+  pos: Vector3;
+  vel: Vector3;
   ttl: number; // seconds
   damage: number;
 }
@@ -67,9 +77,9 @@ export interface Ship {
   id: EntityId;
   team: Team;
   class: ShipClass;
-  pos: Vector2;
-  vel: Vector2;
-  dir: number; // radians
+  pos: Vector3;
+  vel: Vector3;
+  dir: number; // radians (rotation around Y axis)
   targetId: EntityId | null;
   health: number;
   maxHealth: number;
@@ -85,6 +95,7 @@ export interface Ship {
   spawnedFighters?: number; // for carriers
   fighterSpawnCdLeft?: number; // seconds
   parentCarrierId?: EntityId; // for fighters spawned by carriers
+  lastShieldHitTime?: number; // timestamp when shield was last hit
 }
 
 export interface ScoreBoard {
@@ -97,13 +108,10 @@ export interface RendererHandles {
   resize: () => void;
   render: (dt: number) => void;
   dispose: () => void;
-}
-
-export interface Config {
-  simBounds: SimBounds;
-  classes: Record<ShipClass, ShipClassConfig>;
-  tickRate: number; // ticks per second
-  maxEntities: number;
+  // Camera controls
+  cameraRotation: Vector3; // x: pitch, y: yaw, z: roll
+  cameraDistance: number;
+  cameraTarget: Vector3;
 }
 
 export interface GameState {
@@ -113,7 +121,20 @@ export interface GameState {
   speedMultiplier: number; // 0.5x/1x/2x/4x
   rng: RNG;
   nextId: number;
-  config: Config;
+  simConfig: {
+    simBounds: SimBounds;
+    tickRate: number;
+    maxEntities: number;
+    bulletLifetime: number;
+    maxSimulationSteps: number;
+    targetUpdateRate: number;
+    boundaryBehavior: {
+      ships: BoundaryBehavior;
+      bullets: BoundaryBehavior;
+    };
+    seed: string;
+    useTimeBasedSeed: boolean;
+  };
   ships: Ship[];
   bullets: Bullet[];
   score: ScoreBoard;

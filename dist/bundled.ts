@@ -1,5 +1,68 @@
 // src/config/simConfig.ts
-var classes = {
+var DefaultSimConfig = {
+  simBounds: { width: 1920, height: 1920, depth: 1920 },
+  tickRate: 60,
+  maxEntities: 5e3,
+  bulletLifetime: 3,
+  // bullets live for 3 seconds
+  maxSimulationSteps: 5,
+  // max steps per frame to prevent spiral of death
+  targetUpdateRate: 0.5,
+  // AI updates targets every 0.5 seconds
+  boundaryBehavior: {
+    ships: "bounce",
+    // ships bounce off boundaries
+    bullets: "remove"
+    // bullets are removed when hitting boundaries
+  },
+  seed: "SPACE-001",
+  useTimeBasedSeed: false
+};
+
+// src/config/entitiesConfig.ts
+var TURRET_CONFIGS = {
+  // Basic cannon for fighters
+  "fighter-cannon": {
+    id: "fighter-cannon",
+    cooldown: 0.6,
+    bulletSpeed: 400,
+    damage: 6,
+    range: 300
+  },
+  // Corvette dual cannons
+  "corvette-cannon": {
+    id: "corvette-cannon",
+    cooldown: 0.7,
+    bulletSpeed: 380,
+    damage: 9,
+    range: 340
+  },
+  // Frigate triple cannons
+  "frigate-cannon": {
+    id: "frigate-cannon",
+    cooldown: 0.8,
+    bulletSpeed: 360,
+    damage: 14,
+    range: 380
+  },
+  // Destroyer quad cannons
+  "destroyer-cannon": {
+    id: "destroyer-cannon",
+    cooldown: 1,
+    bulletSpeed: 340,
+    damage: 24,
+    range: 420
+  },
+  // Carrier dual cannons
+  "carrier-cannon": {
+    id: "carrier-cannon",
+    cooldown: 1.2,
+    bulletSpeed: 320,
+    damage: 18,
+    range: 420
+  }
+};
+var SHIP_CLASS_CONFIGS = {
   fighter: {
     class: "fighter",
     baseHealth: 80,
@@ -8,9 +71,7 @@ var classes = {
     shieldRegen: 5,
     speed: 140,
     turnRate: Math.PI,
-    turrets: [
-      { id: "cannon", cooldown: 0.6, bulletSpeed: 400, damage: 6, range: 300 }
-    ]
+    turrets: [TURRET_CONFIGS["fighter-cannon"]]
   },
   corvette: {
     class: "corvette",
@@ -21,8 +82,8 @@ var classes = {
     speed: 110,
     turnRate: Math.PI * 0.7,
     turrets: [
-      { id: "cannon", cooldown: 0.7, bulletSpeed: 380, damage: 9, range: 340 },
-      { id: "cannon", cooldown: 0.7, bulletSpeed: 380, damage: 9, range: 340 }
+      TURRET_CONFIGS["corvette-cannon"],
+      TURRET_CONFIGS["corvette-cannon"]
     ]
   },
   frigate: {
@@ -34,9 +95,9 @@ var classes = {
     speed: 85,
     turnRate: Math.PI * 0.5,
     turrets: [
-      { id: "cannon", cooldown: 0.8, bulletSpeed: 360, damage: 14, range: 380 },
-      { id: "cannon", cooldown: 0.8, bulletSpeed: 360, damage: 14, range: 380 },
-      { id: "cannon", cooldown: 0.8, bulletSpeed: 360, damage: 14, range: 380 }
+      TURRET_CONFIGS["frigate-cannon"],
+      TURRET_CONFIGS["frigate-cannon"],
+      TURRET_CONFIGS["frigate-cannon"]
     ]
   },
   destroyer: {
@@ -48,10 +109,10 @@ var classes = {
     speed: 65,
     turnRate: Math.PI * 0.35,
     turrets: [
-      { id: "cannon", cooldown: 1, bulletSpeed: 340, damage: 24, range: 420 },
-      { id: "cannon", cooldown: 1, bulletSpeed: 340, damage: 24, range: 420 },
-      { id: "cannon", cooldown: 1, bulletSpeed: 340, damage: 24, range: 420 },
-      { id: "cannon", cooldown: 1, bulletSpeed: 340, damage: 24, range: 420 }
+      TURRET_CONFIGS["destroyer-cannon"],
+      TURRET_CONFIGS["destroyer-cannon"],
+      TURRET_CONFIGS["destroyer-cannon"],
+      TURRET_CONFIGS["destroyer-cannon"]
     ]
   },
   carrier: {
@@ -63,19 +124,16 @@ var classes = {
     speed: 55,
     turnRate: Math.PI * 0.3,
     turrets: [
-      { id: "cannon", cooldown: 1.2, bulletSpeed: 320, damage: 18, range: 420 },
-      { id: "cannon", cooldown: 1.2, bulletSpeed: 320, damage: 18, range: 420 }
+      TURRET_CONFIGS["carrier-cannon"],
+      TURRET_CONFIGS["carrier-cannon"]
     ],
     maxFighters: 6,
     fighterSpawnCooldown: 6
   }
 };
-var DefaultConfig = {
-  simBounds: { width: 2400, height: 1600 },
-  classes,
-  tickRate: 60,
-  maxEntities: 5e3
-};
+function getShipClassConfig(shipClass) {
+  return SHIP_CLASS_CONFIGS[shipClass];
+}
 
 // src/utils/rng.ts
 function xmur3(str) {
@@ -121,8 +179,14 @@ function applyLevelUps(level, baseValue) {
 }
 
 // src/core/gameState.ts
-function createInitialState(seed = "SPACE-001") {
-  const rng = createRNG(seed);
+function createInitialState(seed) {
+  const config = { ...DefaultSimConfig };
+  if (seed) {
+    config.seed = seed;
+  } else if (config.useTimeBasedSeed) {
+    config.seed = `SPACE-${Date.now()}`;
+  }
+  const rng = createRNG(config.seed);
   return {
     time: 0,
     tick: 0,
@@ -130,7 +194,7 @@ function createInitialState(seed = "SPACE-001") {
     speedMultiplier: 1,
     rng,
     nextId: 1,
-    config: DefaultConfig,
+    simConfig: config,
     ships: [],
     bullets: [],
     score: { red: 0, blue: 0 }
@@ -153,7 +217,7 @@ function allocateId(state) {
   return state.nextId++;
 }
 function spawnShip(state, team, cls, pos, parentCarrierId) {
-  const cfg = state.config.classes[cls];
+  const cfg = getShipClassConfig(cls);
   const id = allocateId(state);
   const level = { level: 1, xp: 0, nextLevelXp: nextLevelXp(1) };
   const maxHealth = Math.floor(applyLevelUps(level.level, cfg.baseHealth));
@@ -164,8 +228,8 @@ function spawnShip(state, team, cls, pos, parentCarrierId) {
     id,
     team,
     class: cls,
-    pos: { x: p.x, y: p.y },
-    vel: { x: 0, y: 0 },
+    pos: { x: p.x, y: p.y, z: p.z },
+    vel: { x: 0, y: 0, z: 0 },
     dir: state.rng.next() * Math.PI * 2,
     targetId: null,
     health: maxHealth,
@@ -188,9 +252,10 @@ function spawnShip(state, team, cls, pos, parentCarrierId) {
 }
 function randomSpawnPos(state, team) {
   const margin = 200;
-  const y = state.rng.int(margin, state.config.simBounds.height - margin);
-  const x = team === "red" ? state.rng.int(margin, margin + 200) : state.rng.int(state.config.simBounds.width - margin - 200, state.config.simBounds.width - margin);
-  return { x, y };
+  const y = state.rng.int(margin, state.simConfig.simBounds.height - margin);
+  const z = state.rng.int(margin, state.simConfig.simBounds.depth - margin);
+  const x = team === "red" ? state.rng.int(margin, margin + 200) : state.rng.int(state.simConfig.simBounds.width - margin - 200, state.simConfig.simBounds.width - margin);
+  return { x, y, z };
 }
 function spawnFleet(state, team, count = 5) {
   for (let i = 0; i < count; i++) {
@@ -205,7 +270,8 @@ function findNearestEnemy(state, ship) {
     if (s.team === ship.team || s.health <= 0) continue;
     const dx = s.pos.x - ship.pos.x;
     const dy = s.pos.y - ship.pos.y;
-    const d2 = dx * dx + dy * dy;
+    const dz = s.pos.z - ship.pos.z;
+    const d2 = dx * dx + dy * dy + dz * dz;
     if (d2 < bestD) {
       bestD = d2;
       best = s;
@@ -225,6 +291,7 @@ function stepShipAI(state, ship, dt) {
   if (target) {
     const dx = target.pos.x - ship.pos.x;
     const dy = target.pos.y - ship.pos.y;
+    const dz = target.pos.z - ship.pos.z;
     const desired = Math.atan2(dy, dx);
     let diff = desired - ship.dir;
     while (diff > Math.PI) diff -= Math.PI * 2;
@@ -233,22 +300,60 @@ function stepShipAI(state, ship, dt) {
     ship.dir += turn;
     const ax = Math.cos(ship.dir) * ship.speed * 0.5;
     const ay = Math.sin(ship.dir) * ship.speed * 0.5;
+    const az = (target.pos.z - ship.pos.z) * 0.1;
     ship.vel.x += ax * dt;
     ship.vel.y += ay * dt;
+    ship.vel.z += az * dt;
   }
   ship.vel.x *= 0.98;
   ship.vel.y *= 0.98;
+  ship.vel.z *= 0.98;
   const maxV = ship.speed;
-  const v = Math.hypot(ship.vel.x, ship.vel.y);
+  const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
   if (v > maxV) {
     ship.vel.x = ship.vel.x / v * maxV;
     ship.vel.y = ship.vel.y / v * maxV;
+    ship.vel.z = ship.vel.z / v * maxV;
   }
   ship.pos.x += ship.vel.x * dt;
   ship.pos.y += ship.vel.y * dt;
-  const { width, height } = state.config.simBounds;
-  ship.pos.x = clamp(ship.pos.x, 0, width);
-  ship.pos.y = clamp(ship.pos.y, 0, height);
+  ship.pos.z += ship.vel.z * dt;
+  const bounds = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.ships;
+  if (behavior === "bounce") {
+    if (ship.pos.x < 0) {
+      ship.pos.x = 0;
+      ship.vel.x = -ship.vel.x;
+    } else if (ship.pos.x > bounds.width) {
+      ship.pos.x = bounds.width;
+      ship.vel.x = -ship.vel.x;
+    }
+    if (ship.pos.y < 0) {
+      ship.pos.y = 0;
+      ship.vel.y = -ship.vel.y;
+    } else if (ship.pos.y > bounds.height) {
+      ship.pos.y = bounds.height;
+      ship.vel.y = -ship.vel.y;
+    }
+    if (ship.pos.z < 0) {
+      ship.pos.z = 0;
+      ship.vel.z = -ship.vel.z;
+    } else if (ship.pos.z > bounds.depth) {
+      ship.pos.z = bounds.depth;
+      ship.vel.z = -ship.vel.z;
+    }
+  } else if (behavior === "wrap") {
+    if (ship.pos.x < 0) ship.pos.x += bounds.width;
+    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
+    if (ship.pos.y < 0) ship.pos.y += bounds.height;
+    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
+    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
+    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
+  } else if (behavior === "remove") {
+    if (ship.pos.x < 0 || ship.pos.x > bounds.width || ship.pos.y < 0 || ship.pos.y > bounds.height || ship.pos.z < 0 || ship.pos.z > bounds.depth) {
+      ship.health = 0;
+    }
+  }
   ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
 }
 function fireTurrets(state, ship, dt) {
@@ -257,10 +362,11 @@ function fireTurrets(state, ship, dt) {
     t.cooldownLeft = Math.max(0, t.cooldownLeft - dt);
   }
   if (!target) return;
-  const cfg = state.config.classes[ship.class];
+  const cfg = getShipClassConfig(ship.class);
   const dx = target.pos.x - ship.pos.x;
   const dy = target.pos.y - ship.pos.y;
-  const dist = Math.hypot(dx, dy);
+  const dz = target.pos.z - ship.pos.z;
+  const dist = Math.hypot(dx, dy, dz);
   for (let i = 0; i < ship.turrets.length; i++) {
     const tState = ship.turrets[i];
     const tCfg = cfg.turrets[i % cfg.turrets.length];
@@ -273,8 +379,8 @@ function fireTurrets(state, ship, dt) {
       id,
       ownerShipId: ship.id,
       ownerTeam: ship.team,
-      pos: { x: ship.pos.x, y: ship.pos.y },
-      vel: { x: Math.cos(dir) * speed, y: Math.sin(dir) * speed },
+      pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
+      vel: { x: Math.cos(dir) * speed, y: Math.sin(dir) * speed, z: 0 },
       ttl: 3,
       damage: tCfg.damage
     };
@@ -283,19 +389,61 @@ function fireTurrets(state, ship, dt) {
   }
 }
 function updateBullets(state, dt) {
-  const { width, height } = state.config.simBounds;
+  const { width, height, depth } = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.bullets;
   for (const b of state.bullets) {
     b.ttl -= dt;
     b.pos.x += b.vel.x * dt;
     b.pos.y += b.vel.y * dt;
+    b.pos.z += b.vel.z * dt;
   }
   for (const b of state.bullets) {
     if (b.ttl <= 0) continue;
+    let outOfBounds = false;
+    if (behavior === "bounce") {
+      if (b.pos.x < 0) {
+        b.pos.x = 0;
+        b.vel.x = -b.vel.x;
+      } else if (b.pos.x > width) {
+        b.pos.x = width;
+        b.vel.x = -b.vel.x;
+      }
+      if (b.pos.y < 0) {
+        b.pos.y = 0;
+        b.vel.y = -b.vel.y;
+      } else if (b.pos.y > height) {
+        b.pos.y = height;
+        b.vel.y = -b.vel.y;
+      }
+      if (b.pos.z < 0) {
+        b.pos.z = 0;
+        b.vel.z = -b.vel.z;
+      } else if (b.pos.z > depth) {
+        b.pos.z = depth;
+        b.vel.z = -b.vel.z;
+      }
+    } else if (behavior === "wrap") {
+      if (b.pos.x < 0) b.pos.x += width;
+      else if (b.pos.x > width) b.pos.x -= width;
+      if (b.pos.y < 0) b.pos.y += height;
+      else if (b.pos.y > height) b.pos.y -= height;
+      if (b.pos.z < 0) b.pos.z += depth;
+      else if (b.pos.z > depth) b.pos.z -= depth;
+    } else if (behavior === "remove") {
+      if (b.pos.x < 0 || b.pos.x > width || b.pos.y < 0 || b.pos.y > height || b.pos.z < 0 || b.pos.z > depth) {
+        outOfBounds = true;
+      }
+    }
+    if (outOfBounds) {
+      b.ttl = 0;
+      continue;
+    }
     for (const s of state.ships) {
       if (s.team === b.ownerTeam || s.health <= 0) continue;
       const dx = s.pos.x - b.pos.x;
       const dy = s.pos.y - b.pos.y;
-      const d = Math.hypot(dx, dy);
+      const dz = s.pos.z - b.pos.z;
+      const d = Math.hypot(dx, dy, dz);
       const hitR = 16 + (s.class === "destroyer" || s.class === "carrier" ? 20 : 10);
       if (d < hitR) {
         let dmgLeft = b.damage;
@@ -303,6 +451,7 @@ function updateBullets(state, dt) {
           const absorb = Math.min(s.shield, dmgLeft);
           s.shield -= absorb;
           dmgLeft -= absorb;
+          s.lastShieldHitTime = state.time;
         }
         if (dmgLeft > 0) {
           const effective = Math.max(1, dmgLeft - s.armor * 0.3);
@@ -316,7 +465,6 @@ function updateBullets(state, dt) {
         break;
       }
     }
-    if (b.pos.x < 0 || b.pos.x > width || b.pos.y < 0 || b.pos.y > height) b.ttl = 0;
   }
   state.bullets = state.bullets.filter((b) => b.ttl > 0);
 }
@@ -346,7 +494,7 @@ function handleLevelUps(state) {
       s.level.xp -= s.level.nextLevelXp;
       s.level.level += 1;
       s.level.nextLevelXp = nextLevelXp(s.level.level);
-      const cfg = state.config.classes[s.class];
+      const cfg = getShipClassConfig(s.class);
       s.maxHealth = Math.floor(applyLevelUps(s.level.level, cfg.baseHealth));
       s.maxShield = Math.floor(applyLevelUps(s.level.level, cfg.shield));
       s.health = Math.min(s.maxHealth, s.health + Math.floor(s.maxHealth * 0.2));
@@ -359,13 +507,15 @@ function carrierSpawnLogic(state, dt) {
     if (s.class !== "carrier" || s.health <= 0) continue;
     if (s.fighterSpawnCdLeft === void 0) continue;
     s.fighterSpawnCdLeft = Math.max(0, (s.fighterSpawnCdLeft ?? 0) - dt);
-    const cfg = state.config.classes["carrier"];
+    const cfg = getShipClassConfig("carrier");
     if ((s.spawnedFighters ?? 0) < (cfg.maxFighters ?? 0) && s.fighterSpawnCdLeft === 0) {
       const angle = s.dir + (state.rng.next() - 0.5) * 0.6;
-      const offset = { x: s.pos.x + Math.cos(angle) * 24, y: s.pos.y + Math.sin(angle) * 24 };
+      const offset = { x: s.pos.x + Math.cos(angle) * 24, y: s.pos.y + Math.sin(angle) * 24, z: s.pos.z };
       const child = spawnShip(state, s.team, "fighter", offset, s.id);
       child.vel.x = s.vel.x;
       child.vel.y = s.vel.y;
+      child.vel.z = s.vel.z;
+      child.vel.z = s.vel.z;
       s.spawnedFighters = (s.spawnedFighters ?? 0) + 1;
       s.fighterSpawnCdLeft = cfg.fighterSpawnCooldown ?? 6;
     }
@@ -13416,6 +13566,84 @@ var PlaneGeometry = class _PlaneGeometry extends BufferGeometry {
     return new _PlaneGeometry(data.width, data.height, data.widthSegments, data.heightSegments);
   }
 };
+var RingGeometry = class _RingGeometry extends BufferGeometry {
+  /**
+   * Constructs a new ring geometry.
+   *
+   * @param {number} [innerRadius=0.5] - The inner radius of the ring.
+   * @param {number} [outerRadius=1] - The outer radius of the ring.
+   * @param {number} [thetaSegments=32] - Number of segments. A higher number means the ring will be more round. Minimum is `3`.
+   * @param {number} [phiSegments=1] - Number of segments per ring segment. Minimum is `1`.
+   * @param {number} [thetaStart=0] - Starting angle in radians.
+   * @param {number} [thetaLength=Math.PI*2] - Central angle in radians.
+   */
+  constructor(innerRadius = 0.5, outerRadius = 1, thetaSegments = 32, phiSegments = 1, thetaStart = 0, thetaLength = Math.PI * 2) {
+    super();
+    this.type = "RingGeometry";
+    this.parameters = {
+      innerRadius,
+      outerRadius,
+      thetaSegments,
+      phiSegments,
+      thetaStart,
+      thetaLength
+    };
+    thetaSegments = Math.max(3, thetaSegments);
+    phiSegments = Math.max(1, phiSegments);
+    const indices = [];
+    const vertices = [];
+    const normals = [];
+    const uvs = [];
+    let radius = innerRadius;
+    const radiusStep = (outerRadius - innerRadius) / phiSegments;
+    const vertex2 = new Vector3();
+    const uv = new Vector2();
+    for (let j = 0; j <= phiSegments; j++) {
+      for (let i = 0; i <= thetaSegments; i++) {
+        const segment = thetaStart + i / thetaSegments * thetaLength;
+        vertex2.x = radius * Math.cos(segment);
+        vertex2.y = radius * Math.sin(segment);
+        vertices.push(vertex2.x, vertex2.y, vertex2.z);
+        normals.push(0, 0, 1);
+        uv.x = (vertex2.x / outerRadius + 1) / 2;
+        uv.y = (vertex2.y / outerRadius + 1) / 2;
+        uvs.push(uv.x, uv.y);
+      }
+      radius += radiusStep;
+    }
+    for (let j = 0; j < phiSegments; j++) {
+      const thetaSegmentLevel = j * (thetaSegments + 1);
+      for (let i = 0; i < thetaSegments; i++) {
+        const segment = i + thetaSegmentLevel;
+        const a = segment;
+        const b = segment + thetaSegments + 1;
+        const c = segment + thetaSegments + 2;
+        const d = segment + 1;
+        indices.push(a, b, d);
+        indices.push(b, c, d);
+      }
+    }
+    this.setIndex(indices);
+    this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+    this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+    this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  }
+  copy(source) {
+    super.copy(source);
+    this.parameters = Object.assign({}, source.parameters);
+    return this;
+  }
+  /**
+   * Factory method for creating an instance of this class from the given
+   * JSON object.
+   *
+   * @param {Object} data - A JSON object representing the serialized geometry.
+   * @return {RingGeometry} A new instance.
+   */
+  static fromJSON(data) {
+    return new _RingGeometry(data.innerRadius, data.outerRadius, data.thetaSegments, data.phiSegments, data.thetaStart, data.thetaLength);
+  }
+};
 var SphereGeometry = class _SphereGeometry extends BufferGeometry {
   /**
    * Constructs a new sphere geometry.
@@ -25612,38 +25840,136 @@ var WebGLRenderer = class {
 };
 
 // src/config/rendererConfig.ts
-var RendererConfig = {
-  fov: 55,
-  near: 0.1,
-  far: 1e4,
-  cameraZ: 900,
-  enableTrails: true,
-  enableParticles: true
+var DefaultRendererConfig = {
+  camera: {
+    fov: 55,
+    near: 0.1,
+    far: 1e4,
+    cameraZ: 900
+  },
+  visual: {
+    enableTrails: true,
+    enableParticles: true,
+    enableShieldEffects: true,
+    enableHealthBars: true
+  },
+  shield: {
+    colors: {
+      red: "#ff4444",
+      blue: "#4444ff"
+    },
+    opacity: {
+      base: 0.3,
+      min: 0.1
+    },
+    animation: {
+      pulseSpeed: 2,
+      rippleSpeed: 1.5,
+      scaleMultiplier: 1.2
+    }
+  },
+  particles: {
+    hitEffect: {
+      count: 8,
+      lifetime: 0.8,
+      speed: 100,
+      colors: {
+        red: "#ff6666",
+        blue: "#6666ff"
+      },
+      size: 3
+    },
+    explosion: {
+      count: 15,
+      lifetime: 1.2,
+      speed: 150,
+      colors: ["#ffaa00", "#ff6600", "#ff3300", "#ffff88"],
+      size: 4
+    }
+  },
+  trails: {
+    colors: {
+      red: "#ff6666",
+      blue: "#6666ff"
+    },
+    length: 25,
+    fadeSpeed: 3,
+    width: 2,
+    opacity: {
+      start: 0.8,
+      end: 0.1
+    }
+  },
+  healthBars: {
+    position: {
+      offsetX: 0,
+      offsetY: -25,
+      height: 4
+    },
+    colors: {
+      health: {
+        full: "#00ff00",
+        damaged: "#ffff00",
+        critical: "#ff0000"
+      },
+      shield: {
+        full: "#0088ff",
+        damaged: "#ff8800"
+      },
+      background: "#333333"
+    },
+    width: 30,
+    border: {
+      color: "#ffffff",
+      width: 1
+    }
+  }
 };
+var RendererConfig = DefaultRendererConfig;
 
 // src/renderer/threeRenderer.ts
 function createThreeRenderer(state, canvas) {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new Scene();
-  const camera = new PerspectiveCamera(RendererConfig.fov, 1, RendererConfig.near, RendererConfig.far);
-  camera.position.set(0, 0, RendererConfig.cameraZ);
+  const camera = new PerspectiveCamera(RendererConfig.camera.fov, 1, RendererConfig.camera.near, RendererConfig.camera.far);
+  const cameraRotation = { x: -Math.PI / 6, y: 0, z: 0 };
+  const cameraDistance = RendererConfig.camera.cameraZ;
+  const cameraTarget = {
+    x: state.simConfig.simBounds.width / 2,
+    y: state.simConfig.simBounds.height / 2,
+    z: state.simConfig.simBounds.depth / 2
+  };
+  updateCameraPosition();
+  function updateCameraPosition() {
+    const x = cameraTarget.x + cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
+    const y = cameraTarget.y + cameraDistance * Math.sin(cameraRotation.x);
+    const z = cameraTarget.z + cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
+    camera.position.set(x, y, z);
+    camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
+  }
   scene.add(camera);
   const light = new DirectionalLight(16777215, 1);
   light.position.set(0.4, 0.8, 1);
   scene.add(light);
   scene.add(new AmbientLight(6715289, 0.5));
-  const planeGeom = new PlaneGeometry(state.config.simBounds.width, state.config.simBounds.height, 1, 1);
-  const planeMat = new MeshBasicMaterial({ color: 725536, transparent: true, opacity: 0.2 });
-  const plane = new Mesh(planeGeom, planeMat);
-  plane.position.set(state.config.simBounds.width / 2, state.config.simBounds.height / 2, -5);
-  scene.add(plane);
+  const boxGeom = new BoxGeometry(state.simConfig.simBounds.width, state.simConfig.simBounds.height, state.simConfig.simBounds.depth);
+  const boxMat = new MeshBasicMaterial({ color: 725536, transparent: true, opacity: 0.1, wireframe: true });
+  const box = new Mesh(boxGeom, boxMat);
+  box.position.set(state.simConfig.simBounds.width / 2, state.simConfig.simBounds.height / 2, state.simConfig.simBounds.depth / 2);
+  scene.add(box);
   const shipsGroup = new Group();
   const bulletsGroup = new Group();
+  const healthBarsGroup = new Group();
+  const shieldEffectsGroup = new Group();
   scene.add(shipsGroup);
   scene.add(bulletsGroup);
+  scene.add(healthBarsGroup);
+  scene.add(shieldEffectsGroup);
   const shipMeshes = /* @__PURE__ */ new Map();
   const bulletMeshes = /* @__PURE__ */ new Map();
+  const healthBarMeshes = /* @__PURE__ */ new Map();
+  const shieldEffectMeshes = /* @__PURE__ */ new Map();
   function colorForTeam(team) {
     return team === "red" ? 16732240 : 5284095;
   }
@@ -25652,15 +25978,125 @@ function createThreeRenderer(state, canvas) {
     const mat = new MeshPhongMaterial({ color: colorForTeam(s.team), emissive: 1118498 });
     const mesh = new Mesh(geom, mat);
     mesh.rotation.z = Math.PI / 2;
-    mesh.position.set(s.pos.x, s.pos.y, 0);
+    mesh.position.set(s.pos.x, s.pos.y, s.pos.z);
     return mesh;
   }
   function meshForBullet(b) {
     const geom = new SphereGeometry(2.2, 8, 8);
     const mat = new MeshBasicMaterial({ color: 16768392 });
     const mesh = new Mesh(geom, mat);
-    mesh.position.set(b.pos.x, b.pos.y, 0.5);
+    mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
+  }
+  function createHealthBar(ship) {
+    const config = RendererConfig.healthBars;
+    const barGroup = new Group();
+    const bgGeom = new PlaneGeometry(config.width, config.position.height);
+    const bgMat = new MeshBasicMaterial({ color: config.colors.background });
+    const bgMesh = new Mesh(bgGeom, bgMat);
+    barGroup.add(bgMesh);
+    const healthGeom = new PlaneGeometry(config.width - 2, config.position.height - 2);
+    const healthMat = new MeshBasicMaterial({ color: config.colors.health.full });
+    const healthMesh = new Mesh(healthGeom, healthMat);
+    barGroup.add(healthMesh);
+    let shieldMesh = null;
+    if (ship.maxShield > 0) {
+      const shieldGeom = new PlaneGeometry(config.width - 2, config.position.height - 2);
+      const shieldMat = new MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+      shieldMesh = new Mesh(shieldGeom, shieldMat);
+      shieldMesh.position.z = 0.1;
+      barGroup.add(shieldMesh);
+    }
+    const borderGeom = new RingGeometry(config.width / 2 - config.border.width / 2, config.width / 2 + config.border.width / 2, 8);
+    const borderMat = new MeshBasicMaterial({ color: config.border.color, transparent: true, opacity: 0.5 });
+    const borderMesh = new Mesh(borderGeom, borderMat);
+    borderMesh.position.z = 0.2;
+    barGroup.add(borderMesh);
+    barGroup.healthMesh = healthMesh;
+    barGroup.shieldMesh = shieldMesh;
+    barGroup.bgMesh = bgMesh;
+    return barGroup;
+  }
+  function updateHealthBar(ship, barGroup) {
+    const config = RendererConfig.healthBars;
+    const healthMesh = barGroup.healthMesh;
+    const shieldMesh = barGroup.shieldMesh;
+    barGroup.position.set(
+      ship.pos.x + config.position.offsetX,
+      ship.pos.y + config.position.offsetY,
+      ship.pos.z + 10
+      // Above the ship
+    );
+    const healthPercent = ship.health / ship.maxHealth;
+    healthMesh.scale.x = Math.max(0, healthPercent);
+    let healthColor = config.colors.health.full;
+    if (healthPercent < 0.3) {
+      healthColor = config.colors.health.critical;
+    } else if (healthPercent < 0.7) {
+      healthColor = config.colors.health.damaged;
+    }
+    healthMesh.material.color.setStyle(healthColor);
+    if (shieldMesh && ship.maxShield > 0) {
+      const shieldPercent = ship.shield / ship.maxShield;
+      shieldMesh.scale.x = Math.max(0, shieldPercent);
+      const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
+      shieldMesh.material.color.setStyle(shieldColor);
+    }
+  }
+  function createShieldEffect(ship) {
+    const config = RendererConfig.shield;
+    const shieldGroup = new Group();
+    const ellipseGeom = new RingGeometry(12, 18, 32);
+    const color = ship.team === "red" ? config.colors.red : config.colors.blue;
+    const shieldMat = new MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: config.opacity.base,
+      side: DoubleSide
+    });
+    const shieldMesh = new Mesh(ellipseGeom, shieldMat);
+    shieldGroup.add(shieldMesh);
+    const rippleGeom = new RingGeometry(10, 14, 24);
+    const rippleMat = new MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.3,
+      side: DoubleSide
+    });
+    const rippleMesh = new Mesh(rippleGeom, rippleMat);
+    shieldGroup.add(rippleMesh);
+    shieldGroup.shieldMesh = shieldMesh;
+    shieldGroup.rippleMesh = rippleMesh;
+    shieldGroup.pulsePhase = Math.random() * Math.PI * 2;
+    return shieldGroup;
+  }
+  function updateShieldEffect(ship, shieldGroup, currentTime) {
+    const config = RendererConfig.shield;
+    const shieldMesh = shieldGroup.shieldMesh;
+    const rippleMesh = shieldGroup.rippleMesh;
+    const shieldMat = shieldMesh.material;
+    const rippleMat = rippleMesh.material;
+    shieldGroup.position.set(ship.pos.x, ship.pos.y, ship.pos.z + 0.1);
+    const scale = ship.class === "fighter" ? 0.8 : ship.class === "corvette" ? 1 : ship.class === "frigate" ? 1.2 : ship.class === "destroyer" ? 1.4 : 1.6;
+    shieldGroup.scale.setScalar(scale * config.animation.scaleMultiplier);
+    if (ship.maxShield > 0) {
+      const shieldPercent = ship.shield / ship.maxShield;
+      const opacity = config.opacity.base * shieldPercent + config.opacity.min * (1 - shieldPercent);
+      shieldMat.opacity = opacity;
+      rippleMat.opacity = opacity * 0.5;
+    }
+    const pulsePhase = shieldGroup.pulsePhase;
+    const pulse = Math.sin(currentTime * config.animation.pulseSpeed + pulsePhase) * 0.1 + 0.9;
+    shieldMesh.scale.setScalar(pulse);
+    const ripplePhase = Math.sin(currentTime * config.animation.rippleSpeed + pulsePhase * 0.7);
+    rippleMesh.scale.setScalar(0.8 + ripplePhase * 0.2);
+    const lastHitTime = ship.lastShieldHitTime || 0;
+    if (currentTime - lastHitTime < 0.5) {
+      const hitIntensity = 1 - (currentTime - lastHitTime) / 0.5;
+      const hitPulse = 1 + Math.sin(currentTime * 20) * hitIntensity * 0.3;
+      shieldMesh.scale.setScalar(hitPulse);
+      shieldMat.opacity = Math.min(1, shieldMat.opacity + hitIntensity * 0.5);
+    }
   }
   function syncEntities() {
     for (const s of state.ships) {
@@ -25669,11 +26105,44 @@ function createThreeRenderer(state, canvas) {
         shipMeshes.set(s.id, m);
         shipsGroup.add(m);
       }
+      if (RendererConfig.visual.enableHealthBars && !healthBarMeshes.has(s.id)) {
+        const bar = createHealthBar(s);
+        healthBarMeshes.set(s.id, bar);
+        healthBarsGroup.add(bar);
+      }
+      if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {
+        const shield = createShieldEffect(s);
+        shieldEffectMeshes.set(s.id, shield);
+        shieldEffectsGroup.add(shield);
+      }
     }
     for (const [id, m] of shipMeshes) {
       if (!state.ships.find((s) => s.id === id)) {
         shipsGroup.remove(m);
         shipMeshes.delete(id);
+        const bar = healthBarMeshes.get(id);
+        if (bar) {
+          healthBarsGroup.remove(bar);
+          healthBarMeshes.delete(id);
+        }
+        const shield = shieldEffectMeshes.get(id);
+        if (shield) {
+          shieldEffectsGroup.remove(shield);
+          shieldEffectMeshes.delete(id);
+        }
+      }
+    }
+    for (const [id, bar] of healthBarMeshes) {
+      if (!state.ships.find((s) => s.id === id)) {
+        healthBarsGroup.remove(bar);
+        healthBarMeshes.delete(id);
+      }
+    }
+    for (const [id, shield] of shieldEffectMeshes) {
+      const ship = state.ships.find((s) => s.id === id);
+      if (!ship || ship.maxShield <= 0) {
+        shieldEffectsGroup.remove(shield);
+        shieldEffectMeshes.delete(id);
       }
     }
     for (const b of state.bullets) {
@@ -25691,18 +26160,31 @@ function createThreeRenderer(state, canvas) {
     }
   }
   function updateTransforms() {
+    const currentTime = performance.now() / 1e3;
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id);
       if (!m) continue;
-      m.position.set(s.pos.x, s.pos.y, 0);
+      m.position.set(s.pos.x, s.pos.y, s.pos.z);
       m.rotation.z = s.dir + Math.PI / 2;
       const scale = s.class === "fighter" ? 0.7 : s.class === "corvette" ? 0.9 : s.class === "frigate" ? 1.1 : s.class === "destroyer" ? 1.35 : 1.6;
       m.scale.setScalar(scale);
+      if (RendererConfig.visual.enableHealthBars) {
+        const bar = healthBarMeshes.get(s.id);
+        if (bar) {
+          updateHealthBar(s, bar);
+        }
+      }
+      if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0) {
+        const shield = shieldEffectMeshes.get(s.id);
+        if (shield) {
+          updateShieldEffect(s, shield, currentTime);
+        }
+      }
     }
     for (const b of state.bullets) {
       const m = bulletMeshes.get(b.id);
       if (!m) continue;
-      m.position.set(b.pos.x, b.pos.y, 0.5);
+      m.position.set(b.pos.x, b.pos.y, b.pos.z);
     }
   }
   function resize() {
@@ -25713,10 +26195,10 @@ function createThreeRenderer(state, canvas) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    camera.position.set(state.config.simBounds.width / 2, state.config.simBounds.height / 2, RendererConfig.cameraZ);
-    camera.lookAt(state.config.simBounds.width / 2, state.config.simBounds.height / 2, 0);
+    updateCameraPosition();
   }
   function render(_dt) {
+    updateCameraPosition();
     syncEntities();
     updateTransforms();
     renderer.render(scene, camera);
@@ -25732,7 +26214,12 @@ function createThreeRenderer(state, canvas) {
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
-    }
+      healthBarMeshes.clear();
+      shieldEffectMeshes.clear();
+    },
+    cameraRotation,
+    cameraDistance,
+    cameraTarget
   };
 }
 
@@ -25762,7 +26249,8 @@ function randomClass(state) {
 }
 function reFormFleets(state) {
   const leftX = 150;
-  const rightX = state.config.simBounds.width - 150;
+  const rightX = state.simConfig.simBounds.width - 150;
+  const centerZ = state.simConfig.simBounds.depth / 2;
   let ri = 0, bi = 0;
   const row = 8;
   const spacing = 30;
@@ -25772,10 +26260,13 @@ function reFormFleets(state) {
     const r = Math.floor(i / row);
     const x = s.team === "red" ? leftX + col * spacing : rightX - col * spacing;
     const y = 400 + r * spacing;
+    const z = centerZ + (state.rng.next() - 0.5) * 100;
     s.pos.x = x;
     s.pos.y = y;
+    s.pos.z = z;
     s.vel.x = 0;
     s.vel.y = 0;
+    s.vel.z = 0;
   }
 }
 function initGame(seed) {
@@ -25787,6 +26278,7 @@ function initGame(seed) {
   const renderer = createThreeRenderer(state, ui.canvas);
   state.renderer = renderer;
   wireControls(state, ui);
+  setupCameraControls(state, ui.canvas);
   startLoops(state, ui);
 }
 function wireControls(state, ui) {
@@ -25818,8 +26310,8 @@ function wireControls(state, ui) {
     spawnShip(state, "blue", randomClass(state));
   };
   ui.toggleTrails.onclick = () => {
-    RendererConfig.enableTrails = !RendererConfig.enableTrails;
-    ui.toggleTrails.textContent = `\u2604 Trails: ${RendererConfig.enableTrails ? "On" : "Off"}`;
+    RendererConfig.visual.enableTrails = !RendererConfig.visual.enableTrails;
+    ui.toggleTrails.textContent = `\u2604 Trails: ${RendererConfig.visual.enableTrails ? "On" : "Off"}`;
   };
   ui.speed.onclick = () => {
     const seq = [0.5, 1, 2, 4];
@@ -25837,14 +26329,83 @@ function wireControls(state, ui) {
     updateScores();
   };
   ui.formationBtn.onclick = () => {
-    reFormFleets(state);
+    state.ships = [];
+    state.bullets = [];
+    const fleetSize = 8;
+    for (let i = 0; i < fleetSize; i++) {
+      const redClass = randomClass(state);
+      const blueClass = randomClass(state);
+      spawnShip(state, "red", redClass);
+      spawnShip(state, "blue", blueClass);
+    }
+    updateScores();
   };
   updateSpeedLabel();
   updateRunLabel();
   updateScores();
 }
+function setupCameraControls(state, canvas) {
+  if (!state.renderer) return;
+  let isMouseDown = false;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+  canvas.addEventListener("mousedown", (e) => {
+    isMouseDown = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+  canvas.addEventListener("mouseup", () => {
+    isMouseDown = false;
+  });
+  canvas.addEventListener("mousemove", (e) => {
+    if (!isMouseDown || !state.renderer) return;
+    const sensitivity = 5e-3;
+    const deltaX = (e.clientX - lastMouseX) * sensitivity;
+    const deltaY = (e.clientY - lastMouseY) * sensitivity;
+    state.renderer.cameraRotation.y += deltaX;
+    state.renderer.cameraRotation.x += deltaY;
+    state.renderer.cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.renderer.cameraRotation.x));
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+  canvas.addEventListener("wheel", (e) => {
+    if (!state.renderer) return;
+    e.preventDefault();
+    const zoomSpeed = 50;
+    state.renderer.cameraDistance += e.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+    state.renderer.cameraDistance = Math.max(200, Math.min(2e3, state.renderer.cameraDistance));
+  });
+  const keys = {};
+  document.addEventListener("keydown", (e) => {
+    keys[e.code] = true;
+  });
+  document.addEventListener("keyup", (e) => {
+    keys[e.code] = false;
+  });
+  function updateCameraMovement(dt) {
+    if (!state.renderer) return;
+    const moveSpeed = 300 * dt;
+    const moveVector = { x: 0, y: 0, z: 0 };
+    if (keys["KeyW"]) moveVector.z -= moveSpeed;
+    if (keys["KeyS"]) moveVector.z += moveSpeed;
+    if (keys["KeyA"]) moveVector.x -= moveSpeed;
+    if (keys["KeyD"]) moveVector.x += moveSpeed;
+    if (keys["ShiftLeft"]) moveVector.y -= moveSpeed;
+    if (keys["Space"]) moveVector.y += moveSpeed;
+    const cosY = Math.cos(state.renderer.cameraRotation.y);
+    const sinY = Math.sin(state.renderer.cameraRotation.y);
+    state.renderer.cameraTarget.x += moveVector.x * cosY - moveVector.z * sinY;
+    state.renderer.cameraTarget.z += moveVector.x * sinY + moveVector.z * cosY;
+    state.renderer.cameraTarget.y += moveVector.y;
+  }
+  const originalRender = state.renderer.render;
+  state.renderer.render = function(dt) {
+    updateCameraMovement(dt);
+    originalRender.call(state.renderer, dt);
+  };
+}
 function startLoops(state, ui) {
-  const fixedDt = 1 / state.config.tickRate;
+  const fixedDt = 1 / state.simConfig.tickRate;
   let last = performance.now();
   let acc = 0;
   let fpsAccum = 0, fpsFrames = 0, fpsTime = 0;

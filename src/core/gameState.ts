@@ -1,10 +1,18 @@
-import type { GameState, Ship, ShipClass, Team, Vector2, EntityId, Bullet, TurretState } from '../types/index.js';
-import { DefaultConfig } from '../config/simConfig.js';
+import type { GameState, Ship, ShipClass, Team, Vector3, EntityId, Bullet, TurretState } from '../types/index.js';
+import { DefaultSimConfig } from '../config/simConfig.js';
+import { SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
 import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 
-export function createInitialState(seed = 'SPACE-001'): GameState {
-  const rng = createRNG(seed);
+export function createInitialState(seed?: string): GameState {
+  const config = { ...DefaultSimConfig };
+  if (seed) {
+    config.seed = seed;
+  } else if (config.useTimeBasedSeed) {
+    config.seed = `SPACE-${Date.now()}`;
+  }
+
+  const rng = createRNG(config.seed);
   return {
     time: 0,
     tick: 0,
@@ -12,7 +20,7 @@ export function createInitialState(seed = 'SPACE-001'): GameState {
     speedMultiplier: 1,
     rng,
     nextId: 1,
-    config: DefaultConfig,
+    simConfig: config,
     ships: [],
     bullets: [],
     score: { red: 0, blue: 0 },
@@ -35,8 +43,8 @@ export function resetState(state: GameState, seed?: string) {
 
 function allocateId(state: GameState): EntityId { return state.nextId++; }
 
-export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Vector2, parentCarrierId?: EntityId): Ship {
-  const cfg = state.config.classes[cls];
+export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Vector3, parentCarrierId?: EntityId): Ship {
+  const cfg = getShipClassConfig(cls);
   const id = allocateId(state);
   const level = { level: 1, xp: 0, nextLevelXp: nextLevelXp(1) };
   const maxHealth = Math.floor(applyLevelUps(level.level, cfg.baseHealth));
@@ -45,7 +53,7 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   const p = pos ?? randomSpawnPos(state, team);
   const ship: Ship = {
     id, team, class: cls,
-  pos: { x: p.x, y: p.y }, vel: { x: 0, y: 0 }, dir: state.rng.next() * Math.PI * 2,
+    pos: { x: p.x, y: p.y, z: p.z }, vel: { x: 0, y: 0, z: 0 }, dir: state.rng.next() * Math.PI * 2,
     targetId: null,
     health: maxHealth, maxHealth,
     armor: cfg.armor,
@@ -64,11 +72,12 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   return ship;
 }
 
-function randomSpawnPos(state: GameState, team: Team): Vector2 {
+function randomSpawnPos(state: GameState, team: Team): Vector3 {
   const margin = 200;
-  const y = state.rng.int(margin, state.config.simBounds.height - margin);
-  const x = team === 'red' ? state.rng.int(margin, margin + 200) : state.rng.int(state.config.simBounds.width - margin - 200, state.config.simBounds.width - margin);
-  return { x, y };
+  const y = state.rng.int(margin, state.simConfig.simBounds.height - margin);
+  const z = state.rng.int(margin, state.simConfig.simBounds.depth - margin);
+  const x = team === 'red' ? state.rng.int(margin, margin + 200) : state.rng.int(state.simConfig.simBounds.width - margin - 200, state.simConfig.simBounds.width - margin);
+  return { x, y, z };
 }
 
 export function spawnFleet(state: GameState, team: Team, count = 5) {
@@ -82,8 +91,8 @@ function findNearestEnemy(state: GameState, ship: Ship): Ship | undefined {
   let best: Ship | undefined; let bestD = Infinity;
   for (const s of state.ships) {
     if (s.team === ship.team || s.health <= 0) continue;
-    const dx = s.pos.x - ship.pos.x; const dy = s.pos.y - ship.pos.y;
-    const d2 = dx*dx + dy*dy;
+    const dx = s.pos.x - ship.pos.x; const dy = s.pos.y - ship.pos.y; const dz = s.pos.z - ship.pos.z;
+    const d2 = dx*dx + dy*dy + dz*dz;
     if (d2 < bestD) { bestD = d2; best = s; }
   }
   return best;
@@ -99,35 +108,66 @@ function stepShipAI(state: GameState, ship: Ship, dt: number) {
   }
   const target = ship.targetId ? state.ships.find(s => s.id === ship.targetId!) : undefined;
   if (target) {
-    const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y;
-    const desired = Math.atan2(dy, dx);
+    const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
+    const desired = Math.atan2(dy, dx); // Keep 2D direction for now, but could extend to 3D
     let diff = desired - ship.dir;
     while (diff > Math.PI) diff -= Math.PI*2;
     while (diff < -Math.PI) diff += Math.PI*2;
     const turn = clamp(diff, -ship.turnRate*dt, ship.turnRate*dt);
     ship.dir += turn;
 
-    // Move towards target with simple acceleration
+    // Move towards target with simple acceleration (3D)
     const ax = Math.cos(ship.dir) * ship.speed * 0.5;
     const ay = Math.sin(ship.dir) * ship.speed * 0.5;
+    const az = (target.pos.z - ship.pos.z) * 0.1; // Simple z-axis movement towards target
     ship.vel.x += ax * dt;
     ship.vel.y += ay * dt;
+    ship.vel.z += az * dt;
   }
 
   // Damp and clamp speed
-  ship.vel.x *= 0.98; ship.vel.y *= 0.98;
+  ship.vel.x *= 0.98; ship.vel.y *= 0.98; ship.vel.z *= 0.98;
   const maxV = ship.speed;
-  const v = Math.hypot(ship.vel.x, ship.vel.y);
-  if (v > maxV) { ship.vel.x = (ship.vel.x / v) * maxV; ship.vel.y = (ship.vel.y / v) * maxV; }
+  const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
+  if (v > maxV) {
+    ship.vel.x = (ship.vel.x / v) * maxV;
+    ship.vel.y = (ship.vel.y / v) * maxV;
+    ship.vel.z = (ship.vel.z / v) * maxV;
+  }
 
   // Integrate position
   ship.pos.x += ship.vel.x * dt;
   ship.pos.y += ship.vel.y * dt;
+  ship.pos.z += ship.vel.z * dt;
 
-  // Keep within bounds
-  const { width, height } = state.config.simBounds;
-  ship.pos.x = clamp(ship.pos.x, 0, width);
-  ship.pos.y = clamp(ship.pos.y, 0, height);
+  // Handle 3D boundary conditions
+  const bounds = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.ships;
+
+  if (behavior === 'bounce') {
+    // Bounce off boundaries
+    if (ship.pos.x < 0) { ship.pos.x = 0; ship.vel.x = -ship.vel.x; }
+    else if (ship.pos.x > bounds.width) { ship.pos.x = bounds.width; ship.vel.x = -ship.vel.x; }
+    if (ship.pos.y < 0) { ship.pos.y = 0; ship.vel.y = -ship.vel.y; }
+    else if (ship.pos.y > bounds.height) { ship.pos.y = bounds.height; ship.vel.y = -ship.vel.y; }
+    if (ship.pos.z < 0) { ship.pos.z = 0; ship.vel.z = -ship.vel.z; }
+    else if (ship.pos.z > bounds.depth) { ship.pos.z = bounds.depth; ship.vel.z = -ship.vel.z; }
+  } else if (behavior === 'wrap') {
+    // Wrap around boundaries
+    if (ship.pos.x < 0) ship.pos.x += bounds.width;
+    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
+    if (ship.pos.y < 0) ship.pos.y += bounds.height;
+    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
+    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
+    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
+  } else if (behavior === 'remove') {
+    // Remove ships that go out of bounds
+    if (ship.pos.x < 0 || ship.pos.x > bounds.width ||
+        ship.pos.y < 0 || ship.pos.y > bounds.height ||
+        ship.pos.z < 0 || ship.pos.z > bounds.depth) {
+      ship.health = 0; // Mark for removal
+    }
+  }
 
   // Regen shields
   ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
@@ -139,8 +179,9 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
     t.cooldownLeft = Math.max(0, t.cooldownLeft - dt);
   }
   if (!target) return;
-  const cfg = state.config.classes[ship.class];
-  const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dist = Math.hypot(dx, dy);
+  const cfg = getShipClassConfig(ship.class);
+  const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
+  const dist = Math.hypot(dx, dy, dz);
   for (let i = 0; i < ship.turrets.length; i++) {
     const tState = ship.turrets[i];
     const tCfg = cfg.turrets[i % cfg.turrets.length];
@@ -154,8 +195,8 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
       id,
       ownerShipId: ship.id,
       ownerTeam: ship.team,
-      pos: { x: ship.pos.x, y: ship.pos.y },
-      vel: { x: Math.cos(dir) * speed, y: Math.sin(dir) * speed },
+      pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
+      vel: { x: Math.cos(dir) * speed, y: Math.sin(dir) * speed, z: 0 },
       ttl: 3,
       damage: tCfg.damage,
     };
@@ -165,18 +206,56 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
 }
 
 function updateBullets(state: GameState, dt: number) {
-  const { width, height } = state.config.simBounds;
+  const { width, height, depth } = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.bullets;
+
   for (const b of state.bullets) {
     b.ttl -= dt;
     b.pos.x += b.vel.x * dt;
     b.pos.y += b.vel.y * dt;
+    b.pos.z += b.vel.z * dt;
   }
-  // Collisions (simple radius approx)
+
+  // Handle bullet boundary conditions
   for (const b of state.bullets) {
     if (b.ttl <= 0) continue;
+
+    let outOfBounds = false;
+    if (behavior === 'bounce') {
+      // Bounce off boundaries
+      if (b.pos.x < 0) { b.pos.x = 0; b.vel.x = -b.vel.x; }
+      else if (b.pos.x > width) { b.pos.x = width; b.vel.x = -b.vel.x; }
+      if (b.pos.y < 0) { b.pos.y = 0; b.vel.y = -b.vel.y; }
+      else if (b.pos.y > height) { b.pos.y = height; b.vel.y = -b.vel.y; }
+      if (b.pos.z < 0) { b.pos.z = 0; b.vel.z = -b.vel.z; }
+      else if (b.pos.z > depth) { b.pos.z = depth; b.vel.z = -b.vel.z; }
+    } else if (behavior === 'wrap') {
+      // Wrap around boundaries
+      if (b.pos.x < 0) b.pos.x += width;
+      else if (b.pos.x > width) b.pos.x -= width;
+      if (b.pos.y < 0) b.pos.y += height;
+      else if (b.pos.y > height) b.pos.y -= height;
+      if (b.pos.z < 0) b.pos.z += depth;
+      else if (b.pos.z > depth) b.pos.z -= depth;
+    } else if (behavior === 'remove') {
+      // Remove bullets that go out of bounds
+      if (b.pos.x < 0 || b.pos.x > width ||
+          b.pos.y < 0 || b.pos.y > height ||
+          b.pos.z < 0 || b.pos.z > depth) {
+        outOfBounds = true;
+      }
+    }
+
+    if (outOfBounds) {
+      b.ttl = 0;
+      continue;
+    }
+
+    // Collisions (simple radius approx)
     for (const s of state.ships) {
       if (s.team === b.ownerTeam || s.health <= 0) continue;
-      const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const d = Math.hypot(dx, dy);
+      const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
+      const d = Math.hypot(dx, dy, dz);
       const hitR = 16 + (s.class === 'destroyer' || s.class === 'carrier' ? 20 : 10);
       if (d < hitR) {
         // Apply damage to shield first
@@ -185,6 +264,8 @@ function updateBullets(state: GameState, dt: number) {
           const absorb = Math.min(s.shield, dmgLeft);
           s.shield -= absorb;
           dmgLeft -= absorb;
+          // Track shield hit for visual effects
+          s.lastShieldHitTime = state.time;
         }
         if (dmgLeft > 0) {
           // Armor reduces damage
@@ -201,8 +282,6 @@ function updateBullets(state: GameState, dt: number) {
         break;
       }
     }
-    // Out of bounds
-    if (b.pos.x < 0 || b.pos.x > width || b.pos.y < 0 || b.pos.y > height) b.ttl = 0;
   }
   // Remove dead bullets
   state.bullets = state.bullets.filter(b => b.ttl > 0);
@@ -238,7 +317,7 @@ function handleLevelUps(state: GameState) {
       s.level.level += 1;
       s.level.nextLevelXp = nextLevelXp(s.level.level);
       // Improve stats
-      const cfg = state.config.classes[s.class];
+      const cfg = getShipClassConfig(s.class);
       s.maxHealth = Math.floor(applyLevelUps(s.level.level, cfg.baseHealth));
       s.maxShield = Math.floor(applyLevelUps(s.level.level, cfg.shield));
       s.health = Math.min(s.maxHealth, s.health + Math.floor(s.maxHealth * 0.2));
@@ -252,12 +331,12 @@ function carrierSpawnLogic(state: GameState, dt: number) {
     if (s.class !== 'carrier' || s.health <= 0) continue;
     if (s.fighterSpawnCdLeft === undefined) continue;
     s.fighterSpawnCdLeft = Math.max(0, (s.fighterSpawnCdLeft ?? 0) - dt);
-    const cfg = state.config.classes['carrier'];
+    const cfg = getShipClassConfig('carrier');
     if ((s.spawnedFighters ?? 0) < (cfg.maxFighters ?? 0) && s.fighterSpawnCdLeft === 0) {
       const angle = s.dir + ((state.rng.next() - 0.5) * 0.6);
-      const offset = { x: s.pos.x + Math.cos(angle) * 24, y: s.pos.y + Math.sin(angle) * 24 };
+      const offset = { x: s.pos.x + Math.cos(angle) * 24, y: s.pos.y + Math.sin(angle) * 24, z: s.pos.z };
       const child = spawnShip(state, s.team, 'fighter', offset, s.id);
-      child.vel.x = s.vel.x; child.vel.y = s.vel.y;
+      child.vel.x = s.vel.x; child.vel.y = s.vel.y; child.vel.z = s.vel.z; child.vel.z = s.vel.z;
       s.spawnedFighters = (s.spawnedFighters ?? 0) + 1;
       s.fighterSpawnCdLeft = cfg.fighterSpawnCooldown ?? 6;
     }

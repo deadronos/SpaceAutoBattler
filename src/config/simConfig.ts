@@ -1,49 +1,40 @@
-import type { Config, ShipClassConfig } from '../types/index.js';
+import type { SimBounds } from '../types/index.js';
 
-const classes: Record<ShipClassConfig['class'], ShipClassConfig> = {
-  fighter: {
-    class: 'fighter', baseHealth: 80, armor: 2, shield: 40, shieldRegen: 5,
-    speed: 140, turnRate: Math.PI, turrets: [
-      { id: 'cannon', cooldown: 0.6, bulletSpeed: 400, damage: 6, range: 300 },
-    ],
-  },
-  corvette: {
-    class: 'corvette', baseHealth: 180, armor: 4, shield: 120, shieldRegen: 8,
-    speed: 110, turnRate: Math.PI * 0.7, turrets: [
-      { id: 'cannon', cooldown: 0.7, bulletSpeed: 380, damage: 9, range: 340 },
-      { id: 'cannon', cooldown: 0.7, bulletSpeed: 380, damage: 9, range: 340 },
-    ],
-  },
-  frigate: {
-    class: 'frigate', baseHealth: 420, armor: 8, shield: 260, shieldRegen: 10,
-    speed: 85, turnRate: Math.PI * 0.5, turrets: [
-      { id: 'cannon', cooldown: 0.8, bulletSpeed: 360, damage: 14, range: 380 },
-      { id: 'cannon', cooldown: 0.8, bulletSpeed: 360, damage: 14, range: 380 },
-      { id: 'cannon', cooldown: 0.8, bulletSpeed: 360, damage: 14, range: 380 },
-    ],
-  },
-  destroyer: {
-    class: 'destroyer', baseHealth: 800, armor: 12, shield: 480, shieldRegen: 12,
-    speed: 65, turnRate: Math.PI * 0.35, turrets: [
-      { id: 'cannon', cooldown: 1.0, bulletSpeed: 340, damage: 24, range: 420 },
-      { id: 'cannon', cooldown: 1.0, bulletSpeed: 340, damage: 24, range: 420 },
-      { id: 'cannon', cooldown: 1.0, bulletSpeed: 340, damage: 24, range: 420 },
-      { id: 'cannon', cooldown: 1.0, bulletSpeed: 340, damage: 24, range: 420 },
-    ],
-  },
-  carrier: {
-    class: 'carrier', baseHealth: 1000, armor: 10, shield: 600, shieldRegen: 14,
-    speed: 55, turnRate: Math.PI * 0.3, turrets: [
-      { id: 'cannon', cooldown: 1.2, bulletSpeed: 320, damage: 18, range: 420 },
-      { id: 'cannon', cooldown: 1.2, bulletSpeed: 320, damage: 18, range: 420 },
-    ],
-    maxFighters: 6, fighterSpawnCooldown: 6,
-  },
-};
+// Boundary behavior types
+export type BoundaryBehavior = 'bounce' | 'wrap' | 'remove';
 
-export const DefaultConfig: Config = {
-  simBounds: { width: 2400, height: 1600 },
-  classes,
+// Simulation-specific configuration
+// Contains only physics, timing, and simulation bounds settings
+export interface SimConfig {
+  simBounds: SimBounds;
+  tickRate: number; // ticks per second
+  maxEntities: number;
+  // Physics settings
+  bulletLifetime: number; // seconds
+  maxSimulationSteps: number; // prevent spiral of death
+  // AI settings
+  targetUpdateRate: number; // how often AI updates targets (seconds)
+  // Boundary settings
+  boundaryBehavior: {
+    ships: BoundaryBehavior;
+    bullets: BoundaryBehavior;
+  };
+  // RNG settings
+  seed: string;
+  useTimeBasedSeed: boolean;
+}
+
+export const DefaultSimConfig: SimConfig = {
+  simBounds: { width: 1920, height: 1920, depth: 1920 },
   tickRate: 60,
   maxEntities: 5000,
+  bulletLifetime: 3.0, // bullets live for 3 seconds
+  maxSimulationSteps: 5, // max steps per frame to prevent spiral of death
+  targetUpdateRate: 0.5, // AI updates targets every 0.5 seconds
+  boundaryBehavior: {
+    ships: 'bounce', // ships bounce off boundaries
+    bullets: 'remove', // bullets are removed when hitting boundaries
+  },
+  seed: 'SPACE-001',
+  useTimeBasedSeed: false,
 };
