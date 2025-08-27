@@ -1,6 +1,14 @@
 // Use shared helper for default ship type
 import { getDefaultShipTypeSafe } from "./config/runtimeConfigResolver";
 
+function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
+  return {
+    min: { x: 0, y: 0, z: -50 },
+    max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
+    wrap: { x: true, y: true, z: true }
+  };
+}
+
 export function createGameManager({
   useWorker = false,
   renderer = null,
@@ -18,8 +26,16 @@ export function createGameManager({
       emit("reinforcements", { spawned: result.spawned });
     }
   }
-  let state: GameState = makeInitialState();
+  let state: GameState3D = makeInitialState3D();
   let running = false;
+
+  function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
+    return {
+      min: { x: 0, y: 0, z: -50 },
+      max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
+      wrap: { x: true, y: true, z: true }
+    };
+  }
   const listeners = new Map<string, Function[]>();
   const workerReadyCbs: Function[] = [];
   let simWorker: any = null;
@@ -42,6 +58,14 @@ export function createGameManager({
   let acc = 0;
   const score = { red: 0, blue: 0 };
   const internal = { state, bounds: SIM.bounds };
+
+  function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
+    return {
+      min: { x: 0, y: 0, z: -50 },
+      max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
+      wrap: { x: true, y: true, z: true }
+    };
+  }
 
   function emit(type: string, msg: any) {
     emitManagerEvent(listeners, type, msg);
@@ -102,7 +126,7 @@ export function createGameManager({
     running = false;
   }
   function resetManager() {
-    state = makeInitialState();
+    state = makeInitialState3D();
     if (simWorker)
       try {
         simWorker.post({ type: "command", cmd: "setState", args: { state } });
@@ -116,10 +140,10 @@ export function createGameManager({
     const clampedDt = Math.min(dtSeconds, 0.05);
     if (!simWorker) {
       try {
-        applySimpleAI(state, clampedDt, SIM.bounds);
+        applySimpleAI3D(state, clampedDt, SIM.bounds);
       } catch (e) {}
       try {
-        simulateStep(state, clampedDt, SIM.bounds);
+        simulateStep3D(state, convertBounds2DTo3D(SIM.bounds));
       } catch (e) {}
     } else {
       try {
@@ -522,8 +546,8 @@ import {
 } from "./entities";
 import { updateTeamCount } from "./entities";
 import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
-import { applySimpleAI } from "./behavior";
-import { simulateStep } from "./simulate";
+import { applySimpleAI3D } from "./behavior";
+import { simulateStep as simulateStep3D } from "./simulate/step3d";
 import { SIM } from "./config/simConfig";
 import { srand, srandom } from "./rng";
 import { createSimWorker } from "./createSimWorker";
@@ -542,6 +566,54 @@ import {
   FALLBACK_POSITIONS,
 } from "./config/gamemanagerConfig";
 import type { ShipConfigMap, GameState } from "./types";
+import type { GameState3D, Ship3D } from "./types/threeTypes";
+import type { Bounds3 } from "./utils/wrapping";
+
+// Helper function to convert 2D bounds to 3D bounds
+function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
+  return {
+    min: { x: 0, y: 0, z: -50 },
+    max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
+    wrap: { x: true, y: true, z: true }
+  };
+}
+
+// Helper function to convert GameState to GameState3D
+function convertToGameState3D(state: GameState): GameState3D {
+  // Extract properties that we don't want to spread to avoid conflicts
+  const { ships: _, flashes: __, t: ___, ...restState } = state;
+  return {
+    ships: state.ships.map(ship => {
+      // Create a new object without conflicting properties
+      const { x, y, vx, vy, radius, ...restShip } = ship;
+      return {
+        ...restShip,
+        id: String(ship.id), // Convert number to string
+        position: {
+          x: x || 0,
+          y: y || 0,
+          z: 0 // Default z position
+        },
+        velocity: {
+          x: vx || 0,
+          y: vy || 0,
+          z: 0 // Default z velocity
+        },
+        collisionRadius: radius || 8
+      } as Ship3D;
+    }),
+    flashes: state.flashes,
+    t: state.t,
+    // Include other state properties without conflicts
+    ...restState
+  };
+}
+
+// Helper function to create initial 3D state
+function makeInitialState3D(): GameState3D {
+  const baseState = makeInitialState();
+  return convertToGameState3D(baseState);
+}
 import * as EntitiesConfigESM from "./config/entitiesConfig";
 import {
   chooseReinforcementsWithManagerSeed,
@@ -980,7 +1052,7 @@ export function simulate(dt: number, W = 800, H = 600) {
   // No global arrays; all arrays are managed via GameState
   evaluateReinforcement(dt, state);
   try {
-    simulateStep(state, dt, SIM.bounds);
+    simulateStep3D(state, convertBounds2DTo3D(SIM.bounds));
   } catch (e) {}
   // No global state to clear; callers should pass `state` explicitly to helpers.
   return state;

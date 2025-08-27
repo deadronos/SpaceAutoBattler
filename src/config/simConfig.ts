@@ -8,6 +8,14 @@ export interface SimConfig {
   gridCellSize?: number; // spatial grid cell size (px)
 }
 
+// 3D Boundary Configuration
+export interface Bounds3D {
+  width: number;
+  height: number;
+  depth: number;
+  wrap: { x: boolean; y: boolean; z: boolean };
+}
+
 export const SIM: SimConfig = {
   DT_MS: 16,
   MAX_ACC_MS: 250,

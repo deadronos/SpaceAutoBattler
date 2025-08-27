@@ -11,8 +11,10 @@ type ShipLike = {
   id?: number;
   x?: number;
   y?: number;
+  z?: number; // 3D position
   vx?: number;
   vy?: number;
+  vz?: number; // 3D velocity
   team?: string;
   hp?: number;
   maxHp?: number;
@@ -28,8 +30,10 @@ type ShipLike = {
   throttle?: number; // NEW: throttle intent (0..1)
   __ai?: any;
   turrets?: any[];
-  angle?: number;
+  angle?: number; // 2D rotation (kept for compatibility)
+  quaternion?: { x: number; y: number; z: number; w: number }; // 3D rotation
   type?: string; // Added for config sync
+  position?: { x: number; y: number; z: number }; // 3D position object
 };
 
 import type { GameState } from "./types";
@@ -38,6 +42,52 @@ type State = GameState;
 
 function len2(vx: number, vy: number) {
   return vx * vx + vy * vy;
+}
+
+// 3D vector length squared
+function len2_3D(vx: number, vy: number, vz: number) {
+  return vx * vx + vy * vy + vz * vz;
+}
+
+// 3D distance calculation
+function distance3D(from: ShipLike, to: ShipLike): number {
+  const fromPos = getShipPosition3D(from);
+  const toPos = getShipPosition3D(to);
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const dz = toPos.z - fromPos.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// Get 3D position from ship (handles both 2D and 3D ships)
+function getShipPosition3D(ship: ShipLike): { x: number; y: number; z: number } {
+  if (ship.position) {
+    return { ...ship.position };
+  }
+  return {
+    x: ship.x || 0,
+    y: ship.y || 0,
+    z: ship.z || 0
+  };
+}
+
+// Get 3D velocity from ship
+function getShipVelocity3D(ship: ShipLike): { x: number; y: number; z: number } {
+  return {
+    x: ship.vx || 0,
+    y: ship.vy || 0,
+    z: ship.vz || 0
+  };
+}
+
+// 3D version of withinRange
+function withinRange3D(
+  from: ShipLike,
+  to: ShipLike,
+  range: number,
+): boolean {
+  const dist = distance3D(from, to);
+  return dist <= range;
 }
 const DEFAULT_BULLET_RANGE =
   // Guard against undefined export in certain CJS/ESM interop paths
@@ -75,6 +125,19 @@ function clampSpeed(s: ShipLike, max: number) {
   }
 }
 
+// 3D version of clampSpeed
+function clampSpeed3D(s: ShipLike, max: number) {
+  const v2 = len2_3D(s.vx || 0, s.vy || 0, s.vz || 0);
+
+  const max2 = max * max;
+  if (v2 > max2 && v2 > 0) {
+    const inv = max / Math.sqrt(v2);
+    s.vx = (s.vx || 0) * inv;
+    s.vy = (s.vy || 0) * inv;
+    s.vz = (s.vz || 0) * inv;
+  }
+}
+
 export { clampSpeed };
 
 function aimWithSpread(from: ShipLike, to: ShipLike, spread = 0) {
@@ -92,6 +155,47 @@ function aimWithSpread(from: ShipLike, to: ShipLike, spread = 0) {
   return { x: dx, y: dy };
 }
 
+// 3D version of aimWithSpread
+function aimWithSpread3D(from: ShipLike, to: ShipLike, spread = 0) {
+  const fromPos = getShipPosition3D(from);
+  const toPos = getShipPosition3D(to);
+
+  let dx = toPos.x - fromPos.x;
+  let dy = toPos.y - fromPos.y;
+  let dz = toPos.z - fromPos.z;
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+
+  dx /= d;
+  dy /= d;
+  dz /= d;
+
+  if (spread > 0) {
+    // Apply spread in 3D space
+    const theta = Math.acos(dz); // Polar angle
+    const phi = Math.atan2(dy, dx); // Azimuthal angle
+
+    const spreadRad = spread;
+    const thetaJitter = srange(-spreadRad, spreadRad);
+    const phiJitter = srange(-spreadRad, spreadRad);
+
+    const newTheta = theta + thetaJitter;
+    const newPhi = phi + phiJitter;
+
+    const cosTheta = Math.cos(newTheta);
+    const sinTheta = Math.sin(newTheta);
+    const cosPhi = Math.cos(newPhi);
+    const sinPhi = Math.sin(newPhi);
+
+    return {
+      x: sinTheta * cosPhi,
+      y: sinTheta * sinPhi,
+      z: cosTheta
+    };
+  }
+
+  return { x: dx, y: dy, z: dz };
+}
+
 function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
   // Legacy cannons (single target, all fire at once)
   if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {
@@ -101,18 +205,25 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       if (c.__cd > 0) continue;
       const range =
         typeof c.range === "number" ? c.range : DEFAULT_BULLET_RANGE;
-      if (
-        !withinRange(
-          ship.x || 0,
-          ship.y || 0,
-          target.x || 0,
-          target.y || 0,
-          range,
-        )
-      )
-        continue;
+
+      // Use 3D range check if ships have 3D positions
+      const inRange = (ship.z !== undefined || ship.position) && (target.z !== undefined || target.position)
+        ? withinRange3D(ship, target, range)
+        : withinRange(
+            ship.x || 0,
+            ship.y || 0,
+            target.x || 0,
+            target.y || 0,
+            range,
+          );
+      if (!inRange) continue;
+
       const spread = typeof c.spread === "number" ? c.spread : 0;
-      const dir = aimWithSpread(ship, target, spread);
+      // Use 3D aiming if ships have 3D positions
+      const dir = (ship.z !== undefined || ship.position) && (target.z !== undefined || target.position)
+        ? aimWithSpread3D(ship, target, spread)
+        : aimWithSpread(ship, target, spread);
+
       const speed =
         typeof c.muzzleSpeed === "number"
           ? c.muzzleSpeed
@@ -131,19 +242,32 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
         typeof c.bulletRadius === "number"
           ? c.bulletRadius
           : getBulletDefaultsSafe().radius;
+
+      // Handle 3D velocity
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      const vz = (dir as any).z ? (dir as any).z * speed : 0;
+
+      const shipPos = getShipPosition3D(ship);
+      const bulletData: any = {
+        x: shipPos.x,
+        y: shipPos.y,
+        vx,
+        vy,
+        team: ship.team || TEAM_DEFAULT,
+        ownerId: ship.id || null,
+        damage: dmg,
+        ttl,
+      };
+
+      // Add z coordinate if supported
+      if (shipPos.z !== 0 || vz !== 0) {
+        bulletData.z = shipPos.z;
+        bulletData.vz = vz;
+      }
+
       const b = Object.assign(
-        acquireBullet(state, {
-          x: ship.x || 0,
-          y: ship.y || 0,
-          vx,
-          vy,
-          team: ship.team || TEAM_DEFAULT,
-          ownerId: ship.id || null,
-          damage: dmg,
-          ttl,
-        }),
+        acquireBullet(state, bulletData),
         { radius },
       );
       const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
@@ -157,7 +281,7 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       if (typeof turret.__cd !== "number") turret.__cd = 0;
       turret.__cd -= dt;
       if (turret.__cd > 0) continue;
-      // Target selection per turret
+      // Target selection per turret - use 3D distance if available
       let turretTarget: ShipLike | null = null;
       if (turret.targeting === "nearest") {
         const enemies = (state.ships || []).filter(
@@ -165,11 +289,11 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
         );
         let minDist = Infinity;
         for (const enemy of enemies) {
-          const dx = (enemy.x || 0) - (ship.x || 0);
-          const dy = (enemy.y || 0) - (ship.y || 0);
-          const d2 = dx * dx + dy * dy;
-          if (d2 < minDist) {
-            minDist = d2;
+          const distance = ((ship as any).z !== undefined || (ship as any).position) && ((enemy as any).z !== undefined || (enemy as any).position)
+            ? distance3D(ship, enemy)
+            : Math.hypot((enemy.x || 0) - (ship.x || 0), (enemy.y || 0) - (ship.y || 0));
+          if (distance < minDist) {
+            minDist = distance;
             turretTarget = enemy;
           }
         }
@@ -189,17 +313,17 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
               : (state.ships || []).find((sh) => sh && sh.id === tId) || null;
         }
       } else {
-        // Default: nearest
+        // Default: nearest - use 3D distance if available
         const enemies = (state.ships || []).filter(
           (sh) => sh && sh.team !== ship.team,
         );
         let minDist = Infinity;
         for (const enemy of enemies) {
-          const dx = (enemy.x || 0) - (ship.x || 0);
-          const dy = (enemy.y || 0) - (ship.y || 0);
-          const d2 = dx * dx + dy * dy;
-          if (d2 < minDist) {
-            minDist = d2;
+          const distance = ((ship as any).z !== undefined || (ship as any).position) && ((enemy as any).z !== undefined || (enemy as any).position)
+            ? distance3D(ship, enemy)
+            : Math.hypot((enemy.x || 0) - (ship.x || 0), (enemy.y || 0) - (ship.y || 0));
+          if (distance < minDist) {
+            minDist = distance;
             turretTarget = enemy;
           }
         }
@@ -221,15 +345,21 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
       const shipAngle = ship.angle || 0;
       const configRadiusLocal =
         typeof ship.radius === "number" && ship.radius > 0 ? ship.radius : 12;
-      const mountX =
-        (ship.x || 0) +
-        Math.cos(shipAngle) * mTx * configRadiusLocal -
-        Math.sin(shipAngle) * mTy * configRadiusLocal;
-      const mountY =
-        (ship.y || 0) +
-        Math.sin(shipAngle) * mTx * configRadiusLocal +
-        Math.cos(shipAngle) * mTy * configRadiusLocal;
-      const dir = aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
+
+      // Calculate 3D mount position
+      const shipPos = getShipPosition3D(ship);
+      const cosAngle = Math.cos(shipAngle);
+      const sinAngle = Math.sin(shipAngle);
+
+      const mountX = shipPos.x + cosAngle * mTx * configRadiusLocal - sinAngle * mTy * configRadiusLocal;
+      const mountY = shipPos.y + sinAngle * mTx * configRadiusLocal + cosAngle * mTy * configRadiusLocal;
+      const mountZ = shipPos.z; // Turrets are at ship height for now
+
+      // Use 3D aiming if ships have 3D positions
+      const dir = ((ship as any).z !== undefined || (ship as any).position) && ((turretTarget as any).z !== undefined || (turretTarget as any).position)
+        ? aimWithSpread3D({ x: mountX, y: mountY, z: mountZ }, turretTarget, spread)
+        : aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
+
       const speed =
         typeof turret.muzzleSpeed === "number"
           ? turret.muzzleSpeed
@@ -251,14 +381,23 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
 
       const range =
         typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
-      const dxT = (turretTarget.x || 0) - mountX;
-      const dyT = (turretTarget.y || 0) - mountY;
-      if (dxT * dxT + dyT * dyT > range * range) continue;
+
+      // Use 3D range check if ships have 3D positions
+      const inRange = ((ship as any).z !== undefined || (ship as any).position) && ((turretTarget as any).z !== undefined || (turretTarget as any).position)
+        ? withinRange3D({ x: mountX, y: mountY, z: mountZ }, turretTarget, range)
+        : withinRange(mountX, mountY, turretTarget.x || 0, turretTarget.y || 0, range);
+
+      if (!inRange) continue;
+
+      // Handle 3D velocity
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      const vz = (dir as any).z ? (dir as any).z * speed : 0;
+
       // If turret defines a barrel offset (in local turret coords), spawn from the tip
       let spawnX = mountX;
       let spawnY = mountY;
+      let spawnZ = mountZ;
       const barrelLen =
         turret && typeof (turret as any).barrel === "number"
           ? (turret as any).barrel
@@ -274,18 +413,29 @@ function tryFire(state: State, ship: ShipLike, target: ShipLike, dt: number) {
         const turretWorldAngle = shipAngle + turretLocalAngle;
         spawnX = mountX + Math.cos(turretWorldAngle) * barrelLen;
         spawnY = mountY + Math.sin(turretWorldAngle) * barrelLen;
+        // For 3D, we might need to consider pitch as well, but for now keep at mount height
+        spawnZ = mountZ;
       }
+
+      const bulletData: any = {
+        x: spawnX,
+        y: spawnY,
+        vx,
+        vy,
+        team: ship.team || TEAM_DEFAULT,
+        ownerId: ship.id || null,
+        damage: dmg,
+        ttl,
+      };
+
+      // Add z coordinate if supported
+      if (spawnZ !== 0 || vz !== 0) {
+        bulletData.z = spawnZ;
+        bulletData.vz = vz;
+      }
+
       const b = Object.assign(
-        acquireBullet(state, {
-          x: spawnX,
-          y: spawnY,
-          vx,
-          vy,
-          team: ship.team || TEAM_DEFAULT,
-          ownerId: ship.id || null,
-          damage: dmg,
-          ttl,
-        }),
+        acquireBullet(state, bulletData),
         { radius },
       );
       turret.__cd =
@@ -312,6 +462,27 @@ function chooseNewTarget(state: State, ship: ShipLike) {
   return enemies[idx];
 }
 
+// 3D version of chooseNewTarget - selects closest enemy in 3D space
+function chooseNewTarget3D(state: State, ship: ShipLike) {
+  const enemies = (state.ships || []).filter(
+    (sh) => sh && sh.team !== ship.team,
+  );
+  if (!enemies.length) return null;
+
+  let closestEnemy = null;
+  let closestDistance = Infinity;
+
+  for (const enemy of enemies) {
+    const distance = distance3D(ship, enemy);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestEnemy = enemy;
+    }
+  }
+
+  return closestEnemy;
+}
+
 function steerAway(
   s: ShipLike,
   tx: number,
@@ -326,6 +497,69 @@ function steerAway(
   const ny = dy / d;
   s.vx = (s.vx || 0) + nx * accel * dt;
   s.vy = (s.vy || 0) + ny * accel * dt;
+}
+
+// 3D version of steerAway
+function steerAway3D(
+  s: ShipLike,
+  tx: number,
+  ty: number,
+  tz: number,
+  accel: number,
+  dt: number,
+) {
+  const fromPos = getShipPosition3D(s);
+  const dx = fromPos.x - tx;
+  const dy = fromPos.y - ty;
+  const dz = fromPos.z - tz;
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  const nz = dz / d;
+  s.vx = (s.vx || 0) + nx * accel * dt;
+  s.vy = (s.vy || 0) + ny * accel * dt;
+  s.vz = (s.vz || 0) + nz * accel * dt;
+}
+
+// 3D steering towards target
+function steerTowards3D(
+  s: ShipLike,
+  tx: number,
+  ty: number,
+  tz: number,
+  accel: number,
+  dt: number,
+) {
+  const fromPos = getShipPosition3D(s);
+  const dx = tx - fromPos.x;
+  const dy = ty - fromPos.y;
+  const dz = tz - fromPos.z;
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  const nz = dz / d;
+  s.vx = (s.vx || 0) + nx * accel * dt;
+  s.vy = (s.vy || 0) + ny * accel * dt;
+  s.vz = (s.vz || 0) + nz * accel * dt;
+}
+
+// Calculate 3D angle to target (returns quaternion or euler angles)
+function calculateAngleToTarget3D(from: ShipLike, to: ShipLike) {
+  const fromPos = getShipPosition3D(from);
+  const toPos = getShipPosition3D(to);
+
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const dz = toPos.z - fromPos.z;
+
+  // Calculate yaw (rotation around Y axis)
+  const yaw = Math.atan2(dx, dz);
+
+  // Calculate pitch (rotation around X axis)
+  const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+  const pitch = -Math.atan2(dy, horizontalDistance);
+
+  return { yaw, pitch, distance: Math.sqrt(dx * dx + dy * dy + dz * dz) };
 }
 
 export function applySimpleAI(
@@ -450,4 +684,96 @@ export function getShipAiState(ship: ShipLike) {
   return Object.assign({}, rest);
 }
 
-export default { applySimpleAI, getShipAiState };
+export function applySimpleAI3D(
+  state: State,
+  dt: number,
+  bounds = getDefaultBounds(),
+) {
+  if (!state || !Array.isArray(state.ships)) return;
+
+  for (const s of state.ships) {
+    const ai = ensureShipAiState(s);
+    ai.decisionTimer = Math.max(0, (ai.decisionTimer || 0) - dt);
+
+    let target: ShipLike | null = null;
+    if (ai.targetId != null)
+      target =
+        (state as any).shipMap &&
+        typeof ai.targetId !== "undefined" &&
+        ai.targetId !== null
+          ? (state as any).shipMap.get(Number(ai.targetId)) || null
+          : (state.ships || []).find((sh) => sh && sh.id === ai.targetId) ||
+            null;
+    if (!target) target = chooseNewTarget3D(state, s);
+    if (target) ai.targetId = target.id;
+
+    // Set throttle and steering dynamically based on intent
+    const maxAccel = typeof s.accel === "number" ? s.accel : 100;
+    const maxSpeed = typeof s.maxSpeed === "number" ? s.maxSpeed : 160;
+    s.steering = typeof s.steering === "number" ? s.steering : 0;
+    s.throttle = typeof s.throttle === "number" ? s.throttle : 0;
+
+    if (!target) {
+      // Idle: no acceleration, no steering
+      s.throttle = 0;
+      s.steering = 0;
+      ai.state = "idle";
+    } else {
+      if (ai.decisionTimer <= 0) {
+        const hpFrac = (s.hp || 0) / Math.max(1, s.maxHp || 1);
+        const rnd = srandom();
+        if (
+          hpFrac < AI_THRESHOLDS.hpEvadeThreshold ||
+          rnd < AI_THRESHOLDS.randomLow
+        )
+          ai.state = "evade";
+        else if (rnd < AI_THRESHOLDS.randomHigh) ai.state = "engage";
+        else ai.state = "idle";
+        ai.decisionTimer =
+          AI_THRESHOLDS.decisionTimerMin +
+          srandom() *
+            (AI_THRESHOLDS.decisionTimerMax - AI_THRESHOLDS.decisionTimerMin);
+      }
+
+      // Calculate 3D angle to target
+      const angleData = calculateAngleToTarget3D(s, target);
+      const currentAngle = typeof s.angle === "number" ? s.angle : 0;
+
+      // Calculate desired angles
+      const desiredYaw = angleData.yaw;
+      const desiredPitch = angleData.pitch;
+
+      // Calculate angle differences
+      let daYaw = desiredYaw - currentAngle;
+      while (daYaw < -Math.PI) daYaw += Math.PI * 2;
+      while (daYaw > Math.PI) daYaw -= Math.PI * 2;
+
+      // Normalize steering to -1..1
+      const steeringNorm = Math.PI / 2;
+      const steering = Math.max(-1, Math.min(1, daYaw / steeringNorm));
+
+      if (ai.state === "engage") {
+        // Move towards target
+        const targetPos = getShipPosition3D(target);
+        steerTowards3D(s, targetPos.x, targetPos.y, targetPos.z, maxAccel * s.throttle, dt);
+        s.throttle = 1;
+        s.steering = steering;
+
+        // Try to fire if in range
+        tryFire(state, s, target, dt);
+      } else if (ai.state === "evade") {
+        // Move away from target
+        const targetPos = getShipPosition3D(target);
+        steerAway3D(s, targetPos.x, targetPos.y, targetPos.z, maxAccel * s.throttle, dt);
+        s.throttle = 0.8;
+        s.steering = -steering; // Steer away
+      } else {
+        s.throttle = 0;
+        s.steering = 0;
+      }
+    }
+
+    // Apply 3D speed clamping
+    clampSpeed3D(s, maxSpeed);
+  }
+}

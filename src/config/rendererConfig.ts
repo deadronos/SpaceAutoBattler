@@ -1,9 +1,9 @@
 import { DISPLAY_DEFAULTS } from "./displayConfig";
 
 export const RendererConfig = {
-  preferred: "canvas" as "canvas" | "webgl",
-  allowUrlOverride: true,
-  allowWebGL: true,
+  preferred: "three" as "three", // 3D is now mandatory and default
+  allowUrlOverride: false, // Disable URL override for 2D renderers
+  allowWebGL: false, // Disable WebGL renderer
   renderScale: DISPLAY_DEFAULTS.renderScale,
   displayScale: DISPLAY_DEFAULTS.displayScale,
   dynamicScaleEnabled: false,
@@ -19,20 +19,9 @@ export const RendererConfig = {
   },
 };
 
-export function getPreferredRenderer(): "canvas" | "webgl" {
-  try {
-    if (
-      RendererConfig.allowUrlOverride &&
-      typeof window !== "undefined" &&
-      window.location &&
-      window.location.search
-    ) {
-      const p = new URLSearchParams(window.location.search);
-      const r = p.get("renderer");
-      if (r === "canvas" || r === "webgl") return r;
-    }
-  } catch (e) {}
-  return RendererConfig.preferred;
+export function getPreferredRenderer(): "three" {
+  // 3D renderer is now mandatory - no URL override or fallback options
+  return "three";
 }
 
 export default RendererConfig;

@@ -6,6 +6,7 @@ import { makeInitialState } from "./entities";
 import type { GameState } from "./types";
 import { CanvasRenderer } from "./canvasrenderer";
 import { WebGLRenderer } from "./webglrenderer";
+import { ThreeRenderer } from "./threeRenderer";
 import { getDefaultBounds } from "./config/simConfig";
 import { SIM } from "./config/simConfig";
 import { getPreferredRenderer, RendererConfig } from "./config/rendererConfig";
@@ -27,6 +28,13 @@ declare global {
 export async function startApp(rootDocument: Document = document) {
   // Instantiate canonical GameState at startup
   const gameState: GameState = makeInitialState();
+
+  // Temporary: hard-disable internal render scaling. We keep CSS fit-to-window
+  // but force rendererScale to 1 and ignore dynamic scaling.
+  try {
+    (RendererConfig as any).renderScale = 1;
+    (RendererConfig as any).dynamicScaleEnabled = false;
+  } catch (e) {}
 
   let canvas = rootDocument.getElementById("world") as HTMLCanvasElement | null;
   // If the host document doesn't already have a canvas#world (some DOM emulators
@@ -98,10 +106,8 @@ export async function startApp(rootDocument: Document = document) {
   // Only update backing store when renderScale changes
   function updateCanvasBackingStore() {
     const dpr = window.devicePixelRatio || 1;
-    const renderScale =
-      RendererConfig && typeof (RendererConfig as any).renderScale === "number"
-        ? (RendererConfig as any).renderScale
-        : 1;
+    // Force rendererScale to 1 while disabled
+    const renderScale = 1;
     const logicalW = LOGICAL_BOUNDS.W;
     const logicalH = LOGICAL_BOUNDS.H;
     if (canvas) {
@@ -154,55 +160,48 @@ export async function startApp(rootDocument: Document = document) {
   let internalScaleUpdate = false;
   if (scaleSlider) {
     const onScaleInput = (ev: any) => {
-      if (internalScaleUpdate) return; // ignore internal updates
-      const val = parseFloat(ev.target.value);
-      if (!isNaN(val)) {
-        (RendererConfig as any).renderScale = val;
-        (RendererConfig as any).dynamicScaleEnabled = false;
-        if (dynamicCheckbox)
-          (dynamicCheckbox as HTMLInputElement).checked = false;
-        updateCanvasBackingStore();
-        fitCanvasToWindow();
-      }
+      // Disabled: ignore user attempts to change renderer scale
+      return;
     };
     addListener(scaleSlider, "input", onScaleInput);
     // Set initial value display
     const scaleVal = rootDocument.getElementById("rendererScaleValue");
-    if (scaleVal)
-      scaleVal.textContent = (scaleSlider as HTMLInputElement).value;
-    // Ensure initial fit-to-window calculation uses current scale
-    updateCanvasBackingStore();
-    fitCanvasToWindow();
+    if (scaleVal) scaleVal.textContent = "1.00";
+    // Disable the control visually
+    try {
+      (scaleSlider as HTMLInputElement).disabled = true;
+      (scaleSlider as HTMLInputElement).value = "1.00";
+    } catch (e) {}
   }
   if (dynamicCheckbox) {
     const onDynamicChange = (ev: any) => {
-      const enabled = !!ev.target.checked;
-      (RendererConfig as any).dynamicScaleEnabled = enabled;
+      // Disabled: always force false
+      (RendererConfig as any).dynamicScaleEnabled = false;
+      try {
+        (dynamicCheckbox as HTMLInputElement).checked = false;
+      } catch (e) {}
     };
     addListener(dynamicCheckbox, "change", onDynamicChange);
-    (dynamicCheckbox as HTMLInputElement).checked = !!(RendererConfig as any)
-      .dynamicScaleEnabled;
+    try {
+      (dynamicCheckbox as HTMLInputElement).checked = false;
+      (dynamicCheckbox as HTMLInputElement).disabled = true;
+    } catch (e) {}
   }
 
+  // Ensure backing store and CSS fit reflect disabled scaling
+  updateCanvasBackingStore();
   fitCanvasToWindow();
   addListener(window, "resize", fitCanvasToWindow);
 
   let renderer: any = null;
   const pref = getPreferredRenderer();
   if (canvas) {
-    if (pref === "webgl") {
-      try {
-        const w = new WebGLRenderer(canvas);
-        if (w && w.init && w.init()) renderer = w;
-      } catch (e) {}
-    }
-    if (!renderer) {
-      try {
-        renderer = new CanvasRenderer(canvas);
-        renderer.init && renderer.init();
-      } catch (e) {
-        renderer = null;
-      }
+    // 3D renderer is now mandatory - always use ThreeRenderer
+    try {
+      const t = new ThreeRenderer(canvas);
+      if (t && t.init && t.init()) renderer = t;
+    } catch (e) {
+      console.error("Failed to initialize 3D renderer:", e);
     }
   }
   // Preload all assets if renderer supports it
@@ -664,7 +663,8 @@ export async function startApp(rootDocument: Document = document) {
       skipRender = true;
     }
     // --- Dynamic buffer scaling logic ---
-    const dynamicEnabled = !!(RendererConfig as any).dynamicScaleEnabled;
+  // Dynamic scaling is disabled
+  const dynamicEnabled = false;
     const scaleSliderEl = rootDocument.getElementById(
       "rendererScaleRange",
     ) as HTMLInputElement;

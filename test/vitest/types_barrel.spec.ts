@@ -28,7 +28,8 @@ describe('Type barrel and config contracts', () => {
 
   it('RendererConfig matches RendererConfig type', () => {
     const cfg: typeof RendererConfig = RendererConfig;
-    expect(cfg.preferred).toMatch(/canvas|webgl/);
+    // Accept all supported renderer identifiers (canvas, webgl, three)
+    expect(cfg.preferred).toMatch(/canvas|webgl|three/);
     expect(cfg.hpBar).toBeDefined();
     expect(typeof cfg.hpBar.bg).toBe('string');
   });

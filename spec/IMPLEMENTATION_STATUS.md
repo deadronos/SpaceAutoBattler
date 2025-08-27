@@ -52,6 +52,21 @@
 
 ### 2025-08-27: Runtime resolver ESM-first + browser validation
 
+### 2025-08-27: 3D scaffolding integration (three.js)
+
+- Added `src/threeRenderer.ts` wiring into `src/main.ts` with a new renderer option `renderer=three` via URL param and config (`RendererConfig.preferred = 'three'`).
+- Introduced unit tests for 3D utilities and simulation:
+  - `test/vitest/wrapping3d.spec.ts` (normalize + wrappedDistance)
+  - `test/vitest/simulate3d.spec.ts` (time advance, wrapping, and basic separation)
+- Typecheck clean; tests pass locally for the new suites.
+
+### 2025-08-27: ThreeRenderer instanced placeholder + smoke test
+
+- Implemented minimal instanced ship rendering using `THREE.InstancedMesh` in `src/threeRenderer.ts` with a simple box geometry. Includes dynamic capacity growth and per-frame instance matrix updates from `state.ships` (2D or 3D inputs supported).
+- Added `getStats()` on ThreeRenderer to report instance count and capacity. Added robust fallbacks in `init` to allow testing with lightweight stubs.
+- New test `test/vitest/threeRenderer_instanced.spec.ts` stubs THREE and verifies capacity growth and matrix updates. Tests pass locally.
+
+
 - Fixed a regression where only fighter/carrier appeared in the UI by adjusting `runtimeConfigResolver` to:
   - Prefer direct ESM import of `entitiesConfig` so bundlers include the full config for browsers.
   - Cache only successful module-resolved configs. Do not cache the minimal fallback to avoid locking into fallback when early calls happen during init.

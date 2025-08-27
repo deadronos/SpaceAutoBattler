@@ -48,6 +48,9 @@
     "idb-keyval": "^6.2.1",
     "lodash": "^4.17.21",
     "lru-cache": "^11.1.0",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "three": "^0.179.1",
+    "three-stdlib": "^2.36.0",
+    "three.js": "^0.77.1"
   }
 }

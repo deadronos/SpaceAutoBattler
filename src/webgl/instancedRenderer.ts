@@ -100,8 +100,8 @@ export class InstancedRenderer {
     this.setBlendMode(batch.blendMode || 'normal');
     
     // Bind VAO (contains quad geometry and instance data)
-    if (this.gl instanceof WebGL2RenderingContext && this.quadVAO) {
-      (gl as WebGL2RenderingContext).bindVertexArray(this.quadVAO);
+    if (this.isWebGL2Like() && this.quadVAO) {
+      (gl as any).bindVertexArray(this.quadVAO);
     }
     
     // Process instances in batches if needed
@@ -116,9 +116,9 @@ export class InstancedRenderer {
       this.uploadInstanceData(instanceSlice);
       
       // Draw instanced quads
-      if (this.gl instanceof WebGL2RenderingContext) {
-        // WebGL2: Use drawArraysInstanced
-        (gl as WebGL2RenderingContext).drawArraysInstanced(gl.TRIANGLES, 0, 6, batchSize);
+      if (this.isWebGL2Like()) {
+        // WebGL2-like: Use drawArraysInstanced
+        (gl as any).drawArraysInstanced(gl.TRIANGLES, 0, 6, batchSize);
       } else {
         // WebGL1: Check for instancing extension
         const ext = gl.getExtension('ANGLE_instanced_arrays');
@@ -134,8 +134,8 @@ export class InstancedRenderer {
     }
     
     // Cleanup
-    if (this.gl instanceof WebGL2RenderingContext && this.quadVAO) {
-      (gl as WebGL2RenderingContext).bindVertexArray(null);
+    if (this.isWebGL2Like() && this.quadVAO) {
+      (gl as any).bindVertexArray(null);
     }
   }
   
@@ -150,8 +150,8 @@ export class InstancedRenderer {
       this.shaderProgram = null;
     }
     
-    if (this.quadVAO && this.gl instanceof WebGL2RenderingContext) {
-      (gl as WebGL2RenderingContext).deleteVertexArray(this.quadVAO);
+    if (this.quadVAO && this.isWebGL2Like()) {
+      (gl as any).deleteVertexArray(this.quadVAO);
       this.quadVAO = null;
     }
     
@@ -209,7 +209,7 @@ export class InstancedRenderer {
   }
   
   private getVertexShaderSource(): string {
-    const isWebGL2 = this.gl instanceof WebGL2RenderingContext;
+    const isWebGL2 = this.isWebGL2Like();
     const version = isWebGL2 ? '#version 300 es' : '';
     const inKeyword = isWebGL2 ? 'in' : 'attribute';
     const outKeyword = isWebGL2 ? 'out' : 'varying';
@@ -261,7 +261,7 @@ export class InstancedRenderer {
   }
   
   private getFragmentShaderSource(): string {
-    const isWebGL2 = this.gl instanceof WebGL2RenderingContext;
+    const isWebGL2 = this.isWebGL2Like();
     const version = isWebGL2 ? '#version 300 es' : '';
     const inKeyword = isWebGL2 ? 'in' : 'varying';
     const outColor = isWebGL2 ? 'out vec4 fragColor;' : '';
@@ -332,11 +332,11 @@ export class InstancedRenderer {
   }
   
   private setupVertexArrays(): boolean {
-    const gl = this.gl;
+    const gl: any = this.gl as any;
     
-    if (this.gl instanceof WebGL2RenderingContext) {
-      // WebGL2: Use VAO
-      const gl2 = this.gl as WebGL2RenderingContext;
+    if (this.isWebGL2Like()) {
+      // WebGL2-like: Use VAO
+      const gl2: any = gl;
       this.quadVAO = gl2.createVertexArray();
       if (!this.quadVAO) return false;
       
@@ -379,9 +379,42 @@ export class InstancedRenderer {
       }
       
       gl2.bindVertexArray(null);
+    } else {
+      // WebGL1 path: no VAO, still set up attributes so fallback can work
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+      if (this.locations.aPosition !== undefined && this.locations.aPosition >= 0) {
+        gl.enableVertexAttribArray(this.locations.aPosition);
+        gl.vertexAttribPointer(this.locations.aPosition, 2, gl.FLOAT, false, 16, 0);
+      }
+      if (this.locations.aUV !== undefined && this.locations.aUV >= 0) {
+        gl.enableVertexAttribArray(this.locations.aUV);
+        gl.vertexAttribPointer(this.locations.aUV, 2, gl.FLOAT, false, 16, 8);
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceVBO);
+      const stride = this.getInstanceDataSize() * 4;
+      if (this.locations.aInstanceTransform !== undefined && this.locations.aInstanceTransform >= 0) {
+        gl.enableVertexAttribArray(this.locations.aInstanceTransform);
+        gl.vertexAttribPointer(this.locations.aInstanceTransform, 4, gl.FLOAT, false, stride, 0);
+      }
+      if (this.locations.aInstanceUV !== undefined && this.locations.aInstanceUV >= 0) {
+        gl.enableVertexAttribArray(this.locations.aInstanceUV);
+        gl.vertexAttribPointer(this.locations.aInstanceUV, 4, gl.FLOAT, false, stride, 16);
+      }
+      if (this.locations.aInstanceTint !== undefined && this.locations.aInstanceTint >= 0) {
+        gl.enableVertexAttribArray(this.locations.aInstanceTint);
+        gl.vertexAttribPointer(this.locations.aInstanceTint, 4, gl.FLOAT, false, stride, 32);
+      }
     }
     
     return true;
+  }
+
+  /**
+   * Detect WebGL2-like features without referencing global WebGL2RenderingContext (which may be undefined).
+   */
+  private isWebGL2Like(): boolean {
+    const gl: any = this.gl as any;
+    return !!gl && typeof gl.drawArraysInstanced === 'function' && typeof gl.createVertexArray === 'function';
   }
   
   private getInstanceDataSize(): number {
