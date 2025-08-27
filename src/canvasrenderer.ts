@@ -948,35 +948,53 @@ export class CanvasRenderer {
       activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     });
 
-    // Ensure procedural starfield exists on state (base and bloom)
+    // Ensure procedural starfield exists on renderer (base and bloom)
     try {
       // Throttle starfield generation to avoid noisy regeneration every sim step.
-      // Use a cooldown counter on state._starCooldown (in seconds of sim time).
-      const STAR_COOLDOWN_DEFAULT = 1.0; // seconds
-      if (state && !(state as any).starCanvas) {
-        (state as any)._starCooldown = (state as any)._starCooldown || 0;
-      }
-      if (state && (state as any).starCanvas === undefined) {
-        (state as any).starCanvas = null; // mark as intentionally absent to allow cooldown handling
-      }
-      if (state && (state as any)._starCooldown > 0) {
-        // decrement cooldown by sim dt if available (state.dt or state.simDt or 1/60 fallback)
-        const dt =
+      // Use a renderer-level cooldown counter measured in milliseconds.
+      const STAR_COOLDOWN_DEFAULT = 300; // milliseconds
+      // Initialize renderer-level fields if missing
+      if ((this as any)._starCanvas === undefined)
+        (this as any)._starCanvas = null;
+      if ((this as any)._starBloomCanvas === undefined)
+        (this as any)._starBloomCanvas = null;
+      if ((this as any)._starCooldownMs === undefined)
+        (this as any)._starCooldownMs = 0;
+      // Decrement renderer cooldown if active using state's dt/simDt (normalize to ms)
+      if ((this as any)._starCooldownMs > 0) {
+        const rawDt =
           typeof (state as any).dt === "number"
             ? (state as any).dt
             : typeof (state as any).simDt === "number"
               ? (state as any).simDt
               : 1 / 60;
-        (state as any)._starCooldown = Math.max(
+        const dtMs = rawDt > 1 ? rawDt : rawDt * 1000;
+        const before = (this as any)._starCooldownMs;
+        (this as any)._starCooldownMs = Math.max(
           0,
-          (state as any)._starCooldown - dt,
+          (this as any)._starCooldownMs - dtMs,
         );
+        try {
+          const isTest =
+            (typeof process !== "undefined" &&
+              (process as any).env &&
+              ((process as any).env.VITEST ||
+                (process as any).env.VITEST_WORKER_ID)) ||
+            typeof (globalThis as any).vitest !== "undefined";
+          if (!isTest) {
+            // eslint-disable-next-line no-console
+            console.log("canvasrenderer: starCooldown (renderer)", {
+              before,
+              after: (this as any)._starCooldownMs,
+              rawDt,
+              dtMs,
+              t: state && (state as any).t,
+            });
+          }
+        } catch (e) {}
       }
-      if (
-        state &&
-        !(state as any).starCanvas &&
-        (state as any)._starCooldown <= 0
-      ) {
+      // Regenerate if missing and cooldown expired
+      if (!(this as any)._starCanvas && (this as any)._starCooldownMs <= 0) {
         const size = Math.max(1024, Math.max(bufferW, bufferH));
         const sc = document.createElement("canvas");
         sc.width = size;
@@ -1024,8 +1042,20 @@ export class CanvasRenderer {
         bctx.globalAlpha = 0.85;
         bctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, size, size);
         bctx.globalAlpha = 1.0;
-        state.starCanvas = sc;
-        (state as any).starBloomCanvas = bc;
+        (this as any)._starCanvas = sc;
+        (this as any)._starBloomCanvas = bc;
+        try {
+          // eslint-disable-next-line no-console
+          console.log("canvasrenderer: regenerated starfield (renderer)", {
+            width: (this as any)._starCanvas?.width,
+            height: (this as any)._starCanvas?.height,
+            time:
+              typeof performance !== "undefined" && performance.now
+                ? performance.now()
+                : Date.now(),
+          });
+        } catch (e) {}
+        (this as any)._starCooldownMs = STAR_COOLDOWN_DEFAULT;
       }
     } catch (e) {}
 

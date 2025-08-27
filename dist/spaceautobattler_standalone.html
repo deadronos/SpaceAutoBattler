@@ -519,7 +519,7 @@ var init_rendererConfig = __esm({
       hpBar: DISPLAY_DEFAULTS.hpBar,
       // starfield rendering tweaks
       starfield: {
-        parallaxFactor: 0.1,
+        parallaxFactor: 0.01,
         // how much the starfield moves relative to camera (0 = static)
         density: 35e-5,
         // base star density multiplier (stars = size*size*density)
@@ -5781,7 +5781,7 @@ var CanvasRenderer = class _CanvasRenderer {
       activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     });
     try {
-      const STAR_COOLDOWN_DEFAULT = 0.3;
+      const STAR_COOLDOWN_DEFAULT = 300;
       if (state && !state.starCanvas) {
         state._starCooldown = state._starCooldown || 0;
       }
@@ -5789,11 +5789,26 @@ var CanvasRenderer = class _CanvasRenderer {
         state.starCanvas = null;
       }
       if (state && state._starCooldown > 0) {
-        const dt = typeof state.dt === "number" ? state.dt : typeof state.simDt === "number" ? state.simDt : 1 / 60;
+        const rawDt = typeof state.dt === "number" ? state.dt : typeof state.simDt === "number" ? state.simDt : 1 / 60;
+        const dtMs = rawDt > 1 ? rawDt : rawDt * 1e3;
+        const before = state._starCooldown;
         state._starCooldown = Math.max(
           0,
-          state._starCooldown - dt
+          state._starCooldown - dtMs
         );
+        try {
+          const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
+          if (!isTest) {
+            console.log("canvasrenderer: starCooldown", {
+              before,
+              after: state._starCooldown,
+              rawDt,
+              dtMs,
+              t: state && state.t
+            });
+          }
+        } catch (e) {
+        }
       }
       if (state && !state.starCanvas && state._starCooldown <= 0) {
         const size = Math.max(1024, Math.max(bufferW, bufferH));
@@ -5843,6 +5858,15 @@ var CanvasRenderer = class _CanvasRenderer {
         bctx.globalAlpha = 1;
         state.starCanvas = sc;
         state.starBloomCanvas = bc;
+        try {
+          console.log("canvasrenderer: regenerated starfield", {
+            width: state.starCanvas?.width,
+            height: state.starCanvas?.height,
+            time: typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()
+          });
+        } catch (e) {
+        }
+        state._starCooldown = STAR_COOLDOWN_DEFAULT;
       }
     } catch (e) {
     }
