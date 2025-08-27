@@ -2,47 +2,100 @@ import { build as esbuild } from 'esbuild';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 
-// Build configuration and utilities
+// Build configuration - centralized and overridable
+const BUILD_CONFIG = {
+  // Source directories
+  srcDir: path.join(repoRoot, 'src'),
+  stylesDir: path.join(repoRoot, 'src', 'styles'),
+  assetsDir: path.join(repoRoot, 'src', 'assets'),
+  svgConfigDir: path.join(repoRoot, 'src', 'config', 'assets', 'svg'),
+  publicDir: path.join(repoRoot, 'public'),
+
+  // Output settings
+  defaultOutDir: path.join(repoRoot, 'dist'),
+  sourcemap: process.env.SOURCEMAP !== 'false',
+  sourcesContent: process.env.SOURCES_CONTENT !== 'false',
+  minify: process.env.NODE_ENV === 'production',
+
+  // Build targets
+  target: ['es2022'],
+  platform: 'browser',
+  format: 'esm',
+
+  // Asset settings
+  svgFiles: ['fighter.svg', 'corvette.svg', 'frigate.svg', 'destroyer.svg', 'carrier.svg'],
+
+  // Performance settings
+  maxConcurrency: 4,
+};
+
+// Shared build utilities
 class BuildLogger {
-  constructor() {
+  constructor(prefix = 'BUILD') {
+    this.prefix = prefix;
     this.startTime = Date.now();
-    this.steps = [];
+    this.steps = new Map();
+    this.errors = [];
+    this.warnings = [];
   }
 
   log(message, level = 'info') {
-    const timestamp = new Date().toISOString();
-    const formatted = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
-    if (level === 'error') {
-      console.error(formatted);
-    } else if (level === 'warn') {
-      console.warn(formatted);
-    } else {
-      console.log(formatted);
+    const timestamp = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+    const formatted = `[${timestamp}] [${this.prefix}] [${level.toUpperCase()}] ${message}`;
+
+    switch (level) {
+      case 'error':
+        this.errors.push(message);
+        console.error(`\x1b[31m${formatted}\x1b[0m`);
+        break;
+      case 'warn':
+        this.warnings.push(message);
+        console.warn(`\x1b[33m${formatted}\x1b[0m`);
+        break;
+      case 'success':
+        console.log(`\x1b[32m${formatted}\x1b[0m`);
+        break;
+      default:
+        console.log(formatted);
     }
   }
 
   time(label) {
-    this.steps.push({ label, start: Date.now() });
+    this.steps.set(label, Date.now());
     this.log(`Starting: ${label}`);
   }
 
   timeEnd(label) {
-    const step = this.steps.find(s => s.label === label);
-    if (step) {
-      const duration = Date.now() - step.start;
+    const start = this.steps.get(label);
+    if (start) {
+      const duration = Date.now() - start;
       this.log(`Completed: ${label} (${duration}ms)`);
-      this.steps = this.steps.filter(s => s.label !== label);
+      this.steps.delete(label);
     }
   }
 
   summary() {
     const totalTime = Date.now() - this.startTime;
-    this.log(`Build completed in ${totalTime}ms`);
+    const summary = {
+      duration: `${totalTime}ms`,
+      errors: this.errors.length,
+      warnings: this.warnings.length,
+    };
+
+    this.log(`Build completed in ${summary.duration} (Errors: ${summary.errors}, Warnings: ${summary.warnings})`);
+
+    if (this.errors.length > 0) {
+      this.log('Errors encountered:', 'error');
+      this.errors.forEach(err => this.log(`  - ${err}`, 'error'));
+    }
+
+    return summary;
   }
 }
 
@@ -82,6 +135,15 @@ async function getFileSize(filePath) {
   }
 }
 
+async function getFileHash(filePath) {
+  try {
+    const content = await fs.readFile(filePath);
+    return crypto.createHash('md5').update(content).digest('hex');
+  } catch {
+    return '';
+  }
+}
+
 function formatBytes(bytes) {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -90,26 +152,37 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Build CSS via esbuild to produce a single bundled stylesheet with sourcemaps
+// Optimized CSS bundling with esbuild
 async function buildCssBundle({ stylesDir, outFile, sourcemap = true, sourcesContent = true, logger }) {
   logger.time('CSS Bundle');
 
   try {
-    // Create a virtual CSS entry that @imports all CSS files in a stable order
-    const entries = await fs.readdir(stylesDir, { withFileTypes: true }).catch(() => []);
-    const files = entries.filter(e => e.isFile() && e.name.endsWith('.css')).map(e => e.name).sort();
+    // Find all CSS files recursively
+    const cssFiles = await findFiles(stylesDir, '.css');
 
-    if (files.length === 0) {
+    if (cssFiles.length === 0) {
       logger.log(`No CSS files found in ${stylesDir}, creating empty bundle`);
-      // No CSS files; still emit an empty file and empty sourcemap for consistency
       await fs.writeFile(outFile, '', 'utf8');
-      if (sourcemap) await fs.writeFile(outFile + '.map', JSON.stringify({ version: 3, sources: [], mappings: '' }), 'utf8');
+      if (sourcemap) {
+        await fs.writeFile(outFile + '.map', JSON.stringify({
+          version: 3,
+          sources: [],
+          mappings: '',
+          names: []
+        }), 'utf8');
+      }
       logger.timeEnd('CSS Bundle');
       return;
     }
 
-    const imports = files.map(name => `@import "./${name}";`).join('\n');
-    logger.log(`Bundling ${files.length} CSS files: ${files.join(', ')}`);
+    // Create virtual entry with @import statements
+    const imports = cssFiles
+      .map(file => path.relative(stylesDir, file))
+      .sort()
+      .map(relPath => `@import "./${relPath}";`)
+      .join('\n');
+
+    logger.log(`Bundling ${cssFiles.length} CSS files`);
 
     const result = await esbuild({
       stdin: {
@@ -122,6 +195,7 @@ async function buildCssBundle({ stylesDir, outFile, sourcemap = true, sourcesCon
       outfile: outFile,
       sourcemap,
       sourcesContent,
+      minify: BUILD_CONFIG.minify,
       logLevel: 'silent',
     });
 
@@ -135,31 +209,80 @@ async function buildCssBundle({ stylesDir, outFile, sourcemap = true, sourcesCon
   }
 }
 
-async function copyDir(srcDir, dstDir, logger) {
-  logger.time(`Copy ${path.relative(repoRoot, srcDir)}`);
+// Find files recursively with extension filter
+async function findFiles(dir, ext) {
+  const files = [];
+
+  async function scan(currentDir) {
+    try {
+      const entries = await fs.readdir(currentDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+
+        if (entry.isDirectory()) {
+          await scan(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith(ext)) {
+          files.push(fullPath);
+        }
+      }
+    } catch (error) {
+      // Skip directories we can't read
+    }
+  }
+
+  await scan(dir);
+  return files;
+}
+
+// Optimized directory copying with change detection
+async function copyDirOptimized(srcDir, dstDir, logger, cache = new Map()) {
+  const label = `Copy ${path.relative(repoRoot, srcDir)}`;
+  logger.time(label);
 
   try {
     const entries = await fs.readdir(srcDir, { withFileTypes: true });
     await ensureDir(dstDir);
 
-    let fileCount = 0;
-    for (const e of entries) {
-      const s = path.join(srcDir, e.name);
-      const d = path.join(dstDir, e.name);
-      if (e.isDirectory()) {
-        await copyDir(s, d, logger);
-      } else if (e.isFile()) {
-        await fs.copyFile(s, d);
-        fileCount++;
-      }
+    let copiedCount = 0;
+    let skippedCount = 0;
+
+    // Process entries in parallel with concurrency limit
+    const concurrencyLimit = BUILD_CONFIG.maxConcurrency;
+    for (let i = 0; i < entries.length; i += concurrencyLimit) {
+      const batch = entries.slice(i, i + concurrencyLimit);
+      await Promise.all(batch.map(async (entry) => {
+        const srcPath = path.join(srcDir, entry.name);
+        const dstPath = path.join(dstDir, entry.name);
+
+        if (entry.isDirectory()) {
+          const subCopied = await copyDirOptimized(srcPath, dstPath, logger, cache);
+          copiedCount += subCopied.copied;
+          skippedCount += subCopied.skipped;
+        } else if (entry.isFile()) {
+          const srcHash = await getFileHash(srcPath);
+          const cacheKey = dstPath;
+
+          if (cache.get(cacheKey) === srcHash) {
+            skippedCount++;
+            return;
+          }
+
+          await fs.copyFile(srcPath, dstPath);
+          cache.set(cacheKey, srcHash);
+          copiedCount++;
+        }
+      }));
     }
 
-    logger.log(`Copied ${fileCount} files to ${path.relative(repoRoot, dstDir)}`);
-    logger.timeEnd(`Copy ${path.relative(repoRoot, srcDir)}`);
+    logger.log(`Copied ${copiedCount} files, skipped ${skippedCount} unchanged files`);
+    logger.timeEnd(label);
+    return { copied: copiedCount, skipped: skippedCount };
   } catch (error) {
-    logger.timeEnd(`Copy ${path.relative(repoRoot, srcDir)}`);
+    logger.timeEnd(label);
     if (error.code === 'ENOENT') {
       logger.log(`Source directory ${srcDir} does not exist, skipping copy`, 'warn');
+      return { copied: 0, skipped: 0 };
     } else {
       throw new Error(`Failed to copy directory from ${srcDir} to ${dstDir}: ${error.message}`);
     }
@@ -167,104 +290,133 @@ async function copyDir(srcDir, dstDir, logger) {
 }
 
 function rewriteHtmlReferences(html, { cssHref, jsSrc }) {
-  let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, `<link rel="stylesheet" href="${cssHref}">`);
-  out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, `<script type="module" src="${jsSrc}"><\/script>`);
+  let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/gi, `<link rel="stylesheet" href="${cssHref}">`);
+  out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/gi, `<script type="module" src="${jsSrc}"></script>`);
   return out;
 }
 
-export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
-  const logger = new BuildLogger();
+// Load SVG assets for inlining
+async function loadSvgAssets(svgDir, svgFiles, logger) {
+  logger.time('Load SVG Assets');
+
+  const svgAssets = {};
+
+  await Promise.all(svgFiles.map(async (fname) => {
+    const fpath = path.join(svgDir, fname);
+    try {
+      svgAssets[fname.replace('.svg', '')] = await fs.readFile(fpath, 'utf8');
+      logger.log(`Loaded SVG asset: ${fname}`);
+    } catch (error) {
+      logger.log(`SVG asset missing: ${fpath}`, 'warn');
+      svgAssets[fname.replace('.svg', '')] = '';
+    }
+  }));
+
+  logger.timeEnd('Load SVG Assets');
+  return svgAssets;
+}
+
+export async function build({ outDir = BUILD_CONFIG.defaultOutDir, incremental = false } = {}) {
+  const logger = new BuildLogger('BUILD');
   logger.log(`Starting build to ${path.relative(repoRoot, outDir)}`);
 
+  const cache = incremental ? new Map() : undefined;
+
   try {
-    const srcDir = path.join(repoRoot, 'src');
-
-    // Pure TypeScript build: all runtime logic is sourced from /src/*.ts files.
-    // No JS shims or transpilation steps are required.
-    const uiHtmlPath = path.join(srcDir, 'ui.html');
-    const stylesDir = path.join(srcDir, 'styles');
-    const assetsDir = path.join(srcDir, 'assets');
-    // Additional config-time SVG assets used by renderers (ship hulls)
-    const svgConfigDir = path.join(srcDir, 'config', 'assets', 'svg');
-    const publicDir = path.join(repoRoot, 'public');
-
     logger.time('Clean output directory');
-    await rimraf(outDir);
+    if (!incremental) {
+      await rimraf(outDir);
+    }
     await ensureDir(outDir);
     logger.timeEnd('Clean output directory');
 
-    // Allow environment overrides for sourcemap mode and sourcesContent embedding
-    const smEnv = process.env.SOURCEMAP;
-    const sourcemapOpt = (smEnv === 'inline' || smEnv === 'external' || smEnv === 'linked') ? smEnv : (smEnv === 'false' ? false : true);
-    const scEnv = process.env.SOURCES_CONTENT;
-    const sourcesContentOpt = scEnv === 'false' ? false : true;
+    logger.log(`Build configuration: sourcemap=${BUILD_CONFIG.sourcemap}, minify=${BUILD_CONFIG.minify}, incremental=${incremental}`);
 
-    logger.log(`Build configuration: sourcemap=${sourcemapOpt}, sourcesContent=${sourcesContentOpt}`);
-
+    // TypeScript/JavaScript bundle
     logger.time('TypeScript/JavaScript bundle');
     const result = await esbuild({
       entryPoints: {
-        bundled: path.join(srcDir, 'main.ts'),
-        simWorker: path.join(srcDir, 'simWorker.ts'),
+        bundled: path.join(BUILD_CONFIG.srcDir, 'main.ts'),
+        simWorker: path.join(BUILD_CONFIG.srcDir, 'simWorker.ts'),
       },
       outdir: outDir,
       bundle: true,
-      format: 'esm',
-      platform: 'browser',
-      target: ['es2022'],
-      sourcemap: sourcemapOpt,
-      sourcesContent: sourcesContentOpt,
+      format: BUILD_CONFIG.format,
+      platform: BUILD_CONFIG.platform,
+      target: BUILD_CONFIG.target,
+      sourcemap: BUILD_CONFIG.sourcemap,
+      sourcesContent: BUILD_CONFIG.sourcesContent,
+      minify: BUILD_CONFIG.minify,
       splitting: false,
       logLevel: 'silent',
-      define: { 'process.env.NODE_ENV': '"production"' },
+      define: {
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      },
     });
     logger.timeEnd('TypeScript/JavaScript bundle');
+
+    // Create .ts alias for bundled.js
+    try {
+      const bundledJsPath = path.join(outDir, 'bundled.js');
+      const asTsPath = path.join(outDir, 'bundled.ts');
+      const jsContent = await fs.readFile(bundledJsPath, 'utf8');
+      await fs.writeFile(asTsPath, jsContent, 'utf8');
+      logger.log('Created bundled.ts alias');
+    } catch (e) {
+      logger.log(`Could not emit bundled.ts: ${e.message}`, 'warn');
+    }
 
     // Log bundle sizes
     const mainJsSize = await getFileSize(path.join(outDir, 'bundled.js'));
     const workerJsSize = await getFileSize(path.join(outDir, 'simWorker.js'));
     logger.log(`JavaScript bundles: main=${formatBytes(mainJsSize)}, worker=${formatBytes(workerJsSize)}`);
 
-    logger.time('CSS bundle');
+    // CSS bundle
     const cssOut = path.join(outDir, 'bundled.css');
-    await buildCssBundle({ stylesDir, outFile: cssOut, sourcemap: sourcemapOpt, sourcesContent: sourcesContentOpt, logger });
-    logger.timeEnd('CSS bundle');
+    await buildCssBundle({
+      stylesDir: BUILD_CONFIG.stylesDir,
+      outFile: cssOut,
+      sourcemap: BUILD_CONFIG.sourcemap,
+      sourcesContent: BUILD_CONFIG.sourcesContent,
+      logger
+    });
 
-    const cssSize = await getFileSize(cssOut);
-    logger.log(`CSS bundle: ${formatBytes(cssSize)}`);
-
+    // Asset copying
     logger.time('Asset copying');
-    await copyDir(assetsDir, path.join(outDir, 'assets'), logger);
-    // Expose SVGs at ./svg/ so AssetsConfig.svgAssets relative paths work in browser builds
-    await copyDir(svgConfigDir, path.join(outDir, 'svg'), logger);
-    await copyDir(publicDir, outDir, logger);
+    const copyResults = await Promise.all([
+      copyDirOptimized(BUILD_CONFIG.assetsDir, path.join(outDir, 'assets'), logger, cache),
+      copyDirOptimized(BUILD_CONFIG.svgConfigDir, path.join(outDir, 'svg'), logger, cache),
+      copyDirOptimized(BUILD_CONFIG.publicDir, outDir, logger, cache),
+    ]);
     logger.timeEnd('Asset copying');
 
-    // Output main JS bundle only (no .ts copy needed for runtime)
-    const mainJsPath = path.join(outDir, 'bundled.js');
-
+    // Generate HTML
+    const uiHtmlPath = path.join(BUILD_CONFIG.srcDir, 'ui.html');
     const uiHtml = (await readIfExists(uiHtmlPath)) || '<!doctype html><html><head></head><body></body></html>';
-
-    // Load the JS bundle with a .js extension for correct MIME type.
-    // All logic is bundled from TypeScript sources.
-    const htmlOut = rewriteHtmlReferences(uiHtml, { cssHref: './bundled.css', jsSrc: './bundled.js' });
+    const htmlOut = rewriteHtmlReferences(uiHtml, {
+      cssHref: './bundled.css',
+      jsSrc: './bundled.js'
+    });
     const namedHtmlOut = path.join(outDir, 'spaceautobattler.html');
     await fs.writeFile(namedHtmlOut, htmlOut, 'utf8');
 
     const htmlSize = await getFileSize(namedHtmlOut);
     logger.log(`HTML output: ${formatBytes(htmlSize)}`);
 
-    logger.summary();
+    const summary = logger.summary();
 
     return {
       outDir,
       files: {
         html: namedHtmlOut,
-        js: mainJsPath,
+        js: path.join(outDir, 'bundled.js'),
+        ts: path.join(outDir, 'bundled.ts'),
         worker: path.join(outDir, 'simWorker.js'),
         css: cssOut,
       },
       metafile: result?.metafile,
+      summary,
+      cache,
     };
   } catch (error) {
     logger.log(`Build failed: ${error.message}`, 'error');
@@ -272,17 +424,17 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   }
 }
 
-
-// When executed directly via `node scripts/build.mjs`, run the build.
-// This script now builds exclusively from TypeScript sources in /src.
+// Execute when run directly
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  const outDir = process.env.OUT_DIR ? path.resolve(process.env.OUT_DIR) : path.join(repoRoot, 'dist');
+  const outDir = process.env.OUT_DIR ? path.resolve(process.env.OUT_DIR) : BUILD_CONFIG.defaultOutDir;
+  const incremental = process.argv.includes('--incremental') || process.argv.includes('-i');
 
-  build({ outDir })
+  build({ outDir, incremental })
     .then((result) => {
       console.log(`✓ Build successful: ${result.outDir}`);
       console.log(`  HTML: ${path.relative(repoRoot, result.files.html)}`);
       console.log(`  JS:   ${path.relative(repoRoot, result.files.js)}`);
+      console.log(`  TS:   ${path.relative(repoRoot, result.files.ts)}`);
       console.log(`  CSS:  ${path.relative(repoRoot, result.files.css)}`);
       console.log(`  Worker: ${path.relative(repoRoot, result.files.worker)}`);
     })

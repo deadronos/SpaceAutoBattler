@@ -2,50 +2,91 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Pure TypeScript build: all runtime logic is sourced from /src/*.ts files.
-// No JS shims or transpilation steps are required.
+// Import shared build utilities
 import { build as runBaseBuild } from './build.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 
-// Build configuration and utilities
+// Build configuration - centralized and overridable
+const BUILD_CONFIG = {
+  // Source directories
+  srcDir: path.join(repoRoot, 'src'),
+  svgConfigDir: path.join(repoRoot, 'src', 'config', 'assets', 'svg'),
+
+  // Output settings
+  defaultOutDir: path.join(repoRoot, 'dist'),
+  minify: process.env.NODE_ENV === 'production',
+
+  // Asset settings
+  svgFiles: ['fighter.svg', 'corvette.svg', 'frigate.svg', 'destroyer.svg', 'carrier.svg'],
+
+  // Performance settings
+  maxConcurrency: 4,
+};
+
+// Shared build utilities (imported from build.mjs)
 class StandaloneBuildLogger {
-  constructor() {
+  constructor(prefix = 'STANDALONE') {
+    this.prefix = prefix;
     this.startTime = Date.now();
-    this.steps = [];
+    this.steps = new Map();
+    this.errors = [];
+    this.warnings = [];
   }
 
   log(message, level = 'info') {
-    const timestamp = new Date().toISOString();
-    const formatted = `[${timestamp}] [STANDALONE] [${level.toUpperCase()}] ${message}`;
-    if (level === 'error') {
-      console.error(formatted);
-    } else if (level === 'warn') {
-      console.warn(formatted);
-    } else {
-      console.log(formatted);
+    const timestamp = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+    const formatted = `[${timestamp}] [${this.prefix}] [${level.toUpperCase()}] ${message}`;
+
+    switch (level) {
+      case 'error':
+        this.errors.push(message);
+        console.error(`\x1b[31m${formatted}\x1b[0m`);
+        break;
+      case 'warn':
+        this.warnings.push(message);
+        console.warn(`\x1b[33m${formatted}\x1b[0m`);
+        break;
+      case 'success':
+        console.log(`\x1b[32m${formatted}\x1b[0m`);
+        break;
+      default:
+        console.log(formatted);
     }
   }
 
   time(label) {
-    this.steps.push({ label, start: Date.now() });
+    this.steps.set(label, Date.now());
     this.log(`Starting: ${label}`);
   }
 
   timeEnd(label) {
-    const step = this.steps.find(s => s.label === label);
-    if (step) {
-      const duration = Date.now() - step.start;
+    const start = this.steps.get(label);
+    if (start) {
+      const duration = Date.now() - start;
       this.log(`Completed: ${label} (${duration}ms)`);
-      this.steps = this.steps.filter(s => s.label !== label);
+      this.steps.delete(label);
     }
   }
 
   summary() {
     const totalTime = Date.now() - this.startTime;
-    this.log(`Standalone build completed in ${totalTime}ms`);
+    const summary = {
+      duration: `${totalTime}ms`,
+      errors: this.errors.length,
+      warnings: this.warnings.length,
+    };
+
+    this.log(`Build completed in ${summary.duration} (Errors: ${summary.errors}, Warnings: ${summary.warnings})`);
+
+    if (this.errors.length > 0) {
+      this.log('Errors encountered:', 'error');
+      this.errors.forEach(err => this.log(`  - ${err}`, 'error'));
+    }
+
+    return summary;
   }
 }
 
@@ -66,70 +107,54 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// Optimized HTML inlining with asset processing
+function inlineHtml({ html, css, js, workerJs, svgAssets }) {
+  // Inject CSS inside a <style> tag
+  let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/gi, () => `<style>\n${css}\n</style>`);
 
-// No longer needed: escapeHtml (unused)
+  // Create worker loader shim for inline worker code
+  const workerLoader = `
+    const __workerCode = ${JSON.stringify(workerJs)};
+    const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
+    const __workerUrl = URL.createObjectURL(__workerBlob);
+    const __OrigWorker = window.Worker;
+    window.Worker = class extends __OrigWorker {
+      constructor(url, opts) {
+        try {
+          const s = typeof url === 'string' ? url : String(url);
+          if (s.endsWith('simWorker.js')) {
+            super(__workerUrl, { type: 'module', ...(opts||{}) });
+            return;
+          }
+        } catch {}
+        super(url, opts);
+      }
+    };
+  `;
 
-function inlineHtml({ html, css, js, workerJs }) {
-    // Inject CSS inside a <style> tag
-    let out = html.replace(/<link[^>]+href=["']([^"']+)["'][^>]*>/i, () => `<style>\n${css}\n</style>`);
+  // Inline JavaScript with worker loader
+  const jsInline = `${workerLoader}\n${js}`;
+  out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/gi, () => `<script type="module">\n${jsInline}\n</script>`);
 
-
-    // Replace module script src with inline code after adding a worker loader shim.
-    // Monkey-patch Worker to handle URL('./simWorker.js', import.meta.url) by serving from an inline blob.
-    const workerLoader = `
-        const __workerCode = ${JSON.stringify(workerJs)};
-        const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });
-        const __workerUrl = URL.createObjectURL(__workerBlob);
-        const __OrigWorker = window.Worker;
-        window.Worker = class extends __OrigWorker {
-            constructor(url, opts) {
-                try {
-                    const s = typeof url === 'string' ? url : String(url);
-                    if (s.endsWith('simWorker.js')) {
-                        super(__workerUrl, { type: 'module', ...(opts||{}) });
-                        return;
-                    }
-                } catch {}
-                super(url, opts);
-            }
-        };
-    `;
-
-    const jsInline = `${workerLoader}\n${js}`;
-    out = out.replace(/<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/i, () => `<script type="module">\n${jsInline}\n<\/script>`);
-    return out;
+  return out;
 }
 
+// Create inline SVG script for asset injection
+function createSvgInlineScript(svgAssets) {
+  return `<script>(function(){try{if(typeof globalThis!=='undefined'){globalThis.__INLINE_SVG_ASSETS=${JSON.stringify(svgAssets)};}}catch(e){}})();</script>`;
+}
 
-async function buildStandalone() {
-  const logger = new StandaloneBuildLogger();
-  logger.log('Starting standalone build');
+// Optimized SVG asset loading with parallel processing
+async function loadSvgAssets(svgDir, svgFiles, logger) {
+  logger.time('Load SVG Assets');
 
-  try {
-    logger.time('Base build');
-    // All logic is bundled from TypeScript sources.
-    const { outDir, files } = await runBaseBuild({ outDir: path.join(repoRoot, 'dist') });
-    logger.timeEnd('Base build');
+  const svgAssets = {};
 
-    logger.time('Asset loading');
-    const [html, css, js, workerJs] = await Promise.all([
-      fs.readFile(files.html, 'utf8'),
-      fs.readFile(files.css, 'utf8'),
-      fs.readFile(files.js, 'utf8'),
-      fs.readFile(files.worker, 'utf8'),
-    ]);
-    logger.timeEnd('Asset loading');
-
-    // Log input file sizes
-    logger.log(`Input sizes: HTML=${formatBytes(html.length)}, CSS=${formatBytes(css.length)}, JS=${formatBytes(js.length)}, Worker=${formatBytes(workerJs.length)}`);
-
-    logger.time('SVG asset processing');
-    // Inline SVG assets
-    const svgDir = path.join(repoRoot, 'src', 'config', 'assets', 'svg');
-    const svgFiles = ['destroyer.svg', 'carrier.svg', 'frigate.svg', 'corvette.svg'];
-    const svgAssets = {};
-
-    for (const fname of svgFiles) {
+  // Process SVG files in parallel with concurrency limit
+  const concurrencyLimit = BUILD_CONFIG.maxConcurrency;
+  for (let i = 0; i < svgFiles.length; i += concurrencyLimit) {
+    const batch = svgFiles.slice(i, i + concurrencyLimit);
+    await Promise.all(batch.map(async (fname) => {
       const fpath = path.join(svgDir, fname);
       try {
         svgAssets[fname.replace('.svg', '')] = await fs.readFile(fpath, 'utf8');
@@ -138,25 +163,67 @@ async function buildStandalone() {
         logger.log(`SVG asset missing: ${fpath}`, 'warn');
         svgAssets[fname.replace('.svg', '')] = '';
       }
-    }
-    logger.timeEnd('SVG asset processing');
+    }));
+  }
+
+  logger.timeEnd('Load SVG Assets');
+  return svgAssets;
+}
+
+// Minify HTML content if enabled
+function minifyHtml(html, minify = false) {
+  if (!minify) return html;
+
+  // Basic HTML minification - remove unnecessary whitespace
+  return html
+    .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
+    .replace(/>\s+</g, '><')  // Remove whitespace between tags
+    .replace(/\s*([<>])\s*/g, '$1')  // Remove whitespace around < and >
+    .trim();
+}
+
+export async function buildStandalone({ outDir = BUILD_CONFIG.defaultOutDir, incremental = false } = {}) {
+  const logger = new StandaloneBuildLogger('STANDALONE');
+  logger.log(`Starting standalone build to ${path.relative(repoRoot, outDir)}`);
+
+  try {
+    logger.time('Base build');
+    const baseResult = await runBaseBuild({ outDir, incremental });
+    logger.timeEnd('Base build');
+
+    logger.time('Asset loading');
+    const [html, css, js, workerJs] = await Promise.all([
+      fs.readFile(baseResult.files.html, 'utf8'),
+      fs.readFile(baseResult.files.css, 'utf8'),
+      fs.readFile(baseResult.files.js, 'utf8'),
+      fs.readFile(baseResult.files.worker, 'utf8'),
+    ]);
+    logger.timeEnd('Asset loading');
+
+    // Log input file sizes
+    const inputSizes = {
+      html: html.length,
+      css: css.length,
+      js: js.length,
+      worker: workerJs.length
+    };
+    logger.log(`Input sizes: HTML=${formatBytes(inputSizes.html)}, CSS=${formatBytes(inputSizes.css)}, JS=${formatBytes(inputSizes.js)}, Worker=${formatBytes(inputSizes.worker)}`);
+
+    // Load SVG assets
+    const svgAssets = await loadSvgAssets(BUILD_CONFIG.svgConfigDir, BUILD_CONFIG.svgFiles, logger);
 
     logger.time('HTML inlining');
-    // Create a dedicated inline <script> that assigns the inlined SVG assets.
-    // IMPORTANT: This must execute BEFORE the main module script so that
-    // AssetsConfig.ts can read globalThis.__INLINE_SVG_ASSETS during module
-    // evaluation and populate AssetsConfig.svgAssets with inline strings.
-    const inlineSvgScript = `<script>(function(){try{if(typeof globalThis!=='undefined'){globalThis.__INLINE_SVG_ASSETS=${JSON.stringify(svgAssets)};}}catch(e){}})();</script>`;
+    // Create inline SVG script
+    const inlineSvgScript = createSvgInlineScript(svgAssets);
 
-    // Produce the inlined HTML normally
-    let inlined = inlineHtml({ html, css, js, workerJs });
+    // Inline all assets into HTML
+    let inlined = inlineHtml({ html, css, js, workerJs, svgAssets });
 
-    // Place the inlineSvgScript right after the opening <body> tag so it
-    // runs before any subsequent <script type="module"> content.
+    // Inject SVG script right after opening body tag
     inlined = inlined.replace(/<body(\s[^>]*)?>/, (m) => `${m}\n${inlineSvgScript}`);
 
-    // Fallback: if no <body> tag was found (unlikely), append at top.
-    let final = inlined.includes('<body') ? inlined : (inlineSvgScript + '\n' + inlined);
+    // Minify if enabled
+    const final = BUILD_CONFIG.minify ? minifyHtml(inlined, true) : inlined;
     logger.timeEnd('HTML inlining');
 
     logger.time('File writing');
@@ -168,49 +235,64 @@ async function buildStandalone() {
     logger.log(`Standalone output: ${formatBytes(standaloneSize)}`);
 
     logger.time('Validation');
-    // Post-write verification: ensure the standalone contains the injection and at least one expected asset key
+    // Post-write verification
     try {
       const written = await fs.readFile(standalonePath, 'utf8');
 
-      const hasInlineAssets = written.includes('__INLINE_SVG_ASSETS');
-      const hasFrigateAsset = written.includes('"frigate"');
-      const hasSvgScript = written.includes('<script>') && written.includes('__INLINE_SVG_ASSETS');
+      const validations = [
+        { test: written.includes('__INLINE_SVG_ASSETS'), message: '__INLINE_SVG_ASSETS not found' },
+        { test: written.includes('"frigate"'), message: 'Expected asset key "frigate" not found' },
+        { test: written.includes('<script>') && written.includes('__INLINE_SVG_ASSETS'), message: 'Inline SVG script not properly injected' },
+        { test: written.includes('<style>'), message: 'CSS not properly inlined' },
+        { test: written.includes('__workerCode'), message: 'Worker code not properly inlined' },
+      ];
 
-      if (!hasInlineAssets) {
-        throw new Error('__INLINE_SVG_ASSETS not found in generated standalone HTML');
+      const failures = validations.filter(v => !v.test);
+      if (failures.length > 0) {
+        throw new Error(`Validation failures: ${failures.map(f => f.message).join(', ')}`);
       }
 
-      if (!hasFrigateAsset) {
-        throw new Error('Expected asset key "frigate" not found in generated standalone HTML');
-      }
-
-      if (!hasSvgScript) {
-        throw new Error('Inline SVG script not properly injected');
-      }
-
-      logger.log('✓ Validation passed: inline SVG assets present and properly injected');
+      logger.log('✓ Validation passed: all assets properly inlined and injected');
     } catch (error) {
       logger.log(`✗ Validation failed: ${error.message}`, 'error');
       throw error;
     }
     logger.timeEnd('Validation');
 
-    logger.summary();
-    console.log(`✓ Standalone build successful: ${standalonePath}`);
+    const summary = logger.summary();
 
+    return {
+      outDir,
+      files: {
+        ...baseResult.files,
+        standalone: standalonePath,
+      },
+      summary,
+      inputSizes,
+      outputSize: standaloneSize,
+    };
   } catch (error) {
     logger.log(`Standalone build failed: ${error.message}`, 'error');
     throw error;
   }
 }
 
-
-// Execute when run directly via `node scripts/build-standalone.mjs`
-// This script now builds exclusively from TypeScript sources in /src.
+// Execute when run directly
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  buildStandalone().catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
-}
+  const outDir = process.env.OUT_DIR ? path.resolve(process.env.OUT_DIR) : BUILD_CONFIG.defaultOutDir;
+  const incremental = process.argv.includes('--incremental') || process.argv.includes('-i');
 
+  buildStandalone({ outDir, incremental })
+    .then((result) => {
+      console.log(`✓ Standalone build successful: ${result.files.standalone}`);
+      console.log(`  Input:  HTML=${formatBytes(result.inputSizes.html)}, CSS=${formatBytes(result.inputSizes.css)}, JS=${formatBytes(result.inputSizes.js)}`);
+      console.log(`  Output: ${formatBytes(result.outputSize)} (${((result.outputSize / (result.inputSizes.html + result.inputSizes.css + result.inputSizes.js)) * 100).toFixed(1)}% of original)`);
+    })
+    .catch((error) => {
+      console.error('✗ Standalone build failed:', error.message);
+      if (error.stack) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    });
+}
