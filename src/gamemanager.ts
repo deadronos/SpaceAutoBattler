@@ -35,7 +35,10 @@ export function createGameManager({
   };
   let continuous = false;
   let continuousOptions: any = {};
-  let last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  let last =
+    typeof performance !== "undefined" && performance.now
+      ? performance.now()
+      : Date.now();
   let acc = 0;
   const score = { red: 0, blue: 0 };
   const internal = { state, bounds: SIM.bounds };
@@ -59,12 +62,26 @@ export function createGameManager({
       if (simWorker) {
         try {
           if (typeof simWorker.off === "function") {
-            try { if (_workerReadyHandler) simWorker.off("ready", _workerReadyHandler); } catch (e) {}
-            try { if (_workerSnapshotHandler) simWorker.off("snapshot", _workerSnapshotHandler); } catch (e) {}
-            try { if (_workerReinforcementsHandler) simWorker.off("reinforcements", _workerReinforcementsHandler); } catch (e) {}
+            try {
+              if (_workerReadyHandler)
+                simWorker.off("ready", _workerReadyHandler);
+            } catch (e) {}
+            try {
+              if (_workerSnapshotHandler)
+                simWorker.off("snapshot", _workerSnapshotHandler);
+            } catch (e) {}
+            try {
+              if (_workerReinforcementsHandler)
+                simWorker.off("reinforcements", _workerReinforcementsHandler);
+            } catch (e) {}
           }
         } catch (e) {}
-        try { if (typeof simWorker.terminate === "function") simWorker.terminate(); else if (typeof simWorker.close === "function") simWorker.close(); else if (typeof simWorker.post === "function") simWorker.post({ type: "stop" }); } catch (e) {}
+        try {
+          if (typeof simWorker.terminate === "function") simWorker.terminate();
+          else if (typeof simWorker.close === "function") simWorker.close();
+          else if (typeof simWorker.post === "function")
+            simWorker.post({ type: "stop" });
+        } catch (e) {}
         simWorker = null;
       }
     } catch (e) {}
@@ -74,7 +91,10 @@ export function createGameManager({
   function start() {
     if (!running) {
       running = true;
-      last = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      last =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
       runLoop();
     }
   }
@@ -95,28 +115,62 @@ export function createGameManager({
   function step(dtSeconds: number) {
     const clampedDt = Math.min(dtSeconds, 0.05);
     if (!simWorker) {
-      try { applySimpleAI(state, clampedDt, SIM.bounds); } catch (e) {}
-      try { simulateStep(state, clampedDt, SIM.bounds); } catch (e) {}
+      try {
+        applySimpleAI(state, clampedDt, SIM.bounds);
+      } catch (e) {}
+      try {
+        simulateStep(state, clampedDt, SIM.bounds);
+      } catch (e) {}
     } else {
-      try { simWorker.post && simWorker.post({ type: "snapshotRequest" }); } catch (e) {}
+      try {
+        simWorker.post && simWorker.post({ type: "snapshotRequest" });
+      } catch (e) {}
     }
     _evaluateAndEmit(clampedDt);
+    // Coalesce renders on main-thread path to at most one RAF per frame
     if (renderer && typeof renderer.renderState === "function") {
       try {
-        renderer.renderState({
-          ships: state.ships,
-          bullets: state.bullets,
-          flashes: state.flashes,
-          shieldFlashes: state.shieldFlashes,
-          healthFlashes: state.healthFlashes,
-          t: state.t,
-        });
+        if (!_pendingRender) {
+          _pendingRender = true;
+          try {
+            requestAnimationFrame(() => {
+              try {
+                renderer.renderState({
+                  ships: state.ships,
+                  bullets: state.bullets,
+                  flashes: state.flashes,
+                  shieldFlashes: state.shieldFlashes,
+                  healthFlashes: state.healthFlashes,
+                  t: state.t,
+                });
+              } catch (e) {}
+              _pendingRender = false;
+            });
+          } catch (e) {
+            setTimeout(() => {
+              try {
+                renderer.renderState({
+                  ships: state.ships,
+                  bullets: state.bullets,
+                  flashes: state.flashes,
+                  shieldFlashes: state.shieldFlashes,
+                  healthFlashes: state.healthFlashes,
+                  t: state.t,
+                });
+              } catch (e) {}
+              _pendingRender = false;
+            }, 0);
+          }
+        }
       } catch (e) {}
     }
   }
   function runLoop() {
     if (!running) return;
-    const now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const now =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     acc += now - last;
     last = now;
     if (acc > 250) acc = 250;
@@ -124,15 +178,25 @@ export function createGameManager({
       step(SIM.DT_MS / 1000);
       acc -= SIM.DT_MS;
     }
-    try { requestAnimationFrame(runLoop); } catch (e) { setTimeout(runLoop, SIM.DT_MS); }
+    try {
+      requestAnimationFrame(runLoop);
+    } catch (e) {
+      setTimeout(runLoop, SIM.DT_MS);
+    }
   }
   function setContinuousEnabled(v: boolean = false) {
     continuous = !!v;
     if (simWorker) {
-      try { simWorker.post({ type: "setContinuous", value: !!v }); } catch (e) {}
+      try {
+        simWorker.post({ type: "setContinuous", value: !!v });
+      } catch (e) {}
     } else {
       if (continuous) {
-        const result = evaluateReinforcement(SIM.DT_MS / 1000, state, continuousOptions);
+        const result = evaluateReinforcement(
+          SIM.DT_MS / 1000,
+          state,
+          continuousOptions,
+        );
         if (result && Array.isArray(result.spawned) && result.spawned.length) {
           lastReinforcement = {
             spawned: result.spawned,
@@ -144,23 +208,45 @@ export function createGameManager({
       }
     }
   }
-  function isContinuousEnabled() { return !!continuous; }
+  function isContinuousEnabled() {
+    return !!continuous;
+  }
   function setContinuousOptions(opts: any = {}) {
     continuousOptions = { ...continuousOptions, ...opts };
     if (simWorker)
-      try { simWorker.post({ type: "setContinuousOptions", opts: continuousOptions }); } catch (e) {}
+      try {
+        simWorker.post({
+          type: "setContinuousOptions",
+          opts: continuousOptions,
+        });
+      } catch (e) {}
   }
-  function getContinuousOptions() { return { ...continuousOptions }; }
+  function getContinuousOptions() {
+    return { ...continuousOptions };
+  }
   function setReinforcementIntervalManager(seconds: number) {
     setReinforcementInterval(seconds);
     if (simWorker)
-      try { simWorker.post({ type: "setReinforcementInterval", seconds }); } catch (e) {}
+      try {
+        simWorker.post({ type: "setReinforcementInterval", seconds });
+      } catch (e) {}
   }
-  function getReinforcementIntervalManager() { return getReinforcementInterval(); }
-  function isRunning() { return running; }
-  function isWorker() { return !!simWorker && !!workerReady; }
-  function onWorkerReady(cb: Function) { if (typeof cb === "function") workerReadyCbs.push(cb); }
-  function offWorkerReady(cb: Function) { const i = workerReadyCbs.indexOf(cb); if (i !== -1) workerReadyCbs.splice(i, 1); }
+  function getReinforcementIntervalManager() {
+    return getReinforcementInterval();
+  }
+  function isRunning() {
+    return running;
+  }
+  function isWorker() {
+    return !!simWorker && !!workerReady;
+  }
+  function onWorkerReady(cb: Function) {
+    if (typeof cb === "function") workerReadyCbs.push(cb);
+  }
+  function offWorkerReady(cb: Function) {
+    const i = workerReadyCbs.indexOf(cb);
+    if (i !== -1) workerReadyCbs.splice(i, 1);
+  }
   function spawnShip(team: string = "red", type?: string) {
     try {
       // Resolve default ship type safely across ESM/CJS; fallback to 'fighter'
@@ -177,7 +263,9 @@ export function createGameManager({
         updateTeamCount(state as any, undefined, String(ship.team));
       } catch (e) {}
       return ship;
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
   function formFleets() {
     try {
@@ -188,16 +276,22 @@ export function createGameManager({
       for (const ship of ships) {
         state.ships.push(ship);
       }
-      try { normalizeStateShips(state); } catch (e) {}
+      try {
+        normalizeStateShips(state);
+      } catch (e) {}
     } catch (e) {}
   }
   function reseedManager(newSeed: number = Math.floor(srandom() * 0xffffffff)) {
     _seed = newSeed >>> 0;
     srand(_seed);
     if (simWorker)
-      try { simWorker.post({ type: "setSeed", seed: _seed }); } catch (e) {}
+      try {
+        simWorker.post({ type: "setSeed", seed: _seed });
+      } catch (e) {}
   }
-  function getLastReinforcement() { return { ...lastReinforcement }; }
+  function getLastReinforcement() {
+    return { ...lastReinforcement };
+  }
   function snapshot() {
     return {
       ships: state.ships.slice(),
@@ -215,23 +309,36 @@ export function createGameManager({
       const factory = createSimWorkerFactory || createSimWorker;
       let simWorkerUrl;
       try {
-        simWorkerUrl = typeof import.meta !== "undefined" && import.meta.url ? new URL("./simWorker.js", import.meta.url).href : "./simWorker.js";
-      } catch (e) { simWorkerUrl = "./simWorker.js"; }
+        simWorkerUrl =
+          typeof import.meta !== "undefined" && import.meta.url
+            ? new URL("./simWorker.js", import.meta.url).href
+            : "./simWorker.js";
+      } catch (e) {
+        simWorkerUrl = "./simWorker.js";
+      }
       simWorker = factory(simWorkerUrl);
       _workerReadyHandler = () => {
         workerReady = true;
-        for (const cb of workerReadyCbs.slice()) { try { cb(); } catch (e) {} }
+        for (const cb of workerReadyCbs.slice()) {
+          try {
+            cb();
+          } catch (e) {}
+        }
       };
       simWorker.on && simWorker.on("ready", _workerReadyHandler);
       _workerSnapshotHandler = (m: any) => {
         try {
           if (m && m.state) {
             state = m.state;
-            try { normalizeStateShips(state); } catch (e) {}
-            try { internal.state = state; } catch (e) {}
+            try {
+              normalizeStateShips(state);
+            } catch (e) {}
+            try {
+              internal.state = state;
+            } catch (e) {}
             // Coalesce render to next RAF so UI updates once per frame
             try {
-              if (renderer && typeof renderer.renderState === 'function') {
+              if (renderer && typeof renderer.renderState === "function") {
                 if (!_pendingRender) {
                   _pendingRender = true;
                   try {
@@ -270,14 +377,25 @@ export function createGameManager({
         } catch (e) {}
       };
       simWorker.on && simWorker.on("snapshot", _workerSnapshotHandler);
-      _workerReinforcementsHandler = (m: any) => { emit("reinforcements", m); };
-      simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
+      _workerReinforcementsHandler = (m: any) => {
+        emit("reinforcements", m);
+      };
+      simWorker.on &&
+        simWorker.on("reinforcements", _workerReinforcementsHandler);
       try {
-        simWorker.post({ type: "init", seed, bounds: SIM.bounds, simDtMs: SIM.DT_MS, state });
+        simWorker.post({
+          type: "init",
+          seed,
+          bounds: SIM.bounds,
+          simDtMs: SIM.DT_MS,
+          state,
+        });
         simWorker.post({ type: "start" });
       } catch (e) {}
     }
-  } catch (e) { simWorker = null; }
+  } catch (e) {
+    simWorker = null;
+  }
 
   return {
     // Allow external callers (tests) to push snapshots into the manager
@@ -285,9 +403,13 @@ export function createGameManager({
       try {
         if (m && m.state) {
           state = m.state;
-          try { normalizeStateShips(state); } catch (e) {}
-          try { internal.state = state; } catch (e) {}
-          if (renderer && typeof renderer.renderState === 'function') {
+          try {
+            normalizeStateShips(state);
+          } catch (e) {}
+          try {
+            internal.state = state;
+          } catch (e) {}
+          if (renderer && typeof renderer.renderState === "function") {
             try {
               if (!_pendingRender) {
                 _pendingRender = true;
@@ -358,8 +480,10 @@ export default createGameManager;
 export function reset(seed: number | null = null) {
   // Resetting global manager state is test-specific; callers use makeInitialState directly in many tests.
   // Provide a no-op reset to satisfy legacy tests that import reset from the module.
-  if (typeof seed === 'number') {
-    try { /* reseed global RNG if exposed */ } catch (e) {}
+  if (typeof seed === "number") {
+    try {
+      /* reseed global RNG if exposed */
+    } catch (e) {}
   }
 }
 export function releaseParticle(state: GameState, p?: Particle) {
@@ -620,17 +744,22 @@ export function acquireParticle(
   const PARTICLE_DEFAULTS_SAFE = (() => {
     try {
       const mod: any = (EntitiesConfigESM as any) || {};
-      const v = mod.BULLET_DEFAULTS && mod.PARTICLE_DEFAULTS ? mod.PARTICLE_DEFAULTS
-        : (mod.default && mod.default.PARTICLE_DEFAULTS) ? mod.default.PARTICLE_DEFAULTS
-        : undefined;
-      if (v && typeof v.ttl === "number" && typeof v.size !== "undefined") return v;
+      const v =
+        mod.BULLET_DEFAULTS && mod.PARTICLE_DEFAULTS
+          ? mod.PARTICLE_DEFAULTS
+          : mod.default && mod.default.PARTICLE_DEFAULTS
+            ? mod.default.PARTICLE_DEFAULTS
+            : undefined;
+      if (v && typeof v.ttl === "number" && typeof v.size !== "undefined")
+        return v;
     } catch (e) {}
     return { ttl: 1, color: "#fff", size: 2 } as const;
   })();
   const key = "particle";
   const poolConfig = state.assetPool?.config || {};
   const maxSize = poolConfig.effectPoolSize ?? 128;
-  const overflowStrategy = poolConfig.effectOverflowStrategy ?? "discard-oldest";
+  const overflowStrategy =
+    poolConfig.effectOverflowStrategy ?? "discard-oldest";
   // Defensive: prune oldest if pool is full
   if ((state.particles?.length ?? 0) >= maxSize) {
     if (overflowStrategy === "discard-oldest" && state.particles?.length) {
@@ -644,7 +773,19 @@ export function acquireParticle(
   const p = acquireEffect<Particle>(
     state,
     key,
-    () => makePooled(new Particle(x, y, opts.vx ?? 0, opts.vy ?? 0, opts.ttl ?? PARTICLE_DEFAULTS_SAFE.ttl, opts.color ?? PARTICLE_DEFAULTS_SAFE.color, opts.size ?? PARTICLE_DEFAULTS_SAFE.size), undefined),
+    () =>
+      makePooled(
+        new Particle(
+          x,
+          y,
+          opts.vx ?? 0,
+          opts.vy ?? 0,
+          opts.ttl ?? PARTICLE_DEFAULTS_SAFE.ttl,
+          opts.color ?? PARTICLE_DEFAULTS_SAFE.color,
+          opts.size ?? PARTICLE_DEFAULTS_SAFE.size,
+        ),
+        undefined,
+      ),
     {
       x,
       y,
@@ -820,8 +961,11 @@ export function simulate(dt: number, W = 800, H = 600) {
         "[gamemanager] detected simulate() called multiple times in same frame";
       try {
         const _isProd =
-          (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') ||
-          (typeof (globalThis as any).NODE_ENV !== 'undefined' && (globalThis as any).NODE_ENV === 'production');
+          (typeof process !== "undefined" &&
+            process.env &&
+            process.env.NODE_ENV === "production") ||
+          (typeof (globalThis as any).NODE_ENV !== "undefined" &&
+            (globalThis as any).NODE_ENV === "production");
         if (_doubleSimStrict) throw new Error(msg);
         else if (!_isProd) console.warn(msg);
       } catch (e) {
@@ -841,7 +985,6 @@ export function simulate(dt: number, W = 800, H = 600) {
   // No global state to clear; callers should pass `state` explicitly to helpers.
   return state;
 }
-
 
 export function processStateEvents(state: any, dt: number = 0) {
   return state;

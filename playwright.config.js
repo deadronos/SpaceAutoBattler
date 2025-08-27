@@ -2,7 +2,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Base URL may be overridden by E2E_BASE environment variable (matches playwright.config.cjs)
-const baseURL = process.env.E2E_BASE || 'http://localhost:8080/';
+// Use 8081 by default to avoid conflicts with local dev server on 8080.
+const baseURL = process.env.E2E_BASE || 'http://localhost:8081/';
 
 /**
  * Read environment variables from file.
@@ -75,10 +76,10 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  webServer: {
+    command: 'http-server . -c-1 -p 8081',
+    url: 'http://localhost:8081',
+    reuseExistingServer: !process.env.CI,
+  },
 });
 

@@ -25,381 +25,6 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/config/entitiesConfig.ts
-var entitiesConfig_exports = {};
-__export(entitiesConfig_exports, {
-  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
-  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
-  SIZE_DEFAULTS: () => SIZE_DEFAULTS,
-  ShipConfig: () => ShipConfig,
-  bulletKindForRadius: () => bulletKindForRadius,
-  default: () => entitiesConfig_default,
-  getDefaultShipType: () => getDefaultShipType,
-  getShipConfig: () => getShipConfig,
-  getSizeDefaults: () => getSizeDefaults,
-  setAllSizeDefaults: () => setAllSizeDefaults,
-  setSizeDefaults: () => setSizeDefaults
-});
-function getSizeDefaults(size) {
-  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
-}
-function setSizeDefaults(size, patch) {
-  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
-}
-function setAllSizeDefaults(patch) {
-  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
-  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
-  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
-}
-function getShipConfig() {
-  Object.keys(ShipConfig).forEach((key) => {
-    const cfg = ShipConfig[key];
-    if (cfg.cannons) {
-      cfg.cannons.forEach((c) => {
-        if (c.range == null) {
-          const ms = c.muzzleSpeed ?? BULLET_DEFAULTS.muzzleSpeed;
-          const ttl = c.bulletTTL ?? BULLET_DEFAULTS.ttl;
-          const computed = Number.isFinite(ms) && Number.isFinite(ttl) ? Math.round(ms * ttl) : BULLET_DEFAULTS.range;
-          c.range = computed || BULLET_DEFAULTS.range;
-        }
-      });
-    }
-    if (cfg.turrets) {
-      const firstCannonRange = cfg.cannons && cfg.cannons.length ? cfg.cannons[0].range || BULLET_DEFAULTS.range : BULLET_DEFAULTS.range;
-      cfg.turrets.forEach((t) => {
-        if (t.range == null) {
-          t.range = firstCannonRange;
-        }
-      });
-    }
-  });
-  return ShipConfig;
-}
-function bulletKindForRadius(r) {
-  if (r < 2) return "small";
-  if (r < 2.5) return "medium";
-  if (r < 3.5) return "large";
-  return "heavy";
-}
-function getDefaultShipType() {
-  return Object.keys(ShipConfig)[0] || "fighter";
-}
-var ShipConfig, SIZE_DEFAULTS, BULLET_DEFAULTS, PARTICLE_DEFAULTS, entitiesConfig_default;
-var init_entitiesConfig = __esm({
-  "src/config/entitiesConfig.ts"() {
-    "use strict";
-    ShipConfig = {
-      fighter: {
-        maxHp: 15,
-        // size classification used for armor/shield tuning
-        size: "small",
-        armor: 0,
-        maxShield: 8,
-        shieldRegen: 1,
-        dmg: 3,
-        damage: 3,
-        radius: 12,
-        cannons: [
-          {
-            damage: 3,
-            rate: 3,
-            spread: 0.1,
-            muzzleSpeed: 260,
-            // reduced back (/10)
-            bulletRadius: 1.5,
-            bulletTTL: 1.1,
-            // was 1.2
-            // effective range (muzzleSpeed * bulletTTL) scaled to engine units
-            range: Math.round(260 * 1.1)
-          }
-        ],
-        // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
-        accel: 100,
-        // ~10x accel
-        turnRate: 6,
-        maxSpeed: 2200
-        // ~10x maxSpeed
-      },
-      corvette: {
-        maxHp: 50,
-        size: "medium",
-        armor: 0,
-        maxShield: Math.round(50 * 0.6),
-        shieldRegen: 0.5,
-        dmg: 5,
-        damage: 5,
-        radius: 20,
-        accel: 80,
-        turnRate: 3.5,
-        // was 3
-        maxSpeed: 1800,
-        // ~10x increased
-        cannons: [
-          {
-            damage: 6,
-            rate: 1.2,
-            spread: 0.05,
-            muzzleSpeed: 180,
-            // reduced back (/10)
-            bulletRadius: 2,
-            bulletTTL: 1.8,
-            // was 2.0
-            range: Math.round(180 * 1.8)
-          }
-        ]
-      },
-      frigate: {
-        maxHp: 80,
-        size: "medium",
-        armor: 1,
-        maxShield: Math.round(80 * 0.6),
-        shieldRegen: 0.4,
-        dmg: 8,
-        damage: 8,
-        radius: 24,
-        cannons: [
-          {
-            damage: 8,
-            rate: 1,
-            spread: 0.06,
-            muzzleSpeed: 180,
-            // reduced back (/10)
-            bulletRadius: 2.5,
-            bulletTTL: 2,
-            // was 2.2
-            range: Math.round(180 * 2)
-          }
-        ],
-        accel: 70,
-        turnRate: 2.5,
-        // was 2.2
-        maxSpeed: 1500
-        // ~10x increased
-      },
-      destroyer: {
-        maxHp: 120,
-        size: "large",
-        armor: 2,
-        maxShield: Math.round(120 * 0.6),
-        shieldRegen: 0.3,
-        dmg: 12,
-        damage: 12,
-        radius: 40,
-        cannons: new Array(6).fill(0).map(() => ({
-          damage: 6,
-          rate: 0.8,
-          spread: 0.08,
-          muzzleSpeed: 160,
-          // reduced back (/10)
-          bulletRadius: 2.5,
-          bulletTTL: 1.8,
-          // was 2.4
-          range: Math.round(160 * 1.8)
-        })),
-        accel: 60,
-        turnRate: 2,
-        // was 1.6
-        maxSpeed: 1300,
-        // ~10x increased
-        turrets: [
-          {
-            position: [1.2, 0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8,
-            // turret effective range (units)
-            range: 300
-          },
-          {
-            position: [-1.2, 0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [1.2, -0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [-1.2, -0.8],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [0, 1.5],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          },
-          {
-            position: [0, -1.5],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 0.8
-          }
-        ]
-      },
-      carrier: {
-        maxHp: 200,
-        size: "large",
-        armor: 3,
-        maxShield: Math.round(200 * 0.6),
-        shieldRegen: 0.2,
-        dmg: 2,
-        damage: 2,
-        radius: 40,
-        cannons: new Array(4).fill(0).map(() => ({
-          damage: 4,
-          rate: 0.6,
-          spread: 0.12,
-          muzzleSpeed: 140,
-          // reduced back (/10)
-          bulletRadius: 3,
-          bulletTTL: 2.2,
-          // was 2.8
-          range: Math.round(140 * 2.2)
-        })),
-        accel: 55,
-        turnRate: 1.2,
-        // was 0.8
-        maxSpeed: 1100,
-        // ~10x increased
-        carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
-        turrets: [
-          {
-            position: [2, 1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1,
-            range: 300
-          },
-          {
-            position: [-2, 1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [2, -1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          },
-          {
-            position: [-2, -1.2],
-            kind: "basic",
-            targeting: "nearest",
-            cooldown: 1
-          }
-        ]
-      }
-    };
-    SIZE_DEFAULTS = {
-      small: {
-        armor: 0,
-        maxShield: 8,
-        shieldRegen: 1,
-        radius: 12,
-        turnRate: 6,
-        accel: 100,
-        maxSpeed: 2200
-      },
-      medium: {
-        armor: 1,
-        maxShield: 40,
-        shieldRegen: 0.5,
-        radius: 24,
-        turnRate: 3.5,
-        accel: 80,
-        maxSpeed: 1800
-      },
-      large: {
-        armor: 2,
-        maxShield: 120,
-        shieldRegen: 0.25,
-        radius: 40,
-        turnRate: 2,
-        accel: 60,
-        maxSpeed: 1300
-      }
-    };
-    BULLET_DEFAULTS = {
-      damage: 1,
-      ttl: 2,
-      radius: 1.5,
-      muzzleSpeed: 24,
-      // default effective range (units)
-      range: 300
-    };
-    PARTICLE_DEFAULTS = {
-      ttl: 1,
-      color: "#fff",
-      size: 2
-    };
-    entitiesConfig_default = ShipConfig;
-    if (typeof module !== "undefined" && module.exports) {
-      try {
-        const existing = module.exports || {};
-        Object.defineProperty(existing, "ShipConfig", {
-          value: ShipConfig,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "getShipConfig", {
-          value: getShipConfig,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "SIZE_DEFAULTS", {
-          value: SIZE_DEFAULTS,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "getSizeDefaults", {
-          value: getSizeDefaults,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "setSizeDefaults", {
-          value: setSizeDefaults,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "setAllSizeDefaults", {
-          value: setAllSizeDefaults,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "BULLET_DEFAULTS", {
-          value: BULLET_DEFAULTS,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
-          value: PARTICLE_DEFAULTS,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "bulletKindForRadius", {
-          value: bulletKindForRadius,
-          enumerable: true
-        });
-        Object.defineProperty(existing, "getDefaultShipType", {
-          value: getDefaultShipType,
-          enumerable: true
-        });
-        try {
-          Object.defineProperty(existing, "default", {
-            value: ShipConfig,
-            enumerable: true
-          });
-        } catch (e) {
-        }
-        try {
-          module.exports = existing;
-        } catch (e) {
-        }
-      } catch (e) {
-      }
-    }
-  }
-});
-
 // src/config/assets/assetsConfig.ts
 function getEngineTrailConfig(type) {
   const vconf = getVisualConfig(type);
@@ -610,6 +235,68 @@ var init_assetsConfig = __esm({
     AssetsConfig.damageThresholds = { moderate: 0.66, heavy: 0.33 };
     AssetsConfig.shieldArcWidth = Math.PI / 12;
     assetsConfig_default = AssetsConfig;
+  }
+});
+
+// src/config/displayConfig.ts
+var DISPLAY_DEFAULTS;
+var init_displayConfig = __esm({
+  "src/config/displayConfig.ts"() {
+    "use strict";
+    DISPLAY_DEFAULTS = {
+      renderScale: 1,
+      displayScale: 1,
+      hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
+    };
+  }
+});
+
+// src/config/rendererConfig.ts
+var rendererConfig_exports = {};
+__export(rendererConfig_exports, {
+  RendererConfig: () => RendererConfig,
+  default: () => rendererConfig_default,
+  getPreferredRenderer: () => getPreferredRenderer
+});
+function getPreferredRenderer() {
+  try {
+    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
+      const p = new URLSearchParams(window.location.search);
+      const r = p.get("renderer");
+      if (r === "canvas" || r === "webgl") return r;
+    }
+  } catch (e) {
+  }
+  return RendererConfig.preferred;
+}
+var RendererConfig, rendererConfig_default;
+var init_rendererConfig = __esm({
+  "src/config/rendererConfig.ts"() {
+    "use strict";
+    init_displayConfig();
+    RendererConfig = {
+      preferred: "canvas",
+      allowUrlOverride: true,
+      allowWebGL: true,
+      renderScale: DISPLAY_DEFAULTS.renderScale,
+      displayScale: DISPLAY_DEFAULTS.displayScale,
+      dynamicScaleEnabled: false,
+      lastFrameTime: 0,
+      frameScore: "green",
+      // green, yellow, red
+      // UI overlays configuration
+      hpBar: DISPLAY_DEFAULTS.hpBar,
+      // starfield rendering tweaks
+      starfield: {
+        parallaxFactor: 0.1,
+        // how much the starfield moves relative to camera (0 = static)
+        density: 35e-5,
+        // base star density multiplier (stars = size*size*density)
+        bloomIntensity: 0.9
+        // applied alpha when compositing bloom on canvas
+      }
+    };
+    rendererConfig_default = RendererConfig;
   }
 });
 
@@ -1226,7 +913,10 @@ function getHullOutlineFromSvg(svgText, tolerance = 1.5, assetFilename) {
         assetId = assetFilename;
       }
     }
-    return svgToPolylines(hullSvg, assetId ? { tolerance, assetId } : { tolerance });
+    return svgToPolylines(
+      hullSvg,
+      assetId ? { tolerance, assetId } : { tolerance }
+    );
   } catch (e) {
     return svgToPolylines(hullSvg, { tolerance });
   }
@@ -1236,7 +926,8 @@ function parseSvgForMounts(svgText) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, "image/svg+xml");
     const svg = doc.querySelector("svg");
-    if (!svg) return { mounts: [], engineMounts: [], viewBox: null, colorRegions: [] };
+    if (!svg)
+      return { mounts: [], engineMounts: [], viewBox: null, colorRegions: [] };
     const vbAttr = svg.getAttribute("viewBox");
     let viewBox = null;
     if (vbAttr) {
@@ -1249,7 +940,9 @@ function parseSvgForMounts(svgText) {
       const n = v == null ? NaN : parseFloat(v);
       return isNaN(n) ? null : n;
     };
-    const mountEls = Array.from(svg.querySelectorAll("[data-mount], .turret"));
+    const mountEls = Array.from(
+      svg.querySelectorAll("[data-mount], .turret")
+    );
     const mounts = mountEls.map((el) => {
       const slot = el.getAttribute("data-mount") || el.classList && (el.classList.contains("turret") ? "turret" : null);
       const xAttr = el.getAttribute("cx") || el.getAttribute("x");
@@ -1266,7 +959,9 @@ function parseSvgForMounts(svgText) {
       }
       return { x, y, slot };
     });
-    const engineEls = Array.from(svg.querySelectorAll("[data-engine-mount], .engine"));
+    const engineEls = Array.from(
+      svg.querySelectorAll("[data-engine-mount], .engine")
+    );
     const engineMounts = engineEls.map((el) => {
       const slot = el.getAttribute("data-engine-mount") || el.classList && (el.classList.contains("engine") ? "engine" : null);
       const xAttr = el.getAttribute("cx") || el.getAttribute("x");
@@ -1283,7 +978,11 @@ function parseSvgForMounts(svgText) {
       }
       return { x, y, slot };
     });
-    const colorRegions = Array.from(svg.querySelectorAll('[data-team],[data-team-slot],[class*="team-fill-"]')).map((el) => ({
+    const colorRegions = Array.from(
+      svg.querySelectorAll(
+        '[data-team],[data-team-slot],[class*="team-fill-"]'
+      )
+    ).map((el) => ({
       tag: el.tagName,
       id: el.id || null,
       role: el.getAttribute("data-team") || el.getAttribute("data-team-slot") || null
@@ -1300,7 +999,11 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
     const svg = doc.querySelector("svg");
     if (!svg) return svgText;
     const applyDefault = options && options.applyTo ? options.applyTo : "both";
-    const els = Array.from(svg.querySelectorAll('[data-team],[data-team-slot],[data-team-slot-fill],[data-team-slot-stroke],[class*="team-fill-"]'));
+    const els = Array.from(
+      svg.querySelectorAll(
+        '[data-team],[data-team-slot],[data-team-slot-fill],[data-team-slot-stroke],[class*="team-fill-"]'
+      )
+    );
     for (const el of els) {
       try {
         const role = (el.getAttribute("data-team") || el.getAttribute("data-team-slot") || "").trim();
@@ -1336,8 +1039,10 @@ function applyTeamColorsToSvg(svgText, mapping, options) {
           } catch (e) {
           }
         };
-        if ((apply === "fill" || apply === "both") && fillColor) setStyleProp("fill", fillColor);
-        if ((apply === "stroke" || apply === "both") && strokeColor) setStyleProp("stroke", strokeColor);
+        if ((apply === "fill" || apply === "both") && fillColor)
+          setStyleProp("fill", fillColor);
+        if ((apply === "stroke" || apply === "both") && strokeColor)
+          setStyleProp("stroke", strokeColor);
       } catch (e) {
         continue;
       }
@@ -1403,7 +1108,8 @@ function canvasHasOpaquePixels(c, thresholdAlpha = 8) {
     const w = Math.max(1, Math.min(16, c.width));
     const h = Math.max(1, Math.min(16, c.height));
     const data = ctx.getImageData(0, 0, w, h).data;
-    for (let i = 3; i < data.length; i += 4) if (data[i] > thresholdAlpha) return true;
+    for (let i = 3; i < data.length; i += 4)
+      if (data[i] > thresholdAlpha) return true;
   } catch (e) {
     return true;
   }
@@ -1462,11 +1168,14 @@ function stripHullOnly(svgText) {
       } catch (e) {
       }
     }
-    const turrets = Array.from(svg.querySelectorAll("[data-turret]"));
-    for (const t of turrets) try {
-      t.remove();
-    } catch (e) {
-    }
+    const turrets = Array.from(
+      svg.querySelectorAll("[data-turret]")
+    );
+    for (const t of turrets)
+      try {
+        t.remove();
+      } catch (e) {
+      }
     return new XMLSerializer().serializeToString(svg);
   } catch (e) {
     return svgText;
@@ -1493,10 +1202,21 @@ function rasterizeHullOnlySvgToCanvas(svgText, outW, outH) {
 function getCachedHullCanvasSync(svgText, outW, outH, assetKey) {
   try {
     let svgRenderer = void 0;
-    const candidates = ["./svgRenderer", "../assets/svgRenderer", "../../src/assets/svgRenderer", "src/assets/svgRenderer"];
+    const candidates = [
+      "./svgRenderer",
+      "../assets/svgRenderer",
+      "../../src/assets/svgRenderer",
+      "src/assets/svgRenderer"
+    ];
     for (const cpath of candidates) {
       try {
-        svgRenderer = __require(cpath);
+        svgRenderer = typeof __require === "function" ? (function() {
+          try {
+            return __require(cpath);
+          } catch (e) {
+            return void 0;
+          }
+        })() : void 0;
         if (svgRenderer) break;
       } catch (e) {
         svgRenderer = svgRenderer || void 0;
@@ -1642,8 +1362,25 @@ async function rasterizeSvgWithTeamColors(svgText, mapping, outW, outH, options)
             if (resp && resp.ok) {
               const txt = await resp.text();
               if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
+            } else {
+              try {
+                const isProd = typeof process !== "undefined" && process.env && true;
+                const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
+                if (!isProd && !isTest) {
+                  console.warn(`[svgRenderer] fetch failed for SVG url '${sourceSvg}'. Status: ${resp && resp.status}`);
+                }
+              } catch (e) {
+              }
             }
           } catch (e) {
+            try {
+              const isProd = typeof process !== "undefined" && process.env && true;
+              const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
+              if (!isProd && !isTest) {
+                console.warn(`[svgRenderer] fetch threw for '${sourceSvg}', continuing with original string`, e);
+              }
+            } catch (ee) {
+            }
           }
         }
       } catch (e) {
@@ -1904,11 +1641,520 @@ var init_shipPipelineOverlay = __esm({
   }
 });
 
-// src/entities.ts
-init_entitiesConfig();
+// src/config/entitiesConfig.ts
+var entitiesConfig_exports = {};
+__export(entitiesConfig_exports, {
+  BULLET_DEFAULTS: () => BULLET_DEFAULTS,
+  PARTICLE_DEFAULTS: () => PARTICLE_DEFAULTS,
+  SIZE_DEFAULTS: () => SIZE_DEFAULTS,
+  ShipConfig: () => ShipConfig,
+  bulletKindForRadius: () => bulletKindForRadius,
+  default: () => entitiesConfig_default,
+  getDefaultShipType: () => getDefaultShipType,
+  getShipConfig: () => getShipConfig,
+  getSizeDefaults: () => getSizeDefaults,
+  setAllSizeDefaults: () => setAllSizeDefaults,
+  setSizeDefaults: () => setSizeDefaults
+});
+var ShipConfig = {
+  fighter: {
+    maxHp: 15,
+    // size classification used for armor/shield tuning
+    size: "small",
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1,
+    dmg: 3,
+    damage: 3,
+    radius: 12,
+    cannons: [
+      {
+        damage: 3,
+        rate: 3,
+        spread: 0.1,
+        muzzleSpeed: 260,
+        // reduced back (/10)
+        bulletRadius: 1.5,
+        bulletTTL: 1.1,
+        // was 1.2
+        // effective range (muzzleSpeed * bulletTTL) scaled to engine units
+        range: Math.round(260 * 1.1)
+      }
+    ],
+    // Refined tuning: slightly higher accel and a moderate maxSpeed for clearer motion
+    accel: 100,
+    // ~10x accel
+    turnRate: 6,
+    maxSpeed: 2200
+    // ~10x maxSpeed
+  },
+  corvette: {
+    maxHp: 50,
+    size: "medium",
+    armor: 0,
+    maxShield: Math.round(50 * 0.6),
+    shieldRegen: 0.5,
+    dmg: 5,
+    damage: 5,
+    radius: 20,
+    accel: 80,
+    turnRate: 3.5,
+    // was 3
+    maxSpeed: 1800,
+    // ~10x increased
+    cannons: [
+      {
+        damage: 6,
+        rate: 1.2,
+        spread: 0.05,
+        muzzleSpeed: 180,
+        // reduced back (/10)
+        bulletRadius: 2,
+        bulletTTL: 1.8,
+        // was 2.0
+        range: Math.round(180 * 1.8)
+      }
+    ]
+  },
+  frigate: {
+    maxHp: 80,
+    size: "medium",
+    armor: 1,
+    maxShield: Math.round(80 * 0.6),
+    shieldRegen: 0.4,
+    dmg: 8,
+    damage: 8,
+    radius: 24,
+    cannons: [
+      {
+        damage: 8,
+        rate: 1,
+        spread: 0.06,
+        muzzleSpeed: 180,
+        // reduced back (/10)
+        bulletRadius: 2.5,
+        bulletTTL: 2,
+        // was 2.2
+        range: Math.round(180 * 2)
+      }
+    ],
+    accel: 70,
+    turnRate: 2.5,
+    // was 2.2
+    maxSpeed: 1500
+    // ~10x increased
+  },
+  destroyer: {
+    maxHp: 120,
+    size: "large",
+    armor: 2,
+    maxShield: Math.round(120 * 0.6),
+    shieldRegen: 0.3,
+    dmg: 12,
+    damage: 12,
+    radius: 40,
+    cannons: new Array(6).fill(0).map(() => ({
+      damage: 6,
+      rate: 0.8,
+      spread: 0.08,
+      muzzleSpeed: 160,
+      // reduced back (/10)
+      bulletRadius: 2.5,
+      bulletTTL: 1.8,
+      // was 2.4
+      range: Math.round(160 * 1.8)
+    })),
+    accel: 60,
+    turnRate: 2,
+    // was 1.6
+    maxSpeed: 1300,
+    // ~10x increased
+    turrets: [
+      {
+        position: [1.2, 0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8,
+        // turret effective range (units)
+        range: 300
+      },
+      {
+        position: [-1.2, 0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [1.2, -0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [-1.2, -0.8],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [0, 1.5],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      },
+      {
+        position: [0, -1.5],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 0.8
+      }
+    ]
+  },
+  carrier: {
+    maxHp: 200,
+    size: "large",
+    armor: 3,
+    maxShield: Math.round(200 * 0.6),
+    shieldRegen: 0.2,
+    dmg: 2,
+    damage: 2,
+    radius: 40,
+    cannons: new Array(4).fill(0).map(() => ({
+      damage: 4,
+      rate: 0.6,
+      spread: 0.12,
+      muzzleSpeed: 140,
+      // reduced back (/10)
+      bulletRadius: 3,
+      bulletTTL: 2.2,
+      // was 2.8
+      range: Math.round(140 * 2.2)
+    })),
+    accel: 55,
+    turnRate: 1.2,
+    // was 0.8
+    maxSpeed: 1100,
+    // ~10x increased
+    carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+    turrets: [
+      {
+        position: [2, 1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1,
+        range: 300
+      },
+      {
+        position: [-2, 1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [2, -1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      },
+      {
+        position: [-2, -1.2],
+        kind: "basic",
+        targeting: "nearest",
+        cooldown: 1
+      }
+    ]
+  }
+};
+var SIZE_DEFAULTS = {
+  small: {
+    armor: 0,
+    maxShield: 8,
+    shieldRegen: 1,
+    radius: 12,
+    turnRate: 6,
+    accel: 100,
+    maxSpeed: 2200
+  },
+  medium: {
+    armor: 1,
+    maxShield: 40,
+    shieldRegen: 0.5,
+    radius: 24,
+    turnRate: 3.5,
+    accel: 80,
+    maxSpeed: 1800
+  },
+  large: {
+    armor: 2,
+    maxShield: 120,
+    shieldRegen: 0.25,
+    radius: 40,
+    turnRate: 2,
+    accel: 60,
+    maxSpeed: 1300
+  }
+};
+function getSizeDefaults(size) {
+  return SIZE_DEFAULTS[size] || SIZE_DEFAULTS.small;
+}
+function setSizeDefaults(size, patch) {
+  SIZE_DEFAULTS[size] = Object.assign({}, SIZE_DEFAULTS[size], patch);
+}
+function setAllSizeDefaults(patch) {
+  SIZE_DEFAULTS.small = Object.assign({}, SIZE_DEFAULTS.small, patch);
+  SIZE_DEFAULTS.medium = Object.assign({}, SIZE_DEFAULTS.medium, patch);
+  SIZE_DEFAULTS.large = Object.assign({}, SIZE_DEFAULTS.large, patch);
+}
+function getShipConfig() {
+  Object.keys(ShipConfig).forEach((key) => {
+    const cfg = ShipConfig[key];
+    if (cfg.cannons) {
+      cfg.cannons.forEach((c) => {
+        if (c.range == null) {
+          const ms = c.muzzleSpeed ?? BULLET_DEFAULTS.muzzleSpeed;
+          const ttl = c.bulletTTL ?? BULLET_DEFAULTS.ttl;
+          const computed = Number.isFinite(ms) && Number.isFinite(ttl) ? Math.round(ms * ttl) : BULLET_DEFAULTS.range;
+          c.range = computed || BULLET_DEFAULTS.range;
+        }
+      });
+    }
+    if (cfg.turrets) {
+      const firstCannonRange = cfg.cannons && cfg.cannons.length ? cfg.cannons[0].range || BULLET_DEFAULTS.range : BULLET_DEFAULTS.range;
+      cfg.turrets.forEach((t) => {
+        if (t.range == null) {
+          t.range = firstCannonRange;
+        }
+      });
+    }
+  });
+  return ShipConfig;
+}
+var BULLET_DEFAULTS = {
+  damage: 1,
+  ttl: 2,
+  radius: 1.5,
+  muzzleSpeed: 24,
+  // default effective range (units)
+  range: 300
+};
+var PARTICLE_DEFAULTS = {
+  ttl: 1,
+  color: "#fff",
+  size: 2
+};
+function bulletKindForRadius(r) {
+  if (r < 2) return "small";
+  if (r < 2.5) return "medium";
+  if (r < 3.5) return "large";
+  return "heavy";
+}
+function getDefaultShipType() {
+  return Object.keys(ShipConfig)[0] || "fighter";
+}
+var entitiesConfig_default = ShipConfig;
+if (typeof module !== "undefined" && module.exports) {
+  try {
+    const existing = module.exports || {};
+    Object.defineProperty(existing, "ShipConfig", {
+      value: ShipConfig,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getShipConfig", {
+      value: getShipConfig,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "SIZE_DEFAULTS", {
+      value: SIZE_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getSizeDefaults", {
+      value: getSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "setSizeDefaults", {
+      value: setSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "setAllSizeDefaults", {
+      value: setAllSizeDefaults,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "BULLET_DEFAULTS", {
+      value: BULLET_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "PARTICLE_DEFAULTS", {
+      value: PARTICLE_DEFAULTS,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "bulletKindForRadius", {
+      value: bulletKindForRadius,
+      enumerable: true
+    });
+    Object.defineProperty(existing, "getDefaultShipType", {
+      value: getDefaultShipType,
+      enumerable: true
+    });
+    try {
+      Object.defineProperty(existing, "default", {
+        value: ShipConfig,
+        enumerable: true
+      });
+    } catch (e) {
+    }
+    try {
+      module.exports = existing;
+    } catch (e) {
+    }
+  } catch (e) {
+  }
+}
 
-// src/config/teamsConfig.ts
-init_entitiesConfig();
+// src/config/runtimeConfigResolver.ts
+var __nodeRequire;
+try {
+  const { createRequire } = __require("module");
+  __nodeRequire = createRequire(typeof import.meta !== "undefined" ? import.meta.url : __filename);
+} catch (e) {
+  try {
+    const { createRequire } = __require("module");
+    __nodeRequire = createRequire(__filename);
+  } catch (e2) {
+  }
+}
+function getRuntimeEntitiesModule() {
+  const cacheKey = "__cachedModule";
+  try {
+    try {
+      const esmMod = entitiesConfig_exports || {};
+      if (esmMod && Object.keys(esmMod).length) {
+        getRuntimeEntitiesModule[cacheKey] = esmMod;
+        return esmMod;
+      }
+    } catch {
+    }
+    if (getRuntimeEntitiesModule[cacheKey])
+      return getRuntimeEntitiesModule[cacheKey];
+  } catch {
+  }
+  try {
+    if (__nodeRequire) {
+      try {
+        const mod = __nodeRequire("./entitiesConfig");
+        getRuntimeEntitiesModule[cacheKey] = mod;
+        return mod;
+      } catch {
+      }
+    }
+  } catch {
+  }
+  try {
+    const mod = __nodeRequire ? __nodeRequire("./entitiesConfig.ts") : void 0;
+    if (mod) {
+      getRuntimeEntitiesModule[cacheKey] = mod;
+      return mod;
+    }
+  } catch {
+  }
+  try {
+    const mod = __nodeRequire ? __nodeRequire("./entitiesConfig.js") : void 0;
+    if (mod) {
+      getRuntimeEntitiesModule[cacheKey] = mod;
+      return mod;
+    }
+  } catch {
+  }
+  return void 0;
+}
+function getRuntimeShipConfigSafe() {
+  const cfgKey = "__cachedShipConfig";
+  try {
+    if (getRuntimeShipConfigSafe[cfgKey])
+      return getRuntimeShipConfigSafe[cfgKey];
+  } catch {
+  }
+  try {
+    const mod = getRuntimeEntitiesModule() || {};
+    if (typeof mod.getShipConfig === "function") {
+      const cfg = mod.getShipConfig();
+      if (cfg && Object.keys(cfg).length) {
+        getRuntimeShipConfigSafe[cfgKey] = cfg;
+        return cfg;
+      }
+    }
+    if (mod.ShipConfig && Object.keys(mod.ShipConfig).length) {
+      getRuntimeShipConfigSafe[cfgKey] = mod.ShipConfig;
+      return mod.ShipConfig;
+    }
+    if (mod.default && Object.keys(mod.default).length) {
+      getRuntimeShipConfigSafe[cfgKey] = mod.default;
+      return mod.default;
+    }
+    if (mod && Object.keys(mod).length) {
+      getRuntimeShipConfigSafe[cfgKey] = mod;
+      return mod;
+    }
+  } catch {
+  }
+  const fallback = {
+    fighter: {
+      size: "small",
+      maxHp: 10,
+      maxShield: 8,
+      shieldRegen: 1,
+      accel: 100,
+      turnRate: 6,
+      radius: 12,
+      maxSpeed: 2200,
+      cannons: [{ damage: 3, rate: 3, muzzleSpeed: 260, bulletTTL: 1.1 }]
+    },
+    carrier: {
+      size: "large",
+      maxHp: 50,
+      armor: 2,
+      maxShield: 30,
+      shieldRegen: 0.3,
+      radius: 40,
+      accel: 60,
+      turnRate: 1.5,
+      maxSpeed: 1200,
+      cannons: [{ damage: 2, rate: 0.8, muzzleSpeed: 140, bulletTTL: 2 }],
+      carrier: { fighterCooldown: 1.5, maxFighters: 6, spawnPerCooldown: 2 },
+      turrets: [{ position: [2, 1.2], kind: "basic" }]
+    }
+  };
+  return fallback;
+}
+function getRuntimeSizeDefaultsSafe(size) {
+  const sizeCacheKey = "__cachedSizeDefaults";
+  try {
+    const cache = getRuntimeSizeDefaultsSafe[sizeCacheKey] || /* @__PURE__ */ new Map();
+    getRuntimeSizeDefaultsSafe[sizeCacheKey] = cache;
+    if (cache.has(size)) return cache.get(size);
+  } catch {
+  }
+  try {
+    const mod = getRuntimeEntitiesModule() || {};
+    let val = {};
+    if (typeof mod.getSizeDefaults === "function") val = mod.getSizeDefaults(size);
+    else if (mod.default && typeof mod.default.getSizeDefaults === "function") val = mod.default.getSizeDefaults(size);
+    const cache = getRuntimeSizeDefaultsSafe[sizeCacheKey] || /* @__PURE__ */ new Map();
+    cache.set(size, val || {});
+    getRuntimeSizeDefaultsSafe[sizeCacheKey] = cache;
+    return val || {};
+  } catch {
+  }
+  return {};
+}
+function getDefaultShipTypeSafe() {
+  try {
+    const cfg = getRuntimeShipConfigSafe();
+    const keys = Object.keys(cfg || {});
+    return keys.length ? keys[0] : "fighter";
+  } catch (e) {
+    return "fighter";
+  }
+}
 
 // src/config/simConfig.ts
 var SIM = {
@@ -2143,43 +2389,21 @@ var Pool = class {
 };
 
 // src/entities.ts
-var entitiesConfig = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports));
-function getShipConfigSafe() {
-  let config2 = {};
-  if (typeof getShipConfig === "function") {
-    try {
-      config2 = getShipConfig();
-    } catch {
-    }
+var __nodeRequire2;
+try {
+  const { createRequire } = __require("module");
+  __nodeRequire2 = createRequire(
+    typeof import.meta !== "undefined" ? import.meta.url : __filename
+  );
+} catch (e) {
+  try {
+    const { createRequire } = __require("module");
+    __nodeRequire2 = createRequire(__filename);
+  } catch (e2) {
   }
-  if (!config2 || !Object.keys(config2).length) {
-    if (typeof entitiesConfig.getShipConfig === "function") {
-      try {
-        config2 = entitiesConfig.getShipConfig();
-      } catch {
-      }
-    }
-  }
-  if (!config2 || !Object.keys(config2).length) {
-    if (entitiesConfig_exports && typeof entitiesConfig_default === "object") config2 = entitiesConfig_default;
-    else if (typeof entitiesConfig.default === "object" && entitiesConfig.default) config2 = entitiesConfig.default;
-    else if (typeof entitiesConfig === "object" && entitiesConfig) config2 = entitiesConfig;
-  }
-  if (!config2 || !Object.keys(config2).length) {
-    config2 = { fighter: { size: "small", maxHp: 1, cannons: [{ damage: 1, rate: 1 }] } };
-  }
-  return config2;
 }
-function getDefaultShipTypeSafe() {
-  const config2 = getShipConfigSafe();
-  const keys = Object.keys(config2);
-  return keys.length ? keys[0] : "fighter";
-}
-function getSizeDefaultsSafe(size) {
-  if (typeof entitiesConfig.getSizeDefaults === "function") return entitiesConfig.getSizeDefaults(size);
-  if (entitiesConfig.default && typeof entitiesConfig.default.getSizeDefaults === "function") return entitiesConfig.default.getSizeDefaults(size);
-  return {};
-}
+var getShipConfigSafe = () => getRuntimeShipConfigSafe();
+var getSizeDefaultsSafe = (size) => getRuntimeSizeDefaultsSafe(size);
 var nextId = 1;
 function genId() {
   return nextId++;
@@ -2190,7 +2414,9 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
   const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipTypeSafe();
   const rawCfg = shipCfg[resolvedType] || shipCfg[getDefaultShipTypeSafe()];
   const sizeVal = rawCfg.size || (rawCfg.radius && rawCfg.radius >= 36 ? "large" : rawCfg.radius && rawCfg.radius >= 20 ? "medium" : "small");
-  const sizeDefaults = getSizeDefaultsSafe(sizeVal);
+  const sizeDefaults = getSizeDefaultsSafe(
+    sizeVal
+  );
   const cfg = Object.assign({}, sizeDefaults, rawCfg);
   const ship = {
     id: genId(),
@@ -2209,7 +2435,8 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     team,
     xp: 0,
     level: 1,
-    cannons: JSON.parse(JSON.stringify(cfg.cannons || [])),
+    // Shallow-clone cannons to avoid mutating config and avoid expensive JSON roundtrip
+    cannons: Array.isArray(cfg.cannons) ? cfg.cannons.map((c) => c && typeof c === "object" ? { ...c } : c) : [],
     // Keep raw turret defs here for now; we'll normalize below via helper so
     // normalization logic is centralized and reusable by snapshot handlers.
     turrets: cfg.turrets || [],
@@ -2438,9 +2665,6 @@ function updateTeamCount(state, oldTeam, newTeam) {
   }
 }
 
-// src/gamemanager.ts
-init_entitiesConfig();
-
 // src/config/behaviorConfig.ts
 var AI_THRESHOLDS = {
   decisionTimerMin: 0.5,
@@ -2451,7 +2675,6 @@ var AI_THRESHOLDS = {
 };
 
 // src/behavior.ts
-init_entitiesConfig();
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
@@ -2718,8 +2941,6 @@ function applySimpleAI(state, dt, bounds = getDefaultBounds()) {
 }
 
 // src/simulate.ts
-init_entitiesConfig();
-init_entitiesConfig();
 init_assetsConfig();
 
 // src/config/progressionConfig.ts
@@ -2983,6 +3204,16 @@ function simulateStep(state, dtSeconds, bounds) {
     }
     state2.healthHits.length = writeHealth;
   }
+  const fighterCountsByParent = /* @__PURE__ */ new Map();
+  try {
+    for (const sh of state.ships || []) {
+      if (sh && sh.parentId && sh.type === "fighter") {
+        const pid = Number(sh.parentId);
+        fighterCountsByParent.set(pid, (fighterCountsByParent.get(pid) || 0) + 1);
+      }
+    }
+  } catch (e) {
+  }
   for (let si = (state.ships || []).length - 1; si >= 0; si--) {
     const s = state.ships[si];
     const throttle = typeof s.throttle === "number" ? s.throttle : 0;
@@ -3134,32 +3365,20 @@ function simulateStep(state, dtSeconds, bounds) {
     } catch (e) {
     }
     try {
-      let shipCfg = {};
-      if (typeof getShipConfig === "function") {
-        try {
-          shipCfg = getShipConfig();
-        } catch {
-        }
-      }
-      if (!shipCfg || !Object.keys(shipCfg).length) {
-        try {
-          const esm = entitiesConfig_exports;
-          if (esm && typeof esm.getShipConfig === "function") shipCfg = esm.getShipConfig();
-          else if (esm && esm.default && typeof esm.default === "object") shipCfg = esm.default;
-        } catch {
-        }
-      }
+      const shipCfg = getRuntimeShipConfigSafe();
       const typeCfg = shipCfg && s.type ? shipCfg[s.type] : void 0;
-      if (typeCfg && typeCfg.carrier) {
-        const carrierCfg = typeCfg.carrier;
+      if (s.type === "carrier" || typeCfg && typeCfg.carrier) {
+        const carrierCfg = typeCfg && typeCfg.carrier || {
+          fighterCooldown: 1.5,
+          maxFighters: 6,
+          spawnPerCooldown: 2
+        };
         s._carrierTimer = s._carrierTimer || 0;
         s._carrierTimer += dtSeconds;
         const cooldown = Number(carrierCfg.fighterCooldown) || 1.5;
         if (s._carrierTimer >= cooldown) {
           s._carrierTimer = 0;
-          const existing = (state.ships || []).filter(
-            (sh) => sh && sh.parentId === s.id && sh.type === "fighter"
-          ).length;
+          const existing = fighterCountsByParent.get(s.id) || 0;
           const maxF = Number(carrierCfg.maxFighters) || 0;
           const spawnPer = Number(carrierCfg.spawnPerCooldown) || 1;
           const canSpawn = Math.max(0, maxF - existing);
@@ -3174,6 +3393,7 @@ function simulateStep(state, dtSeconds, bounds) {
               f.parentId = s.id;
               f.angle = s.angle;
               (state.ships ||= []).push(f);
+              fighterCountsByParent.set(s.id, (fighterCountsByParent.get(s.id) || 0) + 1);
               try {
                 state.shipMap && state.shipMap.set(f.id, f);
               } catch (e) {
@@ -3796,8 +4016,6 @@ var FALLBACK_POSITIONS = [
 var STARS = { twinkle: true, redrawInterval: 500, count: 140 };
 
 // src/gamemanager.ts
-init_entitiesConfig();
-init_entitiesConfig();
 function createGameManager({
   useWorker = false,
   renderer = null,
@@ -3856,15 +4074,18 @@ function createGameManager({
         try {
           if (typeof simWorker.off === "function") {
             try {
-              if (_workerReadyHandler) simWorker.off("ready", _workerReadyHandler);
+              if (_workerReadyHandler)
+                simWorker.off("ready", _workerReadyHandler);
             } catch (e) {
             }
             try {
-              if (_workerSnapshotHandler) simWorker.off("snapshot", _workerSnapshotHandler);
+              if (_workerSnapshotHandler)
+                simWorker.off("snapshot", _workerSnapshotHandler);
             } catch (e) {
             }
             try {
-              if (_workerReinforcementsHandler) simWorker.off("reinforcements", _workerReinforcementsHandler);
+              if (_workerReinforcementsHandler)
+                simWorker.off("reinforcements", _workerReinforcementsHandler);
             } catch (e) {
             }
           }
@@ -3873,7 +4094,8 @@ function createGameManager({
         try {
           if (typeof simWorker.terminate === "function") simWorker.terminate();
           else if (typeof simWorker.close === "function") simWorker.close();
-          else if (typeof simWorker.post === "function") simWorker.post({ type: "stop" });
+          else if (typeof simWorker.post === "function")
+            simWorker.post({ type: "stop" });
         } catch (e) {
         }
         simWorker = null;
@@ -3925,14 +4147,40 @@ function createGameManager({
     _evaluateAndEmit(clampedDt);
     if (renderer && typeof renderer.renderState === "function") {
       try {
-        renderer.renderState({
-          ships: state.ships,
-          bullets: state.bullets,
-          flashes: state.flashes,
-          shieldFlashes: state.shieldFlashes,
-          healthFlashes: state.healthFlashes,
-          t: state.t
-        });
+        if (!_pendingRender) {
+          _pendingRender = true;
+          try {
+            requestAnimationFrame(() => {
+              try {
+                renderer.renderState({
+                  ships: state.ships,
+                  bullets: state.bullets,
+                  flashes: state.flashes,
+                  shieldFlashes: state.shieldFlashes,
+                  healthFlashes: state.healthFlashes,
+                  t: state.t
+                });
+              } catch (e) {
+              }
+              _pendingRender = false;
+            });
+          } catch (e) {
+            setTimeout(() => {
+              try {
+                renderer.renderState({
+                  ships: state.ships,
+                  bullets: state.bullets,
+                  flashes: state.flashes,
+                  shieldFlashes: state.shieldFlashes,
+                  healthFlashes: state.healthFlashes,
+                  t: state.t
+                });
+              } catch (e2) {
+              }
+              _pendingRender = false;
+            }, 0);
+          }
+        }
       } catch (e) {
       }
     }
@@ -3962,7 +4210,11 @@ function createGameManager({
       }
     } else {
       if (continuous) {
-        const result = evaluateReinforcement(SIM.DT_MS / 1e3, state, continuousOptions);
+        const result = evaluateReinforcement(
+          SIM.DT_MS / 1e3,
+          state,
+          continuousOptions
+        );
         if (result && Array.isArray(result.spawned) && result.spawned.length) {
           lastReinforcement = {
             spawned: result.spawned,
@@ -3981,7 +4233,10 @@ function createGameManager({
     continuousOptions = { ...continuousOptions, ...opts };
     if (simWorker)
       try {
-        simWorker.post({ type: "setContinuousOptions", opts: continuousOptions });
+        simWorker.post({
+          type: "setContinuousOptions",
+          opts: continuousOptions
+        });
       } catch (e) {
       }
   }
@@ -4014,23 +4269,7 @@ function createGameManager({
   }
   function spawnShip(team = "red", type) {
     try {
-      const shipType = (() => {
-        if (type) return type;
-        try {
-          if (typeof getDefaultShipType === "function") return getDefaultShipType();
-        } catch {
-        }
-        try {
-          const esm = entitiesConfig_exports;
-          if (esm && typeof esm.getDefaultShipType === "function") return esm.getDefaultShipType();
-          if (esm && esm.default && typeof esm.default === "object") {
-            const keys = Object.keys(esm.default || {});
-            if (keys.length) return keys[0];
-          }
-        } catch {
-        }
-        return "fighter";
-      })();
+      const shipType = type || getDefaultShipTypeSafe();
       const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
@@ -4169,7 +4408,13 @@ function createGameManager({
       };
       simWorker.on && simWorker.on("reinforcements", _workerReinforcementsHandler);
       try {
-        simWorker.post({ type: "init", seed, bounds: SIM.bounds, simDtMs: SIM.DT_MS, state });
+        simWorker.post({
+          type: "init",
+          seed,
+          bounds: SIM.bounds,
+          simDtMs: SIM.DT_MS,
+          state
+        });
         simWorker.post({ type: "start" });
       } catch (e) {
       }
@@ -4418,7 +4663,7 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
           for (const o of orders) {
             try {
               const ship = createShip(
-                o.type || getDefaultShipType(),
+                o.type || getDefaultShipTypeSafe(),
                 o.x || 100,
                 o.y || 100,
                 o.team || "red"
@@ -4439,7 +4684,7 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
           return { spawned };
         }
       }
-      const fallback = getDefaultShipType();
+      const fallback = getDefaultShipTypeSafe();
       const r = createShip(
         fallback,
         FALLBACK_POSITIONS[0].x,
@@ -4478,41 +4723,8 @@ function evaluateReinforcement(dt, state, continuousOptions = {}) {
   return null;
 }
 
-// src/config/displayConfig.ts
-var DISPLAY_DEFAULTS = {
-  renderScale: 1,
-  displayScale: 1,
-  hpBar: { bg: "#222", fill: "#4caf50", w: 20, h: 4, dx: -10, dy: -12 }
-};
-
-// src/config/rendererConfig.ts
-var RendererConfig = {
-  preferred: "canvas",
-  allowUrlOverride: true,
-  allowWebGL: true,
-  renderScale: DISPLAY_DEFAULTS.renderScale,
-  displayScale: DISPLAY_DEFAULTS.displayScale,
-  dynamicScaleEnabled: false,
-  lastFrameTime: 0,
-  frameScore: "green",
-  // green, yellow, red
-  // UI overlays configuration
-  hpBar: DISPLAY_DEFAULTS.hpBar
-};
-function getPreferredRenderer() {
-  try {
-    if (RendererConfig.allowUrlOverride && typeof window !== "undefined" && window.location && window.location.search) {
-      const p = new URLSearchParams(window.location.search);
-      const r = p.get("renderer");
-      if (r === "canvas" || r === "webgl") return r;
-    }
-  } catch (e) {
-  }
-  return RendererConfig.preferred;
-}
-var rendererConfig_default = RendererConfig;
-
 // src/canvasrenderer.ts
+init_rendererConfig();
 init_assetsConfig();
 init_svgLoader();
 
@@ -4604,17 +4816,8 @@ var TintedHullPool = class {
 };
 
 // src/canvasrenderer.ts
-var entitiesConfig2 = (init_entitiesConfig(), __toCommonJS(entitiesConfig_exports));
 function getShipConfigSafe2() {
-  if (typeof entitiesConfig2.getShipConfig === "function") return entitiesConfig2.getShipConfig();
-  if (entitiesConfig2.default && typeof entitiesConfig2.default.getShipConfig === "function") return entitiesConfig2.default.getShipConfig();
-  if (typeof entitiesConfig2.default === "object" && entitiesConfig2.default) return entitiesConfig2.default;
-  return {};
-}
-function getDefaultShipTypeSafe2() {
-  const cfg = getShipConfigSafe2();
-  const keys = Object.keys(cfg || {});
-  return keys.length ? keys[0] : "fighter";
+  return getRuntimeShipConfigSafe() || {};
 }
 function teamMapping(color) {
   return {
@@ -4633,7 +4836,7 @@ function teamMapping(color) {
     detail: color
   };
 }
-var CanvasRenderer = class {
+var CanvasRenderer = class _CanvasRenderer {
   canvas;
   ctx = null;
   bufferCanvas;
@@ -4740,6 +4943,24 @@ var CanvasRenderer = class {
     this.bufferCanvas = document.createElement("canvas");
     this.bufferCtx = this.bufferCanvas.getContext("2d");
   }
+  // Dev-only: warn once per asset key when an SVG fetch fails.
+  static _warnedSvgKeys = /* @__PURE__ */ new Set();
+  _devWarnSvgFetchFail(assetKey, rel, err) {
+    try {
+      const isProd = typeof process !== "undefined" && process.env && true || typeof globalThis.NODE_ENV !== "undefined" && globalThis.NODE_ENV === "production";
+      const isTest = typeof process !== "undefined" && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID) || typeof globalThis.vitest !== "undefined";
+      if (isProd || isTest) return;
+      if (!assetKey) assetKey = "<unknown>";
+      const key = `${assetKey}::${rel}`;
+      if (_CanvasRenderer._warnedSvgKeys.has(key)) return;
+      _CanvasRenderer._warnedSvgKeys.add(key);
+      console.warn(
+        `[CanvasRenderer] Failed to load SVG for '${assetKey}' from '${rel}'. Falling back to vector shape.`,
+        err ? err : ""
+      );
+    } catch (e) {
+    }
+  }
   init() {
     this.ctx = this.canvas.getContext("2d");
     if (!this.ctx) {
@@ -4841,6 +5062,10 @@ var CanvasRenderer = class {
               pctx.fillStyle = "#fff";
               pctx.fillRect(0, 0, ph.width, ph.height);
             }
+            try {
+              ph._placeholder = true;
+            } catch (e) {
+            }
             this._svgHullCache[k] = ph;
           }
         }
@@ -4859,10 +5084,17 @@ var CanvasRenderer = class {
                 const resp = await fetch(rel);
                 if (resp && resp.ok) {
                   svgText = await resp.text();
+                } else {
+                  this._devWarnSvgFetchFail(
+                    key,
+                    String(rel),
+                    resp && !resp.ok ? resp.status : void 0
+                  );
                 }
               }
             }
           } catch (e) {
+            this._devWarnSvgFetchFail(key, String(rel), e);
             svgText = "";
           }
           if (!svgText) continue;
@@ -4913,7 +5145,23 @@ var CanvasRenderer = class {
           this._svgEngineMountCache = this._svgEngineMountCache || {};
           this._svgEngineMountCache[key] = engineNorm;
           try {
-            const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+            let svgRenderer = void 0;
+            try {
+              svgRenderer = void 0;
+              try {
+                Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then(
+                  (m) => svgRenderer = m.default || m
+                );
+              } catch (e) {
+                svgRenderer = void 0;
+              }
+            } catch (e) {
+              try {
+                svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports));
+              } catch (e2) {
+                svgRenderer = void 0;
+              }
+            }
             if (svgRenderer && typeof svgRenderer.rasterizeSvgWithTeamColors === "function") {
               const outW = vb && vb.w || 128;
               const outH = vb && vb.h || 128;
@@ -4971,7 +5219,14 @@ var CanvasRenderer = class {
                       } catch (e) {
                       }
                       try {
-                        const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                        let svgRenderer = void 0;
+                        try {
+                          Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then(
+                            (m) => svgRenderer = m.default || m
+                          );
+                        } catch (e) {
+                          svgRenderer = void 0;
+                        }
                         if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
                           svgRenderer.cacheCanvasForAsset(
                             key,
@@ -5059,6 +5314,10 @@ var CanvasRenderer = class {
                       pctx.fillStyle = "#fff";
                       pctx.fillRect(0, 0, outW, outH);
                     }
+                    try {
+                      ph._placeholder = true;
+                    } catch (e) {
+                    }
                     hullCanvas = ph;
                   }
                   this._svgHullCache = this._svgHullCache || {};
@@ -5085,7 +5344,7 @@ var CanvasRenderer = class {
                   tctx.globalCompositeOperation = "source-over";
                   this._setTintedCanvas(k, tc);
                   try {
-                    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                    const svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then((m) => m.default || m);
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
                       svgRenderer.cacheCanvasForAsset(
                         shipType,
@@ -5116,6 +5375,10 @@ var CanvasRenderer = class {
                 pctx.fillStyle = "#fff";
                 pctx.fillRect(0, 0, ph.width, ph.height);
               }
+              try {
+                ph._placeholder = true;
+              } catch (e) {
+              }
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[shipType] = ph;
               for (const col of teamColors2) {
@@ -5143,7 +5406,7 @@ var CanvasRenderer = class {
                   }
                   this._setTintedCanvas(k, tc);
                   try {
-                    const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                    const svgRenderer = await Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then((m) => m.default || m);
                     if (svgRenderer && typeof svgRenderer.cacheCanvasForAsset === "function") {
                       svgRenderer.cacheCanvasForAsset(
                         shipType,
@@ -5286,6 +5549,72 @@ var CanvasRenderer = class {
       activeBufferCtx.fillStyle = assetsConfig_default.palette?.background || "#0b1220";
       activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     });
+    try {
+      const STAR_COOLDOWN_DEFAULT = 0.3;
+      if (state && !state.starCanvas) {
+        state._starCooldown = state._starCooldown || 0;
+      }
+      if (state && state.starCanvas === void 0) {
+        state.starCanvas = null;
+      }
+      if (state && state._starCooldown > 0) {
+        const dt = typeof state.dt === "number" ? state.dt : typeof state.simDt === "number" ? state.simDt : 1 / 60;
+        state._starCooldown = Math.max(
+          0,
+          state._starCooldown - dt
+        );
+      }
+      if (state && !state.starCanvas && state._starCooldown <= 0) {
+        const size = Math.max(1024, Math.max(bufferW, bufferH));
+        const sc = document.createElement("canvas");
+        sc.width = size;
+        sc.height = size;
+        const sctx = sc.getContext("2d");
+        const g = sctx.createLinearGradient(0, 0, 0, size);
+        g.addColorStop(0, "#001020");
+        g.addColorStop(1, "#000010");
+        sctx.fillStyle = g;
+        sctx.fillRect(0, 0, size, size);
+        const stars = Math.floor(size * size * 35e-5);
+        for (let i = 0; i < stars; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const r = Math.random() * 1.2;
+          const bright = 0.5 + Math.random() * 0.5;
+          sctx.fillStyle = `rgba(255,255,255,${bright})`;
+          sctx.beginPath();
+          sctx.arc(x, y, r, 0, Math.PI * 2);
+          sctx.fill();
+        }
+        const bc = document.createElement("canvas");
+        bc.width = size;
+        bc.height = size;
+        const bctx = bc.getContext("2d");
+        bctx.fillStyle = "transparent";
+        bctx.fillRect(0, 0, size, size);
+        for (let i = 0; i < 120; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const r = 1.6 + Math.random() * 2.4;
+          bctx.fillStyle = "rgba(255,244,200,0.95)";
+          bctx.beginPath();
+          bctx.arc(x, y, r, 0, Math.PI * 2);
+          bctx.fill();
+        }
+        const tmp = document.createElement("canvas");
+        tmp.width = Math.max(64, Math.floor(size / 8));
+        tmp.height = Math.max(64, Math.floor(size / 8));
+        const tctx = tmp.getContext("2d");
+        tctx.drawImage(bc, 0, 0, tmp.width, tmp.height);
+        bctx.clearRect(0, 0, size, size);
+        bctx.globalAlpha = 0.85;
+        bctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, size, size);
+        bctx.globalAlpha = 1;
+        state.starCanvas = sc;
+        state.starBloomCanvas = bc;
+      }
+    } catch (e) {
+    }
     function drawPolygon(points) {
       if (!points || points.length === 0) return;
       activeBufferCtx.beginPath();
@@ -5313,6 +5642,29 @@ var CanvasRenderer = class {
             bufferH
           );
         });
+      }
+      if (state.starBloomCanvas) {
+        try {
+          withContext(() => {
+            activeBufferCtx.globalCompositeOperation = "lighter";
+            try {
+              const bloom = rendererConfig_default && rendererConfig_default.starfield && typeof rendererConfig_default.starfield.bloomIntensity === "number" ? rendererConfig_default.starfield.bloomIntensity : 0.9;
+              activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, bloom));
+            } catch (e) {
+              activeBufferCtx.globalAlpha = 0.9;
+            }
+            activeBufferCtx.drawImage(
+              state.starBloomCanvas,
+              0,
+              0,
+              bufferW,
+              bufferH
+            );
+            activeBufferCtx.globalCompositeOperation = "source-over";
+            activeBufferCtx.globalAlpha = 1;
+          });
+        } catch (e) {
+        }
       }
     }
     const now = state && state.t || 0;
@@ -5380,19 +5732,19 @@ var CanvasRenderer = class {
           s.trail.push({ x: s.x, y: s.y });
         }
         const trailConfig = getEngineTrailConfig(
-          s.type || getDefaultShipTypeSafe2()
+          s.type || getDefaultShipTypeSafe()
         );
         const maxTrail = trailConfig?.maxLength || 40;
         while (s.trail.length > maxTrail) s.trail.shift();
       }
       if (Array.isArray(s.trail)) {
         const trailConfig = getEngineTrailConfig(
-          s.type || getDefaultShipTypeSafe2()
+          s.type || getDefaultShipTypeSafe()
         );
         const color = trailConfig?.color || assetsConfig_default.palette?.bullet || "#aee1ff";
         const width = (trailConfig?.width || 0.35) * (s.radius || 12) * renderScale;
         const fade = trailConfig?.fade || 0.35;
-        const engineMounts = this._svgEngineMountCache && this._svgEngineMountCache[s.type || getDefaultShipTypeSafe2()];
+        const engineMounts = this._svgEngineMountCache && this._svgEngineMountCache[s.type || getDefaultShipTypeSafe()];
         if (Array.isArray(engineMounts) && engineMounts.length > 0) {
           for (const [emx, emy] of engineMounts) {
             for (let i = 0; i < s.trail.length; i++) {
@@ -5432,7 +5784,7 @@ var CanvasRenderer = class {
           }
         }
       }
-      const sprite = getSpriteAsset(s.type || getDefaultShipTypeSafe2());
+      const sprite = getSpriteAsset(s.type || getDefaultShipTypeSafe());
       withShipContext(s, () => {
         let teamColor = assetsConfig_default.palette?.shipHull || "#888";
         try {
@@ -5444,11 +5796,14 @@ var CanvasRenderer = class {
         }
         activeBufferCtx.fillStyle = teamColor;
         let hullDrawn = false;
-        if (sprite.svg) {
-          this._svgHullCache = this._svgHullCache || {};
-          const cacheKey = s.type || getDefaultShipTypeSafe2();
-          let hullCanvas = this._svgHullCache[cacheKey];
-          if (!hullCanvas) {
+        this._svgHullCache = this._svgHullCache || {};
+        const cacheKey = s.type || getDefaultShipTypeSafe();
+        let hullCanvas = this._svgHullCache[cacheKey];
+        if (hullCanvas && hullCanvas._placeholder) {
+          hullCanvas = void 0;
+        }
+        if (sprite.svg || hullCanvas) {
+          if (!hullCanvas && sprite.svg) {
             try {
               const svgText = sprite.svg;
               let outW = 128, outH = 128;
@@ -5482,7 +5837,8 @@ var CanvasRenderer = class {
             }
           }
           if (hullCanvas) {
-            const scale = (s.radius || 12) * renderScale / (hullCanvas.width / 2);
+            const hc = hullCanvas;
+            const scale = (s.radius || 12) * renderScale / (hc.width / 2);
             if (!this._tintedHullPool)
               this._tintedHullPool = new TintedHullPool({
                 globalCap: 256,
@@ -5514,7 +5870,14 @@ var CanvasRenderer = class {
             }
             if (!tintedCanvas) {
               try {
-                const svgRenderer = (init_svgRenderer(), __toCommonJS(svgRenderer_exports));
+                let svgRenderer = void 0;
+                try {
+                  Promise.resolve().then(() => (init_svgRenderer(), svgRenderer_exports)).then(
+                    (m) => svgRenderer = m.default || m
+                  );
+                } catch (e) {
+                  svgRenderer = void 0;
+                }
                 if (svgRenderer && typeof svgRenderer.getCanvas === "function") {
                   const assetKey = cacheKey;
                   const mapping = teamMapping(teamColor);
@@ -5570,17 +5933,13 @@ var CanvasRenderer = class {
               activeBufferCtx.scale(scale, scale);
               try {
                 activeBufferCtx.drawImage(
-                  tintedCanvas || hullCanvas,
-                  -hullCanvas.width / 2,
-                  -hullCanvas.height / 2
+                  tintedCanvas || hc,
+                  -hc.width / 2,
+                  -hc.height / 2
                 );
               } catch (e) {
                 try {
-                  activeBufferCtx.drawImage(
-                    hullCanvas,
-                    -hullCanvas.width / 2,
-                    -hullCanvas.height / 2
-                  );
+                  activeBufferCtx.drawImage(hc, -hc.width / 2, -hc.height / 2);
                 } catch (e2) {
                 }
               }
@@ -5624,7 +5983,7 @@ var CanvasRenderer = class {
           }
         }
         try {
-          const vconf = getVisualConfig(s.type || getDefaultShipTypeSafe2());
+          const vconf = getVisualConfig(s.type || getDefaultShipTypeSafe());
           const engineName = vconf && vconf.visuals && vconf.visuals.engine ? vconf.visuals.engine : "engineFlare";
           const engAnim = assetsConfig_default.animations && assetsConfig_default.animations[engineName];
           if (engAnim && Array.isArray(engAnim.points)) {
@@ -5757,7 +6116,16 @@ var CanvasRenderer = class {
             const strokeWidth = shAnim && (shAnim.strokeWidth || 0.08) * (s.radius || 12) * renderScale || 3 * renderScale;
             let stroked = false;
             try {
-              const { getHullOutlineFromSvg: getHullOutlineFromSvg2 } = (init_svgLoader(), __toCommonJS(svgLoader_exports));
+              const getHullOutlineFromSvg2 = svgLoader_exports && getHullOutlineFromSvg ? getHullOutlineFromSvg : (svgText2, tol) => {
+                try {
+                  return getHullOutlineFromSvg(
+                    svgText2,
+                    tol
+                  );
+                } catch (e) {
+                  return { contours: [] };
+                }
+              };
               const svgText = getShipAsset(s.type);
               if (svgText) {
                 const outline = getHullOutlineFromSvg2(svgText, 1.5);
@@ -5819,6 +6187,10 @@ var CanvasRenderer = class {
             const sx2 = Math.round((s.x || 0) * renderScale);
             const sy2 = Math.round((s.y || 0) * renderScale);
             withContext(() => {
+              try {
+                activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
+              } catch (e) {
+              }
               activeBufferCtx.fillStyle = hbBg;
               activeBufferCtx.fillRect(sx2 + ox, sy2 + oy, w, h);
               activeBufferCtx.fillStyle = hbFill;
@@ -6142,6 +6514,7 @@ var CanvasRenderer = class {
 
 // src/webglrenderer.ts
 init_assetsConfig();
+init_rendererConfig();
 var WebGLRenderer = class {
   canvas;
   gl = null;
@@ -6167,10 +6540,51 @@ var WebGLRenderer = class {
       if (!gl) return false;
       this.gl = gl;
       gl.clearColor(0.02, 0.03, 0.06, 1);
+      this._starfield = this._starfield || null;
+      this._starfieldSize = this._starfieldSize || 1024;
       return true;
     } catch {
       return false;
     }
+    try {
+      this.quadVBO = this.gl.createBuffer();
+      const glr = this.gl;
+      const verts = new Float32Array([
+        -1,
+        -1,
+        0,
+        0,
+        1,
+        -1,
+        1,
+        0,
+        -1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]);
+      glr.bindBuffer(glr.ARRAY_BUFFER, this.quadVBO);
+      glr.bufferData(glr.ARRAY_BUFFER, verts, glr.STATIC_DRAW);
+      const vsSrc = "attribute vec2 aPos; attribute vec2 aUV; varying vec2 vUV; void main(){ vUV = aUV; gl_Position = vec4(aPos,0.0,1.0); }";
+      const fsSrc = "precision mediump float; varying vec2 vUV; uniform sampler2D uTex; uniform vec2 uUVOffset; void main(){ vec2 uv = vUV + uUVOffset; gl_FragColor = texture2D(uTex, uv); }";
+      const vs = glr.createShader(glr.VERTEX_SHADER);
+      const fs = glr.createShader(glr.FRAGMENT_SHADER);
+      glr.shaderSource(vs, vsSrc);
+      glr.shaderSource(fs, fsSrc);
+      glr.compileShader(vs);
+      glr.compileShader(fs);
+      const prog = glr.createProgram();
+      glr.attachShader(prog, vs);
+      glr.attachShader(prog, fs);
+      glr.linkProgram(prog);
+      this.quadProg = prog;
+    } catch {
+    }
+    return true;
   }
   // Called when canvas backing store size changes
   updateScale() {
@@ -6192,6 +6606,106 @@ var WebGLRenderer = class {
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT);
     try {
+      if (!this._starfield) {
+        const size = this._starfieldSize || 1024;
+        const cvs = document.createElement("canvas");
+        cvs.width = size;
+        cvs.height = size;
+        const ctx = cvs.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, size);
+        g.addColorStop(0, "#001020");
+        g.addColorStop(1, "#000010");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, size, size);
+        let density = 4e-4;
+        try {
+          const rc = rendererConfig_default;
+          if (rc && rc.starfield && typeof rc.starfield.density === "number")
+            density = rc.starfield.density;
+        } catch {
+        }
+        const stars = Math.floor(size * size * density);
+        for (let i = 0; i < stars; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const r = Math.random() * 1.2;
+          const bright = 0.6 + Math.random() * 0.4;
+          ctx.fillStyle = `rgba(255,255,255,${bright})`;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        for (let i = 0; i < 80; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          ctx.fillStyle = "rgba(255,244,200,1)";
+          ctx.beginPath();
+          ctx.arc(x, y, 1.6 + Math.random() * 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL ?? 32867, 0);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          cvs
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        this._starfield = tex;
+      }
+      if (this.quadProg && this.quadVBO) {
+        try {
+          gl.useProgram(this.quadProg);
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVBO);
+          const aPos = gl.getAttribLocation(this.quadProg, "aPos");
+          const aUV = gl.getAttribLocation(this.quadProg, "aUV");
+          gl.enableVertexAttribArray(aPos);
+          gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+          gl.enableVertexAttribArray(aUV);
+          gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 16, 8);
+          let ox = 0, oy = 0;
+          try {
+            const cam = state?.camera;
+            if (cam && typeof cam.x === "number" && typeof cam.y === "number") {
+              const pf = (typeof (init_rendererConfig(), __toCommonJS(rendererConfig_exports)).default !== "undefined" ? (init_rendererConfig(), __toCommonJS(rendererConfig_exports)).default.starfield.parallaxFactor : 0.1) || 0.1;
+              ox = (cam.x || 0) * pf / (this.canvas.width || 1);
+              oy = (cam.y || 0) * pf / (this.canvas.height || 1);
+            }
+          } catch {
+          }
+          const uvOffLoc = gl.getUniformLocation(this.quadProg, "uUVOffset");
+          if (uvOffLoc) gl.uniform2f(uvOffLoc, ox, oy);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, this._starfield);
+          const loc = gl.getUniformLocation(this.quadProg, "uTex");
+          gl.uniform1i(loc, 0);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          if (this._starBloom) {
+            try {
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+              gl.activeTexture(gl.TEXTURE0);
+              gl.bindTexture(gl.TEXTURE_2D, this._starBloom);
+              gl.uniform1i(loc, 0);
+              gl.uniform2f(uvOffLoc, ox * 0.6, oy * 0.6);
+              gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+              gl.disable(gl.BLEND);
+            } catch {
+            }
+          }
+        } catch {
+        }
+      }
+    } catch {
+    }
+    try {
       const ships = state && state.ships || [];
       for (const s of ships) {
         const type = s && s.type || "fighter";
@@ -6206,7 +6720,11 @@ var WebGLRenderer = class {
         this.bakeShapeToTexture(state, type, teamColor);
         try {
           const key = `ship:${type}`;
-          const sprite = acquireSprite(this.gameState || state, key, () => ({ type }));
+          const sprite = acquireSprite(
+            this.gameState || state,
+            key,
+            () => ({ type })
+          );
           const sp = sprite;
           try {
             sp.x = s.x || 0;
@@ -6226,13 +6744,18 @@ var WebGLRenderer = class {
         for (const f of flashes) {
           try {
             const key = `flash`;
-            const pooled = acquireEffect(this.gameState || state, key, () => makePooled(
-              createExplosionEffect({ x: f.x || 0, y: f.y || 0 }),
-              (obj, initArgs) => {
-                resetExplosionEffect(obj, initArgs);
-                obj.ttl = initArgs?.ttl ?? 0.5;
-              }
-            ), f);
+            const pooled = acquireEffect(
+              this.gameState || state,
+              key,
+              () => makePooled(
+                createExplosionEffect({ x: f.x || 0, y: f.y || 0 }),
+                (obj, initArgs) => {
+                  resetExplosionEffect(obj, initArgs);
+                  obj.ttl = initArgs?.ttl ?? 0.5;
+                }
+              ),
+              f
+            );
             const ef = pooled;
             try {
               if (ef) {
@@ -6259,7 +6782,8 @@ var WebGLRenderer = class {
     if (!this.gl) return;
     try {
       const shapes = AssetsConfig.shapes2d || {};
-      for (const key of Object.keys(shapes)) this.bakeShapeToTexture(this.gameState, key);
+      for (const key of Object.keys(shapes))
+        this.bakeShapeToTexture(this.gameState, key);
     } catch {
     }
   }
@@ -6293,19 +6817,30 @@ var WebGLRenderer = class {
           }
         }
         try {
-          if (this.quadVBO) this.gl.deleteBuffer(this.quadVBO);
+          if (this.quadVBO)
+            this.gl.deleteBuffer(this.quadVBO);
         } catch {
         }
         try {
-          if (this.quadProg) this.gl.deleteProgram(this.quadProg);
+          if (this.quadProg)
+            this.gl.deleteProgram(this.quadProg);
         } catch {
         }
         try {
-          if (this.fboTex) this.gl.deleteTexture(this.fboTex);
+          if (this.fboTex)
+            this.gl.deleteTexture(this.fboTex);
         } catch {
         }
         try {
-          if (this.fbo) this.gl.deleteFramebuffer(this.fbo);
+          if (this.fbo)
+            this.gl.deleteFramebuffer(this.fbo);
+        } catch {
+        }
+        try {
+          if (this._starfield)
+            this.gl.deleteTexture(
+              this._starfield
+            );
         } catch {
         }
       } catch {
@@ -6316,6 +6851,7 @@ var WebGLRenderer = class {
     this.quadProg = null;
     this.fbo = null;
     this.fboTex = null;
+    this._starfield = null;
     this.gl = null;
   }
   // Internal: bake a simple 2D shape into a texture and cache it
@@ -6383,7 +6919,14 @@ var WebGLRenderer = class {
         const t = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, t);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL ?? 32867, 0);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cvs);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          cvs
+        );
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -6416,7 +6959,7 @@ var WebGLRenderer = class {
 };
 
 // src/main.ts
-init_entitiesConfig();
+init_rendererConfig();
 async function startApp(rootDocument = document) {
   const gameState = makeInitialState();
   let canvas = rootDocument.getElementById("world");
@@ -6827,7 +7370,7 @@ async function startApp(rootDocument = document) {
   } catch (e) {
   }
   try {
-    const cfg = getShipConfig();
+    const cfg = getRuntimeShipConfigSafe();
     const selectEl = rootDocument.getElementById(
       "shipTypeSelect"
     );
@@ -6865,7 +7408,7 @@ async function startApp(rootDocument = document) {
             try {
               ship.type = selectedType;
               try {
-                const scfg = getShipConfig();
+                const scfg = getRuntimeShipConfigSafe();
                 if (scfg && scfg[selectedType])
                   ship._config = scfg[selectedType];
               } catch (e) {

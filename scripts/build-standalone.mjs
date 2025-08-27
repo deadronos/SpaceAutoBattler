@@ -68,19 +68,21 @@ async function buildStandalone() {
 		 }
 	 }
 
-    // Create a dedicated inline <script> that assigns the inlined SVG assets
-    const inlineSvgScript = `<script>if (typeof globalThis !== 'undefined') { globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)}; }</script>`;
+    // Create a dedicated inline <script> that assigns the inlined SVG assets.
+    // IMPORTANT: This must execute BEFORE the main module script so that
+    // AssetsConfig.ts can read globalThis.__INLINE_SVG_ASSETS during module
+    // evaluation and populate AssetsConfig.svgAssets with inline strings.
+    const inlineSvgScript = `<script>(function(){try{if(typeof globalThis!=='undefined'){globalThis.__INLINE_SVG_ASSETS=${JSON.stringify(svgAssets)};}}catch(e){}})();</script>`;
 
-    // Produce the inlined HTML normally (without prefixing the main JS)
-    const inlined = inlineHtml({ html, css, js, workerJs });
+    // Produce the inlined HTML normally
+    let inlined = inlineHtml({ html, css, js, workerJs });
 
-    // Insert the inlineSvgScript before </body> if present, otherwise append
-    let final = inlined;
-    if (final.includes('</body>')) {
-        final = final.replace('</body>', `${inlineSvgScript}\n</body>`);
-    } else {
-        final = final + '\n' + inlineSvgScript;
-    }
+    // Place the inlineSvgScript right after the opening <body> tag so it
+    // runs before any subsequent <script type="module"> content.
+    inlined = inlined.replace(/<body(\s[^>]*)?>/, (m) => `${m}\n${inlineSvgScript}`);
+
+    // Fallback: if no <body> tag was found (unlikely), append at top.
+    let final = inlined.includes('<body') ? inlined : (inlineSvgScript + '\n' + inlined);
 
     const standalonePath = path.join(outDir, 'spaceautobattler_standalone.html');
     await fs.writeFile(standalonePath, final, 'utf8');

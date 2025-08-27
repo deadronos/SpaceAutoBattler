@@ -54,7 +54,10 @@ import AssetsConfig, {
 import * as svgLoader from "./assets/svgLoader";
 import TeamsConfig from "./config/teamsConfig";
 import TintedHullPool from "./pools/tintedHullPool";
-import { getRuntimeShipConfigSafe, getDefaultShipTypeSafe } from "./config/runtimeConfigResolver";
+import {
+  getRuntimeShipConfigSafe,
+  getDefaultShipTypeSafe,
+} from "./config/runtimeConfigResolver";
 function getShipConfigSafe() {
   return getRuntimeShipConfigSafe() || {};
 }
@@ -211,6 +214,35 @@ export class CanvasRenderer {
     this.bufferCtx = this.bufferCanvas.getContext("2d");
   }
 
+  // Dev-only: warn once per asset key when an SVG fetch fails.
+  private static _warnedSvgKeys: Set<string> = new Set();
+  private _devWarnSvgFetchFail(assetKey: string, rel: string, err?: unknown) {
+    try {
+      // Suppress in production and test environments
+      const isProd =
+        (typeof process !== "undefined" &&
+          process.env &&
+          process.env.NODE_ENV === "production") ||
+        (typeof (globalThis as any).NODE_ENV !== "undefined" &&
+          (globalThis as any).NODE_ENV === "production");
+      const isTest =
+        (typeof process !== "undefined" &&
+          process.env &&
+          (process.env.VITEST || process.env.VITEST_WORKER_ID)) ||
+        typeof (globalThis as any).vitest !== "undefined";
+      if (isProd || isTest) return;
+      if (!assetKey) assetKey = "<unknown>";
+      const key = `${assetKey}::${rel}`;
+      if (CanvasRenderer._warnedSvgKeys.has(key)) return;
+      CanvasRenderer._warnedSvgKeys.add(key);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[CanvasRenderer] Failed to load SVG for '${assetKey}' from '${rel}'. Falling back to vector shape.`,
+        err ? err : "",
+      );
+    } catch (e) {}
+  }
+
   init(): boolean {
     this.ctx = this.canvas.getContext("2d");
     // If running in a test environment (DOM emulation) getContext may be unimplemented.
@@ -333,6 +365,10 @@ export class CanvasRenderer {
               pctx.fillStyle = "#fff";
               pctx.fillRect(0, 0, ph.width, ph.height);
             }
+            // Tag as placeholder so runtime draw can skip using it as a real hull
+            try {
+              (ph as any)._placeholder = true;
+            } catch (e) {}
             this._svgHullCache[k] = ph;
           }
         }
@@ -352,10 +388,17 @@ export class CanvasRenderer {
                 const resp = await fetch(rel as string);
                 if (resp && resp.ok) {
                   svgText = await resp.text();
+                } else {
+                  this._devWarnSvgFetchFail(
+                    key,
+                    String(rel),
+                    resp && !(resp as any).ok ? resp.status : undefined,
+                  );
                 }
               }
             }
           } catch (e) {
+            this._devWarnSvgFetchFail(key, String(rel), e);
             svgText = "";
           }
           // If fetch failed or not available, skip Node-specific disk read in browser build
@@ -419,7 +462,26 @@ export class CanvasRenderer {
           // is populated with a resolved canvas (not a blank placeholder)
           // so sync reads later (getCachedHullCanvasSync) can draw immediately.
           try {
-            const svgRenderer = require("./assets/svgRenderer");
+            // use static import for svgRenderer (synchronous require fallback)
+            let svgRenderer: any = undefined;
+            try {
+              // prefer static ES import resolved via svgLoader proxy
+              svgRenderer = undefined;
+              // dynamic import may be async; attempt non-blocking import and use when ready
+              try {
+                import("./assets/svgRenderer").then(
+                  (m) => (svgRenderer = m.default || m),
+                );
+              } catch (e) {
+                svgRenderer = undefined;
+              }
+            } catch (e) {
+              try {
+                svgRenderer = (await import("./assets/svgRenderer")) as any;
+              } catch (e) {
+                svgRenderer = undefined;
+              }
+            }
             if (
               svgRenderer &&
               typeof svgRenderer.rasterizeSvgWithTeamColors === "function"
@@ -487,7 +549,14 @@ export class CanvasRenderer {
                         this._svgHullCache[key] = hullCanvas;
                       } catch (e) {}
                       try {
-                        const svgRenderer = require("./assets/svgRenderer");
+                        let svgRenderer: any = undefined;
+                        try {
+                          import("./assets/svgRenderer").then(
+                            (m) => (svgRenderer = m.default || m),
+                          );
+                        } catch (e) {
+                          svgRenderer = undefined;
+                        }
                         if (
                           svgRenderer &&
                           typeof svgRenderer.cacheCanvasForAsset === "function"
@@ -593,6 +662,9 @@ export class CanvasRenderer {
                       pctx.fillStyle = "#fff";
                       pctx.fillRect(0, 0, outW, outH);
                     }
+                    try {
+                      (ph as any)._placeholder = true;
+                    } catch (e) {}
                     hullCanvas = ph;
                   }
                   this._svgHullCache = this._svgHullCache || {};
@@ -618,7 +690,9 @@ export class CanvasRenderer {
                   tctx.globalCompositeOperation = "source-over";
                   this._setTintedCanvas(k, tc);
                   try {
-                    const svgRenderer = require("./assets/svgRenderer");
+                    const svgRenderer = await import(
+                      "./assets/svgRenderer"
+                    ).then((m) => m.default || m);
                     if (
                       svgRenderer &&
                       typeof svgRenderer.cacheCanvasForAsset === "function"
@@ -654,6 +728,9 @@ export class CanvasRenderer {
                 pctx.fillStyle = "#fff";
                 pctx.fillRect(0, 0, ph.width, ph.height);
               }
+              try {
+                (ph as any)._placeholder = true;
+              } catch (e) {}
               this._svgHullCache = this._svgHullCache || {};
               this._svgHullCache[shipType] = ph;
               for (const col of teamColors) {
@@ -679,7 +756,9 @@ export class CanvasRenderer {
                   }
                   this._setTintedCanvas(k, tc);
                   try {
-                    const svgRenderer = require("./assets/svgRenderer");
+                    const svgRenderer = await import(
+                      "./assets/svgRenderer"
+                    ).then((m) => m.default || m);
                     if (
                       svgRenderer &&
                       typeof svgRenderer.cacheCanvasForAsset === "function"
@@ -869,6 +948,87 @@ export class CanvasRenderer {
       activeBufferCtx.fillRect(0, 0, bufferW, bufferH);
     });
 
+    // Ensure procedural starfield exists on state (base and bloom)
+    try {
+      // Throttle starfield generation to avoid noisy regeneration every sim step.
+      // Use a cooldown counter on state._starCooldown (in seconds of sim time).
+      const STAR_COOLDOWN_DEFAULT = 1.0; // seconds
+      if (state && !(state as any).starCanvas) {
+        (state as any)._starCooldown = (state as any)._starCooldown || 0;
+      }
+      if (state && (state as any).starCanvas === undefined) {
+        (state as any).starCanvas = null; // mark as intentionally absent to allow cooldown handling
+      }
+      if (state && (state as any)._starCooldown > 0) {
+        // decrement cooldown by sim dt if available (state.dt or state.simDt or 1/60 fallback)
+        const dt =
+          typeof (state as any).dt === "number"
+            ? (state as any).dt
+            : typeof (state as any).simDt === "number"
+              ? (state as any).simDt
+              : 1 / 60;
+        (state as any)._starCooldown = Math.max(
+          0,
+          (state as any)._starCooldown - dt,
+        );
+      }
+      if (
+        state &&
+        !(state as any).starCanvas &&
+        (state as any)._starCooldown <= 0
+      ) {
+        const size = Math.max(1024, Math.max(bufferW, bufferH));
+        const sc = document.createElement("canvas");
+        sc.width = size;
+        sc.height = size;
+        const sctx = sc.getContext("2d")!;
+        const g = sctx.createLinearGradient(0, 0, 0, size);
+        g.addColorStop(0, "#001020");
+        g.addColorStop(1, "#000010");
+        sctx.fillStyle = g;
+        sctx.fillRect(0, 0, size, size);
+        const stars = Math.floor(size * size * 0.00035);
+        for (let i = 0; i < stars; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const r = Math.random() * 1.2;
+          const bright = 0.5 + Math.random() * 0.5;
+          sctx.fillStyle = `rgba(255,255,255,${bright})`;
+          sctx.beginPath();
+          sctx.arc(x, y, r, 0, Math.PI * 2);
+          sctx.fill();
+        }
+        // bloom canvas: draw brighter spots and blur
+        const bc = document.createElement("canvas");
+        bc.width = size;
+        bc.height = size;
+        const bctx = bc.getContext("2d")!;
+        bctx.fillStyle = "transparent";
+        bctx.fillRect(0, 0, size, size);
+        for (let i = 0; i < 120; i++) {
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const r = 1.6 + Math.random() * 2.4;
+          bctx.fillStyle = "rgba(255,244,200,0.95)";
+          bctx.beginPath();
+          bctx.arc(x, y, r, 0, Math.PI * 2);
+          bctx.fill();
+        }
+        // apply blur by drawing scaled-down/up trick for softer glow
+        const tmp = document.createElement("canvas");
+        tmp.width = Math.max(64, Math.floor(size / 8));
+        tmp.height = Math.max(64, Math.floor(size / 8));
+        const tctx = tmp.getContext("2d")!;
+        tctx.drawImage(bc, 0, 0, tmp.width, tmp.height);
+        bctx.clearRect(0, 0, size, size);
+        bctx.globalAlpha = 0.85;
+        bctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, size, size);
+        bctx.globalAlpha = 1.0;
+        state.starCanvas = sc;
+        (state as any).starBloomCanvas = bc;
+      }
+    } catch (e) {}
+
     // helper: draw a polygon path from points (already scaled/rotated by transform)
     function drawPolygon(points: number[][]) {
       if (!points || points.length === 0) return;
@@ -899,6 +1059,35 @@ export class CanvasRenderer {
             bufferH,
           );
         });
+      }
+      // composite bloom additively to approximate WebGL's SRC_ALPHA, ONE
+      if ((state as any).starBloomCanvas) {
+        try {
+          withContext(() => {
+            activeBufferCtx.globalCompositeOperation = "lighter"; // additive
+            try {
+              const bloom =
+                RendererConfig &&
+                (RendererConfig as any).starfield &&
+                typeof (RendererConfig as any).starfield.bloomIntensity ===
+                  "number"
+                  ? (RendererConfig as any).starfield.bloomIntensity
+                  : 0.9;
+              activeBufferCtx.globalAlpha = Math.max(0, Math.min(1, bloom));
+            } catch (e) {
+              activeBufferCtx.globalAlpha = 0.9;
+            }
+            activeBufferCtx.drawImage(
+              (state as any).starBloomCanvas as CanvasImageSource,
+              0,
+              0,
+              bufferW,
+              bufferH,
+            );
+            activeBufferCtx.globalCompositeOperation = "source-over";
+            activeBufferCtx.globalAlpha = 1.0;
+          });
+        } catch (e) {}
       }
     }
 
@@ -1061,7 +1250,7 @@ export class CanvasRenderer {
 
       // Draw ship hull using asset-agnostic sprite provider inside a ship-local
       // context so shapes can be drawn around (0,0).
-  const sprite = getSpriteAsset(s.type || getDefaultShipTypeSafe());
+      const sprite = getSpriteAsset(s.type || getDefaultShipTypeSafe());
       withShipContext(s, () => {
         // Resolve team color via TeamsConfig if available; fall back to palette
         let teamColor = (AssetsConfig as any).palette?.shipHull || "#888";
@@ -1074,12 +1263,16 @@ export class CanvasRenderer {
         activeBufferCtx.fillStyle = teamColor;
         // --- SVG hull rendering ---
         let hullDrawn = false;
-        if (sprite.svg) {
-          // Cache rasterized hull-only SVG per ship type
-          this._svgHullCache = this._svgHullCache || {};
-          const cacheKey = s.type || getDefaultShipTypeSafe();
-          let hullCanvas = this._svgHullCache[cacheKey];
-          if (!hullCanvas) {
+        // Prefer using a cached hull canvas for this type (preloaded), even if sprite.svg isn't present.
+        this._svgHullCache = this._svgHullCache || {};
+        const cacheKey = s.type || getDefaultShipTypeSafe();
+        let hullCanvas = this._svgHullCache[cacheKey];
+        // Detect and ignore placeholder canvases (blank prewarm) to avoid drawing them
+        if (hullCanvas && (hullCanvas as any)._placeholder) {
+          hullCanvas = undefined;
+        }
+        if (sprite.svg || hullCanvas) {
+          if (!hullCanvas && sprite.svg) {
             try {
               // Use svgLoader to rasterize hull-only SVG
               const svgText = sprite.svg;
@@ -1121,9 +1314,9 @@ export class CanvasRenderer {
             }
           }
           if (hullCanvas) {
+            const hc = hullCanvas as HTMLCanvasElement;
             // Center and scale hullCanvas to ship radius
-            const scale =
-              ((s.radius || 12) * renderScale) / (hullCanvas.width / 2);
+            const scale = ((s.radius || 12) * renderScale) / (hc.width / 2);
             // Prepare tinted cache (per-team pool)
             if (!this._tintedHullPool)
               this._tintedHullPool = new TintedHullPool({
@@ -1168,7 +1361,14 @@ export class CanvasRenderer {
             if (!tintedCanvas) {
               try {
                 // lazy require to avoid circular imports at module load time
-                const svgRenderer = require("./assets/svgRenderer");
+                let svgRenderer: any = undefined;
+                try {
+                  import("./assets/svgRenderer").then(
+                    (m) => (svgRenderer = m.default || m),
+                  );
+                } catch (e) {
+                  svgRenderer = undefined;
+                }
                 if (
                   svgRenderer &&
                   typeof svgRenderer.getCanvas === "function"
@@ -1239,18 +1439,14 @@ export class CanvasRenderer {
               activeBufferCtx.scale(scale, scale);
               try {
                 activeBufferCtx.drawImage(
-                  tintedCanvas || hullCanvas,
-                  -hullCanvas.width / 2,
-                  -hullCanvas.height / 2,
+                  (tintedCanvas || hc) as HTMLCanvasElement,
+                  -hc.width / 2,
+                  -hc.height / 2,
                 );
               } catch (e) {
                 // fallback to drawing original if tinted draw fails
                 try {
-                  activeBufferCtx.drawImage(
-                    hullCanvas,
-                    -hullCanvas.width / 2,
-                    -hullCanvas.height / 2,
-                  );
+                  activeBufferCtx.drawImage(hc, -hc.width / 2, -hc.height / 2);
                 } catch (e) {}
               }
               activeBufferCtx.restore();
@@ -1342,7 +1538,7 @@ export class CanvasRenderer {
         // config, or extracted from SVGs (svgMounts). We prefer instance
         // positions, then shape config, then svgMounts as a last resort.
         const shipType = s.type || "fighter";
-  const shipCfg = getShipConfigSafe()[shipType];
+        const shipCfg = getShipConfigSafe()[shipType];
         const configRadius =
           shipCfg && typeof shipCfg.radius === "number"
             ? shipCfg.radius
@@ -1514,7 +1710,19 @@ export class CanvasRenderer {
             // Try to extract SVG hull outline for shield stroke
             let stroked = false;
             try {
-              const { getHullOutlineFromSvg } = require("./assets/svgLoader");
+              const getHullOutlineFromSvg =
+                svgLoader && (svgLoader as any).getHullOutlineFromSvg
+                  ? (svgLoader as any).getHullOutlineFromSvg
+                  : (svgText: string, tol?: number) => {
+                      try {
+                        return (svgLoader as any).getHullOutlineFromSvg(
+                          svgText,
+                          tol,
+                        );
+                      } catch (e) {
+                        return { contours: [] };
+                      }
+                    };
               const svgText = getShipAsset(s.type);
               if (svgText) {
                 const outline = getHullOutlineFromSvg(svgText, 1.5);
@@ -1591,6 +1799,11 @@ export class CanvasRenderer {
             const sx = Math.round((s.x || 0) * renderScale);
             const sy = Math.round((s.y || 0) * renderScale);
             withContext(() => {
+              // Draw UI bars in screen space (non-rotating): reset transform to identity
+              // so these rects are not affected by the ship's local rotation/translation.
+              try {
+                activeBufferCtx.setTransform(1, 0, 0, 1, 0, 0);
+              } catch (e) {}
               // Background
               activeBufferCtx.fillStyle = hbBg;
               activeBufferCtx.fillRect(sx + ox, sy + oy, w, h);

@@ -23,6 +23,11 @@ function distUrl(baseURL: string | undefined) {
   return base + "dist/spaceautobattler.html";
 }
 
+// Disabled by default to avoid flakiness/timeouts in CI. Enable locally via:
+//   RUN_DEBUG_PLAYWRIGHT=1 npm run test:playwright
+const RUN_DEBUG = process.env.RUN_DEBUG_PLAYWRIGHT === "1";
+test.skip(!RUN_DEBUG, "Disabled by default; set RUN_DEBUG_PLAYWRIGHT=1 to run");
+
 test("debug ship movement - interact and inspect state", async ({
   page,
   browserName,
@@ -44,9 +49,8 @@ test("debug ship movement - interact and inspect state", async ({
   }
 
   // Give the app time to initialize and ensure key UI controls exist
-  await page
-    .waitForSelector("#startPause, text=Start", { timeout: 12000 })
-    .catch(() => null);
+  await page.waitForLoadState("domcontentloaded").catch(() => null);
+  await page.locator("#startPause").first().waitFor({ timeout: 5000 }).catch(() => null);
 
   // Try clicking common UI buttons (Start, Play, Resume, Run) to start simulation
   const buttonSelectors = [

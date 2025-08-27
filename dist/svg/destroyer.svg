@@ -1,0 +1,29 @@
+<svg width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#1a2236"/>
+  <!-- Main hull -->
+  <rect x="32" y="12" width="64" height="104" rx="22" fill="#e8eef7" stroke="#5a6e8b" stroke-width="6"
+    class="hull team-fill-primary" data-team-slot="hull" data-team-slot-stroke="trim"/>
+  <!-- Hull plating -->
+  <rect x="40" y="40" width="48" height="50" rx="12" fill="#6dc1f6" opacity="0.7" class="plate team-fill-secondary" data-team-slot="hangar"/>
+  <rect x="50" y="60" width="28" height="28" rx="7" fill="#b1eaff" opacity="0.5" class="plate team-fill-detail" data-team-slot="panel"/>
+  <!-- Cockpit -->
+  <ellipse cx="64" cy="32" rx="11" ry="16" fill="#9cfbff" stroke="#6dc1f6" stroke-width="2" class="cockpit team-fill-secondary" data-team-slot="hangar"/>
+  <!-- Engine glows -->
+  <ellipse cx="50" cy="116" rx="7" ry="3" fill="#79ffe7" class="engine-glow team-fill-glow" data-team-slot="glow"/>
+  <ellipse cx="78" cy="116" rx="7" ry="3" fill="#79ffe7" class="engine-glow team-fill-glow" data-team-slot="glow"/>
+  <!-- Engine mountpoints -->
+  <rect x="48" y="114" width="6" height="8" rx="2" fill="#79ffe7" class="engine team-fill-accent" data-team-slot="engine" />
+  <rect x="74" y="114" width="6" height="8" rx="2" fill="#79ffe7" class="engine team-fill-accent" data-team-slot="engine" />
+  <!-- 6 Turrets -->
+  <rect x="40" y="22" width="8" height="20" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret"/>
+  <rect x="80" y="22" width="8" height="20" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret"/>
+  <rect x="55" y="10" width="8" height="18" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret"/>
+  <rect x="65" y="10" width="8" height="18" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret"/>
+  <rect x="46" y="34" width="6" height="14" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
+  <rect x="76" y="34" width="6" height="14" rx="2" fill="#fff" class="turret team-fill-weapon" data-team-slot="turret" />
+  <!-- Shield emitters -->
+  <ellipse cx="34" cy="64" rx="4" ry="8" fill="#00faae" opacity="0.4"/>
+  <ellipse cx="94" cy="64" rx="4" ry="8" fill="#00faae" opacity="0.4"/>
+  <!-- Tech lines -->
+  <polyline points="64,48 64,64 64,80" stroke="#caffff" stroke-width="2" fill="none" opacity="0.2"/>
+</svg>

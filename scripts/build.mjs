@@ -76,6 +76,8 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   const uiHtmlPath = path.join(srcDir, 'ui.html');
   const stylesDir = path.join(srcDir, 'styles');
   const assetsDir = path.join(srcDir, 'assets');
+  // Additional config-time SVG assets used by renderers (ship hulls)
+  const svgConfigDir = path.join(srcDir, 'config', 'assets', 'svg');
   const publicDir = path.join(repoRoot, 'public');
 
   await rimraf(outDir);
@@ -108,6 +110,8 @@ export async function build({ outDir = path.join(repoRoot, 'dist') } = {}) {
   await buildCssBundle({ stylesDir, outFile: cssOut, sourcemap: sourcemapOpt, sourcesContent: sourcesContentOpt });
 
   await copyDir(assetsDir, path.join(outDir, 'assets'));
+  // Expose SVGs at ./svg/ so AssetsConfig.svgAssets relative paths work in browser builds
+  await copyDir(svgConfigDir, path.join(outDir, 'svg'));
   await copyDir(publicDir, outDir);
 
 

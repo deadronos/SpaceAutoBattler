@@ -109,8 +109,25 @@ export async function rasterizeSvgWithTeamColors(svgText: string, mapping: Recor
             if (resp && resp.ok) {
               const txt = await resp.text();
               if (txt && /<svg[\s>]/i.test(txt)) sourceSvg = txt;
+            } else {
+              try {
+                const isProd = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production');
+                const isTest = (typeof process !== 'undefined' && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID)) || (typeof (globalThis as any).vitest !== 'undefined');
+                if (!isProd && !isTest) {
+                  // eslint-disable-next-line no-console
+                  console.warn(`[svgRenderer] fetch failed for SVG url '${sourceSvg}'. Status: ${resp && (resp as any).status}`);
+                }
+              } catch (e) {}
             }
           } catch (e) {
+            try {
+              const isProd = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production');
+              const isTest = (typeof process !== 'undefined' && process.env && (process.env.VITEST || process.env.VITEST_WORKER_ID)) || (typeof (globalThis as any).vitest !== 'undefined');
+              if (!isProd && !isTest) {
+                // eslint-disable-next-line no-console
+                console.warn(`[svgRenderer] fetch threw for '${sourceSvg}', continuing with original string`, e);
+              }
+            } catch (ee) {}
             // ignore fetch errors and continue with original string
           }
         }

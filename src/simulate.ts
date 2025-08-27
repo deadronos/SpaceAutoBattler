@@ -219,6 +219,16 @@ export function simulateStep(
   }
 
   // Move ships and update heading
+  // Precompute parent->fighter count map once per frame to avoid O(N) filters per carrier
+  const fighterCountsByParent: Map<number, number> = new Map();
+  try {
+    for (const sh of state.ships || []) {
+      if (sh && sh.parentId && sh.type === "fighter") {
+        const pid = Number(sh.parentId);
+        fighterCountsByParent.set(pid, (fighterCountsByParent.get(pid) || 0) + 1);
+      }
+    }
+  } catch (e) {}
   for (let si = (state.ships || []).length - 1; si >= 0; si--) {
     const s = state.ships[si];
     // --- Physics-based movement ---
@@ -436,10 +446,8 @@ export function simulateStep(
         const cooldown = Number(carrierCfg.fighterCooldown) || 1.5;
         if ((s as any)._carrierTimer >= cooldown) {
           (s as any)._carrierTimer = 0;
-          // count existing fighters spawned by this carrier
-          const existing = (state.ships || []).filter(
-            (sh: any) => sh && sh.parentId === s.id && sh.type === "fighter",
-          ).length;
+          // use precomputed count map instead of per-carrier filter
+          const existing = fighterCountsByParent.get(s.id) || 0;
           const maxF = Number(carrierCfg.maxFighters) || 0;
           const spawnPer = Number(carrierCfg.spawnPerCooldown) || 1;
           const canSpawn = Math.max(0, maxF - existing);
@@ -454,6 +462,8 @@ export function simulateStep(
               f.parentId = s.id;
               f.angle = s.angle;
               (state.ships ||= []).push(f);
+              // update cached fighter count for this parent
+              fighterCountsByParent.set(s.id, (fighterCountsByParent.get(s.id) || 0) + 1);
               try {
                 (state as any).shipMap && (state as any).shipMap.set(f.id, f);
               } catch (e) {}

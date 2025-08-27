@@ -34,6 +34,31 @@
 - **Type/config migration complete; all configs match stricter requirements.**
 - **Performance audit completed; critical hot-path optimizations implemented and tested.**
 
+### 2025-08-27: UI bars orientation + SVG placeholder handling
+
+- Fixed HP/shield UI bars to render in screen/world space (non-rotating) by resetting transform during bar drawing in `CanvasRenderer`. Added `test/vitest/ui_bars_orientation.spec.ts` to lock behavior.
+- Implemented detection and skipping of placeholder SVG hull canvases. Placeholders created during prewarm are now tagged (`_placeholder=true`) and ignored at draw time, forcing geometric fallback until a real rasterized hull canvas is cached. Added `test/vitest/svg_placeholder_fallback.spec.ts` to assert fallback behavior.
+
+### 2025-08-27: E2E stabilization (Playwright)
+
+- The exploratory debug test `test/playwright/ship-movement-debug.spec.ts` was causing occasional CI timeouts. It is now skipped by default and can be enabled locally with `RUN_DEBUG_PLAYWRIGHT=1` (e.g., `RUN_DEBUG_PLAYWRIGHT=1 npm run test:playwright`). Also corrected a mixed selector wait (`#startPause, text=Start`) to use stable locators to reduce flakiness.
+
+### 2025-08-27: Spawn hot-path optimizations (config caching, clone, counting)
+
+- Centralized config caching: `runtimeConfigResolver` now memoizes the resolved entities module, ship config map, size defaults per size, bullet defaults, and default ship type. This eliminates repeated require/shape detection on hot paths.
+- Faster createShip cannon setup: replaced `JSON.parse(JSON.stringify(cfg.cannons))` with a lightweight per-element shallow clone to avoid serialization overhead per spawn.
+- Carrier spawn count optimized: precompute a `parentId -> fighter count` map once per frame and update it as fighters spawn, removing O(N) `filter` per carrier per cooldown.
+- All vitest suites pass locally (216/216). Types pass. Added an optional micro-benchmark script `scripts/benchmark_spawn.mjs` to measure createShip and spawn loop costs.
+
+### 2025-08-27: Runtime resolver ESM-first + browser validation
+
+- Fixed a regression where only fighter/carrier appeared in the UI by adjusting `runtimeConfigResolver` to:
+  - Prefer direct ESM import of `entitiesConfig` so bundlers include the full config for browsers.
+  - Cache only successful module-resolved configs. Do not cache the minimal fallback to avoid locking into fallback when early calls happen during init.
+  - Derive default ship type live from the current config rather than caching.
+- Added a Playwright test `test/playwright/ship-types-dropdown.spec.ts` and configured `playwright.config.js` to auto-start a static server on port 8081. The test asserts the dropdown contains all core ship types (fighter, corvette, frigate, destroyer, carrier).
+- Verified locally: Playwright run 3/3 passed; Vitest remains green (216/216); typecheck passes.
+
 ## Short-term Goals
 
 - Unify overlapping particle effect configs between gamemanagerConfig.ts and assetsConfig.ts.
@@ -63,6 +88,7 @@ Notes: Local `npm install` encountered workspace and permission issues on this m
 ## Performance Analysis Completed (2025-01-02)
 
 **Comprehensive performance analysis completed for dev branch:**
+
 - **Critical bottlenecks identified**: O(n²) collision detection, inefficient AI ship lookups, UI array operations in hot paths
 - **Scaling issues documented**: Worker callback copying, render state object creation, memory allocation patterns
 - **Memory leak risks assessed**: Timer management, GPU resource cleanup, context reference patterns
@@ -71,15 +97,19 @@ Notes: Local `npm install` encountered workspace and permission issues on this m
 - **Performance test framework outlined**: Stress tests for entity scaling, memory usage monitoring, regression detection
 
 **Key findings**: Excellent foundation with object pooling and previous optimizations. Remaining issues are primarily algorithmic complexity (collision detection) and lookup efficiency (AI systems). Recommended fixes should provide 10x-100x performance improvements for high entity counts.
+
 ### 2025-08-26: SVG turret exclusion and hull-only rendering
-- Updated all ship SVG files to add class="turret" to turret <rect> elements.
+
+- Updated all ship SVG files to add class="turret" to turret `<rect>` elements.
 - Updated svgLoader to extract turret mountpoints from elements with class/id matching 'turret'.
 - Added svgLoader.rasterizeHullOnlySvgToCanvas to rasterize SVG hulls excluding turret rects.
 - Updated CanvasRenderer to use hull-only SVG for ship rendering, drawing turrets independently.
 - Added/adjusted tests for mountpoint extraction and hull rendering exclusion (svgLoader_hullonly.spec.ts).
 - All related tests pass; renderer and simulation logic validated.
+
 ### 2025-08-26: Engine mountpoint SVG integration and config unification
-- Updated all ship SVG files (frigate, destroyer, corvette, carrier) to add <rect class="engine"> elements for engine trail mountpoints.
+
+- Updated all ship SVG files (frigate, destroyer, corvette, carrier) to add `<rect class="engine">` elements for engine trail mountpoints.
 - Updated svgLoader to extract engine mountpoints from elements with class/id matching 'engine'.
 - Added/adjusted tests for engine mountpoint extraction in svgLoader (svgLoader_hullonly.spec.ts).
 - Validated engine mountpoint extraction and hull-only rendering with full test suite (all tests passing).
