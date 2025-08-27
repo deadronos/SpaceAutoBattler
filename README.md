@@ -78,7 +78,7 @@ Click the preview above to view the animated capture (`VideoCapture.gif`). If yo
 
 - `src/entities.ts` — Ship and Bullet definitions, damage/shield handling, XP and level code.
 - `src/simulate.ts` — Deterministic time-step: `simulateStep(state, dt, bounds)`.
-- `src/canvasrenderer.ts` / `src/webglrenderer.ts` — Visual layer (Canvas/WebGL) that consumes `state` and event arrays.
+- `src/threeRenderer.ts` — Visual layer (Three.js/WebGL) that consumes `state` and event arrays.
 - `src/rng.ts` — Seeded RNG used by the simulation (use `srand(seed)` in tests).
 - `src/progressionConfig.ts` — XP and progression constants.
 - `src/gamemanagerConfig.ts` — visual/config defaults for the gamemanager (explosion/shield/health/stars).
@@ -251,7 +251,7 @@ Example (change explosion particle count at runtime):
 ## Running the demo locally
 
 1. Serve the repository or open `space_themed_autobattler_canvas_red_vs_blue.html` in a modern browser.
-2. The renderer imports `src/canvasrenderer.ts` or `src/webglrenderer.ts` and runs the visual demo while the simulation logic stays deterministic when seeded.
+2. The renderer imports `src/threeRenderer.ts` and runs the visual demo while the simulation logic stays deterministic when seeded.
 
 ## Testing & determinism
 
@@ -327,12 +327,12 @@ The WebGL renderer is an experimental feature designed to improve performance an
 
 ### Key Files
 
-- `src/webglrenderer.ts`: Core WebGL rendering logic.
+- `src/threeRenderer.ts`: Core Three.js/WebGL rendering logic.
 - `src/webgl_head.js`: Shader definitions and setup.
 
 ### Additional WebGL files
 
-- `src/webglRenderer_HEAD.js` — renderer head / setup helpers.
+- `src/threeRenderer.ts` — Three.js renderer implementation.
 - `src/webglUtils.js` — utility helpers for GL (shader compile/link, buffer helpers, VAO helpers).
 
 ### Start (development)

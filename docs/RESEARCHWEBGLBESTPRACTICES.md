@@ -1,4 +1,4 @@
-I'll search for authoritative pages for each topic (Gaffer on Games, MDN, WebGLFundamentals, WebGL2Fundamentals, Chrome DevTools) to include accurate links for references. Expected outcome: 6–10 trusted links. Task received — I'll summarize authoritative best practices for WebGL game loops (fixed timestep, decoupled update/render, interpolation, clamping, visibility, GC avoidance) and GPU buffer streaming patterns, give a small, idiomatic JS pattern you can adapt for webglRenderer.js, and list references.
+I'll search for authoritative pages for each topic (Gaffer on Games, MDN, WebGLFundamentals, WebGL2Fundamentals, Chrome DevTools) to include accurate links for references. Expected outcome: 6–10 trusted links. Task received — I'll summarize authoritative best practices for WebGL game loops (fixed timestep, decoupled update/render, interpolation, clamping, visibility, GC avoidance) and GPU buffer streaming patterns, give a small, idiomatic JS pattern you can adapt for threeRenderer.ts, and list references.
 
 Checklist
 - [x] Search web for authoritative sources (Gaffer/Glenn Fiedler, MDN, Khronos, WebGLFundamentals, Chrome tools, SpectorJS)
@@ -26,7 +26,7 @@ Why fixed timestep + interpolation matters (short)
 - See the classic explanation: “Fix Your Timestep” by Glenn Fiedler (Gaffer on Games).
 
 Idiomatic JS game-loop pattern (fixed timestep + interpolation)
-(Short snippet to adapt into webglRenderer.js; keep typed-array reuse and buffer updates outside allocations.)
+(Short snippet to adapt into threeRenderer.ts; keep typed-array reuse and buffer updates outside allocations.)
 
 ```javascript
 // small, idiomatic loop pattern
@@ -159,12 +159,12 @@ Requirements coverage & verification
 - Provided references with short descriptions: Done (above).
 
 Next steps (optional, low-risk improvements you can ask me to make)
-- I can adapt the loop snippet and streaming code into your webglRenderer.js directly and run local tests (unit tests / play tests), ensuring no new allocations and hooking into the project's existing render update flow.
+- I can adapt the loop snippet and streaming code into your threeRenderer.ts directly and run local tests (unit tests / play tests), ensuring no new allocations and hooking into the project's existing render update flow.
 - Add a small smoke test that verifies the simulation update loop behavior (for example a deterministic tick test).
 - Add SpectorJS capture instructions or automated profiling hooks for your local testing workflow.
 
 If you want, I’ll:
-- plug the loop pattern into webglRenderer.js (I can open it, modify safely on a feature branch `feat/webgl-loop-fix-step`, run tests, and create a PR), or
+- plug the loop pattern into threeRenderer.ts (I can open it, modify safely on a feature branch `feat/webgl-loop-fix-step`, run tests, and create a PR), or
 - produce a minimal example file (standalone) demonstrating instanced streaming + fixed timestep you can run in the browser.
 
 Which of those follow-ups would you like me to do next?
