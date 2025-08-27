@@ -8,7 +8,7 @@ import { getDefaultBounds } from '../../src/config/simConfig';
 describe('Bullet previous position fields', () => {
   it('initializes both prevX and _prevX and they remain consistent after simulateStep', () => {
     const state = makeInitialState();
-    const b = createBullet(10, 20, 5, 0, 'red', null, 1, 2.0);
+    const b = createBullet(10, 20, 0, 5, 0, 0, 'red', null, 1, 2.0);
     state.bullets.push(b as any);
     // initial fields present
     expect(typeof (b as any).prevX === 'number').toBeTruthy();

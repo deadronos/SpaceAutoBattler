@@ -11,7 +11,7 @@ function hitShipWithBullet(state: GameState, shipId: number, damage: number) {
   if (!ship) throw new Error('ship not found');
   // Fire from the opposing team so collision logic doesn't ignore same-team bullets
   const bulletTeam = (ship.team === 'red') ? 'blue' : 'red';
-  const b = createBullet(ship.x, ship.y, 0, 0, bulletTeam, null, damage, 1.0);
+  const b = createBullet(ship.x, ship.y, 0, 0, 0, 0, bulletTeam, null, damage, 1.0);
   (state.bullets ||= []).push(b);
 }
 
@@ -19,7 +19,7 @@ describe('Armor and Shields', () => {
   it('applies shield then armor to reduce hull damage', () => {
     const state = makeInitialState() as GameState;
     // Create a frigate (armor:1, maxHp:80, maxShield ~= 48 per config)
-    const ship = createShip('frigate', 100, 100, 'blue');
+    const ship = createShip('frigate', 100, 100, 0, 'blue');
     (state.ships ||= []).push(ship);
     (state.shipMap ||= new Map()).set(ship.id, ship);
 
@@ -50,7 +50,7 @@ describe('Armor and Shields', () => {
 
   it('applies armor when no shields present', () => {
     const state = makeInitialState() as GameState;
-    const ship = createShip('fighter', 200, 200, 'red');
+    const ship = createShip('fighter', 200, 200, 0, 'red');
     (state.ships ||= []).push(ship);
     (state.shipMap ||= new Map()).set(ship.id, ship);
     // ensure fighter has armor 0 per config

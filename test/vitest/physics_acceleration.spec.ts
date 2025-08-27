@@ -12,7 +12,7 @@ describe('Physics acceleration', () => {
     try {
       SIM.friction = 1.0; // disable damping for deterministic check
   const state = makeInitialState();
-  const ship = createShip('fighter', 0, 0, 'red');
+  const ship = createShip('fighter', 0, 0, 0, 'red');
   // add ship to the simulation state so simulateStep moves it
   state.ships.push(ship);
   if (!state.shipMap) state.shipMap = new Map();

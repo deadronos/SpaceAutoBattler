@@ -6,7 +6,7 @@ import { SIM } from '../../src/config/simConfig';
 test('ship with throttle and accel gains non-zero velocity after one step', () => {
   const state = makeInitialState();
   // place ship near center
-  const ship = createShip('fighter', 960, 540, 'blue');
+  const ship = createShip('fighter', 960, 540, 0, 'blue');
   // ensure the ship has accel from config
   ship.accel = ship.accel || 5;
   ship.throttle = 1; // full throttle

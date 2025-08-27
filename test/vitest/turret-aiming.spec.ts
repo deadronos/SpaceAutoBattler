@@ -4,7 +4,7 @@ import { getShipConfigSafe } from "./utils/entitiesConfigSafe";
 
 describe("turret mount math", () => {
   it("computes mount world position for rotated ship", () => {
-    const ship = createShip("destroyer", 100, 200, "red");
+    const ship = createShip("destroyer", 100, 200, 0, "red");
     // ensure turret 0 exists and normalized
     normalizeTurrets(ship as any);
     const turret = ship.turrets && (ship.turrets as any[])[0];

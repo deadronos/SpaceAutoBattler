@@ -44,6 +44,11 @@ export type CannonCfg = {
 // - maxSpeed: Higher speed supports kiting and edge escapes; lower speed makes ships easier to pursue and flank.
 // - turrets: Multiple turrets increase area control, make flanking harder.
 // - friction: Lower friction (closer to 1) enables sustained velocity for kiting and edge play; higher friction increases tactical vulnerability to pursuit and flanking.
+// - scale: 3D scaling factor for ship size
+// - collisionRadius: 3D collision detection radius
+// - turrets3D: 3D turret positions relative to ship center
+// - engines3D: 3D engine positions relative to ship center
+// - hardpoints3D: 3D attachment points relative to ship center
 // All entities and events are pruned immediately upon destruction or expiration, ensuring tactical scenarios remain robust and consistent.
 export type ShipTypeCfg = {
   maxHp: number;
@@ -78,6 +83,12 @@ export type ShipTypeCfg = {
     spread?: number;
     barrel?: number; // barrel length in radius units
   }>;
+  // 3D-specific properties
+  scale?: number; // 3D scaling factor
+  collisionRadius?: number; // 3D collision detection radius
+  turrets3D?: Array<{ x: number; y: number; z: number }>; // 3D turret positions
+  engines3D?: Array<{ x: number; y: number; z: number }>; // 3D engine positions
+  hardpoints3D?: Array<{ x: number; y: number; z: number }>; // 3D attachment points
 };
 
 export type ShipConfigMap = Record<string, ShipTypeCfg>;
@@ -110,6 +121,21 @@ export const ShipConfig: ShipConfigMap = {
     accel: 100, // ~10x accel
     turnRate: 6,
     maxSpeed: 2200, // ~10x maxSpeed
+
+    // 3D-specific properties
+    scale: 0.8,
+    collisionRadius: 0.8 * 0.6, // scale * collision multiplier
+    turrets3D: [
+      { x: 0.3, y: 0.1, z: 0.2 },   // Front turret
+      { x: -0.3, y: 0.1, z: -0.2 }  // Rear turret
+    ],
+    engines3D: [
+      { x: 0, y: -0.4, z: -0.5 }    // Main engine
+    ],
+    hardpoints3D: [
+      { x: 0.2, y: 0.2, z: 0 },
+      { x: -0.2, y: 0.2, z: 0 }
+    ]
   },
   corvette: {
     maxHp: 50,
@@ -134,6 +160,25 @@ export const ShipConfig: ShipConfigMap = {
         range: Math.round(180 * 1.8),
       },
     ],
+
+    // 3D-specific properties
+    scale: 0.8,
+    collisionRadius: 0.8 * 0.6,
+    turrets3D: [
+      { x: 0.4, y: 0.2, z: 0.3 },
+      { x: -0.4, y: 0.2, z: 0.3 },
+      { x: 0, y: 0.2, z: -0.4 }
+    ],
+    engines3D: [
+      { x: 0, y: -0.5, z: -0.6 },
+      { x: 0.3, y: -0.3, z: -0.5 },
+      { x: -0.3, y: -0.3, z: -0.5 }
+    ],
+    hardpoints3D: [
+      { x: 0.3, y: 0.3, z: 0.2 },
+      { x: -0.3, y: 0.3, z: 0.2 },
+      { x: 0, y: 0.4, z: 0 }
+    ]
   },
   frigate: {
     maxHp: 80,
@@ -158,6 +203,28 @@ export const ShipConfig: ShipConfigMap = {
     accel: 70,
     turnRate: 2.5, // was 2.2
     maxSpeed: 1500, // ~10x increased
+
+    // 3D-specific properties
+    scale: 1.2,
+    collisionRadius: 1.2 * 0.6,
+    turrets3D: [
+      { x: 0.6, y: 0.3, z: 0.4 },
+      { x: -0.6, y: 0.3, z: 0.4 },
+      { x: 0.4, y: 0.3, z: -0.5 },
+      { x: -0.4, y: 0.3, z: -0.5 }
+    ],
+    engines3D: [
+      { x: 0, y: -0.7, z: -0.8 },
+      { x: 0.5, y: -0.5, z: -0.7 },
+      { x: -0.5, y: -0.5, z: -0.7 }
+    ],
+    hardpoints3D: [
+      { x: 0.4, y: 0.4, z: 0.3 },
+      { x: -0.4, y: 0.4, z: 0.3 },
+      { x: 0, y: 0.5, z: 0.2 },
+      { x: 0.3, y: 0.2, z: -0.6 },
+      { x: -0.3, y: 0.2, z: -0.6 }
+    ]
   },
   destroyer: {
     maxHp: 120,
@@ -220,6 +287,34 @@ export const ShipConfig: ShipConfigMap = {
         cooldown: 0.8,
       },
     ],
+
+    // 3D-specific properties
+    scale: 1.6,
+    collisionRadius: 1.6 * 0.6,
+    turrets3D: [
+      { x: 0.8, y: 0.4, z: 0.5 },
+      { x: -0.8, y: 0.4, z: 0.5 },
+      { x: 0.5, y: 0.4, z: -0.6 },
+      { x: -0.5, y: 0.4, z: -0.6 },
+      { x: 0, y: 0.6, z: 0.3 },
+      { x: 0, y: 0.4, z: -0.8 }
+    ],
+    engines3D: [
+      { x: 0, y: -0.9, z: -1.0 },
+      { x: 0.6, y: -0.7, z: -0.9 },
+      { x: -0.6, y: -0.7, z: -0.9 },
+      { x: 0.4, y: -0.5, z: -0.8 },
+      { x: -0.4, y: -0.5, z: -0.8 }
+    ],
+    hardpoints3D: [
+      { x: 0.5, y: 0.5, z: 0.4 },
+      { x: -0.5, y: 0.5, z: 0.4 },
+      { x: 0, y: 0.7, z: 0.3 },
+      { x: 0.4, y: 0.3, z: -0.7 },
+      { x: -0.4, y: 0.3, z: -0.7 },
+      { x: 0.6, y: 0.2, z: 0.6 },
+      { x: -0.6, y: 0.2, z: 0.6 }
+    ]
   },
   carrier: {
     maxHp: 200,
@@ -270,6 +365,41 @@ export const ShipConfig: ShipConfigMap = {
         cooldown: 1.0,
       },
     ],
+
+    // 3D-specific properties
+    scale: 1.6,
+    collisionRadius: 1.6 * 0.6,
+    turrets3D: [
+      { x: 1.0, y: 0.5, z: 0.6 },
+      { x: -1.0, y: 0.5, z: 0.6 },
+      { x: 0.6, y: 0.5, z: -0.7 },
+      { x: -0.6, y: 0.5, z: -0.7 },
+      { x: 0, y: 0.7, z: 0.4 },
+      { x: 0, y: 0.5, z: -1.0 },
+      { x: 0.8, y: 0.3, z: 0.8 },
+      { x: -0.8, y: 0.3, z: 0.8 }
+    ],
+    engines3D: [
+      { x: 0, y: -1.1, z: -1.2 },
+      { x: 0.8, y: -0.9, z: -1.1 },
+      { x: -0.8, y: -0.9, z: -1.1 },
+      { x: 0.5, y: -0.7, z: -1.0 },
+      { x: -0.5, y: -0.7, z: -1.0 },
+      { x: 0.3, y: -0.5, z: -0.9 },
+      { x: -0.3, y: -0.5, z: -0.9 }
+    ],
+    hardpoints3D: [
+      { x: 0.6, y: 0.6, z: 0.5 },
+      { x: -0.6, y: 0.6, z: 0.5 },
+      { x: 0, y: 0.8, z: 0.4 },
+      { x: 0.5, y: 0.4, z: -0.8 },
+      { x: -0.5, y: 0.4, z: -0.8 },
+      { x: 0.7, y: 0.3, z: 0.7 },
+      { x: -0.7, y: 0.3, z: 0.7 },
+      { x: 0.4, y: 0.2, z: -0.9 },
+      { x: -0.4, y: 0.2, z: -0.9 },
+      { x: 0, y: 0.9, z: 0.2 }
+    ]
   },
 };
 

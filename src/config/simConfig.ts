@@ -19,9 +19,21 @@ export interface Bounds3D {
 export const SIM: SimConfig = {
   DT_MS: 16,
   MAX_ACC_MS: 250,
-  bounds: { W: 1920, H: 1080 }, // Use LOGICAL_MAP for default bounds
+  bounds: { W: 1920, H: 1920 }, // Updated to cubic dimensions
   friction: 0.99,
   gridCellSize: 64,
+};
+
+// 3D Boundary Configuration
+export const BOUNDS_3D: Bounds3D = {
+  width: 1920,
+  height: 1920,
+  depth: 1920,
+  wrap: { 
+    x: true,     // Horizontal wrap-around
+    y: false,    // No vertical wrap (sky/ground boundaries)
+    z: true      // Depth wrap-around
+  }
 };
 // boundaryBehavior: Tactical impact and pruning rationale
 // - 'remove': Ships/bullets are eliminated at map edge; punishes edge play, rewards central control. Pruning is immediate for out-of-bounds entities.
@@ -42,7 +54,7 @@ export const progression = {
   xpToLevel: (level: number) => 100 + level * 50,
 };
 
-export const LOGICAL_MAP = { W: 1920, H: 1080 };
+export const LOGICAL_MAP = { W: 1920, H: 1920 };
 
 export function getDefaultBounds() {
   // Fixed logical map size for simulation and rendering
@@ -55,4 +67,5 @@ export default {
   boundaryBehavior,
   LOGICAL_MAP,
   getDefaultBounds,
+  BOUNDS_3D,
 };

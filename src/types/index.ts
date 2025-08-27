@@ -1,6 +1,58 @@
 // Centralized types re-exports for the workspace
-import type { Ship, Bullet } from '../entities';
-// Centralized types re-exports for the workspace
+import type { Ship, Bullet, ExplosionEffect, ShieldHitEffect, HealthHitEffect } from '../entities';
+
+// 3D type definitions
+export type Vec3 = { x: number; y: number; z: number };
+
+export interface ComponentPosition {
+  x: number;  // Relative to ship center (-1 to 1)
+  y: number;  // Relative to ship center (-1 to 1)
+  z: number;  // Relative to ship center (-1 to 1)
+}
+
+export interface Ship3D {
+  id: string;
+  type: string;
+  team?: string;
+  position: Vec3;
+  velocity: Vec3;
+  acceleration?: Vec3;
+  rotation?: { x: number; y: number; z: number };
+  quaternion?: { x: number; y: number; z: number; w: number };
+  scale?: number;
+  assetKey?: string;
+  collisionRadius?: number;
+
+  // Component positions (relative to ship center, in ship-local coordinates)
+  turrets?: ComponentPosition[];
+  engines?: ComponentPosition[];
+  hardpoints?: ComponentPosition[]; // Generic attachment points
+
+  // Ship configuration
+  shipScale?: number;     // Individual ship scale multiplier
+  baseScale?: number;     // Base archetype scale
+}
+
+export interface GameState3D {
+  ships: Ship3D[];
+  flashes?: any[];
+  t?: number;
+  camera?: {
+    position: Vec3;
+    target?: Vec3;
+    fov?: number;
+    near?: number;
+    far?: number;
+  };
+  bounds?: {
+    width: number;
+    height: number;
+    depth: number;
+    wrap: { x: boolean; y: boolean; z: boolean };
+  };
+  // allow arbitrary other fields from legacy GameState
+  [k: string]: any;
+}
 
 // Core simulation and config types
 export type { ShipSpec, CannonSpec, ProgressionConfig } from '../config/types';
@@ -11,7 +63,7 @@ export type { RendererConfig } from '../config/rendererConfig';
 // DisplayConfig is not exported as a named type; skip re-export
 
 // Domain types
-export type { Cannon, Ship, Bullet } from '../entities';
+export type { Cannon, Ship, Bullet, ExplosionEffect, ShieldHitEffect, HealthHitEffect } from '../entities';
 export type { GameManagerOptions } from '../gamemanager.d';
 // Re-export pool types as type-only to make them discoverable from the barrel.
 export type { PoolEntry, TexturePoolEntry } from './pool';
@@ -30,9 +82,9 @@ export interface GameState {
 	// Map for fast ID -> Ship lookup to avoid O(n) searches in hot paths
 	shipMap?: Map<number, Ship>;
 	bullets: Bullet[];
-	explosions: any[];
-	shieldHits: any[];
-	healthHits: any[];
+	explosions: ExplosionEffect[];
+	shieldHits: ShieldHitEffect[];
+	healthHits: HealthHitEffect[];
 	// Optional/extended event arrays (add as needed)
 	 particles: any[];
 	 stars?: any[];
@@ -79,6 +131,8 @@ export interface GameState {
 			effectOverflowStrategy?: 'discard-oldest' | 'grow' | 'error';
 		};
 	};
+	// 3D-specific fields
+	bounds?: { width: number; height: number; depth: number; wrap: { x: boolean; y: boolean; z: boolean } };
 }
 
 export default {};

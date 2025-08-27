@@ -1,18 +1,11 @@
 import type { GameState3D, Ship3D } from '../types/threeTypes';
 import { normalizePosition, wrappedDistance, Bounds3, Vec3 } from '../utils/wrapping';
-import { BOUNDS_3D } from '../config/threeConfig';
+import { BOUNDS_3D } from '../config/simConfig';
 import { SHIP_TYPE_CONFIGS, getShipConfig } from '../config/threeConfig';
 
-export const DT = 1 / 60; // fixed-step
+import { convertBounds3DToBounds3 } from '../simulate';
 
-// Convert 3D bounds config to Bounds3 format for compatibility
-function convertBounds3DToBounds3(bounds3D: typeof BOUNDS_3D): Bounds3 {
-  return {
-    min: { x: -bounds3D.width/2, y: -bounds3D.height/2, z: -bounds3D.depth/2 },
-    max: { x: bounds3D.width/2, y: bounds3D.height/2, z: bounds3D.depth/2 },
-    wrap: bounds3D.wrap
-  };
-}
+export const DT = 1 / 60; // fixed-step
 
 export function simulateStep(state: GameState3D, bounds?: Bounds3): void {
   // Use 3D bounds if provided, otherwise convert from config

@@ -1,7 +1,7 @@
 it("should set throttle and steering dynamically based on AI state", () => {
   const state = makeInitialState();
-  const ship1 = createShip("fighter", 100, 100, "red");
-  const ship2 = createShip("fighter", 200, 200, "blue");
+  const ship1 = createShip("fighter", 100, 100, 0, "red");
+  const ship2 = createShip("fighter", 200, 200, 0, "blue");
   state.ships.push(ship1, ship2);
   // Initially, throttle and steering should be 0
   expect(ship1.throttle).toBe(0);
@@ -20,8 +20,8 @@ import { makeInitialState, createShip } from "../../src/entities";
 describe("AILogic", () => {
   it("should assign targets and change state", () => {
     const state = makeInitialState();
-      const ship1 = createShip("fighter", 100, 100, "red") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
-      const ship2 = createShip("fighter", 200, 200, "blue") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
+      const ship1 = createShip("fighter", 100, 100, 0, "red") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
+      const ship2 = createShip("fighter", 200, 200, 0, "blue") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
     state.ships.push(ship1, ship2);
     applySimpleAI(state, 0.1, { W: 1920, H: 1080 });
     expect(ship1.__ai).toBeDefined();
@@ -30,8 +30,8 @@ describe("AILogic", () => {
 
   it("should fire at enemy ships", () => {
     const state = makeInitialState();
-      const ship1 = createShip("fighter", 100, 100, "red") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
-      const ship2 = createShip("fighter", 110, 100, "blue") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
+      const ship1 = createShip("fighter", 100, 100, 0, "red") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
+      const ship2 = createShip("fighter", 110, 100, 0, "blue") as typeof createShip extends (...args: any[]) => infer S ? S & { __ai?: any } : never;
     state.ships.push(ship1, ship2);
     applySimpleAI(state, 1.0, { W: 1920, H: 1080 });
     expect(state.bullets.length).toBeGreaterThan(0);

@@ -94,7 +94,7 @@ describe('Effect coordinate rendering', () => {
     const state = makeInitialState();
   // Disable engine trails to avoid dynamic require path in renderer during test
   state.engineTrailsEnabled = false;
-    const ship = createShip('fighter', 100, 100, 'red');
+    const ship = createShip('fighter', 100, 100, 0, 'red');
     state.ships.push(ship);
     // Explosion at world position (200,200)
     state.explosions = [{ x: 200, y: 200, r: 0.32, life: 0.5, ttl: 0.5 } as any];
@@ -124,7 +124,7 @@ describe('Effect coordinate rendering', () => {
 
     const state = makeInitialState();
     // Ship with shield at position (300,300)
-    const ship = createShip('fighter', 300, 300, 'blue');
+    const ship = createShip('fighter', 300, 300, 0, 'blue');
     ship.shield = 10;
     ship.maxShield = 10;
     state.ships.push(ship);
@@ -151,7 +151,7 @@ describe('Effect coordinate rendering', () => {
   renderer.bufferCtx = stub3 as any;
 
     const state = makeInitialState();
-    const ship = createShip('fighter', 400, 400, 'red');
+    const ship = createShip('fighter', 400, 400, 0, 'red');
     state.ships.push(ship);
     // Add a health flash at (410, 410)
     state.healthFlashes = [{ id: ship.id, x: 410, y: 410, _ts: state.t || 0, ttl: 0.4 } as any];
@@ -179,7 +179,7 @@ describe('Effect coordinate rendering', () => {
 
     const state = makeInitialState();
     // Place a fighter with known radius and position
-    const ship = createShip('fighter', 500, 500, 'red');
+    const ship = createShip('fighter', 500, 500, 0, 'red');
     state.ships.push(ship);
 
     renderer.renderState(state as any);
@@ -213,7 +213,7 @@ describe('Effect coordinate rendering', () => {
 
     const state = makeInitialState();
     // Use destroyer which has turret positions in entitiesConfig
-    const ship = createShip('destroyer', 600, 600, 'blue');
+    const ship = createShip('destroyer', 600, 600, 0, 'blue');
     // Ensure the ship instance has a turrets array (renderer reads s.turrets)
   const cfgAll = getShipConfigSafe();
   let shipCfgForTurrets: any = cfgAll['destroyer'];

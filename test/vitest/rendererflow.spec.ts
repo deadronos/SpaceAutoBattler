@@ -17,9 +17,9 @@ describe('Renderer Flow', () => {
     // Place a ship at center and at edge
   const state = makeInitialState();
     state.ships.push(
-      createShip('fighter', 960, 540, 'red'),
-      createShip('fighter', 0, 0, 'blue'),
-      createShip('fighter', 1920, 1080, 'blue')
+      createShip('fighter', 960, 540, 0, 'red'),
+      createShip('fighter', 0, 0, 0, 'blue'),
+      createShip('fighter', 1920, 1080, 0, 'blue')
     );
     renderer.renderState(state);
     // Check that buffer canvas is correct size

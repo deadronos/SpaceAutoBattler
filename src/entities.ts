@@ -85,15 +85,27 @@ export type Cannon = {
 export type Ship = {
   id: number;
   type: string;
+  // 2D position (legacy support)
   x: number;
   y: number;
+  // 3D position
+  position?: { x: number; y: number; z: number };
+  // 2D velocity (legacy support)
   vx: number;
   vy: number;
+  // 3D velocity
+  velocity?: { x: number; y: number; z: number };
+  // 3D acceleration
+  acceleration?: { x: number; y: number; z: number };
   hp: number;
   maxHp: number;
   shield?: number;
   maxShield?: number;
+  // 2D rotation (legacy support)
   angle: number;
+  // 3D rotation
+  rotation?: { x: number; y: number; z: number };
+  quaternion?: { x: number; y: number; z: number; w: number };
   team?: string;
   xp?: number;
   level?: number;
@@ -105,7 +117,10 @@ export type Ship = {
   turnRate?: number;
   radius?: number;
   maxSpeed?: number;
+  // 2D trail (legacy support)
   trail?: { x: number; y: number }[];
+  // 3D trail
+  trail3D?: { x: number; y: number; z: number }[];
   shieldRegen?: number;
   shieldPercent?: number;
   hpPercent?: number;
@@ -115,11 +130,28 @@ export type Ship = {
   parentId?: number;
   // Internal carrier timer accumulator (seconds). Not serialized.
   _carrierTimer?: number;
-  // Turrets attached to the ship. Normalized via normalizeTurrets -> each turret
-  // is an object { position: [x,y], angle, targetAngle, spread, barrel, cooldown }
-  // Accept either normalized turret objects or shorthand [x,y] arrays for
-  // backwards compatibility with saved snapshots and concise configs.
+  // Ship scaling
+  shipScale?: number;
+  baseScale?: number;
+  scale?: number;
+  collisionRadius?: number;
+  // Component positions (3D)
   turrets?: Array<
+    | [number, number, number]
+    | {
+        position: [number, number, number];
+        angle?: number;
+        targetAngle?: number;
+        spread?: number;
+        barrel?: number;
+        cooldown?: number;
+        kind?: string;
+      }
+  >;
+  engines?: Array<{ x: number; y: number; z: number }>;
+  hardpoints?: Array<{ x: number; y: number; z: number }>;
+  // Turrets (legacy 2D format for backward compatibility)
+  turrets2D?: Array<
     | [number, number]
     | {
         position: [number, number];
@@ -137,6 +169,7 @@ export function createShip(
   type: string | undefined = undefined,
   x = 0,
   y = 0,
+  z = 0,
   team = TEAM_DEFAULT,
 ): Ship {
   const shipCfg = getShipConfigSafe() as ShipConfigMap;
@@ -166,10 +199,18 @@ export function createShip(
   const ship = {
     id: genId(),
     type: resolvedType,
+    // 2D position (legacy)
     x,
     y,
+    // 3D position
+    position: { x, y, z },
+    // 2D velocity (legacy)
     vx: 0,
     vy: 0,
+    // 3D velocity
+    velocity: { x: 0, y: 0, z: 0 },
+    // 3D acceleration
+    acceleration: { x: 0, y: 0, z: 0 },
     hp: cfg.maxHp ?? 0,
     maxHp: cfg.maxHp ?? 0,
     shield: cfg.maxShield ?? 0,
@@ -187,6 +228,9 @@ export function createShip(
     // Keep raw turret defs here for now; we'll normalize below via helper so
     // normalization logic is centralized and reusable by snapshot handlers.
     turrets: cfg.turrets || [],
+    // Initialize 3D component positions (will be populated from config)
+    engines: [],
+    hardpoints: [],
     accel: cfg.accel || 0,
     currentAccel: 0,
     throttle: 0,
@@ -199,10 +243,21 @@ export function createShip(
     // configured value but fall back to a safe default > 0.
     maxSpeed:
       typeof cfg.maxSpeed === "number" && cfg.maxSpeed > 0 ? cfg.maxSpeed : 120,
+    // 2D rotation (legacy)
     angle: 0,
+    // 3D rotation
+    rotation: { x: 0, y: 0, z: 0 },
+    quaternion: { x: 0, y: 0, z: 0, w: 1 },
+    // 3D trail
+    trail3D: undefined,
     trail: undefined,
     shieldPercent: 1,
     hpPercent: 1,
+    // Ship scaling
+    shipScale: 1.0,
+    baseScale: 1.0,
+    scale: 1.0,
+    collisionRadius: cfg.radius || 6,
   } as Ship;
   // Ensure turrets are normalized to the object shape (idempotent)
   try {
@@ -284,10 +339,16 @@ export function normalizeStateShips(state: any): void {
 
 export type Bullet = {
   id: number;
+  // 2D position (legacy support)
   x: number;
   y: number;
+  // 3D position
+  position?: { x: number; y: number; z: number };
+  // 2D velocity (legacy support)
   vx: number;
   vy: number;
+  // 3D velocity
+  velocity?: { x: number; y: number; z: number };
   team: string;
   ownerId?: number | null;
   damage: number;
@@ -297,10 +358,14 @@ export type Bullet = {
   bulletTTL?: number;
   kind?: string;
   alive?: boolean;
+  // 2D previous position (legacy support)
   prevX?: number;
   prevY?: number;
   _prevX?: number;
   _prevY?: number;
+  // 3D previous position
+  prevPosition?: { x: number; y: number; z: number };
+  _prevPosition?: { x: number; y: number; z: number };
 };
 
 const bulletPool = new Pool<Bullet>(
@@ -339,8 +404,10 @@ const bulletPool = new Pool<Bullet>(
 export function createBullet(
   x: number,
   y: number,
+  z: number,
   vx: number,
   vy: number,
+  vz: number,
   team = TEAM_DEFAULT,
   ownerId: number | null = null,
   damage = 1,
@@ -348,18 +415,27 @@ export function createBullet(
 ): Bullet {
   const b = bulletPool.acquire();
   b.id = genId();
+  // 2D position (legacy)
   b.x = x;
   b.y = y;
+  // 3D position
+  b.position = { x, y, z };
+  // 2D velocity (legacy)
   b.vx = vx;
   b.vy = vy;
+  // 3D velocity
+  b.velocity = { x: vx, y: vy, z: vz };
   b.team = team;
   b.ownerId = ownerId;
   b.damage = damage;
   b.ttl = ttl;
+  // Previous positions
   b.prevX = x;
   b.prevY = y;
   b._prevX = x;
   b._prevY = y;
+  b.prevPosition = { x, y, z };
+  b._prevPosition = { x, y, z };
   b.alive = true;
   return b;
 }
@@ -372,24 +448,35 @@ export function releaseBullet(b: Bullet) {
 }
 
 export interface ExplosionEffect {
+  // 2D position (legacy support)
   x: number;
   y: number;
+  // 3D position
+  position?: { x: number; y: number; z: number };
   r?: number;
+  life?: number;
+  ttl?: number;
   alive?: boolean;
   _pooled?: boolean;
   [key: string]: unknown;
 }
 export interface ShieldHitEffect {
+  // 2D position (legacy support)
   x: number;
   y: number;
+  // 3D position
+  position?: { x: number; y: number; z: number };
   magnitude?: number;
   alive?: boolean;
   _pooled?: boolean;
   [key: string]: unknown;
 }
 export interface HealthHitEffect {
+  // 2D position (legacy support)
   x: number;
   y: number;
+  // 3D position
+  position?: { x: number; y: number; z: number };
   amount?: number;
   alive?: boolean;
   _pooled?: boolean;
@@ -400,8 +487,11 @@ export function createExplosionEffect(
   init?: Partial<ExplosionEffect>,
 ): ExplosionEffect {
   return {
+    // 2D position (legacy)
     x: init?.x ?? 0,
     y: init?.y ?? 0,
+    // 3D position
+    position: init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 },
     r: init?.r,
     alive: true,
     _pooled: false,
@@ -412,8 +502,11 @@ export function resetExplosionEffect(
   obj: ExplosionEffect,
   init?: Partial<ExplosionEffect>,
 ) {
+  // 2D position (legacy)
   obj.x = init?.x ?? 0;
   obj.y = init?.y ?? 0;
+  // 3D position
+  obj.position = init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 };
   obj.r = init?.r;
   obj.alive = true;
   obj._pooled = false;
@@ -423,8 +516,11 @@ export function createShieldHitEffect(
   init?: Partial<ShieldHitEffect>,
 ): ShieldHitEffect {
   return {
+    // 2D position (legacy)
     x: init?.x ?? 0,
     y: init?.y ?? 0,
+    // 3D position
+    position: init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 },
     magnitude: init?.magnitude,
     alive: true,
     _pooled: false,
@@ -435,8 +531,11 @@ export function resetShieldHitEffect(
   obj: ShieldHitEffect,
   init?: Partial<ShieldHitEffect>,
 ) {
+  // 2D position (legacy)
   obj.x = init?.x ?? 0;
   obj.y = init?.y ?? 0;
+  // 3D position
+  obj.position = init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 };
   obj.magnitude = init?.magnitude;
   obj.alive = true;
   obj._pooled = false;
@@ -446,8 +545,11 @@ export function createHealthHitEffect(
   init?: Partial<HealthHitEffect>,
 ): HealthHitEffect {
   return {
+    // 2D position (legacy)
     x: init?.x ?? 0,
     y: init?.y ?? 0,
+    // 3D position
+    position: init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 },
     amount: init?.amount,
     alive: true,
     _pooled: false,
@@ -458,8 +560,11 @@ export function resetHealthHitEffect(
   obj: HealthHitEffect,
   init?: Partial<HealthHitEffect>,
 ) {
+  // 2D position (legacy)
   obj.x = init?.x ?? 0;
   obj.y = init?.y ?? 0;
+  // 3D position
+  obj.position = init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 };
   obj.amount = init?.amount;
   obj.alive = true;
   obj._pooled = false;

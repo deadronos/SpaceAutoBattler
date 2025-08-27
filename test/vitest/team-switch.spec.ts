@@ -5,7 +5,7 @@ describe('team switching', () => {
   it('updates teamCounts when a ship changes teams via updateTeamCount', () => {
     const state = makeInitialState();
     // create a ship on red team and add to state
-    const ship = createShip(undefined, 0, 0, 'red');
+    const ship = createShip(undefined, 0, 0, 0, 'red');
     state.ships.push(ship as any);
     // increment red count
     updateTeamCount(state, undefined, 'red');

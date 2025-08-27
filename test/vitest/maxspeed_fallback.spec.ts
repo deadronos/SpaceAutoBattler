@@ -10,7 +10,7 @@ test('createShip falls back to positive maxSpeed when config is missing or zero'
     if ((entitiesConfig as any).ShipConfig && (entitiesConfig as any).ShipConfig.fighter) {
       (entitiesConfig as any).ShipConfig.fighter.maxSpeed = 0;
     }
-    const ship = createShip('fighter', 0, 0, 'red');
+    const ship = createShip('fighter', 0, 0, 0, 'red');
     expect(typeof ship.maxSpeed).toBe('number');
     expect(ship.maxSpeed).toBeGreaterThan(0);
   } finally {

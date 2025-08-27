@@ -16,7 +16,7 @@ export function createGameManager({
   createSimWorker: createSimWorkerFactory,
 }: any = {}) {
   function _evaluateAndEmit(dt: number) {
-    const result = evaluateReinforcement(dt, state, continuousOptions);
+    const result = evaluateReinforcement(dt, convertToGameState(state), continuousOptions);
     if (result && Array.isArray(result.spawned) && result.spawned.length) {
       lastReinforcement = {
         spawned: result.spawned,
@@ -29,13 +29,6 @@ export function createGameManager({
   let state: GameState3D = makeInitialState3D();
   let running = false;
 
-  function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
-    return {
-      min: { x: 0, y: 0, z: -50 },
-      max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
-      wrap: { x: true, y: true, z: true }
-    };
-  }
   const listeners = new Map<string, Function[]>();
   const workerReadyCbs: Function[] = [];
   let simWorker: any = null;
@@ -58,14 +51,6 @@ export function createGameManager({
   let acc = 0;
   const score = { red: 0, blue: 0 };
   const internal = { state, bounds: SIM.bounds };
-
-  function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
-    return {
-      min: { x: 0, y: 0, z: -50 },
-      max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
-      wrap: { x: true, y: true, z: true }
-    };
-  }
 
   function emit(type: string, msg: any) {
     emitManagerEvent(listeners, type, msg);
@@ -140,10 +125,10 @@ export function createGameManager({
     const clampedDt = Math.min(dtSeconds, 0.05);
     if (!simWorker) {
       try {
-        applySimpleAI3D(state, clampedDt, SIM.bounds);
+        applySimpleAI3D(convertToGameState(state), clampedDt, SIM.bounds);
       } catch (e) {}
       try {
-        simulateStep3D(state, convertBounds2DTo3D(SIM.bounds));
+        simulateStep3D(state, convertBounds3DToBounds3(BOUNDS_3D));
       } catch (e) {}
     } else {
       try {
@@ -159,14 +144,7 @@ export function createGameManager({
           try {
             requestAnimationFrame(() => {
               try {
-                renderer.renderState({
-                  ships: state.ships,
-                  bullets: state.bullets,
-                  flashes: state.flashes,
-                  shieldFlashes: state.shieldFlashes,
-                  healthFlashes: state.healthFlashes,
-                  t: state.t,
-                });
+                renderer.renderState(convertToGameState(state));
               } catch (e) {}
               _pendingRender = false;
             });
@@ -218,7 +196,7 @@ export function createGameManager({
       if (continuous) {
         const result = evaluateReinforcement(
           SIM.DT_MS / 1000,
-          state,
+          convertToGameState(state),
           continuousOptions,
         );
         if (result && Array.isArray(result.spawned) && result.spawned.length) {
@@ -278,8 +256,11 @@ export function createGameManager({
       const b = SIM.bounds;
       const x = Math.max(0, Math.min(b.W - 1e-6, srandom() * b.W));
       const y = Math.max(0, Math.min(b.H - 1e-6, srandom() * b.H));
-      const ship = createShip(shipType, x, y, team);
-      state.ships.push(ship);
+      const ship = createShip(shipType, x, y, 0, team);
+      const tempState = makeInitialState();
+      tempState.ships = [ship];
+      const ship3D = convertToGameState3D(tempState).ships[0];
+      state.ships.push(ship3D);
       try {
         (state as any).shipMap && (state as any).shipMap.set(ship.id, ship);
       } catch (e) {}
@@ -296,7 +277,7 @@ export function createGameManager({
       state.ships.length = 0;
       const bounds = SIM.bounds;
       const seedVal = Math.floor(srandom() * 0xffffffff) >>> 0;
-      const ships = makeInitialFleets(seedVal, bounds, createShip);
+      const ships = makeInitialFleets(seedVal, bounds, (type: string, x: number, y: number, team: string) => createShip(type, x, y, 0, team));
       for (const ship of ships) {
         state.ships.push(ship);
       }
@@ -368,28 +349,14 @@ export function createGameManager({
                   try {
                     requestAnimationFrame(() => {
                       try {
-                        renderer.renderState({
-                          ships: state.ships,
-                          bullets: state.bullets,
-                          flashes: state.flashes,
-                          shieldFlashes: state.shieldFlashes,
-                          healthFlashes: state.healthFlashes,
-                          t: state.t,
-                        });
+                        renderer.renderState(convertToGameState(state));
                       } catch (e) {}
                       _pendingRender = false;
                     });
                   } catch (e) {
                     setTimeout(() => {
                       try {
-                        renderer.renderState({
-                          ships: state.ships,
-                          bullets: state.bullets,
-                          flashes: state.flashes,
-                          shieldFlashes: state.shieldFlashes,
-                          healthFlashes: state.healthFlashes,
-                          t: state.t,
-                        });
+                        renderer.renderState(convertToGameState(state));
                       } catch (e) {}
                       _pendingRender = false;
                     }, 0);
@@ -440,28 +407,14 @@ export function createGameManager({
                 try {
                   requestAnimationFrame(() => {
                     try {
-                      renderer.renderState({
-                        ships: state.ships,
-                        bullets: state.bullets,
-                        flashes: state.flashes,
-                        shieldFlashes: state.shieldFlashes,
-                        healthFlashes: state.healthFlashes,
-                        t: state.t,
-                      });
+                      renderer.renderState(convertToGameState(state));
                     } catch (e) {}
                     _pendingRender = false;
                   });
                 } catch (e) {
                   setTimeout(() => {
                     try {
-                      renderer.renderState({
-                        ships: state.ships,
-                        bullets: state.bullets,
-                        flashes: state.flashes,
-                        shieldFlashes: state.shieldFlashes,
-                        healthFlashes: state.healthFlashes,
-                        t: state.t,
-                      });
+                      renderer.renderState(convertToGameState(state));
                     } catch (e) {}
                     _pendingRender = false;
                   }, 0);
@@ -547,8 +500,8 @@ import {
 import { updateTeamCount } from "./entities";
 import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
 import { applySimpleAI3D } from "./behavior";
-import { simulateStep as simulateStep3D } from "./simulate/step3d";
-import { SIM } from "./config/simConfig";
+import { convertBounds3DToBounds3, simulateStep3D } from "./simulate";
+import { SIM, BOUNDS_3D } from "./config/simConfig";
 import { srand, srandom } from "./rng";
 import { createSimWorker } from "./createSimWorker";
 import {
@@ -569,17 +522,32 @@ import type { ShipConfigMap, GameState } from "./types";
 import type { GameState3D, Ship3D } from "./types/threeTypes";
 import type { Bounds3 } from "./utils/wrapping";
 
-// Helper function to convert 2D bounds to 3D bounds
-function convertBounds2DTo3D(bounds2D: { W: number, H: number }): Bounds3 {
+// Helper function to convert GameState3D to GameState
+function convertToGameState(state3D: GameState3D): GameState {
+  // Extract properties that we don't want to spread to avoid conflicts
+  const { ships: _, flashes: __, t: ___, ...restState } = state3D;
   return {
-    min: { x: 0, y: 0, z: -50 },
-    max: { x: bounds2D.W, y: bounds2D.H, z: 50 },
-    wrap: { x: true, y: true, z: true }
-  };
+    ships: state3D.ships.map(ship3D => {
+      // Create a new object without conflicting properties
+      const { position, velocity, collisionRadius, ...restShip } = ship3D;
+      return {
+        ...restShip,
+        id: Number(ship3D.id), // Convert string to number
+        x: position?.x || 0,
+        y: position?.y || 0,
+        vx: velocity?.x || 0,
+        vy: velocity?.y || 0,
+        radius: collisionRadius || 8
+      } as Ship;
+    }),
+    flashes: state3D.flashes,
+    t: state3D.t,
+    // Include other state properties without conflicts
+    ...restState
+  } as GameState;
 }
 
-// Helper function to convert GameState to GameState3D
-function convertToGameState3D(state: GameState): GameState3D {
+export function convertToGameState3D(state: GameState): GameState3D {
   // Extract properties that we don't want to spread to avoid conflicts
   const { ships: _, flashes: __, t: ___, ...restState } = state;
   return {
@@ -589,16 +557,8 @@ function convertToGameState3D(state: GameState): GameState3D {
       return {
         ...restShip,
         id: String(ship.id), // Convert number to string
-        position: {
-          x: x || 0,
-          y: y || 0,
-          z: 0 // Default z position
-        },
-        velocity: {
-          x: vx || 0,
-          y: vy || 0,
-          z: 0 // Default z velocity
-        },
+        position: { x: x || 0, y: y || 0, z: 0 },
+        velocity: { x: vx || 0, y: vy || 0, z: 0 },
         collisionRadius: radius || 8
       } as Ship3D;
     }),
@@ -606,7 +566,7 @@ function convertToGameState3D(state: GameState): GameState3D {
     t: state.t,
     // Include other state properties without conflicts
     ...restState
-  };
+  } as GameState3D;
 }
 
 // Helper function to create initial 3D state
@@ -970,6 +930,7 @@ function evaluateReinforcement(
                 o.type || getDefaultShipTypeSafe(),
                 o.x || 100,
                 o.y || 100,
+                0,
                 o.team || "red",
               );
               state.ships.push(ship);
@@ -991,12 +952,14 @@ function evaluateReinforcement(
         fallback,
         FALLBACK_POSITIONS[0].x,
         FALLBACK_POSITIONS[0].y,
+        0,
         FALLBACK_POSITIONS[0].team,
       );
       const b = createShip(
         fallback,
         FALLBACK_POSITIONS[1].x,
         FALLBACK_POSITIONS[1].y,
+        0,
         FALLBACK_POSITIONS[1].team,
       );
       state.ships.push(r);
@@ -1052,7 +1015,8 @@ export function simulate(dt: number, W = 800, H = 600) {
   // No global arrays; all arrays are managed via GameState
   evaluateReinforcement(dt, state);
   try {
-    simulateStep3D(state, convertBounds2DTo3D(SIM.bounds));
+    const state3D = convertToGameState3D(state);
+    simulateStep3D(state3D, convertBounds3DToBounds3(BOUNDS_3D));
   } catch (e) {}
   // No global state to clear; callers should pass `state` explicitly to helpers.
   return state;

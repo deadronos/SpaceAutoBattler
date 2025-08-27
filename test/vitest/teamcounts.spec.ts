@@ -42,8 +42,8 @@ describe('teamCounts', () => {
     const gm = createGameManager({ renderer: null, useWorker: true, seed: 42, createSimWorker: fakeFactory });
     // Build state and call the snapshot handler the worker would call
     const state = makeInitialState();
-    state.ships.push(createShip(undefined, 0, 0, 'red'));
-    state.ships.push(createShip(undefined, 0, 0, 'blue'));
+    state.ships.push(createShip(undefined, 0, 0, 0, 'red'));
+    state.ships.push(createShip(undefined, 0, 0, 0, 'blue'));
     // Invoke the captured snapshot handler
     if (capturedWorker && capturedWorker._handlers && typeof capturedWorker._handlers['snapshot'] === 'function') {
       capturedWorker._handlers['snapshot']({ state });

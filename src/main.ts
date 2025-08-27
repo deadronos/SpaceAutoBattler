@@ -1,7 +1,7 @@
 // This allows the build to treat the app as TypeScript while we incrementally port internals.
 // main.ts — TypeScript entrypoint (ported from main.js). Uses TS imports so
 // the module graph resolves to .ts sources during migration.
-import { createGameManager } from "./gamemanager";
+import { createGameManager, convertToGameState3D } from "./gamemanager";
 import { makeInitialState } from "./entities";
 import type { GameState } from "./types";
 import { CanvasRenderer } from "./canvasrenderer";
@@ -207,7 +207,7 @@ export async function startApp(rootDocument: Document = document) {
   // Preload all assets if renderer supports it
   if (renderer && typeof renderer.preloadAllAssets === "function") {
     try {
-      renderer.preloadAllAssets();
+      await renderer.preloadAllAssets();
     } catch (e) {}
   }
   // Kick off a lightweight pre-warm of the svg raster cache so synchronous
@@ -276,7 +276,7 @@ export async function startApp(rootDocument: Document = document) {
   const gm = createGameManager({ renderer, useWorker: false, seed: 12345 });
   if (gm && gm._internal) {
     gm._internal.bounds = LOGICAL_BOUNDS;
-    gm._internal.state = gameState;
+    gm._internal.state = convertToGameState3D(gameState);
   }
   try {
     if (typeof window !== "undefined" && (window as any).gm)

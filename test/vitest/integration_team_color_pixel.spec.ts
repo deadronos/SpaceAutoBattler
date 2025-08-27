@@ -28,8 +28,8 @@ describe('integration: team-color pixel compare', () => {
     // Build state with two ships: one red on left, one blue on right
     const state: any = makeInitialState();
     state.ships = [];
-  const red = createShip('frigate', 100, 100, 'red');
-  const blue = createShip('frigate', 300, 100, 'blue');
+  const red = createShip('frigate', 100, 100, 0, 'red');
+  const blue = createShip('frigate', 300, 100, 0, 'blue');
   // Increase radius so hull occupies a measurable pixel area for the test
   red.radius = 60;
   blue.radius = 60;

@@ -42,7 +42,7 @@ describe('UI bars orientation', () => {
     // Create a ship in the center with visible bars
     const state: any = makeInitialState();
     state.ships = [];
-    const ship = createShip('fighter', W / 2, H / 2, 'red');
+    const ship = createShip('fighter', W / 2, H / 2, 0, 'red');
     ship.radius = 30; // make bars larger
     ship.hp = ship.maxHp = 100;
     ship.shield = ship.maxShield = 50;

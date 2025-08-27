@@ -8,7 +8,7 @@ import { getDefaultBounds } from '../../src/config/simConfig';
 describe('Carrier spawn behavior', () => {
   it('spawns fighters up to maxFighters and respects spawnPerCooldown', () => {
     const state = makeInitialState();
-    const carrier = createShip('carrier', 400, 300, 'red');
+    const carrier = createShip('carrier', 400, 300, 0, 'red');
     state.ships.push(carrier);
 
     // Advance time enough to trigger multiple spawns

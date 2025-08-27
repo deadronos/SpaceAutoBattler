@@ -18,8 +18,8 @@ describe('team color usage', () => {
     const state: any = makeInitialState();
   // Use a ship type that has an SVG asset declared so the renderer will
   // pre-warm tinted canvases for it (svgAssets keys include destroyer)
-  const redShip = createShip('destroyer', 50, 50, 'red');
-  const blueShip = createShip('destroyer', 150, 50, 'blue');
+  const redShip = createShip('destroyer', 50, 50, 0, 'red');
+  const blueShip = createShip('destroyer', 150, 50, 0, 'blue');
     state.ships = [redShip, blueShip];
 
     // Trigger a render to ensure renderer picks tinted canvas keys

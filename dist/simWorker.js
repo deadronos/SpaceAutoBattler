@@ -76,8 +76,26 @@ var ShipConfig = {
     accel: 100,
     // ~10x accel
     turnRate: 6,
-    maxSpeed: 2200
+    maxSpeed: 2200,
     // ~10x maxSpeed
+    // 3D-specific properties
+    scale: 0.8,
+    collisionRadius: 0.8 * 0.6,
+    // scale * collision multiplier
+    turrets3D: [
+      { x: 0.3, y: 0.1, z: 0.2 },
+      // Front turret
+      { x: -0.3, y: 0.1, z: -0.2 }
+      // Rear turret
+    ],
+    engines3D: [
+      { x: 0, y: -0.4, z: -0.5 }
+      // Main engine
+    ],
+    hardpoints3D: [
+      { x: 0.2, y: 0.2, z: 0 },
+      { x: -0.2, y: 0.2, z: 0 }
+    ]
   },
   corvette: {
     maxHp: 50,
@@ -105,6 +123,24 @@ var ShipConfig = {
         // was 2.0
         range: Math.round(180 * 1.8)
       }
+    ],
+    // 3D-specific properties
+    scale: 0.8,
+    collisionRadius: 0.8 * 0.6,
+    turrets3D: [
+      { x: 0.4, y: 0.2, z: 0.3 },
+      { x: -0.4, y: 0.2, z: 0.3 },
+      { x: 0, y: 0.2, z: -0.4 }
+    ],
+    engines3D: [
+      { x: 0, y: -0.5, z: -0.6 },
+      { x: 0.3, y: -0.3, z: -0.5 },
+      { x: -0.3, y: -0.3, z: -0.5 }
+    ],
+    hardpoints3D: [
+      { x: 0.3, y: 0.3, z: 0.2 },
+      { x: -0.3, y: 0.3, z: 0.2 },
+      { x: 0, y: 0.4, z: 0 }
     ]
   },
   frigate: {
@@ -132,8 +168,29 @@ var ShipConfig = {
     accel: 70,
     turnRate: 2.5,
     // was 2.2
-    maxSpeed: 1500
+    maxSpeed: 1500,
     // ~10x increased
+    // 3D-specific properties
+    scale: 1.2,
+    collisionRadius: 1.2 * 0.6,
+    turrets3D: [
+      { x: 0.6, y: 0.3, z: 0.4 },
+      { x: -0.6, y: 0.3, z: 0.4 },
+      { x: 0.4, y: 0.3, z: -0.5 },
+      { x: -0.4, y: 0.3, z: -0.5 }
+    ],
+    engines3D: [
+      { x: 0, y: -0.7, z: -0.8 },
+      { x: 0.5, y: -0.5, z: -0.7 },
+      { x: -0.5, y: -0.5, z: -0.7 }
+    ],
+    hardpoints3D: [
+      { x: 0.4, y: 0.4, z: 0.3 },
+      { x: -0.4, y: 0.4, z: 0.3 },
+      { x: 0, y: 0.5, z: 0.2 },
+      { x: 0.3, y: 0.2, z: -0.6 },
+      { x: -0.3, y: 0.2, z: -0.6 }
+    ]
   },
   destroyer: {
     maxHp: 120,
@@ -199,6 +256,33 @@ var ShipConfig = {
         targeting: "nearest",
         cooldown: 0.8
       }
+    ],
+    // 3D-specific properties
+    scale: 1.6,
+    collisionRadius: 1.6 * 0.6,
+    turrets3D: [
+      { x: 0.8, y: 0.4, z: 0.5 },
+      { x: -0.8, y: 0.4, z: 0.5 },
+      { x: 0.5, y: 0.4, z: -0.6 },
+      { x: -0.5, y: 0.4, z: -0.6 },
+      { x: 0, y: 0.6, z: 0.3 },
+      { x: 0, y: 0.4, z: -0.8 }
+    ],
+    engines3D: [
+      { x: 0, y: -0.9, z: -1 },
+      { x: 0.6, y: -0.7, z: -0.9 },
+      { x: -0.6, y: -0.7, z: -0.9 },
+      { x: 0.4, y: -0.5, z: -0.8 },
+      { x: -0.4, y: -0.5, z: -0.8 }
+    ],
+    hardpoints3D: [
+      { x: 0.5, y: 0.5, z: 0.4 },
+      { x: -0.5, y: 0.5, z: 0.4 },
+      { x: 0, y: 0.7, z: 0.3 },
+      { x: 0.4, y: 0.3, z: -0.7 },
+      { x: -0.4, y: 0.3, z: -0.7 },
+      { x: 0.6, y: 0.2, z: 0.6 },
+      { x: -0.6, y: 0.2, z: 0.6 }
     ]
   },
   carrier: {
@@ -253,6 +337,40 @@ var ShipConfig = {
         targeting: "nearest",
         cooldown: 1
       }
+    ],
+    // 3D-specific properties
+    scale: 1.6,
+    collisionRadius: 1.6 * 0.6,
+    turrets3D: [
+      { x: 1, y: 0.5, z: 0.6 },
+      { x: -1, y: 0.5, z: 0.6 },
+      { x: 0.6, y: 0.5, z: -0.7 },
+      { x: -0.6, y: 0.5, z: -0.7 },
+      { x: 0, y: 0.7, z: 0.4 },
+      { x: 0, y: 0.5, z: -1 },
+      { x: 0.8, y: 0.3, z: 0.8 },
+      { x: -0.8, y: 0.3, z: 0.8 }
+    ],
+    engines3D: [
+      { x: 0, y: -1.1, z: -1.2 },
+      { x: 0.8, y: -0.9, z: -1.1 },
+      { x: -0.8, y: -0.9, z: -1.1 },
+      { x: 0.5, y: -0.7, z: -1 },
+      { x: -0.5, y: -0.7, z: -1 },
+      { x: 0.3, y: -0.5, z: -0.9 },
+      { x: -0.3, y: -0.5, z: -0.9 }
+    ],
+    hardpoints3D: [
+      { x: 0.6, y: 0.6, z: 0.5 },
+      { x: -0.6, y: 0.6, z: 0.5 },
+      { x: 0, y: 0.8, z: 0.4 },
+      { x: 0.5, y: 0.4, z: -0.8 },
+      { x: -0.5, y: 0.4, z: -0.8 },
+      { x: 0.7, y: 0.3, z: 0.7 },
+      { x: -0.7, y: 0.3, z: 0.7 },
+      { x: 0.4, y: 0.2, z: -0.9 },
+      { x: -0.4, y: 0.2, z: -0.9 },
+      { x: 0, y: 0.9, z: 0.2 }
     ]
   }
 };
@@ -660,7 +778,7 @@ var nextId = 1;
 function genId() {
   return nextId++;
 }
-function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
+function createShip(type = void 0, x = 0, y = 0, z = 0, team = TEAM_DEFAULT) {
   const shipCfg = getShipConfigSafe();
   const availableTypes = Object.keys(shipCfg || {});
   const resolvedType = type && shipCfg[type] ? type : availableTypes.length ? availableTypes[0] : getDefaultShipTypeSafe();
@@ -673,10 +791,18 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
   const ship = {
     id: genId(),
     type: resolvedType,
+    // 2D position (legacy)
     x,
     y,
+    // 3D position
+    position: { x, y, z },
+    // 2D velocity (legacy)
     vx: 0,
     vy: 0,
+    // 3D velocity
+    velocity: { x: 0, y: 0, z: 0 },
+    // 3D acceleration
+    acceleration: { x: 0, y: 0, z: 0 },
     hp: cfg.maxHp ?? 0,
     maxHp: cfg.maxHp ?? 0,
     shield: cfg.maxShield ?? 0,
@@ -692,6 +818,9 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     // Keep raw turret defs here for now; we'll normalize below via helper so
     // normalization logic is centralized and reusable by snapshot handlers.
     turrets: cfg.turrets || [],
+    // Initialize 3D component positions (will be populated from config)
+    engines: [],
+    hardpoints: [],
     accel: cfg.accel || 0,
     currentAccel: 0,
     throttle: 0,
@@ -703,10 +832,21 @@ function createShip(type = void 0, x = 0, y = 0, team = TEAM_DEFAULT) {
     // ships to never translate (they can still rotate/fire). Prefer the
     // configured value but fall back to a safe default > 0.
     maxSpeed: typeof cfg.maxSpeed === "number" && cfg.maxSpeed > 0 ? cfg.maxSpeed : 120,
+    // 2D rotation (legacy)
     angle: 0,
+    // 3D rotation
+    rotation: { x: 0, y: 0, z: 0 },
+    quaternion: { x: 0, y: 0, z: 0, w: 1 },
+    // 3D trail
+    trail3D: void 0,
     trail: void 0,
     shieldPercent: 1,
-    hpPercent: 1
+    hpPercent: 1,
+    // Ship scaling
+    shipScale: 1,
+    baseScale: 1,
+    scale: 1,
+    collisionRadius: cfg.radius || 6
   };
   try {
     normalizeTurrets(ship);
@@ -812,8 +952,11 @@ var bulletPool = new Pool(
 );
 function createExplosionEffect(init) {
   return {
+    // 2D position (legacy)
     x: init?.x ?? 0,
     y: init?.y ?? 0,
+    // 3D position
+    position: init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 },
     r: init?.r,
     alive: true,
     _pooled: false,
@@ -823,6 +966,7 @@ function createExplosionEffect(init) {
 function resetExplosionEffect(obj, init) {
   obj.x = init?.x ?? 0;
   obj.y = init?.y ?? 0;
+  obj.position = init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 };
   obj.r = init?.r;
   obj.alive = true;
   obj._pooled = false;
@@ -830,8 +974,11 @@ function resetExplosionEffect(obj, init) {
 }
 function createShieldHitEffect(init) {
   return {
+    // 2D position (legacy)
     x: init?.x ?? 0,
     y: init?.y ?? 0,
+    // 3D position
+    position: init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 },
     magnitude: init?.magnitude,
     alive: true,
     _pooled: false,
@@ -841,6 +988,7 @@ function createShieldHitEffect(init) {
 function resetShieldHitEffect(obj, init) {
   obj.x = init?.x ?? 0;
   obj.y = init?.y ?? 0;
+  obj.position = init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 };
   obj.magnitude = init?.magnitude;
   obj.alive = true;
   obj._pooled = false;
@@ -848,8 +996,11 @@ function resetShieldHitEffect(obj, init) {
 }
 function createHealthHitEffect(init) {
   return {
+    // 2D position (legacy)
     x: init?.x ?? 0,
     y: init?.y ?? 0,
+    // 3D position
+    position: init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 },
     amount: init?.amount,
     alive: true,
     _pooled: false,
@@ -859,6 +1010,7 @@ function createHealthHitEffect(init) {
 function resetHealthHitEffect(obj, init) {
   obj.x = init?.x ?? 0;
   obj.y = init?.y ?? 0;
+  obj.position = init?.position ?? { x: init?.x ?? 0, y: init?.y ?? 0, z: 0 };
   obj.amount = init?.amount;
   obj.alive = true;
   obj._pooled = false;
@@ -1094,6 +1246,148 @@ var progression = {
   speedPercentPerLevel: 0.03,
   regenPercentPerLevel: 0.04
 };
+
+// src/config/threeConfig.ts
+var SHIP_SCALE_CONFIG = {
+  // Base scaling factors for different ship classes
+  SMALL_SHIP_SCALE: 0.8,
+  // Fighters, Corvettes
+  MEDIUM_SHIP_SCALE: 1.2,
+  // Frigates
+  LARGE_SHIP_SCALE: 1.6,
+  // Destroyers, Carriers
+  // Collision radius multipliers (relative to base scale)
+  COLLISION_RADIUS_MULTIPLIER: 0.6,
+  // Component positioning scale (how much components scale with ship)
+  COMPONENT_SCALE_MULTIPLIER: 1
+};
+var SHIP_TYPE_CONFIGS = {
+  fighter: {
+    scale: SHIP_SCALE_CONFIG.SMALL_SHIP_SCALE,
+    collisionRadius: SHIP_SCALE_CONFIG.SMALL_SHIP_SCALE * SHIP_SCALE_CONFIG.COLLISION_RADIUS_MULTIPLIER,
+    turrets: [
+      { x: 0.3, y: 0.1, z: 0.2 },
+      // Front turret
+      { x: -0.3, y: 0.1, z: -0.2 }
+      // Rear turret
+    ],
+    engines: [
+      { x: 0, y: -0.4, z: -0.5 }
+      // Main engine
+    ],
+    hardpoints: [
+      { x: 0.2, y: 0.2, z: 0 },
+      { x: -0.2, y: 0.2, z: 0 }
+    ]
+  },
+  corvette: {
+    scale: SHIP_SCALE_CONFIG.SMALL_SHIP_SCALE,
+    collisionRadius: SHIP_SCALE_CONFIG.SMALL_SHIP_SCALE * SHIP_SCALE_CONFIG.COLLISION_RADIUS_MULTIPLIER,
+    turrets: [
+      { x: 0.4, y: 0.2, z: 0.3 },
+      { x: -0.4, y: 0.2, z: 0.3 },
+      { x: 0, y: 0.2, z: -0.4 }
+    ],
+    engines: [
+      { x: 0, y: -0.5, z: -0.6 },
+      { x: 0.3, y: -0.3, z: -0.5 },
+      { x: -0.3, y: -0.3, z: -0.5 }
+    ],
+    hardpoints: [
+      { x: 0.3, y: 0.3, z: 0.2 },
+      { x: -0.3, y: 0.3, z: 0.2 },
+      { x: 0, y: 0.4, z: 0 }
+    ]
+  },
+  frigate: {
+    scale: SHIP_SCALE_CONFIG.MEDIUM_SHIP_SCALE,
+    collisionRadius: SHIP_SCALE_CONFIG.MEDIUM_SHIP_SCALE * SHIP_SCALE_CONFIG.COLLISION_RADIUS_MULTIPLIER,
+    turrets: [
+      { x: 0.6, y: 0.3, z: 0.4 },
+      { x: -0.6, y: 0.3, z: 0.4 },
+      { x: 0.4, y: 0.3, z: -0.5 },
+      { x: -0.4, y: 0.3, z: -0.5 }
+    ],
+    engines: [
+      { x: 0, y: -0.7, z: -0.8 },
+      { x: 0.5, y: -0.5, z: -0.7 },
+      { x: -0.5, y: -0.5, z: -0.7 }
+    ],
+    hardpoints: [
+      { x: 0.4, y: 0.4, z: 0.3 },
+      { x: -0.4, y: 0.4, z: 0.3 },
+      { x: 0, y: 0.5, z: 0.2 },
+      { x: 0.3, y: 0.2, z: -0.6 },
+      { x: -0.3, y: 0.2, z: -0.6 }
+    ]
+  },
+  destroyer: {
+    scale: SHIP_SCALE_CONFIG.LARGE_SHIP_SCALE,
+    collisionRadius: SHIP_SCALE_CONFIG.LARGE_SHIP_SCALE * SHIP_SCALE_CONFIG.COLLISION_RADIUS_MULTIPLIER,
+    turrets: [
+      { x: 0.8, y: 0.4, z: 0.5 },
+      { x: -0.8, y: 0.4, z: 0.5 },
+      { x: 0.5, y: 0.4, z: -0.6 },
+      { x: -0.5, y: 0.4, z: -0.6 },
+      { x: 0, y: 0.6, z: 0.3 },
+      { x: 0, y: 0.4, z: -0.8 }
+    ],
+    engines: [
+      { x: 0, y: -0.9, z: -1 },
+      { x: 0.6, y: -0.7, z: -0.9 },
+      { x: -0.6, y: -0.7, z: -0.9 },
+      { x: 0.4, y: -0.5, z: -0.8 },
+      { x: -0.4, y: -0.5, z: -0.8 }
+    ],
+    hardpoints: [
+      { x: 0.5, y: 0.5, z: 0.4 },
+      { x: -0.5, y: 0.5, z: 0.4 },
+      { x: 0, y: 0.7, z: 0.3 },
+      { x: 0.4, y: 0.3, z: -0.7 },
+      { x: -0.4, y: 0.3, z: -0.7 },
+      { x: 0.6, y: 0.2, z: 0.6 },
+      { x: -0.6, y: 0.2, z: 0.6 }
+    ]
+  },
+  carrier: {
+    scale: SHIP_SCALE_CONFIG.LARGE_SHIP_SCALE,
+    collisionRadius: SHIP_SCALE_CONFIG.LARGE_SHIP_SCALE * SHIP_SCALE_CONFIG.COLLISION_RADIUS_MULTIPLIER,
+    turrets: [
+      { x: 1, y: 0.5, z: 0.6 },
+      { x: -1, y: 0.5, z: 0.6 },
+      { x: 0.6, y: 0.5, z: -0.7 },
+      { x: -0.6, y: 0.5, z: -0.7 },
+      { x: 0, y: 0.7, z: 0.4 },
+      { x: 0, y: 0.5, z: -1 },
+      { x: 0.8, y: 0.3, z: 0.8 },
+      { x: -0.8, y: 0.3, z: 0.8 }
+    ],
+    engines: [
+      { x: 0, y: -1.1, z: -1.2 },
+      { x: 0.8, y: -0.9, z: -1.1 },
+      { x: -0.8, y: -0.9, z: -1.1 },
+      { x: 0.5, y: -0.7, z: -1 },
+      { x: -0.5, y: -0.7, z: -1 },
+      { x: 0.3, y: -0.5, z: -0.9 },
+      { x: -0.3, y: -0.5, z: -0.9 }
+    ],
+    hardpoints: [
+      { x: 0.6, y: 0.6, z: 0.5 },
+      { x: -0.6, y: 0.6, z: 0.5 },
+      { x: 0, y: 0.8, z: 0.4 },
+      { x: 0.5, y: 0.4, z: -0.8 },
+      { x: -0.5, y: 0.4, z: -0.8 },
+      { x: 0.7, y: 0.3, z: 0.7 },
+      { x: -0.7, y: 0.3, z: 0.7 },
+      { x: 0.4, y: 0.2, z: -0.9 },
+      { x: -0.4, y: 0.2, z: -0.9 },
+      { x: 0, y: 0.9, z: 0.2 }
+    ]
+  }
+};
+
+// src/simulate/step3d.ts
+var DT = 1 / 60;
 
 // src/pools/PoolManager.ts
 var DEFAULT_CONFIG = {
@@ -1495,6 +1789,28 @@ var AI_THRESHOLDS = {
 function len2(vx, vy) {
   return vx * vx + vy * vy;
 }
+function distance3D(from, to) {
+  const fromPos = getShipPosition3D(from);
+  const toPos = getShipPosition3D(to);
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const dz = toPos.z - fromPos.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+function getShipPosition3D(ship) {
+  if (ship.position) {
+    return { ...ship.position };
+  }
+  return {
+    x: ship.x || 0,
+    y: ship.y || 0,
+    z: ship.z || 0
+  };
+}
+function withinRange3D(from, to, range) {
+  const dist = distance3D(from, to);
+  return dist <= range;
+}
 var DEFAULT_BULLET_RANGE = (
   // Guard against undefined export in certain CJS/ESM interop paths
   typeof BULLET_DEFAULTS?.range === "number" ? BULLET_DEFAULTS.range : 300
@@ -1532,6 +1848,36 @@ function aimWithSpread(from, to, spread = 0) {
   }
   return { x: dx, y: dy };
 }
+function aimWithSpread3D(from, to, spread = 0) {
+  const fromPos = getShipPosition3D(from);
+  const toPos = getShipPosition3D(to);
+  let dx = toPos.x - fromPos.x;
+  let dy = toPos.y - fromPos.y;
+  let dz = toPos.z - fromPos.z;
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  dx /= d;
+  dy /= d;
+  dz /= d;
+  if (spread > 0) {
+    const theta = Math.acos(dz);
+    const phi = Math.atan2(dy, dx);
+    const spreadRad = spread;
+    const thetaJitter = srange(-spreadRad, spreadRad);
+    const phiJitter = srange(-spreadRad, spreadRad);
+    const newTheta = theta + thetaJitter;
+    const newPhi = phi + phiJitter;
+    const cosTheta = Math.cos(newTheta);
+    const sinTheta = Math.sin(newTheta);
+    const cosPhi = Math.cos(newPhi);
+    const sinPhi = Math.sin(newPhi);
+    return {
+      x: sinTheta * cosPhi,
+      y: sinTheta * sinPhi,
+      z: cosTheta
+    };
+  }
+  return { x: dx, y: dy, z: dz };
+}
 function tryFire(state2, ship, target, dt) {
   if (Array.isArray(ship.cannons) && ship.cannons.length > 0) {
     for (const c of ship.cannons) {
@@ -1539,33 +1885,40 @@ function tryFire(state2, ship, target, dt) {
       c.__cd -= dt;
       if (c.__cd > 0) continue;
       const range = typeof c.range === "number" ? c.range : DEFAULT_BULLET_RANGE;
-      if (!withinRange(
+      const inRange = (ship.z !== void 0 || ship.position) && (target.z !== void 0 || target.position) ? withinRange3D(ship, target, range) : withinRange(
         ship.x || 0,
         ship.y || 0,
         target.x || 0,
         target.y || 0,
         range
-      ))
-        continue;
+      );
+      if (!inRange) continue;
       const spread = typeof c.spread === "number" ? c.spread : 0;
-      const dir = aimWithSpread(ship, target, spread);
+      const dir = (ship.z !== void 0 || ship.position) && (target.z !== void 0 || target.position) ? aimWithSpread3D(ship, target, spread) : aimWithSpread(ship, target, spread);
       const speed = typeof c.muzzleSpeed === "number" ? c.muzzleSpeed : getBulletDefaultsSafe().muzzleSpeed;
       const dmg = typeof c.damage === "number" ? c.damage : typeof ship.damage === "number" ? ship.damage : typeof ship.dmg === "number" ? ship.dmg : getBulletDefaultsSafe().damage;
       const ttl = typeof c.bulletTTL === "number" ? c.bulletTTL : getBulletDefaultsSafe().ttl;
       const radius = typeof c.bulletRadius === "number" ? c.bulletRadius : getBulletDefaultsSafe().radius;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      const vz = dir.z ? dir.z * speed : 0;
+      const shipPos = getShipPosition3D(ship);
+      const bulletData = {
+        x: shipPos.x,
+        y: shipPos.y,
+        vx,
+        vy,
+        team: ship.team || TEAM_DEFAULT,
+        ownerId: ship.id || null,
+        damage: dmg,
+        ttl
+      };
+      if (shipPos.z !== 0 || vz !== 0) {
+        bulletData.z = shipPos.z;
+        bulletData.vz = vz;
+      }
       const b = Object.assign(
-        acquireBullet(state2, {
-          x: ship.x || 0,
-          y: ship.y || 0,
-          vx,
-          vy,
-          team: ship.team || TEAM_DEFAULT,
-          ownerId: ship.id || null,
-          damage: dmg,
-          ttl
-        }),
+        acquireBullet(state2, bulletData),
         { radius }
       );
       const rate = typeof c.rate === "number" && c.rate > 0 ? c.rate : 1;
@@ -1585,11 +1938,9 @@ function tryFire(state2, ship, target, dt) {
         );
         let minDist = Infinity;
         for (const enemy of enemies) {
-          const dx = (enemy.x || 0) - (ship.x || 0);
-          const dy = (enemy.y || 0) - (ship.y || 0);
-          const d2 = dx * dx + dy * dy;
-          if (d2 < minDist) {
-            minDist = d2;
+          const distance = (ship.z !== void 0 || ship.position) && (enemy.z !== void 0 || enemy.position) ? distance3D(ship, enemy) : Math.hypot((enemy.x || 0) - (ship.x || 0), (enemy.y || 0) - (ship.y || 0));
+          if (distance < minDist) {
+            minDist = distance;
             turretTarget = enemy;
           }
         }
@@ -1610,11 +1961,9 @@ function tryFire(state2, ship, target, dt) {
         );
         let minDist = Infinity;
         for (const enemy of enemies) {
-          const dx = (enemy.x || 0) - (ship.x || 0);
-          const dy = (enemy.y || 0) - (ship.y || 0);
-          const d2 = dx * dx + dy * dy;
-          if (d2 < minDist) {
-            minDist = d2;
+          const distance = (ship.z !== void 0 || ship.position) && (enemy.z !== void 0 || enemy.position) ? distance3D(ship, enemy) : Math.hypot((enemy.x || 0) - (ship.x || 0), (enemy.y || 0) - (ship.y || 0));
+          if (distance < minDist) {
+            minDist = distance;
             turretTarget = enemy;
           }
         }
@@ -1625,39 +1974,50 @@ function tryFire(state2, ship, target, dt) {
       const [mTx, mTy] = mountPos;
       const shipAngle = ship.angle || 0;
       const configRadiusLocal = typeof ship.radius === "number" && ship.radius > 0 ? ship.radius : 12;
-      const mountX = (ship.x || 0) + Math.cos(shipAngle) * mTx * configRadiusLocal - Math.sin(shipAngle) * mTy * configRadiusLocal;
-      const mountY = (ship.y || 0) + Math.sin(shipAngle) * mTx * configRadiusLocal + Math.cos(shipAngle) * mTy * configRadiusLocal;
-      const dir = aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
+      const shipPos = getShipPosition3D(ship);
+      const cosAngle = Math.cos(shipAngle);
+      const sinAngle = Math.sin(shipAngle);
+      const mountX = shipPos.x + cosAngle * mTx * configRadiusLocal - sinAngle * mTy * configRadiusLocal;
+      const mountY = shipPos.y + sinAngle * mTx * configRadiusLocal + cosAngle * mTy * configRadiusLocal;
+      const mountZ = shipPos.z;
+      const dir = (ship.z !== void 0 || ship.position) && (turretTarget.z !== void 0 || turretTarget.position) ? aimWithSpread3D({ x: mountX, y: mountY, z: mountZ }, turretTarget, spread) : aimWithSpread({ x: mountX, y: mountY }, turretTarget, spread);
       const speed = typeof turret.muzzleSpeed === "number" ? turret.muzzleSpeed : getBulletDefaultsSafe().muzzleSpeed;
       const dmg = typeof turret.damage === "number" ? turret.damage : typeof ship.damage === "number" ? ship.damage : getBulletDefaultsSafe().damage;
       const ttl = typeof turret.bulletTTL === "number" ? turret.bulletTTL : getBulletDefaultsSafe().ttl;
       const radius = typeof turret.bulletRadius === "number" ? turret.bulletRadius : getBulletDefaultsSafe().radius;
       const range = typeof turret.range === "number" ? turret.range : DEFAULT_BULLET_RANGE;
-      const dxT = (turretTarget.x || 0) - mountX;
-      const dyT = (turretTarget.y || 0) - mountY;
-      if (dxT * dxT + dyT * dyT > range * range) continue;
+      const inRange = (ship.z !== void 0 || ship.position) && (turretTarget.z !== void 0 || turretTarget.position) ? withinRange3D({ x: mountX, y: mountY, z: mountZ }, turretTarget, range) : withinRange(mountX, mountY, turretTarget.x || 0, turretTarget.y || 0, range);
+      if (!inRange) continue;
       const vx = dir.x * speed;
       const vy = dir.y * speed;
+      const vz = dir.z ? dir.z * speed : 0;
       let spawnX = mountX;
       let spawnY = mountY;
+      let spawnZ = mountZ;
       const barrelLen = turret && typeof turret.barrel === "number" ? turret.barrel : turret && turret.barrel && turret.barrel.length ? turret.barrel[0] : 0;
       if (barrelLen && barrelLen > 0) {
         const turretLocalAngle = turret && typeof turret.angle === "number" ? turret.angle : 0;
         const turretWorldAngle = shipAngle + turretLocalAngle;
         spawnX = mountX + Math.cos(turretWorldAngle) * barrelLen;
         spawnY = mountY + Math.sin(turretWorldAngle) * barrelLen;
+        spawnZ = mountZ;
+      }
+      const bulletData = {
+        x: spawnX,
+        y: spawnY,
+        vx,
+        vy,
+        team: ship.team || TEAM_DEFAULT,
+        ownerId: ship.id || null,
+        damage: dmg,
+        ttl
+      };
+      if (spawnZ !== 0 || vz !== 0) {
+        bulletData.z = spawnZ;
+        bulletData.vz = vz;
       }
       const b = Object.assign(
-        acquireBullet(state2, {
-          x: spawnX,
-          y: spawnY,
-          vx,
-          vy,
-          team: ship.team || TEAM_DEFAULT,
-          ownerId: ship.id || null,
-          damage: dmg,
-          ttl
-        }),
+        acquireBullet(state2, bulletData),
         { radius }
       );
       turret.__cd = typeof turret.cooldown === "number" && turret.cooldown > 0 ? turret.cooldown : 1;
@@ -1854,12 +2214,13 @@ function segmentIntersectsCircle(x1, y1, x2, y2, cx, cy, r) {
 // src/simulate.ts
 var SpatialGrid2 = SpatialGrid || spatialGrid_exports;
 var segmentIntersectsCircle2 = segmentIntersectsCircle;
+var DT_3D = 1 / 60;
 function dist2(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return dx * dx + dy * dy;
 }
-function simulateStep(state2, dtSeconds, bounds2) {
+function simulateStep2(state2, dtSeconds, bounds2) {
   pruneAll(state2, dtSeconds, bounds2);
   state2.t = (state2.t || 0) + dtSeconds;
   for (let i = (state2.bullets || []).length - 1; i >= 0; i--) {
@@ -2526,7 +2887,7 @@ function tick() {
   while (acc >= simDtMs) {
     try {
       applySimpleAI(state, simDtMs / 1e3, bounds);
-      simulateStep(state, simDtMs / 1e3, bounds);
+      simulateStep2(state, simDtMs / 1e3, bounds);
     } catch (e) {
       const errAny = e;
       const stack = errAny && errAny.stack ? errAny.stack : "";

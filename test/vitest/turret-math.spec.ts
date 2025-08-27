@@ -6,10 +6,10 @@ import { createShip } from "../../src/entities";
 
 describe("turret mount math", () => {
   test("mount world position rotates with ship angle", () => {
-    const ship = createShip("fighter", 100, 200);
+    const ship = createShip("fighter", 100, 200, 0, "red");
     ship.angle = Math.PI / 2; // 90deg
     ship.radius = 10;
-    ship.turrets = [[1, 0]]; // mount at +x in local coords
+    ship.turrets = [[1, 0, 0]]; // mount at +x in local coords
     normalizeTurrets(ship as any);
     const t = ship.turrets![0] as any;
     // compute mount world

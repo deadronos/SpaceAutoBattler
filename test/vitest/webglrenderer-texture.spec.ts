@@ -23,7 +23,7 @@ describe("WebGLRenderer", () => {
 
       const shipType = getDefaultShipType();
       const state = require('../../src/entities').makeInitialState();
-      const ship = require('../../src/entities').createShip(shipType, 10, 10, 'red');
+      const ship = require('../../src/entities').createShip(shipType, 10, 10, 0, 'red');
       state.ships.push(ship);
       renderer.renderState(state);
 

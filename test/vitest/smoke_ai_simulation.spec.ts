@@ -10,8 +10,8 @@ import { getDefaultBounds } from '../../src/config/simConfig';
 describe('Smoke AI + Simulation', () => {
   it('ships should accelerate and move under AI control', () => {
     const state = makeInitialState();
-    const shipA = createShip('fighter', 100, 100, 'red');
-    const shipB = createShip('fighter', 300, 300, 'blue');
+    const shipA = createShip('fighter', 100, 100, 0, 'red');
+    const shipB = createShip('fighter', 300, 300, 0, 'blue');
     state.ships.push(shipA, shipB);
 
     const dt = 0.1; // 100ms per step

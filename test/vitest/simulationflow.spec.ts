@@ -6,8 +6,8 @@ import { simulateStep } from "../../src/simulate";
 describe("GameState serialization", () => {
   it("should serialize and deserialize GameState with integrity", () => {
     const state = makeInitialState();
-    state.ships.push(createShip("fighter", 100, 100, "red"));
-    state.bullets.push(createBullet(100, 100, 10, 0, "red", 1, 5, 1));
+    state.ships.push(createShip("fighter", 100, 100, 0, "red"));
+    state.bullets.push(createBullet(100, 100, 0, 10, 0, 0, "red", 1, 5, 1));
     state.t = 42;
     // Serialize
     const json = JSON.stringify(state);
@@ -22,8 +22,8 @@ describe("GameState serialization", () => {
 
   it("should produce deterministic replay from serialized state", () => {
     const state = makeInitialState();
-    state.ships.push(createShip("fighter", 100, 100, "red"));
-    state.bullets.push(createBullet(100, 100, 10, 0, "red", 1, 5, 1));
+    state.ships.push(createShip("fighter", 100, 100, 0, "red"));
+    state.bullets.push(createBullet(100, 100, 0, 10, 0, 0, "red", 1, 5, 1));
     state.t = 0;
     // Step simulation
     simulateStep(state, 0.1, { W: 1920, H: 1080 });
@@ -55,7 +55,7 @@ describe('Boundary Behavior', () => {
   it('removes bullets out of bounds when set to remove', () => {
     boundaryBehavior.bullets = 'remove';
     const state = makeInitialState();
-    const bullet = createBullet(-10, 50, 0, 0, 'red', null, 1, 2);
+    const bullet = createBullet(-10, 50, 0, 0, 0, 0, 'red', null, 1, 2);
     state.bullets.push(bullet);
     simulateStep(state, 0.1, { W: 100, H: 100 });
     expect(state.bullets.length).toBe(0);
@@ -64,7 +64,7 @@ describe('Boundary Behavior', () => {
   it('wraps bullets out of bounds when set to wrap', () => {
     boundaryBehavior.bullets = 'wrap';
     const state = makeInitialState();
-    const bullet = createBullet(-10, 50, 0, 0, 'red', null, 1, 2);
+    const bullet = createBullet(-10, 50, 0, 0, 0, 0, 'red', null, 1, 2);
     state.bullets.push(bullet);
     simulateStep(state, 0.1, { W: 100, H: 100 });
     expect(state.bullets[0].x).toBeGreaterThanOrEqual(0);
@@ -74,7 +74,7 @@ describe('Boundary Behavior', () => {
   it('bounces bullets out of bounds when set to bounce', () => {
     boundaryBehavior.bullets = 'bounce';
     const state = makeInitialState();
-    const bullet = createBullet(-10, 50, -5, 0, 'red', null, 1, 2);
+    const bullet = createBullet(-10, 50, 0, -5, 0, 0, 'red', null, 1, 2);
     state.bullets.push(bullet);
     simulateStep(state, 0.1, { W: 100, H: 100 });
     expect(state.bullets[0].vx).toBeGreaterThan(0);
@@ -84,7 +84,7 @@ describe('Boundary Behavior', () => {
   it('removes ships out of bounds when set to remove', () => {
     boundaryBehavior.ships = 'remove';
     const state = makeInitialState();
-    const ship = createShip('fighter', -20, 50, 'red');
+    const ship = createShip('fighter', -20, 50, 0, 'red');
     state.ships.push(ship);
     simulateStep(state, 0.1, { W: 100, H: 100 });
     expect(state.ships.length).toBe(0);
@@ -93,7 +93,7 @@ describe('Boundary Behavior', () => {
   it('wraps ships out of bounds when set to wrap', () => {
     boundaryBehavior.ships = 'wrap';
     const state = makeInitialState();
-    const ship = createShip('fighter', -20, 50, 'red');
+    const ship = createShip('fighter', -20, 50, 0, 'red');
     state.ships.push(ship);
     simulateStep(state, 0.1, { W: 100, H: 100 });
   const radius = ship.radius ?? 12;
@@ -104,7 +104,7 @@ describe('Boundary Behavior', () => {
   it('bounces ships out of bounds when set to bounce', () => {
     boundaryBehavior.ships = 'bounce';
     const state = makeInitialState();
-    const ship = createShip('fighter', -20, 50, 'red');
+    const ship = createShip('fighter', -20, 50, 0, 'red');
     ship.vx = -5;
     state.ships.push(ship);
     simulateStep(state, 0.1, { W: 100, H: 100 });
@@ -121,7 +121,7 @@ import { applySimpleAI } from "../../src/behavior";
 describe("Simulation Flow", () => {
   it("should not allow coordinate jumps beyond maxSpeed * dt", () => {
     const state = makeInitialState();
-    const ship = createShip("fighter", 100, 100, "red");
+    const ship = createShip("fighter", 100, 100, 0, "red");
     ship.throttle = 1;
     ship.steering = 0;
     state.ships.push(ship);
@@ -140,11 +140,11 @@ describe("Simulation Flow", () => {
   it("should keep all entities within bounds after simulation", () => {
     const state = makeInitialState();
     // Add ships and bullets near the edge
-    const ship = createShip("fighter", 1910, 1070, "red");
+    const ship = createShip("fighter", 1910, 1070, 0, "red");
     ship.vx = 50;
     ship.vy = 50;
     state.ships.push(ship);
-    const bullet = createBullet(1915, 1075, 10, 10, "red", ship.id, 2, 2);
+    const bullet = createBullet(1915, 1075, 0, 10, 0, 10, "red", ship.id, 2, 2);
     state.bullets.push(bullet);
     for (let i = 0; i < 10; i++) {
       simulateStep(state, 0.1, { W: 1920, H: 1080 });
@@ -167,7 +167,7 @@ describe("Simulation Flow", () => {
     const state = makeInitialState();
     // Create a destroyer with default config
     const shipType = "destroyer";
-    const ship = createShip(shipType, 100, 100, "red");
+    const ship = createShip(shipType, 100, 100, 0, "red");
     ship.angle = 0;
     state.ships.push(ship);
     // Run AI to fire turrets
@@ -197,7 +197,7 @@ describe("Simulation Flow", () => {
   const __cfg = __getCfg();
   __cfg[shipType].radius = 60;
     // Create a new ship with updated config
-    const ship2 = createShip(shipType, 200, 200, "blue");
+    const ship2 = createShip(shipType, 200, 200, 0, "blue");
     ship2.angle = 0;
     state.ships = [ship2];
     state.bullets = [];
@@ -221,7 +221,7 @@ describe("Simulation Flow", () => {
   });
   it("should never move more than maxSpeed * dtSeconds per frame", () => {
     const state = makeInitialState();
-    const ship = createShip("fighter", 100, 100, "red");
+    const ship = createShip("fighter", 100, 100, 0, "red");
     ship.throttle = 1;
     ship.steering = 0;
     state.ships.push(ship);
@@ -238,7 +238,7 @@ describe("Simulation Flow", () => {
   });
   it("should advance time and move entities with throttle/steering", () => {
     const state = makeInitialState();
-    const ship = createShip("fighter", 100, 100, "red");
+    const ship = createShip("fighter", 100, 100, 0, "red");
     ship.throttle = 1;
     ship.steering = 0;
     state.ships.push(ship);
@@ -254,7 +254,7 @@ describe("Simulation Flow", () => {
 
   it("should turn when steering is set", () => {
     const state = makeInitialState();
-    const ship = createShip("fighter", 100, 100, "red");
+    const ship = createShip("fighter", 100, 100, 0, "red");
     ship.throttle = 1;
     ship.steering = 1;
     state.ships.push(ship);
@@ -265,7 +265,7 @@ describe("Simulation Flow", () => {
 
   it("should not move when throttle is zero", () => {
     const state = makeInitialState();
-    const ship = createShip("fighter", 100, 100, "red");
+    const ship = createShip("fighter", 100, 100, 0, "red");
     ship.throttle = 0;
     ship.steering = 0;
     state.ships.push(ship);
@@ -280,8 +280,8 @@ describe("Simulation Flow", () => {
     const state = makeInitialState();
     const shipType = "destroyer";
     const targetType = "fighter";
-    const ship = createShip(shipType, 100, 100, "red"); // multi-turret ship
-    const target = createShip(targetType, 300, 100, "blue");
+    const ship = createShip(shipType, 100, 100, 0, "red"); // multi-turret ship
+    const target = createShip(targetType, 300, 100, 0, "blue");
     state.ships.push(ship, target);
     // Simulate AI firing (multi-turret)
     // Run enough steps for turrets to fire
@@ -313,14 +313,16 @@ describe("Simulation Flow", () => {
 
   it("should award XP and level up on kill", () => {
     const state = makeInitialState();
-    const ship = createShip("fighter", 100, 100, "red");
-    const target = createShip("fighter", 100, 100, "blue");
+    const ship = createShip("fighter", 100, 100, 0, "red");
+    const target = createShip("fighter", 100, 100, 0, "blue");
     state.ships.push(ship, target);
     // Remove all cannons from target to ensure only one bullet is created
     target.cannons = [];
     const bullet = createBullet(
       100,
       100,
+      0,
+      0,
       0,
       0,
       "red",

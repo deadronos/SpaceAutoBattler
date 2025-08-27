@@ -4,7 +4,7 @@ import { createShip, updateTeamCount, normalizeTurrets } from "./entities";
 import { getRuntimeShipConfigSafe } from "./config/runtimeConfigResolver";
 import AssetsConfig from "./config/assets/assetsConfig";
 import { progression as progressionCfg } from "./config/progressionConfig";
-import { SIM, boundaryBehavior } from "./config/simConfig";
+import { SIM, boundaryBehavior, BOUNDS_3D } from "./config/simConfig";
 import { clampSpeed } from "./behavior";
 import {
   acquireBullet,
@@ -25,6 +25,14 @@ const SpatialGrid: any =
 const segmentIntersectsCircle: any = (SpatialGridModule as any)
   .segmentIntersectsCircle;
 
+// 3D imports and utilities
+import { normalizePosition, wrappedDistance, Bounds3, Vec3 } from "./utils/wrapping";
+import { SHIP_TYPE_CONFIGS, getShipConfig } from "./config/threeConfig";
+import type { Ship3D, GameState3D } from "./types/threeTypes";
+
+// 3D Constants
+const DT_3D = 1 / 60; // fixed-step for 3D simulation
+
 export type Bounds = { W: number; H: number };
 
 // SIM constants migrated to simConfig.ts
@@ -34,6 +42,102 @@ function dist2(a: { x: number; y: number }, b: { x: number; y: number }) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return dx * dx + dy * dy;
+}
+
+export function dist3(a: Vec3, b: Vec3) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+// Convert 3D bounds config to Bounds3 format for compatibility
+export function convertBounds3DToBounds3(bounds3D: typeof BOUNDS_3D): Bounds3 {
+  return {
+    min: { x: -bounds3D.width/2, y: -bounds3D.height/2, z: -bounds3D.depth/2 },
+    max: { x: bounds3D.width/2, y: bounds3D.height/2, z: bounds3D.depth/2 },
+    wrap: bounds3D.wrap
+  };
+}
+
+// 3D simulation step function
+export function simulateStep3D(state: GameState3D, bounds?: Bounds3): void {
+  // Use 3D bounds if provided, otherwise convert from config
+  const simBounds = bounds || convertBounds3DToBounds3(BOUNDS_3D);
+
+  // integrate velocities and positions for 3D ships
+  for (const s of state.ships as Ship3D[]) {
+    // Apply ship-specific scaling and configuration
+    const shipConfig = getShipConfig(s.type);
+    const baseScale = shipConfig?.scale || 1.0;
+    const shipScale = s.shipScale || 1.0;
+    const finalScale = baseScale * shipScale;
+
+    // Set collision radius based on ship type and scale
+    if (shipConfig) {
+      s.collisionRadius = shipConfig.collisionRadius * finalScale;
+    } else {
+      s.collisionRadius = s.collisionRadius || (8 * finalScale);
+    }
+
+    // Set base scale for rendering
+    s.baseScale = baseScale;
+    s.scale = finalScale;
+
+    // Initialize component positions if not set
+    if (shipConfig && !s.turrets) {
+      s.turrets = shipConfig.turrets?.map((pos: any) => ({ ...pos })) || [];
+    }
+    if (shipConfig && !s.engines) {
+      s.engines = shipConfig.engines?.map((pos: any) => ({ ...pos })) || [];
+    }
+
+    // Update velocity and position
+    s.velocity.x += (s.acceleration?.x || 0) * DT_3D;
+    s.velocity.y += (s.acceleration?.y || 0) * DT_3D;
+    s.velocity.z += (s.acceleration?.z || 0) * DT_3D;
+
+    s.position.x += s.velocity.x * DT_3D;
+    s.position.y += s.velocity.y * DT_3D;
+    s.position.z += s.velocity.z * DT_3D;
+
+    // gentle damping
+    s.velocity.x *= 0.999;
+    s.velocity.y *= 0.999;
+    s.velocity.z *= 0.999;
+  }
+
+  // naive broadphase/collision: O(n^2) separation using collisionRadius
+  const ships = state.ships as Ship3D[];
+  for (let i = 0; i < ships.length; i++) {
+    for (let j = i + 1; j < ships.length; j++) {
+      const a = ships[i];
+      const b = ships[j];
+      const dist = wrappedDistance(a.position, b.position, simBounds);
+      const minDist = (a.collisionRadius || 8) + (b.collisionRadius || 8);
+      if (dist < minDist && dist > 0.0001) {
+        // separate along shortest displacement vector
+        const dx = a.position.x - b.position.x || 0.0001;
+        const dy = a.position.y - b.position.y || 0.0001;
+        const dz = a.position.z - b.position.z || 0.0001;
+        const len = Math.hypot(dx, dy, dz) || 1;
+        const push = 0.5 * (minDist - dist) / len;
+        a.position.x += (dx / len) * push;
+        a.position.y += (dy / len) * push;
+        a.position.z += (dz / len) * push;
+        b.position.x -= (dx / len) * push;
+        b.position.y -= (dy / len) * push;
+        b.position.z -= (dz / len) * push;
+      }
+    }
+  }
+
+  // normalize (wrap) positions into bounds
+  for (const s of state.ships as Ship3D[]) {
+    s.position = normalizePosition(s.position, simBounds);
+  }
+
+  state.t = (state.t || 0) + DT_3D;
 }
 
 export function simulateStep(
@@ -174,7 +278,7 @@ export function simulateStep(
       if (e.life > 0) {
         state.explosions[writeExplosion++] = e;
       } else {
-        releaseExplosion(e);
+        releaseExplosion(state, e);
       }
     }
     state.explosions.length = writeExplosion;
@@ -193,7 +297,7 @@ export function simulateStep(
       ) {
         state.shieldHits[writeShield++] = sh;
       } else {
-        releaseShieldHit(sh);
+        releaseShieldHit(state, sh);
       }
     }
     state.shieldHits.length = writeShield;
@@ -212,7 +316,7 @@ export function simulateStep(
       ) {
         state.healthHits[writeHealth++] = hh;
       } else {
-        releaseHealthHit(hh);
+        releaseHealthHit(state, hh);
       }
     }
     state.healthHits.length = writeHealth;
@@ -458,7 +562,7 @@ export function simulateStep(
             const nx = (s.x || 0) + Math.cos(angle) * dist;
             const ny = (s.y || 0) + Math.sin(angle) * dist;
             try {
-              const f = createShip("fighter", nx, ny, s.team);
+              const f = createShip("fighter", nx, ny, 0, s.team || "red");
               f.parentId = s.id;
               f.angle = s.angle;
               (state.ships ||= []).push(f);

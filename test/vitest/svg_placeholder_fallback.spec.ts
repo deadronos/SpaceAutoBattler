@@ -23,7 +23,7 @@ describe('SVG placeholder fallback', () => {
     // Build state with a single fighter (sprite.shape exists so fallback is possible)
     const state: any = makeInitialState();
     state.ships = [];
-    const ship = createShip('fighter', 100, 100, 'red');
+    const ship = createShip('fighter', 100, 100, 0, 'red');
     ship.radius = 20;
     state.ships.push(ship);
 

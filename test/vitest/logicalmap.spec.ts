@@ -6,7 +6,7 @@ import { LOGICAL_MAP, boundaryBehavior } from '../../src/config/simConfig';
 import { createShip, makeInitialState } from '../../src/entities';
 
 function makeShip(x: number, y: number, vx = 0, vy = 0) {
-  const ship = createShip(undefined, x, y, 'red');
+  const ship = createShip(undefined, x, y, 0, 'red');
   ship.vx = vx;
   ship.vy = vy;
   return ship;

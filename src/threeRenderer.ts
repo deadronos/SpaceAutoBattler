@@ -98,10 +98,13 @@ export class ThreeRenderer implements RendererContract {
       const h = this.canvas.height || 600;
       try {
         this.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 10000);
-        this.camera.position?.set?.(0, 0, 400);
+        // Position camera to view the entire simulation area
+        const bounds = { W: 1920, H: 1920 }; // Updated to cubic dimensions
+        this.camera.position.set(bounds.W / 2, bounds.H / 2, 800);
+        this.camera.lookAt(bounds.W / 2, bounds.H / 2, 0);
         // Initialize camera follow positions
-        this.cameraCurrentPosition.set(400, 0, 200);
-        this.cameraTargetPosition.set(400, 0, 200);
+        this.cameraCurrentPosition.set(bounds.W / 2, bounds.H / 2, 800);
+        this.cameraTargetPosition.set(bounds.W / 2, bounds.H / 2, 0);
       } catch (e) {
         this.camera = { position: { set: () => {} }, updateProjectionMatrix: () => {}, updateMatrixWorld: () => {}, lookAt: () => {} } as any;
       }
@@ -205,6 +208,9 @@ export class ThreeRenderer implements RendererContract {
     
     // Create instanced meshes for each archetype
     this.createArchetypeMeshes();
+    
+    // Ensure all meshes are added to the scene
+    this.ensureMeshesInScene();
     
     return;
   }
@@ -472,10 +478,9 @@ export class ThreeRenderer implements RendererContract {
     // Calculate center of interest
     const centerOfInterest = this.calculateCenterOfInterest(ships);
     
-    // Set target position (above and behind the center of interest)
+    // Set target position (above the center of interest)
     this.cameraTargetPosition.copy(centerOfInterest);
-    this.cameraTargetPosition.z += this.cameraFollowHeight;
-    this.cameraTargetPosition.x += this.cameraFollowDistance;
+    this.cameraTargetPosition.z += 800; // Fixed height above the action
     
     // Smoothly interpolate camera position
     this.cameraCurrentPosition.lerp(this.cameraTargetPosition, this.cameraFollowSpeed);
@@ -1533,6 +1538,16 @@ export class ThreeRenderer implements RendererContract {
       this.archetypeMeshes.set(type, mesh);
       
       if (this.scene) this.scene.add(mesh);
+    }
+  }
+
+  private ensureMeshesInScene(): void {
+    if (!this.scene) return;
+    
+    for (const [type, mesh] of this.archetypeMeshes) {
+      if (!mesh.parent) {
+        this.scene.add(mesh);
+      }
     }
   }
   

@@ -43,7 +43,7 @@ describe("Worker snapshot -> renderer integration", () => {
 
     // Build a snapshot-like state and call the worker's snapshot handler
     const state = makeInitialState();
-    state.ships.push(createShip(undefined, 12, 34, "red"));
+    state.ships.push(createShip(undefined, 12, 34, 0, "red"));
     state.bullets.push({
       id: 1,
       x: 100,

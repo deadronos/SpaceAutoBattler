@@ -6,7 +6,7 @@ import { Bounds3D } from './simConfig.js';
 // 3D Boundary Configuration
 export const BOUNDS_3D: Bounds3D = {
   width: 1920,
-  height: 1080,
+  height: 1920,
   depth: 1920,
   wrap: { 
     x: true,     // Horizontal wrap-around
