@@ -66,13 +66,35 @@ function initGame(seed?: string) {
     } catch (e) { /* ignore */ }
   })();
 
-  // Create physics stepper in main thread (or for a worker init; this keeps the API available)
+  // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
   (async () => {
     try {
-      const ps = await createPhysicsStepper(state as any);
-      (state as any).physicsStepper = ps;
+      // Create a module worker for simWorker.ts
+      const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+      let ready = false;
+      w.addEventListener('message', (ev) => {
+        const { type, ok } = ev.data || {};
+        if (type === 'init-physics-done') ready = !!ok;
+      });
+      w.postMessage({ type: 'init-physics' });
+
+      // Expose a small shim for callers that expects physicsStepper API
+      (state as any).physicsStepper = {
+        initDone: false,
+        step(dt: number) {
+          try { w.postMessage({ type: 'step-physics', payload: { dt } }); } catch (e) { /* ignore */ }
+        },
+        dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (e) { /* ignore */ } },
+      };
+
+      // Wait a short time for readiness, then mark initDone if ready
+      setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
     } catch (e) {
-      // ignore if Rapier not available in this environment
+      // Fallback to in-process physics stepper
+      try {
+        const ps = await createPhysicsStepper(state as any);
+        (state as any).physicsStepper = ps;
+      } catch (ee) { /* ignore */ }
     }
   })();
   // Seeded initial fleets

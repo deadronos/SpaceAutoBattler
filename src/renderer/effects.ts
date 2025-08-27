@@ -10,36 +10,61 @@ export interface EffectsManager {
 }
 
 export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera): EffectsManager {
-  // Lazy import to avoid build-time coupling; cast to any to be robust during scaffolding.
-  // The project installs `postprocessing`, so replace any casts with concrete types as you flesh this out.
+  // Lazy import to avoid build-time coupling; most deployments will have `postprocessing` installed.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const postprocessing = require('postprocessing') as any;
+  let pp: any = null;
+  try { pp = require('postprocessing'); } catch (e) { pp = null; }
 
-  const composer = new postprocessing.EffectComposer(renderer);
-  const RenderPass = postprocessing.RenderPass || postprocessing.Pass || (class { constructor() {} });
-  // Add a basic render pass
+  if (!pp) {
+    // No postprocessing available: return no-op manager
+    return {
+      initDone: true,
+      render: (_dt: number) => { /* noop */ },
+      resize: (_w: number, _h: number) => { /* noop */ },
+      dispose: () => { /* noop */ }
+    };
+  }
+
+  // Create composer and passes with defensive checks
+  const EffectComposer = pp.EffectComposer || pp.Composer || pp.default?.EffectComposer;
+  const RenderPass = pp.RenderPass || pp.Pass || pp.default?.RenderPass;
+  const EffectPass = pp.EffectPass || pp.Pass || pp.default?.EffectPass;
+  const BloomEffect = pp.BloomEffect || pp.default?.BloomEffect || pp.default?.SelectiveBloomEffect;
+  const ToneMappingEffect = pp.ToneMappingEffect || pp.default?.ToneMappingEffect;
+
+  const composer = new (EffectComposer)(renderer);
+
   try {
-    const rp = new postprocessing.RenderPass(scene, camera);
-    composer.addPass(rp);
+    if (RenderPass) composer.addPass(new RenderPass(scene, camera));
+    // Add bloom
+    if (BloomEffect) {
+      const bloom = new BloomEffect({ intensity: 0.3, luminanceThreshold: 0.6, luminanceSmoothing: 0.05 });
+      const bloomPass = new EffectPass(camera, bloom);
+      bloomPass.renderToScreen = false;
+      composer.addPass(bloomPass);
+    }
+    // Tone mapping / filmic
+    if (ToneMappingEffect) {
+      const tone = new ToneMappingEffect({ adaptive: false });
+      const tonePass = new EffectPass(camera, tone);
+      tonePass.renderToScreen = true;
+      composer.addPass(tonePass);
+    }
   } catch (e) {
-    // ignore on scaffold
+    // If any pass fails, fall back to just the render pass
+    try { if (RenderPass) composer.addPass(new RenderPass(scene, camera)); } catch (e) { /* ignore */ }
   }
 
   return {
     initDone: true,
     render(dt: number) {
-      if ((composer as any).render) {
-        // postprocessing uses delta in render call in some versions
-        try { (composer as any).render(dt); } catch (_) { (composer as any).render(); }
-      } else {
-        // fallback: nothing
-      }
+      try { (composer as any).render(dt); } catch (e) { try { (composer as any).render(); } catch (_) { /* ignore */ } }
     },
     resize(width: number, height: number) {
-      try { composer.setSize(width, height); } catch (e) { /* ignore scaffold */ }
+      try { composer.setSize(width, height); } catch (e) { /* ignore */ }
     },
     dispose() {
-      try { composer.dispose?.(); } catch (e) { /* ignore scaffold */ }
+      try { composer.dispose?.(); } catch (e) { /* ignore */ }
     }
   };
 }

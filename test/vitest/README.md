@@ -96,6 +96,21 @@ The test suite validates the game's configuration-driven architecture, ensuring 
 - Simulation integration testing
 - Edge cases and boundary condition handling
 
+#### `build-system.spec.ts` (12 tests)
+
+**Purpose**: Validate build system outputs and deployment artifacts
+
+**Responsibilities**:
+
+- Build command output verification (`npm run build`)
+- Standalone build validation (`npm run build-standalone`)
+- File existence and content validation
+- Asset inlining verification for standalone builds
+- Bundle size and structure checks
+- HTML template injection testing
+- SVG asset embedding validation
+- Build artifact integrity testing
+
 ## Running Tests
 
 ```bash
@@ -186,6 +201,7 @@ The test suite aims to cover:
 - ✅ AI behavior configuration
 - ✅ Balance assumption validation
 - ✅ Edge cases and error handling
+- ✅ Build system output validation
 
 ## Maintenance
 
@@ -201,6 +217,13 @@ When modifying configurations:
 1. Run the full test suite to ensure balance is maintained
 2. Update test expectations if balance assumptions change intentionally
 3. Add new balance validation tests for significant changes
+
+When modifying build scripts:
+
+1. Update `build-system.spec.ts` to reflect new output expectations
+2. Add tests for new build artifacts or validation requirements
+3. Ensure standalone build tests validate proper asset inlining
+4. Test both regular and standalone build outputs
 
 ## Dependencies
 

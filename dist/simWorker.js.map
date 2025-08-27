@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../src/simWorker.ts"],
-  "sourcesContent": ["// Placeholder simulation worker. In future, core simulateStep could run here.\r\n// For now, this simply echoes messages for compatibility with build pipeline.\r\n\r\nself.addEventListener('message', (e) => {\r\n  const { type, payload } = e.data || {};\r\n  if (type === 'ping') {\r\n    (self as any).postMessage({ type: 'pong', payload });\r\n  }\r\n});\r\n\r\nexport {};\r\n"],
-  "mappings": ";AAGA,KAAK,iBAAiB,WAAW,CAAC,MAAM;AACtC,QAAM,EAAE,MAAM,QAAQ,IAAI,EAAE,QAAQ,CAAC;AACrC,MAAI,SAAS,QAAQ;AACnB,IAAC,KAAa,YAAY,EAAE,MAAM,QAAQ,QAAQ,CAAC;AAAA,EACrD;AACF,CAAC;",
-  "names": []
-}
