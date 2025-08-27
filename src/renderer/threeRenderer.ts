@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { GameState, RendererHandles, Ship, Bullet } from '../types/index.js';
+import { createEffectsManager } from './effects.js';
+import { loadGLTF } from '../core/assetLoader.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
@@ -258,7 +260,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   function colorForTeam(team: 'red' | 'blue'): number { return team === 'red' ? 0xff5050 : 0x50a0ff; }
 
   function meshForShip(s: Ship): THREE.Object3D {
-    // Simple triangular ship facing +X
+    // Try to get a GLTF model from assetPool first (config-driven path)
+    try {
+      const pool = (state as any).assetPool as Map<string, any> | undefined;
+      const key = `ship-${s.class}-${s.team}`;
+      if (pool) {
+        const cached = pool.get(key);
+        if (cached && cached.scene) {
+          const clone = (cached.scene.clone ? cached.scene.clone() : cached.scene) as THREE.Object3D;
+          clone.position.set(s.pos.x, s.pos.y, s.pos.z);
+          return clone;
+        }
+      }
+    } catch (e) {
+      // fall back to procedural mesh
+    }
+
+    // Fallback: Simple triangular ship facing +X
     const geom = new THREE.ConeGeometry(8, 24, 8);
     const mat = new THREE.MeshPhongMaterial({ color: colorForTeam(s.team), emissive: 0x111122 });
     const mesh = new THREE.Mesh(geom, mat);
@@ -525,7 +543,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     camera.updateProjectionMatrix();
     // Update camera position using spherical coordinates
     updateCameraPosition();
+    try { effectsManager?.resize(w, h); } catch (e) { /* ignore */ }
   }
+
+  // Create effects manager (postprocessing) lazily
+  let effectsManager: import('./effects.js').EffectsManager | null = null;
+  try { effectsManager = createEffectsManager(renderer as any, scene as any, camera as any); } catch (e) { effectsManager = null; }
 
   function render(_dt: number) {
     // Update camera position based on current rotation, distance, and target
@@ -536,6 +559,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update animated skybox
     updateSkyboxAnimation(_dt);
 
+    // Prefer postprocessing composer when available
+    if (effectsManager && effectsManager.initDone) {
+      try { effectsManager.render(_dt); return; } catch (e) { /* fallback */ }
+    }
     renderer.render(scene, camera);
   }
 
@@ -548,6 +575,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     render,
     dispose: () => {
       window.removeEventListener('resize', resize);
+      try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();

@@ -2,6 +2,8 @@ import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } f
 import type { GameState, Team, UIElements } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
+import { createPhysicsStepper } from './core/physics.js';
+import { loadGLTF } from './core/assetLoader.js';
 
 function $(id: string) { return document.getElementById(id)!; }
 
@@ -43,6 +45,36 @@ function reFormFleets(state: GameState) {
 function initGame(seed?: string) {
   const ui = bindUI();
   const state = createInitialState(seed);
+  // Ensure there is an asset pool for GLTFs and textures
+  state.assetPool = new Map<string, any>();
+
+  // Optionally preload common ship assets into the pool (config-driven)
+  (async () => {
+    try {
+      const classes: string[] = ['fighter','corvette','frigate','destroyer','carrier'];
+      for (const cls of classes) {
+        const url = `/assets/models/ship-${cls}.gltf`;
+        // Attempt to load; if not present, loader will fail silently
+        try {
+          const res = await loadGLTF(state, url);
+          if (state.assetPool) {
+            state.assetPool.set(`ship-${cls}-red`, res);
+            state.assetPool.set(`ship-${cls}-blue`, res);
+          }
+        } catch (e) { /* ignore missing assets */ }
+      }
+    } catch (e) { /* ignore */ }
+  })();
+
+  // Create physics stepper in main thread (or for a worker init; this keeps the API available)
+  (async () => {
+    try {
+      const ps = await createPhysicsStepper(state as any);
+      (state as any).physicsStepper = ps;
+    } catch (e) {
+      // ignore if Rapier not available in this environment
+    }
+  })();
   // Seeded initial fleets
   spawnFleet(state, 'red', 6);
   spawnFleet(state, 'blue', 6);
@@ -259,6 +291,7 @@ function startLoops(state: GameState, ui: UIElements) {
       let steps = 0;
       while (acc >= fixedDt && steps < maxSteps) {
         simulateStep(state, fixedDt * state.speedMultiplier);
+        try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (e) { /* ignore if missing */ }
         state.time += fixedDt * state.speedMultiplier; state.tick++;
         acc -= fixedDt; steps++;
       }

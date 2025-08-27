@@ -157,6 +157,15 @@ export interface GameState {
   bullets: Bullet[];
   score: ScoreBoard;
   renderer?: RendererHandles;
+  // Simple asset pool for caching loaded assets (GLTFs, textures, etc.)
+  assetPool?: Map<string, any>;
+  // Optional physics stepper initialized by bootstrap (kept as a lightweight shape to avoid tight coupling)
+  physicsStepper?: {
+    initDone: boolean;
+    step: (dt: number) => void;
+    dispose: () => void;
+    world?: any;
+  };
   behaviorConfig?: import('../config/behaviorConfig.js').BehaviorConfig;
 }
 
