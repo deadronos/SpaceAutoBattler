@@ -31,6 +31,11 @@ export function createRNG(seed: string): RNG {
     seed,
     next: () => rand(),
     int: (min, max) => Math.floor(rand() * (max - min + 1)) + min,
-    pick: (arr) => arr[Math.floor(rand() * arr.length)],
+    pick: (arr) => {
+      if (arr.length === 0) {
+        throw new Error('Cannot pick from empty array');
+      }
+      return arr[Math.floor(rand() * arr.length)];
+    },
   };
 }

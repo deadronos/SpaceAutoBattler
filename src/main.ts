@@ -87,6 +87,68 @@ function wireControls(state: GameState, ui: UIElements) {
   updateSpeedLabel(); updateRunLabel(); updateScores();
 }
 
+function resetToCinematicView(state: GameState) {
+  if (!state.renderer || state.ships.length === 0) return;
+
+  // Calculate center of mass of all alive ships
+  let centerX = 0, centerY = 0, centerZ = 0;
+  let shipCount = 0;
+
+  for (const ship of state.ships) {
+    if (ship.health > 0) { // Only count alive ships
+      centerX += ship.pos.x;
+      centerY += ship.pos.y;
+      centerZ += ship.pos.z;
+      shipCount++;
+    }
+  }
+
+  if (shipCount === 0) return;
+
+  centerX /= shipCount;
+  centerY /= shipCount;
+  centerZ /= shipCount;
+
+  // Calculate the spread (bounding box) of ships to determine optimal zoom
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+
+  for (const ship of state.ships) {
+    if (ship.health > 0) {
+      minX = Math.min(minX, ship.pos.x);
+      maxX = Math.max(maxX, ship.pos.x);
+      minY = Math.min(minY, ship.pos.y);
+      maxY = Math.max(maxY, ship.pos.y);
+      minZ = Math.min(minZ, ship.pos.z);
+      maxZ = Math.max(maxZ, ship.pos.z);
+    }
+  }
+
+  // Calculate dimensions of the ship cluster
+  const spreadX = maxX - minX;
+  const spreadY = maxY - minY;
+  const spreadZ = maxZ - minZ;
+  const maxSpread = Math.max(spreadX, spreadY, spreadZ);
+
+  // Set camera target to center of mass
+  state.renderer.cameraTarget.x = centerX;
+  state.renderer.cameraTarget.y = centerY;
+  state.renderer.cameraTarget.z = centerZ;
+
+  // Calculate optimal distance based on spread and camera FOV
+  const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+  const optimalDistance = (maxSpread / 2) / Math.tan(fovRadians / 2) * 1.5; // 1.5x for comfortable viewing
+
+  // Set distance with some minimum/maximum bounds
+  state.renderer.cameraDistance = Math.max(300, Math.min(2000, optimalDistance));
+
+  // Reset camera rotation to a good default viewing angle
+  state.renderer.cameraRotation.x = -Math.PI / 6; // Slight downward tilt
+  state.renderer.cameraRotation.y = 0; // Face the action
+  state.renderer.cameraRotation.z = 0;
+}
+
 function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
   if (!state.renderer) return;
 
@@ -128,17 +190,23 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     if (!state.renderer) return;
     e.preventDefault();
 
-    const zoomSpeed = 50;
+    const zoomSpeed = 100; // Increased from 50 for better responsiveness
     state.renderer.cameraDistance += e.deltaY > 0 ? zoomSpeed : -zoomSpeed;
 
     // Clamp zoom distance
-    state.renderer.cameraDistance = Math.max(200, Math.min(2000, state.renderer.cameraDistance));
+    state.renderer.cameraDistance = Math.max(100, Math.min(3000, state.renderer.cameraDistance)); // Extended range
   });
 
   // Keyboard controls for movement
   const keys: { [key: string]: boolean } = {};
   document.addEventListener('keydown', (e) => {
     keys[e.code] = true;
+
+    // Cinematic camera reset with 'C' key
+    if (e.code === 'KeyC' && state.renderer) {
+      e.preventDefault();
+      resetToCinematicView(state);
+    }
   });
 
   document.addEventListener('keyup', (e) => {

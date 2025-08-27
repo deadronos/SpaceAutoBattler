@@ -13269,6 +13269,26 @@ var Frustum = class {
     return new this.constructor().copy(this);
   }
 };
+var CanvasTexture = class extends Texture {
+  /**
+   * Constructs a new texture.
+   *
+   * @param {HTMLCanvasElement} [canvas] - The HTML canvas element.
+   * @param {number} [mapping=Texture.DEFAULT_MAPPING] - The texture mapping.
+   * @param {number} [wrapS=ClampToEdgeWrapping] - The wrapS value.
+   * @param {number} [wrapT=ClampToEdgeWrapping] - The wrapT value.
+   * @param {number} [magFilter=LinearFilter] - The mag filter value.
+   * @param {number} [minFilter=LinearMipmapLinearFilter] - The min filter value.
+   * @param {number} [format=RGBAFormat] - The texture format.
+   * @param {number} [type=UnsignedByteType] - The texture type.
+   * @param {number} [anisotropy=Texture.DEFAULT_ANISOTROPY] - The anisotropy value.
+   */
+  constructor(canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy) {
+    super(canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy);
+    this.isCanvasTexture = true;
+    this.needsUpdate = true;
+  }
+};
 var DepthTexture = class extends Texture {
   /**
    * Constructs a new depth texture.
@@ -13730,6 +13750,91 @@ var SphereGeometry = class _SphereGeometry extends BufferGeometry {
    */
   static fromJSON(data) {
     return new _SphereGeometry(data.radius, data.widthSegments, data.heightSegments, data.phiStart, data.phiLength, data.thetaStart, data.thetaLength);
+  }
+};
+var MeshStandardMaterial = class extends Material {
+  /**
+   * Constructs a new mesh standard material.
+   *
+   * @param {Object} [parameters] - An object with one or more properties
+   * defining the material's appearance. Any property of the material
+   * (including any property from inherited materials) can be passed
+   * in here. Color values can be passed any type of value accepted
+   * by {@link Color#set}.
+   */
+  constructor(parameters) {
+    super();
+    this.isMeshStandardMaterial = true;
+    this.type = "MeshStandardMaterial";
+    this.defines = { "STANDARD": "" };
+    this.color = new Color(16777215);
+    this.roughness = 1;
+    this.metalness = 0;
+    this.map = null;
+    this.lightMap = null;
+    this.lightMapIntensity = 1;
+    this.aoMap = null;
+    this.aoMapIntensity = 1;
+    this.emissive = new Color(0);
+    this.emissiveIntensity = 1;
+    this.emissiveMap = null;
+    this.bumpMap = null;
+    this.bumpScale = 1;
+    this.normalMap = null;
+    this.normalMapType = TangentSpaceNormalMap;
+    this.normalScale = new Vector2(1, 1);
+    this.displacementMap = null;
+    this.displacementScale = 1;
+    this.displacementBias = 0;
+    this.roughnessMap = null;
+    this.metalnessMap = null;
+    this.alphaMap = null;
+    this.envMap = null;
+    this.envMapRotation = new Euler();
+    this.envMapIntensity = 1;
+    this.wireframe = false;
+    this.wireframeLinewidth = 1;
+    this.wireframeLinecap = "round";
+    this.wireframeLinejoin = "round";
+    this.flatShading = false;
+    this.fog = true;
+    this.setValues(parameters);
+  }
+  copy(source) {
+    super.copy(source);
+    this.defines = { "STANDARD": "" };
+    this.color.copy(source.color);
+    this.roughness = source.roughness;
+    this.metalness = source.metalness;
+    this.map = source.map;
+    this.lightMap = source.lightMap;
+    this.lightMapIntensity = source.lightMapIntensity;
+    this.aoMap = source.aoMap;
+    this.aoMapIntensity = source.aoMapIntensity;
+    this.emissive.copy(source.emissive);
+    this.emissiveMap = source.emissiveMap;
+    this.emissiveIntensity = source.emissiveIntensity;
+    this.bumpMap = source.bumpMap;
+    this.bumpScale = source.bumpScale;
+    this.normalMap = source.normalMap;
+    this.normalMapType = source.normalMapType;
+    this.normalScale.copy(source.normalScale);
+    this.displacementMap = source.displacementMap;
+    this.displacementScale = source.displacementScale;
+    this.displacementBias = source.displacementBias;
+    this.roughnessMap = source.roughnessMap;
+    this.metalnessMap = source.metalnessMap;
+    this.alphaMap = source.alphaMap;
+    this.envMap = source.envMap;
+    this.envMapRotation.copy(source.envMapRotation);
+    this.envMapIntensity = source.envMapIntensity;
+    this.wireframe = source.wireframe;
+    this.wireframeLinewidth = source.wireframeLinewidth;
+    this.wireframeLinecap = source.wireframeLinecap;
+    this.wireframeLinejoin = source.wireframeLinejoin;
+    this.flatShading = source.flatShading;
+    this.fog = source.fog;
+    return this;
   }
 };
 var MeshPhongMaterial = class extends Material {
@@ -25948,13 +26053,152 @@ function createThreeRenderer(state, canvas) {
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
   }
-  scene.add(camera);
-  const light = new DirectionalLight(16777215, 1);
-  light.position.set(0.4, 0.8, 1);
-  scene.add(light);
-  scene.add(new AmbientLight(6715289, 0.5));
+  function generateStarfieldTexture(width, height, face, seed) {
+    const canvas2 = document.createElement("canvas");
+    canvas2.width = width;
+    canvas2.height = height;
+    const ctx = canvas2.getContext("2d");
+    const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) / 2);
+    gradient.addColorStop(0, "#000011");
+    gradient.addColorStop(0.5, "#000033");
+    gradient.addColorStop(1, "#000000");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    let rng = seed;
+    const random = () => {
+      rng = (rng * 9301 + 49297) % 233280;
+      return rng / 233280;
+    };
+    const starCount = face === "top" || face === "bottom" ? 800 : 1200;
+    const starColors = ["#ffffff", "#e6e6ff", "#ccccff", "#b3b3ff", "#9999ff"];
+    for (let i = 0; i < starCount; i++) {
+      const x = random() * width;
+      const y = random() * height;
+      const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
+      const brightness = random();
+      let shouldDraw = true;
+      if (face === "top") {
+        const centerDist = Math.abs(y - height / 2) / (height / 2);
+        shouldDraw = random() < 1 - centerDist * 0.7;
+      } else if (face === "bottom") {
+        shouldDraw = random() < 0.3;
+      } else if (face === "front" || face === "back") {
+        shouldDraw = random() < 0.8;
+      }
+      if (shouldDraw) {
+        ctx.fillStyle = starColors[Math.floor(random() * starColors.length)];
+        ctx.globalAlpha = 0.3 + brightness * 0.7;
+        if (size === 1) {
+          ctx.fillRect(x, y, 1, 1);
+        } else {
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    if (face === "front" || face === "back") {
+      ctx.globalAlpha = 0.1;
+      for (let i = 0; i < 3; i++) {
+        const nebulaX = random() * width;
+        const nebulaY = random() * height;
+        const nebulaRadius = 50 + random() * 100;
+        const nebulaGradient = ctx.createRadialGradient(nebulaX, nebulaY, 0, nebulaX, nebulaY, nebulaRadius);
+        nebulaGradient.addColorStop(0, `hsl(${200 + random() * 60}, 30%, 20%)`);
+        nebulaGradient.addColorStop(0.5, `hsl(${200 + random() * 60}, 20%, 10%)`);
+        nebulaGradient.addColorStop(1, "transparent");
+        ctx.fillStyle = nebulaGradient;
+        ctx.beginPath();
+        ctx.arc(nebulaX, nebulaY, nebulaRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    return canvas2;
+  }
+  let skyboxAnimationTime = 0;
+  const skyboxCanvases = [];
+  const skyboxTextures = [];
+  function createAnimatedSkybox() {
+    const textureSize = 512;
+    const baseSeed = 12345;
+    const faces = ["right", "left", "top", "bottom", "front", "back"];
+    faces.forEach((face, index) => {
+      const canvas2 = generateStarfieldTexture(textureSize, textureSize, face, baseSeed + index);
+      skyboxCanvases.push(canvas2);
+      const texture = new CanvasTexture(canvas2);
+      texture.wrapS = ClampToEdgeWrapping;
+      texture.wrapT = ClampToEdgeWrapping;
+      texture.minFilter = LinearFilter;
+      texture.magFilter = LinearFilter;
+      skyboxTextures.push(texture);
+    });
+    const cubeTexture = new CubeTexture(skyboxTextures);
+    cubeTexture.needsUpdate = true;
+    return cubeTexture;
+  }
+  function updateSkyboxAnimation(dt) {
+    skyboxAnimationTime += dt;
+    if (Math.floor(skyboxAnimationTime * 10) % 3 === 0) {
+      skyboxTextures.forEach((texture, index) => {
+        const canvas2 = skyboxCanvases[index];
+        const ctx = canvas2.getContext("2d");
+        const imageData = ctx.getImageData(0, 0, canvas2.width, canvas2.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          if (r > 100 || g > 100 || b > 100) {
+            const twinkle = Math.sin(skyboxAnimationTime * 2 + i * 1e-3) * 0.3 + 0.7;
+            data[i] = Math.max(0, Math.min(255, r * twinkle));
+            data[i + 1] = Math.max(0, Math.min(255, g * twinkle));
+            data[i + 2] = Math.max(0, Math.min(255, b * twinkle));
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        texture.needsUpdate = true;
+      });
+      if (sphereSkybox && sphereSkybox.material instanceof MeshBasicMaterial) {
+        sphereSkybox.material.map = skyboxTextures[0];
+        sphereSkybox.material.needsUpdate = true;
+      }
+    }
+  }
+  function createSphereSkybox() {
+    const skyboxGeometry = new SphereGeometry(5e3, 32, 32);
+    const skyboxMaterial = new MeshBasicMaterial({
+      map: skyboxTextures[0],
+      // Use first face texture for now
+      side: BackSide
+      // Render inside of sphere
+    });
+    const skyboxMesh = new Mesh(skyboxGeometry, skyboxMaterial);
+    return skyboxMesh;
+  }
+  scene.background = new Color(17);
+  const sphereSkybox = createSphereSkybox();
+  scene.add(sphereSkybox);
+  console.log("Using sphere-based skybox");
+  const ambientLight = new AmbientLight(4210752, 0.6);
+  scene.add(ambientLight);
+  const directionalLight = new DirectionalLight(16777215, 0.8);
+  directionalLight.position.set(1e3, 1e3, 1e3);
+  scene.add(directionalLight);
   const boxGeom = new BoxGeometry(state.simConfig.simBounds.width, state.simConfig.simBounds.height, state.simConfig.simBounds.depth);
-  const boxMat = new MeshBasicMaterial({ color: 725536, transparent: true, opacity: 0.1, wireframe: true });
+  const boxMat = new MeshStandardMaterial({
+    color: 4886754,
+    // Blueish tint
+    transparent: true,
+    opacity: 0.4,
+    // Increased from 0.15 for better visibility
+    wireframe: true,
+    emissive: 1724282,
+    // Subtle blue emissive glow
+    emissiveIntensity: 0.3,
+    // Increased from 0.1
+    roughness: 0.8,
+    metalness: 0.2
+  });
   const box = new Mesh(boxGeom, boxMat);
   box.position.set(state.simConfig.simBounds.width / 2, state.simConfig.simBounds.height / 2, state.simConfig.simBounds.depth / 2);
   scene.add(box);
@@ -26201,6 +26445,7 @@ function createThreeRenderer(state, canvas) {
     updateCameraPosition();
     syncEntities();
     updateTransforms();
+    updateSkyboxAnimation(_dt);
     renderer.render(scene, camera);
   }
   window.addEventListener("resize", resize);
@@ -26344,6 +26589,49 @@ function wireControls(state, ui) {
   updateRunLabel();
   updateScores();
 }
+function resetToCinematicView(state) {
+  if (!state.renderer || state.ships.length === 0) return;
+  let centerX = 0, centerY = 0, centerZ = 0;
+  let shipCount = 0;
+  for (const ship of state.ships) {
+    if (ship.health > 0) {
+      centerX += ship.pos.x;
+      centerY += ship.pos.y;
+      centerZ += ship.pos.z;
+      shipCount++;
+    }
+  }
+  if (shipCount === 0) return;
+  centerX /= shipCount;
+  centerY /= shipCount;
+  centerZ /= shipCount;
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const ship of state.ships) {
+    if (ship.health > 0) {
+      minX = Math.min(minX, ship.pos.x);
+      maxX = Math.max(maxX, ship.pos.x);
+      minY = Math.min(minY, ship.pos.y);
+      maxY = Math.max(maxY, ship.pos.y);
+      minZ = Math.min(minZ, ship.pos.z);
+      maxZ = Math.max(maxZ, ship.pos.z);
+    }
+  }
+  const spreadX = maxX - minX;
+  const spreadY = maxY - minY;
+  const spreadZ = maxZ - minZ;
+  const maxSpread = Math.max(spreadX, spreadY, spreadZ);
+  state.renderer.cameraTarget.x = centerX;
+  state.renderer.cameraTarget.y = centerY;
+  state.renderer.cameraTarget.z = centerZ;
+  const fovRadians = RendererConfig.camera.fov * Math.PI / 180;
+  const optimalDistance = maxSpread / 2 / Math.tan(fovRadians / 2) * 1.5;
+  state.renderer.cameraDistance = Math.max(300, Math.min(2e3, optimalDistance));
+  state.renderer.cameraRotation.x = -Math.PI / 6;
+  state.renderer.cameraRotation.y = 0;
+  state.renderer.cameraRotation.z = 0;
+}
 function setupCameraControls(state, canvas) {
   if (!state.renderer) return;
   let isMouseDown = false;
@@ -26371,13 +26659,17 @@ function setupCameraControls(state, canvas) {
   canvas.addEventListener("wheel", (e) => {
     if (!state.renderer) return;
     e.preventDefault();
-    const zoomSpeed = 50;
+    const zoomSpeed = 100;
     state.renderer.cameraDistance += e.deltaY > 0 ? zoomSpeed : -zoomSpeed;
-    state.renderer.cameraDistance = Math.max(200, Math.min(2e3, state.renderer.cameraDistance));
+    state.renderer.cameraDistance = Math.max(100, Math.min(3e3, state.renderer.cameraDistance));
   });
   const keys = {};
   document.addEventListener("keydown", (e) => {
     keys[e.code] = true;
+    if (e.code === "KeyC" && state.renderer) {
+      e.preventDefault();
+      resetToCinematicView(state);
+    }
   });
   document.addEventListener("keyup", (e) => {
     keys[e.code] = false;

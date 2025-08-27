@@ -3,6 +3,8 @@ import { DefaultSimConfig } from '../config/simConfig.js';
 import { SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
 import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
+import { AIController } from './aiController.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -24,6 +26,7 @@ export function createInitialState(seed?: string): GameState {
     ships: [],
     bullets: [],
     score: { red: 0, blue: 0 },
+    behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
   };
 }
 
@@ -39,6 +42,8 @@ export function resetState(state: GameState, seed?: string) {
   state.ships = [];
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
+  // Reset behavior config to defaults
+  state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
 }
 
 function allocateId(state: GameState): EntityId { return state.nextId++; }

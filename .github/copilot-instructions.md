@@ -3,6 +3,8 @@
 SpaceAutoBattler — Copilot Quick Reference
 
 This file tells the coding agent how to make safe, small, test-backed changes in the repository. Keep edits minimal, test-driven, and localized to TypeScript source in `/src` unless the task explicitly requires otherwise.
+
+For a complete overview of the `/src` directory structure and module organization, see `spec/src-structure.md`.
 -->
 
 # SpaceAutoBattler — Copilot Quick Reference
@@ -11,9 +13,9 @@ This file tells the coding agent how to make safe, small, test-backed changes in
 
 - Edit only TypeScript files under `src/`. Do not modify generated JS build artifacts or files outside the source tree unless the user asks and gives explicit permission.
 - All runtime state (simulation & renderer) must live on the canonical `GameState` type defined in `src/types/index.ts`. Do not introduce scattered module-level state.
-- For any asset/visual work prefer the existing pooling helpers in `src/entities.ts` and the `assetPool` on `GameState` (textures/sprites/effects). Follow existing PoolEntry semantics when available.
-- Use existing configuration helpers (for example `config/*`) rather than hard-coding values. Prefer `getDefaultBounds()` and renderer config values for layout and scale.
-- Preserve determinism: the simulation uses seeded RNG (`src/rng.ts`) — don't break deterministic behavior in simulation code paths.
+- For any asset/visual work prefer the existing pooling helpers and the `assetPool` on `GameState` (textures/sprites/effects). Follow existing PoolEntry semantics when available.
+- Use existing configuration helpers (for example `config/*`) rather than hard-coding values. Prefer renderer config values for layout and scale.
+- Preserve determinism: the simulation uses seeded RNG (`src/utils/rng.ts`) — don't break deterministic behavior in simulation code paths.
 
 ## Workflow & safety checklist
 
@@ -28,13 +30,33 @@ npm test
 ```
 
 5. Fix any TypeScript errors or failing tests before committing.
-6. Update `spec/IMPLEMENTATION_STATUS.md` with a 1–2 line summary (what changed, where, and test status).
+6. Update implementation status and documentation as needed.
 
 ## Pooling & renderer guidance
 
-- Renderer-owned transient visuals (explosions, flashes, particles) should use the renderer's pools: call `acquireEffect`/`releaseEffect` or `acquireSprite`/`releaseSprite` and reset on acquire.
-- GPU resources (textures) must be created/released only on the main thread where GL context is available. If simulation runs in a worker, use a message/lease protocol to request renderer-side allocations.
-- Per-key pool metadata (freeList, allocated, config, disposer) is now part of `GameState.assetPool` — use it to enforce per-key caps and invoke disposers (e.g., `gl.deleteTexture`) on trim/overflow.
+- **Three.js Integration**: Use Three.js abstractions (Object3D, Mesh, Material) rather than direct WebGL calls. Always dispose of Three.js objects properly using `dispose()` methods.
+- **Rapier3D Physics**: Physics bodies and colliders should be managed separately from visual representations. Use physics simulation in Web Worker for performance.
+- **Postprocessing**: Apply postprocessing effects (bloom, tone mapping, etc.) through Three.js EffectComposer. Configure effects in renderer config, not hardcoded.
+- **Asset Management**: Use `GameState.assetPool` for Three.js textures, geometries, and materials. Implement proper cleanup with `texture.dispose()`, `geometry.dispose()`, `material.dispose()`.
+- **Renderer-Physics Separation**: 
+  - Simulation Worker: Handles Rapier3D physics world, collision detection, rigid body updates
+  - Main Thread: Updates Three.js Object3D transforms from physics data, manages rendering
+  - Never access Three.js objects from physics worker thread
+- **Pooling Strategy**: 
+  - Pool Three.js Meshes and Materials for frequently created/destroyed objects (bullets, particles, effects)
+  - Use Object3D pooling for complex hierarchies
+  - Implement pool warming for critical assets to avoid frame drops
+  - Clean up unused pools during level transitions
+
+## Game/Simulation/Renderer Logic Separation
+
+- **Game Logic** (`src/core/`): Pure game state management, entity spawning, AI decision-making, XP/leveling systems
+- **Simulation Logic** (`src/simWorker.ts`): Physics simulation (Rapier3D), collision detection, deterministic calculations using seeded RNG
+- **Renderer Logic** (`src/renderer/`): Three.js scene management, visual effects, postprocessing, camera controls
+- **Configuration** (`src/config/`): All balance parameters, visual settings, physics constants - no logic, only data
+- **Communication Pattern**: Main thread ↔ Worker messages for physics data, GameState synchronization, render updates
+- **Determinism**: Keep all random calculations in simulation worker using seeded RNG for replay capability
+- **Performance**: Isolate heavy physics calculations in worker thread, keep rendering optimizations on main thread
 
 ## Tests & fixtures
 
@@ -57,5 +79,6 @@ npm test
 
 - Owner: deadronos
 - Main branch: `main`
+- Project Structure: See `spec/src-structure.md` for complete `/src` directory overview
 
 

@@ -65,6 +65,12 @@ export interface Bullet {
 export interface TurretState {
   id: string; // from config
   cooldownLeft: number; // seconds
+  // AI state for independent targeting
+  aiState?: {
+    targetId: EntityId | null;
+    lastTargetUpdate: number;
+    leadTargetPos?: Vector3;
+  };
 }
 
 export interface Leveling {
@@ -96,6 +102,18 @@ export interface Ship {
   fighterSpawnCdLeft?: number; // seconds
   parentCarrierId?: EntityId; // for fighters spawned by carriers
   lastShieldHitTime?: number; // timestamp when shield was last hit
+  // AI state
+  aiState?: {
+    currentIntent: import('../config/behaviorConfig.js').AIIntent;
+    intentEndTime: number;
+    lastIntentReevaluation: number;
+    roamingPattern?: import('../config/behaviorConfig.js').RoamingPattern;
+    roamingStartTime?: number;
+    formationId?: string;
+    formationPosition?: Vector3;
+    lastTargetSwitchTime?: number;
+    preferredRange?: number;
+  };
 }
 
 export interface ScoreBoard {
@@ -139,6 +157,7 @@ export interface GameState {
   bullets: Bullet[];
   score: ScoreBoard;
   renderer?: RendererHandles;
+  behaviorConfig?: import('../config/behaviorConfig.js').BehaviorConfig;
 }
 
 export type UIElements = {

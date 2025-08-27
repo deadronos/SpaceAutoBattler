@@ -29,16 +29,213 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
   }
 
-  scene.add(camera);
+  // Procedural Skybox Generation
+  function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
 
-  const light = new THREE.DirectionalLight(0xffffff, 1.0);
-  light.position.set(0.4, 0.8, 1);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x667799, 0.5));
+    // Fill with deep space background
+    const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
+    gradient.addColorStop(0, '#000011');
+    gradient.addColorStop(0.5, '#000033');
+    gradient.addColorStop(1, '#000000');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
 
-  // World boundaries visualization (3D box)
+    // Simple seeded random for consistent generation
+    let rng = seed;
+    const random = () => {
+      rng = (rng * 9301 + 49297) % 233280;
+      return rng / 233280;
+    };
+
+    // Generate stars based on face
+    const starCount = face === 'top' || face === 'bottom' ? 800 : 1200;
+    const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
+
+    for (let i = 0; i < starCount; i++) {
+      const x = random() * width;
+      const y = random() * height;
+
+      // Vary star size and brightness
+      const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
+      const brightness = random();
+
+      // Different star patterns for different faces
+      let shouldDraw = true;
+      if (face === 'top') {
+        // Milky Way-like band across top face
+        const centerDist = Math.abs(y - height/2) / (height/2);
+        shouldDraw = random() < (1 - centerDist * 0.7);
+      } else if (face === 'bottom') {
+        // Sparse stars on bottom face
+        shouldDraw = random() < 0.3;
+      } else if (face === 'front' || face === 'back') {
+        // Dense star fields on side faces
+        shouldDraw = random() < 0.8;
+      }
+
+      if (shouldDraw) {
+        ctx.fillStyle = starColors[Math.floor(random() * starColors.length)];
+        ctx.globalAlpha = 0.3 + brightness * 0.7;
+
+        if (size === 1) {
+          ctx.fillRect(x, y, 1, 1);
+        } else {
+          ctx.beginPath();
+          ctx.arc(x, y, size/2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Add some nebula-like structures for visual interest
+    if (face === 'front' || face === 'back') {
+      ctx.globalAlpha = 0.1;
+      for (let i = 0; i < 3; i++) {
+        const nebulaX = random() * width;
+        const nebulaY = random() * height;
+        const nebulaRadius = 50 + random() * 100;
+
+        const nebulaGradient = ctx.createRadialGradient(nebulaX, nebulaY, 0, nebulaX, nebulaY, nebulaRadius);
+        nebulaGradient.addColorStop(0, `hsl(${200 + random() * 60}, 30%, 20%)`);
+        nebulaGradient.addColorStop(0.5, `hsl(${200 + random() * 60}, 20%, 10%)`);
+        nebulaGradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = nebulaGradient;
+        ctx.beginPath();
+        ctx.arc(nebulaX, nebulaY, nebulaRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    return canvas;
+  }
+
+  // Animated Skybox System
+  let skyboxAnimationTime = 0;
+  const skyboxCanvases: HTMLCanvasElement[] = [];
+  const skyboxTextures: THREE.CanvasTexture[] = [];
+
+  function createAnimatedSkybox(): THREE.CubeTexture {
+    const textureSize = 512; // Smaller for animation performance
+    const baseSeed = 12345;
+
+    const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+
+    // Create animated canvases and textures
+    faces.forEach((face, index) => {
+      const canvas = generateStarfieldTexture(textureSize, textureSize, face, baseSeed + index);
+      skyboxCanvases.push(canvas);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      skyboxTextures.push(texture);
+    });
+
+    const cubeTexture = new THREE.CubeTexture(skyboxTextures);
+    cubeTexture.needsUpdate = true;
+
+    return cubeTexture;
+  }
+
+  function updateSkyboxAnimation(dt: number) {
+    skyboxAnimationTime += dt;
+
+    // Update star twinkling every few frames for performance
+    if (Math.floor(skyboxAnimationTime * 10) % 3 === 0) {
+      skyboxTextures.forEach((texture, index) => {
+        const canvas = skyboxCanvases[index];
+        const ctx = canvas.getContext('2d')!;
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Add subtle twinkling effect to bright stars
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Only affect bright pixels (stars)
+          if (r > 100 || g > 100 || b > 100) {
+            const twinkle = Math.sin(skyboxAnimationTime * 2 + i * 0.001) * 0.3 + 0.7;
+            data[i] = Math.max(0, Math.min(255, r * twinkle));
+            data[i + 1] = Math.max(0, Math.min(255, g * twinkle));
+            data[i + 2] = Math.max(0, Math.min(255, b * twinkle));
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        texture.needsUpdate = true;
+      });
+
+      // Update sphere skybox texture
+      if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial) {
+        sphereSkybox.material.map = skyboxTextures[0]; // Use first face for sphere
+        sphereSkybox.material.needsUpdate = true;
+      }
+    }
+  }
+
+  // Create animated skybox using sphere approach (more reliable than CubeTexture)
+  function createSphereSkybox(): THREE.Mesh {
+    const skyboxGeometry = new THREE.SphereGeometry(5000, 32, 32); // Large sphere
+    const skyboxMaterial = new THREE.MeshBasicMaterial({
+      map: skyboxTextures[0], // Use first face texture for now
+      side: THREE.BackSide // Render inside of sphere
+    });
+    const skyboxMesh = new THREE.Mesh(skyboxGeometry, skyboxMaterial);
+    return skyboxMesh;
+  }
+
+  // Create animated skybox instead of static one
+  // const animatedSkyboxTexture = createAnimatedSkybox();
+  // scene.background = animatedSkyboxTexture;
+
+  // Debug: Try simple color background first
+  scene.background = new THREE.Color(0x000011); // Dark blue space color
+
+  // Alternative: Try sphere-based skybox
+  const sphereSkybox = createSphereSkybox();
+  scene.add(sphereSkybox);
+
+  // Debug: Log skybox creation
+  console.log('Using sphere-based skybox');
+
+  // Force texture update on next frame to ensure it's ready
+  // setTimeout(() => {
+  //   animatedSkyboxTexture.needsUpdate = true;
+  //   skyboxTextures.forEach(texture => {
+  //     texture.needsUpdate = true;
+  //   });
+  //   console.log('Skybox textures updated');
+  // }, 100);
+
+  // Add some basic lighting to help with wireframe visibility
+  const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+  scene.add(ambientLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(1000, 1000, 1000);
+  scene.add(directionalLight);
+
+  // World boundaries visualization (3D box) with enhanced wireframe
   const boxGeom = new THREE.BoxGeometry(state.simConfig.simBounds.width, state.simConfig.simBounds.height, state.simConfig.simBounds.depth);
-  const boxMat = new THREE.MeshBasicMaterial({ color: 0x0b1220, transparent: true, opacity: 0.1, wireframe: true });
+  const boxMat = new THREE.MeshStandardMaterial({
+    color: 0x4a90e2, // Blueish tint
+    transparent: true,
+    opacity: 0.4, // Increased from 0.15 for better visibility
+    wireframe: true,
+    emissive: 0x1a4f7a, // Subtle blue emissive glow
+    emissiveIntensity: 0.3, // Increased from 0.1
+    roughness: 0.8,
+    metalness: 0.2
+  });
   const box = new THREE.Mesh(boxGeom, boxMat);
   box.position.set(state.simConfig.simBounds.width/2, state.simConfig.simBounds.height/2, state.simConfig.simBounds.depth/2);
   scene.add(box);
@@ -335,6 +532,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     updateCameraPosition();
     syncEntities();
     updateTransforms();
+
+    // Update animated skybox
+    updateSkyboxAnimation(_dt);
+
     renderer.render(scene, camera);
   }
 
