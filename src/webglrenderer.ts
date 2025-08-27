@@ -22,6 +22,7 @@ import {
 import { InstancedRenderer, InstanceData, BatchRenderCall } from "./webgl/instancedRenderer";
 import { AtlasManager } from "./assets/textureAtlas";
 import { AdvancedTextureManager } from "./webgl/advancedTextureManager";
+import { SVGRasterManager } from "./assets/svgRasterManager";
 
 export class WebGLRenderer {
   private canvas: HTMLCanvasElement;
@@ -47,6 +48,7 @@ export class WebGLRenderer {
 
   // Phase 3: Advanced texture management
   private advancedTextures: AdvancedTextureManager | null = null;
+  private svgRasterManager: SVGRasterManager | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -67,6 +69,7 @@ export class WebGLRenderer {
       
       // Initialize Phase 3 components
       this.initializeAdvancedTextures();
+      this.initializeSVGRasterization();
       
       // Prepare starfield texture (procedural) lazily
       (this as any)._starfield = (this as any)._starfield || null;
@@ -491,6 +494,30 @@ export class WebGLRenderer {
   }
 
   /**
+   * Initialize Phase 3 enhanced SVG rasterization with OffscreenCanvas workers
+   */
+  private initializeSVGRasterization(): void {
+    try {
+      // Initialize the SVG raster manager for background processing
+      this.svgRasterManager = new SVGRasterManager(
+        '/src/workers/svgRasterWorker.js', // Worker path
+        {
+          backgroundColor: 'transparent',
+          devicePixelRatio: window.devicePixelRatio || 1,
+          quality: 'high',
+          antialias: true,
+          cacheTTL: 300000, // 5 minutes
+          usePersistentCache: true
+        }
+      );
+      console.log('✅ Enhanced SVG rasterization enabled with OffscreenCanvas workers');
+    } catch (error) {
+      console.warn('Failed to initialize SVG rasterization:', error);
+      this.svgRasterManager = null;
+    }
+  }
+
+  /**
    * Get advanced texture capabilities and statistics
    */
   getAdvancedTextureInfo(): { 
@@ -513,6 +540,37 @@ export class WebGLRenderer {
       anisotropyAvailable: anisotropyInfo.available,
       maxAnisotropy: anisotropyInfo.maxAnisotropy,
       memoryStats: this.advancedTextures.getMemoryStats()
+    };
+  }
+
+  /**
+   * Get enhanced SVG rasterization capabilities and statistics
+   */
+  getSVGRasterizationInfo(): {
+    enabled: boolean;
+    workerSupported: boolean;
+    persistentCacheEnabled: boolean;
+    cacheStats?: {
+      size: number;
+      memoryMB: number;
+    };
+  } {
+    if (!this.svgRasterManager) {
+      return {
+        enabled: false,
+        workerSupported: false,
+        persistentCacheEnabled: false
+      };
+    }
+
+    return {
+      enabled: true,
+      workerSupported: typeof OffscreenCanvas !== 'undefined',
+      persistentCacheEnabled: true,
+      cacheStats: {
+        size: 0, // TODO: Add cache stats to SVGRasterManager
+        memoryMB: 0
+      }
     };
   }
   
@@ -806,6 +864,14 @@ export class WebGLRenderer {
           if (this.advancedTextures) {
             this.advancedTextures.dispose();
             this.advancedTextures = null;
+          }
+        } catch {}
+
+        // Phase 3: Cleanup SVG rasterization
+        try {
+          if (this.svgRasterManager) {
+            this.svgRasterManager.dispose();
+            this.svgRasterManager = null;
           }
         } catch {}
       } catch {}

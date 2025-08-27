@@ -7966,6 +7966,268 @@ var AtlasManager = class {
   }
 };
 
+// src/webgl/advancedTextureManager.ts
+var AdvancedTextureManager = class {
+  gl;
+  anisotropyExt;
+  textures = /* @__PURE__ */ new Map();
+  defaultConfig;
+  constructor(gl, defaultConfig) {
+    this.gl = gl;
+    this.anisotropyExt = this.initializeAnisotropyExtension();
+    this.defaultConfig = {
+      generateMipmaps: true,
+      useAnisotropic: true,
+      maxAnisotropy: Math.min(16, this.anisotropyExt.maxAnisotropy),
+      lodBias: 0,
+      wrapS: gl.CLAMP_TO_EDGE,
+      wrapT: gl.CLAMP_TO_EDGE,
+      magFilter: gl.LINEAR,
+      minFilter: gl.LINEAR_MIPMAP_LINEAR,
+      ...defaultConfig
+    };
+  }
+  initializeAnisotropyExtension() {
+    const ext = this.gl.getExtension("EXT_texture_filter_anisotropic") || this.gl.getExtension("MOZ_EXT_texture_filter_anisotropic") || this.gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
+    let maxAnisotropy = 1;
+    if (ext) {
+      maxAnisotropy = this.gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+    }
+    return {
+      ext,
+      maxAnisotropy,
+      available: ext !== null
+    };
+  }
+  /**
+   * Create a texture with advanced LOD and filtering options
+   */
+  createAdvancedTexture(key, source, config2) {
+    const finalConfig = { ...this.defaultConfig, ...config2 };
+    const gl = this.gl;
+    const texture = gl.createTexture();
+    if (!texture) {
+      throw new Error("Failed to create WebGL texture");
+    }
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, finalConfig.wrapS);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, finalConfig.wrapT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, finalConfig.magFilter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, finalConfig.minFilter);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    const width = source.width || source.width;
+    const height = source.height || source.height;
+    const isPowerOfTwo = this.isPowerOfTwo(width) && this.isPowerOfTwo(height);
+    if (finalConfig.generateMipmaps && isPowerOfTwo) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+    } else if (finalConfig.generateMipmaps && !isPowerOfTwo) {
+      console.warn(`Cannot generate mipmaps for non-power-of-two texture: ${width}x${height}`);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }
+    if (finalConfig.useAnisotropic && this.anisotropyExt.available && this.anisotropyExt.ext) {
+      const anisotropy = Math.min(finalConfig.maxAnisotropy, this.anisotropyExt.maxAnisotropy);
+      gl.texParameterf(gl.TEXTURE_2D, this.anisotropyExt.ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+    }
+    const lodSet = {
+      baseTexture: texture,
+      levels: [{
+        source,
+        width,
+        height,
+        level: 0
+      }],
+      config: finalConfig,
+      width,
+      height,
+      gl
+    };
+    this.textures.set(key, lodSet);
+    return lodSet;
+  }
+  /**
+   * Add additional LOD levels to an existing texture
+   */
+  addLODLevel(key, level, source) {
+    const lodSet = this.textures.get(key);
+    if (!lodSet) {
+      console.warn(`Texture ${key} not found for LOD level addition`);
+      return false;
+    }
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, lodSet.baseTexture);
+    gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    lodSet.levels.push({
+      source,
+      width: source.width || source.width,
+      height: source.height || source.height,
+      level
+    });
+    lodSet.levels.sort((a, b) => a.level - b.level);
+    return true;
+  }
+  /**
+   * Generate LOD levels automatically by downsampling
+   */
+  generateLODLevels(key, maxLevels = 8) {
+    const lodSet = this.textures.get(key);
+    if (!lodSet || lodSet.levels.length === 0) {
+      throw new Error(`Texture ${key} not found or has no base level`);
+    }
+    const baseLevel = lodSet.levels[0];
+    const generatedLevels = [];
+    let currentWidth = baseLevel.width;
+    let currentHeight = baseLevel.height;
+    let currentSource = baseLevel.source;
+    for (let level = 1; level <= maxLevels && (currentWidth > 1 || currentHeight > 1); level++) {
+      const nextWidth = Math.max(1, Math.floor(currentWidth / 2));
+      const nextHeight = Math.max(1, Math.floor(currentHeight / 2));
+      const downsampledCanvas = this.downsampleTexture(currentSource, nextWidth, nextHeight);
+      this.addLODLevel(key, level, downsampledCanvas);
+      const lodLevel = {
+        source: downsampledCanvas,
+        width: nextWidth,
+        height: nextHeight,
+        level
+      };
+      generatedLevels.push(lodLevel);
+      currentWidth = nextWidth;
+      currentHeight = nextHeight;
+      currentSource = downsampledCanvas;
+    }
+    return generatedLevels;
+  }
+  /**
+   * Downsample a texture source to a smaller size
+   */
+  downsampleTexture(source, targetWidth, targetHeight) {
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get 2D context for downsampling");
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+    return canvas;
+  }
+  /**
+   * Get texture LOD set by key
+   */
+  getTexture(key) {
+    return this.textures.get(key);
+  }
+  /**
+   * Bind texture with optimal LOD for given zoom level
+   */
+  bindTextureWithLOD(key, zoomLevel = 1, textureUnit = 0) {
+    const lodSet = this.textures.get(key);
+    if (!lodSet) {
+      return false;
+    }
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0 + textureUnit);
+    gl.bindTexture(gl.TEXTURE_2D, lodSet.baseTexture);
+    if (lodSet.config.lodBias && lodSet.config.lodBias !== 0) {
+      const adjustedBias = lodSet.config.lodBias + Math.log2(1 / zoomLevel);
+    }
+    return true;
+  }
+  /**
+   * Check if a number is a power of two
+   */
+  isPowerOfTwo(value) {
+    return (value & value - 1) === 0 && value !== 0;
+  }
+  /**
+   * Get anisotropy information
+   */
+  getAnisotropyInfo() {
+    return { ...this.anisotropyExt };
+  }
+  /**
+   * Update texture filtering parameters
+   */
+  updateTextureFiltering(key, config2) {
+    const lodSet = this.textures.get(key);
+    if (!lodSet) {
+      return false;
+    }
+    const gl = this.gl;
+    const updatedConfig = { ...lodSet.config, ...config2 };
+    gl.bindTexture(gl.TEXTURE_2D, lodSet.baseTexture);
+    if (config2.magFilter !== void 0) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, config2.magFilter);
+    }
+    if (config2.minFilter !== void 0) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, config2.minFilter);
+    }
+    if (config2.wrapS !== void 0) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, config2.wrapS);
+    }
+    if (config2.wrapT !== void 0) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, config2.wrapT);
+    }
+    if (config2.useAnisotropic !== void 0 && config2.maxAnisotropy !== void 0) {
+      if (config2.useAnisotropic && this.anisotropyExt.available && this.anisotropyExt.ext) {
+        const anisotropy = Math.min(config2.maxAnisotropy, this.anisotropyExt.maxAnisotropy);
+        gl.texParameterf(gl.TEXTURE_2D, this.anisotropyExt.ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+      }
+    }
+    lodSet.config = updatedConfig;
+    return true;
+  }
+  /**
+   * Get texture memory usage statistics
+   */
+  getMemoryStats() {
+    let totalMemory = 0;
+    const details = [];
+    for (const [key, lodSet] of this.textures) {
+      let textureMemory = 0;
+      for (const level of lodSet.levels) {
+        textureMemory += level.width * level.height * 4;
+      }
+      const memoryMB = textureMemory / (1024 * 1024);
+      totalMemory += textureMemory;
+      details.push({
+        key,
+        memoryMB,
+        levels: lodSet.levels.length
+      });
+    }
+    return {
+      totalTextures: this.textures.size,
+      totalMemoryMB: totalMemory / (1024 * 1024),
+      details: details.sort((a, b) => b.memoryMB - a.memoryMB)
+      // Sort by memory usage
+    };
+  }
+  /**
+   * Dispose of a texture and free GPU memory
+   */
+  disposeTexture(key) {
+    const lodSet = this.textures.get(key);
+    if (!lodSet) {
+      return false;
+    }
+    lodSet.gl.deleteTexture(lodSet.baseTexture);
+    this.textures.delete(key);
+    return true;
+  }
+  /**
+   * Dispose of all textures
+   */
+  dispose() {
+    for (const [key] of this.textures) {
+      this.disposeTexture(key);
+    }
+    this.textures.clear();
+  }
+};
+
 // src/webglrenderer.ts
 var WebGLRenderer = class {
   canvas;
@@ -7986,6 +8248,8 @@ var WebGLRenderer = class {
   instancedRenderer = null;
   atlasManager = null;
   instancedRenderingEnabled = false;
+  // Phase 3: Advanced texture management
+  advancedTextures = null;
   constructor(canvas) {
     this.canvas = canvas;
   }
@@ -7997,6 +8261,7 @@ var WebGLRenderer = class {
       this.gl = gl;
       gl.clearColor(0.02, 0.03, 0.06, 1);
       this.initializeInstancedRendering();
+      this.initializeAdvancedTextures();
       this._starfield = this._starfield || null;
       this._starfieldSize = this._starfieldSize || 1024;
       return true;
@@ -8251,15 +8516,42 @@ var WebGLRenderer = class {
    * Setup enhanced texture filtering with mipmapping support
    */
   setupTextureFiltering(gl, width, height) {
-    const isPOT = this.isPowerOfTwo(width) && this.isPowerOfTwo(height);
-    if (isPOT) {
-      gl.generateMipmap(gl.TEXTURE_2D);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      this.tryEnableAnisotropicFiltering(gl);
+    if (this.advancedTextures) {
+      const config2 = {
+        generateMipmaps: this.isPowerOfTwo(width) && this.isPowerOfTwo(height),
+        useAnisotropic: true,
+        maxAnisotropy: 8,
+        // Higher quality for game assets
+        lodBias: 0
+      };
+      if (config2.generateMipmaps) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+      if (config2.useAnisotropic) {
+        const anisotropyInfo = this.advancedTextures.getAnisotropyInfo();
+        if (anisotropyInfo.available && anisotropyInfo.ext) {
+          const ext = anisotropyInfo.ext;
+          const maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+          const anisotropy = Math.min(config2.maxAnisotropy, maxAnisotropy);
+          gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+        }
+      }
     } else {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      const isPOT = this.isPowerOfTwo(width) && this.isPowerOfTwo(height);
+      if (isPOT) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        this.tryEnableAnisotropicFiltering(gl);
+      } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
     }
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -8318,6 +8610,42 @@ var WebGLRenderer = class {
       console.warn("Failed to initialize instanced rendering:", error);
       this.instancedRenderingEnabled = false;
     }
+  }
+  /**
+   * Initialize Phase 3 advanced texture management
+   */
+  initializeAdvancedTextures() {
+    if (!this.gl) return;
+    try {
+      const ext = this.gl.getExtension("EXT_texture_filter_anisotropic");
+      if (ext) {
+        this.advancedTextures = new AdvancedTextureManager(this.gl);
+        console.log("\u2705 Advanced texture management enabled");
+      } else {
+        console.log("\u2139\uFE0F Advanced texture management not available (no anisotropic filtering)");
+      }
+    } catch (error) {
+      console.warn("Failed to initialize advanced textures:", error);
+    }
+  }
+  /**
+   * Get advanced texture capabilities and statistics
+   */
+  getAdvancedTextureInfo() {
+    if (!this.advancedTextures) {
+      return {
+        enabled: false,
+        anisotropyAvailable: false,
+        maxAnisotropy: 0
+      };
+    }
+    const anisotropyInfo = this.advancedTextures.getAnisotropyInfo();
+    return {
+      enabled: true,
+      anisotropyAvailable: anisotropyInfo.available,
+      maxAnisotropy: anisotropyInfo.maxAnisotropy,
+      memoryStats: this.advancedTextures.getMemoryStats()
+    };
   }
   /**
    * Render sprites using instanced rendering when possible
@@ -8542,6 +8870,13 @@ var WebGLRenderer = class {
           if (this.atlasManager) {
             this.atlasManager.dispose();
             this.atlasManager = null;
+          }
+        } catch {
+        }
+        try {
+          if (this.advancedTextures) {
+            this.advancedTextures.dispose();
+            this.advancedTextures = null;
           }
         } catch {
         }

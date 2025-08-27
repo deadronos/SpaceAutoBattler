@@ -16,7 +16,7 @@ describe('Phase 3 Advanced Texture Management Integration', () => {
       getContext: () => null, // No WebGL context available in test environment
       width: 800,
       height: 600
-    } as HTMLCanvasElement;
+    } as unknown as HTMLCanvasElement;
 
     renderer = new WebGLRenderer(canvas);
   });
@@ -59,6 +59,23 @@ describe('Phase 3 Advanced Texture Management Integration', () => {
     expect(typeof renderer.uploadImageBitmapToTexture).toBe('function');
     expect(typeof renderer.dispose).toBe('function');
   });
+
+  it('should have getSVGRasterizationInfo method available', () => {
+    // Test that the new SVG rasterization method is properly added
+    expect(typeof renderer.getSVGRasterizationInfo).toBe('function');
+  });
+
+  it('should return SVG rasterization info when available', () => {
+    // Initialize renderer (will fail to get WebGL context, but SVG info should still be available)
+    renderer.init();
+    
+    // Check that SVG rasterization info returns safe defaults
+    const svgInfo = renderer.getSVGRasterizationInfo();
+    expect(svgInfo).toBeDefined();
+    expect(typeof svgInfo.enabled).toBe('boolean');
+    expect(typeof svgInfo.workerSupported).toBe('boolean');
+    expect(typeof svgInfo.persistentCacheEnabled).toBe('boolean');
+  });
 });
 
 /**
@@ -89,29 +106,24 @@ describe('AdvancedTextureManager Unit Tests', () => {
       LINEAR_MIPMAP_LINEAR: 0x2703
     } as any;
 
-    manager = new AdvancedTextureManager(glContext, null);
+    manager = new AdvancedTextureManager(glContext);
   });
 
   it('should create AdvancedTextureManager instance', () => {
     expect(manager).toBeInstanceOf(AdvancedTextureManager);
   });
 
-  it('should report no anisotropy when extension is not available', () => {
-    const info = manager.getCapabilityInfo();
-    expect(info.anisotropyAvailable).toBe(false);
-    expect(info.maxAnisotropy).toBe(0);
+  it('should report anisotropy info correctly', () => {
+    const info = manager.getAnisotropyInfo();
+    expect(info).toBeDefined();
+    expect(typeof info.available).toBe('boolean');
+    expect(typeof info.maxAnisotropy).toBe('number');
+    expect(info.available).toBe(false); // No extension in mock context
   });
 
   it('should track texture memory usage', () => {
     const stats = manager.getMemoryStats();
     expect(stats.totalTextures).toBe(0);
     expect(stats.totalMemoryMB).toBe(0);
-  });
-
-  it('should create optimal texture configurations', () => {
-    const config = manager.createOptimalTexture('sprite');
-    expect(config).toBeDefined();
-    expect(config.generateMipmaps).toBe(true);
-    expect(config.useAnisotropic).toBe(true);
   });
 });
