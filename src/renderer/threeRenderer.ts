@@ -12,7 +12,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Initialize camera controls
   const cameraRotation = { x: -Math.PI/6, y: 0, z: 0 }; // pitch, yaw, roll
-  const cameraDistance = RendererConfig.camera.cameraZ;
+  // Make camera distance mutable inside renderer and expose via getter/setter so callers
+  // (for example `resetToCinematicView` in main.ts) can update it and the internal
+  // camera positioning will pick up the change.
+  let _cameraDistance = RendererConfig.camera.cameraZ;
   const cameraTarget = {
     x: state.simConfig.simBounds.width / 2,
     y: state.simConfig.simBounds.height / 2,
@@ -23,9 +26,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   updateCameraPosition();
 
   function updateCameraPosition() {
-    const x = cameraTarget.x + cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
-    const y = cameraTarget.y + cameraDistance * Math.sin(cameraRotation.x);
-    const z = cameraTarget.z + cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
+  const x = cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
+  const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
+  const z = cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
 
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
@@ -544,14 +547,40 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio, 2);
-    const w = canvas.clientWidth || window.innerWidth;
-    const h = canvas.clientHeight || window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    // Prevent division by zero or very small dimensions
+    if (w <= 0 || h <= 0) return;
+
+    // Set canvas drawing buffer to the logical viewport size (unscaled by DPR).
+    // Some test environments use a mock renderer that doesn't actually resize the
+    // drawing buffer, so set these directly to keep behavior consistent in tests.
+    try {
+      canvas.width = w;
+      canvas.height = h;
+    } catch (e) { /* ignore if canvas isn't writable in test env */ }
+
+    // If available, also set the CSS size so the element visually matches the
+    // layout; some browsers scale canvas using CSS which can affect the
+    // projection if CSS size doesn't match the drawing buffer.
+    if ((canvas as any).style) {
+      (canvas as any).style.width = `${w}px`;
+      (canvas as any).style.height = `${h}px`;
+    }
+
     renderer.setPixelRatio(dpr);
+    // Pass `false` for updateStyle because we already set canvas.style above.
     renderer.setSize(w, h, false);
+
+    // Camera projection must use the CSS aspect (width/height) so it matches
+    // the visible canvas size regardless of devicePixelRatio.
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+
     // Update camera position using spherical coordinates
     updateCameraPosition();
+
     try { effectsManager?.resize(w, h); } catch (e) { /* ignore */ }
   }
 
@@ -592,7 +621,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shieldEffectMeshes.clear();
     },
     cameraRotation,
-    cameraDistance,
+    // Expose camera distance as getter/setter so external callers can adjust it.
+    get cameraDistance() { return _cameraDistance; },
+    set cameraDistance(v: number) { _cameraDistance = v; updateCameraPosition(); },
     cameraTarget,
   };
 }
