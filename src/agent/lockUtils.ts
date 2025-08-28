@@ -7,8 +7,8 @@ export type Lock = {
   intent?: string;
 };
 
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 const repoRoot = process.cwd();
 const lockPath = path.join(repoRoot, ".ai-lock.json");

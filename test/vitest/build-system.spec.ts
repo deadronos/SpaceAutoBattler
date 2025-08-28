@@ -175,7 +175,7 @@ describe('Build System Tests', () => {
       expect(content).toMatch(/<style>/); // Inlined CSS
       expect(content).toMatch(/<script[^>]*>/); // Inlined JavaScript
       expect(content).toMatch(/__INLINE_SVG_ASSETS/); // Inlined SVG assets
-      expect(content).toMatch(/__workerCode/); // Inlined worker code
+      expect(content).toMatch(/getWorkerScript/); // Inlined worker code function
 
       // Verify no external references remain
       expect(content).not.toMatch(/<link[^>]+href=["'][^"']+\.css["']/); // No external CSS links
@@ -204,7 +204,7 @@ describe('Build System Tests', () => {
       const hasExternalRefs = lines.some(line =>
         line.includes('http://') ||
         line.includes('https://') ||
-        (line.includes('src=') && !line.includes('data:') && !line.includes('__worker'))
+        (line.includes('src=') && !line.includes('data:') && !line.includes('__worker') && !line.includes('getWorkerScript'))
       );
       expect(hasExternalRefs).toBe(false);
     });

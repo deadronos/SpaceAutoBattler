@@ -146,6 +146,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     return cubeTexture;
   }
 
+  // Holder for optional sphere skybox so animation updater can access it
+  let sphereSkybox: THREE.Mesh | null = null;
+
   function updateSkyboxAnimation(dt: number) {
     skyboxAnimationTime += dt;
 
@@ -177,8 +180,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       });
 
       // Update sphere skybox texture
-      if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial) {
-        sphereSkybox.material.map = skyboxTextures[0]; // Use first face for sphere
+      if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
+        (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
         sphereSkybox.material.needsUpdate = true;
       }
     }
@@ -195,19 +198,32 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     return skyboxMesh;
   }
 
-  // Create animated skybox instead of static one
-  // const animatedSkyboxTexture = createAnimatedSkybox();
-  // scene.background = animatedSkyboxTexture;
+  // Create animated skybox and use it as the scene background.
+  // This populates `skyboxCanvases` and `skyboxTextures` and returns a CubeTexture.
+  try {
+    const animatedSkyboxTexture = createAnimatedSkybox();
+    scene.background = animatedSkyboxTexture;
+    console.log('Using animated cube skybox as scene background');
 
-  // Debug: Try simple color background first
-  scene.background = new THREE.Color(0x000011); // Dark blue space color
-
-  // Alternative: Try sphere-based skybox
-  const sphereSkybox = createSphereSkybox();
-  scene.add(sphereSkybox);
-
-  // Debug: Log skybox creation
-  console.log('Using sphere-based skybox');
+    // Also create an interior sphere skybox that uses the first generated face texture as a fallback
+    // (useful for snapshotting or when CubeTexture sampling is undesirable).
+    if (skyboxTextures.length > 0) {
+      sphereSkybox = createSphereSkybox();
+      // Ensure the sphere uses the generated canvas texture
+      if (sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
+        (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0];
+        sphereSkybox.material.needsUpdate = true;
+      }
+      scene.add(sphereSkybox);
+      console.log('Added sphere-based skybox (using generated texture)');
+    }
+  } catch (e) {
+    // Fallback: solid deep blue background if procedural generation fails
+    console.warn('Animated skybox generation failed, falling back to solid background', e);
+    scene.background = new THREE.Color(0x000011); // Dark blue space color
+    sphereSkybox = createSphereSkybox();
+    scene.add(sphereSkybox);
+  }
 
   // Force texture update on next frame to ensure it's ready
   // setTimeout(() => {
@@ -226,21 +242,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   directionalLight.position.set(1000, 1000, 1000);
   scene.add(directionalLight);
 
-  // World boundaries visualization (3D box) with enhanced wireframe
+  // World boundaries visualization (wireframe-only box)
   const boxGeom = new THREE.BoxGeometry(state.simConfig.simBounds.width, state.simConfig.simBounds.height, state.simConfig.simBounds.depth);
-  const boxMat = new THREE.MeshStandardMaterial({
-    color: 0x4a90e2, // Blueish tint
-    transparent: true,
-    opacity: 0.4, // Increased from 0.15 for better visibility
-    wireframe: true,
-    emissive: 0x1a4f7a, // Subtle blue emissive glow
-    emissiveIntensity: 0.3, // Increased from 0.1
-    roughness: 0.8,
-    metalness: 0.2
-  });
-  const box = new THREE.Mesh(boxGeom, boxMat);
-  box.position.set(state.simConfig.simBounds.width/2, state.simConfig.simBounds.height/2, state.simConfig.simBounds.depth/2);
-  scene.add(box);
+  // Use edges geometry to display only the boundary lines (no filled interior)
+  const edges = new THREE.EdgesGeometry(boxGeom);
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x4a90e2, transparent: true, opacity: 0.6 });
+  const boxWire = new THREE.LineSegments(edges, lineMat);
+  boxWire.position.set(state.simConfig.simBounds.width/2, state.simConfig.simBounds.height/2, state.simConfig.simBounds.depth/2);
+  scene.add(boxWire);
 
   // Containers for ships and bullets
   const shipsGroup = new THREE.Group();

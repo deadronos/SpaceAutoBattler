@@ -72,17 +72,52 @@ function initGame(seed?: string) {
       // Create a module worker for simWorker.ts
       const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
       let ready = false;
+      let lastShipData: any[] = [];
+      
       w.addEventListener('message', (ev) => {
-        const { type, ok } = ev.data || {};
-        if (type === 'init-physics-done') ready = !!ok;
+        const { type, ok, transforms } = ev.data || {};
+        if (type === 'init-physics-done') {
+          ready = !!ok;
+        } else if (type === 'step-physics-done' && transforms) {
+          // Update ship positions and velocities from physics transforms
+          for (const transform of transforms) {
+            const ship = state.ships.find(s => s.id === transform.shipId);
+            if (ship) {
+              ship.pos.x = transform.pos.x;
+              ship.pos.y = transform.pos.y;
+              ship.pos.z = transform.pos.z;
+              ship.vel.x = transform.vel.x;
+              ship.vel.y = transform.vel.y;
+              ship.vel.z = transform.vel.z;
+            }
+          }
+        }
       });
+      
       w.postMessage({ type: 'init-physics' });
 
       // Expose a small shim for callers that expects physicsStepper API
       (state as any).physicsStepper = {
         initDone: false,
         step(dt: number) {
-          try { w.postMessage({ type: 'step-physics', payload: { dt } }); } catch (e) { /* ignore */ }
+          try { 
+            // Send current ship data to worker
+            const shipData = state.ships.map(ship => ({
+              id: ship.id,
+              pos: { ...ship.pos },
+              vel: { ...ship.vel }
+            }));
+            
+            // Only send if ship data has changed
+            const shipDataChanged = JSON.stringify(shipData) !== JSON.stringify(lastShipData);
+            if (shipDataChanged) {
+              w.postMessage({ type: 'update-ships', payload: { ships: shipData } });
+              lastShipData = shipData;
+            }
+            
+            // Step physics
+            w.postMessage({ type: 'step-physics', payload: { dt } }); 
+          } catch (e) { /* ignore */ }
         },
         dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (e) { /* ignore */ } },
       };
@@ -203,12 +238,74 @@ function resetToCinematicView(state: GameState) {
   state.renderer.cameraRotation.z = 0;
 }
 
+function updateCinematicCamera(state: GameState, dt: number) {
+  if (!state.renderer || state.ships.length === 0) return;
+
+  // Separate ships by team
+  const redShips = state.ships.filter(s => s.team === 'red' && s.health > 0);
+  const blueShips = state.ships.filter(s => s.team === 'blue' && s.health > 0);
+
+  if (redShips.length === 0 || blueShips.length === 0) return;
+
+  // Calculate center of each fleet
+  let redCenterX = 0, redCenterY = 0, redCenterZ = 0;
+  let blueCenterX = 0, blueCenterY = 0, blueCenterZ = 0;
+
+  for (const ship of redShips) {
+    redCenterX += ship.pos.x;
+    redCenterY += ship.pos.y;
+    redCenterZ += ship.pos.z;
+  }
+  redCenterX /= redShips.length;
+  redCenterY /= redShips.length;
+  redCenterZ /= redShips.length;
+
+  for (const ship of blueShips) {
+    blueCenterX += ship.pos.x;
+    blueCenterY += ship.pos.y;
+    blueCenterZ += ship.pos.z;
+  }
+  blueCenterX /= blueShips.length;
+  blueCenterY /= blueShips.length;
+  blueCenterZ /= blueShips.length;
+
+  // Calculate the midpoint between both fleets
+  const centerX = (redCenterX + blueCenterX) / 2;
+  const centerY = (redCenterY + blueCenterY) / 2;
+  const centerZ = (redCenterZ + blueCenterZ) / 2;
+
+  // Calculate distance between fleets for optimal zoom
+  const fleetDistance = Math.sqrt(
+    Math.pow(redCenterX - blueCenterX, 2) +
+    Math.pow(redCenterY - blueCenterY, 2) +
+    Math.pow(redCenterZ - blueCenterZ, 2)
+  );
+
+  // Calculate optimal camera distance (show both fleets with some margin)
+  const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+  const optimalDistance = Math.max(fleetDistance * 1.5, 500); // Minimum distance of 500
+
+  // Smoothly interpolate camera target
+  const lerpFactor = Math.min(dt * 2, 1); // Smooth following with 2 seconds lerp time
+  state.renderer.cameraTarget.x += (centerX - state.renderer.cameraTarget.x) * lerpFactor;
+  state.renderer.cameraTarget.y += (centerY - state.renderer.cameraTarget.y) * lerpFactor;
+  state.renderer.cameraTarget.z += (centerZ - state.renderer.cameraTarget.z) * lerpFactor;
+
+  // Smoothly interpolate camera distance
+  const distanceLerpFactor = Math.min(dt * 1, 1); // Slower distance adjustment
+  state.renderer.cameraDistance += (optimalDistance - state.renderer.cameraDistance) * distanceLerpFactor;
+
+  // Clamp distance
+  state.renderer.cameraDistance = Math.max(300, Math.min(3000, state.renderer.cameraDistance));
+}
+
 function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
   if (!state.renderer) return;
 
   let isMouseDown = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
+  let isCinematicMode = false;
 
   // Mouse controls for rotation (click and drag)
   canvas.addEventListener('mousedown', (e) => {
@@ -239,16 +336,26 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     lastMouseY = e.clientY;
   });
 
-  // Mouse wheel for zoom
+  // Mouse wheel for zoom (move camera forward/back)
   canvas.addEventListener('wheel', (e) => {
     if (!state.renderer) return;
     e.preventDefault();
 
-    const zoomSpeed = 100; // Increased from 50 for better responsiveness
-    state.renderer.cameraDistance += e.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+    const zoomSpeed = 50; // Fixed zoom speed
+    const zoomDirection = e.deltaY > 0 ? 1 : -1; // Positive deltaY = zoom out (move back), negative = zoom in (move forward)
 
-    // Clamp zoom distance
-    state.renderer.cameraDistance = Math.max(100, Math.min(3000, state.renderer.cameraDistance)); // Extended range
+    // Calculate camera's forward vector
+    const pitch = state.renderer.cameraRotation.x;
+    const yaw = state.renderer.cameraRotation.y;
+    const forwardX = Math.cos(yaw) * Math.cos(pitch);
+    const forwardY = Math.sin(pitch);
+    const forwardZ = Math.sin(yaw) * Math.cos(pitch);
+
+    // Move camera and target together along forward vector
+    const moveDistance = zoomSpeed * zoomDirection;
+    state.renderer.cameraTarget.x += forwardX * moveDistance;
+    state.renderer.cameraTarget.y += forwardY * moveDistance;
+    state.renderer.cameraTarget.z += forwardZ * moveDistance;
   });
 
   // Keyboard controls for movement
@@ -256,10 +363,12 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
   document.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 
-    // Cinematic camera reset with 'C' key
+    // Cinematic camera with 'C' key
     if (e.code === 'KeyC' && state.renderer) {
       e.preventDefault();
-      resetToCinematicView(state);
+      isCinematicMode = true;
+      resetToCinematicView(state); // Initial setup
+      console.log('🎬 Cinematic camera mode activated - following both fleets');
     }
   });
 
@@ -274,20 +383,54 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     const moveSpeed = 300 * dt;
     const moveVector = { x: 0, y: 0, z: 0 };
 
-    if (keys['KeyW']) moveVector.z -= moveSpeed;
-    if (keys['KeyS']) moveVector.z += moveSpeed;
-    if (keys['KeyA']) moveVector.x -= moveSpeed;
-    if (keys['KeyD']) moveVector.x += moveSpeed;
-    if (keys['ShiftLeft']) moveVector.y -= moveSpeed;
-    if (keys['Space']) moveVector.y += moveSpeed;
+    if (keys['KeyW']) moveVector.z -= moveSpeed; // Forward
+    if (keys['KeyS']) moveVector.z += moveSpeed; // Backward
+    if (keys['KeyA']) moveVector.x += moveSpeed; // Left
+    if (keys['KeyD']) moveVector.x -= moveSpeed; // Right
+    if (keys['ShiftLeft']) moveVector.y -= moveSpeed; // Down
+    if (keys['Space']) moveVector.y += moveSpeed; // Up
 
-    // Apply movement relative to camera orientation
-    const cosY = Math.cos(state.renderer.cameraRotation.y);
-    const sinY = Math.sin(state.renderer.cameraRotation.y);
+    // Check if any movement keys are pressed to exit cinematic mode
+    const hasMovementInput = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || keys['ShiftLeft'] || keys['Space'];
+    if (hasMovementInput && isCinematicMode) {
+      isCinematicMode = false;
+      console.log('🎮 Manual camera control activated - cinematic mode disabled');
+    }
 
-    state.renderer.cameraTarget.x += moveVector.x * cosY - moveVector.z * sinY;
-    state.renderer.cameraTarget.z += moveVector.x * sinY + moveVector.z * cosY;
-    state.renderer.cameraTarget.y += moveVector.y;
+    // If cinematic mode is active and no manual input, update cinematic camera
+    if (isCinematicMode && !hasMovementInput) {
+      updateCinematicCamera(state, dt);
+      return; // Skip manual movement when in cinematic mode
+    }
+
+    // Calculate camera's local coordinate system
+    const pitch = state.renderer.cameraRotation.x;
+    const yaw = state.renderer.cameraRotation.y;
+
+    // Forward vector (direction camera is facing)
+    const forwardX = Math.cos(yaw) * Math.cos(pitch);
+    const forwardY = Math.sin(pitch);
+    const forwardZ = Math.sin(yaw) * Math.cos(pitch);
+
+    // Right vector (perpendicular to forward in horizontal plane)
+    const rightX = -Math.sin(yaw);
+    const rightY = 0;
+    const rightZ = Math.cos(yaw);
+
+    // Up vector (perpendicular to both forward and right)
+    const upX = -Math.sin(pitch) * Math.cos(yaw);
+    const upY = Math.cos(pitch);
+    const upZ = -Math.sin(pitch) * Math.sin(yaw);
+
+    // Calculate movement in world space
+    const worldMoveX = moveVector.x * rightX + moveVector.y * upX + moveVector.z * forwardX;
+    const worldMoveY = moveVector.x * rightY + moveVector.y * upY + moveVector.z * forwardY;
+    const worldMoveZ = moveVector.x * rightZ + moveVector.y * upZ + moveVector.z * forwardZ;
+
+    // Move both camera target and position together to maintain relative orientation
+    state.renderer.cameraTarget.x += worldMoveX;
+    state.renderer.cameraTarget.y += worldMoveY;
+    state.renderer.cameraTarget.z += worldMoveZ;
   }
 
   // Add camera movement to the render loop

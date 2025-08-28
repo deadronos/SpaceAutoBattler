@@ -85,38 +85,41 @@ function formatBytes(bytes) {
 function inlineHtml({ html, css, js, workerJs, svgAssets }) {
   // Inline CSS into a <style> tag
   let out = html.replace(/<link[^>]+href=["'][^"']+["'][^>]*>/i, `<style>\n${css}\n</style>`);
-  // Avoid leaving literal http(s) sequences in the generated HTML which some tests
-  // treat as external references. We replace them with placeholders in the
-  // bundled sources and reconstruct them at runtime from a Blob so runtime
-  // behavior is preserved while the file contains no plain "http://" or
-  // "https://" substrings.
-  const placeholder = (s) => s.replace(/https:\/\//g, '__HTTPS__').replace(/http:\/\//g, '__HTTP__');
-  // Build protocol strings at runtime without embedding literal 'http' or 'https'
-  // sequences in the top-level HTML to satisfy strict no-external-refs checks.
-  const restoreSnippet = `const __restore = (s)=>{const h='ht'+'tp';const protoHttp=h+':\/\/';const protoHttps=h+'s'+':\/\/';return String(s).replace(/__HTTPS__/g,protoHttps).replace(/__HTTP__/g,protoHttp);};`;
 
-  const workerSafe = placeholder(workerJs);
-  const jsSafe = placeholder(js);
+  // Create a simpler inline script that avoids complex string embedding
+  const inlineScript = `
+(function(){
+  // Embed SVG assets
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)};
+  }
 
-  // Also mask http(s) sequences inside SVG asset text so the top-level HTML
-  // does not contain literal http:// or https:// strings. We'll restore them
-  // at runtime immediately after assigning the global assets object.
-  const svgAssetsSafe = Object.fromEntries(
-    Object.entries(svgAssets).map(([k, v]) => [k, v == null ? v : placeholder(v)])
-  );
+  // Embed worker script as a function that returns the code
+  const getWorkerScript = function() {
+    return ${JSON.stringify(workerJs)};
+  };
 
-  // Build a dynamic module loader: at runtime we restore placeholders and
-  // create a Blob to import as an ES module. This preserves module semantics
-  // and avoids embedding literal http/https sequences in the file.
-  const runtimeLoader = `\n${restoreSnippet}\n(function(){\n  // Create worker blob URL from restored worker source\n  try{\n    const __workerCode = __restore(${JSON.stringify(workerSafe)});\n    const __workerBlob = new Blob([__workerCode], { type: 'text/javascript' });\n    const __workerUrl = URL.createObjectURL(__workerBlob);\n    const __OrigWorker = window.Worker;\n    window.Worker = class extends __OrigWorker{\n      constructor(url, opts){\n        try{\n          const s = typeof url === 'string' ? url : String(url);\n          if (s.endsWith('simWorker.js')){\n            super(__workerUrl, { type: 'module', ...(opts||{}) });\n            return;\n          }\n        }catch(e){}\n        super(url, opts);\n      }\n    };\n  }catch(e){console.error('worker inliner failed', e);}\n\n  // Create and import main module from Blob\n  try{\n    const __mainCode = __restore(${JSON.stringify(jsSafe)});\n    const __mainBlob = new Blob([__mainCode], { type: 'text/javascript' });\n    const __mainUrl = URL.createObjectURL(__mainBlob);\n    import(__mainUrl).catch(err=>{ console.error('Failed to import inlined main module', err); });\n  }catch(e){ console.error('main module inliner failed', e); }\n})();\n`;
+  // Override Worker constructor to use embedded script
+  const OriginalWorker = window.Worker;
+  window.Worker = class extends OriginalWorker {
+    constructor(url, opts) {
+      if (typeof url === 'string' && url.includes('simWorker.js')) {
+        const workerCode = getWorkerScript();
+        const blob = new Blob([workerCode], { type: 'text/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        super(blobUrl, { type: 'module', ...(opts || {}) });
+        return;
+      }
+      super(url, opts);
+    }
+  };
 
-  out = out.replace(/<script[^>]+src=["'][^"']+["'][^>]*><\/script>/i, `<script type="module">${runtimeLoader}\n</script>`);
+  // Execute main script directly
+  ${js}
+})();`;
 
-  // Inject inline SVG assets script; restore placeholders immediately so the
-  // final HTML contains no literal http/https but runtime code receives the
-  // original SVG content.
-  const svgScript = `<script>(function(){${restoreSnippet}try{if(typeof globalThis!== 'undefined'){globalThis.__INLINE_SVG_ASSETS=${JSON.stringify(svgAssetsSafe)};for(const k in globalThis.__INLINE_SVG_ASSETS){globalThis.__INLINE_SVG_ASSETS[k]=__restore(globalThis.__INLINE_SVG_ASSETS[k]);}}}catch(e){} })();</script>`;
-  out = out.replace(/<body(\s[^>]*)?>/, (m) => `${m}\n${svgScript}`);
+  // Replace the script tag with our inline version
+  out = out.replace(/<script[^>]+src=["'][^"']+["'][^>]*><\/script>/i, `<script type="module">${inlineScript}</script>`);
 
   return out;
 }
