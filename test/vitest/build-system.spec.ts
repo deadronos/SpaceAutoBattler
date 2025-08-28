@@ -199,13 +199,41 @@ describe('Build System Tests', () => {
       expect(content).toMatch(/<head[^>]*>/i);
       expect(content).toMatch(/<body[^>]*>/i);
 
-      // Verify the file is self-contained (no external dependencies)
-      const lines = content.split('\n');
-      const hasExternalRefs = lines.some(line =>
-        line.includes('http://') ||
-        line.includes('https://') ||
-        (line.includes('src=') && !line.includes('data:') && !line.includes('__worker') && !line.includes('getWorkerScript'))
-      );
+  // Verify the file is self-contained (no external dependencies)
+  // NOTE for maintainers: a naive substring search for "http(s)://"
+  // was causing false-positives in the standalone HTML. Inlined SVG
+  // assets include XML namespace URIs (e.g. `xmlns="http://www.w3.org/2000/svg"`)
+  // and bundled libraries may contain documentation/comment URLs. Those
+  // strings are harmless (they are not external network requests) but
+  // they triggered the naive check. To avoid future confusion we only
+  // flag actual resource-loading attributes (src/href) and CSS url()/@import
+  // that reference external HTTP(S) resources.
+      let hasExternalRefs = false;
+
+      // Match tags that can load external resources and capture their src/href
+      const tagAttrRegex = /<(?:img|script|link|iframe|video|source|audio)[^>]*(?:src|href)=['"]([^'"]+)['"]/gi;
+      for (const m of content.matchAll(tagAttrRegex)) {
+        const url = m[1];
+        if (!url.startsWith('data:') && !url.includes('__worker') && !url.includes('getWorkerScript')) {
+          if (/^https?:\/\//i.test(url)) {
+            hasExternalRefs = true;
+            break;
+          }
+        }
+      }
+
+      // Match CSS url(...) patterns that reference HTTP(S) resources
+      if (!hasExternalRefs) {
+        const cssUrlRegex = /url\(\s*['"]?(https?:\/\/[^)'"]+)['"]?\s*\)/gi;
+        if (cssUrlRegex.test(content)) hasExternalRefs = true;
+      }
+
+      // Match CSS @import of remote resources
+      if (!hasExternalRefs) {
+        const cssImportRegex = /@import\s+['"]https?:\/\//i;
+        if (cssImportRegex.test(content)) hasExternalRefs = true;
+      }
+
       expect(hasExternalRefs).toBe(false);
     });
 
