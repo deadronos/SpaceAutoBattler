@@ -4,6 +4,11 @@ import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
 import { loadGLTF } from './core/assetLoader.js';
+import { CameraConfig } from './config/cameraConfig.js';
+import { FleetConfig } from './config/fleetConfig.js';
+import { DefaultSimConfig } from './config/simConfig.js';
+import { getSVGLoader, loadSVGAsset } from './core/svgLoader.js';
+import { defaultSVGConfig, getShipSVGUrls } from './config/svgConfig.js';
 
 function $(id: string) { return document.getElementById(id)!; }
 
@@ -28,9 +33,12 @@ function bindUI(): UIElements {
 function randomClass(state: GameState): any { return (['fighter','corvette','frigate','destroyer','carrier'] as const)[Math.floor(state.rng.next()*5)]; }
 
 function reFormFleets(state: GameState) {
-  const leftX = 150; const rightX = state.simConfig.simBounds.width - 150;
-  const centerZ = state.simConfig.simBounds.depth / 2;
-  let ri = 0, bi = 0; const row = 8; const spacing = 30;
+  const leftX = FleetConfig.positioning.leftMargin;
+  const rightX = state.simConfig.simBounds.width - FleetConfig.positioning.rightMargin;
+  const centerZ = state.simConfig.simBounds.depth / 2 + FleetConfig.positioning.centerZOffset;
+  let ri = 0, bi = 0;
+  const row = FleetConfig.positioning.rowSize;
+  const spacing = FleetConfig.positioning.spacing;
   for (const s of state.ships) {
     const i = (s.team === 'red' ? ri++ : bi++);
     const col = i % row; const r = Math.floor(i / row);
@@ -47,6 +55,75 @@ function initGame(seed?: string) {
   const state = createInitialState(seed);
   // Ensure there is an asset pool for GLTFs and textures
   state.assetPool = new Map<string, any>();
+
+  // Initialize SVG loader and preload ship SVGs
+  const svgLoader = getSVGLoader();
+  const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
+
+  // Preload SVG assets with change detection enabled
+  (async () => {
+    try {
+      console.log('[main.ts] Preloading SVG assets with change detection...');
+
+      for (const svgUrl of shipSVGUrls) {
+        try {
+          // Load SVG with rasterization
+          const asset = await loadSVGAsset(svgUrl, {
+            width: defaultSVGConfig.defaultRasterSize.width,
+            height: defaultSVGConfig.defaultRasterSize.height,
+            enableWatching: defaultSVGConfig.cache.enableFileWatching
+          });
+
+          // Store in asset pool for renderer access
+          state.assetPool!.set(svgUrl, asset);
+
+          console.log(`[main.ts] Loaded SVG asset: ${svgUrl}`);
+        } catch (error) {
+          console.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error);
+        }
+      }
+
+      console.log('[main.ts] SVG asset preloading complete');
+    } catch (error) {
+      console.error('[main.ts] Error during SVG asset preloading:', error);
+    }
+  })();
+  (window as any).debugSVG = {
+    // Get SVG loader stats
+    getStats: () => {
+      const stats = svgLoader.getCacheStats();
+      console.log('[SVG Debug] Cache stats:', stats);
+      return stats;
+    },
+
+    // Manually reload all SVG assets
+    reloadAll: async () => {
+      console.log('[SVG Debug] Manually reloading all SVG assets...');
+      try {
+        await svgLoader.reloadAllAssets();
+        console.log('[SVG Debug] All SVG assets reloaded successfully');
+      } catch (error) {
+        console.error('[SVG Debug] Failed to reload SVG assets:', error);
+      }
+    },
+
+    // Clear SVG cache
+    clearCache: (assetUrl?: string) => {
+      console.log('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
+      svgLoader.clearCache(assetUrl);
+      console.log('[SVG Debug] SVG cache cleared');
+    },
+
+    // List cached assets
+    listCached: () => {
+      const assets = Array.from(svgLoader.getCacheStats().cachedAssets > 0 ? 'assets cached' : []);
+      console.log('[SVG Debug] Cached SVG assets:', assets);
+      return assets;
+    }
+  };
+
+  console.log('[main.ts] SVG debugging functions available at window.debugSVG');
+  console.log('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
 
   // Optionally preload common ship assets into the pool (config-driven)
   (async () => {
@@ -133,8 +210,8 @@ function initGame(seed?: string) {
     }
   })();
   // Seeded initial fleets
-  spawnFleet(state, 'red', 6);
-  spawnFleet(state, 'blue', 6);
+  spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
+  spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
   reFormFleets(state);
   const renderer = createThreeRenderer(state, ui.canvas);
   state.renderer = renderer;
@@ -149,7 +226,7 @@ function wireControls(state: GameState, ui: UIElements) {
   function updateScores() { ui.redScore.textContent = `Red ${state.score.red}`; ui.blueScore.textContent = `Blue ${state.score.blue}`; }
 
   ui.startPause.onclick = () => { state.running = !state.running; updateRunLabel(); };
-  ui.reset.onclick = () => { resetState(state); spawnFleet(state,'red',6); spawnFleet(state,'blue',6); reFormFleets(state); updateScores(); };
+  ui.reset.onclick = () => { resetState(state); spawnFleet(state,'red', FleetConfig.spawning.defaultFleetSize); spawnFleet(state,'blue', FleetConfig.spawning.defaultFleetSize); reFormFleets(state); updateScores(); };
   ui.addRed.onclick = () => { spawnShip(state, 'red', randomClass(state)); };
   ui.addBlue.onclick = () => { spawnShip(state, 'blue', randomClass(state)); };
   ui.toggleTrails.onclick = () => { RendererConfig.visual.enableTrails = !RendererConfig.visual.enableTrails; ui.toggleTrails.textContent = `☄ Trails: ${RendererConfig.visual.enableTrails ? 'On' : 'Off'}`; };
@@ -157,13 +234,13 @@ function wireControls(state: GameState, ui: UIElements) {
     const seq = [0.5, 1, 2, 4] as const; const i = seq.indexOf(state.speedMultiplier as any);
     const next = seq[(i + 1) % seq.length]; state.speedMultiplier = next; updateSpeedLabel();
   };
-  ui.seedBtn.onclick = () => { const s = `SEED-${Date.now()}`; resetState(state, s); spawnFleet(state,'red',6); spawnFleet(state,'blue',6); reFormFleets(state); updateScores(); };
+  ui.seedBtn.onclick = () => { const s = `SEED-${Date.now()}`; resetState(state, s); spawnFleet(state,'red', FleetConfig.spawning.defaultFleetSize); spawnFleet(state,'blue', FleetConfig.spawning.defaultFleetSize); reFormFleets(state); updateScores(); };
   ui.formationBtn.onclick = () => {
     // Clear existing ships
     state.ships = [];
     state.bullets = [];
     // Spawn randomized fleets
-    const fleetSize = 8;
+    const fleetSize = FleetConfig.spawning.defaultFleetSize;
     for (let i = 0; i < fleetSize; i++) {
       const redClass = randomClass(state);
       const blueClass = randomClass(state);
@@ -227,15 +304,15 @@ function resetToCinematicView(state: GameState) {
 
   // Calculate optimal distance based on spread and camera FOV
   const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance = (maxSpread / 2) / Math.tan(fovRadians / 2) * 1.5; // 1.5x for comfortable viewing
+  const optimalDistance = (maxSpread / 2) / Math.tan(fovRadians / 2) * CameraConfig.resetToCinematic.fovMultiplier; // 1.5x for comfortable viewing
 
   // Set distance with some minimum/maximum bounds
-  state.renderer.cameraDistance = Math.max(300, Math.min(2000, optimalDistance));
+  state.renderer.cameraDistance = Math.max(CameraConfig.cinematic.minDistance, Math.min(CameraConfig.cinematic.maxDistance, optimalDistance));
 
   // Reset camera rotation to a good default viewing angle
-  state.renderer.cameraRotation.x = -Math.PI / 6; // Slight downward tilt
-  state.renderer.cameraRotation.y = 0; // Face the action
-  state.renderer.cameraRotation.z = 0;
+  state.renderer.cameraRotation.x = CameraConfig.resetToCinematic.cameraRotation.x; // Slight downward tilt
+  state.renderer.cameraRotation.y = CameraConfig.resetToCinematic.cameraRotation.y; // Face the action
+  state.renderer.cameraRotation.z = CameraConfig.resetToCinematic.cameraRotation.z;
 }
 
 function updateCinematicCamera(state: GameState, dt: number) {
@@ -283,20 +360,20 @@ function updateCinematicCamera(state: GameState, dt: number) {
 
   // Calculate optimal camera distance (show both fleets with some margin)
   const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance = Math.max(fleetDistance * 1.5, 500); // Minimum distance of 500
+  const optimalDistance = Math.max(fleetDistance * CameraConfig.cinematic.fleetDistanceMultiplier, CameraConfig.cinematic.minDistance); // Minimum distance of 500
 
   // Smoothly interpolate camera target
-  const lerpFactor = Math.min(dt * 2, 1); // Smooth following with 2 seconds lerp time
+  const lerpFactor = Math.min(dt * CameraConfig.cinematic.lerpFactor, 1); // Smooth following with 2 seconds lerp time
   state.renderer.cameraTarget.x += (centerX - state.renderer.cameraTarget.x) * lerpFactor;
   state.renderer.cameraTarget.y += (centerY - state.renderer.cameraTarget.y) * lerpFactor;
   state.renderer.cameraTarget.z += (centerZ - state.renderer.cameraTarget.z) * lerpFactor;
 
   // Smoothly interpolate camera distance
-  const distanceLerpFactor = Math.min(dt * 1, 1); // Slower distance adjustment
+  const distanceLerpFactor = Math.min(dt * CameraConfig.cinematic.distanceLerpFactor, 1); // Slower distance adjustment
   state.renderer.cameraDistance += (optimalDistance - state.renderer.cameraDistance) * distanceLerpFactor;
 
   // Clamp distance
-  state.renderer.cameraDistance = Math.max(300, Math.min(3000, state.renderer.cameraDistance));
+  state.renderer.cameraDistance = Math.max(CameraConfig.cinematic.minDistance, Math.min(CameraConfig.cinematic.maxDistance, state.renderer.cameraDistance));
 }
 
 function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
@@ -321,7 +398,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
   canvas.addEventListener('mousemove', (e) => {
     if (!isMouseDown || !state.renderer) return;
 
-    const sensitivity = 0.005;
+    const sensitivity = CameraConfig.controls.mouseSensitivity;
     const deltaX = (e.clientX - lastMouseX) * sensitivity;
     const deltaY = (e.clientY - lastMouseY) * sensitivity;
 
@@ -341,7 +418,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     if (!state.renderer) return;
     e.preventDefault();
 
-    const zoomSpeed = 50; // Fixed zoom speed
+    const zoomSpeed = CameraConfig.controls.zoomSpeed; // Fixed zoom speed
     const zoomDirection = e.deltaY > 0 ? 1 : -1; // Positive deltaY = zoom out (move back), negative = zoom in (move forward)
 
     // Calculate camera's forward vector
@@ -380,7 +457,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
   function updateCameraMovement(dt: number) {
     if (!state.renderer) return;
 
-    const moveSpeed = 300 * dt;
+    const moveSpeed = CameraConfig.controls.moveSpeed * dt;
     const moveVector = { x: 0, y: 0, z: 0 };
 
     if (keys['KeyW']) moveVector.z -= moveSpeed; // Forward
@@ -464,8 +541,8 @@ function startLoops(state: GameState, ui: UIElements) {
       if ((ui.continuous.checked)) {
         const redAlive = state.ships.some(s => s.team === 'red');
         const blueAlive = state.ships.some(s => s.team === 'blue');
-        if (!redAlive) spawnFleet(state, 'red', 6);
-        if (!blueAlive) spawnFleet(state, 'blue', 6);
+        if (!redAlive) spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
+        if (!blueAlive) spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
       }
     }
 

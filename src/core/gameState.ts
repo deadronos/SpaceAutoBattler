@@ -5,6 +5,10 @@ import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
+import { FleetConfig } from '../config/fleetConfig.js';
+import { PhysicsConfig } from '../config/physicsConfig.js';
+import { ShipVisualConfig } from '../config/shipVisualConfig.js';
+import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -70,7 +74,7 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
     kills: 0,
     level,
     spawnedFighters: cls === 'carrier' ? 0 : undefined,
-    fighterSpawnCdLeft: cls === 'carrier' ? 1.0 : undefined,
+    fighterSpawnCdLeft: cls === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
     parentCarrierId,
   };
   state.ships.push(ship);
@@ -78,10 +82,10 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
 }
 
 function randomSpawnPos(state: GameState, team: Team): Vector3 {
-  const margin = 200;
+  const margin = FleetConfig.spawning.margin;
   const y = state.rng.int(margin, state.simConfig.simBounds.height - margin);
   const z = state.rng.int(margin, state.simConfig.simBounds.depth - margin);
-  const x = team === 'red' ? state.rng.int(margin, margin + 200) : state.rng.int(state.simConfig.simBounds.width - margin - 200, state.simConfig.simBounds.width - margin);
+  const x = team === 'red' ? state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth) : state.rng.int(state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth, state.simConfig.simBounds.width - margin);
   return { x, y, z };
 }
 
@@ -122,17 +126,19 @@ function stepShipAI(state: GameState, ship: Ship, dt: number) {
     ship.dir += turn;
 
     // Move towards target with simple acceleration (3D)
-    const ax = Math.cos(ship.dir) * ship.speed * 0.5;
-    const ay = Math.sin(ship.dir) * ship.speed * 0.5;
-    const az = (target.pos.z - ship.pos.z) * 0.1; // Simple z-axis movement towards target
+    const ax = Math.cos(ship.dir) * ship.speed * PhysicsConfig.acceleration.forwardMultiplier;
+    const ay = Math.sin(ship.dir) * ship.speed * PhysicsConfig.acceleration.forwardMultiplier;
+    const az = (target.pos.z - ship.pos.z) * PhysicsConfig.acceleration.zAxisMultiplier; // Simple z-axis movement towards target
     ship.vel.x += ax * dt;
     ship.vel.y += ay * dt;
     ship.vel.z += az * dt;
   }
 
   // Damp and clamp speed
-  ship.vel.x *= 0.98; ship.vel.y *= 0.98; ship.vel.z *= 0.98;
-  const maxV = ship.speed;
+  ship.vel.x *= PhysicsConfig.speed.dampingFactor;
+  ship.vel.y *= PhysicsConfig.speed.dampingFactor;
+  ship.vel.z *= PhysicsConfig.speed.dampingFactor;
+  const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
   const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
   if (v > maxV) {
     ship.vel.x = (ship.vel.x / v) * maxV;
@@ -261,7 +267,7 @@ function updateBullets(state: GameState, dt: number) {
       if (s.team === b.ownerTeam || s.health <= 0) continue;
       const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
       const d = Math.hypot(dx, dy, dz);
-      const hitR = 16 + (s.class === 'destroyer' || s.class === 'carrier' ? 20 : 10);
+      const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? 16;
       if (d < hitR) {
         // Apply damage to shield first
         let dmgLeft = b.damage;
@@ -338,12 +344,12 @@ function carrierSpawnLogic(state: GameState, dt: number) {
     s.fighterSpawnCdLeft = Math.max(0, (s.fighterSpawnCdLeft ?? 0) - dt);
     const cfg = getShipClassConfig('carrier');
     if ((s.spawnedFighters ?? 0) < (cfg.maxFighters ?? 0) && s.fighterSpawnCdLeft === 0) {
-      const angle = s.dir + ((state.rng.next() - 0.5) * 0.6);
-      const offset = { x: s.pos.x + Math.cos(angle) * 24, y: s.pos.y + Math.sin(angle) * 24, z: s.pos.z };
+      const angle = s.dir + ((state.rng.next() - 0.5) * CarrierSpawnConfig.fighterSpawn.angleRandomization);
+      const offset = { x: s.pos.x + Math.cos(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance, y: s.pos.y + Math.sin(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance, z: s.pos.z };
       const child = spawnShip(state, s.team, 'fighter', offset, s.id);
       child.vel.x = s.vel.x; child.vel.y = s.vel.y; child.vel.z = s.vel.z; child.vel.z = s.vel.z;
       s.spawnedFighters = (s.spawnedFighters ?? 0) + 1;
-      s.fighterSpawnCdLeft = cfg.fighterSpawnCooldown ?? 6;
+      s.fighterSpawnCdLeft = cfg.fighterSpawnCooldown ?? CarrierSpawnConfig.fighterSpawn.baseCooldown;
     }
   }
 }

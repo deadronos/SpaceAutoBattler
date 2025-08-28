@@ -1,4 +1,5 @@
 import type { GameState } from '../types/index.js';
+import { PhysicsConfig } from '../config/physicsConfig.js';
 
 // Rapier physics scaffold
 // Uses @dimforge/rapier3d-compat. This file creates a simple world and exposes a step function
@@ -44,38 +45,25 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
         .setLinvel(ship.vel.x, ship.vel.y, ship.vel.z)
         .setAngvel(0, 0, 0) // No initial angular velocity
         .setGravityScale(0) // No gravity in space
-        .setLinearDamping(0.1) // Small damping to prevent infinite sliding
-        .setAngularDamping(0.5); // Angular damping for stability
+        .setLinearDamping(PhysicsConfig.damping.linear) // Small damping to prevent infinite sliding
+        .setAngularDamping(PhysicsConfig.damping.angular); // Angular damping for stability
 
       const rigidBody = world.createRigidBody(rbDesc);
       rigidBodies.set(ship.id, rigidBody);
 
       // Create collider based on ship class
       let colliderDesc;
-      switch (ship.class) {
-        case 'fighter':
-          colliderDesc = Rapier.ColliderDesc.cuboid(4, 1.5, 4);
-          break;
-        case 'corvette':
-          colliderDesc = Rapier.ColliderDesc.cuboid(6, 2, 6);
-          break;
-        case 'frigate':
-          colliderDesc = Rapier.ColliderDesc.cuboid(8, 2.5, 8);
-          break;
-        case 'destroyer':
-          colliderDesc = Rapier.ColliderDesc.cuboid(10, 3, 10);
-          break;
-        case 'carrier':
-          colliderDesc = Rapier.ColliderDesc.cuboid(12, 3.5, 12);
-          break;
-        default:
-          colliderDesc = Rapier.ColliderDesc.cuboid(5, 2, 5);
+      const colliderDims = PhysicsConfig.colliders[ship.class as keyof typeof PhysicsConfig.colliders];
+      if (colliderDims) {
+        colliderDesc = Rapier.ColliderDesc.cuboid(colliderDims.width, colliderDims.height, colliderDims.depth);
+      } else {
+        colliderDesc = Rapier.ColliderDesc.cuboid(5, 2, 5);
       }
 
       // Configure collider properties
-      colliderDesc.setDensity(1.0);
-      colliderDesc.setFriction(0.3);
-      colliderDesc.setRestitution(0.1);
+      colliderDesc.setDensity(PhysicsConfig.properties.density);
+      colliderDesc.setFriction(PhysicsConfig.properties.friction);
+      colliderDesc.setRestitution(PhysicsConfig.properties.restitution);
 
       const collider = world.createCollider(colliderDesc, rigidBody);
       colliders.set(ship.id, collider);

@@ -3,6 +3,10 @@ import type { GameState, RendererHandles, Ship, Bullet } from '../types/index.js
 import { createEffectsManager } from './effects.js';
 import { loadGLTF } from '../core/assetLoader.js';
 import { RendererConfig } from '../config/rendererConfig.js';
+import { ShipVisualConfig } from '../config/shipVisualConfig.js';
+import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
+import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
+import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -57,7 +61,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     };
 
     // Generate stars based on face
-    const starCount = face === 'top' || face === 'bottom' ? 800 : 1200;
+    const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
     const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
 
     for (let i = 0; i < starCount; i++) {
@@ -99,10 +103,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Add some nebula-like structures for visual interest
     if (face === 'front' || face === 'back') {
       ctx.globalAlpha = 0.1;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < RendererEffectsConfig.skybox.starfield.nebula.count; i++) {
         const nebulaX = random() * width;
         const nebulaY = random() * height;
-        const nebulaRadius = 50 + random() * 100;
+        const nebulaRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
 
         const nebulaGradient = ctx.createRadialGradient(nebulaX, nebulaY, 0, nebulaX, nebulaY, nebulaRadius);
         nebulaGradient.addColorStop(0, `hsl(${200 + random() * 60}, 30%, 20%)`);
@@ -156,7 +160,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     skyboxAnimationTime += dt;
 
     // Update star twinkling every few frames for performance
-    if (Math.floor(skyboxAnimationTime * 10) % 3 === 0) {
+    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency === 0) {
       skyboxTextures.forEach((texture, index) => {
         const canvas = skyboxCanvases[index];
         const ctx = canvas.getContext('2d')!;
@@ -171,7 +175,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
           // Only affect bright pixels (stars)
           if (r > 100 || g > 100 || b > 100) {
-            const twinkle = Math.sin(skyboxAnimationTime * 2 + i * 0.001) * 0.3 + 0.7;
+            const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + 0.7;
             data[i] = Math.max(0, Math.min(255, r * twinkle));
             data[i + 1] = Math.max(0, Math.min(255, g * twinkle));
             data[i + 2] = Math.max(0, Math.min(255, b * twinkle));
@@ -192,7 +196,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Create animated skybox using sphere approach (more reliable than CubeTexture)
   function createSphereSkybox(): THREE.Mesh {
-    const skyboxGeometry = new THREE.SphereGeometry(5000, 32, 32); // Large sphere
+    const skyboxGeometry = new THREE.SphereGeometry(
+      RendererEffectsConfig.skybox.sphere.radius,
+      RendererEffectsConfig.skybox.sphere.geometrySegments,
+      RendererEffectsConfig.skybox.sphere.geometrySegments
+    );
     const skyboxMaterial = new THREE.MeshBasicMaterial({
       map: skyboxTextures[0], // Use first face texture for now
       side: THREE.BackSide // Render inside of sphere
@@ -238,18 +246,32 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // }, 100);
 
   // Add some basic lighting to help with wireframe visibility
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+  const ambientLight = new THREE.AmbientLight(
+    RendererEffectsConfig.lighting.ambient.color,
+    RendererEffectsConfig.lighting.ambient.intensity
+  );
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(1000, 1000, 1000);
+  const directionalLight = new THREE.DirectionalLight(
+    RendererEffectsConfig.lighting.directional.color,
+    RendererEffectsConfig.lighting.directional.intensity
+  );
+  directionalLight.position.set(
+    RendererEffectsConfig.lighting.directional.position.x,
+    RendererEffectsConfig.lighting.directional.position.y,
+    RendererEffectsConfig.lighting.directional.position.z
+  );
   scene.add(directionalLight);
 
   // World boundaries visualization (wireframe-only box)
   const boxGeom = new THREE.BoxGeometry(state.simConfig.simBounds.width, state.simConfig.simBounds.height, state.simConfig.simBounds.depth);
   // Use edges geometry to display only the boundary lines (no filled interior)
   const edges = new THREE.EdgesGeometry(boxGeom);
-  const lineMat = new THREE.LineBasicMaterial({ color: 0x4a90e2, transparent: true, opacity: 0.6 });
+  const lineMat = new THREE.LineBasicMaterial({
+    color: RendererEffectsConfig.worldBoundaries.color,
+    transparent: true,
+    opacity: RendererEffectsConfig.worldBoundaries.opacity
+  });
   const boxWire = new THREE.LineSegments(edges, lineMat);
   boxWire.position.set(state.simConfig.simBounds.width/2, state.simConfig.simBounds.height/2, state.simConfig.simBounds.depth/2);
   scene.add(boxWire);
@@ -272,20 +294,42 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   function colorForTeam(team: 'red' | 'blue'): number { return team === 'red' ? 0xff5050 : 0x50a0ff; }
 
   function meshForShip(s: Ship): THREE.Object3D {
-    // Try to get a GLTF model from assetPool first (config-driven path)
+    // Try to get SVG asset from assetPool first
     try {
       const pool = (state as any).assetPool as Map<string, any> | undefined;
-      const key = `ship-${s.class}-${s.team}`;
-      if (pool) {
-        const cached = pool.get(key);
-        if (cached && cached.scene) {
-          const clone = (cached.scene.clone ? cached.scene.clone() : cached.scene) as THREE.Object3D;
-          clone.position.set(s.pos.x, s.pos.y, s.pos.z);
-          return clone;
+      const svgUrl = getShipSVGUrl(s.class, defaultSVGConfig);
+
+      if (pool && pool.has(svgUrl)) {
+        const svgAsset = pool.get(svgUrl);
+        if (svgAsset && svgAsset.imageBitmap) {
+          // Create texture from ImageBitmap
+          const texture = new THREE.CanvasTexture(svgAsset.imageBitmap);
+          texture.generateMipmaps = false;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+
+          // Create material with texture
+          const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            alphaTest: 0.1
+          });
+
+          // Create plane geometry sized appropriately
+          const geometry = new THREE.PlaneGeometry(
+            ShipVisualConfig.ships[s.class]?.collisionRadius * 2 || 16,
+            ShipVisualConfig.ships[s.class]?.collisionRadius * 2 || 16
+          );
+
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.rotation.z = Math.PI / 2; // orient nose along +X
+          mesh.position.set(s.pos.x, s.pos.y, s.pos.z);
+
+          return mesh;
         }
       }
     } catch (e) {
-      // fall back to procedural mesh
+      console.warn(`[threeRenderer] Failed to load SVG for ${s.class}:`, e);
     }
 
     // Fallback: Simple triangular ship facing +X
@@ -355,7 +399,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     barGroup.position.set(
       ship.pos.x + config.position.offsetX,
       ship.pos.y + config.position.offsetY,
-      ship.pos.z + 10 // Above the ship
+      ship.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
     );
 
     // Update health bar
@@ -428,7 +472,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     shieldGroup.position.set(ship.pos.x, ship.pos.y, ship.pos.z + 0.1);
 
     // Scale based on ship class
-    const scale = ship.class === 'fighter' ? 0.8 : ship.class === 'corvette' ? 1.0 : ship.class === 'frigate' ? 1.2 : ship.class === 'destroyer' ? 1.4 : 1.6;
+    const scale = ShipVisualConfig.shield.scaleMultipliers[ship.class] ?? 1.0;
     shieldGroup.scale.setScalar(scale * config.animation.scaleMultiplier);
 
     // Update opacity based on shield strength
@@ -520,7 +564,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (!m) continue;
       m.position.set(s.pos.x, s.pos.y, s.pos.z);
       m.rotation.z = s.dir + Math.PI / 2;
-      const scale = s.class === 'fighter' ? 0.7 : s.class === 'corvette' ? 0.9 : s.class === 'frigate' ? 1.1 : s.class === 'destroyer' ? 1.35 : 1.6;
+      const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1.0;
       m.scale.setScalar(scale);
 
       // Update health bar
