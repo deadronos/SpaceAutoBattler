@@ -1,6 +1,6 @@
 ---
 description: 'Generate technical debt remediation plans for code, tests, and\ndocumentation.'
-tools: ['changes', 'codebase', 'editFiles', 'extensions', 'fetch', 'findTestFiles', 'githubRepo', 'new', 'openSimpleBrowser', 'problems', 'runCommands', 'runTasks', 'runTests', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection', 'testFailure', 'usages', 'vscodeAPI', 'github']
+tools: ['search', 'think', 'changes', 'runCommands', 'runTasks', 'edit', 'notebooks', 'search', 'new', 'extensions', 'todos', 'runTests', 'usages', 'vscodeAPI', 'problems', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'playwright', 'sequentialthinking', 'mcp-fetch', 'memory', 'context7', 'joyride-eval', 'joyride-agent-guide', 'joyride-user-guide', 'human-intelligence']
 ---
 
 # Technical Debt Remediation Plan

@@ -102,6 +102,10 @@ export interface Ship {
   fighterSpawnCdLeft?: number; // seconds
   parentCarrierId?: EntityId; // for fighters spawned by carriers
   lastShieldHitTime?: number; // timestamp when shield was last hit
+  // Amount of shield damage absorbed by the last hit (raw damage units)
+  lastShieldHitStrength?: number;
+  // Direction from which the last shield impact came (unit vector, world space)
+  lastShieldHitDir?: Vector3;
   // AI state
   aiState?: {
     currentIntent: import('../config/behaviorConfig.js').AIIntent;

@@ -31,6 +31,33 @@ export interface RendererConfig {
       rippleSpeed: number; // ripple effect speed
       scaleMultiplier: number; // how much larger than ship
     };
+    // Hex grid visual parameters
+    hexGrid: {
+      density: number; // number of hexes around equator
+      edgeWidth: number; // grid line width
+      splashRadius: number; // axial radius for multi-hex splash (e.g., 1 = neighbors)
+      hitWindow: number; // seconds to keep a hex lit after hit
+      hitMax: number; // max concurrent recent hits to track
+    };
+    // Ripple/crack effect parameters
+    ripple: {
+      amplitude: number; // strength of ripple brightness
+      speed: number; // angular wave speed
+      falloff: number; // spatial falloff factor across hex radius
+    };
+    // Directional arc highlight parameters
+    arc: {
+      alignStart: number; // smoothstep start threshold for arc alignment
+      alignEnd: number; // smoothstep end threshold for arc alignment
+      alphaScale: number; // multiplier for arc alpha contribution
+      colorScale: number; // multiplier for arc color contribution
+    };
+    // Damage scaling parameters
+    damage: {
+      normalizeBy: number; // divisor to map raw damage -> ~[0..1]
+      minScale: number; // minimum scale applied for very low damage
+      maxScale: number; // clamp for high damage
+    };
   };
 
   // Particle system settings
@@ -124,6 +151,29 @@ export const DefaultRendererConfig: RendererConfig = {
       pulseSpeed: 2.0,
       rippleSpeed: 1.5,
       scaleMultiplier: 1.2,
+    },
+    hexGrid: {
+      density: 30,
+      edgeWidth: 0.015,
+      splashRadius: 1.0,
+      hitWindow: 0.6,
+      hitMax: 8,
+    },
+    ripple: {
+      amplitude: 0.45,
+      speed: 1.6,
+      falloff: 1.8,
+    },
+    arc: {
+      alignStart: 0.75,
+      alignEnd: 0.98,
+      alphaScale: 0.6,
+      colorScale: 1.0,
+    },
+    damage: {
+      normalizeBy: 30.0,
+      minScale: 0.3,
+      maxScale: 1.5,
     },
   },
 

@@ -385,7 +385,8 @@ export async function build({ outDir = BUILD_CONFIG.defaultOutDir, incremental =
     logger.time('Asset copying');
     const copyResults = await Promise.all([
       copyDirOptimized(BUILD_CONFIG.assetsDir, path.join(outDir, 'assets'), logger, cache),
-      copyDirOptimized(BUILD_CONFIG.svgConfigDir, path.join(outDir, 'svg'), logger, cache),
+      // Preserve source-relative path so runtime can use './src/config/assets/svg/*.svg'
+      copyDirOptimized(BUILD_CONFIG.svgConfigDir, path.join(outDir, 'src', 'config', 'assets', 'svg'), logger, cache),
       copyDirOptimized(BUILD_CONFIG.publicDir, outDir, logger, cache),
     ]);
     logger.timeEnd('Asset copying');

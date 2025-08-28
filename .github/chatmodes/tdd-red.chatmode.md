@@ -1,8 +1,6 @@
 ---
 description: 'Guide test-first development by writing failing tests that\ndescribe desired behaviour from GitHub issue context before implementation\nexists.'
-tools: ['github', 'findTestFiles', 'editFiles', 'runTests', 'runCommands',
-'codebase', 'filesystem', 'search', 'problems', 'testFailure',
-'terminalLastCommand']
+tools: ['search', 'think', 'changes', 'runCommands', 'runTasks', 'edit', 'notebooks', 'search', 'new', 'extensions', 'todos', 'runTests', 'usages', 'vscodeAPI', 'problems', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'playwright', 'sequentialthinking', 'memory', 'context7']
 ---
 
 # TDD Red Phase - Write Failing Tests First

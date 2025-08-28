@@ -277,6 +277,10 @@ function updateBullets(state: GameState, dt: number) {
           dmgLeft -= absorb;
           // Track shield hit for visual effects
           s.lastShieldHitTime = state.time;
+          // Record direction of impact on shield as a unit vector from ship center to bullet position
+          const len = Math.max(1e-6, d);
+          s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+          s.lastShieldHitStrength = absorb; // use absorbed shield damage as strength proxy
         }
         if (dmgLeft > 0) {
           // Armor reduces damage

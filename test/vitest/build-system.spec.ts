@@ -128,22 +128,26 @@ describe('Build System Tests', () => {
         expect(assetsContent.length).toBeGreaterThan(0);
       }
 
-      // Check SVG assets
-      const svgDir = path.join(TEST_CONFIG.distDir, 'svg');
-      const svgExists = await fs.stat(svgDir).then(() => true).catch(() => false);
+      // Check SVG assets are preserved under src/config/assets/svg
+      const srcSvgDir = path.join(TEST_CONFIG.repoRoot, 'src', 'config', 'assets', 'svg');
+      const distSvgDir = path.join(TEST_CONFIG.distDir, 'src', 'config', 'assets', 'svg');
+      const srcExists = await fs.stat(srcSvgDir).then(() => true).catch(() => false);
+      const distExists = await fs.stat(distSvgDir).then(() => true).catch(() => false);
+      expect(srcExists).toBe(true);
+      expect(distExists).toBe(true);
 
-      if (svgExists) {
-        const svgFiles = await fs.readdir(svgDir);
-        expect(svgFiles.length).toBeGreaterThan(0);
+      const srcFiles = (await fs.readdir(srcSvgDir)).filter(f => f.endsWith('.svg')).sort();
+      const distFiles = (await fs.readdir(distSvgDir)).filter(f => f.endsWith('.svg')).sort();
+      expect(distFiles).toEqual(srcFiles);
 
-        // Verify SVG files are valid
-        for (const svgFile of svgFiles) {
-          if (svgFile.endsWith('.svg')) {
-            const svgPath = path.join(svgDir, svgFile);
-            const svgContent = await fs.readFile(svgPath, 'utf8');
-            expect(svgContent).toMatch(/<svg[^>]*>/);
-          }
-        }
+      // Verify file contents are identical
+      for (const f of srcFiles) {
+        const [srcContent, distContent] = await Promise.all([
+          fs.readFile(path.join(srcSvgDir, f), 'utf8'),
+          fs.readFile(path.join(distSvgDir, f), 'utf8'),
+        ]);
+        expect(distContent).toBe(srcContent);
+        expect(distContent).toMatch(/<svg[^>]*>/);
       }
     });
   });
@@ -165,6 +169,24 @@ describe('Build System Tests', () => {
       // Verify file has content
       const stats = await fs.stat(standalonePath);
       expect(stats.size).toBeGreaterThan(1000); // At least 1KB
+    });
+
+    it('should run base build and produce base artifacts before inlining', async () => {
+      // After running build-standalone, the base build should have produced these files
+      const expectedBaseFiles = [
+        'bundled.js',
+        'bundled.css',
+        'simWorker.js',
+        'spaceautobattler.html',
+      ];
+
+      for (const file of expectedBaseFiles) {
+        const p = path.join(TEST_CONFIG.distDir, file);
+        const exists = await fs.stat(p).then(() => true).catch(() => false);
+        expect(exists, `Base artifact missing: ${file}`).toBe(true);
+        const stats = await fs.stat(p);
+        expect(stats.size).toBeGreaterThan(100); // ensure non-trivial content
+      }
     });
 
     it('should inline all assets correctly', async () => {

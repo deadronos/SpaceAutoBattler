@@ -35,7 +35,9 @@ export interface SVGConfig {
 
 export const defaultSVGConfig: SVGConfig = {
   // File paths and loading
-  svgDir: './dist/svg/',
+  // Use a path relative to the served root so that after build the loader can read
+  // from ./src/config/assets/svg/ inside dist (folder structure preserved).
+  svgDir: './src/config/assets/svg/',
   defaultFileNames: ['fighter.svg', 'corvette.svg', 'frigate.svg', 'destroyer.svg', 'carrier.svg'],
 
   // Rasterization settings
