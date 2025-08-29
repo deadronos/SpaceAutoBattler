@@ -274,18 +274,32 @@ test/
 
 ## 📈 Performance Characteristics
 
+## ⚙️ Recent AI behavior changes
+
+Small developer-facing changes were made to improve deterministic AI behavior and testing:
+
+- `AIController.calculateSeparationForceWithCount` is now a public helper. Tests and tooling can call this directly to obtain both the separation force and the neighbor count used to scale idle separation.
+- A new config flag `behaviorConfig.globalSettings.enableSpawnJitter` (default: true) controls a tiny deterministic spawn-time velocity jitter intended to break perfect symmetry in tightly clustered spawns and make separation forces effective during initial frames.
+- The `globalSettings.evadeOnlyOnDamage` default is preserved for backwards compatibility in tests (it remains configurable in `src/config/behaviorConfig.ts`).
+
+These changes are intended to be low-risk and to improve test reliability and AI behavior in edge-case symmetric spawns. Toggle `enableSpawnJitter` if you need absolutely identical initial velocities in production scenarios.
+
+
+ 
 ### Simulation Performance
 - **60 FPS Simulation** - Fixed timestep ensures consistent gameplay
 - **1000+ Entities** - Handles large fleet engagements
 - **Deterministic** - No performance-dependent gameplay changes
 - **Memory Efficient** - Object pooling and lifecycle management
 
+ 
 ### Rendering Performance
 - **WebGL Optimized** - Instanced rendering for particle effects
 - **LOD System** - Distance-based detail reduction
 - **Batch Rendering** - Minimized draw calls
 - **GPU Acceleration** - Hardware-accelerated 3D transformations
 
+ 
 ### Benchmarks
 - **Simulation Step**: < 1ms for 100 ships + 500 bullets
 - **Render Frame**: 60+ FPS on mid-range GPUs
@@ -294,6 +308,7 @@ test/
 
 ## 🤝 Contributing
 
+ 
 ### Development Workflow
 1. **Fork and Clone** - Create your development branch
 2. **Install Dependencies** - `npm install`
@@ -302,6 +317,7 @@ test/
 5. **Test Thoroughly** - Both unit and E2E tests
 6. **Submit PR** - Include test coverage and documentation
 
+ 
 ### Code Standards
 - **TypeScript Strict** - No `any` types, full type coverage
 - **Clean Architecture** - Maintain separation of concerns
@@ -309,6 +325,7 @@ test/
 - **Performance Conscious** - Profile and optimize critical paths
 - **Documentation** - Update README and inline comments
 
+ 
 ### Architectural Guidelines
 - **GameState First** - All state changes go through GameState
 - **Pure Functions** - Simulation logic should be side-effect free

@@ -89,6 +89,20 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
     fighterSpawnCdLeft: cls === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
     parentCarrierId,
   };
+  // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
+  // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
+  // intentionally very small (fractional) and scale with ship speed so larger ships
+  // get a slightly larger jitter but remain subtle in gameplay. This behavior can
+  // be toggled via behaviorConfig.globalSettings.enableSpawnJitter.
+  const enableJitter = state.behaviorConfig?.globalSettings.enableSpawnJitter;
+  if (enableJitter) {
+    const jitterScale = 0.02; // fraction of ship.speed per second
+    const angle = state.rng.next() * Math.PI * 2;
+    const jitterMag = ship.speed * jitterScale;
+    ship.vel.x += Math.cos(angle) * jitterMag;
+    ship.vel.y += Math.sin(angle) * jitterMag;
+  }
+
   state.ships.push(ship);
   return ship;
 }
