@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach } from 'vitest';
 import type { GameState, Ship, Vector3 } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
-import { DEFAULT_SIM_CONFIG } from '../../src/config/simConfig.js';
+import { DefaultSimConfig } from '../../src/config/simConfig.js';
 import { createInitialState, spawnShip } from '../../src/core/gameState.js';
 import { createRNG } from '../../src/utils/rng.js';
 
