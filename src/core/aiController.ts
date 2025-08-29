@@ -9,6 +9,8 @@ import type {
 } from '../config/behaviorConfig.js';
 import { getEffectivePersonality, selectRoamingPattern, getFormationConfig } from '../config/behaviorConfig.js';
 import { getShipClassConfig } from '../config/entitiesConfig.js';
+import { PhysicsConfig } from '../config/physicsConfig.js';
+import { applyBoundaryPhysics } from './gameState.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normalize, subtract } from '../utils/vector3.js';
 
 /**
@@ -43,9 +45,9 @@ export class AIController {
   }
 
   /**
-   * Update AI for a single ship
+   * Update AI for a single ship (public for legacy stepShipAI delegation)
    */
-  private updateShipAI(ship: Ship, dt: number) {
+  updateShipAI(ship: Ship, dt: number) {
     const config = this.state.behaviorConfig!;
     const personality = getEffectivePersonality(config, ship.class, ship.team);
 
@@ -652,18 +654,18 @@ export class AIController {
 
     // Move forward using 3D forward vector
     const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
-    const accel = moveSpeed * 0.5;
+    const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
     
     ship.vel.x += forward.x * accel * dt;
     ship.vel.y += forward.y * accel * dt;
     ship.vel.z += forward.z * accel * dt;
 
-    // Damp and clamp speed
-    ship.vel.x *= 0.98;
-    ship.vel.y *= 0.98;
-    ship.vel.z *= 0.98;
+    // Damp and clamp speed using PhysicsConfig
+    ship.vel.x *= PhysicsConfig.speed.dampingFactor;
+    ship.vel.y *= PhysicsConfig.speed.dampingFactor;
+    ship.vel.z *= PhysicsConfig.speed.dampingFactor;
 
-    const maxV = moveSpeed;
+    const maxV = moveSpeed * PhysicsConfig.speed.maxSpeedMultiplier;
     const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
     if (v > maxV) {
       ship.vel.x = (ship.vel.x / v) * maxV;
@@ -675,6 +677,9 @@ export class AIController {
     ship.pos.x += ship.vel.x * dt;
     ship.pos.y += ship.vel.y * dt;
     ship.pos.z += ship.vel.z * dt;
+
+    // Apply boundary physics
+    applyBoundaryPhysics(ship, this.state);
   }
 
   /**
@@ -736,18 +741,18 @@ export class AIController {
 
     // Move forward using 3D forward vector
     const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
-    const accel = moveSpeed * 0.5;
+    const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
     
     ship.vel.x += forward.x * accel * dt;
     ship.vel.y += forward.y * accel * dt;
     ship.vel.z += forward.z * accel * dt;
 
-    // Damp and clamp speed
-    ship.vel.x *= 0.98;
-    ship.vel.y *= 0.98;
-    ship.vel.z *= 0.98;
+    // Damp and clamp speed using PhysicsConfig
+    ship.vel.x *= PhysicsConfig.speed.dampingFactor;
+    ship.vel.y *= PhysicsConfig.speed.dampingFactor;
+    ship.vel.z *= PhysicsConfig.speed.dampingFactor;
 
-    const maxV = moveSpeed;
+    const maxV = moveSpeed * PhysicsConfig.speed.maxSpeedMultiplier;
     const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
     if (v > maxV) {
       ship.vel.x = (ship.vel.x / v) * maxV;
@@ -759,6 +764,9 @@ export class AIController {
     ship.pos.x += ship.vel.x * dt;
     ship.pos.y += ship.vel.y * dt;
     ship.pos.z += ship.vel.z * dt;
+
+    // Apply boundary physics
+    applyBoundaryPhysics(ship, this.state);
   }
 
   /**
