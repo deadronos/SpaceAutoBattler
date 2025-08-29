@@ -869,7 +869,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
       m.position.set(s.pos.x, s.pos.y, s.pos.z);
-      m.rotation.z = s.dir - Math.PI / 2; // Adjust for coordinate system mismatch
+      m.rotation.z = s.dir; // Align ship nose with movement direction
       const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1.0;
       m.scale.setScalar(scale);
 
