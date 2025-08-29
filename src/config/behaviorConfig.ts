@@ -139,6 +139,10 @@ export interface BehaviorConfig {
     evadeDistance: number;
     /** Only allow evade behavior when ship has recently taken damage */
     evadeOnlyOnDamage: boolean;
+    /** Enable periodic boundary cleanup (teleport/prune out-of-bounds entities) */
+    enableBoundaryCleanup?: boolean;
+    /** Interval in sim ticks between boundary cleanup runs (default ~600 ticks = 10s at 60tps) */
+    boundaryCleanupIntervalTicks?: number;
     /** Toggle small deterministic spawn-time velocity jitter to break perfect symmetry */
     enableSpawnJitter?: boolean;
   };
@@ -179,7 +183,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.2
   },
   destroyer: {
-    mode: 'carrier_group',
+    mode: 'mixed',
     intentReevaluationRate: 2.0,
     minIntentDuration: 5,
     maxIntentDuration: 20,
@@ -189,7 +193,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.5
   },
   carrier: {
-    mode: 'aggressive',
+    mode: 'mixed',
     intentReevaluationRate: 3.0,
     minIntentDuration: 8,
     maxIntentDuration: 30,
@@ -291,6 +295,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     evadeSamplingCount: 8,
     evadeDistance: 30,
     evadeOnlyOnDamage: true, // Default: only allow evade behavior when ship has recently taken damage
+    enableBoundaryCleanup: true,
+    boundaryCleanupIntervalTicks: 600,
     enableSpawnJitter: true
   }
 };

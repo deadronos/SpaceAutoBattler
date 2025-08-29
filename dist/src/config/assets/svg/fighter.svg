@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Main fuselage -->
+  <ellipse cx="32" cy="32" rx="8" ry="3" fill="#4a90e2" stroke="#2e5c8a" stroke-width="1"/>
+  <!-- Wings -->
+  <polygon points="24,28 16,24 20,32 24,36" fill="#6ba3f0" stroke="#2e5c8a" stroke-width="1"/>
+  <polygon points="40,28 48,24 44,32 40,36" fill="#6ba3f0" stroke="#2e5c8a" stroke-width="1"/>
+  <!-- Cockpit -->
+  <ellipse cx="32" cy="30" rx="3" ry="2" fill="#87ceeb" stroke="#2e5c8a" stroke-width="1"/>
+  <!-- Engine trails -->
+  <rect x="12" y="30" width="8" height="4" rx="2" fill="#ff6b6b" stroke="#cc5555" stroke-width="1"/>
+  <rect x="44" y="30" width="8" height="4" rx="2" fill="#ff6b6b" stroke="#cc5555" stroke-width="1"/>
+  <!-- Weapon mounts -->
+  <circle cx="20" cy="32" r="1.5" fill="#ffd700"/>
+  <circle cx="44" cy="32" r="1.5" fill="#ffd700"/>
+</svg>
