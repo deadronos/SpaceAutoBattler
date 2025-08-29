@@ -312,12 +312,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const texturedMaterial = new THREE.MeshBasicMaterial({
         map: texture,
         transparent: true,
-        alphaTest: 0.05
+        alphaTest: 0.05,
+        side: THREE.DoubleSide  // Make planes visible from both front and back
       });
       const teamMaterial = new THREE.MeshBasicMaterial({
         color: teamColor,
         transparent: true,
-        opacity: 0.8
+        opacity: 0.8,
+        side: THREE.DoubleSide  // Make team-colored surfaces visible from both sides
       });
 
       // Create a group to hold the ship parts
@@ -372,6 +374,30 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       rightPanel.position.z = -size * 0.2;
       rightPanel.rotation.y = -Math.PI / 2;
       shipGroup.add(rightPanel);
+
+      // Rear panels for visibility from behind
+      const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+      
+      // Main rear panel
+      const rearPanel = new THREE.Mesh(rearPanelGeometry, texturedMaterial);
+      rearPanel.position.x = -size * 0.4; // Behind the main body
+      rearPanel.rotation.y = Math.PI; // Face backward
+      shipGroup.add(rearPanel);
+      
+      // Rear fins for additional detail and visibility
+      const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+      
+      // Top rear fin
+      const topRearFin = new THREE.Mesh(rearFinGeometry, texturedMaterial);
+      topRearFin.position.set(-size * 0.5, size * 0.15, 0);
+      topRearFin.rotation.set(-Math.PI / 3, 0, 0);
+      shipGroup.add(topRearFin);
+      
+      // Bottom rear fin
+      const bottomRearFin = new THREE.Mesh(rearFinGeometry, texturedMaterial);
+      bottomRearFin.position.set(-size * 0.5, -size * 0.15, 0);
+      bottomRearFin.rotation.set(Math.PI / 3, 0, 0);
+      shipGroup.add(bottomRearFin);
 
       // Position the entire ship
       shipGroup.position.set(s.pos.x, s.pos.y, s.pos.z);
