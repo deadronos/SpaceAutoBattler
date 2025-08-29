@@ -120,8 +120,10 @@ export interface Ship {
     lastIntentReevaluation: number;
     roamingPattern?: import('../config/behaviorConfig.js').RoamingPattern;
     roamingStartTime?: number;
+    roamingAnchor?: Vector3;
     formationId?: string;
     formationPosition?: Vector3;
+    formationSlotIndex?: number;
     lastTargetSwitchTime?: number;
     preferredRange?: number;
   };

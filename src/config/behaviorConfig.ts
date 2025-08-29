@@ -127,6 +127,8 @@ export interface BehaviorConfig {
     separationDistance: number;
     /** Weight of separation force relative to desired movement */
     separationWeight: number;
+    /** Minimum separation between roaming anchors */
+    roamingAnchorMinSeparation: number;
   };
 }
 
@@ -270,7 +272,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     formationSearchRadius: 500,
     enableDynamicBehavior: true,
     separationDistance: 120,
-    separationWeight: 0.3
+    separationWeight: 0.3,
+    roamingAnchorMinSeparation: 150
   }
 };
 

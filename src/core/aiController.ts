@@ -1,4 +1,4 @@
-import type { GameState, Ship, Vector3, EntityId, TurretState } from '../types/index.js';
+import type { GameState, Ship, Vector3, EntityId, TurretState, Team } from '../types/index.js';
 import type {
   AIIntent,
   AIBehaviorMode,
@@ -17,9 +17,15 @@ import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normal
 
 export class AIController {
   private state: GameState;
+  
+  // Per-team anchor registries for roaming behavior
+  private roamingAnchors: Map<Team, Vector3[]>;
 
   constructor(state: GameState) {
     this.state = state;
+    this.roamingAnchors = new Map();
+    this.roamingAnchors.set('red', []);
+    this.roamingAnchors.set('blue', []);
   }
 
   /**
@@ -80,6 +86,7 @@ export class AIController {
       return;
     }
 
+    const oldIntent = aiState.currentIntent;
     let newIntent: AIIntent = 'idle';
     let intentDuration = personality.minIntentDuration;
 
@@ -102,6 +109,16 @@ export class AIController {
       case 'mixed':
         newIntent = this.chooseMixedIntent(ship, personality);
         break;
+    }
+
+    // Release roaming anchor if we're no longer in roaming mode or patrol intent
+    if (personality.mode !== 'roaming' || (newIntent !== 'patrol' && oldIntent === 'patrol')) {
+      this.releaseRoamingAnchor(ship);
+    }
+    
+    // Clear formation slot if we're no longer in formation mode
+    if (personality.mode !== 'formation') {
+      this.clearFormationSlot(ship);
     }
 
     // Set intent duration
@@ -149,6 +166,11 @@ export class AIController {
   private chooseRoamingIntent(ship: Ship, personality: AIPersonality): AIIntent {
     const aiState = ship.aiState!;
 
+    // Assign roaming anchor if not already assigned
+    if (!aiState.roamingAnchor) {
+      aiState.roamingAnchor = this.assignRoamingAnchor(ship);
+    }
+
     // Start or continue roaming pattern
     if (!aiState.roamingPattern || this.state.time > (aiState.roamingStartTime || 0) + (aiState.roamingPattern.duration)) {
       aiState.roamingPattern = selectRoamingPattern(this.state.behaviorConfig!);
@@ -173,8 +195,14 @@ export class AIController {
     // Look for formation opportunities
     const formation = this.findBestFormation(ship);
     if (formation) {
-      ship.aiState!.formationId = formation.name;
-      return 'group';
+      // Find formation center (could be a leader ship or group center)
+      const center = this.getFormationCenter(ship, formation.name);
+      if (center) {
+        ship.aiState!.formationId = formation.name;
+        // Assign a unique slot in the formation
+        this.assignFormationSlot(ship, formation.name, formation.config, center);
+        return 'group';
+      }
     }
 
     // Fallback to other behaviors
@@ -348,6 +376,8 @@ export class AIController {
       return this.executeIdle(ship, dt);
     }
 
+    // Use roaming anchor as center, fallback to ship position if no anchor
+    const center = aiState.roamingAnchor || ship.pos;
     let targetPos: Vector3;
 
     switch (pattern.type) {
@@ -356,9 +386,9 @@ export class AIController {
           const angle = this.state.rng.next() * Math.PI * 2;
           const distance = this.state.rng.next() * pattern.radius;
           targetPos = {
-            x: ship.pos.x + Math.cos(angle) * distance,
-            y: ship.pos.y + Math.sin(angle) * distance,
-            z: ship.pos.z + (this.state.rng.next() - 0.5) * pattern.radius * 0.5
+            x: center.x + Math.cos(angle) * distance,
+            y: center.y + Math.sin(angle) * distance,
+            z: center.z + (this.state.rng.next() - 0.5) * pattern.radius * 0.5
           };
           aiState.roamingStartTime = this.state.time;
         } else {
@@ -370,9 +400,9 @@ export class AIController {
         const time = this.state.time - (aiState.roamingStartTime || 0);
         const angle = (time / pattern.duration) * Math.PI * 2;
         targetPos = {
-          x: ship.pos.x + Math.cos(angle) * pattern.radius,
-          y: ship.pos.y + Math.sin(angle) * pattern.radius,
-          z: ship.pos.z
+          x: center.x + Math.cos(angle) * pattern.radius,
+          y: center.y + Math.sin(angle) * pattern.radius,
+          z: center.z
         };
         break;
 
@@ -380,9 +410,9 @@ export class AIController {
         const t = this.state.time - (aiState.roamingStartTime || 0);
         const figureAngle = (t / pattern.duration) * Math.PI * 2;
         targetPos = {
-          x: ship.pos.x + Math.sin(figureAngle) * pattern.radius,
-          y: ship.pos.y + Math.sin(figureAngle * 2) * pattern.radius * 0.5,
-          z: ship.pos.z
+          x: center.x + Math.sin(figureAngle) * pattern.radius,
+          y: center.y + Math.sin(figureAngle * 2) * pattern.radius * 0.5,
+          z: center.z
         };
         break;
 
@@ -783,6 +813,226 @@ export class AIController {
     const shipConfig = getShipClassConfig(ship.class);
     const baseRange = shipConfig.turrets.reduce((max: number, turret) => Math.max(max, turret.range), 0);
     return baseRange * personality.preferredRangeMultiplier;
+  }
+
+  /**
+   * Assign a roaming anchor for a ship, ensuring proper separation from other anchors
+   */
+  private assignRoamingAnchor(ship: Ship): Vector3 {
+    const config = this.state.behaviorConfig!;
+    const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
+    const teamAnchors = this.roamingAnchors.get(ship.team)!;
+    const bounds = this.state.simConfig.simBounds;
+    
+    // Try to find a good anchor position with rejection sampling
+    const maxAttempts = 20;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const candidate: Vector3 = {
+        x: this.state.rng.next() * bounds.width,
+        y: this.state.rng.next() * bounds.height,
+        z: this.state.rng.next() * bounds.depth
+      };
+      
+      // Check if this candidate is far enough from existing anchors
+      let validCandidate = true;
+      for (const existing of teamAnchors) {
+        if (this.getDistance(candidate, existing) < minSeparation) {
+          validCandidate = false;
+          break;
+        }
+      }
+      
+      if (validCandidate) {
+        teamAnchors.push(candidate);
+        return candidate;
+      }
+    }
+    
+    // If we couldn't find a good position, fall back to ship's current position
+    // This ensures the system is robust even in crowded scenarios
+    const fallback = { ...ship.pos };
+    teamAnchors.push(fallback);
+    return fallback;
+  }
+
+  /**
+   * Release a roaming anchor when a ship stops roaming
+   */
+  private releaseRoamingAnchor(ship: Ship): void {
+    if (!ship.aiState?.roamingAnchor) return;
+    
+    const teamAnchors = this.roamingAnchors.get(ship.team)!;
+    const index = teamAnchors.findIndex(anchor => 
+      this.getDistance(anchor, ship.aiState!.roamingAnchor!) < 1.0
+    );
+    
+    if (index >= 0) {
+      teamAnchors.splice(index, 1);
+    }
+    
+    ship.aiState.roamingAnchor = undefined;
+  }
+
+  /**
+   * Clear formation slot assignment when a ship leaves formation
+   */
+  private clearFormationSlot(ship: Ship): void {
+    if (ship.aiState) {
+      ship.aiState.formationId = undefined;
+      ship.aiState.formationSlotIndex = undefined;
+      ship.aiState.formationPosition = undefined;
+    }
+  }
+
+  /**
+   * Get formation center position based on formation type and existing members
+   */
+  private getFormationCenter(ship: Ship, formationName: string): Vector3 | null {
+    if (formationName === 'escort') {
+      // For escort formations, center around the carrier
+      const carrier = this.state.ships.find(s => 
+        s.team === ship.team && 
+        s.class === 'carrier' && 
+        s.health > 0
+      );
+      return carrier ? carrier.pos : null;
+    }
+    
+    // For other formations, find the center of existing formation members
+    const formationShips = this.state.ships.filter(s => 
+      s.team === ship.team && 
+      s.health > 0 && 
+      s.aiState?.formationId === formationName
+    );
+    
+    if (formationShips.length > 0) {
+      // Use center of existing formation
+      const center = { x: 0, y: 0, z: 0 };
+      for (const s of formationShips) {
+        center.x += s.pos.x;
+        center.y += s.pos.y;
+        center.z += s.pos.z;
+      }
+      center.x /= formationShips.length;
+      center.y /= formationShips.length;
+      center.z /= formationShips.length;
+      return center;
+    }
+    
+    // For new formations, use the current ship's position as initial center
+    return ship.pos;
+  }
+
+  /**
+   * Calculate formation slot positions based on formation config and center point
+   */
+  private calculateFormationSlots(config: FormationConfig, center: Vector3): Vector3[] {
+    const slots: Vector3[] = [];
+    const spacing = config.spacing;
+    
+    switch (config.type) {
+      case 'line':
+        for (let i = 0; i < config.maxSize; i++) {
+          const offset = (i - (config.maxSize - 1) / 2) * spacing;
+          slots.push({
+            x: center.x + offset,
+            y: center.y,
+            z: center.z
+          });
+        }
+        break;
+        
+      case 'circle':
+        for (let i = 0; i < config.maxSize; i++) {
+          const angle = (i / config.maxSize) * Math.PI * 2;
+          slots.push({
+            x: center.x + Math.cos(angle) * spacing,
+            y: center.y + Math.sin(angle) * spacing,
+            z: center.z
+          });
+        }
+        break;
+        
+      case 'wedge':
+        for (let i = 0; i < config.maxSize; i++) {
+          const row = Math.floor(Math.sqrt(i));
+          const col = i - row * row;
+          const rowOffset = row * spacing;
+          const colOffset = (col - row / 2) * spacing;
+          slots.push({
+            x: center.x + colOffset,
+            y: center.y - rowOffset,
+            z: center.z
+          });
+        }
+        break;
+        
+      case 'column':
+        for (let i = 0; i < config.maxSize; i++) {
+          slots.push({
+            x: center.x,
+            y: center.y - i * spacing,
+            z: center.z
+          });
+        }
+        break;
+        
+      case 'sphere':
+        // Simple sphere arrangement - distribute ships in layers
+        for (let i = 0; i < config.maxSize; i++) {
+          const layer = Math.floor(i / 4);
+          const layerIndex = i % 4;
+          const angle = (layerIndex / 4) * Math.PI * 2;
+          const radius = spacing * (layer + 1);
+          slots.push({
+            x: center.x + Math.cos(angle) * radius,
+            y: center.y + Math.sin(angle) * radius,
+            z: center.z + (layer - 1) * spacing * 0.5
+          });
+        }
+        break;
+    }
+    
+    return slots;
+  }
+
+  /**
+   * Assign formation slot to a ship joining a formation
+   */
+  private assignFormationSlot(ship: Ship, formationName: string, formationConfig: FormationConfig, center: Vector3): void {
+    // Calculate all slot positions
+    const slots = this.calculateFormationSlots(formationConfig, center);
+    
+    // Find ships already in this formation
+    const formationShips = this.state.ships.filter(s => 
+      s.team === ship.team && 
+      s.health > 0 && 
+      s.aiState?.formationId === formationName &&
+      s.aiState?.formationSlotIndex !== undefined
+    );
+    
+    // Find used slot indices
+    const usedSlots = new Set(formationShips.map(s => s.aiState!.formationSlotIndex!));
+    
+    // Find nearest available slot
+    let bestSlotIndex = -1;
+    let bestDistance = Infinity;
+    
+    for (let i = 0; i < slots.length; i++) {
+      if (!usedSlots.has(i)) {
+        const distance = this.getDistance(ship.pos, slots[i]);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestSlotIndex = i;
+        }
+      }
+    }
+    
+    // Assign the slot
+    if (bestSlotIndex >= 0) {
+      ship.aiState!.formationSlotIndex = bestSlotIndex;
+      ship.aiState!.formationPosition = slots[bestSlotIndex];
+    }
   }
 
   /**
