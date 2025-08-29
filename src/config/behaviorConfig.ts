@@ -296,8 +296,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
     evadeSamplingCount: 8,
     evadeDistance: 30,
-  evadeOnlyOnDamage: false, // Default: preserve backwards compatibility (allow proximity-based evade)
-  killCreditWindowSeconds: 5,
+    evadeOnlyOnDamage: false, // Default: preserve backwards compatibility (allow proximity-based evade)
+    killCreditWindowSeconds: 5,
     enableBoundaryCleanup: true,
     boundaryCleanupIntervalTicks: 600,
     enableSpawnJitter: true
