@@ -191,12 +191,25 @@ export class AIController {
    * Choose intent for defensive behavior
    */
   private chooseDefensiveIntent(ship: Ship, personality: AIPersonality): AIIntent {
+    const config = this.state.behaviorConfig!;
     const threats = this.findNearbyEnemies(ship, ship.aiState!.preferredRange! * 2);
     if (threats.length > 0) {
       const nearestThreat = threats[0];
       const distance = this.getDistance(ship.pos, nearestThreat.pos);
       if (distance < ship.aiState!.preferredRange! * 0.5) {
-        return 'evade';
+        // Only evade if config allows it OR ship has recently taken damage
+        if (!config.globalSettings.evadeOnlyOnDamage) {
+          // Backwards compatibility: allow proximity-based evade
+          return 'evade';
+        } else {
+          // New behavior: only evade if recently damaged
+          const recentDamage = ship.aiState!.recentDamage || 0;
+          if (recentDamage >= config.globalSettings.damageEvadeThreshold) {
+            return 'evade';
+          }
+          // Otherwise, choose more aggressive behavior
+          return this.state.rng.next() < 0.7 ? 'group' : 'patrol';
+        }
       }
     }
     return this.state.rng.next() < personality.groupCohesion ? 'group' : 'patrol';

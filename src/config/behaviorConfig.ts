@@ -137,6 +137,8 @@ export interface BehaviorConfig {
     evadeSamplingCount: number;
     /** Distance to move when evading */
     evadeDistance: number;
+    /** Only allow evade behavior when ship has recently taken damage */
+    evadeOnlyOnDamage: boolean;
   };
 }
 
@@ -285,7 +287,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageEvadeThreshold: 25, // Increased from 15 to reduce evade frequency
     damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
     evadeSamplingCount: 8,
-    evadeDistance: 120
+    evadeDistance: 120,
+    evadeOnlyOnDamage: false // Default: allow proximity-based evade for backwards compatibility
   }
 };
 
