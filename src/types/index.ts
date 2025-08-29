@@ -85,7 +85,14 @@ export interface Ship {
   class: ShipClass;
   pos: Vector3;
   vel: Vector3;
-  dir: number; // radians (rotation around Y axis)
+  // 3D orientation using Euler angles (in radians)
+  orientation: {
+    pitch: number; // rotation around X axis (nose up/down)
+    yaw: number;   // rotation around Y axis (nose left/right)
+    roll: number;  // rotation around Z axis (ship rolling)
+  };
+  // Keep legacy dir field for backward compatibility during transition
+  dir?: number; // deprecated - use orientation.yaw instead
   targetId: EntityId | null;
   health: number;
   maxHealth: number;

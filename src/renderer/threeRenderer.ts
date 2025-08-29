@@ -869,7 +869,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
       m.position.set(s.pos.x, s.pos.y, s.pos.z);
-      m.rotation.z = s.dir; // Align ship nose with movement direction
+      // Set 3D rotation using ship's orientation
+      // Ships are modeled pointing along +X axis, so we need to adjust
+      // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
+      m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
+      
       const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1.0;
       m.scale.setScalar(scale);
 

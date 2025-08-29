@@ -9,6 +9,7 @@ import { FleetConfig } from '../config/fleetConfig.js';
 import { PhysicsConfig } from '../config/physicsConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
+import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -60,9 +61,20 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   const maxShield = Math.floor(applyLevelUps(level.level, cfg.shield));
   const turrets: TurretState[] = cfg.turrets.map((t, i) => ({ id: `${t.id}-${i}`, cooldownLeft: 0 }));
   const p = pos ?? randomSpawnPos(state, team);
+  // Initialize with random yaw, level pitch and roll for natural spawning
+  const randomYaw = state.rng.next() * Math.PI * 2;
+  
   const ship: Ship = {
     id, team, class: cls,
-    pos: { x: p.x, y: p.y, z: p.z }, vel: { x: 0, y: 0, z: 0 }, dir: state.rng.next() * Math.PI * 2,
+    pos: { x: p.x, y: p.y, z: p.z }, 
+    vel: { x: 0, y: 0, z: 0 }, 
+    orientation: {
+      pitch: 0, // level flight initially
+      yaw: randomYaw,
+      roll: 0   // no banking initially
+    },
+    // Keep legacy dir field for backward compatibility
+    dir: randomYaw,
     targetId: null,
     health: maxHealth, maxHealth,
     armor: cfg.armor,
@@ -117,21 +129,31 @@ function stepShipAI(state: GameState, ship: Ship, dt: number) {
   }
   const target = ship.targetId ? state.ships.find(s => s.id === ship.targetId!) : undefined;
   if (target) {
-    const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
-    const desired = Math.atan2(dy, dx); // Keep 2D direction for now, but could extend to 3D
-    let diff = desired - ship.dir;
-    while (diff > Math.PI) diff -= Math.PI*2;
-    while (diff < -Math.PI) diff += Math.PI*2;
-    const turn = clamp(diff, -ship.turnRate*dt, ship.turnRate*dt);
-    ship.dir += turn;
+    // Calculate desired 3D orientation to look at target
+    const targetOrientation = lookAt(ship.pos, target.pos);
+    
+    // Calculate angular differences for pitch and yaw
+    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
+    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
+    
+    // Apply turn rate limits to both pitch and yaw
+    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
+    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
+    
+    // Update 3D orientation
+    ship.orientation.pitch += pitchTurn;
+    ship.orientation.yaw += yawTurn;
+    
+    // Keep legacy dir field in sync with yaw for backward compatibility
+    ship.dir = ship.orientation.yaw;
 
-    // Move towards target with simple acceleration (3D)
-    const ax = Math.cos(ship.dir) * ship.speed * PhysicsConfig.acceleration.forwardMultiplier;
-    const ay = Math.sin(ship.dir) * ship.speed * PhysicsConfig.acceleration.forwardMultiplier;
-    const az = (target.pos.z - ship.pos.z) * PhysicsConfig.acceleration.zAxisMultiplier; // Simple z-axis movement towards target
-    ship.vel.x += ax * dt;
-    ship.vel.y += ay * dt;
-    ship.vel.z += az * dt;
+    // Move towards target using 3D forward vector
+    const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
+    const accel = ship.speed * PhysicsConfig.acceleration.forwardMultiplier;
+    
+    ship.vel.x += forward.x * accel * dt;
+    ship.vel.y += forward.y * accel * dt;
+    ship.vel.z += forward.z * accel * dt;
   }
 
   // Damp and clamp speed
@@ -348,10 +370,14 @@ function carrierSpawnLogic(state: GameState, dt: number) {
     s.fighterSpawnCdLeft = Math.max(0, (s.fighterSpawnCdLeft ?? 0) - dt);
     const cfg = getShipClassConfig('carrier');
     if ((s.spawnedFighters ?? 0) < (cfg.maxFighters ?? 0) && s.fighterSpawnCdLeft === 0) {
-      const angle = s.dir + ((state.rng.next() - 0.5) * CarrierSpawnConfig.fighterSpawn.angleRandomization);
+      // Use carrier's current yaw for spawning direction
+      const angle = s.orientation.yaw + ((state.rng.next() - 0.5) * CarrierSpawnConfig.fighterSpawn.angleRandomization);
       const offset = { x: s.pos.x + Math.cos(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance, y: s.pos.y + Math.sin(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance, z: s.pos.z };
       const child = spawnShip(state, s.team, 'fighter', offset, s.id);
-      child.vel.x = s.vel.x; child.vel.y = s.vel.y; child.vel.z = s.vel.z; child.vel.z = s.vel.z;
+      child.vel.x = s.vel.x; child.vel.y = s.vel.y; child.vel.z = s.vel.z;
+      // Inherit some of parent's orientation
+      child.orientation.yaw = angle;
+      child.dir = angle;
       s.spawnedFighters = (s.spawnedFighters ?? 0) + 1;
       s.fighterSpawnCdLeft = cfg.fighterSpawnCooldown ?? CarrierSpawnConfig.fighterSpawn.baseCooldown;
     }
@@ -359,12 +385,25 @@ function carrierSpawnLogic(state: GameState, dt: number) {
 }
 
 export function simulateStep(state: GameState, dt: number) {
-  // Ship logic
+  // Ship AI logic
+  if (state.behaviorConfig?.globalSettings.aiEnabled) {
+    // Use new AIController for advanced behavior
+    const aiController = new AIController(state);
+    aiController.updateAllShips(dt);
+  } else {
+    // Use simple AI for backward compatibility
+    for (const s of state.ships) {
+      if (s.health <= 0) continue;
+      stepShipAI(state, s, dt);
+    }
+  }
+  
+  // Turret firing for all ships
   for (const s of state.ships) {
     if (s.health <= 0) continue;
-    stepShipAI(state, s, dt);
     fireTurrets(state, s, dt);
   }
+  
   // Bullets
   updateBullets(state, dt);
   // Deaths/XP

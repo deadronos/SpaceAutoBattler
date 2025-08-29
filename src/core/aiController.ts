@@ -9,6 +9,7 @@ import type {
 } from '../config/behaviorConfig.js';
 import { getEffectivePersonality, selectRoamingPattern, getFormationConfig } from '../config/behaviorConfig.js';
 import { getShipClassConfig } from '../config/entitiesConfig.js';
+import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normalize, subtract } from '../utils/vector3.js';
 
 /**
  * AI Controller - Configurable AI behaviors for ships
@@ -333,7 +334,7 @@ export class AIController {
       }
     }
 
-    this.moveTowards(ship, targetPos, dt);
+    this.moveTowardsWithSeparation(ship, targetPos, dt);
   }
 
   /**
@@ -410,7 +411,7 @@ export class AIController {
   }
 
   /**
-   * Move ship towards a target position
+   * Move ship towards a target position using 3D steering
    */
   private moveTowards(ship: Ship, targetPos: Vector3, dt: number, speed?: number) {
     const moveSpeed = speed || ship.speed;
@@ -423,23 +424,115 @@ export class AIController {
 
     if (distance < 10) return; // Close enough
 
-    // Turn towards target
-    const desiredDir = Math.atan2(dy, dx);
-    let diff = desiredDir - ship.dir;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
+    // Calculate desired 3D orientation to look at target
+    const targetOrientation = lookAt(ship.pos, targetPos);
+    
+    // Calculate angular differences for pitch and yaw
+    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
+    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
+    
+    // Apply turn rate limits to both pitch and yaw
+    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
+    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
+    
+    // Update 3D orientation
+    ship.orientation.pitch += pitchTurn;
+    ship.orientation.yaw += yawTurn;
+    
+    // Keep legacy dir field in sync with yaw for backward compatibility
+    ship.dir = ship.orientation.yaw;
 
-    const turn = Math.sign(diff) * Math.min(Math.abs(diff), ship.turnRate * dt);
-    ship.dir += turn;
+    // Move forward using 3D forward vector
+    const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
+    const accel = moveSpeed * 0.5;
+    
+    ship.vel.x += forward.x * accel * dt;
+    ship.vel.y += forward.y * accel * dt;
+    ship.vel.z += forward.z * accel * dt;
 
-    // Move forward
-    const ax = Math.cos(ship.dir) * moveSpeed * 0.5;
-    const ay = Math.sin(ship.dir) * moveSpeed * 0.5;
-    const az = (targetPos.z - ship.pos.z) * 0.1;
+    // Damp and clamp speed
+    ship.vel.x *= 0.98;
+    ship.vel.y *= 0.98;
+    ship.vel.z *= 0.98;
 
-    ship.vel.x += ax * dt;
-    ship.vel.y += ay * dt;
-    ship.vel.z += az * dt;
+    const maxV = moveSpeed;
+    const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
+    if (v > maxV) {
+      ship.vel.x = (ship.vel.x / v) * maxV;
+      ship.vel.y = (ship.vel.y / v) * maxV;
+      ship.vel.z = (ship.vel.z / v) * maxV;
+    }
+
+    // Integrate position
+    ship.pos.x += ship.vel.x * dt;
+    ship.pos.y += ship.vel.y * dt;
+    ship.pos.z += ship.vel.z * dt;
+  }
+
+  /**
+   * Move ship towards a target position with separation steering to avoid clumping using 3D steering
+   */
+  private moveTowardsWithSeparation(ship: Ship, targetPos: Vector3, dt: number, speed?: number) {
+    const config = this.state.behaviorConfig!;
+    const separationWeight = config.globalSettings.separationWeight;
+    const moveSpeed = speed || ship.speed;
+
+    // Calculate desired direction
+    const dx = targetPos.x - ship.pos.x;
+    const dy = targetPos.y - ship.pos.y;
+    const dz = targetPos.z - ship.pos.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (distance < 10) return; // Close enough
+
+    // Calculate separation force
+    const separationForce = this.calculateSeparationForce(ship);
+
+    // Combine desired movement with separation force
+    const desiredDirX = dx / distance;
+    const desiredDirY = dy / distance;
+    const desiredDirZ = dz / distance;
+
+    const combinedX = desiredDirX + separationForce.x * separationWeight;
+    const combinedY = desiredDirY + separationForce.y * separationWeight;
+    const combinedZ = desiredDirZ + separationForce.z * separationWeight;
+
+    // Normalize combined direction
+    const combinedMagnitude = Math.sqrt(combinedX * combinedX + combinedY * combinedY + combinedZ * combinedZ);
+    const finalDirX = combinedMagnitude > 0 ? combinedX / combinedMagnitude : desiredDirX;
+    const finalDirY = combinedMagnitude > 0 ? combinedY / combinedMagnitude : desiredDirY;
+    const finalDirZ = combinedMagnitude > 0 ? combinedZ / combinedMagnitude : desiredDirZ;
+
+    // Calculate desired 3D orientation to look in the combined direction
+    const targetLookPos = {
+      x: ship.pos.x + finalDirX * 100, // Project forward to get orientation
+      y: ship.pos.y + finalDirY * 100,
+      z: ship.pos.z + finalDirZ * 100
+    };
+    const targetOrientation = lookAt(ship.pos, targetLookPos);
+    
+    // Calculate angular differences for pitch and yaw
+    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
+    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
+    
+    // Apply turn rate limits to both pitch and yaw
+    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
+    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
+    
+    // Update 3D orientation
+    ship.orientation.pitch += pitchTurn;
+    ship.orientation.yaw += yawTurn;
+    
+    // Keep legacy dir field in sync with yaw for backward compatibility
+    ship.dir = ship.orientation.yaw;
+
+    // Move forward using 3D forward vector
+    const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
+    const accel = moveSpeed * 0.5;
+    
+    ship.vel.x += forward.x * accel * dt;
+    ship.vel.y += forward.y * accel * dt;
+    ship.vel.z += forward.z * accel * dt;
 
     // Damp and clamp speed
     ship.vel.x *= 0.98;
@@ -592,6 +685,61 @@ export class AIController {
       y: y / ships.length,
       z: z / ships.length
     };
+  }
+
+  /**
+   * Calculate separation force to avoid clumping with nearby friendly ships
+   */
+  private calculateSeparationForce(ship: Ship): Vector3 {
+    const config = this.state.behaviorConfig!;
+    const separationDistance = config.globalSettings.separationDistance;
+    
+    let separationX = 0;
+    let separationY = 0;
+    let separationZ = 0;
+    let neighborCount = 0;
+
+    // Find nearby friends within separation distance
+    for (const other of this.state.ships) {
+      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+
+      const dist = this.getDistance(ship.pos, other.pos);
+      if (dist > 0 && dist < separationDistance) {
+        // Calculate repulsion vector (away from other ship)
+        const dx = ship.pos.x - other.pos.x;
+        const dy = ship.pos.y - other.pos.y;
+        const dz = ship.pos.z - other.pos.z;
+        
+        // Weight by inverse distance (closer ships have stronger repulsion)
+        const weight = (separationDistance - dist) / separationDistance;
+        const normalizedDist = dist > 0 ? 1 / dist : 1;
+        
+        separationX += dx * weight * normalizedDist;
+        separationY += dy * weight * normalizedDist;
+        separationZ += dz * weight * normalizedDist;
+        neighborCount++;
+      }
+    }
+
+    if (neighborCount === 0) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    // Average and normalize the separation force
+    separationX /= neighborCount;
+    separationY /= neighborCount;
+    separationZ /= neighborCount;
+
+    const magnitude = Math.sqrt(separationX * separationX + separationY * separationY + separationZ * separationZ);
+    if (magnitude > 0) {
+      return {
+        x: separationX / magnitude,
+        y: separationY / magnitude,
+        z: separationZ / magnitude
+      };
+    }
+
+    return { x: 0, y: 0, z: 0 };
   }
 
   /**
