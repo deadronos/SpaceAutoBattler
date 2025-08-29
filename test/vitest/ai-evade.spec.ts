@@ -49,7 +49,7 @@ describe('AI Evade Behavior', () => {
 
     // Simulate damage accumulation by directly updating aiState
     // This simulates the damage tracking that would happen in updateBullets
-    ship.aiState!.recentDamage = 20; // Above threshold of 15
+    ship.aiState!.recentDamage = 30; // Above threshold of 25
     ship.aiState!.lastDamageTime = state.time;
 
     // Force reevaluation of intent

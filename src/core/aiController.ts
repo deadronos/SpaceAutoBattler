@@ -66,8 +66,12 @@ export class AIController {
     // Update recent damage decay
     this.updateRecentDamage(ship, dt);
 
-    // Reevaluate intent if needed
-    if (this.state.time - aiState.lastIntentReevaluation >= personality.intentReevaluationRate) {
+    // Force intent reevaluation if ship has taken significant damage
+    const recentDamage = aiState.recentDamage || 0;
+    const shouldForceReevaluation = recentDamage >= this.state.behaviorConfig!.globalSettings.damageEvadeThreshold;
+
+    // Reevaluate intent if needed (either by time or by damage)
+    if (shouldForceReevaluation || this.state.time - aiState.lastIntentReevaluation >= personality.intentReevaluationRate) {
       this.reevaluateIntent(ship, personality);
       aiState.lastIntentReevaluation = this.state.time;
     }
@@ -99,18 +103,18 @@ export class AIController {
     const aiState = ship.aiState!;
     const config = this.state.behaviorConfig!;
 
-    // Don't change intent if we're still committed to current one
-    if (this.state.time < aiState.intentEndTime) {
+    // Check if ship has taken significant recent damage and should evade
+    const recentDamage = aiState.recentDamage || 0;
+    const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold;
+
+    // Don't change intent if we're still committed to current one, UNLESS we need to evade due to damage
+    if (this.state.time < aiState.intentEndTime && !shouldEvadeFromDamage) {
       return;
     }
 
     const oldIntent = aiState.currentIntent;
     let newIntent: AIIntent = 'idle';
     let intentDuration = personality.minIntentDuration;
-
-    // Check if ship has taken significant recent damage and should evade
-    const recentDamage = aiState.recentDamage || 0;
-    const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold;
 
     if (shouldEvadeFromDamage) {
       newIntent = 'evade';

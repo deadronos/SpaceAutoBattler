@@ -282,8 +282,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     separationDistance: 120,
     separationWeight: 0.3,
     roamingAnchorMinSeparation: 150,
-    damageEvadeThreshold: 15,
-    damageDecayRate: 1.0,
+    damageEvadeThreshold: 25, // Increased from 15 to reduce evade frequency
+    damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
     evadeSamplingCount: 8,
     evadeDistance: 120
   }
