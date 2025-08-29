@@ -172,13 +172,14 @@ export class AIController {
     if (nearestEnemy) {
       const distance = this.getDistance(ship.pos, nearestEnemy.pos);
       const preferredRange = ship.aiState!.preferredRange!;
+      const config = this.state.behaviorConfig!;
       
       // Within optimal combat range - maintain pursuit for effective engagement
-      if (distance < preferredRange * 0.6) {
+      if (distance < preferredRange * config.globalSettings.closeRangeMultiplier) {
         return 'pursue';
       }
       // At medium range - continue pursuing to close distance
-      else if (distance < preferredRange * 1.2) {
+      else if (distance < preferredRange * config.globalSettings.mediumRangeMultiplier) {
         return 'pursue';
       }
       // At longer range - use tactical movement
@@ -198,7 +199,7 @@ export class AIController {
     if (threats.length > 0) {
       const nearestThreat = threats[0];
       const distance = this.getDistance(ship.pos, nearestThreat.pos);
-      if (distance < ship.aiState!.preferredRange! * 0.5) {
+      if (distance < ship.aiState!.preferredRange! * config.globalSettings.closeRangeMultiplier) {
         // Only evade if config allows it OR ship has recently taken damage
         if (!config.globalSettings.evadeOnlyOnDamage) {
           // Backwards compatibility: allow proximity-based evade
@@ -353,15 +354,15 @@ export class AIController {
 
       // If ship has many close neighbors, increase the idle separation strength
       // Use graduated scaling so extreme clusters receive a stronger nudge.
-      if (neighborCount >= 8) {
+      if (neighborCount >= config.globalSettings.separationVeryTightCluster) {
         // Very tight cluster: apply a strong nudge
-        weight = config.globalSettings.separationWeight * 5.0;
-      } else if (neighborCount >= 5) {
+        weight = config.globalSettings.separationWeight * config.globalSettings.separationVeryTightWeight;
+      } else if (neighborCount >= config.globalSettings.separationModerateCluster) {
         // Moderate cluster
-        weight = config.globalSettings.separationWeight * 2.0;
-      } else if (neighborCount >= 3) {
+        weight = config.globalSettings.separationWeight * config.globalSettings.separationModerateWeight;
+      } else if (neighborCount >= config.globalSettings.separationMildCluster) {
         // Mild increase for small clusters
-        weight = config.globalSettings.separationWeight * 1.2;
+        weight = config.globalSettings.separationWeight * config.globalSettings.separationMildWeight;
       }
 
       const speedFactor = Math.max(1, ship.speed * 0.2);
@@ -373,7 +374,7 @@ export class AIController {
       // to break symmetry quickly in tests / initial spawn scenarios. This is
       // intentionally conservative and scales with neighborCount so it only
       // becomes noticeable for dense clusters.
-      if (neighborCount >= 3) {
+      if (neighborCount >= config.globalSettings.separationMildCluster) {
         const separationDistance = config.globalSettings.separationDistance;
         // displacement per second (units/sec) - small fraction of separationDistance
         const displacementPerSecond = (separationDistance * 0.05) * (neighborCount / 5);
@@ -426,7 +427,7 @@ export class AIController {
     // Sample additional random directions around the ship
     for (let i = 1; i < samplingCount; i++) {
       const randomAngle = this.state.rng.next() * Math.PI * 2;
-      const randomPitch = (this.state.rng.next() - 0.5) * Math.PI * 0.5; // ±45 degrees pitch
+      const randomPitch = (this.state.rng.next() - 0.5) * config.globalSettings.evadeMaxPitch;
       
       const candidate = {
         x: ship.pos.x + Math.cos(randomAngle) * Math.cos(randomPitch) * evadeDistance,
@@ -451,37 +452,38 @@ export class AIController {
    */
   private calculateEscapeScore(ship: Ship, targetPos: Vector3, threats: Ship[]): number {
     const bounds = this.state.simConfig.simBounds;
-    let score = 100; // Base score
+    const config = this.state.behaviorConfig!;
+    let score = config.globalSettings.evadeBaseScore; // Base score
 
     // Penalty for proximity to threats
     for (const threat of threats) {
       const distance = this.getDistance(targetPos, threat.pos);
-      const threatPenalty = Math.max(0, 200 - distance) * 0.5;
+      const threatPenalty = Math.max(0, 200 - distance) * config.globalSettings.evadeThreatPenaltyWeight;
       score -= threatPenalty;
     }
 
     // Penalty for being near boundaries
-    const boundaryMargin = 50;
-    if (targetPos.x < boundaryMargin) score -= (boundaryMargin - targetPos.x) * 2;
-    if (targetPos.x > bounds.width - boundaryMargin) score -= (targetPos.x - (bounds.width - boundaryMargin)) * 2;
-    if (targetPos.y < boundaryMargin) score -= (boundaryMargin - targetPos.y) * 2;
-    if (targetPos.y > bounds.height - boundaryMargin) score -= (targetPos.y - (bounds.height - boundaryMargin)) * 2;
-    if (targetPos.z < boundaryMargin) score -= (boundaryMargin - targetPos.z) * 2;
-    if (targetPos.z > bounds.depth - boundaryMargin) score -= (targetPos.z - (bounds.depth - boundaryMargin)) * 2;
+    const boundaryMargin = config.globalSettings.boundarySafetyMargin;
+    if (targetPos.x < boundaryMargin) score -= (boundaryMargin - targetPos.x) * config.globalSettings.evadeBoundaryPenaltyWeight;
+    if (targetPos.x > bounds.width - boundaryMargin) score -= (targetPos.x - (bounds.width - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
+    if (targetPos.y < boundaryMargin) score -= (boundaryMargin - targetPos.y) * config.globalSettings.evadeBoundaryPenaltyWeight;
+    if (targetPos.y > bounds.height - boundaryMargin) score -= (targetPos.y - (bounds.height - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
+    if (targetPos.z < boundaryMargin) score -= (boundaryMargin - targetPos.z) * config.globalSettings.evadeBoundaryPenaltyWeight;
+    if (targetPos.z > bounds.depth - boundaryMargin) score -= (targetPos.z - (bounds.depth - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
 
     // Bonus for increasing distance from nearest threat
     const currentDistance = this.getDistance(ship.pos, threats[0].pos);
     const newDistance = this.getDistance(targetPos, threats[0].pos);
     if (newDistance > currentDistance) {
-      score += (newDistance - currentDistance) * 0.3;
+      score += (newDistance - currentDistance) * config.globalSettings.evadeDistanceImprovementWeight;
     }
 
     // Penalty for getting too close to friendly ships
     for (const friendly of this.state.ships) {
       if (friendly.team === ship.team && friendly.id !== ship.id && friendly.health > 0) {
         const distance = this.getDistance(targetPos, friendly.pos);
-        if (distance < 80) {
-          score -= (80 - distance) * 0.2;
+        if (distance < config.globalSettings.friendlyAvoidanceDistance) {
+          score -= (config.globalSettings.friendlyAvoidanceDistance - distance) * config.globalSettings.evadeFriendlyPenaltyWeight;
         }
       }
     }
@@ -625,6 +627,7 @@ export class AIController {
    */
   private moveTowards(ship: Ship, targetPos: Vector3, dt: number, speed?: number) {
     const moveSpeed = speed || ship.speed;
+    const config = this.state.behaviorConfig!;
 
     // Calculate desired direction
     const dx = targetPos.x - ship.pos.x;
@@ -632,7 +635,7 @@ export class AIController {
     const dz = targetPos.z - ship.pos.z;
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    if (distance < 10) return; // Close enough
+    if (distance < config.globalSettings.movementCloseEnoughThreshold) return; // Close enough
 
     // Calculate desired 3D orientation to look at target
     const targetOrientation = lookAt(ship.pos, targetPos);
@@ -696,7 +699,7 @@ export class AIController {
     const dz = targetPos.z - ship.pos.z;
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    if (distance < 10) return; // Close enough
+    if (distance < config.globalSettings.movementCloseEnoughThreshold) return; // Close enough
 
     // Calculate separation force
     const separationForce = this.calculateSeparationForce(ship);
