@@ -138,6 +138,40 @@ function findNearestEnemy(state: GameState, ship: Ship): Ship | undefined {
 
 function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
 
+/**
+ * Apply boundary physics to a ship based on simulation configuration
+ * This handles bounce, wrap, and remove behaviors consistently across AI systems
+ */
+export function applyBoundaryPhysics(ship: Ship, state: GameState) {
+  const bounds = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.ships;
+
+  if (behavior === 'bounce') {
+    // Bounce off boundaries
+    if (ship.pos.x < 0) { ship.pos.x = 0; ship.vel.x = -ship.vel.x; }
+    else if (ship.pos.x > bounds.width) { ship.pos.x = bounds.width; ship.vel.x = -ship.vel.x; }
+    if (ship.pos.y < 0) { ship.pos.y = 0; ship.vel.y = -ship.vel.y; }
+    else if (ship.pos.y > bounds.height) { ship.pos.y = bounds.height; ship.vel.y = -ship.vel.y; }
+    if (ship.pos.z < 0) { ship.pos.z = 0; ship.vel.z = -ship.vel.z; }
+    else if (ship.pos.z > bounds.depth) { ship.pos.z = bounds.depth; ship.vel.z = -ship.vel.z; }
+  } else if (behavior === 'wrap') {
+    // Wrap around boundaries
+    if (ship.pos.x < 0) ship.pos.x += bounds.width;
+    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
+    if (ship.pos.y < 0) ship.pos.y += bounds.height;
+    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
+    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
+    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
+  } else if (behavior === 'remove') {
+    // Remove ships that go out of bounds
+    if (ship.pos.x < 0 || ship.pos.x > bounds.width ||
+        ship.pos.y < 0 || ship.pos.y > bounds.height ||
+        ship.pos.z < 0 || ship.pos.z > bounds.depth) {
+      ship.health = 0; // Mark for removal
+    }
+  }
+}
+
 function stepShipAI(state: GameState, ship: Ship, dt: number) {
   // Acquire target
   if (!ship.targetId || !state.ships.find(s => s.id === ship.targetId && s.health > 0)) {
@@ -190,34 +224,8 @@ function stepShipAI(state: GameState, ship: Ship, dt: number) {
   ship.pos.y += ship.vel.y * dt;
   ship.pos.z += ship.vel.z * dt;
 
-  // Handle 3D boundary conditions
-  const bounds = state.simConfig.simBounds;
-  const behavior = state.simConfig.boundaryBehavior.ships;
-
-  if (behavior === 'bounce') {
-    // Bounce off boundaries
-    if (ship.pos.x < 0) { ship.pos.x = 0; ship.vel.x = -ship.vel.x; }
-    else if (ship.pos.x > bounds.width) { ship.pos.x = bounds.width; ship.vel.x = -ship.vel.x; }
-    if (ship.pos.y < 0) { ship.pos.y = 0; ship.vel.y = -ship.vel.y; }
-    else if (ship.pos.y > bounds.height) { ship.pos.y = bounds.height; ship.vel.y = -ship.vel.y; }
-    if (ship.pos.z < 0) { ship.pos.z = 0; ship.vel.z = -ship.vel.z; }
-    else if (ship.pos.z > bounds.depth) { ship.pos.z = bounds.depth; ship.vel.z = -ship.vel.z; }
-  } else if (behavior === 'wrap') {
-    // Wrap around boundaries
-    if (ship.pos.x < 0) ship.pos.x += bounds.width;
-    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
-    if (ship.pos.y < 0) ship.pos.y += bounds.height;
-    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
-    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
-    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
-  } else if (behavior === 'remove') {
-    // Remove ships that go out of bounds
-    if (ship.pos.x < 0 || ship.pos.x > bounds.width ||
-        ship.pos.y < 0 || ship.pos.y > bounds.height ||
-        ship.pos.z < 0 || ship.pos.z > bounds.depth) {
-      ship.health = 0; // Mark for removal
-    }
-  }
+  // Apply boundary physics
+  applyBoundaryPhysics(ship, state);
 
   // Regen shields
   ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
