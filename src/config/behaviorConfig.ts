@@ -123,6 +123,10 @@ export interface BehaviorConfig {
     formationSearchRadius: number;
     /** Enable dynamic behavior switching */
     enableDynamicBehavior: boolean;
+    /** Distance within which separation forces apply */
+    separationDistance: number;
+    /** Weight of separation force relative to desired movement */
+    separationWeight: number;
   };
 }
 
@@ -264,7 +268,9 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     maxFormationSize: 8,
     minimumSafeDistance: 150,
     formationSearchRadius: 500,
-    enableDynamicBehavior: true
+    enableDynamicBehavior: true,
+    separationDistance: 120,
+    separationWeight: 0.3
   }
 };
 
