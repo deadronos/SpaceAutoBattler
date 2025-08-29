@@ -65,22 +65,19 @@ async function rasterizeSvgToImageBitmap(svgText, width, height, teamColor) {
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, width, height);
-  const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgText)}`;
   try {
-    const response = await fetch(svgDataUrl);
-    const blob = await response.blob();
-    const imageBitmap = await createImageBitmap(blob, {
+    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const imageBitmap = await createImageBitmap(svgBlob, {
       resizeWidth: width,
       resizeHeight: height,
       resizeQuality: "high"
     });
     ctx.drawImage(imageBitmap, 0, 0, width, height);
+    imageBitmap.close();
     if (teamColor) {
       applyTeamColorTint(ctx, width, height, teamColor);
     }
-    const finalImageBitmap = canvas.transferToImageBitmap();
-    imageBitmap.close();
-    return finalImageBitmap;
+    return canvas.transferToImageBitmap();
   } catch (error) {
     throw new Error(`Failed to rasterize SVG: ${error.message}`);
   }

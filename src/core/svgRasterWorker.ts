@@ -143,36 +143,30 @@ async function rasterizeSvgToImageBitmap(
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
 
-  // Convert SVG to data URL for better browser compatibility
-  const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgText)}`;
-  
   try {
-    // Use fetch to get the SVG as response, then create ImageBitmap
-    const response = await fetch(svgDataUrl);
-    const blob = await response.blob();
+    // Create SVG blob and convert it to ImageBitmap
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
     
-    // Create ImageBitmap with resize options
-    const imageBitmap = await createImageBitmap(blob, {
+    // Try creating ImageBitmap directly from the SVG blob
+    const imageBitmap = await createImageBitmap(svgBlob, {
       resizeWidth: width,
       resizeHeight: height,
       resizeQuality: 'high'
     });
 
-    // Draw ImageBitmap to canvas for team color tinting
+    // Draw the ImageBitmap to canvas
     ctx.drawImage(imageBitmap, 0, 0, width, height);
+
+    // Clean up the intermediate ImageBitmap
+    imageBitmap.close();
 
     // Apply team color tinting if specified
     if (teamColor) {
       applyTeamColorTint(ctx, width, height, teamColor);
     }
 
-    // Convert canvas to final ImageBitmap
-    const finalImageBitmap = canvas.transferToImageBitmap();
-    
-    // Clean up intermediate ImageBitmap
-    imageBitmap.close();
-    
-    return finalImageBitmap;
+    // Convert canvas to ImageBitmap
+    return canvas.transferToImageBitmap();
   } catch (error) {
     throw new Error(`Failed to rasterize SVG: ${error.message}`);
   }
