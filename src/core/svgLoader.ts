@@ -262,7 +262,8 @@ export class SVGLoader {
       
       // Return error - don't create geometric fallback here anymore
       // Let the renderer handle fallbacks appropriately
-      throw new Error(`Failed to rasterize SVG ${asset.url}: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to rasterize SVG ${asset.url}: ${errorMessage}`);
     }
   }
 

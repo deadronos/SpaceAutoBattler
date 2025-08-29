@@ -147,7 +147,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       skyboxTextures.push(texture);
     });
 
-    const cubeTexture = new THREE.CubeTexture(skyboxTextures);
+    const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
     cubeTexture.needsUpdate = true;
 
     return cubeTexture;
