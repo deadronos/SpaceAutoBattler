@@ -417,7 +417,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.ConeGeometry(8, 24, 8);
     const mat = new THREE.MeshPhongMaterial({ color: colorForTeam(s.team), emissive: 0x111122 });
     const placeholder = new THREE.Mesh(geom, mat);
-    placeholder.rotation.z = Math.PI / 2;
+    placeholder.rotation.z = 0; // Will be set correctly in updateTransforms
     placeholder.position.set(s.pos.x, s.pos.y, s.pos.z);
 
     // Lazy-load SVG and swap geometry/material once available
@@ -869,7 +869,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
       m.position.set(s.pos.x, s.pos.y, s.pos.z);
-      m.rotation.z = s.dir + Math.PI / 2;
+      m.rotation.z = s.dir - Math.PI / 2; // Adjust for coordinate system mismatch
       const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1.0;
       m.scale.setScalar(scale);
 
