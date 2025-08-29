@@ -200,7 +200,7 @@ describe('3D Steering System', () => {
 
   describe('3D Formation Behavior', () => {
     test('ships should move toward targets in 3D formations', () => {
-      gameState.behaviorConfig.globalSettings.separationWeight = 0.5;
+      gameState.behaviorConfig!.globalSettings.separationWeight = 0.5;
       
       // Create a formation of ships at different Z levels
       const ships = [];
