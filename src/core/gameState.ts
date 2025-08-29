@@ -173,61 +173,59 @@ export function applyBoundaryPhysics(ship: Ship, state: GameState) {
 }
 
 function stepShipAI(state: GameState, ship: Ship, dt: number) {
-  // Acquire target
+  // Legacy AI: Use AIController with simple pursue behavior
+  // This ensures all movement logic is unified through AIController
+  
+  // Initialize basic AI state if needed for AIController compatibility
+  if (!ship.aiState) {
+    ship.aiState = {
+      currentIntent: 'pursue',
+      intentEndTime: state.time + 1.0, // Short duration to re-evaluate frequently
+      lastIntentReevaluation: 0,
+      preferredRange: 100, // Basic range
+      recentDamage: 0,
+      lastDamageTime: 0
+    };
+  }
+
+  // Acquire target using simple logic
   if (!ship.targetId || !state.ships.find(s => s.id === ship.targetId && s.health > 0)) {
     const t = findNearestEnemy(state, ship);
     ship.targetId = t?.id ?? null;
   }
-  const target = ship.targetId ? state.ships.find(s => s.id === ship.targetId!) : undefined;
-  if (target) {
-    // Calculate desired 3D orientation to look at target
-    const targetOrientation = lookAt(ship.pos, target.pos);
-    
-    // Calculate angular differences for pitch and yaw
-    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
-    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
-    
-    // Apply turn rate limits to both pitch and yaw
-    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
-    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
-    
-    // Update 3D orientation
-    ship.orientation.pitch += pitchTurn;
-    ship.orientation.yaw += yawTurn;
-    
-    // Keep legacy dir field in sync with yaw for backward compatibility
-    ship.dir = ship.orientation.yaw;
 
-    // Move towards target using 3D forward vector
-    const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
-    const accel = ship.speed * PhysicsConfig.acceleration.forwardMultiplier;
-    
-    ship.vel.x += forward.x * accel * dt;
-    ship.vel.y += forward.y * accel * dt;
-    ship.vel.z += forward.z * accel * dt;
-  }
+  // Use AIController for all movement and physics
+  // Create a temporary minimal behavior config for legacy mode
+  const legacyBehaviorConfig = { 
+    ...DEFAULT_BEHAVIOR_CONFIG,
+    // Override to ensure simple behavior
+    defaultPersonality: {
+      ...DEFAULT_BEHAVIOR_CONFIG.defaultPersonality,
+      mode: 'aggressive' as const, // Simple pursue mode
+      intentReevaluationRate: 0.5,
+      minIntentDuration: 0.5,
+      maxIntentDuration: 1.0
+    }
+  };
 
-  // Damp and clamp speed
-  ship.vel.x *= PhysicsConfig.speed.dampingFactor;
-  ship.vel.y *= PhysicsConfig.speed.dampingFactor;
-  ship.vel.z *= PhysicsConfig.speed.dampingFactor;
-  const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
-  const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
-  if (v > maxV) {
-    ship.vel.x = (ship.vel.x / v) * maxV;
-    ship.vel.y = (ship.vel.y / v) * maxV;
-    ship.vel.z = (ship.vel.z / v) * maxV;
-  }
+  // Store original config and temporarily use legacy config
+  const originalConfig = state.behaviorConfig;
+  state.behaviorConfig = legacyBehaviorConfig;
+  
+  // Use AIController for unified movement logic
+  const aiController = new AIController(state);
+  
+  // Force simple pursue intent for consistent legacy behavior
+  ship.aiState.currentIntent = 'pursue';
+  ship.aiState.intentEndTime = state.time + 0.5;
+  
+  // Delegate to AIController
+  aiController.updateShipAI(ship, dt);
+  
+  // Restore original config
+  state.behaviorConfig = originalConfig;
 
-  // Integrate position
-  ship.pos.x += ship.vel.x * dt;
-  ship.pos.y += ship.vel.y * dt;
-  ship.pos.z += ship.vel.z * dt;
-
-  // Apply boundary physics
-  applyBoundaryPhysics(ship, state);
-
-  // Regen shields
+  // Regen shields (AIController doesn't handle this currently)
   ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
 }
 

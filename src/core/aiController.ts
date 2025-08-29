@@ -45,9 +45,9 @@ export class AIController {
   }
 
   /**
-   * Update AI for a single ship
+   * Update AI for a single ship (public for legacy stepShipAI delegation)
    */
-  private updateShipAI(ship: Ship, dt: number) {
+  updateShipAI(ship: Ship, dt: number) {
     const config = this.state.behaviorConfig!;
     const personality = getEffectivePersonality(config, ship.class, ship.team);
 
