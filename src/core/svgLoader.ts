@@ -32,7 +32,9 @@ export class SVGLoader {
 
   private initWorker() {
     try {
-      this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), {
+      // In production/built environment, use the built worker file
+      const workerUrl = new URL('./svgRasterWorker.js', import.meta.url);
+      this.worker = new Worker(workerUrl, {
         type: 'module'
       });
 
@@ -147,6 +149,20 @@ export class SVGLoader {
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
+    // Try worker first
+    if (this.worker) {
+      try {
+        return await this.rasterizeWithWorker(asset, options);
+      } catch (error) {
+        console.warn('[SVGLoader] Worker rasterization failed, using fallback:', error.message);
+      }
+    }
+
+    // Fallback: Use main thread rasterization
+    return this.rasterizeMainThread(asset, options);
+  }
+
+  private async rasterizeWithWorker(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
     return new Promise((resolve, reject) => {
       if (!this.worker) {
         reject(new Error('Worker not available'));
@@ -177,12 +193,39 @@ export class SVGLoader {
         fileModTime: asset.lastModified
       });
 
-      // Timeout after 10 seconds
+      // Timeout after 5 seconds (shorter timeout)
       setTimeout(() => {
         this.worker!.removeEventListener('message', messageHandler);
         reject(new Error('Rasterization timeout'));
-      }, 10000);
+      }, 5000);
     });
+  }
+
+  private async rasterizeMainThread(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
+    // Simple fallback: create a canvas and draw SVG as data URL
+    const canvas = new OffscreenCanvas(options.width!, options.height!);
+    const ctx = canvas.getContext('2d')!;
+
+    // Clear canvas with a solid color as fallback
+    ctx.fillStyle = options.teamColor || '#888888';
+    ctx.fillRect(0, 0, options.width!, options.height!);
+
+    // Add some basic shape to represent the ship
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    const centerX = options.width! / 2;
+    const centerY = options.height! / 2;
+    const size = Math.min(options.width!, options.height!) * 0.6;
+    
+    // Draw a simple diamond shape as fallback
+    ctx.moveTo(centerX, centerY - size/2);
+    ctx.lineTo(centerX + size/3, centerY);
+    ctx.lineTo(centerX, centerY + size/2);
+    ctx.lineTo(centerX - size/3, centerY);
+    ctx.closePath();
+    ctx.fill();
+
+    return canvas.transferToImageBitmap();
   }
 
   // Check if file has changed since last load

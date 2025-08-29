@@ -136,42 +136,46 @@ async function rasterizeSvgToImageBitmap(
   height: number,
   teamColor?: string
 ): Promise<ImageBitmap> {
+  // Create canvas for rasterization
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d')!;
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
 
-  // Create SVG image
-  const img = new Image();
-  const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-  const svgUrl = URL.createObjectURL(svgBlob);
+  // Convert SVG to data URL for better browser compatibility
+  const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgText)}`;
+  
+  try {
+    // Use fetch to get the SVG as response, then create ImageBitmap
+    const response = await fetch(svgDataUrl);
+    const blob = await response.blob();
+    
+    // Create ImageBitmap with resize options
+    const imageBitmap = await createImageBitmap(blob, {
+      resizeWidth: width,
+      resizeHeight: height,
+      resizeQuality: 'high'
+    });
 
-  return new Promise((resolve, reject) => {
-    img.onload = () => {
-      // Draw SVG to canvas
-      ctx.drawImage(img, 0, 0, width, height);
+    // Draw ImageBitmap to canvas for team color tinting
+    ctx.drawImage(imageBitmap, 0, 0, width, height);
 
-      // Apply team color tinting if specified
-      if (teamColor) {
-        applyTeamColorTint(ctx, width, height, teamColor);
-      }
+    // Apply team color tinting if specified
+    if (teamColor) {
+      applyTeamColorTint(ctx, width, height, teamColor);
+    }
 
-      // Convert to ImageBitmap
-      const imageBitmap = canvas.transferToImageBitmap();
-      resolve(imageBitmap);
-
-      // Clean up
-      URL.revokeObjectURL(svgUrl);
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(svgUrl);
-      reject(new Error('Failed to load SVG'));
-    };
-
-    img.src = svgUrl;
-  });
+    // Convert canvas to final ImageBitmap
+    const finalImageBitmap = canvas.transferToImageBitmap();
+    
+    // Clean up intermediate ImageBitmap
+    imageBitmap.close();
+    
+    return finalImageBitmap;
+  } catch (error) {
+    throw new Error(`Failed to rasterize SVG: ${error.message}`);
+  }
 }
 
 // Apply team color tinting to the rasterized SVG

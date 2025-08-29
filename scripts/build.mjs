@@ -338,6 +338,7 @@ export async function build({ outDir = BUILD_CONFIG.defaultOutDir, incremental =
       entryPoints: {
         bundled: path.join(BUILD_CONFIG.srcDir, 'main.ts'),
         simWorker: path.join(BUILD_CONFIG.srcDir, 'simWorker.ts'),
+        svgRasterWorker: path.join(BUILD_CONFIG.srcDir, 'core', 'svgRasterWorker.ts'),
       },
       outdir: outDir,
       bundle: true,
@@ -369,7 +370,8 @@ export async function build({ outDir = BUILD_CONFIG.defaultOutDir, incremental =
     // Log bundle sizes
     const mainJsSize = await getFileSize(path.join(outDir, 'bundled.js'));
     const workerJsSize = await getFileSize(path.join(outDir, 'simWorker.js'));
-    logger.log(`JavaScript bundles: main=${formatBytes(mainJsSize)}, worker=${formatBytes(workerJsSize)}`);
+    const svgWorkerJsSize = await getFileSize(path.join(outDir, 'svgRasterWorker.js'));
+    logger.log(`JavaScript bundles: main=${formatBytes(mainJsSize)}, worker=${formatBytes(workerJsSize)}, svgWorker=${formatBytes(svgWorkerJsSize)}`);
 
     // CSS bundle
     const cssOut = path.join(outDir, 'bundled.css');
@@ -413,6 +415,7 @@ export async function build({ outDir = BUILD_CONFIG.defaultOutDir, incremental =
         js: path.join(outDir, 'bundled.js'),
         ts: path.join(outDir, 'bundled.ts'),
         worker: path.join(outDir, 'simWorker.js'),
+        svgWorker: path.join(outDir, 'svgRasterWorker.js'),
         css: cssOut,
       },
       metafile: result?.metafile,
@@ -438,6 +441,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
       console.log(`  TS:   ${path.relative(repoRoot, result.files.ts)}`);
       console.log(`  CSS:  ${path.relative(repoRoot, result.files.css)}`);
       console.log(`  Worker: ${path.relative(repoRoot, result.files.worker)}`);
+      console.log(`  SVG Worker: ${path.relative(repoRoot, result.files.svgWorker)}`);
     })
     .catch((error) => {
       console.error('✗ Build failed:', error.message);
