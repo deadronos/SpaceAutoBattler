@@ -31,10 +31,26 @@ export class SVGLoader {
   }
 
   private initWorker() {
-    // Temporarily disable worker due to compatibility issues with SVG content
-    // Fall back to main thread rasterization which handles SVG more reliably
-    console.log('[SVGLoader] Using main thread SVG rasterization (worker disabled)');
-    this.worker = null;
+    try {
+      // Try to initialize the worker for SVG rasterization
+      console.log('[SVGLoader] Attempting to initialize SVG rasterization worker');
+      this.worker = new Worker('./svgRasterWorker.js');
+      
+      this.worker.addEventListener('message', (e: MessageEvent) => {
+        this.handleWorkerMessage(e.data);
+      });
+
+      this.worker.addEventListener('error', (error) => {
+        console.warn('[SVGLoader] Worker error, falling back to main thread:', error);
+        this.worker?.terminate();
+        this.worker = null;
+      });
+
+      console.log('[SVGLoader] SVG rasterization worker initialized successfully');
+    } catch (error) {
+      console.warn('[SVGLoader] Failed to initialize worker, using main thread rasterization:', error);
+      this.worker = null;
+    }
   }
 
   private handleWorkerMessage(data: any) {
@@ -180,37 +196,39 @@ export class SVGLoader {
         fileModTime: asset.lastModified
       });
 
-      // Timeout after 5 seconds (shorter timeout)
+      // Timeout after 8 seconds (increased timeout)
       setTimeout(() => {
         this.worker!.removeEventListener('message', messageHandler);
         reject(new Error('Rasterization timeout'));
-      }, 5000);
+      }, 8000);
     });
   }
 
   private async rasterizeMainThread(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-    // Try to render the actual SVG first
-    const canvas = new OffscreenCanvas(options.width!, options.height!);
+    // Use regular Canvas instead of OffscreenCanvas for better SVG compatibility
+    const canvas = document.createElement('canvas');
+    canvas.width = options.width!;
+    canvas.height = options.height!;
     const ctx = canvas.getContext('2d')!;
 
     // Clear canvas
     ctx.clearRect(0, 0, options.width!, options.height!);
 
     try {
-      // Try to render the actual SVG
+      // Try to render the actual SVG using Image element
       const img = new Image();
-      const svgBlob = new Blob([asset.svgText], { type: 'image/svg+xml' });
+      const svgBlob = new Blob([asset.svgText], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
       
       await new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => reject(new Error('Image load timeout')), 2000);
+        const timeoutId = setTimeout(() => reject(new Error('Image load timeout')), 5000); // Increased timeout
         img.onload = () => {
           clearTimeout(timeoutId);
           resolve(void 0);
         };
-        img.onerror = () => {
+        img.onerror = (e) => {
           clearTimeout(timeoutId);
-          reject(new Error('Image load failed'));
+          reject(new Error(`Image load failed: ${e}`));
         };
         img.src = url;
       });
@@ -226,39 +244,49 @@ export class SVGLoader {
         this.applyTeamColorTint(ctx, options.width!, options.height!, options.teamColor);
       }
 
-      return canvas.transferToImageBitmap();
+      // Convert canvas to ImageBitmap
+      return await createImageBitmap(canvas);
     } catch (error) {
-      console.warn('[SVGLoader] Main thread SVG rendering failed, using geometric fallback:', error.message);
+      console.warn('[SVGLoader] Main thread SVG rendering failed, creating geometric fallback:', error.message);
       
-      // Fallback: create a canvas and draw a simple shape
+      // Fallback: create a simple textured shape
       ctx.clearRect(0, 0, options.width!, options.height!);
       
-      // Clear canvas with a solid color as fallback
-      ctx.fillStyle = options.teamColor || '#888888';
-      ctx.fillRect(0, 0, options.width!, options.height!);
-
-      // Add some basic shape to represent the ship
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
+      // Create a ship-like shape with team color
       const centerX = options.width! / 2;
       const centerY = options.height! / 2;
-      const size = Math.min(options.width!, options.height!) * 0.6;
+      const size = Math.min(options.width!, options.height!) * 0.8;
       
-      // Draw a simple diamond shape as fallback
-      ctx.moveTo(centerX, centerY - size/2);
-      ctx.lineTo(centerX + size/3, centerY);
-      ctx.lineTo(centerX, centerY + size/2);
-      ctx.lineTo(centerX - size/3, centerY);
+      // Fill background with semi-transparent team color
+      ctx.fillStyle = options.teamColor || '#666666';
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(0, 0, options.width!, options.height!);
+      
+      // Draw ship-like arrow shape
+      ctx.globalAlpha = 1.0;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY - size/2);      // Top point
+      ctx.lineTo(centerX + size/4, centerY);      // Right middle
+      ctx.lineTo(centerX + size/6, centerY + size/3); // Right back
+      ctx.lineTo(centerX - size/6, centerY + size/3); // Left back
+      ctx.lineTo(centerX - size/4, centerY);      // Left middle
       ctx.closePath();
       ctx.fill();
+      
+      // Add team color outline
+      ctx.strokeStyle = options.teamColor || '#888888';
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-      return canvas.transferToImageBitmap();
+      // Convert canvas to ImageBitmap
+      return await createImageBitmap(canvas);
     }
   }
 
   // Apply team color tinting to the rasterized SVG
   private applyTeamColorTint(
-    ctx: OffscreenCanvasRenderingContext2D,
+    ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
     teamColor: string

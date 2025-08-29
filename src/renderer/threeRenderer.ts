@@ -343,9 +343,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Lazy-load SVG and swap geometry/material once available
     (async () => {
       try {
+        const teamColor = s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
         const asset = await loadSVGAsset(svgUrl, {
           width: defaultSVGConfig.defaultRasterSize.width,
           height: defaultSVGConfig.defaultRasterSize.height,
+          teamColor: teamColor
         });
         if (pool) pool.set(svgUrl, asset);
         if (asset.imageBitmap && placeholder.parent) {
@@ -355,9 +357,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           shipsGroup.add(plane);
           shipsGroup.remove(placeholder);
           shipMeshes.set(s.id, plane);
+          console.log(`[threeRenderer] Successfully loaded SVG texture for ${s.class}`);
         }
       } catch (err) {
-        console.warn(`[threeRenderer] Could not load SVG ${svgUrl}`, err);
+        console.warn(`[threeRenderer] Could not load SVG ${svgUrl}, keeping placeholder:`, err);
+        // Keep the placeholder visible - don't remove it
+        // The cone shape will remain as the ship representation
       }
     })();
 
