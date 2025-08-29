@@ -45,16 +45,19 @@ export function getUpVector(pitch: number, yaw: number, roll: number): Vector3 {
 
 /**
  * Calculate target orientation (pitch, yaw) to look at a target position
+ * Note: Using right-handed coordinate system where +Z is up
  */
 export function lookAt(fromPos: Vector3, targetPos: Vector3): { pitch: number; yaw: number } {
   const dx = targetPos.x - fromPos.x;
   const dy = targetPos.y - fromPos.y;
   const dz = targetPos.z - fromPos.z;
   
+  // Calculate horizontal distance for pitch calculation
   const horizontalDistance = Math.sqrt(dx * dx + dy * dy);
   
   return {
     yaw: Math.atan2(dy, dx),
+    // Pitch is the angle above/below the horizontal plane
     pitch: Math.atan2(dz, horizontalDistance)
   };
 }
