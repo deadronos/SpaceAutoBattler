@@ -137,6 +137,14 @@ export interface BehaviorConfig {
     evadeSamplingCount: number;
     /** Distance to move when evading */
     evadeDistance: number;
+    /** Only allow evade behavior when ship has recently taken damage */
+    evadeOnlyOnDamage: boolean;
+    /** Enable periodic boundary cleanup (teleport/prune out-of-bounds entities) */
+    enableBoundaryCleanup?: boolean;
+    /** Interval in sim ticks between boundary cleanup runs (default ~600 ticks = 10s at 60tps) */
+    boundaryCleanupIntervalTicks?: number;
+    /** Toggle small deterministic spawn-time velocity jitter to break perfect symmetry */
+    enableSpawnJitter?: boolean;
   };
 }
 
@@ -155,7 +163,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 0.8
   },
   corvette: {
-    mode: 'mixed',
+    mode: 'aggressive',
     intentReevaluationRate: 1.0,
     minIntentDuration: 3,
     maxIntentDuration: 12,
@@ -165,7 +173,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.0
   },
   frigate: {
-    mode: 'formation',
+    mode: 'aggressive',
     intentReevaluationRate: 1.5,
     minIntentDuration: 4,
     maxIntentDuration: 15,
@@ -175,7 +183,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.2
   },
   destroyer: {
-    mode: 'carrier_group',
+    mode: 'mixed',
     intentReevaluationRate: 2.0,
     minIntentDuration: 5,
     maxIntentDuration: 20,
@@ -185,7 +193,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.5
   },
   carrier: {
-    mode: 'carrier_group',
+    mode: 'mixed',
     intentReevaluationRate: 3.0,
     minIntentDuration: 8,
     maxIntentDuration: 30,
@@ -260,15 +268,15 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     intentReevaluationRate: 1.0,
     minIntentDuration: 3,
     maxIntentDuration: 10,
-    aggressiveness: 0.6,
+    aggressiveness: 0.8,
     caution: 0.4,
     groupCohesion: 0.5,
     preferredRangeMultiplier: 1.0
   },
   shipPersonalities: DEFAULT_PERSONALITIES,
   teamModifiers: {
-    red: { aggressiveness: 1.1, caution: 0.9, groupCohesion: 1.0 },
-    blue: { aggressiveness: 0.9, caution: 1.1, groupCohesion: 1.0 }
+    red: { aggressiveness: 1.1, caution: 0.9, groupCohesion: 0.8 },
+    blue: { aggressiveness: 0.9, caution: 1.1, groupCohesion: 0.8 }
   },
   turretConfig: DEFAULT_TURRET_CONFIG,
   roamingPatterns: DEFAULT_ROAMING_PATTERNS,
@@ -276,7 +284,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   globalSettings: {
     aiEnabled: true,
     maxFormationSize: 8,
-    minimumSafeDistance: 150,
+    minimumSafeDistance: 10,
     formationSearchRadius: 500,
     enableDynamicBehavior: true,
     separationDistance: 120,
@@ -285,7 +293,11 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageEvadeThreshold: 25, // Increased from 15 to reduce evade frequency
     damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
     evadeSamplingCount: 8,
-    evadeDistance: 120
+    evadeDistance: 30,
+    evadeOnlyOnDamage: true, // Default: only allow evade behavior when ship has recently taken damage
+    enableBoundaryCleanup: true,
+    boundaryCleanupIntervalTicks: 600,
+    enableSpawnJitter: true
   }
 };
 

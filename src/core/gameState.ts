@@ -89,6 +89,20 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
     fighterSpawnCdLeft: cls === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
     parentCarrierId,
   };
+  // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
+  // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
+  // intentionally very small (fractional) and scale with ship speed so larger ships
+  // get a slightly larger jitter but remain subtle in gameplay. This behavior can
+  // be toggled via behaviorConfig.globalSettings.enableSpawnJitter.
+  const enableJitter = state.behaviorConfig?.globalSettings.enableSpawnJitter;
+  if (enableJitter) {
+    const jitterScale = 0.02; // fraction of ship.speed per second
+    const angle = state.rng.next() * Math.PI * 2;
+    const jitterMag = ship.speed * jitterScale;
+    ship.vel.x += Math.cos(angle) * jitterMag;
+    ship.vel.y += Math.sin(angle) * jitterMag;
+  }
+
   state.ships.push(ship);
   return ship;
 }
@@ -422,4 +436,55 @@ export function simulateStep(state: GameState, dt: number) {
   handleLevelUps(state);
   // Carriers spawning
   carrierSpawnLogic(state, dt);
+
+  // Periodic boundary cleanup (teleport or prune entities outside bounds)
+  const cleanupEnabled = state.behaviorConfig?.globalSettings.enableBoundaryCleanup;
+  const cleanupInterval = state.behaviorConfig?.globalSettings.boundaryCleanupIntervalTicks ?? 600;
+  if (cleanupEnabled) {
+    // Run once every cleanupInterval ticks
+    if ((state.tick % cleanupInterval) === 0) {
+      runBoundaryCleanup(state);
+    }
+  }
+}
+
+function runBoundaryCleanup(state: GameState) {
+  const bounds = state.simConfig.simBounds;
+  const shipsOutside: Ship[] = [];
+  for (const s of state.ships) {
+    if (s.pos.x < 0 || s.pos.x > bounds.width || s.pos.y < 0 || s.pos.y > bounds.height || s.pos.z < 0 || s.pos.z > bounds.depth) {
+      shipsOutside.push(s);
+    }
+  }
+
+  // Teleport ships back to a team spawn center with small deterministic jitter
+  for (const s of shipsOutside) {
+    // Attempt to find team spawn center using FleetConfig spawning margin/width
+    const margin = FleetConfig.spawning.margin;
+    const spawnWidth = FleetConfig.spawning.spawnWidth;
+    const teamCenterX = s.team === 'red' ? margin + Math.floor(spawnWidth / 2) : state.simConfig.simBounds.width - margin - Math.floor(spawnWidth / 2);
+    const centerY = Math.floor(state.simConfig.simBounds.height / 2);
+    const centerZ = Math.floor(state.simConfig.simBounds.depth / 2);
+    // Deterministic jitter using state's RNG
+    const jitter = 16; // small teleport jitter in units
+    const jx = (state.rng.next() - 0.5) * jitter * 2;
+    const jy = (state.rng.next() - 0.5) * jitter * 2;
+    const jz = (state.rng.next() - 0.5) * jitter * 2;
+    s.pos.x = clamp(teamCenterX + jx, 0, state.simConfig.simBounds.width);
+    s.pos.y = clamp(centerY + jy, 0, state.simConfig.simBounds.height);
+    s.pos.z = clamp(centerZ + jz, 0, state.simConfig.simBounds.depth);
+    // Reset velocity to zero to avoid teleporting while moving out
+    s.vel.x = 0; s.vel.y = 0; s.vel.z = 0;
+    // Clear target to avoid immediate re-targeting of far-away entities
+    s.targetId = null;
+  }
+
+  // Prune bullets out of bounds (set ttl=0)
+  for (const b of state.bullets) {
+    if (b.pos.x < 0 || b.pos.x > bounds.width || b.pos.y < 0 || b.pos.y > bounds.height || b.pos.z < 0 || b.pos.z > bounds.depth) {
+      b.ttl = 0;
+    }
+  }
+  // Remove dead bullets immediately
+  state.bullets = state.bullets.filter(b => b.ttl > 0);
 }

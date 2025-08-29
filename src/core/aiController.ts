@@ -191,12 +191,25 @@ export class AIController {
    * Choose intent for defensive behavior
    */
   private chooseDefensiveIntent(ship: Ship, personality: AIPersonality): AIIntent {
+    const config = this.state.behaviorConfig!;
     const threats = this.findNearbyEnemies(ship, ship.aiState!.preferredRange! * 2);
     if (threats.length > 0) {
       const nearestThreat = threats[0];
       const distance = this.getDistance(ship.pos, nearestThreat.pos);
       if (distance < ship.aiState!.preferredRange! * 0.5) {
-        return 'evade';
+        // Only evade if config allows it OR ship has recently taken damage
+        if (!config.globalSettings.evadeOnlyOnDamage) {
+          // Backwards compatibility: allow proximity-based evade
+          return 'evade';
+        } else {
+          // New behavior: only evade if recently damaged
+          const recentDamage = ship.aiState!.recentDamage || 0;
+          if (recentDamage >= config.globalSettings.damageEvadeThreshold) {
+            return 'evade';
+          }
+          // Otherwise, choose more aggressive behavior
+          return this.state.rng.next() < 0.7 ? 'group' : 'patrol';
+        }
       }
     }
     return this.state.rng.next() < personality.groupCohesion ? 'group' : 'patrol';
@@ -322,6 +335,51 @@ export class AIController {
     ship.vel.x *= 0.95;
     ship.vel.y *= 0.95;
     ship.vel.z *= 0.95;
+
+    // Apply a mild separation force even while idle so clustered ships gently spread out.
+    // This helps scenarios where ships start tightly clustered but don't have an active movement intent yet.
+    const config = this.state.behaviorConfig!;
+    if (config && config.globalSettings.separationWeight > 0) {
+      // Use separation force and also know how many close neighbors exist so we can
+      // amplify the idle separation when ships are tightly clustered.
+      const sepWithCount = this.calculateSeparationForceWithCount(ship);
+      const sep = sepWithCount.force;
+      const neighborCount = sepWithCount.neighborCount;
+
+      // Base reduced effect while idle
+      let weight = config.globalSettings.separationWeight * 0.5;
+
+      // If ship has many close neighbors, increase the idle separation strength
+      // Use graduated scaling so extreme clusters receive a stronger nudge.
+      if (neighborCount >= 8) {
+        // Very tight cluster: apply a strong nudge
+        weight = config.globalSettings.separationWeight * 5.0;
+      } else if (neighborCount >= 5) {
+        // Moderate cluster
+        weight = config.globalSettings.separationWeight * 2.0;
+      } else if (neighborCount >= 3) {
+        // Mild increase for small clusters
+        weight = config.globalSettings.separationWeight * 1.2;
+      }
+
+      const speedFactor = Math.max(1, ship.speed * 0.2);
+      ship.vel.x += sep.x * weight * speedFactor * dt;
+      ship.vel.y += sep.y * weight * speedFactor * dt;
+      ship.vel.z += sep.z * weight * speedFactor * dt;
+
+      // Additionally, when tightly clustered, apply a small direct positional nudge
+      // to break symmetry quickly in tests / initial spawn scenarios. This is
+      // intentionally conservative and scales with neighborCount so it only
+      // becomes noticeable for dense clusters.
+      if (neighborCount >= 3) {
+        const separationDistance = config.globalSettings.separationDistance;
+        // displacement per second (units/sec) - small fraction of separationDistance
+        const displacementPerSecond = (separationDistance * 0.05) * (neighborCount / 5);
+        ship.pos.x += sep.x * displacementPerSecond * dt;
+        ship.pos.y += sep.y * displacementPerSecond * dt;
+        ship.pos.z += sep.z * displacementPerSecond * dt;
+      }
+    }
   }
 
   /**
@@ -727,6 +785,26 @@ export class AIController {
           turretState.lastTargetUpdate = this.state.time;
         }
       }
+      // Ensure ship.targetId is set so the global firing logic (fireTurrets)
+      // has a target to shoot at. Prefer a target that multiple turrets agree on;
+      // otherwise fall back to nearest enemy.
+      const turretTargets = ship.turrets
+        .map(t => t.aiState?.targetId)
+        .filter((id): id is number => typeof id === 'number');
+
+      if (turretTargets.length > 0) {
+        const counts = new Map<number, number>();
+        for (const id of turretTargets) counts.set(id, (counts.get(id) || 0) + 1);
+        let bestId: number | null = null;
+        let bestCount = 0;
+        for (const [id, count] of counts.entries()) {
+          if (count > bestCount) { bestCount = count; bestId = id; }
+        }
+        ship.targetId = bestId ?? null;
+      } else {
+        const nearest = this.findNearestEnemy(ship);
+        ship.targetId = nearest ? nearest.id : null;
+      }
     }
   }
 
@@ -841,9 +919,23 @@ export class AIController {
    * Calculate separation force to avoid clumping with nearby friendly ships
    */
   private calculateSeparationForce(ship: Ship): Vector3 {
+    // Delegate to the new helper that returns both force and neighbor count
+    return this.calculateSeparationForceWithCount(ship).force;
+  }
+
+  /**
+   * Calculate separation force and the number of neighbors considered.
+   * Returns both the normalized force vector and the neighborCount so callers
+   * can adjust strength based on cluster density.
+   */
+  /**
+   * Public helper: Calculate separation force and the number of neighbors considered.
+   * Made public intentionally so unit tests can call it directly.
+   */
+  public calculateSeparationForceWithCount(ship: Ship): { force: Vector3; neighborCount: number } {
     const config = this.state.behaviorConfig!;
     const separationDistance = config.globalSettings.separationDistance;
-    
+
     let separationX = 0;
     let separationY = 0;
     let separationZ = 0;
@@ -859,11 +951,11 @@ export class AIController {
         const dx = ship.pos.x - other.pos.x;
         const dy = ship.pos.y - other.pos.y;
         const dz = ship.pos.z - other.pos.z;
-        
+
         // Weight by inverse distance (closer ships have stronger repulsion)
         const weight = (separationDistance - dist) / separationDistance;
         const normalizedDist = dist > 0 ? 1 / dist : 1;
-        
+
         separationX += dx * weight * normalizedDist;
         separationY += dy * weight * normalizedDist;
         separationZ += dz * weight * normalizedDist;
@@ -872,24 +964,55 @@ export class AIController {
     }
 
     if (neighborCount === 0) {
-      return { x: 0, y: 0, z: 0 };
+      return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
     }
 
-    // Average and normalize the separation force
+    // Average the raw separation vector
     separationX /= neighborCount;
     separationY /= neighborCount;
     separationZ /= neighborCount;
 
     const magnitude = Math.sqrt(separationX * separationX + separationY * separationY + separationZ * separationZ);
-    if (magnitude > 0) {
+    if (magnitude > 0.0001) {
       return {
-        x: separationX / magnitude,
-        y: separationY / magnitude,
-        z: separationZ / magnitude
+        force: {
+          x: separationX / magnitude,
+          y: separationY / magnitude,
+          z: separationZ / magnitude
+        },
+        neighborCount
       };
     }
 
-    return { x: 0, y: 0, z: 0 };
+    // Fallback: if the separation vector is near-zero (symmetrical neighbors),
+    // push the ship away from the local group center to break symmetry.
+    let centerX = 0, centerY = 0, centerZ = 0;
+    for (const other of this.state.ships) {
+      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+      const dist = this.getDistance(ship.pos, other.pos);
+      if (dist > 0 && dist < separationDistance) {
+        centerX += other.pos.x;
+        centerY += other.pos.y;
+        centerZ += other.pos.z;
+      }
+    }
+
+    // If we accumulated some neighbors, compute center
+    if (centerX !== 0 || centerY !== 0 || centerZ !== 0) {
+      const inv = 1 / neighborCount;
+      centerX *= inv; centerY *= inv; centerZ *= inv;
+      const rx = ship.pos.x - centerX;
+      const ry = ship.pos.y - centerY;
+      const rz = ship.pos.z - centerZ;
+      const rmag = Math.sqrt(rx * rx + ry * ry + rz * rz);
+      if (rmag > 0.0001) {
+        return { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount };
+      }
+    }
+
+    // As a last resort, return a small random vector to perturb the ship
+    const rndAngle = this.state.rng.next() * Math.PI * 2;
+    return { force: { x: Math.cos(rndAngle), y: Math.sin(rndAngle), z: 0 }, neighborCount };
   }
 
   /**

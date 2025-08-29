@@ -24,7 +24,7 @@ export interface GameConfig {
 export const DefaultGameConfig: GameConfig = {
   ui: {
     showDebugInfo: true,
-    enableTrails: false,
+    enableTrails: true,
     cameraFollow: false,
   },
   gameplay: {
