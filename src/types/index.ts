@@ -126,6 +126,9 @@ export interface Ship {
     formationSlotIndex?: number;
     lastTargetSwitchTime?: number;
     preferredRange?: number;
+    // Damage-based evasion tracking
+    recentDamage?: number;
+    lastDamageTime?: number;
   };
 }
 

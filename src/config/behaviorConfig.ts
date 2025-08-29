@@ -129,6 +129,14 @@ export interface BehaviorConfig {
     separationWeight: number;
     /** Minimum separation between roaming anchors */
     roamingAnchorMinSeparation: number;
+    /** Damage threshold to trigger evade behavior */
+    damageEvadeThreshold: number;
+    /** Rate at which recent damage decays per second */
+    damageDecayRate: number;
+    /** Number of candidate directions to sample for evade */
+    evadeSamplingCount: number;
+    /** Distance to move when evading */
+    evadeDistance: number;
   };
 }
 
@@ -273,7 +281,11 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     enableDynamicBehavior: true,
     separationDistance: 120,
     separationWeight: 0.3,
-    roamingAnchorMinSeparation: 150
+    roamingAnchorMinSeparation: 150,
+    damageEvadeThreshold: 15,
+    damageDecayRate: 1.0,
+    evadeSamplingCount: 8,
+    evadeDistance: 120
   }
 };
 

@@ -55,11 +55,16 @@ export class AIController {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: this.calculatePreferredRange(ship, personality)
+        preferredRange: this.calculatePreferredRange(ship, personality),
+        recentDamage: 0,
+        lastDamageTime: 0
       };
     }
 
     const aiState = ship.aiState;
+
+    // Update recent damage decay
+    this.updateRecentDamage(ship, dt);
 
     // Reevaluate intent if needed
     if (this.state.time - aiState.lastIntentReevaluation >= personality.intentReevaluationRate) {
@@ -72,6 +77,19 @@ export class AIController {
 
     // Update turret AI
     this.updateTurretAI(ship, dt);
+  }
+
+  /**
+   * Update recent damage decay over time
+   */
+  private updateRecentDamage(ship: Ship, dt: number) {
+    const aiState = ship.aiState!;
+    const config = this.state.behaviorConfig!;
+    
+    if (aiState.recentDamage && aiState.recentDamage > 0) {
+      const decayAmount = config.globalSettings.damageDecayRate * dt;
+      aiState.recentDamage = Math.max(0, aiState.recentDamage - decayAmount);
+    }
   }
 
   /**
@@ -90,25 +108,36 @@ export class AIController {
     let newIntent: AIIntent = 'idle';
     let intentDuration = personality.minIntentDuration;
 
-    switch (personality.mode) {
-      case 'aggressive':
-        newIntent = this.chooseAggressiveIntent(ship, personality);
-        break;
-      case 'defensive':
-        newIntent = this.chooseDefensiveIntent(ship, personality);
-        break;
-      case 'roaming':
-        newIntent = this.chooseRoamingIntent(ship, personality);
-        break;
-      case 'formation':
-        newIntent = this.chooseFormationIntent(ship, personality);
-        break;
-      case 'carrier_group':
-        newIntent = this.chooseCarrierGroupIntent(ship, personality);
-        break;
-      case 'mixed':
-        newIntent = this.chooseMixedIntent(ship, personality);
-        break;
+    // Check if ship has taken significant recent damage and should evade
+    const recentDamage = aiState.recentDamage || 0;
+    const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold;
+
+    if (shouldEvadeFromDamage) {
+      newIntent = 'evade';
+      // Shorter duration for damage-based evade to allow quick reassessment
+      intentDuration = Math.min(intentDuration, 3.0);
+    } else {
+      // Normal intent selection based on personality mode
+      switch (personality.mode) {
+        case 'aggressive':
+          newIntent = this.chooseAggressiveIntent(ship, personality);
+          break;
+        case 'defensive':
+          newIntent = this.chooseDefensiveIntent(ship, personality);
+          break;
+        case 'roaming':
+          newIntent = this.chooseRoamingIntent(ship, personality);
+          break;
+        case 'formation':
+          newIntent = this.chooseFormationIntent(ship, personality);
+          break;
+        case 'carrier_group':
+          newIntent = this.chooseCarrierGroupIntent(ship, personality);
+          break;
+        case 'mixed':
+          newIntent = this.chooseMixedIntent(ship, personality);
+          break;
+      }
     }
 
     // Release roaming anchor if we're no longer in roaming mode or patrol intent
@@ -293,33 +322,111 @@ export class AIController {
   }
 
   /**
-   * Execute evade behavior - move away from threats
+   * Execute evade behavior - intelligently sample escape directions and select safest
    */
   private executeEvade(ship: Ship, dt: number) {
-    const threats = this.findNearbyEnemies(ship, ship.aiState!.preferredRange!);
+    const config = this.state.behaviorConfig!;
+    const threats = this.findNearbyEnemies(ship, ship.aiState!.preferredRange! * 1.5);
     if (threats.length === 0) return;
 
-    // Move away from nearest threat
-    const threat = threats[0];
-    const awayDir = {
-      x: ship.pos.x - threat.pos.x,
-      y: ship.pos.y - threat.pos.y,
-      z: ship.pos.z - threat.pos.z
+    const samplingCount = config.globalSettings.evadeSamplingCount;
+    const evadeDistance = config.globalSettings.evadeDistance;
+
+    // Generate candidate escape directions
+    const candidates: Array<{pos: Vector3, score: number}> = [];
+
+    // Always include the naive "direct away" candidate for comparison
+    const nearestThreat = threats[0];
+    const awayDir = this.normalizeVector({
+      x: ship.pos.x - nearestThreat.pos.x,
+      y: ship.pos.y - nearestThreat.pos.y,
+      z: ship.pos.z - nearestThreat.pos.z
+    });
+
+    const naiveTarget = {
+      x: ship.pos.x + awayDir.x * evadeDistance,
+      y: ship.pos.y + awayDir.y * evadeDistance,
+      z: ship.pos.z + awayDir.z * evadeDistance
     };
-    const length = Math.sqrt(awayDir.x * awayDir.x + awayDir.y * awayDir.y + awayDir.z * awayDir.z);
-    if (length > 0) {
-      awayDir.x /= length;
-      awayDir.y /= length;
-      awayDir.z /= length;
+    candidates.push({pos: naiveTarget, score: this.calculateEscapeScore(ship, naiveTarget, threats)});
+
+    // Sample additional random directions around the ship
+    for (let i = 1; i < samplingCount; i++) {
+      const randomAngle = this.state.rng.next() * Math.PI * 2;
+      const randomPitch = (this.state.rng.next() - 0.5) * Math.PI * 0.5; // ±45 degrees pitch
+      
+      const candidate = {
+        x: ship.pos.x + Math.cos(randomAngle) * Math.cos(randomPitch) * evadeDistance,
+        y: ship.pos.y + Math.sin(randomAngle) * Math.cos(randomPitch) * evadeDistance,
+        z: ship.pos.z + Math.sin(randomPitch) * evadeDistance
+      };
+      
+      candidates.push({pos: candidate, score: this.calculateEscapeScore(ship, candidate, threats)});
     }
 
-    const targetPos = {
-      x: ship.pos.x + awayDir.x * 100,
-      y: ship.pos.y + awayDir.y * 100,
-      z: ship.pos.z + awayDir.z * 100
-    };
+    // Select the best candidate
+    const bestCandidate = candidates.reduce((best, current) => 
+      current.score > best.score ? current : best
+    );
 
-    this.moveTowards(ship, targetPos, dt);
+    this.moveTowards(ship, bestCandidate.pos, dt);
+  }
+
+  /**
+   * Calculate safety score for an escape position
+   * Higher score = safer position
+   */
+  private calculateEscapeScore(ship: Ship, targetPos: Vector3, threats: Ship[]): number {
+    const bounds = this.state.simConfig.simBounds;
+    let score = 100; // Base score
+
+    // Penalty for proximity to threats
+    for (const threat of threats) {
+      const distance = this.getDistance(targetPos, threat.pos);
+      const threatPenalty = Math.max(0, 200 - distance) * 0.5;
+      score -= threatPenalty;
+    }
+
+    // Penalty for being near boundaries
+    const boundaryMargin = 50;
+    if (targetPos.x < boundaryMargin) score -= (boundaryMargin - targetPos.x) * 2;
+    if (targetPos.x > bounds.width - boundaryMargin) score -= (targetPos.x - (bounds.width - boundaryMargin)) * 2;
+    if (targetPos.y < boundaryMargin) score -= (boundaryMargin - targetPos.y) * 2;
+    if (targetPos.y > bounds.height - boundaryMargin) score -= (targetPos.y - (bounds.height - boundaryMargin)) * 2;
+    if (targetPos.z < boundaryMargin) score -= (boundaryMargin - targetPos.z) * 2;
+    if (targetPos.z > bounds.depth - boundaryMargin) score -= (targetPos.z - (bounds.depth - boundaryMargin)) * 2;
+
+    // Bonus for increasing distance from nearest threat
+    const currentDistance = this.getDistance(ship.pos, threats[0].pos);
+    const newDistance = this.getDistance(targetPos, threats[0].pos);
+    if (newDistance > currentDistance) {
+      score += (newDistance - currentDistance) * 0.3;
+    }
+
+    // Penalty for getting too close to friendly ships
+    for (const friendly of this.state.ships) {
+      if (friendly.team === ship.team && friendly.id !== ship.id && friendly.health > 0) {
+        const distance = this.getDistance(targetPos, friendly.pos);
+        if (distance < 80) {
+          score -= (80 - distance) * 0.2;
+        }
+      }
+    }
+
+    return score;
+  }
+
+  /**
+   * Normalize a vector to unit length
+   */
+  private normalizeVector(vec: Vector3): Vector3 {
+    const length = Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+    if (length === 0) return {x: 1, y: 0, z: 0}; // Default direction
+    return {
+      x: vec.x / length,
+      y: vec.y / length,
+      z: vec.z / length
+    };
   }
 
   /**
