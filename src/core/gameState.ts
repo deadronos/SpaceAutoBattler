@@ -29,6 +29,7 @@ export function createInitialState(seed?: string): GameState {
     nextId: 1,
     simConfig: config,
     ships: [],
+    shipIndex: new Map(),
     bullets: [],
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
@@ -45,6 +46,7 @@ export function resetState(state: GameState, seed?: string) {
   state.rng = newRng;
   state.nextId = 1;
   state.ships = [];
+  state.shipIndex = new Map();
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
   // Reset behavior config to defaults
@@ -104,6 +106,7 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   }
 
   state.ships.push(ship);
+  state.shipIndex?.set(ship.id, ship);
   return ship;
 }
 
@@ -327,10 +330,14 @@ function updateBullets(state: GameState, dt: number) {
           s.health -= effective;
           totalDamage += effective;
           // XP to owner
-          const owner = state.ships.find(sh => sh.id === b.ownerShipId);
-          if (owner) {
-            owner.level.xp += effective * XP_PER_DAMAGE;
-          }
+            // Cache owner lookup once per hit for efficiency
+            const owner = state.shipIndex?.get(b.ownerShipId) ?? state.ships.find(sh => sh.id === b.ownerShipId);
+            if (owner) {
+              owner.level.xp += effective * XP_PER_DAMAGE;
+              // Track last damage source for kill crediting (timestamped)
+              s.lastDamageBy = owner.id;
+              s.lastDamageTime = state.time;
+            }
         }
         
         // Update recent damage tracking for AI
@@ -352,10 +359,22 @@ function updateBullets(state: GameState, dt: number) {
 function processDeathsAndXP(state: GameState) {
   for (const s of state.ships) {
     if (s.health <= 0 && s.maxHealth > 0) {
-      // Credit kill to last hitter unknown in this simple model; we can approximate via target linking
-      const killer = state.ships.find(sh => sh.targetId === s.id && sh.team !== s.team);
+      // Credit kill to the last ship that damaged this ship within a short recent window
+      let killer = null;
+      if (s.lastDamageBy) {
+        // Prefer recent damage within configurable window to avoid long-dead credit
+        const recentWindow = state.behaviorConfig?.globalSettings.killCreditWindowSeconds ?? 5;
+        if ((s.lastDamageTime ?? -Infinity) >= state.time - recentWindow) {
+          killer = state.ships.find(sh => sh.id === s.lastDamageBy && sh.team !== s.team);
+        }
+      }
+      // Fallback: approximate via target linking
+      if (!killer) {
+        killer = state.ships.find(sh => sh.targetId === s.id && sh.team !== s.team) ?? null;
+      }
       if (killer) {
-        killer.kills += 1; killer.level.xp += XP_PER_KILL;
+        killer.kills += 1;
+        killer.level.xp += XP_PER_KILL;
         state.score[killer.team] += 1;
       }
       // If this was a fighter spawned by a carrier, decrement the carrier's alive counter
@@ -370,6 +389,11 @@ function processDeathsAndXP(state: GameState) {
     }
   }
   state.ships = state.ships.filter(s => s.maxHealth > 0);
+  // Rebuild shipIndex for consistency (cheap relative to simulation sizes)
+  if (state.shipIndex) {
+    state.shipIndex.clear();
+    for (const s of state.ships) state.shipIndex.set(s.id, s);
+  }
 }
 
 function handleLevelUps(state: GameState) {

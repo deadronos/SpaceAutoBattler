@@ -130,6 +130,9 @@ export interface Ship {
     recentDamage?: number;
     lastDamageTime?: number;
   };
+  // Track last damage source and timestamp for kill crediting
+  lastDamageBy?: EntityId;
+  lastDamageTime?: number;
 }
 
 export interface ScoreBoard {
@@ -170,6 +173,8 @@ export interface GameState {
     useTimeBasedSeed: boolean;
   };
   ships: Ship[];
+  // Fast lookup by id to avoid O(n) array scans in hot paths
+  shipIndex?: Map<EntityId, Ship>;
   bullets: Bullet[];
   score: ScoreBoard;
   renderer?: RendererHandles;

@@ -139,6 +139,8 @@ export interface BehaviorConfig {
     evadeDistance: number;
     /** Only allow evade behavior when ship has recently taken damage */
     evadeOnlyOnDamage: boolean;
+  /** Window (seconds) during which the last damager is eligible for kill credit */
+  killCreditWindowSeconds?: number;
     /** Enable periodic boundary cleanup (teleport/prune out-of-bounds entities) */
     enableBoundaryCleanup?: boolean;
     /** Interval in sim ticks between boundary cleanup runs (default ~600 ticks = 10s at 60tps) */
@@ -294,7 +296,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
     evadeSamplingCount: 8,
     evadeDistance: 30,
-    evadeOnlyOnDamage: true, // Default: only allow evade behavior when ship has recently taken damage
+  evadeOnlyOnDamage: false, // Default: preserve backwards compatibility (allow proximity-based evade)
+  killCreditWindowSeconds: 5,
     enableBoundaryCleanup: true,
     boundaryCleanupIntervalTicks: 600,
     enableSpawnJitter: true

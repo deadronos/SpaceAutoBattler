@@ -1,47 +1,66 @@
 // Simple LRU cache for assets (small footprint)
-export class LRUAssetPool<T = any> extends Map<string, T> {
+// Simple, performant LRU cache using Map insertion order.
+// Map preserves insertion order; to mark an entry as recently used we delete and re-set it.
+// Eviction is then O(1) by reading the first key from map.keys().next().value.
+export class LRUAssetPool<T = any> {
   private capacity: number;
-  private usage: string[];
+  private map: Map<string, T>;
+
   constructor(capacity = 64) {
-    super();
     this.capacity = capacity;
-    this.usage = [];
+    this.map = new Map();
   }
 
   get(key: string): T | undefined {
-    const v = super.get(key);
+    const v = this.map.get(key);
     if (v !== undefined) {
-      // move key to end (most recently used)
-      const i = this.usage.indexOf(key);
-      if (i >= 0) this.usage.splice(i, 1);
-      this.usage.push(key);
+      // mark as recently used
+      this.map.delete(key);
+      this.map.set(key, v);
     }
     return v;
   }
 
   set(key: string, value: T): this {
-    if (!super.has(key)) {
-      // new entry
-      this.usage.push(key);
-      super.set(key, value);
-      this.enforce();
-      return this;
+    if (this.map.has(key)) {
+      this.map.delete(key);
     }
-    // existing entry: update order
-    const i = this.usage.indexOf(key);
-    if (i >= 0) this.usage.splice(i, 1);
-    this.usage.push(key);
-    super.set(key, value);
+    this.map.set(key, value);
+    // Evict oldest if over capacity
+    if (this.map.size > this.capacity) {
+      const oldest = this.map.keys().next().value;
+      if (oldest !== undefined) this.map.delete(oldest);
+    }
     return this;
   }
 
-  private enforce() {
-    while (this.usage.length > this.capacity) {
-      const k = this.usage.shift();
-      if (k) {
-        try { super.delete(k); } catch (e) { /* ignore */ }
-      }
-    }
+  has(key: string): boolean {
+    return this.map.has(key);
+  }
+
+  delete(key: string): boolean {
+    return this.map.delete(key);
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+
+  get size(): number {
+    return this.map.size;
+  }
+
+  // Expose entries for compatibility
+  entries(): IterableIterator<[string, T]> {
+    return this.map.entries();
+  }
+
+  keys(): IterableIterator<string> {
+    return this.map.keys();
+  }
+
+  [Symbol.iterator](): IterableIterator<[string, T]> {
+    return this.map[Symbol.iterator]();
   }
 }
 
