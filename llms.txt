@@ -1,0 +1,62 @@
+# SpaceAutoBattler
+
+> A 3D deterministic space auto-battler simulation: pure simulation logic separated from rendering and UI. This repository contains the simulation core, renderer, configuration, tests, and build scripts used to run, test, and build the project for local development and CI.
+
+This llms.txt file lists prioritized navigation targets for LLMs and contributors to quickly understand the repository layout, purpose, and where to find authoritative information (design, configuration, tests, and runtime scripts).
+
+## Documentation
+
+- [Main README](README.md): Primary project overview, architecture, quick start, controls, and development guidelines.
+- [IMPLEMENTATION_GUIDE](docs/IMPLEMENTATION_GUIDE.md): Design notes and implementation guidance for core subsystems.
+- [CURRENT_STATUS_NEXT_STEPS](docs/CURRENT_STATUS_NEXT_STEPS.md): Developer-facing status and next tasks.
+- [AI_Review_and_Improvements](docs/AI_Review_and_Improvements.md): Notes about AI improvements and behavior changes.
+- [threejs-libraries](docs/threejs-libraries.md): References and choices for Three.js libraries and helpers.
+- [shipIndex](docs/shipIndex.md): Index of ship-related documentation and references.
+- [RESEARCH_GPT5_COOKBOOK](docs/RESEARCH_GPT5_COOKBOOK.md): Research notes valuable for model-driven changes.
+
+## Specifications & Design
+
+- [Source Structure](spec/src-structure.md): High-level layout and rationale for source directories.
+- [Game Prompt / Scenario](spec/gameprompt.md): Domain prompt and simulation scenarios used for AI/agent behavior.
+- [.github/prompts](.github/prompts/): Repository-specific AI and automation prompt templates (useful for generating tasks and docs).
+
+## Important Source Locations
+
+- [Simulation Core (`src/core/`)](src/core/): Pure simulation logic, deterministic RNG, game state management, and physics.
+  - [gameState.ts](src/core/gameState.ts): Canonical GameState shape and state transitions.
+  - [aiController.ts](src/core/aiController.ts): AI behaviors and decision logic.
+  - [physics.ts](src/core/physics.ts): Physics integration and movement logic.
+- [Renderer (`src/renderer/`)](src/renderer/): Visualization code using Three.js, effects, and camera management.
+  - [threeRenderer.ts](src/renderer/threeRenderer.ts): WebGL rendering implementation.
+- [Orchestration / Entry (`src/main.ts`)](src/main.ts): Application entry, game loop, and UI bindings.
+- [Configuration (`src/config/`)](src/config/): Balance and renderer configuration (simConfig.ts, entitiesConfig.ts, rendererConfig.ts, progression.ts).
+- [Types (`src/types/`)](src/types/): TypeScript interfaces and GameState types.
+
+## Scripts & Tooling
+
+- [package.json](package.json): Project metadata and important npm scripts (serve, build, build-standalone, test, test:e2e, typecheck).
+- [scripts/](scripts/): Build and utility scripts used to create standalone HTML, validate config, and manage memory index.
+
+## Testing
+
+- [Unit tests (Vitest)](test/vitest/README.md): Unit and logic tests that exercise simulation functions without rendering.
+- [E2E tests (Playwright)](test/playwright/): End-to-end tests and visual regression suites.
+
+## Development & Run Quick-links
+
+- [Quick Start (README)](README.md#-quick-start): Install, serve, build and test commands.
+- [Dev Server script (package.json -> serve)](package.json#L1): Use `npm run serve` to host a local server for development.
+
+## Auxiliary & Governance
+
+- [AGENTS.md](AGENTS.md): Notes about agents used in the project.
+- [.github/copilot-instructions.md](.github/copilot-instructions.md): Guidance for automated code assistance.
+- [LICENSE.MD](LICENSE.MD): Project license (MIT).
+
+## Files to Ignore for LLMs
+
+- Build artifacts, test-output folders, node_modules, and temporary runtime files are omitted on purpose. See .gitignore for details.
+
+---
+
+If you need more detail on any section, open the linked file(s). This llms.txt aims to give LLMs and contributors a prioritized path to the repository's authoritative documents and source-code entry points.
