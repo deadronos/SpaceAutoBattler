@@ -31,26 +31,9 @@ export class SVGLoader {
   }
 
   private initWorker() {
-    try {
-      // Try to initialize the worker for SVG rasterization
-      console.log('[SVGLoader] Attempting to initialize SVG rasterization worker');
-      this.worker = new Worker('./svgRasterWorker.js');
-      
-      this.worker.addEventListener('message', (e: MessageEvent) => {
-        this.handleWorkerMessage(e.data);
-      });
-
-      this.worker.addEventListener('error', (error) => {
-        console.warn('[SVGLoader] Worker error, falling back to main thread:', error);
-        this.worker?.terminate();
-        this.worker = null;
-      });
-
-      console.log('[SVGLoader] SVG rasterization worker initialized successfully');
-    } catch (error) {
-      console.warn('[SVGLoader] Failed to initialize worker, using main thread rasterization:', error);
-      this.worker = null;
-    }
+    // Temporarily disable worker to ensure reliable main thread SVG loading
+    console.log('[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)');
+    this.worker = null;
   }
 
   private handleWorkerMessage(data: any) {
@@ -143,25 +126,20 @@ export class SVGLoader {
     };
 
     // Rasterize if dimensions provided
-    if (options.width && options.height && this.worker) {
+    if (options.width && options.height) {
+      console.log('[SVGLoader] Starting rasterization for:', url);
       const imageBitmap = await this.rasterizeSVG(asset, options);
       asset.imageBitmap = imageBitmap;
+      console.log('[SVGLoader] Rasterization completed for:', url);
     }
 
     return asset;
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-    // Try worker first
-    if (this.worker) {
-      try {
-        return await this.rasterizeWithWorker(asset, options);
-      } catch (error) {
-        console.warn('[SVGLoader] Worker rasterization failed, using fallback:', error.message);
-      }
-    }
-
-    // Fallback: Use main thread rasterization
+    console.log('[SVGLoader] Rasterizing SVG with main thread (worker disabled):', asset.url);
+    
+    // Always use main thread rasterization for reliability
     return this.rasterizeMainThread(asset, options);
   }
 
@@ -215,72 +193,76 @@ export class SVGLoader {
     ctx.clearRect(0, 0, options.width!, options.height!);
 
     try {
-      // Try to render the actual SVG using Image element
-      const img = new Image();
-      const svgBlob = new Blob([asset.svgText], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
+      console.log('[SVGLoader] Attempting to rasterize SVG in main thread for:', asset.url);
       
-      await new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => reject(new Error('Image load timeout')), 5000); // Increased timeout
+      // Create a properly formatted SVG data URL
+      let svgContent = asset.svgText;
+      
+      // Ensure SVG has proper dimensions if missing
+      if (!svgContent.includes('width=') || !svgContent.includes('height=')) {
+        svgContent = svgContent.replace(
+          /<svg([^>]*)>/,
+          `<svg$1 width="${options.width}" height="${options.height}">`
+        );
+      }
+      
+      // Create data URL with proper encoding
+      const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgContent)))}`;
+      
+      // Load SVG as image
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise<void>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('SVG image load timeout after 10 seconds'));
+        }, 10000);
+        
         img.onload = () => {
           clearTimeout(timeoutId);
-          resolve(void 0);
+          console.log('[SVGLoader] Successfully loaded SVG image:', asset.url);
+          resolve();
         };
+        
         img.onerror = (e) => {
           clearTimeout(timeoutId);
-          reject(new Error(`Image load failed: ${e}`));
+          console.error('[SVGLoader] Failed to load SVG image:', e);
+          reject(new Error(`SVG image load failed`));
         };
-        img.src = url;
+        
+        img.src = svgDataUrl;
       });
 
-      // Draw the SVG image to canvas
-      ctx.drawImage(img, 0, 0, options.width!, options.height!);
+      // Draw the SVG image to canvas with proper scaling
+      ctx.save();
+      ctx.clearRect(0, 0, options.width!, options.height!);
       
-      // Clean up
-      URL.revokeObjectURL(url);
+      // Scale image to fit canvas
+      const scale = Math.min(options.width! / img.width, options.height! / img.height);
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+      const offsetX = (options.width! - scaledWidth) / 2;
+      const offsetY = (options.height! - scaledHeight) / 2;
+      
+      ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+      ctx.restore();
 
       // Apply team color tinting if specified
       if (options.teamColor) {
         this.applyTeamColorTint(ctx, options.width!, options.height!, options.teamColor);
       }
 
+      console.log('[SVGLoader] Successfully rasterized SVG to canvas:', asset.url);
+      
       // Convert canvas to ImageBitmap
       return await createImageBitmap(canvas);
+      
     } catch (error) {
-      console.warn('[SVGLoader] Main thread SVG rendering failed, creating geometric fallback:', error.message);
+      console.error('[SVGLoader] SVG rasterization failed completely:', error);
       
-      // Fallback: create a simple textured shape
-      ctx.clearRect(0, 0, options.width!, options.height!);
-      
-      // Create a ship-like shape with team color
-      const centerX = options.width! / 2;
-      const centerY = options.height! / 2;
-      const size = Math.min(options.width!, options.height!) * 0.8;
-      
-      // Fill background with semi-transparent team color
-      ctx.fillStyle = options.teamColor || '#666666';
-      ctx.globalAlpha = 0.3;
-      ctx.fillRect(0, 0, options.width!, options.height!);
-      
-      // Draw ship-like arrow shape
-      ctx.globalAlpha = 1.0;
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY - size/2);      // Top point
-      ctx.lineTo(centerX + size/4, centerY);      // Right middle
-      ctx.lineTo(centerX + size/6, centerY + size/3); // Right back
-      ctx.lineTo(centerX - size/6, centerY + size/3); // Left back
-      ctx.lineTo(centerX - size/4, centerY);      // Left middle
-      ctx.closePath();
-      ctx.fill();
-      
-      // Add team color outline
-      ctx.strokeStyle = options.teamColor || '#888888';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Convert canvas to ImageBitmap
-      return await createImageBitmap(canvas);
+      // Return error - don't create geometric fallback here anymore
+      // Let the renderer handle fallbacks appropriately
+      throw new Error(`Failed to rasterize SVG ${asset.url}: ${error.message}`);
     }
   }
 
