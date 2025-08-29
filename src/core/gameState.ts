@@ -293,10 +293,13 @@ function updateBullets(state: GameState, dt: number) {
       if (d < hitR) {
         // Apply damage to shield first
         let dmgLeft = b.damage;
+        let totalDamage = 0; // Track total damage for recent damage accumulator
+        
         if (s.shield > 0) {
           const absorb = Math.min(s.shield, dmgLeft);
           s.shield -= absorb;
           dmgLeft -= absorb;
+          totalDamage += absorb;
           // Track shield hit for visual effects
           s.lastShieldHitTime = state.time;
           // Record direction of impact on shield as a unit vector from ship center to bullet position
@@ -308,12 +311,20 @@ function updateBullets(state: GameState, dt: number) {
           // Armor reduces damage
           const effective = Math.max(1, dmgLeft - s.armor * 0.3);
           s.health -= effective;
+          totalDamage += effective;
           // XP to owner
           const owner = state.ships.find(sh => sh.id === b.ownerShipId);
           if (owner) {
             owner.level.xp += effective * XP_PER_DAMAGE;
           }
         }
+        
+        // Update recent damage tracking for AI
+        if (s.aiState && totalDamage > 0) {
+          s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
+          s.aiState.lastDamageTime = state.time;
+        }
+        
         // Bullet consumed
         b.ttl = 0;
         break;
