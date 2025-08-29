@@ -169,10 +169,19 @@ export class AIController {
     const nearestEnemy = this.findNearestEnemy(ship);
     if (nearestEnemy) {
       const distance = this.getDistance(ship.pos, nearestEnemy.pos);
-      if (distance < ship.aiState!.preferredRange! * 0.8) {
-        return this.state.rng.next() < 0.7 ? 'strafe' : 'evade';
-      } else {
+      const preferredRange = ship.aiState!.preferredRange!;
+      
+      // Within optimal combat range - maintain pursuit for effective engagement
+      if (distance < preferredRange * 0.6) {
         return 'pursue';
+      }
+      // At medium range - continue pursuing to close distance
+      else if (distance < preferredRange * 1.2) {
+        return 'pursue';
+      }
+      // At longer range - use tactical movement
+      else {
+        return this.state.rng.next() < 0.6 ? 'pursue' : 'strafe';
       }
     }
     return 'patrol';
