@@ -111,12 +111,17 @@ export class SVGLoader {
   }
 
   private async performLoad(url: string, options: SVGLoadOptions): Promise<SVGAsset> {
+    console.log(`[SVGLoader] Attempting to load SVG from: ${url}`);
+    
     const response = await fetch(url);
     if (!response.ok) {
+      console.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
       throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
     }
 
     const svgText = await response.text();
+    console.log(`[SVGLoader] Successfully fetched SVG content for ${url}, length: ${svgText.length}`);
+    
     const lastModified = await this.getFileModificationTime(url);
 
     const asset: SVGAsset = {
