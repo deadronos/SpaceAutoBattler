@@ -11,6 +11,8 @@ import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
+import { findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends } from './searchUtils.js';
+import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -152,15 +154,9 @@ export function spawnFleet(state: GameState, team: Team, count = 5) {
   }
 }
 
+// Delegate nearest-enemy lookup to shared search utilities (spatial-grid preferred)
 function findNearestEnemy(state: GameState, ship: Ship): Ship | undefined {
-  let best: Ship | undefined; let bestD = Infinity;
-  for (const s of state.ships) {
-    if (s.team === ship.team || s.health <= 0) continue;
-    const dx = s.pos.x - ship.pos.x; const dy = s.pos.y - ship.pos.y; const dz = s.pos.z - ship.pos.z;
-    const d2 = dx*dx + dy*dy + dz*dz;
-    if (d2 < bestD) { bestD = d2; best = s; }
-  }
-  return best;
+  return sharedFindNearestEnemy(state, ship) || undefined;
 }
 
 function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
@@ -170,33 +166,8 @@ function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min
  * This handles bounce, wrap, and remove behaviors consistently across AI systems
  */
 export function applyBoundaryPhysics(ship: Ship, state: GameState) {
-  const bounds = state.simConfig.simBounds;
-  const behavior = state.simConfig.boundaryBehavior.ships;
-
-  if (behavior === 'bounce') {
-    // Bounce off boundaries
-    if (ship.pos.x < 0) { ship.pos.x = 0; ship.vel.x = -ship.vel.x; }
-    else if (ship.pos.x > bounds.width) { ship.pos.x = bounds.width; ship.vel.x = -ship.vel.x; }
-    if (ship.pos.y < 0) { ship.pos.y = 0; ship.vel.y = -ship.vel.y; }
-    else if (ship.pos.y > bounds.height) { ship.pos.y = bounds.height; ship.vel.y = -ship.vel.y; }
-    if (ship.pos.z < 0) { ship.pos.z = 0; ship.vel.z = -ship.vel.z; }
-    else if (ship.pos.z > bounds.depth) { ship.pos.z = bounds.depth; ship.vel.z = -ship.vel.z; }
-  } else if (behavior === 'wrap') {
-    // Wrap around boundaries
-    if (ship.pos.x < 0) ship.pos.x += bounds.width;
-    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
-    if (ship.pos.y < 0) ship.pos.y += bounds.height;
-    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
-    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
-    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
-  } else if (behavior === 'remove') {
-    // Remove ships that go out of bounds
-    if (ship.pos.x < 0 || ship.pos.x > bounds.width ||
-        ship.pos.y < 0 || ship.pos.y > bounds.height ||
-        ship.pos.z < 0 || ship.pos.z > bounds.depth) {
-      ship.health = 0; // Mark for removal
-    }
-  }
+  // Keep compatibility API but delegate to centralized boundary utils for ships
+  applyBoundaryPhysicsShip(ship, state);
 }
 
 function fireTurrets(state: GameState, ship: Ship, dt: number) {
@@ -242,40 +213,11 @@ function updateBullets(state: GameState, dt: number) {
     b.pos.z += b.vel.z * dt;
   }
 
-  // Handle bullet boundary conditions
+  // Handle bullet boundary conditions using shared helper
   for (const b of state.bullets) {
     if (b.ttl <= 0) continue;
-
-    let outOfBounds = false;
-    if (behavior === 'bounce') {
-      // Bounce off boundaries
-      if (b.pos.x < 0) { b.pos.x = 0; b.vel.x = -b.vel.x; }
-      else if (b.pos.x > width) { b.pos.x = width; b.vel.x = -b.vel.x; }
-      if (b.pos.y < 0) { b.pos.y = 0; b.vel.y = -b.vel.y; }
-      else if (b.pos.y > height) { b.pos.y = height; b.vel.y = -b.vel.y; }
-      if (b.pos.z < 0) { b.pos.z = 0; b.vel.z = -b.vel.z; }
-      else if (b.pos.z > depth) { b.pos.z = depth; b.vel.z = -b.vel.z; }
-    } else if (behavior === 'wrap') {
-      // Wrap around boundaries
-      if (b.pos.x < 0) b.pos.x += width;
-      else if (b.pos.x > width) b.pos.x -= width;
-      if (b.pos.y < 0) b.pos.y += height;
-      else if (b.pos.y > height) b.pos.y -= height;
-      if (b.pos.z < 0) b.pos.z += depth;
-      else if (b.pos.z > depth) b.pos.z -= depth;
-    } else if (behavior === 'remove') {
-      // Remove bullets that go out of bounds
-      if (b.pos.x < 0 || b.pos.x > width ||
-          b.pos.y < 0 || b.pos.y > height ||
-          b.pos.z < 0 || b.pos.z > depth) {
-        outOfBounds = true;
-      }
-    }
-
-    if (outOfBounds) {
-      b.ttl = 0;
-      continue;
-    }
+    applyBoundaryPhysicsBullet(b, state);
+    if (b.ttl <= 0) continue; // bullet removed by boundary behavior
 
     // Collisions (simple radius approx)
     for (const s of state.ships) {

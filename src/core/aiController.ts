@@ -10,8 +10,9 @@ import type {
 import { getEffectivePersonality, selectRoamingPattern, getFormationConfig } from '../config/behaviorConfig.js';
 import { getShipClassConfig } from '../config/entitiesConfig.js';
 import { PhysicsConfig } from '../config/physicsConfig.js';
-import { applyBoundaryPhysics } from './gameState.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normalize, subtract } from '../utils/vector3.js';
+import { getDistance as sharedGetDistance, findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends, getNearbySeparationShipsLinear as sharedGetNearbySeparationShipsLinear } from './searchUtils.js';
+import { applyBoundaryPhysicsShip } from './boundaryUtils.js';
 
 /**
  * AI Controller - Configurable AI behaviors for ships
@@ -926,8 +927,8 @@ export class AIController {
     ship.pos.y += ship.vel.y * dt;
     ship.pos.z += ship.vel.z * dt;
 
-    // Apply boundary physics
-    applyBoundaryPhysics(ship, this.state);
+  // Apply boundary physics
+  applyBoundaryPhysicsShip(ship, this.state);
   }
 
   /**
@@ -1013,8 +1014,8 @@ export class AIController {
     ship.pos.y += ship.vel.y * dt;
     ship.pos.z += ship.vel.z * dt;
 
-    // Apply boundary physics
-    applyBoundaryPhysics(ship, this.state);
+  // Apply boundary physics
+  applyBoundaryPhysicsShip(ship, this.state);
   }
 
   /**
@@ -1109,140 +1110,47 @@ export class AIController {
    * Find nearest enemy to a ship
    */
   private findNearestEnemy(ship: Ship): Ship | null {
-    // Use spatial index if available and enabled
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      return this.findNearestEnemySpatial(ship);
-    }
-    
-    // Fallback to linear search
-    return this.findNearestEnemyLinear(ship);
+    return sharedFindNearestEnemy(this.state, ship);
   }
 
   /**
    * Find nearest enemy using spatial index
    */
-  private findNearestEnemySpatial(ship: Ship): Ship | null {
-    if (!this.state.spatialGrid) return null;
-    
-    this.ensureSpatialGridUpdated();
-    
-    // Query k=1 nearest enemies
-    const nearestEntities = this.state.spatialGrid.queryKNearest(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red');
-    
-    if (nearestEntities.length === 0) return null;
-    
-    // Get the actual ship object
-    const nearestEntity = nearestEntities[0];
-    return this.state.shipIndex?.get(nearestEntity.id) || null;
-  }
+  
 
   /**
    * Find nearest enemy using linear search (fallback)
    */
-  private findNearestEnemyLinear(ship: Ship): Ship | null {
-    let best: Ship | null = null;
-    let bestDist = Infinity;
-
-    for (const s of this.state.ships) {
-      if (s.team === ship.team || s.health <= 0) continue;
-
-      const dist = this.getDistance(ship.pos, s.pos);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = s;
-      }
-    }
-
-    return best;
-  }
+  
 
   /**
    * Find nearby enemies within range
    */
   private findNearbyEnemies(ship: Ship, range: number): Ship[] {
-    // Use spatial index if available and enabled
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      return this.findNearbyEnemiesSpatial(ship, range);
-    }
-    
-    // Fallback to linear search
-    return this.findNearbyEnemiesLinear(ship, range);
+    return sharedFindNearbyEnemies(this.state, ship, range);
   }
 
   /**
    * Find nearby enemies using spatial index
    */
-  private findNearbyEnemiesSpatial(ship: Ship, range: number): Ship[] {
-    if (!this.state.spatialGrid) return [];
-    
-    this.ensureSpatialGridUpdated();
-    
-    // Use streaming iteration to avoid array allocation
-    const enemies: Ship[] = [];
-    this.state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
-      if (entity.team !== ship.team) {
-        const enemyShip = this.state.shipIndex?.get(entity.id);
-        if (enemyShip && enemyShip.health > 0) {
-          enemies.push(enemyShip);
-        }
-      }
-    });
-    
-    return enemies.sort((a, b) => this.getDistance(ship.pos, a.pos) - this.getDistance(ship.pos, b.pos));
-  }
+  
 
   /**
    * Find nearby enemies using linear search (fallback)
    */
-  private findNearbyEnemiesLinear(ship: Ship, range: number): Ship[] {
-    const enemies: Ship[] = [];
-
-    for (const s of this.state.ships) {
-      if (s.team === ship.team || s.health <= 0) continue;
-
-      const dist = this.getDistance(ship.pos, s.pos);
-      if (dist <= range) {
-        enemies.push(s);
-      }
-    }
-
-    return enemies.sort((a, b) => this.getDistance(ship.pos, a.pos) - this.getDistance(ship.pos, b.pos));
-  }
+  
 
   /**
    * Find nearby friendly ships
    */
   private findNearbyFriends(ship: Ship, range: number): Ship[] {
-    // Use spatial index if available and enabled
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      return this.findNearbyFriendsSpatial(ship, range);
-    }
-    
-    // Fallback to linear search
-    return this.findNearbyFriendsLinear(ship, range);
+    return sharedFindNearbyFriends(this.state, ship, range);
   }
 
   /**
    * Find nearby friendly ships using spatial index
    */
-  private findNearbyFriendsSpatial(ship: Ship, range: number): Ship[] {
-    if (!this.state.spatialGrid) return [];
-    
-    this.ensureSpatialGridUpdated();
-    
-    // Use streaming iteration to avoid array allocation
-    const friends: Ship[] = [];
-    this.state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
-      if (entity.team === ship.team && entity.id !== ship.id) {
-        const friendShip = this.state.shipIndex?.get(entity.id);
-        if (friendShip && friendShip.health > 0) {
-          friends.push(friendShip);
-        }
-      }
-    });
-    
-    return friends;
-  }
+  
 
   /**
    * Ensures the spatial grid is updated, but only once per tick.
@@ -1276,20 +1184,7 @@ export class AIController {
   /**
    * Find nearby friendly ships using linear search (fallback)
    */
-  private findNearbyFriendsLinear(ship: Ship, range: number): Ship[] {
-    const friends: Ship[] = [];
-
-    for (const s of this.state.ships) {
-      if (s.team !== ship.team || s.health <= 0 || s.id === ship.id) continue;
-
-      const dist = this.getDistance(ship.pos, s.pos);
-      if (dist <= range) {
-        friends.push(s);
-      }
-    }
-
-    return friends;
-  }
+  
 
   /**
    * Calculate center position of a group of ships
@@ -1475,15 +1370,7 @@ export class AIController {
    * Helper method for linear search in separation force calculation (fallback)
    */
   private getNearbySeparationShipsLinear(ship: Ship, separationDistance: number): Ship[] {
-    const nearby: Ship[] = [];
-    for (const other of this.state.ships) {
-      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
-      const dist = this.getDistance(ship.pos, other.pos);
-      if (dist > 0 && dist < separationDistance) {
-        nearby.push(other);
-      }
-    }
-    return nearby;
+    return sharedGetNearbySeparationShipsLinear(this.state, ship, separationDistance);
   }
 
   /**
@@ -1522,10 +1409,7 @@ export class AIController {
    * Calculate Euclidean distance between two Vector3 positions
    */
   private getDistance(a: Vector3, b: Vector3): number {
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    const dz = a.z - b.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    return sharedGetDistance(a, b);
   }
 
   /**
