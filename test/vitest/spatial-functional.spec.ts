@@ -25,7 +25,7 @@ describe('Spatial Index Functional Verification', () => {
 
     // Populate spatial index directly to avoid running full AI simulation in tests
     if (state.spatialGrid) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
     }
 
     // Verify spatial index has entities
@@ -56,7 +56,7 @@ describe('Spatial Index Functional Verification', () => {
     // Test with spatial index enabled (populate index directly)
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
     if (state.spatialGrid) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
     }
     const resultWithIndex = aiController.calculateSeparationForceWithCount(ship1);
 
@@ -85,7 +85,7 @@ describe('Spatial Index Functional Verification', () => {
     // Populate spatial index directly and verify it doesn't crash
     if (state.spatialGrid) {
       expect(() => {
-        state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+  state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
       }).not.toThrow();
       const stats = state.spatialGrid!.getStats();
       expect(stats.totalEntities).toBe(shipCount);
@@ -116,7 +116,7 @@ describe('Spatial Index Functional Verification', () => {
 
     // Populate spatial index directly for deterministic queries
     if (state.spatialGrid) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
     }
 
     // Test spatial queries directly
@@ -156,7 +156,7 @@ describe('Spatial Index Functional Verification', () => {
     const startTime = performance.now();
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
     if (state.spatialGrid) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
     }
     
     for (let i = 0; i < 50; i++) {

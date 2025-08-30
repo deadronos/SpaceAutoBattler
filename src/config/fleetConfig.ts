@@ -27,7 +27,7 @@ export const DefaultFleetConfig: FleetConfig = {
   },
   spawning: {
     margin: 200,
-    spawnWidth: 200,
+    spawnWidth: 650,
     defaultFleetSize: 6,
   },
   cinematic: {

@@ -25,12 +25,26 @@ export class AIController {
   
   // Per-team anchor registries for roaming behavior
   private roamingAnchors: Map<Team, Vector3[]>;
+  
+  // Team alarm system - tracks when teams are under attack
+  private teamAlarmTimes: Map<Team, number>;
+  
+  // Scout assignment - tracks which ship is the current scout per team
+  private teamScouts: Map<Team, EntityId | null>;
 
   constructor(state: GameState) {
     this.state = state;
     this.roamingAnchors = new Map();
     this.roamingAnchors.set('red', []);
     this.roamingAnchors.set('blue', []);
+    
+    this.teamAlarmTimes = new Map();
+    this.teamAlarmTimes.set('red', 0);
+    this.teamAlarmTimes.set('blue', 0);
+    
+    this.teamScouts = new Map();
+    this.teamScouts.set('red', null);
+    this.teamScouts.set('blue', null);
   }
 
   /**
@@ -40,6 +54,12 @@ export class AIController {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) {
       return;
     }
+
+    // Check for team alarms (ships taking damage)
+    this.updateTeamAlarms();
+    
+    // Update scout assignments
+    this.updateScoutAssignments();
 
     for (const ship of this.state.ships) {
       if (ship.health <= 0) continue;
@@ -101,6 +121,64 @@ export class AIController {
     if (aiState.recentDamage && aiState.recentDamage > 0) {
       const decayAmount = config.globalSettings.damageDecayRate * dt;
       aiState.recentDamage = Math.max(0, aiState.recentDamage - decayAmount);
+    }
+  }
+
+  /**
+   * Check for ships taking damage and trigger team alarms
+   */
+  private updateTeamAlarms() {
+    const config = this.state.behaviorConfig!;
+    if (!config.globalSettings.enableAlarmSystem) return;
+
+    for (const ship of this.state.ships) {
+      if (ship.health <= 0 || !ship.aiState) continue;
+      
+      const aiState = ship.aiState;
+      const timeSinceLastDamage = this.state.time - (aiState.lastDamageTime || 0);
+      
+      // If ship took damage recently, trigger alarm for their team
+      if (timeSinceLastDamage <= config.globalSettings.alarmSystemWindowSeconds) {
+        this.teamAlarmTimes.set(ship.team, this.state.time);
+      }
+    }
+  }
+
+  /**
+   * Update scout assignments - ensure at least one ship per team is pursuing
+   */
+  private updateScoutAssignments() {
+    const config = this.state.behaviorConfig!;
+    if (!config.globalSettings.enableScoutBehavior) return;
+
+    for (const team of ['red', 'blue'] as Team[]) {
+      const teamShips = this.state.ships.filter(s => s.team === team && s.health > 0);
+      if (teamShips.length === 0) continue;
+
+      let currentScout = this.teamScouts.get(team);
+      let scoutShip = currentScout ? teamShips.find(s => s.id === currentScout) : null;
+
+      // If current scout is dead/gone or there's no scout, assign a new one
+      if (!scoutShip) {
+        // Pick the ship closest to any enemy as the scout
+        const enemies = this.state.ships.filter(s => s.team !== team && s.health > 0);
+        if (enemies.length > 0) {
+          let bestScout = teamShips[0];
+          let bestDistance = Infinity;
+
+          for (const ship of teamShips) {
+            for (const enemy of enemies) {
+              const distance = this.getDistance(ship.pos, enemy.pos);
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                bestScout = ship;
+              }
+            }
+          }
+
+          this.teamScouts.set(team, bestScout.id);
+        }
+      }
     }
   }
 
@@ -182,28 +260,63 @@ export class AIController {
       const distance = this.getDistance(ship.pos, nearestEnemy.pos);
       const preferredRange = ship.aiState!.preferredRange!;
       const config = this.state.behaviorConfig!;
-      
-      // Within optimal combat range - maintain pursuit for effective engagement
+
+      // Check if this ship is the designated scout
+      const isScout = config.globalSettings.enableScoutBehavior && 
+                     this.teamScouts.get(ship.team) === ship.id;
+
+      // Check if team is under alarm (recent friendly damage)
+      const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+      const timeSinceAlarm = this.state.time - teamAlarmTime;
+      const teamUnderAlarm = config.globalSettings.enableAlarmSystem && 
+                           timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+
+      // Close/medium range checks use configurable multipliers
       if (distance < preferredRange * config.globalSettings.closeRangeMultiplier) {
         return 'pursue';
       }
-      // At medium range - continue pursuing to close distance
-      else if (distance < preferredRange * config.globalSettings.mediumRangeMultiplier) {
+
+      if (distance < preferredRange * config.globalSettings.mediumRangeMultiplier) {
         return 'pursue';
       }
-      // At longer range - use tactical movement
-      else {
-        return this.state.rng.next() < 0.6 ? 'pursue' : 'strafe';
+
+      // Scout always pursues nearest enemy regardless of range
+      if (isScout) {
+        return 'pursue';
       }
+
+      // During team alarm, idle/strafing ships switch to pursue
+      if (teamUnderAlarm) {
+        return 'pursue';
+      }
+
+      // Otherwise fall back to probabilistic behavior influenced by aggressiveness
+      return this.state.rng.next() < personality.aggressiveness ? 'pursue' : 'strafe';
     }
+    // No visible enemy -> fall back to patrol
     return 'patrol';
   }
-
   /**
    * Choose intent for defensive behavior
    */
   private chooseDefensiveIntent(ship: Ship, personality: AIPersonality): AIIntent {
     const config = this.state.behaviorConfig!;
+    
+    // Check if this ship is the designated scout
+    const isScout = config.globalSettings.enableScoutBehavior && 
+                   this.teamScouts.get(ship.team) === ship.id;
+
+    // Check if team is under alarm (recent friendly damage)
+    const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+    const timeSinceAlarm = this.state.time - teamAlarmTime;
+    const teamUnderAlarm = config.globalSettings.enableAlarmSystem && 
+                         timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+
+    // Scout ships always pursue, or during team alarm
+    if (isScout || teamUnderAlarm) {
+      return this.chooseAggressiveIntent(ship, personality);
+    }
+    
     const threats = this.findNearbyEnemies(ship, ship.aiState!.preferredRange! * 2);
     if (threats.length > 0) {
       const nearestThreat = threats[0];
@@ -236,6 +349,22 @@ export class AIController {
    */
   private chooseRoamingIntent(ship: Ship, personality: AIPersonality): AIIntent {
     const aiState = ship.aiState!;
+    const config = this.state.behaviorConfig!;
+
+    // Check if this ship is the designated scout
+    const isScout = config.globalSettings.enableScoutBehavior && 
+                   this.teamScouts.get(ship.team) === ship.id;
+
+    // Check if team is under alarm (recent friendly damage)
+    const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+    const timeSinceAlarm = this.state.time - teamAlarmTime;
+    const teamUnderAlarm = config.globalSettings.enableAlarmSystem && 
+                         timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+
+    // Scout ships always pursue, or during team alarm
+    if (isScout || teamUnderAlarm) {
+      return this.chooseAggressiveIntent(ship, personality);
+    }
 
     // Assign roaming anchor if not already assigned
     if (!aiState.roamingAnchor) {
@@ -300,6 +429,23 @@ export class AIController {
    * Choose intent for mixed behavior (dynamic)
    */
   private chooseMixedIntent(ship: Ship, personality: AIPersonality): AIIntent {
+    const config = this.state.behaviorConfig!;
+
+    // Check if this ship is the designated scout
+    const isScout = config.globalSettings.enableScoutBehavior && 
+                   this.teamScouts.get(ship.team) === ship.id;
+
+    // Check if team is under alarm (recent friendly damage)
+    const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+    const timeSinceAlarm = this.state.time - teamAlarmTime;
+    const teamUnderAlarm = config.globalSettings.enableAlarmSystem && 
+                         timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+
+    // Scout ships always use aggressive behavior to pursue enemies
+    if (isScout || teamUnderAlarm) {
+      return this.chooseAggressiveIntent(ship, personality);
+    }
+
     const rand = this.state.rng.next();
 
     // Bias towards personality traits
@@ -944,18 +1090,16 @@ export class AIController {
       this.updateSpatialGridImmediate();
     }
     
-    // Query enemies within range
-    const enemyTeam = ship.team === 'red' ? 'blue' : 'red';
-    const nearbyEntities = this.state.spatialGrid.queryEnemies(ship.pos, range, ship.team);
-    
-    // Convert to ship objects and sort by distance
+    // Use streaming iteration to avoid array allocation
     const enemies: Ship[] = [];
-    for (const entity of nearbyEntities) {
-      const enemyShip = this.state.shipIndex?.get(entity.id);
-      if (enemyShip && enemyShip.health > 0) {
-        enemies.push(enemyShip);
+    this.state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
+      if (entity.team !== ship.team) {
+        const enemyShip = this.state.shipIndex?.get(entity.id);
+        if (enemyShip && enemyShip.health > 0) {
+          enemies.push(enemyShip);
+        }
       }
-    }
+    });
     
     return enemies.sort((a, b) => this.getDistance(ship.pos, a.pos) - this.getDistance(ship.pos, b.pos));
   }
@@ -1003,17 +1147,16 @@ export class AIController {
       this.updateSpatialGridImmediate();
     }
     
-    // Query neighbors (same team) within range, excluding self
-    const nearbyEntities = this.state.spatialGrid.queryNeighbors(ship.pos, range, ship.team, ship.id);
-    
-    // Convert to ship objects
+    // Use streaming iteration to avoid array allocation
     const friends: Ship[] = [];
-    for (const entity of nearbyEntities) {
-      const friendShip = this.state.shipIndex?.get(entity.id);
-      if (friendShip && friendShip.health > 0) {
-        friends.push(friendShip);
+    this.state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
+      if (entity.team === ship.team && entity.id !== ship.id) {
+        const friendShip = this.state.shipIndex?.get(entity.id);
+        if (friendShip && friendShip.health > 0) {
+          friends.push(friendShip);
+        }
       }
-    }
+    });
     
     return friends;
   }
@@ -1117,8 +1260,9 @@ export class AIController {
         separationDistance,
         ship.team,
         ship.id,
-        (dxp, dyp, dzp, dist) => {
-          if (dist <= 0 || dist >= separationDistance) return;
+        (dxp, dyp, dzp, distSq) => {
+          if (distSq <= 0 || distSq >= separationDistance * separationDistance) return;
+          const dist = Math.sqrt(distSq);
           const weight = (separationDistance - dist) / separationDistance;
           const inv = 1 / dist;
           separationX += (-dxp) * weight * inv; // dx = ship - other = -(other - ship)
@@ -1127,6 +1271,7 @@ export class AIController {
           neighborCount++;
         }
       );
+      // Store cache for this tick after computing final normalized force below
       // Store cache for this tick
       const res = { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 } as { force: Vector3; neighborCount: number };
       // We'll fill 'res' fields after normalization below; temporarily stash values
@@ -1191,8 +1336,8 @@ export class AIController {
         separationDistance,
         ship.team,
         ship.id,
-        (_dxp, _dyp, _dzp, dist, entity) => {
-          if (dist > 0 && dist < separationDistance) {
+        (_dxp, _dyp, _dzp, distSq, entity) => {
+          if (distSq > 0 && distSq < separationDistance * separationDistance) {
             centerX += entity.pos.x;
             centerY += entity.pos.y;
             centerZ += entity.pos.z;

@@ -193,6 +193,12 @@ export interface BehaviorConfig {
     enableSpawnJitter: boolean;
     /** Enable spatial index for AI proximity queries (faster neighbor/target searches) */
     enableSpatialIndex: boolean;
+    /** Enable scout behavior - at least one ship per team always pursues nearest enemy */
+    enableScoutBehavior: boolean;
+    /** Enable alarm system - when friendlies take damage, all idle/strafing ships pursue */
+    enableAlarmSystem: boolean;
+    /** Time window (seconds) during which alarm system activates team-wide pursuit */
+    alarmSystemWindowSeconds: number;
   };
 }
 
@@ -373,7 +379,10 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     enableBoundaryCleanup: true,
     boundaryCleanupIntervalTicks: 600,
     enableSpawnJitter: true,
-    enableSpatialIndex: true  // Enable by default for better performance
+    enableSpatialIndex: true,  // Enable by default for better performance
+    enableScoutBehavior: true,  // Enable scout behavior by default
+    enableAlarmSystem: true,    // Enable alarm system by default
+    alarmSystemWindowSeconds: 5.0  // 5 seconds of team-wide pursuit after friendly takes damage
   }
 };
 
