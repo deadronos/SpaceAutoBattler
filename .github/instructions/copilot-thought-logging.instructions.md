@@ -1,6 +1,7 @@
 ---
 applyTo: '**'
 description: 'See process Copilot is following where you can edit this to reshape the interaction or save when follow up may be needed'
+tools: ['createFile','appendFile','readFile', 'deleteFile', 'listFiles', 'searchFiles', 'updateFile', 'getFileContent', 'getFileMetadata', 'thinking', 'plan']
 ---
 
 # Copilot Process tracking Instructions

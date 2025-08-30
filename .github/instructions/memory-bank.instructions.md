@@ -1,5 +1,7 @@
 ---
+name: memory-bank
 applyTo: '**'
+tools: ['createFile','appendFile','readFile', 'deleteFile', 'listFiles', 'searchFiles', 'updateFile', 'getFileContent', 'getFileMetadata', 'thinking', 'plan', 'memoryBank', 'memoryBankUpdate', 'taskManagement']
 ---
 Coding standards, domain knowledge, and preferences that AI should follow.
 
