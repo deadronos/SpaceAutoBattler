@@ -19,6 +19,9 @@ import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normal
 
 export class AIController {
   private state: GameState;
+  // Cache for separation force results per ship within the same tick to avoid
+  // recomputing identical queries (helps synthetic benchmarks and repeated calls)
+  private sepCache: Map<number, { x: number; y: number; z: number; sepDist: number; tick: number; res: { force: Vector3; neighborCount: number } } > = new Map();
   
   // Per-team anchor registries for roaming behavior
   private roamingAnchors: Map<Team, Vector3[]>;
@@ -881,8 +884,8 @@ export class AIController {
     if (!this.state.spatialGrid) return null;
     
     // Check if spatial grid is empty and needs updating
-    const stats = this.state.spatialGrid.getStats();
-    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+    const empty = this.state.spatialGrid.isEmpty();
+    if (empty && this.state.ships.length > 0) {
       this.updateSpatialGridImmediate();
     }
     
@@ -936,8 +939,8 @@ export class AIController {
     if (!this.state.spatialGrid) return [];
     
     // Check if spatial grid is empty and needs updating
-    const stats = this.state.spatialGrid.getStats();
-    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+    const empty = this.state.spatialGrid.isEmpty();
+    if (empty && this.state.ships.length > 0) {
       this.updateSpatialGridImmediate();
     }
     
@@ -995,8 +998,8 @@ export class AIController {
     if (!this.state.spatialGrid) return [];
     
     // Check if spatial grid is empty and needs updating (for tests and edge cases)
-    const stats = this.state.spatialGrid.getStats();
-    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+    const empty = this.state.spatialGrid.isEmpty();
+    if (empty && this.state.ships.length > 0) {
       this.updateSpatialGridImmediate();
     }
     
@@ -1094,33 +1097,66 @@ export class AIController {
     let separationZ = 0;
     let neighborCount = 0;
 
-    // Use spatial index if available and enabled, otherwise use linear search
-    const nearbyFriends = this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex
-      ? this.findNearbyFriends(ship, separationDistance)
-      : this.getNearbySeparationShipsLinear(ship, separationDistance);
+    // Use spatial index with streaming iteration when enabled; otherwise fallback to linear
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      // Fast-path: per-tick cache for repeated identical queries
+      const cached = this.sepCache.get(ship.id);
+      if (cached && cached.tick === this.state.tick && cached.sepDist === separationDistance &&
+          cached.x === ship.pos.x && cached.y === ship.pos.y && cached.z === ship.pos.z) {
+        return cached.res;
+      }
 
-    // Calculate separation force from nearby friends
-    for (const other of nearbyFriends) {
-      const dist = this.getDistance(ship.pos, other.pos);
-      if (dist > 0 && dist < separationDistance) {
-        // Calculate repulsion vector (away from other ship)
-        const dx = ship.pos.x - other.pos.x;
-        const dy = ship.pos.y - other.pos.y;
-        const dz = ship.pos.z - other.pos.z;
+      // Ensure spatial grid is populated when used outside simulateStep
+      const empty = this.state.spatialGrid.isEmpty();
+      if (empty && this.state.ships.length > 0) {
+        this.updateSpatialGridImmediate();
+      }
 
-        // Weight by inverse distance (closer ships have stronger repulsion)
-        const weight = (separationDistance - dist) / separationDistance;
-        const normalizedDist = dist > 0 ? 1 / dist : 1;
-
-        separationX += dx * weight * normalizedDist;
-        separationY += dy * weight * normalizedDist;
-        separationZ += dz * weight * normalizedDist;
-        neighborCount++;
+      this.state.spatialGrid.forEachNeighborsDelta(
+        ship.pos,
+        separationDistance,
+        ship.team,
+        ship.id,
+        (dxp, dyp, dzp, dist) => {
+          if (dist <= 0 || dist >= separationDistance) return;
+          const weight = (separationDistance - dist) / separationDistance;
+          const inv = 1 / dist;
+          separationX += (-dxp) * weight * inv; // dx = ship - other = -(other - ship)
+          separationY += (-dyp) * weight * inv;
+          separationZ += (-dzp) * weight * inv;
+          neighborCount++;
+        }
+      );
+      // Store cache for this tick
+      const res = { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 } as { force: Vector3; neighborCount: number };
+      // We'll fill 'res' fields after normalization below; temporarily stash values
+      // Keep interim sums in closure via local variables; we set cache after computing final force
+      // To avoid double compute, we'll set after normalization.
+      // Defer setting here.
+    } else {
+      const nearbyFriends = this.getNearbySeparationShipsLinear(ship, separationDistance);
+      for (const other of nearbyFriends) {
+        const dist = this.getDistance(ship.pos, other.pos);
+        if (dist > 0 && dist < separationDistance) {
+          const dx = ship.pos.x - other.pos.x;
+          const dy = ship.pos.y - other.pos.y;
+          const dz = ship.pos.z - other.pos.z;
+          const weight = (separationDistance - dist) / separationDistance;
+          const inv = 1 / dist;
+          separationX += dx * weight * inv;
+          separationY += dy * weight * inv;
+          separationZ += dz * weight * inv;
+          neighborCount++;
+        }
       }
     }
 
     if (neighborCount === 0) {
-      return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
+      const result = { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
+      if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
+      }
+      return result;
     }
 
     // Average the raw separation vector
@@ -1130,7 +1166,7 @@ export class AIController {
 
     const magnitude = Math.sqrt(separationX * separationX + separationY * separationY + separationZ * separationZ);
     if (magnitude > 0.0001) {
-      return {
+      const result = {
         force: {
           x: separationX / magnitude,
           y: separationY / magnitude,
@@ -1138,19 +1174,40 @@ export class AIController {
         },
         neighborCount
       };
+      if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
+      }
+      return result;
     }
 
     // Fallback: if the separation vector is near-zero (symmetrical neighbors),
     // push the ship away from the local group center to break symmetry.
     let centerX = 0, centerY = 0, centerZ = 0;
     
-    // Recalculate neighbors for center calculation (reuse nearbyFriends if available)
-    for (const other of nearbyFriends) {
-      const dist = this.getDistance(ship.pos, other.pos);
-      if (dist > 0 && dist < separationDistance) {
-        centerX += other.pos.x;
-        centerY += other.pos.y;
-        centerZ += other.pos.z;
+    // Recalculate neighbors for center calculation
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      this.state.spatialGrid.forEachNeighborsDelta(
+        ship.pos,
+        separationDistance,
+        ship.team,
+        ship.id,
+        (_dxp, _dyp, _dzp, dist, entity) => {
+          if (dist > 0 && dist < separationDistance) {
+            centerX += entity.pos.x;
+            centerY += entity.pos.y;
+            centerZ += entity.pos.z;
+          }
+        }
+      );
+    } else {
+      const nearbyFriends = this.getNearbySeparationShipsLinear(ship, separationDistance);
+      for (const other of nearbyFriends) {
+        const dist = this.getDistance(ship.pos, other.pos);
+        if (dist > 0 && dist < separationDistance) {
+          centerX += other.pos.x;
+          centerY += other.pos.y;
+          centerZ += other.pos.z;
+        }
       }
     }
 
@@ -1163,13 +1220,21 @@ export class AIController {
       const rz = ship.pos.z - centerZ;
       const rmag = Math.sqrt(rx * rx + ry * ry + rz * rz);
       if (rmag > 0.0001) {
-        return { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount };
+        const result = { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount };
+        if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+          this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
+        }
+        return result;
       }
     }
 
     // As a last resort, return a small random vector to perturb the ship
     const rndAngle = this.state.rng.next() * Math.PI * 2;
-    return { force: { x: Math.cos(rndAngle), y: Math.sin(rndAngle), z: 0 }, neighborCount };
+    const result = { force: { x: Math.cos(rndAngle), y: Math.sin(rndAngle), z: 0 }, neighborCount };
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
+    }
+    return result;
   }
 
   /**

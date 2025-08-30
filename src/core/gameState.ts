@@ -62,6 +62,8 @@ export function resetState(state: GameState, seed?: string) {
   state.shipIndex = new Map();
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
+  // Drop cached AI controller so it can be recreated lazily with fresh state/config
+  state.aiController = undefined;
   // Reset behavior config to defaults
   state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
   
@@ -238,7 +240,8 @@ function stepShipAI(state: GameState, ship: Ship, dt: number) {
   state.behaviorConfig = legacyBehaviorConfig;
   
   // Use AIController for unified movement logic
-  const aiController = new AIController(state);
+  // Reuse a single AIController instance to avoid per-tick allocations
+  const aiController = state.aiController ?? (state.aiController = new AIController(state));
   
   // Force simple pursue intent for consistent legacy behavior
   ship.aiState.currentIntent = 'pursue';
@@ -468,7 +471,8 @@ export function simulateStep(state: GameState, dt: number) {
   // Ship AI logic
   if (state.behaviorConfig?.globalSettings.aiEnabled) {
     // Use new AIController for advanced behavior
-    const aiController = new AIController(state);
+    // Lazily create and reuse AIController instance
+    const aiController = state.aiController ?? (state.aiController = new AIController(state));
     aiController.updateAllShips(dt);
   } else {
     // Use simple AI for backward compatibility
@@ -555,17 +559,14 @@ function updateSpatialGrid(state: GameState) {
     return;
   }
 
-  // Clear the grid and rebuild with current ship positions
-  state.spatialGrid.clear();
-  
+  // Incrementally update positions and purge stale ids without a full rebuild
+  const activeIds = new Set<number>();
   for (const ship of state.ships) {
     if (ship.health > 0) {
-      state.spatialGrid.insert({
-        id: ship.id,
-        pos: ship.pos,
-        radius: 16, // Approximate ship radius for spatial queries
-        team: ship.team
-      });
+      activeIds.add(ship.id);
+      state.spatialGrid.update(ship.id, ship.pos, 16, ship.team);
     }
   }
+  // Remove any entities no longer present/active
+  state.spatialGrid.gcExcept(activeIds);
 }

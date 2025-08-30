@@ -1,4 +1,5 @@
 import { beforeAll, vi } from 'vitest';
+import type { GameState, Ship, Bullet } from '../../src/types/index.js';
 
 // Mock WebGL context for tests
 export const glStub = {
@@ -95,7 +96,7 @@ export const mockThree = {
 
 // Mock performance.now
 export const mockPerformance = {
-  now: vi.fn(() => 1000),
+  now: vi.fn(() => Date.now()),
 };
 
 // Setup global mocks
@@ -112,8 +113,10 @@ beforeAll(() => {
     return null;
   }) as any;
 
-  // Mock performance
-  global.performance = mockPerformance as any;
+  // Preserve real performance.now if available to allow timing-based tests
+  if (!(global as any).performance || typeof (global as any).performance.now !== 'function') {
+    (global as any).performance = mockPerformance as any;
+  }
 
   // Mock requestAnimationFrame
   // Cast to any to avoid NodeJS Timeout vs number return-type mismatch in tests
@@ -132,7 +135,7 @@ beforeAll(() => {
 
 // Test utilities
 export function createMockGameState(overrides = {}) {
-  const baseState = {
+  const baseState: GameState = {
     time: 0,
     tick: 0,
     running: false,
@@ -158,8 +161,8 @@ export function createMockGameState(overrides = {}) {
       seed: 'test-seed',
       useTimeBasedSeed: false,
     },
-    ships: [],
-    bullets: [],
+    ships: [] as Ship[],
+    bullets: [] as Bullet[],
     score: { red: 0, blue: 0 },
     behaviorConfig: undefined,
   };
