@@ -47,7 +47,7 @@ export interface RendererEffectsConfig {
 export const DefaultRendererEffectsConfig: RendererEffectsConfig = {
   skybox: {
     starfield: {
-      textureSize: 512,
+      textureSize: 1920,
       starCounts: {
         top: 800,
         bottom: 300,

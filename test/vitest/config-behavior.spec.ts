@@ -173,6 +173,19 @@ describe('Behavior Configuration', () => {
       expect(settings.formationSearchRadius).toBeGreaterThan(settings.minimumSafeDistance);
       expect(typeof settings.enableDynamicBehavior).toBe('boolean');
     });
+
+    test('should have damage-based evade settings', () => {
+      const settings = DEFAULT_BEHAVIOR_CONFIG.globalSettings;
+      expect(settings).toHaveProperty('evadeOnlyOnDamage');
+      expect(settings).toHaveProperty('evadeRecentDamageWindowSeconds');
+      expect(settings).toHaveProperty('damageEvadeThreshold');
+      expect(settings).toHaveProperty('damageDecayRate');
+      
+      expect(typeof settings.evadeOnlyOnDamage).toBe('boolean');
+      expect(settings.evadeRecentDamageWindowSeconds).toBeGreaterThan(0);
+      expect(settings.damageEvadeThreshold).toBeGreaterThan(0);
+      expect(settings.damageDecayRate).toBeGreaterThan(0);
+    });
   });
 
   describe('Configuration Functions', () => {

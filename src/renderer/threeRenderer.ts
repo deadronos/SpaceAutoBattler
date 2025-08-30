@@ -148,6 +148,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     });
 
     const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
+    const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
     cubeTexture.needsUpdate = true;
 
     return cubeTexture;
@@ -301,6 +302,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     const createTextured3DShip = (imageBitmap: ImageBitmap) => {
       // Create a texture from ImageBitmap
+    const createTextured3DShip = (imageBitmap: ImageBitmap) => {
+      // Create a texture from ImageBitmap
       const texture = new THREE.Texture(imageBitmap);
       texture.needsUpdate = true;
       texture.generateMipmaps = false;
@@ -310,8 +313,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Create materials - textured for main surfaces, team color for others
       const teamColor = s.team === 'red' ? 0xff4444 : 0x4444ff;
       const texturedMaterial = new THREE.MeshBasicMaterial({
+      // Create materials - textured for main surfaces, team color for others
+      const teamColor = s.team === 'red' ? 0xff4444 : 0x4444ff;
+      const texturedMaterial = new THREE.MeshBasicMaterial({
         map: texture,
         transparent: true,
+        alphaTest: 0.05,
+        side: THREE.DoubleSide  // Make planes visible from both front and back
+      });
+      const teamMaterial = new THREE.MeshBasicMaterial({
+        color: teamColor,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide  // Make team-colored surfaces visible from both sides
+      });
+
+      // Create a group to hold the ship parts
+      const shipGroup = new THREE.Group();
         alphaTest: 0.05,
         side: THREE.DoubleSide  // Make planes visible from both front and back
       });
@@ -403,12 +421,91 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shipGroup.position.set(s.pos.x, s.pos.y, s.pos.z);
       
       return shipGroup;
+      const size = (ShipVisualConfig.ships[s.class]?.collisionRadius ?? 16) * 1.8;
+      
+      // Main body - cylinder with SVG texture on the caps and team color on the sides
+      const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
+      const bodyMaterials = [
+        teamMaterial,     // side
+        texturedMaterial, // top cap
+        texturedMaterial  // bottom cap
+      ];
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterials);
+      body.rotation.z = Math.PI / 2; // Orient along X-axis (nose direction)
+      shipGroup.add(body);
+
+      // Nose cone - pure team color
+      const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
+      const nose = new THREE.Mesh(noseGeometry, teamMaterial);
+      nose.position.x = size * 0.65;
+      nose.rotation.z = -Math.PI / 2; // Point along +X
+      shipGroup.add(nose);
+
+      // Wings/fins - textured planes on the sides for visibility from multiple angles
+      const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
+      
+      // Top wing
+      const topWing = new THREE.Mesh(wingGeometry, texturedMaterial);
+      topWing.position.y = size * 0.25;
+      topWing.rotation.x = -Math.PI / 2;
+      shipGroup.add(topWing);
+      
+      // Bottom wing
+      const bottomWing = new THREE.Mesh(wingGeometry, texturedMaterial);
+      bottomWing.position.y = -size * 0.25;
+      bottomWing.rotation.x = Math.PI / 2;
+      shipGroup.add(bottomWing);
+
+      // Side panels for better visibility from the sides
+      const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
+      
+      // Left side panel
+      const leftPanel = new THREE.Mesh(sidePanelGeometry, texturedMaterial);
+      leftPanel.position.z = size * 0.2;
+      leftPanel.rotation.y = Math.PI / 2;
+      shipGroup.add(leftPanel);
+      
+      // Right side panel
+      const rightPanel = new THREE.Mesh(sidePanelGeometry, texturedMaterial);
+      rightPanel.position.z = -size * 0.2;
+      rightPanel.rotation.y = -Math.PI / 2;
+      shipGroup.add(rightPanel);
+
+      // Rear panels for visibility from behind
+      const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+      
+      // Main rear panel
+      const rearPanel = new THREE.Mesh(rearPanelGeometry, texturedMaterial);
+      rearPanel.position.x = -size * 0.4; // Behind the main body
+      rearPanel.rotation.y = Math.PI; // Face backward
+      shipGroup.add(rearPanel);
+      
+      // Rear fins for additional detail and visibility
+      const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+      
+      // Top rear fin
+      const topRearFin = new THREE.Mesh(rearFinGeometry, texturedMaterial);
+      topRearFin.position.set(-size * 0.5, size * 0.15, 0);
+      topRearFin.rotation.set(-Math.PI / 3, 0, 0);
+      shipGroup.add(topRearFin);
+      
+      // Bottom rear fin
+      const bottomRearFin = new THREE.Mesh(rearFinGeometry, texturedMaterial);
+      bottomRearFin.position.set(-size * 0.5, -size * 0.15, 0);
+      bottomRearFin.rotation.set(Math.PI / 3, 0, 0);
+      shipGroup.add(bottomRearFin);
+
+      // Position the entire ship
+      shipGroup.position.set(s.pos.x, s.pos.y, s.pos.z);
+      
+      return shipGroup;
     };
 
     // If we already have an asset in pool, build plane from it
     try {
       if (pool && pool.has(svgUrl)) {
         const svgAsset = pool.get(svgUrl);
+        if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
         if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
       }
     } catch (e) { /* ignore */ }
@@ -418,15 +515,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const mat = new THREE.MeshPhongMaterial({ color: colorForTeam(s.team), emissive: 0x111122 });
     const placeholder = new THREE.Mesh(geom, mat);
     placeholder.rotation.z = 0; // Will be set correctly in updateTransforms
+    placeholder.rotation.z = 0; // Will be set correctly in updateTransforms
     placeholder.position.set(s.pos.x, s.pos.y, s.pos.z);
 
     // Lazy-load SVG and swap geometry/material once available
     (async () => {
       try {
         const teamColor = s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
+        const teamColor = s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
         const asset = await loadSVGAsset(svgUrl, {
           width: defaultSVGConfig.defaultRasterSize.width,
           height: defaultSVGConfig.defaultRasterSize.height,
+          teamColor: teamColor
           teamColor: teamColor
         });
         if (pool) pool.set(svgUrl, asset);
@@ -435,11 +535,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           ship3D.position.copy(placeholder.position);
           // Note: Don't copy rotation since our 3D ship has its own orientation
           shipsGroup.add(ship3D);
+          const ship3D = createTextured3DShip(asset.imageBitmap);
+          ship3D.position.copy(placeholder.position);
+          // Note: Don't copy rotation since our 3D ship has its own orientation
+          shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
+          shipMeshes.set(s.id, ship3D);
+          console.log(`[threeRenderer] Successfully loaded 3D SVG textured ship for ${s.class}`);
           shipMeshes.set(s.id, ship3D);
           console.log(`[threeRenderer] Successfully loaded 3D SVG textured ship for ${s.class}`);
         }
       } catch (err) {
+        console.warn(`[threeRenderer] Could not load SVG ${svgUrl}, keeping placeholder:`, err);
+        // Keep the placeholder visible - don't remove it
+        // The cone shape will remain as the ship representation
         console.warn(`[threeRenderer] Could not load SVG ${svgUrl}, keeping placeholder:`, err);
         // Keep the placeholder visible - don't remove it
         // The cone shape will remain as the ship representation
@@ -869,7 +978,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
       m.position.set(s.pos.x, s.pos.y, s.pos.z);
-      m.rotation.z = s.dir; // Align ship nose with movement direction
+      // Set 3D rotation using ship's orientation
+      // Ships are modeled pointing along +X axis, so we need to adjust
+      // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
+      m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
+      
       const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1.0;
       m.scale.setScalar(scale);
 

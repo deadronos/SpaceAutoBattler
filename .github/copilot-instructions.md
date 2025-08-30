@@ -1,83 +1,222 @@
-<!--
-SpaceAutoBattler — Copilot Quick Reference
+# SpaceAutoBattler — GitHub Copilot Instructions
 
-This file tells the coding agent how to make safe, small, test-backed changes in the repository. Keep edits minimal, test-driven, and localized to TypeScript source in `/src` unless the task explicitly requires otherwise.
+**ALWAYS follow these instructions first. Only search for additional context or gather information if the instructions are incomplete or found to be in error.**
 
-For a complete overview of the `/src` directory structure and module organization, see `spec/src-structure.md`.
--->
+## 🚨 Critical Development Rules (Must Follow)
 
-# SpaceAutoBattler — Copilot Quick Reference
+- **EDIT ONLY TYPESCRIPT IN `/src`** - Do not modify generated JS build artifacts in `/dist` or files outside the source tree unless explicitly requested.
+- **CANONICAL STATE MANAGEMENT** - All runtime state (simulation & renderer) must live on the canonical `GameState` type defined in `src/types/index.ts`. Never introduce scattered module-level state.
+- **PRESERVE DETERMINISM** - The simulation uses seeded RNG (`src/utils/rng.ts`). Never break deterministic behavior in simulation code paths.
+- **USE EXISTING CONFIGS** - Prefer existing configuration helpers in `src/config/*` rather than hard-coding values. 
+- **ASSET POOLING** - For visual work, use existing pooling helpers and the `assetPool` on `GameState`. Follow existing PoolEntry semantics.
 
-## Key rules (must follow)
+## 🏗️ Quick Start Workflow - Validated Commands
 
-- Edit only TypeScript files under `src/`. Do not modify generated JS build artifacts or files outside the source tree unless the user asks and gives explicit permission.
-- All runtime state (simulation & renderer) must live on the canonical `GameState` type defined in `src/types/index.ts`. Do not introduce scattered module-level state.
-- For any asset/visual work prefer the existing pooling helpers and the `assetPool` on `GameState` (textures/sprites/effects). Follow existing PoolEntry semantics when available.
-- Use existing configuration helpers (for example `config/*`) rather than hard-coding values. Prefer renderer config values for layout and scale.
-- Preserve determinism: the simulation uses seeded RNG (`src/utils/rng.ts`) — don't break deterministic behavior in simulation code paths.
-
-## Workflow & safety checklist
-
-Agents must also follow multi-agent coordination rules when present in the repository (see `AGENTS.md` and optional `agent-config.json`). Before editing files agents MUST check for `.ai-lock.json` lockfiles and behave as described below.
-
-1. Plan the smallest change that solves the user's request.
-2. Update or add TypeScript in `src/` only; keep the change minimal and well-scoped.
-3. Add or update unit tests under `test/vitest/` for the change (happy path + 1-2 edge cases). Use the shared test helpers in `test/vitest/utils/` (e.g., `glStub`, `poolAssert`) where relevant.
-4. Run the local checks:
-
-```powershell
-npx tsc --noEmit
-npm test
+### Bootstrap & Dependencies
+```bash
+# Install dependencies (takes ~35 seconds)
+npm install
 ```
 
-5. Fix any TypeScript errors or failing tests before committing.
-6. Update implementation status and documentation as needed.
+### Build Commands
+```bash
+# TypeScript compilation check (takes ~3 seconds)
+npm run typecheck
+# Equivalent: npx tsc --noEmit
 
-## Pooling & renderer guidance
+# Build regular version (takes ~0.5 seconds)
+npm run build
 
-- **Three.js Integration**: Use Three.js abstractions (Object3D, Mesh, Material) rather than direct WebGL calls. Always dispose of Three.js objects properly using `dispose()` methods.
-- **Rapier3D Physics**: Physics bodies and colliders should be managed separately from visual representations. Use physics simulation in Web Worker for performance.
-- **Postprocessing**: Apply postprocessing effects (bloom, tone mapping, etc.) through Three.js EffectComposer. Configure effects in renderer config, not hardcoded.
-- **Asset Management**: Use `GameState.assetPool` for Three.js textures, geometries, and materials. Implement proper cleanup with `texture.dispose()`, `geometry.dispose()`, `material.dispose()`.
-- **Renderer-Physics Separation**:
-  - Simulation Worker: Handles Rapier3D physics world, collision detection, rigid body updates
-  - Main Thread: Updates Three.js Object3D transforms from physics data, manages rendering
-  - Never access Three.js objects from physics worker thread
-- **Pooling Strategy**:
-  - Pool Three.js Meshes and Materials for frequently created/destroyed objects (bullets, particles, effects)
-  - Use Object3D pooling for complex hierarchies
-  - Implement pool warming for critical assets to avoid frame drops
-  - Clean up unused pools during level transitions
+# Build standalone version (takes ~0.6 seconds) 
+npm run build-standalone
+```
 
-## Game/Simulation/Renderer Logic Separation
+### Testing
+```bash
+# Run all unit tests (takes ~5 seconds, 153 tests)
+npm test
 
-- **Game Logic** (`src/core/`): Pure game state management, entity spawning, AI decision-making, XP/leveling systems
-- **Simulation Logic** (`src/simWorker.ts`): Physics simulation (Rapier3D), collision detection, deterministic calculations using seeded RNG
-- **Renderer Logic** (`src/renderer/`): Three.js scene management, visual effects, postprocessing, camera controls
-- **Configuration** (`src/config/`): All balance parameters, visual settings, physics constants - no logic, only data
-- **Communication Pattern**: Main thread ↔ Worker messages for physics data, GameState synchronization, render updates
-- **Determinism**: Keep all random calculations in simulation worker using seeded RNG for replay capability
-- **Performance**: Isolate heavy physics calculations in worker thread, keep rendering optimizations on main thread
+# Run individual test file
+npx vitest test/vitest/<test-name>.spec.ts
 
-## Tests & fixtures
+# No E2E tests exist yet - npm run test:e2e will fail
+```
 
-- Shared test helpers live under `test/vitest/utils/` (e.g., `glStub.ts`, `poolAssert.ts`). Use them to write deterministic tests for pooling behaviors and GL-related logic.
-- Add a small GL stub in tests to assert `createTexture` / `deleteTexture` call counts instead of calling a real WebGL context.
+### Development Server
+```bash
+# Serve built files (requires build first)
+npm run serve:dist
 
-## PR & commit guidance
+# General serving (serves repository root)
+npm run serve
+```
 
-- Keep commits small and focused. Each PR should implement one measurable change (API + tests + docs if needed).
-- PR description template:
+## ⏱️ Command Timing & Expectations
 
-1. Goal: one-line summary.
-2. Files changed: list key files.
-3. Tests: list tests added or updated and how to run them.
-4. Validation: `npx tsc --noEmit` and `npm test` output summary (pass/fail).
+**ALL COMMANDS ARE FAST - No need for "NEVER CANCEL" warnings. Maximum observed times:**
+
+- **npm install**: ~35 seconds (dependency installation)
+- **TypeScript check**: ~3 seconds
+- **npm run build**: ~0.5 seconds
+- **npm run build-standalone**: ~0.6 seconds  
+- **npm test**: ~5 seconds (153 unit tests)
+- **Development workflow**: Under 10 seconds total for typical changes
+
+**Commands that DO NOT exist** (will fail):
+- `npm run validate-config` - Script missing
+- `npm run test:e2e` - No Playwright tests exist yet
+
+## 🏗️ Repository Structure & Navigation
+
+### Key Source Directories (edit these)
+- **`src/main.ts`** - Application entry point and main game loop
+- **`src/simWorker.ts`** - Web Worker for physics simulation (Rapier3D)
+- **`src/core/`** - Pure game logic, AI, entity management
+- **`src/renderer/`** - Three.js rendering, effects, camera controls  
+- **`src/config/`** - All balance parameters, visual settings, physics constants
+- **`src/types/`** - TypeScript definitions, canonical GameState type
+- **`src/utils/`** - Shared utilities including seeded RNG
+
+### Configuration Files (frequently used)
+- **`src/config/entitiesConfig.ts`** - Ship classes, turrets, damage, health
+- **`src/config/behaviorConfig.ts`** - AI personalities, formations, targeting
+- **`src/config/progression.ts`** - XP systems, leveling, stat scaling
+- **`src/config/simConfig.ts`** - Physics bounds, tick rates, boundary behavior
+- **`src/config/rendererConfig.ts`** - Visual effects, camera, performance
+
+### Important Build & Test Files
+- **`scripts/build.mjs`** - Regular build script
+- **`scripts/build-standalone.mjs`** - Standalone HTML build script
+- **`test/vitest/`** - Unit test suite (comprehensive coverage)
+- **`test/vitest/setupTests.ts`** - Test utilities, mocks, fixtures
+
+### Documentation
+- **`spec/src-structure.md`** - Complete `/src` directory overview
+- **`AGENTS.md`** - Multi-agent coordination rules
+- **`README.md`** - Project overview and architecture
+
+## 🎯 Architecture Patterns
+
+### Game/Simulation/Renderer Separation
+- **Game Logic** (`src/core/`): Pure state management, entity spawning, AI decisions
+- **Simulation Logic** (`src/simWorker.ts`): Physics (Rapier3D), collision detection, deterministic calculations
+- **Renderer Logic** (`src/renderer/`): Three.js scene management, visual effects, camera controls
+- **Configuration** (`src/config/`): All parameters - no logic, only data
+- **Communication**: Main thread ↔ Worker messages for physics data and GameState sync
+
+### Three.js & Asset Management
+- **Three.js Integration**: Use Three.js abstractions (Object3D, Mesh, Material), not direct WebGL
+- **Physics-Visual Sync**: Update Three.js Object3D transforms from Rapier3D data via messages
+- **Asset Pooling**: Use `GameState.assetPool` for textures, geometries, materials
+- **Memory Management**: Always dispose Three.js objects with `dispose()` methods
+- **Worker Thread Safety**: Never access Three.js objects from physics worker thread
+
+## 🧪 Testing Workflow & Validation
+
+### Pre-Commit Validation (Always Run)
+```bash
+# Must pass before committing
+npm run typecheck && npm test
+```
+
+### Test Structure
+- **Configuration Tests**: Validate config values and balance assumptions
+- **Core Logic Tests**: Entity management, AI behavior, physics integration  
+- **Build System Tests**: Validate build outputs and deployment artifacts
+- **Test Utilities**: Use shared helpers in `test/vitest/utils/` (glStub, poolAssert)
+
+### Manual Validation Scenarios
+After making changes, test these scenarios:
+
+1. **Build Validation**: Run build commands and verify outputs exist
+   ```bash
+   npm run build && npm run build-standalone
+   ls -la dist/  # Should see bundled.js, simWorker.js, spaceautobattler.html, etc.
+   ```
+
+2. **Application Startup**: Start server and verify game loads
+   ```bash
+   npm run serve:dist  # After building
+   # Navigate to http://localhost:8080/dist/spaceautobattler.html
+   ```
+
+3. **Core Functionality**: Test game mechanics
+   - Click Start/Pause button
+   - Add Red/Blue ships
+   - Verify ships move and engage in combat
+   - Check score updates and visual effects
+
+## 🔧 Common Development Tasks
+
+### Adding New Ship Class
+1. Add config in `src/config/entitiesConfig.ts`
+2. Add SVG asset to `src/config/assets/svg/`
+3. Update types in `src/types/index.ts` if needed
+4. Add tests in `test/vitest/config-entities.spec.ts`
+
+### Modifying AI Behavior  
+1. Update `src/config/behaviorConfig.ts`
+2. Test with AI controller in `src/core/aiController.ts`
+3. Add tests in `test/vitest/config-behavior.spec.ts`
+
+### Visual Effects Changes
+1. Modify renderer in `src/renderer/`
+2. Update config in `src/config/rendererConfig.ts`
+3. Test with `npm run build && npm run serve:dist`
+
+### Adding Tests
+- Place unit tests in `test/vitest/`
+- Use existing test utilities from `test/vitest/setupTests.ts`
+- Follow configuration-driven testing (no hardcoded values)
+- Test both happy path and edge cases
+
+## 🔍 Debugging & Troubleshooting
+
+### Build Issues
+- Check `scripts/build.mjs` and `scripts/build-standalone.mjs` for errors
+- Verify TypeScript compilation: `npm run typecheck`
+- Check for missing files or import errors
+
+### Test Failures
+- Run individual test: `npx vitest test/vitest/<filename>.spec.ts`
+- Check test mocks in `test/vitest/setupTests.ts`
+- Verify configuration values match expectations
+
+### Runtime Issues
+- Check browser console for JavaScript errors
+- Verify worker communication (main thread ↔ simWorker)
+- Check Three.js object disposal and memory leaks
+
+## 💡 Performance & Quality
+
+### Code Quality Standards
+- **TypeScript Strict**: No `any` types, full type coverage
+- **2-space indent**: Semicolons, prefer const/let (no var)
+- **Error Handling**: Explicit error handling, no silent failures
+- **Clear Naming**: Functions and types clearly named
+
+### PR Checklist
+- [ ] All tests pass (`npm test`)
+- [ ] TypeScript compiles (`npm run typecheck`)  
+- [ ] Build outputs valid (`npm run build && npm run build-standalone`)
+- [ ] Manual functionality test completed
+- [ ] New tests added for changes
+- [ ] Configuration used instead of hardcoded values
+
+## 🎮 Game-Specific Context
+
+**SpaceAutoBattler** is a 3D space auto-battler featuring deterministic fleet combat between Red and Blue teams using:
+- **5 Ship Classes**: Fighter, Corvette, Frigate, Destroyer, Carrier
+- **3D Physics**: Rapier3D for collision detection and movement
+- **AI Combat**: Deterministic ship AI with targeting and formations
+- **Visual Effects**: Three.js with postprocessing effects
+- **Configuration-Driven**: All balance via config files
+
+The game runs a fixed timestep simulation (60 TPS) with variable framerate rendering, ensuring consistent gameplay regardless of display performance.
 
 ---
 
 ## Maintainers
-
-- Owner: deadronos
-- Main branch: `main`
-- Project Structure: See `spec/src-structure.md` for complete `/src` directory overview
+- **Owner**: deadronos
+- **Main branch**: `main`
+- **Architecture**: See `spec/src-structure.md` for complete `/src` overview

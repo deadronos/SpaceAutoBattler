@@ -123,6 +123,76 @@ export interface BehaviorConfig {
     formationSearchRadius: number;
     /** Enable dynamic behavior switching */
     enableDynamicBehavior: boolean;
+    
+    // Combat range and engagement settings
+    /** Multiplier for close range combat (default: 0.6) */
+    closeRangeMultiplier: number;
+    /** Multiplier for medium range combat (default: 1.2) */
+    mediumRangeMultiplier: number;
+    /** Distance threshold for movement completion (default: 10) */
+    movementCloseEnoughThreshold: number;
+    /** Distance to avoid friendly ships (default: 80) */
+    friendlyAvoidanceDistance: number;
+    /** Safety margin from boundaries (default: 50) */
+    boundarySafetyMargin: number;
+    
+    // Separation behavior clustering thresholds
+    /** Neighbor count for very tight clusters (default: 8) */
+    separationVeryTightCluster: number;
+    /** Neighbor count for moderate clusters (default: 5) */
+    separationModerateCluster: number;
+    /** Neighbor count for mild clusters (default: 3) */
+    separationMildCluster: number;
+    /** Weight multiplier for very tight clusters (default: 5.0) */
+    separationVeryTightWeight: number;
+    /** Weight multiplier for moderate clusters (default: 2.0) */
+    separationModerateWeight: number;
+    /** Weight multiplier for mild clusters (default: 1.2) */
+    separationMildWeight: number;
+    
+    // Evade behavior settings
+    /** Maximum pitch angle for evade sampling in radians (default: PI * 0.5) */
+    evadeMaxPitch: number;
+    /** Base score for escape position calculation (default: 100) */
+    evadeBaseScore: number;
+    /** Weight for threat proximity penalty (default: 0.5) */
+    evadeThreatPenaltyWeight: number;
+    /** Weight for boundary proximity penalty (default: 2.0) */
+    evadeBoundaryPenaltyWeight: number;
+    /** Weight for distance improvement bonus (default: 0.3) */
+    evadeDistanceImprovementWeight: number;
+    /** Weight for friendly collision penalty (default: 0.2) */
+    evadeFriendlyPenaltyWeight: number;
+    
+    // Existing separation and damage settings
+    /** Distance within which separation forces apply */
+    separationDistance: number;
+    /** Weight of separation force relative to desired movement */
+    separationWeight: number;
+    /** Minimum separation between roaming anchors */
+    roamingAnchorMinSeparation: number;
+    /** Damage threshold to trigger evade behavior */
+    damageEvadeThreshold: number;
+    /** Rate at which recent damage decays per second */
+    damageDecayRate: number;
+    /** Number of candidate directions to sample for evade */
+    evadeSamplingCount: number;
+    /** Distance to move when evading */
+    evadeDistance: number;
+    /** Only allow evade behavior when ship has recently taken damage */
+    evadeOnlyOnDamage: boolean;
+    /** Time window (seconds) during which recent damage allows evade behavior */
+    evadeRecentDamageWindowSeconds: number;
+    /** Window (seconds) during which the last damager is eligible for kill credit */
+    killCreditWindowSeconds: number;
+    /** Enable periodic boundary cleanup (teleport/prune out-of-bounds entities) */
+    enableBoundaryCleanup: boolean;
+    /** Interval in sim ticks between boundary cleanup runs (default ~600 ticks = 10s at 60tps) */
+    boundaryCleanupIntervalTicks: number;
+    /** Toggle small deterministic spawn-time velocity jitter to break perfect symmetry */
+    enableSpawnJitter: boolean;
+    /** Enable spatial index for AI proximity queries (faster neighbor/target searches) */
+    enableSpatialIndex: boolean;
   };
 }
 
@@ -141,7 +211,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 0.8
   },
   corvette: {
-    mode: 'mixed',
+    mode: 'aggressive',
     intentReevaluationRate: 1.0,
     minIntentDuration: 3,
     maxIntentDuration: 12,
@@ -151,7 +221,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.0
   },
   frigate: {
-    mode: 'formation',
+    mode: 'aggressive',
     intentReevaluationRate: 1.5,
     minIntentDuration: 4,
     maxIntentDuration: 15,
@@ -161,7 +231,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.2
   },
   destroyer: {
-    mode: 'carrier_group',
+    mode: 'mixed',
     intentReevaluationRate: 2.0,
     minIntentDuration: 5,
     maxIntentDuration: 20,
@@ -171,7 +241,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     preferredRangeMultiplier: 1.5
   },
   carrier: {
-    mode: 'carrier_group',
+    mode: 'mixed',
     intentReevaluationRate: 3.0,
     minIntentDuration: 8,
     maxIntentDuration: 30,
@@ -246,15 +316,15 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     intentReevaluationRate: 1.0,
     minIntentDuration: 3,
     maxIntentDuration: 10,
-    aggressiveness: 0.6,
+    aggressiveness: 0.8,
     caution: 0.4,
     groupCohesion: 0.5,
     preferredRangeMultiplier: 1.0
   },
   shipPersonalities: DEFAULT_PERSONALITIES,
   teamModifiers: {
-    red: { aggressiveness: 1.1, caution: 0.9, groupCohesion: 1.0 },
-    blue: { aggressiveness: 0.9, caution: 1.1, groupCohesion: 1.0 }
+    red: { aggressiveness: 1.1, caution: 0.9, groupCohesion: 0.8 },
+    blue: { aggressiveness: 0.9, caution: 1.1, groupCohesion: 0.8 }
   },
   turretConfig: DEFAULT_TURRET_CONFIG,
   roamingPatterns: DEFAULT_ROAMING_PATTERNS,
@@ -262,9 +332,48 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   globalSettings: {
     aiEnabled: true,
     maxFormationSize: 8,
-    minimumSafeDistance: 150,
+    minimumSafeDistance: 10,
     formationSearchRadius: 500,
-    enableDynamicBehavior: true
+    enableDynamicBehavior: true,
+    
+    // Combat range and engagement settings
+    closeRangeMultiplier: 0.6,
+    mediumRangeMultiplier: 1.2,
+    movementCloseEnoughThreshold: 10,
+    friendlyAvoidanceDistance: 80,
+    boundarySafetyMargin: 50,
+    
+    // Separation behavior clustering thresholds
+    separationVeryTightCluster: 8,
+    separationModerateCluster: 5,
+    separationMildCluster: 3,
+    separationVeryTightWeight: 5.0,
+    separationModerateWeight: 2.0,
+    separationMildWeight: 1.2,
+    
+    // Evade behavior settings
+    evadeMaxPitch: Math.PI * 0.5, // ±45 degrees pitch
+    evadeBaseScore: 100,
+    evadeThreatPenaltyWeight: 0.5,
+    evadeBoundaryPenaltyWeight: 2.0,
+    evadeDistanceImprovementWeight: 0.3,
+    evadeFriendlyPenaltyWeight: 0.2,
+    
+    // Existing separation and damage settings
+    separationDistance: 120,
+    separationWeight: 0.3,
+    roamingAnchorMinSeparation: 150,
+    damageEvadeThreshold: 25, // Increased from 15 to reduce evade frequency
+    damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
+    evadeSamplingCount: 8,
+    evadeDistance: 30,
+    evadeOnlyOnDamage: false, // Default: preserve backwards compatibility (allow proximity-based evade)
+    evadeRecentDamageWindowSeconds: 3.0, // Window during which recent damage allows evade (matches typical test patterns)
+    killCreditWindowSeconds: 5,
+    enableBoundaryCleanup: true,
+    boundaryCleanupIntervalTicks: 600,
+    enableSpawnJitter: true,
+    enableSpatialIndex: true  // Enable by default for better performance
   }
 };
 

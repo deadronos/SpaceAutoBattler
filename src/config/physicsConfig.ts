@@ -24,6 +24,18 @@ export interface PhysicsConfig {
     dampingFactor: number; // Speed damping factor (0.98)
     maxSpeedMultiplier: number; // Maximum speed multiplier for clamping
   };
+  world: {
+    /** Physics timestep (default: 1/60) */
+    timestep: number;
+    /** Maximum velocity iterations per step (default: 8) */
+    maxVelocityIterations: number;
+    /** Maximum position iterations per step (default: 4) */
+    maxPositionIterations: number;
+    /** Default raycast maximum distance (default: 1000) */
+    defaultRaycastDistance: number;
+    /** Default collider dimensions when ship class not found */
+    defaultCollider: { width: number; height: number; depth: number };
+  };
 }
 
 export const DefaultPhysicsConfig: PhysicsConfig = {
@@ -50,6 +62,13 @@ export const DefaultPhysicsConfig: PhysicsConfig = {
   speed: {
     dampingFactor: 0.98,
     maxSpeedMultiplier: 1.0, // Multiplier for ship's base speed
+  },
+  world: {
+    timestep: 1 / 60,
+    maxVelocityIterations: 8,
+    maxPositionIterations: 4,
+    defaultRaycastDistance: 1000,
+    defaultCollider: { width: 5, height: 2, depth: 5 },
   },
 };
 

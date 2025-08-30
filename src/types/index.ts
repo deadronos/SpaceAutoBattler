@@ -85,7 +85,14 @@ export interface Ship {
   class: ShipClass;
   pos: Vector3;
   vel: Vector3;
-  dir: number; // radians (rotation around Y axis)
+  // 3D orientation using Euler angles (in radians)
+  orientation: {
+    pitch: number; // rotation around X axis (nose up/down)
+    yaw: number;   // rotation around Y axis (nose left/right)
+    roll: number;  // rotation around Z axis (ship rolling)
+  };
+  // Keep legacy dir field for backward compatibility during transition
+  dir?: number; // deprecated - use orientation.yaw instead
   targetId: EntityId | null;
   health: number;
   maxHealth: number;
@@ -113,11 +120,19 @@ export interface Ship {
     lastIntentReevaluation: number;
     roamingPattern?: import('../config/behaviorConfig.js').RoamingPattern;
     roamingStartTime?: number;
+    roamingAnchor?: Vector3;
     formationId?: string;
     formationPosition?: Vector3;
+    formationSlotIndex?: number;
     lastTargetSwitchTime?: number;
     preferredRange?: number;
+    // Damage-based evasion tracking
+    recentDamage?: number;
+    lastDamageTime?: number;
   };
+  // Track last damage source and timestamp for kill crediting
+  lastDamageBy?: EntityId;
+  lastDamageTime?: number;
 }
 
 export interface ScoreBoard {
@@ -158,6 +173,8 @@ export interface GameState {
     useTimeBasedSeed: boolean;
   };
   ships: Ship[];
+  // Fast lookup by id to avoid O(n) array scans in hot paths
+  shipIndex?: Map<EntityId, Ship>;
   bullets: Bullet[];
   score: ScoreBoard;
   renderer?: RendererHandles;
@@ -171,6 +188,10 @@ export interface GameState {
     world?: any;
   };
   behaviorConfig?: import('../config/behaviorConfig.js').BehaviorConfig;
+  // Optional spatial index for efficient AI proximity queries (neighbors, targeting)
+  spatialGrid?: import('../utils/spatialGrid.js').SpatialGrid;
+  // Reused AI controller instance to avoid per-tick allocations
+  aiController?: import('../core/aiController.js').AIController;
 }
 
 export type UIElements = {
