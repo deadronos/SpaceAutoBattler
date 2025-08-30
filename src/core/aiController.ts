@@ -160,10 +160,11 @@ export class AIController {
 
       // If current scout is dead/gone or there's no scout, assign a new one
       if (!scoutShip) {
-        // Pick the ship closest to any enemy as the scout
         const enemies = this.state.ships.filter(s => s.team !== team && s.health > 0);
+        let bestScout = teamShips[0];
+        
         if (enemies.length > 0) {
-          let bestScout = teamShips[0];
+          // Pick the ship closest to any enemy as the scout
           let bestDistance = Infinity;
 
           for (const ship of teamShips) {
@@ -175,9 +176,13 @@ export class AIController {
               }
             }
           }
-
-          this.teamScouts.set(team, bestScout.id);
+        } else {
+          // No enemies visible - pick a scout for exploration
+          // For now, pick the first ship, but could use other criteria
+          bestScout = teamShips[0];
         }
+
+        this.teamScouts.set(team, bestScout.id);
       }
     }
   }
@@ -255,11 +260,11 @@ export class AIController {
    * Choose intent for aggressive behavior
    */
   private chooseAggressiveIntent(ship: Ship, personality: AIPersonality): AIIntent {
+    const config = this.state.behaviorConfig!;
     const nearestEnemy = this.findNearestEnemy(ship);
     if (nearestEnemy) {
       const distance = this.getDistance(ship.pos, nearestEnemy.pos);
       const preferredRange = ship.aiState!.preferredRange!;
-      const config = this.state.behaviorConfig!;
 
       // Check if this ship is the designated scout
       const isScout = config.globalSettings.enableScoutBehavior && 
@@ -293,8 +298,11 @@ export class AIController {
       // Otherwise fall back to probabilistic behavior influenced by aggressiveness
       return this.state.rng.next() < personality.aggressiveness ? 'pursue' : 'strafe';
     }
-    // No visible enemy -> fall back to patrol
-    return 'patrol';
+    // No visible enemy -> scouts explore, others patrol
+    const isScout = config.globalSettings.enableScoutBehavior && 
+                   this.teamScouts.get(ship.team) === ship.id;
+    
+    return isScout && config.globalSettings.enableScoutExploration ? 'explore' : 'patrol';
   }
   /**
    * Choose intent for defensive behavior
@@ -341,6 +349,14 @@ export class AIController {
         }
       }
     }
+    // No threats -> scouts explore, others follow groupCohesion
+    const isTeamScout = config.globalSettings.enableScoutBehavior && 
+                       this.teamScouts.get(ship.team) === ship.id;
+    
+    if (isTeamScout && config.globalSettings.enableScoutExploration) {
+      return 'explore';
+    }
+    
     return this.state.rng.next() < personality.groupCohesion ? 'group' : 'patrol';
   }
 
@@ -383,6 +399,11 @@ export class AIController {
       if (nearestEnemy && this.getDistance(ship.pos, nearestEnemy.pos) < ship.aiState!.preferredRange!) {
         return 'pursue';
       }
+    }
+
+    // If no enemies found, scouts should explore
+    if (isScout && config.globalSettings.enableScoutExploration) {
+      return 'explore';
     }
 
     return 'patrol';
@@ -482,6 +503,9 @@ export class AIController {
         break;
       case 'patrol':
         this.executePatrol(ship, dt);
+        break;
+      case 'explore':
+        this.executeScoutExploration(ship, dt);
         break;
       case 'retreat':
         this.executeRetreat(ship, dt);
@@ -779,6 +803,46 @@ export class AIController {
     }
 
     this.moveTowards(ship, safePos, dt);
+  }
+
+  /**
+   * Execute scout exploration behavior when no enemies are visible
+   */
+  private executeScoutExploration(ship: Ship, dt: number) {
+    const config = this.state.behaviorConfig!;
+    if (!config.globalSettings.enableScoutExploration) {
+      return this.executePatrol(ship, dt);
+    }
+
+    const aiState = ship.aiState!;
+    const bounds = this.state.simConfig.simBounds;
+    
+    // Create exploration zones in a grid pattern
+    const zoneCount = config.globalSettings.explorationZoneCount;
+    const zoneDuration = config.globalSettings.explorationZoneDuration;
+    
+    // Determine grid dimensions (try to make it roughly square)
+    const gridSize = Math.ceil(Math.sqrt(zoneCount));
+    const zoneWidth = bounds.width / gridSize;
+    const zoneHeight = bounds.height / gridSize;
+    
+    // Cycle through zones based on time
+    const currentTime = this.state.time;
+    const totalCycleDuration = zoneCount * zoneDuration;
+    const cycleTime = currentTime % totalCycleDuration;
+    const currentZoneIndex = Math.floor(cycleTime / zoneDuration);
+    
+    // Calculate target zone center
+    const zoneRow = Math.floor(currentZoneIndex / gridSize);
+    const zoneCol = currentZoneIndex % gridSize;
+    const targetPos: Vector3 = {
+      x: (zoneCol + 0.5) * zoneWidth,
+      y: (zoneRow + 0.5) * zoneHeight,
+      z: bounds.depth / 2
+    };
+    
+    // Move towards the current exploration zone
+    this.moveTowards(ship, targetPos, dt);
   }
 
   /**

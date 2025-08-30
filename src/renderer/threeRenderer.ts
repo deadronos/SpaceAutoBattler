@@ -956,3 +956,75 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     cameraTarget,
   };
 }
+
+/**
+ * Updates the orientation of health/shield bars to face the camera.
+ * @param bars - Array of health/shield bar meshes.
+ * @param camera - The active camera.
+ */
+export function updateBillboardBars(bars: THREE.Object3D[], camera: THREE.Camera) {
+    const cameraMatrix = new THREE.Matrix4().extractRotation(camera.matrixWorld);
+
+    for (const bar of bars) {
+        bar.quaternion.setFromRotationMatrix(cameraMatrix);
+    }
+}
+
+// Example usage in the render loop
+const healthBars: THREE.Object3D[] = []; // Populate with health/shield bar meshes
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer();
+
+let lastCameraPosition = new THREE.Vector3();
+let lastCameraQuaternion = new THREE.Quaternion();
+
+function render() {
+    // Check if the camera has moved or rotated
+    if (
+        !camera.position.equals(lastCameraPosition) ||
+        !camera.quaternion.equals(lastCameraQuaternion)
+    ) {
+        updateBillboardBars(healthBars, camera);
+
+        // Update the last known camera state
+        lastCameraPosition.copy(camera.position);
+        lastCameraQuaternion.copy(camera.quaternion);
+    }
+
+    // Render the scene
+    renderer.render(scene, camera);
+    requestAnimationFrame(render);
+}
+
+render();
+
+// Vertex shader for billboarding
+const billboardVertexShader = `
+    uniform mat4 cameraRotationMatrix;
+
+    void main() {
+        vec4 billboardPosition = cameraRotationMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * billboardPosition;
+    }
+`;
+
+// Fragment shader (basic example)
+const billboardFragmentShader = `
+    void main() {
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); // White color
+    }
+`;
+
+// Function to create a billboard material
+export function createBillboardMaterial(camera: THREE.Camera): THREE.ShaderMaterial {
+    const cameraRotationMatrix = new THREE.Matrix4().extractRotation(camera.matrixWorld);
+
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            cameraRotationMatrix: { value: cameraRotationMatrix },
+        },
+        vertexShader: billboardVertexShader,
+        fragmentShader: billboardFragmentShader,
+    });
+}

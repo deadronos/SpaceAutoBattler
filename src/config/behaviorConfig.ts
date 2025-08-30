@@ -20,6 +20,7 @@ export type AIIntent =
   | 'strafe'         // Circle around target
   | 'group'          // Move towards friendly ships
   | 'patrol'         // Follow patrol pattern
+  | 'explore'        // Scout map for enemies
   | 'retreat';       // Move to safe position
 
 export type TurretBehavior =
@@ -199,6 +200,12 @@ export interface BehaviorConfig {
     enableAlarmSystem: boolean;
     /** Time window (seconds) during which alarm system activates team-wide pursuit */
     alarmSystemWindowSeconds: number;
+    /** Enable map exploration for scouts when no enemies are visible */
+    enableScoutExploration: boolean;
+    /** Number of exploration zones to divide the map into */
+    explorationZoneCount: number;
+    /** Time to spend exploring each zone before moving to the next */
+    explorationZoneDuration: number;
   };
 }
 
@@ -382,7 +389,10 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     enableSpatialIndex: true,  // Enable by default for better performance
     enableScoutBehavior: true,  // Enable scout behavior by default
     enableAlarmSystem: true,    // Enable alarm system by default
-    alarmSystemWindowSeconds: 5.0  // 5 seconds of team-wide pursuit after friendly takes damage
+    alarmSystemWindowSeconds: 5.0,  // 5 seconds of team-wide pursuit after friendly takes damage
+    enableScoutExploration: true,   // Enable scout exploration by default
+    explorationZoneCount: 6,        // Divide map into 6 exploration zones
+    explorationZoneDuration: 8.0    // Spend 8 seconds exploring each zone
   }
 };
 
