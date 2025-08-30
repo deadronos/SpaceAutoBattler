@@ -68,9 +68,12 @@ export class AIController {
     // Update recent damage decay
     this.updateRecentDamage(ship, dt);
 
-    // Force intent reevaluation if ship has taken significant damage
+    // Force intent reevaluation if ship has taken significant damage within the time window
     const recentDamage = aiState.recentDamage || 0;
-    const shouldForceReevaluation = recentDamage >= this.state.behaviorConfig!.globalSettings.damageEvadeThreshold;
+    const lastDamageTime = aiState.lastDamageTime || 0;
+    const timeSinceLastDamage = this.state.time - lastDamageTime;
+    const withinDamageWindow = timeSinceLastDamage <= this.state.behaviorConfig!.globalSettings.evadeRecentDamageWindowSeconds;
+    const shouldForceReevaluation = recentDamage >= this.state.behaviorConfig!.globalSettings.damageEvadeThreshold && withinDamageWindow;
 
     // Reevaluate intent if needed (either by time or by damage)
     if (shouldForceReevaluation || this.state.time - aiState.lastIntentReevaluation >= personality.intentReevaluationRate) {
@@ -107,7 +110,10 @@ export class AIController {
 
     // Check if ship has taken significant recent damage and should evade
     const recentDamage = aiState.recentDamage || 0;
-    const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold;
+    const lastDamageTime = aiState.lastDamageTime || 0;
+    const timeSinceLastDamage = this.state.time - lastDamageTime;
+    const withinDamageWindow = timeSinceLastDamage <= config.globalSettings.evadeRecentDamageWindowSeconds;
+    const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold && withinDamageWindow;
 
     // Don't change intent if we're still committed to current one, UNLESS we need to evade due to damage
     if (this.state.time < aiState.intentEndTime && !shouldEvadeFromDamage) {
@@ -200,14 +206,18 @@ export class AIController {
       const nearestThreat = threats[0];
       const distance = this.getDistance(ship.pos, nearestThreat.pos);
       if (distance < ship.aiState!.preferredRange! * config.globalSettings.closeRangeMultiplier) {
-        // Only evade if config allows it OR ship has recently taken damage
+        // Only evade if config allows it OR ship has recently taken damage within the time window
         if (!config.globalSettings.evadeOnlyOnDamage) {
           // Backwards compatibility: allow proximity-based evade
           return 'evade';
         } else {
-          // New behavior: only evade if recently damaged
+          // New behavior: only evade if recently damaged within the time window
           const recentDamage = ship.aiState!.recentDamage || 0;
-          if (recentDamage >= config.globalSettings.damageEvadeThreshold) {
+          const lastDamageTime = ship.aiState!.lastDamageTime || 0;
+          const timeSinceLastDamage = this.state.time - lastDamageTime;
+          const withinDamageWindow = timeSinceLastDamage <= config.globalSettings.evadeRecentDamageWindowSeconds;
+          
+          if (recentDamage >= config.globalSettings.damageEvadeThreshold && withinDamageWindow) {
             return 'evade';
           }
           // Otherwise, choose more aggressive behavior

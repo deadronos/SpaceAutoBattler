@@ -286,4 +286,186 @@ describe('AI Evade Behavior', () => {
     // Should switch to evade with lower threshold
     expect(ship.aiState?.currentIntent).toBe('evade');
   });
+
+  it('should only evade within the recent damage window', () => {
+    // Test that evade behavior respects the configurable time window
+    const ship: Ship = {
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+      vel: { x: 0, y: 0, z: 0 },
+      orientation: { pitch: 0, yaw: 0, roll: 0 },
+      targetId: null,
+      health: 100,
+      maxHealth: 100,
+      armor: 5,
+      shield: 50,
+      maxShield: 50,
+      shieldRegen: 5,
+      speed: 200,
+      turnRate: 2,
+      turrets: [],
+      kills: 0,
+      level: { level: 1, xp: 0, nextLevelXp: 100 },
+      aiState: {
+        currentIntent: 'idle',
+        intentEndTime: 0,
+        lastIntentReevaluation: 0,
+        preferredRange: 150,
+        recentDamage: 30, // Above threshold
+        lastDamageTime: state.time // Recently damaged
+      }
+    };
+
+    // Create defensive personality to test defensive evade logic
+    const defensivePersonality = {
+      mode: 'defensive' as const,
+      intentReevaluationRate: 1.0,
+      minIntentDuration: 2,
+      maxIntentDuration: 8,
+      aggressiveness: 0.2,
+      caution: 0.8,
+      groupCohesion: 0.3,
+      preferredRangeMultiplier: 0.8
+    };
+
+    // Override personality for this test
+    const originalPersonality = state.behaviorConfig!.shipPersonalities.fighter;
+    state.behaviorConfig!.shipPersonalities.fighter = defensivePersonality;
+
+    // Enable evadeOnlyOnDamage to test the new logic
+    state.behaviorConfig!.globalSettings.evadeOnlyOnDamage = true;
+    state.behaviorConfig!.globalSettings.evadeRecentDamageWindowSeconds = 2.0;
+
+    const enemy: Ship = {
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 130, y: 100, z: 100 }, // Close to trigger evade
+      vel: { x: 0, y: 0, z: 0 },
+      orientation: { pitch: 0, yaw: 0, roll: 0 },
+      targetId: 1,
+      health: 100,
+      maxHealth: 100,
+      armor: 5,
+      shield: 50,
+      maxShield: 50,
+      shieldRegen: 5,
+      speed: 200,
+      turnRate: 2,
+      turrets: [],
+      kills: 0,
+      level: { level: 1, xp: 0, nextLevelXp: 100 }
+    };
+
+    state.ships.push(ship, enemy);
+
+    // Force intent reevaluation
+    ship.aiState!.lastIntentReevaluation = state.time - 2;
+
+    // Test 1: Within damage window - should evade
+    aiController.updateAllShips(0.1);
+    expect(ship.aiState?.currentIntent).toBe('evade');
+
+    // Test 2: Wait until outside damage window - should not evade
+    state.time += 3.0; // Move past the 2-second window
+    ship.aiState!.lastIntentReevaluation = state.time - 2; // Force reevaluation
+    ship.aiState!.currentIntent = 'idle'; // Reset intent
+    ship.aiState!.intentEndTime = 0; // Allow intent change
+
+    aiController.updateAllShips(0.1);
+    expect(ship.aiState?.currentIntent).not.toBe('evade');
+
+    // Restore original personality
+    if (originalPersonality) {
+      state.behaviorConfig!.shipPersonalities.fighter = originalPersonality;
+    }
+  });
+
+  it('should not evade when unrelated ships have no recent damage', () => {
+    // Test that ships without recent damage don't enter evade
+    const ship: Ship = {
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+      vel: { x: 0, y: 0, z: 0 },
+      orientation: { pitch: 0, yaw: 0, roll: 0 },
+      targetId: null,
+      health: 100,
+      maxHealth: 100,
+      armor: 5,
+      shield: 50,
+      maxShield: 50,
+      shieldRegen: 5,
+      speed: 200,
+      turnRate: 2,
+      turrets: [],
+      kills: 0,
+      level: { level: 1, xp: 0, nextLevelXp: 100 },
+      aiState: {
+        currentIntent: 'idle',
+        intentEndTime: 0,
+        lastIntentReevaluation: 0,
+        preferredRange: 150,
+        recentDamage: 0, // No damage
+        lastDamageTime: 0 // No damage time
+      }
+    };
+
+    // Create defensive personality to test defensive evade logic
+    const defensivePersonality = {
+      mode: 'defensive' as const,
+      intentReevaluationRate: 1.0,
+      minIntentDuration: 2,
+      maxIntentDuration: 8,
+      aggressiveness: 0.2,
+      caution: 0.8,
+      groupCohesion: 0.3,
+      preferredRangeMultiplier: 0.8
+    };
+
+    // Override personality for this test
+    const originalPersonality = state.behaviorConfig!.shipPersonalities.fighter;
+    state.behaviorConfig!.shipPersonalities.fighter = defensivePersonality;
+
+    // Enable evadeOnlyOnDamage to test the new logic
+    state.behaviorConfig!.globalSettings.evadeOnlyOnDamage = true;
+
+    const enemy: Ship = {
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 130, y: 100, z: 100 }, // Close to ship
+      vel: { x: 0, y: 0, z: 0 },
+      orientation: { pitch: 0, yaw: 0, roll: 0 },
+      targetId: 1,
+      health: 100,
+      maxHealth: 100,
+      armor: 5,
+      shield: 50,
+      maxShield: 50,
+      shieldRegen: 5,
+      speed: 200,
+      turnRate: 2,
+      turrets: [],
+      kills: 0,
+      level: { level: 1, xp: 0, nextLevelXp: 100 }
+    };
+
+    state.ships.push(ship, enemy);
+
+    // Force intent reevaluation
+    ship.aiState!.lastIntentReevaluation = state.time - 2;
+
+    // Ship should not evade since it has no recent damage
+    aiController.updateAllShips(0.1);
+    expect(ship.aiState?.currentIntent).not.toBe('evade');
+
+    // Restore original personality
+    if (originalPersonality) {
+      state.behaviorConfig!.shipPersonalities.fighter = originalPersonality;
+    }
+  });
 });
