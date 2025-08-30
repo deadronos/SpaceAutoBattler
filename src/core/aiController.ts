@@ -31,6 +31,7 @@ export class AIController {
   
   // Scout assignment - tracks which ship is the current scout per team
   private teamScouts: Map<Team, EntityId | null>;
+  private isSpatialGridUpdatedThisTick: boolean;
 
   constructor(state: GameState) {
     this.state = state;
@@ -45,6 +46,7 @@ export class AIController {
     this.teamScouts = new Map();
     this.teamScouts.set('red', null);
     this.teamScouts.set('blue', null);
+    this.isSpatialGridUpdatedThisTick = false;
   }
 
   /**
@@ -54,6 +56,8 @@ export class AIController {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) {
       return;
     }
+
+    this.isSpatialGridUpdatedThisTick = false;
 
     // Check for team alarms (ships taking damage)
     this.updateTeamAlarms();
@@ -1110,11 +1114,7 @@ export class AIController {
   private findNearestEnemySpatial(ship: Ship): Ship | null {
     if (!this.state.spatialGrid) return null;
     
-    // Check if spatial grid is empty and needs updating
-    const empty = this.state.spatialGrid.isEmpty();
-    if (empty && this.state.ships.length > 0) {
-      this.updateSpatialGridImmediate();
-    }
+    this.ensureSpatialGridUpdated();
     
     // Query k=1 nearest enemies
     const nearestEntities = this.state.spatialGrid.queryKNearest(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red');
@@ -1165,11 +1165,7 @@ export class AIController {
   private findNearbyEnemiesSpatial(ship: Ship, range: number): Ship[] {
     if (!this.state.spatialGrid) return [];
     
-    // Check if spatial grid is empty and needs updating
-    const empty = this.state.spatialGrid.isEmpty();
-    if (empty && this.state.ships.length > 0) {
-      this.updateSpatialGridImmediate();
-    }
+    this.ensureSpatialGridUpdated();
     
     // Use streaming iteration to avoid array allocation
     const enemies: Ship[] = [];
@@ -1222,11 +1218,7 @@ export class AIController {
   private findNearbyFriendsSpatial(ship: Ship, range: number): Ship[] {
     if (!this.state.spatialGrid) return [];
     
-    // Check if spatial grid is empty and needs updating (for tests and edge cases)
-    const empty = this.state.spatialGrid.isEmpty();
-    if (empty && this.state.ships.length > 0) {
-      this.updateSpatialGridImmediate();
-    }
+    this.ensureSpatialGridUpdated();
     
     // Use streaming iteration to avoid array allocation
     const friends: Ship[] = [];
@@ -1240,6 +1232,16 @@ export class AIController {
     });
     
     return friends;
+  }
+
+  /**
+   * Ensures the spatial grid is updated, but only once per tick.
+   */
+  private ensureSpatialGridUpdated() {
+    if (!this.isSpatialGridUpdatedThisTick) {
+      this.updateSpatialGridImmediate();
+      this.isSpatialGridUpdatedThisTick = true;
+    }
   }
 
   /**
@@ -1330,11 +1332,7 @@ export class AIController {
         return cached.res;
       }
 
-      // Ensure spatial grid is populated when used outside simulateStep
-      const empty = this.state.spatialGrid.isEmpty();
-      if (empty && this.state.ships.length > 0) {
-        this.updateSpatialGridImmediate();
-      }
+      this.ensureSpatialGridUpdated();
 
       this.state.spatialGrid.forEachNeighborsDelta(
         ship.pos,
