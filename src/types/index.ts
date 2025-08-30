@@ -187,7 +187,7 @@ export interface GameState {
     dispose: () => void;
     world?: any;
   };
-  behaviorConfig?: import('../config/behaviorConfig.js').BehaviorConfig;
+  behaviorConfig: import('../config/behaviorConfig.js').BehaviorConfig;
   // Optional spatial index for efficient AI proximity queries (neighbors, targeting)
   spatialGrid?: import('../utils/spatialGrid.js').SpatialGrid;
   // Reused AI controller instance to avoid per-tick allocations

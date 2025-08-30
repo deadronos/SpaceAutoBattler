@@ -20,7 +20,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const camera = new THREE.PerspectiveCamera(RendererConfig.camera.fov, 1, RendererConfig.camera.near, RendererConfig.camera.far);
 
   // Initialize camera controls
-  const cameraRotation = { x: -Math.PI/6, y: 0, z: 0 }; // pitch, yaw, roll
+  const cameraRotation = {
+    x: RendererConfig.camera.rotation.pitch,
+    y: RendererConfig.camera.rotation.yaw,
+    z: RendererConfig.camera.rotation.roll
+  };
   // Make camera distance mutable inside renderer and expose via getter/setter so callers
   // (for example `resetToCinematicView` in main.ts) can update it and the internal
   // camera positioning will pick up the change.
@@ -134,8 +138,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const skyboxTextures: THREE.CanvasTexture[] = [];
 
   function createAnimatedSkybox(): THREE.CubeTexture {
-    const textureSize = 512; // Smaller for animation performance
-    const baseSeed = 12345;
+  const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+  const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
 
     const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
 
@@ -330,7 +334,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Create a group to hold the ship parts
       const shipGroup = new THREE.Group();
 
-      const size = (ShipVisualConfig.ships[s.class]?.collisionRadius ?? 16) * 1.8;
+      const size = ShipVisualConfig.ships[s.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
 
       // Main body - cylinder with SVG texture on the caps and team color on the sides
       const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
@@ -768,7 +772,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     shieldGroup.position.set(ship.pos.x, ship.pos.y, ship.pos.z);
 
     // Scale based on ship class
-    const scale = (ShipVisualConfig.shield.scaleMultipliers[ship.class] ?? 1.0) * config.animation.scaleMultiplier;
+    const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
     shieldGroup.scale.setScalar(scale);
 
     // Update uniforms
@@ -892,7 +896,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
       m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
       
-      const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1.0;
+      const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
       m.scale.setScalar(scale);
 
       // Update health bar

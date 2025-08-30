@@ -1,5 +1,6 @@
 import { beforeAll, vi } from 'vitest';
 import type { GameState, Ship, Bullet } from '../../src/types/index.js';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 // Mock WebGL context for tests
 export const glStub = {
@@ -164,7 +165,7 @@ export function createMockGameState(overrides = {}) {
     ships: [] as Ship[],
     bullets: [] as Bullet[],
     score: { red: 0, blue: 0 },
-    behaviorConfig: undefined,
+  behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
   };
 
   return { ...baseState, ...overrides };

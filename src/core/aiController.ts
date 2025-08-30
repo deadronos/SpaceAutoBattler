@@ -24,7 +24,8 @@ export class AIController {
   private sepCache: Map<number, { x: number; y: number; z: number; sepDist: number; tick: number; res: { force: Vector3; neighborCount: number } } > = new Map();
   
   // Per-team anchor registries for roaming behavior
-  private roamingAnchors: Map<Team, Vector3[]>;
+  // We track assigned anchors with the owning ship id so we can remove them reliably
+  private roamingAnchors: Map<Team, { pos: Vector3; shipId: number }[]>;
   
   // Team alarm system - tracks when teams are under attack
   private teamAlarmTimes: Map<Team, number>;
@@ -35,9 +36,9 @@ export class AIController {
 
   constructor(state: GameState) {
     this.state = state;
-    this.roamingAnchors = new Map();
-    this.roamingAnchors.set('red', []);
-    this.roamingAnchors.set('blue', []);
+  this.roamingAnchors = new Map();
+  this.roamingAnchors.set('red', []);
+  this.roamingAnchors.set('blue', []);
     
     this.teamAlarmTimes = new Map();
     this.teamAlarmTimes.set('red', 0);
@@ -52,7 +53,7 @@ export class AIController {
   /**
    * Update AI for all ships
    */
-  updateAllShips(dt: number) {
+  public updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) {
       return;
     }
@@ -69,7 +70,8 @@ export class AIController {
       if (ship.health <= 0) continue;
       this.updateShipAI(ship, dt);
     }
-  }
+
+    }
 
   /**
    * Update AI for a single ship (public for legacy stepShipAI delegation)
@@ -153,9 +155,10 @@ export class AIController {
       
       const aiState = ship.aiState;
       const timeSinceLastDamage = this.state.time - (aiState.lastDamageTime || 0);
-      
-      // If ship took damage recently, trigger alarm for their team
-      if (timeSinceLastDamage <= config.globalSettings.alarmSystemWindowSeconds) {
+
+      // Only consider this an alarm if the ship actually recorded recent damage
+      // (guards against default lastDamageTime === 0 being treated as a damage event)
+      if ((aiState.recentDamage && aiState.recentDamage > 0) && timeSinceLastDamage <= config.globalSettings.alarmSystemWindowSeconds) {
         this.teamAlarmTimes.set(ship.team, this.state.time);
       }
     }
@@ -230,7 +233,7 @@ export class AIController {
     if (shouldEvadeFromDamage) {
       newIntent = 'evade';
       // Shorter duration for damage-based evade to allow quick reassessment
-      intentDuration = Math.min(intentDuration, 3.0);
+      intentDuration = Math.min(intentDuration, config.globalSettings.intentDurationDamageEvade);
     } else {
       // Normal intent selection based on personality mode
       switch (personality.mode) {
@@ -253,6 +256,12 @@ export class AIController {
           newIntent = this.chooseMixedIntent(ship, personality);
           break;
       }
+    }
+
+    // Debugging: log cases where an evade intent is chosen to help tests
+    if (newIntent === 'evade') {
+      // eslint-disable-next-line no-console
+      console.debug('[AI] Evade chosen', { shipId: ship.id, recentDamage: aiState.recentDamage, damageEvadeThreshold: config.globalSettings.damageEvadeThreshold, evadeOnlyOnDamage: config.globalSettings.evadeOnlyOnDamage, personalityMode: personality.mode, withinDamageWindow });
     }
 
     // Release roaming anchor if patrol intent changes
@@ -707,8 +716,9 @@ export class AIController {
     if (!target) return;
 
     // Circle around target
+    const config = this.state.behaviorConfig!;
     const angle = Math.atan2(ship.pos.y - target.pos.y, ship.pos.x - target.pos.x) + dt;
-    const radius = 150;
+    const radius = config.globalSettings.strafeRadius;
     const strafePos = {
       x: target.pos.x + Math.cos(angle) * radius,
       y: target.pos.y + Math.sin(angle) * radius,
@@ -805,15 +815,15 @@ export class AIController {
    */
   private executeRetreat(ship: Ship, dt: number) {
     // Move towards friendly territory or safe zone
+    const config = this.state.behaviorConfig!;
     const bounds = this.state.simConfig.simBounds;
+    const offset = config.globalSettings.boundarySafetyMargin;
     let safePos: Vector3;
-
     if (ship.team === 'red') {
-      safePos = { x: 100, y: bounds.height / 2, z: bounds.depth / 2 };
+      safePos = { x: offset, y: bounds.height / 2, z: bounds.depth / 2 };
     } else {
-      safePos = { x: bounds.width - 100, y: bounds.height / 2, z: bounds.depth / 2 };
+      safePos = { x: bounds.width - offset, y: bounds.height / 2, z: bounds.depth / 2 };
     }
-
     this.moveTowards(ship, safePos, dt);
   }
 
@@ -1497,255 +1507,236 @@ export class AIController {
         }
       }
     }
-
-    // Look for large groups to form up with
+    
+    // If no carrier escort found, allow forming up with nearby friendly ships
     const nearbyFriends = this.findNearbyFriends(ship, searchRadius);
-    if (nearbyFriends.length >= 3) {
-      const formation = getFormationConfig(config, 'circle');
-      if (formation) {
-        return { name: 'circle', config: formation };
-      }
+    if (nearbyFriends.length >= config.globalSettings.formationMinGroupSize) {
+      const formation = getFormationConfig(config, 'line') || Object.values(config.formations)[0];
+      if (formation) return { name: 'line', config: formation };
     }
-
+    // TODO: Add more formation logic as needed
     return null;
   }
 
   /**
-   * Calculate preferred engagement range for a ship
+   * Calculate Euclidean distance between two Vector3 positions
    */
-  private calculatePreferredRange(ship: Ship, personality: AIPersonality): number {
-    const shipConfig = getShipClassConfig(ship.class);
-    const baseRange = shipConfig.turrets.reduce((max: number, turret) => Math.max(max, turret.range), 0);
-    return baseRange * personality.preferredRangeMultiplier;
+  private getDistance(a: Vector3, b: Vector3): number {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dz = a.z - b.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
 
   /**
-   * Assign a roaming anchor for a ship, ensuring proper separation from other anchors
-   */
-  private assignRoamingAnchor(ship: Ship): Vector3 {
-    const config = this.state.behaviorConfig!;
-    const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
-    const teamAnchors = this.roamingAnchors.get(ship.team)!;
-    const bounds = this.state.simConfig.simBounds;
-    
-    // Try to find a good anchor position with rejection sampling
-    const maxAttempts = 20;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const candidate: Vector3 = {
-        x: this.state.rng.next() * bounds.width,
-        y: this.state.rng.next() * bounds.height,
-        z: this.state.rng.next() * bounds.depth
-      };
-      
-      // Check if this candidate is far enough from existing anchors
-      let validCandidate = true;
-      for (const existing of teamAnchors) {
-        if (this.getDistance(candidate, existing) < minSeparation) {
-          validCandidate = false;
-          break;
-        }
-      }
-      
-      if (validCandidate) {
-        teamAnchors.push(candidate);
-        return candidate;
-      }
-    }
-    
-    // If we couldn't find a good position, fall back to ship's current position
-    // This ensures the system is robust even in crowded scenarios
-    const fallback = { ...ship.pos };
-    teamAnchors.push(fallback);
-    return fallback;
-  }
-
-  /**
-   * Release a roaming anchor when a ship stops roaming
+   * Release roaming anchor for a ship (removes anchor assignment)
    */
   private releaseRoamingAnchor(ship: Ship): void {
-    if (!ship.aiState?.roamingAnchor) return;
-    
-    const teamAnchors = this.roamingAnchors.get(ship.team)!;
-    const index = teamAnchors.findIndex(anchor => 
-      this.getDistance(anchor, ship.aiState!.roamingAnchor!) < 1.0
-    );
-    
-    if (index >= 0) {
-      teamAnchors.splice(index, 1);
+    if (ship.aiState && ship.aiState.roamingAnchor) {
+      // Remove from registry based on ship id
+      const anchors = this.roamingAnchors.get(ship.team);
+      if (anchors) {
+        const idx = anchors.findIndex(a => a.shipId === ship.id);
+        if (idx !== -1) anchors.splice(idx, 1);
+      }
+      ship.aiState.roamingAnchor = undefined;
     }
-    
-    ship.aiState.roamingAnchor = undefined;
   }
 
   /**
-   * Clear formation slot assignment when a ship leaves formation
+   * Clear formation slot for a ship (removes formation assignment)
    */
   private clearFormationSlot(ship: Ship): void {
     if (ship.aiState) {
       ship.aiState.formationId = undefined;
-      ship.aiState.formationSlotIndex = undefined;
       ship.aiState.formationPosition = undefined;
+      ship.aiState.formationSlotIndex = undefined;
     }
   }
 
   /**
-   * Get formation center position based on formation type and existing members
+   * Calculate preferred range for a ship based on personality and config
+   */
+  private calculatePreferredRange(ship: Ship, personality: AIPersonality): number {
+  // Use config separationDistance as base range and personality multiplier
+  const baseRange = this.state.behaviorConfig!.globalSettings.separationDistance;
+  const range = baseRange * (personality.preferredRangeMultiplier ?? 1);
+  return range;
+  }
+
+  /**
+   * Assign a roaming anchor for a ship (returns anchor position)
+   */
+  private assignRoamingAnchor(ship: Ship): Vector3 {
+    // Use config for roaming anchor maxAttempts and a default anchor radius
+    const config = this.state.behaviorConfig!;
+  const maxAttempts = config.globalSettings.roamingAnchorMaxAttempts;
+  // Use roaming pattern radius if available, else fallback to evadeDistance
+  const anchorRadius = config.roamingPatterns?.[0]?.radius ?? config.globalSettings.evadeDistance;
+    const bounds = this.state.simConfig.simBounds;
+    let attempt = 0;
+    const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
+    const teamAnchors = this.roamingAnchors.get(ship.team) || [];
+
+    while (attempt < maxAttempts) {
+      const angle = this.state.rng.next() * Math.PI * 2;
+      let radius = this.state.rng.next() * anchorRadius;
+      let anchor = {
+        x: ship.pos.x + Math.cos(angle) * radius,
+        y: ship.pos.y + Math.sin(angle) * radius,
+        z: ship.pos.z
+      };
+      // Ensure anchor is within bounds
+      if (
+        anchor.x > 0 && anchor.x < bounds.width &&
+        anchor.y > 0 && anchor.y < bounds.height &&
+        anchor.z > 0 && anchor.z < bounds.depth
+      ) {
+        // Ensure this anchor is not too close to existing anchors for the team
+        let ok = true;
+        for (const a of teamAnchors) {
+          const dx = a.pos.x - anchor.x;
+          const dy = a.pos.y - anchor.y;
+          const dz = a.pos.z - anchor.z;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (dist < minSeparation) { ok = false; break; }
+        }
+        if (!ok) {
+          // Try to nudge the anchor outward along the radial direction from ship
+          // so it satisfies minSeparation if possible within bounds.
+          const dx = anchor.x - ship.pos.x;
+          const dy = anchor.y - ship.pos.y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const dirx = len > 1e-6 ? dx / len : Math.cos(angle);
+          const diry = len > 1e-6 ? dy / len : Math.sin(angle);
+          // find min distance to existing anchors
+          let minDist = Infinity;
+          for (const a of teamAnchors) {
+            const ddx = a.pos.x - anchor.x;
+            const ddy = a.pos.y - anchor.y;
+            const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+            if (dd < minDist) minDist = dd;
+          }
+          const needed = minSeparation - minDist + 1;
+          if (needed > 0) {
+            radius += needed;
+            anchor = {
+              x: ship.pos.x + dirx * radius,
+              y: ship.pos.y + diry * radius,
+              z: ship.pos.z
+            };
+            // clamp to bounds
+            if (anchor.x > 0 && anchor.x < bounds.width && anchor.y > 0 && anchor.y < bounds.height) {
+              // re-evaluate separation
+              let stillTooClose = false;
+              for (const a of teamAnchors) {
+                const ddx = a.pos.x - anchor.x;
+                const ddy = a.pos.y - anchor.y;
+                const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+                if (dd < minSeparation) { stillTooClose = true; break; }
+              }
+              if (!stillTooClose) {
+                const entry = { pos: anchor, shipId: ship.id };
+                teamAnchors.push(entry);
+                this.roamingAnchors.set(ship.team, teamAnchors);
+                return anchor;
+              }
+            }
+          }
+        } else {
+          // Record anchor ownership and return
+          const entry = { pos: anchor, shipId: ship.id };
+          teamAnchors.push(entry);
+          this.roamingAnchors.set(ship.team, teamAnchors);
+          return anchor;
+        }
+      }
+      attempt++;
+    }
+    // Fallback: try to place an anchor relative to nearest team anchor to satisfy minSeparation
+    if (teamAnchors.length > 0) {
+      // find nearest existing anchor
+      let nearest = teamAnchors[0];
+      let nearestDist = Infinity;
+      for (const a of teamAnchors) {
+        const dx = a.pos.x - ship.pos.x;
+        const dy = a.pos.y - ship.pos.y;
+        const dz = a.pos.z - ship.pos.z;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d < nearestDist) { nearestDist = d; nearest = a; }
+      }
+
+      // direction from nearest anchor to ship (or default unit vector)
+      let dir = { x: ship.pos.x - nearest.pos.x, y: ship.pos.y - nearest.pos.y, z: ship.pos.z - nearest.pos.z };
+      const len = Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+      if (len < 1e-6) {
+        dir = { x: 1, y: 0, z: 0 };
+      } else {
+        dir.x /= len; dir.y /= len; dir.z /= len;
+      }
+
+      const fallbackAnchor = {
+        x: nearest.pos.x + dir.x * (minSeparation + 1),
+        y: nearest.pos.y + dir.y * (minSeparation + 1),
+        z: Math.min(Math.max(nearest.pos.z + dir.z * (minSeparation + 1), 0), bounds.depth)
+      };
+
+      // Clamp to bounds
+      fallbackAnchor.x = Math.max(0, Math.min(bounds.width, fallbackAnchor.x));
+      fallbackAnchor.y = Math.max(0, Math.min(bounds.height, fallbackAnchor.y));
+      fallbackAnchor.z = Math.max(0, Math.min(bounds.depth, fallbackAnchor.z));
+
+      const entry = { pos: fallbackAnchor, shipId: ship.id };
+      teamAnchors.push(entry);
+      this.roamingAnchors.set(ship.team, teamAnchors);
+      return fallbackAnchor;
+    }
+
+    return { ...ship.pos };
+  }
+
+  /**
+   * Get formation center for a ship and formation name
    */
   private getFormationCenter(ship: Ship, formationName: string): Vector3 | null {
-    if (formationName === 'escort') {
-      // For escort formations, center around the carrier
-      const carrier = this.state.ships.find(s => 
-        s.team === ship.team && 
-        s.class === 'carrier' && 
-        s.health > 0
-      );
-      return carrier ? carrier.pos : null;
+    // For now, use group center of friendly ships in range
+    const config = this.state.behaviorConfig!;
+  const searchRadius = config.globalSettings.formationSearchRadius;
+    const friends = this.findNearbyFriends(ship, searchRadius);
+    if (friends.length > 0) {
+      return this.calculateGroupCenter(friends);
     }
-    
-    // For other formations, find the center of existing formation members
-    const formationShips = this.state.ships.filter(s => 
-      s.team === ship.team && 
-      s.health > 0 && 
-      s.aiState?.formationId === formationName
-    );
-    
-    if (formationShips.length > 0) {
-      // Use center of existing formation
-      const center = { x: 0, y: 0, z: 0 };
-      for (const s of formationShips) {
-        center.x += s.pos.x;
-        center.y += s.pos.y;
-        center.z += s.pos.z;
-      }
-      center.x /= formationShips.length;
-      center.y /= formationShips.length;
-      center.z /= formationShips.length;
-      return center;
-    }
-    
-    // For new formations, use the current ship's position as initial center
-    return ship.pos;
+    return null;
   }
 
   /**
-   * Calculate formation slot positions based on formation config and center point
-   */
-  private calculateFormationSlots(config: FormationConfig, center: Vector3): Vector3[] {
-    const slots: Vector3[] = [];
-    const spacing = config.spacing;
-    
-    switch (config.type) {
-      case 'line':
-        for (let i = 0; i < config.maxSize; i++) {
-          const offset = (i - (config.maxSize - 1) / 2) * spacing;
-          slots.push({
-            x: center.x + offset,
-            y: center.y,
-            z: center.z
-          });
-        }
-        break;
-        
-      case 'circle':
-        for (let i = 0; i < config.maxSize; i++) {
-          const angle = (i / config.maxSize) * Math.PI * 2;
-          slots.push({
-            x: center.x + Math.cos(angle) * spacing,
-            y: center.y + Math.sin(angle) * spacing,
-            z: center.z
-          });
-        }
-        break;
-        
-      case 'wedge':
-        for (let i = 0; i < config.maxSize; i++) {
-          const row = Math.floor(Math.sqrt(i));
-          const col = i - row * row;
-          const rowOffset = row * spacing;
-          const colOffset = (col - row / 2) * spacing;
-          slots.push({
-            x: center.x + colOffset,
-            y: center.y - rowOffset,
-            z: center.z
-          });
-        }
-        break;
-        
-      case 'column':
-        for (let i = 0; i < config.maxSize; i++) {
-          slots.push({
-            x: center.x,
-            y: center.y - i * spacing,
-            z: center.z
-          });
-        }
-        break;
-        
-      case 'sphere':
-        // Simple sphere arrangement - distribute ships in layers
-        for (let i = 0; i < config.maxSize; i++) {
-          const layer = Math.floor(i / 4);
-          const layerIndex = i % 4;
-          const angle = (layerIndex / 4) * Math.PI * 2;
-          const radius = spacing * (layer + 1);
-          slots.push({
-            x: center.x + Math.cos(angle) * radius,
-            y: center.y + Math.sin(angle) * radius,
-            z: center.z + (layer - 1) * spacing * 0.5
-          });
-        }
-        break;
-    }
-    
-    return slots;
-  }
-
-  /**
-   * Assign formation slot to a ship joining a formation
+   * Assign a unique slot in the formation for a ship
    */
   private assignFormationSlot(ship: Ship, formationName: string, formationConfig: FormationConfig, center: Vector3): void {
-    // Calculate all slot positions
-    const slots = this.calculateFormationSlots(formationConfig, center);
-    
-    // Find ships already in this formation
-    const formationShips = this.state.ships.filter(s => 
-      s.team === ship.team && 
-      s.health > 0 && 
-      s.aiState?.formationId === formationName &&
-      s.aiState?.formationSlotIndex !== undefined
-    );
-    
-    // Find used slot indices
-    const usedSlots = new Set(formationShips.map(s => s.aiState!.formationSlotIndex!));
-    
-    // Find nearest available slot
-    let bestSlotIndex = -1;
-    let bestDistance = Infinity;
-    
-    for (let i = 0; i < slots.length; i++) {
-      if (!usedSlots.has(i)) {
-        const distance = this.getDistance(ship.pos, slots[i]);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestSlotIndex = i;
-        }
-      }
+    // Assign slot based on ship id modulo maxSize, offset by spacing
+  const slotCount = formationConfig.maxSize;
+  const spacing = formationConfig.spacing;
+    const slotIndex = ship.id % slotCount;
+      // Store the assigned slot index for tests/other logic
+      if (!ship.aiState) ship.aiState = {} as any;
+      const aiState = ship.aiState!;
+      aiState.formationSlotIndex = slotIndex;
+    // For line formation, offset along x axis; for circle, use polar coordinates
+    let slotOffset: Vector3 = { x: 0, y: 0, z: 0 };
+    if (formationConfig.type === 'line') {
+      slotOffset = { x: (slotIndex - Math.floor(slotCount / 2)) * spacing, y: 0, z: 0 };
+    } else if (formationConfig.type === 'circle') {
+      const angle = (2 * Math.PI * slotIndex) / slotCount;
+      slotOffset = { x: Math.cos(angle) * spacing, y: Math.sin(angle) * spacing, z: 0 };
+    } else {
+      // Default: offset along x axis
+      slotOffset = { x: (slotIndex - Math.floor(slotCount / 2)) * spacing, y: 0, z: 0 };
     }
-    
-    // Assign the slot
-    if (bestSlotIndex >= 0) {
-      ship.aiState!.formationSlotIndex = bestSlotIndex;
-      ship.aiState!.formationPosition = slots[bestSlotIndex];
-    }
-  }
-
-  /**
-   * Get distance between two positions
-   */
-  private getDistance(pos1: Vector3, pos2: Vector3): number {
-    const dx = pos1.x - pos2.x;
-    const dy = pos1.y - pos2.y;
-    const dz = pos1.z - pos2.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    aiState.formationPosition = {
+      x: center.x + slotOffset.x,
+      y: center.y + slotOffset.y,
+      z: center.z + slotOffset.z
+    };
   }
 }
+

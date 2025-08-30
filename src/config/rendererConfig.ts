@@ -6,6 +6,11 @@ export interface RendererConfig {
     near: number;
     far: number;
     cameraZ: number;
+    rotation: {
+      pitch: number;
+      yaw: number;
+      roll: number;
+    };
   };
 
   // General visual settings
@@ -121,6 +126,10 @@ export interface RendererConfig {
       width: number;
     };
   };
+
+  // Default values for entities
+  defaultCollisionRadius: number;
+  defaultScale: number;
 }
 
 export const DefaultRendererConfig: RendererConfig = {
@@ -129,6 +138,11 @@ export const DefaultRendererConfig: RendererConfig = {
     near: 0.1,
     far: 10000,
     cameraZ: 900,
+    rotation: {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+    },
   },
 
   visual: {
@@ -235,6 +249,9 @@ export const DefaultRendererConfig: RendererConfig = {
       width: 1,
     },
   },
+
+  defaultCollisionRadius: 1.0,
+  defaultScale: 1.0,
 };
 
 // Export the default config as RendererConfig for backward compatibility

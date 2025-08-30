@@ -192,6 +192,32 @@ export interface BehaviorConfig {
     boundaryCleanupIntervalTicks: number;
     /** Toggle small deterministic spawn-time velocity jitter to break perfect symmetry */
     enableSpawnJitter: boolean;
+    /** Short duration for damage-based evade intent (seconds) */
+    intentDurationDamageEvade: number;
+    /** Probability for group intent in defensive mode */
+    probabilityGroupDefensive: number;
+    /** Range multiplier for evade threat search */
+    rangeMultiplierEvade: number;
+    /** Penalty base for proximity to threat in escape scoring */
+    penaltyThreat: number;
+    /** Fraction of separationDistance for idle nudge */
+    displacementIdleSeparation: number;
+    /** Divisor for scaling idle nudge by neighbor count */
+    neighborCountIdleNudgeDivisor: number;
+    /** Radius for strafe movement (units) */
+    strafeRadius: number;
+    /** Radius to find friends for group behavior (units) */
+    groupFriendRadius: number;
+    /** Minimum ships for circle formation */
+    formationMinGroupSize: number;
+    /** Max attempts for roaming anchor assignment */
+    roamingAnchorMaxAttempts: number;
+    /** Threshold for releasing roaming anchor (distance) */
+    roamingAnchorDistanceThreshold: number;
+    /** Threshold for formation slot assignment (distance) */
+    formationSlotDistanceThreshold: number;
+    /** Magnitude threshold for separation vector normalization */
+    separationVectorMagnitudeThreshold: number;
     /** Enable spatial index for AI proximity queries (faster neighbor/target searches) */
     enableSpatialIndex: boolean;
     /** Enable scout behavior - at least one ship per team always pursues nearest enemy */
@@ -348,51 +374,56 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     minimumSafeDistance: 10,
     formationSearchRadius: 500,
     enableDynamicBehavior: true,
-    
-    // Combat range and engagement settings
     closeRangeMultiplier: 0.6,
     mediumRangeMultiplier: 1.2,
     movementCloseEnoughThreshold: 10,
     friendlyAvoidanceDistance: 80,
     boundarySafetyMargin: 50,
-    
-    // Separation behavior clustering thresholds
     separationVeryTightCluster: 8,
     separationModerateCluster: 5,
     separationMildCluster: 3,
     separationVeryTightWeight: 5.0,
     separationModerateWeight: 2.0,
     separationMildWeight: 1.2,
-    
-    // Evade behavior settings
-    evadeMaxPitch: Math.PI * 0.5, // ±45 degrees pitch
+    separationDistance: 120,
+    separationWeight: 0.3,
+    roamingAnchorMinSeparation: 150,
+    killCreditWindowSeconds: 5,
+    enableBoundaryCleanup: true,
+    boundaryCleanupIntervalTicks: 600,
+    enableSpawnJitter: true,
+    intentDurationDamageEvade: 3.0,
+    probabilityGroupDefensive: 0.7,
+    rangeMultiplierEvade: 1.5,
+    penaltyThreat: 200,
+    displacementIdleSeparation: 0.05,
+    neighborCountIdleNudgeDivisor: 5,
+    strafeRadius: 150,
+    groupFriendRadius: 300,
+    formationMinGroupSize: 3,
+    roamingAnchorMaxAttempts: 20,
+    roamingAnchorDistanceThreshold: 1.0,
+    formationSlotDistanceThreshold: 1.0,
+    separationVectorMagnitudeThreshold: 0.0001,
+    damageEvadeThreshold: 0.2,
+    damageDecayRate: 0.5,
+    evadeSamplingCount: 8,
+    evadeDistance: 200,
+  evadeOnlyOnDamage: false,
+    evadeRecentDamageWindowSeconds: 2.0,
     evadeBaseScore: 100,
     evadeThreatPenaltyWeight: 0.5,
     evadeBoundaryPenaltyWeight: 2.0,
     evadeDistanceImprovementWeight: 0.3,
     evadeFriendlyPenaltyWeight: 0.2,
-    
-    // Existing separation and damage settings
-    separationDistance: 120,
-    separationWeight: 0.3,
-    roamingAnchorMinSeparation: 150,
-    damageEvadeThreshold: 25, // Increased from 15 to reduce evade frequency
-    damageDecayRate: 2.0, // Increased from 1.0 to make evade effect wear off faster
-    evadeSamplingCount: 8,
-    evadeDistance: 30,
-    evadeOnlyOnDamage: false, // Default: preserve backwards compatibility (allow proximity-based evade)
-    evadeRecentDamageWindowSeconds: 3.0, // Window during which recent damage allows evade (matches typical test patterns)
-    killCreditWindowSeconds: 5,
-    enableBoundaryCleanup: true,
-    boundaryCleanupIntervalTicks: 600,
-    enableSpawnJitter: true,
-    enableSpatialIndex: true,  // Enable by default for better performance
-    enableScoutBehavior: true,  // Enable scout behavior by default
-    enableAlarmSystem: true,    // Enable alarm system by default
-    alarmSystemWindowSeconds: 5.0,  // 5 seconds of team-wide pursuit after friendly takes damage
-    enableScoutExploration: true,   // Enable scout exploration by default
-    explorationZoneCount: 6,        // Divide map into 6 exploration zones
-    explorationZoneDuration: 8.0    // Spend 8 seconds exploring each zone
+    evadeMaxPitch: Math.PI * 0.5,
+    enableSpatialIndex: true,
+    enableScoutBehavior: true,
+    enableAlarmSystem: true,
+    alarmSystemWindowSeconds: 5.0,
+    enableScoutExploration: true,
+    explorationZoneCount: 6,
+    explorationZoneDuration: 8.0
   }
 };
 
