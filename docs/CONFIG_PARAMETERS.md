@@ -33,6 +33,12 @@ These parameters control how ships evaluate and choose escape directions:
 - `evadeDistanceImprovementWeight` (default: 0.3) - Weight for distance improvement bonus in scoring
 - `evadeFriendlyPenaltyWeight` (default: 0.2) - Weight for friendly collision penalty in scoring
 
+#### Damage-Based Evade Settings
+- `evadeOnlyOnDamage` (default: false) - Only allow evade behavior when ship has recently taken damage  
+- `evadeRecentDamageWindowSeconds` (default: 3.0) - Time window during which recent damage allows evade behavior
+- `damageEvadeThreshold` (default: 25) - Damage threshold to trigger evade behavior
+- `damageDecayRate` (default: 2.0) - Rate at which recent damage decays per second
+
 ### Physics Configuration (`physicsConfig.ts`)
 
 #### World Settings
@@ -70,6 +76,12 @@ config.globalSettings.evadeThreatPenaltyWeight = 1.0;
 
 // Reduce boundary avoidance (allow closer to edges)
 config.globalSettings.evadeBoundaryPenaltyWeight = 1.0;
+
+// Make evade only trigger when ship has taken recent damage
+config.globalSettings.evadeOnlyOnDamage = true;
+
+// Reduce the damage window for more reactive evade behavior
+config.globalSettings.evadeRecentDamageWindowSeconds = 2.0;
 ```
 
 ### Physics Tuning

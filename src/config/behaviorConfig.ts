@@ -181,6 +181,8 @@ export interface BehaviorConfig {
     evadeDistance: number;
     /** Only allow evade behavior when ship has recently taken damage */
     evadeOnlyOnDamage: boolean;
+    /** Time window (seconds) during which recent damage allows evade behavior */
+    evadeRecentDamageWindowSeconds: number;
     /** Window (seconds) during which the last damager is eligible for kill credit */
     killCreditWindowSeconds: number;
     /** Enable periodic boundary cleanup (teleport/prune out-of-bounds entities) */
@@ -366,6 +368,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     evadeSamplingCount: 8,
     evadeDistance: 30,
     evadeOnlyOnDamage: false, // Default: preserve backwards compatibility (allow proximity-based evade)
+    evadeRecentDamageWindowSeconds: 3.0, // Window during which recent damage allows evade (matches typical test patterns)
     killCreditWindowSeconds: 5,
     enableBoundaryCleanup: true,
     boundaryCleanupIntervalTicks: 600,
