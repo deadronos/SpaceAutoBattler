@@ -855,6 +855,35 @@ export class AIController {
    * Find nearest enemy to a ship
    */
   private findNearestEnemy(ship: Ship): Ship | null {
+    // Use spatial index if available and enabled
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      return this.findNearestEnemySpatial(ship);
+    }
+    
+    // Fallback to linear search
+    return this.findNearestEnemyLinear(ship);
+  }
+
+  /**
+   * Find nearest enemy using spatial index
+   */
+  private findNearestEnemySpatial(ship: Ship): Ship | null {
+    if (!this.state.spatialGrid) return null;
+    
+    // Query k=1 nearest enemies
+    const nearestEntities = this.state.spatialGrid.queryKNearest(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red');
+    
+    if (nearestEntities.length === 0) return null;
+    
+    // Get the actual ship object
+    const nearestEntity = nearestEntities[0];
+    return this.state.shipIndex?.get(nearestEntity.id) || null;
+  }
+
+  /**
+   * Find nearest enemy using linear search (fallback)
+   */
+  private findNearestEnemyLinear(ship: Ship): Ship | null {
     let best: Ship | null = null;
     let bestDist = Infinity;
 
@@ -875,6 +904,41 @@ export class AIController {
    * Find nearby enemies within range
    */
   private findNearbyEnemies(ship: Ship, range: number): Ship[] {
+    // Use spatial index if available and enabled
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      return this.findNearbyEnemiesSpatial(ship, range);
+    }
+    
+    // Fallback to linear search
+    return this.findNearbyEnemiesLinear(ship, range);
+  }
+
+  /**
+   * Find nearby enemies using spatial index
+   */
+  private findNearbyEnemiesSpatial(ship: Ship, range: number): Ship[] {
+    if (!this.state.spatialGrid) return [];
+    
+    // Query enemies within range
+    const enemyTeam = ship.team === 'red' ? 'blue' : 'red';
+    const nearbyEntities = this.state.spatialGrid.queryEnemies(ship.pos, range, ship.team);
+    
+    // Convert to ship objects and sort by distance
+    const enemies: Ship[] = [];
+    for (const entity of nearbyEntities) {
+      const enemyShip = this.state.shipIndex?.get(entity.id);
+      if (enemyShip && enemyShip.health > 0) {
+        enemies.push(enemyShip);
+      }
+    }
+    
+    return enemies.sort((a, b) => this.getDistance(ship.pos, a.pos) - this.getDistance(ship.pos, b.pos));
+  }
+
+  /**
+   * Find nearby enemies using linear search (fallback)
+   */
+  private findNearbyEnemiesLinear(ship: Ship, range: number): Ship[] {
     const enemies: Ship[] = [];
 
     for (const s of this.state.ships) {
@@ -893,6 +957,40 @@ export class AIController {
    * Find nearby friendly ships
    */
   private findNearbyFriends(ship: Ship, range: number): Ship[] {
+    // Use spatial index if available and enabled
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      return this.findNearbyFriendsSpatial(ship, range);
+    }
+    
+    // Fallback to linear search
+    return this.findNearbyFriendsLinear(ship, range);
+  }
+
+  /**
+   * Find nearby friendly ships using spatial index
+   */
+  private findNearbyFriendsSpatial(ship: Ship, range: number): Ship[] {
+    if (!this.state.spatialGrid) return [];
+    
+    // Query neighbors (same team) within range, excluding self
+    const nearbyEntities = this.state.spatialGrid.queryNeighbors(ship.pos, range, ship.team, ship.id);
+    
+    // Convert to ship objects
+    const friends: Ship[] = [];
+    for (const entity of nearbyEntities) {
+      const friendShip = this.state.shipIndex?.get(entity.id);
+      if (friendShip && friendShip.health > 0) {
+        friends.push(friendShip);
+      }
+    }
+    
+    return friends;
+  }
+
+  /**
+   * Find nearby friendly ships using linear search (fallback)
+   */
+  private findNearbyFriendsLinear(ship: Ship, range: number): Ship[] {
     const friends: Ship[] = [];
 
     for (const s of this.state.ships) {
@@ -935,13 +1033,10 @@ export class AIController {
   }
 
   /**
-   * Calculate separation force and the number of neighbors considered.
-   * Returns both the normalized force vector and the neighborCount so callers
-   * can adjust strength based on cluster density.
-   */
-  /**
    * Public helper: Calculate separation force and the number of neighbors considered.
    * Made public intentionally so unit tests can call it directly.
+   * Returns both the normalized force vector and the neighborCount so callers
+   * can adjust strength based on cluster density.
    */
   public calculateSeparationForceWithCount(ship: Ship): { force: Vector3; neighborCount: number } {
     const config = this.state.behaviorConfig!;
@@ -952,10 +1047,13 @@ export class AIController {
     let separationZ = 0;
     let neighborCount = 0;
 
-    // Find nearby friends within separation distance
-    for (const other of this.state.ships) {
-      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+    // Use spatial index if available and enabled, otherwise use linear search
+    const nearbyFriends = this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex
+      ? this.findNearbyFriends(ship, separationDistance)
+      : this.getNearbySeparationShipsLinear(ship, separationDistance);
 
+    // Calculate separation force from nearby friends
+    for (const other of nearbyFriends) {
       const dist = this.getDistance(ship.pos, other.pos);
       if (dist > 0 && dist < separationDistance) {
         // Calculate repulsion vector (away from other ship)
@@ -998,8 +1096,9 @@ export class AIController {
     // Fallback: if the separation vector is near-zero (symmetrical neighbors),
     // push the ship away from the local group center to break symmetry.
     let centerX = 0, centerY = 0, centerZ = 0;
-    for (const other of this.state.ships) {
-      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+    
+    // Recalculate neighbors for center calculation (reuse nearbyFriends if available)
+    for (const other of nearbyFriends) {
       const dist = this.getDistance(ship.pos, other.pos);
       if (dist > 0 && dist < separationDistance) {
         centerX += other.pos.x;
@@ -1024,6 +1123,21 @@ export class AIController {
     // As a last resort, return a small random vector to perturb the ship
     const rndAngle = this.state.rng.next() * Math.PI * 2;
     return { force: { x: Math.cos(rndAngle), y: Math.sin(rndAngle), z: 0 }, neighborCount };
+  }
+
+  /**
+   * Helper method for linear search in separation force calculation (fallback)
+   */
+  private getNearbySeparationShipsLinear(ship: Ship, separationDistance: number): Ship[] {
+    const nearby: Ship[] = [];
+    for (const other of this.state.ships) {
+      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+      const dist = this.getDistance(ship.pos, other.pos);
+      if (dist > 0 && dist < separationDistance) {
+        nearby.push(other);
+      }
+    }
+    return nearby;
   }
 
   /**

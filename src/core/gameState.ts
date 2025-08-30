@@ -10,6 +10,7 @@ import { PhysicsConfig } from '../config/physicsConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
+import { SpatialGrid } from '../utils/spatialGrid.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -20,7 +21,7 @@ export function createInitialState(seed?: string): GameState {
   }
 
   const rng = createRNG(config.seed);
-  return {
+  const state: GameState = {
     time: 0,
     tick: 0,
     running: false,
@@ -34,6 +35,18 @@ export function createInitialState(seed?: string): GameState {
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
   };
+
+  // Initialize spatial grid if enabled
+  if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    const bounds = {
+      width: config.simBounds.width,
+      height: config.simBounds.height,
+      depth: config.simBounds.depth
+    };
+    state.spatialGrid = new SpatialGrid(64, bounds);
+  }
+
+  return state;
 }
 
 export function resetState(state: GameState, seed?: string) {
@@ -51,6 +64,18 @@ export function resetState(state: GameState, seed?: string) {
   state.score = { red: 0, blue: 0 };
   // Reset behavior config to defaults
   state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
+  
+  // Reset spatial grid if enabled
+  if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    const bounds = {
+      width: state.simConfig.simBounds.width,
+      height: state.simConfig.simBounds.height,
+      depth: state.simConfig.simBounds.depth
+    };
+    state.spatialGrid = new SpatialGrid(64, bounds);
+  } else {
+    state.spatialGrid = undefined;
+  }
 }
 
 function allocateId(state: GameState): EntityId { return state.nextId++; }
@@ -453,6 +478,9 @@ export function simulateStep(state: GameState, dt: number) {
     }
   }
   
+  // Update spatial grid with current ship positions after AI movement
+  updateSpatialGrid(state);
+  
   // Turret firing for all ships
   for (const s of state.ships) {
     if (s.health <= 0) continue;
@@ -517,4 +545,27 @@ function runBoundaryCleanup(state: GameState) {
   }
   // Remove dead bullets immediately
   state.bullets = state.bullets.filter(b => b.ttl > 0);
+}
+
+/**
+ * Update spatial grid with current ship positions
+ */
+function updateSpatialGrid(state: GameState) {
+  if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    return;
+  }
+
+  // Clear the grid and rebuild with current ship positions
+  state.spatialGrid.clear();
+  
+  for (const ship of state.ships) {
+    if (ship.health > 0) {
+      state.spatialGrid.insert({
+        id: ship.id,
+        pos: ship.pos,
+        radius: 16, // Approximate ship radius for spatial queries
+        team: ship.team
+      });
+    }
+  }
 }

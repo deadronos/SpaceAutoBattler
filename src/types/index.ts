@@ -188,6 +188,8 @@ export interface GameState {
     world?: any;
   };
   behaviorConfig?: import('../config/behaviorConfig.js').BehaviorConfig;
+  // Optional spatial index for efficient AI proximity queries (neighbors, targeting)
+  spatialGrid?: import('../utils/spatialGrid.js').SpatialGrid;
 }
 
 export type UIElements = {
