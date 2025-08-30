@@ -29,9 +29,9 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
   const world = new Rapier.World(gravity);
 
   // Configure world settings
-  world.timestep = 1 / 60; // 60 FPS physics
-  world.maxVelocityIterations = 8;
-  world.maxPositionIterations = 4;
+  world.timestep = PhysicsConfig.world.timestep;
+  world.maxVelocityIterations = PhysicsConfig.world.maxVelocityIterations;
+  world.maxPositionIterations = PhysicsConfig.world.maxPositionIterations;
 
   // Store rigid bodies by ship ID
   const rigidBodies = new Map<number, any>();
@@ -57,7 +57,8 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
       if (colliderDims) {
         colliderDesc = Rapier.ColliderDesc.cuboid(colliderDims.width, colliderDims.height, colliderDims.depth);
       } else {
-        colliderDesc = Rapier.ColliderDesc.cuboid(5, 2, 5);
+        const defaultCollider = PhysicsConfig.world.defaultCollider;
+        colliderDesc = Rapier.ColliderDesc.cuboid(defaultCollider.width, defaultCollider.height, defaultCollider.depth);
       }
 
       // Configure collider properties
@@ -93,7 +94,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
     }
   }
 
-  function raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance = 1000) {
+  function raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance = PhysicsConfig.world.defaultRaycastDistance) {
     try {
       const ray = new Rapier.Ray(origin, direction);
       const hit = world.castRay(ray, maxDistance, true);
