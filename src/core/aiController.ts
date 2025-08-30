@@ -870,6 +870,12 @@ export class AIController {
   private findNearestEnemySpatial(ship: Ship): Ship | null {
     if (!this.state.spatialGrid) return null;
     
+    // Check if spatial grid is empty and needs updating
+    const stats = this.state.spatialGrid.getStats();
+    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+      this.updateSpatialGridImmediate();
+    }
+    
     // Query k=1 nearest enemies
     const nearestEntities = this.state.spatialGrid.queryKNearest(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red');
     
@@ -918,6 +924,12 @@ export class AIController {
    */
   private findNearbyEnemiesSpatial(ship: Ship, range: number): Ship[] {
     if (!this.state.spatialGrid) return [];
+    
+    // Check if spatial grid is empty and needs updating
+    const stats = this.state.spatialGrid.getStats();
+    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+      this.updateSpatialGridImmediate();
+    }
     
     // Query enemies within range
     const enemyTeam = ship.team === 'red' ? 'blue' : 'red';
@@ -972,6 +984,12 @@ export class AIController {
   private findNearbyFriendsSpatial(ship: Ship, range: number): Ship[] {
     if (!this.state.spatialGrid) return [];
     
+    // Check if spatial grid is empty and needs updating (for tests and edge cases)
+    const stats = this.state.spatialGrid.getStats();
+    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+      this.updateSpatialGridImmediate();
+    }
+    
     // Query neighbors (same team) within range, excluding self
     const nearbyEntities = this.state.spatialGrid.queryNeighbors(ship.pos, range, ship.team, ship.id);
     
@@ -985,6 +1003,25 @@ export class AIController {
     }
     
     return friends;
+  }
+
+  /**
+   * Update spatial grid immediately (for tests and edge cases when not called via simulateStep)
+   */
+  private updateSpatialGridImmediate() {
+    if (!this.state.spatialGrid) return;
+    
+    this.state.spatialGrid.clear();
+    for (const ship of this.state.ships) {
+      if (ship.health > 0) {
+        this.state.spatialGrid.insert({
+          id: ship.id,
+          pos: ship.pos,
+          radius: 16,
+          team: ship.team
+        });
+      }
+    }
   }
 
   /**
