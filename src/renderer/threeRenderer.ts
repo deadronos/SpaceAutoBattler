@@ -290,6 +290,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const bulletMeshes = new Map<number, THREE.Object3D>();
   const healthBarMeshes = new Map<number, THREE.Object3D>();
   const shieldEffectMeshes = new Map<number, THREE.Object3D>();
+  // Dev / feature toggles
+  const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
+  const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
+  const billboardMaterials = new Set<THREE.ShaderMaterial>();
   // Maintain a short ring buffer of recent hits per ship for hex highlight
   const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
 
@@ -438,13 +442,27 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Background bar
     const bgGeom = new THREE.PlaneGeometry(config.width, config.position.height);
-    const bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
+    let bgMat: THREE.Material;
+    if (GPU_BILLBOARD) {
+      const mat = createBillboardMaterial(camera, new THREE.Color(config.colors.background), 1.0);
+      billboardMaterials.add(mat);
+      bgMat = mat;
+    } else {
+      bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
+    }
     const bgMesh = new THREE.Mesh(bgGeom, bgMat);
     barGroup.add(bgMesh);
 
     // Health bar
     const healthGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
-    const healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
+    let healthMat: THREE.Material;
+    if (GPU_BILLBOARD) {
+      const mat = createBillboardMaterial(camera, new THREE.Color(config.colors.health.full), 1.0);
+      billboardMaterials.add(mat);
+      healthMat = mat;
+    } else {
+      healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
+    }
     const healthMesh = new THREE.Mesh(healthGeom, healthMat);
     barGroup.add(healthMesh);
 
@@ -452,7 +470,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     let shieldMesh: THREE.Mesh | null = null;
     if (ship.maxShield > 0) {
       const shieldGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
-      const shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+      let shieldMat: THREE.Material;
+      if (GPU_BILLBOARD) {
+        const mat = createBillboardMaterial(camera, new THREE.Color(config.colors.shield.full), 0.8);
+        billboardMaterials.add(mat);
+        shieldMat = mat;
+      } else {
+        shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+      }
       shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
       shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
@@ -496,7 +521,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else if (healthPercent < 0.7) {
       healthColor = config.colors.health.damaged;
     }
-    (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
+    if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
+      const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+      (mat.uniforms.uColor.value as THREE.Color).setStyle(healthColor);
+    } else {
+      (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
+    }
 
     // Update shield bar if present
     if (shieldMesh && ship.maxShield > 0) {
@@ -505,7 +535,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
       // Color based on shield percentage
       const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-      (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
+      if (GPU_BILLBOARD && (shieldMesh.material as any).uniforms && (shieldMesh.material as any).uniforms.uColor) {
+        const mat = (shieldMesh.material as any) as THREE.ShaderMaterial;
+        (mat.uniforms.uColor.value as THREE.Color).setStyle(shieldColor);
+  if (mat.uniforms.uAlpha) (mat.uniforms.uAlpha.value as number) && (mat.uniforms.uAlpha.value = 0.8);
+      } else {
+        (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
+      }
     }
   }
 
@@ -872,6 +908,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const m = bulletMeshes.get(b.id)!; if (!m) continue;
       m.position.set(b.pos.x, b.pos.y, b.pos.z);
     }
+
+    // Update health bar positions to follow ships
+    for (const s of state.ships) {
+      const bar = healthBarMeshes.get(s.id);
+      if (bar) {
+        bar.position.set(
+            s.pos.x + RendererConfig.healthBars.position.offsetX,
+            s.pos.y + RendererConfig.healthBars.position.offsetY,
+            s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
+        );
+      }
+    }
   }
 
   function resize() {
@@ -918,18 +966,74 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   try { effectsManager = createEffectsManager(renderer as any, scene as any, camera as any); } catch (e) { effectsManager = null; }
 
   function render(_dt: number) {
+    // Confirm the render loop is running
+    console.log('Render loop is running');
+
+    // Check initialization of camera, runtime health bars collection, and scene
+    console.log('Camera:', camera);
+    console.log('Health Bars count:', healthBarMeshes.size);
+    console.log('Scene:', scene);
+
     // Update camera position based on current rotation, distance, and target
     updateCameraPosition();
+
+    // Sync entities and update transforms
     syncEntities();
     updateTransforms();
+
+    // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
+    // This guarantees bars don't inherit ship rotation.
+    for (const [id, bar] of healthBarMeshes) {
+      if (bar.parent !== healthBarsGroup) {
+        try {
+          if (bar.parent) bar.parent.remove(bar);
+        } catch (e) { /* ignore */ }
+        healthBarsGroup.add(bar);
+        console.log(`[threeRenderer] Reparented health bar ${id} to healthBarsGroup`);
+      }
+    }
+
+    // Quick debug: log parent of first health bar (if any) to confirm detachment
+    const firstBarEntry = healthBarMeshes.entries().next();
+    if (!firstBarEntry.done) {
+      const [sampleId, sampleBar] = firstBarEntry.value;
+      console.log(`[threeRenderer] Sample health bar ${sampleId} parent:`, sampleBar.parent === healthBarsGroup ? 'healthBarsGroup' : sampleBar.parent);
+    }
+
+    // Ensure health bars face the camera (use the runtime collection)
+    if (GPU_BILLBOARD) {
+      // Update shader uniforms with camera basis vectors for all billboard materials
+      const camRight = new THREE.Vector3();
+      const camUp = new THREE.Vector3();
+      camera.getWorldDirection(camRight); // forward
+      // cameraRight is cross(forward, up)
+      const worldUp = new THREE.Vector3(0, 1, 0);
+      camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
+      camUp.copy(camera.up).normalize();
+      for (const mat of billboardMaterials) {
+        if (mat.uniforms) {
+          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(camRight);
+          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(camUp);
+        }
+      }
+    } else {
+      updateBillboardBars(Array.from(healthBarMeshes.values()), camera);
+    }
 
     // Update animated skybox
     updateSkyboxAnimation(_dt);
 
     // Prefer postprocessing composer when available
     if (effectsManager && effectsManager.initDone) {
-      try { effectsManager.render(_dt); return; } catch (e) { /* fallback */ }
+        try {
+            effectsManager.render(_dt);
+            return;
+        } catch (e) {
+            console.warn('Effects manager render failed, falling back to default renderer', e);
+        }
     }
+
+    // Render the scene
     renderer.render(scene, camera);
   }
 
@@ -980,13 +1084,21 @@ let lastCameraPosition = new THREE.Vector3();
 let lastCameraQuaternion = new THREE.Quaternion();
 
 function render() {
+    // Confirm the render loop is running
+    console.log('Render loop is running');
+
+    // Check initialization of camera, healthBars, and scene
+    console.log('Camera:', camera);
+    console.log('Health Bars:', healthBars);
+    console.log('Scene:', scene);
+
     // Check if the camera has moved or rotated
     if (
         !camera.position.equals(lastCameraPosition) ||
         !camera.quaternion.equals(lastCameraQuaternion)
     ) {
         updateBillboardBars(healthBars, camera);
-
+        
         // Update the last known camera state
         lastCameraPosition.copy(camera.position);
         lastCameraQuaternion.copy(camera.quaternion);
@@ -999,32 +1111,50 @@ function render() {
 
 render();
 
-// Vertex shader for billboarding
+// Billboard shader: place quad in world space using camera right/up vectors so it always faces the camera.
 const billboardVertexShader = `
-    uniform mat4 cameraRotationMatrix;
+  uniform vec3 cameraRight;
+  uniform vec3 cameraUp;
+  uniform float uAlpha;
+  uniform vec3 uColor;
 
-    void main() {
-        vec4 billboardPosition = cameraRotationMatrix * vec4(position, 1.0);
-        gl_Position = projectionMatrix * modelViewMatrix * billboardPosition;
-    }
+  varying vec3 vColor;
+  varying float vAlpha;
+
+  void main() {
+    // center of this object in world-space
+    vec3 center = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    // position.xy are the local quad coords (e.g., -w/2..w/2, -h/2..h/2)
+    vec3 worldPos = center + cameraRight * position.x + cameraUp * position.y;
+    gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+    vColor = uColor;
+    vAlpha = uAlpha;
+  }
 `;
 
-// Fragment shader (basic example)
 const billboardFragmentShader = `
-    void main() {
-        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); // White color
-    }
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    gl_FragColor = vec4(vColor, vAlpha);
+  }
 `;
 
-// Function to create a billboard material
-export function createBillboardMaterial(camera: THREE.Camera): THREE.ShaderMaterial {
-    const cameraRotationMatrix = new THREE.Matrix4().extractRotation(camera.matrixWorld);
-
-    return new THREE.ShaderMaterial({
-        uniforms: {
-            cameraRotationMatrix: { value: cameraRotationMatrix },
-        },
-        vertexShader: billboardVertexShader,
-        fragmentShader: billboardFragmentShader,
+// Create or update a billboard ShaderMaterial. Accepts optional color and alpha.
+export function createBillboardMaterial(camera: THREE.Camera, color: THREE.Color = new THREE.Color(0xffffff), alpha: number = 1.0): THREE.ShaderMaterial {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      cameraRight: { value: new THREE.Vector3(1, 0, 0) },
+      cameraUp: { value: new THREE.Vector3(0, 1, 0) },
+      uColor: { value: color },
+      uAlpha: { value: alpha },
+    },
+    vertexShader: billboardVertexShader,
+    fragmentShader: billboardFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
     });
+  return mat;
 }
+
