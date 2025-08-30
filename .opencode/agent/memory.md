@@ -1,7 +1,7 @@
 ---
 description: Short-term and long-term memory store. Provide stable keys, namespaces and summarization rules.
 mode: subagent
-model: gpt-5-mini
+model: github-copilot/gpt-5-mini
 temperature: 0.0
 prompt: ""
 tools:

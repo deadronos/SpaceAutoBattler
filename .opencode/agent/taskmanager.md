@@ -1,7 +1,7 @@
 ---
 description: Task store and status manager. Documents the task API used by core and subagents.
 mode: subagent
-model: gpt-5-mini
+model: github-copilot/gpt-5-mini
 temperature: 0.0
 prompt: ""
 tools:

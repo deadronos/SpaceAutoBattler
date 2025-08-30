@@ -1,7 +1,7 @@
 ---
 description: Decompose high-level work into concrete subtasks with acceptance criteria and estimates.
 mode: subagent
-model: gpt-5-mini
+model: github-copilot/gpt-5-mini
 temperature: 0.1
 prompt: "{file:./prompts/planner.txt}"
 tools:
