@@ -48,6 +48,8 @@ interface GetCanvasResponse {
 
 type WorkerResponse = RasterizeResponse | CacheResponse | GetCanvasResponse;
 
+import * as logger from '../utils/logger.js';
+
 // Simple LRU cache for rasterized SVGs
 class RasterCache {
   private cache = new Map<string, { bitmap: ImageBitmap; timestamp: number; modTime?: number }>();
@@ -156,8 +158,8 @@ async function rasterizeSvgToImageBitmap(
     throw new Error('Worker SVG parsing not yet implemented - using geometric fallback');
     
   } catch (error) {
-    // Fallback: create a geometric representation
-    console.log('[svgRasterWorker] Creating geometric fallback shape');
+  // Fallback: create a geometric representation
+  logger.debug('[svgRasterWorker] Creating geometric fallback shape');
     
     const centerX = width / 2;
     const centerY = height / 2;
@@ -326,7 +328,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
       }
     }
   } catch (error) {
-    console.error('[svgRasterWorker] Error processing request:', error);
+    logger.error('[svgRasterWorker] Error processing request:', error);
     // Send error response if needed
   }
 });

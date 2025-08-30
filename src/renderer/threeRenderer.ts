@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as logger from '../utils/logger.js';
 import type { GameState, RendererHandles, Ship, Bullet } from '../types/index.js';
 import { createEffectsManager } from './effects.js';
 import { loadGLTF } from '../core/assetLoader.js';
@@ -232,7 +233,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
   } catch (e) {
     // Fallback: solid deep blue background if procedural generation fails
-    console.warn('Animated skybox generation failed, falling back to solid background', e);
+    logger.warn('Animated skybox generation failed, falling back to solid background', e);
     scene.background = new THREE.Color(0x000011); // Dark blue space color
     sphereSkybox = createSphereSkybox();
     scene.add(sphereSkybox);
@@ -413,7 +414,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           teamColor: teamColor
         });
         if (pool) pool.set(svgUrl, asset);
-        if (asset.imageBitmap && placeholder.parent) {
+        if (asset?.imageBitmap && placeholder.parent) {
           const ship3D = createTextured3DShip(asset.imageBitmap);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
@@ -421,10 +422,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           shipMeshes.set(s.id, ship3D);
         }
       } catch (err) {
-        console.warn(`[threeRenderer] Could not load SVG ${svgUrl}, keeping placeholder:`, err);
+        // Loading/parsing of SVG failed — log and keep placeholder
+        logger.error('Failed to load SVG asset for ship', err);
       }
     })();
 
+    // Return placeholder while async asset loads
     return placeholder;
   }
 
@@ -1017,9 +1020,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         try {
             effectsManager.render(_dt);
             return;
-        } catch (e) {
-            console.warn('Effects manager render failed, falling back to default renderer', e);
-        }
+    } catch (e) {
+      logger.warn('Effects manager render failed, falling back to default renderer', e);
+    }
     }
 
     // Render the scene

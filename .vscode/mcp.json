@@ -5,7 +5,6 @@
       "args": [
          "-y",
          "@liuyoshio/mcp-compass"
-      ]
+      ]}
    }
-}
 }

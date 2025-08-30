@@ -1,5 +1,6 @@
 import type { GameState } from '../types/index.js';
 import { PhysicsConfig } from '../config/physicsConfig.js';
+import * as logger from '../utils/logger.js';
 
 // Rapier physics scaffold
 // Uses @dimforge/rapier3d-compat. This file creates a simple world and exposes a step function
@@ -71,7 +72,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
 
       return rigidBody;
     } catch (e) {
-      console.error('Failed to create physics body for ship:', e);
+  logger.error('Failed to create physics body for ship:', e);
       return null;
     }
   }
@@ -90,7 +91,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
         rigidBodies.delete(shipId);
       }
     } catch (e) {
-      console.error('Failed to remove physics body:', e);
+      logger.error('Failed to remove physics body:', e);
     }
   }
 
@@ -111,7 +112,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
 
       return { hit: false };
     } catch (e) {
-      console.error('Raycast failed:', e);
+      logger.error('Raycast failed:', e);
       return { hit: false };
     }
   }
@@ -136,7 +137,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
 
       return [];
     } catch (e) {
-      console.error('Sphere cast failed:', e);
+      logger.error('Sphere cast failed:', e);
       return [];
     }
   }
@@ -148,7 +149,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
         rigidBody.addForce(force, true);
       }
     } catch (e) {
-      console.error('Failed to apply force:', e);
+      logger.error('Failed to apply force:', e);
     }
   }
 
@@ -158,7 +159,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
       world.gravity.y = newGravity.y;
       world.gravity.z = newGravity.z;
     } catch (e) {
-      console.error('Failed to set gravity:', e);
+      logger.error('Failed to set gravity:', e);
     }
   }
 
@@ -184,11 +185,11 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
           ship.vel.y = linvel.y;
           ship.vel.z = linvel.z;
         } catch (e) {
-          console.error('Failed to update ship from physics:', e);
+          logger.error('Failed to update ship from physics:', e);
         }
       }
     } catch (e) {
-      console.error('Physics step failed:', e);
+      logger.error('Physics step failed:', e);
     }
   }
 
@@ -209,7 +210,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
         colliders.clear();
         world.free?.();
       } catch (e) {
-        console.error('Failed to dispose physics world:', e);
+        logger.error('Failed to dispose physics world:', e);
       }
     },
     addShip,

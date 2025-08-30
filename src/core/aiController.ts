@@ -74,6 +74,16 @@ export class AIController {
     const config = this.state.behaviorConfig!;
     const personality = getEffectivePersonality(config, ship.class, ship.team);
 
+    // Check for personality mode changes and clean up accordingly
+    if (ship.aiState) {
+      if (personality.mode !== 'roaming') {
+        this.releaseRoamingAnchor(ship);
+      }
+      if (personality.mode !== 'formation') {
+        this.clearFormationSlot(ship);
+      }
+    }
+
     // Initialize AI state if needed
     if (!ship.aiState) {
       ship.aiState = {
@@ -109,6 +119,9 @@ export class AIController {
 
     // Update turret AI
     this.updateTurretAI(ship, dt);
+
+    // Handle shield regeneration
+    this.updateShieldRegeneration(ship, dt);
   }
 
   /**
@@ -238,14 +251,9 @@ export class AIController {
       }
     }
 
-    // Release roaming anchor if we're no longer in roaming mode or patrol intent
-    if (personality.mode !== 'roaming' || (newIntent !== 'patrol' && oldIntent === 'patrol')) {
+    // Release roaming anchor if patrol intent changes
+    if (newIntent !== 'patrol' && oldIntent === 'patrol') {
       this.releaseRoamingAnchor(ship);
-    }
-    
-    // Clear formation slot if we're no longer in formation mode
-    if (personality.mode !== 'formation') {
-      this.clearFormationSlot(ship);
     }
 
     // Set intent duration
@@ -1040,6 +1048,15 @@ export class AIController {
         ship.targetId = nearest ? nearest.id : null;
       }
     }
+  }
+
+  /**
+   * Update shield regeneration for a ship
+   */
+  private updateShieldRegeneration(ship: Ship, dt: number) {
+    // Simple shield regeneration - clamp to prevent overflow
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+    ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
   }
 
   /**

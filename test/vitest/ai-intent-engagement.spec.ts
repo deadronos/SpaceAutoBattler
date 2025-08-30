@@ -167,6 +167,10 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
     // Use default config (evadeOnlyOnDamage: false)
     expect(state.behaviorConfig!.globalSettings.evadeOnlyOnDamage).toBe(false);
 
+    // Disable scout behavior and alarm system for this test to ensure pure defensive behavior
+    state.behaviorConfig!.globalSettings.enableScoutBehavior = false;
+    state.behaviorConfig!.globalSettings.enableAlarmSystem = false;
+
     const ship: Ship = {
       id: 1,
       team: 'red',

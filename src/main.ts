@@ -8,6 +8,8 @@ import { CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
 import { DefaultSimConfig } from './config/simConfig.js';
 import { getSVGLoader, loadSVGAsset } from './core/svgLoader.js';
+import * as logger from './utils/logger.js';
+import { DefaultGameConfig } from './config/gameConfig.js';
 import { defaultSVGConfig, getShipSVGUrls } from './config/svgConfig.js';
 
 function $(id: string) { return document.getElementById(id)!; }
@@ -63,7 +65,7 @@ function initGame(seed?: string) {
   // Preload SVG assets with change detection enabled
   (async () => {
     try {
-      console.log('[main.ts] Preloading SVG assets with change detection...');
+      logger.debug('[main.ts] Preloading SVG assets with change detection...');
 
       for (const svgUrl of shipSVGUrls) {
         try {
@@ -77,53 +79,53 @@ function initGame(seed?: string) {
           // Store in asset pool for renderer access
           state.assetPool!.set(svgUrl, asset);
 
-          console.log(`[main.ts] Loaded SVG asset: ${svgUrl}`);
+          logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
         } catch (error) {
-          console.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error);
+          logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error);
         }
       }
 
-      console.log('[main.ts] SVG asset preloading complete');
-    } catch (error) {
-      console.error('[main.ts] Error during SVG asset preloading:', error);
+      logger.debug('[main.ts] SVG asset preloading complete');
+      } catch (error) {
+      logger.error('[main.ts] Error during SVG asset preloading:', error);
     }
   })();
   (window as any).debugSVG = {
     // Get SVG loader stats
     getStats: () => {
       const stats = svgLoader.getCacheStats();
-      console.log('[SVG Debug] Cache stats:', stats);
+      logger.debug('[SVG Debug] Cache stats:', stats);
       return stats;
     },
 
     // Manually reload all SVG assets
     reloadAll: async () => {
-      console.log('[SVG Debug] Manually reloading all SVG assets...');
+      logger.debug('[SVG Debug] Manually reloading all SVG assets...');
       try {
         await svgLoader.reloadAllAssets();
-        console.log('[SVG Debug] All SVG assets reloaded successfully');
+        logger.debug('[SVG Debug] All SVG assets reloaded successfully');
       } catch (error) {
-        console.error('[SVG Debug] Failed to reload SVG assets:', error);
+        logger.error('[SVG Debug] Failed to reload SVG assets:', error);
       }
     },
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
-      console.log('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
+      logger.debug('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
       svgLoader.clearCache(assetUrl);
-      console.log('[SVG Debug] SVG cache cleared');
+      logger.debug('[SVG Debug] SVG cache cleared');
     },
 
     // List cached assets
     listCached: () => {
       const assets = Array.from(svgLoader.getCacheStats().cachedAssets > 0 ? 'assets cached' : []);
-      console.log('[SVG Debug] Cached SVG assets:', assets);
+      logger.debug('[SVG Debug] Cached SVG assets:', assets);
       return assets;
     }
   };
 
-  console.log('[main.ts] SVG debugging functions available at window.debugSVG');
-  console.log('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
+  logger.debug('[main.ts] SVG debugging functions available at window.debugSVG');
+  logger.debug('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
 
   // Optionally preload common ship assets into the pool (config-driven)
   (async () => {
@@ -445,7 +447,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
       e.preventDefault();
       isCinematicMode = true;
       resetToCinematicView(state); // Initial setup
-      console.log('🎬 Cinematic camera mode activated - following both fleets');
+      logger.info('🎬 Cinematic camera mode activated - following both fleets');
     }
   });
 
@@ -471,7 +473,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     const hasMovementInput = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || keys['ShiftLeft'] || keys['Space'];
     if (hasMovementInput && isCinematicMode) {
       isCinematicMode = false;
-      console.log('🎮 Manual camera control activated - cinematic mode disabled');
+      logger.info('🎮 Manual camera control activated - cinematic mode disabled');
     }
 
     // If cinematic mode is active and no manual input, update cinematic camera
@@ -566,4 +568,7 @@ function startLoops(state: GameState, ui: UIElements) {
 }
 
 // Boot
+// Initialize logger debug mode from global game config so devs can toggle verbosity
+logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
+
 window.addEventListener('DOMContentLoaded', () => initGame());

@@ -199,64 +199,6 @@ export function applyBoundaryPhysics(ship: Ship, state: GameState) {
   }
 }
 
-function stepShipAI(state: GameState, ship: Ship, dt: number) {
-  // Legacy AI: Use AIController with simple pursue behavior
-  // This ensures all movement logic is unified through AIController
-  
-  // Initialize basic AI state if needed for AIController compatibility
-  if (!ship.aiState) {
-    ship.aiState = {
-      currentIntent: 'pursue',
-      intentEndTime: state.time + 1.0, // Short duration to re-evaluate frequently
-      lastIntentReevaluation: 0,
-      preferredRange: 100, // Basic range
-      recentDamage: 0,
-      lastDamageTime: 0
-    };
-  }
-
-  // Acquire target using simple logic
-  if (!ship.targetId || !state.ships.find(s => s.id === ship.targetId && s.health > 0)) {
-    const t = findNearestEnemy(state, ship);
-    ship.targetId = t?.id ?? null;
-  }
-
-  // Use AIController for all movement and physics
-  // Create a temporary minimal behavior config for legacy mode
-  const legacyBehaviorConfig = { 
-    ...DEFAULT_BEHAVIOR_CONFIG,
-    // Override to ensure simple behavior
-    defaultPersonality: {
-      ...DEFAULT_BEHAVIOR_CONFIG.defaultPersonality,
-      mode: 'aggressive' as const, // Simple pursue mode
-      intentReevaluationRate: 0.5,
-      minIntentDuration: 0.5,
-      maxIntentDuration: 1.0
-    }
-  };
-
-  // Store original config and temporarily use legacy config
-  const originalConfig = state.behaviorConfig;
-  state.behaviorConfig = legacyBehaviorConfig;
-  
-  // Use AIController for unified movement logic
-  // Reuse a single AIController instance to avoid per-tick allocations
-  const aiController = state.aiController ?? (state.aiController = new AIController(state));
-  
-  // Force simple pursue intent for consistent legacy behavior
-  ship.aiState.currentIntent = 'pursue';
-  ship.aiState.intentEndTime = state.time + 0.5;
-  
-  // Delegate to AIController
-  aiController.updateShipAI(ship, dt);
-  
-  // Restore original config
-  state.behaviorConfig = originalConfig;
-
-  // Regen shields (AIController doesn't handle this currently)
-  ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
-}
-
 function fireTurrets(state: GameState, ship: Ship, dt: number) {
   const target = ship.targetId ? state.ships.find(s => s.id === ship.targetId!) : undefined;
   for (const t of ship.turrets) {
@@ -468,19 +410,10 @@ function carrierSpawnLogic(state: GameState, dt: number) {
 }
 
 export function simulateStep(state: GameState, dt: number) {
-  // Ship AI logic
-  if (state.behaviorConfig?.globalSettings.aiEnabled) {
-    // Use new AIController for advanced behavior
-    // Lazily create and reuse AIController instance
-    const aiController = state.aiController ?? (state.aiController = new AIController(state));
-    aiController.updateAllShips(dt);
-  } else {
-    // Use simple AI for backward compatibility
-    for (const s of state.ships) {
-      if (s.health <= 0) continue;
-      stepShipAI(state, s, dt);
-    }
-  }
+  // Ship AI logic - Always use AIController for unified behavior
+  // Lazily create and reuse AIController instance
+  const aiController = state.aiController ?? (state.aiController = new AIController(state));
+  aiController.updateAllShips(dt);
   
   // Update spatial grid with current ship positions after AI movement
   updateSpatialGrid(state);
