@@ -189,6 +189,8 @@ export interface BehaviorConfig {
     boundaryCleanupIntervalTicks: number;
     /** Toggle small deterministic spawn-time velocity jitter to break perfect symmetry */
     enableSpawnJitter: boolean;
+    /** Enable spatial index for AI proximity queries (faster neighbor/target searches) */
+    enableSpatialIndex: boolean;
   };
 }
 
@@ -367,7 +369,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     killCreditWindowSeconds: 5,
     enableBoundaryCleanup: true,
     boundaryCleanupIntervalTicks: 600,
-    enableSpawnJitter: true
+    enableSpawnJitter: true,
+    enableSpatialIndex: true  // Enable by default for better performance
   }
 };
 
