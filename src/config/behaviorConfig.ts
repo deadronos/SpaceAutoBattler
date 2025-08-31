@@ -132,6 +132,8 @@ export interface BehaviorConfig {
     mediumRangeMultiplier: number;
     /** Distance threshold for movement completion (default: 10) */
     movementCloseEnoughThreshold: number;
+    /** Distance to project forward for orientation calculation (default: 100) */
+    orientationProjectionDistance: number;
     /** Distance to avoid friendly ships (default: 80) */
     friendlyAvoidanceDistance: number;
     /** Safety margin from boundaries (default: 50) */
@@ -381,6 +383,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     closeRangeMultiplier: 0.6,
     mediumRangeMultiplier: 1.2,
     movementCloseEnoughThreshold: 10,
+    orientationProjectionDistance: 100,
     friendlyAvoidanceDistance: 80,
     boundarySafetyMargin: 50,
     separationVeryTightCluster: 8,
