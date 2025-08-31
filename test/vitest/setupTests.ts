@@ -192,6 +192,11 @@ export function createMockShip(overrides = {}) {
     class: 'fighter' as const,
     pos: { x: 100, y: 100, z: 100 },
     vel: { x: 0, y: 0, z: 0 },
+    orientation: {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+    },
     dir: 0,
     targetId: null,
     health: 80,
