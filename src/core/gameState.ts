@@ -33,6 +33,7 @@ export function createInitialState(seed?: string): GameState {
     simConfig: config,
     ships: [],
     shipIndex: new Map(),
+    shipDataVersion: 0,
     bullets: [],
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
@@ -62,6 +63,7 @@ export function resetState(state: GameState, seed?: string) {
   state.nextId = 1;
   state.ships = [];
   state.shipIndex = new Map();
+  state.shipDataVersion = 0;
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
   // Drop cached AI controller so it can be recreated lazily with fresh state/config
@@ -139,6 +141,8 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
 
   state.ships.push(ship);
   state.shipIndex?.set(ship.id, ship);
+  // Increment version for efficient change detection
+  state.shipDataVersion++;
   return ship;
 }
 
@@ -315,6 +319,8 @@ function processDeathsAndXP(state: GameState) {
     state.shipIndex.clear();
     for (const s of state.ships) state.shipIndex.set(s.id, s);
   }
+  // Increment version when ships are removed
+  state.shipDataVersion++;
 }
 
 function handleLevelUps(state: GameState) {

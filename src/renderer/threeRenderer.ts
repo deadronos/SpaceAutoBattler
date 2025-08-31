@@ -13,6 +13,12 @@ import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
 const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 
+// Cached temporary vectors to reduce per-frame allocations
+const tempCamRight = new THREE.Vector3();
+const tempCamUp = new THREE.Vector3(); 
+const tempCamForward = new THREE.Vector3();
+const tempWorldUp = new THREE.Vector3(0, 1, 0);
+
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -306,6 +312,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
+      // Set proper sRGB encoding for color textures to ensure accurate colors
+      texture.colorSpace = THREE.SRGBColorSpace;
 
       // Create materials - textured for main surfaces, team color for others
       const teamColor = s.team === 'red' ? 0xff4444 : 0x4444ff;
@@ -998,17 +1006,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Ensure health bars face the camera (use the runtime collection)
     if (GPU_BILLBOARD) {
       // Update shader uniforms with camera basis vectors for all billboard materials
-      const camRight = new THREE.Vector3();
-      const camUp = new THREE.Vector3();
-      camera.getWorldDirection(camRight); // forward
-      // cameraRight is cross(forward, up)
-      const worldUp = new THREE.Vector3(0, 1, 0);
-      camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
-      camUp.copy(camera.up).normalize();
+      // Use cached temporary vectors to avoid per-frame allocations
+      camera.getWorldDirection(tempCamForward);
+      tempCamRight.crossVectors(camera.up, tempCamForward).normalize();
+      tempCamUp.copy(camera.up).normalize();
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
-          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(camRight);
-          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(camUp);
+          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
+          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
         }
       }
     } else {

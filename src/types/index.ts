@@ -181,6 +181,8 @@ export interface GameState {
   ships: Ship[];
   // Fast lookup by id to avoid O(n) array scans in hot paths
   shipIndex?: Map<EntityId, Ship>;
+  // Version counter for efficient ship data change detection
+  shipDataVersion: number;
   bullets: Bullet[];
   score: ScoreBoard;
   renderer?: RendererHandles;

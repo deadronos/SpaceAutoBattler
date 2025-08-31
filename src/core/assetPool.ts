@@ -5,10 +5,12 @@
 export class LRUAssetPool<T = any> {
   private capacity: number;
   private map: Map<string, T>;
+  private disposeCallback?: (value: T) => void;
 
-  constructor(capacity = 64) {
+  constructor(capacity = 64, disposeCallback?: (value: T) => void) {
     this.capacity = capacity;
     this.map = new Map();
+    this.disposeCallback = disposeCallback;
   }
 
   get(key: string): T | undefined {
@@ -29,7 +31,18 @@ export class LRUAssetPool<T = any> {
     // Evict oldest if over capacity
     if (this.map.size > this.capacity) {
       const oldest = this.map.keys().next().value;
-      if (oldest !== undefined) this.map.delete(oldest);
+      if (oldest !== undefined) {
+        const oldValue = this.map.get(oldest);
+        this.map.delete(oldest);
+        // Call dispose callback if provided
+        if (oldValue && this.disposeCallback) {
+          try {
+            this.disposeCallback(oldValue);
+          } catch (e) {
+            // Ignore disposal errors to avoid breaking the pool
+          }
+        }
+      }
     }
     return this;
   }
@@ -39,10 +52,30 @@ export class LRUAssetPool<T = any> {
   }
 
   delete(key: string): boolean {
-    return this.map.delete(key);
+    const value = this.map.get(key);
+    const deleted = this.map.delete(key);
+    // Call dispose callback if provided
+    if (deleted && value && this.disposeCallback) {
+      try {
+        this.disposeCallback(value);
+      } catch (e) {
+        // Ignore disposal errors
+      }
+    }
+    return deleted;
   }
 
   clear(): void {
+    // Dispose all values if callback is provided
+    if (this.disposeCallback) {
+      for (const value of this.map.values()) {
+        try {
+          this.disposeCallback(value);
+        } catch (e) {
+          // Ignore disposal errors
+        }
+      }
+    }
     this.map.clear();
   }
 
