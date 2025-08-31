@@ -11,6 +11,10 @@ import { getEffectivePersonality, selectRoamingPattern, getFormationConfig } fro
 import { getShipClassConfig } from '../config/entitiesConfig.js';
 import { PhysicsConfig } from '../config/physicsConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normalize, subtract } from '../utils/vector3.js';
+import { calculateEscapeScore as steeringCalculateEscapeScore, moveTowards as steeringMoveTowards, calculateSeparationForceWithCount as steeringSeparation } from './ai/steering.js';
+import { scoreEvade as deScoreEvade } from './ai/decisionEngine.js';
+import { IntentManager } from './ai/intentManager.js';
+import { pickBestTurretTarget } from './ai/turretTargeting.js';
 import { getDistance as sharedGetDistance, findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends, getNearbySeparationShipsLinear as sharedGetNearbySeparationShipsLinear } from './searchUtils.js';
 import { applyBoundaryPhysicsShip } from './boundaryUtils.js';
 
@@ -34,6 +38,7 @@ export class AIController {
   // Scout assignment - tracks which ship is the current scout per team
   private teamScouts: Map<Team, EntityId | null>;
   private isSpatialGridUpdatedThisTick: boolean;
+  private intentManager: IntentManager;
 
   constructor(state: GameState) {
     this.state = state;
@@ -49,6 +54,7 @@ export class AIController {
     this.teamScouts.set('red', null);
     this.teamScouts.set('blue', null);
     this.isSpatialGridUpdatedThisTick = false;
+    this.intentManager = new IntentManager();
   }
 
   /**
@@ -257,6 +263,18 @@ export class AIController {
           newIntent = this.chooseMixedIntent(ship, personality);
           break;
       }
+
+      // Optional decision engine gate (evade only): if enabled and DE suggests evade,
+      // allow it to override non-evade intents. This is behind a feature flag to avoid
+      // behavior changes by default.
+      if (config.globalSettings.useDecisionEngineEvadeGate) {
+        const de = this.previewDecisionEngineEvade(ship);
+        if (de.wouldEvade && newIntent !== 'evade') {
+          newIntent = 'evade';
+          // Use standard (non-damage) intent duration for DE-driven evade
+          // (do not shorten here to preserve overall pacing)
+        }
+      }
     }
 
     // Debugging: log cases where an evade intent is chosen to help tests
@@ -270,12 +288,43 @@ export class AIController {
       this.releaseRoamingAnchor(ship);
     }
 
-    // Set intent duration
-    const durationRange = personality.maxIntentDuration - personality.minIntentDuration;
-    intentDuration += this.state.rng.next() * durationRange;
+    // Set intent duration via IntentManager to keep parity
+    const duration = this.intentManager.applyIntent(
+      ship,
+      this.state.time,
+      newIntent,
+      personality,
+      this.state.rng,
+      shouldEvadeFromDamage
+        ? { damageEvade: true, damageEvadeDuration: config.globalSettings.intentDurationDamageEvade }
+        : undefined
+    );
+  }
 
-    aiState.currentIntent = newIntent;
-    aiState.intentEndTime = this.state.time + intentDuration;
+  /**
+   * Public helper: Preview whether the Decision Engine would choose to Evade
+   * based on current threat proximity and recent damage window.
+   * Returns the raw score and a boolean for convenience.
+   */
+  public previewDecisionEngineEvade(ship: Ship): { score: number; wouldEvade: boolean } {
+    const config = this.state.behaviorConfig!;
+    // Nearest enemy distance (null if none)
+    const nearest = this.findNearestEnemy(ship);
+    const distanceToThreat = nearest ? this.getDistance(ship.pos, nearest.pos) : null;
+    const recentDamage = ship.aiState?.recentDamage || 0;
+    const lastDamageTime = ship.aiState?.lastDamageTime || 0;
+    const withinRecentDamageWindow = (this.state.time - lastDamageTime) <= config.globalSettings.evadeRecentDamageWindowSeconds;
+    const score = deScoreEvade({
+      distanceToThreat,
+      recentDamage,
+      damageEvadeThreshold: config.globalSettings.damageEvadeThreshold,
+      withinRecentDamageWindow,
+      settings: config.globalSettings
+    });
+    // Using a simple threshold: any positive signal indicates DE would prefer evade.
+    // Current scoring gives +1 for proximity and +1 for recent-damage-within-window.
+    const wouldEvade = score >= 1.0 || (score > 0.0 && distanceToThreat === null);
+    return { score, wouldEvade };
   }
 
   /**
@@ -657,43 +706,10 @@ export class AIController {
    */
   private calculateEscapeScore(ship: Ship, targetPos: Vector3, threats: Ship[]): number {
     const bounds = this.state.simConfig.simBounds;
-    const config = this.state.behaviorConfig!;
-    let score = config.globalSettings.evadeBaseScore; // Base score
-
-    // Penalty for proximity to threats
-    for (const threat of threats) {
-      const distance = this.getDistance(targetPos, threat.pos);
-      const threatPenalty = Math.max(0, 200 - distance) * config.globalSettings.evadeThreatPenaltyWeight;
-      score -= threatPenalty;
-    }
-
-    // Penalty for being near boundaries
-    const boundaryMargin = config.globalSettings.boundarySafetyMargin;
-    if (targetPos.x < boundaryMargin) score -= (boundaryMargin - targetPos.x) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.x > bounds.width - boundaryMargin) score -= (targetPos.x - (bounds.width - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.y < boundaryMargin) score -= (boundaryMargin - targetPos.y) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.y > bounds.height - boundaryMargin) score -= (targetPos.y - (bounds.height - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.z < boundaryMargin) score -= (boundaryMargin - targetPos.z) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.z > bounds.depth - boundaryMargin) score -= (targetPos.z - (bounds.depth - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
-
-    // Bonus for increasing distance from nearest threat
-    const currentDistance = this.getDistance(ship.pos, threats[0].pos);
-    const newDistance = this.getDistance(targetPos, threats[0].pos);
-    if (newDistance > currentDistance) {
-      score += (newDistance - currentDistance) * config.globalSettings.evadeDistanceImprovementWeight;
-    }
-
-    // Penalty for getting too close to friendly ships
-    for (const friendly of this.state.ships) {
-      if (friendly.team === ship.team && friendly.id !== ship.id && friendly.health > 0) {
-        const distance = this.getDistance(targetPos, friendly.pos);
-        if (distance < config.globalSettings.friendlyAvoidanceDistance) {
-          score -= (config.globalSettings.friendlyAvoidanceDistance - distance) * config.globalSettings.evadeFriendlyPenaltyWeight;
-        }
-      }
-    }
-
-    return score;
+    const settings = this.state.behaviorConfig!.globalSettings;
+    const threatsPos = threats.map(t => t.pos);
+    const friendsPos = this.state.ships.filter(s => s.team === ship.team && s.id !== ship.id && s.health > 0).map(s => s.pos);
+    return steeringCalculateEscapeScore(ship.pos, targetPos, threatsPos, friendsPos, bounds, settings);
   }
 
   /**
@@ -872,63 +888,10 @@ export class AIController {
    * Move ship towards a target position using 3D steering
    */
   private moveTowards(ship: Ship, targetPos: Vector3, dt: number, speed?: number) {
-    const moveSpeed = speed || ship.speed;
-    const config = this.state.behaviorConfig!;
-
-    // Calculate desired direction
-    const dx = targetPos.x - ship.pos.x;
-    const dy = targetPos.y - ship.pos.y;
-    const dz = targetPos.z - ship.pos.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-    if (distance < config.globalSettings.movementCloseEnoughThreshold) return; // Close enough
-
-    // Calculate desired 3D orientation to look at target
-    const targetOrientation = lookAt(ship.pos, targetPos);
-    
-    // Calculate angular differences for pitch and yaw
-    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
-    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
-    
-    // Apply turn rate limits to both pitch and yaw
-    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
-    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
-    
-    // Update 3D orientation
-    ship.orientation.pitch += pitchTurn;
-    ship.orientation.yaw += yawTurn;
-    
-    // Keep legacy dir field in sync with yaw for backward compatibility
-    ship.dir = ship.orientation.yaw;
-
-    // Move forward using 3D forward vector
-    const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
-    const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
-    
-    ship.vel.x += forward.x * accel * dt;
-    ship.vel.y += forward.y * accel * dt;
-    ship.vel.z += forward.z * accel * dt;
-
-    // Damp and clamp speed using PhysicsConfig
-    ship.vel.x *= PhysicsConfig.speed.dampingFactor;
-    ship.vel.y *= PhysicsConfig.speed.dampingFactor;
-    ship.vel.z *= PhysicsConfig.speed.dampingFactor;
-
-    const maxV = moveSpeed * PhysicsConfig.speed.maxSpeedMultiplier;
-    const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
-    if (v > maxV) {
-      ship.vel.x = (ship.vel.x / v) * maxV;
-      ship.vel.y = (ship.vel.y / v) * maxV;
-      ship.vel.z = (ship.vel.z / v) * maxV;
-    }
-
-    // Integrate position
-    ship.pos.x += ship.vel.x * dt;
-    ship.pos.y += ship.vel.y * dt;
-    ship.pos.z += ship.vel.z * dt;
-
-  // Apply boundary physics
-  applyBoundaryPhysicsShip(ship, this.state);
+    const settings = this.state.behaviorConfig!.globalSettings;
+    steeringMoveTowards(ship, targetPos, dt, settings, speed);
+    // Apply boundary physics to preserve behavior parity
+    applyBoundaryPhysicsShip(ship, this.state);
   }
 
   /**
@@ -948,7 +911,7 @@ export class AIController {
     if (distance < config.globalSettings.movementCloseEnoughThreshold) return; // Close enough
 
     // Calculate separation force
-    const separationForce = this.calculateSeparationForce(ship);
+  const separationForce = this.calculateSeparationForce(ship);
 
     // Combine desired movement with separation force
     const desiredDirX = dx / distance;
@@ -1080,6 +1043,12 @@ export class AIController {
   private findBestTurretTarget(ship: Ship, turret: TurretState): EntityId | null {
     const config = this.state.behaviorConfig!;
     const turretConfig = config.turretConfig;
+
+    // Feature gate: use extracted helper if enabled
+    if (config.globalSettings.useTurretTargetingHelper) {
+      const id = pickBestTurretTarget(this.state, ship, turret, turretConfig);
+      return id ?? null;
+    }
 
     let bestTarget: Ship | null = null;
     let bestScore = 0;
@@ -1222,148 +1191,36 @@ export class AIController {
   public calculateSeparationForceWithCount(ship: Ship): { force: Vector3; neighborCount: number } {
     const config = this.state.behaviorConfig!;
     const separationDistance = config.globalSettings.separationDistance;
-
-    let separationX = 0;
-    let separationY = 0;
-    let separationZ = 0;
-    let neighborCount = 0;
-
-    // Use spatial index with streaming iteration when enabled; otherwise fallback to linear
+    // Caching fast-path with spatial index: compute neighbor vectors via spatial index if enabled,
+    // else via linear fallback, then call steeringSeparation to compute the force.
+    const magnitudeThreshold = this.state.behaviorConfig!.globalSettings.separationVectorMagnitudeThreshold || 0.0001;
+    const cached = this.sepCache.get(ship.id);
     if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      // Fast-path: per-tick cache for repeated identical queries
-      const cached = this.sepCache.get(ship.id);
-      if (cached && cached.tick === this.state.tick && cached.sepDist === separationDistance &&
-          cached.x === ship.pos.x && cached.y === ship.pos.y && cached.z === ship.pos.z) {
+      if (cached && cached.tick === this.state.tick && cached.sepDist === separationDistance && cached.x === ship.pos.x && cached.y === ship.pos.y && cached.z === ship.pos.z) {
         return cached.res;
       }
-
       this.ensureSpatialGridUpdated();
-
+      const neighbors: Vector3[] = [];
       this.state.spatialGrid.forEachNeighborsDelta(
         ship.pos,
         separationDistance,
         ship.team,
         ship.id,
-        (dxp, dyp, dzp, distSq) => {
-          if (distSq <= 0 || distSq >= separationDistance * separationDistance) return;
-          const dist = Math.sqrt(distSq);
-          const weight = (separationDistance - dist) / separationDistance;
-          const inv = 1 / dist;
-          separationX += (-dxp) * weight * inv; // dx = ship - other = -(other - ship)
-          separationY += (-dyp) * weight * inv;
-          separationZ += (-dzp) * weight * inv;
-          neighborCount++;
-        }
-      );
-      // Store cache for this tick after computing final normalized force below
-      // Store cache for this tick
-      const res = { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 } as { force: Vector3; neighborCount: number };
-      // We'll fill 'res' fields after normalization below; temporarily stash values
-      // Keep interim sums in closure via local variables; we set cache after computing final force
-      // To avoid double compute, we'll set after normalization.
-      // Defer setting here.
-    } else {
-      const nearbyFriends = this.getNearbySeparationShipsLinear(ship, separationDistance);
-      for (const other of nearbyFriends) {
-        const dist = this.getDistance(ship.pos, other.pos);
-        if (dist > 0 && dist < separationDistance) {
-          const dx = ship.pos.x - other.pos.x;
-          const dy = ship.pos.y - other.pos.y;
-          const dz = ship.pos.z - other.pos.z;
-          const weight = (separationDistance - dist) / separationDistance;
-          const inv = 1 / dist;
-          separationX += dx * weight * inv;
-          separationY += dy * weight * inv;
-          separationZ += dz * weight * inv;
-          neighborCount++;
-        }
-      }
-    }
-
-    if (neighborCount === 0) {
-      const result = { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
-      if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-        this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
-      }
-      return result;
-    }
-
-    // Average the raw separation vector
-    separationX /= neighborCount;
-    separationY /= neighborCount;
-    separationZ /= neighborCount;
-
-    const magnitude = Math.sqrt(separationX * separationX + separationY * separationY + separationZ * separationZ);
-    if (magnitude > 0.0001) {
-      const result = {
-        force: {
-          x: separationX / magnitude,
-          y: separationY / magnitude,
-          z: separationZ / magnitude
-        },
-        neighborCount
-      };
-      if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-        this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
-      }
-      return result;
-    }
-
-    // Fallback: if the separation vector is near-zero (symmetrical neighbors),
-    // push the ship away from the local group center to break symmetry.
-    let centerX = 0, centerY = 0, centerZ = 0;
-    
-    // Recalculate neighbors for center calculation
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      this.state.spatialGrid.forEachNeighborsDelta(
-        ship.pos,
-        separationDistance,
-        ship.team,
-        ship.id,
-        (_dxp, _dyp, _dzp, distSq, entity) => {
+        (dxp, dyp, dzp, distSq, entity) => {
           if (distSq > 0 && distSq < separationDistance * separationDistance) {
-            centerX += entity.pos.x;
-            centerY += entity.pos.y;
-            centerZ += entity.pos.z;
+            neighbors.push(entity.pos);
           }
         }
       );
-    } else {
-      const nearbyFriends = this.getNearbySeparationShipsLinear(ship, separationDistance);
-      for (const other of nearbyFriends) {
-        const dist = this.getDistance(ship.pos, other.pos);
-        if (dist > 0 && dist < separationDistance) {
-          centerX += other.pos.x;
-          centerY += other.pos.y;
-          centerZ += other.pos.z;
-        }
-      }
+      const res = steeringSeparation(ship.pos, neighbors, separationDistance, magnitudeThreshold, () => this.state.rng.next());
+      this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res });
+      return res;
     }
-
-    // If we accumulated some neighbors, compute center
-    if (centerX !== 0 || centerY !== 0 || centerZ !== 0) {
-      const inv = 1 / neighborCount;
-      centerX *= inv; centerY *= inv; centerZ *= inv;
-      const rx = ship.pos.x - centerX;
-      const ry = ship.pos.y - centerY;
-      const rz = ship.pos.z - centerZ;
-      const rmag = Math.sqrt(rx * rx + ry * ry + rz * rz);
-      if (rmag > 0.0001) {
-        const result = { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount };
-        if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-          this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
-        }
-        return result;
-      }
-    }
-
-    // As a last resort, return a small random vector to perturb the ship
-    const rndAngle = this.state.rng.next() * Math.PI * 2;
-    const result = { force: { x: Math.cos(rndAngle), y: Math.sin(rndAngle), z: 0 }, neighborCount };
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: result });
-    }
-    return result;
+    // Linear fallback
+    const nearby = this.getNearbySeparationShipsLinear(ship, separationDistance);
+    const neighborPositions = nearby.map(o => o.pos);
+    const res = steeringSeparation(ship.pos, neighborPositions, separationDistance, magnitudeThreshold, () => this.state.rng.next());
+    return res;
   }
 
   /**

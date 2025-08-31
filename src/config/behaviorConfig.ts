@@ -232,6 +232,10 @@ export interface BehaviorConfig {
     explorationZoneCount: number;
     /** Time to spend exploring each zone before moving to the next */
     explorationZoneDuration: number;
+    /** Feature flag: allow decisionEngine to influence intent selection (incremental rollout) */
+    useDecisionEngineEvadeGate?: boolean;
+    /** Feature flag: use extracted turret targeting helper instead of legacy inline logic */
+    useTurretTargetingHelper?: boolean;
   };
 }
 
@@ -424,6 +428,11 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     enableScoutExploration: true,
     explorationZoneCount: 6,
     explorationZoneDuration: 8.0
+    ,
+    // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
+    useDecisionEngineEvadeGate: false,
+    // Keep turret targeting helper disabled by default to guarantee parity
+    useTurretTargetingHelper: false
   }
 };
 
