@@ -151,7 +151,7 @@ function initGame(seed?: string) {
       // Create a module worker for simWorker.ts
       const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
       let ready = false;
-      let lastShipData: any[] = [];
+      let lastShipDataVersion = -1;
       
       w.addEventListener('message', (ev) => {
         const { type, ok, transforms } = ev.data || {};
@@ -180,18 +180,16 @@ function initGame(seed?: string) {
         initDone: false,
         step(dt: number) {
           try { 
-            // Send current ship data to worker
-            const shipData = state.ships.map(ship => ({
-              id: ship.id,
-              pos: { ...ship.pos },
-              vel: { ...ship.vel }
-            }));
-            
-            // Only send if ship data has changed
-            const shipDataChanged = JSON.stringify(shipData) !== JSON.stringify(lastShipData);
-            if (shipDataChanged) {
+            // Send current ship data to worker only if it has changed
+            const currentVersion = state.shipDataVersion;
+            if (currentVersion !== lastShipDataVersion) {
+              const shipData = state.ships.map(ship => ({
+                id: ship.id,
+                pos: { ...ship.pos },
+                vel: { ...ship.vel }
+              }));
               w.postMessage({ type: 'update-ships', payload: { ships: shipData } });
-              lastShipData = shipData;
+              lastShipDataVersion = currentVersion;
             }
             
             // Step physics
