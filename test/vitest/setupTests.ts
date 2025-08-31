@@ -46,6 +46,17 @@ export const glStub = {
   attachShader: vi.fn(),
   linkProgram: vi.fn(),
   getAttribLocation: vi.fn(() => 0),
+  // WebGL shader precision support
+  getShaderPrecisionFormat: vi.fn(() => ({ precision: 23, rangeMin: 127, rangeMax: 127 })),
+  VERTEX_SHADER: 35633,
+  FRAGMENT_SHADER: 35632,
+  HIGH_FLOAT: 36338,
+  MEDIUM_FLOAT: 36337,
+  LOW_FLOAT: 36336,
+  // WebGL 3D texture support
+  texImage3D: vi.fn(),
+  TEXTURE_3D: 32879,
+  TEXTURE_2D_ARRAY: 35866,
 };
 
 // Mock Three.js classes
