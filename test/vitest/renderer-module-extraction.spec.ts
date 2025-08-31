@@ -110,17 +110,21 @@ describe('Extracted Renderer Modules', () => {
         id: 1,
         pos: { x: 50, y: 50, z: 50 },
         vel: { x: 0, y: 0, z: 0 },
-        heading: 0,
+        orientation: { pitch: 0, yaw: 0, roll: 0 },
+        targetId: null,
         team: 'blue' as const,
         class: 'fighter' as const,
         health: 100,
         maxHealth: 100,
+        armor: 2,
         shield: 50,
         maxShield: 50,
-        level: 1,
-        xp: 0,
-        turretCooldown: 0,
-        lastFireTime: 0
+        shieldRegen: 5,
+        speed: 140,
+        turnRate: Math.PI,
+        turrets: [{ id: 'fighter-cannon-0', cooldownLeft: 0 }],
+        kills: 0,
+        level: { level: 1, xp: 0, nextLevelXp: 50 }
       };
       
       const state = createMockGameState();
@@ -140,17 +144,21 @@ describe('Extracted Renderer Modules', () => {
         id: 1,
         pos: { x: 0, y: 0, z: 0 },
         vel: { x: 0, y: 0, z: 0 },
-        heading: 0,
+        orientation: { pitch: 0, yaw: 0, roll: 0 },
+        targetId: null,
         team: 'red' as const,
         class: 'fighter' as const,
         health: 80,
         maxHealth: 100,
+        armor: 2,
         shield: 30,
         maxShield: 50,
-        level: 1,
-        xp: 0,
-        turretCooldown: 0,
-        lastFireTime: 0
+        shieldRegen: 5,
+        speed: 140,
+        turnRate: Math.PI,
+        turrets: [{ id: 'fighter-cannon-0', cooldownLeft: 0 }],
+        kills: 0,
+        level: { level: 1, xp: 0, nextLevelXp: 50 }
       };
       
       const factoryState = createMeshFactoryState();
