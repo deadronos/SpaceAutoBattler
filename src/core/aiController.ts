@@ -1035,7 +1035,13 @@ export class AIController {
   private updateShieldRegeneration(ship: Ship, dt: number) {
     // Simple shield regeneration - clamp to prevent overflow
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-    ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
+    const newShield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
+    
+    // Mark as dirty only if shield value actually changed
+    if (newShield !== ship.shield) {
+      ship.shield = newShield;
+      ship._shieldDirty = true;
+    }
   }
 
   /**

@@ -506,37 +506,42 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
     const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
 
-    // Position the bar above the ship (3D)
+    // Position the bar above the ship (3D) - always update position
     barGroup.position.set(
       ship.pos.x + config.position.offsetX,
       ship.pos.y + config.position.offsetY,
       ship.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
     );
 
-    // Update health bar
-    const healthPercent = ship.health / ship.maxHealth;
-    healthMesh.scale.x = Math.max(0, healthPercent);
+    // Only update health bar if health changed (dirty flag optimization)
+    if (ship._healthDirty) {
+      const healthPercent = ship.health / ship.maxHealth;
+      healthMesh.scale.x = Math.max(0, healthPercent);
 
-    // Color based on health percentage
-    let healthColor = config.colors.health.full;
-    if (healthPercent < 0.3) {
-      healthColor = config.colors.health.critical;
-    } else if (healthPercent < 0.7) {
-      healthColor = config.colors.health.damaged;
-    }
-    if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
-      const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
-      // Acquire pooled material for the new color/alpha and swap if different
-      const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
-      if (newMat !== mat) {
-        (healthMesh.material as any) = newMat;
+      // Color based on health percentage
+      let healthColor = config.colors.health.full;
+      if (healthPercent < 0.3) {
+        healthColor = config.colors.health.critical;
+      } else if (healthPercent < 0.7) {
+        healthColor = config.colors.health.damaged;
       }
-    } else {
-      (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
+      if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
+        const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+        // Acquire pooled material for the new color/alpha and swap if different
+        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
+        if (newMat !== mat) {
+          (healthMesh.material as any) = newMat;
+        }
+      } else {
+        (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
+      }
+      
+      // Clear dirty flag after update
+      ship._healthDirty = false;
     }
 
-    // Update shield bar if present
-    if (shieldMesh && ship.maxShield > 0) {
+    // Only update shield bar if shield changed (dirty flag optimization)
+    if (ship._shieldDirty && shieldMesh && ship.maxShield > 0) {
       const shieldPercent = ship.shield / ship.maxShield;
       shieldMesh.scale.x = Math.max(0, shieldPercent);
 
@@ -552,6 +557,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else {
         (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
       }
+      
+      // Clear dirty flag after update  
+      ship._shieldDirty = false;
     }
   }
 

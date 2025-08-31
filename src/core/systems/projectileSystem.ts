@@ -349,6 +349,9 @@ export class ProjectileSystem {
       ship.shield -= shieldDamage;
       damage -= shieldDamage;
       
+      // Mark shield as dirty for UI optimization
+      ship._shieldDirty = true;
+      
       // Record shield hit for visual effects
       ship.lastShieldHitTime = this.state.time;
       ship.lastShieldHitStrength = shieldDamage;
@@ -365,6 +368,9 @@ export class ProjectileSystem {
       const effectiveDamage = Math.max(1, damage - armorReduction);
       ship.health -= effectiveDamage;
       penetrated = true;
+
+      // Mark health as dirty for UI optimization
+      ship._healthDirty = true;
 
       // Track damage source for kill crediting
       ship.lastDamageBy = bullet.ownerShipId;

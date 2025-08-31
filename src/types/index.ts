@@ -133,6 +133,9 @@ export interface Ship {
   // Track last damage source and timestamp for kill crediting
   lastDamageBy?: EntityId;
   lastDamageTime?: number;
+  // Dirty flags for UI optimization - only update visuals when these change
+  _healthDirty?: boolean;
+  _shieldDirty?: boolean;
 }
 
 export interface ScoreBoard {

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameState } from '../types/index.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { RendererConfig } from '../config/rendererConfig.js';
+import { skyboxVertexShader, skyboxFragmentShader } from './shaders/skyboxShader.js';
 
 /**
  * Scene setup and lifecycle management
@@ -14,9 +15,8 @@ export interface SceneElements {
   directionalLight: THREE.DirectionalLight;
   boundaryWireframe: THREE.LineSegments;
   skybox: THREE.Mesh;
-  animatedSkyboxTexture: THREE.CubeTexture;
-  skyboxCanvases: HTMLCanvasElement[];
-  skyboxTextures: THREE.CanvasTexture[];
+  skyboxShaderMaterial: THREE.ShaderMaterial;
+  staticSkyboxTexture: THREE.Texture;
 }
 
 export interface SceneManager {
@@ -31,8 +31,8 @@ export interface SceneManager {
 export function setupScene(state: GameState): SceneElements {
   const scene = new THREE.Scene();
   
-  // Create animated skybox
-  const { skybox, animatedSkyboxTexture, skyboxCanvases, skyboxTextures } = createAnimatedSkybox();
+  // Create shader-based animated skybox
+  const { skybox, skyboxShaderMaterial, staticSkyboxTexture } = createShaderBasedSkybox();
   scene.add(skybox);
   
   // Add lighting
@@ -63,47 +63,22 @@ export function setupScene(state: GameState): SceneElements {
     directionalLight,
     boundaryWireframe,
     skybox,
-    animatedSkyboxTexture,
-    skyboxCanvases,
-    skyboxTextures
+    skyboxShaderMaterial,
+    staticSkyboxTexture
   };
 }
 
 /**
- * Updates the animated skybox
+ * Updates the shader-based animated skybox
+ * Now GPU-based instead of CPU texture manipulation
  */
 let skyboxAnimationTime = 0;
 export function updateSkyboxAnimation(elements: SceneElements, dt: number): void {
   skyboxAnimationTime += dt;
   
-  if (skyboxAnimationTime > RendererEffectsConfig.skybox.starfield.animation.updateFrequency) {
-    skyboxAnimationTime = 0;
-    
-    elements.skyboxCanvases.forEach((canvas, index) => {
-      const ctx = canvas.getContext('2d')!;
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        if (r > 200 && g > 200 && b > 200) {
-          const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + 0.7;
-          data[i] = Math.floor(r * twinkle);
-          data[i + 1] = Math.floor(g * twinkle);
-          data[i + 2] = Math.floor(b * twinkle);
-        }
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-      elements.skyboxTextures[index].needsUpdate = true;
-    });
-
-    if (elements.animatedSkyboxTexture) {
-      elements.animatedSkyboxTexture.needsUpdate = true;
-    }
+  // Update shader uniforms for GPU-based animation
+  if (elements.skyboxShaderMaterial && elements.skyboxShaderMaterial.uniforms) {
+    elements.skyboxShaderMaterial.uniforms.time.value = skyboxAnimationTime;
   }
 }
 
@@ -112,8 +87,10 @@ export function updateSkyboxAnimation(elements: SceneElements, dt: number): void
  */
 export function disposeScene(elements: SceneElements): void {
   // Dispose textures
-  elements.animatedSkyboxTexture?.dispose();
-  elements.skyboxTextures?.forEach(texture => texture.dispose());
+  elements.staticSkyboxTexture?.dispose();
+  
+  // Dispose shader material
+  elements.skyboxShaderMaterial?.dispose();
   
   // Dispose geometries and materials
   elements.boundaryWireframe.geometry?.dispose();
@@ -164,135 +141,112 @@ function createBoundaryWireframe(state: GameState): THREE.LineSegments {
 }
 
 /**
- * Creates the animated skybox with procedural starfield
+ * Creates the shader-based animated skybox with GPU-based star twinkling
+ * Performance optimization: moves animation from CPU to GPU
  */
-function createAnimatedSkybox(): {
+function createShaderBasedSkybox(): {
   skybox: THREE.Mesh;
-  animatedSkyboxTexture: THREE.CubeTexture;
-  skyboxCanvases: HTMLCanvasElement[];
-  skyboxTextures: THREE.CanvasTexture[];
+  skyboxShaderMaterial: THREE.ShaderMaterial;
+  staticSkyboxTexture: THREE.Texture;
 } {
-  const skyboxCanvases: HTMLCanvasElement[] = [];
-  const skyboxTextures: THREE.CanvasTexture[] = [];
+  // Generate static starfield texture (done once, not animated on CPU)
+  const staticTexture = generateStaticStarfieldTexture();
+  
+  // Create shader material with GPU-based animation
+  const skyboxShaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      time: { value: 0.0 },
+      twinkleSpeed: { value: RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed },
+      starfieldTexture: { value: staticTexture },
+      baseColor: { value: new THREE.Vector3(0.0, 0.05, 0.2) } // Deep space blue
+    },
+    vertexShader: skyboxVertexShader,
+    fragmentShader: skyboxFragmentShader,
+    side: THREE.BackSide,
+    depthWrite: false,
+    depthTest: false
+  });
 
-  function createAnimatedSkyboxTexture(): THREE.CubeTexture {
-    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
-    const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
+  // Create sphere geometry for skybox
+  const skyboxGeometry = new THREE.SphereGeometry(
+    RendererEffectsConfig.skybox.sphere.radius,
+    RendererEffectsConfig.skybox.sphere.geometrySegments,
+    RendererEffectsConfig.skybox.sphere.geometrySegments
+  );
 
-    const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
-    
-    faces.forEach((face, index) => {
-      const canvas = generateStarfieldTexture(textureSize, textureSize, face, baseSeed + index);
-      skyboxCanvases.push(canvas);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.generateMipmaps = false;
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      skyboxTextures.push(texture);
-    });
-
-    const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
-    cubeTexture.generateMipmaps = false;
-    cubeTexture.minFilter = THREE.LinearFilter;
-    cubeTexture.magFilter = THREE.LinearFilter;
-    cubeTexture.needsUpdate = true;
-
-    return cubeTexture;
-  }
-
-  function createSphereSkybox(): THREE.Mesh {
-    const skyboxGeometry = new THREE.SphereGeometry(
-      RendererEffectsConfig.skybox.sphere.radius,
-      RendererEffectsConfig.skybox.sphere.geometrySegments,
-      RendererEffectsConfig.skybox.sphere.geometrySegments
-    );
-    const skyboxMaterial = new THREE.MeshBasicMaterial({
-      color: '#000033', // Default dark blue space color
-      side: THREE.BackSide
-    });
-    return new THREE.Mesh(skyboxGeometry, skyboxMaterial);
-  }
-
-  let sphereSkybox: THREE.Mesh;
-  let animatedSkyboxTexture: THREE.CubeTexture;
-
-  try {
-    animatedSkyboxTexture = createAnimatedSkyboxTexture();
-    sphereSkybox = createSphereSkybox();
-    if (sphereSkybox.material && !Array.isArray(sphereSkybox.material)) {
-      (sphereSkybox.material as THREE.MeshBasicMaterial).map = animatedSkyboxTexture;
-      sphereSkybox.material.needsUpdate = true;
-    }
-  } catch (e) {
-    // Fallback: solid deep blue background if procedural generation fails
-    console.warn('Animated skybox generation failed, falling back to solid background', e);
-    animatedSkyboxTexture = new THREE.CubeTexture([]);
-    sphereSkybox = createSphereSkybox();
-  }
+  const skybox = new THREE.Mesh(skyboxGeometry, skyboxShaderMaterial);
 
   return {
-    skybox: sphereSkybox,
-    animatedSkyboxTexture,
-    skyboxCanvases,
-    skyboxTextures
+    skybox,
+    skyboxShaderMaterial,
+    staticSkyboxTexture: staticTexture
   };
 }
 
 /**
- * Generates a starfield texture for skybox faces
+ * Generates a static starfield texture (no animation, just the base pattern)
  */
-function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
+function generateStaticStarfieldTexture(): THREE.Texture {
+  const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
+  canvas.width = textureSize;
+  canvas.height = textureSize;
+  const ctx = canvas.getContext('2d');
+
+  // Handle test environment where canvas context might not be available
+  if (!ctx) {
+    console.warn('Canvas 2D context not available, creating fallback texture');
+    // Create a simple colored texture as fallback
+    const fallbackCanvas = document.createElement('canvas');
+    fallbackCanvas.width = 32;
+    fallbackCanvas.height = 32;
+    const texture = new THREE.CanvasTexture(fallbackCanvas);
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    return texture;
+  }
 
   // Create gradient background
-  const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
-  gradient.addColorStop(0, '#001122'); // Dark blue center
-  gradient.addColorStop(0.5, '#000811'); // Darker mid
-  gradient.addColorStop(1, '#000000'); // Black edge
+  const gradient = ctx.createRadialGradient(
+    textureSize/2, textureSize/2, 0, 
+    textureSize/2, textureSize/2, textureSize/2
+  );
+  gradient.addColorStop(0, '#001122');
+  gradient.addColorStop(0.5, '#000811');
+  gradient.addColorStop(1, '#000000');
   
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, textureSize, textureSize);
 
-  // Seeded random number generator
+  // Generate static stars (no animation)
+  const seed = RendererEffectsConfig.skybox.starfield.baseSeed;
   let currentSeed = seed;
   const random = () => {
     currentSeed = (currentSeed * 9301 + 49297) % 233280;
     return currentSeed / 233280;
   };
 
-  // Generate stars
-  const starCount = face === 'top' || face === 'bottom' ? 
-    RendererEffectsConfig.skybox.starfield.starCounts.top : 
-    RendererEffectsConfig.skybox.starfield.starCounts.sides;
+  const starCount = RendererEffectsConfig.skybox.starfield.starCounts.sides;
   const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
 
   for (let i = 0; i < starCount; i++) {
-    const x = random() * width;
-    const y = random() * height;
+    const x = random() * textureSize;
+    const y = random() * textureSize;
     const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
     const brightness = random();
     const color = starColors[Math.floor(random() * starColors.length)];
-
-    // Reduce star density towards poles for top/bottom faces
-    if (face === 'top' || face === 'bottom') {
-      const centerDist = Math.abs(y - height/2) / (height/2);
-      if (random() < centerDist * 0.5) continue;
-    }
 
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.3 + brightness * 0.7;
     ctx.fillRect(x - size/2, y - size/2, size, size);
   }
 
-  // Add some nebula-like clouds
-  if (random() < 0.3) { // 30% probability
+  // Add nebula clouds
+  if (random() < 0.3) {
     for (let i = 0; i < RendererEffectsConfig.skybox.starfield.nebula.count; i++) {
-      const nebulaX = random() * width;
-      const nebulaY = random() * height;
+      const nebulaX = random() * textureSize;
+      const nebulaY = random() * textureSize;
       const nebulaRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + 
         random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
       
@@ -309,9 +263,20 @@ function generateStarfieldTexture(width: number, height: number, face: string, s
     }
   }
 
-  ctx.globalAlpha = 1; // Reset alpha
-  return canvas;
+  ctx.globalAlpha = 1;
+
+  // Create texture from canvas
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+
+  return texture;
 }
+
+
 
 /**
  * Default scene manager implementation
