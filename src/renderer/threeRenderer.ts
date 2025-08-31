@@ -8,6 +8,7 @@ import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
+import { BulletInstancer } from './bulletInstancer.js';
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
@@ -288,6 +289,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const bulletMeshes = new Map<number, THREE.Object3D>();
   const healthBarMeshes = new Map<number, THREE.Object3D>();
   const shieldEffectMeshes = new Map<number, THREE.Object3D>();
+  
+  // Initialize bullet instancer if enabled
+  let bulletInstancer: BulletInstancer | null = null;
+  if (RendererConfig.instancing.enableBullets) {
+    bulletInstancer = new BulletInstancer(scene, bulletsGroup);
+  }
+  
   // Dev / feature toggles
   const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
@@ -864,15 +872,38 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
     }
 
-    // Bullets
-    for (const b of state.bullets) {
-      if (!bulletMeshes.has(b.id)) {
-        const m = meshForBullet(b);
-        bulletMeshes.set(b.id, m); bulletsGroup.add(m);
+    // Bullets - use instanced rendering if enabled, otherwise individual meshes
+    if (RendererConfig.instancing.enableBullets && bulletInstancer) {
+      // Instanced bullet management
+      // Add new bullets to instancer
+      for (const b of state.bullets) {
+        if (!bulletInstancer.hasBullet(b.id)) {
+          bulletInstancer.allocateInstance(b.id);
+        }
       }
-    }
-    for (const [id, m] of bulletMeshes) {
-      if (!state.bullets.find(b => b.id === id)) { bulletsGroup.remove(m); bulletMeshes.delete(id); }
+      
+      // Remove bullets that no longer exist
+      const currentBulletIds = new Set(state.bullets.map(b => b.id));
+      for (const bulletId of bulletInstancer.getActiveBulletIds()) {
+        if (!currentBulletIds.has(bulletId)) {
+          bulletInstancer.freeInstance(bulletId);
+        }
+      }
+    } else {
+      // Legacy individual mesh management
+      for (const b of state.bullets) {
+        if (!bulletMeshes.has(b.id)) {
+          const m = meshForBullet(b);
+          bulletMeshes.set(b.id, m); 
+          bulletsGroup.add(m);
+        }
+      }
+      for (const [id, m] of bulletMeshes) {
+        if (!state.bullets.find(b => b.id === id)) { 
+          bulletsGroup.remove(m); 
+          bulletMeshes.delete(id); 
+        }
+      }
     }
   }
 
@@ -906,9 +937,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
     }
-    for (const b of state.bullets) {
-      const m = bulletMeshes.get(b.id)!; if (!m) continue;
-      m.position.set(b.pos.x, b.pos.y, b.pos.z);
+    
+    // Update bullets - use instanced rendering if enabled, otherwise individual meshes
+    if (RendererConfig.instancing.enableBullets && bulletInstancer) {
+      // Update instanced bullet transforms
+      for (const b of state.bullets) {
+        bulletInstancer.updateBulletTransform(b);
+      }
+      // Mark instance matrix as needing update once per frame
+      bulletInstancer.markMatrixNeedsUpdate();
+    } else {
+      // Legacy individual mesh updates
+      for (const b of state.bullets) {
+        const m = bulletMeshes.get(b.id);
+        if (m) {
+          m.position.set(b.pos.x, b.pos.y, b.pos.z);
+        }
+      }
     }
 
     // Update health bar positions to follow ships
@@ -1034,6 +1079,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     dispose: () => {
       window.removeEventListener('resize', resize);
       try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
+      try { bulletInstancer?.dispose(); } catch (e) { /* ignore */ }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();

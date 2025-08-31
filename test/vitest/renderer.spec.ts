@@ -47,6 +47,23 @@ vi.mock('three', () => ({
   })),
   SphereGeometry: vi.fn(),
   MeshBasicMaterial: vi.fn(),
+  InstancedMesh: vi.fn().mockImplementation(() => ({
+    setMatrixAt: vi.fn(),
+    getMatrixAt: vi.fn(),
+    instanceMatrix: { needsUpdate: false },
+    geometry: { dispose: vi.fn() },
+    material: { dispose: vi.fn() },
+    parent: null
+  })),
+  Matrix4: vi.fn().mockImplementation(() => ({
+    compose: vi.fn(),
+    makeScale: vi.fn()
+  })),
+  Vector3: vi.fn().mockImplementation(() => ({
+    set: vi.fn(),
+    copy: vi.fn()
+  })),
+  Quaternion: vi.fn().mockImplementation(() => ({})),
   CanvasTexture: vi.fn(),
   CubeTexture: vi.fn(),
   ClampToEdgeWrapping: vi.fn(),
