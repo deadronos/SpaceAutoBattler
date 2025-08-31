@@ -431,8 +431,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     ,
     // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
     useDecisionEngineEvadeGate: false,
-    // Keep turret targeting helper disabled by default to guarantee parity
-    useTurretTargetingHelper: false
+    // Turret targeting helper enabled by default after parity testing
+    useTurretTargetingHelper: true
   }
 };
 
