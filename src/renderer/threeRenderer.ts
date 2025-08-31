@@ -243,15 +243,6 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     scene.add(sphereSkybox);
   }
 
-  // Force texture update on next frame to ensure it's ready
-  // setTimeout(() => {
-  //   animatedSkyboxTexture.needsUpdate = true;
-  //   skyboxTextures.forEach(texture => {
-  //     texture.needsUpdate = true;
-  //   });
-  //   console.log('Skybox textures updated');
-  // }, 100);
-
   // Add some basic lighting to help with wireframe visibility
   const ambientLight = new THREE.AmbientLight(
     RendererEffectsConfig.lighting.ambient.color,

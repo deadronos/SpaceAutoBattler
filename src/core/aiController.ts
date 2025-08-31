@@ -906,7 +906,7 @@ export class AIController {
     const dx = targetPos.x - ship.pos.x;
     const dy = targetPos.y - ship.pos.y;
     const dz = targetPos.z - ship.pos.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const distance = this.getDistance(ship.pos, targetPos);
 
     if (distance < config.globalSettings.movementCloseEnoughThreshold) return; // Close enough
 
