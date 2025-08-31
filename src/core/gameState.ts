@@ -11,6 +11,8 @@ import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
+import { findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends } from './searchUtils.js';
+import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -62,6 +64,8 @@ export function resetState(state: GameState, seed?: string) {
   state.shipIndex = new Map();
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
+  // Drop cached AI controller so it can be recreated lazily with fresh state/config
+  state.aiController = undefined;
   // Reset behavior config to defaults
   state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
   
@@ -150,15 +154,9 @@ export function spawnFleet(state: GameState, team: Team, count = 5) {
   }
 }
 
+// Delegate nearest-enemy lookup to shared search utilities (spatial-grid preferred)
 function findNearestEnemy(state: GameState, ship: Ship): Ship | undefined {
-  let best: Ship | undefined; let bestD = Infinity;
-  for (const s of state.ships) {
-    if (s.team === ship.team || s.health <= 0) continue;
-    const dx = s.pos.x - ship.pos.x; const dy = s.pos.y - ship.pos.y; const dz = s.pos.z - ship.pos.z;
-    const d2 = dx*dx + dy*dy + dz*dz;
-    if (d2 < bestD) { bestD = d2; best = s; }
-  }
-  return best;
+  return sharedFindNearestEnemy(state, ship) || undefined;
 }
 
 function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
@@ -168,90 +166,8 @@ function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min
  * This handles bounce, wrap, and remove behaviors consistently across AI systems
  */
 export function applyBoundaryPhysics(ship: Ship, state: GameState) {
-  const bounds = state.simConfig.simBounds;
-  const behavior = state.simConfig.boundaryBehavior.ships;
-
-  if (behavior === 'bounce') {
-    // Bounce off boundaries
-    if (ship.pos.x < 0) { ship.pos.x = 0; ship.vel.x = -ship.vel.x; }
-    else if (ship.pos.x > bounds.width) { ship.pos.x = bounds.width; ship.vel.x = -ship.vel.x; }
-    if (ship.pos.y < 0) { ship.pos.y = 0; ship.vel.y = -ship.vel.y; }
-    else if (ship.pos.y > bounds.height) { ship.pos.y = bounds.height; ship.vel.y = -ship.vel.y; }
-    if (ship.pos.z < 0) { ship.pos.z = 0; ship.vel.z = -ship.vel.z; }
-    else if (ship.pos.z > bounds.depth) { ship.pos.z = bounds.depth; ship.vel.z = -ship.vel.z; }
-  } else if (behavior === 'wrap') {
-    // Wrap around boundaries
-    if (ship.pos.x < 0) ship.pos.x += bounds.width;
-    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
-    if (ship.pos.y < 0) ship.pos.y += bounds.height;
-    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
-    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
-    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
-  } else if (behavior === 'remove') {
-    // Remove ships that go out of bounds
-    if (ship.pos.x < 0 || ship.pos.x > bounds.width ||
-        ship.pos.y < 0 || ship.pos.y > bounds.height ||
-        ship.pos.z < 0 || ship.pos.z > bounds.depth) {
-      ship.health = 0; // Mark for removal
-    }
-  }
-}
-
-function stepShipAI(state: GameState, ship: Ship, dt: number) {
-  // Legacy AI: Use AIController with simple pursue behavior
-  // This ensures all movement logic is unified through AIController
-  
-  // Initialize basic AI state if needed for AIController compatibility
-  if (!ship.aiState) {
-    ship.aiState = {
-      currentIntent: 'pursue',
-      intentEndTime: state.time + 1.0, // Short duration to re-evaluate frequently
-      lastIntentReevaluation: 0,
-      preferredRange: 100, // Basic range
-      recentDamage: 0,
-      lastDamageTime: 0
-    };
-  }
-
-  // Acquire target using simple logic
-  if (!ship.targetId || !state.ships.find(s => s.id === ship.targetId && s.health > 0)) {
-    const t = findNearestEnemy(state, ship);
-    ship.targetId = t?.id ?? null;
-  }
-
-  // Use AIController for all movement and physics
-  // Create a temporary minimal behavior config for legacy mode
-  const legacyBehaviorConfig = { 
-    ...DEFAULT_BEHAVIOR_CONFIG,
-    // Override to ensure simple behavior
-    defaultPersonality: {
-      ...DEFAULT_BEHAVIOR_CONFIG.defaultPersonality,
-      mode: 'aggressive' as const, // Simple pursue mode
-      intentReevaluationRate: 0.5,
-      minIntentDuration: 0.5,
-      maxIntentDuration: 1.0
-    }
-  };
-
-  // Store original config and temporarily use legacy config
-  const originalConfig = state.behaviorConfig;
-  state.behaviorConfig = legacyBehaviorConfig;
-  
-  // Use AIController for unified movement logic
-  const aiController = new AIController(state);
-  
-  // Force simple pursue intent for consistent legacy behavior
-  ship.aiState.currentIntent = 'pursue';
-  ship.aiState.intentEndTime = state.time + 0.5;
-  
-  // Delegate to AIController
-  aiController.updateShipAI(ship, dt);
-  
-  // Restore original config
-  state.behaviorConfig = originalConfig;
-
-  // Regen shields (AIController doesn't handle this currently)
-  ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
+  // Keep compatibility API but delegate to centralized boundary utils for ships
+  applyBoundaryPhysicsShip(ship, state);
 }
 
 function fireTurrets(state: GameState, ship: Ship, dt: number) {
@@ -297,40 +213,11 @@ function updateBullets(state: GameState, dt: number) {
     b.pos.z += b.vel.z * dt;
   }
 
-  // Handle bullet boundary conditions
+  // Handle bullet boundary conditions using shared helper
   for (const b of state.bullets) {
     if (b.ttl <= 0) continue;
-
-    let outOfBounds = false;
-    if (behavior === 'bounce') {
-      // Bounce off boundaries
-      if (b.pos.x < 0) { b.pos.x = 0; b.vel.x = -b.vel.x; }
-      else if (b.pos.x > width) { b.pos.x = width; b.vel.x = -b.vel.x; }
-      if (b.pos.y < 0) { b.pos.y = 0; b.vel.y = -b.vel.y; }
-      else if (b.pos.y > height) { b.pos.y = height; b.vel.y = -b.vel.y; }
-      if (b.pos.z < 0) { b.pos.z = 0; b.vel.z = -b.vel.z; }
-      else if (b.pos.z > depth) { b.pos.z = depth; b.vel.z = -b.vel.z; }
-    } else if (behavior === 'wrap') {
-      // Wrap around boundaries
-      if (b.pos.x < 0) b.pos.x += width;
-      else if (b.pos.x > width) b.pos.x -= width;
-      if (b.pos.y < 0) b.pos.y += height;
-      else if (b.pos.y > height) b.pos.y -= height;
-      if (b.pos.z < 0) b.pos.z += depth;
-      else if (b.pos.z > depth) b.pos.z -= depth;
-    } else if (behavior === 'remove') {
-      // Remove bullets that go out of bounds
-      if (b.pos.x < 0 || b.pos.x > width ||
-          b.pos.y < 0 || b.pos.y > height ||
-          b.pos.z < 0 || b.pos.z > depth) {
-        outOfBounds = true;
-      }
-    }
-
-    if (outOfBounds) {
-      b.ttl = 0;
-      continue;
-    }
+    applyBoundaryPhysicsBullet(b, state);
+    if (b.ttl <= 0) continue; // bullet removed by boundary behavior
 
     // Collisions (simple radius approx)
     for (const s of state.ships) {
@@ -465,18 +352,10 @@ function carrierSpawnLogic(state: GameState, dt: number) {
 }
 
 export function simulateStep(state: GameState, dt: number) {
-  // Ship AI logic
-  if (state.behaviorConfig?.globalSettings.aiEnabled) {
-    // Use new AIController for advanced behavior
-    const aiController = new AIController(state);
-    aiController.updateAllShips(dt);
-  } else {
-    // Use simple AI for backward compatibility
-    for (const s of state.ships) {
-      if (s.health <= 0) continue;
-      stepShipAI(state, s, dt);
-    }
-  }
+  // Ship AI logic - Always use AIController for unified behavior
+  // Lazily create and reuse AIController instance
+  const aiController = state.aiController ?? (state.aiController = new AIController(state));
+  aiController.updateAllShips(dt);
   
   // Update spatial grid with current ship positions after AI movement
   updateSpatialGrid(state);
@@ -555,17 +434,14 @@ function updateSpatialGrid(state: GameState) {
     return;
   }
 
-  // Clear the grid and rebuild with current ship positions
-  state.spatialGrid.clear();
-  
+  // Incrementally update positions and purge stale ids without a full rebuild
+  const activeIds = new Set<number>();
   for (const ship of state.ships) {
     if (ship.health > 0) {
-      state.spatialGrid.insert({
-        id: ship.id,
-        pos: ship.pos,
-        radius: 16, // Approximate ship radius for spatial queries
-        team: ship.team
-      });
+      activeIds.add(ship.id);
+      state.spatialGrid.update(ship.id, ship.pos, 16, ship.team);
     }
   }
+  // Remove any entities no longer present/active
+  state.spatialGrid.gcExcept(activeIds);
 }

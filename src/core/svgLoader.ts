@@ -3,6 +3,7 @@
 
 import type { GameState } from '../types/index.js';
 import { getFileWatcher, watchSVGFiles, unwatchSVGFiles } from '../utils/fileWatcher.js';
+import * as logger from '../utils/logger.js';
 
 export interface SVGAsset {
   url: string;
@@ -31,8 +32,8 @@ export class SVGLoader {
   }
 
   private initWorker() {
-    // Temporarily disable worker to ensure reliable main thread SVG loading
-    console.log('[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)');
+  // Temporarily disable worker to ensure reliable main thread SVG loading
+  logger.debug('[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)');
     this.worker = null;
   }
 
@@ -57,7 +58,7 @@ export class SVGLoader {
   }
 
   private handleFileChange(filePath: string, changeType: 'modified' | 'deleted' | 'created') {
-    console.log(`[SVGLoader] File ${changeType}: ${filePath}`);
+  logger.debug(`[SVGLoader] File ${changeType}: ${filePath}`);
 
     if (changeType === 'modified' || changeType === 'deleted') {
       // Invalidate cache for this file
@@ -111,16 +112,16 @@ export class SVGLoader {
   }
 
   private async performLoad(url: string, options: SVGLoadOptions): Promise<SVGAsset> {
-    console.log(`[SVGLoader] Attempting to load SVG from: ${url}`);
+  logger.debug(`[SVGLoader] Attempting to load SVG from: ${url}`);
     
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
+      logger.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
       throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
     }
 
     const svgText = await response.text();
-    console.log(`[SVGLoader] Successfully fetched SVG content for ${url}, length: ${svgText.length}`);
+    logger.debug(`[SVGLoader] Successfully fetched SVG content for ${url}, length: ${svgText.length}`);
     
     const lastModified = await this.getFileModificationTime(url);
 
@@ -132,17 +133,17 @@ export class SVGLoader {
 
     // Rasterize if dimensions provided
     if (options.width && options.height) {
-      console.log('[SVGLoader] Starting rasterization for:', url);
+      logger.debug('[SVGLoader] Starting rasterization for:', url);
       const imageBitmap = await this.rasterizeSVG(asset, options);
       asset.imageBitmap = imageBitmap;
-      console.log('[SVGLoader] Rasterization completed for:', url);
+      logger.debug('[SVGLoader] Rasterization completed for:', url);
     }
 
     return asset;
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-    console.log('[SVGLoader] Rasterizing SVG with main thread (worker disabled):', asset.url);
+  logger.debug('[SVGLoader] Rasterizing SVG with main thread (worker disabled):', asset.url);
     
     // Always use main thread rasterization for reliability
     return this.rasterizeMainThread(asset, options);
@@ -198,7 +199,7 @@ export class SVGLoader {
     ctx.clearRect(0, 0, options.width!, options.height!);
 
     try {
-      console.log('[SVGLoader] Attempting to rasterize SVG in main thread for:', asset.url);
+  logger.debug('[SVGLoader] Attempting to rasterize SVG in main thread for:', asset.url);
       
       // Create a properly formatted SVG data URL
       let svgContent = asset.svgText;
@@ -225,13 +226,13 @@ export class SVGLoader {
         
         img.onload = () => {
           clearTimeout(timeoutId);
-          console.log('[SVGLoader] Successfully loaded SVG image:', asset.url);
+    logger.debug('[SVGLoader] Successfully loaded SVG image:', asset.url);
           resolve();
         };
         
         img.onerror = (e) => {
           clearTimeout(timeoutId);
-          console.error('[SVGLoader] Failed to load SVG image:', e);
+          logger.error('[SVGLoader] Failed to load SVG image:', e);
           reject(new Error(`SVG image load failed`));
         };
         
@@ -257,14 +258,14 @@ export class SVGLoader {
         this.applyTeamColorTint(ctx, options.width!, options.height!, options.teamColor);
       }
 
-      console.log('[SVGLoader] Successfully rasterized SVG to canvas:', asset.url);
+  logger.debug('[SVGLoader] Successfully rasterized SVG to canvas:', asset.url);
       
       // Convert canvas to ImageBitmap
       return await createImageBitmap(canvas);
       
     } catch (error) {
-      console.error('[SVGLoader] SVG rasterization failed completely:', error);
-      
+      logger.error('[SVGLoader] SVG rasterization failed completely:', error);
+
       // Return error - don't create geometric fallback here anymore
       // Let the renderer handle fallbacks appropriately
       const errorMessage = error instanceof Error ? error.message : String(error);

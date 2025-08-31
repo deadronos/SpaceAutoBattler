@@ -17,6 +17,7 @@ export interface RendererEffectsConfig {
         twinkleSpeed: number;
         updateFrequency: number;
       };
+      baseSeed: number;
     };
     sphere: {
       radius: number;
@@ -48,6 +49,7 @@ export const DefaultRendererEffectsConfig: RendererEffectsConfig = {
   skybox: {
     starfield: {
       textureSize: 1920,
+      baseSeed: 12345,
       starCounts: {
         top: 800,
         bottom: 300,

@@ -1,7 +1,7 @@
 ---
 description: Produce code patches and tests for scoped tasks. Prefer producing patch artifacts rather than writing directly.
 mode: subagent
-model: gpt-5-mini
+model: github-copilot/gpt-5-mini
 temperature: 0.0
 prompt: "{file:./prompts/coder.txt}"
 tools:

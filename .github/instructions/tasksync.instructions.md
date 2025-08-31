@@ -1,6 +1,7 @@
 ---
 applyTo: '**'
 description: 'TaskSync V4 - Allows you to give the agent new instructions or feedback after completing a task using terminal while agent is running.'
+tools: ['thinking','reasoning','run_in_terminal', 'terminal_output', 'last_command_output', 'terminal_error_output','file_browser']
 ---
 
 # TaskSync V4 Protocol

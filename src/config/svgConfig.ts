@@ -41,8 +41,8 @@ export const defaultSVGConfig: SVGConfig = {
 
   // Rasterization settings
   defaultRasterSize: {
-    width: 128,
-    height: 128
+    width: 256,
+    height: 256
   },
 
   // Caching settings

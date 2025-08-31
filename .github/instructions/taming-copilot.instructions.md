@@ -1,6 +1,7 @@
 ---
 applyTo: '**'
 description: 'Taming Copilot — Compact rules to keep automated edits safe, minimal, and test-backed.'
+tools: ['thinking']
 ---
 
 

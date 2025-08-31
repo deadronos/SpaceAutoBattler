@@ -1,4 +1,5 @@
 // File Watcher Utility for detecting SVG file changes
+import * as logger from './logger.js';
 // Provides change detection for hot-reloading SVG assets
 
 export interface FileChangeCallback {
@@ -73,7 +74,8 @@ export class FileWatcher {
 
       return modTime;
     } catch (error) {
-      console.warn(`[FileWatcher] Error checking file ${filePath}:`, error);
+      // Use centralized logger
+      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, error); } catch { /* ignore */ }
       return null;
     }
   }
@@ -122,9 +124,9 @@ export class FileWatcher {
     if (callback) {
       try {
         callback(filePath, changeType);
-      } catch (error) {
-        console.error(`[FileWatcher] Error in change callback for ${filePath}:`, error);
-      }
+        } catch (error) {
+          try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, error); } catch { /* ignore */ }
+        }
     }
   }
 

@@ -64,23 +64,29 @@ describe('AI Unification Smoke Test', () => {
     expect(shipsWithTargets).toBeGreaterThan(0);
   });
 
-  it('should produce consistent behavior between legacy and advanced AI modes', () => {
-    // Test that both AI modes produce similar overall movement patterns
+  it('should produce consistent behavior between different AI configurations', () => {
+    // Test that the unified AI system works consistently with different configurations
     
-    // Setup for legacy AI
-    const legacyState = createMockGameState();
-    // No behaviorConfig = uses legacy stepShipAI path
+    // Setup for minimal AI config
+    const minimalState = createMockGameState();
+    minimalState.behaviorConfig = JSON.parse(JSON.stringify(DEFAULT_BEHAVIOR_CONFIG));
+    // Disable some features for minimal config
+    minimalState.behaviorConfig!.globalSettings.enableScoutBehavior = false;
+    minimalState.behaviorConfig!.globalSettings.enableAlarmSystem = false;
     for (let i = 0; i < 5; i++) {
-      spawnShip(legacyState, 'red', 'fighter');
-      spawnShip(legacyState, 'blue', 'fighter');
+      spawnShip(minimalState, 'red', 'fighter');
+      spawnShip(minimalState, 'blue', 'fighter');
     }
     
-    // Setup for advanced AI
-    const advancedState = createMockGameState();
-    advancedState.behaviorConfig = JSON.parse(JSON.stringify(DEFAULT_BEHAVIOR_CONFIG));
+    // Setup for full AI config
+    const fullState = createMockGameState();
+    fullState.behaviorConfig = JSON.parse(JSON.stringify(DEFAULT_BEHAVIOR_CONFIG));
+    // Enable all features for full config
+    fullState.behaviorConfig!.globalSettings.enableScoutBehavior = true;
+    fullState.behaviorConfig!.globalSettings.enableAlarmSystem = true;
     for (let i = 0; i < 5; i++) {
-      spawnShip(advancedState, 'red', 'fighter');
-      spawnShip(advancedState, 'blue', 'fighter');
+      spawnShip(fullState, 'red', 'fighter');
+      spawnShip(fullState, 'blue', 'fighter');
     }
     
     // Simulate same time duration
@@ -88,27 +94,27 @@ describe('AI Unification Smoke Test', () => {
     const steps = 300; // 5 seconds
     
     for (let step = 0; step < steps; step++) {
-      simulateStep(legacyState, dt);
-      simulateStep(advancedState, dt);
-      legacyState.time += dt;
-      advancedState.time += dt;
+      simulateStep(minimalState, dt);
+      simulateStep(fullState, dt);
+      minimalState.time += dt;
+      fullState.time += dt;
     }
     
     // Both should have ships that moved and stayed in bounds
-    const legacyMovingShips = legacyState.ships.filter(s => 
+    const minimalMovingShips = minimalState.ships.filter(s => 
       Math.hypot(s.vel.x, s.vel.y, s.vel.z) > 1
     ).length;
     
-    const advancedMovingShips = advancedState.ships.filter(s => 
+    const fullMovingShips = fullState.ships.filter(s => 
       Math.hypot(s.vel.x, s.vel.y, s.vel.z) > 1
     ).length;
     
     // Both should have some ships moving (indicating active AI)
-    expect(legacyMovingShips).toBeGreaterThan(0);
-    expect(advancedMovingShips).toBeGreaterThan(0);
+    expect(minimalMovingShips).toBeGreaterThan(0);
+    expect(fullMovingShips).toBeGreaterThan(0);
     
     // Both should respect boundaries
-    for (const ship of legacyState.ships.concat(advancedState.ships)) {
+    for (const ship of minimalState.ships.concat(fullState.ships)) {
       expect(ship.pos.x).toBeLessThanOrEqual(1000); // Mock bounds width
       expect(ship.pos.y).toBeLessThanOrEqual(800);  // Mock bounds height
       expect(ship.pos.z).toBeLessThanOrEqual(600);  // Mock bounds depth

@@ -12,6 +12,7 @@ export interface SimConfig {
   // Physics settings
   bulletLifetime: number; // seconds
   maxSimulationSteps: number; // prevent spiral of death
+  useBVH: boolean;
   // AI settings
   targetUpdateRate: number; // how often AI updates targets (seconds)
   // Boundary settings
@@ -30,6 +31,7 @@ export const DefaultSimConfig: SimConfig = {
   maxEntities: 5000,
   bulletLifetime: 3.0, // bullets live for 3 seconds
   maxSimulationSteps: 5, // max steps per frame to prevent spiral of death
+  useBVH: true, // use Bounding Volume Hierarchy for collision detection
   targetUpdateRate: 0.5, // AI updates targets every 0.5 seconds
   boundaryBehavior: {
     ships: 'bounce', // ships bounce off boundaries

@@ -1,3 +1,13 @@
+// src/utils/logger.ts
+var DEBUG_ENABLED = typeof window !== "undefined" && window.__DEBUG__ === true || typeof process !== "undefined" && process.env && process.env.DEBUG === "true";
+function debug(...args) {
+  if (!DEBUG_ENABLED) return;
+  console.log(...args);
+}
+function error(...args) {
+  console.error(...args);
+}
+
 // src/core/svgRasterWorker.ts
 var RasterCache = class {
   cache = /* @__PURE__ */ new Map();
@@ -68,8 +78,8 @@ async function rasterizeSvgToImageBitmap(svgText, width, height, teamColor) {
   try {
     const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
     throw new Error("Worker SVG parsing not yet implemented - using geometric fallback");
-  } catch (error) {
-    console.log("[svgRasterWorker] Creating geometric fallback shape");
+  } catch (error2) {
+    debug("[svgRasterWorker] Creating geometric fallback shape");
     const centerX = width / 2;
     const centerY = height / 2;
     const size = Math.min(width, height) * 0.8;
@@ -160,8 +170,8 @@ self.addEventListener("message", async (e) => {
         break;
       }
     }
-  } catch (error) {
-    console.error("[svgRasterWorker] Error processing request:", error);
+  } catch (error2) {
+    error("[svgRasterWorker] Error processing request:", error2);
   }
 });
 //# sourceMappingURL=svgRasterWorker.js.map

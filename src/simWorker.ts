@@ -1,4 +1,6 @@
 // Sim worker: handle Rapier physics in a worker and accept messages from main thread
+import * as logger from './utils/logger.js';
+
 let world: any = null;
 let Rapier: any = null;
 let bodies = new Map<number, any>(); // shipId -> rigidBody
@@ -32,7 +34,7 @@ function createBodyForShip(ship: any) {
     
     return rigidBody;
   } catch (e) {
-    console.error('Failed to create physics body for ship:', e);
+    logger.error('Failed to create physics body for ship:', e);
     return null;
   }
 }
@@ -45,7 +47,7 @@ function updateBodyFromShip(body: any, ship: any) {
     body.setTranslation({ x: ship.pos.x, y: ship.pos.y, z: ship.pos.z }, true);
     body.setLinvel({ x: ship.vel.x, y: ship.vel.y, z: ship.vel.z }, true);
   } catch (e) {
-    console.error('Failed to update physics body:', e);
+    logger.error('Failed to update physics body:', e);
   }
 }
 
@@ -65,7 +67,7 @@ function collectTransforms() {
         vel: { x: linvel.x, y: linvel.y, z: linvel.z }
       });
     } catch (e) {
-      console.error('Failed to collect transform for ship', shipId, e);
+      logger.error('Failed to collect transform for ship', shipId, e);
     }
   }
   
@@ -108,7 +110,7 @@ self.addEventListener('message', async (e) => {
           world.removeRigidBody(body);
           bodies.delete(shipId);
         } catch (e) {
-          console.error('Failed to remove physics body:', e);
+          logger.error('Failed to remove physics body:', e);
         }
       }
     }
@@ -136,6 +138,7 @@ self.addEventListener('message', async (e) => {
         (self as any).postMessage({ type: 'step-physics-done', dt });
       }
     } catch (err) {
+      logger.error('Sim worker step error:', err);
       (self as any).postMessage({ type: 'step-physics-error', error: String(err) });
     }
     return;

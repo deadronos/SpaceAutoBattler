@@ -5188,6 +5188,12 @@ var require_rapier = __commonJS({
   }
 });
 
+// src/utils/logger.ts
+var DEBUG_ENABLED = typeof window !== "undefined" && window.__DEBUG__ === true || typeof process !== "undefined" && process.env && process.env.DEBUG === "true";
+function error(...args) {
+  console.error(...args);
+}
+
 // src/simWorker.ts
 var world = null;
 var Rapier = null;
@@ -5211,7 +5217,7 @@ function createBodyForShip(ship) {
     world.createCollider(colliderDesc, rigidBody);
     return rigidBody;
   } catch (e) {
-    console.error("Failed to create physics body for ship:", e);
+    error("Failed to create physics body for ship:", e);
     return null;
   }
 }
@@ -5221,7 +5227,7 @@ function updateBodyFromShip(body, ship) {
     body.setTranslation({ x: ship.pos.x, y: ship.pos.y, z: ship.pos.z }, true);
     body.setLinvel({ x: ship.vel.x, y: ship.vel.y, z: ship.vel.z }, true);
   } catch (e) {
-    console.error("Failed to update physics body:", e);
+    error("Failed to update physics body:", e);
   }
 }
 function collectTransforms() {
@@ -5237,7 +5243,7 @@ function collectTransforms() {
         vel: { x: linvel.x, y: linvel.y, z: linvel.z }
       });
     } catch (e) {
-      console.error("Failed to collect transform for ship", shipId, e);
+      error("Failed to collect transform for ship", shipId, e);
     }
   }
   return transforms;
@@ -5269,7 +5275,7 @@ self.addEventListener("message", async (e) => {
           world.removeRigidBody(body);
           bodies.delete(shipId);
         } catch (e2) {
-          console.error("Failed to remove physics body:", e2);
+          error("Failed to remove physics body:", e2);
         }
       }
     }
@@ -5292,6 +5298,7 @@ self.addEventListener("message", async (e) => {
         self.postMessage({ type: "step-physics-done", dt });
       }
     } catch (err) {
+      error("Sim worker step error:", err);
       self.postMessage({ type: "step-physics-error", error: String(err) });
     }
     return;

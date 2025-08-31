@@ -8695,12 +8695,12 @@ var init_three_core = __esm({
           object.sortObjects = this.sortObjects;
           object.drawRanges = this._drawRanges;
           object.reservedRanges = this._reservedRanges;
-          object.geometryInfo = this._geometryInfo.map((info) => ({
-            ...info,
-            boundingBox: info.boundingBox ? info.boundingBox.toJSON() : void 0,
-            boundingSphere: info.boundingSphere ? info.boundingSphere.toJSON() : void 0
+          object.geometryInfo = this._geometryInfo.map((info2) => ({
+            ...info2,
+            boundingBox: info2.boundingBox ? info2.boundingBox.toJSON() : void 0,
+            boundingSphere: info2.boundingSphere ? info2.boundingSphere.toJSON() : void 0
           }));
-          object.instanceInfo = this._instanceInfo.map((info) => ({ ...info }));
+          object.instanceInfo = this._instanceInfo.map((info2) => ({ ...info2 }));
           object.availableInstanceIds = this._availableInstanceIds.slice();
           object.availableGeometryIds = this._availableGeometryIds.slice();
           object.nextIndexStart = this._nextIndexStart;
@@ -19208,19 +19208,19 @@ function WebGLBindingStates(gl, attributes) {
     disableUnusedAttributes
   };
 }
-function WebGLBufferRenderer(gl, extensions, info) {
+function WebGLBufferRenderer(gl, extensions, info2) {
   let mode;
   function setMode(value) {
     mode = value;
   }
   function render(start, count) {
     gl.drawArrays(mode, start, count);
-    info.update(count, mode, 1);
+    info2.update(count, mode, 1);
   }
   function renderInstances(start, count, primcount) {
     if (primcount === 0) return;
     gl.drawArraysInstanced(mode, start, count, primcount);
-    info.update(count, mode, primcount);
+    info2.update(count, mode, primcount);
   }
   function renderMultiDraw(starts, counts, drawCount) {
     if (drawCount === 0) return;
@@ -19230,7 +19230,7 @@ function WebGLBufferRenderer(gl, extensions, info) {
     for (let i = 0; i < drawCount; i++) {
       elementCount += counts[i];
     }
-    info.update(elementCount, mode, 1);
+    info2.update(elementCount, mode, 1);
   }
   function renderMultiDrawInstances(starts, counts, drawCount, primcount) {
     if (drawCount === 0) return;
@@ -19245,7 +19245,7 @@ function WebGLBufferRenderer(gl, extensions, info) {
       for (let i = 0; i < drawCount; i++) {
         elementCount += counts[i] * primcount[i];
       }
-      info.update(elementCount, mode, 1);
+      info2.update(elementCount, mode, 1);
     }
   }
   this.setMode = setMode;
@@ -19876,7 +19876,7 @@ function WebGLExtensions(gl) {
     }
   };
 }
-function WebGLGeometries(gl, attributes, info, bindingStates) {
+function WebGLGeometries(gl, attributes, info2, bindingStates) {
   const geometries = {};
   const wireframeAttributes = /* @__PURE__ */ new WeakMap();
   function onGeometryDispose(event) {
@@ -19898,13 +19898,13 @@ function WebGLGeometries(gl, attributes, info, bindingStates) {
     if (geometry.isInstancedBufferGeometry === true) {
       delete geometry._maxInstanceCount;
     }
-    info.memory.geometries--;
+    info2.memory.geometries--;
   }
   function get(object, geometry) {
     if (geometries[geometry.id] === true) return geometry;
     geometry.addEventListener("dispose", onGeometryDispose);
     geometries[geometry.id] = true;
-    info.memory.geometries++;
+    info2.memory.geometries++;
     return geometry;
   }
   function update(geometry) {
@@ -19965,7 +19965,7 @@ function WebGLGeometries(gl, attributes, info, bindingStates) {
     getWireframeAttribute
   };
 }
-function WebGLIndexedBufferRenderer(gl, extensions, info) {
+function WebGLIndexedBufferRenderer(gl, extensions, info2) {
   let mode;
   function setMode(value) {
     mode = value;
@@ -19977,12 +19977,12 @@ function WebGLIndexedBufferRenderer(gl, extensions, info) {
   }
   function render(start, count) {
     gl.drawElements(mode, count, type, start * bytesPerElement);
-    info.update(count, mode, 1);
+    info2.update(count, mode, 1);
   }
   function renderInstances(start, count, primcount) {
     if (primcount === 0) return;
     gl.drawElementsInstanced(mode, count, type, start * bytesPerElement, primcount);
-    info.update(count, mode, primcount);
+    info2.update(count, mode, primcount);
   }
   function renderMultiDraw(starts, counts, drawCount) {
     if (drawCount === 0) return;
@@ -19992,7 +19992,7 @@ function WebGLIndexedBufferRenderer(gl, extensions, info) {
     for (let i = 0; i < drawCount; i++) {
       elementCount += counts[i];
     }
-    info.update(elementCount, mode, 1);
+    info2.update(elementCount, mode, 1);
   }
   function renderMultiDrawInstances(starts, counts, drawCount, primcount) {
     if (drawCount === 0) return;
@@ -20007,7 +20007,7 @@ function WebGLIndexedBufferRenderer(gl, extensions, info) {
       for (let i = 0; i < drawCount; i++) {
         elementCount += counts[i] * primcount[i];
       }
-      info.update(elementCount, mode, 1);
+      info2.update(elementCount, mode, 1);
     }
   }
   this.setMode = setMode;
@@ -20159,10 +20159,10 @@ function WebGLMorphtargets(gl, capabilities, textures) {
     update
   };
 }
-function WebGLObjects(gl, geometries, attributes, info) {
+function WebGLObjects(gl, geometries, attributes, info2) {
   let updateMap = /* @__PURE__ */ new WeakMap();
   function update(object) {
-    const frame = info.render.frame;
+    const frame = info2.render.frame;
     const geometry = object.geometry;
     const buffergeometry = geometries.get(object, geometry);
     if (updateMap.get(buffergeometry) !== frame) {
@@ -20898,14 +20898,14 @@ function fetchAttributeLocations(gl, program) {
   const attributes = {};
   const n = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
   for (let i = 0; i < n; i++) {
-    const info = gl.getActiveAttrib(program, i);
-    const name = info.name;
+    const info2 = gl.getActiveAttrib(program, i);
+    const name = info2.name;
     let locationSize = 1;
-    if (info.type === gl.FLOAT_MAT2) locationSize = 2;
-    if (info.type === gl.FLOAT_MAT3) locationSize = 3;
-    if (info.type === gl.FLOAT_MAT4) locationSize = 4;
+    if (info2.type === gl.FLOAT_MAT2) locationSize = 2;
+    if (info2.type === gl.FLOAT_MAT3) locationSize = 3;
+    if (info2.type === gl.FLOAT_MAT4) locationSize = 4;
     attributes[name] = {
-      type: info.type,
+      type: info2.type,
       location: gl.getAttribLocation(program, name),
       locationSize
     };
@@ -23246,71 +23246,71 @@ function WebGLState(gl, extensions) {
   function compressedTexImage2D() {
     try {
       gl.compressedTexImage2D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function compressedTexImage3D() {
     try {
       gl.compressedTexImage3D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function texSubImage2D() {
     try {
       gl.texSubImage2D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function texSubImage3D() {
     try {
       gl.texSubImage3D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function compressedTexSubImage2D() {
     try {
       gl.compressedTexSubImage2D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function compressedTexSubImage3D() {
     try {
       gl.compressedTexSubImage3D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function texStorage2D() {
     try {
       gl.texStorage2D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function texStorage3D() {
     try {
       gl.texStorage3D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function texImage2D() {
     try {
       gl.texImage2D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function texImage3D() {
     try {
       gl.texImage3D(...arguments);
-    } catch (error) {
-      console.error("THREE.WebGLState:", error);
+    } catch (error2) {
+      console.error("THREE.WebGLState:", error2);
     }
   }
   function scissor(scissor2) {
@@ -23445,7 +23445,7 @@ function WebGLState(gl, extensions) {
     reset
   };
 }
-function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, info) {
+function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, info2) {
   const multisampledRTTExt = extensions.has("WEBGL_multisampled_render_to_texture") ? extensions.get("WEBGL_multisampled_render_to_texture") : null;
   const supportsInvalidateFramebuffer = typeof navigator === "undefined" ? false : /OculusBrowser/g.test(navigator.userAgent);
   const _imageDimensions = new Vector2();
@@ -23635,7 +23635,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
     const source = texture.source;
     const webglTextures = _sources.get(source);
     delete webglTextures[textureProperties.__cacheKey];
-    info.memory.textures--;
+    info2.memory.textures--;
   }
   function deallocateRenderTarget(renderTarget) {
     const renderTargetProperties = properties.get(renderTarget);
@@ -23672,7 +23672,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
       const attachmentProperties = properties.get(textures[i]);
       if (attachmentProperties.__webglTexture) {
         _gl.deleteTexture(attachmentProperties.__webglTexture);
-        info.memory.textures--;
+        info2.memory.textures--;
       }
       properties.remove(textures[i]);
     }
@@ -23818,7 +23818,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
           texture: _gl.createTexture(),
           usedTimes: 0
         };
-        info.memory.textures++;
+        info2.memory.textures++;
         forceUpload = true;
       }
       webglTextures[textureCacheKey].usedTimes++;
@@ -24403,7 +24403,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
         textureProperties.__webglTexture = _gl.createTexture();
       }
       textureProperties.__version = texture.version;
-      info.memory.textures++;
+      info2.memory.textures++;
     }
     if (isCube) {
       renderTargetProperties.__webglFramebuffer = [];
@@ -24431,7 +24431,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
           const attachmentProperties = properties.get(textures[i]);
           if (attachmentProperties.__webglTexture === void 0) {
             attachmentProperties.__webglTexture = _gl.createTexture();
-            info.memory.textures++;
+            info2.memory.textures++;
           }
         }
       }
@@ -24604,7 +24604,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
     return renderTarget.samples > 0 && extensions.has("WEBGL_multisampled_render_to_texture") === true && renderTargetProperties.__useRenderToTexture !== false;
   }
   function updateVideoTexture(texture) {
-    const frame = info.render.frame;
+    const frame = info2.render.frame;
     if (_videoTextures.get(texture) !== frame) {
       _videoTextures.set(texture, frame);
       texture.update();
@@ -25077,7 +25077,7 @@ function WebGLMaterials(renderer, properties) {
     refreshMaterialUniforms
   };
 }
-function WebGLUniformsGroups(gl, info, capabilities, state) {
+function WebGLUniformsGroups(gl, info2, capabilities, state) {
   let buffers = {};
   let updateList = {};
   let allocatedBindingPoints = [];
@@ -25096,7 +25096,7 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
     }
     const webglProgram = program.program;
     state.updateUBOMapping(uniformsGroup, webglProgram);
-    const frame = info.render.frame;
+    const frame = info2.render.frame;
     if (updateList[uniformsGroup.id] !== frame) {
       updateBufferData(uniformsGroup);
       updateList[uniformsGroup.id] = frame;
@@ -25139,7 +25139,7 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
           let arrayOffset = 0;
           for (let k = 0; k < values.length; k++) {
             const value = values[k];
-            const info2 = getUniformSize(value);
+            const info3 = getUniformSize(value);
             if (typeof value === "number" || typeof value === "boolean") {
               uniform.__data[0] = value;
               gl.bufferSubData(gl.UNIFORM_BUFFER, offset + arrayOffset, uniform.__data);
@@ -25158,7 +25158,7 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
               uniform.__data[11] = 0;
             } else {
               value.toArray(uniform.__data, arrayOffset);
-              arrayOffset += info2.storage / Float32Array.BYTES_PER_ELEMENT;
+              arrayOffset += info3.storage / Float32Array.BYTES_PER_ELEMENT;
             }
           }
           gl.bufferSubData(gl.UNIFORM_BUFFER, offset, uniform.__data);
@@ -25204,17 +25204,17 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
         const values = Array.isArray(uniform.value) ? uniform.value : [uniform.value];
         for (let k = 0, kl = values.length; k < kl; k++) {
           const value = values[k];
-          const info2 = getUniformSize(value);
+          const info3 = getUniformSize(value);
           const chunkOffset2 = offset % chunkSize;
-          const chunkPadding = chunkOffset2 % info2.boundary;
+          const chunkPadding = chunkOffset2 % info3.boundary;
           const chunkStart = chunkOffset2 + chunkPadding;
           offset += chunkPadding;
-          if (chunkStart !== 0 && chunkSize - chunkStart < info2.storage) {
+          if (chunkStart !== 0 && chunkSize - chunkStart < info3.storage) {
             offset += chunkSize - chunkStart;
           }
-          uniform.__data = new Float32Array(info2.storage / Float32Array.BYTES_PER_ELEMENT);
+          uniform.__data = new Float32Array(info3.storage / Float32Array.BYTES_PER_ELEMENT);
           uniform.__offset = offset;
-          offset += info2.storage;
+          offset += info3.storage;
         }
       }
     }
@@ -25225,36 +25225,36 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
     return this;
   }
   function getUniformSize(value) {
-    const info2 = {
+    const info3 = {
       boundary: 0,
       // bytes
       storage: 0
       // bytes
     };
     if (typeof value === "number" || typeof value === "boolean") {
-      info2.boundary = 4;
-      info2.storage = 4;
+      info3.boundary = 4;
+      info3.storage = 4;
     } else if (value.isVector2) {
-      info2.boundary = 8;
-      info2.storage = 8;
+      info3.boundary = 8;
+      info3.storage = 8;
     } else if (value.isVector3 || value.isColor) {
-      info2.boundary = 16;
-      info2.storage = 12;
+      info3.boundary = 16;
+      info3.storage = 12;
     } else if (value.isVector4) {
-      info2.boundary = 16;
-      info2.storage = 16;
+      info3.boundary = 16;
+      info3.storage = 16;
     } else if (value.isMatrix3) {
-      info2.boundary = 48;
-      info2.storage = 48;
+      info3.boundary = 48;
+      info3.storage = 48;
     } else if (value.isMatrix4) {
-      info2.boundary = 64;
-      info2.storage = 64;
+      info3.boundary = 64;
+      info3.storage = 64;
     } else if (value.isTexture) {
       console.warn("THREE.WebGLRenderer: Texture samplers can not be part of an uniforms group.");
     } else {
       console.warn("THREE.WebGLRenderer: Unsupported uniform value type.", value);
     }
-    return info2;
+    return info3;
   }
   function onUniformsGroupsDispose(event) {
     const uniformsGroup = event.target;
@@ -26442,8 +26442,8 @@ var init_three_module = __esm({
         this.map = {};
         const n = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
         for (let i = 0; i < n; ++i) {
-          const info = gl.getActiveUniform(program, i), addr = gl.getUniformLocation(program, info.name);
-          parseUniform(info, addr, this);
+          const info2 = gl.getActiveUniform(program, i), addr = gl.getUniformLocation(program, info2.name);
+          parseUniform(info2, addr, this);
         }
       }
       setValue(gl, name, value, textures) {
@@ -27276,11 +27276,11 @@ void main() {
               }
             }
           }
-        } catch (error) {
-          console.error("THREE.WebGLRenderer: " + error.message);
-          throw error;
+        } catch (error2) {
+          console.error("THREE.WebGLRenderer: " + error2.message);
+          throw error2;
         }
-        let extensions, capabilities, state, info;
+        let extensions, capabilities, state, info2;
         let properties, textures, cubemaps, cubeuvmaps, attributes, geometries, objects;
         let programCache, materials, renderLists, renderStates, clipping, shadowMap;
         let background, morphtargets, bufferRenderer, indexedBufferRenderer;
@@ -27294,15 +27294,15 @@ void main() {
           if (capabilities.reversedDepthBuffer && reversedDepthBuffer) {
             state.buffers.depth.setReversed(true);
           }
-          info = new WebGLInfo(_gl);
+          info2 = new WebGLInfo(_gl);
           properties = new WebGLProperties();
-          textures = new WebGLTextures(_gl, extensions, state, properties, capabilities, utils, info);
+          textures = new WebGLTextures(_gl, extensions, state, properties, capabilities, utils, info2);
           cubemaps = new WebGLCubeMaps(_this);
           cubeuvmaps = new WebGLCubeUVMaps(_this);
           attributes = new WebGLAttributes(_gl);
           bindingStates = new WebGLBindingStates(_gl, attributes);
-          geometries = new WebGLGeometries(_gl, attributes, info, bindingStates);
-          objects = new WebGLObjects(_gl, geometries, attributes, info);
+          geometries = new WebGLGeometries(_gl, attributes, info2, bindingStates);
+          objects = new WebGLObjects(_gl, geometries, attributes, info2);
           morphtargets = new WebGLMorphtargets(_gl, capabilities, textures);
           clipping = new WebGLClipping(properties);
           programCache = new WebGLPrograms(_this, cubemaps, cubeuvmaps, extensions, capabilities, bindingStates, clipping);
@@ -27311,17 +27311,17 @@ void main() {
           renderStates = new WebGLRenderStates(extensions);
           background = new WebGLBackground(_this, cubemaps, cubeuvmaps, state, objects, _alpha, premultipliedAlpha);
           shadowMap = new WebGLShadowMap(_this, objects, capabilities);
-          uniformsGroups = new WebGLUniformsGroups(_gl, info, capabilities, state);
-          bufferRenderer = new WebGLBufferRenderer(_gl, extensions, info);
-          indexedBufferRenderer = new WebGLIndexedBufferRenderer(_gl, extensions, info);
-          info.programs = programCache.programs;
+          uniformsGroups = new WebGLUniformsGroups(_gl, info2, capabilities, state);
+          bufferRenderer = new WebGLBufferRenderer(_gl, extensions, info2);
+          indexedBufferRenderer = new WebGLIndexedBufferRenderer(_gl, extensions, info2);
+          info2.programs = programCache.programs;
           _this.capabilities = capabilities;
           _this.extensions = extensions;
           _this.properties = properties;
           _this.renderLists = renderLists;
           _this.shadowMap = shadowMap;
           _this.state = state;
-          _this.info = info;
+          _this.info = info2;
         }
         initGLContext();
         const xr = new WebXRManager(_this, _gl);
@@ -27504,13 +27504,13 @@ void main() {
         function onContextRestore() {
           console.log("THREE.WebGLRenderer: Context Restored.");
           _isContextLost = false;
-          const infoAutoReset = info.autoReset;
+          const infoAutoReset = info2.autoReset;
           const shadowMapEnabled = shadowMap.enabled;
           const shadowMapAutoUpdate = shadowMap.autoUpdate;
           const shadowMapNeedsUpdate = shadowMap.needsUpdate;
           const shadowMapType = shadowMap.type;
           initGLContext();
-          info.autoReset = infoAutoReset;
+          info2.autoReset = infoAutoReset;
           shadowMap.enabled = shadowMapEnabled;
           shadowMap.autoUpdate = shadowMapAutoUpdate;
           shadowMap.needsUpdate = shadowMapNeedsUpdate;
@@ -37107,12 +37107,12 @@ var require_three = __commonJS({
           object.sortObjects = this.sortObjects;
           object.drawRanges = this._drawRanges;
           object.reservedRanges = this._reservedRanges;
-          object.geometryInfo = this._geometryInfo.map((info) => ({
-            ...info,
-            boundingBox: info.boundingBox ? info.boundingBox.toJSON() : void 0,
-            boundingSphere: info.boundingSphere ? info.boundingSphere.toJSON() : void 0
+          object.geometryInfo = this._geometryInfo.map((info2) => ({
+            ...info2,
+            boundingBox: info2.boundingBox ? info2.boundingBox.toJSON() : void 0,
+            boundingSphere: info2.boundingSphere ? info2.boundingSphere.toJSON() : void 0
           }));
-          object.instanceInfo = this._instanceInfo.map((info) => ({ ...info }));
+          object.instanceInfo = this._instanceInfo.map((info2) => ({ ...info2 }));
           object.availableInstanceIds = this._availableInstanceIds.slice();
           object.availableGeometryIds = this._availableGeometryIds.slice();
           object.nextIndexStart = this._nextIndexStart;
@@ -44599,7 +44599,7 @@ var require_three = __commonJS({
        * @param {number} maxIndexCount - The maximum number of indices to be used by all unique geometries to resize to.
       */
       setGeometrySize(maxVertexCount, maxIndexCount) {
-        const validRanges = [...this._geometryInfo].filter((info) => info.active);
+        const validRanges = [...this._geometryInfo].filter((info2) => info2.active);
         const requiredVertexLength = Math.max(...validRanges.map((range) => range.vertexStart + range.reservedVertexCount));
         if (requiredVertexLength > maxVertexCount) {
           throw new Error(`BatchedMesh: Geometry vertex values are being used outside the range ${maxIndexCount}. Cannot shrink further.`);
@@ -44672,12 +44672,12 @@ var require_three = __commonJS({
         this.sortObjects = source.sortObjects;
         this.boundingBox = source.boundingBox !== null ? source.boundingBox.clone() : null;
         this.boundingSphere = source.boundingSphere !== null ? source.boundingSphere.clone() : null;
-        this._geometryInfo = source._geometryInfo.map((info) => ({
-          ...info,
-          boundingBox: info.boundingBox !== null ? info.boundingBox.clone() : null,
-          boundingSphere: info.boundingSphere !== null ? info.boundingSphere.clone() : null
+        this._geometryInfo = source._geometryInfo.map((info2) => ({
+          ...info2,
+          boundingBox: info2.boundingBox !== null ? info2.boundingBox.clone() : null,
+          boundingSphere: info2.boundingSphere !== null ? info2.boundingSphere.clone() : null
         }));
-        this._instanceInfo = source._instanceInfo.map((info) => ({ ...info }));
+        this._instanceInfo = source._instanceInfo.map((info2) => ({ ...info2 }));
         this._availableInstanceIds = source._availableInstanceIds.slice();
         this._availableGeometryIds = source._availableGeometryIds.slice();
         this._nextIndexStart = source._nextIndexStart;
@@ -52542,11 +52542,11 @@ var require_three = __commonJS({
           let texData;
           try {
             texData = scope.parse(buffer);
-          } catch (error) {
+          } catch (error2) {
             if (onError !== void 0) {
-              onError(error);
+              onError(error2);
             } else {
-              console.error(error);
+              console.error(error2);
               return;
             }
           }
@@ -53998,9 +53998,9 @@ var require_three = __commonJS({
           let json = null;
           try {
             json = JSON.parse(text);
-          } catch (error) {
-            if (onError !== void 0) onError(error);
-            console.error("THREE:ObjectLoader: Can't parse " + url + ".", error.message);
+          } catch (error2) {
+            if (onError !== void 0) onError(error2);
+            console.error("THREE:ObjectLoader: Can't parse " + url + ".", error2.message);
             return;
           }
           const metadata = json.metadata;
@@ -54466,17 +54466,17 @@ var require_three = __commonJS({
             object.sortObjects = data.sortObjects;
             object._drawRanges = data.drawRanges;
             object._reservedRanges = data.reservedRanges;
-            object._geometryInfo = data.geometryInfo.map((info) => {
+            object._geometryInfo = data.geometryInfo.map((info2) => {
               let box = null;
               let sphere = null;
-              if (info.boundingBox !== void 0) {
-                box = new Box32().fromJSON(info.boundingBox);
+              if (info2.boundingBox !== void 0) {
+                box = new Box32().fromJSON(info2.boundingBox);
               }
-              if (info.boundingSphere !== void 0) {
-                sphere = new Sphere2().fromJSON(info.boundingSphere);
+              if (info2.boundingSphere !== void 0) {
+                sphere = new Sphere2().fromJSON(info2.boundingSphere);
               }
               return {
-                ...info,
+                ...info2,
                 boundingBox: box,
                 boundingSphere: sphere
               };
@@ -61376,19 +61376,19 @@ var require_three = __commonJS({
         disableUnusedAttributes
       };
     }
-    function WebGLBufferRenderer2(gl, extensions, info) {
+    function WebGLBufferRenderer2(gl, extensions, info2) {
       let mode;
       function setMode(value) {
         mode = value;
       }
       function render(start, count) {
         gl.drawArrays(mode, start, count);
-        info.update(count, mode, 1);
+        info2.update(count, mode, 1);
       }
       function renderInstances(start, count, primcount) {
         if (primcount === 0) return;
         gl.drawArraysInstanced(mode, start, count, primcount);
-        info.update(count, mode, primcount);
+        info2.update(count, mode, primcount);
       }
       function renderMultiDraw(starts, counts, drawCount) {
         if (drawCount === 0) return;
@@ -61398,7 +61398,7 @@ var require_three = __commonJS({
         for (let i = 0; i < drawCount; i++) {
           elementCount += counts[i];
         }
-        info.update(elementCount, mode, 1);
+        info2.update(elementCount, mode, 1);
       }
       function renderMultiDrawInstances(starts, counts, drawCount, primcount) {
         if (drawCount === 0) return;
@@ -61413,7 +61413,7 @@ var require_three = __commonJS({
           for (let i = 0; i < drawCount; i++) {
             elementCount += counts[i] * primcount[i];
           }
-          info.update(elementCount, mode, 1);
+          info2.update(elementCount, mode, 1);
         }
       }
       this.setMode = setMode;
@@ -62426,7 +62426,7 @@ var require_three = __commonJS({
         }
       };
     }
-    function WebGLGeometries2(gl, attributes, info, bindingStates) {
+    function WebGLGeometries2(gl, attributes, info2, bindingStates) {
       const geometries = {};
       const wireframeAttributes = /* @__PURE__ */ new WeakMap();
       function onGeometryDispose(event) {
@@ -62448,13 +62448,13 @@ var require_three = __commonJS({
         if (geometry.isInstancedBufferGeometry === true) {
           delete geometry._maxInstanceCount;
         }
-        info.memory.geometries--;
+        info2.memory.geometries--;
       }
       function get(object, geometry) {
         if (geometries[geometry.id] === true) return geometry;
         geometry.addEventListener("dispose", onGeometryDispose);
         geometries[geometry.id] = true;
-        info.memory.geometries++;
+        info2.memory.geometries++;
         return geometry;
       }
       function update(geometry) {
@@ -62515,7 +62515,7 @@ var require_three = __commonJS({
         getWireframeAttribute
       };
     }
-    function WebGLIndexedBufferRenderer2(gl, extensions, info) {
+    function WebGLIndexedBufferRenderer2(gl, extensions, info2) {
       let mode;
       function setMode(value) {
         mode = value;
@@ -62527,12 +62527,12 @@ var require_three = __commonJS({
       }
       function render(start, count) {
         gl.drawElements(mode, count, type, start * bytesPerElement);
-        info.update(count, mode, 1);
+        info2.update(count, mode, 1);
       }
       function renderInstances(start, count, primcount) {
         if (primcount === 0) return;
         gl.drawElementsInstanced(mode, count, type, start * bytesPerElement, primcount);
-        info.update(count, mode, primcount);
+        info2.update(count, mode, primcount);
       }
       function renderMultiDraw(starts, counts, drawCount) {
         if (drawCount === 0) return;
@@ -62542,7 +62542,7 @@ var require_three = __commonJS({
         for (let i = 0; i < drawCount; i++) {
           elementCount += counts[i];
         }
-        info.update(elementCount, mode, 1);
+        info2.update(elementCount, mode, 1);
       }
       function renderMultiDrawInstances(starts, counts, drawCount, primcount) {
         if (drawCount === 0) return;
@@ -62557,7 +62557,7 @@ var require_three = __commonJS({
           for (let i = 0; i < drawCount; i++) {
             elementCount += counts[i] * primcount[i];
           }
-          info.update(elementCount, mode, 1);
+          info2.update(elementCount, mode, 1);
         }
       }
       this.setMode = setMode;
@@ -62709,10 +62709,10 @@ var require_three = __commonJS({
         update
       };
     }
-    function WebGLObjects2(gl, geometries, attributes, info) {
+    function WebGLObjects2(gl, geometries, attributes, info2) {
       let updateMap = /* @__PURE__ */ new WeakMap();
       function update(object) {
-        const frame = info.render.frame;
+        const frame = info2.render.frame;
         const geometry = object.geometry;
         const buffergeometry = geometries.get(object, geometry);
         if (updateMap.get(buffergeometry) !== frame) {
@@ -63385,8 +63385,8 @@ var require_three = __commonJS({
         this.map = {};
         const n = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
         for (let i = 0; i < n; ++i) {
-          const info = gl.getActiveUniform(program, i), addr = gl.getUniformLocation(program, info.name);
-          parseUniform2(info, addr, this);
+          const info2 = gl.getActiveUniform(program, i), addr = gl.getUniformLocation(program, info2.name);
+          parseUniform2(info2, addr, this);
         }
       }
       setValue(gl, name, value, textures) {
@@ -63531,14 +63531,14 @@ var require_three = __commonJS({
       const attributes = {};
       const n = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
       for (let i = 0; i < n; i++) {
-        const info = gl.getActiveAttrib(program, i);
-        const name = info.name;
+        const info2 = gl.getActiveAttrib(program, i);
+        const name = info2.name;
         let locationSize = 1;
-        if (info.type === gl.FLOAT_MAT2) locationSize = 2;
-        if (info.type === gl.FLOAT_MAT3) locationSize = 3;
-        if (info.type === gl.FLOAT_MAT4) locationSize = 4;
+        if (info2.type === gl.FLOAT_MAT2) locationSize = 2;
+        if (info2.type === gl.FLOAT_MAT3) locationSize = 3;
+        if (info2.type === gl.FLOAT_MAT4) locationSize = 4;
         attributes[name] = {
-          type: info.type,
+          type: info2.type,
           location: gl.getAttribLocation(program, name),
           locationSize
         };
@@ -65962,71 +65962,71 @@ var require_three = __commonJS({
       function compressedTexImage2D() {
         try {
           gl.compressedTexImage2D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function compressedTexImage3D() {
         try {
           gl.compressedTexImage3D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function texSubImage2D() {
         try {
           gl.texSubImage2D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function texSubImage3D() {
         try {
           gl.texSubImage3D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function compressedTexSubImage2D() {
         try {
           gl.compressedTexSubImage2D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function compressedTexSubImage3D() {
         try {
           gl.compressedTexSubImage3D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function texStorage2D() {
         try {
           gl.texStorage2D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function texStorage3D() {
         try {
           gl.texStorage3D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function texImage2D() {
         try {
           gl.texImage2D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function texImage3D() {
         try {
           gl.texImage3D(...arguments);
-        } catch (error) {
-          console.error("THREE.WebGLState:", error);
+        } catch (error2) {
+          console.error("THREE.WebGLState:", error2);
         }
       }
       function scissor(scissor2) {
@@ -66161,7 +66161,7 @@ var require_three = __commonJS({
         reset
       };
     }
-    function WebGLTextures2(_gl, extensions, state, properties, capabilities, utils, info) {
+    function WebGLTextures2(_gl, extensions, state, properties, capabilities, utils, info2) {
       const multisampledRTTExt = extensions.has("WEBGL_multisampled_render_to_texture") ? extensions.get("WEBGL_multisampled_render_to_texture") : null;
       const supportsInvalidateFramebuffer = typeof navigator === "undefined" ? false : /OculusBrowser/g.test(navigator.userAgent);
       const _imageDimensions = new Vector22();
@@ -66351,7 +66351,7 @@ var require_three = __commonJS({
         const source = texture.source;
         const webglTextures = _sources.get(source);
         delete webglTextures[textureProperties.__cacheKey];
-        info.memory.textures--;
+        info2.memory.textures--;
       }
       function deallocateRenderTarget(renderTarget) {
         const renderTargetProperties = properties.get(renderTarget);
@@ -66388,7 +66388,7 @@ var require_three = __commonJS({
           const attachmentProperties = properties.get(textures[i]);
           if (attachmentProperties.__webglTexture) {
             _gl.deleteTexture(attachmentProperties.__webglTexture);
-            info.memory.textures--;
+            info2.memory.textures--;
           }
           properties.remove(textures[i]);
         }
@@ -66534,7 +66534,7 @@ var require_three = __commonJS({
               texture: _gl.createTexture(),
               usedTimes: 0
             };
-            info.memory.textures++;
+            info2.memory.textures++;
             forceUpload = true;
           }
           webglTextures[textureCacheKey].usedTimes++;
@@ -67119,7 +67119,7 @@ var require_three = __commonJS({
             textureProperties.__webglTexture = _gl.createTexture();
           }
           textureProperties.__version = texture.version;
-          info.memory.textures++;
+          info2.memory.textures++;
         }
         if (isCube) {
           renderTargetProperties.__webglFramebuffer = [];
@@ -67147,7 +67147,7 @@ var require_three = __commonJS({
               const attachmentProperties = properties.get(textures[i]);
               if (attachmentProperties.__webglTexture === void 0) {
                 attachmentProperties.__webglTexture = _gl.createTexture();
-                info.memory.textures++;
+                info2.memory.textures++;
               }
             }
           }
@@ -67320,7 +67320,7 @@ var require_three = __commonJS({
         return renderTarget.samples > 0 && extensions.has("WEBGL_multisampled_render_to_texture") === true && renderTargetProperties.__useRenderToTexture !== false;
       }
       function updateVideoTexture(texture) {
-        const frame = info.render.frame;
+        const frame = info2.render.frame;
         if (_videoTextures.get(texture) !== frame) {
           _videoTextures.set(texture, frame);
           texture.update();
@@ -68390,7 +68390,7 @@ void main() {
         refreshMaterialUniforms
       };
     }
-    function WebGLUniformsGroups2(gl, info, capabilities, state) {
+    function WebGLUniformsGroups2(gl, info2, capabilities, state) {
       let buffers = {};
       let updateList = {};
       let allocatedBindingPoints = [];
@@ -68409,7 +68409,7 @@ void main() {
         }
         const webglProgram = program.program;
         state.updateUBOMapping(uniformsGroup, webglProgram);
-        const frame = info.render.frame;
+        const frame = info2.render.frame;
         if (updateList[uniformsGroup.id] !== frame) {
           updateBufferData(uniformsGroup);
           updateList[uniformsGroup.id] = frame;
@@ -68452,7 +68452,7 @@ void main() {
               let arrayOffset = 0;
               for (let k = 0; k < values.length; k++) {
                 const value = values[k];
-                const info2 = getUniformSize(value);
+                const info3 = getUniformSize(value);
                 if (typeof value === "number" || typeof value === "boolean") {
                   uniform.__data[0] = value;
                   gl.bufferSubData(gl.UNIFORM_BUFFER, offset + arrayOffset, uniform.__data);
@@ -68471,7 +68471,7 @@ void main() {
                   uniform.__data[11] = 0;
                 } else {
                   value.toArray(uniform.__data, arrayOffset);
-                  arrayOffset += info2.storage / Float32Array.BYTES_PER_ELEMENT;
+                  arrayOffset += info3.storage / Float32Array.BYTES_PER_ELEMENT;
                 }
               }
               gl.bufferSubData(gl.UNIFORM_BUFFER, offset, uniform.__data);
@@ -68517,17 +68517,17 @@ void main() {
             const values = Array.isArray(uniform.value) ? uniform.value : [uniform.value];
             for (let k = 0, kl = values.length; k < kl; k++) {
               const value = values[k];
-              const info2 = getUniformSize(value);
+              const info3 = getUniformSize(value);
               const chunkOffset2 = offset % chunkSize;
-              const chunkPadding = chunkOffset2 % info2.boundary;
+              const chunkPadding = chunkOffset2 % info3.boundary;
               const chunkStart = chunkOffset2 + chunkPadding;
               offset += chunkPadding;
-              if (chunkStart !== 0 && chunkSize - chunkStart < info2.storage) {
+              if (chunkStart !== 0 && chunkSize - chunkStart < info3.storage) {
                 offset += chunkSize - chunkStart;
               }
-              uniform.__data = new Float32Array(info2.storage / Float32Array.BYTES_PER_ELEMENT);
+              uniform.__data = new Float32Array(info3.storage / Float32Array.BYTES_PER_ELEMENT);
               uniform.__offset = offset;
-              offset += info2.storage;
+              offset += info3.storage;
             }
           }
         }
@@ -68538,36 +68538,36 @@ void main() {
         return this;
       }
       function getUniformSize(value) {
-        const info2 = {
+        const info3 = {
           boundary: 0,
           // bytes
           storage: 0
           // bytes
         };
         if (typeof value === "number" || typeof value === "boolean") {
-          info2.boundary = 4;
-          info2.storage = 4;
+          info3.boundary = 4;
+          info3.storage = 4;
         } else if (value.isVector2) {
-          info2.boundary = 8;
-          info2.storage = 8;
+          info3.boundary = 8;
+          info3.storage = 8;
         } else if (value.isVector3 || value.isColor) {
-          info2.boundary = 16;
-          info2.storage = 12;
+          info3.boundary = 16;
+          info3.storage = 12;
         } else if (value.isVector4) {
-          info2.boundary = 16;
-          info2.storage = 16;
+          info3.boundary = 16;
+          info3.storage = 16;
         } else if (value.isMatrix3) {
-          info2.boundary = 48;
-          info2.storage = 48;
+          info3.boundary = 48;
+          info3.storage = 48;
         } else if (value.isMatrix4) {
-          info2.boundary = 64;
-          info2.storage = 64;
+          info3.boundary = 64;
+          info3.storage = 64;
         } else if (value.isTexture) {
           console.warn("THREE.WebGLRenderer: Texture samplers can not be part of an uniforms group.");
         } else {
           console.warn("THREE.WebGLRenderer: Unsupported uniform value type.", value);
         }
-        return info2;
+        return info3;
       }
       function onUniformsGroupsDispose(event) {
         const uniformsGroup = event.target;
@@ -68713,11 +68713,11 @@ void main() {
               }
             }
           }
-        } catch (error) {
-          console.error("THREE.WebGLRenderer: " + error.message);
-          throw error;
+        } catch (error2) {
+          console.error("THREE.WebGLRenderer: " + error2.message);
+          throw error2;
         }
-        let extensions, capabilities, state, info;
+        let extensions, capabilities, state, info2;
         let properties, textures, cubemaps, cubeuvmaps, attributes, geometries, objects;
         let programCache, materials, renderLists, renderStates, clipping, shadowMap;
         let background, morphtargets, bufferRenderer, indexedBufferRenderer;
@@ -68731,15 +68731,15 @@ void main() {
           if (capabilities.reversedDepthBuffer && reversedDepthBuffer) {
             state.buffers.depth.setReversed(true);
           }
-          info = new WebGLInfo2(_gl);
+          info2 = new WebGLInfo2(_gl);
           properties = new WebGLProperties2();
-          textures = new WebGLTextures2(_gl, extensions, state, properties, capabilities, utils, info);
+          textures = new WebGLTextures2(_gl, extensions, state, properties, capabilities, utils, info2);
           cubemaps = new WebGLCubeMaps2(_this);
           cubeuvmaps = new WebGLCubeUVMaps2(_this);
           attributes = new WebGLAttributes2(_gl);
           bindingStates = new WebGLBindingStates2(_gl, attributes);
-          geometries = new WebGLGeometries2(_gl, attributes, info, bindingStates);
-          objects = new WebGLObjects2(_gl, geometries, attributes, info);
+          geometries = new WebGLGeometries2(_gl, attributes, info2, bindingStates);
+          objects = new WebGLObjects2(_gl, geometries, attributes, info2);
           morphtargets = new WebGLMorphtargets2(_gl, capabilities, textures);
           clipping = new WebGLClipping2(properties);
           programCache = new WebGLPrograms2(_this, cubemaps, cubeuvmaps, extensions, capabilities, bindingStates, clipping);
@@ -68748,17 +68748,17 @@ void main() {
           renderStates = new WebGLRenderStates2(extensions);
           background = new WebGLBackground2(_this, cubemaps, cubeuvmaps, state, objects, _alpha, premultipliedAlpha);
           shadowMap = new WebGLShadowMap2(_this, objects, capabilities);
-          uniformsGroups = new WebGLUniformsGroups2(_gl, info, capabilities, state);
-          bufferRenderer = new WebGLBufferRenderer2(_gl, extensions, info);
-          indexedBufferRenderer = new WebGLIndexedBufferRenderer2(_gl, extensions, info);
-          info.programs = programCache.programs;
+          uniformsGroups = new WebGLUniformsGroups2(_gl, info2, capabilities, state);
+          bufferRenderer = new WebGLBufferRenderer2(_gl, extensions, info2);
+          indexedBufferRenderer = new WebGLIndexedBufferRenderer2(_gl, extensions, info2);
+          info2.programs = programCache.programs;
           _this.capabilities = capabilities;
           _this.extensions = extensions;
           _this.properties = properties;
           _this.renderLists = renderLists;
           _this.shadowMap = shadowMap;
           _this.state = state;
-          _this.info = info;
+          _this.info = info2;
         }
         initGLContext();
         const xr = new WebXRManager2(_this, _gl);
@@ -68941,13 +68941,13 @@ void main() {
         function onContextRestore() {
           console.log("THREE.WebGLRenderer: Context Restored.");
           _isContextLost = false;
-          const infoAutoReset = info.autoReset;
+          const infoAutoReset = info2.autoReset;
           const shadowMapEnabled = shadowMap.enabled;
           const shadowMapAutoUpdate = shadowMap.autoUpdate;
           const shadowMapNeedsUpdate = shadowMap.needsUpdate;
           const shadowMapType = shadowMap.type;
           initGLContext();
-          info.autoReset = infoAutoReset;
+          info2.autoReset = infoAutoReset;
           shadowMap.enabled = shadowMapEnabled;
           shadowMap.autoUpdate = shadowMapAutoUpdate;
           shadowMap.needsUpdate = shadowMapNeedsUpdate;
@@ -92265,8 +92265,8 @@ var init_GLTFLoader = __esm({
           if (magic === BINARY_EXTENSION_HEADER_MAGIC) {
             try {
               extensions[EXTENSIONS.KHR_BINARY_GLTF] = new GLTFBinaryExtension(data);
-            } catch (error) {
-              if (onError) onError(error);
+            } catch (error2) {
+              if (onError) onError(error2);
               return;
             }
             json = JSON.parse(extensions[EXTENSIONS.KHR_BINARY_GLTF].content);
@@ -93701,9 +93701,9 @@ var init_GLTFLoader = __esm({
           assignExtrasToUserData(texture, sourceDef);
           texture.userData.mimeType = sourceDef.mimeType || getImageURIMimeType(sourceDef.uri);
           return texture;
-        }).catch(function(error) {
+        }).catch(function(error2) {
           console.error("THREE.GLTFLoader: Couldn't load texture", sourceURI);
-          throw error;
+          throw error2;
         });
         this.sourceCache[sourceIndex] = promise;
         return promise;
@@ -94412,6 +94412,8 @@ var DefaultSimConfig = {
   // bullets live for 3 seconds
   maxSimulationSteps: 5,
   // max steps per frame to prevent spiral of death
+  useBVH: true,
+  // use Bounding Volume Hierarchy for collision detection
   targetUpdateRate: 0.5,
   // AI updates targets every 0.5 seconds
   boundaryBehavior: {
@@ -94710,47 +94712,60 @@ var DEFAULT_BEHAVIOR_CONFIG = {
     minimumSafeDistance: 10,
     formationSearchRadius: 500,
     enableDynamicBehavior: true,
-    // Combat range and engagement settings
     closeRangeMultiplier: 0.6,
     mediumRangeMultiplier: 1.2,
     movementCloseEnoughThreshold: 10,
     friendlyAvoidanceDistance: 80,
     boundarySafetyMargin: 50,
-    // Separation behavior clustering thresholds
     separationVeryTightCluster: 8,
     separationModerateCluster: 5,
     separationMildCluster: 3,
     separationVeryTightWeight: 5,
     separationModerateWeight: 2,
     separationMildWeight: 1.2,
-    // Evade behavior settings
-    evadeMaxPitch: Math.PI * 0.5,
-    // ±45 degrees pitch
+    separationDistance: 120,
+    separationWeight: 0.3,
+    roamingAnchorMinSeparation: 150,
+    killCreditWindowSeconds: 5,
+    enableBoundaryCleanup: true,
+    boundaryCleanupIntervalTicks: 600,
+    enableSpawnJitter: true,
+    intentDurationDamageEvade: 3,
+    probabilityGroupDefensive: 0.7,
+    rangeMultiplierEvade: 1.5,
+    penaltyThreat: 200,
+    displacementIdleSeparation: 0.05,
+    neighborCountIdleNudgeDivisor: 5,
+    strafeRadius: 150,
+    groupFriendRadius: 300,
+    formationMinGroupSize: 3,
+    roamingAnchorMaxAttempts: 20,
+    roamingAnchorDistanceThreshold: 1,
+    formationSlotDistanceThreshold: 1,
+    separationVectorMagnitudeThreshold: 1e-4,
+    damageEvadeThreshold: 0.2,
+    damageDecayRate: 0.5,
+    evadeSamplingCount: 8,
+    evadeDistance: 200,
+    evadeOnlyOnDamage: false,
+    evadeRecentDamageWindowSeconds: 2,
     evadeBaseScore: 100,
     evadeThreatPenaltyWeight: 0.5,
     evadeBoundaryPenaltyWeight: 2,
     evadeDistanceImprovementWeight: 0.3,
     evadeFriendlyPenaltyWeight: 0.2,
-    // Existing separation and damage settings
-    separationDistance: 120,
-    separationWeight: 0.3,
-    roamingAnchorMinSeparation: 150,
-    damageEvadeThreshold: 25,
-    // Increased from 15 to reduce evade frequency
-    damageDecayRate: 2,
-    // Increased from 1.0 to make evade effect wear off faster
-    evadeSamplingCount: 8,
-    evadeDistance: 30,
-    evadeOnlyOnDamage: false,
-    // Default: preserve backwards compatibility (allow proximity-based evade)
-    evadeRecentDamageWindowSeconds: 3,
-    // Window during which recent damage allows evade (matches typical test patterns)
-    killCreditWindowSeconds: 5,
-    enableBoundaryCleanup: true,
-    boundaryCleanupIntervalTicks: 600,
-    enableSpawnJitter: true,
-    enableSpatialIndex: true
-    // Enable by default for better performance
+    evadeMaxPitch: Math.PI * 0.5,
+    enableSpatialIndex: true,
+    enableScoutBehavior: true,
+    enableAlarmSystem: true,
+    alarmSystemWindowSeconds: 5,
+    enableScoutExploration: true,
+    explorationZoneCount: 6,
+    explorationZoneDuration: 8,
+    // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
+    useDecisionEngineEvadeGate: false,
+    // Keep turret targeting helper disabled by default to guarantee parity
+    useTurretTargetingHelper: false
   }
 };
 function getEffectivePersonality(config, shipClass, team) {
@@ -94843,16 +94858,394 @@ function clampTurn(angleDiff, maxTurnRate) {
   return Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurnRate);
 }
 
+// src/core/ai/steering.ts
+function calculateEscapeScore(shipPos, targetPos, threats, friendlies, bounds, settings) {
+  let score = settings.evadeBaseScore;
+  for (const t of threats) {
+    const dx = targetPos.x - t.x;
+    const dy = targetPos.y - t.y;
+    const dz = targetPos.z - t.z;
+    const dist = Math.hypot(dx, dy, dz);
+    const threatPenalty = Math.max(0, 200 - dist) * settings.evadeThreatPenaltyWeight;
+    score -= threatPenalty;
+  }
+  const m = settings.boundarySafetyMargin;
+  if (targetPos.x < m) score -= (m - targetPos.x) * settings.evadeBoundaryPenaltyWeight;
+  if (targetPos.x > bounds.width - m) score -= (targetPos.x - (bounds.width - m)) * settings.evadeBoundaryPenaltyWeight;
+  if (targetPos.y < m) score -= (m - targetPos.y) * settings.evadeBoundaryPenaltyWeight;
+  if (targetPos.y > bounds.height - m) score -= (targetPos.y - (bounds.height - m)) * settings.evadeBoundaryPenaltyWeight;
+  if (targetPos.z < m) score -= (m - targetPos.z) * settings.evadeBoundaryPenaltyWeight;
+  if (targetPos.z > bounds.depth - m) score -= (targetPos.z - (bounds.depth - m)) * settings.evadeBoundaryPenaltyWeight;
+  if (threats.length > 0) {
+    const t = threats[0];
+    const cdx = shipPos.x - t.x;
+    const cdy = shipPos.y - t.y;
+    const cdz = shipPos.z - t.z;
+    const currentDistance = Math.hypot(cdx, cdy, cdz);
+    const ndx = targetPos.x - t.x;
+    const ndy = targetPos.y - t.y;
+    const ndz = targetPos.z - t.z;
+    const newDistance = Math.hypot(ndx, ndy, ndz);
+    if (newDistance > currentDistance) {
+      score += (newDistance - currentDistance) * settings.evadeDistanceImprovementWeight;
+    }
+  }
+  for (const f of friendlies) {
+    const dx = targetPos.x - f.x;
+    const dy = targetPos.y - f.y;
+    const dz = targetPos.z - f.z;
+    const dist = Math.hypot(dx, dy, dz);
+    if (dist < settings.friendlyAvoidanceDistance) {
+      score -= (settings.friendlyAvoidanceDistance - dist) * settings.evadeFriendlyPenaltyWeight;
+    }
+  }
+  return score;
+}
+function moveTowards(ship, targetPos, dt, settings, speedOverride) {
+  const moveSpeed = speedOverride || ship.speed;
+  const dx = targetPos.x - ship.pos.x;
+  const dy = targetPos.y - ship.pos.y;
+  const dz = targetPos.z - ship.pos.z;
+  const distance = Math.hypot(dx, dy, dz);
+  if (distance < settings.movementCloseEnoughThreshold) return;
+  const targetOrientation = lookAt(ship.pos, targetPos);
+  const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
+  const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
+  const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
+  const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
+  ship.orientation.pitch += pitchTurn;
+  ship.orientation.yaw += yawTurn;
+  ship.dir = ship.orientation.yaw;
+  const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
+  const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
+  ship.vel.x += forward.x * accel * dt;
+  ship.vel.y += forward.y * accel * dt;
+  ship.vel.z += forward.z * accel * dt;
+  ship.vel.x *= PhysicsConfig.speed.dampingFactor;
+  ship.vel.y *= PhysicsConfig.speed.dampingFactor;
+  ship.vel.z *= PhysicsConfig.speed.dampingFactor;
+  const maxV = moveSpeed * PhysicsConfig.speed.maxSpeedMultiplier;
+  const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
+  if (v > maxV && v > 0) {
+    ship.vel.x = ship.vel.x / v * maxV;
+    ship.vel.y = ship.vel.y / v * maxV;
+    ship.vel.z = ship.vel.z / v * maxV;
+  }
+  ship.pos.x += ship.vel.x * dt;
+  ship.pos.y += ship.vel.y * dt;
+  ship.pos.z += ship.vel.z * dt;
+}
+function calculateSeparationForceWithCount(shipPos, neighbors, separationDistance, magnitudeThreshold, random) {
+  let sx = 0, sy = 0, sz = 0;
+  let count = 0;
+  const sepDistSq = separationDistance * separationDistance;
+  for (const n of neighbors) {
+    const dx = shipPos.x - n.x;
+    const dy = shipPos.y - n.y;
+    const dz = shipPos.z - n.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    if (distSq <= 0 || distSq >= sepDistSq) continue;
+    const dist = Math.sqrt(distSq);
+    const weight = (separationDistance - dist) / separationDistance;
+    const inv = 1 / dist;
+    sx += dx * weight * inv;
+    sy += dy * weight * inv;
+    sz += dz * weight * inv;
+    count++;
+  }
+  if (count === 0) return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
+  sx /= count;
+  sy /= count;
+  sz /= count;
+  const mag = Math.hypot(sx, sy, sz);
+  if (mag > magnitudeThreshold) {
+    return { force: { x: sx / mag, y: sy / mag, z: sz / mag }, neighborCount: count };
+  }
+  let cx = 0, cy = 0, cz = 0;
+  for (const n of neighbors) {
+    const dx = shipPos.x - n.x;
+    const dy = shipPos.y - n.y;
+    const dz = shipPos.z - n.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    if (distSq > 0 && distSq < sepDistSq) {
+      cx += n.x;
+      cy += n.y;
+      cz += n.z;
+    }
+  }
+  if (cx !== 0 || cy !== 0 || cz !== 0) {
+    const inv = 1 / count;
+    cx *= inv;
+    cy *= inv;
+    cz *= inv;
+    const rx = shipPos.x - cx;
+    const ry = shipPos.y - cy;
+    const rz = shipPos.z - cz;
+    const rmag = Math.hypot(rx, ry, rz);
+    if (rmag > magnitudeThreshold) {
+      return { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount: count };
+    }
+  }
+  const angle = random() * Math.PI * 2;
+  return { force: { x: Math.cos(angle), y: Math.sin(angle), z: 0 }, neighborCount: count };
+}
+
+// src/core/ai/decisionEngine.ts
+function scoreEvade(params) {
+  const { distanceToThreat, recentDamage, damageEvadeThreshold, withinRecentDamageWindow, settings } = params;
+  let score = 0;
+  if (distanceToThreat != null && distanceToThreat < settings.minimumSafeDistance * settings.closeRangeMultiplier) score += 1;
+  if (recentDamage >= damageEvadeThreshold && withinRecentDamageWindow) score += 1;
+  return score;
+}
+
+// src/core/ai/intentManager.ts
+var IntentManager = class {
+  computeDuration(personality, rng, opts) {
+    const baseMin = personality.minIntentDuration;
+    const range = personality.maxIntentDuration - personality.minIntentDuration;
+    let base = baseMin;
+    if (opts?.damageEvade && typeof opts.damageEvadeDuration === "number") {
+      base = Math.min(base, opts.damageEvadeDuration);
+    }
+    return base + rng.next() * range;
+  }
+  /**
+   * Applies the intent to the ship and sets intentEndTime using computeDuration.
+   * Returns the assigned duration for convenience.
+   */
+  applyIntent(ship, now, intent, personality, rng, opts) {
+    const duration = this.computeDuration(personality, rng, opts);
+    if (!ship.aiState) ship.aiState = {};
+    const aiState = ship.aiState;
+    aiState.currentIntent = intent;
+    aiState.intentEndTime = now + duration;
+    return duration;
+  }
+};
+
+// src/core/ai/turretTargeting.ts
+function scoreTurretTarget(distance, target) {
+  let score = 0;
+  if (distance > 0) score += 1e3 / distance;
+  score += (target.maxHealth - target.health) * 0.1;
+  score += target.level.level * 5;
+  return score;
+}
+function isWithinTurretRange(distance, cfg) {
+  return distance >= cfg.minimumFireRange && distance <= cfg.maximumFireRange;
+}
+function pickBestTurretTarget(state, ship, turret, cfg) {
+  let bestId = null;
+  let bestScore = 0;
+  for (const target of state.ships) {
+    if (target.team === ship.team || target.health <= 0) continue;
+    const dx = target.pos.x - ship.pos.x;
+    const dy = target.pos.y - ship.pos.y;
+    const dz = target.pos.z - ship.pos.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (!isWithinTurretRange(distance, cfg)) continue;
+    const score = scoreTurretTarget(distance, target);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = target.id;
+    }
+  }
+  return bestId;
+}
+
+// src/core/searchUtils.ts
+function getDistance(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+function ensureSpatialGridPopulated(state) {
+  if (!state.spatialGrid) return;
+  state.spatialGrid.clear();
+  for (const s of state.ships) {
+    if (s.health > 0) {
+      state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
+    }
+  }
+}
+function findNearestEnemy(state, ship) {
+  if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    ensureSpatialGridPopulated(state);
+    const targetTeam = ship.team === "red" ? "blue" : "red";
+    const nearest = state.spatialGrid.queryKNearest(ship.pos, 1, targetTeam);
+    if (!nearest || nearest.length === 0) return null;
+    return state.shipIndex?.get(nearest[0].id) || null;
+  }
+  let best = null;
+  let bestD = Infinity;
+  for (const s of state.ships) {
+    if (s.team === ship.team || s.health <= 0) continue;
+    const d = getDistance(ship.pos, s.pos);
+    if (d < bestD) {
+      bestD = d;
+      best = s;
+    }
+  }
+  return best;
+}
+function findNearbyEnemies(state, ship, range) {
+  if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    ensureSpatialGridPopulated(state);
+    const out = [];
+    state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
+      if (entity.team !== ship.team) {
+        const s = state.shipIndex?.get(entity.id);
+        if (s && s.health > 0) out.push(s);
+      }
+    });
+    return out.sort((a, b) => getDistance(ship.pos, a.pos) - getDistance(ship.pos, b.pos));
+  }
+  const enemies = [];
+  for (const s of state.ships) {
+    if (s.team === ship.team || s.health <= 0) continue;
+    const d = getDistance(ship.pos, s.pos);
+    if (d <= range) enemies.push(s);
+  }
+  return enemies.sort((a, b) => getDistance(ship.pos, a.pos) - getDistance(ship.pos, b.pos));
+}
+function findNearbyFriends(state, ship, range) {
+  if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    ensureSpatialGridPopulated(state);
+    const out = [];
+    state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
+      if (entity.team === ship.team && entity.id !== ship.id) {
+        const s = state.shipIndex?.get(entity.id);
+        if (s && s.health > 0) out.push(s);
+      }
+    });
+    return out;
+  }
+  const friends = [];
+  for (const s of state.ships) {
+    if (s.team !== ship.team || s.health <= 0 || s.id === ship.id) continue;
+    const d = getDistance(ship.pos, s.pos);
+    if (d <= range) friends.push(s);
+  }
+  return friends;
+}
+function getNearbySeparationShipsLinear(state, ship, separationDistance) {
+  const nearby = [];
+  for (const other of state.ships) {
+    if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+    const dist = getDistance(ship.pos, other.pos);
+    if (dist > 0 && dist < separationDistance) nearby.push(other);
+  }
+  return nearby;
+}
+
+// src/core/boundaryUtils.ts
+function applyBoundaryPhysicsShip(ship, state) {
+  const bounds = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.ships;
+  if (behavior === "bounce") {
+    if (ship.pos.x < 0) {
+      ship.pos.x = 0;
+      ship.vel.x = -ship.vel.x;
+    } else if (ship.pos.x > bounds.width) {
+      ship.pos.x = bounds.width;
+      ship.vel.x = -ship.vel.x;
+    }
+    if (ship.pos.y < 0) {
+      ship.pos.y = 0;
+      ship.vel.y = -ship.vel.y;
+    } else if (ship.pos.y > bounds.height) {
+      ship.pos.y = bounds.height;
+      ship.vel.y = -ship.vel.y;
+    }
+    if (ship.pos.z < 0) {
+      ship.pos.z = 0;
+      ship.vel.z = -ship.vel.z;
+    } else if (ship.pos.z > bounds.depth) {
+      ship.pos.z = bounds.depth;
+      ship.vel.z = -ship.vel.z;
+    }
+  } else if (behavior === "wrap") {
+    if (ship.pos.x < 0) ship.pos.x += bounds.width;
+    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
+    if (ship.pos.y < 0) ship.pos.y += bounds.height;
+    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
+    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
+    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
+  } else if (behavior === "remove") {
+    if (ship.pos.x < 0 || ship.pos.x > bounds.width || ship.pos.y < 0 || ship.pos.y > bounds.height || ship.pos.z < 0 || ship.pos.z > bounds.depth) {
+      ship.health = 0;
+    }
+  }
+}
+function applyBoundaryPhysicsBullet(b, state) {
+  const { width, height, depth } = state.simConfig.simBounds;
+  const behavior = state.simConfig.boundaryBehavior.bullets;
+  if (behavior === "bounce") {
+    if (b.pos.x < 0) {
+      b.pos.x = 0;
+      b.vel.x = -b.vel.x;
+    } else if (b.pos.x > width) {
+      b.pos.x = width;
+      b.vel.x = -b.vel.x;
+    }
+    if (b.pos.y < 0) {
+      b.pos.y = 0;
+      b.vel.y = -b.vel.y;
+    } else if (b.pos.y > height) {
+      b.pos.y = height;
+      b.vel.y = -b.vel.y;
+    }
+    if (b.pos.z < 0) {
+      b.pos.z = 0;
+      b.vel.z = -b.vel.z;
+    } else if (b.pos.z > depth) {
+      b.pos.z = depth;
+      b.vel.z = -b.vel.z;
+    }
+  } else if (behavior === "wrap") {
+    if (b.pos.x < 0) b.pos.x += width;
+    else if (b.pos.x > width) b.pos.x -= width;
+    if (b.pos.y < 0) b.pos.y += height;
+    else if (b.pos.y > height) b.pos.y -= height;
+    if (b.pos.z < 0) b.pos.z += depth;
+    else if (b.pos.z > depth) b.pos.z -= depth;
+  } else if (behavior === "remove") {
+    if (b.pos.x < 0 || b.pos.x > width || b.pos.y < 0 || b.pos.y > height || b.pos.z < 0 || b.pos.z > depth) {
+      b.ttl = 0;
+    }
+  }
+}
+
 // src/core/aiController.ts
 var AIController = class {
   state;
+  // Cache for separation force results per ship within the same tick to avoid
+  // recomputing identical queries (helps synthetic benchmarks and repeated calls)
+  sepCache = /* @__PURE__ */ new Map();
   // Per-team anchor registries for roaming behavior
+  // We track assigned anchors with the owning ship id so we can remove them reliably
   roamingAnchors;
+  // Team alarm system - tracks when teams are under attack
+  teamAlarmTimes;
+  // Scout assignment - tracks which ship is the current scout per team
+  teamScouts;
+  isSpatialGridUpdatedThisTick;
+  intentManager;
   constructor(state) {
     this.state = state;
     this.roamingAnchors = /* @__PURE__ */ new Map();
     this.roamingAnchors.set("red", []);
     this.roamingAnchors.set("blue", []);
+    this.teamAlarmTimes = /* @__PURE__ */ new Map();
+    this.teamAlarmTimes.set("red", 0);
+    this.teamAlarmTimes.set("blue", 0);
+    this.teamScouts = /* @__PURE__ */ new Map();
+    this.teamScouts.set("red", null);
+    this.teamScouts.set("blue", null);
+    this.isSpatialGridUpdatedThisTick = false;
+    this.intentManager = new IntentManager();
   }
   /**
    * Update AI for all ships
@@ -94861,6 +95254,9 @@ var AIController = class {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) {
       return;
     }
+    this.isSpatialGridUpdatedThisTick = false;
+    this.updateTeamAlarms();
+    this.updateScoutAssignments();
     for (const ship of this.state.ships) {
       if (ship.health <= 0) continue;
       this.updateShipAI(ship, dt);
@@ -94872,6 +95268,14 @@ var AIController = class {
   updateShipAI(ship, dt) {
     const config = this.state.behaviorConfig;
     const personality = getEffectivePersonality(config, ship.class, ship.team);
+    if (ship.aiState) {
+      if (personality.mode !== "roaming") {
+        this.releaseRoamingAnchor(ship);
+      }
+      if (personality.mode !== "formation") {
+        this.clearFormationSlot(ship);
+      }
+    }
     if (!ship.aiState) {
       ship.aiState = {
         currentIntent: "idle",
@@ -94895,6 +95299,7 @@ var AIController = class {
     }
     this.executeIntent(ship, aiState.currentIntent, dt);
     this.updateTurretAI(ship, dt);
+    this.updateShieldRegeneration(ship, dt);
   }
   /**
    * Update recent damage decay over time
@@ -94905,6 +95310,53 @@ var AIController = class {
     if (aiState.recentDamage && aiState.recentDamage > 0) {
       const decayAmount = config.globalSettings.damageDecayRate * dt;
       aiState.recentDamage = Math.max(0, aiState.recentDamage - decayAmount);
+    }
+  }
+  /**
+   * Check for ships taking damage and trigger team alarms
+   */
+  updateTeamAlarms() {
+    const config = this.state.behaviorConfig;
+    if (!config.globalSettings.enableAlarmSystem) return;
+    for (const ship of this.state.ships) {
+      if (ship.health <= 0 || !ship.aiState) continue;
+      const aiState = ship.aiState;
+      const timeSinceLastDamage = this.state.time - (aiState.lastDamageTime || 0);
+      if (aiState.recentDamage && aiState.recentDamage > 0 && timeSinceLastDamage <= config.globalSettings.alarmSystemWindowSeconds) {
+        this.teamAlarmTimes.set(ship.team, this.state.time);
+      }
+    }
+  }
+  /**
+   * Update scout assignments - ensure at least one ship per team is pursuing
+   */
+  updateScoutAssignments() {
+    const config = this.state.behaviorConfig;
+    if (!config.globalSettings.enableScoutBehavior) return;
+    for (const team of ["red", "blue"]) {
+      const teamShips = this.state.ships.filter((s) => s.team === team && s.health > 0);
+      if (teamShips.length === 0) continue;
+      let currentScout = this.teamScouts.get(team);
+      let scoutShip = currentScout ? teamShips.find((s) => s.id === currentScout) : null;
+      if (!scoutShip) {
+        const enemies = this.state.ships.filter((s) => s.team !== team && s.health > 0);
+        let bestScout = teamShips[0];
+        if (enemies.length > 0) {
+          let bestDistance = Infinity;
+          for (const ship of teamShips) {
+            for (const enemy of enemies) {
+              const distance = this.getDistance(ship.pos, enemy.pos);
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                bestScout = ship;
+              }
+            }
+          }
+        } else {
+          bestScout = teamShips[0];
+        }
+        this.teamScouts.set(team, bestScout.id);
+      }
     }
   }
   /**
@@ -94926,7 +95378,7 @@ var AIController = class {
     let intentDuration = personality.minIntentDuration;
     if (shouldEvadeFromDamage) {
       newIntent = "evade";
-      intentDuration = Math.min(intentDuration, 3);
+      intentDuration = Math.min(intentDuration, config.globalSettings.intentDurationDamageEvade);
     } else {
       switch (personality.mode) {
         case "aggressive":
@@ -94948,42 +95400,92 @@ var AIController = class {
           newIntent = this.chooseMixedIntent(ship, personality);
           break;
       }
+      if (config.globalSettings.useDecisionEngineEvadeGate) {
+        const de = this.previewDecisionEngineEvade(ship);
+        if (de.wouldEvade && newIntent !== "evade") {
+          newIntent = "evade";
+        }
+      }
     }
-    if (personality.mode !== "roaming" || newIntent !== "patrol" && oldIntent === "patrol") {
+    if (newIntent === "evade") {
+      console.debug("[AI] Evade chosen", { shipId: ship.id, recentDamage: aiState.recentDamage, damageEvadeThreshold: config.globalSettings.damageEvadeThreshold, evadeOnlyOnDamage: config.globalSettings.evadeOnlyOnDamage, personalityMode: personality.mode, withinDamageWindow });
+    }
+    if (newIntent !== "patrol" && oldIntent === "patrol") {
       this.releaseRoamingAnchor(ship);
     }
-    if (personality.mode !== "formation") {
-      this.clearFormationSlot(ship);
-    }
-    const durationRange = personality.maxIntentDuration - personality.minIntentDuration;
-    intentDuration += this.state.rng.next() * durationRange;
-    aiState.currentIntent = newIntent;
-    aiState.intentEndTime = this.state.time + intentDuration;
+    const duration = this.intentManager.applyIntent(
+      ship,
+      this.state.time,
+      newIntent,
+      personality,
+      this.state.rng,
+      shouldEvadeFromDamage ? { damageEvade: true, damageEvadeDuration: config.globalSettings.intentDurationDamageEvade } : void 0
+    );
+  }
+  /**
+   * Public helper: Preview whether the Decision Engine would choose to Evade
+   * based on current threat proximity and recent damage window.
+   * Returns the raw score and a boolean for convenience.
+   */
+  previewDecisionEngineEvade(ship) {
+    const config = this.state.behaviorConfig;
+    const nearest = this.findNearestEnemy(ship);
+    const distanceToThreat = nearest ? this.getDistance(ship.pos, nearest.pos) : null;
+    const recentDamage = ship.aiState?.recentDamage || 0;
+    const lastDamageTime = ship.aiState?.lastDamageTime || 0;
+    const withinRecentDamageWindow = this.state.time - lastDamageTime <= config.globalSettings.evadeRecentDamageWindowSeconds;
+    const score = scoreEvade({
+      distanceToThreat,
+      recentDamage,
+      damageEvadeThreshold: config.globalSettings.damageEvadeThreshold,
+      withinRecentDamageWindow,
+      settings: config.globalSettings
+    });
+    const wouldEvade = score >= 1 || score > 0 && distanceToThreat === null;
+    return { score, wouldEvade };
   }
   /**
    * Choose intent for aggressive behavior
    */
   chooseAggressiveIntent(ship, personality) {
+    const config = this.state.behaviorConfig;
     const nearestEnemy = this.findNearestEnemy(ship);
     if (nearestEnemy) {
       const distance = this.getDistance(ship.pos, nearestEnemy.pos);
       const preferredRange = ship.aiState.preferredRange;
-      const config = this.state.behaviorConfig;
+      const isScout2 = config.globalSettings.enableScoutBehavior && this.teamScouts.get(ship.team) === ship.id;
+      const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+      const timeSinceAlarm = this.state.time - teamAlarmTime;
+      const teamUnderAlarm = config.globalSettings.enableAlarmSystem && timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
       if (distance < preferredRange * config.globalSettings.closeRangeMultiplier) {
         return "pursue";
-      } else if (distance < preferredRange * config.globalSettings.mediumRangeMultiplier) {
-        return "pursue";
-      } else {
-        return this.state.rng.next() < 0.6 ? "pursue" : "strafe";
       }
+      if (distance < preferredRange * config.globalSettings.mediumRangeMultiplier) {
+        return "pursue";
+      }
+      if (isScout2) {
+        return "pursue";
+      }
+      if (teamUnderAlarm) {
+        return "pursue";
+      }
+      return this.state.rng.next() < personality.aggressiveness ? "pursue" : "strafe";
     }
-    return "patrol";
+    const isScout = config.globalSettings.enableScoutBehavior && this.teamScouts.get(ship.team) === ship.id;
+    return isScout && config.globalSettings.enableScoutExploration ? "explore" : "patrol";
   }
   /**
    * Choose intent for defensive behavior
    */
   chooseDefensiveIntent(ship, personality) {
     const config = this.state.behaviorConfig;
+    const isScout = config.globalSettings.enableScoutBehavior && this.teamScouts.get(ship.team) === ship.id;
+    const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+    const timeSinceAlarm = this.state.time - teamAlarmTime;
+    const teamUnderAlarm = config.globalSettings.enableAlarmSystem && timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+    if (isScout || teamUnderAlarm) {
+      return this.chooseAggressiveIntent(ship, personality);
+    }
     const threats = this.findNearbyEnemies(ship, ship.aiState.preferredRange * 2);
     if (threats.length > 0) {
       const nearestThreat = threats[0];
@@ -95003,6 +95505,10 @@ var AIController = class {
         }
       }
     }
+    const isTeamScout = config.globalSettings.enableScoutBehavior && this.teamScouts.get(ship.team) === ship.id;
+    if (isTeamScout && config.globalSettings.enableScoutExploration) {
+      return "explore";
+    }
     return this.state.rng.next() < personality.groupCohesion ? "group" : "patrol";
   }
   /**
@@ -95010,6 +95516,14 @@ var AIController = class {
    */
   chooseRoamingIntent(ship, personality) {
     const aiState = ship.aiState;
+    const config = this.state.behaviorConfig;
+    const isScout = config.globalSettings.enableScoutBehavior && this.teamScouts.get(ship.team) === ship.id;
+    const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+    const timeSinceAlarm = this.state.time - teamAlarmTime;
+    const teamUnderAlarm = config.globalSettings.enableAlarmSystem && timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+    if (isScout || teamUnderAlarm) {
+      return this.chooseAggressiveIntent(ship, personality);
+    }
     if (!aiState.roamingAnchor) {
       aiState.roamingAnchor = this.assignRoamingAnchor(ship);
     }
@@ -95022,6 +95536,9 @@ var AIController = class {
       if (nearestEnemy && this.getDistance(ship.pos, nearestEnemy.pos) < ship.aiState.preferredRange) {
         return "pursue";
       }
+    }
+    if (isScout && config.globalSettings.enableScoutExploration) {
+      return "explore";
     }
     return "patrol";
   }
@@ -95055,6 +95572,14 @@ var AIController = class {
    * Choose intent for mixed behavior (dynamic)
    */
   chooseMixedIntent(ship, personality) {
+    const config = this.state.behaviorConfig;
+    const isScout = config.globalSettings.enableScoutBehavior && this.teamScouts.get(ship.team) === ship.id;
+    const teamAlarmTime = this.teamAlarmTimes.get(ship.team) || 0;
+    const timeSinceAlarm = this.state.time - teamAlarmTime;
+    const teamUnderAlarm = config.globalSettings.enableAlarmSystem && timeSinceAlarm <= config.globalSettings.alarmSystemWindowSeconds;
+    if (isScout || teamUnderAlarm) {
+      return this.chooseAggressiveIntent(ship, personality);
+    }
     const rand = this.state.rng.next();
     if (rand < personality.aggressiveness) {
       return this.chooseAggressiveIntent(ship, personality);
@@ -95088,6 +95613,9 @@ var AIController = class {
         break;
       case "patrol":
         this.executePatrol(ship, dt);
+        break;
+      case "explore":
+        this.executeScoutExploration(ship, dt);
         break;
       case "retreat":
         this.executeRetreat(ship, dt);
@@ -95178,34 +95706,10 @@ var AIController = class {
    */
   calculateEscapeScore(ship, targetPos, threats) {
     const bounds = this.state.simConfig.simBounds;
-    const config = this.state.behaviorConfig;
-    let score = config.globalSettings.evadeBaseScore;
-    for (const threat of threats) {
-      const distance = this.getDistance(targetPos, threat.pos);
-      const threatPenalty = Math.max(0, 200 - distance) * config.globalSettings.evadeThreatPenaltyWeight;
-      score -= threatPenalty;
-    }
-    const boundaryMargin = config.globalSettings.boundarySafetyMargin;
-    if (targetPos.x < boundaryMargin) score -= (boundaryMargin - targetPos.x) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.x > bounds.width - boundaryMargin) score -= (targetPos.x - (bounds.width - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.y < boundaryMargin) score -= (boundaryMargin - targetPos.y) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.y > bounds.height - boundaryMargin) score -= (targetPos.y - (bounds.height - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.z < boundaryMargin) score -= (boundaryMargin - targetPos.z) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    if (targetPos.z > bounds.depth - boundaryMargin) score -= (targetPos.z - (bounds.depth - boundaryMargin)) * config.globalSettings.evadeBoundaryPenaltyWeight;
-    const currentDistance = this.getDistance(ship.pos, threats[0].pos);
-    const newDistance = this.getDistance(targetPos, threats[0].pos);
-    if (newDistance > currentDistance) {
-      score += (newDistance - currentDistance) * config.globalSettings.evadeDistanceImprovementWeight;
-    }
-    for (const friendly of this.state.ships) {
-      if (friendly.team === ship.team && friendly.id !== ship.id && friendly.health > 0) {
-        const distance = this.getDistance(targetPos, friendly.pos);
-        if (distance < config.globalSettings.friendlyAvoidanceDistance) {
-          score -= (config.globalSettings.friendlyAvoidanceDistance - distance) * config.globalSettings.evadeFriendlyPenaltyWeight;
-        }
-      }
-    }
-    return score;
+    const settings = this.state.behaviorConfig.globalSettings;
+    const threatsPos = threats.map((t) => t.pos);
+    const friendsPos = this.state.ships.filter((s) => s.team === ship.team && s.id !== ship.id && s.health > 0).map((s) => s.pos);
+    return calculateEscapeScore(ship.pos, targetPos, threatsPos, friendsPos, bounds, settings);
   }
   /**
    * Normalize a vector to unit length
@@ -95225,8 +95729,9 @@ var AIController = class {
   executeStrafe(ship, dt) {
     const target = ship.targetId ? this.state.ships.find((s) => s.id === ship.targetId) : null;
     if (!target) return;
+    const config = this.state.behaviorConfig;
     const angle = Math.atan2(ship.pos.y - target.pos.y, ship.pos.x - target.pos.x) + dt;
-    const radius = 150;
+    const radius = config.globalSettings.strafeRadius;
     const strafePos = {
       x: target.pos.x + Math.cos(angle) * radius,
       y: target.pos.y + Math.sin(angle) * radius,
@@ -95305,53 +95810,52 @@ var AIController = class {
    * Execute retreat behavior - move to safe position
    */
   executeRetreat(ship, dt) {
+    const config = this.state.behaviorConfig;
     const bounds = this.state.simConfig.simBounds;
+    const offset = config.globalSettings.boundarySafetyMargin;
     let safePos;
     if (ship.team === "red") {
-      safePos = { x: 100, y: bounds.height / 2, z: bounds.depth / 2 };
+      safePos = { x: offset, y: bounds.height / 2, z: bounds.depth / 2 };
     } else {
-      safePos = { x: bounds.width - 100, y: bounds.height / 2, z: bounds.depth / 2 };
+      safePos = { x: bounds.width - offset, y: bounds.height / 2, z: bounds.depth / 2 };
     }
     this.moveTowards(ship, safePos, dt);
+  }
+  /**
+   * Execute scout exploration behavior when no enemies are visible
+   */
+  executeScoutExploration(ship, dt) {
+    const config = this.state.behaviorConfig;
+    if (!config.globalSettings.enableScoutExploration) {
+      return this.executePatrol(ship, dt);
+    }
+    const aiState = ship.aiState;
+    const bounds = this.state.simConfig.simBounds;
+    const zoneCount = config.globalSettings.explorationZoneCount;
+    const zoneDuration = config.globalSettings.explorationZoneDuration;
+    const gridSize = Math.ceil(Math.sqrt(zoneCount));
+    const zoneWidth = bounds.width / gridSize;
+    const zoneHeight = bounds.height / gridSize;
+    const currentTime = this.state.time;
+    const totalCycleDuration = zoneCount * zoneDuration;
+    const cycleTime = currentTime % totalCycleDuration;
+    const currentZoneIndex = Math.floor(cycleTime / zoneDuration);
+    const zoneRow = Math.floor(currentZoneIndex / gridSize);
+    const zoneCol = currentZoneIndex % gridSize;
+    const targetPos = {
+      x: (zoneCol + 0.5) * zoneWidth,
+      y: (zoneRow + 0.5) * zoneHeight,
+      z: bounds.depth / 2
+    };
+    this.moveTowards(ship, targetPos, dt);
   }
   /**
    * Move ship towards a target position using 3D steering
    */
   moveTowards(ship, targetPos, dt, speed) {
-    const moveSpeed = speed || ship.speed;
-    const config = this.state.behaviorConfig;
-    const dx = targetPos.x - ship.pos.x;
-    const dy = targetPos.y - ship.pos.y;
-    const dz = targetPos.z - ship.pos.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (distance < config.globalSettings.movementCloseEnoughThreshold) return;
-    const targetOrientation = lookAt(ship.pos, targetPos);
-    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
-    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
-    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
-    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
-    ship.orientation.pitch += pitchTurn;
-    ship.orientation.yaw += yawTurn;
-    ship.dir = ship.orientation.yaw;
-    const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
-    const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
-    ship.vel.x += forward.x * accel * dt;
-    ship.vel.y += forward.y * accel * dt;
-    ship.vel.z += forward.z * accel * dt;
-    ship.vel.x *= PhysicsConfig.speed.dampingFactor;
-    ship.vel.y *= PhysicsConfig.speed.dampingFactor;
-    ship.vel.z *= PhysicsConfig.speed.dampingFactor;
-    const maxV = moveSpeed * PhysicsConfig.speed.maxSpeedMultiplier;
-    const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
-    if (v > maxV) {
-      ship.vel.x = ship.vel.x / v * maxV;
-      ship.vel.y = ship.vel.y / v * maxV;
-      ship.vel.z = ship.vel.z / v * maxV;
-    }
-    ship.pos.x += ship.vel.x * dt;
-    ship.pos.y += ship.vel.y * dt;
-    ship.pos.z += ship.vel.z * dt;
-    applyBoundaryPhysics(ship, this.state);
+    const settings = this.state.behaviorConfig.globalSettings;
+    moveTowards(ship, targetPos, dt, settings, speed);
+    applyBoundaryPhysicsShip(ship, this.state);
   }
   /**
    * Move ship towards a target position with separation steering to avoid clumping using 3D steering
@@ -95408,7 +95912,7 @@ var AIController = class {
     ship.pos.x += ship.vel.x * dt;
     ship.pos.y += ship.vel.y * dt;
     ship.pos.z += ship.vel.z * dt;
-    applyBoundaryPhysics(ship, this.state);
+    applyBoundaryPhysicsShip(ship, this.state);
   }
   /**
    * Update turret AI for independent targeting
@@ -95450,11 +95954,22 @@ var AIController = class {
     }
   }
   /**
+   * Update shield regeneration for a ship
+   */
+  updateShieldRegeneration(ship, dt) {
+    const clamp3 = (value, min, max) => Math.max(min, Math.min(max, value));
+    ship.shield = clamp3(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
+  }
+  /**
    * Find best target for a turret
    */
   findBestTurretTarget(ship, turret) {
     const config = this.state.behaviorConfig;
     const turretConfig = config.turretConfig;
+    if (config.globalSettings.useTurretTargetingHelper) {
+      const id = pickBestTurretTarget(this.state, ship, turret, turretConfig);
+      return id ?? null;
+    }
     let bestTarget = null;
     let bestScore = 0;
     for (const target of this.state.ships) {
@@ -95477,111 +95992,43 @@ var AIController = class {
    * Find nearest enemy to a ship
    */
   findNearestEnemy(ship) {
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      return this.findNearestEnemySpatial(ship);
-    }
-    return this.findNearestEnemyLinear(ship);
+    return findNearestEnemy(this.state, ship);
   }
   /**
    * Find nearest enemy using spatial index
    */
-  findNearestEnemySpatial(ship) {
-    if (!this.state.spatialGrid) return null;
-    const stats = this.state.spatialGrid.getStats();
-    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
-      this.updateSpatialGridImmediate();
-    }
-    const nearestEntities = this.state.spatialGrid.queryKNearest(ship.pos, 1, ship.team === "red" ? "blue" : "red");
-    if (nearestEntities.length === 0) return null;
-    const nearestEntity = nearestEntities[0];
-    return this.state.shipIndex?.get(nearestEntity.id) || null;
-  }
   /**
    * Find nearest enemy using linear search (fallback)
    */
-  findNearestEnemyLinear(ship) {
-    let best = null;
-    let bestDist = Infinity;
-    for (const s of this.state.ships) {
-      if (s.team === ship.team || s.health <= 0) continue;
-      const dist = this.getDistance(ship.pos, s.pos);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = s;
-      }
-    }
-    return best;
-  }
   /**
    * Find nearby enemies within range
    */
   findNearbyEnemies(ship, range) {
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      return this.findNearbyEnemiesSpatial(ship, range);
-    }
-    return this.findNearbyEnemiesLinear(ship, range);
+    return findNearbyEnemies(this.state, ship, range);
   }
   /**
    * Find nearby enemies using spatial index
    */
-  findNearbyEnemiesSpatial(ship, range) {
-    if (!this.state.spatialGrid) return [];
-    const stats = this.state.spatialGrid.getStats();
-    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
-      this.updateSpatialGridImmediate();
-    }
-    const enemyTeam = ship.team === "red" ? "blue" : "red";
-    const nearbyEntities = this.state.spatialGrid.queryEnemies(ship.pos, range, ship.team);
-    const enemies = [];
-    for (const entity of nearbyEntities) {
-      const enemyShip = this.state.shipIndex?.get(entity.id);
-      if (enemyShip && enemyShip.health > 0) {
-        enemies.push(enemyShip);
-      }
-    }
-    return enemies.sort((a, b) => this.getDistance(ship.pos, a.pos) - this.getDistance(ship.pos, b.pos));
-  }
   /**
    * Find nearby enemies using linear search (fallback)
    */
-  findNearbyEnemiesLinear(ship, range) {
-    const enemies = [];
-    for (const s of this.state.ships) {
-      if (s.team === ship.team || s.health <= 0) continue;
-      const dist = this.getDistance(ship.pos, s.pos);
-      if (dist <= range) {
-        enemies.push(s);
-      }
-    }
-    return enemies.sort((a, b) => this.getDistance(ship.pos, a.pos) - this.getDistance(ship.pos, b.pos));
-  }
   /**
    * Find nearby friendly ships
    */
   findNearbyFriends(ship, range) {
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      return this.findNearbyFriendsSpatial(ship, range);
-    }
-    return this.findNearbyFriendsLinear(ship, range);
+    return findNearbyFriends(this.state, ship, range);
   }
   /**
    * Find nearby friendly ships using spatial index
    */
-  findNearbyFriendsSpatial(ship, range) {
-    if (!this.state.spatialGrid) return [];
-    const stats = this.state.spatialGrid.getStats();
-    if (stats.totalEntities === 0 && this.state.ships.length > 0) {
+  /**
+   * Ensures the spatial grid is updated, but only once per tick.
+   */
+  ensureSpatialGridUpdated() {
+    if (!this.isSpatialGridUpdatedThisTick) {
       this.updateSpatialGridImmediate();
+      this.isSpatialGridUpdatedThisTick = true;
     }
-    const nearbyEntities = this.state.spatialGrid.queryNeighbors(ship.pos, range, ship.team, ship.id);
-    const friends = [];
-    for (const entity of nearbyEntities) {
-      const friendShip = this.state.shipIndex?.get(entity.id);
-      if (friendShip && friendShip.health > 0) {
-        friends.push(friendShip);
-      }
-    }
-    return friends;
   }
   /**
    * Update spatial grid immediately (for tests and edge cases when not called via simulateStep)
@@ -95603,17 +96050,6 @@ var AIController = class {
   /**
    * Find nearby friendly ships using linear search (fallback)
    */
-  findNearbyFriendsLinear(ship, range) {
-    const friends = [];
-    for (const s of this.state.ships) {
-      if (s.team !== ship.team || s.health <= 0 || s.id === ship.id) continue;
-      const dist = this.getDistance(ship.pos, s.pos);
-      if (dist <= range) {
-        friends.push(s);
-      }
-    }
-    return friends;
-  }
   /**
    * Calculate center position of a group of ships
    */
@@ -95645,80 +96081,39 @@ var AIController = class {
   calculateSeparationForceWithCount(ship) {
     const config = this.state.behaviorConfig;
     const separationDistance = config.globalSettings.separationDistance;
-    let separationX = 0;
-    let separationY = 0;
-    let separationZ = 0;
-    let neighborCount = 0;
-    const nearbyFriends = this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex ? this.findNearbyFriends(ship, separationDistance) : this.getNearbySeparationShipsLinear(ship, separationDistance);
-    for (const other of nearbyFriends) {
-      const dist = this.getDistance(ship.pos, other.pos);
-      if (dist > 0 && dist < separationDistance) {
-        const dx = ship.pos.x - other.pos.x;
-        const dy = ship.pos.y - other.pos.y;
-        const dz = ship.pos.z - other.pos.z;
-        const weight = (separationDistance - dist) / separationDistance;
-        const normalizedDist = dist > 0 ? 1 / dist : 1;
-        separationX += dx * weight * normalizedDist;
-        separationY += dy * weight * normalizedDist;
-        separationZ += dz * weight * normalizedDist;
-        neighborCount++;
+    const magnitudeThreshold = this.state.behaviorConfig.globalSettings.separationVectorMagnitudeThreshold || 1e-4;
+    const cached = this.sepCache.get(ship.id);
+    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      if (cached && cached.tick === this.state.tick && cached.sepDist === separationDistance && cached.x === ship.pos.x && cached.y === ship.pos.y && cached.z === ship.pos.z) {
+        return cached.res;
       }
+      this.ensureSpatialGridUpdated();
+      const neighbors = [];
+      this.state.spatialGrid.forEachNeighborsDelta(
+        ship.pos,
+        separationDistance,
+        ship.team,
+        ship.id,
+        (dxp, dyp, dzp, distSq, entity) => {
+          if (distSq > 0 && distSq < separationDistance * separationDistance) {
+            neighbors.push(entity.pos);
+          }
+        }
+      );
+      const res2 = calculateSeparationForceWithCount(ship.pos, neighbors, separationDistance, magnitudeThreshold, () => this.state.rng.next());
+      this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res: res2 });
+      return res2;
     }
-    if (neighborCount === 0) {
-      return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
-    }
-    separationX /= neighborCount;
-    separationY /= neighborCount;
-    separationZ /= neighborCount;
-    const magnitude2 = Math.sqrt(separationX * separationX + separationY * separationY + separationZ * separationZ);
-    if (magnitude2 > 1e-4) {
-      return {
-        force: {
-          x: separationX / magnitude2,
-          y: separationY / magnitude2,
-          z: separationZ / magnitude2
-        },
-        neighborCount
-      };
-    }
-    let centerX = 0, centerY = 0, centerZ = 0;
-    for (const other of nearbyFriends) {
-      const dist = this.getDistance(ship.pos, other.pos);
-      if (dist > 0 && dist < separationDistance) {
-        centerX += other.pos.x;
-        centerY += other.pos.y;
-        centerZ += other.pos.z;
-      }
-    }
-    if (centerX !== 0 || centerY !== 0 || centerZ !== 0) {
-      const inv = 1 / neighborCount;
-      centerX *= inv;
-      centerY *= inv;
-      centerZ *= inv;
-      const rx = ship.pos.x - centerX;
-      const ry = ship.pos.y - centerY;
-      const rz = ship.pos.z - centerZ;
-      const rmag = Math.sqrt(rx * rx + ry * ry + rz * rz);
-      if (rmag > 1e-4) {
-        return { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount };
-      }
-    }
-    const rndAngle = this.state.rng.next() * Math.PI * 2;
-    return { force: { x: Math.cos(rndAngle), y: Math.sin(rndAngle), z: 0 }, neighborCount };
+    const nearby = this.getNearbySeparationShipsLinear(ship, separationDistance);
+    const neighborPositions = nearby.map((o) => o.pos);
+    const res = calculateSeparationForceWithCount(ship.pos, neighborPositions, separationDistance, magnitudeThreshold, () => this.state.rng.next());
+    return res;
   }
   /**
    * Helper method for linear search in separation force calculation (fallback)
    */
   getNearbySeparationShipsLinear(ship, separationDistance) {
-    const nearby = [];
-    for (const other of this.state.ships) {
-      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
-      const dist = this.getDistance(ship.pos, other.pos);
-      if (dist > 0 && dist < separationDistance) {
-        nearby.push(other);
-      }
-    }
-    return nearby;
+    return getNearbySeparationShipsLinear(this.state, ship, separationDistance);
   }
   /**
    * Find best formation opportunity for a ship
@@ -95740,202 +96135,202 @@ var AIController = class {
       }
     }
     const nearbyFriends = this.findNearbyFriends(ship, searchRadius);
-    if (nearbyFriends.length >= 3) {
-      const formation = getFormationConfig(config, "circle");
-      if (formation) {
-        return { name: "circle", config: formation };
-      }
+    if (nearbyFriends.length >= config.globalSettings.formationMinGroupSize) {
+      const formation = getFormationConfig(config, "line") || Object.values(config.formations)[0];
+      if (formation) return { name: "line", config: formation };
     }
     return null;
   }
   /**
-   * Calculate preferred engagement range for a ship
+   * Calculate Euclidean distance between two Vector3 positions
    */
-  calculatePreferredRange(ship, personality) {
-    const shipConfig = getShipClassConfig(ship.class);
-    const baseRange = shipConfig.turrets.reduce((max, turret) => Math.max(max, turret.range), 0);
-    return baseRange * personality.preferredRangeMultiplier;
+  getDistance(a, b) {
+    return getDistance(a, b);
   }
   /**
-   * Assign a roaming anchor for a ship, ensuring proper separation from other anchors
-   */
-  assignRoamingAnchor(ship) {
-    const config = this.state.behaviorConfig;
-    const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
-    const teamAnchors = this.roamingAnchors.get(ship.team);
-    const bounds = this.state.simConfig.simBounds;
-    const maxAttempts = 20;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const candidate = {
-        x: this.state.rng.next() * bounds.width,
-        y: this.state.rng.next() * bounds.height,
-        z: this.state.rng.next() * bounds.depth
-      };
-      let validCandidate = true;
-      for (const existing of teamAnchors) {
-        if (this.getDistance(candidate, existing) < minSeparation) {
-          validCandidate = false;
-          break;
-        }
-      }
-      if (validCandidate) {
-        teamAnchors.push(candidate);
-        return candidate;
-      }
-    }
-    const fallback = { ...ship.pos };
-    teamAnchors.push(fallback);
-    return fallback;
-  }
-  /**
-   * Release a roaming anchor when a ship stops roaming
+   * Release roaming anchor for a ship (removes anchor assignment)
    */
   releaseRoamingAnchor(ship) {
-    if (!ship.aiState?.roamingAnchor) return;
-    const teamAnchors = this.roamingAnchors.get(ship.team);
-    const index = teamAnchors.findIndex(
-      (anchor) => this.getDistance(anchor, ship.aiState.roamingAnchor) < 1
-    );
-    if (index >= 0) {
-      teamAnchors.splice(index, 1);
+    if (ship.aiState && ship.aiState.roamingAnchor) {
+      const anchors = this.roamingAnchors.get(ship.team);
+      if (anchors) {
+        const idx = anchors.findIndex((a) => a.shipId === ship.id);
+        if (idx !== -1) anchors.splice(idx, 1);
+      }
+      ship.aiState.roamingAnchor = void 0;
     }
-    ship.aiState.roamingAnchor = void 0;
   }
   /**
-   * Clear formation slot assignment when a ship leaves formation
+   * Clear formation slot for a ship (removes formation assignment)
    */
   clearFormationSlot(ship) {
     if (ship.aiState) {
       ship.aiState.formationId = void 0;
-      ship.aiState.formationSlotIndex = void 0;
       ship.aiState.formationPosition = void 0;
+      ship.aiState.formationSlotIndex = void 0;
     }
   }
   /**
-   * Get formation center position based on formation type and existing members
+   * Calculate preferred range for a ship based on personality and config
+   */
+  calculatePreferredRange(ship, personality) {
+    const baseRange = this.state.behaviorConfig.globalSettings.separationDistance;
+    const range = baseRange * (personality.preferredRangeMultiplier ?? 1);
+    return range;
+  }
+  /**
+   * Assign a roaming anchor for a ship (returns anchor position)
+   */
+  assignRoamingAnchor(ship) {
+    const config = this.state.behaviorConfig;
+    const maxAttempts = config.globalSettings.roamingAnchorMaxAttempts;
+    const anchorRadius = config.roamingPatterns?.[0]?.radius ?? config.globalSettings.evadeDistance;
+    const bounds = this.state.simConfig.simBounds;
+    let attempt = 0;
+    const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
+    const teamAnchors = this.roamingAnchors.get(ship.team) || [];
+    while (attempt < maxAttempts) {
+      const angle = this.state.rng.next() * Math.PI * 2;
+      let radius = this.state.rng.next() * anchorRadius;
+      let anchor = {
+        x: ship.pos.x + Math.cos(angle) * radius,
+        y: ship.pos.y + Math.sin(angle) * radius,
+        z: ship.pos.z
+      };
+      if (anchor.x > 0 && anchor.x < bounds.width && anchor.y > 0 && anchor.y < bounds.height && anchor.z > 0 && anchor.z < bounds.depth) {
+        let ok = true;
+        for (const a of teamAnchors) {
+          const dx = a.pos.x - anchor.x;
+          const dy = a.pos.y - anchor.y;
+          const dz = a.pos.z - anchor.z;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (dist < minSeparation) {
+            ok = false;
+            break;
+          }
+        }
+        if (!ok) {
+          const dx = anchor.x - ship.pos.x;
+          const dy = anchor.y - ship.pos.y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const dirx = len > 1e-6 ? dx / len : Math.cos(angle);
+          const diry = len > 1e-6 ? dy / len : Math.sin(angle);
+          let minDist = Infinity;
+          for (const a of teamAnchors) {
+            const ddx = a.pos.x - anchor.x;
+            const ddy = a.pos.y - anchor.y;
+            const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+            if (dd < minDist) minDist = dd;
+          }
+          const needed = minSeparation - minDist + 1;
+          if (needed > 0) {
+            radius += needed;
+            anchor = {
+              x: ship.pos.x + dirx * radius,
+              y: ship.pos.y + diry * radius,
+              z: ship.pos.z
+            };
+            if (anchor.x > 0 && anchor.x < bounds.width && anchor.y > 0 && anchor.y < bounds.height) {
+              let stillTooClose = false;
+              for (const a of teamAnchors) {
+                const ddx = a.pos.x - anchor.x;
+                const ddy = a.pos.y - anchor.y;
+                const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+                if (dd < minSeparation) {
+                  stillTooClose = true;
+                  break;
+                }
+              }
+              if (!stillTooClose) {
+                const entry = { pos: anchor, shipId: ship.id };
+                teamAnchors.push(entry);
+                this.roamingAnchors.set(ship.team, teamAnchors);
+                return anchor;
+              }
+            }
+          }
+        } else {
+          const entry = { pos: anchor, shipId: ship.id };
+          teamAnchors.push(entry);
+          this.roamingAnchors.set(ship.team, teamAnchors);
+          return anchor;
+        }
+      }
+      attempt++;
+    }
+    if (teamAnchors.length > 0) {
+      let nearest = teamAnchors[0];
+      let nearestDist = Infinity;
+      for (const a of teamAnchors) {
+        const dx = a.pos.x - ship.pos.x;
+        const dy = a.pos.y - ship.pos.y;
+        const dz = a.pos.z - ship.pos.z;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearest = a;
+        }
+      }
+      let dir = { x: ship.pos.x - nearest.pos.x, y: ship.pos.y - nearest.pos.y, z: ship.pos.z - nearest.pos.z };
+      const len = Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+      if (len < 1e-6) {
+        dir = { x: 1, y: 0, z: 0 };
+      } else {
+        dir.x /= len;
+        dir.y /= len;
+        dir.z /= len;
+      }
+      const fallbackAnchor = {
+        x: nearest.pos.x + dir.x * (minSeparation + 1),
+        y: nearest.pos.y + dir.y * (minSeparation + 1),
+        z: Math.min(Math.max(nearest.pos.z + dir.z * (minSeparation + 1), 0), bounds.depth)
+      };
+      fallbackAnchor.x = Math.max(0, Math.min(bounds.width, fallbackAnchor.x));
+      fallbackAnchor.y = Math.max(0, Math.min(bounds.height, fallbackAnchor.y));
+      fallbackAnchor.z = Math.max(0, Math.min(bounds.depth, fallbackAnchor.z));
+      const entry = { pos: fallbackAnchor, shipId: ship.id };
+      teamAnchors.push(entry);
+      this.roamingAnchors.set(ship.team, teamAnchors);
+      return fallbackAnchor;
+    }
+    return { ...ship.pos };
+  }
+  /**
+   * Get formation center for a ship and formation name
    */
   getFormationCenter(ship, formationName) {
-    if (formationName === "escort") {
-      const carrier = this.state.ships.find(
-        (s) => s.team === ship.team && s.class === "carrier" && s.health > 0
-      );
-      return carrier ? carrier.pos : null;
+    const config = this.state.behaviorConfig;
+    const searchRadius = config.globalSettings.formationSearchRadius;
+    const friends = this.findNearbyFriends(ship, searchRadius);
+    if (friends.length > 0) {
+      return this.calculateGroupCenter(friends);
     }
-    const formationShips = this.state.ships.filter(
-      (s) => s.team === ship.team && s.health > 0 && s.aiState?.formationId === formationName
-    );
-    if (formationShips.length > 0) {
-      const center = { x: 0, y: 0, z: 0 };
-      for (const s of formationShips) {
-        center.x += s.pos.x;
-        center.y += s.pos.y;
-        center.z += s.pos.z;
-      }
-      center.x /= formationShips.length;
-      center.y /= formationShips.length;
-      center.z /= formationShips.length;
-      return center;
-    }
-    return ship.pos;
+    return null;
   }
   /**
-   * Calculate formation slot positions based on formation config and center point
-   */
-  calculateFormationSlots(config, center) {
-    const slots = [];
-    const spacing = config.spacing;
-    switch (config.type) {
-      case "line":
-        for (let i = 0; i < config.maxSize; i++) {
-          const offset = (i - (config.maxSize - 1) / 2) * spacing;
-          slots.push({
-            x: center.x + offset,
-            y: center.y,
-            z: center.z
-          });
-        }
-        break;
-      case "circle":
-        for (let i = 0; i < config.maxSize; i++) {
-          const angle = i / config.maxSize * Math.PI * 2;
-          slots.push({
-            x: center.x + Math.cos(angle) * spacing,
-            y: center.y + Math.sin(angle) * spacing,
-            z: center.z
-          });
-        }
-        break;
-      case "wedge":
-        for (let i = 0; i < config.maxSize; i++) {
-          const row = Math.floor(Math.sqrt(i));
-          const col = i - row * row;
-          const rowOffset = row * spacing;
-          const colOffset = (col - row / 2) * spacing;
-          slots.push({
-            x: center.x + colOffset,
-            y: center.y - rowOffset,
-            z: center.z
-          });
-        }
-        break;
-      case "column":
-        for (let i = 0; i < config.maxSize; i++) {
-          slots.push({
-            x: center.x,
-            y: center.y - i * spacing,
-            z: center.z
-          });
-        }
-        break;
-      case "sphere":
-        for (let i = 0; i < config.maxSize; i++) {
-          const layer = Math.floor(i / 4);
-          const layerIndex = i % 4;
-          const angle = layerIndex / 4 * Math.PI * 2;
-          const radius = spacing * (layer + 1);
-          slots.push({
-            x: center.x + Math.cos(angle) * radius,
-            y: center.y + Math.sin(angle) * radius,
-            z: center.z + (layer - 1) * spacing * 0.5
-          });
-        }
-        break;
-    }
-    return slots;
-  }
-  /**
-   * Assign formation slot to a ship joining a formation
+   * Assign a unique slot in the formation for a ship
    */
   assignFormationSlot(ship, formationName, formationConfig, center) {
-    const slots = this.calculateFormationSlots(formationConfig, center);
-    const formationShips = this.state.ships.filter(
-      (s) => s.team === ship.team && s.health > 0 && s.aiState?.formationId === formationName && s.aiState?.formationSlotIndex !== void 0
-    );
-    const usedSlots = new Set(formationShips.map((s) => s.aiState.formationSlotIndex));
-    let bestSlotIndex = -1;
-    let bestDistance = Infinity;
-    for (let i = 0; i < slots.length; i++) {
-      if (!usedSlots.has(i)) {
-        const distance = this.getDistance(ship.pos, slots[i]);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestSlotIndex = i;
-        }
-      }
+    const slotCount = formationConfig.maxSize;
+    const spacing = formationConfig.spacing;
+    const slotIndex = ship.id % slotCount;
+    if (!ship.aiState) ship.aiState = {};
+    const aiState = ship.aiState;
+    aiState.formationSlotIndex = slotIndex;
+    let slotOffset = { x: 0, y: 0, z: 0 };
+    if (formationConfig.type === "line") {
+      slotOffset = { x: (slotIndex - Math.floor(slotCount / 2)) * spacing, y: 0, z: 0 };
+    } else if (formationConfig.type === "circle") {
+      const angle = 2 * Math.PI * slotIndex / slotCount;
+      slotOffset = { x: Math.cos(angle) * spacing, y: Math.sin(angle) * spacing, z: 0 };
+    } else {
+      slotOffset = { x: (slotIndex - Math.floor(slotCount / 2)) * spacing, y: 0, z: 0 };
     }
-    if (bestSlotIndex >= 0) {
-      ship.aiState.formationSlotIndex = bestSlotIndex;
-      ship.aiState.formationPosition = slots[bestSlotIndex];
-    }
-  }
-  /**
-   * Get distance between two positions
-   */
-  getDistance(pos1, pos2) {
-    const dx = pos1.x - pos2.x;
-    const dy = pos1.y - pos2.y;
-    const dz = pos1.z - pos2.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    aiState.formationPosition = {
+      x: center.x + slotOffset.x,
+      y: center.y + slotOffset.y,
+      z: center.z + slotOffset.z
+    };
   }
 };
 
@@ -95951,7 +96346,7 @@ var DefaultFleetConfig = {
   },
   spawning: {
     margin: 200,
-    spawnWidth: 200,
+    spawnWidth: 650,
     defaultFleetSize: 6
   },
   cinematic: {
@@ -96005,16 +96400,40 @@ var CarrierSpawnConfig = DefaultCarrierSpawnConfig;
 var SpatialGrid = class {
   cellSize;
   grid = /* @__PURE__ */ new Map();
+  // Fast lookup of an entity's current cell and reference for incremental updates
+  entityById = /* @__PURE__ */ new Map();
   bounds;
+  nx;
+  // cells along x
+  ny;
+  // cells along y
+  nz;
+  // cells along z
+  version = 0;
+  // increments on any mutation
+  lastRadiusCache = null;
+  // Reusable scratch array to reduce allocations when building occupied cell lists
+  _occupiedKeysScratch = [];
+  // Simple pool for result arrays to avoid allocating on every queryRadius call.
+  // Callers can either provide their own `out` array to `queryRadius`, or
+  // explicitly request a pooled array via `getPooledResults()` and return it
+  // to the pool with `releasePooledResults()` when finished.
+  _resultPool = [];
   constructor(cellSize = 64, bounds = { width: 1920, height: 1080, depth: 600 }) {
     this.cellSize = cellSize;
     this.bounds = bounds;
+    this.nx = Math.max(1, Math.ceil(bounds.width / cellSize));
+    this.ny = Math.max(1, Math.ceil(bounds.height / cellSize));
+    this.nz = Math.max(1, Math.ceil(bounds.depth / cellSize));
   }
   /**
    * Clear all entities from the grid
    */
   clear() {
     this.grid.clear();
+    this.entityById.clear();
+    this.version++;
+    this.lastRadiusCache = null;
   }
   /**
    * Get cell key for position coordinates
@@ -96023,7 +96442,13 @@ var SpatialGrid = class {
     const cellX = Math.floor(x / this.cellSize);
     const cellY = Math.floor(y / this.cellSize);
     const cellZ = Math.floor(z / this.cellSize);
-    return `${cellX},${cellY},${cellZ}`;
+    return this.linearIndex(cellX, cellY, cellZ);
+  }
+  linearIndex(cx, cy, cz) {
+    const x = cx < 0 ? 0 : cx >= this.nx ? this.nx - 1 : cx;
+    const y = cy < 0 ? 0 : cy >= this.ny ? this.ny - 1 : cy;
+    const z = cz < 0 ? 0 : cz >= this.nz ? this.nz - 1 : cz;
+    return (x * this.ny + y) * this.nz + z;
   }
   /**
    * Insert an entity into the spatial grid
@@ -96034,109 +96459,397 @@ var SpatialGrid = class {
       this.grid.set(key, []);
     }
     this.grid.get(key).push(entity);
+    this.entityById.set(entity.id, { key, entity });
+    this.version++;
+    this.lastRadiusCache = null;
+  }
+  /**
+   * Incrementally add or update an entity's position/team/radius in the grid.
+   * Uses the id to move the entity between cells without clearing the grid.
+   */
+  update(id, pos, radius, team) {
+    const newKey = this.getCellKey(pos.x, pos.y, pos.z);
+    const rec = this.entityById.get(id);
+    if (!rec) {
+      const entity = { id, pos, radius, team };
+      if (!this.grid.has(newKey)) this.grid.set(newKey, []);
+      this.grid.get(newKey).push(entity);
+      this.entityById.set(id, { key: newKey, entity });
+      this.version++;
+      this.lastRadiusCache = null;
+      return;
+    }
+    if (rec.key !== newKey) {
+      const oldArr = this.grid.get(rec.key);
+      if (oldArr) {
+        const idx = oldArr.findIndex((e) => e.id === id);
+        if (idx !== -1) {
+          oldArr.splice(idx, 1);
+          if (oldArr.length === 0) this.grid.delete(rec.key);
+        }
+      }
+      if (!this.grid.has(newKey)) this.grid.set(newKey, []);
+      this.grid.get(newKey).push(rec.entity);
+      rec.key = newKey;
+      this.version++;
+      this.lastRadiusCache = null;
+    }
+    rec.entity.pos = pos;
+    rec.entity.radius = radius;
+    rec.entity.team = team;
+  }
+  /** Remove an entity from the grid by id (no-op if missing) */
+  remove(id) {
+    const rec = this.entityById.get(id);
+    if (!rec) return;
+    const arr = this.grid.get(rec.key);
+    if (arr) {
+      const idx = arr.findIndex((e) => e.id === id);
+      if (idx !== -1) {
+        arr.splice(idx, 1);
+        if (arr.length === 0) this.grid.delete(rec.key);
+      }
+    }
+    this.entityById.delete(id);
+    this.version++;
+    this.lastRadiusCache = null;
+  }
+  /**
+   * Garbage-collect entities that are not present in the provided active id set.
+   * Useful to purge dead/removed entities without a full clear.
+   */
+  gcExcept(activeIds) {
+    const toRemove = [];
+    for (const id of this.entityById.keys()) {
+      if (!activeIds.has(id)) toRemove.push(id);
+    }
+    for (const id of toRemove) this.remove(id);
+  }
+  /**
+   * Rebuild the grid from a list of entities. Clears internal state.
+   */
+  rebuild(entities) {
+    this.clear();
+    for (const e of entities) this.insert(e);
   }
   /**
    * Query entities within a radius around a center point
    */
-  queryRadius(center, radius) {
-    const results = [];
+  queryRadius(center, radius, out) {
+    const results = out ?? [];
     const cellRadius = Math.ceil(radius / this.cellSize);
     const centerCellX = Math.floor(center.x / this.cellSize);
     const centerCellY = Math.floor(center.y / this.cellSize);
     const centerCellZ = Math.floor(center.z / this.cellSize);
-    for (let dx = -cellRadius; dx <= cellRadius; dx++) {
-      for (let dy = -cellRadius; dy <= cellRadius; dy++) {
-        for (let dz = -cellRadius; dz <= cellRadius; dz++) {
-          const key = `${centerCellX + dx},${centerCellY + dy},${centerCellZ + dz}`;
-          const entities = this.grid.get(key);
-          if (entities) {
-            for (const entity of entities) {
-              const distSq = (entity.pos.x - center.x) ** 2 + (entity.pos.y - center.y) ** 2 + (entity.pos.z - center.z) ** 2;
-              if (distSq <= radius * radius) {
-                results.push(entity);
-              }
-            }
+    const cellSize = this.cellSize;
+    const radiusSq = radius * radius;
+    const grid = this.grid;
+    let occupiedKeys = null;
+    const lrc = this.lastRadiusCache;
+    if (lrc && lrc.version === this.version && lrc.cx === centerCellX && lrc.cy === centerCellY && lrc.cz === centerCellZ && lrc.cellRadius === cellRadius) {
+      occupiedKeys = lrc.cellKeys;
+    }
+    if (!occupiedKeys) {
+      const scratch = this._occupiedKeysScratch;
+      scratch.length = 0;
+      for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+        const cellX = centerCellX + dx;
+        const minX = cellX * cellSize;
+        const maxX = minX + cellSize;
+        const distX = center.x < minX ? minX - center.x : center.x > maxX ? center.x - maxX : 0;
+        const distXSq = distX * distX;
+        for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+          const cellY = centerCellY + dy;
+          const minY = cellY * cellSize;
+          const maxY = minY + cellSize;
+          const distY = center.y < minY ? minY - center.y : center.y > maxY ? center.y - maxY : 0;
+          const distYSq = distY * distY;
+          if (distXSq + distYSq > radiusSq) continue;
+          for (let dz = -cellRadius; dz <= cellRadius; dz++) {
+            const cellZ = centerCellZ + dz;
+            const minZ = cellZ * cellSize;
+            const maxZ = minZ + cellSize;
+            const distZ = center.z < minZ ? minZ - center.z : center.z > maxZ ? center.z - maxZ : 0;
+            const minDistSq = distXSq + distYSq + distZ * distZ;
+            if (minDistSq > radiusSq) continue;
+            const key = this.linearIndex(cellX, cellY, cellZ);
+            const bucket = grid.get(key);
+            if (bucket && bucket.length > 0) scratch.push(key);
           }
         }
       }
+      const keysCopy = scratch.slice();
+      this.lastRadiusCache = { cx: centerCellX, cy: centerCellY, cz: centerCellZ, cellRadius, version: this.version, cellKeys: keysCopy };
+      occupiedKeys = keysCopy;
+    }
+    for (let i = 0; i < occupiedKeys.length; i++) {
+      const bucket = grid.get(occupiedKeys[i]);
+      if (!bucket) continue;
+      for (let j = 0; j < bucket.length; j++) {
+        const entity = bucket[j];
+        const dxp = entity.pos.x - center.x;
+        const dyp = entity.pos.y - center.y;
+        const dzp = entity.pos.z - center.z;
+        const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
+        if (distSq <= radiusSq) results.push(entity);
+      }
     }
     return results;
+  }
+  /**
+   * Streaming radius iteration: avoids allocating result arrays entirely by
+   * invoking `fn` for each found entity. The callback receives dx,dy,dz and
+   * distSq (squared distance) alongside the entity so callers can compute
+   * sqrt only when necessary.
+   */
+  forEachInRadius(center, radius, fn) {
+    const cellRadius = Math.ceil(radius / this.cellSize);
+    const centerCellX = Math.floor(center.x / this.cellSize);
+    const centerCellY = Math.floor(center.y / this.cellSize);
+    const centerCellZ = Math.floor(center.z / this.cellSize);
+    const cellSize = this.cellSize;
+    const radiusSq = radius * radius;
+    const grid = this.grid;
+    let occupiedKeys = null;
+    const lrc = this.lastRadiusCache;
+    if (lrc && lrc.version === this.version && lrc.cx === centerCellX && lrc.cy === centerCellY && lrc.cz === centerCellZ && lrc.cellRadius === cellRadius) {
+      occupiedKeys = lrc.cellKeys;
+    }
+    if (!occupiedKeys) {
+      const scratch = this._occupiedKeysScratch;
+      scratch.length = 0;
+      for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+        const cellX = centerCellX + dx;
+        const minX = cellX * cellSize;
+        const maxX = minX + cellSize;
+        const distX = center.x < minX ? minX - center.x : center.x > maxX ? center.x - maxX : 0;
+        const distXSq = distX * distX;
+        for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+          const cellY = centerCellY + dy;
+          const minY = cellY * cellSize;
+          const maxY = minY + cellSize;
+          const distY = center.y < minY ? minY - center.y : center.y > maxY ? center.y - maxY : 0;
+          const distYSq = distY * distY;
+          if (distXSq + distYSq > radiusSq) continue;
+          for (let dz = -cellRadius; dz <= cellRadius; dz++) {
+            const cellZ = centerCellZ + dz;
+            const minZ = cellZ * cellSize;
+            const maxZ = minZ + cellSize;
+            const distZ = center.z < minZ ? minZ - center.z : center.z > maxZ ? center.z - maxZ : 0;
+            const minDistSq = distXSq + distYSq + distZ * distZ;
+            if (minDistSq > radiusSq) continue;
+            const key = this.linearIndex(cellX, cellY, cellZ);
+            const bucket = grid.get(key);
+            if (bucket && bucket.length > 0) scratch.push(key);
+          }
+        }
+      }
+      const keysCopy = scratch.slice();
+      this.lastRadiusCache = { cx: centerCellX, cy: centerCellY, cz: centerCellZ, cellRadius, version: this.version, cellKeys: keysCopy };
+      occupiedKeys = keysCopy;
+    }
+    for (let i = 0; i < occupiedKeys.length; i++) {
+      const bucket = grid.get(occupiedKeys[i]);
+      if (!bucket) continue;
+      for (let j = 0; j < bucket.length; j++) {
+        const entity = bucket[j];
+        const dxp = entity.pos.x - center.x;
+        const dyp = entity.pos.y - center.y;
+        const dzp = entity.pos.z - center.z;
+        const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
+        if (distSq <= radiusSq) fn(dxp, dyp, dzp, distSq, entity);
+      }
+    }
+  }
+  /**
+   * Acquire a pooled result array. Callers must call `releasePooledResults(arr)`
+   * when finished to return the array to the pool.
+   */
+  getPooledResults() {
+    const a = this._resultPool.pop();
+    return a ?? [];
+  }
+  /**
+   * Return an array previously acquired from `getPooledResults()` back to the pool.
+   */
+  releasePooledResults(arr) {
+    arr.length = 0;
+    this._resultPool.push(arr);
   }
   /**
    * Query k nearest entities to a center point
    */
   queryKNearest(center, k, team, excludeId) {
     let radius = this.cellSize;
-    let candidates = [];
-    while (candidates.length < k * 2 && radius < Math.max(this.bounds.width, this.bounds.height, this.bounds.depth)) {
-      candidates = this.queryRadius(center, radius);
-      if (team !== void 0 || excludeId !== void 0) {
-        candidates = candidates.filter((entity) => {
-          if (team !== void 0 && entity.team !== team) return false;
-          if (excludeId !== void 0 && entity.id === excludeId) return false;
-          return true;
-        });
+    const filtered = this.getPooledResults();
+    const maxDimension = Math.max(this.bounds.width, this.bounds.height, this.bounds.depth);
+    while (filtered.length < k * 2 && radius < maxDimension) {
+      const batch = this.getPooledResults();
+      this.queryRadius(center, radius, batch);
+      for (const entity of batch) {
+        if (team !== void 0 && entity.team !== team) continue;
+        if (excludeId !== void 0 && entity.id === excludeId) continue;
+        filtered.push(entity);
       }
-      if (candidates.length < k) {
+      this.releasePooledResults(batch);
+      if (filtered.length < k) {
         radius *= 2;
       }
     }
-    candidates.sort((a, b) => {
-      const distA = (a.pos.x - center.x) ** 2 + (a.pos.y - center.y) ** 2 + (a.pos.z - center.z) ** 2;
-      const distB = (b.pos.x - center.x) ** 2 + (b.pos.y - center.y) ** 2 + (b.pos.z - center.z) ** 2;
-      return distA - distB;
-    });
-    return candidates.slice(0, k);
+    if (filtered.length === 0) {
+      this.releasePooledResults(filtered);
+      return [];
+    }
+    const best = [];
+    let maxIdx = -1;
+    let maxD2 = -1;
+    for (let i = 0; i < filtered.length; i++) {
+      const e = filtered[i];
+      const dx = e.pos.x - center.x;
+      const dy = e.pos.y - center.y;
+      const dz = e.pos.z - center.z;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (best.length < k) {
+        best.push({ e, d2 });
+        if (d2 > maxD2) {
+          maxD2 = d2;
+          maxIdx = best.length - 1;
+        }
+      } else if (d2 < maxD2) {
+        best[maxIdx] = { e, d2 };
+        maxD2 = -1;
+        maxIdx = 0;
+        for (let j = 0; j < best.length; j++) {
+          if (best[j].d2 > maxD2) {
+            maxD2 = best[j].d2;
+            maxIdx = j;
+          }
+        }
+      }
+    }
+    best.sort((a, b) => a.d2 - b.d2);
+    const results = best.map((b) => b.e);
+    this.releasePooledResults(filtered);
+    return results;
   }
   /**
    * Query entities within a sector (cone) from a position
    */
   querySector(center, direction, angleRadians, range, team, excludeId) {
-    const candidates = this.queryRadius(center, range);
-    let filtered = candidates;
-    if (team !== void 0 || excludeId !== void 0) {
-      filtered = candidates.filter((entity) => {
-        if (team !== void 0 && entity.team !== team) return false;
-        if (excludeId !== void 0 && entity.id === excludeId) return false;
-        return true;
-      });
-    }
     const dirMag = Math.sqrt(direction.x ** 2 + direction.y ** 2 + direction.z ** 2);
     if (dirMag === 0) return [];
     const dirX = direction.x / dirMag;
     const dirY = direction.y / dirMag;
     const dirZ = direction.z / dirMag;
     const cosHalfAngle = Math.cos(angleRadians / 2);
-    return filtered.filter((entity) => {
-      const toEntityX = entity.pos.x - center.x;
-      const toEntityY = entity.pos.y - center.y;
-      const toEntityZ = entity.pos.z - center.z;
-      const toEntityMag = Math.sqrt(toEntityX ** 2 + toEntityY ** 2 + toEntityZ ** 2);
-      if (toEntityMag === 0) return false;
-      const toEntityNormX = toEntityX / toEntityMag;
-      const toEntityNormY = toEntityY / toEntityMag;
-      const toEntityNormZ = toEntityZ / toEntityMag;
+    const results = [];
+    this.forEachInRadius(center, range, (dx, dy, dz, _distSq, entity) => {
+      if (team !== void 0 && entity.team !== team) return;
+      if (excludeId !== void 0 && entity.id === excludeId) return;
+      const toEntityMag = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (toEntityMag === 0) return;
+      const toEntityNormX = dx / toEntityMag;
+      const toEntityNormY = dy / toEntityMag;
+      const toEntityNormZ = dz / toEntityMag;
       const dotProduct = dirX * toEntityNormX + dirY * toEntityNormY + dirZ * toEntityNormZ;
-      return dotProduct >= cosHalfAngle;
+      if (dotProduct >= cosHalfAngle) {
+        results.push(entity);
+      }
     });
+    return results;
   }
   /**
    * Query neighbors (same team) within radius
    */
   queryNeighbors(center, radius, team, excludeId) {
-    const entities = this.queryRadius(center, radius);
-    return entities.filter((entity) => {
-      if (entity.team !== team) return false;
-      if (excludeId !== void 0 && entity.id === excludeId) return false;
-      return true;
+    const results = [];
+    this.forEachInRadius(center, radius, (_dx, _dy, _dz, _distSq, entity) => {
+      if (entity.team === team && (excludeId === void 0 || entity.id !== excludeId)) {
+        results.push(entity);
+      }
     });
+    return results;
+  }
+  /**
+   * Optimized streaming iteration over neighbors (same team) within radius.
+   * Avoids creating intermediate arrays and reuses the cached occupied cell keys
+   * for repeated queries at the same center cell and radius.
+   * The callback receives the delta vector and distance for immediate math use.
+   */
+  forEachNeighborsDelta(center, radius, team, excludeId, fn) {
+    const cellRadius = Math.ceil(radius / this.cellSize);
+    const centerCellX = Math.floor(center.x / this.cellSize);
+    const centerCellY = Math.floor(center.y / this.cellSize);
+    const centerCellZ = Math.floor(center.z / this.cellSize);
+    const cellSize = this.cellSize;
+    const radiusSq = radius * radius;
+    const grid = this.grid;
+    let occupiedKeys = null;
+    const lrc = this.lastRadiusCache;
+    if (lrc && lrc.version === this.version && lrc.cx === centerCellX && lrc.cy === centerCellY && lrc.cz === centerCellZ && lrc.cellRadius === cellRadius) {
+      occupiedKeys = lrc.cellKeys;
+    }
+    if (!occupiedKeys) {
+      const scratch = this._occupiedKeysScratch;
+      scratch.length = 0;
+      for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+        const cellX = centerCellX + dx;
+        const minX = cellX * cellSize;
+        const maxX = minX + cellSize;
+        const distX = center.x < minX ? minX - center.x : center.x > maxX ? center.x - maxX : 0;
+        const distXSq = distX * distX;
+        for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+          const cellY = centerCellY + dy;
+          const minY = cellY * cellSize;
+          const maxY = minY + cellSize;
+          const distY = center.y < minY ? minY - center.y : center.y > maxY ? center.y - maxY : 0;
+          const distYSq = distY * distY;
+          if (distXSq + distYSq > radiusSq) continue;
+          for (let dz = -cellRadius; dz <= cellRadius; dz++) {
+            const cellZ = centerCellZ + dz;
+            const minZ = cellZ * cellSize;
+            const maxZ = minZ + cellSize;
+            const distZ = center.z < minZ ? minZ - center.z : center.z > maxZ ? center.z - maxZ : 0;
+            const minDistSq = distXSq + distYSq + distZ * distZ;
+            if (minDistSq > radiusSq) continue;
+            const key = this.linearIndex(cellX, cellY, cellZ);
+            const bucket = grid.get(key);
+            if (bucket && bucket.length > 0) scratch.push(key);
+          }
+        }
+      }
+      const keysCopy = scratch.slice();
+      this.lastRadiusCache = { cx: centerCellX, cy: centerCellY, cz: centerCellZ, cellRadius, version: this.version, cellKeys: keysCopy };
+      occupiedKeys = keysCopy;
+    }
+    for (let i = 0; i < occupiedKeys.length; i++) {
+      const bucket = grid.get(occupiedKeys[i]);
+      if (!bucket) continue;
+      for (let j = 0; j < bucket.length; j++) {
+        const entity = bucket[j];
+        if (entity.team !== team) continue;
+        if (excludeId !== void 0 && entity.id === excludeId) continue;
+        const dxp = entity.pos.x - center.x;
+        const dyp = entity.pos.y - center.y;
+        const dzp = entity.pos.z - center.z;
+        const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
+        if (distSq <= radiusSq) {
+          fn(dxp, dyp, dzp, distSq, entity);
+        }
+      }
+    }
   }
   /**
    * Query enemies (different team) within radius
    */
   queryEnemies(center, radius, team) {
-    const entities = this.queryRadius(center, radius);
-    return entities.filter((entity) => entity.team !== team);
+    const results = [];
+    this.forEachInRadius(center, radius, (_dx, _dy, _dz, _distSq, entity) => {
+      if (entity.team !== team) {
+        results.push(entity);
+      }
+    });
+    return results;
   }
   /**
    * Optimized query for bullet-ship collisions
@@ -96149,16 +96862,19 @@ var SpatialGrid = class {
    */
   getStats() {
     const totalCells = this.grid.size;
-    let totalEntities = 0;
-    for (const entities of this.grid.values()) {
-      totalEntities += entities.length;
-    }
+    const totalEntities = this.entityById.size;
+    let sum = 0;
+    for (const entities of this.grid.values()) sum += entities.length;
     return {
       totalCells,
       occupiedCells: totalCells,
       totalEntities,
-      avgEntitiesPerCell: totalCells > 0 ? totalEntities / totalCells : 0
+      avgEntitiesPerCell: totalCells > 0 ? sum / totalCells : 0
     };
+  }
+  /** Fast check if the grid currently contains no entities */
+  isEmpty() {
+    return this.entityById.size === 0;
   }
 };
 
@@ -96208,6 +96924,7 @@ function resetState(state, seed) {
   state.shipIndex = /* @__PURE__ */ new Map();
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
+  state.aiController = void 0;
   state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
   if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {
     const bounds = {
@@ -96288,100 +97005,8 @@ function spawnFleet(state, team, count = 5) {
     spawnShip(state, team, cls);
   }
 }
-function findNearestEnemy(state, ship) {
-  let best;
-  let bestD = Infinity;
-  for (const s of state.ships) {
-    if (s.team === ship.team || s.health <= 0) continue;
-    const dx = s.pos.x - ship.pos.x;
-    const dy = s.pos.y - ship.pos.y;
-    const dz = s.pos.z - ship.pos.z;
-    const d2 = dx * dx + dy * dy + dz * dz;
-    if (d2 < bestD) {
-      bestD = d2;
-      best = s;
-    }
-  }
-  return best;
-}
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
-}
-function applyBoundaryPhysics(ship, state) {
-  const bounds = state.simConfig.simBounds;
-  const behavior = state.simConfig.boundaryBehavior.ships;
-  if (behavior === "bounce") {
-    if (ship.pos.x < 0) {
-      ship.pos.x = 0;
-      ship.vel.x = -ship.vel.x;
-    } else if (ship.pos.x > bounds.width) {
-      ship.pos.x = bounds.width;
-      ship.vel.x = -ship.vel.x;
-    }
-    if (ship.pos.y < 0) {
-      ship.pos.y = 0;
-      ship.vel.y = -ship.vel.y;
-    } else if (ship.pos.y > bounds.height) {
-      ship.pos.y = bounds.height;
-      ship.vel.y = -ship.vel.y;
-    }
-    if (ship.pos.z < 0) {
-      ship.pos.z = 0;
-      ship.vel.z = -ship.vel.z;
-    } else if (ship.pos.z > bounds.depth) {
-      ship.pos.z = bounds.depth;
-      ship.vel.z = -ship.vel.z;
-    }
-  } else if (behavior === "wrap") {
-    if (ship.pos.x < 0) ship.pos.x += bounds.width;
-    else if (ship.pos.x > bounds.width) ship.pos.x -= bounds.width;
-    if (ship.pos.y < 0) ship.pos.y += bounds.height;
-    else if (ship.pos.y > bounds.height) ship.pos.y -= bounds.height;
-    if (ship.pos.z < 0) ship.pos.z += bounds.depth;
-    else if (ship.pos.z > bounds.depth) ship.pos.z -= bounds.depth;
-  } else if (behavior === "remove") {
-    if (ship.pos.x < 0 || ship.pos.x > bounds.width || ship.pos.y < 0 || ship.pos.y > bounds.height || ship.pos.z < 0 || ship.pos.z > bounds.depth) {
-      ship.health = 0;
-    }
-  }
-}
-function stepShipAI(state, ship, dt) {
-  if (!ship.aiState) {
-    ship.aiState = {
-      currentIntent: "pursue",
-      intentEndTime: state.time + 1,
-      // Short duration to re-evaluate frequently
-      lastIntentReevaluation: 0,
-      preferredRange: 100,
-      // Basic range
-      recentDamage: 0,
-      lastDamageTime: 0
-    };
-  }
-  if (!ship.targetId || !state.ships.find((s) => s.id === ship.targetId && s.health > 0)) {
-    const t = findNearestEnemy(state, ship);
-    ship.targetId = t?.id ?? null;
-  }
-  const legacyBehaviorConfig = {
-    ...DEFAULT_BEHAVIOR_CONFIG,
-    // Override to ensure simple behavior
-    defaultPersonality: {
-      ...DEFAULT_BEHAVIOR_CONFIG.defaultPersonality,
-      mode: "aggressive",
-      // Simple pursue mode
-      intentReevaluationRate: 0.5,
-      minIntentDuration: 0.5,
-      maxIntentDuration: 1
-    }
-  };
-  const originalConfig = state.behaviorConfig;
-  state.behaviorConfig = legacyBehaviorConfig;
-  const aiController = new AIController(state);
-  ship.aiState.currentIntent = "pursue";
-  ship.aiState.intentEndTime = state.time + 0.5;
-  aiController.updateShipAI(ship, dt);
-  state.behaviorConfig = originalConfig;
-  ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
 }
 function fireTurrets(state, ship, dt) {
   const target = ship.targetId ? state.ships.find((s) => s.id === ship.targetId) : void 0;
@@ -96426,45 +97051,8 @@ function updateBullets(state, dt) {
   }
   for (const b of state.bullets) {
     if (b.ttl <= 0) continue;
-    let outOfBounds = false;
-    if (behavior === "bounce") {
-      if (b.pos.x < 0) {
-        b.pos.x = 0;
-        b.vel.x = -b.vel.x;
-      } else if (b.pos.x > width) {
-        b.pos.x = width;
-        b.vel.x = -b.vel.x;
-      }
-      if (b.pos.y < 0) {
-        b.pos.y = 0;
-        b.vel.y = -b.vel.y;
-      } else if (b.pos.y > height) {
-        b.pos.y = height;
-        b.vel.y = -b.vel.y;
-      }
-      if (b.pos.z < 0) {
-        b.pos.z = 0;
-        b.vel.z = -b.vel.z;
-      } else if (b.pos.z > depth) {
-        b.pos.z = depth;
-        b.vel.z = -b.vel.z;
-      }
-    } else if (behavior === "wrap") {
-      if (b.pos.x < 0) b.pos.x += width;
-      else if (b.pos.x > width) b.pos.x -= width;
-      if (b.pos.y < 0) b.pos.y += height;
-      else if (b.pos.y > height) b.pos.y -= height;
-      if (b.pos.z < 0) b.pos.z += depth;
-      else if (b.pos.z > depth) b.pos.z -= depth;
-    } else if (behavior === "remove") {
-      if (b.pos.x < 0 || b.pos.x > width || b.pos.y < 0 || b.pos.y > height || b.pos.z < 0 || b.pos.z > depth) {
-        outOfBounds = true;
-      }
-    }
-    if (outOfBounds) {
-      b.ttl = 0;
-      continue;
-    }
+    applyBoundaryPhysicsBullet(b, state);
+    if (b.ttl <= 0) continue;
     for (const s of state.ships) {
       if (s.team === b.ownerTeam || s.health <= 0) continue;
       const dx = s.pos.x - b.pos.x;
@@ -96575,15 +97163,8 @@ function carrierSpawnLogic(state, dt) {
   }
 }
 function simulateStep(state, dt) {
-  if (state.behaviorConfig?.globalSettings.aiEnabled) {
-    const aiController = new AIController(state);
-    aiController.updateAllShips(dt);
-  } else {
-    for (const s of state.ships) {
-      if (s.health <= 0) continue;
-      stepShipAI(state, s, dt);
-    }
-  }
+  const aiController = state.aiController ?? (state.aiController = new AIController(state));
+  aiController.updateAllShips(dt);
   updateSpatialGrid(state);
   for (const s of state.ships) {
     if (s.health <= 0) continue;
@@ -96638,22 +97219,38 @@ function updateSpatialGrid(state) {
   if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
     return;
   }
-  state.spatialGrid.clear();
+  const activeIds = /* @__PURE__ */ new Set();
   for (const ship of state.ships) {
     if (ship.health > 0) {
-      state.spatialGrid.insert({
-        id: ship.id,
-        pos: ship.pos,
-        radius: 16,
-        // Approximate ship radius for spatial queries
-        team: ship.team
-      });
+      activeIds.add(ship.id);
+      state.spatialGrid.update(ship.id, ship.pos, 16, ship.team);
     }
   }
+  state.spatialGrid.gcExcept(activeIds);
 }
 
 // src/renderer/threeRenderer.ts
 init_three_module();
+
+// src/utils/logger.ts
+var DEBUG_ENABLED = typeof window !== "undefined" && window.__DEBUG__ === true || typeof process !== "undefined" && process.env && process.env.DEBUG === "true";
+function setDebug(v) {
+  DEBUG_ENABLED = !!v;
+  if (typeof window !== "undefined") window.__DEBUG__ = !!v;
+}
+function debug(...args) {
+  if (!DEBUG_ENABLED) return;
+  console.log(...args);
+}
+function info(...args) {
+  console.info(...args);
+}
+function warn(...args) {
+  console.warn(...args);
+}
+function error(...args) {
+  console.error(...args);
+}
 
 // src/renderer/effects.ts
 function createEffectsManager(renderer, scene, camera) {
@@ -96816,7 +97413,12 @@ var DefaultRendererConfig = {
     fov: 55,
     near: 0.1,
     far: 1e4,
-    cameraZ: 900
+    cameraZ: 900,
+    rotation: {
+      pitch: 0,
+      yaw: 0,
+      roll: 0
+    }
   },
   visual: {
     enableTrails: true,
@@ -96917,7 +97519,9 @@ var DefaultRendererConfig = {
       color: "#ffffff",
       width: 1
     }
-  }
+  },
+  defaultCollisionRadius: 1,
+  defaultScale: 1
 };
 var RendererConfig = DefaultRendererConfig;
 
@@ -96926,6 +97530,7 @@ var DefaultRendererEffectsConfig = {
   skybox: {
     starfield: {
       textureSize: 1920,
+      baseSeed: 12345,
       starCounts: {
         top: 800,
         bottom: 300,
@@ -97020,8 +97625,11 @@ var FileWatcher = class {
         this.notifyChange(filePath, "modified");
       }
       return modTime;
-    } catch (error) {
-      console.warn(`[FileWatcher] Error checking file ${filePath}:`, error);
+    } catch (error2) {
+      try {
+        warn(`[FileWatcher] Error checking file ${filePath}:`, error2);
+      } catch {
+      }
       return null;
     }
   }
@@ -97048,7 +97656,7 @@ var FileWatcher = class {
         }, 0);
       }
       return Date.now();
-    } catch (error) {
+    } catch (error2) {
       return null;
     }
   }
@@ -97058,8 +97666,11 @@ var FileWatcher = class {
     if (callback) {
       try {
         callback(filePath, changeType);
-      } catch (error) {
-        console.error(`[FileWatcher] Error in change callback for ${filePath}:`, error);
+      } catch (error2) {
+        try {
+          error(`[FileWatcher] Error in change callback for ${filePath}:`, error2);
+        } catch {
+        }
       }
     }
   }
@@ -97114,7 +97725,7 @@ var SVGLoader = class {
     this.setupFileWatching();
   }
   initWorker() {
-    console.log("[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)");
+    debug("[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)");
     this.worker = null;
   }
   handleWorkerMessage(data) {
@@ -97132,7 +97743,7 @@ var SVGLoader = class {
     });
   }
   handleFileChange(filePath, changeType) {
-    console.log(`[SVGLoader] File ${changeType}: ${filePath}`);
+    debug(`[SVGLoader] File ${changeType}: ${filePath}`);
     if (changeType === "modified" || changeType === "deleted") {
       this.clearCache(filePath);
       if (changeType === "deleted") {
@@ -97168,14 +97779,14 @@ var SVGLoader = class {
     }
   }
   async performLoad(url, options) {
-    console.log(`[SVGLoader] Attempting to load SVG from: ${url}`);
+    debug(`[SVGLoader] Attempting to load SVG from: ${url}`);
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
+      error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
       throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
     }
     const svgText = await response.text();
-    console.log(`[SVGLoader] Successfully fetched SVG content for ${url}, length: ${svgText.length}`);
+    debug(`[SVGLoader] Successfully fetched SVG content for ${url}, length: ${svgText.length}`);
     const lastModified = await this.getFileModificationTime(url);
     const asset = {
       url,
@@ -97183,15 +97794,15 @@ var SVGLoader = class {
       lastModified
     };
     if (options.width && options.height) {
-      console.log("[SVGLoader] Starting rasterization for:", url);
+      debug("[SVGLoader] Starting rasterization for:", url);
       const imageBitmap = await this.rasterizeSVG(asset, options);
       asset.imageBitmap = imageBitmap;
-      console.log("[SVGLoader] Rasterization completed for:", url);
+      debug("[SVGLoader] Rasterization completed for:", url);
     }
     return asset;
   }
   async rasterizeSVG(asset, options) {
-    console.log("[SVGLoader] Rasterizing SVG with main thread (worker disabled):", asset.url);
+    debug("[SVGLoader] Rasterizing SVG with main thread (worker disabled):", asset.url);
     return this.rasterizeMainThread(asset, options);
   }
   async rasterizeWithWorker(asset, options) {
@@ -97232,7 +97843,7 @@ var SVGLoader = class {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, options.width, options.height);
     try {
-      console.log("[SVGLoader] Attempting to rasterize SVG in main thread for:", asset.url);
+      debug("[SVGLoader] Attempting to rasterize SVG in main thread for:", asset.url);
       let svgContent = asset.svgText;
       if (!svgContent.includes("width=") || !svgContent.includes("height=")) {
         svgContent = svgContent.replace(
@@ -97249,12 +97860,12 @@ var SVGLoader = class {
         }, 1e4);
         img.onload = () => {
           clearTimeout(timeoutId);
-          console.log("[SVGLoader] Successfully loaded SVG image:", asset.url);
+          debug("[SVGLoader] Successfully loaded SVG image:", asset.url);
           resolve();
         };
         img.onerror = (e) => {
           clearTimeout(timeoutId);
-          console.error("[SVGLoader] Failed to load SVG image:", e);
+          error("[SVGLoader] Failed to load SVG image:", e);
           reject(new Error(`SVG image load failed`));
         };
         img.src = svgDataUrl;
@@ -97271,11 +97882,11 @@ var SVGLoader = class {
       if (options.teamColor) {
         this.applyTeamColorTint(ctx, options.width, options.height, options.teamColor);
       }
-      console.log("[SVGLoader] Successfully rasterized SVG to canvas:", asset.url);
+      debug("[SVGLoader] Successfully rasterized SVG to canvas:", asset.url);
       return await createImageBitmap(canvas);
-    } catch (error) {
-      console.error("[SVGLoader] SVG rasterization failed completely:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
+    } catch (error2) {
+      error("[SVGLoader] SVG rasterization failed completely:", error2);
+      const errorMessage = error2 instanceof Error ? error2.message : String(error2);
       throw new Error(`Failed to rasterize SVG ${asset.url}: ${errorMessage}`);
     }
   }
@@ -97416,8 +98027,8 @@ var defaultSVGConfig = {
   defaultFileNames: ["fighter.svg", "corvette.svg", "frigate.svg", "destroyer.svg", "carrier.svg"],
   // Rasterization settings
   defaultRasterSize: {
-    width: 128,
-    height: 128
+    width: 256,
+    height: 256
   },
   // Caching settings
   cache: {
@@ -97447,12 +98058,18 @@ function getShipSVGUrl(shipClass, config = defaultSVGConfig) {
 }
 
 // src/renderer/threeRenderer.ts
+var billboardMaterials = /* @__PURE__ */ new Set();
+var billboardMaterialPool = /* @__PURE__ */ new Map();
 function createThreeRenderer(state, canvas) {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new Scene();
   const camera = new PerspectiveCamera(RendererConfig.camera.fov, 1, RendererConfig.camera.near, RendererConfig.camera.far);
-  const cameraRotation = { x: -Math.PI / 6, y: 0, z: 0 };
+  const cameraRotation = {
+    x: RendererConfig.camera.rotation.pitch,
+    y: RendererConfig.camera.rotation.yaw,
+    z: RendererConfig.camera.rotation.roll
+  };
   let _cameraDistance = RendererConfig.camera.cameraZ;
   const cameraTarget = {
     x: state.simConfig.simBounds.width / 2,
@@ -97533,8 +98150,8 @@ function createThreeRenderer(state, canvas) {
   const skyboxCanvases = [];
   const skyboxTextures = [];
   function createAnimatedSkybox() {
-    const textureSize = 512;
-    const baseSeed = 12345;
+    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
     const faces = ["right", "left", "top", "bottom", "front", "back"];
     faces.forEach((face, index) => {
       const canvas2 = generateStarfieldTexture(textureSize, textureSize, face, baseSeed + index);
@@ -97597,7 +98214,6 @@ function createThreeRenderer(state, canvas) {
   try {
     const animatedSkyboxTexture = createAnimatedSkybox();
     scene.background = animatedSkyboxTexture;
-    console.log("Using animated cube skybox as scene background");
     if (skyboxTextures.length > 0) {
       sphereSkybox = createSphereSkybox();
       if (sphereSkybox.material instanceof MeshBasicMaterial && skyboxTextures.length > 0) {
@@ -97605,10 +98221,9 @@ function createThreeRenderer(state, canvas) {
         sphereSkybox.material.needsUpdate = true;
       }
       scene.add(sphereSkybox);
-      console.log("Added sphere-based skybox (using generated texture)");
     }
   } catch (e) {
-    console.warn("Animated skybox generation failed, falling back to solid background", e);
+    warn("Animated skybox generation failed, falling back to solid background", e);
     scene.background = new Color(17);
     sphereSkybox = createSphereSkybox();
     scene.add(sphereSkybox);
@@ -97650,6 +98265,8 @@ function createThreeRenderer(state, canvas) {
   const bulletMeshes = /* @__PURE__ */ new Map();
   const healthBarMeshes = /* @__PURE__ */ new Map();
   const shieldEffectMeshes = /* @__PURE__ */ new Map();
+  const DEV_MODE = typeof window !== "undefined" && window.__DEV__ === true || typeof process !== "undefined" && process.env && true;
+  const GPU_BILLBOARD = true;
   const recentShieldHits = /* @__PURE__ */ new Map();
   function colorForTeam(team) {
     return team === "red" ? 16732240 : 5284095;
@@ -97669,26 +98286,17 @@ function createThreeRenderer(state, canvas) {
         transparent: true,
         alphaTest: 0.05,
         side: DoubleSide
-        // Make planes visible from both front and back
       });
       const teamMaterial = new MeshBasicMaterial({
         color: teamColor,
         transparent: true,
         opacity: 0.8,
         side: DoubleSide
-        // Make team-colored surfaces visible from both sides
       });
       const shipGroup = new Group();
-      const size = (ShipVisualConfig.ships[s.class]?.collisionRadius ?? 16) * 1.8;
+      const size = ShipVisualConfig.ships[s.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
       const bodyGeometry = new CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
-      const bodyMaterials = [
-        teamMaterial,
-        // side
-        texturedMaterial,
-        // top cap
-        texturedMaterial
-        // bottom cap
-      ];
+      const bodyMaterials = [teamMaterial, texturedMaterial, texturedMaterial];
       const body = new Mesh(bodyGeometry, bodyMaterials);
       body.rotation.z = Math.PI / 2;
       shipGroup.add(body);
@@ -97753,16 +98361,15 @@ function createThreeRenderer(state, canvas) {
           teamColor
         });
         if (pool) pool.set(svgUrl, asset);
-        if (asset.imageBitmap && placeholder.parent) {
+        if (asset?.imageBitmap && placeholder.parent) {
           const ship3D = createTextured3DShip(asset.imageBitmap);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
           shipMeshes.set(s.id, ship3D);
-          console.log(`[threeRenderer] Successfully loaded 3D SVG textured ship for ${s.class}`);
         }
       } catch (err) {
-        console.warn(`[threeRenderer] Could not load SVG ${svgUrl}, keeping placeholder:`, err);
+        error("Failed to load SVG asset for ship", err);
       }
     })();
     return placeholder;
@@ -97778,17 +98385,35 @@ function createThreeRenderer(state, canvas) {
     const config = RendererConfig.healthBars;
     const barGroup = new Group();
     const bgGeom = new PlaneGeometry(config.width, config.position.height);
-    const bgMat = new MeshBasicMaterial({ color: config.colors.background });
+    let bgMat;
+    if (GPU_BILLBOARD) {
+      const mat = getPooledBillboardMaterial(new Color(config.colors.background), 1);
+      bgMat = mat;
+    } else {
+      bgMat = new MeshBasicMaterial({ color: config.colors.background });
+    }
     const bgMesh = new Mesh(bgGeom, bgMat);
     barGroup.add(bgMesh);
     const healthGeom = new PlaneGeometry(config.width - 2, config.position.height - 2);
-    const healthMat = new MeshBasicMaterial({ color: config.colors.health.full });
+    let healthMat;
+    if (GPU_BILLBOARD) {
+      const mat = getPooledBillboardMaterial(new Color(config.colors.health.full), 1);
+      healthMat = mat;
+    } else {
+      healthMat = new MeshBasicMaterial({ color: config.colors.health.full });
+    }
     const healthMesh = new Mesh(healthGeom, healthMat);
     barGroup.add(healthMesh);
     let shieldMesh = null;
     if (ship.maxShield > 0) {
       const shieldGeom = new PlaneGeometry(config.width - 2, config.position.height - 2);
-      const shieldMat = new MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+      let shieldMat;
+      if (GPU_BILLBOARD) {
+        const mat = getPooledBillboardMaterial(new Color(config.colors.shield.full), 0.8);
+        shieldMat = mat;
+      } else {
+        shieldMat = new MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+      }
       shieldMesh = new Mesh(shieldGeom, shieldMat);
       shieldMesh.position.z = 0.1;
       barGroup.add(shieldMesh);
@@ -97821,12 +98446,29 @@ function createThreeRenderer(state, canvas) {
     } else if (healthPercent < 0.7) {
       healthColor = config.colors.health.damaged;
     }
-    healthMesh.material.color.setStyle(healthColor);
+    if (GPU_BILLBOARD && healthMesh.material.uniforms && healthMesh.material.uniforms.uColor) {
+      const mat = healthMesh.material;
+      const newMat = getPooledBillboardMaterial(new Color(healthColor), mat.uniforms.uAlpha?.value ?? 1);
+      if (newMat !== mat) {
+        healthMesh.material = newMat;
+      }
+    } else {
+      healthMesh.material.color.setStyle(healthColor);
+    }
     if (shieldMesh && ship.maxShield > 0) {
       const shieldPercent = ship.shield / ship.maxShield;
       shieldMesh.scale.x = Math.max(0, shieldPercent);
       const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-      shieldMesh.material.color.setStyle(shieldColor);
+      if (GPU_BILLBOARD && shieldMesh.material.uniforms && shieldMesh.material.uniforms.uColor) {
+        const mat = shieldMesh.material;
+        const alpha = 0.8;
+        const newMat = getPooledBillboardMaterial(new Color(shieldColor), alpha);
+        if (newMat !== mat) {
+          shieldMesh.material = newMat;
+        }
+      } else {
+        shieldMesh.material.color.setStyle(shieldColor);
+      }
     }
   }
   function createShieldEffect(ship) {
@@ -98036,7 +98678,7 @@ function createThreeRenderer(state, canvas) {
     const shieldMesh = shieldGroup.shieldMesh;
     const mat = shieldMesh.material;
     shieldGroup.position.set(ship.pos.x, ship.pos.y, ship.pos.z);
-    const scale = (ShipVisualConfig.shield.scaleMultipliers[ship.class] ?? 1) * config.animation.scaleMultiplier;
+    const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
     shieldGroup.scale.setScalar(scale);
     mat.uniforms.uTime.value = currentTime;
     const shieldPercent = ship.maxShield > 0 ? ship.shield / ship.maxShield : 0;
@@ -98152,7 +98794,7 @@ function createThreeRenderer(state, canvas) {
       if (!m) continue;
       m.position.set(s.pos.x, s.pos.y, s.pos.z);
       m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI / 2, s.orientation.roll);
-      const scale = ShipVisualConfig.ships[s.class]?.scale ?? 1;
+      const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
       m.scale.setScalar(scale);
       if (RendererConfig.visual.enableHealthBars) {
         const bar = healthBarMeshes.get(s.id);
@@ -98171,6 +98813,17 @@ function createThreeRenderer(state, canvas) {
       const m = bulletMeshes.get(b.id);
       if (!m) continue;
       m.position.set(b.pos.x, b.pos.y, b.pos.z);
+    }
+    for (const s of state.ships) {
+      const bar = healthBarMeshes.get(s.id);
+      if (bar) {
+        bar.position.set(
+          s.pos.x + RendererConfig.healthBars.position.offsetX,
+          s.pos.y + RendererConfig.healthBars.position.offsetY,
+          s.pos.z + ShipVisualConfig.healthBar.offset.z
+          // Above the ship
+        );
+      }
     }
   }
   function resize() {
@@ -98207,12 +98860,38 @@ function createThreeRenderer(state, canvas) {
     updateCameraPosition();
     syncEntities();
     updateTransforms();
+    for (const [id, bar] of healthBarMeshes) {
+      if (bar.parent !== healthBarsGroup) {
+        try {
+          if (bar.parent) bar.parent.remove(bar);
+        } catch (e) {
+        }
+        healthBarsGroup.add(bar);
+      }
+    }
+    if (GPU_BILLBOARD) {
+      const camRight = new Vector3();
+      const camUp = new Vector3();
+      camera.getWorldDirection(camRight);
+      const worldUp = new Vector3(0, 1, 0);
+      camRight.crossVectors(camera.up, camera.getWorldDirection(new Vector3())).normalize();
+      camUp.copy(camera.up).normalize();
+      for (const mat of billboardMaterials) {
+        if (mat.uniforms) {
+          if (mat.uniforms.cameraRight) mat.uniforms.cameraRight.value.copy(camRight);
+          if (mat.uniforms.cameraUp) mat.uniforms.cameraUp.value.copy(camUp);
+        }
+      }
+    } else {
+      updateBillboardBars(Array.from(healthBarMeshes.values()), camera);
+    }
     updateSkyboxAnimation(_dt);
     if (effectsManager && effectsManager.initDone) {
       try {
         effectsManager.render(_dt);
         return;
       } catch (e) {
+        warn("Effects manager render failed, falling back to default renderer", e);
       }
     }
     renderer.render(scene, camera);
@@ -98234,6 +98913,14 @@ function createThreeRenderer(state, canvas) {
       bulletMeshes.clear();
       healthBarMeshes.clear();
       shieldEffectMeshes.clear();
+      for (const m of billboardMaterialPool.values()) {
+        try {
+          m.dispose();
+        } catch (e) {
+        }
+      }
+      billboardMaterialPool.clear();
+      billboardMaterials.clear();
     },
     cameraRotation,
     // Expose camera distance as getter/setter so external callers can adjust it.
@@ -98246,6 +98933,62 @@ function createThreeRenderer(state, canvas) {
     },
     cameraTarget
   };
+}
+function updateBillboardBars(bars, camera) {
+  const cameraMatrix = new Matrix4().extractRotation(camera.matrixWorld);
+  for (const bar of bars) {
+    bar.quaternion.setFromRotationMatrix(cameraMatrix);
+  }
+}
+var billboardVertexShader = `
+  uniform vec3 cameraRight;
+  uniform vec3 cameraUp;
+  uniform float uAlpha;
+  uniform vec3 uColor;
+
+  varying vec3 vColor;
+  varying float vAlpha;
+
+  void main() {
+    // center of this object in world-space
+    vec3 center = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    // position.xy are the local quad coords (e.g., -w/2..w/2, -h/2..h/2)
+    vec3 worldPos = center + cameraRight * position.x + cameraUp * position.y;
+    gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+    vColor = uColor;
+    vAlpha = uAlpha;
+  }
+`;
+var billboardFragmentShader = `
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    gl_FragColor = vec4(vColor, vAlpha);
+  }
+`;
+function billboardPoolKey(color, alpha) {
+  return `${color.getHexString()}|${alpha}`;
+}
+function getPooledBillboardMaterial(color = new Color(16777215), alpha = 1) {
+  const key = billboardPoolKey(color, alpha);
+  const existing = billboardMaterialPool.get(key);
+  if (existing) return existing;
+  const mat = new ShaderMaterial({
+    uniforms: {
+      cameraRight: { value: new Vector3(1, 0, 0) },
+      cameraUp: { value: new Vector3(0, 1, 0) },
+      uColor: { value: color.clone() },
+      uAlpha: { value: alpha }
+    },
+    vertexShader: billboardVertexShader,
+    fragmentShader: billboardFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide
+  });
+  billboardMaterialPool.set(key, mat);
+  billboardMaterials.add(mat);
+  return mat;
 }
 
 // src/core/physics.ts
@@ -98278,7 +99021,7 @@ async function createPhysicsStepper(state) {
       colliders.set(ship.id, collider);
       return rigidBody;
     } catch (e) {
-      console.error("Failed to create physics body for ship:", e);
+      error("Failed to create physics body for ship:", e);
       return null;
     }
   }
@@ -98295,7 +99038,7 @@ async function createPhysicsStepper(state) {
         rigidBodies.delete(shipId);
       }
     } catch (e) {
-      console.error("Failed to remove physics body:", e);
+      error("Failed to remove physics body:", e);
     }
   }
   function raycast(origin, direction, maxDistance = PhysicsConfig.world.defaultRaycastDistance) {
@@ -98313,7 +99056,7 @@ async function createPhysicsStepper(state) {
       }
       return { hit: false };
     } catch (e) {
-      console.error("Raycast failed:", e);
+      error("Raycast failed:", e);
       return { hit: false };
     }
   }
@@ -98334,7 +99077,7 @@ async function createPhysicsStepper(state) {
       }
       return [];
     } catch (e) {
-      console.error("Sphere cast failed:", e);
+      error("Sphere cast failed:", e);
       return [];
     }
   }
@@ -98345,7 +99088,7 @@ async function createPhysicsStepper(state) {
         rigidBody.addForce(force, true);
       }
     } catch (e) {
-      console.error("Failed to apply force:", e);
+      error("Failed to apply force:", e);
     }
   }
   function setGravity(newGravity) {
@@ -98354,7 +99097,7 @@ async function createPhysicsStepper(state) {
       world.gravity.y = newGravity.y;
       world.gravity.z = newGravity.z;
     } catch (e) {
-      console.error("Failed to set gravity:", e);
+      error("Failed to set gravity:", e);
     }
   }
   function step(dt) {
@@ -98374,11 +99117,11 @@ async function createPhysicsStepper(state) {
           ship.vel.y = linvel.y;
           ship.vel.z = linvel.z;
         } catch (e) {
-          console.error("Failed to update ship from physics:", e);
+          error("Failed to update ship from physics:", e);
         }
       }
     } catch (e) {
-      console.error("Physics step failed:", e);
+      error("Physics step failed:", e);
     }
   }
   return {
@@ -98397,7 +99140,7 @@ async function createPhysicsStepper(state) {
         colliders.clear();
         world.free?.();
       } catch (e) {
-        console.error("Failed to dispose physics world:", e);
+        error("Failed to dispose physics world:", e);
       }
     },
     addShip,
@@ -98469,6 +99212,25 @@ var DefaultCameraConfig = {
 };
 var CameraConfig = DefaultCameraConfig;
 
+// src/config/gameConfig.ts
+var DefaultGameConfig = {
+  ui: {
+    showDebugInfo: true,
+    enableTrails: true,
+    cameraFollow: false
+  },
+  gameplay: {
+    autoRespawn: true,
+    formationSpacing: 30,
+    maxFleetsPerTeam: 10
+  },
+  performance: {
+    enableLOD: true,
+    maxParticles: 1e3,
+    particleLifetime: 2
+  }
+};
+
 // src/main.ts
 function $(id) {
   return document.getElementById(id);
@@ -98523,7 +99285,7 @@ function initGame(seed) {
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
   (async () => {
     try {
-      console.log("[main.ts] Preloading SVG assets with change detection...");
+      debug("[main.ts] Preloading SVG assets with change detection...");
       for (const svgUrl of shipSVGUrls) {
         try {
           const asset = await loadSVGAsset(svgUrl, {
@@ -98532,48 +99294,48 @@ function initGame(seed) {
             enableWatching: defaultSVGConfig.cache.enableFileWatching
           });
           state.assetPool.set(svgUrl, asset);
-          console.log(`[main.ts] Loaded SVG asset: ${svgUrl}`);
-        } catch (error) {
-          console.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error);
+          debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
+        } catch (error2) {
+          warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error2);
         }
       }
-      console.log("[main.ts] SVG asset preloading complete");
-    } catch (error) {
-      console.error("[main.ts] Error during SVG asset preloading:", error);
+      debug("[main.ts] SVG asset preloading complete");
+    } catch (error2) {
+      error("[main.ts] Error during SVG asset preloading:", error2);
     }
   })();
   window.debugSVG = {
     // Get SVG loader stats
     getStats: () => {
       const stats = svgLoader.getCacheStats();
-      console.log("[SVG Debug] Cache stats:", stats);
+      debug("[SVG Debug] Cache stats:", stats);
       return stats;
     },
     // Manually reload all SVG assets
     reloadAll: async () => {
-      console.log("[SVG Debug] Manually reloading all SVG assets...");
+      debug("[SVG Debug] Manually reloading all SVG assets...");
       try {
         await svgLoader.reloadAllAssets();
-        console.log("[SVG Debug] All SVG assets reloaded successfully");
-      } catch (error) {
-        console.error("[SVG Debug] Failed to reload SVG assets:", error);
+        debug("[SVG Debug] All SVG assets reloaded successfully");
+      } catch (error2) {
+        error("[SVG Debug] Failed to reload SVG assets:", error2);
       }
     },
     // Clear SVG cache
     clearCache: (assetUrl) => {
-      console.log("[SVG Debug] Clearing SVG cache...", assetUrl ? `for ${assetUrl}` : "all assets");
+      debug("[SVG Debug] Clearing SVG cache...", assetUrl ? `for ${assetUrl}` : "all assets");
       svgLoader.clearCache(assetUrl);
-      console.log("[SVG Debug] SVG cache cleared");
+      debug("[SVG Debug] SVG cache cleared");
     },
     // List cached assets
     listCached: () => {
       const assets = Array.from(svgLoader.getCacheStats().cachedAssets > 0 ? "assets cached" : []);
-      console.log("[SVG Debug] Cached SVG assets:", assets);
+      debug("[SVG Debug] Cached SVG assets:", assets);
       return assets;
     }
   };
-  console.log("[main.ts] SVG debugging functions available at window.debugSVG");
-  console.log("[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()");
+  debug("[main.ts] SVG debugging functions available at window.debugSVG");
+  debug("[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()");
   (async () => {
     try {
       const classes = ["fighter", "corvette", "frigate", "destroyer", "carrier"];
@@ -98852,7 +99614,7 @@ function setupCameraControls(state, canvas) {
       e.preventDefault();
       isCinematicMode = true;
       resetToCinematicView(state);
-      console.log("\u{1F3AC} Cinematic camera mode activated - following both fleets");
+      info("\u{1F3AC} Cinematic camera mode activated - following both fleets");
     }
   });
   document.addEventListener("keyup", (e) => {
@@ -98871,7 +99633,7 @@ function setupCameraControls(state, canvas) {
     const hasMovementInput = keys["KeyW"] || keys["KeyS"] || keys["KeyA"] || keys["KeyD"] || keys["ShiftLeft"] || keys["Space"];
     if (hasMovementInput && isCinematicMode) {
       isCinematicMode = false;
-      console.log("\u{1F3AE} Manual camera control activated - cinematic mode disabled");
+      info("\u{1F3AE} Manual camera control activated - cinematic mode disabled");
     }
     if (isCinematicMode && !hasMovementInput) {
       updateCinematicCamera(state, dt);
@@ -98947,6 +99709,7 @@ function startLoops(state, ui) {
   }
   requestAnimationFrame(frame);
 }
+setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 window.addEventListener("DOMContentLoaded", () => initGame());
 /*! Bundled license information:
 

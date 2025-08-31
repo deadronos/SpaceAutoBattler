@@ -14,6 +14,10 @@ describe('AI Roaming and Formation Systems', () => {
     // Ensure AI is enabled and configure for testing
     gameState.behaviorConfig!.globalSettings.aiEnabled = true;
     gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = 150;
+    
+    // Disable interfering features for focused testing
+    gameState.behaviorConfig!.globalSettings.enableScoutBehavior = false;
+    gameState.behaviorConfig!.globalSettings.enableAlarmSystem = false;
   });
 
   describe('Roaming Anchor Assignment', () => {
