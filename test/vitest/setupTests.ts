@@ -177,9 +177,10 @@ export function createMockGameState(overrides = {}) {
       useTimeBasedSeed: false,
     },
     ships: [] as Ship[],
+    shipIndex: new Map(),
     bullets: [] as Bullet[],
     score: { red: 0, blue: 0 },
-  behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
+    behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
   };
 
   return { ...baseState, ...overrides };
