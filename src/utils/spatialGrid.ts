@@ -86,6 +86,7 @@ export class SpatialGrid {
   /**
    * Incrementally add or update an entity's position/team/radius in the grid.
    * Uses the id to move the entity between cells without clearing the grid.
+   * Optimized to skip updates if position hasn't changed significantly.
    */
   update(id: EntityId, pos: Vector3, radius: number, team: Team) {
     const newKey = this.getCellKey(pos.x, pos.y, pos.z);
@@ -100,8 +101,15 @@ export class SpatialGrid {
       this.lastRadiusCache = null;
       return;
     }
-    // Existing entity: update in place, moving cells if needed
-    if (rec.key !== newKey) {
+    
+    // Existing entity: check if significant change occurred
+    const oldEntity = rec.entity;
+    const positionChanged = (rec.key !== newKey);
+    const radiusChanged = Math.abs(oldEntity.radius - radius) > 0.1;
+    const teamChanged = oldEntity.team !== team;
+    
+    // Only update if there's a significant change
+    if (positionChanged) {
       // Remove from old cell array
       const oldArr = this.grid.get(rec.key);
       if (oldArr) {
@@ -118,10 +126,13 @@ export class SpatialGrid {
       this.version++;
       this.lastRadiusCache = null;
     }
-    // Update reference fields (keep pos by reference to avoid extra allocs)
-    rec.entity.pos = pos;
-    rec.entity.radius = radius;
-    rec.entity.team = team;
+    
+    // Always update reference fields for position/radius/team changes
+    if (positionChanged || radiusChanged || teamChanged) {
+      rec.entity.pos = pos;
+      rec.entity.radius = radius;
+      rec.entity.team = team;
+    }
   }
 
   /** Remove an entity from the grid by id (no-op if missing) */

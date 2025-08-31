@@ -171,23 +171,38 @@ export class SpatialGridAdapter implements SpatialIndex {
   queryAABB(aabb: AABB, layerMask?: number): EntityId[] {
     this.trackQuery();
     const results: EntityId[] = [];
+    
+    // Calculate search radius as half the diagonal of the AABB
     const center = {
       x: (aabb.min.x + aabb.max.x) / 2,
       y: (aabb.min.y + aabb.max.y) / 2,
       z: (aabb.min.z + aabb.max.z) / 2,
     };
-    const maxRadius = Math.max(
-      aabb.max.x - aabb.min.x,
-      aabb.max.y - aabb.min.y,
-      aabb.max.z - aabb.min.z
-    ) / 2;
+    
+    // Use diagonal distance to ensure we capture all possible entities
+    const dx = aabb.max.x - aabb.min.x;
+    const dy = aabb.max.y - aabb.min.y;
+    const dz = aabb.max.z - aabb.min.z;
+    const searchRadius = Math.sqrt(dx*dx + dy*dy + dz*dz) / 2 + 50; // Add buffer for entity radius
 
-    const entities = this.grid.queryRadius(center, maxRadius);
+    const entities = this.grid.queryRadius(center, searchRadius);
     for (const entity of entities) {
-      // Additional AABB intersection test
-      if (entity.pos.x >= aabb.min.x && entity.pos.x <= aabb.max.x &&
-          entity.pos.y >= aabb.min.y && entity.pos.y <= aabb.max.y &&
-          entity.pos.z >= aabb.min.z && entity.pos.z <= aabb.max.z) {
+      // Test if entity's position (considering its radius) intersects with AABB
+      const entityMin = {
+        x: entity.pos.x - entity.radius,
+        y: entity.pos.y - entity.radius,
+        z: entity.pos.z - entity.radius
+      };
+      const entityMax = {
+        x: entity.pos.x + entity.radius,
+        y: entity.pos.y + entity.radius,
+        z: entity.pos.z + entity.radius
+      };
+      
+      // Check AABB vs AABB intersection
+      if (entityMax.x >= aabb.min.x && entityMin.x <= aabb.max.x &&
+          entityMax.y >= aabb.min.y && entityMin.y <= aabb.max.y &&
+          entityMax.z >= aabb.min.z && entityMin.z <= aabb.max.z) {
         // Apply layer mask if provided
         if (layerMask === undefined || ((1 << (entity.team === 'red' ? 0 : 1)) & layerMask)) {
           results.push(entity.id);

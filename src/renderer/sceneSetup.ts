@@ -191,7 +191,21 @@ function generateStaticStarfieldTexture(): THREE.Texture {
   const canvas = document.createElement('canvas');
   canvas.width = textureSize;
   canvas.height = textureSize;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+
+  // Handle test environment where canvas context might not be available
+  if (!ctx) {
+    console.warn('Canvas 2D context not available, creating fallback texture');
+    // Create a simple colored texture as fallback
+    const fallbackCanvas = document.createElement('canvas');
+    fallbackCanvas.width = 32;
+    fallbackCanvas.height = 32;
+    const texture = new THREE.CanvasTexture(fallbackCanvas);
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    return texture;
+  }
 
   // Create gradient background
   const gradient = ctx.createRadialGradient(
