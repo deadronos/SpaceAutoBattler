@@ -19,6 +19,7 @@
     "validate-config": "node ./scripts/validate-config.mjs",
     "generate-memory-index": "node ./scripts/generate_memory_index.mjs",
     "add-memory-node": "node ./scripts/add_memory_node.mjs"
+    ,"generate-memories": "node ./scripts/generate_memories.mjs"
   },
   "devDependencies": {
     "@babel/preset-env": "latest",
