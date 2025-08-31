@@ -169,6 +169,9 @@ export interface GameState {
       ships: BoundaryBehavior;
       bullets: BoundaryBehavior;
     };
+    spatialGrid: {
+      cellSize: number;
+    };
     seed: string;
     useTimeBasedSeed: boolean;
   };

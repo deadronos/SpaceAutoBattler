@@ -929,10 +929,11 @@ export class AIController {
     const finalDirZ = combinedMagnitude > 0 ? combinedZ / combinedMagnitude : desiredDirZ;
 
     // Calculate desired 3D orientation to look in the combined direction
+    const projectionDistance = this.state.behaviorConfig?.globalSettings.orientationProjectionDistance ?? 100;
     const targetLookPos = {
-      x: ship.pos.x + finalDirX * 100, // Project forward to get orientation
-      y: ship.pos.y + finalDirY * 100,
-      z: ship.pos.z + finalDirZ * 100
+      x: ship.pos.x + finalDirX * projectionDistance, // Project forward to get orientation
+      y: ship.pos.y + finalDirY * projectionDistance,
+      z: ship.pos.z + finalDirZ * projectionDistance
     };
     const targetOrientation = lookAt(ship.pos, targetLookPos);
     

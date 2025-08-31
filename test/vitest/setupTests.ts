@@ -170,6 +170,9 @@ export function createMockGameState(overrides = {}) {
         ships: 'bounce' as const,
         bullets: 'remove' as const,
       },
+      spatialGrid: {
+        cellSize: 64,
+      },
       seed: 'test-seed',
       useTimeBasedSeed: false,
     },

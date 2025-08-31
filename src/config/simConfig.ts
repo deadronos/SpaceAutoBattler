@@ -20,6 +20,10 @@ export interface SimConfig {
     ships: BoundaryBehavior;
     bullets: BoundaryBehavior;
   };
+  // Spatial grid settings for performance optimization
+  spatialGrid: {
+    cellSize: number; // size of each spatial grid cell in world units
+  };
   // RNG settings
   seed: string;
   useTimeBasedSeed: boolean;
@@ -36,6 +40,9 @@ export const DefaultSimConfig: SimConfig = {
   boundaryBehavior: {
     ships: 'bounce', // ships bounce off boundaries
     bullets: 'remove', // bullets are removed when hitting boundaries
+  },
+  spatialGrid: {
+    cellSize: 64, // optimal cell size for AI neighbor searches
   },
   seed: 'SPACE-001',
   useTimeBasedSeed: false,

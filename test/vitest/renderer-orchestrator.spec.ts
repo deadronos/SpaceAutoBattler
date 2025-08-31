@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { updateBillboardBars } from '../../src/renderer/threeRendererNew.js';
 // We'll test individual components since the full orchestrator requires complex WebGL mocking
 import { setupScene, updateSkyboxAnimation, disposeScene } from '../../src/renderer/sceneSetup.js';
 import { setupCamera, updateCameraPosition, setCameraDistance, getCameraDistance } from '../../src/renderer/cameraManager.js';
 import { createMeshFactoryState, meshFactory } from '../../src/renderer/meshFactory.js';
 import { createShieldEffectState, shieldEffect } from '../../src/renderer/effects/shieldEffect.js';
 import { createSynchronizerState, createSynchronizerGroups } from '../../src/renderer/synchronizer.js';
-import { createOverlayState } from '../../src/renderer/overlay.js';
+import { createOverlayState, updateBillboardBars } from '../../src/renderer/overlay.js';
 import { createMockGameState } from './setupTests.js';
 import * as THREE from 'three';
 
@@ -139,14 +138,12 @@ describe('New Orchestrator Renderer Components', () => {
 
   describe('Interface Validation', () => {
     it('should export the same interface as the original renderer', async () => {
-      const module = await import('../../src/renderer/threeRendererNew.js');
+      const module = await import('../../src/renderer/threeRenderer.js');
       
       expect(module.createThreeRenderer).toBeTypeOf('function');
-      expect(module.updateBillboardBars).toBeTypeOf('function');
       
-      // Function signatures should be compatible
+      // Function signature should be compatible
       expect(module.createThreeRenderer.length).toBe(2); // state, canvas parameters
-      expect(module.updateBillboardBars.length).toBe(2); // bars, camera parameters
     });
   });
 

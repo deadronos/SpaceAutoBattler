@@ -110,3 +110,16 @@ export const OverlayUtils = {
   handleOverlayResize,
   updateOverlayPositions
 };
+
+/**
+ * Updates billboard health bar orientations to face the camera.
+ * @param bars - Array of billboard health bar objects.
+ * @param camera - The active camera.
+ */
+export function updateBillboardBars(bars: THREE.Object3D[], camera: THREE.Camera) {
+  const cameraMatrix = new THREE.Matrix4().extractRotation(camera.matrixWorld);
+
+  for (const bar of bars) {
+    bar.quaternion.setFromRotationMatrix(cameraMatrix);
+  }
+}

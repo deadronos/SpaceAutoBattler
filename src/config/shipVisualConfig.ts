@@ -6,6 +6,10 @@ export interface ShipVisualConfig {
     scale: number; // Visual scale multiplier
     collisionRadius: number; // Collision detection radius
   }>;
+  // Default fallback values when ship class is not found
+  defaults: {
+    collisionRadius: number; // Fallback collision radius for unknown ship classes
+  };
   healthBar: {
     offset: {
       x: number;
@@ -25,6 +29,9 @@ export const DefaultShipVisualConfig: ShipVisualConfig = {
     frigate: { scale: 1.1, collisionRadius: 20 },
     destroyer: { scale: 1.35, collisionRadius: 20 },
     carrier: { scale: 1.6, collisionRadius: 20 },
+  },
+  defaults: {
+    collisionRadius: 16, // Default collision radius for unknown ship classes
   },
   healthBar: {
     offset: {
