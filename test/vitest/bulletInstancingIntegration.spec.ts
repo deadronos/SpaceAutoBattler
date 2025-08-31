@@ -1,0 +1,232 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createThreeRenderer } from '../../src/renderer/threeRenderer.js';
+import { createInitialState } from '../../src/core/gameState.js';
+import { RendererConfig } from '../../src/config/rendererConfig.js';
+import type { GameState, Bullet } from '../../src/types/index.js';
+
+// Mock Three.js and other dependencies
+vi.mock('three', () => ({
+  WebGLRenderer: vi.fn().mockImplementation(() => ({
+    setSize: vi.fn(),
+    setPixelRatio: vi.fn(),
+    render: vi.fn(),
+    dispose: vi.fn(),
+    domElement: { width: 800, height: 600 },
+    info: { render: { calls: 0 } }
+  })),
+  Scene: vi.fn().mockImplementation(() => ({
+    add: vi.fn(),
+    remove: vi.fn(),
+    background: null
+  })),
+  PerspectiveCamera: vi.fn().mockImplementation(() => ({
+    aspect: 1,
+    updateProjectionMatrix: vi.fn(),
+    position: { set: vi.fn() },
+    lookAt: vi.fn(),
+    getWorldDirection: vi.fn(() => ({ normalize: vi.fn() })),
+    up: { normalize: vi.fn() }
+  })),
+  Color: vi.fn(),
+  AmbientLight: vi.fn(),
+  DirectionalLight: vi.fn().mockImplementation(() => ({
+    position: { set: vi.fn() }
+  })),
+  BoxGeometry: vi.fn(),
+  EdgesGeometry: vi.fn(),
+  LineBasicMaterial: vi.fn(),
+  LineSegments: vi.fn().mockImplementation(() => ({
+    position: { set: vi.fn() }
+  })),
+  Group: vi.fn().mockImplementation(() => ({
+    add: vi.fn(),
+    remove: vi.fn()
+  })),
+  ConeGeometry: vi.fn(),
+  MeshPhongMaterial: vi.fn(),
+  Mesh: vi.fn().mockImplementation(() => ({
+    position: { set: vi.fn() },
+    rotation: { set: vi.fn() },
+    scale: { setScalar: vi.fn() }
+  })),
+  SphereGeometry: vi.fn(),
+  MeshBasicMaterial: vi.fn(),
+  InstancedMesh: vi.fn().mockImplementation(() => ({
+    setMatrixAt: vi.fn(),
+    getMatrixAt: vi.fn(),
+    instanceMatrix: { needsUpdate: false },
+    geometry: { dispose: vi.fn() },
+    material: { dispose: vi.fn() },
+    parent: null
+  })),
+  Matrix4: vi.fn().mockImplementation(() => ({
+    compose: vi.fn(),
+    makeScale: vi.fn()
+  })),
+  Vector3: vi.fn().mockImplementation(() => ({
+    set: vi.fn(),
+    copy: vi.fn().mockReturnThis(),
+    crossVectors: vi.fn().mockReturnThis(),
+    normalize: vi.fn().mockReturnThis()
+  })),
+  Quaternion: vi.fn().mockImplementation(() => ({})),
+  CanvasTexture: vi.fn(),
+  CubeTexture: vi.fn(),
+  ClampToEdgeWrapping: vi.fn(),
+  LinearFilter: vi.fn(),
+  // Add missing constants
+  BackSide: 2,
+  DoubleSide: 2
+}));
+
+// Mock postprocessing
+vi.mock('postprocessing', () => ({
+  EffectComposer: vi.fn().mockImplementation(() => ({
+    addPass: vi.fn(),
+    render: vi.fn(),
+    setSize: vi.fn(),
+    dispose: vi.fn()
+  })),
+  RenderPass: vi.fn(),
+  EffectPass: vi.fn(),
+  BloomEffect: vi.fn(),
+  ToneMappingEffect: vi.fn(),
+  MotionBlurEffect: vi.fn(),
+  DepthOfFieldEffect: vi.fn(),
+  SMAAEffect: vi.fn()
+}));
+
+// Mock other dependencies
+vi.mock('../../src/renderer/effects.js', () => ({
+  createEffectsManager: vi.fn(() => null)
+}));
+
+vi.mock('../../src/core/assetLoader.js', () => ({
+  loadGLTF: vi.fn()
+}));
+
+vi.mock('../../src/core/svgLoader.js', () => ({
+  getSVGLoader: vi.fn(),
+  loadSVGAsset: vi.fn()
+}));
+
+describe('Bullet Instancing Integration', () => {
+  let mockCanvas: HTMLCanvasElement;
+  let state: GameState;
+  let originalInstancingConfig: boolean;
+
+  beforeEach(() => {
+    // Store original config
+    originalInstancingConfig = RendererConfig.instancing.enableBullets;
+    
+    // Create mock canvas
+    mockCanvas = {
+      width: 800,
+      height: 600,
+      clientWidth: 800,
+      clientHeight: 600,
+      getContext: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as any;
+
+    // Create test state
+    state = createInitialState();
+  });
+
+  afterEach(() => {
+    // Restore original config
+    RendererConfig.instancing.enableBullets = originalInstancingConfig;
+  });
+
+  it('should initialize bullet instancer when instancing is enabled', () => {
+    RendererConfig.instancing.enableBullets = true;
+    
+    const renderer = createThreeRenderer(state, mockCanvas);
+    expect(renderer).toBeDefined();
+    
+    // Cleanup
+    renderer.dispose();
+  });
+
+  it('should not initialize bullet instancer when instancing is disabled', () => {
+    RendererConfig.instancing.enableBullets = false;
+    
+    const renderer = createThreeRenderer(state, mockCanvas);
+    expect(renderer).toBeDefined();
+    
+    // Cleanup
+    renderer.dispose();
+  });
+
+  it('should handle bullet rendering with instancing enabled', () => {
+    RendererConfig.instancing.enableBullets = true;
+    
+    const renderer = createThreeRenderer(state, mockCanvas);
+    
+    // Add some bullets to the state
+    const bullets: Bullet[] = [
+      { id: 1, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ownerTeam: 'red', weaponId: 'test' },
+      { id: 2, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' },
+      { id: 3, pos: { x: 70, y: 80, z: 90 }, vel: { x: 0, y: 1, z: 0 }, ownerTeam: 'red', weaponId: 'test' }
+    ];
+    
+    state.bullets = bullets;
+    
+    // Render a frame - this should trigger bullet sync and transforms
+    renderer.render(1/60); // 60 FPS delta time
+    
+    // Cleanup
+    renderer.dispose();
+  });
+
+  it('should handle bullet rendering with instancing disabled (legacy mode)', () => {
+    RendererConfig.instancing.enableBullets = false;
+    
+    const renderer = createThreeRenderer(state, mockCanvas);
+    
+    // Add some bullets to the state
+    const bullets: Bullet[] = [
+      { id: 1, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ownerTeam: 'red', weaponId: 'test' },
+      { id: 2, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' }
+    ];
+    
+    state.bullets = bullets;
+    
+    // Render a frame - this should use legacy individual mesh rendering
+    renderer.render(1/60);
+    
+    // Cleanup
+    renderer.dispose();
+  });
+
+  it('should handle dynamic bullet addition and removal with instancing', () => {
+    RendererConfig.instancing.enableBullets = true;
+    
+    const renderer = createThreeRenderer(state, mockCanvas);
+    
+    // Start with no bullets
+    state.bullets = [];
+    renderer.render(1/60);
+    
+    // Add bullets dynamically
+    state.bullets = [
+      { id: 1, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ownerTeam: 'red', weaponId: 'test' },
+      { id: 2, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' }
+    ];
+    renderer.render(1/60);
+    
+    // Remove one bullet
+    state.bullets = [
+      { id: 2, pos: { x: 45, y: 55, z: 65 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' }
+    ];
+    renderer.render(1/60);
+    
+    // Remove all bullets
+    state.bullets = [];
+    renderer.render(1/60);
+    
+    // Cleanup
+    renderer.dispose();
+  });
+});

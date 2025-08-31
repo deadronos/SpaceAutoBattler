@@ -127,6 +127,17 @@ export interface RendererConfig {
     };
   };
 
+  // Instancing settings for performance optimization
+  instancing: {
+    enableBullets: boolean; // feature flag for bullet instancing
+    bullets: {
+      initialCapacity: number; // starting number of bullet instances
+      maxCapacity: number; // maximum number of bullet instances
+      growthFactor: number; // how much to grow capacity when needed
+      warnThreshold: number; // warn when usage exceeds this percentage
+    };
+  };
+
   // Default values for entities
   defaultCollisionRadius: number;
   defaultScale: number;
@@ -247,6 +258,16 @@ export const DefaultRendererConfig: RendererConfig = {
     border: {
       color: '#ffffff',
       width: 1,
+    },
+  },
+
+  instancing: {
+    enableBullets: true, // default true for feature branch testing
+    bullets: {
+      initialCapacity: 500, // start with capacity for 500 bullets
+      maxCapacity: 2000, // max 2000 bullets before warning
+      growthFactor: 1.5, // grow capacity by 50% when needed
+      warnThreshold: 0.8, // warn when 80% capacity is reached
     },
   },
 
