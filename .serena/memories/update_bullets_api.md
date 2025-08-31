@@ -1,0 +1,22 @@
+updateBullets(state: GameState, dt: number)
+- Purpose: Advance bullet lifetimes and positions, handle boundary behavior, and resolve collisions with ships.
+- Inputs:
+  - `state` (GameState mutable)
+  - `dt` (seconds)
+- Outputs: None (mutates `state.bullets`, `state.ships`, and may mutate ship shields/health and owner XP)
+- Side effects:
+  - Decrements bullets' TTL by dt; advances bullet positions by velocity * dt.
+  - Calls `applyBoundaryPhysicsBullet` for each bullet to handle wrap/bounce/remove behaviors that may set ttl=0.
+  - Detects collisions with ships (simple radius check using ShipVisualConfig collisionRadius); when collision occurs:
+    - Applies shield absorption first, then residual damage to health (armor reduces damage by factor).
+    - Updates owner ship XP (XP_PER_DAMAGE) and last damage metadata on target ship (`lastDamageBy`, `lastDamageTime`).
+    - Sets bullet.ttl = 0 to mark it consumed.
+  - Removes bullets with ttl <= 0 at the end.
+- Edge cases and error modes:
+  - Requires consistent `ShipVisualConfig` and proper numeric radii; missing configs may cause NaN comparisons.
+  - Assumes bullets have `ownerShipId` and `ownerTeam` for kill crediting; missing owner info will skip XP crediting.
+  - Extremely high dt may cause bullets to 'tunnel' past small ships because collision is a discrete check per-step.
+- Determinism:
+  - Deterministic given state and dt. To avoid tunneling, prefer smaller fixed dt or continuous collision detection.
+- Performance notes:
+  - Complexity is O(#bullets * #ships) in naive implementation. Spatial partitioning improves this (the code uses spatialGrid when enabled to optimize lookups elsewhere).

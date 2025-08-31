@@ -46,6 +46,17 @@ export const glStub = {
   attachShader: vi.fn(),
   linkProgram: vi.fn(),
   getAttribLocation: vi.fn(() => 0),
+  // WebGL shader precision support
+  getShaderPrecisionFormat: vi.fn(() => ({ precision: 23, rangeMin: 127, rangeMax: 127 })),
+  VERTEX_SHADER: 35633,
+  FRAGMENT_SHADER: 35632,
+  HIGH_FLOAT: 36338,
+  MEDIUM_FLOAT: 36337,
+  LOW_FLOAT: 36336,
+  // WebGL 3D texture support
+  texImage3D: vi.fn(),
+  TEXTURE_3D: 32879,
+  TEXTURE_2D_ARRAY: 35866,
 };
 
 // Mock Three.js classes
@@ -159,13 +170,17 @@ export function createMockGameState(overrides = {}) {
         ships: 'bounce' as const,
         bullets: 'remove' as const,
       },
+      spatialGrid: {
+        cellSize: 64,
+      },
       seed: 'test-seed',
       useTimeBasedSeed: false,
     },
     ships: [] as Ship[],
+    shipIndex: new Map(),
     bullets: [] as Bullet[],
     score: { red: 0, blue: 0 },
-  behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
+    behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
   };
 
   return { ...baseState, ...overrides };
@@ -178,6 +193,11 @@ export function createMockShip(overrides = {}) {
     class: 'fighter' as const,
     pos: { x: 100, y: 100, z: 100 },
     vel: { x: 0, y: 0, z: 0 },
+    orientation: {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+    },
     dir: 0,
     targetId: null,
     health: 80,

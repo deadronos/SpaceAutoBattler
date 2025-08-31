@@ -1,0 +1,13 @@
+handleLevelUps(state: GameState)
+- Purpose: Apply level-up progression for ships whose XP exceeds their nextLevelXp, increasing stats and resetting/subtracting XP accordingly.
+- Inputs: `state` (GameState mutable)
+- Outputs: None (mutates ships' `level`, `maxHealth`, `maxShield`, `health`, and `shield`)
+- Side effects:
+  - In a while loop per ship, increments ship.level.level while ship.level.xp >= ship.level.nextLevelXp.
+  - Calls `applyLevelUps` with the new level to compute scaled stats.
+  - Updates ship.maxHealth/maxShield and adjusts current health/shield (20% health gain on level, shield refilled).
+- Edge cases and error modes:
+  - Requires progression config `nextLevelXp` function and `applyLevelUps` to be available; missing imports cause failure.
+  - If `level.nextLevelXp` equals zero inadvertently, the loop could become infinite — configs must ensure positive xp thresholds.
+- Determinism: Pure function of ship.level.xp and config, deterministic.
+- Performance: Typically cheap (few ships level per tick), but pathological cases with huge XP might loop multiple times per ship in single tick.

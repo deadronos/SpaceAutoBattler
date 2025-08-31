@@ -1,0 +1,16 @@
+carrierSpawnLogic(state: GameState, dt: number)
+- Purpose: For each carrier, manage fighter spawn cooldowns and spawn fighter ships obeying carrier limits and cooldowns.
+- Inputs:
+  - `state` (GameState mutable)
+  - `dt` (seconds)
+- Outputs: None (mutates carrier fields like `fighterSpawnCdLeft`, `spawnedFighters`, and calls `spawnShip` to add fighter ships)
+- Side effects:
+  - Decrements `s.fighterSpawnCdLeft` by dt for carriers.
+  - When conditions met (spawnedFighters < cfg.maxFighters and cooldown == 0), computes spawn offsets and calls `spawnShip(state, s.team, 'fighter', offset, s.id)`.
+  - Increments `s.spawnedFighters` and sets `s.fighterSpawnCdLeft` according to carrier config.
+- Edge cases and error modes:
+  - Depends on carrier config (`maxFighters`, `fighterSpawnCooldown`) — missing or zero values may lead to no spawns or immediate repeated spawns.
+  - If `spawnShip` fails (e.g., invalid config), carrier spawning will throw and may stop other carriers from spawning in that tick.
+  - Uses `state.rng` for some spawn angle randomization; for deterministic behavior ensure the seeded RNG is used consistently.
+- Determinism: Random angle uses `state.rng` so deterministic when seeded.
+- Notes: Caller should ensure carriers are alive (health > 0).

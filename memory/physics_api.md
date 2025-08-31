@@ -1,33 +1,26 @@
-# Physics API Summary
+# physics_api
 
-File: src/core/physics.ts
+```
+import type { GameState } from '../types/index.js';
+import { PhysicsConfig } from '../config/physicsConfig.js';
+import * as logger from '../utils/logger.js';
 
-Purpose
-- Provides a rapier-based physics stepper for optional physics integration. The module dynamically loads `@dimforge/rapier3d-compat` at runtime and exposes a PhysicsStepper with lifecycle and helper functions for interacting with the physics world.
+// Rapier physics scaffold
+// Uses @dimforge/rapier3d-compat. This file creates a simple world and exposes a step function
+// for the simulation loop. Keep physics state in simulation-only code to preserve determinism.
 
-Exports
-- createPhysicsStepper(state: GameState): Promise<PhysicsStepper>
-  - Asynchronously creates a Rapier World, configures timestep and iteration counts from PhysicsConfig, and returns an object implementing PhysicsStepper.
-  - PhysicsStepper interface includes:
-    - initDone: boolean
-    - world: internal world object
-    - step(dt: number): void — advances physics world and syncs rigid body transforms back into GameState ships
-    - dispose(): void — removes colliders and rigid bodies and frees world resources
-    - addShip(ship): any — creates a rigid body and collider for a ship, configured using PhysicsConfig collider dimensions
-    - removeShip(shipId): void — removes bodies and colliders for the ship
-    - raycast(origin, direction, maxDistance?): returns hit info or { hit: false }
-    - sphereCast(center, radius): returns array of hits
-    - applyForce(shipId, force): applies force to a rigid body
-    - setGravity(gravity): sets world gravity vector
+export interface PhysicsStepper {
+  initDone: boolean;
+  world: any;
+  step: (dt: number) => void;
+  dispose: () => void;
+  // Enhanced methods
+  addShip: (ship: any) => any;
+  removeShip: (shipId: number) => void;
+  raycast: (origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance?: number) => any;
+  sphereCast: (center: { x: number; y: number; z: number }, radius: number) => any[];
+  applyForce: (shipId: number, force: { x: number; y: number; z: number }) => void;
+  setGravity: (gravity: { x: number; y: number; z: number }) => void;
+```
 
-Behavioral Notes & Test Guidance
-- The physics stepper is optional — the rest of the simulation can run without physics if not enabled. Tests should mock or stub the physics stepper when verifying pure game logic or when `@dimforge/rapier3d-compat` is not available in the test environment.
-- createPhysicsStepper dynamically requires rapier. In environments where native WASM or native bindings are not available (some CI runners), tests should skip physics integration tests or use a lightweight stub of the PhysicsStepper.
-- Methods are defensive and log errors; most methods return fallbacks (e.g., raycast returns { hit: false }). Tests should assert expected behavior when physics world is functioning and when it returns fallback values.
-
-Suggested Tests
-- Mock Rapier to confirm createPhysicsStepper returns an object with declared methods and that addShip/removeShip manage internal maps.
-- Test step(dt) with a mock world where rigid bodies translation and linvel return predictable values; verify state.ships are updated accordingly.
-- Test raycast/sphereCast handles exceptions and returns fallback structures when Rapier operations fail.
-
-Memory: physics_api (written)
+> Auto-generated stub — please review and expand.

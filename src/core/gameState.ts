@@ -45,7 +45,7 @@ export function createInitialState(seed?: string): GameState {
       height: config.simBounds.height,
       depth: config.simBounds.depth
     };
-    state.spatialGrid = new SpatialGrid(64, bounds);
+    state.spatialGrid = new SpatialGrid(config.spatialGrid.cellSize, bounds);
   }
 
   return state;
@@ -76,7 +76,7 @@ export function resetState(state: GameState, seed?: string) {
       height: state.simConfig.simBounds.height,
       depth: state.simConfig.simBounds.depth
     };
-    state.spatialGrid = new SpatialGrid(64, bounds);
+    state.spatialGrid = new SpatialGrid(state.simConfig.spatialGrid.cellSize, bounds);
   } else {
     state.spatialGrid = undefined;
   }
@@ -224,7 +224,7 @@ function updateBullets(state: GameState, dt: number) {
       if (s.team === b.ownerTeam || s.health <= 0) continue;
       const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
       const d = Math.hypot(dx, dy, dz);
-      const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? 16;
+      const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
       if (d < hitR) {
         // Apply damage to shield first
         let dmgLeft = b.damage;

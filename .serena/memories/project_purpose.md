@@ -1,13 +1,1 @@
-# Project Purpose
-
-SpaceAutoBattler is a lightweight research-oriented 3D space combat simulator. It separates deterministic simulation logic (`src/core`) from rendering (`src/renderer`) so experiments and headless tests can run fast and deterministically.
-
-High-level goals
-- Provide a deterministic simulation of ship physics and AI for research and experimentation.
-- Keep rendering decoupled from simulation to allow headless tests and CI-friendly runs.
-- Provide testable AI helpers and deterministic configuration toggles for reproducible experiments.
-
-Primary entrypoints
-- Dev server: `npm run serve` (http-server on port 8080)
-- Build: `npm run build` or `npm run build-standalone`
-
+SpaceAutoBattler — purpose: Browser-based 3D space battle simulation and visualization used for AI/agent testing, balancing, and gameplay demonstrations. Core features: deterministic simulation state (seedable RNG), modular ship classes (fighter, corvette, frigate, destroyer, carrier), turret/bullet mechanics, XP/level progression, carrier fighter spawning, spatial indexing option, and optional physics in a worker via simWorker.ts. Entrypoint: `src/main.ts` which creates initial state, preloads assets, spawns fleets, and initializes renderer and loops. Build & run: npm scripts in package.json (build, serve, build-standalone, test). Tech: TypeScript, three.js, Playwright tests, Vitest unit tests, esbuild build scripts. Key config files: `src/config/*` (simConfig, entitiesConfig, behaviorConfig, fleetConfig, rendererConfig, cameraConfig, shipVisualConfig), `src/core/*` (gameState, physics, aiController, assetLoader, svgLoader), `src/renderer/*` (threeRenderer and managers). Notes: Project uses an MCP memory set already: ['ai_controller_api','ci_instructions','code_structure','contributor_notes','entrypoints','project_purpose','style_conventions','suggested_commands'] - this write updates `project_purpose` memory with a fresh summary as of 2025-08-31.
