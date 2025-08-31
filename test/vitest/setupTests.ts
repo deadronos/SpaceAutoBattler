@@ -53,6 +53,10 @@ export const glStub = {
   HIGH_FLOAT: 36338,
   MEDIUM_FLOAT: 36337,
   LOW_FLOAT: 36336,
+  // WebGL 3D texture support
+  texImage3D: vi.fn(),
+  TEXTURE_3D: 32879,
+  TEXTURE_2D_ARRAY: 35866,
 };
 
 // Mock Three.js classes
