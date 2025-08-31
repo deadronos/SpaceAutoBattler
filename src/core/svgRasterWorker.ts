@@ -146,20 +146,33 @@ async function rasterizeSvgToImageBitmap(
   ctx.clearRect(0, 0, width, height);
 
   try {
-    // Instead of using createImageBitmap directly on SVG blob,
-    // use a different approach that's more compatible
+    // Create SVG blob and rasterize using createImageBitmap
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
     
-    // First, try to create a data URL from the SVG
-    const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+    // Use createImageBitmap with explicit size to ensure proper scaling
+    const imageBitmap = await createImageBitmap(svgBlob, {
+      resizeWidth: width,
+      resizeHeight: height,
+      resizeQuality: 'high'
+    });
     
-    // Create a mock Image-like object for OffscreenCanvas context
-    // Since we can't use Image in a worker, we'll need to parse the SVG manually
-    // For now, fall back to creating a geometric shape
-    throw new Error('Worker SVG parsing not yet implemented - using geometric fallback');
+    // Draw the rasterized SVG to our canvas
+    ctx.drawImage(imageBitmap, 0, 0, width, height);
+    
+    // Apply team color tint if provided
+    if (teamColor) {
+      applyTeamColorTint(ctx, width, height, teamColor);
+    }
+    
+    // Clean up intermediate bitmap
+    imageBitmap.close();
+    
+    // Convert canvas to final ImageBitmap
+    return canvas.transferToImageBitmap();
     
   } catch (error) {
-  // Fallback: create a geometric representation
-  logger.debug('[svgRasterWorker] Creating geometric fallback shape');
+    // Fallback: create a geometric representation
+    logger.debug('[svgRasterWorker] SVG rasterization failed, using geometric fallback:', error);
     
     const centerX = width / 2;
     const centerY = height / 2;

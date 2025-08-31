@@ -32,9 +32,19 @@ export class SVGLoader {
   }
 
   private initWorker() {
-  // Temporarily disable worker to ensure reliable main thread SVG loading
-  logger.debug('[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)');
-    this.worker = null;
+    try {
+      // Enable worker-based SVG rasterization for better performance
+      this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), { type: 'module' });
+      this.worker.addEventListener('message', (e) => this.handleWorkerMessage(e.data));
+      this.worker.addEventListener('error', (e) => {
+        logger.warn('[SVGLoader] Worker error, falling back to main thread:', e);
+        this.worker = null;
+      });
+      logger.debug('[SVGLoader] SVG rasterization worker initialized');
+    } catch (e) {
+      logger.debug('[SVGLoader] Worker initialization failed, using main thread SVG rasterization:', e);
+      this.worker = null;
+    }
   }
 
   private handleWorkerMessage(data: any) {
