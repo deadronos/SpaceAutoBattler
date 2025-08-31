@@ -4,6 +4,7 @@ import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import type { MeshFactoryState } from './meshFactory.js';
 import type { ShieldEffectState } from './effects/shieldEffect.js';
+import type { HealthBarInstancer } from './healthBarInstancer.js';
 
 /**
  * Entity synchronizer - maps GameState to Three.js scene objects
@@ -34,14 +35,18 @@ export interface Synchronizer {
     meshFactory: any,
     shieldEffect: any,
     meshFactoryState: MeshFactoryState,
-    shieldEffectState: ShieldEffectState
+    shieldEffectState: ShieldEffectState,
+    camera?: THREE.Camera,
+    healthBarInstancer?: HealthBarInstancer
   ): void;
   updateTransforms(
     state: GameState, 
     syncState: SynchronizerState,
     meshFactory: any,
     shieldEffect: any,
-    shieldEffectState: ShieldEffectState
+    shieldEffectState: ShieldEffectState,
+    camera?: THREE.Camera,
+    healthBarInstancer?: HealthBarInstancer
   ): void;
   disposeSynchronizer(syncState: SynchronizerState): void;
 }
@@ -80,8 +85,17 @@ export function syncEntities(
   meshFactory: any,
   shieldEffect: any,
   meshFactoryState: MeshFactoryState,
-  shieldEffectState: ShieldEffectState
+  shieldEffectState: ShieldEffectState,
+  camera?: THREE.Camera,
+  healthBarInstancer?: HealthBarInstancer
 ): void {
+  const useHealthBarInstancing = RendererConfig.instancing.enableBars && healthBarInstancer;
+
+  // Update camera uniforms for health bar instancer if enabled
+  if (useHealthBarInstancing && camera) {
+    healthBarInstancer!.updateCameraUniforms(camera);
+  }
+
   // Ships
   for (const s of state.ships) {
     if (!syncState.shipMeshes.has(s.id)) {
@@ -91,10 +105,20 @@ export function syncEntities(
     }
     
     // Health bars
-    if (RendererConfig.visual.enableHealthBars && !syncState.healthBarMeshes.has(s.id)) {
-      const bar = meshFactory.createHealthBarMesh(s, meshFactoryState);
-      syncState.healthBarMeshes.set(s.id, bar); 
-      groups.healthBarsGroup.add(bar);
+    if (RendererConfig.visual.enableHealthBars) {
+      if (useHealthBarInstancing) {
+        // Use health bar instancer
+        if (!healthBarInstancer!.hasShip(s.id)) {
+          healthBarInstancer!.allocateInstance(s.id);
+        }
+      } else {
+        // Use traditional mesh factory approach
+        if (!syncState.healthBarMeshes.has(s.id)) {
+          const bar = meshFactory.createHealthBarMesh(s, meshFactoryState);
+          syncState.healthBarMeshes.set(s.id, bar); 
+          groups.healthBarsGroup.add(bar);
+        }
+      }
     }
     
     // Shield effects
@@ -112,10 +136,14 @@ export function syncEntities(
       syncState.shipMeshes.delete(id);
       
       // Also remove health bar
-      const bar = syncState.healthBarMeshes.get(id);
-      if (bar) { 
-        groups.healthBarsGroup.remove(bar); 
-        syncState.healthBarMeshes.delete(id); 
+      if (useHealthBarInstancing) {
+        healthBarInstancer!.freeInstance(id);
+      } else {
+        const bar = syncState.healthBarMeshes.get(id);
+        if (bar) { 
+          groups.healthBarsGroup.remove(bar); 
+          syncState.healthBarMeshes.delete(id); 
+        }
       }
       
       // Also remove shield effect
@@ -128,11 +156,13 @@ export function syncEntities(
     }
   }
 
-  // Remove health bars for ships that no longer exist
-  for (const [id, bar] of syncState.healthBarMeshes) {
-    if (!state.ships.find(s => s.id === id)) {
-      groups.healthBarsGroup.remove(bar); 
-      syncState.healthBarMeshes.delete(id);
+  // Remove health bars for ships that no longer exist (non-instanced only)
+  if (!useHealthBarInstancing) {
+    for (const [id, bar] of syncState.healthBarMeshes) {
+      if (!state.ships.find(s => s.id === id)) {
+        groups.healthBarsGroup.remove(bar); 
+        syncState.healthBarMeshes.delete(id);
+      }
     }
   }
 
@@ -162,6 +192,11 @@ export function syncEntities(
       syncState.bulletMeshes.delete(id); 
     }
   }
+
+  // Mark instancer matrices as needing update
+  if (useHealthBarInstancing) {
+    healthBarInstancer!.markMatricesNeedUpdate();
+  }
 }
 
 /**
@@ -172,9 +207,12 @@ export function updateTransforms(
   syncState: SynchronizerState,
   meshFactory: any,
   shieldEffect: any,
-  shieldEffectState: ShieldEffectState
+  shieldEffectState: ShieldEffectState,
+  camera?: THREE.Camera,
+  healthBarInstancer?: HealthBarInstancer
 ): void {
   const currentTime = performance.now() / 1000; // Convert to seconds
+  const useHealthBarInstancing = RendererConfig.instancing.enableBars && healthBarInstancer;
   
   // Update ships
   for (const s of state.ships) {
@@ -193,9 +231,15 @@ export function updateTransforms(
 
     // Update health bar
     if (RendererConfig.visual.enableHealthBars) {
-      const bar = syncState.healthBarMeshes.get(s.id);
-      if (bar) {
-        meshFactory.updateHealthBarMesh(s, bar);
+      if (useHealthBarInstancing) {
+        // Update through health bar instancer
+        healthBarInstancer!.updateHealthBar(s);
+      } else {
+        // Update through traditional mesh factory
+        const bar = syncState.healthBarMeshes.get(s.id);
+        if (bar) {
+          meshFactory.updateHealthBarMesh(s, bar);
+        }
       }
     }
 
@@ -215,16 +259,23 @@ export function updateTransforms(
     m.position.set(b.pos.x, b.pos.y, b.pos.z);
   }
 
-  // Update health bar positions to follow ships
-  for (const s of state.ships) {
-    const bar = syncState.healthBarMeshes.get(s.id);
-    if (bar) {
-      bar.position.set(
-        s.pos.x + RendererConfig.healthBars.position.offsetX,
-        s.pos.y + RendererConfig.healthBars.position.offsetY,
-        s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
-      );
+  // Update health bar positions to follow ships (non-instanced only)
+  if (!useHealthBarInstancing) {
+    for (const s of state.ships) {
+      const bar = syncState.healthBarMeshes.get(s.id);
+      if (bar) {
+        bar.position.set(
+          s.pos.x + RendererConfig.healthBars.position.offsetX,
+          s.pos.y + RendererConfig.healthBars.position.offsetY,
+          s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
+        );
+      }
     }
+  }
+
+  // Mark instancer matrices as needing update
+  if (useHealthBarInstancing) {
+    healthBarInstancer!.markMatricesNeedUpdate();
   }
 }
 

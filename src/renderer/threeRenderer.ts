@@ -9,6 +9,7 @@ import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
+import { HealthBarInstancer } from './healthBarInstancer.js';
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
@@ -300,6 +301,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   let bulletInstancer: BulletInstancer | null = null;
   if (RendererConfig.instancing.enableBullets) {
     bulletInstancer = new BulletInstancer(scene, bulletsGroup);
+  }
+  
+  // Initialize health bar instancer if enabled
+  let healthBarInstancer: HealthBarInstancer | null = null;
+  if (RendererConfig.instancing.enableBars) {
+    healthBarInstancer = new HealthBarInstancer(scene, healthBarsGroup);
   }
   
   // Dev / feature toggles
@@ -846,6 +853,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function syncEntities() {
+    // Update camera uniforms for health bar instancer if enabled
+    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+      healthBarInstancer.updateCameraUniforms(camera);
+    }
+
     // Ships
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
@@ -853,9 +865,19 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         shipMeshes.set(s.id, m); shipsGroup.add(m);
       }
       // Health bars
-      if (RendererConfig.visual.enableHealthBars && !healthBarMeshes.has(s.id)) {
-        const bar = createHealthBar(s);
-        healthBarMeshes.set(s.id, bar); healthBarsGroup.add(bar);
+      if (RendererConfig.visual.enableHealthBars) {
+        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+          // Use health bar instancer
+          if (!healthBarInstancer.hasShip(s.id)) {
+            healthBarInstancer.allocateInstance(s.id);
+          }
+        } else {
+          // Use traditional approach
+          if (!healthBarMeshes.has(s.id)) {
+            const bar = createHealthBar(s);
+            healthBarMeshes.set(s.id, bar); healthBarsGroup.add(bar);
+          }
+        }
       }
       // Shield effects
       if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {
@@ -867,17 +889,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (!state.ships.find(s => s.id === id)) {
         shipsGroup.remove(m); shipMeshes.delete(id);
         // Also remove health bar
-        const bar = healthBarMeshes.get(id);
-        if (bar) { healthBarsGroup.remove(bar); healthBarMeshes.delete(id); }
+        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+          healthBarInstancer.freeInstance(id);
+        } else {
+          const bar = healthBarMeshes.get(id);
+          if (bar) { healthBarsGroup.remove(bar); healthBarMeshes.delete(id); }
+        }
         // Also remove shield effect
         const shield = shieldEffectMeshes.get(id);
         if (shield) { shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id); }
       }
     }
-    // Remove health bars for ships that no longer exist
-    for (const [id, bar] of healthBarMeshes) {
-      if (!state.ships.find(s => s.id === id)) {
-        healthBarsGroup.remove(bar); healthBarMeshes.delete(id);
+    // Remove health bars for ships that no longer exist (non-instanced only)
+    if (!RendererConfig.instancing.enableBars) {
+      for (const [id, bar] of healthBarMeshes) {
+        if (!state.ships.find(s => s.id === id)) {
+          healthBarsGroup.remove(bar); healthBarMeshes.delete(id);
+        }
       }
     }
     // Remove shield effects for ships that no longer exist or have no shield
@@ -921,6 +949,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
     }
+
+    // Mark instancer matrices as needing update
+    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+      healthBarInstancer.markMatricesNeedUpdate();
+    }
   }
 
   function updateTransforms() {
@@ -939,9 +972,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
       // Update health bar
       if (RendererConfig.visual.enableHealthBars) {
-        const bar = healthBarMeshes.get(s.id);
-        if (bar) {
-          updateHealthBar(s, bar);
+        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+          // Update through health bar instancer
+          healthBarInstancer.updateHealthBar(s);
+        } else {
+          // Update through traditional approach
+          const bar = healthBarMeshes.get(s.id);
+          if (bar) {
+            updateHealthBar(s, bar);
+          }
         }
       }
 
@@ -972,16 +1011,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
     }
 
-    // Update health bar positions to follow ships
-    for (const s of state.ships) {
-      const bar = healthBarMeshes.get(s.id);
-      if (bar) {
-        bar.position.set(
-            s.pos.x + RendererConfig.healthBars.position.offsetX,
-            s.pos.y + RendererConfig.healthBars.position.offsetY,
-            s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
-        );
+    // Update health bar positions to follow ships (non-instanced only)
+    if (!RendererConfig.instancing.enableBars) {
+      for (const s of state.ships) {
+        const bar = healthBarMeshes.get(s.id);
+        if (bar) {
+          bar.position.set(
+              s.pos.x + RendererConfig.healthBars.position.offsetX,
+              s.pos.y + RendererConfig.healthBars.position.offsetY,
+              s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
+          );
+        }
       }
+    }
+
+    // Mark instancer matrices as needing update
+    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+      healthBarInstancer.markMatricesNeedUpdate();
     }
   }
 
@@ -1093,6 +1139,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       window.removeEventListener('resize', resize);
       try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
       try { bulletInstancer?.dispose(); } catch (e) { /* ignore */ }
+      try { healthBarInstancer?.dispose(); } catch (e) { /* ignore */ }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
