@@ -119,6 +119,9 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
     spawnedFighters: cls === 'carrier' ? 0 : undefined,
     fighterSpawnCdLeft: cls === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
     parentCarrierId,
+    // Initialize dirty flags to true for initial UI render
+    _healthDirty: true,
+    _shieldDirty: true,
   };
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
   // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
@@ -326,6 +329,10 @@ function handleLevelUps(state: GameState) {
       s.maxShield = Math.floor(applyLevelUps(s.level.level, cfg.shield));
       s.health = Math.min(s.maxHealth, s.health + Math.floor(s.maxHealth * 0.2));
       s.shield = s.maxShield; // refill on level
+      
+      // Mark as dirty for UI optimization
+      s._healthDirty = true;
+      s._shieldDirty = true;
     }
   }
 }
