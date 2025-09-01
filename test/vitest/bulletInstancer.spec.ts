@@ -57,6 +57,14 @@ describe('BulletInstancer', () => {
     expect(stats.free).toBe(RendererConfig.instancing.bullets.initialCapacity);
   });
 
+  it('should disable frustum culling and upload initial matrices on init', () => {
+    const mockInstancedMesh = bulletInstancer['instancedMesh'];
+    // frustum culling should be disabled to avoid incorrect culling of instances
+    expect(mockInstancedMesh.frustumCulled).toBe(false);
+    // constructor hides unused instances and marks the instanceMatrix as needing update
+    expect(mockInstancedMesh.instanceMatrix.needsUpdate).toBe(true);
+  });
+
   it('should allocate instances for bullets', () => {
     const bulletId1 = 1;
     const bulletId2 = 2;
@@ -113,8 +121,11 @@ describe('BulletInstancer', () => {
     const bulletId = 1;
     const bullet: Bullet = {
       id: bulletId,
+      ownerShipId: 0,
       pos: { x: 10, y: 20, z: 30 },
       vel: { x: 1, y: 0, z: 0 },
+      ttl: 5,
+      damage: 1,
       ownerTeam: 'red',
       weaponId: 'test'
     };
@@ -128,8 +139,11 @@ describe('BulletInstancer', () => {
   it('should not update transforms for non-existent bullets', () => {
     const bullet: Bullet = {
       id: 999,
+      ownerShipId: 0,
       pos: { x: 10, y: 20, z: 30 },
       vel: { x: 1, y: 0, z: 0 },
+      ttl: 5,
+      damage: 1,
       ownerTeam: 'red',
       weaponId: 'test'
     };
@@ -190,7 +204,7 @@ describe('BulletInstancer', () => {
     bulletInstancer.dispose();
     
     expect(mockInstancedMesh.geometry.dispose).toHaveBeenCalled();
-    expect(mockInstancedMesh.material.dispose).toHaveBeenCalled();
+  expect((mockInstancedMesh.material as any).dispose).toHaveBeenCalled();
     
     const stats = bulletInstancer.getStats();
     expect(stats.used).toBe(0);

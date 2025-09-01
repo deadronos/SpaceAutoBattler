@@ -33,6 +33,7 @@ export function createInitialState(seed?: string): GameState {
     simConfig: config,
     ships: [],
     shipIndex: new Map(),
+    shipDataVersion: 0,
     bullets: [],
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
@@ -62,6 +63,7 @@ export function resetState(state: GameState, seed?: string) {
   state.nextId = 1;
   state.ships = [];
   state.shipIndex = new Map();
+  state.shipDataVersion = 0;
   state.bullets = [];
   state.score = { red: 0, blue: 0 };
   // Drop cached AI controller so it can be recreated lazily with fresh state/config
@@ -119,6 +121,9 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
     spawnedFighters: cls === 'carrier' ? 0 : undefined,
     fighterSpawnCdLeft: cls === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
     parentCarrierId,
+    // Initialize dirty flags to true for initial UI render
+    _healthDirty: true,
+    _shieldDirty: true,
   };
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
   // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
@@ -136,6 +141,8 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
 
   state.ships.push(ship);
   state.shipIndex?.set(ship.id, ship);
+  // Increment version for efficient change detection
+  state.shipDataVersion++;
   return ship;
 }
 
@@ -312,6 +319,8 @@ function processDeathsAndXP(state: GameState) {
     state.shipIndex.clear();
     for (const s of state.ships) state.shipIndex.set(s.id, s);
   }
+  // Increment version when ships are removed
+  state.shipDataVersion++;
 }
 
 function handleLevelUps(state: GameState) {
@@ -326,6 +335,10 @@ function handleLevelUps(state: GameState) {
       s.maxShield = Math.floor(applyLevelUps(s.level.level, cfg.shield));
       s.health = Math.min(s.maxHealth, s.health + Math.floor(s.maxHealth * 0.2));
       s.shield = s.maxShield; // refill on level
+      
+      // Mark as dirty for UI optimization
+      s._healthDirty = true;
+      s._shieldDirty = true;
     }
   }
 }

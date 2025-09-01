@@ -9,12 +9,35 @@ import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
+import { HealthBarInstancer } from './healthBarInstancer.js';
+import { shipInstancer } from './shipInstancer.js';
+import { updateBillboardBars } from './overlay.js';
+export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
 const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 
+  // Renderer-side cache for program-like parameter introspection.
+  // Keyed by a renderer-owned object (usually the material instance) so it
+  // can be GC'd when the material/mesh is disposed.
+  const rendererProgramCache = new WeakMap<object, unknown>();
+
+// Cached temporary vectors to reduce per-frame allocations
+const tempCamRight = new THREE.Vector3();
+const tempCamUp = new THREE.Vector3(); 
+const tempCamForward = new THREE.Vector3();
+const tempWorldUp = new THREE.Vector3(0, 1, 0);
+
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
+  // Apply global readPixels/prototype patches early, if available.
+  try {
+    const gAny: any = (globalThis as any);
+    if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
+      try { gAny.__applyEffectsManagerGlobalPatches(); } catch (e) { /* ignore */ }
+    }
+  } catch (e) { /* ignore */ }
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
@@ -53,7 +76,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d')!;
+  // Prefer a context optimized for frequent readbacks (getImageData).
+  // Some browsers may not support the option; fall back gracefully.
+  const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
 
     // Fill with deep space background
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
@@ -166,41 +191,90 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Holder for optional sphere skybox so animation updater can access it
   let sphereSkybox: THREE.Mesh | null = null;
 
+  // Precompute star fields as simple arrays so we can redraw without pixel reads
+  interface StarData { x: number; y: number; size: number; color: string; baseBrightness: number }
+  const skyboxStarFields: StarData[][] = [];
+  (function initStarFields() {
+    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
+    const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+    faces.forEach((face, faceIndex) => {
+      let rng = baseSeed + faceIndex;
+      const random = () => { rng = (rng * 9301 + 49297) % 233280; return rng / 233280; };
+      const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
+      const list: StarData[] = [];
+      const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
+      for (let i = 0; i < starCount; i++) {
+        const x = Math.floor(random() * textureSize);
+        const y = Math.floor(random() * textureSize);
+        const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
+        const color = starColors[Math.floor(random() * starColors.length)];
+        const baseBrightness = 0.3 + random() * 0.7;
+        list.push({ x, y, size, color, baseBrightness });
+      }
+      skyboxStarFields.push(list);
+    });
+  })();
+
   function updateSkyboxAnimation(dt: number) {
     skyboxAnimationTime += dt;
+    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
 
-    // Update star twinkling every few frames for performance
-    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency === 0) {
-      skyboxTextures.forEach((texture, index) => {
-        const canvas = skyboxCanvases[index];
-        const ctx = canvas.getContext('2d')!;
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    skyboxTextures.forEach((texture, index) => {
+      const canvas = skyboxCanvases[index];
+      const ctx = canvas.getContext('2d')!;
+      // Clear and redraw background and stars from precomputed data
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Recreate gradient background quickly
+      const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)/2);
+      gradient.addColorStop(0, '#000011');
+      gradient.addColorStop(0.5, '#000033');
+      gradient.addColorStop(1, '#000000');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Add subtle twinkling effect to bright stars
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          // Only affect bright pixels (stars)
-          if (r > 100 || g > 100 || b > 100) {
-            const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + 0.7;
-            data[i] = Math.max(0, Math.min(255, r * twinkle));
-            data[i + 1] = Math.max(0, Math.min(255, g * twinkle));
-            data[i + 2] = Math.max(0, Math.min(255, b * twinkle));
-          }
+      // Draw nebula overlays for front/back faces if needed (cheap translucent fills)
+      if (index === 2 || index === 4) {
+        ctx.globalAlpha = 0.08;
+        for (let n = 0; n < RendererEffectsConfig.skybox.starfield.nebula.count; n++) {
+          const nebX = (Math.random() * canvas.width);
+          const nebY = (Math.random() * canvas.height);
+          const nebRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + Math.random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
+          const nebulaGradient = ctx.createRadialGradient(nebX, nebY, 0, nebX, nebY, nebRadius);
+          nebulaGradient.addColorStop(0, `hsl(${200 + Math.random() * 60}, 30%, 20%)`);
+          nebulaGradient.addColorStop(0.5, `hsl(${200 + Math.random() * 60}, 20%, 10%)`);
+          nebulaGradient.addColorStop(1, 'transparent');
+          ctx.fillStyle = nebulaGradient;
+          ctx.beginPath();
+          ctx.arc(nebX, nebY, nebRadius, 0, Math.PI * 2);
+          ctx.fill();
         }
-
-        ctx.putImageData(imageData, 0, 0);
-        texture.needsUpdate = true;
-      });
-
-      // Update sphere skybox texture
-      if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
-        (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
-        sphereSkybox.material.needsUpdate = true;
+        ctx.globalAlpha = 1.0;
       }
+
+      // Draw stars from precomputed list with twinkling factor
+      const stars = skyboxStarFields[index] || [];
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + s.baseBrightness;
+        ctx.globalAlpha = Math.max(0.15, Math.min(1, twinkle));
+        ctx.fillStyle = s.color;
+        if (s.size === 1) ctx.fillRect(s.x, s.y, 1, 1);
+        else {
+          ctx.beginPath();
+          ctx.arc(s.x + 0.5, s.y + 0.5, s.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1.0;
+      texture.needsUpdate = true;
+    });
+
+    // Update sphere skybox texture
+    if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
+      (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
+      sphereSkybox.material.needsUpdate = true;
     }
   }
 
@@ -296,6 +370,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     bulletInstancer = new BulletInstancer(scene, bulletsGroup);
   }
   
+  // Initialize health bar instancer if enabled
+  let healthBarInstancer: HealthBarInstancer | null = null;
+  if (RendererConfig.instancing.enableBars) {
+    healthBarInstancer = new HealthBarInstancer(scene, healthBarsGroup);
+  }
+
+  // Initialize ship instancer if enabled
+  if (RendererConfig.instancing.enableShips) {
+    try { shipInstancer.init(scene, shipsGroup); } catch (e) { logger.warn('Ship instancer init failed', e); }
+  }
+  
   // Dev / feature toggles
   const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
@@ -314,6 +399,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
+      // Set proper sRGB encoding for color textures to ensure accurate colors
+      texture.colorSpace = THREE.SRGBColorSpace;
 
       // Create materials - textured for main surfaces, team color for others
       const teamColor = s.team === 'red' ? 0xff4444 : 0x4444ff;
@@ -438,6 +525,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.SphereGeometry(2.2, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
     const mesh = new THREE.Mesh(geom, mat);
+    try { (mesh as any).userData = (mesh as any).userData || {}; (mesh as any).userData.__renderProgram = mat; } catch (e) { /* ignore test env */ }
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
@@ -456,6 +544,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
     const bgMesh = new THREE.Mesh(bgGeom, bgMat);
+  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
     barGroup.add(bgMesh);
 
     // Health bar
@@ -468,6 +557,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
     const healthMesh = new THREE.Mesh(healthGeom, healthMat);
+  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
     barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
@@ -482,6 +572,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
       shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
       shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
@@ -506,37 +597,42 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
     const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
 
-    // Position the bar above the ship (3D)
+    // Position the bar above the ship (3D) - always update position
     barGroup.position.set(
       ship.pos.x + config.position.offsetX,
       ship.pos.y + config.position.offsetY,
       ship.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
     );
 
-    // Update health bar
-    const healthPercent = ship.health / ship.maxHealth;
-    healthMesh.scale.x = Math.max(0, healthPercent);
+    // Only update health bar if health changed (dirty flag optimization)
+    if (ship._healthDirty) {
+      const healthPercent = ship.health / ship.maxHealth;
+      healthMesh.scale.x = Math.max(0, healthPercent);
 
-    // Color based on health percentage
-    let healthColor = config.colors.health.full;
-    if (healthPercent < 0.3) {
-      healthColor = config.colors.health.critical;
-    } else if (healthPercent < 0.7) {
-      healthColor = config.colors.health.damaged;
-    }
-    if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
-      const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
-      // Acquire pooled material for the new color/alpha and swap if different
-      const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
-      if (newMat !== mat) {
-        (healthMesh.material as any) = newMat;
+      // Color based on health percentage
+      let healthColor = config.colors.health.full;
+      if (healthPercent < 0.3) {
+        healthColor = config.colors.health.critical;
+      } else if (healthPercent < 0.7) {
+        healthColor = config.colors.health.damaged;
       }
-    } else {
-      (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
+      if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
+        const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+        // Acquire pooled material for the new color/alpha and swap if different
+        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
+        if (newMat !== mat) {
+          (healthMesh.material as any) = newMat;
+        }
+      } else {
+        (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
+      }
+      
+      // Clear dirty flag after update
+      ship._healthDirty = false;
     }
 
-    // Update shield bar if present
-    if (shieldMesh && ship.maxShield > 0) {
+    // Only update shield bar if shield changed (dirty flag optimization)
+    if (ship._shieldDirty && shieldMesh && ship.maxShield > 0) {
       const shieldPercent = ship.shield / ship.maxShield;
       shieldMesh.scale.x = Math.max(0, shieldPercent);
 
@@ -552,6 +648,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else {
         (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
       }
+      
+      // Clear dirty flag after update  
+      ship._shieldDirty = false;
     }
   }
 
@@ -755,7 +854,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     });
 
     const shieldMesh = new THREE.Mesh(geom, material);
-    shieldGroup.add(shieldMesh);
+  // Attach a stable program-like key so external systems can cache
+  // parameter introspection keyed by this object.
+  try { (material as any).userData = (material as any).userData || {}; (material as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  shieldGroup.add(shieldMesh);
 
     (shieldGroup as any).shieldMesh = shieldMesh;
     (shieldGroup as any).pulsePhase = Math.random() * Math.PI * 2;
@@ -830,16 +933,43 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function syncEntities() {
+    // Update camera uniforms for health bar instancer if enabled
+    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+      healthBarInstancer.updateCameraUniforms(camera);
+    }
+
     // Ships
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
-        const m = meshForShip(s);
-        shipMeshes.set(s.id, m); shipsGroup.add(m);
+        // If ship instancing is enabled and we can allocate, don't create an individual mesh
+        if (RendererConfig.instancing.enableShips && (shipInstancer as any).allocate) {
+          const allocated = shipInstancer.allocate(s.id, s.class, s.team);
+          if (allocated) {
+            // create a lightweight placeholder transform via the instancer only
+            shipMeshes.set(s.id, new THREE.Object3D()); // track existence
+          } else {
+            const m = meshForShip(s);
+            shipMeshes.set(s.id, m); shipsGroup.add(m);
+          }
+        } else {
+          const m = meshForShip(s);
+          shipMeshes.set(s.id, m); shipsGroup.add(m);
+        }
       }
       // Health bars
-      if (RendererConfig.visual.enableHealthBars && !healthBarMeshes.has(s.id)) {
-        const bar = createHealthBar(s);
-        healthBarMeshes.set(s.id, bar); healthBarsGroup.add(bar);
+      if (RendererConfig.visual.enableHealthBars) {
+        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+          // Use health bar instancer
+          if (!healthBarInstancer.hasShip(s.id)) {
+            healthBarInstancer.allocateInstance(s.id);
+          }
+        } else {
+          // Use traditional approach
+          if (!healthBarMeshes.has(s.id)) {
+            const bar = createHealthBar(s);
+            healthBarMeshes.set(s.id, bar); healthBarsGroup.add(bar);
+          }
+        }
       }
       // Shield effects
       if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {
@@ -851,17 +981,25 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (!state.ships.find(s => s.id === id)) {
         shipsGroup.remove(m); shipMeshes.delete(id);
         // Also remove health bar
-        const bar = healthBarMeshes.get(id);
-        if (bar) { healthBarsGroup.remove(bar); healthBarMeshes.delete(id); }
+        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+          healthBarInstancer.freeInstance(id);
+        } else {
+          const bar = healthBarMeshes.get(id);
+          if (bar) { healthBarsGroup.remove(bar); healthBarMeshes.delete(id); }
+        }
         // Also remove shield effect
         const shield = shieldEffectMeshes.get(id);
         if (shield) { shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id); }
+        // Free ship instancer entry if present
+        if (RendererConfig.instancing.enableShips) shipInstancer.free(id);
       }
     }
-    // Remove health bars for ships that no longer exist
-    for (const [id, bar] of healthBarMeshes) {
-      if (!state.ships.find(s => s.id === id)) {
-        healthBarsGroup.remove(bar); healthBarMeshes.delete(id);
+    // Remove health bars for ships that no longer exist (non-instanced only)
+    if (!RendererConfig.instancing.enableBars) {
+      for (const [id, bar] of healthBarMeshes) {
+        if (!state.ships.find(s => s.id === id)) {
+          healthBarsGroup.remove(bar); healthBarMeshes.delete(id);
+        }
       }
     }
     // Remove shield effects for ships that no longer exist or have no shield
@@ -905,27 +1043,48 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
     }
+
+    // Mark instancer matrices as needing update
+    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+      healthBarInstancer.markMatricesNeedUpdate();
+    }
+    if (RendererConfig.instancing.enableShips) shipInstancer.markMatricesNeedUpdate();
   }
 
   function updateTransforms() {
-    const currentTime = performance.now() / 1000; // Convert to seconds
+    // Use simulation time for renderer-driven effects so shader hit timestamps
+    // align with game state timestamps like ship.lastShieldHitTime
+    const currentTime = state.time;
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
-      m.position.set(s.pos.x, s.pos.y, s.pos.z);
-      // Set 3D rotation using ship's orientation
-      // Ships are modeled pointing along +X axis, so we need to adjust
-      // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-      m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
-      
-      const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
-      m.scale.setScalar(scale);
+      if (RendererConfig.instancing.enableShips && shipInstancer.hasShip(s.id)) {
+        const q = new THREE.Quaternion();
+        q.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
+        const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
+        shipInstancer.updateTransform(s.id, s.pos, q, scale);
+      } else {
+        m.position.set(s.pos.x, s.pos.y, s.pos.z);
+        // Set 3D rotation using ship's orientation
+        // Ships are modeled pointing along +X axis, so we need to adjust
+        // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
+        m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
+        
+        const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
+        m.scale.setScalar(scale);
+      }
 
       // Update health bar
       if (RendererConfig.visual.enableHealthBars) {
-        const bar = healthBarMeshes.get(s.id);
-        if (bar) {
-          updateHealthBar(s, bar);
+        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+          // Update through health bar instancer
+          healthBarInstancer.updateHealthBar(s);
+        } else {
+          // Update through traditional approach
+          const bar = healthBarMeshes.get(s.id);
+          if (bar) {
+            updateHealthBar(s, bar);
+          }
         }
       }
 
@@ -956,16 +1115,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
     }
 
-    // Update health bar positions to follow ships
-    for (const s of state.ships) {
-      const bar = healthBarMeshes.get(s.id);
-      if (bar) {
-        bar.position.set(
-            s.pos.x + RendererConfig.healthBars.position.offsetX,
-            s.pos.y + RendererConfig.healthBars.position.offsetY,
-            s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
-        );
+    // Update health bar positions to follow ships (non-instanced only)
+    if (!RendererConfig.instancing.enableBars) {
+      for (const s of state.ships) {
+        const bar = healthBarMeshes.get(s.id);
+        if (bar) {
+          bar.position.set(
+              s.pos.x + RendererConfig.healthBars.position.offsetX,
+              s.pos.y + RendererConfig.healthBars.position.offsetY,
+              s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
+          );
+        }
       }
+    }
+
+    // Mark instancer matrices as needing update
+    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+      healthBarInstancer.markMatricesNeedUpdate();
     }
   }
 
@@ -1035,17 +1201,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Ensure health bars face the camera (use the runtime collection)
     if (GPU_BILLBOARD) {
       // Update shader uniforms with camera basis vectors for all billboard materials
-      const camRight = new THREE.Vector3();
-      const camUp = new THREE.Vector3();
-      camera.getWorldDirection(camRight); // forward
-      // cameraRight is cross(forward, up)
-      const worldUp = new THREE.Vector3(0, 1, 0);
-      camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
-      camUp.copy(camera.up).normalize();
+      // Use cached temporary vectors to avoid per-frame allocations
+      camera.getWorldDirection(tempCamForward);
+      tempCamRight.crossVectors(camera.up, tempCamForward).normalize();
+      tempCamUp.copy(camera.up).normalize();
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
-          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(camRight);
-          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(camUp);
+          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
+          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
         }
       }
     } else {
@@ -1066,7 +1229,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Render the scene
-    renderer.render(scene, camera);
+  // Ensure instanced meshes have their instanceMatrix flags updated before rendering
+  try { shipInstancer.sync(); } catch (e) { /* ignore instancer sync errors */ }
+  renderer.render(scene, camera);
   }
 
   window.addEventListener('resize', resize);
@@ -1080,6 +1245,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       window.removeEventListener('resize', resize);
       try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
       try { bulletInstancer?.dispose(); } catch (e) { /* ignore */ }
+      try { healthBarInstancer?.dispose(); } catch (e) { /* ignore */ }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
@@ -1097,6 +1263,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     get cameraDistance() { return _cameraDistance; },
     set cameraDistance(v: number) { _cameraDistance = v; updateCameraPosition(); },
     cameraTarget,
+    // Adapter helpers: optional hooks used by higher-level systems for caching
+    // and introspection. These are intentionally non-critical and best-effort.
+    getParameters: adapterGetParameters,
+    invalidateParameters: adapterInvalidateParameters,
   };
 }
 
@@ -1105,13 +1275,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
  * @param bars - Array of health/shield bar meshes.
  * @param camera - The active camera.
  */
-export function updateBillboardBars(bars: THREE.Object3D[], camera: THREE.Camera) {
-    const cameraMatrix = new THREE.Matrix4().extractRotation(camera.matrixWorld);
 
-    for (const bar of bars) {
-        bar.quaternion.setFromRotationMatrix(cameraMatrix);
-    }
-}
 
 
 // Billboard shader: place quad in world space using camera right/up vectors so it always faces the camera.
@@ -1168,8 +1332,43 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  // Mark a stable program-like key on the material so systems can use it
+  // as a canonical identity for GL program-level caching.
+  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch (e) { /* ignore in test env */ }
   billboardMaterialPool.set(key, mat);
   billboardMaterials.add(mat);
   return mat;
 }
+
+  // Adapter-level helpers exposed to systems: introspect and cache parameter
+  // metadata about a renderer program-like object (material, wrapper, etc.).
+  function adapterGetParameters(programLike?: object | null): unknown {
+    if (!programLike) return undefined;
+    try {
+      const existing = rendererProgramCache.get(programLike as object);
+      if (existing !== undefined) return existing;
+
+      // Best-effort introspection: if it's a THREE.Material/ShaderMaterial,
+      // capture constructor name and uniforms keys (if any). Keep the result
+      // small and serializable-ish to avoid memory bloat.
+      const p: any = programLike as any;
+      const params: any = {
+        kind: p?.constructor?.name ?? typeof p,
+      };
+      if (p && p.uniforms && typeof p.uniforms === 'object') {
+        try { params.uniforms = Object.keys(p.uniforms); } catch (e) { params.uniforms = undefined; }
+      }
+      if (p && typeof p.type === 'string') params.type = p.type;
+      // Cache the synthesized metadata.
+      rendererProgramCache.set(programLike as object, params);
+      return params;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  function adapterInvalidateParameters(programLike?: object | null): void {
+    if (!programLike) return;
+    try { rendererProgramCache.delete(programLike as object); } catch (e) { /* ignore */ }
+  }
 

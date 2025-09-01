@@ -12,6 +12,7 @@ import type { SpatialIndex } from '../spatialIndex.js';
 import type { TimeAdapter } from '../adapters/timeAdapter.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
 import { applyBoundaryPhysicsBullet } from '../boundaryUtils.js';
+import * as logger from '../../utils/logger.js';
 
 /**
  * Fire intent describes a request to create a projectile
@@ -93,7 +94,7 @@ export class ProjectileSystem {
       try {
         handler(event);
       } catch (error) {
-        console.warn('Error in projectile event handler:', error);
+        logger.warn('Error in projectile event handler:', error);
       }
     }
   }
@@ -349,6 +350,9 @@ export class ProjectileSystem {
       ship.shield -= shieldDamage;
       damage -= shieldDamage;
       
+      // Mark shield as dirty for UI optimization
+      ship._shieldDirty = true;
+      
       // Record shield hit for visual effects
       ship.lastShieldHitTime = this.state.time;
       ship.lastShieldHitStrength = shieldDamage;
@@ -365,6 +369,9 @@ export class ProjectileSystem {
       const effectiveDamage = Math.max(1, damage - armorReduction);
       ship.health -= effectiveDamage;
       penetrated = true;
+
+      // Mark health as dirty for UI optimization
+      ship._healthDirty = true;
 
       // Track damage source for kill crediting
       ship.lastDamageBy = bullet.ownerShipId;

@@ -143,6 +143,32 @@ beforeAll(() => {
     error: vi.fn(),
     debug: vi.fn(),
   };
+
+  // Stub global.fetch so tests do not perform real network requests
+  // This prevents happy-dom from attempting to connect to localhost:3000
+  // and emitting ECONNREFUSED logs during the test run.
+  const defaultFetchResponse = {
+    ok: true,
+    status: 200,
+    headers: new Map<string, string>(),
+    text: async () => '',
+    json: async () => ({}),
+    arrayBuffer: async () => new ArrayBuffer(0),
+    blob: async () => ({} as any),
+    clone() { return this; }
+  };
+
+  (global as any).fetch = vi.fn(async (url: any, opts?: any) => {
+    try {
+      // Quick heuristic: if tests explicitly stub a given URL, allow them to
+      // override fetch by checking for a user-provided mock on `global.__fetchMock`.
+      const fm = (global as any).__fetchMock;
+      if (fm && typeof fm === 'function') return fm(url, opts);
+    } catch (e) {
+      // ignore and fall back to default
+    }
+    return defaultFetchResponse;
+  }) as any;
 });
 
 // Test utilities
@@ -178,6 +204,8 @@ export function createMockGameState(overrides = {}) {
     },
     ships: [] as Ship[],
     shipIndex: new Map(),
+  // Version counter required by GameState type
+  shipDataVersion: 0,
     bullets: [] as Bullet[],
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },

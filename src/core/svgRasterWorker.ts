@@ -140,26 +140,41 @@ async function rasterizeSvgToImageBitmap(
 ): Promise<ImageBitmap> {
   // Create canvas for rasterization
   const canvas = new OffscreenCanvas(width, height);
-  const ctx = canvas.getContext('2d')!;
+  // Request willReadFrequently for canvases that will be read back frequently.
+  // Some browsers may ignore this option; fall back to default context if unsupported.
+  const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
 
   try {
-    // Instead of using createImageBitmap directly on SVG blob,
-    // use a different approach that's more compatible
+    // Create SVG blob and rasterize using createImageBitmap
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
     
-    // First, try to create a data URL from the SVG
-    const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+    // Use createImageBitmap with explicit size to ensure proper scaling
+    const imageBitmap = await createImageBitmap(svgBlob, {
+      resizeWidth: width,
+      resizeHeight: height,
+      resizeQuality: 'high'
+    });
     
-    // Create a mock Image-like object for OffscreenCanvas context
-    // Since we can't use Image in a worker, we'll need to parse the SVG manually
-    // For now, fall back to creating a geometric shape
-    throw new Error('Worker SVG parsing not yet implemented - using geometric fallback');
+    // Draw the rasterized SVG to our canvas
+    ctx.drawImage(imageBitmap, 0, 0, width, height);
+    
+    // Apply team color tint if provided
+    if (teamColor) {
+      applyTeamColorTint(ctx, width, height, teamColor);
+    }
+    
+    // Clean up intermediate bitmap
+    imageBitmap.close();
+    
+    // Convert canvas to final ImageBitmap
+    return canvas.transferToImageBitmap();
     
   } catch (error) {
-  // Fallback: create a geometric representation
-  logger.debug('[svgRasterWorker] Creating geometric fallback shape');
+    // Fallback: create a geometric representation
+    logger.debug('[svgRasterWorker] SVG rasterization failed, using geometric fallback:', error);
     
     const centerX = width / 2;
     const centerY = height / 2;
@@ -203,32 +218,18 @@ function applyTeamColorTint(
   height: number,
   teamColor: string
 ) {
-  // Get image data
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-
-  // Parse team color
-  const colorMatch = teamColor.match(/^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-  if (!colorMatch) return;
-
-  const r = parseInt(colorMatch[1], 16) / 255;
-  const g = parseInt(colorMatch[2], 16) / 255;
-  const b = parseInt(colorMatch[3], 16) / 255;
-
-  // Apply tint to non-transparent pixels
-  for (let i = 0; i < data.length; i += 4) {
-    const alpha = data[i + 3];
-    if (alpha > 0) {
-      // Blend with team color
-      data[i] = Math.min(255, data[i] * r);     // Red
-      data[i + 1] = Math.min(255, data[i + 1] * g); // Green
-      data[i + 2] = Math.min(255, data[i + 2] * b); // Blue
-      // Alpha remains unchanged
-    }
+  // Use compositing to tint without reading pixels back.
+  // Draw a rectangle filled with the team color using 'source-atop' so
+  // the color only applies to existing (non-transparent) pixels.
+  try {
+    ctx.save();
+    // OffscreenCanvasRenderingContext2D supports globalCompositeOperation
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = teamColor;
+    ctx.fillRect(0, 0, width, height);
+  } finally {
+    ctx.restore();
   }
-
-  // Put modified image data back
-  ctx.putImageData(imageData, 0, 0);
 }
 
 // Get file modification time (simplified - in real implementation would need file system access)

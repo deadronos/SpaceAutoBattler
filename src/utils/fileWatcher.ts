@@ -75,7 +75,7 @@ export class FileWatcher {
       return modTime;
     } catch (error) {
       // Use centralized logger
-      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, error); } catch { /* ignore */ }
+      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, error); } catch (e) { void e; }
       return null;
     }
   }
@@ -99,8 +99,8 @@ export class FileWatcher {
       }
 
       // Fallback: try to get etag or content-length change
-      const etag = response.headers.get('etag');
-      const contentLength = response.headers.get('content-length');
+  const etag = response.headers.get('etag');
+  const _contentLength = response.headers.get('content-length');
 
       if (etag) {
         // Use etag as a simple change indicator
@@ -112,10 +112,7 @@ export class FileWatcher {
       // Last resort: use current time (not ideal but prevents errors)
       return Date.now();
 
-    } catch (error) {
-      // File doesn't exist or can't be accessed
-      return null;
-    }
+    } catch (e) { void e; return null; }
   }
 
   // Notify callback about file change
@@ -124,9 +121,9 @@ export class FileWatcher {
     if (callback) {
       try {
         callback(filePath, changeType);
-        } catch (error) {
-          try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, error); } catch { /* ignore */ }
-        }
+      } catch (error) {
+        try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, error); } catch (e) { void e; }
+      }
     }
   }
 

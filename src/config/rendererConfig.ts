@@ -130,9 +130,23 @@ export interface RendererConfig {
   // Instancing settings for performance optimization
   instancing: {
     enableBullets: boolean; // feature flag for bullet instancing
+    enableBars: boolean; // feature flag for health/shield bar instancing
+    enableShips?: boolean; // optional feature flag for ship instancing
     bullets: {
       initialCapacity: number; // starting number of bullet instances
       maxCapacity: number; // maximum number of bullet instances
+      growthFactor: number; // how much to grow capacity when needed
+      warnThreshold: number; // warn when usage exceeds this percentage
+    };
+    bars: {
+      initialCapacity: number; // starting number of health bar instances
+      maxCapacity: number; // maximum number of health bar instances
+      growthFactor: number; // how much to grow capacity when needed
+      warnThreshold: number; // warn when usage exceeds this percentage
+    };
+    ships?: {
+      initialCapacity: number; // starting number of ship instances per group
+      maxCapacity: number; // maximum number of ship instances per group
       growthFactor: number; // how much to grow capacity when needed
       warnThreshold: number; // warn when usage exceeds this percentage
     };
@@ -263,12 +277,26 @@ export const DefaultRendererConfig: RendererConfig = {
 
   instancing: {
     enableBullets: true, // default true for feature branch testing
+    enableBars: false, // default false until implementation is complete
+    enableShips: false, // default false until ship instancing is ready
     bullets: {
-      initialCapacity: 500, // start with capacity for 500 bullets
+      initialCapacity: 800, // start with capacity for 800 bullets (raised to reduce instancer growth/warnings)
       maxCapacity: 2000, // max 2000 bullets before warning
       growthFactor: 1.5, // grow capacity by 50% when needed
       warnThreshold: 0.8, // warn when 80% capacity is reached
     },
+    bars: {
+      initialCapacity: 200, // start with capacity for 200 health bars
+      maxCapacity: 1000, // max 1000 health bars before warning
+      growthFactor: 1.5, // grow capacity by 50% when needed
+      warnThreshold: 0.8, // warn when 80% capacity is reached
+    },
+    ships: {
+      initialCapacity: 50,
+      maxCapacity: 500,
+      growthFactor: 1.5,
+      warnThreshold: 0.8
+    }
   },
 
   defaultCollisionRadius: 1.0,

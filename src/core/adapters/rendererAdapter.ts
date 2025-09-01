@@ -31,7 +31,7 @@ export interface EffectDescriptor {
   scale?: number;
   duration?: number;
   color?: { r: number; g: number; b: number };
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }
 
 /**
@@ -119,6 +119,12 @@ export interface RendererAdapter {
   // Camera / scene helpers (optional - for backward compatibility)
   setCameraTarget?(pos: Vector3): void;
   render?(dt: number): void;
+
+  // Optional performance helpers: some adapters can expose a getParameters
+  // method that returns cached program/uniform metadata for a program-like object.
+  // These are optional and meant for best-effort instrumentation and caching.
+  getParameters?: (programLike: object) => unknown;
+  invalidateParameters?: (programLike: object) => void;
 }
 
 /**
@@ -246,6 +252,15 @@ export class NoopRendererAdapter implements RendererAdapter {
   }
 
   setBackground(_color: { r: number; g: number; b: number } | string): void {}
+
+  getParameters?(_programLike: object): unknown {
+    // No-op implementation for noop adapter
+    return undefined;
+  }
+
+  invalidateParameters?(_programLike: object): void {
+    // No-op
+  }
 
   // Legacy optional methods
   setCameraTarget?(_pos: Vector3): void {}

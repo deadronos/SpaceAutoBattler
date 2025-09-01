@@ -60,6 +60,8 @@ export interface Bullet {
   vel: Vector3;
   ttl: number; // seconds
   damage: number;
+  // Optional weapon identifier used by tests and instancing logic
+  weaponId?: string;
 }
 
 export interface TurretState {
@@ -133,6 +135,9 @@ export interface Ship {
   // Track last damage source and timestamp for kill crediting
   lastDamageBy?: EntityId;
   lastDamageTime?: number;
+  // Dirty flags for UI optimization - only update visuals when these change
+  _healthDirty?: boolean;
+  _shieldDirty?: boolean;
 }
 
 export interface ScoreBoard {
@@ -149,6 +154,10 @@ export interface RendererHandles {
   cameraRotation: Vector3; // x: pitch, y: yaw, z: roll
   cameraDistance: number;
   cameraTarget: Vector3;
+  // Optional adapter hooks for renderer-level caching and introspection.
+  // These are best-effort and may be absent in some renderer implementations.
+  getParameters?: (programLike?: object | null) => unknown;
+  invalidateParameters?: (programLike?: object | null) => void;
 }
 
 export interface GameState {
@@ -178,17 +187,19 @@ export interface GameState {
   ships: Ship[];
   // Fast lookup by id to avoid O(n) array scans in hot paths
   shipIndex?: Map<EntityId, Ship>;
+  // Version counter for efficient ship data change detection
+  shipDataVersion: number;
   bullets: Bullet[];
   score: ScoreBoard;
   renderer?: RendererHandles;
   // Simple asset pool for caching loaded assets (GLTFs, textures, etc.)
-  assetPool?: Map<string, any>;
+  assetPool?: Map<string, unknown>;
   // Optional physics stepper initialized by bootstrap (kept as a lightweight shape to avoid tight coupling)
   physicsStepper?: {
     initDone: boolean;
     step: (dt: number) => void;
     dispose: () => void;
-    world?: any;
+  world?: unknown;
   };
   behaviorConfig: import('../config/behaviorConfig.js').BehaviorConfig;
   // Optional spatial index for efficient AI proximity queries (neighbors, targeting)

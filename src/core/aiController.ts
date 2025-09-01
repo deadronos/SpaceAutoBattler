@@ -182,8 +182,8 @@ export class AIController {
       const teamShips = this.state.ships.filter(s => s.team === team && s.health > 0);
       if (teamShips.length === 0) continue;
 
-      let currentScout = this.teamScouts.get(team);
-      let scoutShip = currentScout ? teamShips.find(s => s.id === currentScout) : null;
+      const currentScout = this.teamScouts.get(team);
+      const scoutShip = currentScout ? teamShips.find(s => s.id === currentScout) : null;
 
       // If current scout is dead/gone or there's no scout, assign a new one
       if (!scoutShip) {
@@ -277,11 +277,8 @@ export class AIController {
       }
     }
 
-    // Debugging: log cases where an evade intent is chosen to help tests
-    if (newIntent === 'evade') {
-      // eslint-disable-next-line no-console
-      console.debug('[AI] Evade chosen', { shipId: ship.id, recentDamage: aiState.recentDamage, damageEvadeThreshold: config.globalSettings.damageEvadeThreshold, evadeOnlyOnDamage: config.globalSettings.evadeOnlyOnDamage, personalityMode: personality.mode, withinDamageWindow });
-    }
+    // Debugging: previously logged cases where an evade intent was chosen.
+    // Removed noisy console.debug('[AI] Evade chosen', ...) per request.
 
     // Release roaming anchor if patrol intent changes
     if (newIntent !== 'patrol' && oldIntent === 'patrol') {
@@ -1035,7 +1032,13 @@ export class AIController {
   private updateShieldRegeneration(ship: Ship, dt: number) {
     // Simple shield regeneration - clamp to prevent overflow
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-    ship.shield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
+    const newShield = clamp(ship.shield + ship.shieldRegen * dt, 0, ship.maxShield);
+    
+    // Mark as dirty only if shield value actually changed
+    if (newShield !== ship.shield) {
+      ship.shield = newShield;
+      ship._shieldDirty = true;
+    }
   }
 
   /**

@@ -86,6 +86,7 @@ export class SpatialGrid {
   /**
    * Incrementally add or update an entity's position/team/radius in the grid.
    * Uses the id to move the entity between cells without clearing the grid.
+   * Optimized to skip updates if position hasn't changed significantly.
    */
   update(id: EntityId, pos: Vector3, radius: number, team: Team) {
     const newKey = this.getCellKey(pos.x, pos.y, pos.z);
@@ -100,8 +101,15 @@ export class SpatialGrid {
       this.lastRadiusCache = null;
       return;
     }
-    // Existing entity: update in place, moving cells if needed
-    if (rec.key !== newKey) {
+    
+    // Existing entity: check if significant change occurred
+    const oldEntity = rec.entity;
+    const positionChanged = (rec.key !== newKey);
+    const radiusChanged = Math.abs(oldEntity.radius - radius) > 0.1;
+    const teamChanged = oldEntity.team !== team;
+    
+    // Only update if there's a significant change
+    if (positionChanged) {
       // Remove from old cell array
       const oldArr = this.grid.get(rec.key);
       if (oldArr) {
@@ -118,10 +126,13 @@ export class SpatialGrid {
       this.version++;
       this.lastRadiusCache = null;
     }
-    // Update reference fields (keep pos by reference to avoid extra allocs)
-    rec.entity.pos = pos;
-    rec.entity.radius = radius;
-    rec.entity.team = team;
+    
+    // Always update reference fields for position/radius/team changes
+    if (positionChanged || radiusChanged || teamChanged) {
+      rec.entity.pos = pos;
+      rec.entity.radius = radius;
+      rec.entity.team = team;
+    }
   }
 
   /** Remove an entity from the grid by id (no-op if missing) */
@@ -230,16 +241,23 @@ export class SpatialGrid {
     }
 
     // Iterate only occupied cells (use locals for speed)
+    // Use a seen set to avoid duplicates in case an entity accidentally appears
+    // in multiple buckets (defensive - keeps results stable across edge cases).
+    const seen = new Set<number>();
     for (let i = 0; i < occupiedKeys.length; i++) {
       const bucket = grid.get(occupiedKeys[i]);
       if (!bucket) continue; // may have been emptied since cache creation
       for (let j = 0; j < bucket.length; j++) {
         const entity = bucket[j];
+        if (seen.has(entity.id)) continue;
         const dxp = entity.pos.x - center.x;
         const dyp = entity.pos.y - center.y;
         const dzp = entity.pos.z - center.z;
         const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
-        if (distSq <= radiusSq) results.push(entity);
+        if (distSq <= radiusSq) {
+          seen.add(entity.id);
+          results.push(entity);
+        }
       }
     }
     return results;
@@ -309,16 +327,22 @@ export class SpatialGrid {
       occupiedKeys = keysCopy;
     }
 
+    // Guard against duplicate invocations for the same entity id
+    const seenFn = new Set<number>();
     for (let i = 0; i < occupiedKeys.length; i++) {
       const bucket = grid.get(occupiedKeys[i]);
       if (!bucket) continue;
       for (let j = 0; j < bucket.length; j++) {
         const entity = bucket[j];
+        if (seenFn.has(entity.id)) continue;
         const dxp = entity.pos.x - center.x;
         const dyp = entity.pos.y - center.y;
         const dzp = entity.pos.z - center.z;
         const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
-        if (distSq <= radiusSq) fn(dxp, dyp, dzp, distSq, entity);
+        if (distSq <= radiusSq) {
+          seenFn.add(entity.id);
+          fn(dxp, dyp, dzp, distSq, entity);
+        }
       }
     }
   }

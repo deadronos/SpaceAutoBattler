@@ -2,13 +2,15 @@
 // Simple, performant LRU cache using Map insertion order.
 // Map preserves insertion order; to mark an entry as recently used we delete and re-set it.
 // Eviction is then O(1) by reading the first key from map.keys().next().value.
-export class LRUAssetPool<T = any> {
+export class LRUAssetPool<T = unknown> {
   private capacity: number;
   private map: Map<string, T>;
+  private disposeCallback?: (value: T) => void;
 
-  constructor(capacity = 64) {
+  constructor(capacity = 64, disposeCallback?: (value: T) => void) {
     this.capacity = capacity;
     this.map = new Map();
+    this.disposeCallback = disposeCallback;
   }
 
   get(key: string): T | undefined {
@@ -29,7 +31,16 @@ export class LRUAssetPool<T = any> {
     // Evict oldest if over capacity
     if (this.map.size > this.capacity) {
       const oldest = this.map.keys().next().value;
-      if (oldest !== undefined) this.map.delete(oldest);
+      if (oldest !== undefined) {
+        const oldValue = this.map.get(oldest);
+        this.map.delete(oldest);
+        // Call dispose callback if provided
+        if (oldValue && this.disposeCallback) {
+          try {
+            this.disposeCallback(oldValue);
+          } catch (e) { void e; }
+        }
+      }
     }
     return this;
   }
@@ -39,10 +50,26 @@ export class LRUAssetPool<T = any> {
   }
 
   delete(key: string): boolean {
-    return this.map.delete(key);
+    const value = this.map.get(key);
+    const deleted = this.map.delete(key);
+    // Call dispose callback if provided
+    if (deleted && value && this.disposeCallback) {
+      try {
+        this.disposeCallback(value);
+      } catch (e) { void e; }
+    }
+    return deleted;
   }
 
   clear(): void {
+    // Dispose all values if callback is provided
+    if (this.disposeCallback) {
+      for (const value of this.map.values()) {
+        try {
+          this.disposeCallback(value);
+        } catch (e) { void e; }
+      }
+    }
     this.map.clear();
   }
 

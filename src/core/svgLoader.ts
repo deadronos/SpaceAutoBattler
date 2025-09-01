@@ -32,9 +32,19 @@ export class SVGLoader {
   }
 
   private initWorker() {
-  // Temporarily disable worker to ensure reliable main thread SVG loading
-  logger.debug('[SVGLoader] Using main thread SVG rasterization (worker disabled for stability)');
-    this.worker = null;
+    try {
+      // Enable worker-based SVG rasterization for better performance
+      this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), { type: 'module' });
+      this.worker.addEventListener('message', (e) => this.handleWorkerMessage(e.data));
+      this.worker.addEventListener('error', (e) => {
+        logger.warn('[SVGLoader] Worker error, falling back to main thread:', e);
+        this.worker = null;
+      });
+      logger.debug('[SVGLoader] SVG rasterization worker initialized');
+    } catch (e) {
+      logger.debug('[SVGLoader] Worker initialization failed, using main thread SVG rasterization:', e);
+      this.worker = null;
+    }
   }
 
   private handleWorkerMessage(data: any) {
@@ -193,7 +203,8 @@ export class SVGLoader {
     const canvas = document.createElement('canvas');
     canvas.width = options.width!;
     canvas.height = options.height!;
-    const ctx = canvas.getContext('2d')!;
+    // Request a 2D context optimized for frequent readbacks (tinting, getImageData).
+    const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
 
     // Clear canvas
     ctx.clearRect(0, 0, options.width!, options.height!);
@@ -255,6 +266,8 @@ export class SVGLoader {
 
       // Apply team color tinting if specified
       if (options.teamColor) {
+        // When applying tinting we do pixel reads; request willReadFrequently where supported.
+        const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
         this.applyTeamColorTint(ctx, options.width!, options.height!, options.teamColor);
       }
 
@@ -280,32 +293,19 @@ export class SVGLoader {
     height: number,
     teamColor: string
   ) {
-    // Get image data
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-
-    // Parse team color
-    const colorMatch = teamColor.match(/^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-    if (!colorMatch) return;
-
-    const r = parseInt(colorMatch[1], 16) / 255;
-    const g = parseInt(colorMatch[2], 16) / 255;
-    const b = parseInt(colorMatch[3], 16) / 255;
-
-    // Apply tint to non-transparent pixels
-    for (let i = 0; i < data.length; i += 4) {
-      const alpha = data[i + 3];
-      if (alpha > 0) {
-        // Blend with team color
-        data[i] = Math.min(255, data[i] * r);     // Red
-        data[i + 1] = Math.min(255, data[i + 1] * g); // Green
-        data[i + 2] = Math.min(255, data[i + 2] * b); // Blue
-        // Alpha remains unchanged
-      }
+    // Avoid expensive pixel readbacks by using 2D compositing operations.
+    // Draw a solid rectangle filled with the team color using a compositing
+    // mode that restricts the color fill to the existing non-transparent
+    // pixels of the canvas. 'source-atop' will draw the fill only where
+    // destination pixels exist, preserving alpha. This avoids getImageData.
+    try {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = teamColor;
+      ctx.fillRect(0, 0, width, height);
+    } finally {
+      ctx.restore();
     }
-
-    // Put modified image data back
-    ctx.putImageData(imageData, 0, 0);
   }
 
   // Check if file has changed since last load

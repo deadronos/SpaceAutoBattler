@@ -11,6 +11,7 @@ import type { PhysicsAdapter } from '../adapters/physicsAdapter.js';
 import type { RendererAdapter } from '../adapters/rendererAdapter.js';
 import type { SpatialIndex } from '../spatialIndex.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
+import * as logger from '../../utils/logger.js';
 import { nextLevelXp, applyLevelUps } from '../../config/progression.js';
 import { FleetConfig } from '../../config/fleetConfig.js';
 import { CarrierSpawnConfig } from '../../config/carrierSpawnConfig.js';
@@ -59,6 +60,11 @@ export class SpawnSystem {
   private physicsAdapter?: PhysicsAdapter;
   private rendererAdapter?: RendererAdapter;
   private spatialIndex?: SpatialIndex;
+  // Optional instrumentation toggle for debugging/perf investigation
+  private instrumentationEnabled = false;
+  // Cache for renderer-related parameter objects (keyed by program-like objects)
+  // We don't assume a specific shape — callers must pass the canonical object used by the renderer.
+  private rendererParametersCache = new WeakMap<object, unknown>();
   private eventHandlers: ((event: SpawnEvent) => void)[] = [];
 
   constructor(
@@ -93,7 +99,7 @@ export class SpawnSystem {
       try {
         handler(event);
       } catch (error) {
-        console.warn('Error in spawn event handler:', error);
+        logger.warn('Error in spawn event handler:', error);
       }
     }
   }
@@ -193,8 +199,32 @@ export class SpawnSystem {
     if (shipIndex === -1) {
       return false;
     }
-
     const ship = this.state.ships[shipIndex];
+
+    // Attempt to invalidate any renderer-side cached parameters for this ship's program-like object
+    try {
+      const programLike = (ship as unknown as Record<string, unknown>).__renderProgram as object | undefined;
+      if (programLike) {
+        // Ask adapter to invalidate its internal cache if it supports it
+        try {
+          const maybeAdapter = this.rendererAdapter as unknown as { invalidateParameters?: (p: object) => void } | undefined;
+          if (maybeAdapter && typeof maybeAdapter.invalidateParameters === 'function') {
+            maybeAdapter.invalidateParameters(programLike);
+          }
+        } catch {
+          // ignore adapter failure
+        }
+
+        // Remove from local WeakMap cache too (best-effort)
+        try {
+          this.rendererParametersCache.delete(programLike);
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // ignore
+    }
 
     // Remove from adapters
     this.rendererAdapter?.removeShip(shipId);
@@ -361,16 +391,45 @@ export class SpawnSystem {
         });
       }
     } catch (error) {
-      console.warn('Failed to register ship with physics adapter:', error);
+      logger.warn('Failed to register ship with physics adapter:', error);
     }
 
     // Register with renderer
     try {
       if (this.rendererAdapter) {
+            if (this.instrumentationEnabled) {
+              try { logger.debug('renderer.ensureMeshForShip'); } catch (e) { void e; }
+            }
+
+        // If the renderer adapter exposes a program/parameter object on the ship (conventionally
+        // some adapters attach a reference after first creation) we try to avoid repeated expensive
+        // parameter computation by caching results keyed by that object. This is a no-op for adapters
+        // that don't follow that convention.
+        // Usage: adapter implementations may choose to attach `__renderProgram` or similar to ship
+        // after the first call. This helper is intentionally conservative and will not mutate ship.
+  const programLike = (ship as unknown as Record<string, unknown>).__renderProgram as object | undefined;
+        if (programLike && typeof this.rendererParametersCache.get === 'function') {
+          // If we already have cached parameters for this program-like object, we could use it.
+          // We don't change adapter behavior here, but this cache can be read by future helpers
+          // or instrumented code paths to avoid repeating heavy work.
+          if (!this.rendererParametersCache.has(programLike)) {
+            try {
+              // If adapter exposes a `getParameters` method we call it once and cache the result.
+              const maybeAdapter = this.rendererAdapter as unknown as { getParameters?: (p: object) => unknown } | undefined;
+              if (maybeAdapter && typeof maybeAdapter.getParameters === 'function') {
+                const params = maybeAdapter.getParameters(programLike);
+                this.rendererParametersCache.set(programLike, params);
+              }
+            } catch {
+              // Swallow: this is best-effort instrumentation/caching
+            }
+          }
+        }
+
         this.rendererAdapter.ensureMeshForShip(ship);
       }
     } catch (error) {
-      console.warn('Failed to register ship with renderer adapter:', error);
+      logger.warn('Failed to register ship with renderer adapter:', error);
     }
 
     // Register with spatial index
@@ -379,7 +438,7 @@ export class SpawnSystem {
         this.spatialIndex.insert(ship.id, ship.pos, 20, ship.team);
       }
     } catch (error) {
-      console.warn('Failed to register ship with spatial index:', error);
+      logger.warn('Failed to register ship with spatial index:', error);
     }
   }
 
