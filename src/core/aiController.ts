@@ -277,11 +277,8 @@ export class AIController {
       }
     }
 
-    // Debugging: log cases where an evade intent is chosen to help tests
-    if (newIntent === 'evade') {
-      // eslint-disable-next-line no-console
-      console.debug('[AI] Evade chosen', { shipId: ship.id, recentDamage: aiState.recentDamage, damageEvadeThreshold: config.globalSettings.damageEvadeThreshold, evadeOnlyOnDamage: config.globalSettings.evadeOnlyOnDamage, personalityMode: personality.mode, withinDamageWindow });
-    }
+    // Debugging: previously logged cases where an evade intent was chosen.
+    // Removed noisy console.debug('[AI] Evade chosen', ...) per request.
 
     // Release roaming anchor if patrol intent changes
     if (newIntent !== 'patrol' && oldIntent === 'patrol') {
