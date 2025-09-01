@@ -1,0 +1,572 @@
+{
+  "console": [
+    {
+      "type": "log",
+      "text": "[SVGLoader] SVG rasterization worker initialized",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Preloading SVG assets with change detection...",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] SVG debugging functions available at window.debugSVG",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "info",
+      "text": "BulletInstancer initialized with capacity 800",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97457,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "warning",
+      "text": "WARNING: Multiple instances of Three.js being imported.",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 60181,
+        "columnNumber": 16
+      }
+    },
+    {
+      "type": "info",
+      "text": "[EffectsManager] attempting to patch WebGLRenderer.prototype",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97596,
+        "columnNumber": 14
+      }
+    },
+    {
+      "type": "info",
+      "text": "[EffectsManager] Patched DepthCopyPass.render to use async read when available",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97656,
+        "columnNumber": 16
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "warning",
+      "text": "[JavaScript Warning: \"WebGL warning: generateMipmap: Tex image TEXTURE_2D level 0 is incurring lazy initialization.\"]",
+      "location": {
+        "url": "",
+        "lineNumber": 0,
+        "columnNumber": 1
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/fighter.svg, length: 895",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/corvette.svg, length: 926",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/frigate.svg, length: 1259",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/carrier.svg, length: 1773",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/destroyer.svg, length: 1644",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "warning",
+      "text": "[SVGLoader] Worker error, falling back to main thread: JSHandle@object",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97460,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "error",
+      "text": "[JavaScript Error: \"Loading Worker from “http://127.0.0.1:8080/dist/simWorker.ts” was blocked because of a disallowed MIME type (“”).\" {file: \"http://127.0.0.1:8080/dist/spaceautobattler_standalone.html\" line: 0}]",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 0,
+        "columnNumber": 1
+      }
+    },
+    {
+      "type": "error",
+      "text": "[JavaScript Error: \"Loading Worker from “http://127.0.0.1:8080/dist/svgRasterWorker.ts” was blocked because of a disallowed MIME type (“”).\" {file: \"http://127.0.0.1:8080/dist/spaceautobattler_standalone.html\" line: 0}]",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 0,
+        "columnNumber": 1
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] SVG asset preloading complete",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 97454,
+        "columnNumber": 10
+      }
+    }
+  ],
+  "pageErrors": []
+}

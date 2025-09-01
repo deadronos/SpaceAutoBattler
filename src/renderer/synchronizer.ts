@@ -211,7 +211,10 @@ export function updateTransforms(
   camera?: THREE.Camera,
   healthBarInstancer?: HealthBarInstancer
 ): void {
-  const currentTime = performance.now() / 1000; // Convert to seconds
+  // Use the simulation/game time so visuals driven from game state (e.g. lastShieldHitTime)
+  // use the same timebase as the renderer uniforms. This prevents mismatches where
+  // effects that rely on timestamps (hit times) would appear permanent or vanish.
+  const currentTime = state.time; // seconds
   const useHealthBarInstancing = RendererConfig.instancing.enableBars && healthBarInstancer;
   
   // Update ships

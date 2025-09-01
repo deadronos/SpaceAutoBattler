@@ -30,6 +30,10 @@ export class BulletInstancer {
     
     // Create the instanced mesh
     this.instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+  // InstancedMesh frustum culling doesn't account for per-instance transforms.
+  // Disable frustum culling so instances aren't incorrectly culled when their
+  // transforms move them outside the original geometry bounding sphere.
+  this.instancedMesh.frustumCulled = false;
     
     // Initialize free indices pool
     for (let i = 0; i < this.capacity; i++) {
@@ -38,6 +42,8 @@ export class BulletInstancer {
     
     // Hide unused instances by setting them to zero scale
     this.hideUnusedInstances();
+  // Ensure the GPU sees the initial matrices we wrote during hideUnusedInstances
+  this.instancedMesh.instanceMatrix.needsUpdate = true;
     
     // Add to scene
     bulletsGroup.add(this.instancedMesh);
@@ -189,7 +195,9 @@ export class BulletInstancer {
     const geometry = oldInstancedMesh.geometry;
     const material = oldInstancedMesh.material;
     
-    this.instancedMesh = new THREE.InstancedMesh(geometry, material, newCapacity);
+  this.instancedMesh = new THREE.InstancedMesh(geometry, material, newCapacity);
+  // Same reason as above: disable frustum culling for the new instanced mesh
+  this.instancedMesh.frustumCulled = false;
     
     // Copy existing matrices
     for (let i = 0; i < this.capacity; i++) {

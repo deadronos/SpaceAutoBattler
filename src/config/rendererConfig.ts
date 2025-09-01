@@ -272,7 +272,7 @@ export const DefaultRendererConfig: RendererConfig = {
     enableBullets: true, // default true for feature branch testing
     enableBars: false, // default false until implementation is complete
     bullets: {
-      initialCapacity: 500, // start with capacity for 500 bullets
+      initialCapacity: 800, // start with capacity for 800 bullets (raised to reduce instancer growth/warnings)
       maxCapacity: 2000, // max 2000 bullets before warning
       growthFactor: 1.5, // grow capacity by 50% when needed
       warnThreshold: 0.8, // warn when 80% capacity is reached

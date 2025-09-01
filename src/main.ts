@@ -1,4 +1,10 @@
 import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } from './core/gameState.js';
+// Ensure low-level GL/readPixels patches are applied as early as possible
+// so prototype wrappers and GL instrumentation are present before any
+// renderer instances are created by other modules.
+import { applyGlobalPatches } from './renderer/effects.js';
+
+try { applyGlobalPatches(); } catch (e) { /* ignore */ }
 import type { GameState, Team, UIElements } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';

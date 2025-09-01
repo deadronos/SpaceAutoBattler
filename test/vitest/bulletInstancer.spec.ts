@@ -57,6 +57,14 @@ describe('BulletInstancer', () => {
     expect(stats.free).toBe(RendererConfig.instancing.bullets.initialCapacity);
   });
 
+  it('should disable frustum culling and upload initial matrices on init', () => {
+    const mockInstancedMesh = bulletInstancer['instancedMesh'];
+    // frustum culling should be disabled to avoid incorrect culling of instances
+    expect(mockInstancedMesh.frustumCulled).toBe(false);
+    // constructor hides unused instances and marks the instanceMatrix as needing update
+    expect(mockInstancedMesh.instanceMatrix.needsUpdate).toBe(true);
+  });
+
   it('should allocate instances for bullets', () => {
     const bulletId1 = 1;
     const bulletId2 = 2;

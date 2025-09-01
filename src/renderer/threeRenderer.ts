@@ -22,6 +22,14 @@ const tempCamForward = new THREE.Vector3();
 const tempWorldUp = new THREE.Vector3(0, 1, 0);
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
+  // Apply global readPixels/prototype patches early, if available.
+  try {
+    const gAny: any = (globalThis as any);
+    if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
+      try { gAny.__applyEffectsManagerGlobalPatches(); } catch (e) { /* ignore */ }
+    }
+  } catch (e) { /* ignore */ }
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
@@ -60,7 +68,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d')!;
+  // Prefer a context optimized for frequent readbacks (getImageData).
+  // Some browsers may not support the option; fall back gracefully.
+  const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
 
     // Fill with deep space background
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
@@ -173,41 +183,90 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Holder for optional sphere skybox so animation updater can access it
   let sphereSkybox: THREE.Mesh | null = null;
 
+  // Precompute star fields as simple arrays so we can redraw without pixel reads
+  interface StarData { x: number; y: number; size: number; color: string; baseBrightness: number }
+  const skyboxStarFields: StarData[][] = [];
+  (function initStarFields() {
+    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
+    const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+    faces.forEach((face, faceIndex) => {
+      let rng = baseSeed + faceIndex;
+      const random = () => { rng = (rng * 9301 + 49297) % 233280; return rng / 233280; };
+      const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
+      const list: StarData[] = [];
+      const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
+      for (let i = 0; i < starCount; i++) {
+        const x = Math.floor(random() * textureSize);
+        const y = Math.floor(random() * textureSize);
+        const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
+        const color = starColors[Math.floor(random() * starColors.length)];
+        const baseBrightness = 0.3 + random() * 0.7;
+        list.push({ x, y, size, color, baseBrightness });
+      }
+      skyboxStarFields.push(list);
+    });
+  })();
+
   function updateSkyboxAnimation(dt: number) {
     skyboxAnimationTime += dt;
+    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
 
-    // Update star twinkling every few frames for performance
-    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency === 0) {
-      skyboxTextures.forEach((texture, index) => {
-        const canvas = skyboxCanvases[index];
-        const ctx = canvas.getContext('2d')!;
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    skyboxTextures.forEach((texture, index) => {
+      const canvas = skyboxCanvases[index];
+      const ctx = canvas.getContext('2d')!;
+      // Clear and redraw background and stars from precomputed data
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Recreate gradient background quickly
+      const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)/2);
+      gradient.addColorStop(0, '#000011');
+      gradient.addColorStop(0.5, '#000033');
+      gradient.addColorStop(1, '#000000');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Add subtle twinkling effect to bright stars
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          // Only affect bright pixels (stars)
-          if (r > 100 || g > 100 || b > 100) {
-            const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + 0.7;
-            data[i] = Math.max(0, Math.min(255, r * twinkle));
-            data[i + 1] = Math.max(0, Math.min(255, g * twinkle));
-            data[i + 2] = Math.max(0, Math.min(255, b * twinkle));
-          }
+      // Draw nebula overlays for front/back faces if needed (cheap translucent fills)
+      if (index === 2 || index === 4) {
+        ctx.globalAlpha = 0.08;
+        for (let n = 0; n < RendererEffectsConfig.skybox.starfield.nebula.count; n++) {
+          const nebX = (Math.random() * canvas.width);
+          const nebY = (Math.random() * canvas.height);
+          const nebRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + Math.random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
+          const nebulaGradient = ctx.createRadialGradient(nebX, nebY, 0, nebX, nebY, nebRadius);
+          nebulaGradient.addColorStop(0, `hsl(${200 + Math.random() * 60}, 30%, 20%)`);
+          nebulaGradient.addColorStop(0.5, `hsl(${200 + Math.random() * 60}, 20%, 10%)`);
+          nebulaGradient.addColorStop(1, 'transparent');
+          ctx.fillStyle = nebulaGradient;
+          ctx.beginPath();
+          ctx.arc(nebX, nebY, nebRadius, 0, Math.PI * 2);
+          ctx.fill();
         }
-
-        ctx.putImageData(imageData, 0, 0);
-        texture.needsUpdate = true;
-      });
-
-      // Update sphere skybox texture
-      if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
-        (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
-        sphereSkybox.material.needsUpdate = true;
+        ctx.globalAlpha = 1.0;
       }
+
+      // Draw stars from precomputed list with twinkling factor
+      const stars = skyboxStarFields[index] || [];
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + s.baseBrightness;
+        ctx.globalAlpha = Math.max(0.15, Math.min(1, twinkle));
+        ctx.fillStyle = s.color;
+        if (s.size === 1) ctx.fillRect(s.x, s.y, 1, 1);
+        else {
+          ctx.beginPath();
+          ctx.arc(s.x + 0.5, s.y + 0.5, s.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1.0;
+      texture.needsUpdate = true;
+    });
+
+    // Update sphere skybox texture
+    if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
+      (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
+      sphereSkybox.material.needsUpdate = true;
     }
   }
 
@@ -957,7 +1016,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function updateTransforms() {
-    const currentTime = performance.now() / 1000; // Convert to seconds
+    // Use simulation time for renderer-driven effects so shader hit timestamps
+    // align with game state timestamps like ship.lastShieldHitTime
+    const currentTime = state.time;
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
