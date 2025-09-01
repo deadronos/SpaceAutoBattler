@@ -18,6 +18,11 @@ export { updateBillboardBars };
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
 const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 
+  // Renderer-side cache for program-like parameter introspection.
+  // Keyed by a renderer-owned object (usually the material instance) so it
+  // can be GC'd when the material/mesh is disposed.
+  const rendererProgramCache = new WeakMap<object, unknown>();
+
 // Cached temporary vectors to reduce per-frame allocations
 const tempCamRight = new THREE.Vector3();
 const tempCamUp = new THREE.Vector3(); 
@@ -520,6 +525,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.SphereGeometry(2.2, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
     const mesh = new THREE.Mesh(geom, mat);
+    try { (mesh as any).userData = (mesh as any).userData || {}; (mesh as any).userData.__renderProgram = mat; } catch (e) { /* ignore test env */ }
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
@@ -538,6 +544,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
     const bgMesh = new THREE.Mesh(bgGeom, bgMat);
+  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
     barGroup.add(bgMesh);
 
     // Health bar
@@ -550,6 +557,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
     const healthMesh = new THREE.Mesh(healthGeom, healthMat);
+  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
     barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
@@ -564,6 +572,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
       shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
       shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
@@ -845,7 +854,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     });
 
     const shieldMesh = new THREE.Mesh(geom, material);
-    shieldGroup.add(shieldMesh);
+  // Attach a stable program-like key so external systems can cache
+  // parameter introspection keyed by this object.
+  try { (material as any).userData = (material as any).userData || {}; (material as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  shieldGroup.add(shieldMesh);
 
     (shieldGroup as any).shieldMesh = shieldMesh;
     (shieldGroup as any).pulsePhase = Math.random() * Math.PI * 2;
@@ -1250,6 +1263,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     get cameraDistance() { return _cameraDistance; },
     set cameraDistance(v: number) { _cameraDistance = v; updateCameraPosition(); },
     cameraTarget,
+    // Adapter helpers: optional hooks used by higher-level systems for caching
+    // and introspection. These are intentionally non-critical and best-effort.
+    getParameters: adapterGetParameters,
+    invalidateParameters: adapterInvalidateParameters,
   };
 }
 
@@ -1315,8 +1332,43 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  // Mark a stable program-like key on the material so systems can use it
+  // as a canonical identity for GL program-level caching.
+  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch (e) { /* ignore in test env */ }
   billboardMaterialPool.set(key, mat);
   billboardMaterials.add(mat);
   return mat;
 }
+
+  // Adapter-level helpers exposed to systems: introspect and cache parameter
+  // metadata about a renderer program-like object (material, wrapper, etc.).
+  function adapterGetParameters(programLike?: object | null): unknown {
+    if (!programLike) return undefined;
+    try {
+      const existing = rendererProgramCache.get(programLike as object);
+      if (existing !== undefined) return existing;
+
+      // Best-effort introspection: if it's a THREE.Material/ShaderMaterial,
+      // capture constructor name and uniforms keys (if any). Keep the result
+      // small and serializable-ish to avoid memory bloat.
+      const p: any = programLike as any;
+      const params: any = {
+        kind: p?.constructor?.name ?? typeof p,
+      };
+      if (p && p.uniforms && typeof p.uniforms === 'object') {
+        try { params.uniforms = Object.keys(p.uniforms); } catch (e) { params.uniforms = undefined; }
+      }
+      if (p && typeof p.type === 'string') params.type = p.type;
+      // Cache the synthesized metadata.
+      rendererProgramCache.set(programLike as object, params);
+      return params;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  function adapterInvalidateParameters(programLike?: object | null): void {
+    if (!programLike) return;
+    try { rendererProgramCache.delete(programLike as object); } catch (e) { /* ignore */ }
+  }
 

@@ -13,7 +13,7 @@ import * as path from "path";
 const repoRoot = process.cwd();
 const lockPath = path.join(repoRoot, ".ai-lock.json");
 
-function nowISO() {
+function _nowISO() {
   return new Date().toISOString();
 }
 
@@ -22,6 +22,7 @@ export function readLock(): Lock | null {
     const raw = fs.readFileSync(lockPath, "utf8");
     return JSON.parse(raw) as Lock;
   } catch (e) {
+    void e;
     return null;
   }
 }
@@ -40,10 +41,10 @@ export function acquireLock(lock: Lock): boolean {
     fs.writeFileSync(tmp, JSON.stringify(lock, null, 2), "utf8");
     fs.renameSync(tmp, lockPath);
     return true;
-  } catch (e) {
+  } catch {
     try {
       if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
-    } catch (e2) {}
+    } catch (e) { void e; }
     return false;
   }
 }
@@ -52,17 +53,19 @@ export function releaseLock(): boolean {
   try {
     if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
 
-export function appendAudit(entry: any) {
+export function appendAudit(entry: unknown) {
+  // entry is intentionally untyped here; serialize best-effort
+  const safeEntry: any = entry as any;
   const dir = path.join(repoRoot, ".ai-history");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
   const fname = path.join(
     dir,
-    Date.now() + "-" + (entry.owner || "unknown") + ".json",
+    Date.now() + "-" + (safeEntry?.owner || "unknown") + ".json",
   );
-  fs.writeFileSync(fname, JSON.stringify(entry, null, 2), "utf8");
+  fs.writeFileSync(fname, JSON.stringify(safeEntry, null, 2), "utf8");
 }

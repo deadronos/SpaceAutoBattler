@@ -2,7 +2,7 @@
 // Simple, performant LRU cache using Map insertion order.
 // Map preserves insertion order; to mark an entry as recently used we delete and re-set it.
 // Eviction is then O(1) by reading the first key from map.keys().next().value.
-export class LRUAssetPool<T = any> {
+export class LRUAssetPool<T = unknown> {
   private capacity: number;
   private map: Map<string, T>;
   private disposeCallback?: (value: T) => void;
@@ -38,9 +38,7 @@ export class LRUAssetPool<T = any> {
         if (oldValue && this.disposeCallback) {
           try {
             this.disposeCallback(oldValue);
-          } catch (e) {
-            // Ignore disposal errors to avoid breaking the pool
-          }
+          } catch (e) { void e; }
         }
       }
     }
@@ -58,9 +56,7 @@ export class LRUAssetPool<T = any> {
     if (deleted && value && this.disposeCallback) {
       try {
         this.disposeCallback(value);
-      } catch (e) {
-        // Ignore disposal errors
-      }
+      } catch (e) { void e; }
     }
     return deleted;
   }
@@ -71,9 +67,7 @@ export class LRUAssetPool<T = any> {
       for (const value of this.map.values()) {
         try {
           this.disposeCallback(value);
-        } catch (e) {
-          // Ignore disposal errors
-        }
+        } catch (e) { void e; }
       }
     }
     this.map.clear();

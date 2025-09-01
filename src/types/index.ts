@@ -154,6 +154,10 @@ export interface RendererHandles {
   cameraRotation: Vector3; // x: pitch, y: yaw, z: roll
   cameraDistance: number;
   cameraTarget: Vector3;
+  // Optional adapter hooks for renderer-level caching and introspection.
+  // These are best-effort and may be absent in some renderer implementations.
+  getParameters?: (programLike?: object | null) => unknown;
+  invalidateParameters?: (programLike?: object | null) => void;
 }
 
 export interface GameState {
@@ -189,13 +193,13 @@ export interface GameState {
   score: ScoreBoard;
   renderer?: RendererHandles;
   // Simple asset pool for caching loaded assets (GLTFs, textures, etc.)
-  assetPool?: Map<string, any>;
+  assetPool?: Map<string, unknown>;
   // Optional physics stepper initialized by bootstrap (kept as a lightweight shape to avoid tight coupling)
   physicsStepper?: {
     initDone: boolean;
     step: (dt: number) => void;
     dispose: () => void;
-    world?: any;
+  world?: unknown;
   };
   behaviorConfig: import('../config/behaviorConfig.js').BehaviorConfig;
   // Optional spatial index for efficient AI proximity queries (neighbors, targeting)

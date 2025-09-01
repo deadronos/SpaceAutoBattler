@@ -52,7 +52,7 @@ export function setupScene(state: GameState): SceneElements {
       tex.magFilter = THREE.LinearFilter;
       skyboxTextures.push(tex);
     }
-  } catch (e) {
+  } catch {
     // ignore - test environments may not support canvas
   }
   const animatedCube = new THREE.CubeTexture(skyboxCanvases as any);

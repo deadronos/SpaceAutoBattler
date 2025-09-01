@@ -47,15 +47,15 @@ const blitToTemp = (rend: WebGLRenderer, srcRT: any, dstRT: WebGLRenderTarget) =
     const srcTexture = srcRT && srcRT.texture ? srcRT.texture : srcRT;
     const isDepthSource = !!(srcRT && (srcRT.depthTexture || (srcRT.texture && (srcRT.texture.type !== UnsignedByteType || srcRT.texture.format !== RGBAFormat))));
     if (isDepthSource) {
-      try {
-        (packMat as any).uniforms.tInput.value = srcTexture;
-  packMat.needsUpdate = true;
-  (blitMesh as any).material = packMat as any;
-      } catch (e) {
-  (blitMat as any).map = srcTexture;
-  blitMat.needsUpdate = true;
-  (blitMesh as any).material = blitMat as any;
-      }
+          try {
+            (packMat as any).uniforms.tInput.value = srcTexture;
+            packMat.needsUpdate = true;
+            (blitMesh as any).material = packMat as any;
+          } catch {
+            (blitMat as any).map = srcTexture;
+            blitMat.needsUpdate = true;
+            (blitMesh as any).material = blitMat as any;
+          }
     } else {
       (blitMat as any).map = srcTexture;
       blitMat.needsUpdate = true;
@@ -65,9 +65,9 @@ const blitToTemp = (rend: WebGLRenderer, srcRT: any, dstRT: WebGLRenderTarget) =
     rend.render(blitScene, blitCamera);
     rend.setRenderTarget(null);
   } finally {
-    try { (blitMat as any).map = null; } catch (e) {}
-    try { (packMat as any).uniforms.tInput.value = null; } catch (e) {}
-    try { (blitMesh as any).material = blitMat as any; } catch (e) {}
+    try { (blitMat as any).map = null; } catch (e) { void e; }
+    try { (packMat as any).uniforms.tInput.value = null; } catch (e) { void e; }
+    try { (blitMesh as any).material = blitMat as any; } catch (e) { void e; }
   }
 };
 
@@ -77,7 +77,7 @@ const readPixelsSafe = (renderer: WebGLRenderer, renderTarget: any, x: number, y
   const temp = getTempRT(renderTarget);
   const src = temp || renderTarget;
   if (temp) {
-    try { blitToTemp(renderer, renderTarget, temp); } catch (e) { /* ignore */ }
+    try { blitToTemp(renderer, renderTarget, temp); } catch (e) { void e; }
   }
   if (hasAsync) {
     return (renderer as any).readRenderTargetPixelsAsync(src, x, y, width, height, buffer);
@@ -85,10 +85,10 @@ const readPixelsSafe = (renderer: WebGLRenderer, renderTarget: any, x: number, y
   return new Promise<void>((resolve) => {
     try {
       setTimeout(() => {
-        try { rendererRead.call(renderer, src, x, y, width, height, buffer); } catch (e) { /* ignore */ }
+        try { rendererRead.call(renderer, src, x, y, width, height, buffer); } catch (e) { void e; }
         resolve();
       }, 0);
-    } catch (e) { resolve(); }
+    } catch (e) { void e; resolve(); }
   });
 };
 // Lightweight wrapper around `postprocessing` to manage effect composer and passes.
@@ -110,8 +110,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // Lazy import to avoid build-time coupling; most deployments will have `postprocessing` installed.
    
   let pp: any = null;
-  try { pp = require('postprocessing'); } catch (e) { pp = null; }
-
+  try { pp = require('postprocessing'); } catch (e) { void e; pp = null; }
+  
   if (!pp) {
     // No postprocessing available: return no-op manager
     return {
@@ -172,7 +172,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   };
 
   // Apply wrapper to the renderer used by this manager
-  try { wrapReadPixelsForRenderer(renderer); } catch (e) { /* ignore */ }
+  try { wrapReadPixelsForRenderer(renderer); } catch (e) { void e; }
 
   // Instrument low-level GL readPixels to catch any callers (including
   // inlined/minified copies from the bundled runtime). This helps trace
@@ -185,7 +185,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // Also try to patch the three.js WebGLRenderer prototype in case the
   // bundle includes multiple copies or other modules create renderers.
   try {
-  try { logger.info('[EffectsManager] attempting to patch WebGLRenderer.prototype'); } catch (e) {}
+  try { logger.info('[EffectsManager] attempting to patch WebGLRenderer.prototype'); } catch (e) { void e; }
     if (three && (three as any).WebGLRenderer && (three as any).WebGLRenderer.prototype) {
       const proto = (three as any).WebGLRenderer.prototype;
       if (typeof proto.readRenderTargetPixels === 'function' && !(proto.readRenderTargetPixels as any).__effectsManagerPatched) {
@@ -200,12 +200,15 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                 return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            // ignore wrapper failures and fall back to original
+          }
           return orig.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
         };
         (proto.readRenderTargetPixels as any).__effectsManagerPatched = true;
       }
     }
+
     // Also attempt to patch any global WebGLRenderer constructor present
     try {
       const g: any = globalThis as any;
@@ -221,7 +224,9 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                 return orig2.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            // ignore
+          }
           return orig2.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
         };
         (g.WebGLRenderer.prototype.readRenderTargetPixels as any).__effectsManagerPatched = true;
@@ -229,7 +234,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
     } catch (e) {
       // ignore
     }
-  } catch (e) {
+  } catch {
     // best-effort
   }
 
