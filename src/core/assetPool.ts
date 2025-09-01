@@ -38,7 +38,7 @@ export class LRUAssetPool<T = unknown> {
         if (oldValue && this.disposeCallback) {
           try {
             this.disposeCallback(oldValue);
-          } catch (e) { void e; }
+          } catch (_e) { void _e; void _e; }
         }
       }
     }
@@ -56,7 +56,7 @@ export class LRUAssetPool<T = unknown> {
     if (deleted && value && this.disposeCallback) {
       try {
         this.disposeCallback(value);
-      } catch (e) { void e; }
+      } catch (_e) { void _e; void _e; }
     }
     return deleted;
   }
@@ -67,7 +67,7 @@ export class LRUAssetPool<T = unknown> {
       for (const value of this.map.values()) {
         try {
           this.disposeCallback(value);
-        } catch (e) { void e; }
+        } catch (_e) { void _e; void _e; }
       }
     }
     this.map.clear();
@@ -92,3 +92,5 @@ export class LRUAssetPool<T = unknown> {
 }
 
 export default LRUAssetPool;
+
+

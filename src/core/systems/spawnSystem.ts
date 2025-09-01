@@ -98,8 +98,7 @@ export class SpawnSystem {
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
-      } catch (error) {
-        logger.warn('Error in spawn event handler:', error);
+      } catch (_error) { void _error;logger.warn('Error in spawn event handler:', _error);
       }
     }
   }
@@ -142,11 +141,10 @@ export class SpawnSystem {
       });
 
       return result;
-    } catch (error) {
-      const result: SpawnResult = {
+    } catch (_error) { void _error;const result: SpawnResult = {
         entityId: -1,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown spawn error'
+        error: _error instanceof Error ? _error.message : 'Unknown spawn error'
       };
       this.emitEvent({
         type: 'failed',
@@ -390,15 +388,14 @@ export class SpawnSystem {
           collisionMask: ship.team === 'red' ? 0x01 : 0x02
         });
       }
-    } catch (error) {
-      logger.warn('Failed to register ship with physics adapter:', error);
+    } catch (_error) { void _error;logger.warn('Failed to register ship with physics adapter:', _error);
     }
 
     // Register with renderer
     try {
       if (this.rendererAdapter) {
             if (this.instrumentationEnabled) {
-              try { logger.debug('renderer.ensureMeshForShip'); } catch (e) { void e; }
+              try { logger.debug('renderer.ensureMeshForShip'); } catch (_e) { void _e; void _e; }
             }
 
         // If the renderer adapter exposes a program/parameter object on the ship (conventionally
@@ -428,8 +425,7 @@ export class SpawnSystem {
 
         this.rendererAdapter.ensureMeshForShip(ship);
       }
-    } catch (error) {
-      logger.warn('Failed to register ship with renderer adapter:', error);
+    } catch (_error) { void _error;logger.warn('Failed to register ship with renderer adapter:', _error);
     }
 
     // Register with spatial index
@@ -437,8 +433,7 @@ export class SpawnSystem {
       if (this.spatialIndex) {
         this.spatialIndex.insert(ship.id, ship.pos, 20, ship.team);
       }
-    } catch (error) {
-      logger.warn('Failed to register ship with spatial index:', error);
+    } catch (_error) { void _error;logger.warn('Failed to register ship with spatial index:', _error);
     }
   }
 
@@ -446,3 +441,4 @@ export class SpawnSystem {
     return this.state.nextId++;
   }
 }
+

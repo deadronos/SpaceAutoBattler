@@ -1,16 +1,7 @@
 import type { GameState, Ship, Vector3, EntityId, TurretState, Team } from '../types/index.js';
-import type {
-  AIIntent,
-  AIBehaviorMode,
-  AIPersonality,
-  BehaviorConfig,
-  RoamingPattern,
-  FormationConfig
-} from '../config/behaviorConfig.js';
+import type { AIIntent, AIPersonality, FormationConfig } from '../config/behaviorConfig.js';
 import { getEffectivePersonality, selectRoamingPattern, getFormationConfig } from '../config/behaviorConfig.js';
-import { getShipClassConfig } from '../config/entitiesConfig.js';
-import { PhysicsConfig } from '../config/physicsConfig.js';
-import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normalize, subtract } from '../utils/vector3.js';
+import { PhysicsConfig } from '../config/physicsConfig.js';import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 import { calculateEscapeScore as steeringCalculateEscapeScore, moveTowards as steeringMoveTowards, calculateSeparationForceWithCount as steeringSeparation } from './ai/steering.js';
 import { scoreEvade as deScoreEvade } from './ai/decisionEngine.js';
 import { IntentManager } from './ai/intentManager.js';
@@ -143,7 +134,7 @@ export class AIController {
   private updateRecentDamage(ship: Ship, dt: number) {
     const aiState = ship.aiState!;
     const config = this.state.behaviorConfig!;
-    
+
     if (aiState.recentDamage && aiState.recentDamage > 0) {
       const decayAmount = config.globalSettings.damageDecayRate * dt;
       aiState.recentDamage = Math.max(0, aiState.recentDamage - decayAmount);
@@ -222,8 +213,8 @@ export class AIController {
     const config = this.state.behaviorConfig!;
 
     // Check if ship has taken significant recent damage and should evade
-    const recentDamage = aiState.recentDamage || 0;
-    const lastDamageTime = aiState.lastDamageTime || 0;
+  const recentDamage = aiState.recentDamage || 0;
+  const lastDamageTime = aiState.lastDamageTime || 0;
     const timeSinceLastDamage = this.state.time - lastDamageTime;
     const withinDamageWindow = timeSinceLastDamage <= config.globalSettings.evadeRecentDamageWindowSeconds;
     const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold && withinDamageWindow;
@@ -233,14 +224,16 @@ export class AIController {
       return;
     }
 
-    const oldIntent = aiState.currentIntent;
+  const oldIntent = aiState.currentIntent;
     let newIntent: AIIntent = 'idle';
-    let intentDuration = personality.minIntentDuration;
+    const _intentDuration = personality.minIntentDuration;
 
     if (shouldEvadeFromDamage) {
       newIntent = 'evade';
       // Shorter duration for damage-based evade to allow quick reassessment
-      intentDuration = Math.min(intentDuration, config.globalSettings.intentDurationDamageEvade);
+      // Use _intentDuration as the baseline variable
+      const intentDuration = Math.min(_intentDuration, config.globalSettings.intentDurationDamageEvade);
+      void intentDuration;
     } else {
       // Normal intent selection based on personality mode
       switch (personality.mode) {
@@ -286,7 +279,7 @@ export class AIController {
     }
 
     // Set intent duration via IntentManager to keep parity
-    const duration = this.intentManager.applyIntent(
+    const _duration = this.intentManager.applyIntent(
       ship,
       this.state.time,
       newIntent,
@@ -432,7 +425,7 @@ export class AIController {
    * Choose intent for roaming behavior
    */
   private chooseRoamingIntent(ship: Ship, personality: AIPersonality): AIIntent {
-    const aiState = ship.aiState!;
+  const aiState = ship.aiState!;
     const config = this.state.behaviorConfig!;
 
     // Check if this ship is the designated scout
@@ -797,7 +790,7 @@ export class AIController {
         }
         break;
 
-      case 'circular':
+      case 'circular': {
         const time = this.state.time - (aiState.roamingStartTime || 0);
         const angle = (time / pattern.duration) * Math.PI * 2;
         targetPos = {
@@ -806,8 +799,9 @@ export class AIController {
           z: center.z
         };
         break;
+      }
 
-      case 'figure_eight':
+      case 'figure_eight': {
         const t = this.state.time - (aiState.roamingStartTime || 0);
         const figureAngle = (t / pattern.duration) * Math.PI * 2;
         targetPos = {
@@ -816,6 +810,7 @@ export class AIController {
           z: center.z
         };
         break;
+      }
 
       default:
         return this.executeIdle(ship, dt);
@@ -850,7 +845,7 @@ export class AIController {
       return this.executePatrol(ship, dt);
     }
 
-    const aiState = ship.aiState!;
+  const _aiState = ship.aiState!;
     const bounds = this.state.simConfig.simBounds;
     
     // Create exploration zones in a grid pattern
@@ -982,7 +977,7 @@ export class AIController {
   /**
    * Update turret AI for independent targeting
    */
-  private updateTurretAI(ship: Ship, dt: number) {
+  private updateTurretAI(ship: Ship, _dt: number) {
     const config = this.state.behaviorConfig!;
     const turretConfig = config.turretConfig;
 
@@ -1443,7 +1438,7 @@ export class AIController {
   /**
    * Get formation center for a ship and formation name
    */
-  private getFormationCenter(ship: Ship, formationName: string): Vector3 | null {
+  private getFormationCenter(ship: Ship, _formationName: string): Vector3 | null {
     // For now, use group center of friendly ships in range
     const config = this.state.behaviorConfig!;
   const searchRadius = config.globalSettings.formationSearchRadius;
@@ -1463,8 +1458,8 @@ export class AIController {
   const spacing = formationConfig.spacing;
     const slotIndex = ship.id % slotCount;
       // Store the assigned slot index for tests/other logic
-      if (!ship.aiState) ship.aiState = {} as any;
-      const aiState = ship.aiState!;
+  if (!ship.aiState) ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as Ship['aiState'];
+    const aiState = ship.aiState!;
       aiState.formationSlotIndex = slotIndex;
     // For line formation, offset along x axis; for circle, use polar coordinates
     let slotOffset: Vector3 = { x: 0, y: 0, z: 0 };

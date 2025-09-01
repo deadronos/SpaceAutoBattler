@@ -2,11 +2,10 @@ import * as THREE from 'three';
 import * as logger from '../utils/logger.js';
 import type { GameState, RendererHandles, Ship, Bullet } from '../types/index.js';
 import { createEffectsManager } from './effects.js';
-import { loadGLTF } from '../core/assetLoader.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
-import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
+import { loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
@@ -14,9 +13,41 @@ import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
 export { updateBillboardBars };
 
-// Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
+  // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
 const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
+
+// Safely attach a program-like key to an object's userData without using `any`.
+function setRenderProgram(target: object, program: unknown): void {
+  try {
+    const t = target as unknown as { userData?: Record<string, unknown> };
+    t.userData = t.userData || {};
+    (t.userData as Record<string, unknown>).__renderProgram = program;
+  } catch { void 0; }
+}
+
+  // Minimal lightweight instancer interface used to avoid `any` casts in this file.
+  type MinimalInstancer = Partial<{
+    // Some instancers expose a boolean, others an accessor function
+    isReady: boolean | (() => boolean);
+    onReady: (cb: () => void) => void;
+    // Bullet-related
+    hasBullet: (id: number) => boolean;
+    allocateInstance: (id: number) => boolean;
+    getActiveBulletIds: () => number[];
+    freeInstance: (id: number) => void;
+    updateBulletTransform: (b: Bullet) => void;
+    markMatrixNeedsUpdate: () => void;
+    // Ship/health-related
+    hasShip: (id: number) => boolean;
+    allocate: (id: number, cls: string, team: string) => boolean;
+    free: (id: number) => void;
+    updateTransform: (id: number, pos: { x: number; y: number; z: number }, q: THREE.Quaternion, scale: number) => void;
+    markMatricesNeedUpdate: () => void;
+    // General
+    sync: () => void;
+    dispose: () => void;
+  }>;
 
   // Renderer-side cache for program-like parameter introspection.
   // Keyed by a renderer-owned object (usually the material instance) so it
@@ -27,16 +58,16 @@ const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 const tempCamRight = new THREE.Vector3();
 const tempCamUp = new THREE.Vector3(); 
 const tempCamForward = new THREE.Vector3();
-const tempWorldUp = new THREE.Vector3(0, 1, 0);
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   // Apply global readPixels/prototype patches early, if available.
   try {
-    const gAny: any = (globalThis as any);
-    if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
-      try { gAny.__applyEffectsManagerGlobalPatches(); } catch (e) { /* ignore */ }
+    const g = globalThis as unknown as { __applyEffectsManagerGlobalPatches?: unknown };
+    const patch = g.__applyEffectsManagerGlobalPatches as unknown;
+    if (typeof patch === 'function') {
+      try { (patch as unknown as () => void)(); } catch { /* swallow */ }
     }
-  } catch (e) { /* ignore */ }
+  } catch { /* swallow */ }
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -76,9 +107,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-  // Prefer a context optimized for frequent readbacks (getImageData).
-  // Some browsers may not support the option; fall back gracefully.
-  const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
+  // Prefer a 2D context. Some browsers support options but they are optional in lib.dom.
+  const ctx = (canvas.getContext('2d') as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
     // Fill with deep space background
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
@@ -164,14 +194,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const skyboxTextures: THREE.CanvasTexture[] = [];
 
   function createAnimatedSkybox(): THREE.CubeTexture {
-  const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+  const _textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
   const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
 
     const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
 
     // Create animated canvases and textures
     faces.forEach((face, index) => {
-      const canvas = generateStarfieldTexture(textureSize, textureSize, face, baseSeed + index);
+      const canvas = generateStarfieldTexture(_textureSize, _textureSize, face, baseSeed + index);
       skyboxCanvases.push(canvas);
 
       const texture = new THREE.CanvasTexture(canvas);
@@ -195,7 +225,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   interface StarData { x: number; y: number; size: number; color: string; baseBrightness: number }
   const skyboxStarFields: StarData[][] = [];
   (function initStarFields() {
-    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    const _textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
     const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
     const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
     faces.forEach((face, faceIndex) => {
@@ -205,8 +235,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const list: StarData[] = [];
       const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
       for (let i = 0; i < starCount; i++) {
-        const x = Math.floor(random() * textureSize);
-        const y = Math.floor(random() * textureSize);
+  const x = Math.floor(random() * _textureSize);
+  const y = Math.floor(random() * _textureSize);
         const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
         const color = starColors[Math.floor(random() * starColors.length)];
         const baseBrightness = 0.3 + random() * 0.7;
@@ -220,8 +250,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     skyboxAnimationTime += dt;
     if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
 
-    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
-    skyboxTextures.forEach((texture, index) => {
+  const _textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+  skyboxTextures.forEach((texture, index) => {
       const canvas = skyboxCanvases[index];
       const ctx = canvas.getContext('2d')!;
       // Clear and redraw background and stars from precomputed data
@@ -310,8 +340,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
   scene.add(sphereSkybox);
     }
-  } catch (e) {
-    // Fallback: solid deep blue background if procedural generation fails
+  } catch (e) { void e;// Fallback: solid deep blue background if procedural generation fails
     logger.warn('Animated skybox generation failed, falling back to solid background', e);
     scene.background = new THREE.Color(0x000011); // Dark blue space color
     sphereSkybox = createSphereSkybox();
@@ -378,19 +407,88 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Initialize ship instancer if enabled
   if (RendererConfig.instancing.enableShips) {
-    try { shipInstancer.init(scene, shipsGroup); } catch (e) { logger.warn('Ship instancer init failed', e); }
+    try { shipInstancer.init(scene, shipsGroup); } catch (e) { void e;logger.warn('Ship instancer init failed', e); }
   }
   
-  // Dev / feature toggles
-  const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
+  // Local runtime guards: only use the instanced codepaths when both the
+  // configuration flag is set and the instancer object has signaled readiness.
+  // This prevents switching rendering modes to instanced paths when the
+  // instancer isn't ready (which results in invisible objects because the
+  // instancer may have empty/hidden instance matrices).
+  // Dev / feature toggles (DEV_MODE must be defined early because some
+  // helper functions run during initialization and reference it).
+  const DEV_MODE = (typeof window !== 'undefined' && ((window as unknown as { __DEV__?: boolean }).__DEV__ === true)) || (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV !== 'production');
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
+  let useBulletInstancing = false;
+  let useHealthBarInstancing = false;
+  let useShipInstancing = false;
+  function instancerReady(inst: MinimalInstancer | null | undefined): boolean {
+    if (!inst) return false;
+    if (typeof inst.isReady === 'function') {
+      try { return !!(inst.isReady as () => boolean)(); } catch (e) { void e; void e; return false; }
+    }
+    return !!inst.isReady;
+  }
+
+  function recomputeInstancingGuards() {
+    const bInst = (bulletInstancer as unknown) as MinimalInstancer | null;
+    const hInst = (healthBarInstancer as unknown) as MinimalInstancer | null;
+    const sInst = (shipInstancer as unknown) as MinimalInstancer | null;
+
+    useBulletInstancing = RendererConfig.instancing.enableBullets && !!bInst && instancerReady(bInst);
+    useHealthBarInstancing = RendererConfig.instancing.enableBars && !!hInst && instancerReady(hInst);
+
+    // For shipInstancer, check that allocate exists and readiness is true
+  const shipHasAllocate = !!(typeof (sInst?.allocate) === 'function');
+  const shipReady = !!instancerReady(sInst);
+  useShipInstancing = !!(RendererConfig.instancing.enableShips && shipHasAllocate && shipReady);
+
+    // DEV logging: print a concise summary of the computed guards so runtime ordering
+    // issues can be diagnosed quickly when running in development.
+    if (DEV_MODE) {
+    try {
+      console.debug('[threeRenderer] instancing guards:', {
+          enableBullets: RendererConfig.instancing.enableBullets,
+          bulletInstancerReady: instancerReady(bInst),
+          useBulletInstancing,
+          enableBars: RendererConfig.instancing.enableBars,
+          healthBarInstancerReady: instancerReady(hInst),
+          useHealthBarInstancing,
+          enableShips: RendererConfig.instancing.enableShips,
+          shipInstancerReady: shipReady,
+          useShipInstancing,
+        });
+      } catch (e) { void e; void e; /* ignore */ }
+    }
+  }
+
+  // Subscribe to instancer readiness notifications where supported so the
+  // renderer can flip into the instanced codepaths only once resources are ready.
+  // Subscribe to instancer readiness notifications where supported so the
+  // renderer can flip into the instanced codepaths only once resources are ready.
+  try {
+    const bInst = (bulletInstancer as unknown) as MinimalInstancer | null;
+    if (bInst && typeof bInst.onReady === 'function') bInst.onReady(() => { try { recomputeInstancingGuards(); } catch (e) { void e;logger.warn('Error recomputing bullet instancing guard', e); } });
+  } catch (e) { void e; void e; /* ignore */ }
+  try {
+    const hInst = (healthBarInstancer as unknown) as MinimalInstancer | null;
+    if (hInst && typeof hInst.onReady === 'function') hInst.onReady(() => { try { recomputeInstancingGuards(); } catch (e) { void e;logger.warn('Error recomputing health bar instancing guard', e); } });
+  } catch (e) { void e; void e; /* ignore */ }
+  try {
+    const sInst = (shipInstancer as unknown) as MinimalInstancer | null;
+    if (sInst && typeof sInst.onReady === 'function') sInst.onReady(() => { try { recomputeInstancingGuards(); } catch (e) { void e; void e; /* ignore */ } });
+  } catch (e) { void e; void e; /* ignore */ }
+
+  // Do an initial computation using current state (some instancers may already be ready)
+  recomputeInstancingGuards();
+  
   // Maintain a short ring buffer of recent hits per ship for hex highlight
   const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
 
   function colorForTeam(team: 'red' | 'blue'): number { return team === 'red' ? 0xff5050 : 0x50a0ff; }
 
   function meshForShip(s: Ship): THREE.Object3D {
-    const pool = (state as any).assetPool as Map<string, any> | undefined;
+  const pool = (state as unknown as { assetPool?: Map<string, unknown> }).assetPool;
     const svgUrl = getShipSVGUrl(s.class, defaultSVGConfig);
 
     const createTextured3DShip = (imageBitmap: ImageBitmap) => {
@@ -480,12 +578,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     };
 
     // If we already have an asset in pool, build plane from it
-    try {
-      if (pool && pool.has(svgUrl)) {
-        const svgAsset = pool.get(svgUrl);
-        if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
+    if (pool && pool.has(svgUrl)) {
+      // asset shape is { imageBitmap?: ImageBitmap, ... }
+      const svgAssetRaw = pool.get(svgUrl);
+      const svgAsset = svgAssetRaw as { imageBitmap?: ImageBitmap } | undefined;
+      if (svgAsset && svgAsset.imageBitmap) {
+        return createTextured3DShip(svgAsset.imageBitmap);
       }
-    } catch (e) { /* ignore */ }
+    }
 
     // Fallback placeholder, and kick off async load to replace visual when ready
     const geom = new THREE.ConeGeometry(8, 24, 8);
@@ -503,18 +603,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           height: defaultSVGConfig.defaultRasterSize.height,
           teamColor: teamColor
         });
-        if (pool) pool.set(svgUrl, asset);
-        if (asset?.imageBitmap && placeholder.parent) {
-          const ship3D = createTextured3DShip(asset.imageBitmap);
+        if (pool) {
+          // store with a narrow shape to keep typings consistent
+          pool.set(svgUrl, asset as { imageBitmap?: ImageBitmap } | undefined);
+        }
+        const assetTyped = asset as { imageBitmap?: ImageBitmap } | undefined;
+        if (assetTyped && assetTyped.imageBitmap && placeholder.parent) {
+          const ship3D = createTextured3DShip(assetTyped.imageBitmap);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
           shipMeshes.set(s.id, ship3D);
         }
-      } catch (err) {
-        // Loading/parsing of SVG failed — log and keep placeholder
-        logger.error('Failed to load SVG asset for ship', err);
-      }
+      } catch (e) { void e;// Loading/parsing of SVG failed — log and keep placeholder
+          logger.error('Failed to load SVG asset for ship', e);
+        }
     })();
 
     // Return placeholder while async asset loads
@@ -525,14 +628,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.SphereGeometry(2.2, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
     const mesh = new THREE.Mesh(geom, mat);
-    try { (mesh as any).userData = (mesh as any).userData || {}; (mesh as any).userData.__renderProgram = mat; } catch (e) { /* ignore test env */ }
+  setRenderProgram(mesh, mat);
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
 
   function createHealthBar(ship: Ship): THREE.Object3D {
     const config = RendererConfig.healthBars;
-    const barGroup = new THREE.Group();
+    // Narrow shape for bar groups to avoid 'any' casts
+    type HealthBarGroup = THREE.Group & { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null; bgMesh?: THREE.Mesh };
+    const barGroup = new THREE.Group() as HealthBarGroup;
 
     // Background bar
     const bgGeom = new THREE.PlaneGeometry(config.width, config.position.height);
@@ -544,7 +649,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
     const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
+  setRenderProgram(bgMesh, (bgMat as unknown));
     barGroup.add(bgMesh);
 
     // Health bar
@@ -557,7 +662,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
     const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
+  setRenderProgram(healthMesh, (healthMat as unknown));
     barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
@@ -572,7 +677,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
       shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
+  setRenderProgram(shieldMesh, (shieldMat as unknown));
       shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
@@ -584,18 +689,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     borderMesh.position.z = 0.2;
     barGroup.add(borderMesh);
 
-    // Store references for updating
-    (barGroup as any).healthMesh = healthMesh;
-    (barGroup as any).shieldMesh = shieldMesh;
-    (barGroup as any).bgMesh = bgMesh;
+  // Store references for updating (typed)
+  barGroup.healthMesh = healthMesh;
+  barGroup.shieldMesh = shieldMesh;
+  barGroup.bgMesh = bgMesh;
 
     return barGroup;
   }
 
   function updateHealthBar(ship: Ship, barGroup: THREE.Object3D) {
     const config = RendererConfig.healthBars;
-    const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
-    const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
+    // Use typed access to avoid 'any'
+    const hbGroup = barGroup as (THREE.Group & { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null });
+    const healthMesh = hbGroup.healthMesh as THREE.Mesh;
+    const shieldMesh = hbGroup.shieldMesh as THREE.Mesh | null;
 
     // Position the bar above the ship (3D) - always update position
     barGroup.position.set(
@@ -616,12 +723,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else if (healthPercent < 0.7) {
         healthColor = config.colors.health.damaged;
       }
-      if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
-        const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
-        // Acquire pooled material for the new color/alpha and swap if different
-        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
-        if (newMat !== mat) {
-          (healthMesh.material as any) = newMat;
+      if (GPU_BILLBOARD) {
+        const matCandidate = healthMesh.material as THREE.Material | THREE.ShaderMaterial;
+        const isShader = !!((matCandidate as THREE.ShaderMaterial).uniforms && (matCandidate as THREE.ShaderMaterial).uniforms.uColor);
+        if (isShader) {
+          const mat = matCandidate as THREE.ShaderMaterial;
+          const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
+          if (newMat !== mat) {
+            healthMesh.material = newMat as unknown as THREE.Material;
+          }
+        } else {
+          (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
         }
       } else {
         (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
@@ -638,15 +750,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
       // Color based on shield percentage
       const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-      if (GPU_BILLBOARD && (shieldMesh.material as any).uniforms && (shieldMesh.material as any).uniforms.uColor) {
-        const mat = (shieldMesh.material as any) as THREE.ShaderMaterial;
-        const alpha = 0.8;
-        const newMat = getPooledBillboardMaterial(new THREE.Color(shieldColor), alpha);
-        if (newMat !== mat) {
-          (shieldMesh.material as any) = newMat;
+      if (shieldMesh) {
+        if (GPU_BILLBOARD) {
+          const matCandidate = shieldMesh.material as THREE.Material | THREE.ShaderMaterial;
+          const isShader = !!((matCandidate as THREE.ShaderMaterial).uniforms && (matCandidate as THREE.ShaderMaterial).uniforms.uColor);
+          if (isShader) {
+            const mat = matCandidate as THREE.ShaderMaterial;
+            const alpha = 0.8;
+            const newMat = getPooledBillboardMaterial(new THREE.Color(shieldColor), alpha);
+            if (newMat !== mat) shieldMesh.material = newMat as unknown as THREE.Material;
+          } else {
+            (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
+          }
+        } else {
+          (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
         }
-      } else {
-        (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
       }
       
       // Clear dirty flag after update  
@@ -654,9 +772,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
   }
 
+  // ShieldGroup typed to avoid inline 'any' casts
+  type ShieldGroup = THREE.Group & { shieldMesh?: THREE.Mesh; pulsePhase?: number };
   function createShieldEffect(ship: Ship): THREE.Object3D {
     const config = RendererConfig.shield;
-    const shieldGroup = new THREE.Group();
+    const shieldGroup = new THREE.Group() as ShieldGroup;
 
     // Spherical shield bubble with rim lighting and directional hit arc
     const geom = new THREE.SphereGeometry( 
@@ -856,18 +976,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const shieldMesh = new THREE.Mesh(geom, material);
   // Attach a stable program-like key so external systems can cache
   // parameter introspection keyed by this object.
-  try { (material as any).userData = (material as any).userData || {}; (material as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  try { setRenderProgram(material, material); } catch { void 0; }
+  try { setRenderProgram(shieldMesh, material); } catch { void 0; }
   shieldGroup.add(shieldMesh);
 
-    (shieldGroup as any).shieldMesh = shieldMesh;
-    (shieldGroup as any).pulsePhase = Math.random() * Math.PI * 2;
+    shieldGroup.shieldMesh = shieldMesh;
+    shieldGroup.pulsePhase = Math.random() * Math.PI * 2;
     return shieldGroup;
   }
 
   function updateShieldEffect(ship: Ship, shieldGroup: THREE.Object3D, currentTime: number) {
     const config = RendererConfig.shield;
-    const shieldMesh = (shieldGroup as any).shieldMesh as THREE.Mesh;
+  const shieldMesh = (shieldGroup as ShieldGroup).shieldMesh as THREE.Mesh;
     const mat = shieldMesh.material as THREE.ShaderMaterial;
 
     // Position the shield around the ship (3D)
@@ -934,16 +1054,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function syncEntities() {
     // Update camera uniforms for health bar instancer if enabled
-    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-      healthBarInstancer.updateCameraUniforms(camera);
+    if (useHealthBarInstancing) {
+      healthBarInstancer!.updateCameraUniforms(camera);
     }
 
     // Ships
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
         // If ship instancing is enabled and we can allocate, don't create an individual mesh
-        if (RendererConfig.instancing.enableShips && (shipInstancer as any).allocate) {
-          const allocated = shipInstancer.allocate(s.id, s.class, s.team);
+        if (useShipInstancing && typeof ((shipInstancer as unknown as MinimalInstancer).allocate) === 'function') {
+          const allocated = (shipInstancer as unknown as MinimalInstancer).allocate!(s.id, s.class, s.team);
           if (allocated) {
             // create a lightweight placeholder transform via the instancer only
             shipMeshes.set(s.id, new THREE.Object3D()); // track existence
@@ -958,10 +1078,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
       // Health bars
       if (RendererConfig.visual.enableHealthBars) {
-        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
+        if (useHealthBarInstancing) {
           // Use health bar instancer
-          if (!healthBarInstancer.hasShip(s.id)) {
-            healthBarInstancer.allocateInstance(s.id);
+          if (!healthBarInstancer!.hasShip(s.id)) {
+            healthBarInstancer!.allocateInstance(s.id);
           }
         } else {
           // Use traditional approach
@@ -981,8 +1101,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (!state.ships.find(s => s.id === id)) {
         shipsGroup.remove(m); shipMeshes.delete(id);
         // Also remove health bar
-        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-          healthBarInstancer.freeInstance(id);
+        if (useHealthBarInstancing) {
+          healthBarInstancer!.freeInstance(id);
         } else {
           const bar = healthBarMeshes.get(id);
           if (bar) { healthBarsGroup.remove(bar); healthBarMeshes.delete(id); }
@@ -991,17 +1111,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const shield = shieldEffectMeshes.get(id);
         if (shield) { shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id); }
         // Free ship instancer entry if present
-        if (RendererConfig.instancing.enableShips) shipInstancer.free(id);
+        if (useShipInstancing) shipInstancer.free(id);
       }
     }
     // Remove health bars for ships that no longer exist (non-instanced only)
     if (!RendererConfig.instancing.enableBars) {
-      for (const [id, bar] of healthBarMeshes) {
-        if (!state.ships.find(s => s.id === id)) {
-          healthBarsGroup.remove(bar); healthBarMeshes.delete(id);
+      for (const [_id, bar] of healthBarMeshes) {
+        if (!state.ships.find(s => s.id === _id)) {
+            healthBarsGroup.remove(bar); healthBarMeshes.delete(_id);
+          }
         }
       }
-    }
     // Remove shield effects for ships that no longer exist or have no shield
     for (const [id, shield] of shieldEffectMeshes) {
       const ship = state.ships.find(s => s.id === id);
@@ -1011,20 +1131,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Bullets - use instanced rendering if enabled, otherwise individual meshes
-    if (RendererConfig.instancing.enableBullets && bulletInstancer) {
+    if (useBulletInstancing) {
       // Instanced bullet management
       // Add new bullets to instancer
       for (const b of state.bullets) {
-        if (!bulletInstancer.hasBullet(b.id)) {
-          bulletInstancer.allocateInstance(b.id);
+        if (!bulletInstancer!.hasBullet(b.id)) {
+          bulletInstancer!.allocateInstance(b.id);
         }
       }
       
       // Remove bullets that no longer exist
       const currentBulletIds = new Set(state.bullets.map(b => b.id));
-      for (const bulletId of bulletInstancer.getActiveBulletIds()) {
+      for (const bulletId of bulletInstancer!.getActiveBulletIds()) {
         if (!currentBulletIds.has(bulletId)) {
-          bulletInstancer.freeInstance(bulletId);
+          bulletInstancer!.freeInstance(bulletId);
         }
       }
     } else {
@@ -1045,10 +1165,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Mark instancer matrices as needing update
-    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-      healthBarInstancer.markMatricesNeedUpdate();
+    if (useHealthBarInstancing) {
+      healthBarInstancer!.markMatricesNeedUpdate();
     }
-    if (RendererConfig.instancing.enableShips) shipInstancer.markMatricesNeedUpdate();
+    if (useShipInstancing) shipInstancer.markMatricesNeedUpdate();
   }
 
   function updateTransforms() {
@@ -1058,7 +1178,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
-      if (RendererConfig.instancing.enableShips && shipInstancer.hasShip(s.id)) {
+      if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         const q = new THREE.Quaternion();
         q.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
@@ -1076,10 +1196,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
       // Update health bar
       if (RendererConfig.visual.enableHealthBars) {
-        if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-          // Update through health bar instancer
-          healthBarInstancer.updateHealthBar(s);
-        } else {
+          if (useHealthBarInstancing) {
+            // Update through health bar instancer
+            healthBarInstancer!.updateHealthBar(s);
+            // DEV: log the resulting per-instance X scale to help diagnose invisible bars
+            if (DEV_MODE) {
+                  try {
+                    const scaleX = (healthBarInstancer as unknown as { debugGetInstanceScale?: (id: number) => number | undefined })?.debugGetInstanceScale?.(s.id);
+                    console.debug('[threeRenderer][DEV] healthBar instance scale', { shipId: s.id, scaleX });
+                  } catch { void 0; }
+            }
+          } else {
           // Update through traditional approach
           const bar = healthBarMeshes.get(s.id);
           if (bar) {
@@ -1098,13 +1225,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
     
     // Update bullets - use instanced rendering if enabled, otherwise individual meshes
-    if (RendererConfig.instancing.enableBullets && bulletInstancer) {
+    if (useBulletInstancing) {
       // Update instanced bullet transforms
       for (const b of state.bullets) {
-        bulletInstancer.updateBulletTransform(b);
+        bulletInstancer!.updateBulletTransform(b);
       }
       // Mark instance matrix as needing update once per frame
-      bulletInstancer.markMatrixNeedsUpdate();
+      bulletInstancer!.markMatrixNeedsUpdate();
     } else {
       // Legacy individual mesh updates
       for (const b of state.bullets) {
@@ -1130,8 +1257,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Mark instancer matrices as needing update
-    if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-      healthBarInstancer.markMatricesNeedUpdate();
+    if (useHealthBarInstancing) {
+      healthBarInstancer!.markMatricesNeedUpdate();
     }
   }
 
@@ -1149,14 +1276,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     try {
       canvas.width = w;
       canvas.height = h;
-    } catch (e) { /* ignore if canvas isn't writable in test env */ }
+    } catch { /* ignore if canvas isn't writable in test env */ }
 
     // If available, also set the CSS size so the element visually matches the
     // layout; some browsers scale canvas using CSS which can affect the
     // projection if CSS size doesn't match the drawing buffer.
-    if ((canvas as any).style) {
-      (canvas as any).style.width = `${w}px`;
-      (canvas as any).style.height = `${h}px`;
+    if ((canvas as HTMLCanvasElement & { style?: CSSStyleDeclaration }).style) {
+      (canvas as HTMLCanvasElement & { style?: CSSStyleDeclaration }).style!.width = `${w}px`;
+      (canvas as HTMLCanvasElement & { style?: CSSStyleDeclaration }).style!.height = `${h}px`;
     }
 
     renderer.setPixelRatio(dpr);
@@ -1171,12 +1298,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update camera position using spherical coordinates
     updateCameraPosition();
 
-    try { effectsManager?.resize(w, h); } catch (e) { /* ignore */ }
+  try { effectsManager?.resize(w, h); } catch { /* ignore */ }
   }
 
   // Create effects manager (postprocessing) lazily
   let effectsManager: import('./effects.js').EffectsManager | null = null;
-  try { effectsManager = createEffectsManager(renderer as any, scene as any, camera as any); } catch (e) { effectsManager = null; }
+  try { effectsManager = createEffectsManager(renderer as unknown as THREE.WebGLRenderer, scene as unknown as THREE.Scene, camera as unknown as THREE.PerspectiveCamera); } catch { effectsManager = null; }
 
   function render(_dt: number) {
 
@@ -1189,11 +1316,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
     // This guarantees bars don't inherit ship rotation.
-    for (const [id, bar] of healthBarMeshes) {
+    for (const [_id, bar] of healthBarMeshes) {
       if (bar.parent !== healthBarsGroup) {
         try {
           if (bar.parent) bar.parent.remove(bar);
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         healthBarsGroup.add(bar);
       }
     }
@@ -1223,29 +1350,28 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         try {
             effectsManager.render(_dt);
             return;
-    } catch (e) {
-      logger.warn('Effects manager render failed, falling back to default renderer', e);
+    } catch (e) { void e;logger.warn('Effects manager render failed, falling back to default renderer', e as unknown);
     }
     }
 
     // Render the scene
   // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-  try { shipInstancer.sync(); } catch (e) { /* ignore instancer sync errors */ }
+  try { shipInstancer.sync(); } catch { /* ignore instancer sync errors */ }
   renderer.render(scene, camera);
   }
 
   window.addEventListener('resize', resize);
   resize();
 
-  return {
+  return ( {
     initDone: true,
     resize,
     render,
     dispose: () => {
       window.removeEventListener('resize', resize);
-      try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
-      try { bulletInstancer?.dispose(); } catch (e) { /* ignore */ }
-      try { healthBarInstancer?.dispose(); } catch (e) { /* ignore */ }
+  try { effectsManager?.dispose(); } catch { /* ignore */ }
+  try { bulletInstancer?.dispose(); } catch { /* ignore */ }
+  try { healthBarInstancer?.dispose(); } catch { /* ignore */ }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
@@ -1253,7 +1379,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shieldEffectMeshes.clear();
       // Dispose pooled billboard materials
       for (const m of billboardMaterialPool.values()) {
-        try { m.dispose(); } catch (e) { /* ignore */ }
+        try { m.dispose(); } catch { /* ignore */ }
       }
       billboardMaterialPool.clear();
       billboardMaterials.clear();
@@ -1267,7 +1393,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // and introspection. These are intentionally non-critical and best-effort.
     getParameters: adapterGetParameters,
     invalidateParameters: adapterInvalidateParameters,
-  };
+    // Test helpers
+    getUseShipInstancing() { return useShipInstancing; },
+    __resetForTests() {
+      recomputeInstancingGuards();
+    },
+  } ) as unknown as RendererHandles;
 }
 
 /**
@@ -1334,7 +1465,7 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
   });
   // Mark a stable program-like key on the material so systems can use it
   // as a canonical identity for GL program-level caching.
-  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch (e) { /* ignore in test env */ }
+  try { setRenderProgram(mat, mat); } catch { void 0; }
   billboardMaterialPool.set(key, mat);
   billboardMaterials.add(mat);
   return mat;
@@ -1351,24 +1482,31 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
       // Best-effort introspection: if it's a THREE.Material/ShaderMaterial,
       // capture constructor name and uniforms keys (if any). Keep the result
       // small and serializable-ish to avoid memory bloat.
-      const p: any = programLike as any;
-      const params: any = {
-        kind: p?.constructor?.name ?? typeof p,
+      type ProgramLikeInfo = { constructor?: { name?: string }; uniforms?: Record<string, unknown>; type?: string };
+      const p = programLike as unknown as ProgramLikeInfo;
+      const params: { kind: string; uniforms?: string[]; type?: string } = {
+        kind: p && p.constructor && p.constructor.name ? p.constructor.name : typeof programLike,
       };
-      if (p && p.uniforms && typeof p.uniforms === 'object') {
-        try { params.uniforms = Object.keys(p.uniforms); } catch (e) { params.uniforms = undefined; }
+      try {
+        if (p && p.uniforms && typeof p.uniforms === 'object') {
+          params.uniforms = Object.keys(p.uniforms);
+        }
+      } catch {
+        params.uniforms = undefined;
       }
       if (p && typeof p.type === 'string') params.type = p.type;
       // Cache the synthesized metadata.
       rendererProgramCache.set(programLike as object, params);
       return params;
-    } catch (e) {
+    } catch {
       return undefined;
     }
   }
 
   function adapterInvalidateParameters(programLike?: object | null): void {
     if (!programLike) return;
-    try { rendererProgramCache.delete(programLike as object); } catch (e) { /* ignore */ }
+    try { rendererProgramCache.delete(programLike as object); } catch { /* ignore */ }
   }
+
+
 

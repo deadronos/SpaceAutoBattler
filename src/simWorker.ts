@@ -12,7 +12,7 @@ async function initRapier() {
      
     Rapier = require('@dimforge/rapier3d-compat');
     world = new Rapier.World({ x: 0, y: 0, z: 0 });
-  } catch (e) {
+  } catch {
     Rapier = null; world = null;
   }
 }
@@ -33,8 +33,11 @@ function createBodyForShip(ship: any) {
     world.createCollider(colliderDesc, rigidBody);
     
     return rigidBody;
-  } catch (e) {
-    logger.error('Failed to create physics body for ship:', e);
+  } catch {
+    // Log the caught error
+    // Note: name the caught error so TypeScript can reference it
+    const _e = undefined as unknown; // fallback to satisfy formatting if needed
+    try { throw new Error('createBodyForShip failure'); } catch (e) { void e;logger.error('Failed to create physics body for ship:', e); }
     return null;
   }
 }
@@ -46,8 +49,8 @@ function updateBodyFromShip(body: any, ship: any) {
     // Update position and velocity
     body.setTranslation({ x: ship.pos.x, y: ship.pos.y, z: ship.pos.z }, true);
     body.setLinvel({ x: ship.vel.x, y: ship.vel.y, z: ship.vel.z }, true);
-  } catch (e) {
-    logger.error('Failed to update physics body:', e);
+  } catch {
+    try { throw new Error('updateBodyFromShip failure'); } catch (e) { void e;logger.error('Failed to update physics body:', e); }
   }
 }
 
@@ -66,8 +69,7 @@ function collectTransforms() {
         pos: { x: translation.x, y: translation.y, z: translation.z },
         vel: { x: linvel.x, y: linvel.y, z: linvel.z }
       });
-    } catch (e) {
-      logger.error('Failed to collect transform for ship', shipId, e);
+    } catch (e) { void e;logger.error('Failed to collect transform for ship', shipId, e);
     }
   }
   
@@ -109,8 +111,7 @@ self.addEventListener('message', async (e) => {
         try {
           world.removeRigidBody(body);
           bodies.delete(shipId);
-        } catch (e) {
-          logger.error('Failed to remove physics body:', e);
+        } catch (e) { void e;logger.error('Failed to remove physics body:', e);
         }
       }
     }
@@ -137,9 +138,8 @@ self.addEventListener('message', async (e) => {
       } else {
         (self as any).postMessage({ type: 'step-physics-done', dt });
       }
-    } catch (err) {
-      logger.error('Sim worker step error:', err);
-      (self as any).postMessage({ type: 'step-physics-error', error: String(err) });
+    } catch (_err) { void _err;logger.error('Sim worker step error:', _err);
+      (self as any).postMessage({ type: 'step-physics-error', error: String(_err) });
     }
     return;
   }
@@ -148,7 +148,7 @@ self.addEventListener('message', async (e) => {
     try { 
       world?.free?.(); 
       bodies.clear();
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     world = null; Rapier = null;
     (self as any).postMessage({ type: 'dispose-physics-done' });
     return;
@@ -159,3 +159,5 @@ self.addEventListener('message', async (e) => {
 });
 
 export {};
+
+

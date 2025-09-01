@@ -93,8 +93,7 @@ export class ProjectileSystem {
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
-      } catch (error) {
-        logger.warn('Error in projectile event handler:', error);
+      } catch (_error) { void _error;logger.warn('Error in projectile event handler:', _error);
       }
     }
   }
@@ -450,3 +449,4 @@ export class ProjectileSystem {
     return this.state.nextId++;
   }
 }
+

@@ -277,8 +277,8 @@ export const DefaultRendererConfig: RendererConfig = {
 
   instancing: {
     enableBullets: true, // default true for feature branch testing
-    enableBars: false, // default false until implementation is complete
-    enableShips: false, // default false until ship instancing is ready
+    enableBars: true, // default false until implementation is complete
+    enableShips: true, // default false until ship instancing is ready
     bullets: {
       initialCapacity: 800, // start with capacity for 800 bullets (raised to reduce instancer growth/warnings)
       maxCapacity: 2000, // max 2000 bullets before warning

@@ -19,6 +19,9 @@ export class HealthBarInstancer {
   private freeIndices: number[] = [];
   private usedCount = 0;
   private hasWarned = false;
+  // Readiness signalling: set to true once instanced meshes are created and added to the scene
+  public isReady = false;
+  private readyCallbacks: Array<() => void> = [];
 
   // Shared camera uniforms that need to be updated per frame
   private cameraUniforms = {
@@ -43,7 +46,32 @@ export class HealthBarInstancer {
     // Create InstancedMesh for each layer
     this.createLayerInstances(healthBarsGroup);
     
+    // Mark as ready and notify any listeners
+    this.isReady = true;
+    for (const cb of this.readyCallbacks) {
+      try {
+        cb();
+      } catch (_e) { void _e;logger.error('Error in HealthBarInstancer readiness callback', _e);
+      }
+    }
+    this.readyCallbacks.length = 0;
+
     logger.info(`HealthBarInstancer initialized with capacity ${this.capacity}`);
+  }
+
+  /**
+   * Register a callback to be invoked when the instancer is ready.
+   * If the instancer is already ready the callback is invoked immediately.
+   */
+  onReady(cb: () => void): void {
+    if (this.isReady) {
+      try {
+        cb();
+      } catch (_e) { void _e;logger.error('Error in HealthBarInstancer readiness callback', _e);
+      }
+      return;
+    }
+    this.readyCallbacks.push(cb);
   }
 
   /**
@@ -205,10 +233,26 @@ export class HealthBarInstancer {
   }
 
   /**
+   * Debug helper (DEV only): return the X scale value for the health layer
+   * instance for the given shipId, or null if not allocated.
+   */
+  debugGetInstanceScale(shipId: number): number | null {
+    const idx = this.activeShips.get(shipId);
+    if (idx === undefined) return null;
+    const instancedMesh = this.instancedMeshes.get('health');
+    if (!instancedMesh) return null;
+    const m = new THREE.Matrix4();
+    instancedMesh.getMatrixAt(idx, m);
+    const s = new THREE.Vector3();
+    m.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+    return s.x;
+  }
+
+  /**
    * Dispose resources
    */
   dispose(): void {
-    for (const [layer, instancedMesh] of this.instancedMeshes) {
+    for (const [_layer, instancedMesh] of this.instancedMeshes) {
       instancedMesh.geometry.dispose();
       if (Array.isArray(instancedMesh.material)) {
         instancedMesh.material.forEach(mat => mat.dispose());
@@ -472,3 +516,4 @@ export class HealthBarInstancer {
     }
   }
 }
+

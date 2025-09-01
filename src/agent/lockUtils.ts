@@ -21,8 +21,7 @@ export function readLock(): Lock | null {
   try {
     const raw = fs.readFileSync(lockPath, "utf8");
     return JSON.parse(raw) as Lock;
-  } catch (e) {
-    void e;
+  } catch (_e) { void _e; void _e;
     return null;
   }
 }
@@ -44,7 +43,7 @@ export function acquireLock(lock: Lock): boolean {
   } catch {
     try {
       if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
-    } catch (e) { void e; }
+    } catch (_e) { void _e; void _e; }
     return false;
   }
 }
@@ -69,3 +68,5 @@ export function appendAudit(entry: unknown) {
   );
   fs.writeFileSync(fname, JSON.stringify(safeEntry, null, 2), "utf8");
 }
+
+

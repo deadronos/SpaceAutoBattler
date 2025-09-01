@@ -140,7 +140,7 @@ export function createShipMesh(
       const svgAsset = pool.get(svgUrl);
       if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
     }
-  } catch (e) { /* ignore */ }
+  } catch (_e) { void _e;/* ignore */ }
 
   // Fallback placeholder, and kick off async load to replace visual when ready
   const geom = new THREE.ConeGeometry(8, 24, 8);
@@ -196,13 +196,12 @@ export function createShipMesh(
                 const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
                 shipInstancer.updateTransform(ship.id, ship.pos, q, scale);
                 // Remove placeholder from scene and track a lightweight object in the mesh map
-                try { if (placeholder.parent) placeholder.parent.remove(placeholder); } catch (e) { /* ignore */ }
+                try { if (placeholder.parent) placeholder.parent.remove(placeholder); } catch (_e) { void _e;/* ignore */ }
                 shipMeshes.set(ship.id, new THREE.Object3D());
                 // Don't add the textured non-instanced mesh
                 return;
               }
-            } catch (err) {
-              logger.warn('shipInstancer.allocate during migration failed', err as any);
+            } catch (e) { void e;logger.warn('shipInstancer.allocate during migration failed', e as any);
             }
           }
 
@@ -212,9 +211,8 @@ export function createShipMesh(
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
           shipMeshes.set(ship.id, ship3D);
-        } catch (err) {
-          // Non-fatal - if instancer registration or migration fails, still add the textured mesh
-          logger.warn('shipInstancer.registerPrototype or migration failed', err as any);
+        } catch (e) { void e;logger.warn('shipInstancer.allocate during migration failed', e as any);
+          logger.warn('shipInstancer.registerPrototype or migration failed', e as any);
           const ship3D = createTextured3DShip(asset.imageBitmap);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
@@ -222,9 +220,8 @@ export function createShipMesh(
           shipMeshes.set(ship.id, ship3D);
         }
       }
-    } catch (err) {
-      // Loading/parsing of SVG failed — log and keep placeholder
-      logger.error('Failed to load SVG asset for ship', err);
+    } catch (e) { void e;// Loading/parsing of SVG failed — log and keep placeholder
+      logger.error('Failed to load SVG asset for ship', e);
     }
   })();
 
@@ -436,8 +433,7 @@ export function disposeMeshFactory(factoryState: MeshFactoryState): void {
   for (const mat of factoryState.billboardMaterialPool.values()) {
     try { 
       mat.dispose(); 
-    } catch (e) { 
-      /* ignore */ 
+    } catch (_e) { void _e;/* ignore */ 
     }
   }
   factoryState.billboardMaterialPool.clear();
@@ -455,3 +451,4 @@ export const meshFactory: MeshFactory = {
   getPooledBillboardMaterial,
   disposeMeshFactory
 };
+

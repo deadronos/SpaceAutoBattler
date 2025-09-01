@@ -73,9 +73,8 @@ export class FileWatcher {
       }
 
       return modTime;
-    } catch (error) {
-      // Use centralized logger
-      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, error); } catch (e) { void e; }
+    } catch (_error) { void _error;// Use centralized logger
+      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, _error); } catch (_e) { void _e; void _e; }
       return null;
     }
   }
@@ -112,7 +111,7 @@ export class FileWatcher {
       // Last resort: use current time (not ideal but prevents errors)
       return Date.now();
 
-    } catch (e) { void e; return null; }
+    } catch (_e) { void _e; void _e; return null; }
   }
 
   // Notify callback about file change
@@ -121,8 +120,7 @@ export class FileWatcher {
     if (callback) {
       try {
         callback(filePath, changeType);
-      } catch (error) {
-        try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, error); } catch (e) { void e; }
+      } catch (_error) { void _error;try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, _error); } catch (_e) { void _e; void _e; }
       }
     }
   }
@@ -188,3 +186,4 @@ export function unwatchSVGFiles(svgUrls: string[]): void {
   const watcher = getFileWatcher();
   svgUrls.forEach(url => watcher.unwatch(url));
 }
+

@@ -17,9 +17,7 @@ export async function loadGLTF(state: GameState, url: string): Promise<AssetHand
       const cached = pool.get(url);
       if (cached) return { url, data: cached };
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) { void e; void e; /* ignore */ }
 
   // Lazy-load three GLTF loader to keep startup light
   const mod = await import('three/examples/jsm/loaders/GLTFLoader.js');
@@ -33,11 +31,11 @@ export async function loadGLTF(state: GameState, url: string): Promise<AssetHand
         try {
           const pool = (state as any).assetPool as Map<string, any> | undefined;
           if (pool) pool.set(url, gltf);
-        } catch (e) { /* ignore */ }
+        } catch (e) { void e; void e; /* ignore */ }
         resolve({ url, data: gltf });
       }, undefined, (err: any) => reject(err));
-    } catch (e) {
-      reject(e);
+    } catch (e) { void e;reject(e);
     }
   });
 }
+

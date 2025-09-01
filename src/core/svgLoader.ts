@@ -41,8 +41,7 @@ export class SVGLoader {
         this.worker = null;
       });
       logger.debug('[SVGLoader] SVG rasterization worker initialized');
-    } catch (e) {
-      logger.debug('[SVGLoader] Worker initialization failed, using main thread SVG rasterization:', e);
+    } catch (_e) { void _e;logger.debug('[SVGLoader] Worker initialization failed, using main thread SVG rasterization:', _e);
       this.worker = null;
     }
   }
@@ -276,13 +275,12 @@ export class SVGLoader {
       // Convert canvas to ImageBitmap
       return await createImageBitmap(canvas);
       
-    } catch (error) {
-      logger.error('[SVGLoader] SVG rasterization failed completely:', error);
+    } catch (_error) { void _error;logger.error('[SVGLoader] SVG rasterization failed completely:', _error);
 
       // Return error - don't create geometric fallback here anymore
       // Let the renderer handle fallbacks appropriately
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to rasterize SVG ${asset.url}: ${errorMessage}`);
+  const errorMessage = _error instanceof Error ? _error.message : String(_error);
+  throw new Error(`Failed to rasterize SVG ${asset.url}: ${errorMessage}`);
     }
   }
 
@@ -464,3 +462,4 @@ export async function loadSVGBitmap(
   }
   return asset.imageBitmap;
 }
+

@@ -19,6 +19,9 @@ type GroupData = {
 class ShipInstancerImpl {
   private scene?: THREE.Scene;
   private rootParent?: THREE.Group;
+  // Readiness signalling
+  public isReady = false;
+  private readyCallbacks: Array<() => void> = [];
   private groups = new Map<string, GroupData>();
   private defaultCapacity = 64;
   private growthFactor = 1.5;
@@ -34,11 +37,28 @@ class ShipInstancerImpl {
     if (!this.fallbackMaterial) this.fallbackMaterial = new THREE.MeshStandardMaterial({ color: 0x8888ff });
   }
 
+  onReady(cb: () => void): void {
+    if (this.isReady) {
+      try { cb(); } catch (_) { void _;/* no-op */ }
+      return;
+    }
+    this.readyCallbacks.push(cb);
+  }
+
   registerPrototype(className: string, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], materials?: THREE.Material | THREE.Material[]) {
     const geoms = Array.isArray(geometries) ? geometries : [geometries];
     const mats = materials ? (Array.isArray(materials) ? materials : [materials]) : geoms.map(() => this.fallbackMaterial!.clone());
     const padded = mats.length < geoms.length ? [...mats, ...Array(geoms.length - mats.length).fill(mats[mats.length - 1].clone())] : mats.slice(0, geoms.length);
     this.prototypeRegistry.set(className, { geometries: geoms, materials: padded });
+    // If init() has already been called and this is the first prototype,
+    // mark the instancer as ready so consumers can switch to instanced paths.
+    if (!this.isReady && this.rootParent) {
+      this.isReady = true;
+      for (const cb of this.readyCallbacks) {
+        try { cb(); } catch (_e) { void _e;/* ignore callback errors */ }
+      }
+      this.readyCallbacks.length = 0;
+    }
   }
 
   allocate(shipId: number, className: string, team?: string): boolean {
@@ -98,11 +118,11 @@ class ShipInstancerImpl {
   dispose() {
     for (const g of this.groups.values()) {
       for (const m of g.meshes) {
-        try { m.geometry.dispose(); } catch (_) {}
-        try { if (Array.isArray(m.material)) (m.material as any).forEach((x: any) => x.dispose()); else (m.material as any).dispose(); } catch (_) {}
-        try { if (m.parent) m.parent.remove(m); } catch (_) {}
+        try { m.geometry.dispose(); } catch (_) { void _;/* no-op */ }
+        try { if (Array.isArray(m.material)) (m.material as any).forEach((x: any) => x.dispose()); else (m.material as any).dispose(); } catch (_) { void _;/* no-op */ }
+        try { if (m.parent) m.parent.remove(m); } catch (_) { void _;/* no-op */ }
       }
-      try { if (g.parentGroup && g.parentGroup.parent) g.parentGroup.parent.remove(g.parentGroup); } catch (_) {}
+      try { if (g.parentGroup && g.parentGroup.parent) g.parentGroup.parent.remove(g.parentGroup); } catch (_) { void _;/* no-op */ }
     }
     this.groups.clear();
   }
@@ -145,6 +165,15 @@ class ShipInstancerImpl {
       prototypeMaterials: mats.slice(),
       parentGroup,
     };
+    // If this is the first created group and the instancer hasn't signaled ready,
+    // mark it ready now so consumers relying on createGroup can begin using instanced paths.
+    if (!this.isReady) {
+      this.isReady = true;
+      for (const cb of this.readyCallbacks) {
+        try { cb(); } catch (_e) { void _e;/* ignore */ }
+      }
+      this.readyCallbacks.length = 0;
+    }
     return group;
   }
 
@@ -165,7 +194,7 @@ class ShipInstancerImpl {
       group.parentGroup.add(newMesh);
       newMeshes.push(newMesh);
     }
-    for (const old of group.meshes) { try { if (old.parent) old.parent.remove(old); } catch (_) {} }
+    for (const old of group.meshes) { try { if (old.parent) old.parent.remove(old); } catch (_) { void _;/* no-op */ } }
     group.meshes = newMeshes;
     for (let i = newCap - 1; i >= oldCap; i--) group.freeIndices.push(i);
     group.capacity = newCap;
@@ -177,6 +206,7 @@ const impl = new ShipInstancerImpl();
 
 export const shipInstancer = {
   init: (scene: THREE.Scene, parent: THREE.Group) => impl.init(scene, parent),
+  onReady: (cb: () => void) => impl.onReady(cb),
   registerPrototype: (className: string, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], materials?: THREE.Material | THREE.Material[]) => impl.registerPrototype(className, geometries, materials),
   allocate: (shipId: number, className: string, team?: string) => impl.allocate(shipId, className, team),
   free: (shipId: number) => impl.free(shipId),
@@ -186,4 +216,6 @@ export const shipInstancer = {
   sync: () => impl.sync(),
   dispose: () => impl.dispose(),
   getStats: () => impl.getStats(),
+  isReady: () => impl.isReady,
 } as const;
+

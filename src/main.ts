@@ -4,7 +4,7 @@ import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } f
 // renderer instances are created by other modules.
 import { applyGlobalPatches } from './renderer/effects.js';
 
-try { applyGlobalPatches(); } catch (e) { /* ignore */ }
+try { applyGlobalPatches(); } catch (_e) { void _e;/* ignore */ }
 import type { GameState, Team, UIElements } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
@@ -86,14 +86,12 @@ function initGame(seed?: string) {
           state.assetPool!.set(svgUrl, asset);
 
           logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
-        } catch (error) {
-          logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error);
+        } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
         }
       }
 
       logger.debug('[main.ts] SVG asset preloading complete');
-      } catch (error) {
-      logger.error('[main.ts] Error during SVG asset preloading:', error);
+      } catch (_error) { void _error;logger.error('[main.ts] Error during SVG asset preloading:', _error);
     }
   })();
   (window as any).debugSVG = {
@@ -110,8 +108,7 @@ function initGame(seed?: string) {
       try {
         await svgLoader.reloadAllAssets();
         logger.debug('[SVG Debug] All SVG assets reloaded successfully');
-      } catch (error) {
-        logger.error('[SVG Debug] Failed to reload SVG assets:', error);
+      } catch (_error) { void _error;logger.error('[SVG Debug] Failed to reload SVG assets:', _error);
       }
     },
 
@@ -146,9 +143,9 @@ function initGame(seed?: string) {
             state.assetPool.set(`ship-${cls}-red`, res);
             state.assetPool.set(`ship-${cls}-blue`, res);
           }
-        } catch (e) { /* ignore missing assets */ }
+        } catch (_e) { void _e;/* ignore missing assets */ }
       }
-    } catch (e) { /* ignore */ }
+    } catch (_e) { void _e;/* ignore */ }
   })();
 
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
@@ -160,22 +157,50 @@ function initGame(seed?: string) {
       let lastShipDataVersion = -1;
       
       w.addEventListener('message', (ev) => {
-        const { type, ok, transforms } = ev.data || {};
+        const data = ev.data || {};
+        const type = data.type;
+        // init handshake
         if (type === 'init-physics-done') {
-          ready = !!ok;
-        } else if (type === 'step-physics-done' && transforms) {
-          // Update ship positions and velocities from physics transforms
-          for (const transform of transforms) {
-            const ship = state.ships.find(s => s.id === transform.shipId);
-            if (ship) {
-              ship.pos.x = transform.pos.x;
-              ship.pos.y = transform.pos.y;
-              ship.pos.z = transform.pos.z;
-              ship.vel.x = transform.vel.x;
-              ship.vel.y = transform.vel.y;
-              ship.vel.z = transform.vel.z;
+          ready = !!data.ok;
+          return;
+        }
+
+        // step result: supports packed Float32Array buffer (transformsBuffer)
+        if (type === 'step-physics-done') {
+          // Prefer transferable typed-array buffer payload for low-overhead transfer
+          const buf = data.transformsBuffer || (data.transforms && data.transforms.buffer) || null;
+          if (buf) {
+            try {
+              const arr = new Float32Array(buf);
+              // Each entry is [id, px, py, pz, vx, vy, vz]
+              for (let i = 0; i < arr.length; i += 7) {
+                const id = Math.floor(arr[i]);
+                const ship = state.shipIndex?.get(id) ?? state.ships.find(s => s.id === id);
+                if (!ship) continue;
+                ship.pos.x = arr[i + 1]; ship.pos.y = arr[i + 2]; ship.pos.z = arr[i + 3];
+                ship.vel.x = arr[i + 4]; ship.vel.y = arr[i + 5]; ship.vel.z = arr[i + 6];
+              }
+            } catch (_e) { void _e;// Fallback to older object-based transforms if parsing fails
+              const transforms = data.transforms || [];
+              for (const transform of transforms) {
+                const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
+                if (ship) {
+                  ship.pos.x = transform.pos.x; ship.pos.y = transform.pos.y; ship.pos.z = transform.pos.z;
+                  ship.vel.x = transform.vel.x; ship.vel.y = transform.vel.y; ship.vel.z = transform.vel.z;
+                }
+              }
+            }
+          } else if (data.transforms) {
+            // Legacy: array of objects
+            for (const transform of data.transforms) {
+              const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
+              if (ship) {
+                ship.pos.x = transform.pos.x; ship.pos.y = transform.pos.y; ship.pos.z = transform.pos.z;
+                ship.vel.x = transform.vel.x; ship.vel.y = transform.vel.y; ship.vel.z = transform.vel.z;
+              }
             }
           }
+          return;
         }
       });
       
@@ -200,19 +225,18 @@ function initGame(seed?: string) {
             
             // Step physics
             w.postMessage({ type: 'step-physics', payload: { dt } }); 
-          } catch (e) { /* ignore */ }
+          } catch (_e) { void _e;/* ignore */ }
         },
-        dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (e) { /* ignore */ } },
+        dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (_e) { void _e;/* ignore */ } },
       };
 
       // Wait a short time for readiness, then mark initDone if ready
       setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
-    } catch (e) {
-      // Fallback to in-process physics stepper
+    } catch (_e) { void _e;// Fallback to in-process physics stepper
       try {
         const ps = await createPhysicsStepper(state as any);
         (state as any).physicsStepper = ps;
-      } catch (ee) { /* ignore */ }
+      } catch (ee) { void ee;/* ignore */ }
     }
   })();
   // Seeded initial fleets
@@ -539,7 +563,7 @@ function startLoops(state: GameState, ui: UIElements) {
       let steps = 0;
       while (acc >= fixedDt && steps < maxSteps) {
         simulateStep(state, fixedDt * state.speedMultiplier);
-        try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (e) { /* ignore if missing */ }
+        try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (_e) { void _e;/* ignore if missing */ }
         state.time += fixedDt * state.speedMultiplier; state.tick++;
         acc -= fixedDt; steps++;
       }
@@ -576,3 +600,5 @@ function startLoops(state: GameState, ui: UIElements) {
 logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 
 window.addEventListener('DOMContentLoaded', () => initGame());
+
+

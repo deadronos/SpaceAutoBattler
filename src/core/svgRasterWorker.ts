@@ -172,9 +172,8 @@ async function rasterizeSvgToImageBitmap(
     // Convert canvas to final ImageBitmap
     return canvas.transferToImageBitmap();
     
-  } catch (error) {
-    // Fallback: create a geometric representation
-    logger.debug('[svgRasterWorker] SVG rasterization failed, using geometric fallback:', error);
+  } catch (_error) { void _error;// Fallback: create a geometric representation
+    logger.debug('[svgRasterWorker] SVG rasterization failed, using geometric fallback:', _error);
     
     const centerX = width / 2;
     const centerY = height / 2;
@@ -328,10 +327,10 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
         break;
       }
     }
-  } catch (error) {
-    logger.error('[svgRasterWorker] Error processing request:', error);
+  } catch (_error) { void _error;logger.error('[svgRasterWorker] Error processing request:', _error);
     // Send error response if needed
   }
 });
 
 export {};
+
