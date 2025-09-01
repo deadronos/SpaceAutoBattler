@@ -25,8 +25,8 @@ function mulberry32(a: number) {
 
 export function createRNG(seed: string): RNG {
   const seedFn = xmur3(seed);
-  let s = seedFn();
-  let rand = mulberry32(s);
+  const s = seedFn();
+  const rand = mulberry32(s);
   return {
     seed,
     next: () => rand(),

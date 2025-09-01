@@ -182,8 +182,8 @@ export class AIController {
       const teamShips = this.state.ships.filter(s => s.team === team && s.health > 0);
       if (teamShips.length === 0) continue;
 
-      let currentScout = this.teamScouts.get(team);
-      let scoutShip = currentScout ? teamShips.find(s => s.id === currentScout) : null;
+      const currentScout = this.teamScouts.get(team);
+      const scoutShip = currentScout ? teamShips.find(s => s.id === currentScout) : null;
 
       // If current scout is dead/gone or there's no scout, assign a new one
       if (!scoutShip) {

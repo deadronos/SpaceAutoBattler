@@ -1,7 +1,7 @@
 // Physics properties and collider configuration
 import type { ShipClass } from '../types/index.js';
 
-export interface PhysicsConfig {
+export interface PhysicsConfigType {
   damping: {
     linear: number; // Linear damping factor
     angular: number; // Angular damping factor
@@ -38,7 +38,7 @@ export interface PhysicsConfig {
   };
 }
 
-export const DefaultPhysicsConfig: PhysicsConfig = {
+export const DefaultPhysicsConfig: PhysicsConfigType = {
   damping: {
     linear: 0.1,
     angular: 0.5,
@@ -72,5 +72,5 @@ export const DefaultPhysicsConfig: PhysicsConfig = {
   },
 };
 
-// Export the default config as PhysicsConfig for backward compatibility
+// Export the default config value as `PhysicsConfig` for backward compatibility
 export const PhysicsConfig = DefaultPhysicsConfig;

@@ -1,34 +1,29 @@
-# Memory Index for SpaceAutoBattler
+# Project Memory Index
 
-This index lists internal memory files created by the Serena MCP agent for quick discovery.
+This index lists the short searchable memory summaries generated for the `src/` codebase. These are intended to help new contributors and automated agents quickly find per-file summaries and integration notes.
 
-Core memories (handwritten or agent-updated):
-- project_purpose: Short project purpose and tech stack summary
-- code_structure: High-level code structure and important modules (src/)
-- entrypoints: Main entrypoints and npm scripts (package.json, src/main.ts)
-- turret_firing_api: Contract for `fireTurrets` behavior and bullet creation
-- update_bullets_api: Contract for `updateBullets` behavior and collision handling
-- process_deaths_xp_api: Contract for `processDeathsAndXP` and kill crediting
-- handle_level_ups_api: Contract for `handleLevelUps` progression logic
-- carrier_spawn_logic_api: Contract for `carrierSpawnLogic` and fighter spawning
+## How to use
+- Each memory is a short, focused Markdown document describing a single source file's responsibility, key functions, integration points, and suggested follow-ups.
+- Use these when onboarding, writing tests, or making changes so you can quickly find where behavior is implemented.
+- If you change source files, consider updating the corresponding memory entry.
+- If you add new important modules, create a new memory file under `memory/` and add a link to this index.
 
-Auto-generated stub files (created by `scripts/generate_memories.mjs`):
-- game_state_api.md (memory/game_state_api.md)
-- ai_controller_api.md (memory/ai_controller_api.md)
-- physics_api.md (memory/physics_api.md)
-- search_utils_api.md (memory/search_utils_api.md)
-- spatial_index_api.md (memory/spatial_index_api.md)
-- asset_loader_api.md (memory/asset_loader_api.md)
-- svg_loader_api.md (memory/svg_loader_api.md)
-- sim_worker_api.md (memory/sim_worker_api.md)
-- three_renderer_api.md (memory/three_renderer_api.md)
+## Per-file memories
+- [core-gameState.md](./core-gameState.md) — `src/core/gameState.ts` responsibilities and key functions.
+- [core-aiController.md](./core-aiController.md) — `src/core/aiController.ts` (intents, steering, formation, roaming anchors).
+- [renderer-effects.md](./renderer-effects.md) — `src/renderer/effects.ts` (EffectsManager, safe readbacks).
+- [renderer-threeRenderer.md](./renderer-threeRenderer.md) — `src/renderer/threeRenderer.ts` (Three renderer, instancing, skybox, shield shader).
+- [main-simWorker-protocol.md](./main-simWorker-protocol.md) — message protocol between `src/main.ts` and `src/simWorker.ts`.
+- [core-assetLoader.md](./core-assetLoader.md) — `src/core/assetLoader.ts` (dynamic GLTF loader, assetPool caching).
+- [core-physics.md](./core-physics.md) — `src/core/physics.ts` (Rapier physics stepper API).
+- [core-ai-decisionEngine.md](./core-ai-decisionEngine.md) — `src/core/ai/decisionEngine.ts` (scoring helpers).
+- [core-ai-intentManager.md](./core-ai-intentManager.md) — `src/core/ai/intentManager.ts` (intent lifetime helper).
+- [agent-lockUtils.md](./agent-lockUtils.md) — `src/agent/lockUtils.ts` (file-based lock utilities).
+- [core-assetPool.md](./core-assetPool.md) — `src/core/assetPool.ts` (LRU asset pool implementation).
 
-Other memories:
-- contributor_notes: (existing memory placeholder)
-- ci_instructions: (existing memory placeholder)
-- style_conventions: (existing memory placeholder)
-- suggested_commands: (existing memory placeholder)
+## Maintenance guidelines
+- Keep each memory short (200-800 words) and focused on the file's responsibilities.
+- Link to relevant config files and note key tunables where appropriate.
+- Prefer short examples and references to where the file is used (e.g., `main.ts` or `simWorker.ts`).
 
-See `memory/README.md` for regeneration instructions.
-
-_Last updated: 2025-08-31_
+Generated on 2025-09-01 by Serena.

@@ -22,7 +22,7 @@ export interface PhysicsStepper {
 
 export async function createPhysicsStepper(state: GameState): Promise<PhysicsStepper> {
   // Dynamically import rapier to avoid loading WASM at module eval time.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const Rapier = require('@dimforge/rapier3d-compat') as any;
 
   // Create the physics world with enhanced settings

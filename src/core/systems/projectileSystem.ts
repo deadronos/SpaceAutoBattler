@@ -12,6 +12,7 @@ import type { SpatialIndex } from '../spatialIndex.js';
 import type { TimeAdapter } from '../adapters/timeAdapter.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
 import { applyBoundaryPhysicsBullet } from '../boundaryUtils.js';
+import * as logger from '../../utils/logger.js';
 
 /**
  * Fire intent describes a request to create a projectile
@@ -93,7 +94,7 @@ export class ProjectileSystem {
       try {
         handler(event);
       } catch (error) {
-        console.warn('Error in projectile event handler:', error);
+        logger.warn('Error in projectile event handler:', error);
       }
     }
   }

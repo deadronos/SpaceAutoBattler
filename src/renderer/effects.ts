@@ -1,6 +1,7 @@
 import * as three from 'three';
 import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
 import { FloatType, WebGLRenderTarget, NearestFilter, RGBAFormat, UnsignedByteType } from 'three';
+import * as logger from '../utils/logger.js';
 
 // Module-scoped helpers for safe readbacks
 const tempRTCache: Record<string, WebGLRenderTarget> = {};
@@ -107,7 +108,7 @@ export interface EffectsManager {
 
 export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera): EffectsManager {
   // Lazy import to avoid build-time coupling; most deployments will have `postprocessing` installed.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   let pp: any = null;
   try { pp = require('postprocessing'); } catch (e) { pp = null; }
 
@@ -154,7 +155,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
           if (renderTarget && renderTarget.texture) {
             const temp = getTempRT(renderTarget);
             if (temp) {
-              try { console.info('[EffectsManager] wrapper readRenderTargetPixels: using temp RT'); } catch (e) {}
+              try { logger.info('[EffectsManager] wrapper readRenderTargetPixels: using temp RT'); } catch (e) {}
               blitToTemp(this as WebGLRenderer, renderTarget, temp);
               return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
             }
@@ -184,7 +185,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // Also try to patch the three.js WebGLRenderer prototype in case the
   // bundle includes multiple copies or other modules create renderers.
   try {
-    try { console.info('[EffectsManager] attempting to patch WebGLRenderer.prototype'); } catch (e) {}
+  try { logger.info('[EffectsManager] attempting to patch WebGLRenderer.prototype'); } catch (e) {}
     if (three && (three as any).WebGLRenderer && (three as any).WebGLRenderer.prototype) {
       const proto = (three as any).WebGLRenderer.prototype;
       if (typeof proto.readRenderTargetPixels === 'function' && !(proto.readRenderTargetPixels as any).__effectsManagerPatched) {
@@ -194,7 +195,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
             if (renderTarget && renderTarget.texture) {
               const temp = getTempRT(renderTarget);
               if (temp) {
-                try { console.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (e) {}
+                try { logger.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (e) {}
                 blitToTemp(this as WebGLRenderer, renderTarget, temp);
                 return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
               }
@@ -215,7 +216,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
             if (renderTarget && renderTarget.texture) {
               const temp = getTempRT(renderTarget);
               if (temp) {
-                try { console.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (e) {}
+                try { logger.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (e) {}
                 blitToTemp(this as WebGLRenderer, renderTarget, temp);
                 return orig2.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
               }
@@ -246,7 +247,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
             proto[name] = function () {
               try {
                 const stack = (new Error()).stack || '';
-                console.info('[EffectsManager][GL] readPixels called, stack:', stack.split('\n').slice(0,4).join(' | '));
+                logger.info('[EffectsManager][GL] readPixels called, stack:', stack.split('\n').slice(0,4).join(' | '));
               } catch (e) {}
               return orig.apply(this, arguments as any);
             };
@@ -269,7 +270,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
     const DepthCopyMode = pp.DepthCopyMode || pp.DepthCopyMode;
       if (DepthCopyPass && typeof DepthCopyPass.prototype.render === 'function') {
       const originalRender = DepthCopyPass.prototype.render;
-        try { console.info('[EffectsManager] Patched DepthCopyPass.render to use async read when available'); } catch (e) { /* ignore logging errors */ }
+  try { logger.info('[EffectsManager] Patched DepthCopyPass.render to use async read when available'); } catch (e) { /* ignore logging errors */ }
 
       // helper to unpack RGBA->depth for non-float packed textures (matches postprocessing logic)
       const unpackRGBAToDepth = (packedDepth: Uint8Array) => {
@@ -318,7 +319,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
             const temp = getTempRT(renderTarget);
 
             if (temp) {
-              try { console.info('[EffectsManager] depth-read temp=true async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (e) {}
+              try { logger.info('[EffectsManager] depth-read temp=true async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (e) {}
               blitToTemp(rendererArg, renderTarget, temp);
               // Use the centralized safe read helper which will prefer async API
               // and otherwise perform a deferred sync read. This makes the
@@ -340,7 +341,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
               }
             } else {
               // No temp RT available: fall back to previous behavior.
-              try { console.info('[EffectsManager] depth-read temp=false async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (e) {}
+              try { logger.info('[EffectsManager] depth-read temp=false async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (e) {}
               if (hasAsyncRead) {
                 (rendererArg as any).readRenderTargetPixelsAsync(renderTarget, x, y, 1, 1, pixelBuffer).then(() => {
                   try {
@@ -630,7 +631,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
         proto[name] = function () {
           try {
             const stack = (new Error()).stack || '';
-            console.info('[EffectsManager][GL] readPixels called, stack:', stack.split('\n').slice(0,4).join(' | '));
+            logger.info('[EffectsManager][GL] readPixels called, stack:', stack.split('\n').slice(0,4).join(' | '));
           } catch (e) {}
           return orig.apply(this, arguments as any);
         };
@@ -650,7 +651,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                 if (renderTarget && renderTarget.texture) {
                   const temp = getTempRT(renderTarget);
                   if (temp) {
-                    try { console.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (e) {}
+                    try { logger.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (e) {}
                     blitToTemp(this as WebGLRenderer, renderTarget, temp);
                     return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
                   }
@@ -673,7 +674,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
               if (renderTarget && renderTarget.texture) {
                 const temp = getTempRT(renderTarget);
                 if (temp) {
-                  try { console.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (e) {}
+                  try { logger.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (e) {}
                   blitToTemp(this as WebGLRenderer, renderTarget, temp);
                   return orig2.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
                 }

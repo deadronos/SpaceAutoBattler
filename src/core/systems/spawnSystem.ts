@@ -11,6 +11,7 @@ import type { PhysicsAdapter } from '../adapters/physicsAdapter.js';
 import type { RendererAdapter } from '../adapters/rendererAdapter.js';
 import type { SpatialIndex } from '../spatialIndex.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
+import * as logger from '../../utils/logger.js';
 import { nextLevelXp, applyLevelUps } from '../../config/progression.js';
 import { FleetConfig } from '../../config/fleetConfig.js';
 import { CarrierSpawnConfig } from '../../config/carrierSpawnConfig.js';
@@ -93,7 +94,7 @@ export class SpawnSystem {
       try {
         handler(event);
       } catch (error) {
-        console.warn('Error in spawn event handler:', error);
+        logger.warn('Error in spawn event handler:', error);
       }
     }
   }
@@ -361,7 +362,7 @@ export class SpawnSystem {
         });
       }
     } catch (error) {
-      console.warn('Failed to register ship with physics adapter:', error);
+      logger.warn('Failed to register ship with physics adapter:', error);
     }
 
     // Register with renderer
@@ -370,7 +371,7 @@ export class SpawnSystem {
         this.rendererAdapter.ensureMeshForShip(ship);
       }
     } catch (error) {
-      console.warn('Failed to register ship with renderer adapter:', error);
+      logger.warn('Failed to register ship with renderer adapter:', error);
     }
 
     // Register with spatial index
@@ -379,7 +380,7 @@ export class SpawnSystem {
         this.spatialIndex.insert(ship.id, ship.pos, 20, ship.team);
       }
     } catch (error) {
-      console.warn('Failed to register ship with spatial index:', error);
+      logger.warn('Failed to register ship with spatial index:', error);
     }
   }
 

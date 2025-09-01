@@ -11,6 +11,8 @@ import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
+import { updateBillboardBars } from './overlay.js';
+export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
@@ -1256,13 +1258,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
  * @param bars - Array of health/shield bar meshes.
  * @param camera - The active camera.
  */
-export function updateBillboardBars(bars: THREE.Object3D[], camera: THREE.Camera) {
-    const cameraMatrix = new THREE.Matrix4().extractRotation(camera.matrixWorld);
 
-    for (const bar of bars) {
-        bar.quaternion.setFromRotationMatrix(cameraMatrix);
-    }
-}
 
 
 // Billboard shader: place quad in world space using camera right/up vectors so it always faces the camera.

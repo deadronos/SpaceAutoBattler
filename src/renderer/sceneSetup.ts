@@ -3,6 +3,7 @@ import type { GameState } from '../types/index.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { skyboxVertexShader, skyboxFragmentShader } from './shaders/skyboxShader.js';
+import * as logger from '../utils/logger.js';
 
 /**
  * Scene setup and lifecycle management
@@ -220,7 +221,7 @@ function generateStaticStarfieldTexture(): THREE.Texture {
 
   // Handle test environment where canvas context might not be available
   if (!ctx) {
-    console.warn('Canvas 2D context not available, creating fallback texture');
+    logger.warn('Canvas 2D context not available, creating fallback texture');
     // Create a simple colored texture as fallback
     const fallbackCanvas = document.createElement('canvas');
     fallbackCanvas.width = 32;
