@@ -5,6 +5,7 @@ import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import * as logger from '../utils/logger.js';
+import { shipInstancer } from './shipInstancer.js';
 
 /**
  * Mesh factory and pooling for ships, bullets, and UI elements
@@ -162,11 +163,64 @@ export function createShipMesh(
       });
       if (pool) pool.set(svgUrl, asset);
       if (asset?.imageBitmap && placeholder.parent) {
-        const ship3D = createTextured3DShip(asset.imageBitmap);
-        ship3D.position.copy(placeholder.position);
-        shipsGroup.add(ship3D);
-        shipsGroup.remove(placeholder);
-        shipMeshes.set(ship.id, ship3D);
+        // Build a representative list of geometries and materials matching the textured ship parts.
+        try {
+          const teamColor = ship.team === 'red' ? 0xff4444 : 0x4444ff;
+          const texturedMaterial = new THREE.MeshBasicMaterial({ map: new THREE.Texture(asset.imageBitmap), transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
+          texturedMaterial.map!.needsUpdate = true;
+          const teamMaterial = new THREE.MeshBasicMaterial({ color: teamColor, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+
+          const size = ShipVisualConfig.ships[ship.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+          const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
+          const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
+          const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
+          const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
+          const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+          const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+
+          const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
+          const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
+
+          // Register prototype for the instancer so future ships of this class can use instancing.
+          shipInstancer.registerPrototype(ship.class, geoms, mats);
+
+          // If instancing is enabled and we can allocate for this existing ship, migrate the placeholder
+          // to an instanced slot instead of adding a non-instanced textured mesh.
+          if (RendererConfig.instancing.enableShips) {
+            try {
+              const allocated = shipInstancer.allocate(ship.id, ship.class, ship.team);
+              if (allocated) {
+                // Immediately set transform so the instance appears in the correct place
+                const q = new THREE.Quaternion();
+                q.setFromEuler(new THREE.Euler(ship.orientation.pitch, ship.orientation.yaw - Math.PI/2, ship.orientation.roll));
+                const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
+                shipInstancer.updateTransform(ship.id, ship.pos, q, scale);
+                // Remove placeholder from scene and track a lightweight object in the mesh map
+                try { if (placeholder.parent) placeholder.parent.remove(placeholder); } catch (e) { /* ignore */ }
+                shipMeshes.set(ship.id, new THREE.Object3D());
+                // Don't add the textured non-instanced mesh
+                return;
+              }
+            } catch (err) {
+              logger.warn('shipInstancer.allocate during migration failed', err as any);
+            }
+          }
+
+          // Fallback: create full textured mesh and replace placeholder
+          const ship3D = createTextured3DShip(asset.imageBitmap);
+          ship3D.position.copy(placeholder.position);
+          shipsGroup.add(ship3D);
+          shipsGroup.remove(placeholder);
+          shipMeshes.set(ship.id, ship3D);
+        } catch (err) {
+          // Non-fatal - if instancer registration or migration fails, still add the textured mesh
+          logger.warn('shipInstancer.registerPrototype or migration failed', err as any);
+          const ship3D = createTextured3DShip(asset.imageBitmap);
+          ship3D.position.copy(placeholder.position);
+          shipsGroup.add(ship3D);
+          shipsGroup.remove(placeholder);
+          shipMeshes.set(ship.id, ship3D);
+        }
       }
     } catch (err) {
       // Loading/parsing of SVG failed — log and keep placeholder

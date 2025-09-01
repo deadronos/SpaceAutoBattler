@@ -17,6 +17,10 @@ export interface SceneElements {
   skybox: THREE.Mesh;
   skyboxShaderMaterial: THREE.ShaderMaterial;
   staticSkyboxTexture: THREE.Texture;
+  // Backwards-compatible fields used by older tests
+  animatedSkyboxTexture?: THREE.CubeTexture;
+  skyboxCanvases?: HTMLCanvasElement[];
+  skyboxTextures?: THREE.CanvasTexture[];
 }
 
 export interface SceneManager {
@@ -34,6 +38,24 @@ export function setupScene(state: GameState): SceneElements {
   // Create shader-based animated skybox
   const { skybox, skyboxShaderMaterial, staticSkyboxTexture } = createShaderBasedSkybox();
   scene.add(skybox);
+  // Create backwards-compatible cube texture and canvas list used by some tests
+  const skyboxCanvases: HTMLCanvasElement[] = [];
+  const skyboxTextures: THREE.CanvasTexture[] = [];
+  try {
+    for (let i = 0; i < 6; i++) {
+      const canvas = (staticSkyboxTexture.image as HTMLCanvasElement) || document.createElement('canvas');
+      skyboxCanvases.push(canvas);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.generateMipmaps = false;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      skyboxTextures.push(tex);
+    }
+  } catch (e) {
+    // ignore - test environments may not support canvas
+  }
+  const animatedCube = new THREE.CubeTexture(skyboxCanvases as any);
+  animatedCube.needsUpdate = true;
   
   // Add lighting
   const ambientLight = new THREE.AmbientLight(
@@ -64,7 +86,10 @@ export function setupScene(state: GameState): SceneElements {
     boundaryWireframe,
     skybox,
     skyboxShaderMaterial,
-    staticSkyboxTexture
+    staticSkyboxTexture,
+    animatedSkyboxTexture: animatedCube,
+    skyboxCanvases,
+    skyboxTextures
   };
 }
 

@@ -241,16 +241,23 @@ export class SpatialGrid {
     }
 
     // Iterate only occupied cells (use locals for speed)
+    // Use a seen set to avoid duplicates in case an entity accidentally appears
+    // in multiple buckets (defensive - keeps results stable across edge cases).
+    const seen = new Set<number>();
     for (let i = 0; i < occupiedKeys.length; i++) {
       const bucket = grid.get(occupiedKeys[i]);
       if (!bucket) continue; // may have been emptied since cache creation
       for (let j = 0; j < bucket.length; j++) {
         const entity = bucket[j];
+        if (seen.has(entity.id)) continue;
         const dxp = entity.pos.x - center.x;
         const dyp = entity.pos.y - center.y;
         const dzp = entity.pos.z - center.z;
         const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
-        if (distSq <= radiusSq) results.push(entity);
+        if (distSq <= radiusSq) {
+          seen.add(entity.id);
+          results.push(entity);
+        }
       }
     }
     return results;
@@ -320,16 +327,22 @@ export class SpatialGrid {
       occupiedKeys = keysCopy;
     }
 
+    // Guard against duplicate invocations for the same entity id
+    const seenFn = new Set<number>();
     for (let i = 0; i < occupiedKeys.length; i++) {
       const bucket = grid.get(occupiedKeys[i]);
       if (!bucket) continue;
       for (let j = 0; j < bucket.length; j++) {
         const entity = bucket[j];
+        if (seenFn.has(entity.id)) continue;
         const dxp = entity.pos.x - center.x;
         const dyp = entity.pos.y - center.y;
         const dzp = entity.pos.z - center.z;
         const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
-        if (distSq <= radiusSq) fn(dxp, dyp, dzp, distSq, entity);
+        if (distSq <= radiusSq) {
+          seenFn.add(entity.id);
+          fn(dxp, dyp, dzp, distSq, entity);
+        }
       }
     }
   }

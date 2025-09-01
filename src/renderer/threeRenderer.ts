@@ -10,6 +10,7 @@ import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
+import { shipInstancer } from './shipInstancer.js';
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
@@ -366,6 +367,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   let healthBarInstancer: HealthBarInstancer | null = null;
   if (RendererConfig.instancing.enableBars) {
     healthBarInstancer = new HealthBarInstancer(scene, healthBarsGroup);
+  }
+
+  // Initialize ship instancer if enabled
+  if (RendererConfig.instancing.enableShips) {
+    try { shipInstancer.init(scene, shipsGroup); } catch (e) { logger.warn('Ship instancer init failed', e); }
   }
   
   // Dev / feature toggles
@@ -920,8 +926,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Ships
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
-        const m = meshForShip(s);
-        shipMeshes.set(s.id, m); shipsGroup.add(m);
+        // If ship instancing is enabled and we can allocate, don't create an individual mesh
+        if (RendererConfig.instancing.enableShips && (shipInstancer as any).allocate) {
+          const allocated = shipInstancer.allocate(s.id, s.class, s.team);
+          if (allocated) {
+            // create a lightweight placeholder transform via the instancer only
+            shipMeshes.set(s.id, new THREE.Object3D()); // track existence
+          } else {
+            const m = meshForShip(s);
+            shipMeshes.set(s.id, m); shipsGroup.add(m);
+          }
+        } else {
+          const m = meshForShip(s);
+          shipMeshes.set(s.id, m); shipsGroup.add(m);
+        }
       }
       // Health bars
       if (RendererConfig.visual.enableHealthBars) {
@@ -957,6 +975,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         // Also remove shield effect
         const shield = shieldEffectMeshes.get(id);
         if (shield) { shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id); }
+        // Free ship instancer entry if present
+        if (RendererConfig.instancing.enableShips) shipInstancer.free(id);
       }
     }
     // Remove health bars for ships that no longer exist (non-instanced only)
@@ -1013,6 +1033,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     if (RendererConfig.instancing.enableBars && healthBarInstancer) {
       healthBarInstancer.markMatricesNeedUpdate();
     }
+    if (RendererConfig.instancing.enableShips) shipInstancer.markMatricesNeedUpdate();
   }
 
   function updateTransforms() {
@@ -1022,14 +1043,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
-      m.position.set(s.pos.x, s.pos.y, s.pos.z);
-      // Set 3D rotation using ship's orientation
-      // Ships are modeled pointing along +X axis, so we need to adjust
-      // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-      m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
-      
-      const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
-      m.scale.setScalar(scale);
+      if (RendererConfig.instancing.enableShips && shipInstancer.hasShip(s.id)) {
+        const q = new THREE.Quaternion();
+        q.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
+        const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
+        shipInstancer.updateTransform(s.id, s.pos, q, scale);
+      } else {
+        m.position.set(s.pos.x, s.pos.y, s.pos.z);
+        // Set 3D rotation using ship's orientation
+        // Ships are modeled pointing along +X axis, so we need to adjust
+        // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
+        m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
+        
+        const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
+        m.scale.setScalar(scale);
+      }
 
       // Update health bar
       if (RendererConfig.visual.enableHealthBars) {
@@ -1186,7 +1214,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Render the scene
-    renderer.render(scene, camera);
+  // Ensure instanced meshes have their instanceMatrix flags updated before rendering
+  try { shipInstancer.sync(); } catch (e) { /* ignore instancer sync errors */ }
+  renderer.render(scene, camera);
   }
 
   window.addEventListener('resize', resize);

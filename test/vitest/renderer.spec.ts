@@ -23,12 +23,22 @@ vi.mock('three', () => ({
     position: { set: vi.fn() },
     lookAt: vi.fn()
   })),
+  OrthographicCamera: vi.fn().mockImplementation(() => ({
+    left: -1,
+    right: 1,
+    top: 1,
+    bottom: -1,
+    near: 0,
+    far: 1,
+    updateProjectionMatrix: vi.fn()
+  })),
   Color: vi.fn(),
   AmbientLight: vi.fn(),
   DirectionalLight: vi.fn().mockImplementation(() => ({
     position: { set: vi.fn() }
   })),
   BoxGeometry: vi.fn(),
+  PlaneGeometry: vi.fn(),
   EdgesGeometry: vi.fn(),
   LineBasicMaterial: vi.fn(),
   LineSegments: vi.fn().mockImplementation(() => ({
@@ -68,6 +78,26 @@ vi.mock('three', () => ({
   CubeTexture: vi.fn(),
   ClampToEdgeWrapping: vi.fn(),
   LinearFilter: vi.fn(),
+  // ShaderMaterial and render target mocks used by effects.ts
+  ShaderMaterial: vi.fn().mockImplementation((opts: any) => ({
+    uniforms: (opts && opts.uniforms) || {},
+    vertexShader: opts && opts.vertexShader,
+    fragmentShader: opts && opts.fragmentShader,
+    depthTest: opts && opts.depthTest,
+    depthWrite: opts && opts.depthWrite,
+    needsUpdate: false
+  })),
+  WebGLRenderTarget: vi.fn().mockImplementation(() => ({
+    width: 0,
+    height: 0,
+    texture: { type: undefined, format: undefined, name: '' },
+    dispose: vi.fn()
+  })),
+  // Numeric constants used by effects
+  FloatType: 102,
+  NearestFilter: 100,
+  RGBAFormat: 101,
+  UnsignedByteType: 103,
   // Add missing constants
   BackSide: 2,
   DoubleSide: 2

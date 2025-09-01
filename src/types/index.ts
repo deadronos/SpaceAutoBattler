@@ -60,6 +60,8 @@ export interface Bullet {
   vel: Vector3;
   ttl: number; // seconds
   damage: number;
+  // Optional weapon identifier used by tests and instancing logic
+  weaponId?: string;
 }
 
 export interface TurretState {

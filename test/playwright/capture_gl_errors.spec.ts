@@ -1,6 +1,6 @@
 import { test } from '@playwright/test';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // This test opens the standalone HTML, captures console messages and page errors,
 // waits a few seconds to allow WebGL errors to appear, and writes logs + screenshot.
@@ -44,6 +44,6 @@ test('capture webgl and console errors from standalone build', async ({ page, br
   fs.writeFileSync(path.join(OUT_DIR, `page-${timestamp}.html`), html);
 
   // Attach output paths to test info for easier retrieval
-  test.info().attachments.push({ name: 'screenshot', path: screenshotPath });
-  test.info().attachments.push({ name: 'console', path: logsPath });
+  test.info().attachments.push({ name: 'screenshot', contentType: 'image/png', path: screenshotPath });
+  test.info().attachments.push({ name: 'console', contentType: 'application/json', path: logsPath });
 });

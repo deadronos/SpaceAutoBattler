@@ -166,9 +166,9 @@ describe('Bullet Instancing Integration', () => {
     
     // Add some bullets to the state
     const bullets: Bullet[] = [
-      { id: 1, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ownerTeam: 'red', weaponId: 'test' },
-      { id: 2, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' },
-      { id: 3, pos: { x: 70, y: 80, z: 90 }, vel: { x: 0, y: 1, z: 0 }, ownerTeam: 'red', weaponId: 'test' }
+  { id: 1, ownerShipId: 0, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'red', weaponId: 'test' },
+  { id: 2, ownerShipId: 0, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' },
+  { id: 3, ownerShipId: 0, pos: { x: 70, y: 80, z: 90 }, vel: { x: 0, y: 1, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'red', weaponId: 'test' }
     ];
     
     state.bullets = bullets;
@@ -187,8 +187,8 @@ describe('Bullet Instancing Integration', () => {
     
     // Add some bullets to the state
     const bullets: Bullet[] = [
-      { id: 1, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ownerTeam: 'red', weaponId: 'test' },
-      { id: 2, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' }
+  { id: 1, ownerShipId: 0, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'red', weaponId: 'test' },
+  { id: 2, ownerShipId: 0, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' }
     ];
     
     state.bullets = bullets;
@@ -211,14 +211,14 @@ describe('Bullet Instancing Integration', () => {
     
     // Add bullets dynamically
     state.bullets = [
-      { id: 1, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ownerTeam: 'red', weaponId: 'test' },
-      { id: 2, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' }
+  { id: 1, ownerShipId: 0, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'red', weaponId: 'test' },
+  { id: 2, ownerShipId: 0, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' }
     ];
     renderer.render(1/60);
     
     // Remove one bullet
     state.bullets = [
-      { id: 2, pos: { x: 45, y: 55, z: 65 }, vel: { x: -1, y: 0, z: 0 }, ownerTeam: 'blue', weaponId: 'test' }
+  { id: 2, ownerShipId: 0, pos: { x: 45, y: 55, z: 65 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' }
     ];
     renderer.render(1/60);
     
