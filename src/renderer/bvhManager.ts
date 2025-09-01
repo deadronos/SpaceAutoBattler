@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
-import type { GameState, Ship, Bullet } from '../types/index.js';
+import type { GameState, Ship } from '../types/index.js';
 
 // Enable accelerated raycasting
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -105,8 +105,9 @@ export function createBVHManager(state: GameState): BVHManager {
     shipMesh = new THREE.Mesh(shipGeometry, material);
     bvhScene.add(shipMesh);
 
-    // Store BVH reference
-    shipBVH = (shipGeometry as any).boundsTree;
+  // Store BVH reference (three-mesh-bvh augments BufferGeometry with boundsTree)
+  type GeometryWithBVH = THREE.BufferGeometry & { boundsTree?: MeshBVH };
+  shipBVH = (shipGeometry as GeometryWithBVH).boundsTree ?? null;
   }
 
   function raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance = 1000): THREE.Intersection[] {

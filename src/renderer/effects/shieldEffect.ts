@@ -31,7 +31,7 @@ export function createShieldEffectState(): ShieldEffectState {
 /**
  * Creates a shield effect for a ship
  */
-export function createShieldEffect(ship: Ship, state: ShieldEffectState): THREE.Object3D {
+export function createShieldEffect(ship: Ship, _state: ShieldEffectState): THREE.Object3D {
   const config = RendererConfig.shield;
   const shieldGroup = new THREE.Group();
 

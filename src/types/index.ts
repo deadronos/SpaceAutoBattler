@@ -31,6 +31,13 @@ export interface TurretConfig {
   bulletSpeed: number; // units/sec
   damage: number;
   range: number; // units
+  /** Optional designer preferred behavior for this turret. If set to 'dynamic',
+   * the global dynamic switching rules will apply; otherwise the turret will
+   * initialize with this behavior at spawn and hold it indefinitely (designer override).
+   */
+  preferredBehavior?: import('../config/behaviorConfig.js').TurretBehavior | 'dynamic';
+  /** Optional per-turret override for how far (seconds) to look ahead when computing intercepts. If absent, use behaviorConfig.globalSettings.maxInterceptLookahead */
+  maxInterceptLookahead?: number;
 }
 
 export interface ShipClassConfig {
@@ -72,6 +79,13 @@ export interface TurretState {
     targetId: EntityId | null;
     lastTargetUpdate: number;
     leadTargetPos?: Vector3;
+    /** Current behavior for this turret (may override global turret config) */
+    behavior?: import('../config/behaviorConfig.js').TurretBehavior;
+    /** Timestamp when the current behavior expires and should be reconsidered */
+    behaviorExpireTime?: number;
+    /** Optional suppression parameters when behavior == 'area_suppression' */
+    suppressionCount?: number;
+    suppressionAngle?: number;
   };
 }
 

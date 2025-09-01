@@ -47,7 +47,7 @@ export function createShipMesh(
   shipsGroup: THREE.Group, 
   shipMeshes: Map<number, THREE.Object3D>
 ): THREE.Object3D {
-  const pool = (state as any).assetPool as Map<string, any> | undefined;
+  const pool = (state as unknown as { assetPool?: Map<string, { imageBitmap?: ImageBitmap }> }).assetPool;
   const svgUrl = getShipSVGUrl(ship.class, defaultSVGConfig);
 
   const createTextured3DShip = (imageBitmap: ImageBitmap) => {
@@ -201,7 +201,7 @@ export function createShipMesh(
                 // Don't add the textured non-instanced mesh
                 return;
               }
-            } catch (e) { void e;logger.warn('shipInstancer.allocate during migration failed', e as any);
+            } catch (e) { void e; logger.warn('shipInstancer.allocate during migration failed', e as unknown);
             }
           }
 
@@ -211,8 +211,8 @@ export function createShipMesh(
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
           shipMeshes.set(ship.id, ship3D);
-        } catch (e) { void e;logger.warn('shipInstancer.allocate during migration failed', e as any);
-          logger.warn('shipInstancer.registerPrototype or migration failed', e as any);
+            } catch (e) { void e; logger.warn('shipInstancer.allocate during migration failed', e as unknown);
+          logger.warn('shipInstancer.registerPrototype or migration failed', e as unknown);
           const ship3D = createTextured3DShip(asset.imageBitmap);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
@@ -221,7 +221,7 @@ export function createShipMesh(
         }
       }
     } catch (e) { void e;// Loading/parsing of SVG failed — log and keep placeholder
-      logger.error('Failed to load SVG asset for ship', e);
+      logger.error('Failed to load SVG asset for ship', e as unknown);
     }
   })();
 
@@ -295,9 +295,10 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
   barGroup.add(borderMesh);
 
   // Store references for updating
-  (barGroup as any).healthMesh = healthMesh;
-  (barGroup as any).shieldMesh = shieldMesh;
-  (barGroup as any).bgMesh = bgMesh;
+  const barRef = barGroup as unknown as { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null; bgMesh?: THREE.Mesh };
+  barRef.healthMesh = healthMesh;
+  barRef.shieldMesh = shieldMesh;
+  barRef.bgMesh = bgMesh;
 
   return barGroup;
 }
@@ -307,8 +308,9 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
  */
 export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void {
   const config = RendererConfig.healthBars;
-  const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
-  const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
+  const barRef = barGroup as unknown as { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null };
+  const healthMesh = barRef.healthMesh as THREE.Mesh;
+  const shieldMesh = barRef.shieldMesh as THREE.Mesh | null;
 
   // Position the bar above the ship (3D)
   barGroup.position.set(
@@ -324,7 +326,7 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
   // Update health color based on percentage
   const healthColor = healthPercent > 0.5 ? config.colors.health.full : config.colors.health.damaged;
   if (healthMesh.material) {
-    const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+  const mat = healthMesh.material as THREE.ShaderMaterial;
     if (mat.uniforms && mat.uniforms.uColor) {
       (mat.uniforms.uColor.value as THREE.Color).set(healthColor);
     } else if ((healthMesh.material as THREE.MeshBasicMaterial).color) {
@@ -339,7 +341,7 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
 
     const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
     if (shieldMesh.material) {
-      const mat = (shieldMesh.material as any) as THREE.ShaderMaterial;
+  const mat = shieldMesh.material as THREE.ShaderMaterial;
       if (mat.uniforms && mat.uniforms.uColor) {
         (mat.uniforms.uColor.value as THREE.Color).set(shieldColor);
       } else if ((shieldMesh.material as THREE.MeshBasicMaterial).color) {

@@ -135,9 +135,9 @@ export function getCameraBasisVectors(cameraState: CameraState): { right: THREE.
   // Get camera forward direction
   camera.getWorldDirection(camRight); // This gets forward, we'll compute right from it
   
-  // Calculate camera right vector: cross(up, forward)
+  // Calculate camera right vector: cross(worldUp, forward)
   const worldUp = new THREE.Vector3(0, 1, 0);
-  camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
+  camRight.crossVectors(worldUp, camera.getWorldDirection(new THREE.Vector3())).normalize();
   camUp.copy(camera.up).normalize();
   
   return { right: camRight, up: camUp };
@@ -153,7 +153,7 @@ export function getCameraMatrix(cameraState: CameraState): THREE.Matrix4 {
 /**
  * Disposes camera resources (minimal cleanup needed)
  */
-export function disposeCamera(cameraState: CameraState): void {
+export function disposeCamera(_cameraState: CameraState): void {
   // Cameras don't have resources that need explicit disposal
   // This function exists for completeness and future extensibility
 }

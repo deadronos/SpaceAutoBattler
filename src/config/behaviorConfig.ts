@@ -61,6 +61,20 @@ export interface TurretAIConfig {
   minimumFireRange: number;
   /** Maximum range before firing */
   maximumFireRange: number;
+  /** Optional dynamic behavior switching configuration */
+  dynamicSwitch?: {
+    /** Enable dynamic per-turret behavior switching */
+    enabled: boolean;
+    /** Minimum duration for a chosen behavior (seconds) */
+    minDuration: number;
+    /** Maximum duration for a chosen behavior (seconds) */
+    maxDuration: number;
+    /** Weighted options for behaviors to pick from when switching */
+    options?: Array<{
+      behavior: TurretBehavior;
+      weight: number;
+    }>;
+  };
 }
 
 export interface RoamingPattern {
@@ -307,6 +321,19 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   leadPredictionTime: 0.5,
   minimumFireRange: 50,
   maximumFireRange: 800
+  ,
+  // Dynamic switching is disabled by default to preserve existing behavior
+  dynamicSwitch: {
+    enabled: false,
+    minDuration: 1.0,
+    maxDuration: 5.0,
+    options: [
+      { behavior: 'independent', weight: 50 },
+      { behavior: 'synchronized', weight: 20 },
+      { behavior: 'lead_target', weight: 20 },
+      { behavior: 'area_suppression', weight: 10 }
+    ]
+  }
 };
 
 /**
@@ -435,7 +462,13 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
     useDecisionEngineEvadeGate: false,
     // Turret targeting helper enabled by default after parity testing
-    useTurretTargetingHelper: true
+    useTurretTargetingHelper: true,
+    /**
+     * Maximum seconds into the future the turret intercept solver will consider.
+     * This prevents aiming at extremely far-future intercept points for very slow projectiles
+     * or pathological geometry. Can be tuned globally by designers.
+     */
+    maxInterceptLookahead: 5.0
   }
 };
 

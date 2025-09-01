@@ -47,8 +47,7 @@ export function updateBillboardOverlays(
     
     cameraState.camera.getWorldDirection(camRight); // forward
     // cameraRight is cross(forward, up)
-    const worldUp = new THREE.Vector3(0, 1, 0);
-    camRight.crossVectors(cameraState.camera.up, cameraState.camera.getWorldDirection(new THREE.Vector3())).normalize();
+  camRight.crossVectors(cameraState.camera.up, cameraState.camera.getWorldDirection(new THREE.Vector3())).normalize();
     camUp.copy(cameraState.camera.up).normalize();
     
     for (const mat of factoryState.billboardMaterials) {
@@ -70,7 +69,7 @@ export function updateBillboardOverlays(
 /**
  * Handles window resize for overlay elements
  */
-export function handleOverlayResize(width: number, height: number): void {
+export function handleOverlayResize(_width: number, _height: number): void {
   // Currently no overlay-specific resize handling needed
   // This function exists for future overlay features that might need resize handling
 }
@@ -79,17 +78,16 @@ export function handleOverlayResize(width: number, height: number): void {
  * Updates overlay positions and visibility
  */
 export function updateOverlayPositions(
-  overlayState: OverlayState,
-  cameraDistance: number
+  _overlayState: OverlayState,
+  _cameraDistance: number
 ): void {
-  // Scale overlay elements based on camera distance if needed
-  // This function exists for future overlay features that might need position updates
+  // Scale overlay elements based on camera distance if needed (placeholder)
 }
 
 /**
  * Disposes overlay resources
  */
-export function disposeOverlays(overlayState: OverlayState): void {
+export function disposeOverlays(_overlayState: OverlayState): void {
   // Currently no overlay-specific resources to dispose
   // This function exists for completeness and future extensibility
 }
