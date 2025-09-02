@@ -6,7 +6,7 @@ import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { loadSVGAsset } from '../core/svgLoader.js';
-import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
+import { defaultSVGConfig, getShipSVGUrl, getTeamColor } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
@@ -124,78 +124,203 @@ function billboardPoolKey(color: THREE.Color, alpha: number) {
 }
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
-  // Apply global readPixels/prototype patches early, if available.
-  try {
-    const g = globalThis as unknown as { __applyEffectsManagerGlobalPatches?: unknown };
-    const patch = g.__applyEffectsManagerGlobalPatches as unknown;
-    if (typeof patch === 'function') {
-      try { (patch as unknown as () => void)(); } catch { /* swallow */ }
-    }
-  } catch { /* swallow */ }
-
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  // Create Three.js renderer
+  const renderer = new THREE.WebGLRenderer({ 
+    canvas, 
+    antialias: true, 
+    alpha: false,
+    powerPreference: "high-performance"
+  });
+  
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setClearColor(0x000011, 1); // Dark space color
+  
+  // Create scene and camera
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(RendererConfig.camera.fov, canvas.clientWidth / canvas.clientHeight, RendererConfig.camera.near, RendererConfig.camera.far);
+  const camera = new THREE.PerspectiveCamera(
+    RendererConfig.camera.fov, 
+    canvas.clientWidth / canvas.clientHeight, 
+    RendererConfig.camera.near, 
+    RendererConfig.camera.far
+  );
 
-  // Initialize camera controls
+  
+  // Camera controls and positioning
   const cameraRotation = {
     x: RendererConfig.camera.rotation.pitch,
     y: RendererConfig.camera.rotation.yaw,
     z: RendererConfig.camera.rotation.roll
   };
-  // Make camera distance mutable inside renderer and expose via getter/setter so callers
-  // (for example `resetToCinematicView` in main.ts) can update it and the internal
-  // camera positioning will pick up the change.
-  let _cameraDistance = RendererConfig.camera.cameraZ;
+  
+  let cameraDistance = RendererConfig.camera.cameraZ;
   const cameraTarget = {
     x: state.simConfig.simBounds.width / 2,
     y: state.simConfig.simBounds.height / 2,
     z: state.simConfig.simBounds.depth / 2
   };
 
-  // Set initial camera position using spherical coordinates
-  updateCameraPosition();
-
   function updateCameraPosition() {
-    // Clamp camera distance using renderer config if available
-    const minD = (RendererConfig.camera.minDistance as number) || 1;
-    const maxD = (RendererConfig.camera.maxDistance as number) || 1e7;
-    if (_cameraDistance < minD) _cameraDistance = minD;
-    if (_cameraDistance > maxD) _cameraDistance = maxD;
-
-    // Normalize rotation angles to avoid drift/overflow
-    // Pitch (x) should be clamped to [-pi/2 + eps, pi/2 - eps] to avoid gimbal flip
-    const EPS_PITCH = 1e-3;
-    cameraRotation.x = Math.max(-Math.PI / 2 + EPS_PITCH, Math.min(Math.PI / 2 - EPS_PITCH, cameraRotation.x));
-    // Yaw can wrap; keep it in [-pi, pi]
-    if (cameraRotation.y > Math.PI || cameraRotation.y < -Math.PI) {
-      cameraRotation.y = ((cameraRotation.y + Math.PI) % (2 * Math.PI)) - Math.PI;
-    }
-
-    const x = cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
-    const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
-    const z = cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
+    const x = cameraTarget.x + cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
+    const y = cameraTarget.y + cameraDistance * Math.sin(cameraRotation.x);
+    const z = cameraTarget.z + cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
 
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
-    // Ensure camera's world matrix is updated immediately so downstream
-    // code (billboards, basis extraction, etc.) can rely on a fresh matrix.
-    // Three.js lazily updates matrixWorld during render; force it here.
-    try { camera.updateMatrixWorld(true); } catch { /* ignore */ }
-    // Extract and cache normalized basis vectors for other systems to reuse
-    try {
-      (camera.matrixWorld as THREE.Matrix4).extractBasis(tempCamRight, tempCamUp, tempCamForward);
-      cameraBasis.right.copy(tempCamRight).normalize();
-      cameraBasis.up.copy(tempCamUp).normalize();
-      cameraBasis.forward.copy(tempCamForward).normalize();
-    } catch { /* ignore */ }
-    // Also attach basis to camera.userData for other modules to consume without
-    // needing to extract matrices themselves. Best-effort and non-critical.
-    try {
-      setCachedCameraBasis(camera, cameraBasis);
-    } catch { /* ignore */ }
+    camera.updateMatrixWorld(true);
   }
+  
+  updateCameraPosition();
+
+  // Note: Starfield is now generated procedurally using RendererEffectsConfig skybox system
+
+  // Entity rendering collections - use number IDs to match existing code
+  const newShipMeshes = new Map<number, THREE.Mesh>();
+  const newBulletMeshes = new Map<number, THREE.Mesh>();
+
+  // Basic ship mesh creation using proper config
+  function createShipMesh(ship: Ship): THREE.Mesh {
+    // Get ship visual config for size
+    const shipConfig = ShipVisualConfig.ships[ship.class];
+    const size = shipConfig ? shipConfig.scale * 20 : RendererConfig.defaultScale * 20; // Scale to visible size
+    
+    const geometry = new THREE.SphereGeometry(size, 8, 6);
+    
+    // Get team color from config
+    const teamColorHex = getTeamColor(ship.team);
+    const material = new THREE.MeshLambertMaterial({ 
+      color: new THREE.Color(teamColorHex)
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(ship.pos.x, ship.pos.y, ship.pos.z);
+    mesh.userData = { id: ship.id, type: 'ship' };
+    return mesh;
+  }
+
+  // Basic bullet mesh creation using config
+  function createBulletMesh(bullet: Bullet): THREE.Mesh {
+    // Use a small standard size for bullets with fallback
+    const bulletSize = 2; // Small but visible
+    const radius = Number.isFinite(bulletSize) ? bulletSize : 2;
+    const geometry = new THREE.SphereGeometry(radius, 4, 3);
+    
+    // Use bright yellow for bullets to match renderer config
+    const material = new THREE.MeshLambertMaterial({ 
+      color: new THREE.Color('#ffff00') // Bright yellow for visibility
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // Safely set position with fallback values
+    const x = Number.isFinite(bullet.pos.x) ? bullet.pos.x : 0;
+    const y = Number.isFinite(bullet.pos.y) ? bullet.pos.y : 0;
+    const z = Number.isFinite(bullet.pos.z) ? bullet.pos.z : 0;
+    mesh.position.set(x, y, z);
+    mesh.userData = { id: bullet.id, type: 'bullet' };
+    return mesh;
+  }
+
+  // Update entities
+  function updateEntities() {
+    // Update ships - access ships directly from state
+    for (const ship of state.ships) {
+      let mesh = newShipMeshes.get(ship.id);
+      if (!mesh) {
+        mesh = createShipMesh(ship);
+        newShipMeshes.set(ship.id, mesh);
+        scene.add(mesh);
+      }
+      mesh.position.set(ship.pos.x, ship.pos.y, ship.pos.z);
+      mesh.rotation.set(ship.orientation.pitch, ship.orientation.yaw, ship.orientation.roll);
+    }
+
+    // Remove destroyed ships
+    for (const [id, mesh] of newShipMeshes) {
+      if (!state.ships.find(s => s.id === id)) {
+        scene.remove(mesh);
+        newShipMeshes.delete(id);
+      }
+    }
+
+    // Update bullets - access bullets directly from state
+    for (const bullet of state.bullets) {
+      let mesh = newBulletMeshes.get(bullet.id);
+      if (!mesh) {
+        mesh = createBulletMesh(bullet);
+        newBulletMeshes.set(bullet.id, mesh);
+        scene.add(mesh);
+      }
+      mesh.position.set(bullet.pos.x, bullet.pos.y, bullet.pos.z);
+    }
+
+    // Remove old bullets
+    for (const [id, mesh] of newBulletMeshes) {
+      if (!state.bullets.find(b => b.id === id)) {
+        scene.remove(mesh);
+        newBulletMeshes.delete(id);
+      }
+    }
+  }
+
+  // Return the RendererHandles interface
+  return {
+    initDone: true,
+    
+    resize: () => {
+      // Get current canvas size if no specific size given
+      const canvas = renderer.domElement;
+      camera.aspect = canvas.clientWidth / canvas.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    },
+    
+    render: (dt: number) => {
+      updateEntities();
+      renderer.render(scene, camera);
+    },
+    
+    dispose: () => {
+      // Clean up resources
+      for (const mesh of newShipMeshes.values()) {
+        scene.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
+      for (const mesh of newBulletMeshes.values()) {
+        scene.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
+      newShipMeshes.clear();
+      newBulletMeshes.clear();
+      renderer.dispose();
+    },
+
+    // Camera controls interface - use Vector3 objects as expected
+    get cameraRotation() { 
+      return { x: cameraRotation.x, y: cameraRotation.y, z: cameraRotation.z }; 
+    },
+    set cameraRotation(rot: { x: number; y: number; z: number }) {
+      cameraRotation.x = rot.x;
+      cameraRotation.y = rot.y;  
+      cameraRotation.z = rot.z;
+      updateCameraPosition();
+    },
+
+    get cameraDistance() { return cameraDistance; },
+    set cameraDistance(v: number) { cameraDistance = v; updateCameraPosition(); },
+
+    get cameraTarget() { 
+      return { x: cameraTarget.x, y: cameraTarget.y, z: cameraTarget.z }; 
+    },
+    set cameraTarget(target: { x: number; y: number; z: number }) {
+      cameraTarget.x = target.x;
+      cameraTarget.y = target.y;
+      cameraTarget.z = target.z;
+      updateCameraPosition();
+    }
+  };
 
   // Procedural Skybox Generation
   function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
@@ -205,11 +330,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Prefer a 2D context. Some browsers support options but they are optional in lib.dom.
   const ctx = (canvas.getContext('2d') as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
-    // Fill with deep space background
+    // Fill with deep space background using config colors
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
-    gradient.addColorStop(0, '#000011');
-    gradient.addColorStop(0.5, '#000033');
-    gradient.addColorStop(1, '#000000');
+    gradient.addColorStop(0, RendererEffectsConfig.skybox.starfield.colors.background.center);
+    gradient.addColorStop(0.5, RendererEffectsConfig.skybox.starfield.colors.background.middle);
+    gradient.addColorStop(1, RendererEffectsConfig.skybox.starfield.colors.background.edge);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
@@ -222,33 +347,35 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Generate stars based on face
     const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
-    const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
+    const starColors = RendererEffectsConfig.skybox.starfield.colors.stars;
 
     for (let i = 0; i < starCount; i++) {
       const x = random() * width;
       const y = random() * height;
 
-      // Vary star size and brightness
-      const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
+      // Vary star size and brightness using config
+      const sizeRandom = random();
+      const size = sizeRandom < RendererEffectsConfig.skybox.starfield.starSizes.smallProbability ? 1 : 
+                   sizeRandom < (RendererEffectsConfig.skybox.starfield.starSizes.smallProbability + RendererEffectsConfig.skybox.starfield.starSizes.mediumProbability) ? 2 : 3;
       const brightness = random();
 
-      // Different star patterns for different faces
+      // Different star patterns for different faces using config
       let shouldDraw = true;
       if (face === 'top') {
         // Milky Way-like band across top face
         const centerDist = Math.abs(y - height/2) / (height/2);
-        shouldDraw = random() < (1 - centerDist * 0.7);
+        shouldDraw = random() < (1 - centerDist * RendererEffectsConfig.skybox.starfield.facePatterns.milkyWayEffect);
       } else if (face === 'bottom') {
         // Sparse stars on bottom face
-        shouldDraw = random() < 0.3;
+        shouldDraw = random() < RendererEffectsConfig.skybox.starfield.facePatterns.bottomDensityFactor;
       } else if (face === 'front' || face === 'back') {
         // Dense star fields on side faces
-        shouldDraw = random() < 0.8;
+        shouldDraw = random() < RendererEffectsConfig.skybox.starfield.facePatterns.sideDensityFactor;
       }
 
       if (shouldDraw) {
         ctx.fillStyle = starColors[Math.floor(random() * starColors.length)];
-        ctx.globalAlpha = 0.3 + brightness * 0.7;
+        ctx.globalAlpha = RendererEffectsConfig.skybox.starfield.brightness.min + brightness * RendererEffectsConfig.skybox.starfield.brightness.range;
 
         if (size === 1) {
           ctx.fillRect(x, y, 1, 1);
@@ -328,13 +455,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const random = () => { rng = (rng * 9301 + 49297) % 233280; return rng / 233280; };
       const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
       const list: StarData[] = [];
-      const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
+      const starColors = RendererEffectsConfig.skybox.starfield.colors.stars;
       for (let i = 0; i < starCount; i++) {
   const x = Math.floor(random() * _textureSize);
   const y = Math.floor(random() * _textureSize);
-        const size = random() < 0.7 ? 1 : random() < 0.9 ? 2 : 3;
+        const sizeRandom = random();
+        const size = sizeRandom < RendererEffectsConfig.skybox.starfield.starSizes.smallProbability ? 1 : 
+                     sizeRandom < (RendererEffectsConfig.skybox.starfield.starSizes.smallProbability + RendererEffectsConfig.skybox.starfield.starSizes.mediumProbability) ? 2 : 3;
         const color = starColors[Math.floor(random() * starColors.length)];
-        const baseBrightness = 0.3 + random() * 0.7;
+        const baseBrightness = RendererEffectsConfig.skybox.starfield.brightness.min + random() * RendererEffectsConfig.skybox.starfield.brightness.range;
         list.push({ x, y, size, color, baseBrightness });
       }
       skyboxStarFields.push(list);
@@ -353,9 +482,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // Recreate gradient background quickly
       const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)/2);
-      gradient.addColorStop(0, '#000011');
-      gradient.addColorStop(0.5, '#000033');
-      gradient.addColorStop(1, '#000000');
+      gradient.addColorStop(0, RendererEffectsConfig.skybox.starfield.colors.background.center);
+      gradient.addColorStop(0.5, RendererEffectsConfig.skybox.starfield.colors.background.middle);
+      gradient.addColorStop(1, RendererEffectsConfig.skybox.starfield.colors.background.edge);
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -382,8 +511,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const stars = skyboxStarFields[index] || [];
       for (let i = 0; i < stars.length; i++) {
         const s = stars[i];
-        const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + s.baseBrightness;
-        ctx.globalAlpha = Math.max(0.15, Math.min(1, twinkle));
+        const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * RendererEffectsConfig.skybox.starfield.animation.twinklePhaseOffset) * RendererEffectsConfig.skybox.starfield.animation.twinkleAmplitude + s.baseBrightness;
+        ctx.globalAlpha = Math.max(RendererEffectsConfig.skybox.starfield.animation.minAlpha, Math.min(1, twinkle));
         ctx.fillStyle = s.color;
         if (s.size === 1) ctx.fillRect(s.x, s.y, 1, 1);
         else {
@@ -584,7 +713,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Maintain a short ring buffer of recent hits per ship for hex highlight
   const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
 
-  function colorForTeam(team: 'red' | 'blue'): number { return team === 'red' ? 0xff5050 : 0x50a0ff; }
+  function colorForTeam(team: 'red' | 'blue'): number { 
+    const colorStr = getTeamColor(team);
+    return parseInt(colorStr.replace('#', '0x'), 16);
+  }
 
   function meshForShip(s: Ship): THREE.Object3D {
   const pool = (state as unknown as { assetPool?: Map<string, unknown> }).assetPool;

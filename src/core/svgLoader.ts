@@ -123,16 +123,43 @@ export class SVGLoader {
   private async performLoad(url: string, options: SVGLoadOptions): Promise<SVGAsset> {
   logger.debug(`[SVGLoader] Attempting to load SVG from: ${url}`);
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      logger.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
-      throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
-    }
-
-    const svgText = await response.text();
-    logger.debug(`[SVGLoader] Successfully fetched SVG content for ${url}, length: ${svgText.length}`);
+    // Check for inlined SVG assets first (standalone build)
+    let svgText: string;
+    let lastModified: number;
     
-    const lastModified = await this.getFileModificationTime(url);
+    const inlineAssets = (globalThis as any).__INLINE_SVG_ASSETS;
+    if (inlineAssets) {
+      // Extract asset name from URL (e.g., "frigate" from "src/config/assets/svg/frigate.svg")
+      const assetMatch = url.match(/([^/]+)\.svg$/);
+      const assetName = assetMatch ? assetMatch[1] : null;
+      
+      if (assetName && inlineAssets[assetName]) {
+        logger.debug(`[SVGLoader] Using inlined SVG asset: ${assetName}`);
+        svgText = inlineAssets[assetName];
+        lastModified = Date.now(); // Use current time for inlined assets
+      } else {
+        logger.warn(`[SVGLoader] Inlined asset not found for ${assetName}, falling back to fetch`);
+        // Fall back to HTTP fetch
+        const response = await fetch(url);
+        if (!response.ok) {
+          logger.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
+          throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
+        }
+        svgText = await response.text();
+        lastModified = await this.getFileModificationTime(url);
+      }
+    } else {
+      // No inlined assets, use HTTP fetch
+      const response = await fetch(url);
+      if (!response.ok) {
+        logger.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
+        throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
+      }
+      svgText = await response.text();
+      lastModified = await this.getFileModificationTime(url);
+    }
+    
+    logger.debug(`[SVGLoader] Successfully loaded SVG content for ${url}, length: ${svgText.length}`);
 
     const asset: SVGAsset = {
       url,

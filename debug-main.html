@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Debug Main.js</title>
+  <style>
+    body { background: #222; color: white; font-family: monospace; }
+    #status { padding: 20px; border: 2px solid #444; margin: 20px; }
+    #world { position: fixed; inset: 0; display: block; border: 2px solid red; }
+  </style>
+</head>
+<body>
+  <div id="status">
+    <p>Debug Status:</p>
+    <p id="loadStatus">Loading...</p>
+    <p id="canvasStatus">Canvas not found</p>
+    <p id="errorStatus">No errors</p>
+  </div>
+  
+  <canvas id="world"></canvas>
+  
+  <script>
+    console.log("Debug script started");
+    
+    // Catch any errors
+    window.addEventListener('error', function(e) {
+      console.error("Script error:", e.error);
+      document.getElementById('errorStatus').textContent = 'Error: ' + e.error.message;
+    });
+    
+    // Check for canvas
+    const canvas = document.getElementById('world');
+    if (canvas) {
+      document.getElementById('canvasStatus').textContent = 'Canvas found: ' + canvas.tagName;
+      console.log("Canvas element found:", canvas);
+    }
+    
+    // Check if main.js loads
+    try {
+      import('./src/main.js').then(() => {
+        console.log("main.js loaded successfully");
+        document.getElementById('loadStatus').textContent = 'main.js loaded successfully';
+      }).catch(err => {
+        console.error("Failed to load main.js:", err);
+        document.getElementById('loadStatus').textContent = 'Failed to load main.js: ' + err.message;
+        document.getElementById('errorStatus').textContent = 'Load error: ' + err.message;
+      });
+    } catch (err) {
+      console.error("Error importing main.js:", err);
+      document.getElementById('loadStatus').textContent = 'Import error: ' + err.message;
+      document.getElementById('errorStatus').textContent = 'Import error: ' + err.message;
+    }
+  </script>
+</body>
+</html>

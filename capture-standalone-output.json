@@ -1,25 +1,1110 @@
 {
   "console": [
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "type": "log",
+      "text": "[SVGLoader] SVG rasterization worker initialized",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] SVG rasterization worker initialized"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Preloading SVG assets with change detection...",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Preloading SVG assets with change detection..."
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Using inlined SVG asset: fighter",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Using inlined SVG asset: fighter"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/fighter.svg, length: 895",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/fighter.svg, length: 895"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Starting rasterization for:",
+        "src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterizing SVG with main thread (worker disabled):",
+        "src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to rasterize SVG in main thread for:",
+        "src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] SVG debugging functions available at window.debugSVG",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] SVG debugging functions available at window.debugSVG"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "[GroupMarkerNotSet(crbug.com/242999)!:A040A50004460000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.",
       "location": {
         "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
         "lineNumber": 0,
         "columnNumber": 0
       },
       "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File created: src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG image:",
+        "src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully rasterized SVG to canvas:",
+        "src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterization completed for:",
+        "src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Loaded SVG asset: src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Using inlined SVG asset: corvette",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Using inlined SVG asset: corvette"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/corvette.svg, length: 926",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/corvette.svg, length: 926"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0xdfc007c6300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Starting rasterization for:",
+        "src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterizing SVG with main thread (worker disabled):",
+        "src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to rasterize SVG in main thread for:",
+        "src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG image:",
+        "src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully rasterized SVG to canvas:",
+        "src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterization completed for:",
+        "src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Loaded SVG asset: src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Using inlined SVG asset: frigate",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Using inlined SVG asset: frigate"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/frigate.svg, length: 1259",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/frigate.svg, length: 1259"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0xdfc007c6300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Starting rasterization for:",
+        "src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterizing SVG with main thread (worker disabled):",
+        "src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to rasterize SVG in main thread for:",
+        "src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "location": {
+        "url": "http://127.0.0.1:8080/assets/models/ship-fighter.gltf",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG image:",
+        "src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully rasterized SVG to canvas:",
+        "src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterization completed for:",
+        "src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Loaded SVG asset: src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Using inlined SVG asset: destroyer",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Using inlined SVG asset: destroyer"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/destroyer.svg, length: 1644",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/destroyer.svg, length: 1644"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Starting rasterization for:",
+        "src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterizing SVG with main thread (worker disabled):",
+        "src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to rasterize SVG in main thread for:",
+        "src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0xdfc007c6300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File created: src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG image:",
+        "src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully rasterized SVG to canvas:",
+        "src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterization completed for:",
+        "src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Loaded SVG asset: src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Using inlined SVG asset: carrier",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Using inlined SVG asset: carrier"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/carrier.svg, length: 1773",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG content for src/config/assets/svg/carrier.svg, length: 1773"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Starting rasterization for:",
+        "src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterizing SVG with main thread (worker disabled):",
+        "src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Attempting to rasterize SVG in main thread for:",
+        "src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully loaded SVG image:",
+        "src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Successfully rasterized SVG to canvas:",
+        "src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Rasterization completed for:",
+        "src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] Loaded SVG asset: src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] SVG asset preloading complete",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[main.ts] SVG asset preloading complete"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "[SVGLoader] Worker error, falling back to main thread: Event",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 14,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] Worker error, falling back to main thread:",
+        {
+          "isTrusted": true
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "location": {
+        "url": "http://127.0.0.1:8080/assets/models/ship-corvette.gltf",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "location": {
+        "url": "http://127.0.0.1:8080/assets/models/ship-frigate.gltf",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File created: src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "location": {
+        "url": "http://127.0.0.1:8080/assets/models/ship-destroyer.gltf",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File created: src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File created: src/config/assets/svg/carrier.svg"
+      ]
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "location": {
+        "url": "http://127.0.0.1:8080/assets/models/ship-carrier.gltf",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0xdfc007c6300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "args": []
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+      ]
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg",
+      "location": {
+        "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+        "lineNumber": 8,
+        "columnNumber": 10
+      },
+      "args": [
+        "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+      ]
     }
   ],
-  "errors": [],
+  "errors": [
+    "Error: page.waitForTimeout: Target page, context or browser has been closed"
+  ],
   "requests": [
     {
       "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
       "method": "GET",
       "resourceType": "document"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-2SID4K5G.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-T644DX5T.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-NSKRTDW3.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/svgRasterWorker.ts",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/simWorker.ts",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/GLTFLoader-UJW2UJVE.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/svgRasterWorker.ts",
+      "failed": true,
+      "failureText": "net::ERR_FAILED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/simWorker.ts",
+      "failed": true,
+      "failureText": "net::ERR_FAILED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-fighter.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-corvette.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-frigate.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-destroyer.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-carrier.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
     }
   ],
-  "preThree": null,
-  "screenshot": "capture.png",
-  "postThree": null
+  "preThree": null
 }
