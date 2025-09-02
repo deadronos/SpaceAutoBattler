@@ -210,10 +210,7 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
   const spreadCount = isSuppression ? (tState.aiState?.suppressionCount ?? 5) : 1;
   const spreadAngle = isSuppression ? (tState.aiState?.suppressionAngle ?? (Math.PI / 12)) : 0;
 
-      // DEBUG: emit info to help diagnose suppression firing tests (no-op if console.debug missing)
-      if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-        console.debug(`[DEBUG fireTurrets] ship=${ship.id} turret=${tState.id} behavior=${String(tState.aiState?.behavior)} suppressionCount=${String(tState.aiState?.suppressionCount)} spreadCount=${spreadCount}`);
-      }
+
 
     // Helper: generate a direction vector for a spread index within a cone around the central direction
     const makeSpreadDir = (index: number, total: number, centerDir: { x: number; y: number; z: number }) => {
@@ -449,6 +446,80 @@ export function simulateStep(state: GameState, dt: number) {
       runBoundaryCleanup(state);
     }
   }
+
+  // Floating point / timer normalization to avoid drift in very long runs
+  // Runs every `fpNormalizeIntervalTicks` ticks (configurable)
+  // Read optional custom setting safely (avoid `any`) - fall back to 600 ticks
+  const _gs = (state.behaviorConfig?.globalSettings as unknown) as Record<string, unknown> | undefined;
+  const fpNormalizeInterval = (typeof _gs?.fpNormalizeIntervalTicks === 'number') ? (_gs!.fpNormalizeIntervalTicks as number) : 600;
+  if ((state.tick % fpNormalizeInterval) === 0) {
+    normalizeFloatingPointState(state);
+  }
+}
+
+/**
+ * Normalize floating point state occasionally to prevent drift in very long
+ * running simulations. This performs a rebase of time/tick counters and
+ * clamps very small velocity/pos jolts to zero. It also normalizes any
+ * turret/ai timestamps so relative times remain valid.
+ */
+function normalizeFloatingPointState(state: GameState) {
+  try {
+    // Keep relative times small by rebasing when time grows large
+    const TIME_REBASE_THRESHOLD = 1e6; // seconds (~11.5 days) - adjust as needed
+    const EPS = 1e-9; // small epsilon to zero-out negligible values
+
+    if (Math.abs(state.time) > TIME_REBASE_THRESHOLD) {
+      const base = Math.floor(state.time);
+      // Subtract base from all time-like fields
+      state.time -= base;
+      // lastDamageTime, ai timestamps, shield hit times, turret aiState times
+      for (const s of state.ships) {
+        if (s.lastDamageTime !== undefined) s.lastDamageTime = (s.lastDamageTime as number) - base;
+        if (s.aiState) {
+          if (s.aiState.lastDamageTime !== undefined) s.aiState.lastDamageTime = (s.aiState.lastDamageTime as number) - base;
+        }
+        if (s.lastShieldHitTime !== undefined) s.lastShieldHitTime = (s.lastShieldHitTime as number) - base;
+        for (const t of s.turrets) {
+          if (t.aiState) {
+            if (t.aiState.lastTargetUpdate !== undefined) t.aiState.lastTargetUpdate = (t.aiState.lastTargetUpdate as number) - base;
+            if (t.aiState.behaviorExpireTime !== undefined && isFinite(t.aiState.behaviorExpireTime)) t.aiState.behaviorExpireTime = (t.aiState.behaviorExpireTime as number) - base;
+          }
+        }
+      }
+      // If bullets tracked by time (ttl only), no need to shift as ttl is relative
+    }
+
+    // Clamp extremely small positional/velocity noise to zero to avoid accumulating fp error
+    for (const s of state.ships) {
+      if (Math.abs(s.pos.x) < EPS) s.pos.x = 0;
+      if (Math.abs(s.pos.y) < EPS) s.pos.y = 0;
+      if (Math.abs(s.pos.z) < EPS) s.pos.z = 0;
+      if (Math.abs(s.vel.x) < EPS) s.vel.x = 0;
+      if (Math.abs(s.vel.y) < EPS) s.vel.y = 0;
+      if (Math.abs(s.vel.z) < EPS) s.vel.z = 0;
+      // Normalize very small orientation jitter
+      if (s.orientation) {
+        if (Math.abs(s.orientation.pitch) < EPS) s.orientation.pitch = 0;
+        if (Math.abs(s.orientation.yaw) < EPS) s.orientation.yaw = 0;
+        if (Math.abs(s.orientation.roll) < EPS) s.orientation.roll = 0;
+      }
+      // Turret cooldown tiny values to zero
+      for (const t of s.turrets) {
+        if (Math.abs(t.cooldownLeft) < EPS) t.cooldownLeft = 0;
+      }
+    }
+
+    // Also clamp tiny bullet velocities/positions
+    for (const b of state.bullets) {
+      if (Math.abs(b.pos.x) < EPS) b.pos.x = 0;
+      if (Math.abs(b.pos.y) < EPS) b.pos.y = 0;
+      if (Math.abs(b.pos.z) < EPS) b.pos.z = 0;
+      if (Math.abs(b.vel.x) < EPS) b.vel.x = 0;
+      if (Math.abs(b.vel.y) < EPS) b.vel.y = 0;
+      if (Math.abs(b.vel.z) < EPS) b.vel.z = 0;
+    }
+  } catch (_e) { void _e; /* best-effort normalization; ignore errors */ }
 }
 
 function runBoundaryCleanup(state: GameState) {

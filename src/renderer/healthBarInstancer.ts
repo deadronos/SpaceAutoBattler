@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ship } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import * as logger from '../utils/logger.js';
+import { getCachedCameraBasis } from './cameraManager.js';
 
 /**
  * Health bar layer types for separate InstancedMesh objects
@@ -100,9 +101,17 @@ export class HealthBarInstancer {
     // cameraForward will point from the camera into the scene (camera -Z)
     camera.getWorldDirection(this.cameraForward);
 
-    // Calculate camera right and up vectors for billboard rendering
-    this.cameraUniforms.cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
-    this.cameraUniforms.cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
+    // Prefer cached basis (set by threeRenderer) to avoid repeated matrix extracts
+    const cb = getCachedCameraBasis(camera);
+    if (cb) {
+      this.cameraUniforms.cameraRight.copy(cb.right);
+      this.cameraUniforms.cameraUp.copy(cb.up);
+      if (cb.forward) this.cameraForward.copy(cb.forward);
+    } else {
+      // Fallback: calculate camera right and up vectors from matrixWorld
+      this.cameraUniforms.cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
+      this.cameraUniforms.cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
+    }
 
     // Update uniforms in all layer materials
     for (const instancedMesh of this.instancedMeshes.values()) {

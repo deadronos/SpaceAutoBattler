@@ -6,6 +6,9 @@ export interface RendererConfig {
     near: number;
     far: number;
     cameraZ: number;
+    // Optional camera distance limits (min/max world units)
+    minDistance?: number;
+    maxDistance?: number;
     rotation: {
       pitch: number;
       yaw: number;
@@ -165,6 +168,8 @@ export const DefaultRendererConfig: RendererConfig = {
     near: 0.1,
     far: 10000,
     cameraZ: 900,
+    minDistance: 100,
+    maxDistance: 5000,
     rotation: {
       pitch: 0,
       yaw: 0,

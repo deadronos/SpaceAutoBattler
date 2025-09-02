@@ -12,6 +12,7 @@ import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
 export { updateBillboardBars };
+import { setCachedCameraBasis } from './cameraManager.js';
 
   // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
@@ -58,8 +59,69 @@ function setRenderProgram(target: object, program: unknown): void {
 const tempCamRight = new THREE.Vector3();
 const tempCamUp = new THREE.Vector3(); 
 const tempCamForward = new THREE.Vector3();
+  // Cached, normalized camera basis exposed for consumers (avoids repeated matrix extraction)
+  const cameraBasis = {
+    right: new THREE.Vector3(1, 0, 0),
+    up: new THREE.Vector3(0, 1, 0),
+    forward: new THREE.Vector3(0, 0, 1),
+  };
 
 import TrailManager from './effects/trailManager.js';
+
+// Hoist getPooledBillboardMaterial to top-level scope for visibility
+function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xffffff), alpha: number = 1.0): THREE.ShaderMaterial {
+  const key = billboardPoolKey(color, alpha);
+  const existing = billboardMaterialPool.get(key);
+  if (existing) return existing;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      cameraRight: { value: new THREE.Vector3(1, 0, 0) },
+      cameraUp: { value: new THREE.Vector3(0, 1, 0) },
+      uColor: { value: color.clone() },
+      uAlpha: { value: alpha },
+    },
+    vertexShader: billboardVertexShader,
+    fragmentShader: billboardFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  try { setRenderProgram(mat, mat); } catch { void 0; }
+  billboardMaterialPool.set(key, mat);
+  billboardMaterials.add(mat);
+  return mat;
+}
+
+// Hoist dependencies for getPooledBillboardMaterial
+const billboardVertexShader = `
+  uniform vec3 cameraRight;
+  uniform vec3 cameraUp;
+  uniform float uAlpha;
+  uniform vec3 uColor;
+
+  varying vec3 vColor;
+  varying float vAlpha;
+
+  void main() {
+    vec3 center = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    vec3 worldPos = center + cameraRight * position.x + cameraUp * position.y;
+    gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+    vColor = uColor;
+    vAlpha = uAlpha;
+  }
+`;
+
+const billboardFragmentShader = `
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    gl_FragColor = vec4(vColor, vAlpha);
+  }
+`;
+
+function billboardPoolKey(color: THREE.Color, alpha: number) {
+  return `${color.getHexString()}|${alpha}`;
+}
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   // Apply global readPixels/prototype patches early, if available.
@@ -74,7 +136,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(RendererConfig.camera.fov, 1, RendererConfig.camera.near, RendererConfig.camera.far);
+  const camera = new THREE.PerspectiveCamera(RendererConfig.camera.fov, canvas.clientWidth / canvas.clientHeight, RendererConfig.camera.near, RendererConfig.camera.far);
 
   // Initialize camera controls
   const cameraRotation = {
@@ -96,9 +158,24 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   updateCameraPosition();
 
   function updateCameraPosition() {
-  const x = cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
-  const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
-  const z = cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
+    // Clamp camera distance using renderer config if available
+    const minD = (RendererConfig.camera.minDistance as number) || 1;
+    const maxD = (RendererConfig.camera.maxDistance as number) || 1e7;
+    if (_cameraDistance < minD) _cameraDistance = minD;
+    if (_cameraDistance > maxD) _cameraDistance = maxD;
+
+    // Normalize rotation angles to avoid drift/overflow
+    // Pitch (x) should be clamped to [-pi/2 + eps, pi/2 - eps] to avoid gimbal flip
+    const EPS_PITCH = 1e-3;
+    cameraRotation.x = Math.max(-Math.PI / 2 + EPS_PITCH, Math.min(Math.PI / 2 - EPS_PITCH, cameraRotation.x));
+    // Yaw can wrap; keep it in [-pi, pi]
+    if (cameraRotation.y > Math.PI || cameraRotation.y < -Math.PI) {
+      cameraRotation.y = ((cameraRotation.y + Math.PI) % (2 * Math.PI)) - Math.PI;
+    }
+
+    const x = cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
+    const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
+    const z = cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
 
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
@@ -106,6 +183,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // code (billboards, basis extraction, etc.) can rely on a fresh matrix.
     // Three.js lazily updates matrixWorld during render; force it here.
     try { camera.updateMatrixWorld(true); } catch { /* ignore */ }
+    // Extract and cache normalized basis vectors for other systems to reuse
+    try {
+      (camera.matrixWorld as THREE.Matrix4).extractBasis(tempCamRight, tempCamUp, tempCamForward);
+      cameraBasis.right.copy(tempCamRight).normalize();
+      cameraBasis.up.copy(tempCamUp).normalize();
+      cameraBasis.forward.copy(tempCamForward).normalize();
+    } catch { /* ignore */ }
+    // Also attach basis to camera.userData for other modules to consume without
+    // needing to extract matrices themselves. Best-effort and non-critical.
+    try {
+      setCachedCameraBasis(camera, cameraBasis);
+    } catch { /* ignore */ }
   }
 
   // Procedural Skybox Generation
@@ -254,7 +343,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function updateSkyboxAnimation(dt: number) {
     skyboxAnimationTime += dt;
-    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
+  if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return undefined;
 
   const _textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
   skyboxTextures.forEach((texture, index) => {
@@ -349,8 +438,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   } catch (e) { void e;// Fallback: solid deep blue background if procedural generation fails
     logger.warn('Animated skybox generation failed, falling back to solid background', e);
     scene.background = new THREE.Color(0x000011); // Dark blue space color
-    sphereSkybox = createSphereSkybox();
-    scene.add(sphereSkybox);
+    // Ensure sphereSkybox is initialized even on error
+    if (!sphereSkybox) {
+      sphereSkybox = createSphereSkybox();
+      scene.add(sphereSkybox);
+    }
   }
 
   // Add some basic lighting to help with wireframe visibility
@@ -639,6 +731,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
+
+  // getPooledBillboardMaterial is implemented later; we'll ensure it's available before use.
 
   function createHealthBar(ship: Ship): THREE.Object3D {
     const config = RendererConfig.healthBars;
@@ -1128,7 +1222,6 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             healthBarsGroup.remove(bar); healthBarMeshes.delete(_id);
           }
         }
-      }
     // Remove shield effects for ships that no longer exist or have no shield
     // Remove trails for ships that no longer exist
     try {
@@ -1284,15 +1377,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function updateBillboardUniforms() {
     try {
-      // Extract camera right/up vectors for billboards
-      (camera.matrixWorld as THREE.Matrix4).extractBasis(tempCamRight, tempCamUp, tempCamForward);
-      tempCamRight.normalize();
-      tempCamUp.normalize();
+      // Use the cached camera basis (populated by updateCameraPosition) to update billboard materials
       for (const mat of billboardMaterials) {
         const uniforms = (mat as THREE.ShaderMaterial).uniforms as Record<string, { value: unknown }> | undefined;
         if (uniforms && uniforms.cameraRight && uniforms.cameraUp) {
-          (uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
-          (uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
+          (uniforms.cameraRight.value as THREE.Vector3).copy(cameraBasis.right);
+          (uniforms.cameraUp.value as THREE.Vector3).copy(cameraBasis.up);
         }
       }
     } catch { /* ignore */ }
@@ -1358,9 +1448,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Prefer postprocessing composer when available
     if (effectsManager && effectsManager.initDone) {
-      try {
+        try {
         effectsManager.render(_dt);
-        return;
+        return undefined;
       } catch (e) {
         void e; logger.warn('Effects manager render failed, falling back to default renderer', e as unknown);
       }
@@ -1389,27 +1479,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   window.addEventListener('resize', resize);
   resize();
 
-  return ({
-    initDone: true,
-    resize,
-    render,
-    dispose,
-    cameraRotation,
-    // Expose camera distance as getter/setter so external callers can adjust it.
-    get cameraDistance() { return _cameraDistance; },
-    set cameraDistance(v: number) { _cameraDistance = v; updateCameraPosition(); },
-    cameraTarget,
-    // Adapter helpers: optional hooks used by higher-level systems for caching
-    // and introspection. These are intentionally non-critical and best-effort.
-    getParameters: adapterGetParameters,
-    invalidateParameters: adapterInvalidateParameters,
-    // Test helpers
-    getUseShipInstancing() { return useShipInstancing; },
-    __resetForTests() {
-      recomputeInstancingGuards();
-    },
-  }) as unknown as RendererHandles;
-}
+  
 
 /**
  * Updates the orientation of health/shield bars to face the camera.
@@ -1429,6 +1499,7 @@ const billboardVertexShader = `
   varying vec3 vColor;
   varying float vAlpha;
 
+ 
   void main() {
     // center of this object in world-space
     vec3 center = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
@@ -1459,6 +1530,11 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
   const key = billboardPoolKey(color, alpha);
   const existing = billboardMaterialPool.get(key);
   if (existing) return existing;
+
+
+
+
+
 
   const mat = new THREE.ShaderMaterial({
     uniforms: {
@@ -1518,5 +1594,20 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
     try { rendererProgramCache.delete(programLike as object); } catch { /* ignore */ }
   }
 
+  // Expose a strongly-typed RendererHandles object to callers.
+  const handles: RendererHandles = {
+    initDone: true,
+    resize,
+    render,
+    dispose,
+    cameraRotation,
+    get cameraDistance() { return _cameraDistance; },
+    set cameraDistance(v: number) { _cameraDistance = v; updateCameraPosition(); },
+    cameraTarget,
+    getParameters: adapterGetParameters,
+    invalidateParameters: adapterInvalidateParameters
+  };
 
-
+  return handles;
+}
+}
