@@ -16,34 +16,8 @@ export interface RendererEffectsConfig {
       animation: {
         twinkleSpeed: number;
         updateFrequency: number;
-        twinkleAmplitude: number;
-        twinklePhaseOffset: number;
-        minAlpha: number;
       };
       baseSeed: number;
-      colors: {
-        background: {
-          center: string;
-          middle: string;
-          edge: string;
-        };
-        stars: string[];
-      };
-      starSizes: {
-        smallProbability: number;
-        mediumProbability: number;
-        // large stars are 1 - smallProbability - mediumProbability
-      };
-      brightness: {
-        min: number;
-        range: number; // actual brightness = min + random() * range
-      };
-      facePatterns: {
-        topDensityFactor: number;
-        bottomDensityFactor: number;
-        sideDensityFactor: number;
-        milkyWayEffect: number; // for top face center band
-      };
     };
     sphere: {
       radius: number;
@@ -89,35 +63,10 @@ export const DefaultRendererEffectsConfig: RendererEffectsConfig = {
       animation: {
         twinkleSpeed: 2.0,
         updateFrequency: 3,
-        twinkleAmplitude: 0.3,
-        twinklePhaseOffset: 0.001,
-        minAlpha: 0.15,
-      },
-      colors: {
-        background: {
-          center: '#000011',
-          middle: '#000033',
-          edge: '#000000',
-        },
-        stars: ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'],
-      },
-      starSizes: {
-        smallProbability: 0.7,
-        mediumProbability: 0.2, // 0.9 - 0.7 = 0.2
-      },
-      brightness: {
-        min: 0.3,
-        range: 0.7,
-      },
-      facePatterns: {
-        topDensityFactor: 0.7, // Milky Way effect intensity
-        bottomDensityFactor: 0.3, // Sparse bottom
-        sideDensityFactor: 0.8, // Dense sides
-        milkyWayEffect: 0.7, // Center band effect for top face
       },
     },
     sphere: {
-      radius: 5000,
+      radius: 19200,
       geometrySegments: 32,
     },
   },
