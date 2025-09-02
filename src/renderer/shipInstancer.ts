@@ -119,7 +119,17 @@ class ShipInstancerImpl {
     for (const g of this.groups.values()) {
       for (const m of g.meshes) {
         try { m.geometry.dispose(); } catch (_) { void _;/* no-op */ }
-        try { if (Array.isArray(m.material)) (m.material as any).forEach((x: any) => x.dispose()); else (m.material as any).dispose(); } catch (_) { void _;/* no-op */ }
+        try {
+          // Dispose material(s) safely without `any` casts
+          const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+          if (Array.isArray(mat)) {
+            for (const mm of mat) {
+              try { mm.dispose(); } catch (_) { void _; }
+            }
+          } else if (mat && typeof (mat as unknown as { dispose?: unknown }).dispose === 'function') {
+            try { (mat as THREE.Material).dispose(); } catch (_) { void _; }
+          }
+        } catch (_) { void _;/* no-op */ }
         try { if (m.parent) m.parent.remove(m); } catch (_) { void _;/* no-op */ }
       }
       try { if (g.parentGroup && g.parentGroup.parent) g.parentGroup.parent.remove(g.parentGroup); } catch (_) { void _;/* no-op */ }

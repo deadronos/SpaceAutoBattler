@@ -1,18 +1,14 @@
 import type { GameState, Ship, ShipClass, Team, Vector3, EntityId, Bullet, TurretState } from '../types/index.js';
 import { DefaultSimConfig } from '../config/simConfig.js';
-import { SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
-import type { TurretConfig } from '../types/index.js';
+import { SHIP_CLASS_CONFIGS as _SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
 import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
 import { FleetConfig } from '../config/fleetConfig.js';
-import { PhysicsConfig } from '../config/physicsConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
-import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
-import { findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends } from './searchUtils.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 
 export function createInitialState(seed?: string): GameState {
@@ -93,7 +89,7 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   const level = { level: 1, xp: 0, nextLevelXp: nextLevelXp(1) };
   const maxHealth = Math.floor(applyLevelUps(level.level, cfg.baseHealth));
   const maxShield = Math.floor(applyLevelUps(level.level, cfg.shield));
-  const globalTurretCfg = state.behaviorConfig?.turretConfig;
+  const _globalTurretCfg = state.behaviorConfig?.turretConfig;
   const turrets: TurretState[] = cfg.turrets.map((t, i) => {
     const pref = (t as unknown as { preferredBehavior?: string }).preferredBehavior;
     if (pref && pref !== 'dynamic') {
@@ -218,7 +214,7 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
     const makeSpreadDir = (index: number, total: number, centerDir: { x: number; y: number; z: number }) => {
       if (total <= 1) return centerDir;
       // Evenly sample azimuth around center and jitter by elevation within spreadAngle
-      const az = (index / total) * Math.PI * 2;
+  const _az = (index / total) * Math.PI * 2;
       const el = (-(total-1)/2 + index) / Math.max(1, total-1) * spreadAngle;
       // Rotate centerDir by azimuth around Z and then apply small elevation by mixing with perpendicular vector
       // For simplicity, assume centerDir primarily in XY plane; compute perp in XY
@@ -263,7 +259,7 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
 
 function updateBullets(state: GameState, dt: number) {
   const { width: _width, height: _height, depth: _depth } = state.simConfig.simBounds;
-  const behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
+  const _behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
 
   for (const b of state.bullets) {
     b.ttl -= dt;

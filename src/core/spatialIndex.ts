@@ -95,7 +95,7 @@ export class SpatialGridAdapter implements SpatialIndex {
     this.grid = grid;
   }
 
-  init(config: { cellSize: number; worldAABB?: AABB }): void {
+  init(_config: { cellSize: number; worldAABB?: AABB }): void {
     // SpatialGrid is typically already initialized, but we could extend it
     // For now, this is a no-op as the existing grid handles its own initialization
   }

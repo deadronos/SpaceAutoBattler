@@ -46,7 +46,7 @@ describe('Additional Renderer Modules', () => {
       
       expect(shieldGroup).toBeInstanceOf(THREE.Object3D);
       expect(shieldGroup.children.length).toBeGreaterThan(0);
-      expect((shieldGroup as any).shieldMesh).toBeDefined();
+  expect((shieldGroup as unknown as { shieldMesh?: THREE.Mesh }).shieldMesh).toBeDefined();
     });
 
     it('should update shield effects without errors', () => {
@@ -142,11 +142,11 @@ describe('Additional Renderer Modules', () => {
       const shieldEffectState = createShieldEffectState();
       
       // Mock factories
-      const mockMeshFactory = {
+      const mockMeshFactory = ({
         createShipMesh: () => new THREE.Object3D(),
         createHealthBarMesh: () => new THREE.Object3D(),
         updateHealthBarMesh: () => {}
-      };
+      } as unknown) as import('../../src/renderer/meshFactory.js').MeshFactory;
       const mockShieldEffect = {
         createShieldEffect: () => new THREE.Object3D(),
         updateShieldEffect: () => {},
@@ -196,12 +196,22 @@ describe('Additional Renderer Modules', () => {
       syncState.shipMeshes.set(1, mesh);
       const shieldEffectState = createShieldEffectState();
       
-      const mockMeshFactory = {
+      type ShipType = import('../../src/types/index.js').Ship;
+      type BulletType = import('../../src/types/index.js').Bullet;
+      type MeshFactoryType = import('../../src/renderer/meshFactory.js').MeshFactory;
+      type ShieldEffectType = import('../../src/renderer/synchronizer.js').ShieldEffect;
+
+      const mockMeshFactory = ({
+        createShipMesh: (_ship: ShipType) => new THREE.Object3D(),
+        createBulletMesh: (_b: BulletType) => new THREE.Object3D(),
+        createHealthBarMesh: (_s: ShipType) => new THREE.Object3D(),
         updateHealthBarMesh: () => {}
-      };
-      const mockShieldEffect = {
-        updateShieldEffect: () => {}
-      };
+      } as unknown) as MeshFactoryType;
+      const mockShieldEffect = ({
+        createShieldEffect: (_ship: ShipType, _state: import('../../src/renderer/effects/shieldEffect.js').ShieldEffectState) => new THREE.Object3D(),
+        updateShieldEffect: () => {},
+        disposeShieldEffect: (_s: THREE.Object3D) => {}
+      } as unknown) as ShieldEffectType;
       
       expect(() => updateTransforms(
         state, 

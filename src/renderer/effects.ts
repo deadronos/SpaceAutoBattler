@@ -3,7 +3,7 @@ import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
 import { FloatType, WebGLRenderTarget, NearestFilter, RGBAFormat, UnsignedByteType } from 'three';
 import * as logger from '../utils/logger.js';
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Module-scoped helpers for safe readbacks
 const tempRTCache: Record<string, WebGLRenderTarget> = {};
@@ -11,7 +11,8 @@ const blitScene = new three.Scene();
 const blitCamera = new three.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const blitGeom = new three.PlaneGeometry(2, 2);
 // helper to avoid repeated `asAny(x)` casts while keeping runtime behavior identical
-const asAny = (v: any) => v;
+// Accept unknown to encourage callers to pass values without using `any` directly.
+const asAny = (v: unknown) => v as any;
 
 const blitMat = new three.MeshBasicMaterial({ map: asAny(null) });
 const blitMesh = new three.Mesh(blitGeom, blitMat);
@@ -36,16 +37,17 @@ const unpackRGBAToDepth = (packedDepth: Uint8Array) => {
   return (packedDepth[0] * f0 + packedDepth[1] * f1 + packedDepth[2] * f2 + packedDepth[3] * f3) / 255;
 };
 
-const getTempRT = (srcRT: any) => {
-  if (!srcRT || !srcRT.width || !srcRT.height) return null;
-  const srcType = (srcRT.texture && srcRT.texture.type) || UnsignedByteType;
-  const srcFormat = (srcRT.texture && srcRT.texture.format) || RGBAFormat;
-  const needsRGBAUnsigned = !!(srcRT.depthTexture || (srcRT.texture && (srcType !== UnsignedByteType || srcFormat !== RGBAFormat)));
+const getTempRT = (srcRT: unknown) => {
+  const rt: any = asAny(srcRT);
+  if (!rt || !rt.width || !rt.height) return null;
+  const srcType = (rt.texture && rt.texture.type) || UnsignedByteType;
+  const srcFormat = (rt.texture && rt.texture.format) || RGBAFormat;
+  const needsRGBAUnsigned = !!(rt.depthTexture || (rt.texture && (srcType !== UnsignedByteType || srcFormat !== RGBAFormat)));
   const type = UnsignedByteType;
-  const key = `${srcRT.width}x${srcRT.height}_${type}_${needsRGBAUnsigned ? 'RGBA_UBYTE' : 'SRC'}`;
+  const key = `${rt.width}x${rt.height}_${type}_${needsRGBAUnsigned ? 'RGBA_UBYTE' : 'SRC'}`;
   let t = tempRTCache[key];
   if (!t) {
-    t = new WebGLRenderTarget(srcRT.width, srcRT.height, {
+    t = new WebGLRenderTarget(rt.width, rt.height, {
       minFilter: NearestFilter,
       magFilter: NearestFilter,
       format: RGBAFormat,
@@ -58,10 +60,11 @@ const getTempRT = (srcRT: any) => {
   return t;
 };
 
-const blitToTemp = (rend: WebGLRenderer, srcRT: any, dstRT: WebGLRenderTarget) => {
+const blitToTemp = (rend: WebGLRenderer, srcRT: unknown, dstRT: WebGLRenderTarget) => {
   try {
-    const srcTexture = srcRT && srcRT.texture ? srcRT.texture : srcRT;
-    const isDepthSource = !!(srcRT && (srcRT.depthTexture || (srcRT.texture && (srcRT.texture.type !== UnsignedByteType || srcRT.texture.format !== RGBAFormat))));
+    const s: any = asAny(srcRT);
+    const srcTexture = s && s.texture ? s.texture : s;
+    const isDepthSource = !!(s && (s.depthTexture || (s.texture && (s.texture.type !== UnsignedByteType || s.texture.format !== RGBAFormat))));
     if (isDepthSource) {
           try {
             asAny(packMat).uniforms.tInput.value = srcTexture;
@@ -87,11 +90,11 @@ const blitToTemp = (rend: WebGLRenderer, srcRT: any, dstRT: WebGLRenderTarget) =
   }
 };
 
-const readPixelsSafe = (renderer: WebGLRenderer, renderTarget: any, x: number, y: number, width: number, height: number, buffer: Uint8Array | Uint8ClampedArray) => {
+const readPixelsSafe = (renderer: WebGLRenderer, renderTarget: unknown, x: number, y: number, width: number, height: number, buffer: Uint8Array | Uint8ClampedArray) => {
   const rendererRead = asAny(renderer).readRenderTargetPixels;
   const hasAsync = typeof asAny(renderer).readRenderTargetPixelsAsync === 'function';
   const temp = getTempRT(renderTarget);
-  const src = temp || renderTarget;
+  const src = temp || asAny(renderTarget);
   if (temp) {
     try { blitToTemp(renderer, renderTarget, temp); } catch (_e) { void _e; }
   }
@@ -125,7 +128,7 @@ export interface EffectsManager {
 export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera): EffectsManager {
   // Lazy import to avoid build-time coupling; most deployments will have `postprocessing` installed.
    
-  let pp: any = null;
+  let pp: unknown = null;
   try { pp = require('postprocessing'); } catch (_e) { void _e; pp = null; }
   
   if (!pp) {
@@ -143,15 +146,16 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   }
 
   // Create composer and passes with defensive checks
-  const EffectComposer = pp.EffectComposer || pp.Composer || pp.default?.EffectComposer;
-  const RenderPass = pp.RenderPass || pp.Pass || pp.default?.RenderPass;
-  const EffectPass = pp.EffectPass || pp.Pass || pp.default?.EffectPass;
-  const BloomEffect = pp.BloomEffect || pp.default?.BloomEffect || pp.default?.SelectiveBloomEffect;
-  const ToneMappingEffect = pp.ToneMappingEffect || pp.default?.ToneMappingEffect;
-  const MotionBlurEffect = pp.MotionBlurEffect || pp.default?.MotionBlurEffect;
-  const DepthOfFieldEffect = pp.DepthOfFieldEffect || pp.default?.DepthOfFieldEffect;
-  const SMAAEffect = pp.SMAAEffect || pp.default?.SMAAEffect;
-  const FXAAEffect = pp.FXAAEffect || pp.default?.FXAAEffect;
+  const ppAny: any = asAny(pp);
+  const EffectComposer = ppAny.EffectComposer || ppAny.Composer || ppAny.default?.EffectComposer;
+  const RenderPass = ppAny.RenderPass || ppAny.Pass || ppAny.default?.RenderPass;
+  const EffectPass = ppAny.EffectPass || ppAny.Pass || ppAny.default?.EffectPass;
+  const BloomEffect = ppAny.BloomEffect || ppAny.default?.BloomEffect || ppAny.default?.SelectiveBloomEffect;
+  const ToneMappingEffect = ppAny.ToneMappingEffect || ppAny.default?.ToneMappingEffect;
+  const MotionBlurEffect = ppAny.MotionBlurEffect || ppAny.default?.MotionBlurEffect;
+  const DepthOfFieldEffect = ppAny.DepthOfFieldEffect || ppAny.default?.DepthOfFieldEffect;
+  const SMAAEffect = ppAny.SMAAEffect || ppAny.default?.SMAAEffect;
+  const FXAAEffect = ppAny.FXAAEffect || ppAny.default?.FXAAEffect;
 
   const composer = new (EffectComposer)(renderer);
 
@@ -281,8 +285,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // framebuffer/texture is still active. If possible, patch the pass so it
   // uses the non-blocking readRenderTargetPixelsAsync API.
   try {
-    const DepthCopyPass = pp.DepthCopyPass || pp.DepthSavePass || pp.DepthSavePass?.DepthCopyPass;
-    const DepthCopyMode = pp.DepthCopyMode || pp.DepthCopyMode;
+  const DepthCopyPass = ppAny.DepthCopyPass || ppAny.DepthSavePass || ppAny.DepthSavePass?.DepthCopyPass;
+  const _DepthCopyMode = ppAny.DepthCopyMode || ppAny.DepthCopyMode;
       if (DepthCopyPass && typeof DepthCopyPass.prototype.render === 'function') {
       const originalRender = DepthCopyPass.prototype.render;
   try { logger.info('[EffectsManager] Patched DepthCopyPass.render to use async read when available'); } catch (_e) { void _e;/* ignore logging errors */ }
@@ -293,8 +297,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
         // Temporarily stub out the synchronous read to avoid blocking inside
         // the original implementation. Then perform a non-blocking read
         // ourselves if a callback/request is pending.
-        const rendererRead = asAny(rendererArg).readRenderTargetPixels;
-        const hasAsyncRead = typeof asAny(rendererArg).readRenderTargetPixelsAsync === 'function';
+  const rendererRead = asAny(rendererArg).readRenderTargetPixels;
+  const _hasAsyncRead = typeof asAny(rendererArg).readRenderTargetPixelsAsync === 'function';
 
         // Replace sync read with a no-op while originalRender executes.
         asAny(rendererArg).readRenderTargetPixels = function () { /* noop to avoid sync read */ };
@@ -324,8 +328,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
 
             const temp = getTempRT(renderTarget);
 
-            if (temp) {
-              try { logger.info('[EffectsManager] depth-read temp=true async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (_e) { void _e;/* no-op */ }
+              if (temp) {
+              try { logger.info('[EffectsManager] depth-read temp=true async=' + _hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (_e) { void _e;/* no-op */ }
               blitToTemp(rendererArg, renderTarget, temp);
               // Use the centralized safe read helper which will prefer async API
               // and otherwise perform a deferred sync read. This makes the
@@ -344,10 +348,10 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                 });
               } catch (_err) { void _err;this.callback = null;
               }
-            } else {
+              } else {
               // No temp RT available: fall back to previous behavior.
-              try { logger.info('[EffectsManager] depth-read temp=false async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (_e) { void _e;/* no-op */ }
-              if (hasAsyncRead) {
+              try { logger.info('[EffectsManager] depth-read temp=false async=' + _hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (_e) { void _e;/* no-op */ }
+              if (_hasAsyncRead) {
                 asAny(rendererArg).readRenderTargetPixelsAsync(renderTarget, x, y, 1, 1, pixelBuffer).then(() => {
                   try {
                     const value = packed ? unpackRGBAToDepth(pixelBuffer) : pixelBuffer[0];
@@ -447,8 +451,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
       composer.addPass(depthOfFieldPass);
     }
 
-    // Anti-aliasing (prefer SMAA, fallback to FXAA)
-    let aaEffect: any = null;
+  // Anti-aliasing (prefer SMAA, fallback to FXAA)
+  let aaEffect: any = null;
     if (SMAAEffect) {
       aaEffect = new SMAAEffect();
     } else if (FXAAEffect) {
@@ -486,7 +490,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // a pixel read/callback (DepthPickingPass style) to replace the
   // synchronous read with an async read when available.
   try {
-    const hasAsyncRead = typeof asAny(renderer).readRenderTargetPixelsAsync === 'function';
+  const _hasAsyncRead = typeof asAny(renderer).readRenderTargetPixelsAsync === 'function';
     // reuse module-level unpack helper
 
 

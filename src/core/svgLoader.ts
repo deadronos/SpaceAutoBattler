@@ -1,8 +1,8 @@
 // SVG Loader with change detection and caching
 // Handles loading SVG files, detecting changes, and rasterizing to ImageBitmap
 
-import type { GameState } from '../types/index.js';
-import { getFileWatcher, watchSVGFiles, unwatchSVGFiles } from '../utils/fileWatcher.js';
+import type { GameState as _GameState } from '../types/index.js';
+import { getFileWatcher } from '../utils/fileWatcher.js';
 import * as logger from '../utils/logger.js';
 
 export interface SVGAsset {
@@ -165,7 +165,7 @@ export class SVGLoader {
         return;
       }
 
-      const messageId = Math.random().toString(36);
+  const _messageId = Math.random().toString(36);
 
       const messageHandler = (e: MessageEvent) => {
         const data = e.data;

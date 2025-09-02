@@ -98,10 +98,8 @@ export function syncEntities(
   state: GameState, 
   syncState: SynchronizerState, 
   groups: SynchronizerGroups,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  meshFactory: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  shieldEffect: any,
+  meshFactory: MeshFactory,
+  shieldEffect: ShieldEffect,
   meshFactoryState: MeshFactoryState,
   shieldEffectState: ShieldEffectState,
   camera?: THREE.Camera,

@@ -46,7 +46,7 @@ interface GetCanvasResponse {
   present: boolean;
 }
 
-type WorkerResponse = RasterizeResponse | CacheResponse | GetCanvasResponse;
+type _WorkerResponse = RasterizeResponse | CacheResponse | GetCanvasResponse;
 
 import * as logger from '../utils/logger.js';
 
@@ -232,7 +232,7 @@ function applyTeamColorTint(
 }
 
 // Get file modification time (simplified - in real implementation would need file system access)
-async function getFileModTime(filePath: string): Promise<number | null> {
+async function _getFileModTime(_filePath: string): Promise<number | null> {
   // This is a placeholder - in a real implementation, you'd need to check file system
   // For now, we'll use a simple approach that could be extended
   try {
@@ -251,7 +251,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
   try {
     switch (request.type) {
       case 'rasterize': {
-        const { svgText, width, height, assetKey, teamColor, filePath, fileModTime } = request;
+        const { svgText, width, height, assetKey, teamColor, filePath: _filePath, fileModTime } = request;
 
         // Check cache first
         const cached = rasterCache.get(assetKey, fileModTime || undefined);
@@ -285,7 +285,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
 
       case 'get-canvas': {
         // This is a simplified implementation - in practice you'd maintain a canvas cache
-        const { assetKey, mappingHash, outW, outH } = request;
+        const { assetKey, mappingHash: _mappingHash, outW, outH } = request;
 
         // For now, just return whether we have a cached bitmap
         const cached = rasterCache.get(assetKey);

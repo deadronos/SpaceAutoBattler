@@ -5,14 +5,14 @@ import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } f
 import { applyGlobalPatches } from './renderer/effects.js';
 
 try { applyGlobalPatches(); } catch (_e) { void _e;/* ignore */ }
-import type { GameState, Team, UIElements } from './types/index.js';
+import type { GameState, UIElements, ShipClass } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
 import { loadGLTF } from './core/assetLoader.js';
 import { CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
-import { DefaultSimConfig } from './config/simConfig.js';
+// DefaultSimConfig not used here; keep config imports minimal to avoid unused-import ESLint errors
 import { getSVGLoader, loadSVGAsset } from './core/svgLoader.js';
 import * as logger from './utils/logger.js';
 import { DefaultGameConfig } from './config/gameConfig.js';
@@ -38,7 +38,7 @@ function bindUI(): UIElements {
   };
 }
 
-function randomClass(state: GameState): any { return (['fighter','corvette','frigate','destroyer','carrier'] as const)[Math.floor(state.rng.next()*5)]; }
+function randomClass(state: GameState): ShipClass { return (['fighter','corvette','frigate','destroyer','carrier'] as const as ShipClass[])[Math.floor(state.rng.next()*5)]; }
 
 function reFormFleets(state: GameState) {
   const leftX = FleetConfig.positioning.leftMargin;
@@ -62,7 +62,7 @@ function initGame(seed?: string) {
   const ui = bindUI();
   const state = createInitialState(seed);
   // Ensure there is an asset pool for GLTFs and textures
-  state.assetPool = new Map<string, any>();
+  state.assetPool = new Map<string, unknown>();
 
   // Initialize SVG loader and preload ship SVGs
   const svgLoader = getSVGLoader();
@@ -333,8 +333,8 @@ function resetToCinematicView(state: GameState) {
   state.renderer.cameraTarget.z = centerZ;
 
   // Calculate optimal distance based on spread and camera FOV
-  const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance = (maxSpread / 2) / Math.tan(fovRadians / 2) * CameraConfig.resetToCinematic.fovMultiplier; // 1.5x for comfortable viewing
+  const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+  const optimalDistance = (maxSpread / 2) / Math.tan(_fovRadians / 2) * CameraConfig.resetToCinematic.fovMultiplier; // 1.5x for comfortable viewing
 
   // Set distance with some minimum/maximum bounds
   state.renderer.cameraDistance = Math.max(CameraConfig.cinematic.minDistance, Math.min(CameraConfig.cinematic.maxDistance, optimalDistance));
@@ -389,7 +389,7 @@ function updateCinematicCamera(state: GameState, dt: number) {
   );
 
   // Calculate optimal camera distance (show both fleets with some margin)
-  const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+  const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
   const optimalDistance = Math.max(fleetDistance * CameraConfig.cinematic.fleetDistanceMultiplier, CameraConfig.cinematic.minDistance); // Minimum distance of 500
 
   // Smoothly interpolate camera target
@@ -552,7 +552,7 @@ function startLoops(state: GameState, ui: UIElements) {
   const fixedDt = 1 / state.simConfig.tickRate;
   let last = performance.now();
   let acc = 0;
-  let fpsAccum = 0, fpsFrames = 0, fpsTime = 0;
+  let fpsAccum = 0, fpsFrames = 0, _fpsTime = 0;
 
   function frame(now: number) {
     const dt = (now - last) / 1000; last = now;
@@ -580,7 +580,7 @@ function startLoops(state: GameState, ui: UIElements) {
     state.renderer?.render(dt);
 
     // Stats
-    fpsAccum += dt; fpsFrames++; fpsTime += dt;
+  fpsAccum += dt; fpsFrames++; _fpsTime += dt;
     if (fpsAccum >= 0.5) {
       const fps = Math.round(fpsFrames / fpsAccum);
       ui.stats.textContent = `FPS ${fps} • Ships ${state.ships.length} • Bullets ${state.bullets.length} • Tick ${state.tick}`;

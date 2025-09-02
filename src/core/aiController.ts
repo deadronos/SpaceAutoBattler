@@ -1066,7 +1066,9 @@ export class AIController {
 
               // Solve intercept point using closed-form solution for constant-speed projectile
               // Determine lookahead limit: per-turret override preferred, otherwise global setting
-              const lookahead = (tCfg && (tCfg as any).maxInterceptLookahead) ?? this.state.behaviorConfig!.globalSettings.maxInterceptLookahead;
+              // Prefer per-turret override if present, otherwise use global setting
+              const perTurretLookahead = (tCfg as import('../types/index.js').TurretConfig | undefined)?.maxInterceptLookahead;
+              const lookahead = perTurretLookahead ?? this.state.behaviorConfig!.globalSettings.maxInterceptLookahead;
               const intercept = computeInterceptPoint(
                 ship.pos,
                 bulletSpeed,

@@ -154,6 +154,12 @@ export interface BehaviorConfig {
     boundarySafetyMargin: number;
     
     // Separation behavior clustering thresholds
+    /**
+     * Maximum seconds into the future the turret intercept solver will consider.
+     * This prevents aiming at extremely far-future intercept points for very slow projectiles
+     * or pathological geometry. Can be tuned globally by designers.
+     */
+    maxInterceptLookahead: number;
     /** Neighbor count for very tight clusters (default: 8) */
     separationVeryTightCluster: number;
     /** Neighbor count for moderate clusters (default: 5) */
