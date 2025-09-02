@@ -86,23 +86,29 @@ function inlineHtml({ html, css, js, workerJs, svgAssets }) {
   // Inline CSS into a <style> tag
   let out = html.replace(/<link[^>]+href=["'][^"']+["'][^>]*>/i, `<style>\n${css}\n</style>`);
 
-  // Create a simpler inline script that avoids complex string embedding
-  const inlineScript = `
-(function(){
-  // Embed SVG assets
-  if (typeof globalThis !== 'undefined') {
-    globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)};
-  }
+  // We'll inject two module scripts:
+  // 1) A small bootstrap module that embeds SVG assets and overrides Worker to load
+  //    the inlined worker JS via a blob. This must run before the main module so
+  //    that any Worker construction in the main module will be intercepted.
+  // 2) The main module code as a top-level inline module so that its `import`
+  //    statements are resolved relative to the HTML document (good for './chunks/').
 
-  // Embed worker script as a function that returns the code
-  const getWorkerScript = function() {
-    return ${JSON.stringify(workerJs)};
-  };
+  const bootstrapScript = `
+// Bootstrap (module) - sets up inline assets and Worker override
+if (typeof globalThis !== 'undefined') {
+  globalThis.__INLINE_SVG_ASSETS = ${JSON.stringify(svgAssets)};
+}
 
-  // Override Worker constructor to use embedded script
-  const OriginalWorker = window.Worker;
-  window.Worker = class extends OriginalWorker {
-    constructor(url, opts) {
+const __embeddedWorkerJs = ${JSON.stringify(workerJs)};
+
+const getWorkerScript = function() {
+  return __embeddedWorkerJs;
+};
+
+const OriginalWorker = window.Worker;
+window.Worker = class extends OriginalWorker {
+  constructor(url, opts) {
+    try {
       if (typeof url === 'string' && url.includes('simWorker.js')) {
         const workerCode = getWorkerScript();
         const blob = new Blob([workerCode], { type: 'text/javascript' });
@@ -110,16 +116,20 @@ function inlineHtml({ html, css, js, workerJs, svgAssets }) {
         super(blobUrl, { type: 'module', ...(opts || {}) });
         return;
       }
-      super(url, opts);
+    } catch (err) {
+      console.error('Worker bootstrap failed:', err);
     }
-  };
+    super(url, opts);
+  }
+};
+`;
 
-  // Execute main script directly
-  ${js}
-})();`;
+  // mainModuleScript will be injected as the second <script type="module"> tag
+  const mainModuleScript = js;
 
-  // Replace the script tag with our inline version
-  out = out.replace(/<script[^>]+src=["'][^"']+["'][^>]*><\/script>/i, `<script type="module">${inlineScript}</script>`);
+  // Replace the script tag with bootstrap + main module (both type=module).
+  // The bootstrap runs first, then the main module executes with proper top-level imports.
+  out = out.replace(/<script[^>]+src=["'][^"']+["'][^>]*><\/script>/i, `<script type="module">${bootstrapScript}</script>\n<script type="module">${mainModuleScript}</script>`);
 
   return out;
 }
@@ -159,10 +169,28 @@ export async function buildStandalone({ outDir = BUILD_CONFIG.defaultOutDir, inc
     ]);
     logger.timeEnd('Asset loading');
 
+    // When inlining the main JS into a blob, relative imports like "./chunks/..."
+    // fail because blob: URLs are not hierarchical and the browser cannot
+    // resolve relative specifiers against them. Convert chunk-relative
+    // specifiers to absolute paths based on the output directory so they
+    // resolve correctly (e.g. '/dist/chunks/...'). This keeps the standalone
+    // inlined module self-contained while allowing chunk files to remain on disk.
+    const outRel = path.relative(repoRoot, outDir).replace(/\\/g, '/');
+    const chunksAbsolutePrefix = `/${outRel}/chunks/`;
+
+    const replaceChunkSpecifiers = (source) => {
+      if (!source) return source;
+      // Replace any './chunks/' occurrences inside single/double quotes with absolute path
+      return source.replace(/(["'])\.\/chunks\//g, `$1${chunksAbsolutePrefix}`);
+    };
+
+    const jsForInline = replaceChunkSpecifiers(js);
+    const workerJsForInline = replaceChunkSpecifiers(workerJs);
+
     const svgAssets = await loadSvgAssets(BUILD_CONFIG.svgConfigDir, BUILD_CONFIG.svgFiles, logger);
 
     logger.time('HTML inlining');
-    const final = inlineHtml({ html, css, js, workerJs, svgAssets });
+  const final = inlineHtml({ html, css, js: jsForInline, workerJs: workerJsForInline, svgAssets });
     logger.timeEnd('HTML inlining');
 
     logger.time('File writing');
