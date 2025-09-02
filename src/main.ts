@@ -470,6 +470,11 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
   document.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 
+    // Prevent browser defaults on movement keys (e.g., Space scrolling)
+    if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'ShiftLeft' || e.code === 'Space') {
+      e.preventDefault();
+    }
+
     // Cinematic camera with 'C' key
     if (e.code === 'KeyC' && state.renderer) {
       e.preventDefault();
@@ -492,8 +497,8 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
 
     if (keys['KeyW']) moveVector.z -= moveSpeed; // Forward
     if (keys['KeyS']) moveVector.z += moveSpeed; // Backward
-    if (keys['KeyA']) moveVector.x += moveSpeed; // Left
-    if (keys['KeyD']) moveVector.x -= moveSpeed; // Right
+  if (keys['KeyA']) moveVector.x -= moveSpeed; // Left
+  if (keys['KeyD']) moveVector.x += moveSpeed; // Right
     if (keys['ShiftLeft']) moveVector.y -= moveSpeed; // Down
     if (keys['Space']) moveVector.y += moveSpeed; // Up
 

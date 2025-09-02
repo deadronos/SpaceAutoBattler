@@ -1341,6 +1341,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function render(_dt: number) {
+    // Ensure camera follows external updates to rotation/target/distance
+    updateCameraPosition();
     // Drive animated skybox and entity sync
     updateSkyboxAnimation(_dt);
     syncEntities();
