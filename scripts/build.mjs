@@ -348,7 +348,12 @@ export async function build({ outDir = BUILD_CONFIG.defaultOutDir, incremental =
       sourcemap: BUILD_CONFIG.sourcemap,
       sourcesContent: BUILD_CONFIG.sourcesContent,
       minify: BUILD_CONFIG.minify,
-      splitting: false,
+      // Allow esbuild to split shared modules into chunks so libraries
+      // like `three` are not duplicated across multiple entry bundles.
+      // Splitting requires `format: 'esm'` which is already configured.
+      splitting: true,
+      chunkNames: 'chunks/[name]-[hash]',
+      entryNames: '[name]',
       logLevel: 'silent',
       define: {
         'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
