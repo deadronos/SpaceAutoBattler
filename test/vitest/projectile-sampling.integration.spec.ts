@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ProjectileSystem } from '../../src/core/systems/projectileSystem';
 import { getShipClassConfig } from '../../src/config/entitiesConfig';
+import { createMockShip } from './setupTests';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
 
 // Simple deterministic LCG RNG for tests
@@ -50,7 +51,7 @@ describe('ProjectileSystem sampling integration', () => {
     const turretCfg = shipConfig.turrets[0];
 
     const turretState = { id: turretCfg.id, cooldownLeft: 0 };
-    const ship = {
+    const ship = createMockShip({
       id: 1,
       team: 'red',
       class: shipClass,
@@ -58,19 +59,13 @@ describe('ProjectileSystem sampling integration', () => {
       vel: { x: 0, y: 0, z: 0 },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 0,
-      shield: 0,
-      maxShield: 0,
-      shieldRegen: 0,
-      speed: 0,
-      turnRate: 0,
       turrets: [turretState],
-      kills: 0,
       level: { level: 1, xp: 0, nextLevelXp: 100 },
-      aiState: {}
-    } as any;
+      aiState: {},
+      armor: 0,
+      speed: 0,
+      turnRate: 0
+    }) as any;
 
     state.ships.push(ship);
 

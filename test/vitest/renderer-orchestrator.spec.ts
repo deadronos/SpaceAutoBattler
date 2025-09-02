@@ -6,7 +6,8 @@ import { createMeshFactoryState, meshFactory } from '../../src/renderer/meshFact
 import { createShieldEffectState, shieldEffect } from '../../src/renderer/effects/shieldEffect.js';
 import { createSynchronizerState, createSynchronizerGroups } from '../../src/renderer/synchronizer.js';
 import { createOverlayState, updateBillboardBars } from '../../src/renderer/overlay.js';
-import { createMockGameState } from './setupTests.js';
+import { createMockGameState, createMockShip } from './setupTests.js';
+import { getShipClassConfig, TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
 import * as THREE from 'three';
 
 // Test the new orchestrator renderer components
@@ -73,30 +74,27 @@ describe('New Orchestrator Renderer Components', () => {
       const syncState = createSynchronizerState();
       const groups = createSynchronizerGroups();
       
-      // Create a ship
-      const ship = {
+      // Create a ship derived from canonical fighter config
+      const fighterCfg = getShipClassConfig('fighter');
+      const ship = createMockShip({
         id: 1,
         pos: { x: 0, y: 0, z: 0 },
-        vel: { x: 0, y: 0, z: 0 },
-        orientation: { pitch: 0, yaw: 0, roll: 0 },
-        targetId: null,
-        team: 'red' as const,
-        class: 'fighter' as const,
-        health: 100,
-        maxHealth: 100,
-        armor: 2,
-        shield: 50,
-        maxShield: 50,
-        shieldRegen: 5,
-        speed: 140,
-        turnRate: Math.PI,
-        turrets: [{ id: 'fighter-cannon-0', cooldownLeft: 0 }],
-        kills: 0,
-        level: { level: 1, xp: 0, nextLevelXp: 50 }
-      };
+        team: 'red',
+        class: 'fighter',
+        health: fighterCfg.baseHealth,
+        maxHealth: fighterCfg.baseHealth,
+        armor: fighterCfg.armor ?? 0,
+        shield: fighterCfg.shield ?? 0,
+        maxShield: fighterCfg.shield ?? 0,
+        shieldRegen: fighterCfg.shieldRegen ?? 0,
+        speed: fighterCfg.speed,
+        turnRate: fighterCfg.turnRate,
+        turrets: (fighterCfg.turrets || []).map((t: any, idx: number) => ({ id: `${t.id}-${idx}`, cooldownLeft: 0 })),
+      });
       
       // Test individual factory functions
       const shipMesh = meshFactory.createShipMesh(ship, state, groups.shipsGroup, syncState.shipMeshes);
+      const defaultDamage = (TURRET_CONFIGS['fighter-cannon'] && TURRET_CONFIGS['fighter-cannon'].damage) || 1;
       const bulletMesh = meshFactory.createBulletMesh({
         id: 1,
         ownerShipId: 1,
@@ -104,7 +102,7 @@ describe('New Orchestrator Renderer Components', () => {
         pos: { x: 10, y: 10, z: 10 },
         vel: { x: 100, y: 0, z: 0 },
         ttl: 3,
-        damage: 6
+        damage: defaultDamage
       });
       const healthBar = meshFactory.createHealthBarMesh(ship, meshFactoryState);
       const shieldEffectMesh = shieldEffect.createShieldEffect(ship, shieldEffectState);

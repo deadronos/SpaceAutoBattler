@@ -1,6 +1,7 @@
 import { beforeAll, vi } from 'vitest';
 import type { GameState, Ship, Bullet } from '../../src/types/index.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
+import { getShipClassConfig, TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
 
 // Mock WebGL context for tests
 export const glStub = {
@@ -215,6 +216,12 @@ export function createMockGameState(overrides = {}) {
 }
 
 export function createMockShip(overrides = {}) {
+  // Use canonical fighter config to derive mock defaults so tests follow config changes
+  const fighterCfg = getShipClassConfig('fighter');
+  const defaultTurrets = Array.isArray(fighterCfg.turrets)
+    ? fighterCfg.turrets.map((t: any, idx: number) => ({ id: `${t.id}-${idx}`, cooldownLeft: 0 }))
+    : [];
+
   const baseShip = {
     id: 1,
     team: 'red' as const,
@@ -228,15 +235,15 @@ export function createMockShip(overrides = {}) {
     },
     dir: 0,
     targetId: null,
-    health: 80,
-    maxHealth: 80,
-    armor: 2,
-    shield: 40,
-    maxShield: 40,
-    shieldRegen: 5,
-    speed: 140,
-    turnRate: Math.PI,
-    turrets: [{ id: 'fighter-cannon-0', cooldownLeft: 0 }],
+    health: fighterCfg.baseHealth,
+    maxHealth: fighterCfg.baseHealth,
+    armor: fighterCfg.armor ?? 0,
+    shield: fighterCfg.shield ?? 0,
+    maxShield: fighterCfg.shield ?? 0,
+    shieldRegen: fighterCfg.shieldRegen ?? 0,
+    speed: fighterCfg.speed,
+    turnRate: fighterCfg.turnRate,
+    turrets: defaultTurrets,
     kills: 0,
     level: { level: 1, xp: 0, nextLevelXp: 50 },
   };
@@ -245,6 +252,8 @@ export function createMockShip(overrides = {}) {
 }
 
 export function createMockBullet(overrides = {}) {
+  // Derive default bullet damage from the fighter turret config when available
+  const fighterTurretDamage = (TURRET_CONFIGS['fighter-cannon'] && TURRET_CONFIGS['fighter-cannon'].damage) || 1;
   const baseBullet = {
     id: 1,
     ownerShipId: 1,
@@ -252,7 +261,7 @@ export function createMockBullet(overrides = {}) {
     pos: { x: 100, y: 100, z: 100 },
     vel: { x: 400, y: 0, z: 0 },
     ttl: 3,
-    damage: 6,
+    damage: fighterTurretDamage,
   };
 
   return { ...baseBullet, ...overrides };
@@ -331,4 +340,14 @@ export function testBoundaryBehavior(position: any, bounds: any, behavior: strin
   }
 
   return result;
+}
+
+// Test helper: assert a ship's turret count matches its class config
+export function expectShipTurretCountFromConfig(ship: any, shipClass: string) {
+  const cfg = getShipClassConfig(shipClass as any);
+  const expected = Array.isArray(cfg.turrets) ? cfg.turrets.length : 0;
+  // Use Vitest expect from global context
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { expect } = require('vitest');
+  expect(ship.turrets).toHaveLength(expected);
 }

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { HealthBarInstancer } from '../../src/renderer/healthBarInstancer';
+import { createMockShip } from './setupTests.js';
+import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
 
 describe('HealthBarInstancer basic behavior', () => {
   it('allocates and updates an instance (matrices not zero-scale)', () => {
@@ -10,14 +12,8 @@ describe('HealthBarInstancer basic behavior', () => {
 
     const instancer = new HealthBarInstancer(scene, group);
 
-    const ship = {
-      id: 123,
-      pos: { x: 10, y: 20, z: 5 },
-      health: 80,
-      maxHealth: 100,
-      shield: 50,
-      maxShield: 100,
-    } as any;
+    const fighterCfg = getShipClassConfig('fighter');
+    const ship = createMockShip({ id: 123, pos: { x: 10, y: 20, z: 5 }, class: 'fighter' });
 
     const allocated = instancer.allocateInstance(ship.id);
     expect(allocated).toBe(true);

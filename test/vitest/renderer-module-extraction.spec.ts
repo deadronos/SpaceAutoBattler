@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { setupScene, updateSkyboxAnimation, disposeScene } from '../../src/renderer/sceneSetup.js';
 import { setupCamera, updateCameraPosition, setCameraDistance, getCameraDistance } from '../../src/renderer/cameraManager.js';
 import { createMeshFactoryState, createShipMesh, createBulletMesh, createHealthBarMesh, getPooledBillboardMaterial } from '../../src/renderer/meshFactory.js';
-import { createMockGameState } from './setupTests.js';
+import { createMockGameState, createMockShip } from './setupTests.js';
+import { getShipClassConfig, TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
 import * as THREE from 'three';
 
 // Tests for the newly extracted renderer modules
@@ -87,6 +88,7 @@ describe('Extracted Renderer Modules', () => {
     });
 
     it('should create bullet meshes correctly', () => {
+      const defaultDamage = (TURRET_CONFIGS['fighter-cannon'] && TURRET_CONFIGS['fighter-cannon'].damage) || 1;
       const bullet = {
         id: 1,
         ownerShipId: 1,
@@ -94,7 +96,7 @@ describe('Extracted Renderer Modules', () => {
         pos: { x: 10, y: 10, z: 10 },
         vel: { x: 100, y: 0, z: 0 },
         ttl: 3,
-        damage: 6
+        damage: defaultDamage
       };
       
       const mesh = createBulletMesh(bullet);
@@ -106,26 +108,22 @@ describe('Extracted Renderer Modules', () => {
     });
 
     it('should create ship meshes with placeholders', () => {
-      const ship = {
+      const fighterCfg = getShipClassConfig('fighter');
+      const ship = createMockShip({
         id: 1,
         pos: { x: 50, y: 50, z: 50 },
-        vel: { x: 0, y: 0, z: 0 },
-        orientation: { pitch: 0, yaw: 0, roll: 0 },
-        targetId: null,
-        team: 'blue' as const,
-        class: 'fighter' as const,
-        health: 100,
-        maxHealth: 100,
-        armor: 2,
-        shield: 50,
-        maxShield: 50,
-        shieldRegen: 5,
-        speed: 140,
-        turnRate: Math.PI,
-        turrets: [{ id: 'fighter-cannon-0', cooldownLeft: 0 }],
-        kills: 0,
-        level: { level: 1, xp: 0, nextLevelXp: 50 }
-      };
+        team: 'blue',
+        class: 'fighter',
+        health: fighterCfg.baseHealth,
+        maxHealth: fighterCfg.baseHealth,
+        armor: fighterCfg.armor ?? 0,
+        shield: fighterCfg.shield ?? 0,
+        maxShield: fighterCfg.shield ?? 0,
+        shieldRegen: fighterCfg.shieldRegen ?? 0,
+        speed: fighterCfg.speed,
+        turnRate: fighterCfg.turnRate,
+        turrets: (fighterCfg.turrets || []).map((t: any, idx: number) => ({ id: `${t.id}-${idx}`, cooldownLeft: 0 })),
+      });
       
       const state = createMockGameState();
       const shipsGroup = new THREE.Group();
@@ -140,26 +138,7 @@ describe('Extracted Renderer Modules', () => {
     });
 
     it('should create health bar meshes', () => {
-      const ship = {
-        id: 1,
-        pos: { x: 0, y: 0, z: 0 },
-        vel: { x: 0, y: 0, z: 0 },
-        orientation: { pitch: 0, yaw: 0, roll: 0 },
-        targetId: null,
-        team: 'red' as const,
-        class: 'fighter' as const,
-        health: 80,
-        maxHealth: 100,
-        armor: 2,
-        shield: 30,
-        maxShield: 50,
-        shieldRegen: 5,
-        speed: 140,
-        turnRate: Math.PI,
-        turrets: [{ id: 'fighter-cannon-0', cooldownLeft: 0 }],
-        kills: 0,
-        level: { level: 1, xp: 0, nextLevelXp: 50 }
-      };
+      const ship = createMockShip({ id: 1, pos: { x: 0, y: 0, z: 0 }, team: 'red' });
       
       const factoryState = createMeshFactoryState();
       const healthBar = createHealthBarMesh(ship, factoryState);

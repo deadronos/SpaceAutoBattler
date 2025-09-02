@@ -59,6 +59,8 @@ const tempCamRight = new THREE.Vector3();
 const tempCamUp = new THREE.Vector3(); 
 const tempCamForward = new THREE.Vector3();
 
+import TrailManager from './effects/trailManager.js';
+
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   // Apply global readPixels/prototype patches early, if available.
   try {
@@ -387,13 +389,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   scene.add(bulletsGroup);
   scene.add(healthBarsGroup);
   scene.add(shieldEffectsGroup);
-
+  // Per-entity object caches
   const shipMeshes = new Map<number, THREE.Object3D>();
   const bulletMeshes = new Map<number, THREE.Object3D>();
   const healthBarMeshes = new Map<number, THREE.Object3D>();
   const shieldEffectMeshes = new Map<number, THREE.Object3D>();
-  
-  // Initialize bullet instancer if enabled
+  // Engine trail manager
+  const trailManager = new TrailManager(scene);
+
   let bulletInstancer: BulletInstancer | null = null;
   if (RendererConfig.instancing.enableBullets) {
     bulletInstancer = new BulletInstancer(scene, bulletsGroup);
@@ -1123,12 +1126,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
     // Remove shield effects for ships that no longer exist or have no shield
-    for (const [id, shield] of shieldEffectMeshes) {
-      const ship = state.ships.find(s => s.id === id);
-      if (!ship || ship.maxShield <= 0) {
-        shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id);
+    // Remove trails for ships that no longer exist
+    try {
+      const currentShipIds = new Set(state.ships.map(s => s.id));
+      for (const id of Array.from(trailManager.trails.keys())) {
+        if (!currentShipIds.has(id)) trailManager.remove(id);
       }
-    }
+    } catch { /* ignore */ }
 
     // Bullets - use instanced rendering if enabled, otherwise individual meshes
     if (useBulletInstancing) {
@@ -1261,129 +1265,129 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       healthBarInstancer!.markMatricesNeedUpdate();
     }
   }
+  // Track device pixel ratio for trails and renderer
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // Create effects manager (postprocessing) lazily
+  let effectsManager: import('./effects.js').EffectsManager | null = null;
+  try {
+    effectsManager = createEffectsManager(
+      renderer as unknown as THREE.WebGLRenderer,
+      scene as unknown as THREE.Scene,
+      camera as unknown as THREE.PerspectiveCamera
+    );
+  } catch { effectsManager = null; }
+
+  function updateBillboardUniforms() {
+    try {
+      // Extract camera right/up vectors for billboards
+      (camera.matrixWorld as THREE.Matrix4).extractBasis(tempCamRight, tempCamUp, tempCamForward);
+      tempCamRight.normalize();
+      tempCamUp.normalize();
+      for (const mat of billboardMaterials) {
+        const uniforms = (mat as THREE.ShaderMaterial).uniforms as Record<string, { value: unknown }> | undefined;
+        if (uniforms && uniforms.cameraRight && uniforms.cameraUp) {
+          (uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
+          (uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
+        }
+      }
+    } catch { /* ignore */ }
+  }
 
   function resize() {
-    const dpr = Math.min(window.devicePixelRatio, 2);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-
-    // Prevent division by zero or very small dimensions
-    if (w <= 0 || h <= 0) return;
-
-    // Set canvas drawing buffer to the logical viewport size (unscaled by DPR).
-    // Some test environments use a mock renderer that doesn't actually resize the
-    // drawing buffer, so set these directly to keep behavior consistent in tests.
+    // Compute CSS pixel size of the canvas with robust fallbacks for test envs
+    let w = 1, h = 1;
     try {
-      canvas.width = w;
-      canvas.height = h;
-    } catch { /* ignore if canvas isn't writable in test env */ }
-
-    // If available, also set the CSS size so the element visually matches the
-    // layout; some browsers scale canvas using CSS which can affect the
-    // projection if CSS size doesn't match the drawing buffer.
-    if ((canvas as HTMLCanvasElement & { style?: CSSStyleDeclaration }).style) {
-      (canvas as HTMLCanvasElement & { style?: CSSStyleDeclaration }).style!.width = `${w}px`;
-      (canvas as HTMLCanvasElement & { style?: CSSStyleDeclaration }).style!.height = `${h}px`;
+      const anyCanvas = canvas as unknown as { getBoundingClientRect?: () => { width: number; height: number }; clientWidth?: number; clientHeight?: number; width?: number; height?: number };
+      // Prefer viewport size when available (full-window canvas behavior expected by tests)
+      const vw = Math.floor((window && typeof window.innerWidth === 'number') ? window.innerWidth : 0);
+      const vh = Math.floor((window && typeof window.innerHeight === 'number') ? window.innerHeight : 0);
+      if (vw > 0 && vh > 0) {
+        w = vw; h = vh;
+      } else if (typeof anyCanvas.getBoundingClientRect === 'function') {
+        const rect = anyCanvas.getBoundingClientRect();
+        w = Math.max(1, Math.floor(rect.width));
+        h = Math.max(1, Math.floor(rect.height));
+      } else {
+        // Fallback for headless/test contexts
+        w = Math.max(1, Math.floor((anyCanvas.clientWidth ?? anyCanvas.width ?? 1)));
+        h = Math.max(1, Math.floor((anyCanvas.clientHeight ?? anyCanvas.height ?? 1)));
+      }
+    } catch {
+      // Final safety: use canvas width/height or sensible defaults
+      const anyCanvas = canvas as unknown as { clientWidth?: number; clientHeight?: number; width?: number; height?: number };
+      w = Math.max(1, Math.floor((anyCanvas.clientWidth ?? anyCanvas.width ?? 1)));
+      h = Math.max(1, Math.floor((anyCanvas.clientHeight ?? anyCanvas.height ?? 1)));
     }
 
-    renderer.setPixelRatio(dpr);
-    // Pass `false` for updateStyle because we already set canvas.style above.
-    renderer.setSize(w, h, false);
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    try { renderer.setPixelRatio(dpr); } catch { /* ignore */ }
+    try { renderer.setSize(w, h, false); } catch { /* ignore */ }
+    try { trailManager.setPixelRatio(dpr); } catch { /* ignore */ }
+    // Ensure the backing canvas element reflects the CSS size for tests/environments
+    try {
+      const anyCanvas = canvas as unknown as { width?: number; height?: number };
+      if (typeof anyCanvas.width === 'number') anyCanvas.width = w;
+      if (typeof anyCanvas.height === 'number') anyCanvas.height = h;
+    } catch { /* ignore */ }
 
     // Camera projection must use the CSS aspect (width/height) so it matches
     // the visible canvas size regardless of devicePixelRatio.
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-
-    // Update camera position using spherical coordinates
     updateCameraPosition();
 
-  try { effectsManager?.resize(w, h); } catch { /* ignore */ }
+    try { effectsManager?.resize(w, h); } catch { /* ignore */ }
   }
 
-  // Create effects manager (postprocessing) lazily
-  let effectsManager: import('./effects.js').EffectsManager | null = null;
-  try { effectsManager = createEffectsManager(renderer as unknown as THREE.WebGLRenderer, scene as unknown as THREE.Scene, camera as unknown as THREE.PerspectiveCamera); } catch { effectsManager = null; }
-
   function render(_dt: number) {
-
-    // Update camera position based on current rotation, distance, and target
-    updateCameraPosition();
-
-    // Sync entities and update transforms
+    // Drive animated skybox and entity sync
+    updateSkyboxAnimation(_dt);
     syncEntities();
     updateTransforms();
+    updateBillboardUniforms();
 
-    // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
-    // This guarantees bars don't inherit ship rotation.
-    for (const [_id, bar] of healthBarMeshes) {
-      if (bar.parent !== healthBarsGroup) {
-        try {
-          if (bar.parent) bar.parent.remove(bar);
-        } catch { /* ignore */ }
-        healthBarsGroup.add(bar);
-      }
-    }
-
-    // Ensure health bars face the camera (use the runtime collection)
-    if (GPU_BILLBOARD) {
-      // Update shader uniforms with camera basis vectors for all billboard materials
-      // Use cached temporary vectors to avoid per-frame allocations
-      camera.getWorldDirection(tempCamForward);
-      tempCamRight.crossVectors(camera.up, tempCamForward).normalize();
-      tempCamUp.copy(camera.up).normalize();
-      for (const mat of billboardMaterials) {
-        if (mat.uniforms) {
-          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
-          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
-        }
-      }
-    } else {
-      updateBillboardBars(Array.from(healthBarMeshes.values()), camera);
-    }
-
-    // Update animated skybox
-    updateSkyboxAnimation(_dt);
+    // Update engine trails before rendering
+    try { trailManager.update(state.ships, _dt); } catch { /* ignore */ }
 
     // Prefer postprocessing composer when available
     if (effectsManager && effectsManager.initDone) {
-        try {
-            effectsManager.render(_dt);
-            return;
-    } catch (e) { void e;logger.warn('Effects manager render failed, falling back to default renderer', e as unknown);
-    }
+      try {
+        effectsManager.render(_dt);
+        return;
+      } catch (e) {
+        void e; logger.warn('Effects manager render failed, falling back to default renderer', e as unknown);
+      }
     }
 
-    // Render the scene
-  // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-  try { shipInstancer.sync(); } catch { /* ignore instancer sync errors */ }
-  renderer.render(scene, camera);
+    // Ensure instanced meshes have their instanceMatrix flags updated before rendering
+    try { shipInstancer.sync(); } catch { /* ignore instancer sync errors */ }
+    renderer.render(scene, camera);
+  }
+
+  function dispose() {
+    try { trailManager.dispose(); } catch { /* ignore */ }
+    // Clear entity mesh maps
+    try { shipMeshes.clear(); } catch { /* ignore */ }
+    try { bulletMeshes.clear(); } catch { /* ignore */ }
+    try { healthBarMeshes.clear(); } catch { /* ignore */ }
+    try { shieldEffectMeshes.clear(); } catch { /* ignore */ }
+    // Dispose pooled billboard materials
+    for (const m of billboardMaterialPool.values()) {
+      try { m.dispose(); } catch { /* ignore */ }
+    }
+    billboardMaterialPool.clear();
+    billboardMaterials.clear();
   }
 
   window.addEventListener('resize', resize);
   resize();
 
-  return ( {
+  return ({
     initDone: true,
     resize,
     render,
-    dispose: () => {
-      window.removeEventListener('resize', resize);
-  try { effectsManager?.dispose(); } catch { /* ignore */ }
-  try { bulletInstancer?.dispose(); } catch { /* ignore */ }
-  try { healthBarInstancer?.dispose(); } catch { /* ignore */ }
-      renderer.dispose();
-      shipMeshes.clear();
-      bulletMeshes.clear();
-      healthBarMeshes.clear();
-      shieldEffectMeshes.clear();
-      // Dispose pooled billboard materials
-      for (const m of billboardMaterialPool.values()) {
-        try { m.dispose(); } catch { /* ignore */ }
-      }
-      billboardMaterialPool.clear();
-      billboardMaterials.clear();
-    },
+    dispose,
     cameraRotation,
     // Expose camera distance as getter/setter so external callers can adjust it.
     get cameraDistance() { return _cameraDistance; },
@@ -1398,7 +1402,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     __resetForTests() {
       recomputeInstancingGuards();
     },
-  } ) as unknown as RendererHandles;
+  }) as unknown as RendererHandles;
 }
 
 /**
