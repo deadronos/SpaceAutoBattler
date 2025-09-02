@@ -1,0 +1,1119 @@
+{
+  "console": [
+    {
+      "type": "log",
+      "text": "[SVGLoader] SVG rasterization worker initialized"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Preloading SVG assets with change detection..."
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] SVG debugging functions available at window.debugSVG"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()"
+    },
+    {
+      "type": "info",
+      "text": "BulletInstancer initialized with capacity 800"
+    },
+    {
+      "type": "info",
+      "text": "HealthBarInstancer initialized with capacity 200"
+    },
+    {
+      "type": "warning",
+      "text": "WARNING: Multiple instances of Three.js being imported."
+    },
+    {
+      "type": "info",
+      "text": "[EffectsManager] attempting to patch WebGLRenderer.prototype"
+    },
+    {
+      "type": "info",
+      "text": "[EffectsManager] Patched DepthCopyPass.render to use async read when available"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to load SVG from: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "error",
+      "text": "THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false\n\nMaterial Name: \nMaterial Type: ShaderMaterial\n\nProgram Info Log: Vertex shader is not compiled.\n\u0000\nVERTEX\n\nERROR: 0:92: 'uAlpha' : undeclared identifier\n\u0000\n\n  87:           // Create billboard position\n  88:           vec3 worldPos = center + cameraRight * scaledPos.x + cameraUp * scaledPos.y;\n  89:           gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);\n  90:           \n  91:           vColor = aColor;\n> 92:           vAlpha = uAlpha;\n  93:         }\n  94:       \n"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "[GroupMarkerNotSet(crbug.com/242999)!:A040A500CC330000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content."
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x150c000f6a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File created: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "warning",
+      "text": "[SVGLoader] Worker error, falling back to main thread: Event"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x150c000f6a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/fighter.svg, length: 895"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/corvette.svg, length: 926"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/frigate.svg, length: 1259"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/destroyer.svg, length: 1644"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully fetched SVG content for src/config/assets/svg/carrier.svg, length: 1773"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x150c000f6a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x150c000f6a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Starting rasterization for: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterizing SVG with main thread (worker disabled): src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Attempting to rasterize SVG in main thread for: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully loaded SVG image: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Successfully rasterized SVG to canvas: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] Rasterization completed for: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] Loaded SVG asset: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[main.ts] SVG asset preloading complete"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/fighter.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/corvette.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/frigate.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/destroyer.svg"
+    },
+    {
+      "type": "log",
+      "text": "[SVGLoader] File modified: src/config/assets/svg/carrier.svg"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    },
+    {
+      "type": "warning",
+      "text": "WebGL: INVALID_OPERATION: useProgram: program not valid"
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8080/dist/spaceautobattler_standalone.html",
+      "method": "GET",
+      "resourceType": "document"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-2SID4K5G.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-4Z4DIHSG.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-QJW6JQG7.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/chunk-NSKRTDW3.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/svgRasterWorker.ts",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/simWorker.ts",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/chunks/GLTFLoader-UMHTDHGR.js",
+      "method": "GET",
+      "resourceType": "script"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/simWorker.ts",
+      "failed": true,
+      "failureText": "net::ERR_FAILED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/svgRasterWorker.ts",
+      "failed": true,
+      "failureText": "net::ERR_FAILED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-fighter.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-corvette.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-frigate.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-destroyer.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/assets/models/ship-carrier.gltf",
+      "method": "GET",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "method": "HEAD",
+      "resourceType": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/fighter.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/corvette.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/frigate.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/destroyer.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8080/dist/src/config/assets/svg/carrier.svg",
+      "failed": true,
+      "failureText": "net::ERR_ABORTED"
+    }
+  ]
+}
