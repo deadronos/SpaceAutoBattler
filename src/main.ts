@@ -433,11 +433,17 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     const deltaY = (e.clientY - lastMouseY) * sensitivity;
 
     // Update camera rotation
-    state.renderer.cameraRotation.y += deltaX;
-    state.renderer.cameraRotation.x += deltaY;
+    // Orbit controls: yaw left/right with horizontal drag; pitch up/down with vertical drag
+    // Note: invert Y so dragging up rotates camera up (natural control)
+    state.renderer.cameraRotation.y -= deltaX;
+    state.renderer.cameraRotation.x -= deltaY;
 
     // Clamp vertical rotation to prevent flipping
-    state.renderer.cameraRotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, state.renderer.cameraRotation.x));
+  const pitchLimit = (Math.PI / 2) - 0.001;
+  state.renderer.cameraRotation.x = Math.max(-pitchLimit, Math.min(pitchLimit, state.renderer.cameraRotation.x));
+  // Keep yaw within [-PI, PI] to avoid numerical drift
+  if (state.renderer.cameraRotation.y > Math.PI) state.renderer.cameraRotation.y -= Math.PI * 2;
+  if (state.renderer.cameraRotation.y < -Math.PI) state.renderer.cameraRotation.y += Math.PI * 2;
 
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
@@ -449,7 +455,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     e.preventDefault();
 
     const zoomSpeed = CameraConfig.controls.zoomSpeed; // Fixed zoom speed
-    const zoomDirection = e.deltaY > 0 ? 1 : -1; // Positive deltaY = zoom out (move back), negative = zoom in (move forward)
+  const zoomDirection = e.deltaY > 0 ? 1 : -1; // Positive deltaY = zoom out (move back), negative = zoom in (move forward)
 
     // Calculate camera's forward vector
     const pitch = state.renderer.cameraRotation.x;
@@ -458,11 +464,12 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     const forwardY = Math.sin(pitch);
     const forwardZ = Math.sin(yaw) * Math.cos(pitch);
 
-    // Move camera and target together along forward vector
-    const moveDistance = zoomSpeed * zoomDirection;
-    state.renderer.cameraTarget.x += forwardX * moveDistance;
-    state.renderer.cameraTarget.y += forwardY * moveDistance;
-    state.renderer.cameraTarget.z += forwardZ * moveDistance;
+  // Move camera and target together along forward vector
+  const moveDistance = zoomSpeed * zoomDirection;
+  // Use camera forward as direction; positive zoomDirection moves outward
+  state.renderer.cameraTarget.x += forwardX * moveDistance;
+  state.renderer.cameraTarget.y += forwardY * moveDistance;
+  state.renderer.cameraTarget.z += forwardZ * moveDistance;
   });
 
   // Keyboard controls for movement
@@ -493,14 +500,14 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     if (!state.renderer) return;
 
     const moveSpeed = CameraConfig.controls.moveSpeed * dt;
-    const moveVector = { x: 0, y: 0, z: 0 };
-
-    if (keys['KeyW']) moveVector.z -= moveSpeed; // Forward
-    if (keys['KeyS']) moveVector.z += moveSpeed; // Backward
-  if (keys['KeyA']) moveVector.x -= moveSpeed; // Left
-  if (keys['KeyD']) moveVector.x += moveSpeed; // Right
-    if (keys['ShiftLeft']) moveVector.y -= moveSpeed; // Down
-    if (keys['Space']) moveVector.y += moveSpeed; // Up
+    let moveForward = 0, moveRight = 0, moveUp = 0;
+  // W should move the camera forward (toward where the camera is looking).
+  if (keys['KeyW']) moveForward += moveSpeed;   // Forward (towards forward vector)
+  if (keys['KeyS']) moveForward -= moveSpeed;   // Backward
+    if (keys['KeyD']) moveRight   += moveSpeed;   // Right
+    if (keys['KeyA']) moveRight   -= moveSpeed;   // Left
+    if (keys['Space']) moveUp     += moveSpeed;   // Up
+    if (keys['ShiftLeft']) moveUp -= moveSpeed;   // Down
 
     // Check if any movement keys are pressed to exit cinematic mode
     const hasMovementInput = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || keys['ShiftLeft'] || keys['Space'];
@@ -515,31 +522,36 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
       return; // Skip manual movement when in cinematic mode
     }
 
-    // Calculate camera's local coordinate system
+    // Build an orthonormal basis from yaw/pitch to avoid warped motion
     const pitch = state.renderer.cameraRotation.x;
     const yaw = state.renderer.cameraRotation.y;
+    // Forward (where camera looks)
+    let fx = Math.cos(yaw) * Math.cos(pitch);
+    let fy = Math.sin(pitch);
+    let fz = Math.sin(yaw) * Math.cos(pitch);
+    const fl = Math.hypot(fx, fy, fz) || 1;
+    fx /= fl; fy /= fl; fz /= fl;
 
-    // Forward vector (direction camera is facing)
-    const forwardX = Math.cos(yaw) * Math.cos(pitch);
-    const forwardY = Math.sin(pitch);
-    const forwardZ = Math.sin(yaw) * Math.cos(pitch);
+    // Right = normalize(cross(forward, worldUp))
+    const upWorldX = 0, upWorldY = 1, upWorldZ = 0;
+    let rx = fy * upWorldZ - fz * upWorldY; // fy*0 - fz*1 = -fz
+    let ry = fz * upWorldX - fx * upWorldZ; // fz*0 - fx*0 = 0
+    let rz = fx * upWorldY - fy * upWorldX; // fx*1 - fy*0 = fx
+    const rl = Math.hypot(rx, ry, rz) || 1;
+    rx /= rl; ry /= rl; rz /= rl;
 
-    // Right vector (perpendicular to forward in horizontal plane)
-    const rightX = -Math.sin(yaw);
-    const rightY = 0;
-    const rightZ = Math.cos(yaw);
+    // Up (camera-up) = normalize(cross(right, forward))
+    let ux = ry * fz - rz * fy;
+    let uy = rz * fx - rx * fz;
+    let uz = rx * fy - ry * fx;
+    const ul = Math.hypot(ux, uy, uz) || 1;
+    ux /= ul; uy /= ul; uz /= ul;
 
-    // Up vector (perpendicular to both forward and right)
-    const upX = -Math.sin(pitch) * Math.cos(yaw);
-    const upY = Math.cos(pitch);
-    const upZ = -Math.sin(pitch) * Math.sin(yaw);
+  // Compose movement in world space: forward is along camera forward vector
+  const worldMoveX = moveRight * rx + moveUp * upWorldX + moveForward * fx;
+  const worldMoveY = moveRight * ry + moveUp * upWorldY + moveForward * fy;
+  const worldMoveZ = moveRight * rz + moveUp * upWorldZ + moveForward * fz;
 
-    // Calculate movement in world space
-    const worldMoveX = moveVector.x * rightX + moveVector.y * upX + moveVector.z * forwardX;
-    const worldMoveY = moveVector.x * rightY + moveVector.y * upY + moveVector.z * forwardY;
-    const worldMoveZ = moveVector.x * rightZ + moveVector.y * upZ + moveVector.z * forwardZ;
-
-    // Move both camera target and position together to maintain relative orientation
     state.renderer.cameraTarget.x += worldMoveX;
     state.renderer.cameraTarget.y += worldMoveY;
     state.renderer.cameraTarget.z += worldMoveZ;

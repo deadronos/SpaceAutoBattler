@@ -210,6 +210,11 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
   const spreadCount = isSuppression ? (tState.aiState?.suppressionCount ?? 5) : 1;
   const spreadAngle = isSuppression ? (tState.aiState?.suppressionAngle ?? (Math.PI / 12)) : 0;
 
+      // DEBUG: emit info to help diagnose suppression firing tests (no-op if console.debug missing)
+      if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+        console.debug(`[DEBUG fireTurrets] ship=${ship.id} turret=${tState.id} behavior=${String(tState.aiState?.behavior)} suppressionCount=${String(tState.aiState?.suppressionCount)} spreadCount=${spreadCount}`);
+      }
+
     // Helper: generate a direction vector for a spread index within a cone around the central direction
     const makeSpreadDir = (index: number, total: number, centerDir: { x: number; y: number; z: number }) => {
       if (total <= 1) return centerDir;

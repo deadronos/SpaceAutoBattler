@@ -459,7 +459,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageDecayRate: 0.5,
     evadeSamplingCount: 8,
     evadeDistance: 200,
-  evadeOnlyOnDamage: false,
+    evadeOnlyOnDamage: false,
     evadeRecentDamageWindowSeconds: 2.0,
     evadeBaseScore: 100,
     evadeThreatPenaltyWeight: 0.5,
@@ -476,7 +476,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     explorationZoneDuration: 8.0
     ,
     // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
-    useDecisionEngineEvadeGate: false,
+    useDecisionEngineEvadeGate: true,
     // Turret targeting helper enabled by default after parity testing
     useTurretTargetingHelper: true,
   // Per-level accuracy scaling: each level reduces inaccuracy by 2%, up to 50%

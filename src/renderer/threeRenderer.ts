@@ -102,6 +102,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
+    // Ensure camera's world matrix is updated immediately so downstream
+    // code (billboards, basis extraction, etc.) can rely on a fresh matrix.
+    // Three.js lazily updates matrixWorld during render; force it here.
+    try { camera.updateMatrixWorld(true); } catch { /* ignore */ }
   }
 
   // Procedural Skybox Generation
