@@ -29,6 +29,12 @@ export class HealthBarInstancer {
     cameraUp: new THREE.Vector3(0, 1, 0)
   };
 
+  // Camera forward vector used to offset billboards slightly toward the camera to avoid z-fighting
+  private cameraForward = new THREE.Vector3(0, 0, -1);
+
+  // Extra temp vector to avoid allocations when adjusting world position for z-offset
+  private tempPosition2 = new THREE.Vector3();
+
   // Temporary objects for matrix calculations to avoid allocations
   private tempMatrix = new THREE.Matrix4();
   private tempPosition = new THREE.Vector3();
@@ -60,6 +66,19 @@ export class HealthBarInstancer {
   }
 
   /**
+   * Return renderOrder for each layer so we can control draw order for transparent billboards
+   */
+  private layerRenderOrder(layer: HealthBarLayer): number {
+    switch (layer) {
+      case 'background': return 0;
+      case 'health': return 1;
+      case 'shield': return 2;
+      case 'border': return 3;
+      default: return 0;
+    }
+  }
+
+  /**
    * Register a callback to be invoked when the instancer is ready.
    * If the instancer is already ready the callback is invoked immediately.
    */
@@ -78,8 +97,9 @@ export class HealthBarInstancer {
    * Update camera uniforms - call once per frame with current camera
    */
   updateCameraUniforms(camera: THREE.Camera): void {
-    camera.getWorldDirection(this.tempPosition);
-    
+    // cameraForward will point from the camera into the scene (camera -Z)
+    camera.getWorldDirection(this.cameraForward);
+
     // Calculate camera right and up vectors for billboard rendering
     this.cameraUniforms.cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
     this.cameraUniforms.cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
@@ -318,6 +338,15 @@ export class HealthBarInstancer {
     
     const material = this.createBillboardMaterial(color, alpha);
     const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+    // Ensure transparent layers render in a predictable order and avoid depth-test artifacts
+    instancedMesh.renderOrder = this.layerRenderOrder(layer);
+    // Many runtimes use a single shared material; make sure depthTest is disabled so
+    // overlapping transparent billboards don't cull each other when facing away.
+    if (Array.isArray(instancedMesh.material)) {
+      instancedMesh.material.forEach((m: THREE.Material) => { (m as THREE.Material & { depthTest?: boolean }).depthTest = false; });
+    } else {
+      (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
+    }
     
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
@@ -353,8 +382,10 @@ export class HealthBarInstancer {
     geometry.setAttribute('aScaleX', new THREE.InstancedBufferAttribute(scaleXArray, 1));
     geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colorArray, 3));
     
-    const material = this.createBillboardMaterial(config.border.color, 0.5);
-    const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+  const material = this.createBillboardMaterial(config.border.color, 0.5);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+  instancedMesh.renderOrder = this.layerRenderOrder('border');
+  (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
     
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
@@ -377,6 +408,7 @@ export class HealthBarInstancer {
       vertexShader: `
         uniform vec3 cameraRight;
         uniform vec3 cameraUp;
+        uniform float uAlpha;
         attribute float aScaleX;
         attribute vec3 aColor;
         
@@ -430,7 +462,12 @@ export class HealthBarInstancer {
 
     // Set transform matrix
     this.tempScale.set(scaleX, 1, 1);
-    this.tempMatrix.compose(position, this.tempQuaternion, this.tempScale);
+
+    // Apply a tiny camera-facing offset so the billboard sits slightly in front of other overlapping
+    // transparent layers. This avoids z-fighting without globally disabling depth testing.
+    const OFFSET_DISTANCE = RendererConfig.healthBars.zOffset ?? 0.002; // configurable
+    this.tempPosition2.copy(position).addScaledVector(this.cameraForward, -OFFSET_DISTANCE);
+    this.tempMatrix.compose(this.tempPosition2, this.tempQuaternion, this.tempScale);
     instancedMesh.setMatrixAt(instanceIndex, this.tempMatrix);
 
     // Update color attribute if it exists

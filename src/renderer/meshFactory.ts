@@ -376,6 +376,8 @@ export function getPooledBillboardMaterial(
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  // Avoid depth-test issues for overlapping transparent billboards
+  (mat as THREE.ShaderMaterial & { depthTest?: boolean }).depthTest = false;
   factoryState.billboardMaterialPool.set(key, mat);
   factoryState.billboardMaterials.add(mat);
   return mat;

@@ -51,17 +51,45 @@ async function run() {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  page.on('console', msg => {
-    out.console.push({ type: msg.type(), text: msg.text() });
+  page.on('console', async msg => {
+    // Capture location and args when available to trace warning origins
+    let location = null;
+    try {
+      location = msg.location ? msg.location() : null;
+    } catch (e) {
+      location = null;
+    }
+    let args = [];
+    try {
+      const handles = msg.args();
+      args = await Promise.all(handles.map(async h => {
+        try { return await h.jsonValue(); } catch { return String(h); }
+      }));
+    } catch (e) {
+      args = [];
+    }
+    out.console.push({ type: msg.type(), text: msg.text(), location, args });
   });
   page.on('pageerror', err => out.errors.push(String(err)));
   page.on('request', req => out.requests.push({ url: req.url(), method: req.method(), resourceType: req.resourceType() }));
   page.on('requestfailed', req => out.requests.push({ url: req.url(), failed: true, failureText: req.failure()?.errorText }));
 
   try {
+    // Snapshot whether a global THREE marker exists before navigation
+    try { out.preThree = await page.evaluate(() => (typeof window !== 'undefined' && window.__THREE__) ? window.__THREE__ : null); } catch (e) { out.preThree = null; }
     await page.goto('http://127.0.0.1:8080/dist/spaceautobattler_standalone.html', { timeout: 60000 });
     // wait for 6s to allow shader compile and possible runtime warnings
     await page.waitForTimeout(6000);
+    // Take a screenshot for visual verification. Use CAPTURE_NAME env var or default to capture.png
+    const captureName = process.env.CAPTURE_NAME || 'capture.png';
+    try {
+      await page.screenshot({ path: captureName, fullPage: true });
+      out.screenshot = captureName;
+      console.log(`WROTE screenshot: ${captureName}`);
+    } catch (e) {
+      out.screenshotError = String(e);
+    }
+    try { out.postThree = await page.evaluate(() => (typeof window !== 'undefined' && window.__THREE__) ? window.__THREE__ : null); } catch (e) { out.postThree = null; }
   } catch (e) {
     out.errors.push(String(e));
   }

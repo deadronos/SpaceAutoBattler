@@ -108,6 +108,8 @@ export interface RendererConfig {
       offsetY: number;
       height: number; // bar height
     };
+    // Small camera-facing Z offset applied to billboards to avoid z-fighting
+    zOffset?: number;
     colors: {
       health: {
         full: string;
@@ -256,6 +258,7 @@ export const DefaultRendererConfig: RendererConfig = {
       offsetY: -25,
       height: 4,
     },
+    zOffset: 0.002,
     colors: {
       health: {
         full: '#00ff00',
