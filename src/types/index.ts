@@ -31,6 +31,18 @@ export interface TurretConfig {
   bulletSpeed: number; // units/sec
   damage: number;
   range: number; // units
+  /**
+   * Accuracy: 0..1 where 1.0 is perfectly accurate and 0 is maximally inaccurate.
+   * This will be combined with ship level to compute firing spread/jitter.
+   * Optional - if absent, treated as 1.0 (perfect).
+   */
+  accuracy?: number;
+  /**
+   * Maximum spread angle (radians) applied when accuracy < 1.0. Represents the
+   * maximum cone half-angle within which the actual fired bullet direction may
+   * deviate from the aim direction. Optional - default ~2 degrees.
+   */
+  maxSpreadRadians?: number;
   /** Optional designer preferred behavior for this turret. If set to 'dynamic',
    * the global dynamic switching rules will apply; otherwise the turret will
    * initialize with this behavior at spawn and hold it indefinitely (designer override).

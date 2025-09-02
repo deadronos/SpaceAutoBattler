@@ -35,3 +35,19 @@ Related files
 - `test/vitest/shipIndex.spec.ts` — new unit test that validates population and rebuild on removal.
 
 If you prefer this note merged into an existing doc, tell me which file and I will update it instead of creating a dedicated doc.
+
+---
+
+## Turret accuracy and progression
+
+Turrets now support two optional designer-tunable properties set in `src/config/entitiesConfig.ts`:
+
+- `accuracy` (0..1): higher is more accurate. If omitted, treated as `1.0` (perfect aim).
+- `maxSpreadRadians`: maximum angular half-angle for aim spread when accuracy < 1.0 (radians).
+
+When a turret fires, the projectile direction may be randomly jittered inside a cone whose half-angle is
+`(1 - accuracy) * maxSpreadRadians`, and that inaccuracy is reduced slightly by the firing ship's `level`.
+This enables progression where higher-level ships (or veteran crews) land shots more reliably. The RNG used
+for sampling is the deterministic game `state.rng` if available.
+
+Tune per-turret defaults in `src/config/entitiesConfig.ts` or set on a per-ship-class basis for gameplay balance.

@@ -9,6 +9,9 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 400,
     damage: 6,
     range: 300,
+    // High mobility small weapon: slightly less accurate by default
+    accuracy: 0.9,
+    maxSpreadRadians: (2 * Math.PI) / 180 // ~2 degrees
   },
 
   // Corvette dual cannons
@@ -18,6 +21,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 380,
     damage: 9,
     range: 340,
+    accuracy: 0.92,
+    maxSpreadRadians: (1.8 * Math.PI) / 180
   },
 
   // Frigate triple cannons
@@ -27,6 +32,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 360,
     damage: 14,
     range: 380,
+    accuracy: 0.94,
+    maxSpreadRadians: (1.5 * Math.PI) / 180
   },
 
   // Destroyer quad cannons
@@ -36,6 +43,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 340,
     damage: 24,
     range: 420,
+    accuracy: 0.96,
+    maxSpreadRadians: (1.2 * Math.PI) / 180
   },
 
   // Carrier dual cannons
@@ -45,6 +54,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 320,
     damage: 18,
     range: 420,
+    accuracy: 0.95,
+    maxSpreadRadians: (1.5 * Math.PI) / 180
   },
 };
 

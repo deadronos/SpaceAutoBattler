@@ -258,6 +258,16 @@ export interface BehaviorConfig {
     useDecisionEngineEvadeGate?: boolean;
     /** Feature flag: use extracted turret targeting helper instead of legacy inline logic */
     useTurretTargetingHelper?: boolean;
+    /**
+     * Per-level accuracy reduction applied to turret inaccuracy.
+     * Each level reduces inaccuracy by this fraction (e.g., 0.02 = 2% per level).
+     */
+    turretLevelAccuracyPerLevel?: number;
+    /**
+     * Maximum fraction reduction of inaccuracy from leveling (clamped).
+     * For example 0.5 means levels can reduce up to 50% of base inaccuracy.
+     */
+    turretLevelAccuracyMaxReduction?: number;
   };
 }
 
@@ -469,6 +479,9 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     useDecisionEngineEvadeGate: false,
     // Turret targeting helper enabled by default after parity testing
     useTurretTargetingHelper: true,
+  // Per-level accuracy scaling: each level reduces inaccuracy by 2%, up to 50%
+  turretLevelAccuracyPerLevel: 0.02,
+  turretLevelAccuracyMaxReduction: 0.5,
     /**
      * Maximum seconds into the future the turret intercept solver will consider.
      * This prevents aiming at extremely far-future intercept points for very slow projectiles
