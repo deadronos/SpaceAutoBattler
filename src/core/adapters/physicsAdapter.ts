@@ -75,7 +75,7 @@ export interface Disposable {
  */
 export interface PhysicsAdapter {
   initDone: boolean;
-  world?: any;
+  world?: unknown;
 
   // Core simulation
   step(dt: number, opts?: { iterations?: number; substeps?: number }): void;
