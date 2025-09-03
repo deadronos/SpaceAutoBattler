@@ -275,6 +275,33 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
           wrap(asAny(globalThis).WebGL2RenderingContext?.prototype, 'readPixels');
           globalAny.__effectsManagerGLPatched = true;
         } catch (_e) { void _e;/* ignore */ }
+          // Early runtime instrumentation: wrap THREE.Object3D.prototype.add so
+          // any Mesh/LineSegments added during module initialization can be
+          // attributed. This runs as part of the global patches so it executes
+          // before most renderer modules create scene objects.
+          try {
+            const objProto: any = asAny(three).Object3D && asAny(three).Object3D.prototype;
+            if (objProto && !globalAny.__hb_earlyAddPatched) {
+              const origAdd = objProto.add;
+              objProto.add = function (...items: any[]) {
+                try {
+                  for (const it of items) {
+                    try {
+                      if (!it) continue;
+                      const t = it.type || (it.constructor && it.constructor.name) || '';
+                      if (t === 'Mesh' || t === 'LineSegments') {
+                        const stack = (new Error()).stack || '';
+                        try { logger.info('[HB_STACK] Object3D.add', t, 'stack:', stack.split('\n').slice(0,6).join(' | ')); } catch (_e) { void _e; }
+                        try { it.userData = it.userData || {}; it.userData.__hb_early_stack = stack; it.userData.__hb_early_added = true; } catch (_e) { void _e; }
+                      }
+                    } catch (_e) { void _e; }
+                  }
+                } catch (_e) { void _e; }
+                return origAdd.apply(this, items);
+              };
+              globalAny.__hb_earlyAddPatched = true;
+            }
+          } catch (_e) { void _e; }
       };
     }
   } catch (_e) { void _e;/* ignore */ }
@@ -674,6 +701,34 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
           asAny(g.WebGLRenderer.prototype.readRenderTargetPixels).__effectsManagerPatched = true;
         }
       } catch (_e) { void _e;/* ignore */ }
+
+      // Also install early Object3D.add wrapper now so calling
+      // applyGlobalPatches() from bootstrap will activate it before
+      // renderer modules create scene objects.
+      try {
+        const globalAny: any = asAny(globalThis);
+        const objProto: any = asAny(three).Object3D && asAny(three).Object3D.prototype;
+        if (objProto && !globalAny.__hb_earlyAddPatched) {
+          const origAdd = objProto.add;
+          objProto.add = function (...items: any[]) {
+            try {
+              for (const it of items) {
+                try {
+                  if (!it) continue;
+                  const t = it.type || (it.constructor && it.constructor.name) || '';
+                  if (t === 'Mesh' || t === 'LineSegments') {
+                    const stack = (new Error()).stack || '';
+                    try { logger.info('[HB_STACK] Object3D.add', t, 'stack:', stack.split('\n').slice(0,6).join(' | ')); } catch (_e) { void _e; }
+                    try { it.userData = it.userData || {}; it.userData.__hb_early_stack = stack; it.userData.__hb_early_added = true; } catch (_e) { void _e; }
+                  }
+                } catch (_e) { void _e; }
+              }
+            } catch (_e) { void _e; }
+            return origAdd.apply(this, items);
+          };
+          globalAny.__hb_earlyAddPatched = true;
+        }
+      } catch (_e) { void _e; }
 
       globalAny.__effectsManagerGlobalPatchesApplied = true;
     } catch (_e) { void _e;/* ignore */ }

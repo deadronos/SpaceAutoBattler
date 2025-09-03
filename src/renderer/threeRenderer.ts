@@ -29,6 +29,28 @@ const tempCamUp = new THREE.Vector3();
 const tempCamForward = new THREE.Vector3();
 const tempQuat = new THREE.Quaternion();
 
+// Diagnostic: globally wrap Object3D.add to capture early additions (stack traces) for debugging
+try {
+  const origAdd = (THREE.Object3D.prototype as any).add;
+  (THREE.Object3D.prototype as any).add = function(...objs: any[]) {
+    try {
+      for (const o of objs) {
+        try {
+          if (!o) continue;
+          if (o.isMesh) {
+            const wp = new THREE.Vector3(); if (typeof o.getWorldPosition === 'function') o.getWorldPosition(wp);
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { console.info && console.info('[HB_WRAPPER] Object3D.add: mesh added near y=400', { name: o.name || null, type: o.type, pos: wp }); } catch (_) { void _; }
+              try { console.info(new Error('HB_STACK Object3D.add').stack); } catch (_) { void _; }
+            }
+          }
+        } catch (_) { /* per-object ignore */ }
+      }
+    } catch (_) { /* ignore */ }
+    return origAdd.apply(this, objs);
+  };
+} catch (e) { /* ignore if prototype can't be wrapped in some envs */ }
+
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   // Apply global readPixels/prototype patches early, if available.
   try {
@@ -464,6 +486,67 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const bulletsGroup = new THREE.Group();
   const healthBarsGroup = new THREE.Group();
   const shieldEffectsGroup = new THREE.Group();
+  // Instrument healthBarsGroup.add to trace unexpected Mesh additions (helpful when debugging stray bars)
+  try {
+    const _origHealthBarsAdd = (healthBarsGroup as any).add.bind(healthBarsGroup);
+    (healthBarsGroup as any).add = function(...objs: any[]) {
+      try {
+        for (const o of objs) {
+          if (!o) continue;
+          // only inspect Mesh-like objects
+          if ((o as any).isMesh) {
+            const wp = new THREE.Vector3();
+            try { o.getWorldPosition(wp); } catch (_) { /* ignore */ }
+            // If mesh is near the known fleet Y used in formations (y=400), log a stack trace
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { console.info('[HB_TRACE][healthBarsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch (_e) { /* ignore */ }
+            }
+          }
+        }
+      } catch (_e) { /* ignore instrumentation errors */ }
+      return _origHealthBarsAdd(...objs);
+    };
+  } catch (e) { /* ignore if binding fails */ }
+
+  // Also instrument shipsGroup.add and scene.add to catch stray Mesh additions
+  try {
+    const _origShipsAdd = (shipsGroup as any).add.bind(shipsGroup);
+    (shipsGroup as any).add = function(...objs: any[]) {
+      try {
+        for (const o of objs) {
+          if (!o) continue;
+          if ((o as any).isMesh) {
+            const wp = new THREE.Vector3();
+            try { o.getWorldPosition(wp); } catch (_) { /* ignore */ }
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { console.info('[HB_TRACE][shipsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch (_e) { /* ignore */ }
+            }
+          }
+        }
+      } catch (_e) { /* ignore */ }
+      return _origShipsAdd(...objs);
+    };
+  } catch (e) { /* ignore */ }
+
+  try {
+    const _origSceneAdd = (scene as any).add.bind(scene);
+    (scene as any).add = function(...objs: any[]) {
+      try {
+        for (const o of objs) {
+          if (!o) continue;
+          if ((o as any).isMesh) {
+            const wp = new THREE.Vector3();
+            try { o.getWorldPosition(wp); } catch (_) { /* ignore */ }
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { console.info('[HB_TRACE][scene.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch (_e) { /* ignore */ }
+            }
+          }
+        }
+      } catch (_e) { /* ignore */ }
+      return _origSceneAdd(...objs);
+    };
+  } catch (e) { /* ignore */ }
+
   scene.add(shipsGroup);
   scene.add(bulletsGroup);
   scene.add(healthBarsGroup);
@@ -765,6 +848,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function createHealthBar(ship: Ship): THREE.Object3D {
+  try { console.info && console.info(`[HB_TRACE][threeRenderer] createHealthBar() called for ship=${ship?.id} class=${ship?.class} pos=${ship?.pos?.x},${ship?.pos?.y},${ship?.pos?.z}`); } catch (_e) { void _e; }
     const config = RendererConfig.healthBars;
     const barGroup = new THREE.Group();
 
@@ -778,7 +862,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
     const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
+  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; (bgMesh as any).userData.__hb_origin = 'inline'; } catch (e) { /* ignore */ }
     barGroup.add(bgMesh);
 
     // Health bar
@@ -791,7 +875,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
     const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
+    try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; (healthMesh as any).userData.__hb_origin = 'inline'; } catch (e) { /* ignore */ }
     barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
@@ -805,9 +889,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else {
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
-      shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+  shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
   try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
-      shieldMesh.position.z = 0.1; // slightly in front
+  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__hb_origin = 'inline'; } catch (e) { /* ignore */ }
+  shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
 
@@ -826,17 +911,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     return barGroup;
   }
 
+  // DEV LOG: inline health bar creation
+  try {
+    console.info && console.info('[HB_TRACE][threeRenderer] createHealthBar defined (inline)');
+  } catch (_e) { void _e; }
+
   function updateHealthBar(ship: Ship, barGroup: THREE.Object3D) {
     const config = RendererConfig.healthBars;
     const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
     const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
 
-    // Position the bar above the ship (3D) - always update position
-    barGroup.position.set(
-      ship.pos.x + config.position.offsetX,
-      ship.pos.y + config.position.offsetY,
-      ship.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
-    );
+  // Position the bar above the ship (3D) - always update position
+  const newPos = { x: ship.pos.x + config.position.offsetX, y: ship.pos.y + config.position.offsetY, z: ship.pos.z + ShipVisualConfig.healthBar.offset.z };
+  try { if (Math.abs(newPos.y - 400) < 0.001) console.info('[HB_TRACE][threeRenderer] updateHealthBar positioning near y=400 for ship=', ship.id, 'pos=', newPos); } catch (_e) { void _e; }
+  barGroup.position.set(newPos.x, newPos.y, newPos.z);
 
     // Only update health bar if health changed (dirty flag optimization)
     if (ship._healthDirty) {
@@ -1202,7 +1290,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           if (!healthBarInstancer.hasShip(s.id)) healthBarInstancer.allocateInstance(s.id);
         } else {
           if (!healthBarMeshes.has(s.id)) {
+            try { console.info && console.info('[HB_TRACE] calling createHealthBar for ship', s.id, 'pos', s.pos); console.info(new Error('HB_STACK createHealthBar').stack); } catch (_) { void _; }
             const bar = createHealthBar(s);
+            try { console.info && console.info(`[HB_TRACE][threeRenderer] created health bar (inline) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
             healthBarMeshes.set(s.id, bar);
             healthBarsGroup.add(bar);
           }

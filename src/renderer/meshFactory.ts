@@ -308,6 +308,13 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     return new THREE.Group();
   }
 
+  // DEV LOG: record creation of a non-instanced health bar via meshFactory
+  try {
+    // eslint-disable-next-line no-console
+  console.info(`[HB_TRACE][meshFactory] createHealthBarMesh for ship=${ship.id} class=${ship.class} pos=(${ship.pos.x},${ship.pos.y},${ship.pos.z})`);
+  try { console.info(new Error('HB_STACK createHealthBarMesh').stack); } catch (_e) { void _e; }
+  } catch (_e) { void _e; }
+
   const config = RendererConfig.healthBars;
   const barGroup = new THREE.Group();
 
@@ -321,6 +328,7 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
   }
   const bgMesh = new THREE.Mesh(bgGeom, bgMat);
+  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__hb_origin = 'meshFactory'; } catch (_e) { /* ignore */ }
   barGroup.add(bgMesh);
 
   // Health bar
@@ -333,6 +341,7 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
   }
   const healthMesh = new THREE.Mesh(healthGeom, healthMat);
+  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__hb_origin = 'meshFactory'; } catch (_e) { /* ignore */ }
   barGroup.add(healthMesh);
 
   // Shield bar (if ship has shield)
@@ -347,7 +356,8 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
       shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
     }
     shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-    shieldMesh.position.z = 0.1; // slightly in front
+  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__hb_origin = 'meshFactory'; } catch (_e) { /* ignore */ }
+  shieldMesh.position.z = 0.1; // slightly in front
     barGroup.add(shieldMesh);
   }
 

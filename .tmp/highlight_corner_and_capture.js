@@ -1,12 +1,14 @@
 import path from 'path';
 import { chromium } from 'playwright';
 
-(async ()=>{
+ (async ()=>{
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  page.on('console', msg => console.log('PAGE LOG>', msg.type(), msg.text()));
   const url = 'http://localhost:8080/dist/spaceautobattler_standalone.html';
   console.log('opening', url);
-  await page.goto(url, { waitUntil: 'networkidle' });
+  // use 'load' so we don't wait for long-running network requests (service workers, analytics, etc.)
+  await page.goto(url, { waitUntil: 'load' });
   // wait for renderer helpers
   // wait for renderer helpers to be available (give extra time in headless)
   await page.waitForFunction(() => !!window.__listNonInstancedMeshes, { timeout: 60000 });
