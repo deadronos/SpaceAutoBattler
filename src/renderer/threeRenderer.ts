@@ -388,8 +388,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     import('./meshFactory.js').then((mf) => { try { mf.registerPrototypesFromPool(state); } catch (e) { void e; } }).catch(() => {/* ignore */});
   } catch (e) { /* dynamic import failed or not supported - ignore */ }
   
-  // Dev / feature toggles
-  const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
+
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
   // Maintain a short ring buffer of recent hits per ship for hex highlight
   const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
