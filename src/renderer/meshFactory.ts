@@ -300,6 +300,14 @@ export function createBulletMesh(bullet: Bullet): THREE.Object3D {
  * Creates a health bar mesh with background, health, and shield components
  */
 export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState): THREE.Object3D {
+  // Defensive guard: avoid creating health bar visuals for unknown/invalid ship entries
+  const hasKnownClass = !!ShipVisualConfig.ships[ship.class as keyof typeof ShipVisualConfig.ships];
+  const posValid = Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
+  if (!hasKnownClass || !posValid) {
+    // Return an empty group as a no-op to callers expecting an Object3D
+    return new THREE.Group();
+  }
+
   const config = RendererConfig.healthBars;
   const barGroup = new THREE.Group();
 

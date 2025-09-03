@@ -121,7 +121,10 @@ export function syncEntities(
     }
     
     // Health bars
-    if (RendererConfig.visual.enableHealthBars) {
+    // Guard: only create health bars for recognized ship classes and valid positions
+    const hasKnownClass = !!(ShipVisualConfig.ships as any)[s.class];
+    const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
+    if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
       if (useHealthBarInstancing) {
         // Use health bar instancer
         if (!healthBarInstancer!.hasShip(s.id)) {
@@ -135,6 +138,8 @@ export function syncEntities(
           groups.healthBarsGroup.add(bar);
         }
       }
+    } else if (RendererConfig.visual.enableHealthBars) {
+      console.warn(`[HealthBar Debug] Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
     }
     
     // Shield effects

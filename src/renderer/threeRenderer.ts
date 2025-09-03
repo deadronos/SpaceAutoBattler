@@ -963,7 +963,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
       // Health bars
-      if (RendererConfig.visual.enableHealthBars) {
+      // Guard: only create health bars for recognized ship classes and valid positions.
+      // This avoids accidentally creating bars for non-ship objects or placeholders that
+      // may be present in state.ships (which can show up at the world bounds/box).
+      const hasKnownClass = !!(ShipVisualConfig.ships as any)[s.class];
+      const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
+      if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
         if (RendererConfig.instancing.enableBars && healthBarInstancer) {
           // Use health bar instancer
           if (!healthBarInstancer.hasShip(s.id)) {
