@@ -531,6 +531,11 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     let fz = Math.sin(yaw) * Math.cos(pitch);
     const fl = Math.hypot(fx, fy, fz) || 1;
     fx /= fl; fy /= fl; fz /= fl;
+  // The spherical coords above describe the camera position offset from the target.
+  // The camera's forward vector (where it looks) points from the camera into the scene -
+  // i.e., from camera position toward the target, which is the negative of the offset.
+  // Negate to align with THREE.Camera.getWorldDirection and other codepaths.
+  fx = -fx; fy = -fy; fz = -fz;
 
     // Right = normalize(cross(forward, worldUp))
     const upWorldX = 0, upWorldY = 1, upWorldZ = 0;

@@ -31,14 +31,14 @@ describe('AI Engagement Integration Test', () => {
         class: 'fighter',
         pos: { x: 100 + i * 50, y: 100, z: 100 },
       });
-      redShip.aiState = {
+      (redShip as any).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: 150,
         recentDamage: 0,
         lastDamageTime: 0
-      } as any;
+      };
 
       const blueShip = createMockShip({
         id: i + 4,
@@ -46,7 +46,7 @@ describe('AI Engagement Integration Test', () => {
         class: 'fighter',
         pos: { x: 300 + i * 50, y: 100, z: 100 },
       });
-      blueShip.aiState = JSON.parse(JSON.stringify(redShip.aiState));
+  (blueShip as any).aiState = JSON.parse(JSON.stringify((redShip as any).aiState));
 
       redShips.push(redShip as Ship);
       blueShips.push(blueShip as Ship);
@@ -100,14 +100,14 @@ describe('AI Engagement Integration Test', () => {
         class: 'corvette',
         pos: { x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100, z: 100 }
       }) as Ship;
-      corvette.aiState = {
+      (corvette as any).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: 150,
         recentDamage: 0,
         lastDamageTime: 0
-      } as any;
+      };
 
       ships.push(corvette);
     }

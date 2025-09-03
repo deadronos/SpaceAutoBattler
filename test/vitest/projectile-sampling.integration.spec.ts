@@ -14,7 +14,7 @@ class TestRNG {
     return this.state / 0x100000000;
   }
   int(min: number, max: number) { return Math.floor(this.next() * (max - min + 1)) + min; }
-  pick(arr){ return arr[Math.floor(this.next() * arr.length)]; }
+  pick<T>(arr: T[]){ return arr[Math.floor(this.next() * arr.length)]; }
 }
 
 function vecLen(v: {x:number,y:number,z:number}){ return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); }

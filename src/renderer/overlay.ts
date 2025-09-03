@@ -53,9 +53,10 @@ export function updateBillboardOverlays(
       camUp.copy(cb.up);
     } else {
       // Compute forward then derive right/up
-      const forward = new THREE.Vector3();
-      cameraState.camera.getWorldDirection(forward);
-      camRight.crossVectors(cameraState.camera.up, forward).normalize();
+  const forward = new THREE.Vector3();
+  cameraState.camera.getWorldDirection(forward);
+  // right = forward x up
+  camRight.crossVectors(forward, cameraState.camera.up).normalize();
       camUp.copy(cameraState.camera.up).normalize();
     }
 

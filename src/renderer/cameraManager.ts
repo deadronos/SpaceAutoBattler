@@ -139,9 +139,9 @@ export function getCameraBasisVectors(cameraState: CameraState): { right: THREE.
   // Get camera forward direction
   const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
-  // Calculate camera right vector: cross(worldUp, forward)
+  // Calculate camera right vector: right = forward x worldUp
   const worldUp = new THREE.Vector3(0, 1, 0);
-  camRight.crossVectors(worldUp, forward).normalize();
+  camRight.crossVectors(forward, worldUp).normalize();
   camUp.copy(camera.up).normalize();
 
   return { right: camRight, up: camUp };

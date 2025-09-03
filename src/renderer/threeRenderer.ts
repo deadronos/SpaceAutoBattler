@@ -12,6 +12,7 @@ import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
+import { setCachedCameraBasis } from './cameraManager.js';
 export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
@@ -1202,9 +1203,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     if (GPU_BILLBOARD) {
       // Update shader uniforms with camera basis vectors for all billboard materials
       // Use cached temporary vectors to avoid per-frame allocations
-      camera.getWorldDirection(tempCamForward);
-      tempCamRight.crossVectors(camera.up, tempCamForward).normalize();
-      tempCamUp.copy(camera.up).normalize();
+  camera.getWorldDirection(tempCamForward);
+  // Correct right vector: right = forward x up. Previous order (up x forward)
+  // produced the left vector which mirrored A/D controls.
+  tempCamRight.crossVectors(tempCamForward, camera.up).normalize();
+  tempCamUp.copy(camera.up).normalize();
+  // Cache camera basis for other systems to reuse (best-effort)
+  try { setCachedCameraBasis(camera, { right: tempCamRight.clone(), up: tempCamUp.clone(), forward: tempCamForward.clone() }); } catch (e) { /* ignore */ }
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
           if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
