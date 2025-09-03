@@ -7,12 +7,12 @@
     "test": "vitest --environment happy-dom",
     "serve": "http-server -c-1 -p 8080",
     "serve:dist": "http-server . -c-1 -p 8080",
-  "prebuild": "npm run check-no-sync-reads",
-  "build": "node ./scripts/build.mjs",
+    "prebuild": "npm run check-no-sync-reads",
+    "build": "node ./scripts/build.mjs",
     "build-bundle": "node ./scripts/build.mjs",
     "build-standalone": "node ./scripts/build-standalone.mjs",
     "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch",
-  "check-no-sync-reads": "node ./scripts/check-no-sync-reads.mjs",
+    "check-no-sync-reads": "node ./scripts/check-no-sync-reads.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:playwright": "playwright test -c playwright.config.cjs",
@@ -20,8 +20,8 @@
     "hash-assets": "node ./scripts/hash-assets.cjs",
     "validate-config": "node ./scripts/validate-config.mjs",
     "generate-memory-index": "node ./scripts/generate_memory_index.mjs",
-    "add-memory-node": "node ./scripts/add_memory_node.mjs"
-    ,"generate-memories": "node ./scripts/generate_memories.mjs"
+    "add-memory-node": "node ./scripts/add_memory_node.mjs",
+    "generate-memories": "node ./scripts/generate_memories.mjs"
   },
   "devDependencies": {
     "@babel/preset-env": "latest",
@@ -52,7 +52,7 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.41.0",
     "vitest": "^3.2.4",
-    "viz": "^3.0.1"
+    "viz": "^1.2.0"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.18.2",
