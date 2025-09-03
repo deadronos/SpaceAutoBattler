@@ -390,8 +390,10 @@ export class HealthBarInstancer {
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
     
-    this.instancedMeshes.set(layer, instancedMesh);
-    parent.add(instancedMesh);
+  this.instancedMeshes.set(layer, instancedMesh);
+  // Defer adding to the scene until after renderer initialization to avoid
+  // early prototype geometry being visible during createThreeRenderer.
+  this.deferAddToParent(parent, instancedMesh);
   }
 
   /**
@@ -429,8 +431,9 @@ export class HealthBarInstancer {
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
     
-    this.instancedMeshes.set('border', instancedMesh);
-    parent.add(instancedMesh);
+  this.instancedMeshes.set('border', instancedMesh);
+  // Defer adding border instanced mesh as well for the same reason.
+  this.deferAddToParent(parent, instancedMesh);
   }
 
   /**
@@ -589,6 +592,27 @@ export class HealthBarInstancer {
     this.tempMatrix.makeScale(0, 0, 0);
     for (let i = startIndex; i < this.capacity; i++) {
       instancedMesh.setMatrixAt(i, this.tempMatrix);
+    }
+  }
+
+  /**
+   * Defer adding a child object to a parent group until after the current
+   * initialization stack -- use requestAnimationFrame when available so
+   * additions happen after renderer/camera setup. This is intentionally
+   * conservative and reversible: it only changes the timing of add().
+   */
+  private deferAddToParent(parent: THREE.Object3D, child: THREE.Object3D): void {
+  // NOTE: This helper exists to avoid early visible prototype geometry
+  // appearing during `createThreeRenderer` initialization. It defers the
+  // `.add()` call to the next animation frame (or macrotask) so the
+  // renderer/camera are initialized and any prototype groups can be
+  // kept hidden. This is a timing-only change and is fully reversible
+  // (remove the helper and restore direct `parent.add(child)` to revert).
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => parent.add(child));
+    } else {
+      // Fallback for environments without RAF
+      setTimeout(() => parent.add(child), 0);
     }
   }
 }
