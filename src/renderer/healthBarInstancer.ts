@@ -285,6 +285,29 @@ export class HealthBarInstancer {
   }
 
   /**
+   * Debug helper (DEV only): return decomposed matrix (position, quaternion, scale)
+   * for the given shipId's allocated instance, or null if not allocated.
+   */
+  debugGetInstanceMatrix(shipId: number): { position: { x:number; y:number; z:number }; quaternion: { x:number; y:number; z:number; w:number }; scale: { x:number; y:number; z:number } } | null {
+    const idx = this.activeShips.get(shipId);
+    if (idx === undefined) return null;
+    // Prefer any available layer (health) to read matrix
+    const instancedMesh = this.instancedMeshes.get('health') || Array.from(this.instancedMeshes.values())[0];
+    if (!instancedMesh) return null;
+    const m = new THREE.Matrix4();
+    instancedMesh.getMatrixAt(idx, m);
+    const pos = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    m.decompose(pos, quat, scale);
+    return {
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      quaternion: { x: quat.x, y: quat.y, z: quat.z, w: quat.w },
+      scale: { x: scale.x, y: scale.y, z: scale.z }
+    };
+  }
+
+  /**
    * Dispose resources
    */
   dispose(): void {

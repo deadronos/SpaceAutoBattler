@@ -1,0 +1,44 @@
+# ~/.codex/config.toml or ./.codex/config.toml (project-local)
+
+##########################
+# STDIO-based MCP Servers
+# (Codex supports only STDIO servers natively)
+##########################
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
+# Launches Playwright-based MCP via npx
+
+[mcp_servers.memory]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-memory"]
+# Provides in-process memory context via stdio
+
+[mcp_servers.sequentialthinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+# Enables sequential reasoning tool via stdio
+
+[mcp_servers.mcp_serena]
+command = "uv"
+args = ["run", "--directory", "D:/GitHub/serena", "serena", "start-mcp-server"]
+# Starts the Serena MCP server via uv in the specified local folder
+
+#####################################################
+# HTTP/SSE MCP Servers (workaround via local proxy)
+# (Codex cannot connect to HTTP/SSE directly)
+#####################################################
+
+[mcp_servers.github]
+command = "uv"
+args = ["tool", "run", "mcp-proxy", "https://api.githubcopilot.com/mcp/"]
+# Uses mcp-proxy to bridge HTTP to stdio for GitHub MCP endpoint
+
+[mcp_servers.mcp_fetch]
+command = "uv"
+args = ["tool", "run", "mcp-proxy", "https://remote.mcpservers.org/fetch/mcp"]
+# Uses mcp-proxy to bridge HTTP to stdio for MCP-Fetch endpoint
+
+# Note: If the proxy requires authentication (e.g., tokens or headers),
+# you can include an `env = { ... }` block within each server config.

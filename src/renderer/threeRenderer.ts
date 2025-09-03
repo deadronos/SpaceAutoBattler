@@ -38,6 +38,97 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
   } catch (e) { /* ignore */ }
 
+  // Helper: list non-instanced meshes with world positions. Optional filter: { near: {x,y,z, radius} }
+  try {
+    (globalThis as any).__listNonInstancedMeshes = function(opts?: { near?: { x:number,y:number,z:number, radius:number } }) {
+      const out: any[] = [];
+      const groups = [shipsGroup, bulletsGroup, healthBarsGroup, shieldEffectsGroup, scene];
+      const near = opts && opts.near ? opts.near : null;
+      const checkNear = (p:{x:number,y:number,z:number}) => {
+        if (!near) return true;
+        const dx = p.x - near.x; const dy = p.y - near.y; const dz = p.z - near.z;
+        return (dx*dx + dy*dy + dz*dz) <= ((near.radius||10) * (near.radius||10));
+      };
+
+      groups.forEach((g) => {
+        g.traverse((obj: THREE.Object3D) => {
+          // skip instanced meshes
+          if ((obj as any).isInstancedMesh) return;
+          if (!obj.geometry && !obj.isMesh) return;
+          // get world position
+          const wp = new THREE.Vector3();
+          obj.getWorldPosition(wp);
+          const p = { x: wp.x, y: wp.y, z: wp.z };
+          if (!checkNear(p)) return;
+          out.push({
+            id: (obj as any).userData?.id || null,
+            name: obj.name || null,
+            type: (obj as any).type || null,
+            position: p,
+            visible: obj.visible === undefined ? true : obj.visible
+          });
+        });
+      });
+      console.info('[HB_DEV] Non-instanced meshes found:', out.length);
+      return out;
+    };
+    // Temporarily highlight matching non-instanced meshes. Stores original materials in registry.
+    {
+      type NonInstancedEntry = { id: string|null, name: string|null, type: string|null, position: { x:number,y:number,z:number }, visible: boolean };
+      const G = globalThis as unknown as Record<string, unknown>;
+
+      G.__highlightNonInstancedMeshes = function(opts?: { near?: { x:number,y:number,z:number, radius:number }, color?: number }) {
+        const listFn = G.__listNonInstancedMeshes as unknown as ( (o?: { near?: { x:number,y:number,z:number, radius:number } }) => NonInstancedEntry[] ) | undefined;
+        const list = listFn ? listFn(opts) : [];
+        const registryKey = '__hb_highlight_registry';
+        let registry = G[registryKey] as Map<THREE.Object3D, THREE.Material | THREE.Material[] | null> | undefined;
+        if (!registry) {
+          registry = new Map<THREE.Object3D, THREE.Material | THREE.Material[] | null>();
+          G[registryKey] = registry;
+        }
+        const color = opts && opts.color ? opts.color : 0xffff00;
+
+        list.forEach((entry) => {
+          scene.traverse((o: THREE.Object3D) => {
+            if (!((o as THREE.Mesh).isMesh)) return;
+            const mesh = o as THREE.Mesh;
+            const wp = new THREE.Vector3(); mesh.getWorldPosition(wp);
+            if (Math.abs(wp.x - entry.position.x) < 0.001 && Math.abs(wp.y - entry.position.y) < 0.001 && Math.abs(wp.z - entry.position.z) < 0.001) {
+              if (registry!.has(mesh)) return;
+              const orig = mesh.material;
+              registry!.set(mesh, orig as THREE.Material | THREE.Material[] | null);
+              try {
+                mesh.material = new THREE.MeshBasicMaterial({ color, wireframe: true });
+              } catch {
+                // ignore failures creating material
+              }
+            }
+          });
+        });
+        return { ok: true, count: list.length };
+      } as unknown;
+
+      G.__unhighlightNonInstancedMeshes = function() {
+        const registryKey = '__hb_highlight_registry';
+        const registry = G[registryKey] as Map<THREE.Object3D, THREE.Material | THREE.Material[] | null> | undefined;
+        if (!registry) return { ok: false, reason: 'none' };
+        registry.forEach((orig, obj) => {
+          try {
+            if ((obj as THREE.Mesh).isMesh) {
+              const mesh = obj as THREE.Mesh;
+              try { (mesh.material as THREE.Material)?.dispose?.(); } catch {}
+              mesh.material = orig as THREE.Material | THREE.Material[] | null;
+            }
+          } catch {
+            // ignore per-object restore errors
+          }
+        });
+        registry.clear();
+        return { ok: true };
+      } as unknown;
+    }
+  } catch (e) { /* ignore */ }
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
@@ -70,6 +161,25 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
   }
+
+  // Expose a simple helper to focus the internal camera on a world position and adjust distance
+  try {
+    (globalThis as any).__focusCameraOn = function(pos:{x:number,y:number,z:number}, distance?:number) {
+      try {
+        if (!pos) return { ok: false, reason: 'no-pos' };
+        // update target
+        cameraTarget.x = pos.x;
+        cameraTarget.y = pos.y;
+        cameraTarget.z = pos.z;
+        if (typeof distance === 'number') _cameraDistance = distance;
+        updateCameraPosition();
+        return { ok: true };
+      } catch (e) { return { ok: false, reason: String(e) }; }
+    };
+    // Also expose scene and camera references for external scripts (read-only)
+    (globalThis as any).scene = scene;
+    (globalThis as any).threeCamera = camera;
+  } catch (e) { /* ignore */ }
 
   // Procedural Skybox Generation
   function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
@@ -421,7 +531,78 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (!healthBarInstancer) return null;
       try { return (healthBarInstancer as any).debugGetInstanceScale(shipId); } catch (e) { return null; }
     };
+
+    (globalThis as any).__hbDebugMatrix = function(shipId:number) {
+      if (!healthBarInstancer) return null;
+      try { return (healthBarInstancer as any).debugGetInstanceMatrix(shipId); } catch (e) { return null; }
+    };
+
+    // Add / remove visible debug marker for a given instanced health-bar id.
+    (globalThis as any).__hbAddMarker = function(shipId:number) {
+      try {
+        if (!healthBarInstancer) return { ok: false, reason: 'instancer-disabled' };
+        const mat = (healthBarInstancer as any).debugGetInstanceMatrix ? (healthBarInstancer as any).debugGetInstanceMatrix(shipId) : null;
+        if (!mat || !mat.position) return { ok: false, reason: 'no-matrix' };
+        // create a small box marker and attach to scene
+        const boxGeo = new THREE.BoxGeometry(24, 8, 8);
+        const boxMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+        const marker = new THREE.Mesh(boxGeo, boxMat);
+        marker.position.set(mat.position.x, mat.position.y, mat.position.z);
+        marker.userData.__hb_marker_for = shipId;
+        // store in global registry
+        (globalThis as any).__hb_markers = (globalThis as any).__hb_markers || new Map();
+        (globalThis as any).__hb_markers.set(shipId, marker);
+        // add to scene
+        try { scene.add(marker); } catch (e) { /* ignore if scene not available */ }
+        return { ok: true };
+      } catch (e) { return { ok: false, reason: String(e) }; }
+    };
+
+    (globalThis as any).__hbRemoveMarker = function(shipId:number) {
+      try {
+        const registry = (globalThis as any).__hb_markers as Map<number, THREE.Object3D> | undefined;
+        if (!registry) return { ok: false, reason: 'no-registry' };
+        const m = registry.get(shipId);
+        if (!m) return { ok: false, reason: 'not-found' };
+        try { scene.remove(m); } catch (e) { /* ignore */ }
+        // dispose geometry/material
+        try { (m as any).geometry?.dispose(); (m as any).material?.dispose(); } catch (e) { /* ignore */ }
+        registry.delete(shipId);
+        return { ok: true };
+      } catch (e) { return { ok: false, reason: String(e) }; }
+    };
   } catch (e) { /* ignore */ }
+
+  // Periodic dev logger - reports ships near bounds and instancer stats every intervalMs
+  (function setupPeriodicDevLogger() {
+    let timer: number | null = null;
+    const intervalMs = 2000;
+
+    function logOnce() {
+      try {
+        const near = (globalThis as any).__dumpShipsNearBounds ? (globalThis as any).__dumpShipsNearBounds(5) : [];
+        const instIds = (globalThis as any).__listInstancedHealthBarShips ? (globalThis as any).__listInstancedHealthBarShips() : [];
+        const nonInst = (globalThis as any).__listShipsWithHealthBar ? (globalThis as any).__listShipsWithHealthBar() : [];
+        const stats = (globalThis as any).__hbInstancerStats ? (globalThis as any).__hbInstancerStats() : null;
+        if ((near && near.length > 0) || (instIds && instIds.length > 0) || (nonInst && nonInst.length > 0)) {
+          console.info('[HB_DEV][periodic] near=', near, 'instancedIds=', instIds, 'nonInst=', nonInst, 'stats=', stats);
+        }
+      } catch (err) { /* ignore */ }
+    }
+
+    (globalThis as any).__hbPeriodicStart = function() {
+      if (timer != null) return false;
+      timer = window.setInterval(logOnce, intervalMs);
+      return true;
+    };
+
+    (globalThis as any).__hbPeriodicStop = function() {
+      if (timer == null) return false;
+      clearInterval(timer);
+      timer = null;
+      return true;
+    };
+  })();
 
   // Initialize ship instancer if enabled
   if (RendererConfig.instancing.enableShips) {

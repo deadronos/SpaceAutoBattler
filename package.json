@@ -52,7 +52,7 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.41.0",
     "vitest": "^3.2.4",
-    "viz": "^1.2.0"
+    "viz": "^3.0.1"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.18.2",
