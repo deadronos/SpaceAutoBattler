@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
+import type { GameState } from '../types/index.js';
 
 type Float3 = { x: number; y: number; z: number };
 
@@ -122,18 +123,18 @@ class ShipInstancerImpl {
   // If `state` is provided, allocate will attempt to register a prototype from state.assetPool
   // when none is currently registered for `className` so instanced allocations can use
   // preloaded rasterized assets on-demand.
-  allocate(shipId: number, className: string, team?: string, state?: any): boolean {
+  allocate(shipId: number, className: string, team?: string, state?: GameState): boolean {
     if (!this.scene || !this.rootParent) return false;
     let group = this.groups.get(className);
     if (!group) {
       // If we don't have a prototype yet but were given a state with preloaded assets,
       // try to build a prototype from the asset pool before creating the group.
       try {
-        if (!this.prototypeRegistry.has(className) && state && state.assetPool) {
+    if (!this.prototypeRegistry.has(className) && state && state.assetPool) {
           try {
             const svgUrl = getShipSVGUrl(className, defaultSVGConfig as any);
-            const asset = state.assetPool.get(svgUrl);
-            if (asset && asset.imageBitmap) {
+      const asset = state.assetPool.get(svgUrl) as any;
+      if (asset && asset.imageBitmap) {
               // Build lightweight geometries/materials similar to meshFactory
               const size = (ShipVisualConfig.ships as any)[className]?.collisionRadius ?? 16;
               const tex = new THREE.Texture(asset.imageBitmap);
@@ -363,7 +364,7 @@ export const shipInstancer = {
   onReady: (cb: () => void) => impl.onReady(cb),
   registerPrototype: (className: string, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], materials?: THREE.Material | THREE.Material[]) => impl.registerPrototype(className, geometries, materials),
   updatePrototype: (className: string, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], materials?: THREE.Material | THREE.Material[]) => impl.updatePrototype(className, geometries, materials),
-  allocate: (shipId: number, className: string, team?: string) => impl.allocate(shipId, className, team),
+  allocate: (shipId: number, className: string, team?: string, state?: GameState) => impl.allocate(shipId, className, team, state),
   free: (shipId: number) => impl.free(shipId),
   hasShip: (shipId: number) => impl.hasShip(shipId),
   updateTransform: (shipId: number, pos: { x: number; y: number; z: number }, quat: THREE.Quaternion, scale: number) => impl.updateTransform(shipId, pos, quat, scale),

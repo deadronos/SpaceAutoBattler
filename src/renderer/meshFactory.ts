@@ -47,7 +47,7 @@ export function createShipMesh(
   shipsGroup: THREE.Group, 
   shipMeshes: Map<number, THREE.Object3D>
 ): THREE.Object3D {
-  const pool = (state as unknown as { assetPool?: Map<string, { imageBitmap?: ImageBitmap }> }).assetPool;
+  const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
   const svgUrl = getShipSVGUrl(ship.class, defaultSVGConfig);
 
   const createTextured3DShip = (imageBitmap: ImageBitmap) => {
@@ -188,7 +188,7 @@ export function createShipMesh(
           // to an instanced slot instead of adding a non-instanced textured mesh.
           if (RendererConfig.instancing.enableShips) {
             try {
-              const allocated = shipInstancer.allocate(ship.id, ship.class, ship.team);
+              const allocated = shipInstancer.allocate(ship.id, ship.class, ship.team, state);
               if (allocated) {
                 // Immediately set transform so the instance appears in the correct place
                 const q = new THREE.Quaternion();
@@ -236,8 +236,8 @@ export function createShipMesh(
  */
 export function registerPrototypesFromPool(state: GameState) {
   try {
-    const pool = (state as unknown as { assetPool?: Map<string, { imageBitmap?: ImageBitmap }> }).assetPool;
-    if (!pool) return;
+  const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
+  if (!pool) return;
   const classes: ShipClass[] = ['fighter','corvette','frigate','destroyer','carrier'];
     for (const cls of classes) {
       try {
@@ -267,7 +267,7 @@ export function registerPrototypesFromPool(state: GameState) {
 
         try {
           // Prefer updatePrototype to replace any existing group meshes immediately
-          const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
+    const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
           if (typeof up === 'function') {
             try {
               up(cls, geoms, mats);

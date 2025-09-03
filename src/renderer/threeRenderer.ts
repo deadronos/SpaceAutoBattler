@@ -6,6 +6,7 @@ import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
+import { loadSVGAsset } from '../core/svgLoader.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
@@ -948,8 +949,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
         // If ship instancing is enabled and we can allocate, don't create an individual mesh
-        if (RendererConfig.instancing.enableShips && (shipInstancer as any).allocate) {
-          const allocated = shipInstancer.allocate(s.id, s.class, s.team);
+        if (RendererConfig.instancing.enableShips && shipInstancer.allocate) {
+          const allocated = shipInstancer.allocate(s.id, s.class, s.team, state);
           if (allocated) {
             // create a lightweight placeholder transform via the instancer only
             shipMeshes.set(s.id, new THREE.Object3D()); // track existence
