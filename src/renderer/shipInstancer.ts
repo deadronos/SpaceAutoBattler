@@ -294,24 +294,14 @@ class ShipInstancerImpl {
   // at the world origin/bounds. Hide by default; culling/visibility will be
   // driven later when instances are allocated and group.positions is non-empty.
   parentGroup.visible = false;
-    // Diagnostic probe: mark prototype parent groups so we can map legacy stray objects
-    try {
-      const ud = (parentGroup as unknown as { userData?: Record<string, unknown> }).userData || {};
-      ud.__hb_probe = `shipInstancer_prototype_${className}`;
-      (parentGroup as unknown as { userData?: Record<string, unknown> }).userData = ud;
-    } catch (_e) { void _e; }
+  // Note: removed diagnostic probe tags from prototype parent group
     if (this.rootParent) this.rootParent.add(parentGroup);
     const meshes = geoms.map((g, i) => {
       const mat = (mats[i] || mats[0]).clone();
       const im = new THREE.InstancedMesh(g, mat, capacity);
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       im.name = `Instanced_${className}_submesh_${i}`;
-      // Mark instanced mesh for diagnostics as well
-      try {
-        const mud = (im as unknown as { userData?: Record<string, unknown> }).userData || {};
-        mud.__hb_probe = `shipInstancer_instanced_${className}_${i}`;
-        (im as unknown as { userData?: Record<string, unknown> }).userData = mud;
-      } catch (_e) { void _e; }
+  // instanced mesh created
       // Instanced meshes don't have correct per-instance frustum culling
       // so disable automatic frustum culling here and handle culling at
       // a higher level if needed.

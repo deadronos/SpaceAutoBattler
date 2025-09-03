@@ -328,7 +328,6 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
   }
   const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__hb_origin = 'meshFactory'; } catch (_e) { /* ignore */ }
   barGroup.add(bgMesh);
 
   // Health bar
@@ -341,7 +340,6 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
   }
   const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__hb_origin = 'meshFactory'; } catch (_e) { /* ignore */ }
   barGroup.add(healthMesh);
 
   // Shield bar (if ship has shield)
@@ -355,10 +353,9 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     } else {
       shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
     }
-    shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__hb_origin = 'meshFactory'; } catch (_e) { /* ignore */ }
+  shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
   shieldMesh.position.z = 0.1; // slightly in front
-    barGroup.add(shieldMesh);
+  barGroup.add(shieldMesh);
   }
 
   // Border

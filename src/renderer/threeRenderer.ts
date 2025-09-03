@@ -29,27 +29,7 @@ const tempCamUp = new THREE.Vector3();
 const tempCamForward = new THREE.Vector3();
 const tempQuat = new THREE.Quaternion();
 
-// Diagnostic: globally wrap Object3D.add to capture early additions (stack traces) for debugging
-try {
-  const origAdd = (THREE.Object3D.prototype as any).add;
-  (THREE.Object3D.prototype as any).add = function(...objs: any[]) {
-    try {
-      for (const o of objs) {
-        try {
-          if (!o) continue;
-          if (o.isMesh) {
-            const wp = new THREE.Vector3(); if (typeof o.getWorldPosition === 'function') o.getWorldPosition(wp);
-            if (Math.abs(wp.y - 400) < 0.001) {
-              try { console.info && console.info('[HB_WRAPPER] Object3D.add: mesh added near y=400', { name: o.name || null, type: o.type, pos: wp }); } catch (_) { void _; }
-              try { console.info(new Error('HB_STACK Object3D.add').stack); } catch (_) { void _; }
-            }
-          }
-        } catch (_) { /* per-object ignore */ }
-      }
-    } catch (_) { /* ignore */ }
-    return origAdd.apply(this, objs);
-  };
-} catch (e) { /* ignore if prototype can't be wrapped in some envs */ }
+// Note: temporary debug instrumentation removed.
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   // Apply global readPixels/prototype patches early, if available.
@@ -163,34 +143,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Diagnostic: list all scene objects that have health-bar related probe/origin markers
   try {
-    (globalThis as any).__listObjectsWithHBProbe = function() {
-      const out: any[] = [];
-      try {
-        scene.traverse((o: THREE.Object3D) => {
-          try {
-            const ud = (o as any).userData || {};
-            if (!ud) return;
-            const has = ud.__hb_probe || ud.__hb_origin || ud.__hb_early_stack || ud.__hb_marker_for;
-            if (has) {
-              const wp = new THREE.Vector3();
-              try { o.getWorldPosition(wp); } catch (_e) { void _e; }
-              out.push({
-                name: o.name || null,
-                type: o.type || null,
-                probe: ud.__hb_probe || null,
-                origin: ud.__hb_origin || null,
-                early: ud.__hb_early_stack || null,
-                markerFor: ud.__hb_marker_for || null,
-                position: { x: wp.x, y: wp.y, z: wp.z },
-                userDataKeys: Object.keys(ud || {})
-              });
-            }
-          } catch (_e) { /* ignore per-object */ }
-        });
-      } catch (_e) { /* ignore traversal errors */ }
-      try { console.info('[HB_DEV] objects with hb probe/origin:', out.length); } catch (_e) { void _e; }
-      return out;
-    };
+  // Note: legacy developer object listing removed.
   } catch (e) { /* ignore */ }
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -662,40 +615,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       try { return (healthBarInstancer as any).debugGetInstanceMatrix(shipId); } catch (e) { return null; }
     };
 
-    // Add / remove visible debug marker for a given instanced health-bar id.
-    (globalThis as any).__hbAddMarker = function(shipId:number) {
-      try {
-        if (!healthBarInstancer) return { ok: false, reason: 'instancer-disabled' };
-        const mat = (healthBarInstancer as any).debugGetInstanceMatrix ? (healthBarInstancer as any).debugGetInstanceMatrix(shipId) : null;
-        if (!mat || !mat.position) return { ok: false, reason: 'no-matrix' };
-        // create a small box marker and attach to scene
-        const boxGeo = new THREE.BoxGeometry(24, 8, 8);
-        const boxMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-        const marker = new THREE.Mesh(boxGeo, boxMat);
-        marker.position.set(mat.position.x, mat.position.y, mat.position.z);
-        marker.userData.__hb_marker_for = shipId;
-        // store in global registry
-        (globalThis as any).__hb_markers = (globalThis as any).__hb_markers || new Map();
-        (globalThis as any).__hb_markers.set(shipId, marker);
-        // add to scene
-        try { scene.add(marker); } catch (e) { /* ignore if scene not available */ }
-        return { ok: true };
-      } catch (e) { return { ok: false, reason: String(e) }; }
-    };
-
-    (globalThis as any).__hbRemoveMarker = function(shipId:number) {
-      try {
-        const registry = (globalThis as any).__hb_markers as Map<number, THREE.Object3D> | undefined;
-        if (!registry) return { ok: false, reason: 'no-registry' };
-        const m = registry.get(shipId);
-        if (!m) return { ok: false, reason: 'not-found' };
-        try { scene.remove(m); } catch (e) { /* ignore */ }
-        // dispose geometry/material
-        try { (m as any).geometry?.dispose(); (m as any).material?.dispose(); } catch (e) { /* ignore */ }
-        registry.delete(shipId);
-        return { ok: true };
-      } catch (e) { return { ok: false, reason: String(e) }; }
-    };
+  // Note: temporary developer marker helpers removed.
   } catch (e) { /* ignore */ }
 
   // Periodic dev logger - reports ships near bounds and instancer stats every intervalMs
@@ -903,9 +823,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
-    const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; (bgMesh as any).userData.__hb_origin = 'inline'; } catch (e) { /* ignore */ }
-    barGroup.add(bgMesh);
+  const bgMesh = new THREE.Mesh(bgGeom, bgMat);
+  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
+  barGroup.add(bgMesh);
 
     // Health bar
     const healthGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
@@ -916,9 +836,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
-    const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-    try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; (healthMesh as any).userData.__hb_origin = 'inline'; } catch (e) { /* ignore */ }
-    barGroup.add(healthMesh);
+  const healthMesh = new THREE.Mesh(healthGeom, healthMat);
+  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
+  barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
     let shieldMesh: THREE.Mesh | null = null;
@@ -931,10 +851,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else {
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
-  shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__hb_origin = 'inline'; } catch (e) { /* ignore */ }
-  shieldMesh.position.z = 0.1; // slightly in front
+    shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+    try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
+    shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
 
