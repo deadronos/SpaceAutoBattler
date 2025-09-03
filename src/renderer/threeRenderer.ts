@@ -32,13 +32,29 @@ const tempQuat = new THREE.Quaternion();
 // Note: temporary debug instrumentation removed.
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
+  // Narrow global debug helpers used by the renderer for safer casting
+  type DebugHelpers = Partial<{
+    __applyEffectsManagerGlobalPatches: () => void;
+    __listNonInstancedMeshes: (opts?: { near?: { x:number,y:number,z:number, radius:number } }) => any[];
+    __focusCameraOn: (pos:{x:number,y:number,z:number}, distance?:number) => any;
+    scene: THREE.Scene;
+    threeCamera: THREE.Camera;
+    __dumpShipsNearBounds: (r?: number) => any[];
+    __listInstancedHealthBarShips: () => number[];
+    __listShipsWithHealthBar: () => number[];
+    __hbInstancerStats: () => any;
+    __hbDebugScale: (shipId:number) => number | null;
+    __hbDebugMatrix: (shipId:number) => any | null;
+    __hbPeriodicStart: () => void;
+    __hbPeriodicStop: () => void;
+  }>;
+  const gAny = globalThis as unknown as DebugHelpers;
   // Apply global readPixels/prototype patches early, if available.
   try {
-    const gAny: any = (globalThis as any);
     if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
-      try { gAny.__applyEffectsManagerGlobalPatches(); } catch (e) { /* ignore */ }
+      try { gAny.__applyEffectsManagerGlobalPatches(); } catch { /* ignore */ }
     }
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
 
   // Helper: list non-instanced meshes with world positions. Optional filter: { near: {x,y,z, radius} }
   try {
@@ -550,7 +566,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Dev helpers: expose lightweight runtime inspection utilities on globalThis
   // These are safe no-ops in production but helpful when debugging bundled builds.
   try {
-    (globalThis as any).__dumpShipsNearBounds = function(radius = 1) {
+  gAny.__dumpShipsNearBounds = function(radius = 1) {
       const b = state.simConfig.simBounds;
       const near = state.ships.filter((s: any) => {
         // consider ships within `radius` units of any boundary plane
@@ -564,7 +580,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       return near;
     };
 
-    (globalThis as any).__listShipsWithHealthBar = function() {
+    gAny.__listShipsWithHealthBar = function() {
       const ids = Array.from(healthBarMeshes.keys());
       console.info('[HB_DEV] Ships with non-instanced health bars:', ids);
       return ids;
@@ -590,29 +606,30 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Additional dev helpers for instanced health bars (if instancer is present)
   try {
-    (globalThis as any).__listInstancedHealthBarShips = function() {
+    gAny.__listInstancedHealthBarShips = function() {
       if (!healthBarInstancer) {
         console.info('[HB_DEV] instancer not enabled');
         return [];
       }
-      const ids = (healthBarInstancer as any).getActiveShipIds();
+      const instDbg = healthBarInstancer as unknown as { getActiveShipIds?: () => number[] };
+      const ids = instDbg.getActiveShipIds ? instDbg.getActiveShipIds() : [];
       console.info('[HB_DEV] Instanced health bar ship ids:', ids);
       return ids;
     };
 
-    (globalThis as any).__hbInstancerStats = function() {
+    gAny.__hbInstancerStats = function() {
       if (!healthBarInstancer) return null;
-      try { return healthBarInstancer.getStats(); } catch (e) { return null; }
+      try { return (healthBarInstancer as unknown as { getStats?: () => any }).getStats?.(); } catch { return null; }
     };
 
-    (globalThis as any).__hbDebugScale = function(shipId:number) {
+    gAny.__hbDebugScale = function(shipId:number) {
       if (!healthBarInstancer) return null;
-      try { return (healthBarInstancer as any).debugGetInstanceScale(shipId); } catch (e) { return null; }
+      try { return (healthBarInstancer as unknown as { debugGetInstanceScale?: (id:number)=>number | null }).debugGetInstanceScale?.(shipId) ?? null; } catch { return null; }
     };
 
-    (globalThis as any).__hbDebugMatrix = function(shipId:number) {
+    gAny.__hbDebugMatrix = function(shipId:number) {
       if (!healthBarInstancer) return null;
-      try { return (healthBarInstancer as any).debugGetInstanceMatrix(shipId); } catch (e) { return null; }
+      try { return (healthBarInstancer as unknown as { debugGetInstanceMatrix?: (id:number)=>any | null }).debugGetInstanceMatrix?.(shipId) ?? null; } catch { return null; }
     };
 
   // Note: temporary developer marker helpers removed.
@@ -625,10 +642,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     function logOnce() {
       try {
-        const near = (globalThis as any).__dumpShipsNearBounds ? (globalThis as any).__dumpShipsNearBounds(5) : [];
-        const instIds = (globalThis as any).__listInstancedHealthBarShips ? (globalThis as any).__listInstancedHealthBarShips() : [];
-        const nonInst = (globalThis as any).__listShipsWithHealthBar ? (globalThis as any).__listShipsWithHealthBar() : [];
-        const stats = (globalThis as any).__hbInstancerStats ? (globalThis as any).__hbInstancerStats() : null;
+    const G = (typeof gAny !== 'undefined' ? gAny : (globalThis as unknown as Record<string, any>));
+    const near = G.__dumpShipsNearBounds ? G.__dumpShipsNearBounds(5) : [];
+    const instIds = G.__listInstancedHealthBarShips ? G.__listInstancedHealthBarShips() : [];
+    const nonInst = G.__listShipsWithHealthBar ? G.__listShipsWithHealthBar() : [];
+    const stats = G.__hbInstancerStats ? G.__hbInstancerStats() : null;
         if ((near && near.length > 0) || (instIds && instIds.length > 0) || (nonInst && nonInst.length > 0)) {
           console.info('[HB_DEV][periodic] near=', near, 'instancedIds=', instIds, 'nonInst=', nonInst, 'stats=', stats);
         }
@@ -663,6 +681,32 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   
 
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
+  // Helper to safely access shader-like uniforms from a material without using `any`.
+  function getUniformsSafe(mat?: THREE.Material | THREE.ShaderMaterial | null): Record<string, unknown> | undefined {
+    return (mat as unknown as { uniforms?: Record<string, unknown> })?.uniforms;
+  }
+  // Helper to attach a __renderProgram marker into material.userData without using `any` in multiple places.
+  function setMaterialRenderProgram(material: THREE.Material | null | undefined, val: unknown) {
+    try {
+      const m = material as unknown as { userData?: Record<string, unknown> } | undefined;
+      if (!m) return;
+      m.userData = m.userData || {};
+      m.userData.__renderProgram = val;
+    } catch {
+      // ignore
+    }
+  }
+  // Helper to attach a __renderProgram marker into object.userData without using `any`.
+  function setObjectRenderProgram(obj: THREE.Object3D | null | undefined, val: unknown) {
+    try {
+      const o = obj as unknown as { userData?: Record<string, unknown> } | undefined;
+      if (!o) return;
+      o.userData = o.userData || {};
+      o.userData.__renderProgram = val;
+    } catch {
+      // ignore
+    }
+  }
   // Maintain a short ring buffer of recent hits per ship for hex highlight
   const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
 
@@ -804,7 +848,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.SphereGeometry(2.2, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
     const mesh = new THREE.Mesh(geom, mat);
-    try { (mesh as any).userData = (mesh as any).userData || {}; (mesh as any).userData.__renderProgram = mat; } catch (e) { /* ignore test env */ }
+  try { setObjectRenderProgram(mesh, mat); } catch { /* ignore test env */ }
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
@@ -824,7 +868,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
   const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
+  try { const m = bgMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((bgMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? bgMat; } catch { /* ignore */ }
   barGroup.add(bgMesh);
 
     // Health bar
@@ -837,7 +881,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
   const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
+  try { const m = healthMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((healthMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? healthMat; } catch { /* ignore */ }
   barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
@@ -852,7 +896,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
     shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-    try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
+  try { const m = shieldMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((shieldMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? shieldMat; } catch { /* ignore */ }
     shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
@@ -864,10 +908,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     borderMesh.position.z = 0.2;
     barGroup.add(borderMesh);
 
-    // Store references for updating
-    (barGroup as any).healthMesh = healthMesh;
-    (barGroup as any).shieldMesh = shieldMesh;
-    (barGroup as any).bgMesh = bgMesh;
+  // Store references for updating
+  (barGroup as unknown as Record<string, unknown>).healthMesh = healthMesh;
+  (barGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
+  (barGroup as unknown as Record<string, unknown>).bgMesh = bgMesh;
 
     return barGroup;
   }
@@ -879,8 +923,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function updateHealthBar(ship: Ship, barGroup: THREE.Object3D) {
     const config = RendererConfig.healthBars;
-    const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
-    const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
+  const healthMesh = (barGroup as unknown as { healthMesh?: THREE.Mesh }).healthMesh as THREE.Mesh;
+  const shieldMesh = (barGroup as unknown as { shieldMesh?: THREE.Mesh | null }).shieldMesh as THREE.Mesh | null;
 
   // Position the bar above the ship (3D) - always update position
   const newPos = { x: ship.pos.x + config.position.offsetX, y: ship.pos.y + config.position.offsetY, z: ship.pos.z + ShipVisualConfig.healthBar.offset.z };
@@ -899,12 +943,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else if (healthPercent < 0.7) {
         healthColor = config.colors.health.damaged;
       }
-      if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
-        const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+      const hUniforms = getUniformsSafe(healthMesh.material as THREE.Material | THREE.ShaderMaterial);
+      if (GPU_BILLBOARD && hUniforms && (hUniforms as any).uColor) {
+        const mat = healthMesh.material as THREE.ShaderMaterial;
         // Acquire pooled material for the new color/alpha and swap if different
-        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
+        const alphaVal = ((hUniforms as any).uAlpha && ((hUniforms as any).uAlpha.value as number)) ?? 1.0;
+        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), alphaVal);
         if (newMat !== mat) {
-          (healthMesh.material as any) = newMat;
+          (healthMesh.material as THREE.Material) = newMat;
         }
       } else {
         (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
@@ -921,14 +967,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
       // Color based on shield percentage
       const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-      if (GPU_BILLBOARD && (shieldMesh.material as any).uniforms && (shieldMesh.material as any).uniforms.uColor) {
-        const mat = (shieldMesh.material as any) as THREE.ShaderMaterial;
+  const sUniforms = getUniformsSafe(shieldMesh?.material as THREE.Material | THREE.ShaderMaterial);
+  if (shieldMesh && GPU_BILLBOARD && sUniforms && (sUniforms as any).uColor) {
+        const mat = shieldMesh.material as THREE.ShaderMaterial;
         const alpha = 0.8;
         const newMat = getPooledBillboardMaterial(new THREE.Color(shieldColor), alpha);
         if (newMat !== mat) {
-          (shieldMesh.material as any) = newMat;
+          (shieldMesh.material as THREE.Material) = newMat;
         }
-      } else {
+      } else if (shieldMesh) {
         (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
       }
       
@@ -1139,18 +1186,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const shieldMesh = new THREE.Mesh(geom, material);
   // Attach a stable program-like key so external systems can cache
   // parameter introspection keyed by this object.
-  try { (material as any).userData = (material as any).userData || {}; (material as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  try { setMaterialRenderProgram(material, material); } catch { /* ignore */ }
+  try { setObjectRenderProgram(shieldMesh, material); } catch { /* ignore */ }
   shieldGroup.add(shieldMesh);
-
-    (shieldGroup as any).shieldMesh = shieldMesh;
-    (shieldGroup as any).pulsePhase = Math.random() * Math.PI * 2;
+    (shieldGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
+    (shieldGroup as unknown as Record<string, unknown>).pulsePhase = Math.random() * Math.PI * 2;
     return shieldGroup;
   }
 
   function updateShieldEffect(ship: Ship, shieldGroup: THREE.Object3D, currentTime: number) {
     const config = RendererConfig.shield;
-    const shieldMesh = (shieldGroup as any).shieldMesh as THREE.Mesh;
+  const shieldMesh = (shieldGroup as unknown as { shieldMesh?: THREE.Mesh }).shieldMesh as THREE.Mesh;
     const mat = shieldMesh.material as THREE.ShaderMaterial;
 
     // Position the shield around the ship (3D)
@@ -1243,8 +1289,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Guard: only create health bars for recognized ship classes and valid positions.
       // This avoids accidentally creating bars for non-ship objects or placeholders that
       // may be present in state.ships (which can show up at the world bounds/box).
-      const DEBUG_MARKER_HB_INLINE = '[HB_DEBUG_MARKER_INLINE]';
-      const hasKnownClass = !!(ShipVisualConfig.ships as any)[s.class];
+  const DEBUG_MARKER_HB_INLINE = '[HB_DEBUG_MARKER_INLINE]';
+  const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, any>)[s.class];
       const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
       if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
         if (RendererConfig.instancing.enableBars && healthBarInstancer) {
@@ -1444,9 +1490,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // If available, also set the CSS size so the element visually matches the
     // layout; some browsers scale canvas using CSS which can affect the
     // projection if CSS size doesn't match the drawing buffer.
-    if ((canvas as any).style) {
-      (canvas as any).style.width = `${w}px`;
-      (canvas as any).style.height = `${h}px`;
+    if ((canvas as unknown as HTMLElement).style) {
+      (canvas as unknown as HTMLElement).style.width = `${w}px`;
+      (canvas as unknown as HTMLElement).style.height = `${h}px`;
     }
 
     renderer.setPixelRatio(dpr);
@@ -1466,7 +1512,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Create effects manager (postprocessing) lazily
   let effectsManager: import('./effects.js').EffectsManager | null = null;
-  try { effectsManager = createEffectsManager(renderer as any, scene as any, camera as any); } catch (e) { effectsManager = null; }
+  try { effectsManager = createEffectsManager(renderer as unknown as any, scene as unknown as any, camera as unknown as any); } catch { effectsManager = null; }
 
   function render(_dt: number) {
 
@@ -1562,6 +1608,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // and introspection. These are intentionally non-critical and best-effort.
     getParameters: adapterGetParameters,
     invalidateParameters: adapterInvalidateParameters,
+    // Expose whether ship instancing is currently used/enabled. Tests rely on
+    // this to observe readiness transitions when shipInstancer reports ready.
+    getUseShipInstancing(): boolean {
+      try {
+        return !!(RendererConfig.instancing.enableShips && (shipInstancer && typeof (shipInstancer as any).isReady === 'function' ? (shipInstancer as any).isReady() : false));
+      } catch {
+        return false;
+      }
+    },
   };
 }
 
@@ -1637,32 +1692,43 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
 
   // Adapter-level helpers exposed to systems: introspect and cache parameter
   // metadata about a renderer program-like object (material, wrapper, etc.).
-  function adapterGetParameters(programLike?: object | null): unknown {
+  // Return a small, serializable shape for caching/inspection.
+  type ProgramParams = { kind: string; uniforms?: string[]; type?: string };
+  function adapterGetParameters(programLike?: object | null): ProgramParams | undefined {
     if (!programLike) return undefined;
     try {
-      const existing = rendererProgramCache.get(programLike as object);
+      const existing = rendererProgramCache.get(programLike as object) as ProgramParams | undefined;
       if (existing !== undefined) return existing;
 
-      // Best-effort introspection: if it's a THREE.Material/ShaderMaterial,
-      // capture constructor name and uniforms keys (if any). Keep the result
-      // small and serializable-ish to avoid memory bloat.
-      const p: any = programLike as any;
-      const params: any = {
-        kind: p?.constructor?.name ?? typeof p,
+      // Best-effort introspection: treat the incoming value as unknown and
+      // narrow to the minimal shape we need for safe inspection.
+      const p = programLike as unknown as {
+        constructor?: { name?: string };
+        uniforms?: Record<string, unknown> | undefined;
+        type?: string;
       };
+
+      const params: ProgramParams = {
+        kind: (p && p.constructor && typeof p.constructor.name === 'string') ? p.constructor.name : typeof programLike,
+      };
+
       if (p && p.uniforms && typeof p.uniforms === 'object') {
-        try { params.uniforms = Object.keys(p.uniforms); } catch (e) { params.uniforms = undefined; }
+        try {
+          params.uniforms = Object.keys(p.uniforms as Record<string, unknown>);
+        } catch {
+          params.uniforms = undefined;
+        }
       }
       if (p && typeof p.type === 'string') params.type = p.type;
       // Cache the synthesized metadata.
       rendererProgramCache.set(programLike as object, params);
       return params;
-    } catch (e) {
+    } catch {
       return undefined;
     }
   }
 
   function adapterInvalidateParameters(programLike?: object | null): void {
     if (!programLike) return;
-    try { rendererProgramCache.delete(programLike as object); } catch (e) { /* ignore */ }
+    try { rendererProgramCache.delete(programLike as object); } catch { /* ignore */ }
   }

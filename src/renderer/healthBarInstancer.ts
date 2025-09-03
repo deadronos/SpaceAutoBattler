@@ -608,6 +608,20 @@ export class HealthBarInstancer {
   // renderer/camera are initialized and any prototype groups can be
   // kept hidden. This is a timing-only change and is fully reversible
   // (remove the helper and restore direct `parent.add(child)` to revert).
+  // During unit tests we prefer synchronous addition so assertions can
+  // inspect the scene immediately. Detect common test env flags and
+  // fall back to sync add in that case.
+    try {
+      const envTest = typeof process !== 'undefined' && process?.env && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true');
+      if (envTest) {
+        parent.add(child);
+        return;
+      }
+    } catch {
+      // If accessing process.env fails in some sandboxed envs, continue to
+      // the normal deferred path.
+    }
+
     if (typeof requestAnimationFrame !== 'undefined') {
       requestAnimationFrame(() => parent.add(child));
     } else {

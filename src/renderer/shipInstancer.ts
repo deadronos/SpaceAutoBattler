@@ -129,14 +129,14 @@ class ShipInstancerImpl {
     if (!group) {
       // If we don't have a prototype yet but were given a state with preloaded assets,
       // try to build a prototype from the asset pool before creating the group.
-      try {
+  try {
     if (!this.prototypeRegistry.has(className) && state && state.assetPool) {
-          try {
-            const svgUrl = getShipSVGUrl(className, defaultSVGConfig as any);
-      const asset = state.assetPool.get(svgUrl) as any;
-      if (asset && asset.imageBitmap) {
+      try {
+    const svgUrl = getShipSVGUrl(className, defaultSVGConfig);
+  const asset = state.assetPool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
+  if (asset && asset.imageBitmap) {
               // Build lightweight geometries/materials similar to meshFactory
-              const size = (ShipVisualConfig.ships as any)[className]?.collisionRadius ?? 16;
+              const size = (ShipVisualConfig.ships as Partial<Record<string, { collisionRadius: number }>>)[className]?.collisionRadius ?? 16;
               const tex = new THREE.Texture(asset.imageBitmap);
               tex.needsUpdate = true;
               tex.generateMipmaps = false;

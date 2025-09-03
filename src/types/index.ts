@@ -184,6 +184,8 @@ export interface RendererHandles {
   // These are best-effort and may be absent in some renderer implementations.
   getParameters?: (programLike?: object | null) => unknown;
   invalidateParameters?: (programLike?: object | null) => void;
+  // Test/runtime accessor to expose whether ship instancing is enabled/ready
+  getUseShipInstancing?: () => boolean;
 }
 
 export interface GameState {
