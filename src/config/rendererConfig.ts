@@ -132,6 +132,8 @@ export interface RendererConfig {
     };
   };
 
+  instancingDebug?: boolean;
+
   // Instancing settings for performance optimization
   instancing: {
     enableBullets: boolean; // feature flag for bullet instancing
@@ -282,6 +284,8 @@ export const DefaultRendererConfig: RendererConfig = {
       width: 1,
     },
   },
+
+  instancingDebug: false,
 
   instancing: {
     enableBullets: true, // default true for feature branch testing
