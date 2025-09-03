@@ -2,11 +2,9 @@ import * as THREE from 'three';
 import * as logger from '../utils/logger.js';
 import type { GameState, RendererHandles, Ship, Bullet } from '../types/index.js';
 import { createEffectsManager } from './effects.js';
-import { loadGLTF } from '../core/assetLoader.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
-import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
@@ -28,7 +26,7 @@ const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 const tempCamRight = new THREE.Vector3();
 const tempCamUp = new THREE.Vector3(); 
 const tempCamForward = new THREE.Vector3();
-const tempWorldUp = new THREE.Vector3(0, 1, 0);
+const tempQuat = new THREE.Quaternion();
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
   // Apply global readPixels/prototype patches early, if available.
@@ -381,6 +379,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   if (RendererConfig.instancing.enableShips) {
     try { shipInstancer.init(scene, shipsGroup); } catch (e) { logger.warn('Ship instancer init failed', e); }
   }
+  // If we have preloaded rasterized SVGs in the state's assetPool, register prototypes
+  // with the shipInstancer so instanced ships get correct textured visuals.
+  try {
+    // Dynamic import to avoid circular import ordering issues at module-eval.
+    // Use then() to avoid top-level await requirement.
+    import('./meshFactory.js').then((mf) => { try { mf.registerPrototypesFromPool(state); } catch (e) { void e; } }).catch(() => {/* ignore */});
+  } catch (e) { /* dynamic import failed or not supported - ignore */ }
   
   // Dev / feature toggles
   const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
@@ -1060,10 +1065,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
       if (RendererConfig.instancing.enableShips && shipInstancer.hasShip(s.id)) {
-        const q = new THREE.Quaternion();
-        q.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
+        // Reuse a shared temp quaternion to avoid per-frame allocations
+        tempQuat.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
-        shipInstancer.updateTransform(s.id, s.pos, q, scale);
+        shipInstancer.updateTransform(s.id, s.pos, tempQuat, scale);
       } else {
         m.position.set(s.pos.x, s.pos.y, s.pos.z);
         // Set 3D rotation using ship's orientation
@@ -1235,6 +1240,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Render the scene
   // Ensure instanced meshes have their instanceMatrix flags updated before rendering
+  try { shipInstancer.cull(camera); } catch (e) { /* ignore instancer cull errors */ }
   try { shipInstancer.sync(); } catch (e) { /* ignore instancer sync errors */ }
   renderer.render(scene, camera);
   }

@@ -9,7 +9,16 @@ import type { Ship } from '../../types/index.js';
 
 type Vec3 = { x: number; y: number; z: number };
 
+// Module-level caches (avoid attaching to function objects which trips strict typings)
+let _softCircleTextureCache: THREE.Texture | null = null;
+let _softCircleTextureCacheSize = 0;
+
 function makeSoftCircleTexture(size = 64): THREE.Texture {
+  // Create a shared canvas texture once and reuse it; creating many
+  // canvas textures is expensive and caused GC pressure in heavy scenes.
+  if (_softCircleTextureCache && _softCircleTextureCacheSize === size) {
+    return _softCircleTextureCache;
+  }
   const canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d')!;
@@ -21,10 +30,21 @@ function makeSoftCircleTexture(size = 64): THREE.Texture {
   ctx.fillRect(0,0,size,size);
   const tex = new THREE.CanvasTexture(canvas);
   tex.needsUpdate = true;
+  _softCircleTextureCache = tex;
+  _softCircleTextureCacheSize = size;
   return tex;
 }
 
 function createTrailMaterial(colorHex: string): THREE.ShaderMaterial {
+  // Cache shader materials by color so we don't recreate shader programs
+  // every time a trail is created. Key by color string.
+  const globalAny = createTrailMaterial as unknown as { _trailMaterialCache?: Map<string, THREE.ShaderMaterial> };
+  globalAny._trailMaterialCache = globalAny._trailMaterialCache || new Map<string, THREE.ShaderMaterial>();
+  const cache = globalAny._trailMaterialCache;
+  const key = colorHex;
+  const existing = cache.get(key);
+  if (existing) return existing.clone();
+
   const uniforms: Record<string, THREE.IUniform> = {
     uPointTexture: { value: makeSoftCircleTexture(64) },
     uStartOpacity: { value: RendererConfig.trails.opacity.start },
@@ -76,7 +96,8 @@ function createTrailMaterial(colorHex: string): THREE.ShaderMaterial {
     depthWrite: false,
     blending: THREE.AdditiveBlending
   });
-  return mat;
+  cache.set(key, mat);
+  return mat.clone();
 }
 
 class ShipTrail {
@@ -118,10 +139,10 @@ class ShipTrail {
     this.sizes[i] = size;
     this.head = (this.head + 1) % this.max;
     this.count = Math.min(this.count + 1, this.max);
-    this.geometry.attributes.position.needsUpdate = true;
-    this.geometry.attributes.aAge.needsUpdate = true;
-    this.geometry.attributes.aSize.needsUpdate = true;
-    this.geometry.setDrawRange(0, this.max); // draw full buffer; shader discards aged-out
+  // Mark attributes as dirty; draw range is set once during construction
+  this.geometry.attributes.position.needsUpdate = true;
+  this.geometry.attributes.aAge.needsUpdate = true;
+  this.geometry.attributes.aSize.needsUpdate = true;
   }
 
   step(dt: number, lifetime: number) {

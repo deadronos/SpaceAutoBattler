@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GameState, Ship, Bullet } from '../types/index.js';
+import type { GameState, Ship, Bullet, ShipClass } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { loadSVGAsset } from '../core/svgLoader.js';
@@ -227,6 +227,62 @@ export function createShipMesh(
 
   // Return placeholder while async asset loads
   return placeholder;
+}
+
+/**
+ * Register instancer prototypes from preloaded assets in the state's asset pool.
+ * This builds the same geometries/materials used by `createShipMesh` and calls
+ * `shipInstancer.registerPrototype` so instanced allocations will have correct visuals.
+ */
+export function registerPrototypesFromPool(state: GameState) {
+  try {
+    const pool = (state as unknown as { assetPool?: Map<string, { imageBitmap?: ImageBitmap }> }).assetPool;
+    if (!pool) return;
+  const classes: ShipClass[] = ['fighter','corvette','frigate','destroyer','carrier'];
+    for (const cls of classes) {
+      try {
+        const svgUrl = getShipSVGUrl(cls, defaultSVGConfig);
+        const asset = pool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
+        if (!asset?.imageBitmap) continue;
+
+        const tex = new THREE.Texture(asset.imageBitmap);
+        tex.needsUpdate = true;
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+
+        const texturedMaterial = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
+        const teamMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, side: THREE.DoubleSide });
+
+        const size = ShipVisualConfig.ships[cls]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+        const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
+        const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
+        const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
+        const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
+        const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+        const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+
+        const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
+        const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
+
+        try {
+          // Prefer updatePrototype to replace any existing group meshes immediately
+          const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
+          if (typeof up === 'function') {
+            try {
+              up(cls, geoms, mats);
+            } catch (err) {
+              void err;
+              shipInstancer.registerPrototype(cls, geoms, mats);
+            }
+          } else {
+            shipInstancer.registerPrototype(cls, geoms, mats);
+          }
+          if (logger && typeof logger.info === 'function') logger.info(`meshFactory: registered instancer prototype for ${cls}`);
+        } catch (_e) { void _e; }
+      } catch (_e) { void _e; }
+    }
+  } catch (_e) { void _e; }
 }
 
 /**
