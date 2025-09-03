@@ -20,7 +20,7 @@ import { chromium } from 'playwright';
           if (typeof o.getWorldPosition === 'function') o.getWorldPosition(wp);
           var dx = wp.x - near.x; var dy = wp.y - near.y; var dz = wp.z - near.z;
           if ((dx*dx + dy*dy + dz*dz) > radius2) return;
-          out.push({ name: o.name || null, id: o.userData && o.userData.id ? o.userData.id : null, pos: { x: wp.x, y: wp.y, z: wp.z }, origin: o.userData && o.userData.__hb_origin ? o.userData.__hb_origin : null });
+      out.push({ name: o.name || null, id: o.userData && o.userData.id ? o.userData.id : null, pos: { x: wp.x, y: wp.y, z: wp.z }, origin: o.userData && o.userData.__hb_origin ? o.userData.__hb_origin : null, probe: o.userData && o.userData.__hb_probe ? o.userData.__hb_probe : null, userDataKeys: Object.keys(o.userData || {}) });
         } catch (e) { /* ignore per-object errors */ }
       });
       return out;
@@ -46,7 +46,7 @@ import { chromium } from 'playwright';
                 constructor: o.constructor && o.constructor.name ? o.constructor.name : String(o),
                 geomType: (o.geometry && o.geometry.type) || null,
                 matType: (o.material && (o.material.constructor && o.material.constructor.name ? o.material.constructor.name : typeof o.material)) || null,
-                userDataKeys: Object.keys(o.userData || {}),
+                  userDataKeys: Object.keys(o.userData || {}),
                 parentName: o.parent ? (o.parent.name || (o.parent.constructor && o.parent.constructor.name) || null) : null,
                 worldPos: { x: wp.x, y: wp.y, z: wp.z }
               });

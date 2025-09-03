@@ -135,6 +135,15 @@ export function syncEntities(
         if (!syncState.healthBarMeshes.has(s.id)) {
           const bar = meshFactory.createHealthBarMesh(s, meshFactoryState);
           try { console.info && console.info(`[HB_TRACE][synchronizer] created health bar (meshFactory) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
+          // Ephemeral probe tag to help diagnostics map legacy non-instanced bars to their creator
+          try {
+            const barObj = bar as THREE.Object3D | undefined;
+            if (barObj && typeof barObj.traverse === 'function') {
+              barObj.traverse((obj: THREE.Object3D) => { try { if (obj && obj.userData) (obj.userData as any).__hb_probe = 'synchronizer_meshFactory'; } catch (_e) { void _e; } });
+            } else if (barObj) {
+              try { (barObj.userData as any).__hb_probe = 'synchronizer_meshFactory'; } catch (_e) { void _e; }
+            }
+          } catch (_e) { void _e; }
           syncState.healthBarMeshes.set(s.id, bar); 
           groups.healthBarsGroup.add(bar);
         }

@@ -76,18 +76,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         g.traverse((obj: THREE.Object3D) => {
           // skip instanced meshes
           if ((obj as any).isInstancedMesh) return;
-          if (!obj.geometry && !obj.isMesh) return;
+          // Cast to Mesh for runtime geometry/isMesh checks
+          const meshObj = obj as unknown as THREE.Mesh;
+          if (!meshObj.geometry && !meshObj.isMesh) return;
           // get world position
           const wp = new THREE.Vector3();
-          obj.getWorldPosition(wp);
+          meshObj.getWorldPosition(wp);
           const p = { x: wp.x, y: wp.y, z: wp.z };
           if (!checkNear(p)) return;
           out.push({
-            id: (obj as any).userData?.id || null,
-            name: obj.name || null,
-            type: (obj as any).type || null,
+            id: (meshObj as any).userData?.id || null,
+            name: meshObj.name || null,
+            type: (meshObj as any).type || null,
             position: p,
-            visible: obj.visible === undefined ? true : obj.visible
+            visible: meshObj.visible === undefined ? true : meshObj.visible
           });
         });
       });
@@ -139,7 +141,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             if ((obj as THREE.Mesh).isMesh) {
               const mesh = obj as THREE.Mesh;
               try { (mesh.material as THREE.Material)?.dispose?.(); } catch {}
-              mesh.material = orig as THREE.Material | THREE.Material[] | null;
+              try {
+                if (orig != null) {
+                  mesh.material = orig as THREE.Material | THREE.Material[];
+                } else {
+                  mesh.material = new THREE.MeshBasicMaterial();
+                }
+              } catch {
+                // ignore assignment errors
+              }
             }
           } catch {
             // ignore per-object restore errors
@@ -149,6 +159,38 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         return { ok: true };
       } as unknown;
     }
+  } catch (e) { /* ignore */ }
+
+  // Diagnostic: list all scene objects that have health-bar related probe/origin markers
+  try {
+    (globalThis as any).__listObjectsWithHBProbe = function() {
+      const out: any[] = [];
+      try {
+        scene.traverse((o: THREE.Object3D) => {
+          try {
+            const ud = (o as any).userData || {};
+            if (!ud) return;
+            const has = ud.__hb_probe || ud.__hb_origin || ud.__hb_early_stack || ud.__hb_marker_for;
+            if (has) {
+              const wp = new THREE.Vector3();
+              try { o.getWorldPosition(wp); } catch (_e) { void _e; }
+              out.push({
+                name: o.name || null,
+                type: o.type || null,
+                probe: ud.__hb_probe || null,
+                origin: ud.__hb_origin || null,
+                early: ud.__hb_early_stack || null,
+                markerFor: ud.__hb_marker_for || null,
+                position: { x: wp.x, y: wp.y, z: wp.z },
+                userDataKeys: Object.keys(ud || {})
+              });
+            }
+          } catch (_e) { /* ignore per-object */ }
+        });
+      } catch (_e) { /* ignore traversal errors */ }
+      try { console.info('[HB_DEV] objects with hb probe/origin:', out.length); } catch (_e) { void _e; }
+      return out;
+    };
   } catch (e) { /* ignore */ }
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
