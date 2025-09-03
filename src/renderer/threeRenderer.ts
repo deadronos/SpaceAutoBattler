@@ -359,6 +359,30 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   scene.add(healthBarsGroup);
   scene.add(shieldEffectsGroup);
 
+  // Dev helpers: expose lightweight runtime inspection utilities on globalThis
+  // These are safe no-ops in production but helpful when debugging bundled builds.
+  try {
+    (globalThis as any).__dumpShipsNearBounds = function(radius = 1) {
+      const b = state.simConfig.simBounds;
+      const near = state.ships.filter((s: any) => {
+        // consider ships within `radius` units of any boundary plane
+        return (
+          Math.abs(s.pos.x - 0) <= radius || Math.abs(s.pos.x - b.width) <= radius ||
+          Math.abs(s.pos.y - 0) <= radius || Math.abs(s.pos.y - b.height) <= radius ||
+          Math.abs(s.pos.z - 0) <= radius || Math.abs(s.pos.z - b.depth) <= radius
+        );
+      }).map((s: any) => ({ id: s.id, class: s.class, pos: s.pos }));
+      console.info('[HB_DEV] Ships near bounds (radius=' + radius + '):', near);
+      return near;
+    };
+
+    (globalThis as any).__listShipsWithHealthBar = function() {
+      const ids = Array.from(healthBarMeshes.keys());
+      console.info('[HB_DEV] Ships with non-instanced health bars:', ids);
+      return ids;
+    };
+  } catch (e) { /* ignore if globalThis is readonly */ }
+
   const shipMeshes = new Map<number, THREE.Object3D>();
   const bulletMeshes = new Map<number, THREE.Object3D>();
   const healthBarMeshes = new Map<number, THREE.Object3D>();
@@ -375,6 +399,29 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   if (RendererConfig.instancing.enableBars) {
     healthBarInstancer = new HealthBarInstancer(scene, healthBarsGroup);
   }
+
+  // Additional dev helpers for instanced health bars (if instancer is present)
+  try {
+    (globalThis as any).__listInstancedHealthBarShips = function() {
+      if (!healthBarInstancer) {
+        console.info('[HB_DEV] instancer not enabled');
+        return [];
+      }
+      const ids = (healthBarInstancer as any).getActiveShipIds();
+      console.info('[HB_DEV] Instanced health bar ship ids:', ids);
+      return ids;
+    };
+
+    (globalThis as any).__hbInstancerStats = function() {
+      if (!healthBarInstancer) return null;
+      try { return healthBarInstancer.getStats(); } catch (e) { return null; }
+    };
+
+    (globalThis as any).__hbDebugScale = function(shipId:number) {
+      if (!healthBarInstancer) return null;
+      try { return (healthBarInstancer as any).debugGetInstanceScale(shipId); } catch (e) { return null; }
+    };
+  } catch (e) { /* ignore */ }
 
   // Initialize ship instancer if enabled
   if (RendererConfig.instancing.enableShips) {
@@ -966,21 +1013,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Guard: only create health bars for recognized ship classes and valid positions.
       // This avoids accidentally creating bars for non-ship objects or placeholders that
       // may be present in state.ships (which can show up at the world bounds/box).
+      const DEBUG_MARKER_HB_INLINE = '[HB_DEBUG_MARKER_INLINE]';
       const hasKnownClass = !!(ShipVisualConfig.ships as any)[s.class];
       const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
       if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
         if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-          // Use health bar instancer
-          if (!healthBarInstancer.hasShip(s.id)) {
-            healthBarInstancer.allocateInstance(s.id);
-          }
+          if (!healthBarInstancer.hasShip(s.id)) healthBarInstancer.allocateInstance(s.id);
         } else {
-          // Use traditional approach
           if (!healthBarMeshes.has(s.id)) {
             const bar = createHealthBar(s);
-            healthBarMeshes.set(s.id, bar); healthBarsGroup.add(bar);
+            healthBarMeshes.set(s.id, bar);
+            healthBarsGroup.add(bar);
           }
         }
+      } else if (RendererConfig.visual.enableHealthBars) {
+        console.warn(`[HealthBar Debug] (inline) Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
       }
       // Shield effects
       if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {

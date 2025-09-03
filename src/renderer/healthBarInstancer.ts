@@ -250,6 +250,13 @@ export class HealthBarInstancer {
   }
 
   /**
+   * DEV: return list of active ship ids currently allocated in the instancer
+   */
+  getActiveShipIds(): number[] {
+    return Array.from(this.activeShips.keys());
+  }
+
+  /**
    * Get current usage statistics
    */
   getStats() {
