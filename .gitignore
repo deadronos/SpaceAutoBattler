@@ -94,9 +94,12 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+.tmp/
 
 # Playwright
 /test-results/
+test-output/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
