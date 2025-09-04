@@ -669,7 +669,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Initialize ship instancer if enabled
   if (RendererConfig.instancing.enableShips) {
-    try { shipInstancer.init(scene, shipsGroup); } catch (e) { logger.warn('Ship instancer init failed', e); }
+    try { shipInstancer.init(scene, shipsGroup);
+      logger.info('Ship instancer initialized');  
+     } catch (e) { logger.warn('Ship instancer init failed', e); }
   }
   // If we have preloaded rasterized SVGs in the state's assetPool, register prototypes
   // with the shipInstancer so instanced ships get correct textured visuals.
@@ -1268,10 +1270,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Ships
+    const useShipInstancing = RendererConfig.instancing.enableShips && shipInstancer.isReady();
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
         // If ship instancing is enabled and we can allocate, don't create an individual mesh
-        if (RendererConfig.instancing.enableShips && shipInstancer.allocate) {
+        if (useShipInstancing && shipInstancer.allocate) {
           const allocated = shipInstancer.allocate(s.id, s.class, s.team, state);
           if (allocated) {
             // create a lightweight placeholder transform via the instancer only
@@ -1391,10 +1394,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Use simulation time for renderer-driven effects so shader hit timestamps
     // align with game state timestamps like ship.lastShieldHitTime
     const currentTime = state.time;
+    const useShipInstancing = RendererConfig.instancing.enableShips && shipInstancer.isReady();
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
-      if (RendererConfig.instancing.enableShips && shipInstancer.hasShip(s.id)) {
+      if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         // Reuse a shared temp quaternion to avoid per-frame allocations
         tempQuat.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
