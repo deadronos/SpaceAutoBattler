@@ -79,7 +79,7 @@ export function moveTowards(
   const dy = targetPos.y - ship.pos.y;
   const dz = targetPos.z - ship.pos.z;
   const distance = Math.hypot(dx, dy, dz);
-  if (distance < settings.movementCloseEnoughThreshold) return;
+  if (distance <= settings.movementCloseEnoughThreshold) return;
 
   // Target orientation
   const targetOrientation = lookAt(ship.pos, targetPos);

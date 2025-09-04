@@ -187,8 +187,8 @@ describe('AI Separation Steering', () => {
     const ship2 = spawnShip(gameState, 'red', 'fighter', { x: 150, y: 100, z: 100 }); // 50 units away, within new separationDistance
 
     // Use reflection to access private method for testing
-    const controller = aiController as any;
-    const separationForce = controller.calculateSeparationForce(ship1);
+    const controller = aiController as AIController;
+    const separationForce = controller.calculateSeparationForceWithCount(ship1);
 
     // Ship1 should experience separation force away from ship2
     expect(separationForce.x).toBeLessThan(0); // Force pointing away from ship2 (negative X direction)
