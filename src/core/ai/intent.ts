@@ -2,7 +2,8 @@ import type { GameState, Ship } from '../../types/index.js';
 import type { AIPersonality } from '../../config/behaviorConfig.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
-import { findNearestEnemy } from './targeting.js';
+import { findNearestEnemy, findNearbyEnemies, findNearbyFriends } from './targeting.js';
+import { getTeamScoutId, isTeamUnderAlarm } from './teamSystems.js';
 
 export function calculatePreferredRange(state: GameState, ship: Ship, personality?: AIPersonality): number {
   const p = personality ?? getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
@@ -11,7 +12,8 @@ export function calculatePreferredRange(state: GameState, ship: Ship, personalit
 }
 
 export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPersonality): void {
-  const ai = ship.aiState!;
+  if (!ship.aiState) return;
+  const ai = ship.aiState;
   const cfg = state.behaviorConfig!;
   const recentDamage = ai.recentDamage || 0;
   const lastDamageTime = ai.lastDamageTime || 0;
@@ -20,19 +22,100 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   const shouldEvadeFromDamage = recentDamage >= cfg.globalSettings.damageEvadeThreshold && withinDamageWindow;
   if (state.time < ai.intentEndTime && !shouldEvadeFromDamage) return;
 
-  let newIntent = 'idle' as Ship['aiState']['currentIntent'];
+  let newIntent = 'idle' as NonNullable<Ship['aiState']>['currentIntent'];
   if (shouldEvadeFromDamage) {
     newIntent = 'evade' as any;
   } else {
-    // Minimal parity: aggressive pursues when enemy nearby, else patrol
-    const nearest = findNearestEnemy(state, ship);
-    newIntent = nearest ? 'pursue' as any : 'patrol' as any;
+    switch (personality.mode) {
+      case 'aggressive':
+        newIntent = chooseAggressiveIntent(state, ship, personality) as any; break;
+      case 'defensive':
+        newIntent = chooseDefensiveIntent(state, ship, personality) as any; break;
+      case 'roaming':
+        newIntent = chooseRoamingIntent(state, ship, personality) as any; break;
+      case 'formation':
+        newIntent = chooseFormationIntent(state, ship, personality) as any; break;
+      case 'carrier_group':
+        newIntent = chooseCarrierGroupIntent(state, ship, personality) as any; break;
+      case 'mixed':
+      default:
+        newIntent = chooseMixedIntent(state, ship, personality) as any; break;
+    }
     if (cfg.globalSettings.useDecisionEngineEvadeGate) {
+      const nearest = findNearestEnemy(state, ship);
       const distanceToThreat = nearest ? Math.hypot(nearest.pos.x - ship.pos.x, nearest.pos.y - ship.pos.y, nearest.pos.z - ship.pos.z) : null;
       const score = deScoreEvade({ distanceToThreat, recentDamage, damageEvadeThreshold: cfg.globalSettings.damageEvadeThreshold, withinRecentDamageWindow: withinDamageWindow, settings: cfg.globalSettings });
       if (score >= 1.0) newIntent = 'evade' as any;
     }
   }
-  ai.currentIntent = newIntent as any;
+  (ai as any).currentIntent = newIntent as any;
   ai.lastIntentReevaluation = state.time;
+}
+
+// Below choose* implementations mirror the original controller strategies at a high level,
+// using available helpers and configuration to keep behavior parity.
+
+export function chooseAggressiveIntent(state: GameState, ship: Ship, personality: AIPersonality) {
+  const cfg = state.behaviorConfig!;
+  const nearestEnemy = findNearestEnemy(state, ship);
+  const preferredRange = ship.aiState!.preferredRange ?? cfg.globalSettings.separationDistance;
+  if (nearestEnemy) {
+    const d = Math.hypot(nearestEnemy.pos.x - ship.pos.x, nearestEnemy.pos.y - ship.pos.y, nearestEnemy.pos.z - ship.pos.z);
+    const scoutId = cfg.globalSettings.enableScoutBehavior ? getTeamScoutId(state, ship.team) : null;
+    const isScout = scoutId != null && scoutId === ship.id;
+    const teamUnderAlarm = isTeamUnderAlarm(state, ship.team);
+    if (d < preferredRange * cfg.globalSettings.closeRangeMultiplier) return 'pursue';
+    if (d < preferredRange * cfg.globalSettings.mediumRangeMultiplier) return 'pursue';
+    if (isScout) return 'pursue';
+    if (teamUnderAlarm) return 'pursue';
+    return state.rng.next() < personality.aggressiveness ? 'pursue' : 'strafe';
+  }
+  const scoutId = cfg.globalSettings.enableScoutBehavior ? getTeamScoutId(state, ship.team) : null;
+  const isScout = scoutId != null && scoutId === ship.id;
+  return isScout && (cfg.globalSettings as any).enableScoutExploration ? 'explore' : 'patrol';
+}
+
+export function chooseDefensiveIntent(state: GameState, ship: Ship, personality: AIPersonality) {
+  const cfg = state.behaviorConfig!;
+  const nearestEnemy = findNearestEnemy(state, ship);
+  const preferredRange = ship.aiState!.preferredRange ?? cfg.globalSettings.separationDistance;
+  if (nearestEnemy) {
+    const d = Math.hypot(nearestEnemy.pos.x - ship.pos.x, nearestEnemy.pos.y - ship.pos.y, nearestEnemy.pos.z - ship.pos.z);
+    if (d < preferredRange * cfg.globalSettings.closeRangeMultiplier) return 'evade';
+    if (d < preferredRange * cfg.globalSettings.mediumRangeMultiplier) return 'strafe';
+    return state.rng.next() < personality.caution ? 'evade' : 'group';
+  }
+  // Without enemies: favor grouping to maintain cohesion
+  const friends = findNearbyFriends(state, ship, cfg.globalSettings.groupFriendRadius);
+  return friends.length > 0 ? 'group' : 'patrol';
+}
+
+export function chooseRoamingIntent(state: GameState, ship: Ship, personality: AIPersonality) {
+  const cfg = state.behaviorConfig!;
+  const nearestEnemy = findNearestEnemy(state, ship);
+  if (nearestEnemy && state.rng.next() < personality.aggressiveness) return 'pursue';
+  // Otherwise wander
+  return 'patrol';
+}
+
+export function chooseFormationIntent(_state: GameState, _ship: Ship, _personality: AIPersonality) {
+  // When in formation mode, the movement system will try to assign/join formations.
+  // Intent can remain 'group' to bias towards staying with allies.
+  return 'group';
+}
+
+export function chooseCarrierGroupIntent(state: GameState, ship: Ship, _personality: AIPersonality) {
+  // Carriers prefer staying with escorts; if enemies nearby, group or strafe
+  const cfg = state.behaviorConfig!;
+  const enemies = findNearbyEnemies(state, ship, cfg.globalSettings.minimumSafeDistance * 2);
+  if (enemies.length > 0) return 'strafe';
+  return 'group';
+}
+
+export function chooseMixedIntent(state: GameState, ship: Ship, personality: AIPersonality) {
+  // Mixed delegates to aggressive vs defensive balance based on aggressiveness vs caution
+  if ((personality.aggressiveness ?? 0.5) >= (personality.caution ?? 0.5)) {
+    return chooseAggressiveIntent(state, ship, personality);
+  }
+  return chooseDefensiveIntent(state, ship, personality);
 }

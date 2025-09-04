@@ -81,11 +81,32 @@ export interface RendererConfig {
       size: number;
     };
     explosion: {
-      count: number;
-      lifetime: number;
-      speed: number;
+      enabled: boolean; // feature flag to enable particle explosions
+      // density-based count: particles = clamp(countPerRadius * radius, minCount, maxCount)
+      countPerRadius: number;
+      minCount: number;
+      maxCount: number;
+      lifetime: number; // seconds
+      // size range in world units or normalized units depending on renderer
+      size: {
+        min: number;
+        max: number;
+      };
+      // initial velocity parameters
+      velocity: {
+        radial: {
+          min: number;
+          max: number;
+        };
+        randomSpread: number; // 0..1 spread multiplier
+      };
       colors: string[];
-      size: number;
+      // pooling controls for instance buffer and particle pool
+      pooling: {
+        initial: number; // initial pool size
+        growTo: number; // max pool size under stress
+      };
+      // LOD fallback sizes or thresholds can be added later
     };
   };
 
@@ -240,11 +261,21 @@ export const DefaultRendererConfig: RendererConfig = {
       size: 3,
     },
     explosion: {
-      count: 15,
+      enabled: true,
+      countPerRadius: 18, // base particles per world-unit radius
+      minCount: 8,
+      maxCount: 200,
       lifetime: 1.2,
-      speed: 150,
-      colors: ['#ffaa00', '#ff6600', '#ff3300', '#ffff88'],
-      size: 4,
+      size: {
+        min: 0.02,
+        max: 0.25,
+      },
+      velocity: {
+        radial: { min: 40, max: 240 },
+        randomSpread: 0.6,
+      },
+      colors: ['#fffbda', '#ff8c00', '#440000'],
+      pooling: { initial: 256, growTo: 2048 },
     },
   },
 

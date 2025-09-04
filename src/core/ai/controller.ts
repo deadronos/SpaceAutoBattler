@@ -4,7 +4,7 @@ import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSys
 import { updateShieldRegeneration } from './defense.js';
 import { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretTarget, updateTurretLeads } from './targeting.js';
 import { calculateSeparationForceWithCount, ensureSpatialGridUpdated, SpatialHelpers } from './spatial.js';
-import { calculatePreferredRange } from './intent.js';
+import { calculatePreferredRange, reevaluateIntent } from './intent.js';
 import { assignRoamingAnchor, releaseRoamingAnchor } from './roaming.js';
 import { findBestFormation, getFormationCenter, assignFormationSlot, clearFormationSlot } from './formation.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
@@ -22,18 +22,18 @@ export class AIController {
     this.teams = new TeamSystems(state);
   }
 
-  public updateAllShips(dt: number) {
+  public async updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
     this.spatial.resetTick();
     updateTeamAlarms(this.state);
     updateScoutAssignments(this.state);
     for (const ship of this.state.ships) {
       if (ship.health <= 0) continue;
-      this.updateShipAI(ship, dt);
+      await this.updateShipAI(ship, dt);
     }
   }
 
-  public updateShipAI(ship: Ship, dt: number) {
+  public async updateShipAI(ship: Ship, dt: number) {
     // Ensure aiState exists for downstream modules
     if (!ship.aiState) {
       ship.aiState = {
@@ -57,6 +57,10 @@ export class AIController {
       } as Ship['aiState'];
     }
 
+    // Intent reevaluation
+    const { getEffectivePersonality } = await import('../../config/behaviorConfig.js');
+    const personality = getEffectivePersonality(this.state.behaviorConfig!, ship.class, ship.team);
+    reevaluateIntent(this.state, ship, personality);
     updateShieldRegeneration(this.state, ship, dt);
 
     // Example targeting updates preserved from original controller
