@@ -12,6 +12,7 @@ import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
 import { setCachedCameraBasis } from './cameraManager.js';
+import { _ } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
@@ -136,7 +137,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           try {
             if ((obj as THREE.Mesh).isMesh) {
               const mesh = obj as THREE.Mesh;
-              try { (mesh.material as THREE.Material)?.dispose?.(); } catch {}
+              try { (mesh.material as THREE.Material)?.dispose?.(); } catch {logger.error('Failed disposing highlight material');}
               try {
                 if (orig != null) {
                   mesh.material = orig as THREE.Material | THREE.Material[];
@@ -155,12 +156,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         return { ok: true };
       } as unknown;
     }
-  } catch (e) { /* ignore */ }
+  } catch {logger.error('Failed setting up __listNonInstancedMeshes'); }
 
   // Diagnostic: list all scene objects that have health-bar related probe/origin markers
   try {
   // Note: legacy developer object listing removed.
-  } catch (e) { /* ignore */ }
+  } catch {logger.error('Failed setting up __listInstancedHealthBarShips'); }
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -212,8 +213,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Also expose scene and camera references for external scripts (read-only)
     (globalThis as any).scene = scene;
     (globalThis as any).threeCamera = camera;
-  } catch (e) { /* ignore */ }
-
+  } catch {logger.error('Failed setting up __focusCameraOn'); }
+  
   // Procedural Skybox Generation
   function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
@@ -363,7 +364,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     skyboxAnimationTime += dt;
     if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
 
-    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    // const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
     skyboxTextures.forEach((texture, index) => {
       const canvas = skyboxCanvases[index];
       const ctx = canvas.getContext('2d')!;
@@ -507,17 +508,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           // only inspect Mesh-like objects
           if ((o as any).isMesh) {
             const wp = new THREE.Vector3();
-            try { o.getWorldPosition(wp); } catch (_) { /* ignore */ }
+            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added health bar mesh');}
             // If mesh is near the known fleet Y used in formations (y=400), log a stack trace
             if (Math.abs(wp.y - 400) < 0.001) {
-              try { console.info('[HB_TRACE][healthBarsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch (_e) { /* ignore */ }
+              try { console.info('[HB_TRACE][healthBarsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging health bar add trace');}
             }
           }
         }
-      } catch (_e) { /* ignore instrumentation errors */ }
+      } catch {logger.error('Error inspecting health bar group additions');}
       return _origHealthBarsAdd(...objs);
     };
-  } catch (e) { /* ignore if binding fails */ }
+  } catch {logger.error('Failed instrumenting healthBarsGroup.add');}
 
   // Also instrument shipsGroup.add and scene.add to catch stray Mesh additions
   try {
@@ -528,16 +529,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           if (!o) continue;
           if ((o as any).isMesh) {
             const wp = new THREE.Vector3();
-            try { o.getWorldPosition(wp); } catch (_) { /* ignore */ }
+            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added ship mesh');}
             if (Math.abs(wp.y - 400) < 0.001) {
-              try { console.info('[HB_TRACE][shipsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch (_e) { /* ignore */ }
+              try { const _HB_TRACE_shipgroupname=_origShipsAdd.name;console.info('[HB_TRACE][shipsGroup.add] name=',_HB_TRACE_shipgroupname,' adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging ships group add trace');}
             }
           }
         }
-      } catch (_e) { /* ignore */ }
+      } catch {logger.error('Error inspecting ships group additions');}
       return _origShipsAdd(...objs);
     };
-  } catch (e) { /* ignore */ }
+  } catch {logger.error('Failed instrumenting shipsGroup.add');}
 
   try {
     const _origSceneAdd = (scene as any).add.bind(scene);
@@ -547,16 +548,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           if (!o) continue;
           if ((o as any).isMesh) {
             const wp = new THREE.Vector3();
-            try { o.getWorldPosition(wp); } catch (_) { /* ignore */ }
+            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added scene mesh');}
             if (Math.abs(wp.y - 400) < 0.001) {
-              try { console.info('[HB_TRACE][scene.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch (_e) { /* ignore */ }
+              try { console.info('[HB_TRACE][scene.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging scene add trace');}
             }
           }
         }
-      } catch (_e) { /* ignore */ }
+      } catch {logger.error('Error inspecting scene additions');}
       return _origSceneAdd(...objs);
     };
-  } catch (e) { /* ignore */ }
+  } catch {logger.error('Failed instrumenting scene.add');}
 
   scene.add(shipsGroup);
   scene.add(bulletsGroup);
@@ -585,7 +586,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       console.info('[HB_DEV] Ships with non-instanced health bars:', ids);
       return ids;
     };
-  } catch (e) { /* ignore if globalThis is readonly */ }
+  } catch {logger.error('Failed setting up __dumpShipsNearBounds'); }
 
   const shipMeshes = new Map<number, THREE.Object3D>();
   const bulletMeshes = new Map<number, THREE.Object3D>();
@@ -633,7 +634,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     };
 
   // Note: temporary developer marker helpers removed.
-  } catch (e) { /* ignore */ }
+  } catch {logger.error('Failed setting up instanced health bar dev helpers'); }
 
   // Periodic dev logger - reports ships near bounds and instancer stats every intervalMs
   (function setupPeriodicDevLogger() {
@@ -650,7 +651,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         if ((near && near.length > 0) || (instIds && instIds.length > 0) || (nonInst && nonInst.length > 0)) {
           console.info('[HB_DEV][periodic] near=', near, 'instancedIds=', instIds, 'nonInst=', nonInst, 'stats=', stats);
         }
-      } catch (err) { /* ignore */ }
+      } catch {logger.error('Failed logging periodic dev stats');}
     }
 
     (globalThis as any).__hbPeriodicStart = function() {
@@ -679,7 +680,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Dynamic import to avoid circular import ordering issues at module-eval.
     // Use then() to avoid top-level await requirement.
     import('./meshFactory.js').then((mf) => { try { mf.registerPrototypesFromPool(state); } catch (e) { void e; } }).catch(() => {/* ignore */});
-  } catch (e) { /* dynamic import failed or not supported - ignore */ }
+  } catch {logger.error('Failed registering ship instancer prototypes from asset pool');}
   
 
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
@@ -810,7 +811,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const svgAsset = pool.get(svgUrl);
         if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
       }
-    } catch (e) { /* ignore */ }
+    } catch {logger.error('Error accessing asset pool for ship SVG');}
 
     // Fallback placeholder, and kick off async load to replace visual when ready
     const geom = new THREE.ConeGeometry(8, 24, 8);
@@ -856,7 +857,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function createHealthBar(ship: Ship): THREE.Object3D {
-  try { console.info && console.info(`[HB_TRACE][threeRenderer] createHealthBar() called for ship=${ship?.id} class=${ship?.class} pos=${ship?.pos?.x},${ship?.pos?.y},${ship?.pos?.z}`); } catch (_e) { void _e; }
+  try { logger.info(`[HB_TRACE][threeRenderer] createHealthBar() called for ship=${ship?.id} class=${ship?.class} pos=${ship?.pos?.x},${ship?.pos?.y},${ship?.pos?.z}`); } catch (_e) { void _e; }
     const config = RendererConfig.healthBars;
     const barGroup = new THREE.Group();
 
@@ -920,8 +921,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // DEV LOG: inline health bar creation
   try {
-    console.info && console.info('[HB_TRACE][threeRenderer] createHealthBar defined (inline)');
-  } catch (_e) { void _e; }
+    logger.info('[HB_TRACE][threeRenderer] createHealthBar defined (inline)');
+  } catch {logger.error('Failed logging health bar creation trace');}
 
   function updateHealthBar(ship: Ship, barGroup: THREE.Object3D) {
     const config = RendererConfig.healthBars;
@@ -1292,7 +1293,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Guard: only create health bars for recognized ship classes and valid positions.
       // This avoids accidentally creating bars for non-ship objects or placeholders that
       // may be present in state.ships (which can show up at the world bounds/box).
-  const DEBUG_MARKER_HB_INLINE = '[HB_DEBUG_MARKER_INLINE]';
+      // DEV LOG: inline health bar creation
   const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, any>)[s.class];
       const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
       if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
@@ -1300,16 +1301,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           if (!healthBarInstancer.hasShip(s.id)) healthBarInstancer.allocateInstance(s.id);
         } else {
           if (!healthBarMeshes.has(s.id)) {
-            try { console.info && console.info('[HB_TRACE] calling createHealthBar for ship', s.id, 'pos', s.pos); console.info(new Error('HB_STACK createHealthBar').stack); } catch (_) { void _; }
+            try { logger.info('[HB_TRACE] calling createHealthBar for ship', s.id, 'pos', s.pos); logger.info(new Error('HB_STACK createHealthBar').stack); } catch {logger.error('Failed logging health bar creation trace');}}
             const bar = createHealthBar(s);
-            try { console.info && console.info(`[HB_TRACE][threeRenderer] created health bar (inline) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
+            try { logger.info(`[HB_TRACE][threeRenderer] created health bar (inline) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch {logger.error('Failed logging health bar creation trace');}
             healthBarMeshes.set(s.id, bar);
             healthBarsGroup.add(bar);
           }
-        }
-      } else if (RendererConfig.visual.enableHealthBars) {
-        console.warn(`[HealthBar Debug] (inline) Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
-      }
+        } else { if (RendererConfig.visual.enableHealthBars) {
+          logger.warn(`[HealthBar Debug] (inline) Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
+        }};
       // Shield effects
       if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {
         const shield = createShieldEffect(s);
@@ -1489,7 +1489,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     try {
       canvas.width = w;
       canvas.height = h;
-    } catch (e) { /* ignore if canvas isn't writable in test env */ }
+    } catch {logger.error('Failed to resize canvas');}
 
     // If available, also set the CSS size so the element visually matches the
     // layout; some browsers scale canvas using CSS which can affect the
@@ -1511,7 +1511,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update camera position using spherical coordinates
     updateCameraPosition();
 
-    try { effectsManager?.resize(w, h); } catch (e) { /* ignore */ }
+    try { effectsManager?.resize(w, h); } catch {logger.error('Failed to resize effects manager');}
   }
 
   // Create effects manager (postprocessing) lazily
@@ -1529,11 +1529,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
     // This guarantees bars don't inherit ship rotation.
+    // eslint-disable-next-line no-unused-vars
     for (const [id, bar] of healthBarMeshes) {
       if (bar.parent !== healthBarsGroup) {
         try {
           if (bar.parent) bar.parent.remove(bar);
-        } catch (e) { /* ignore */ }
+        } catch {logger.error('Failed to remove health bar from previous parent');}
         healthBarsGroup.add(bar);
       }
     }
@@ -1548,7 +1549,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   tempCamRight.crossVectors(tempCamForward, camera.up).normalize();
   tempCamUp.copy(camera.up).normalize();
   // Cache camera basis for other systems to reuse (best-effort)
-  try { setCachedCameraBasis(camera, { right: tempCamRight.clone(), up: tempCamUp.clone(), forward: tempCamForward.clone() }); } catch (e) { /* ignore */ }
+  try { setCachedCameraBasis(camera, { right: tempCamRight.clone(), up: tempCamUp.clone(), forward: tempCamForward.clone() }); } catch {logger.error('Failed to set cached camera basis');}
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
           if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
@@ -1574,8 +1575,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Render the scene
   // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-  try { shipInstancer.cull(camera); } catch (e) { /* ignore instancer cull errors */ }
-  try { shipInstancer.sync(); } catch (e) { /* ignore instancer sync errors */ }
+  try { shipInstancer.cull(camera); } catch {logger.error('Failed to cull ship instancer');}
+  try { shipInstancer.sync(); } catch {logger.error('Failed to sync ship instancer');}
   renderer.render(scene, camera);
   }
 
@@ -1588,9 +1589,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     render,
     dispose: () => {
       window.removeEventListener('resize', resize);
-      try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
-      try { bulletInstancer?.dispose(); } catch (e) { /* ignore */ }
-      try { healthBarInstancer?.dispose(); } catch (e) { /* ignore */ }
+      try { effectsManager?.dispose(); } catch {logger.error('Failed to dispose effects manager');}
+      try { bulletInstancer?.dispose(); } catch {logger.error('Failed to dispose bullet instancer');}
+      try { healthBarInstancer?.dispose(); } catch {logger.error('Failed to dispose health bar instancer');}
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
@@ -1598,7 +1599,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shieldEffectMeshes.clear();
       // Dispose pooled billboard materials
       for (const m of billboardMaterialPool.values()) {
-        try { m.dispose(); } catch (e) { /* ignore */ }
+        try { m.dispose(); } catch {logger.error('Failed to dispose billboard material');}
       }
       billboardMaterialPool.clear();
       billboardMaterials.clear();
@@ -1688,7 +1689,7 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
   });
   // Mark a stable program-like key on the material so systems can use it
   // as a canonical identity for GL program-level caching.
-  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch (e) { /* ignore in test env */ }
+  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch {logger.error('Failed to set render program on billboard material');}
   billboardMaterialPool.set(key, mat);
   billboardMaterials.add(mat);
   return mat;
