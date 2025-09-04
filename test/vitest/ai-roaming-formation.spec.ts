@@ -39,7 +39,8 @@ describe('AI Roaming and Formation Systems', () => {
         mode: 'roaming'
       };
 
-      // Force intent reevaluation by advancing time
+      // Reduce separation for deterministic test and force intent reevaluation
+      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = 40;
       gameState.time = 10;
 
       // Step the simulation to trigger AI updates

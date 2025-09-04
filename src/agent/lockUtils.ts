@@ -9,6 +9,7 @@ export type Lock = {
 
 import * as fs from "fs";
 import * as path from "path";
+import { randomUUID } from 'crypto';
 
 const repoRoot = process.cwd();
 const lockPath = path.join(repoRoot, ".ai-lock.json");
@@ -34,7 +35,7 @@ export function isLockStale(lock: Lock): boolean {
 
 export function acquireLock(lock: Lock): boolean {
   // simple atomic write by writing to temp and renaming
-  const tmp = lockPath + "." + Math.random().toString(36).slice(2);
+  const tmp = lockPath + "." + (randomUUID ? randomUUID().replace(/-/g, '') : Date.now().toString(36));
   try {
     if (fs.existsSync(lockPath)) return false;
     fs.writeFileSync(tmp, JSON.stringify(lock, null, 2), "utf8");

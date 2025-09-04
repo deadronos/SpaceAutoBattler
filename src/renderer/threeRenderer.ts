@@ -13,6 +13,7 @@ import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
 import { setCachedCameraBasis } from './cameraManager.js';
 import { _ } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
+import { createRNG } from '../utils/rng.js';
 export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
@@ -50,6 +51,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     __hbPeriodicStop: () => void;
   }>;
   const gAny = globalThis as unknown as DebugHelpers;
+  const rng = state.rng ?? createRNG(String(Date.now()));
   // Apply global readPixels/prototype patches early, if available.
   try {
     if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
@@ -382,12 +384,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (index === 2 || index === 4) {
         ctx.globalAlpha = 0.08;
         for (let n = 0; n < RendererEffectsConfig.skybox.starfield.nebula.count; n++) {
-          const nebX = (Math.random() * canvas.width);
-          const nebY = (Math.random() * canvas.height);
-          const nebRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + Math.random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
+          const nebX = rng.next() * canvas.width;
+          const nebY = rng.next() * canvas.height;
+          const nebRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + rng.next() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
           const nebulaGradient = ctx.createRadialGradient(nebX, nebY, 0, nebX, nebY, nebRadius);
-          nebulaGradient.addColorStop(0, `hsl(${200 + Math.random() * 60}, 30%, 20%)`);
-          nebulaGradient.addColorStop(0.5, `hsl(${200 + Math.random() * 60}, 20%, 10%)`);
+          nebulaGradient.addColorStop(0, `hsl(${200 + rng.next() * 60}, 30%, 20%)`);
+          nebulaGradient.addColorStop(0.5, `hsl(${200 + rng.next() * 60}, 20%, 10%)`);
           nebulaGradient.addColorStop(1, 'transparent');
           ctx.fillStyle = nebulaGradient;
           ctx.beginPath();
@@ -1193,7 +1195,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   try { setObjectRenderProgram(shieldMesh, material); } catch { /* ignore */ }
   shieldGroup.add(shieldMesh);
     (shieldGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
-    (shieldGroup as unknown as Record<string, unknown>).pulsePhase = Math.random() * Math.PI * 2;
+    (shieldGroup as unknown as Record<string, unknown>).pulsePhase = rng.next() * Math.PI * 2;
     return shieldGroup;
   }
 
@@ -1529,8 +1531,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
     // This guarantees bars don't inherit ship rotation.
-    // eslint-disable-next-line no-unused-vars
-    for (const [id, bar] of healthBarMeshes) {
+    for (const [_id, bar] of healthBarMeshes) {
       if (bar.parent !== healthBarsGroup) {
         try {
           if (bar.parent) bar.parent.remove(bar);

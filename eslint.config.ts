@@ -39,6 +39,16 @@ export default defineConfig([
     }
   }
   ,
+  {
+    files: ["src/core/**/*.ts"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        { object: "Math", property: "random", message: "Use GameState.rng.next() for determinism" }
+      ]
+    }
+  }
+  ,
   { files: ["**/*.json"], plugins: { json }, language: "json/json", extends: ["json/recommended"] },
   { files: ["**/*.jsonc"], plugins: { json }, language: "json/jsonc", extends: ["json/recommended"] },
   { files: ["**/*.json5"], plugins: { json }, language: "json/json5", extends: ["json/recommended"] },

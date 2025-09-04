@@ -1,6 +1,7 @@
 import { gsap } from 'gsap';
 import type { GameState, RendererHandles } from '../types/index.js';
 import type { Ship } from '../types/index.js';
+import { createRNG } from '../utils/rng.js';
 
 // Local lightweight types to avoid broad `any` in this adapter
 type Vec3 = { x: number; y: number; z: number };
@@ -182,16 +183,17 @@ export function createAnimationManager(state: GameState): AnimationManager {
       z: state.renderer.cameraTarget.z
     };
 
+    const rng = state.rng ?? createRNG(String(Date.now()));
     gsap.to({}, {
       duration,
       ease: "power2.out",
-      onUpdate: function() {
+      onUpdate: function () {
         const progress = this.progress();
         const shake = (1 - progress) * intensity;
 
-        state.renderer!.cameraTarget.x = originalPosition.x + (Math.random() - 0.5) * shake;
-        state.renderer!.cameraTarget.y = originalPosition.y + (Math.random() - 0.5) * shake;
-        state.renderer!.cameraTarget.z = originalPosition.z + (Math.random() - 0.5) * shake;
+        state.renderer!.cameraTarget.x = originalPosition.x + (rng.next() - 0.5) * shake;
+        state.renderer!.cameraTarget.y = originalPosition.y + (rng.next() - 0.5) * shake;
+        state.renderer!.cameraTarget.z = originalPosition.z + (rng.next() - 0.5) * shake;
       },
       onComplete: () => {
         state.renderer!.cameraTarget.x = originalPosition.x;
