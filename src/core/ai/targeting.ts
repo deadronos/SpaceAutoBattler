@@ -4,6 +4,10 @@ import { DEBUG_AI } from '../../utils/env';
 import { pickBestTurretTarget } from './turretTargeting.js';
 import { findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends } from '../searchUtils.js';
 
+// Per-frame turret target cache to avoid repeated nearest/radius queries per turret
+const turretTargetCache: Map<string, { frame: number; targetId: EntityId | null }> = new Map();
+function cacheKey(frame: number, shipId: number, turretId: string) { return `${frame}|${shipId}|${turretId}`; }
+
 export function findNearestEnemy(state: GameState, ship: Ship): Ship | null { return sharedFindNearestEnemy(state, ship); }
 export function findNearbyEnemies(state: GameState, ship: Ship, range: number): Ship[] { return sharedFindNearbyEnemies(state, ship, range); }
 export function findNearbyFriends(state: GameState, ship: Ship, range: number): Ship[] { return sharedFindNearbyFriends(state, ship, range); }
@@ -12,10 +16,17 @@ export function findBestTurretTarget(state: GameState, ship: Ship, turret: Turre
   const cfg = state.behaviorConfig!;
   const turretConfig = cfg.turretConfig;
   if (cfg.globalSettings.useTurretTargetingHelper) {
+    // Check per-frame cache first
+    const frame = (state as any).frame ?? state.tick;
+    const key = cacheKey(frame, ship.id, turret.id);
+    const cached = turretTargetCache.get(key);
+    if (cached && cached.frame === frame) return cached.targetId ?? null;
+
     const id = pickBestTurretTarget(state, ship, turret, turretConfig);
     if (DEBUG_AI) {
       console.error(`AI-DEBUG findBestTurretTarget ship=${ship.id} chosen=${String(id)}`);
     }
+    turretTargetCache.set(key, { frame, targetId: id ?? null });
     return id ?? null;
   }
   let best: Ship | null = null; let scoreBest = 0;

@@ -616,7 +616,7 @@ function startLoops(state: GameState, ui: UIElements) {
       while (acc >= fixedDt && steps < maxSteps) {
         simulateStep(state, fixedDt * state.speedMultiplier);
         try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (_e) { void _e;/* ignore if missing */ }
-        state.time += fixedDt * state.speedMultiplier; state.tick++;
+      state.time += fixedDt * state.speedMultiplier; state.tick++; state.frame = (state.frame ?? 0) + 1;
         acc -= fixedDt; steps++;
       }
       // Auto-respawn if continuous
@@ -652,5 +652,4 @@ function startLoops(state: GameState, ui: UIElements) {
 logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 
 window.addEventListener('DOMContentLoaded', () => initGame());
-
 

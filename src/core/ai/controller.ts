@@ -86,6 +86,7 @@ export class AIController {
     // Prefer any non-null turret target (first-wins) for backward compatibility.
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
+    // Use grouped resolver to reduce repeated queries when many ships share cells
     let nearestEnemy = findNearestEnemy(this.state, ship);
 
     if (firstTarget != null) {
@@ -122,7 +123,12 @@ export class AIController {
       try {
         const tc = this.state.behaviorConfig?.turretConfig;
         let bestId: number | null = null; let bestScore = -Infinity;
-        for (const target of this.state.ships) {
+        // Use grouped resolver to reduce search work when many ships share cells
+        const { makeCellNearestResolver, pickKNearestFromCandidates } = require('../searchUtils.js');
+        const resolve = makeCellNearestResolver(this.state, tc?.maximumFireRange ?? this.state.simConfig.spatialGrid.cellSize * 2);
+        const candidates = resolve ? resolve(ship.pos, undefined) : this.state.ships;
+        const shortlist = Array.isArray(candidates) ? pickKNearestFromCandidates(ship.pos, candidates, 12) : this.state.ships;
+        for (const target of shortlist) {
           if (target.team === ship.team || target.health <= 0) continue;
           const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
           const d = Math.hypot(dx, dy, dz) || 1;

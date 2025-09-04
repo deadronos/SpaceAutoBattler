@@ -46,12 +46,17 @@ export function updateScoutAssignments(state: GameState) {
     const current = scouts.get(team);
     const currentShip = current ? teamShips.find(s => s.id === current) : null;
     if (!currentShip) {
+      // Use grouped resolver to find the friendly ship closest to any enemy
+      const { makeCellNearestResolver, pickKNearestFromCandidates } = require('../searchUtils.js');
+      const resolve = makeCellNearestResolver(state, state.simConfig.spatialGrid.cellSize * 3);
       const enemies = state.ships.filter(s => s.team !== team && s.health > 0);
       let best = teamShips[0];
       if (enemies.length > 0) {
         let bestD = Infinity;
         for (const ship of teamShips) {
-          for (const e of enemies) {
+          const candidates = resolve ? resolve(ship.pos) : enemies;
+          const shortlist = pickKNearestFromCandidates(ship.pos, candidates, 8);
+          for (const e of shortlist) {
             const dx = ship.pos.x - e.pos.x; const dy = ship.pos.y - e.pos.y; const dz = ship.pos.z - e.pos.z;
             const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
             if (d < bestD) { bestD = d; best = ship; }

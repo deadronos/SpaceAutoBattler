@@ -191,6 +191,8 @@ export interface RendererHandles {
 export interface GameState {
   time: number; // seconds
   tick: number;
+  /** Monotonic frame counter, increments once per render/update frame */
+  frame?: number;
   running: boolean;
   speedMultiplier: number; // 0.5x/1x/2x/4x
   rng: RNG;
