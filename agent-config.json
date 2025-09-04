@@ -1,6 +1,0 @@
-{
-  "ttl_seconds": 300,
-  "max_retries": 5,
-  "backoff_ms": 500,
-  "ignorePaths": [".github/*", "test/*", "docs/*"]
-}

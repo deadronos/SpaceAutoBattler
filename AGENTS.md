@@ -38,8 +38,3 @@
 - Asset pooling: use `GameState.assetPool`; always `object.dispose()` before release.
 - Memory: dispose geometries/materials/textures; monitor for leaks; use EffectComposer for post.
 - Performance: prefer pooling and LOD for distant objects.
-
-## Agent-Specific Instructions (Optional)
-- Locking: use `.ai-lock.json` with scoped `files`; remove on completion and log under `.ai-history/`.
-- Backoff: if a lock exists and owner ≠ you, back off until TTL or propose changes via a branch.
-
