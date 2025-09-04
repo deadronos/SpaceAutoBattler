@@ -2,11 +2,9 @@ import type { GameState, Ship } from '../../types/index.js';
 import { IntentManager } from './intentManager.js';
 import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSystems.js';
 import { updateShieldRegeneration } from './defense.js';
-import { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretTarget, updateTurretLeads } from './targeting.js';
-import { calculateSeparationForceWithCount, ensureSpatialGridUpdated, SpatialHelpers } from './spatial.js';
+import { findNearestEnemy, updateTurretLeads } from './targeting.js';
+import { calculateSeparationForceWithCount, SpatialHelpers } from './spatial.js';
 import { calculatePreferredRange, reevaluateIntent } from './intent.js';
-import { assignRoamingAnchor, releaseRoamingAnchor } from './roaming.js';
-import { findBestFormation, getFormationCenter, assignFormationSlot, clearFormationSlot } from './formation.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 
 export class AIController {
@@ -35,17 +33,6 @@ export class AIController {
 
   public async updateShipAI(ship: Ship, dt: number) {
     // Ensure aiState exists for downstream modules
-    if (!ship.aiState) {
-      ship.aiState = {
-        currentIntent: 'idle',
-        intentEndTime: 0,
-        lastIntentReevaluation: 0,
-        preferredRange: calculatePreferredRange(this.state, ship),
-        recentDamage: 0,
-        lastDamageTime: 0
-      } as Ship['aiState'];
-    }
-    // Maintain lazy init for AI state fields used across modules
     if (!ship.aiState) {
       ship.aiState = {
         currentIntent: 'idle',
