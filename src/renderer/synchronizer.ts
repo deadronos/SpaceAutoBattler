@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as logger from '../utils/logger.js';
 import type { GameState, Ship, Bullet } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
@@ -134,7 +135,7 @@ export function syncEntities(
         // Use traditional mesh factory approach
         if (!syncState.healthBarMeshes.has(s.id)) {
           const bar = meshFactory.createHealthBarMesh(s, meshFactoryState);
-          try { console.info && console.info(`[HB_TRACE][synchronizer] created health bar (meshFactory) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
+          try { logger.info(`[HB_TRACE][synchronizer] created health bar (meshFactory) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
           // Probe tags removed: no-op.
           syncState.healthBarMeshes.set(s.id, bar); 
           groups.healthBarsGroup.add(bar);
