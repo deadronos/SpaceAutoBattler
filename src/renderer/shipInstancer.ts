@@ -31,6 +31,10 @@ class ShipInstancerImpl {
   public isReady = false;
   private readyCallbacks: Array<() => void> = [];
   private groups = new Map<string, GroupData>();
+  // Helper to create a stable map key for class+team grouping
+  private makeGroupKey(className: string, team?: string) {
+    return `${className}_${team ?? 'neutral'}`;
+  }
   private defaultCapacity = 64;
   private growthFactor = 1.5;
   private fallbackGeometry?: THREE.BufferGeometry;
@@ -143,62 +147,64 @@ class ShipInstancerImpl {
     const mats = materials ? (Array.isArray(materials) ? materials : [materials]) : geoms.map(() => this.fallbackMaterial!.clone());
     const padded = mats.length < geoms.length ? [...mats, ...Array(geoms.length - mats.length).fill(mats[mats.length - 1].clone())] : mats.slice(0, geoms.length);
     this.prototypeRegistry.set(className, { geometries: geoms, materials: padded });
-    // If a group already exists for this class, replace its meshes so future
-    // instance allocations and existing instances use the new geometry/material.
-    const group = this.groups.get(className);
-    if (!group) return;
-    // Capture old usages
-    const oldMeshes = group.meshes.slice();
-    const oldCapacity = group.capacity;
-    // Build new instanced meshes with the same capacity and copy existing matrices
-    const newMeshes: THREE.InstancedMesh[] = [];
-    for (let i = 0; i < geoms.length; i++) {
-      const geom = geoms[i];
-  const mat = (padded[i] || padded[0]).clone();
-  this.applyInstanceColorPatch(mat);
-      try {
-        // ensure the cloned material accepts vertex colors so instanceColor is used
-        (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
-        (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
-      } catch (_e) { void _e; }
-      const im = new THREE.InstancedMesh(geom, mat, oldCapacity);
-      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      im.name = `Instanced_${className}_submesh_updated_${i}`;
-      im.frustumCulled = false;
-      // copy existing matrices where available
-      const tmp = new THREE.Matrix4();
-      const src = oldMeshes[i] || oldMeshes[0];
-      for (let idx = 0; idx < oldCapacity; idx++) {
-        try { src.getMatrixAt(idx, tmp); im.setMatrixAt(idx, tmp); } catch (_) { void _; }
-      }
-      // copy instanceColor attribute if present on source
-      try {
-        const srcAttr = (src as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor as THREE.InstancedBufferAttribute | undefined;
-        if (srcAttr && srcAttr.array) {
-          const newArr = new Float32Array(oldCapacity * 3);
-          newArr.set(srcAttr.array instanceof Float32Array ? srcAttr.array : new Float32Array(srcAttr.array));
+    // If groups exist for this class (possibly per-team), replace their meshes
+    // so future instance allocations and existing instances use the new geometry/material.
+    const groupsToUpdate = Array.from(this.groups.values()).filter(g => g.className === className);
+    if (groupsToUpdate.length === 0) return;
+    for (const group of groupsToUpdate) {
+      // Capture old usages
+      const oldMeshes = group.meshes.slice();
+      const oldCapacity = group.capacity;
+      // Build new instanced meshes with the same capacity and copy existing matrices
+      const newMeshes: THREE.InstancedMesh[] = [];
+      for (let i = 0; i < geoms.length; i++) {
+        const geom = geoms[i];
+        const mat = (padded[i] || padded[0]).clone();
+        this.applyInstanceColorPatch(mat);
+        try {
+          // ensure the cloned material accepts vertex colors so instanceColor is used
+          (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
+          (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+        } catch (_e) { void _e; }
+        const im = new THREE.InstancedMesh(geom, mat, oldCapacity);
+        im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        im.name = `Instanced_${group.className}_${group.team ?? 'neutral'}_submesh_updated_${i}`;
+        im.frustumCulled = false;
+        // copy existing matrices where available
+        const tmp = new THREE.Matrix4();
+        const src = oldMeshes[i] || oldMeshes[0];
+        for (let idx = 0; idx < oldCapacity; idx++) {
+          try { src.getMatrixAt(idx, tmp); im.setMatrixAt(idx, tmp); } catch (_) { void _; }
+        }
+        // copy instanceColor attribute if present on source
+        try {
+          const srcAttr = (src as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor as THREE.InstancedBufferAttribute | undefined;
+          if (srcAttr && srcAttr.array) {
+            const newArr = new Float32Array(oldCapacity * 3);
+            newArr.set(srcAttr.array instanceof Float32Array ? srcAttr.array : new Float32Array(srcAttr.array));
             const newAttr = new THREE.InstancedBufferAttribute(newArr, 3, false);
             im.geometry.setAttribute('instanceColor', newAttr);
             try { im.geometry.setAttribute('color', newAttr); } catch (_e) { void _e; }
             (im as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
-        } else {
-          // initialize white
-          const arr = new Float32Array(oldCapacity * 3);
-          for (let c = 0; c < oldCapacity; c++) { arr[c * 3 + 0] = 1; arr[c * 3 + 1] = 1; arr[c * 3 + 2] = 1; }
-          const newAttr = new THREE.InstancedBufferAttribute(arr, 3, false);
-          im.geometry.setAttribute('instanceColor', newAttr);
-          (im as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
-        }
-      } catch (_e) { void _e; }
-      group.parentGroup.add(im);
-      newMeshes.push(im);
+          } else {
+            // initialize white
+            const arr = new Float32Array(oldCapacity * 3);
+            for (let c = 0; c < oldCapacity; c++) { arr[c * 3 + 0] = 1; arr[c * 3 + 1] = 1; arr[c * 3 + 2] = 1; }
+            const newAttr = new THREE.InstancedBufferAttribute(arr, 3, false);
+            im.geometry.setAttribute('instanceColor', newAttr);
+            (im as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
+          }
+        } catch (_e) { void _e; }
+        group.parentGroup.add(im);
+        newMeshes.push(im);
+      }
+      // Remove old meshes from scene
+      for (const om of oldMeshes) { try { if (om.parent) om.parent.remove(om); } catch (_) { void _; } }
+      group.meshes = newMeshes;
+      group.prototypeGeometries = geoms.slice();
+      group.prototypeMaterials = padded.slice();
+      group.matricesNeedUpdate = true;
     }
-    // Remove old meshes from scene
-    for (const om of oldMeshes) { try { if (om.parent) om.parent.remove(om); } catch (_) { void _; } }
-    group.meshes = newMeshes;
-    group.prototypeGeometries = geoms.slice();
-    group.prototypeMaterials = padded.slice();
-    group.matricesNeedUpdate = true;
   }
 
   // If `state` is provided, allocate will attempt to register a prototype from state.assetPool
@@ -206,7 +212,8 @@ class ShipInstancerImpl {
   // preloaded rasterized assets on-demand.
   allocate(shipId: number, className: string, team?: string, state?: GameState): boolean {
     if (!this.scene || !this.rootParent) return false;
-    let group = this.groups.get(className);
+  const key = this.makeGroupKey(className, team);
+  let group = this.groups.get(key);
     if (!group) {
       // If we don't have a prototype yet but were given a state with preloaded assets,
       // try to build a prototype from the asset pool before creating the group.
@@ -238,8 +245,8 @@ class ShipInstancerImpl {
           } catch (_e) { void _e; }
         }
       } catch (_e) { void _e; }
-      group = this.createGroup(className, team);
-      this.groups.set(className, group);
+  group = this.createGroup(className, team);
+  this.groups.set(key, group);
     }
     if (group.idToIndex.has(shipId)) return true;
     if (group.freeIndices.length === 0) this.growGroup(group);
@@ -376,7 +383,7 @@ class ShipInstancerImpl {
 
   getStats() {
     const out: Record<string, { capacity: number; used: number; meshes: number }> = {};
-    for (const [k, g] of this.groups.entries()) out[k] = { capacity: g.capacity, used: g.idToIndex.size, meshes: g.meshes.length };
+  for (const [k, g] of this.groups.entries()) out[k] = { capacity: g.capacity, used: g.idToIndex.size, meshes: g.meshes.length };
     return { totalGroups: this.groups.size, groups: out };
   }
 
@@ -386,7 +393,7 @@ class ShipInstancerImpl {
     const mats = proto ? proto.materials : [this.fallbackMaterial!.clone()];
     const capacity = this.defaultCapacity;
     const parentGroup = new THREE.Group();
-    parentGroup.name = `ShipInstancer_${className}_group`;
+  parentGroup.name = `ShipInstancer_${className}_${team ?? 'neutral'}_group`;
   // Prevent prototype parent groups from being visible by default. Prototypes
   // are used only as templates for instanced meshes; leaving them visible
   // during initialization can create stray visible artifacts (health-bar-like)
@@ -396,15 +403,15 @@ class ShipInstancerImpl {
   // Note: removed diagnostic probe tags from prototype parent group
     if (this.rootParent) this.rootParent.add(parentGroup);
     const meshes = geoms.map((g, i) => {
-  const mat = (mats[i] || mats[0]).clone();
+      const mat = (mats[i] || mats[0]).clone();
   this.applyInstanceColorPatch(mat);
       try {
         (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
         (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
       } catch (_e) { void _e; }
-      const im = new THREE.InstancedMesh(g, mat, capacity);
+  const im = new THREE.InstancedMesh(g, mat, capacity);
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      im.name = `Instanced_${className}_submesh_${i}`;
+  im.name = `Instanced_${className}_${team ?? 'neutral'}_submesh_${i}`;
       // Create a default per-instance color attribute so downstream tools
       // and shaders that expect vertex colors or instanceColor won't see null.
       try {
@@ -452,6 +459,17 @@ class ShipInstancerImpl {
       this.readyCallbacks.length = 0;
     }
     return group;
+  }
+
+  /**
+   * Ensure a group exists for className/team. Creates an empty group if missing.
+   */
+  ensureGroup(className: string, team?: string) {
+    const key = this.makeGroupKey(className, team);
+    if (this.groups.has(key)) return this.groups.get(key)!;
+    const g = this.createGroup(className, team);
+    this.groups.set(key, g);
+    return g;
   }
 
   private growGroup(group: GroupData) {
@@ -511,6 +529,7 @@ export const shipInstancer = {
   onReady: (cb: () => void) => impl.onReady(cb),
   registerPrototype: (className: string, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], materials?: THREE.Material | THREE.Material[]) => impl.registerPrototype(className, geometries, materials),
   updatePrototype: (className: string, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], materials?: THREE.Material | THREE.Material[]) => impl.updatePrototype(className, geometries, materials),
+  ensureGroup: (className: string, team?: string) => impl.ensureGroup(className, team),
   allocate: (shipId: number, className: string, team?: string, state?: GameState) => impl.allocate(shipId, className, team, state),
   free: (shipId: number) => impl.free(shipId),
   hasShip: (shipId: number) => impl.hasShip(shipId),

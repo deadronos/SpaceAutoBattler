@@ -11,6 +11,10 @@ export class FileWatcher {
   private pollIntervals = new Map<string, number>();
   private lastModifiedTimes = new Map<string, number>();
   private pollInterval = 1000; // Check every second
+  // When true, the watcher will perform a single check at watch() time
+  // and then not start continuous polling. This is safer for production
+  // builds where assets are static and avoids continuous HEAD requests.
+  private oneShotMode = true;
 
   // Watch a file for changes
   watch(filePath: string, callback: FileChangeCallback): void {
@@ -49,12 +53,14 @@ export class FileWatcher {
       }
     });
 
-    // Start polling
-    const intervalId = setInterval(() => {
-      this.checkFile(filePath);
-    }, this.pollInterval) as unknown as number;
+    // Start polling only when not in one-shot mode
+    if (!this.oneShotMode) {
+      const intervalId = setInterval(() => {
+        this.checkFile(filePath);
+      }, this.pollInterval) as unknown as number;
 
-    this.pollIntervals.set(filePath, intervalId);
+      this.pollIntervals.set(filePath, intervalId);
+    }
   }
 
   // Stop watching a file
@@ -206,6 +212,31 @@ export class FileWatcher {
         this.watch(filePath, callback);
       }
     });
+  }
+
+  // Toggle one-shot mode. Default is true (check once at watch time).
+  // Call setOneShotMode(false) to enable continuous polling behavior.
+  setOneShotMode(oneShot: boolean) {
+    this.oneShotMode = !!oneShot;
+
+    // If switching from one-shot to continuous, restart watchers
+    if (!this.oneShotMode) {
+      const filePaths = Array.from(this.watchers.keys());
+      filePaths.forEach(fp => {
+        // restart watch to ensure interval is set
+        const cb = this.watchers.get(fp);
+        if (cb) {
+          this.unwatch(fp);
+          this.watch(fp, cb);
+        }
+      });
+    } else {
+      // If switching to one-shot, clear all intervals
+      this.pollIntervals.forEach((id, fp) => {
+        clearInterval(id);
+        this.pollIntervals.delete(fp);
+      });
+    }
   }
 
   // Force check all watched files immediately

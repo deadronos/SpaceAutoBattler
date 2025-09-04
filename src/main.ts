@@ -1,4 +1,6 @@
 import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } from './core/gameState.js';
+// Import UI styles so webpack extracts them into a hashed CSS asset via MiniCssExtractPlugin
+import './styles/ui.css';
 // Ensure low-level GL/readPixels patches are applied as early as possible
 // so prototype wrappers and GL instrumentation are present before any
 // renderer instances are created by other modules.
@@ -171,8 +173,8 @@ function initGame(seed?: string) {
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
   (async () => {
     try {
-      // Create a module worker for simWorker.ts
-  const w = new Worker(new URL('./simWorker.js', import.meta.url), { type: 'module' });
+    // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+  const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
       let ready = false;
       let lastShipDataVersion = -1;
       

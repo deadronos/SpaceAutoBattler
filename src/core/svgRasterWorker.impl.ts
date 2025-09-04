@@ -1,14 +1,11 @@
 // Implementation of the SVG raster worker. This file contains the actual
-// rasterization logic. It posts structured error messages back to the main
-// thread on unhandled errors so the app can log stacks and fallback.
+// rasterization logic. It's dynamically imported by the bootstrap worker so
+// that early module-evaluation failures can be detected and reported by the
+// bootstrap.
+
+// ...existing implementation moved here...
 
 import * as logger from '../utils/logger.js';
-
-// Diagnostic checkpoints: these post small messages to the main thread during
-// module evaluation so we can see where initialization fails (if it does).
-try {
-  (self as unknown as { postMessage?: (m: unknown) => void }).postMessage?.({ type: 'worker-checkpoint', name: 'module-eval-start' });
-} catch { /* ignore */ }
 
 // Simple LRU cache for rasterized SVGs
 class RasterCache {
@@ -67,9 +64,6 @@ class RasterCache {
 }
 
 const rasterCache = new RasterCache();
-try {
-  (self as unknown as { postMessage?: (m: unknown) => void }).postMessage?.({ type: 'worker-checkpoint', name: 'raster-cache-created' });
-} catch { /* ignore */ }
 
 async function rasterizeSvgToImageBitmap(svgText: string, width: number, height: number, teamColor?: string): Promise<ImageBitmap> {
   const canvas = new OffscreenCanvas(width, height);
@@ -112,10 +106,6 @@ async function rasterizeSvgToImageBitmap(svgText: string, width: number, height:
   }
 }
 
-try {
-  (self as unknown as { postMessage?: (m: unknown) => void }).postMessage?.({ type: 'worker-checkpoint', name: 'rasterize-fn-defined' });
-} catch { /* ignore */ }
-
 function applyTeamColorTint(ctx: OffscreenCanvasRenderingContext2D, width: number, height: number, teamColor: string) {
   try {
     ctx.save();
@@ -147,28 +137,28 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
         }
         const imageBitmap = await rasterizeSvgToImageBitmap(svgText, width, height, teamColor);
         rasterCache.set(assetKey, imageBitmap, fileModTime);
-        (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'rasterized', assetKey, imageBitmap, width, height } as RasterizeResponse);
+  (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'rasterized', assetKey, imageBitmap, width, height } as RasterizeResponse);
         break;
       }
       case 'get-canvas': {
         const { assetKey, mappingHash: _mh, outW, outH } = request;
         const cached = rasterCache.get(assetKey);
         const canvas = new OffscreenCanvas(outW, outH);
-        if (cached) { const ctx = canvas.getContext('2d')!; ctx.drawImage(cached, 0, 0, outW, outH); }
-        (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'canvas-result', assetKey, canvas, present: !!cached } as GetCanvasResponse);
+  if (cached) { const ctx = canvas.getContext('2d')!; ctx.drawImage(cached, 0, 0, outW, outH); }
+  (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'canvas-result', assetKey, canvas, present: !!cached } as GetCanvasResponse);
         break;
       }
       case 'clear-cache': {
-        rasterCache.clear();
-        (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'cache-cleared' } as CacheResponse);
+  rasterCache.clear();
+  (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'cache-cleared' } as CacheResponse);
         break;
       }
       case 'set-cache-max-entries': {
-        if (request.value !== undefined) { rasterCache.setMaxEntries(request.value); (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'cache-config-updated' } as CacheResponse); }
+  if (request.value !== undefined) { rasterCache.setMaxEntries(request.value); (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'cache-config-updated' } as CacheResponse); }
         break;
       }
       case 'set-cache-max-age': {
-        if (request.value !== undefined) { rasterCache.setMaxAge(request.value); (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'cache-config-updated' } as CacheResponse); }
+  if (request.value !== undefined) { rasterCache.setMaxAge(request.value); (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'cache-config-updated' } as CacheResponse); }
         break;
       }
     }
@@ -179,12 +169,10 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
       const msg = err instanceof Error ? err.message : String(err);
       const stack = (err && (err as unknown as { stack?: string }).stack) ? (err as unknown as { stack?: string }).stack : undefined;
       (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'worker-error', message: msg, stack });
-    } catch { /* ignore */ }
+    } catch { }
   }
 });
-try {
-  (self as unknown as { postMessage?: (m: unknown) => void }).postMessage?.({ type: 'worker-checkpoint', name: 'message-listener-attached' });
-} catch { /* ignore */ }
+
 
 self.addEventListener('error', (e: ErrorEvent) => {
   try {
@@ -192,7 +180,7 @@ self.addEventListener('error', (e: ErrorEvent) => {
     const stack = (e.error && (e.error as unknown as { stack?: string }).stack) ? (e.error as unknown as { stack?: string }).stack : `${e.filename || ''}:${e.lineno || 0}:${e.colno || 0}`;
     logger.error('[svgRasterWorker.impl] Uncaught error:', msg, stack);
     (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'worker-error', message: msg, stack });
-  } catch { try { console.debug('[svgRasterWorker.impl] Error while reporting worker error'); } catch { /* swallow */ } }
+  } catch { }
 });
 
 self.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
@@ -201,15 +189,14 @@ self.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
     const stack = (reason && (reason as unknown as { stack?: string }).stack) ? (reason as unknown as { stack?: string }).stack : String(reason);
     logger.error('[svgRasterWorker.impl] Unhandled rejection:', reason, stack);
     (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'worker-error', message: String(reason), stack });
-  } catch { try { console.debug('[svgRasterWorker.impl] Error while reporting unhandled rejection'); } catch { /* swallow */ } }
+  } catch { }
 });
 
 self.addEventListener('messageerror', (e: MessageEvent) => {
   try {
     logger.error('[svgRasterWorker.impl] Message error:', e);
     (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'worker-messageerror', detail: String(e) });
-  } catch { try { console.debug('[svgRasterWorker.impl] Error while reporting messageerror'); } catch { /* swallow */ } }
+  } catch { }
 });
 
 export {};
-

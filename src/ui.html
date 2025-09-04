@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Space AutoBattler UI</title>
-  <link rel="stylesheet" href="./styles/ui.css">
+  <!-- stylesheet is extracted and injected by webpack/HtmlWebpackPlugin -->
   <style>
     /* Fallback if CSS fails to load */
     #world { position: fixed; inset: 0; display:block; }
@@ -47,6 +47,6 @@
       }
     } catch (_e) { /* ignore */ }
   </script>
-  <script type="module" src="../src/main.js"></script>
+  <!-- production bundle will be injected by HtmlWebpackPlugin; remove dev module import -->
 </body>
 </html>

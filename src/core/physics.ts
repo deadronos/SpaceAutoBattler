@@ -22,8 +22,10 @@ export interface PhysicsStepper {
 
 export async function createPhysicsStepper(state: GameState): Promise<PhysicsStepper> {
   // Dynamically import rapier to avoid loading WASM at module eval time.
-   
-  const Rapier = require('@dimforge/rapier3d-compat');
+  const rapierMod = await import('@dimforge/rapier3d-compat');
+  type RapierAny = { default?: unknown } & Record<string, unknown>;
+  const normalize = (m: unknown): unknown => ((m as RapierAny).default ?? m);
+  const Rapier = normalize(rapierMod) as unknown;
 
   // Helper to locally escape to any for runtime API calls without adding file-level `any` annotations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,7 +33,8 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
 
   // Create the physics world with enhanced settings
   const gravity = { x: 0, y: 0, z: 0 }; // Space has no gravity
-  const world = new Rapier.World(gravity);
+  const RapierAny = asAny(Rapier);
+  const world = new RapierAny.World(gravity);
 
   // Configure world settings
   world.timestep = PhysicsConfig.world.timestep;
@@ -45,7 +48,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
   function addShip(ship: unknown) {
     try {
       // Create rigid body descriptor based on ship class
-      const rbDesc = asAny(Rapier).RigidBodyDesc.dynamic()
+      const rbDesc = RapierAny.RigidBodyDesc.dynamic()
         .setTranslation(asAny(ship).pos.x, asAny(ship).pos.y, asAny(ship).pos.z)
         .setLinvel(asAny(ship).vel.x, asAny(ship).vel.y, asAny(ship).vel.z)
         .setAngvel(0, 0, 0) // No initial angular velocity
@@ -60,10 +63,10 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
       let colliderDesc;
   const colliderDims = PhysicsConfig.colliders[asAny(ship).class as keyof typeof PhysicsConfig.colliders];
       if (colliderDims) {
-  colliderDesc = asAny(Rapier).ColliderDesc.cuboid(colliderDims.width, colliderDims.height, colliderDims.depth);
+  colliderDesc = RapierAny.ColliderDesc.cuboid(colliderDims.width, colliderDims.height, colliderDims.depth);
       } else {
         const defaultCollider = PhysicsConfig.world.defaultCollider;
-  colliderDesc = asAny(Rapier).ColliderDesc.cuboid(defaultCollider.width, defaultCollider.height, defaultCollider.depth);
+  colliderDesc = RapierAny.ColliderDesc.cuboid(defaultCollider.width, defaultCollider.height, defaultCollider.depth);
       }
 
       // Configure collider properties
@@ -99,7 +102,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
 
   function raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance = PhysicsConfig.world.defaultRaycastDistance) {
     try {
-  const ray = new Rapier.Ray(origin, direction);
+  const ray = new RapierAny.Ray(origin, direction);
   const hit = world.castRay(ray, maxDistance, true);
 
       if (hit) {
@@ -120,7 +123,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
 
   function sphereCast(center: { x: number; y: number; z: number }, radius: number) {
     try {
-  const shape = new Rapier.Ball(radius);
+  const shape = new RapierAny.Ball(radius);
       const shapePos = center;
       const shapeRot = { x: 0, y: 0, z: 0, w: 1 }; // Identity quaternion
 

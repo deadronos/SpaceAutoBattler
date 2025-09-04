@@ -279,6 +279,13 @@ export function registerPrototypesFromPool(state: GameState) {
             shipInstancer.registerPrototype(cls, geoms, mats);
           }
           if (logger && typeof logger.info === 'function') logger.info(`meshFactory: registered instancer prototype for ${cls}`);
+          // Ensure both team groups exist (dev/diagnostic) by creating empty groups
+          try {
+            if (RendererConfig.instancing.enableShips) {
+              try { (shipInstancer as unknown as { ensureGroup?: (name:string, team?:string)=>void }).ensureGroup?.(cls, 'red'); } catch (_e) { void _e; }
+              try { (shipInstancer as unknown as { ensureGroup?: (name:string, team?:string)=>void }).ensureGroup?.(cls, 'blue'); } catch (_e) { void _e; }
+            }
+          } catch (_e) { void _e; }
         } catch (_e) { void _e; }
       } catch (_e) { void _e; }
     }
@@ -310,7 +317,6 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
 
   // DEV LOG: record creation of a non-instanced health bar via meshFactory
   try {
-    // eslint-disable-next-line no-console
   console.info(`[HB_TRACE][meshFactory] createHealthBarMesh for ship=${ship.id} class=${ship.class} pos=(${ship.pos.x},${ship.pos.y},${ship.pos.z})`);
   try { console.info(new Error('HB_STACK createHealthBarMesh').stack); } catch (_e) { void _e; }
   } catch (_e) { void _e; }

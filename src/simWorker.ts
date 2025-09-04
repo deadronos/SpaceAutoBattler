@@ -1,4 +1,26 @@
 // Sim worker: handle Rapier physics in a worker and accept messages from main thread
+// Ensure dynamic chunk loads inside this worker resolve to the project's dist root
+// so that webpack's generated chunk path like `workers/rapier.*.js` resolves to
+// `/dist/workers/rapier.*.js` instead of `/dist/workers/workers/...` (double path).
+// We set the public path to the parent directory of this worker script at runtime.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - webpack global variable
+if (typeof __webpack_public_path__ !== 'undefined') {
+  try {
+    // Use the worker's own location.href to compute the public path. This avoids
+    // referencing `import.meta` (which can confuse some parsers) and is reliable
+    // in dedicated worker contexts where `self.location.href` points at the
+    // worker script URL (e.g. /dist/workers/917.x.js).
+    if (typeof self !== 'undefined' && (self as any).location && typeof (self as any).location.href === 'string') {
+      const metaUrl = ((self as any).location.href as string).replace(/\\/g, '/');
+      const workersIndex = metaUrl.lastIndexOf('/workers/');
+      const parent = workersIndex !== -1 ? metaUrl.slice(0, workersIndex + 1) : (metaUrl.slice(0, metaUrl.lastIndexOf('/') + 1) || './');
+      // @ts-expect-error set runtime public path
+      __webpack_public_path__ = parent;
+    }
+  } catch (_e) { /* ignore */ }
+}
+
 import * as logger from './utils/logger.js';
 
 // Small local types to avoid broad `any` while keeping runtime semantics
@@ -15,10 +37,17 @@ const bodies = new Map<number, RigidBodyLike | null>(); // shipId -> rigidBody
 async function initRapier() {
   if (Rapier) return;
   try {
-    // Use dynamic import
-     
-  // dynamic require; leave the module untyped beyond the small alias
-  Rapier = require('@dimforge/rapier3d-compat');
+  // Dynamically import Rapier in the worker so the heavy WASM package is loaded only when needed
+  // Use `import()` and guard for default export shape.
+    const rapierMod = await import('@dimforge/rapier3d-compat');
+    // Some builds export as default, some as named exports; normalize to Rapier module object
+    const normalizeRapierModule = (m: unknown): RapierModuleLike => {
+      if (!m) return {} as RapierModuleLike;
+      const candidate = (m as { default?: unknown }).default ?? m;
+      return candidate as RapierModuleLike;
+    };
+
+    Rapier = normalizeRapierModule(rapierMod);
   // Rapier.World may be a constructor or factory depending on the build; guard accordingly
   const W = (Rapier as Record<string, unknown>).World ?? Rapier;
   // Attempt to construct or call the World factory; allow different shapes across builds

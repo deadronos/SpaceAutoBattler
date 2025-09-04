@@ -39,36 +39,48 @@ export class SVGLoader {
       // directory as the site root. Consumers can override with a
       // runtime `window.__ASSET_BASE__` string (e.g. '/dist' or '/').
       try {
-        const assetBase = (globalThis as any).__ASSET_BASE__ ?? null;
+  const assetBase = (globalThis as unknown as { __ASSET_BASE__?: string }).__ASSET_BASE__ ?? null;
         let workerUrl: string;
         if (assetBase) {
           // Ensure no trailing slash issues
           const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
-          workerUrl = `${base}/svgRasterWorker.js`;
+          // If the runtime provides an explicit asset base, fall back to the
+          // conventional filename expected on the server. This is an escape
+          // hatch for non-bundled deployments where the worker was prebuilt.
+          this.worker = new Worker(`${base}/svgRasterWorker.js`, { type: 'module' });
         } else {
-          // Derive relative to this module's location so import.meta.url
-          // works whether served from /dist or repo root
-          workerUrl = new URL('./svgRasterWorker.js', import.meta.url).toString();
+          // Use the bundler-friendly worker pattern. When built with Webpack
+          // this causes the worker to be emitted as a JS chunk and the URL
+          // will point at the emitted worker file (no raw .ts asset will be
+          // requested at runtime).
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore - import.meta.url usage is supported in ESM builds
+          this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), { type: 'module' });
         }
-        this.worker = new Worker(workerUrl, { type: 'module' });
       } catch (_e) { void _e; this.worker = null; }
       // Single consolidated message handler for both rasterized responses and structured errors
       if (this.worker) {
         this.worker.addEventListener('message', (ev) => {
           try {
             const data = ev.data;
-            // Structured worker-side error reporting
-            if (data && data.type === 'worker-error') {
-              logger.error('[SVGLoader] Worker reported error:', data.message, data.stack);
-              this.worker?.terminate();
-              this.worker = null;
-              return;
-            }
+                // Structured worker-side error reporting
+                if (data && data.type === 'worker-error') {
+                  logger.error('[SVGLoader] Worker reported error:', data.message, data.stack);
+                  this.worker?.terminate();
+                  this.worker = null;
+                  return;
+                }
 
-            if (data && data.type === 'worker-messageerror') {
-              logger.error('[SVGLoader] Worker messageerror:', data.detail);
-              return;
-            }
+                if (data && data.type === 'worker-messageerror') {
+                  logger.error('[SVGLoader] Worker messageerror:', data.detail);
+                  return;
+                }
+
+                // Developer checkpoints from worker module evaluation
+                if (data && data.type === 'worker-checkpoint') {
+                  try { logger.debug('[SVGLoader] Worker checkpoint:', (data as any).name); } catch { /* ignore */ }
+                  return;
+                }
 
             // Rasterized responses and other messages
             this.handleWorkerMessage(data);
@@ -78,7 +90,7 @@ export class SVGLoader {
         this.worker.addEventListener('error', (e) => {
           try {
             // Better logging: include stack if available
-            const err = (e && (e as any).error) ? (e as any).error : e;
+            const err = (e && (e as unknown as { error?: unknown }).error) ? (e as unknown as { error?: unknown }).error : e;
             logger.warn('[SVGLoader] Worker error event, falling back to main thread:', err);
           } catch (_err) { void _err; }
           this.worker = null;
@@ -90,13 +102,14 @@ export class SVGLoader {
     }
   }
 
-  private handleWorkerMessage(data: any) {
+  private handleWorkerMessage(data: unknown) {
     // Handle worker responses if needed for advanced caching
-    if (data.type === 'rasterized') {
+    const d = data as { type?: string; assetKey?: string; imageBitmap?: ImageBitmap };
+    if (d.type === 'rasterized' && d.assetKey) {
       // Update asset with rasterized bitmap
-      const asset = this.assets.get(data.assetKey);
-      if (asset) {
-        asset.imageBitmap = data.imageBitmap;
+      const asset = this.assets.get(d.assetKey);
+      if (asset && d.imageBitmap) {
+        asset.imageBitmap = d.imageBitmap;
       }
     }
   }
@@ -171,8 +184,8 @@ export class SVGLoader {
     let svgText: string;
     let lastModified: number;
     
-  const inlineAssets = (globalThis as any).__INLINE_SVG_ASSETS;
-  const standalone = (globalThis as any).__STANDALONE;
+  const inlineAssets = (globalThis as unknown as { __INLINE_SVG_ASSETS?: Record<string, string> }).__INLINE_SVG_ASSETS;
+  const standalone = (globalThis as unknown as { __STANDALONE?: boolean }).__STANDALONE;
   if (inlineAssets) {
       // Extract asset name from URL (e.g., "frigate" from "src/config/assets/svg/frigate.svg")
       const assetMatch = url.match(/([^/]+)\.svg$/);
@@ -291,7 +304,7 @@ export class SVGLoader {
     canvas.width = options.width!;
     canvas.height = options.height!;
     // Request a 2D context optimized for frequent readbacks (tinting, getImageData).
-    const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
+  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
     // Clear canvas
     ctx.clearRect(0, 0, options.width!, options.height!);
@@ -354,7 +367,7 @@ export class SVGLoader {
       // Apply team color tinting if specified
       if (options.teamColor) {
         // When applying tinting we do pixel reads; request willReadFrequently where supported.
-        const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
+  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
         this.applyTeamColorTint(ctx, options.width!, options.height!, options.teamColor);
       }
 
@@ -411,7 +424,7 @@ export class SVGLoader {
     try {
       // If asset is inlined in the standalone HTML, avoid HEAD requests
       try {
-        const inlineAssets = (globalThis as any).__INLINE_SVG_ASSETS;
+  const inlineAssets = (globalThis as unknown as { __INLINE_SVG_ASSETS?: Record<string, string> }).__INLINE_SVG_ASSETS;
         if (inlineAssets && typeof url === 'string' && url.endsWith('.svg')) {
           const m = url.match(/([^/]+)\.svg$/);
           const name = m ? m[1] : null;
@@ -427,7 +440,7 @@ export class SVGLoader {
       // for SVG assets because they are embedded. This prevents browsers from
       // creating transient HEAD requests that can be aborted and logged.
       try {
-        const standalone = (globalThis as any).__STANDALONE;
+  const standalone = (globalThis as unknown as { __STANDALONE?: boolean }).__STANDALONE;
         if (standalone && typeof url === 'string' && url.endsWith('.svg')) {
           return Date.now();
         }

@@ -221,7 +221,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     canvas.height = height;
   // Prefer a context optimized for frequent readbacks (getImageData).
   // Some browsers may not support the option; fall back gracefully.
-  const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
+  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
     // Fill with deep space background
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
