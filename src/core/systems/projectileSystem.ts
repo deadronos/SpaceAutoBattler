@@ -13,6 +13,7 @@ import type { TimeAdapter } from '../adapters/timeAdapter.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
 import { applyBoundaryPhysicsBullet } from '../boundaryUtils.js';
 import * as logger from '../../utils/logger.js';
+import { createRNG } from '../../utils/rng.js';
 
 /**
  * Fire intent describes a request to create a projectile
@@ -155,10 +156,9 @@ export class ProjectileSystem {
       if (finalInaccuracy > 1e-6) {
         const coneAngle = finalInaccuracy * maxSpread; // actual cone half-angle to sample within
 
-        // deterministic RNG from game state (falls back to Math.random if absent)
-        const rngNext = (this.state && this.state.rng && typeof this.state.rng.next === 'function')
-          ? (() => this.state.rng.next())
-          : Math.random;
+        // deterministic RNG from game state (falls back to a time-seeded RNG if absent)
+        const rng = this.state?.rng ?? createRNG(String(Date.now()));
+        const rngNext = () => rng.next();
 
         // Sample a direction uniformly inside cone around 'direction'
         // Method: pick z = cos(theta) uniformly between cos(coneAngle) and 1, pick phi uniform 0..2pi
@@ -194,8 +194,8 @@ export class ProjectileSystem {
         direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
       }
     } catch (e) {
-      // If anything goes wrong, fall back to perfect aim
-      void e;
+      // If anything goes wrong, fall back to perfect aim but log the error
+      logger.warn('[ProjectileSystem] spread calculation failed', e);
     }
 
     const bullet: Bullet = {

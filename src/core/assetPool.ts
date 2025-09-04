@@ -2,6 +2,8 @@
 // Simple, performant LRU cache using Map insertion order.
 // Map preserves insertion order; to mark an entry as recently used we delete and re-set it.
 // Eviction is then O(1) by reading the first key from map.keys().next().value.
+import * as logger from '../utils/logger.js';
+
 export class LRUAssetPool<T = unknown> {
   private capacity: number;
   private map: Map<string, T>;
@@ -38,7 +40,12 @@ export class LRUAssetPool<T = unknown> {
         if (oldValue && this.disposeCallback) {
           try {
             this.disposeCallback(oldValue);
-          } catch (_e) { void _e; void _e; }
+          } catch (e) {
+            logger.error('Asset disposal error', e);
+            if (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.CI === 'true')) {
+              throw e;
+            }
+          }
         }
       }
     }
@@ -56,7 +63,12 @@ export class LRUAssetPool<T = unknown> {
     if (deleted && value && this.disposeCallback) {
       try {
         this.disposeCallback(value);
-      } catch (_e) { void _e; void _e; }
+      } catch (e) {
+        logger.error('Asset disposal error', e);
+        if (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.CI === 'true')) {
+          throw e;
+        }
+      }
     }
     return deleted;
   }
@@ -67,7 +79,12 @@ export class LRUAssetPool<T = unknown> {
       for (const value of this.map.values()) {
         try {
           this.disposeCallback(value);
-        } catch (_e) { void _e; void _e; }
+        } catch (e) {
+          logger.error('Asset disposal error', e);
+          if (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.CI === 'true')) {
+            throw e;
+          }
+        }
       }
     }
     this.map.clear();

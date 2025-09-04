@@ -461,7 +461,7 @@ export class AIController {
 
     // Start or continue roaming pattern
     if (!aiState.roamingPattern || this.state.time > (aiState.roamingStartTime || 0) + (aiState.roamingPattern.duration)) {
-      aiState.roamingPattern = selectRoamingPattern(this.state.behaviorConfig!);
+      aiState.roamingPattern = selectRoamingPattern(this.state.behaviorConfig!, this.state.rng);
       aiState.roamingStartTime = this.state.time;
     }
 
@@ -1407,12 +1407,15 @@ export class AIController {
     // Use config for roaming anchor maxAttempts and a default anchor radius
     const config = this.state.behaviorConfig!;
   const maxAttempts = config.globalSettings.roamingAnchorMaxAttempts;
-  // Use roaming pattern radius if available, else fallback to evadeDistance
-  const anchorRadius = config.roamingPatterns?.[0]?.radius ?? config.globalSettings.evadeDistance;
-    const bounds = this.state.simConfig.simBounds;
-    let attempt = 0;
-    const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
-    const teamAnchors = this.roamingAnchors.get(ship.team) || [];
+  const minSeparation = config.globalSettings.roamingAnchorMinSeparation;
+  // Use roaming pattern radius if available, else fallback to evadeDistance and ensure it's >= minSeparation
+  const anchorRadius = Math.max(
+    config.roamingPatterns?.[0]?.radius ?? config.globalSettings.evadeDistance,
+    minSeparation
+  );
+  const bounds = this.state.simConfig.simBounds;
+  let attempt = 0;
+  const teamAnchors = this.roamingAnchors.get(ship.team) || [];
 
     while (attempt < maxAttempts) {
       const angle = this.state.rng.next() * Math.PI * 2;

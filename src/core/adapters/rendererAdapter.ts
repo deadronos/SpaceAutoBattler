@@ -135,6 +135,7 @@ export class NoopRendererAdapter implements RendererAdapter {
   private entities = new Set<EntityId>();
   private effects = new Map<EntityId, Map<string, EffectDescriptor>>();
   private transforms = new Map<EntityId, Transform>();
+  private effectCounter = 0;
   private camera: CameraParams = {};
   private quality: 'low' | 'medium' | 'high' = 'medium';
 
@@ -205,7 +206,7 @@ export class NoopRendererAdapter implements RendererAdapter {
     if (!this.effects.has(entityId)) {
       this.effects.set(entityId, new Map());
     }
-    const effectId = `effect_${Date.now()}_${Math.random()}`;
+    const effectId = `effect_${Date.now()}_${this.effectCounter++}`;
     this.effects.get(entityId)!.set(effectId, effect);
     return effectId;
   }

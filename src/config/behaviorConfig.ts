@@ -1,4 +1,4 @@
-import type { ShipClass, Team, Vector3 } from '../types/index.js';
+import type { ShipClass, Team, Vector3, RNG } from '../types/index.js';
 
 /**
  * AI Behavior Configuration System
@@ -520,8 +520,9 @@ export function getEffectivePersonality(
 /**
  * Select a random roaming pattern
  */
-export function selectRoamingPattern(config: BehaviorConfig): RoamingPattern {
-  return config.roamingPatterns[Math.floor(Math.random() * config.roamingPatterns.length)];
+export function selectRoamingPattern(config: BehaviorConfig, rng: RNG): RoamingPattern {
+  const idx = rng.int(0, config.roamingPatterns.length - 1);
+  return config.roamingPatterns[idx];
 }
 
 /**

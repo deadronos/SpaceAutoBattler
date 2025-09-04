@@ -9,6 +9,7 @@ import {
   selectRoamingPattern,
   getFormationConfig
 } from '../../src/config/behaviorConfig.js';
+import { createRNG } from '../../src/utils/rng.js';
 import type { ShipClass, Team } from '../../src/types/index.js';
 
 // Test utilities
@@ -237,7 +238,7 @@ describe('Behavior Configuration', () => {
 
     describe('selectRoamingPattern', () => {
       test('should return a valid roaming pattern', () => {
-        const pattern = selectRoamingPattern(DEFAULT_BEHAVIOR_CONFIG);
+        const pattern = selectRoamingPattern(DEFAULT_BEHAVIOR_CONFIG, createRNG('test-roam'));
 
         expect(DEFAULT_ROAMING_PATTERNS).toContain(pattern);
         validateConfigStructure(pattern, ['type', 'radius', 'speed', 'duration']);

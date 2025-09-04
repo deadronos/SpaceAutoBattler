@@ -128,6 +128,15 @@ describe('RNG Utility', () => {
       expect(values.has(min)).toBe(true);
       expect(values.has(max)).toBe(true);
     });
+
+    test('should include both bounds for small ranges', () => {
+      const boundsRng = createRNG('bounds-check');
+      const values = new Set<number>();
+      for (let i = 0; i < 100; i++) {
+        values.add(boundsRng.int(1, 2));
+      }
+      expect(values).toEqual(new Set([1, 2]));
+    });
   });
 
   describe('pick() method', () => {
@@ -183,7 +192,6 @@ describe('RNG Utility', () => {
     test('should reproduce exact sequence with same seed', () => {
       const seed = 'reproducibility-test';
       const rng1 = createRNG(seed);
-      const rng2 = createRNG(seed);
 
       // Generate long sequence
       const sequence1 = {
