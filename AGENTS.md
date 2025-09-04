@@ -9,11 +9,10 @@
 
 ## Build, Test, and Development Commands
 - Build: `npm run build` — compile to `dist/`.
-- Standalone build: `npm run build-standalone` — bundle demo/standalone.
 - Type-check: `npx tsc --noEmit` — validate types without emitting JS.
 - All tests: `npm test` — run unit suite.
 - Single spec: `npx vitest test/<path>.spec.ts` — target a file.
-- E2E tests: `npx playwright test` — see `playwright.config.js` for config.
+- E2E tests: `npx playwright test` — see `playwright.config.js` for config. (we haven't authored any E2E tests yet)
 
 ## Coding Style & Naming Conventions
 - Indent 2 spaces; use semicolons; `const`/`let` (no `var`); ES modules.
