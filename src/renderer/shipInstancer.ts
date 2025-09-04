@@ -37,6 +37,62 @@ class ShipInstancerImpl {
   private fallbackMaterial?: THREE.MeshStandardMaterial;
 
   private prototypeRegistry = new Map<string, { geometries: THREE.BufferGeometry[]; materials: THREE.Material[] }>();
+  // Helper: patch built-in materials' shaders to read an instanced attribute
+  // named `instanceColor` and expose it to the fragment shader as
+  // `vInstanceColor` which we multiply into diffuse color.
+  private applyInstanceColorPatch(mat: THREE.Material) {
+    try {
+      // Preserve any existing onBeforeCompile handler
+      const existing = (mat as unknown as { onBeforeCompile?: (shader: { vertexShader: string; fragmentShader: string }) => void }).onBeforeCompile;
+      (mat as unknown as { onBeforeCompile?: (shader: { vertexShader: string; fragmentShader: string }) => void }).onBeforeCompile = (shader) => {
+        try {
+          // First let any existing handler run so it can perform its own modifications.
+          try { if (existing) existing(shader); } catch (_e) { void _e; }
+
+          // Determine if shader uses GLSL 300 ES which requires 'in'/'out' instead of 'attribute'/'varying'
+          const vsText = shader.vertexShader || '';
+          const usesGlsl3 = /^\s*#version\s+300\b/m.test(vsText);
+          const vsDecl = usesGlsl3 ? 'in vec3 instanceColor; out vec3 vInstanceColor;\n' : 'attribute vec3 instanceColor; varying vec3 vInstanceColor;\n';
+          const fsDecl = usesGlsl3 ? 'in vec3 vInstanceColor;\n' : 'varying vec3 vInstanceColor;\n';
+
+          // Insert vertex decl after #version if present
+          const vsVersionMatch = vsText.match(/^\s*#version .*$/m);
+          if (vsVersionMatch) {
+            const idx = vsText.indexOf('\n', vsVersionMatch.index! + vsVersionMatch[0].length);
+            shader.vertexShader = vsText.slice(0, idx + 1) + vsDecl + vsText.slice(idx + 1);
+          } else {
+            shader.vertexShader = vsDecl + vsText;
+          }
+          // Assign the varying at start of main
+          shader.vertexShader = shader.vertexShader.replace(/void\s+main\s*\(\s*\)\s*\{/, (m) => `${m}\n  vInstanceColor = instanceColor;`);
+
+          // Fragment shader: insert declaration after #version if present
+          const fsText = shader.fragmentShader || '';
+          const fsVersionMatch = fsText.match(/^\s*#version .*$/m);
+          if (fsVersionMatch) {
+            const idx = fsText.indexOf('\n', fsVersionMatch.index! + fsVersionMatch[0].length);
+            shader.fragmentShader = fsText.slice(0, idx + 1) + fsDecl + fsText.slice(idx + 1);
+          } else {
+            shader.fragmentShader = fsDecl + fsText;
+          }
+
+          // Try to multiply the instance color into the diffuse color in a safe way.
+          if (shader.fragmentShader.indexOf('vec4 diffuseColor = vec4( diffuse, opacity );') !== -1) {
+            shader.fragmentShader = shader.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', usesGlsl3 ? 'vec4 diffuseColor = vec4( diffuse * vInstanceColor, opacity );' : 'vec4 diffuseColor = vec4( diffuse * vInstanceColor, opacity );');
+          } else {
+            // don't perform aggressive global replacements; instead try to find common final color outputs
+            // Many Three.js shaders compute 'vec3 outgoingLight' and later 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );'
+            // We try a minimal injection before the final color is written.
+            if (shader.fragmentShader.indexOf('gl_FragColor') !== -1) {
+              shader.fragmentShader = shader.fragmentShader.replace(/(gl_FragColor\s*=\s*)([^;]+;)/g, (m, p1, p2) => `${p1} ( ${p2.replace(/;$/, '')} ) * vec4( vInstanceColor, 1.0 );`);
+            } else if (shader.fragmentShader.indexOf('outgoingLight') !== -1) {
+              shader.fragmentShader = shader.fragmentShader.replace(/(outgoingLight\s*=\s*)([^;]+;)/g, (m, p1, p2) => `${p1} ( ${p2.replace(/;$/, '')} ) * vInstanceColor;`);
+            }
+          }
+        } catch (_e) { void _e; }
+      };
+    } catch (_e) { void _e; }
+  }
   // Temporary objects for culling/bounds computation to avoid per-frame allocations
   private frustum = new THREE.Frustum();
   private projScreenMatrix = new THREE.Matrix4();
@@ -98,7 +154,13 @@ class ShipInstancerImpl {
     const newMeshes: THREE.InstancedMesh[] = [];
     for (let i = 0; i < geoms.length; i++) {
       const geom = geoms[i];
-      const mat = (padded[i] || padded[0]).clone();
+  const mat = (padded[i] || padded[0]).clone();
+  this.applyInstanceColorPatch(mat);
+      try {
+        // ensure the cloned material accepts vertex colors so instanceColor is used
+        (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
+        (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+      } catch (_e) { void _e; }
       const im = new THREE.InstancedMesh(geom, mat, oldCapacity);
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       im.name = `Instanced_${className}_submesh_updated_${i}`;
@@ -109,6 +171,25 @@ class ShipInstancerImpl {
       for (let idx = 0; idx < oldCapacity; idx++) {
         try { src.getMatrixAt(idx, tmp); im.setMatrixAt(idx, tmp); } catch (_) { void _; }
       }
+      // copy instanceColor attribute if present on source
+      try {
+        const srcAttr = (src as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor as THREE.InstancedBufferAttribute | undefined;
+        if (srcAttr && srcAttr.array) {
+          const newArr = new Float32Array(oldCapacity * 3);
+          newArr.set(srcAttr.array instanceof Float32Array ? srcAttr.array : new Float32Array(srcAttr.array));
+            const newAttr = new THREE.InstancedBufferAttribute(newArr, 3, false);
+            im.geometry.setAttribute('instanceColor', newAttr);
+            try { im.geometry.setAttribute('color', newAttr); } catch (_e) { void _e; }
+            (im as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
+        } else {
+          // initialize white
+          const arr = new Float32Array(oldCapacity * 3);
+          for (let c = 0; c < oldCapacity; c++) { arr[c * 3 + 0] = 1; arr[c * 3 + 1] = 1; arr[c * 3 + 2] = 1; }
+          const newAttr = new THREE.InstancedBufferAttribute(arr, 3, false);
+          im.geometry.setAttribute('instanceColor', newAttr);
+          (im as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
+        }
+      } catch (_e) { void _e; }
       group.parentGroup.add(im);
       newMeshes.push(im);
     }
@@ -173,6 +254,24 @@ class ShipInstancerImpl {
     group.positions.set(shipId, new THREE.Vector3());
     group.boundsDirty = true;
     group.matricesNeedUpdate = true;
+    // Write per-instance team color into instanceColor attribute if available
+    try {
+      const hex = team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
+      // convert '#rrggbb' to normalized floats
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      for (const mesh of group.meshes) {
+        const instAttr = (mesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor;
+        if (instAttr && instAttr.array && instAttr.count > idx) {
+          const arr = instAttr.array as Float32Array;
+          arr[idx * 3 + 0] = r;
+          arr[idx * 3 + 1] = g;
+          arr[idx * 3 + 2] = b;
+          instAttr.needsUpdate = true;
+        }
+      }
+    } catch (_e) { void _e; }
     return true;
   }
 
@@ -297,10 +396,25 @@ class ShipInstancerImpl {
   // Note: removed diagnostic probe tags from prototype parent group
     if (this.rootParent) this.rootParent.add(parentGroup);
     const meshes = geoms.map((g, i) => {
-      const mat = (mats[i] || mats[0]).clone();
+  const mat = (mats[i] || mats[0]).clone();
+  this.applyInstanceColorPatch(mat);
+      try {
+        (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
+        (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+      } catch (_e) { void _e; }
       const im = new THREE.InstancedMesh(g, mat, capacity);
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       im.name = `Instanced_${className}_submesh_${i}`;
+      // Create a default per-instance color attribute so downstream tools
+      // and shaders that expect vertex colors or instanceColor won't see null.
+      try {
+        const colorArray = new Float32Array(capacity * 3);
+        for (let c = 0; c < capacity; c++) { colorArray[c * 3 + 0] = 1; colorArray[c * 3 + 1] = 1; colorArray[c * 3 + 2] = 1; }
+    const instColorAttr = new THREE.InstancedBufferAttribute(colorArray, 3, false);
+    im.geometry.setAttribute('instanceColor', instColorAttr);
+    try { im.geometry.setAttribute('color', instColorAttr); } catch (_e) { void _e; }
+  (im as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = instColorAttr;
+      } catch (_e) { void _e; }
   // instanced mesh created
       // Instanced meshes don't have correct per-instance frustum culling
       // so disable automatic frustum culling here and handle culling at
@@ -346,13 +460,38 @@ class ShipInstancerImpl {
     const newMeshes: THREE.InstancedMesh[] = [];
     for (let i = 0; i < group.prototypeGeometries.length; i++) {
       const geom = group.prototypeGeometries[i];
-      const mat = (group.prototypeMaterials[i] || group.prototypeMaterials[0]).clone();
+  const mat = (group.prototypeMaterials[i] || group.prototypeMaterials[0]).clone();
+  this.applyInstanceColorPatch(mat);
+      try {
+        (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
+        (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+      } catch (_e) { void _e; }
       const newMesh = new THREE.InstancedMesh(geom, mat, newCap);
+      // Preserve or initialize instanceColor attribute
+      const oldMesh = group.meshes[i];
+      try {
+  const oldAttr = (oldMesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor as THREE.InstancedBufferAttribute | undefined;
+        if (oldAttr && oldAttr.array) {
+          const newArr = new Float32Array(newCap * 3);
+          newArr.set(oldAttr.array instanceof Float32Array ? oldAttr.array : new Float32Array(oldAttr.array));
+          for (let c = oldAttr.count; c < newCap; c++) { newArr[c * 3 + 0] = 1; newArr[c * 3 + 1] = 1; newArr[c * 3 + 2] = 1; }
+          const newAttr = new THREE.InstancedBufferAttribute(newArr, 3, false);
+          newMesh.geometry.setAttribute('instanceColor', newAttr);
+          (newMesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
+          try { (newAttr as unknown as { needsUpdate?: boolean }).needsUpdate = true; } catch (_e) { void _e; }
+        } else {
+          const arr = new Float32Array(newCap * 3);
+          for (let c = 0; c < newCap; c++) { arr[c * 3 + 0] = 1; arr[c * 3 + 1] = 1; arr[c * 3 + 2] = 1; }
+          const newAttr = new THREE.InstancedBufferAttribute(arr, 3, false);
+          newMesh.geometry.setAttribute('instanceColor', newAttr);
+          (newMesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor = newAttr;
+          try { (newAttr as unknown as { needsUpdate?: boolean }).needsUpdate = true; } catch (_e) { void _e; }
+        }
+      } catch (_e) { void _e; }
       newMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       newMesh.name = `${group.className}_grown_submesh_${i}`;
       newMesh.frustumCulled = true;
-      const oldMesh = group.meshes[i];
-      const tmp = new THREE.Matrix4();
+  const tmp = new THREE.Matrix4();
       for (let idx = 0; idx < oldCap; idx++) { oldMesh.getMatrixAt(idx, tmp); newMesh.setMatrixAt(idx, tmp); }
       group.parentGroup.add(newMesh);
       newMeshes.push(newMesh);

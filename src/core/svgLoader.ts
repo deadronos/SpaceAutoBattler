@@ -127,8 +127,9 @@ export class SVGLoader {
     let svgText: string;
     let lastModified: number;
     
-    const inlineAssets = (globalThis as any).__INLINE_SVG_ASSETS;
-    if (inlineAssets) {
+  const inlineAssets = (globalThis as any).__INLINE_SVG_ASSETS;
+  const standalone = (globalThis as any).__STANDALONE;
+  if (inlineAssets) {
       // Extract asset name from URL (e.g., "frigate" from "src/config/assets/svg/frigate.svg")
       const assetMatch = url.match(/([^/]+)\.svg$/);
       const assetName = assetMatch ? assetMatch[1] : null;
@@ -137,6 +138,11 @@ export class SVGLoader {
         logger.debug(`[SVGLoader] Using inlined SVG asset: ${assetName}`);
         svgText = inlineAssets[assetName];
         lastModified = Date.now(); // Use current time for inlined assets
+      } else if (standalone) {
+        // Standalone build but asset missing from inline map — avoid HEAD
+        // fallbacks that trigger network probes; surface a clear error.
+        logger.error(`[SVGLoader] Inlined asset missing in standalone build: ${assetName}`);
+        throw new Error(`Inlined SVG asset missing: ${assetName}`);
       } else {
         logger.warn(`[SVGLoader] Inlined asset not found for ${assetName}, falling back to fetch`);
         // Fall back to HTTP fetch
@@ -179,9 +185,20 @@ export class SVGLoader {
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-  logger.debug('[SVGLoader] Rasterizing SVG with main thread (worker disabled):', asset.url);
-    
-    // Always use main thread rasterization for reliability
+    // Prefer worker-based rasterization when available for performance.
+    if (this.worker) {
+      try {
+        logger.debug('[SVGLoader] Rasterizing SVG using worker:', asset.url);
+        const bmp = await this.rasterizeWithWorker(asset, options);
+        logger.debug('[SVGLoader] Worker rasterization succeeded:', asset.url);
+        return bmp;
+      } catch (err) {
+        logger.warn('[SVGLoader] Worker rasterization failed, falling back to main thread:', err);
+        // fall through to main thread rasterization
+      }
+    }
+
+    logger.debug('[SVGLoader] Rasterizing SVG with main thread:', asset.url);
     return this.rasterizeMainThread(asset, options);
   }
 
@@ -348,7 +365,30 @@ export class SVGLoader {
   // Note: In browser environment, we use a combination of approaches
   private async getFileModificationTime(url: string): Promise<number> {
     try {
+      // If asset is inlined in the standalone HTML, avoid HEAD requests
+      try {
+        const inlineAssets = (globalThis as any).__INLINE_SVG_ASSETS;
+        if (inlineAssets && typeof url === 'string' && url.endsWith('.svg')) {
+          const m = url.match(/([^/]+)\.svg$/);
+          const name = m ? m[1] : null;
+          if (name && inlineAssets[name]) {
+            // Use a stable surrogate mod-time for inlined assets
+            return Date.now();
+          }
+        }
+      } catch (_e) { void _e; }
+
       // Try to get from response headers
+      // If running as a standalone inlined build, avoid issuing HEAD requests
+      // for SVG assets because they are embedded. This prevents browsers from
+      // creating transient HEAD requests that can be aborted and logged.
+      try {
+        const standalone = (globalThis as any).__STANDALONE;
+        if (standalone && typeof url === 'string' && url.endsWith('.svg')) {
+          return Date.now();
+        }
+      } catch (_e) { void _e; }
+
       const response = await fetch(url, {
         method: 'HEAD',
         cache: 'no-cache'

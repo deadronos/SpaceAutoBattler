@@ -57,7 +57,37 @@ describe('instancingValidator', () => {
     const mesh = new THREE.InstancedMesh(geom, mat, 1);
     mesh.instanceMatrix.array = new Float32Array(10);
     const res = validateInstancedMesh(mesh);
-    expect(res.errors.some(e => e.includes('length mismatch'))).toBe(true);
+    // length 10 is not a multiple of 16, expect specific message
+    expect(res.errors.some(e => e.includes('multiple of 16') || e.includes('length mismatch'))).toBe(true);
+  });
+
+  it('errors on zero-length (detached) instanceMatrix array', () => {
+    const geom = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshBasicMaterial();
+    const mesh = new THREE.InstancedMesh(geom, mat, 1);
+    mesh.instanceMatrix.array = new Float32Array(0);
+    const res = validateInstancedMesh(mesh);
+    expect(res.errors.some(e => e.includes('empty or detached'))).toBe(true);
+  });
+
+  it('warns when material requests vertex colors but no instanceColor or color attribute present', () => {
+    const geom = new THREE.BoxGeometry(1, 1, 1);
+  const mat = new THREE.MeshLambertMaterial();
+  // set vertexColors flag to simulate a material that expects per-vertex colors
+  (mat as unknown as { vertexColors?: boolean }).vertexColors = true;
+    const mesh = new THREE.InstancedMesh(geom, mat, 1);
+    const res = validateInstancedMesh(mesh);
+    expect(res.warnings.some(w => w.includes('vertexColors'))).toBe(true);
+  });
+
+  it('warns or errors when lighting material is used but normals are missing', () => {
+    const geom = new THREE.BufferGeometry();
+    // intentionally omit normals
+    geom.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 1,0,0, 0,1,0], 3));
+    const mat = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.InstancedMesh(geom, mat, 1);
+    const res = validateInstancedMesh(mesh, { failOnMissingAttributes: false });
+    expect(res.warnings.some(w => w.includes('normal')) || res.errors.some(e => e.includes('normal'))).toBe(true);
   });
 });
 

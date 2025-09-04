@@ -13,13 +13,13 @@ export interface ValidationResult {
   ok: boolean;
   warnings: string[];
   errors: string[];
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: ValidatorOptions = {}): ValidationResult {
   const warnings: string[] = [];
   const errors: string[] = [];
-  const details: Record<string, any> = {};
+  const details: Record<string, unknown> = {};
 
   // R1: matrix updates
   if (mesh.count > 0 && !mesh.instanceMatrix.needsUpdate) {
@@ -29,7 +29,7 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
   // R2: material validation
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   materials.forEach((mat, idx) => {
-    const m: any = mat;
+    const m = mat as unknown as { transparent?: boolean; opacity?: number; depthWrite?: boolean };
     if (m.transparent && m.opacity === 0) {
       warnings.push(`material[${idx}] transparent with opacity 0`);
     }
@@ -90,14 +90,47 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
     if (options.failOnMissingAttributes) errors.push(msg); else warnings.push(msg);
   }
 
+  // R6b / R9b: normals validation for lighting materials
+  const lightingMaterialUsed = materials.some(m => {
+    const mt = m as unknown as { isMeshStandardMaterial?: boolean; isMeshPhongMaterial?: boolean; isMeshLambertMaterial?: boolean; needsLights?: boolean };
+    return !!(mt.isMeshStandardMaterial || mt.isMeshPhongMaterial || mt.isMeshLambertMaterial || mt.needsLights === true);
+  });
+  if (lightingMaterialUsed) {
+    const normalAttr = geom.getAttribute('normal');
+    const msg = 'geometry missing normal attribute required by lighting materials';
+    if (!normalAttr || normalAttr.count === 0) {
+      if (options.failOnMissingAttributes) errors.push(msg); else warnings.push(msg);
+    }
+  }
+
   // R10: worker transfer validation
-  const arr = mesh.instanceMatrix.array;
-  if (!(arr instanceof Float32Array)) {
+  const arr = (mesh.instanceMatrix && (mesh.instanceMatrix as unknown as { array?: ArrayLike<number> }).array) || null;
+  if (!arr) {
+    errors.push('instanceMatrix.array is missing or null');
+  } else if (!(arr instanceof Float32Array)) {
     errors.push('instanceMatrix.array is not Float32Array');
+  } else if (arr.byteLength === 0 || arr.length === 0) {
+    // This can happen if an ArrayBuffer was transferred/detached from a worker
+    errors.push('instanceMatrix.array is empty or detached (byteLength === 0)');
+  } else if (arr.length % 16 !== 0) {
+    errors.push('instanceMatrix.array length is not a multiple of 16 (corrupt or mis-sized)');
   } else if (arr.length !== 16 * mesh.count) {
     errors.push('instanceMatrix array length mismatch with instance count');
   } else {
+    // Mark for GPU upload — validator may be called in debug; safe to set
     mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // Additional checks: material expects vertex colors? ensure instanceColor exists
+  const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  const needsVertexColors = mats.some(m => (m as unknown as { vertexColors?: boolean }).vertexColors === true);
+  if (needsVertexColors) {
+    // Three.js uses instancedColor attribute name sometimes; check common place
+    const colorAttr = (mesh.geometry as THREE.BufferGeometry).getAttribute('color');
+    const instColor = (mesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor;
+    if (!instColor && !colorAttr) {
+      warnings.push('material requests vertexColors but geometry has no "color" attribute and mesh has no instanceColor');
+    }
   }
 
   return { ok: errors.length === 0, warnings, errors, details };

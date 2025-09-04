@@ -285,7 +285,7 @@ export const DefaultRendererConfig: RendererConfig = {
     },
   },
 
-  instancingDebug: false,
+  instancingDebug: true,
 
   instancing: {
     enableBullets: true, // default true for feature branch testing

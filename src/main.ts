@@ -5,6 +5,18 @@ import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } f
 import { applyGlobalPatches } from './renderer/effects.js';
 
 try { applyGlobalPatches(); } catch (_e) { void _e;/* ignore */ }
+import * as THREE from 'three';
+
+// Expose canonical Three.js runtime to globalThis so modules using different
+// bundling/resolution still reference the same constructors at runtime.
+// This mitigates "Multiple instances of Three.js being imported" issues
+// which can break attribute/constructor identity used by the renderer.
+// Keep this as early as possible in the bootstrap sequence.
+/* eslint-disable no-void */
+/* global globalThis */
+if (!(globalThis as any).THREE) {
+  (globalThis as any).THREE = THREE;
+}
 import type { GameState, UIElements, ShipClass } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';

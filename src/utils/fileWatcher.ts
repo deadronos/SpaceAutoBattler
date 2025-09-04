@@ -17,6 +17,29 @@ export class FileWatcher {
     // Stop existing watcher if any
     this.unwatch(filePath);
 
+    // If this is a standalone inlined build and the file is an inlined SVG,
+    // don't start the network polling — treat it as created and use a
+    // surrogate mod-time. This avoids any HEAD requests entirely.
+    try {
+      const standalone = (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
+                         (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
+      const inlineAssets = (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
+                           (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
+      if (standalone && inlineAssets && typeof filePath === 'string' && filePath.endsWith('.svg')) {
+        this.watchers.set(filePath, callback);
+        const cleaned = filePath.split(/[?#]/)[0];
+        const m = cleaned.match(/([^/]+)\.svg$/);
+        const name = m ? m[1] : null;
+        if (name && inlineAssets[name]) {
+          // Treat as created with current time and don't start interval
+          this.lastModifiedTimes.set(filePath, Date.now());
+          // Notify immediately as created
+          this.notifyChange(filePath, 'created');
+          return;
+        }
+      }
+    } catch { /* ignore and fall back to normal behavior */ }
+
     this.watchers.set(filePath, callback);
 
     // Get initial modification time
@@ -82,6 +105,32 @@ export class FileWatcher {
   // Get file modification time
   private async getFileModificationTime(filePath: string): Promise<number | null> {
     try {
+      // If the app has inlined SVG assets (standalone), skip network HEAD checks
+      // for those assets to avoid aborted HEAD requests in the browser.
+      try {
+    logger.debug && logger.debug('[FileWatcher] getFileModificationTime called for', filePath);
+        // If the runtime was produced by the standalone inliner, honor the
+        // explicit standalone flag and short-circuit any network HEAD checks
+        // for SVG assets. This prevents browsers from issuing transient HEAD
+        // requests (which can be aborted) when assets are embedded.
+        const standalone = (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
+                           (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
+        const inlineAssets = (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
+                             (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
+        if (standalone && inlineAssets && typeof filePath === 'string' && filePath.endsWith('.svg')) {
+          const cleaned = filePath.split(/[?#]/)[0];
+          const m = cleaned.match(/([^/]+)\.svg$/);
+          const name = m ? m[1] : null;
+          // Diagnostic: log standalone and presence in inlineAssets
+          try { logger.debug && logger.debug('[FileWatcher] standalone=', standalone, 'inlineHasKeys=', Object.keys(inlineAssets).slice(0,5)); } catch (_) { }
+          try { logger.debug && logger.debug('[FileWatcher] checking asset', name, 'present=', !!(name && inlineAssets && inlineAssets[name])); } catch (_) { }
+          if (name && inlineAssets[name]) {
+            logger.debug && logger.debug('[FileWatcher] Short-circuited HEAD for inlined asset ' + name + ' path ' + filePath);
+            return Date.now();
+          }
+        }
+      } catch { }
+    logger.debug && logger.debug('[FileWatcher] Issuing HEAD for', filePath);
       // Try HEAD request to get last-modified header
       const response = await fetch(filePath, {
         method: 'HEAD',

@@ -10,8 +10,7 @@
     "prebuild": "npm run check-no-sync-reads",
     "build": "node ./scripts/build.mjs",
     "build-bundle": "node ./scripts/build.mjs",
-    "build-standalone": "node ./scripts/build-standalone.mjs",
-    "build-standalone:watch": "node ./scripts/build-standalone.mjs --watch",
+    
     "check-no-sync-reads": "node ./scripts/check-no-sync-reads.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
