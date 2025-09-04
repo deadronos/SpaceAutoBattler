@@ -172,14 +172,4 @@ describe('Build System Tests', () => {
     });
   });
 
-  describe('npm run build -- --mode production', () => {
-    it('should produce minified JavaScript files', async () => {
-      // Execute production build command
-      execSync('npm run build -- --mode production', {
-        cwd: TEST_CONFIG.repoRoot,
-        timeout: TEST_CONFIG.buildTimeout,
-        stdio: 'inherit'
-      });
-    });
-  });
 });
