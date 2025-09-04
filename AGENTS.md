@@ -2,7 +2,8 @@
 
 ## Project Structure & Module Organization
 - Source: `src/` (TypeScript only). Do not edit generated `dist/`.
-- Tests: `test/` with `*.spec.ts` (Vitest). E2E via `playwright.config.js`.
+- Tests: `test/` with `*.spec.ts` (Vitest).
+- Note: Playwright configuration and artifacts exist in the repo, but there are no authored E2E test specs yet; running Playwright will currently find no tests unless new E2E specs are added.
 - Types: import shared types from `src/types/index.ts` only.
 - Docs: `spec/src-structure.md` (overview), `PR_NOTES/` (breaking-change records).
 
@@ -19,6 +20,7 @@
 - Add explicit types for public APIs and config objects.
 - Event names stay stable: `bullets`, `explosions`, `shieldHits`, `healthHits`.
 - Determinism: use seeded RNG in `src/utils/rng.ts` for simulations.
+- Canonical Game State: use the `GameState` type defined in `src/types/index.ts` for all runtime state; do not introduce module-level state outside of `GameState`.
 - Error handling: throw or return error values; avoid silent failures.
 
 ## Testing Guidelines
