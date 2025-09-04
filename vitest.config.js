@@ -10,9 +10,8 @@ export default defineConfig({
     exclude: [
       'test/playwright/**',
     ],
-  environment: 'happy-dom',
+    environment: 'happy-dom',
     setupFiles: path.resolve(__dirname, 'test/vitest/setupTests.ts'),
     globals: true,
-    watch: false,
-  },
+    watch: false,  },
 });
