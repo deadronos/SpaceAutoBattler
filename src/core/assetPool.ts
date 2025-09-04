@@ -3,6 +3,7 @@
 // Map preserves insertion order; to mark an entry as recently used we delete and re-set it.
 // Eviction is then O(1) by reading the first key from map.keys().next().value.
 import * as logger from '../utils/logger.js';
+import { envVar } from '../utils/env';
 
 export class LRUAssetPool<T = unknown> {
   private capacity: number;
@@ -37,12 +38,14 @@ export class LRUAssetPool<T = unknown> {
         const oldValue = this.map.get(oldest);
         this.map.delete(oldest);
         // Call dispose callback if provided
-        if (oldValue && this.disposeCallback) {
+            if (oldValue && this.disposeCallback) {
           try {
             this.disposeCallback(oldValue);
           } catch (e) {
             logger.error('Asset disposal error', e);
-            if (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.CI === 'true')) {
+            const nodeEnv = envVar('NODE_ENV', '');
+            const ci = envVar('CI', '');
+            if (nodeEnv === 'test' || ci === 'true') {
               throw e;
             }
           }
@@ -63,12 +66,14 @@ export class LRUAssetPool<T = unknown> {
     if (deleted && value && this.disposeCallback) {
       try {
         this.disposeCallback(value);
-      } catch (e) {
-        logger.error('Asset disposal error', e);
-        if (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.CI === 'true')) {
-          throw e;
+        } catch (e) {
+          logger.error('Asset disposal error', e);
+          const nodeEnv = envVar('NODE_ENV', '');
+          const ci = envVar('CI', '');
+          if (nodeEnv === 'test' || ci === 'true') {
+            throw e;
+          }
         }
-      }
     }
     return deleted;
   }
@@ -81,7 +86,9 @@ export class LRUAssetPool<T = unknown> {
           this.disposeCallback(value);
         } catch (e) {
           logger.error('Asset disposal error', e);
-          if (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.CI === 'true')) {
+          const nodeEnv = envVar('NODE_ENV', '');
+          const ci = envVar('CI', '');
+          if (nodeEnv === 'test' || ci === 'true') {
             throw e;
           }
         }

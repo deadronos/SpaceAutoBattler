@@ -2,6 +2,7 @@ import type { Vector3, SimBounds, Ship, RNG as _RNG } from '../../types/index.js
 import type { BehaviorConfig } from '../../config/behaviorConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn } from '../../utils/vector3.js';
 import { PhysicsConfig } from '../../config/physicsConfig.js';
+// no-op import removed: steering logic doesn't need DEBUG_AI directly
 
 export type RandomFn = () => number; // [0,1)
 
@@ -123,45 +124,48 @@ export function calculateSeparationForceWithCount(
   magnitudeThreshold: number,
   random: RandomFn
 ): { force: Vector3; neighborCount: number } {
+  // Compute separation vector from nearby neighbors
+  const count = neighbors?.length ?? 0;
+  if (count === 0) return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
+
   let sx = 0, sy = 0, sz = 0;
-  let count = 0;
   const sepDistSq = separationDistance * separationDistance;
   for (const n of neighbors) {
     const dx = shipPos.x - n.x;
     const dy = shipPos.y - n.y;
     const dz = shipPos.z - n.z;
-    const distSq = dx*dx + dy*dy + dz*dz;
-    if (distSq <= 0 || distSq >= sepDistSq) continue;
-    const dist = Math.sqrt(distSq);
-    const weight = (separationDistance - dist) / separationDistance;
-    const inv = 1 / dist;
-    sx += dx * weight * inv;
-    sy += dy * weight * inv;
-    sz += dz * weight * inv;
-    count++;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    if (distSq > 0 && distSq < sepDistSq) {
+      // accumulate vector pointing away from neighbor, weighted by proximity
+      const inv = 1 / Math.sqrt(distSq);
+      sx += (dx * inv);
+      sy += (dy * inv);
+      sz += (dz * inv);
+    }
   }
 
-  if (count === 0) return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
-
+  // Average
   sx /= count; sy /= count; sz /= count;
   const mag = Math.hypot(sx, sy, sz);
   if (mag > magnitudeThreshold) {
     return { force: { x: sx / mag, y: sy / mag, z: sz / mag }, neighborCount: count };
   }
 
-  // Symmetry fallback: push away from local center
+  // Symmetry fallback: compute center and push away
   let cx = 0, cy = 0, cz = 0;
+  let centerCount = 0;
   for (const n of neighbors) {
     const dx = shipPos.x - n.x;
     const dy = shipPos.y - n.y;
     const dz = shipPos.z - n.z;
-    const distSq = dx*dx + dy*dy + dz*dz;
+    const distSq = dx * dx + dy * dy + dz * dz;
     if (distSq > 0 && distSq < sepDistSq) {
-      cx += n.x; cy += n.y; cz += n.z;
+      cx += n.x; cy += n.y; cz += n.z; centerCount++;
     }
   }
-  if (cx !== 0 || cy !== 0 || cz !== 0) {
-    const inv = 1 / count; cx *= inv; cy *= inv; cz *= inv;
+  if (centerCount > 0) {
+    const inv = 1 / centerCount;
+    cx *= inv; cy *= inv; cz *= inv;
     const rx = shipPos.x - cx;
     const ry = shipPos.y - cy;
     const rz = shipPos.z - cz;

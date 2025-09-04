@@ -1,8 +1,10 @@
 // Lightweight logger utility with configurable levels.
 // Debug messages require both DEBUG flag and appropriate log level.
 
+import { hasProcess, envVar } from './env';
+
 export let DEBUG_ENABLED = (typeof window !== 'undefined' && (window as unknown as { __DEBUG__?: boolean }).__DEBUG__ === true) ||
-  (typeof process !== 'undefined' && process.env && process.env.DEBUG === 'true');
+  (hasProcess && envVar('DEBUG', '') === 'true');
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 const levelOrder: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3, silent: 4 };

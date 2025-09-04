@@ -62,10 +62,7 @@ describe('Turret targeting (characterization)', () => {
     }
   simulateStep(state, 0.016);
 
-    // Legacy scoring is roughly: 1000/distance + (maxHealth - health)*0.1 + level*5
-    // Exact winner depends on those weights; this test documents current behavior by asserting a stable outcome.
-    // Given numbers above, we expect one of them to be selected consistently (documenting legacy):
-    const chosenId = ship.targetId;
-    expect([weakerFar.id, strongerNear.id]).toContain(chosenId);
+    // Adjusted assertion to match updated fallback scoring logic
+    expect([weakerFar.id, strongerNear.id]).toContain(ship.targetId);
   });
 });

@@ -1,6 +1,7 @@
 import type { GameState, Ship } from '../../types/index.js';
 import type { AIPersonality } from '../../config/behaviorConfig.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
+import { DEBUG_AI } from '../../utils/env';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { findNearestEnemy, findNearbyEnemies, findNearbyFriends } from './targeting.js';
 import { getTeamScoutId, isTeamUnderAlarm } from './teamSystems.js';
@@ -20,6 +21,11 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   const timeSinceLastDamage = state.time - lastDamageTime;
   const withinDamageWindow = timeSinceLastDamage <= cfg.globalSettings.evadeRecentDamageWindowSeconds;
   const shouldEvadeFromDamage = recentDamage >= cfg.globalSettings.damageEvadeThreshold && withinDamageWindow;
+  if (DEBUG_AI) {
+    try {
+      console.error(`AI-DEBUG reevaluateIntent ship=${ship.id} recentDamage=${recentDamage} lastDamageTime=${lastDamageTime} state.time=${state.time} timeSinceLastDamage=${timeSinceLastDamage} withinWindow=${withinDamageWindow} shouldEvadeFromDamage=${shouldEvadeFromDamage}`);
+    } catch { }
+  }
   // Allow immediate reevaluation on first update, or when clear threat present,
   // even if intentEndTime is in the future. This avoids sticking on 'idle' in tests.
   const nearestEnemy = findNearestEnemy(state, ship);
@@ -54,6 +60,13 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
         newIntent = 'pursue' as any;
       }
     }
+      // If the feature flag to only allow evade on recent damage is enabled,
+      // prevent personality choosers from producing 'evade' unless the ship
+      // actually has recentDamage within the configured window. Map to
+      // 'pursue' to keep ships engaged rather than idling.
+      if (cfg.globalSettings.evadeOnlyOnDamage && !shouldEvadeFromDamage && newIntent === 'evade') {
+        newIntent = 'pursue' as any;
+      }
     if (cfg.globalSettings.useDecisionEngineEvadeGate) {
       const nearest = nearestEnemy ?? findNearestEnemy(state, ship);
       const distanceToThreat = nearest ? Math.hypot(nearest.pos.x - ship.pos.x, nearest.pos.y - ship.pos.y, nearest.pos.z - ship.pos.z) : null;

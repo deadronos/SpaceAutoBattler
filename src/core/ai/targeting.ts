@@ -1,5 +1,6 @@
 import type { GameState, Ship, EntityId, TurretState, Vector3 } from '../../types/index.js';
 import { computeInterceptPoint } from '../math/ballisticIntercept.js';
+import { DEBUG_AI } from '../../utils/env';
 import { pickBestTurretTarget } from './turretTargeting.js';
 import { findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends } from '../searchUtils.js';
 
@@ -12,6 +13,9 @@ export function findBestTurretTarget(state: GameState, ship: Ship, turret: Turre
   const turretConfig = cfg.turretConfig;
   if (cfg.globalSettings.useTurretTargetingHelper) {
     const id = pickBestTurretTarget(state, ship, turret, turretConfig);
+    if (DEBUG_AI) {
+      console.error(`AI-DEBUG findBestTurretTarget ship=${ship.id} chosen=${String(id)}`);
+    }
     return id ?? null;
   }
   let best: Ship | null = null; let scoreBest = 0;
@@ -19,12 +23,17 @@ export function findBestTurretTarget(state: GameState, ship: Ship, turret: Turre
     if (target.team === ship.team || target.health <= 0) continue;
     const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
     const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
-    if (d < turretConfig.minimumFireRange || d > turretConfig.maximumFireRange) continue;
+    if (d < turretConfig.minimumFireRange || d > turretConfig.maximumFireRange) {
+      if (DEBUG_AI) console.log(`DEBUG_AI: local scoring candidate OUT_OF_RANGE ship=${ship.id} candidate=${target.id} dist=${d.toFixed(2)} rangeMin=${turretConfig.minimumFireRange} rangeMax=${turretConfig.maximumFireRange}`);
+      continue;
+    }
     let score = 1000 / d;
     score += (target.maxHealth - target.health) * 0.1;
     score += target.level.level * 5;
+  if (DEBUG_AI) console.log(`DEBUG_AI: local scoring candidate ship=${ship.id} candidate=${target.id} dist=${d.toFixed(2)} hp=${target.health} level=${target.level?.level ?? target.level} score=${score}`);
     if (score > scoreBest) { scoreBest = score; best = target; }
   }
+  if (DEBUG_AI) console.log(`DEBUG_AI: local scoring chosen for ship=${ship.id} => ${best?.id ?? 'null'}`);
   return best?.id ?? null;
 }
 

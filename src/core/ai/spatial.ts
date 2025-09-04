@@ -1,6 +1,7 @@
 import type { GameState, Ship, Vector3 } from '../../types/index.js';
 import { getDistance as sharedGetDistance, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends, findNearestEnemy as sharedFindNearestEnemy, getNearbySeparationShipsLinear as sharedGetNearbySeparationShipsLinear } from '../searchUtils.js';
 import { calculateSeparationForceWithCount as steeringSeparation } from './steering.js';
+import { DEBUG_AI } from '../../utils/env';
 
 export class SpatialHelpers {
   private state: GameState;
@@ -37,11 +38,21 @@ export class SpatialHelpers {
           }
         }
       );
+      try {
+        if (DEBUG_AI) {
+          console.error(`AI-DEBUG spatial ship=${ship.id} usingGrid=true neighborsFound=${neighbors.length}`);
+        }
+      } catch {
+        console.error('AI-DEBUG spatial log failed');
+      }
       const res = steeringSeparation(ship.pos, neighbors, separationDistance, magnitudeThreshold, () => this.state.rng.next());
       this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res });
       return res;
     }
     const nearby = sharedGetNearbySeparationShipsLinear(this.state, ship, separationDistance);
+    if (DEBUG_AI) {
+      console.error(`AI-DEBUG spatial ship=${ship.id} usingGrid=false neighborsFound=${nearby.length}`);
+    }
     const neighborPositions = nearby.map(o => o.pos);
     const res = steeringSeparation(ship.pos, neighborPositions, separationDistance, magnitudeThreshold, () => this.state.rng.next());
     return res;
