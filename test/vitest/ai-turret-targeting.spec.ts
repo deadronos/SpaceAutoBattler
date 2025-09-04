@@ -63,6 +63,7 @@ describe('Turret targeting (characterization)', () => {
   simulateStep(state, 0.016);
 
     // Adjusted assertion to match updated fallback scoring logic
-    expect([weakerFar.id, strongerNear.id]).toContain(ship.targetId);
+  // Accept either of the top-scoring close targets after optimization
+  expect([weakerFar.id, strongerNear.id]).toContain(ship.targetId as number);
   });
 });

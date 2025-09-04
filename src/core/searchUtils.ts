@@ -40,9 +40,21 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
     ensureSpatialGridPopulated(state);
     const targetTeam = ship.team === 'red' ? 'blue' : 'red';
-    const nearest = state.spatialGrid.queryKNearest(ship.pos, 1, targetTeam);
+    const nearest = state.spatialGrid.queryKNearest(ship.pos, 2, targetTeam);
     if (!nearest || nearest.length === 0) return null;
-    const res = state.shipIndex?.get(nearest[0].id) || null;
+    // Deterministic: choose min distance then lowest id if tied
+    let best = nearest[0];
+    if (nearest.length > 1) {
+      const a = state.shipIndex?.get(nearest[0].id);
+      const b = state.shipIndex?.get(nearest[1].id);
+      if (a && b) {
+        const dax=a.pos.x-ship.pos.x, day=a.pos.y-ship.pos.y, daz=a.pos.z-ship.pos.z;
+        const dbx=b.pos.x-ship.pos.x, dby=b.pos.y-ship.pos.y, dbz=b.pos.z-ship.pos.z;
+        const da=dax*dax+day*day+daz*daz; const db=dbx*dbx+dby*dby+dbz*dbz;
+        if (db < da || (db===da && b.id < a.id)) best = nearest[1];
+      }
+    }
+    const res = state.shipIndex?.get(best.id) || null;
     nearestCache.set(ship.id, { frame, targetId: res?.id ?? null });
     return res;
   }
@@ -127,7 +139,8 @@ export function pickKNearestFromCandidates(center: Vector3, candidates: readonly
       for (let i=0;i<best.length;i++) if (best[i].d2 > maxD2) { maxD2 = best[i].d2; maxIdx = i; }
     }
   }
-  best.sort((a,b)=>a.d2-b.d2);
+  // Stable deterministic order: distance first, then id tie-breaker
+  best.sort((a,b)=> a.d2 === b.d2 ? (a.s.id - b.s.id) : (a.d2 - b.d2));
   return best.map(b=>b.s);
 }
 

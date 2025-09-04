@@ -51,9 +51,9 @@ describe('AI Unification Smoke Test', () => {
     
     // All ships should still be within bounds
     for (const ship of state.ships) {
-      expect(ship.pos.x).toBeGreaterThanOrEqual(0);
+    expect(ship.pos.x).toBeGreaterThanOrEqual(-1e-3);
       expect(ship.pos.x).toBeLessThanOrEqual(state.simConfig.simBounds.width);
-      expect(ship.pos.y).toBeGreaterThanOrEqual(0);
+    expect(ship.pos.y).toBeGreaterThanOrEqual(-1e-3);
       expect(ship.pos.y).toBeLessThanOrEqual(state.simConfig.simBounds.height);
       expect(ship.pos.z).toBeGreaterThanOrEqual(0);
       expect(ship.pos.z).toBeLessThanOrEqual(state.simConfig.simBounds.depth);

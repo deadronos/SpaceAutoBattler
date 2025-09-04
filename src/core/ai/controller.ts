@@ -1,6 +1,7 @@
 import type { GameState, Ship, Vector3, SimBounds, TurretState } from '../../types/index.js';
 import type { AIPersonality, AIIntent } from '../../config/behaviorConfig.js';
 import { IntentManager } from './intentManager.js';
+import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
 import { assignRoamingAnchor, releaseRoamingAnchor } from './roaming.js';
 import { findBestFormation, assignFormationSlot, clearFormationSlot, getFormationCenter } from './formation.js';
 import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSystems.js';
@@ -124,10 +125,18 @@ export class AIController {
         const tc = this.state.behaviorConfig?.turretConfig;
         let bestId: number | null = null; let bestScore = -Infinity;
         // Use grouped resolver to reduce search work when many ships share cells
-        const { makeCellNearestResolver, pickKNearestFromCandidates } = require('../searchUtils.js');
         const resolve = makeCellNearestResolver(this.state, tc?.maximumFireRange ?? this.state.simConfig.spatialGrid.cellSize * 2);
         const candidates = resolve ? resolve(ship.pos, undefined) : this.state.ships;
-        const shortlist = Array.isArray(candidates) ? pickKNearestFromCandidates(ship.pos, candidates, 12) : this.state.ships;
+        const shortlist = (Array.isArray(candidates) && candidates.length > 0)
+          ? pickKNearestFromCandidates(ship.pos, candidates, 24)
+          : this.state.ships;
+        // Deterministic secondary ordering by distance then id before scoring
+        shortlist.sort((a,b)=>{
+          const dax=a.pos.x-ship.pos.x, day=a.pos.y-ship.pos.y, daz=a.pos.z-ship.pos.z;
+          const dbx=b.pos.x-ship.pos.x, dby=b.pos.y-ship.pos.y, dbz=b.pos.z-ship.pos.z;
+          const da=dax*dax+day*day+daz*daz; const db=dbx*dbx+dby*dby+dbz*dbz;
+          return da===db ? (a.id-b.id) : (da-db);
+        });
         for (const target of shortlist) {
           if (target.team === ship.team || target.health <= 0) continue;
           const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;

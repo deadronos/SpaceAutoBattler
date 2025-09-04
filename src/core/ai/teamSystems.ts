@@ -1,4 +1,5 @@
 import type { GameState, Ship, Team } from '../../types/index.js';
+import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
 
 // Use WeakMap to attach per-state registries without mutating GameState type
 const alarmTimesStore: WeakMap<GameState, Map<Team, number>> = new WeakMap();
@@ -47,7 +48,6 @@ export function updateScoutAssignments(state: GameState) {
     const currentShip = current ? teamShips.find(s => s.id === current) : null;
     if (!currentShip) {
       // Use grouped resolver to find the friendly ship closest to any enemy
-      const { makeCellNearestResolver, pickKNearestFromCandidates } = require('../searchUtils.js');
       const resolve = makeCellNearestResolver(state, state.simConfig.spatialGrid.cellSize * 3);
       const enemies = state.ships.filter(s => s.team !== team && s.health > 0);
       let best = teamShips[0];
@@ -55,7 +55,7 @@ export function updateScoutAssignments(state: GameState) {
         let bestD = Infinity;
         for (const ship of teamShips) {
           const candidates = resolve ? resolve(ship.pos) : enemies;
-          const shortlist = pickKNearestFromCandidates(ship.pos, candidates, 8);
+          const shortlist = (candidates && candidates.length > 0) ? pickKNearestFromCandidates(ship.pos, candidates, 8) : enemies;
           for (const e of shortlist) {
             const dx = ship.pos.x - e.pos.x; const dy = ship.pos.y - e.pos.y; const dz = ship.pos.z - e.pos.z;
             const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
