@@ -328,8 +328,39 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
       }
     }
   } catch (_error) { void _error;logger.error('[svgRasterWorker] Error processing request:', _error);
-    // Send error response if needed
+    // Send error response if needed and include stack if available so main thread can log it
+    try {
+      const msg = _error instanceof Error ? _error.message : String(_error);
+      const stack = (_error && ((_error as any).stack)) ? ((_error as any).stack) : undefined;
+      (self as any).postMessage({ type: 'worker-error', message: msg, stack });
+    } catch (_err) { void _err; }
   }
+});
+
+// Surface uncaught errors and promise rejections back to the main thread with stack traces
+self.addEventListener('error', (e: ErrorEvent) => {
+  try {
+    const msg = e.message || String(e);
+    const stack = e.error && (e.error as any).stack ? (e.error as any).stack : `${e.filename || ''}:${e.lineno || 0}:${e.colno || 0}`;
+    logger.error('[svgRasterWorker] Uncaught error:', msg, stack);
+    (self as any).postMessage({ type: 'worker-error', message: msg, stack });
+  } catch (_e) { void _e; }
+});
+
+self.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
+  try {
+    const reason = (e && (e.reason !== undefined)) ? e.reason : 'unknown rejection';
+    const stack = reason && (reason.stack) ? reason.stack : String(reason);
+    logger.error('[svgRasterWorker] Unhandled rejection:', reason, stack);
+    (self as any).postMessage({ type: 'worker-error', message: String(reason), stack });
+  } catch (_e) { void _e; }
+});
+
+self.addEventListener('messageerror', (e: MessageEvent) => {
+  try {
+    logger.error('[svgRasterWorker] Message error (malformed/cant deserialize):', e);
+    (self as any).postMessage({ type: 'worker-messageerror', detail: String(e) });
+  } catch (_e) { void _e; }
 });
 
 export {};

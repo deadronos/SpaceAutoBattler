@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "test": "vitest --environment happy-dom",
-    "serve": "http-server -c-1 -p 8080",
-    "serve:dist": "http-server . -c-1 -p 8080",
+  "serve": "http-server ./dist -c-1 -p 8080",
+  "serve:root": "http-server . -c-1 -p 8080",
     "prebuild": "npm run check-no-sync-reads",
     "build": "node ./scripts/build.mjs",
     "build-bundle": "node ./scripts/build.mjs",

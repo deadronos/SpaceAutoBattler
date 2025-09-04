@@ -35,6 +35,18 @@
     <span class="muted">Space Autobattler</span>
   </div>
   <div id="toast"></div>
+  <script>
+    // Bootstrap asset base so worker URLs resolve correctly when the site
+    // is served from repo root (assets under /dist) vs when dist is root.
+    // Heuristic: if the current location contains '/dist/' assume repo-root serving.
+    try {
+      const href = location.href;
+      if (href.includes('/dist/')) {
+        // Ensure no trailing slash
+        window.__ASSET_BASE__ = '/dist';
+      }
+    } catch (_e) { /* ignore */ }
+  </script>
   <script type="module" src="../src/main.js"></script>
 </body>
 </html>

@@ -134,6 +134,9 @@ export interface RendererConfig {
 
   instancingDebug?: boolean;
 
+  // Whether to eagerly load GLTF models (set to false for lightweight deployments)
+  loadGltfModels?: boolean;
+
   // Instancing settings for performance optimization
   instancing: {
     enableBullets: boolean; // feature flag for bullet instancing
@@ -313,6 +316,7 @@ export const DefaultRendererConfig: RendererConfig = {
 
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
+  loadGltfModels: false,
 };
 
 // Export the default config as RendererConfig for backward compatibility

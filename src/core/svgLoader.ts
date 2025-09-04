@@ -34,13 +34,57 @@ export class SVGLoader {
   private initWorker() {
     try {
       // Enable worker-based SVG rasterization for better performance
-      this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), { type: 'module' });
-      this.worker.addEventListener('message', (e) => this.handleWorkerMessage(e.data));
-      this.worker.addEventListener('error', (e) => {
-        logger.warn('[SVGLoader] Worker error, falling back to main thread:', e);
-        this.worker = null;
-      });
-      logger.debug('[SVGLoader] SVG rasterization worker initialized');
+      // Resolve worker URL robustly so the app works whether the server
+      // serves the repo root (assets under /dist) or serves the dist
+      // directory as the site root. Consumers can override with a
+      // runtime `window.__ASSET_BASE__` string (e.g. '/dist' or '/').
+      try {
+        const assetBase = (globalThis as any).__ASSET_BASE__ ?? null;
+        let workerUrl: string;
+        if (assetBase) {
+          // Ensure no trailing slash issues
+          const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
+          workerUrl = `${base}/svgRasterWorker.js`;
+        } else {
+          // Derive relative to this module's location so import.meta.url
+          // works whether served from /dist or repo root
+          workerUrl = new URL('./svgRasterWorker.js', import.meta.url).toString();
+        }
+        this.worker = new Worker(workerUrl, { type: 'module' });
+      } catch (_e) { void _e; this.worker = null; }
+      // Single consolidated message handler for both rasterized responses and structured errors
+      if (this.worker) {
+        this.worker.addEventListener('message', (ev) => {
+          try {
+            const data = ev.data;
+            // Structured worker-side error reporting
+            if (data && data.type === 'worker-error') {
+              logger.error('[SVGLoader] Worker reported error:', data.message, data.stack);
+              this.worker?.terminate();
+              this.worker = null;
+              return;
+            }
+
+            if (data && data.type === 'worker-messageerror') {
+              logger.error('[SVGLoader] Worker messageerror:', data.detail);
+              return;
+            }
+
+            // Rasterized responses and other messages
+            this.handleWorkerMessage(data);
+          } catch (_err) { void _err; }
+        });
+
+        this.worker.addEventListener('error', (e) => {
+          try {
+            // Better logging: include stack if available
+            const err = (e && (e as any).error) ? (e as any).error : e;
+            logger.warn('[SVGLoader] Worker error event, falling back to main thread:', err);
+          } catch (_err) { void _err; }
+          this.worker = null;
+        });
+        logger.debug('[SVGLoader] SVG rasterization worker initialized');
+      }
     } catch (_e) { void _e;logger.debug('[SVGLoader] Worker initialization failed, using main thread SVG rasterization:', _e);
       this.worker = null;
     }

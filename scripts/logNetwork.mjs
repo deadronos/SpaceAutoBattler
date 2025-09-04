@@ -16,7 +16,7 @@ import { chromium } from 'playwright';
   page.on('console', msg => console.log('PAGE_CONSOLE:', msg.type(), msg.text()));
 
   try {
-    await page.goto('http://localhost:8080/dist/spaceautobattler.html', { timeout: 15000 });
+  await page.goto('http://127.0.0.1:8080/spaceautobattler.html', { timeout: 15000 });
     await page.waitForTimeout(2500);
   } catch (e) {
     console.error('NAV_ERROR', e.message);

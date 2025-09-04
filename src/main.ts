@@ -143,8 +143,16 @@ function initGame(seed?: string) {
   logger.debug('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
 
   // Optionally preload common ship assets into the pool (config-driven)
+  // Optionally preload common ship assets into the pool (config-driven)
   (async () => {
     try {
+      // Guard GLTF preloads behind configuration flag to avoid noisy 404s
+      const shouldLoadModels = (RendererConfig as any)?.loadGltfModels ?? false;
+      if (!shouldLoadModels) {
+        logger.debug('[main.ts] Skipping GLTF model preloads (RendererConfig.loadGltfModels=false)');
+        return;
+      }
+
       const classes: string[] = ['fighter','corvette','frigate','destroyer','carrier'];
       for (const cls of classes) {
         const url = `/assets/models/ship-${cls}.gltf`;
@@ -164,7 +172,7 @@ function initGame(seed?: string) {
   (async () => {
     try {
       // Create a module worker for simWorker.ts
-      const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+  const w = new Worker(new URL('./simWorker.js', import.meta.url), { type: 'module' });
       let ready = false;
       let lastShipDataVersion = -1;
       
