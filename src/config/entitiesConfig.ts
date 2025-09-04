@@ -9,6 +9,9 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 400,
     damage: 6,
     range: 300,
+    // High mobility small weapon: slightly less accurate by default
+    accuracy: 0.9,
+    maxSpreadRadians: (2 * Math.PI) / 180 // ~2 degrees
   },
 
   // Corvette dual cannons
@@ -18,6 +21,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 380,
     damage: 9,
     range: 340,
+    accuracy: 0.92,
+    maxSpreadRadians: (1.8 * Math.PI) / 180
   },
 
   // Frigate triple cannons
@@ -27,6 +32,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 360,
     damage: 14,
     range: 380,
+    accuracy: 0.94,
+    maxSpreadRadians: (1.5 * Math.PI) / 180
   },
 
   // Destroyer quad cannons
@@ -36,6 +43,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 340,
     damage: 24,
     range: 420,
+    accuracy: 0.96,
+    maxSpreadRadians: (1.2 * Math.PI) / 180
   },
 
   // Carrier dual cannons
@@ -45,6 +54,8 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     bulletSpeed: 320,
     damage: 18,
     range: 420,
+    accuracy: 0.95,
+    maxSpreadRadians: (1.5 * Math.PI) / 180
   },
 };
 
@@ -54,7 +65,7 @@ export const SHIP_CLASS_CONFIGS: Record<ShipClass, ShipClassConfig> = {
     class: 'fighter',
     baseHealth: 80,
     armor: 2,
-    shield: 40,
+    shield: 50,
     shieldRegen: 5,
     speed: 140,
     turnRate: Math.PI,
@@ -66,7 +77,7 @@ export const SHIP_CLASS_CONFIGS: Record<ShipClass, ShipClassConfig> = {
     baseHealth: 180,
     armor: 4,
     shield: 120,
-    shieldRegen: 8,
+    shieldRegen: 10,
     speed: 110,
     turnRate: Math.PI * 0.7,
     turrets: [
@@ -80,7 +91,7 @@ export const SHIP_CLASS_CONFIGS: Record<ShipClass, ShipClassConfig> = {
     baseHealth: 420,
     armor: 8,
     shield: 260,
-    shieldRegen: 10,
+    shieldRegen: 13,
     speed: 85,
     turnRate: Math.PI * 0.5,
     turrets: [
@@ -94,11 +105,13 @@ export const SHIP_CLASS_CONFIGS: Record<ShipClass, ShipClassConfig> = {
     class: 'destroyer',
     baseHealth: 800,
     armor: 12,
-    shield: 480,
-    shieldRegen: 12,
+    shield: 600,
+    shieldRegen: 60,
     speed: 65,
     turnRate: Math.PI * 0.35,
     turrets: [
+      TURRET_CONFIGS['destroyer-cannon'],
+      TURRET_CONFIGS['destroyer-cannon'],
       TURRET_CONFIGS['destroyer-cannon'],
       TURRET_CONFIGS['destroyer-cannon'],
       TURRET_CONFIGS['destroyer-cannon'],
@@ -110,11 +123,13 @@ export const SHIP_CLASS_CONFIGS: Record<ShipClass, ShipClassConfig> = {
     class: 'carrier',
     baseHealth: 1000,
     armor: 10,
-    shield: 600,
-    shieldRegen: 14,
+    shield: 800,
+    shieldRegen: 80,
     speed: 55,
     turnRate: Math.PI * 0.3,
     turrets: [
+      TURRET_CONFIGS['carrier-cannon'],
+      TURRET_CONFIGS['carrier-cannon'],
       TURRET_CONFIGS['carrier-cannon'],
       TURRET_CONFIGS['carrier-cannon'],
     ],

@@ -1002,13 +1002,6 @@
   "powershell.scriptAnalysis.suppressErrors": true,
   "powershell.scriptAnalysis.runOnSave": true,
   "powershell.scriptAnalysis.runOnType": true,
-  "chat.mcp.serverSampling": {
-    "SpaceAutoBattler/.vscode/mcp.json: mcp-compass": {
-      "allowedModels": [
-        "copilot/gpt-4.1"
-      ]
-    }
-  },
   "python-envs.pythonProjects": [
     {
       "path": "",

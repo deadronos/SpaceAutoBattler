@@ -32,8 +32,8 @@ export interface Synchronizer {
     state: GameState, 
     syncState: SynchronizerState, 
     groups: SynchronizerGroups,
-    meshFactory: any,
-    shieldEffect: any,
+    meshFactory: MeshFactory,
+    shieldEffect: ShieldEffect,
     meshFactoryState: MeshFactoryState,
     shieldEffectState: ShieldEffectState,
     camera?: THREE.Camera,
@@ -42,13 +42,29 @@ export interface Synchronizer {
   updateTransforms(
     state: GameState, 
     syncState: SynchronizerState,
-    meshFactory: any,
-    shieldEffect: any,
+    meshFactory: MeshFactory,
+    shieldEffect: ShieldEffect,
     shieldEffectState: ShieldEffectState,
     camera?: THREE.Camera,
     healthBarInstancer?: HealthBarInstancer
   ): void;
   disposeSynchronizer(syncState: SynchronizerState): void;
+}
+
+// Minimal typed interfaces for mesh factory and shield effect to avoid explicit any usage
+export interface MeshFactory {
+  createShipMesh(ship: Ship, state: GameState, parent: THREE.Group, map: Map<number, THREE.Object3D>): THREE.Object3D;
+  createBulletMesh(b: Bullet): THREE.Object3D;
+  createHealthBarMesh(s: Ship, factoryState: MeshFactoryState): THREE.Object3D;
+  updateHealthBarMesh(s: Ship, bar: THREE.Object3D): void;
+  getPooledBillboardMaterial?: (color: THREE.Color, alpha: number, factoryState: MeshFactoryState) => THREE.ShaderMaterial;
+  disposeMeshFactory?: (factoryState: MeshFactoryState) => void;
+}
+
+export interface ShieldEffect {
+  createShieldEffect(ship: Ship, state: ShieldEffectState): THREE.Object3D;
+  updateShieldEffect(ship: Ship, shield: THREE.Object3D, currentTime: number, state: ShieldEffectState): void;
+  disposeShieldEffect(shield: THREE.Object3D): void;
 }
 
 /**
@@ -82,8 +98,8 @@ export function syncEntities(
   state: GameState, 
   syncState: SynchronizerState, 
   groups: SynchronizerGroups,
-  meshFactory: any,
-  shieldEffect: any,
+  meshFactory: MeshFactory,
+  shieldEffect: ShieldEffect,
   meshFactoryState: MeshFactoryState,
   shieldEffectState: ShieldEffectState,
   camera?: THREE.Camera,
@@ -105,7 +121,10 @@ export function syncEntities(
     }
     
     // Health bars
-    if (RendererConfig.visual.enableHealthBars) {
+    // Guard: only create health bars for recognized ship classes and valid positions
+    const hasKnownClass = !!(ShipVisualConfig.ships as any)[s.class];
+    const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
+    if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
       if (useHealthBarInstancing) {
         // Use health bar instancer
         if (!healthBarInstancer!.hasShip(s.id)) {
@@ -115,10 +134,14 @@ export function syncEntities(
         // Use traditional mesh factory approach
         if (!syncState.healthBarMeshes.has(s.id)) {
           const bar = meshFactory.createHealthBarMesh(s, meshFactoryState);
+          try { console.info && console.info(`[HB_TRACE][synchronizer] created health bar (meshFactory) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
+          // Probe tags removed: no-op.
           syncState.healthBarMeshes.set(s.id, bar); 
           groups.healthBarsGroup.add(bar);
         }
       }
+    } else if (RendererConfig.visual.enableHealthBars) {
+      console.warn(`[HealthBar Debug] Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
     }
     
     // Shield effects
@@ -205,8 +228,8 @@ export function syncEntities(
 export function updateTransforms(
   state: GameState, 
   syncState: SynchronizerState,
-  meshFactory: any,
-  shieldEffect: any,
+  meshFactory: MeshFactory,
+  shieldEffect: ShieldEffect,
   shieldEffectState: ShieldEffectState,
   camera?: THREE.Camera,
   healthBarInstancer?: HealthBarInstancer

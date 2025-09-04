@@ -31,7 +31,7 @@ export function createShieldEffectState(): ShieldEffectState {
 /**
  * Creates a shield effect for a ship
  */
-export function createShieldEffect(ship: Ship, state: ShieldEffectState): THREE.Object3D {
+export function createShieldEffect(ship: Ship, _state: ShieldEffectState): THREE.Object3D {
   const config = RendererConfig.shield;
   const shieldGroup = new THREE.Group();
 
@@ -86,8 +86,9 @@ export function createShieldEffect(ship: Ship, state: ShieldEffectState): THREE.
   const shieldMesh = new THREE.Mesh(geom, material);
   shieldGroup.add(shieldMesh);
 
-  // Store the mesh reference for updates
-  (shieldGroup as any).shieldMesh = shieldMesh;
+  // Store the mesh reference for updates using a small local typed overlay
+  type ShieldGroup = THREE.Object3D & { shieldMesh?: THREE.Mesh };
+  (shieldGroup as ShieldGroup).shieldMesh = shieldMesh;
 
   return shieldGroup;
 }
@@ -102,7 +103,8 @@ export function updateShieldEffect(
   state: ShieldEffectState
 ): void {
   const config = RendererConfig.shield;
-  const shieldMesh = (shieldGroup as any).shieldMesh as THREE.Mesh;
+  type ShieldGroup = THREE.Object3D & { shieldMesh?: THREE.Mesh };
+  const shieldMesh = (shieldGroup as ShieldGroup).shieldMesh as THREE.Mesh;
   const mat = shieldMesh.material as THREE.ShaderMaterial;
 
   // Position the shield around the ship (3D)
@@ -156,9 +158,9 @@ export function updateShieldEffect(
   const HIT_MAX = Math.max(1, Math.floor(RendererConfig.shield.hexGrid.hitMax));
   const maxN = Math.min(HIT_MAX, list.length);
   mat.uniforms.uHitCount.value = maxN;
-  const uDirs = (mat.uniforms.uHitDirs.value as THREE.Vector3[]);
-  const uTimes = (mat.uniforms.uHitTimes.value as Float32Array);
-  const uStrengths = (mat.uniforms.uHitStrengths.value as Float32Array);
+  const uDirs = (mat.uniforms.uHitDirs.value as unknown as THREE.Vector3[]);
+  const uTimes = (mat.uniforms.uHitTimes.value as unknown as Float32Array);
+  const uStrengths = (mat.uniforms.uHitStrengths.value as unknown as Float32Array);
   
   for (let i = 0; i < HIT_MAX; i++) {
     if (i < maxN) {
@@ -177,7 +179,8 @@ export function updateShieldEffect(
  * Disposes shield effect resources
  */
 export function disposeShieldEffect(shieldGroup: THREE.Object3D): void {
-  const shieldMesh = (shieldGroup as any).shieldMesh as THREE.Mesh;
+  type ShieldGroup = THREE.Object3D & { shieldMesh?: THREE.Mesh };
+  const shieldMesh = (shieldGroup as ShieldGroup).shieldMesh as THREE.Mesh;
   if (shieldMesh) {
     if (shieldMesh.geometry) shieldMesh.geometry.dispose();
     if (shieldMesh.material) {

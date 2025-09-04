@@ -1,18 +1,20 @@
-import type { GameState } from '../types/index.js';
-import { createEffectsManager } from './effects.js';
+import type { GameState, Ship } from '../types/index.js';
 import { createAnimationManager } from './animationManager.js';
 import { createBVHManager } from './bvhManager.js';
+import type { EffectsManager } from './effects.js';
+import type { AnimationManager } from './animationManager.js';
+import type { BVHManager } from './bvhManager.js';
 
 export interface UnifiedEffectsManager {
   initDone: boolean;
-  effects: import('./effects.js').EffectsManager;
-  animation: import('./animationManager.js').AnimationManager;
-  bvh: import('./bvhManager.js').BVHManager;
+  effects: EffectsManager;
+  animation: AnimationManager;
+  bvh: BVHManager;
 
   // Unified methods
   update: (dt: number) => void;
-  handleShipSpawn: (ship: any) => void;
-  handleShipDestruction: (ship: any) => Promise<void>;
+  handleShipSpawn: (ship: Ship) => void;
+  handleShipDestruction: (ship: Ship) => Promise<void>;
   handleExplosion: (position: { x: number; y: number; z: number }, intensity?: number) => Promise<void>;
   setQuality: (quality: 'low' | 'medium' | 'high') => void;
   dispose: () => void;
@@ -21,7 +23,7 @@ export interface UnifiedEffectsManager {
 export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsManager {
   // Create individual managers
   // Note: Effects manager will be created lazily when renderer is available
-  let effects: import('./effects.js').EffectsManager | null = null;
+  let effects: EffectsManager | null = null;
 
   const animation = createAnimationManager(state);
   const bvh = createBVHManager(state);
@@ -57,13 +59,13 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     }
   }
 
-  async function handleShipSpawn(ship: any) {
+  async function handleShipSpawn(ship: Ship) {
     if (animation.initDone && state.renderer) {
       animation.animateShipSpawn(ship, state.renderer);
     }
   }
 
-  async function handleShipDestruction(ship: any): Promise<void> {
+  async function handleShipDestruction(ship: Ship): Promise<void> {
     if (animation.initDone && state.renderer) {
       await animation.animateShipDestruction(ship, state.renderer);
     }

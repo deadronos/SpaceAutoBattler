@@ -3,33 +3,40 @@ import { BulletInstancer } from '../../src/renderer/bulletInstancer.js';
 import type { Bullet } from '../../src/types/index.js';
 import { RendererConfig } from '../../src/config/rendererConfig.js';
 
-// Mock Three.js for instancer tests
-vi.mock('three', () => ({
-  SphereGeometry: vi.fn(),
-  MeshBasicMaterial: vi.fn(),
-  InstancedMesh: vi.fn().mockImplementation((geometry, material, capacity) => ({
-    setMatrixAt: vi.fn(),
-    getMatrixAt: vi.fn(),
-    instanceMatrix: { needsUpdate: false },
-    geometry: { dispose: vi.fn() },
-    material: { dispose: vi.fn() },
-    parent: null,
-    capacity
-  })),
-  Matrix4: vi.fn().mockImplementation(() => ({
-    compose: vi.fn(),
-    makeScale: vi.fn()
-  })),
-  Vector3: vi.fn().mockImplementation(() => ({
-    set: vi.fn(),
-    copy: vi.fn()
-  })),
-  Quaternion: vi.fn().mockImplementation(() => ({})),
-  Group: vi.fn().mockImplementation(() => ({
-    add: vi.fn(),
-    remove: vi.fn()
-  }))
-}));
+// Mock Three.js for instancer tests but reuse real exports where necessary
+vi.mock('three', async () => {
+  const actualUnknown: unknown = await vi.importActual('three');
+  const actual = actualUnknown as Record<string, unknown> | undefined;
+  return {
+    ...(actual || {}),
+    SphereGeometry: vi.fn(),
+    MeshBasicMaterial: vi.fn(),
+    InstancedMesh: vi.fn().mockImplementation((geometry, material, capacity) => ({
+      setMatrixAt: vi.fn(),
+      getMatrixAt: vi.fn(),
+      instanceMatrix: { needsUpdate: false },
+      geometry: { dispose: vi.fn() },
+      material: { dispose: vi.fn() },
+      parent: null,
+      capacity
+    })),
+    Matrix4: vi.fn().mockImplementation(() => ({
+      compose: vi.fn(),
+      makeScale: vi.fn()
+    })),
+    Vector3: vi.fn().mockImplementation(() => ({
+      set: vi.fn(),
+      copy: vi.fn(),
+      clone: vi.fn().mockReturnThis(),
+      setFromMatrixColumn: vi.fn().mockReturnThis()
+    })),
+    Quaternion: vi.fn().mockImplementation(() => ({})),
+    Group: vi.fn().mockImplementation(() => ({
+      add: vi.fn(),
+      remove: vi.fn()
+    }))
+  } as any;
+});
 
 describe('BulletInstancer', () => {
   let mockScene: any;

@@ -128,18 +128,22 @@ export function setCameraTarget(cameraState: CameraState, target: { x?: number; 
  */
 export function getCameraBasisVectors(cameraState: CameraState): { right: THREE.Vector3; up: THREE.Vector3 } {
   const { camera } = cameraState;
-  
+  // Prefer cached basis when available
+  try {
+    const cached = getCachedCameraBasis(camera);
+    if (cached) return { right: cached.right.clone(), up: cached.up.clone() };
+  } catch { /* ignore and fallback */ }
+
   const camRight = new THREE.Vector3();
   const camUp = new THREE.Vector3();
-  
   // Get camera forward direction
-  camera.getWorldDirection(camRight); // This gets forward, we'll compute right from it
-  
-  // Calculate camera right vector: cross(up, forward)
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  // Calculate camera right vector: right = forward x worldUp
   const worldUp = new THREE.Vector3(0, 1, 0);
-  camRight.crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
+  camRight.crossVectors(forward, worldUp).normalize();
   camUp.copy(camera.up).normalize();
-  
+
   return { right: camRight, up: camUp };
 }
 
@@ -147,13 +151,23 @@ export function getCameraBasisVectors(cameraState: CameraState): { right: THREE.
  * Gets the camera matrix for billboard calculations
  */
 export function getCameraMatrix(cameraState: CameraState): THREE.Matrix4 {
+  // Prefer constructing from cached basis if available to avoid extractRotation
+  try {
+    const cached = getCachedCameraBasis(cameraState.camera);
+    if (cached) {
+      const fwd = cached.forward ? cached.forward.clone() : new THREE.Vector3().crossVectors(cached.right, cached.up).normalize();
+      const m = new THREE.Matrix4();
+      m.makeBasis(cached.right.clone(), cached.up.clone(), fwd);
+      return m;
+    }
+  } catch { /* ignore */ }
   return new THREE.Matrix4().extractRotation(cameraState.camera.matrixWorld);
 }
 
 /**
  * Disposes camera resources (minimal cleanup needed)
  */
-export function disposeCamera(cameraState: CameraState): void {
+export function disposeCamera(_cameraState: CameraState): void {
   // Cameras don't have resources that need explicit disposal
   // This function exists for completeness and future extensibility
 }
@@ -180,3 +194,51 @@ export const CameraUtils = {
   getCameraBasisVectors,
   getCameraMatrix
 };
+
+/**
+ * Safely read a cached camera basis from camera.userData.__cameraBasis.
+ * Returns { right, up, forward? } when present and well-formed, otherwise null.
+ * This centralizes runtime checks and avoids repeated narrowing logic across the codebase.
+ */
+export type CameraBasis = { right: THREE.Vector3; up: THREE.Vector3; forward?: THREE.Vector3 };
+
+export function getCachedCameraBasis(camera: THREE.Camera): CameraBasis | null {
+  // userData is of type any-ish; narrow safely without using `any`
+  const ud = (camera as unknown as { userData?: unknown }).userData;
+  if (!ud || typeof ud !== 'object') return null;
+
+  const b = (ud as Record<string, unknown>)['__cameraBasis'];
+  if (!b || typeof b !== 'object') return null;
+
+  const right = (b as Record<string, unknown>)['right'];
+  const up = (b as Record<string, unknown>)['up'];
+  const forward = (b as Record<string, unknown>)['forward'];
+
+  // Basic structural validation: check for numeric x,y,z fields
+  const isVecLike = (v: unknown): v is THREE.Vector3 => {
+    return typeof v === 'object' && v !== null && 'x' in (v as object) && 'y' in (v as object) && 'z' in (v as object);
+  };
+
+  if (!isVecLike(right) || !isVecLike(up)) return null;
+
+  return { right: right as THREE.Vector3, up: up as THREE.Vector3, forward: isVecLike(forward) ? (forward as THREE.Vector3) : undefined };
+}
+
+/**
+ * Safely set a cached camera basis on camera.userData.__cameraBasis.
+ * Uses defensive checks to avoid throwing in environments with frozen userData
+ * or restrictive proxies. Best-effort but non-critical.
+ */
+export function setCachedCameraBasis(camera: THREE.Camera, basis: CameraBasis): void {
+  try {
+    const cu = (camera as unknown as { userData?: Record<string, unknown> }).userData;
+    if (cu && typeof cu === 'object') {
+      (cu as Record<string, unknown>).__cameraBasis = basis;
+      return;
+    }
+    // If userData missing or not an object, assign a fresh object
+    (camera as unknown as { userData: Record<string, unknown> }).userData = { __cameraBasis: basis };
+  } catch {
+    // Best-effort: do not throw if assignment fails in constrained environments
+  }
+}

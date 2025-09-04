@@ -1,20 +1,13 @@
 import type { GameState, Ship, Vector3, EntityId, TurretState, Team } from '../types/index.js';
-import type {
-  AIIntent,
-  AIBehaviorMode,
-  AIPersonality,
-  BehaviorConfig,
-  RoamingPattern,
-  FormationConfig
-} from '../config/behaviorConfig.js';
+import type { AIIntent, AIPersonality, FormationConfig } from '../config/behaviorConfig.js';
 import { getEffectivePersonality, selectRoamingPattern, getFormationConfig } from '../config/behaviorConfig.js';
-import { getShipClassConfig } from '../config/entitiesConfig.js';
-import { PhysicsConfig } from '../config/physicsConfig.js';
-import { lookAt, getForwardVector, angleDifference, clampTurn, magnitude, normalize, subtract } from '../utils/vector3.js';
+import { PhysicsConfig } from '../config/physicsConfig.js';import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 import { calculateEscapeScore as steeringCalculateEscapeScore, moveTowards as steeringMoveTowards, calculateSeparationForceWithCount as steeringSeparation } from './ai/steering.js';
 import { scoreEvade as deScoreEvade } from './ai/decisionEngine.js';
 import { IntentManager } from './ai/intentManager.js';
 import { pickBestTurretTarget } from './ai/turretTargeting.js';
+import { getShipClassConfig } from '../config/entitiesConfig.js';
+import { computeInterceptPoint } from './math/ballisticIntercept.js';
 import { getDistance as sharedGetDistance, findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends, getNearbySeparationShipsLinear as sharedGetNearbySeparationShipsLinear } from './searchUtils.js';
 import { applyBoundaryPhysicsShip } from './boundaryUtils.js';
 
@@ -56,6 +49,15 @@ export class AIController {
     this.isSpatialGridUpdatedThisTick = false;
     this.intentManager = new IntentManager();
   }
+
+  /**
+   * Compute intercept point for a constant-speed projectile.
+   * Returns a Vector3 world position where the shooter should aim such that
+   * a projectile launched at speed `projectileSpeed` from shooterPos will
+   * meet the target moving at targetVel from targetPos. If no valid intercept
+   * exists (target too fast or geometry), returns null.
+   */
+  // computeInterceptPoint is provided by src/core/math/ballisticIntercept.ts and imported above
 
   /**
    * Update AI for all ships
@@ -143,7 +145,7 @@ export class AIController {
   private updateRecentDamage(ship: Ship, dt: number) {
     const aiState = ship.aiState!;
     const config = this.state.behaviorConfig!;
-    
+
     if (aiState.recentDamage && aiState.recentDamage > 0) {
       const decayAmount = config.globalSettings.damageDecayRate * dt;
       aiState.recentDamage = Math.max(0, aiState.recentDamage - decayAmount);
@@ -222,8 +224,8 @@ export class AIController {
     const config = this.state.behaviorConfig!;
 
     // Check if ship has taken significant recent damage and should evade
-    const recentDamage = aiState.recentDamage || 0;
-    const lastDamageTime = aiState.lastDamageTime || 0;
+  const recentDamage = aiState.recentDamage || 0;
+  const lastDamageTime = aiState.lastDamageTime || 0;
     const timeSinceLastDamage = this.state.time - lastDamageTime;
     const withinDamageWindow = timeSinceLastDamage <= config.globalSettings.evadeRecentDamageWindowSeconds;
     const shouldEvadeFromDamage = recentDamage >= config.globalSettings.damageEvadeThreshold && withinDamageWindow;
@@ -233,14 +235,16 @@ export class AIController {
       return;
     }
 
-    const oldIntent = aiState.currentIntent;
+  const oldIntent = aiState.currentIntent;
     let newIntent: AIIntent = 'idle';
-    let intentDuration = personality.minIntentDuration;
+    const _intentDuration = personality.minIntentDuration;
 
     if (shouldEvadeFromDamage) {
       newIntent = 'evade';
       // Shorter duration for damage-based evade to allow quick reassessment
-      intentDuration = Math.min(intentDuration, config.globalSettings.intentDurationDamageEvade);
+      // Use _intentDuration as the baseline variable
+      const intentDuration = Math.min(_intentDuration, config.globalSettings.intentDurationDamageEvade);
+      void intentDuration;
     } else {
       // Normal intent selection based on personality mode
       switch (personality.mode) {
@@ -286,7 +290,7 @@ export class AIController {
     }
 
     // Set intent duration via IntentManager to keep parity
-    const duration = this.intentManager.applyIntent(
+    const _duration = this.intentManager.applyIntent(
       ship,
       this.state.time,
       newIntent,
@@ -432,7 +436,7 @@ export class AIController {
    * Choose intent for roaming behavior
    */
   private chooseRoamingIntent(ship: Ship, personality: AIPersonality): AIIntent {
-    const aiState = ship.aiState!;
+  const aiState = ship.aiState!;
     const config = this.state.behaviorConfig!;
 
     // Check if this ship is the designated scout
@@ -797,7 +801,7 @@ export class AIController {
         }
         break;
 
-      case 'circular':
+      case 'circular': {
         const time = this.state.time - (aiState.roamingStartTime || 0);
         const angle = (time / pattern.duration) * Math.PI * 2;
         targetPos = {
@@ -806,8 +810,9 @@ export class AIController {
           z: center.z
         };
         break;
+      }
 
-      case 'figure_eight':
+      case 'figure_eight': {
         const t = this.state.time - (aiState.roamingStartTime || 0);
         const figureAngle = (t / pattern.duration) * Math.PI * 2;
         targetPos = {
@@ -816,6 +821,7 @@ export class AIController {
           z: center.z
         };
         break;
+      }
 
       default:
         return this.executeIdle(ship, dt);
@@ -850,7 +856,7 @@ export class AIController {
       return this.executePatrol(ship, dt);
     }
 
-    const aiState = ship.aiState!;
+  const _aiState = ship.aiState!;
     const bounds = this.state.simConfig.simBounds;
     
     // Create exploration zones in a grid pattern
@@ -982,11 +988,11 @@ export class AIController {
   /**
    * Update turret AI for independent targeting
    */
-  private updateTurretAI(ship: Ship, dt: number) {
+  private updateTurretAI(ship: Ship, _dt: number) {
     const config = this.state.behaviorConfig!;
     const turretConfig = config.turretConfig;
 
-    if (turretConfig.behavior === 'independent') {
+    // We'll support both static behavior and optional dynamic per-turret switching
       for (const turret of ship.turrets) {
         if (!turret.aiState) {
           turret.aiState = {
@@ -997,10 +1003,96 @@ export class AIController {
 
         const turretState = turret.aiState;
 
+        // Initialize per-turret behavior if not set
+        if (!turretState.behavior) {
+          // Default behavior initialization comes from designer-preferred turret config
+          // If the designer set 'dynamic', fall back to global turret config behavior
+          const shipCfg = getShipClassConfig(ship.class);
+          const tIndex = ship.turrets.indexOf(turret);
+          const tCfg = shipCfg.turrets[tIndex % shipCfg.turrets.length];
+          const pref = (tCfg as any).preferredBehavior;
+          if (pref && pref !== 'dynamic') {
+            turretState.behavior = pref;
+            // Designer override: persist indefinitely (no auto-switch unless explicitly 'dynamic')
+            turretState.behaviorExpireTime = Infinity;
+          } else {
+            turretState.behavior = turretConfig.behavior;
+            // small default expiry so first switch happens after some time if dynamic
+            turretState.behaviorExpireTime = this.state.time + (turretConfig.dynamicSwitch?.minDuration ?? 1);
+          }
+        }
+
+        // Dynamic switching: pick new behavior when expired
+        const dyn = turretConfig.dynamicSwitch;
+        if (dyn?.enabled) {
+          if (!turretState.behaviorExpireTime || this.state.time >= turretState.behaviorExpireTime) {
+            // Weighted random pick from options (fallback to global behavior list)
+            const opts = dyn.options && dyn.options.length ? dyn.options : [ { behavior: turretConfig.behavior, weight: 1 } ];
+            const total = opts.reduce((s, o) => s + (o.weight || 0), 0);
+            const r = (this.state.rng.next() * total);
+            let acc = 0;
+            let chosen = opts[0].behavior;
+            for (const o of opts) {
+              acc += o.weight || 0;
+              if (r <= acc) { chosen = o.behavior; break; }
+            }
+            turretState.behavior = chosen;
+            // Pick duration between min and max
+            const minD = dyn.minDuration;
+            const maxD = dyn.maxDuration;
+            const dur = minD + this.state.rng.next() * Math.max(0, (maxD - minD));
+            turretState.behaviorExpireTime = this.state.time + dur;
+          }
+        }
+
         // Reevaluate target if needed
         if (this.state.time - turretState.lastTargetUpdate >= turretConfig.targetReevaluationRate) {
           turretState.targetId = this.findBestTurretTarget(ship, turret);
           turretState.lastTargetUpdate = this.state.time;
+        }
+
+        // If current per-turret behavior requests lead prediction, compute an intercept
+        if (turretState.behavior === 'lead_target') {
+          // Determine which target to lead: prefer turret-specific target, fall back to ship.targetId
+          const tid = turretState.targetId ?? ship.targetId;
+          if (typeof tid === 'number') {
+            const targetShip = this.state.shipIndex?.get(tid) ?? this.state.ships.find(s => s.id === tid);
+            if (targetShip) {
+              // Compute turret's bullet speed from ship class config
+              const shipCfg = getShipClassConfig(ship.class);
+              const turretIndex = ship.turrets.indexOf(turret);
+              const tCfg = shipCfg.turrets[turretIndex % shipCfg.turrets.length];
+              const bulletSpeed = tCfg.bulletSpeed;
+
+              // Solve intercept point using closed-form solution for constant-speed projectile
+              // Determine lookahead limit: per-turret override preferred, otherwise global setting
+              // Prefer per-turret override if present, otherwise use global setting
+              const perTurretLookahead = (tCfg as import('../types/index.js').TurretConfig | undefined)?.maxInterceptLookahead;
+              const lookahead = perTurretLookahead ?? this.state.behaviorConfig!.globalSettings.maxInterceptLookahead;
+              const intercept = computeInterceptPoint(
+                ship.pos,
+                bulletSpeed,
+                targetShip.pos,
+                targetShip.vel,
+                lookahead
+              );
+
+              if (intercept) {
+                turretState.leadTargetPos = intercept;
+              } else {
+                // Fallback to a short linear predict using configured leadPredictionTime
+                const leadTime = turretConfig.leadPredictionTime ?? 0.5;
+                turretState.leadTargetPos = {
+                  x: targetShip.pos.x + (targetShip.vel?.x ?? 0) * leadTime,
+                  y: targetShip.pos.y + (targetShip.vel?.y ?? 0) * leadTime,
+                  z: targetShip.pos.z + (targetShip.vel?.z ?? 0) * leadTime
+                };
+              }
+            }
+          } else {
+            // Clear any stale lead position if no target
+            delete turretState.leadTargetPos;
+          }
         }
       }
       // Ensure ship.targetId is set so the global firing logic (fireTurrets)
@@ -1023,7 +1115,6 @@ export class AIController {
         const nearest = this.findNearestEnemy(ship);
         ship.targetId = nearest ? nearest.id : null;
       }
-    }
   }
 
   /**
@@ -1443,7 +1534,7 @@ export class AIController {
   /**
    * Get formation center for a ship and formation name
    */
-  private getFormationCenter(ship: Ship, formationName: string): Vector3 | null {
+  private getFormationCenter(ship: Ship, _formationName: string): Vector3 | null {
     // For now, use group center of friendly ships in range
     const config = this.state.behaviorConfig!;
   const searchRadius = config.globalSettings.formationSearchRadius;
@@ -1463,8 +1554,8 @@ export class AIController {
   const spacing = formationConfig.spacing;
     const slotIndex = ship.id % slotCount;
       // Store the assigned slot index for tests/other logic
-      if (!ship.aiState) ship.aiState = {} as any;
-      const aiState = ship.aiState!;
+  if (!ship.aiState) ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as Ship['aiState'];
+    const aiState = ship.aiState!;
       aiState.formationSlotIndex = slotIndex;
     // For line formation, offset along x axis; for circle, use polar coordinates
     let slotOffset: Vector3 = { x: 0, y: 0, z: 0 };

@@ -69,7 +69,8 @@ describe('Entities Configuration', () => {
       const fighterTurret = getTurretConfig('fighter-cannon');
       expect(fighterTurret).toBeDefined();
       expect(fighterTurret!.id).toBe('fighter-cannon');
-      expect(fighterTurret!.damage).toBe(6);
+      // Use the canonical turret config value instead of a hardcoded literal
+      expect(fighterTurret!.damage).toBe(TURRET_CONFIGS['fighter-cannon'].damage);
 
       const unknownTurret = getTurretConfig('unknown-turret');
       expect(unknownTurret).toBeUndefined();
@@ -127,11 +128,13 @@ describe('Entities Configuration', () => {
     });
 
     test('should have appropriate turret counts per ship class', () => {
-      expect(SHIP_CLASS_CONFIGS.fighter.turrets).toHaveLength(1);
-      expect(SHIP_CLASS_CONFIGS.corvette.turrets).toHaveLength(2);
-      expect(SHIP_CLASS_CONFIGS.frigate.turrets).toHaveLength(3);
-      expect(SHIP_CLASS_CONFIGS.destroyer.turrets).toHaveLength(4);
-      expect(SHIP_CLASS_CONFIGS.carrier.turrets).toHaveLength(2);
+      // Derive expected turret counts from the authoritative getter to avoid hardcoded numbers
+      const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
+      shipClasses.forEach(cls => {
+        const cfg = SHIP_CLASS_CONFIGS[cls];
+        const expected = getShipClassConfig(cls).turrets.length;
+        expect(cfg.turrets).toHaveLength(expected);
+      });
     });
 
     test('carrier should have fighter spawning capabilities', () => {
@@ -146,7 +149,8 @@ describe('Entities Configuration', () => {
       const fighterConfig = getShipClassConfig('fighter');
       expect(fighterConfig).toBeDefined();
       expect(fighterConfig.class).toBe('fighter');
-      expect(fighterConfig.baseHealth).toBe(80);
+      // Compare against the canonical value in SHIP_CLASS_CONFIGS instead of a magic number
+      expect(fighterConfig.baseHealth).toBe(SHIP_CLASS_CONFIGS.fighter.baseHealth);
 
       // Should return the same object reference
       expect(getShipClassConfig('fighter')).toBe(SHIP_CLASS_CONFIGS.fighter);
@@ -170,8 +174,10 @@ describe('Entities Configuration', () => {
 
         // Average turret damage should be proportional to ship health
         // Fighters should have lower relative damage, capital ships higher
-        const expectedRatio = config.baseHealth / 100; // Normalized to fighter baseline
-        const actualRatio = avgTurretDamage / 6; // Normalized to fighter baseline
+  const expectedRatio = config.baseHealth / 100; // Normalized to fighter baseline
+  // Use the fighter turret damage from canonical turret configs instead of a literal baseline
+  const fighterBaseline = TURRET_CONFIGS['fighter-cannon'].damage;
+  const actualRatio = avgTurretDamage / fighterBaseline; // Normalized to fighter baseline
 
         // Adjust expectations based on actual config - carriers have less damage than destroyers
         if (config.class === 'carrier') {

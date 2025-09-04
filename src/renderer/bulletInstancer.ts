@@ -14,6 +14,9 @@ export class BulletInstancer {
   private freeIndices: number[] = [];
   private usedCount = 0;
   private hasWarned = false;
+  // Readiness signalling: set to true once the instanced mesh is created and added to the scene
+  public isReady = false;
+  private readyCallbacks: Array<() => void> = [];
 
   // Temporary objects for matrix calculations to avoid allocations
   private tempMatrix = new THREE.Matrix4();
@@ -48,7 +51,32 @@ export class BulletInstancer {
     // Add to scene
     bulletsGroup.add(this.instancedMesh);
     
+    // Mark as ready and notify any listeners
+    this.isReady = true;
+    for (const cb of this.readyCallbacks) {
+      try {
+        cb();
+      } catch (_e) { void _e;logger.error('Error in BulletInstancer readiness callback', _e);
+      }
+    }
+    this.readyCallbacks.length = 0;
+
     logger.info(`BulletInstancer initialized with capacity ${this.capacity}`);
+  }
+
+  /**
+   * Register a callback to be invoked when the instancer is ready.
+   * If the instancer is already ready the callback is invoked immediately.
+   */
+  onReady(cb: () => void): void {
+    if (this.isReady) {
+      try {
+        cb();
+      } catch (_e) { void _e;logger.error('Error in BulletInstancer readiness callback', _e);
+      }
+      return;
+    }
+    this.readyCallbacks.push(cb);
   }
 
   /**
@@ -236,3 +264,4 @@ export class BulletInstancer {
     }
   }
 }
+

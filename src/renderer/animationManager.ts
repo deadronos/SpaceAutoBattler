@@ -2,6 +2,18 @@ import { gsap } from 'gsap';
 import type { GameState, RendererHandles } from '../types/index.js';
 import type { Ship } from '../types/index.js';
 
+// Local lightweight types to avoid broad `any` in this adapter
+type Vec3 = { x: number; y: number; z: number };
+type ShipMeshLike = {
+  material?: { emissive?: { r?: number; g?: number; b?: number }; opacity?: number } & Record<string, unknown>;
+  scale?: { x: number; y: number; z: number } & Record<string, unknown>;
+  // allow other mesh-like properties (rotation, etc.) without `any`
+  [prop: string]: unknown;
+};
+type ShipMeshMap = Map<number, ShipMeshLike>;
+type EffectsManagerLike = { addExplosionEffect?: (position: Vec3, intensity: number) => void };
+type RendererHandlesLike = RendererHandles & { shipMeshes?: ShipMeshMap; effectsManager?: EffectsManagerLike };
+
 export interface AnimationManager {
   initDone: boolean;
   animateCameraTo: (position: { x: number; y: number; z: number }, duration?: number) => Promise<void>;
@@ -56,35 +68,45 @@ export function createAnimationManager(state: GameState): AnimationManager {
 
   function animateShipSpawn(ship: Ship, renderer: RendererHandles) {
     // Find the ship mesh
-    const shipMeshes = (renderer as any).shipMeshes as Map<number, any>;
-    const mesh = shipMeshes?.get(ship.id);
+  const shipMeshes = (renderer as unknown as RendererHandlesLike).shipMeshes as ShipMeshMap | undefined;
+  const mesh = shipMeshes?.get(ship.id) as ShipMeshLike | undefined;
 
     if (!mesh) return;
 
-    // Start small and grow
-    gsap.fromTo(mesh.scale,
-      { x: 0, y: 0, z: 0 },
-      {
-        x: 1, y: 1, z: 1,
-        duration: 0.8,
-        ease: "back.out(1.7)",
-        onStart: () => {
-          // Add a subtle glow effect
-          if (mesh.material && mesh.material.emissive) {
-            gsap.fromTo(mesh.material.emissive,
-              { r: 0, g: 0, b: 0 },
-              { r: 0.2, g: 0.2, b: 0.4, duration: 0.4, yoyo: true, repeat: 1 }
-            );
+    // Start small and grow (guard mesh.scale)
+    if (mesh.scale) {
+      gsap.fromTo(mesh.scale,
+        { x: 0, y: 0, z: 0 },
+        {
+          x: 1, y: 1, z: 1,
+          duration: 0.8,
+          ease: "back.out(1.7)",
+          onStart: () => {
+            // Add a subtle glow effect
+            if (mesh.material && mesh.material.emissive) {
+              gsap.fromTo(mesh.material.emissive,
+                { r: 0, g: 0, b: 0 },
+                { r: 0.2, g: 0.2, b: 0.4, duration: 0.4, yoyo: true, repeat: 1 }
+              );
+            }
           }
         }
+      );
+    } else {
+      // Fallback: if no scale, still attempt a subtle animation on material if present
+      if (mesh.material && mesh.material.emissive) {
+        gsap.fromTo(mesh.material.emissive,
+          { r: 0, g: 0, b: 0 },
+          { r: 0.2, g: 0.2, b: 0.4, duration: 0.4, yoyo: true, repeat: 1 }
+        );
       }
-    );
+    }
   }
 
   function animateShipDestruction(ship: Ship, renderer: RendererHandles): Promise<void> {
     return new Promise((resolve) => {
-      const shipMeshes = (renderer as any).shipMeshes as Map<number, any>;
-      const mesh = shipMeshes?.get(ship.id);
+  const shipMeshes = (renderer as unknown as RendererHandlesLike).shipMeshes as ShipMeshMap | undefined;
+  const mesh = shipMeshes?.get(ship.id) as ShipMeshLike | undefined;
 
       if (!mesh) {
         resolve();
@@ -97,10 +119,12 @@ export function createAnimationManager(state: GameState): AnimationManager {
       });
 
       // Flash white
-      timeline.to(mesh.material.emissive, {
-        r: 1, g: 1, b: 1,
-        duration: 0.1
-      });
+      if (mesh.material && mesh.material.emissive) {
+        timeline.to(mesh.material.emissive, {
+          r: 1, g: 1, b: 1,
+          duration: 0.1
+        });
+      }
 
       // Scale up and rotate
       timeline.to(mesh, {
@@ -124,18 +148,20 @@ export function createAnimationManager(state: GameState): AnimationManager {
       });
 
       // Reset emissive
-      timeline.to(mesh.material.emissive, {
-        r: 0, g: 0, b: 0,
-        duration: 0.1
-      }, "<");
+      if (mesh.material && mesh.material.emissive) {
+        timeline.to(mesh.material.emissive, {
+          r: 0, g: 0, b: 0,
+          duration: 0.1
+        }, "<");
+      }
     });
   }
 
   function animateExplosion(position: { x: number; y: number; z: number }, intensity = 1.0): Promise<void> {
     return new Promise((resolve) => {
       // Create a temporary explosion sprite or use postprocessing effects
-      const effectsManager = (state.renderer as any).effectsManager;
-      if (effectsManager && effectsManager.addExplosionEffect) {
+      const effectsManager = (state.renderer as unknown as RendererHandlesLike | undefined)?.effectsManager;
+      if (effectsManager && typeof effectsManager.addExplosionEffect === 'function') {
         effectsManager.addExplosionEffect(position, intensity);
       }
 

@@ -6,6 +6,9 @@ export interface RendererConfig {
     near: number;
     far: number;
     cameraZ: number;
+    // Optional camera distance limits (min/max world units)
+    minDistance?: number;
+    maxDistance?: number;
     rotation: {
       pitch: number;
       yaw: number;
@@ -108,6 +111,8 @@ export interface RendererConfig {
       offsetY: number;
       height: number; // bar height
     };
+    // Small camera-facing Z offset applied to billboards to avoid z-fighting
+    zOffset?: number;
     colors: {
       health: {
         full: string;
@@ -126,6 +131,11 @@ export interface RendererConfig {
       width: number;
     };
   };
+
+  instancingDebug?: boolean;
+
+  // Whether to eagerly load GLTF models (set to false for lightweight deployments)
+  loadGltfModels?: boolean;
 
   // Instancing settings for performance optimization
   instancing: {
@@ -163,6 +173,8 @@ export const DefaultRendererConfig: RendererConfig = {
     near: 0.1,
     far: 10000,
     cameraZ: 900,
+    minDistance: 100,
+    maxDistance: 5000,
     rotation: {
       pitch: 0,
       yaw: 0,
@@ -256,6 +268,7 @@ export const DefaultRendererConfig: RendererConfig = {
       offsetY: -25,
       height: 4,
     },
+    zOffset: 0.002,
     colors: {
       health: {
         full: '#00ff00',
@@ -275,10 +288,12 @@ export const DefaultRendererConfig: RendererConfig = {
     },
   },
 
+  instancingDebug: true,
+
   instancing: {
     enableBullets: true, // default true for feature branch testing
-    enableBars: false, // default false until implementation is complete
-    enableShips: false, // default false until ship instancing is ready
+    enableBars: true, // default false until implementation is complete
+    enableShips: true, // default false until ship instancing is ready
     bullets: {
       initialCapacity: 800, // start with capacity for 800 bullets (raised to reduce instancer growth/warnings)
       maxCapacity: 2000, // max 2000 bullets before warning
@@ -301,6 +316,7 @@ export const DefaultRendererConfig: RendererConfig = {
 
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
+  loadGltfModels: false,
 };
 
 // Export the default config as RendererConfig for backward compatibility

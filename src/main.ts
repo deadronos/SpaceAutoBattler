@@ -1,18 +1,32 @@
 import { createInitialState, resetState, spawnFleet, spawnShip, simulateStep } from './core/gameState.js';
+// Import UI styles so webpack extracts them into a hashed CSS asset via MiniCssExtractPlugin
+import './styles/ui.css';
 // Ensure low-level GL/readPixels patches are applied as early as possible
 // so prototype wrappers and GL instrumentation are present before any
 // renderer instances are created by other modules.
 import { applyGlobalPatches } from './renderer/effects.js';
 
-try { applyGlobalPatches(); } catch (e) { /* ignore */ }
-import type { GameState, Team, UIElements } from './types/index.js';
+try { applyGlobalPatches(); } catch (_e) { void _e;/* ignore */ }
+import * as THREE from 'three';
+
+// Expose canonical Three.js runtime to globalThis so modules using different
+// bundling/resolution still reference the same constructors at runtime.
+// This mitigates "Multiple instances of Three.js being imported" issues
+// which can break attribute/constructor identity used by the renderer.
+// Keep this as early as possible in the bootstrap sequence.
+/* eslint-disable no-void */
+/* global globalThis */
+if (!(globalThis as any).THREE) {
+  (globalThis as any).THREE = THREE;
+}
+import type { GameState, UIElements, ShipClass } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
 import { loadGLTF } from './core/assetLoader.js';
 import { CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
-import { DefaultSimConfig } from './config/simConfig.js';
+// DefaultSimConfig not used here; keep config imports minimal to avoid unused-import ESLint errors
 import { getSVGLoader, loadSVGAsset } from './core/svgLoader.js';
 import * as logger from './utils/logger.js';
 import { DefaultGameConfig } from './config/gameConfig.js';
@@ -38,7 +52,7 @@ function bindUI(): UIElements {
   };
 }
 
-function randomClass(state: GameState): any { return (['fighter','corvette','frigate','destroyer','carrier'] as const)[Math.floor(state.rng.next()*5)]; }
+function randomClass(state: GameState): ShipClass { return (['fighter','corvette','frigate','destroyer','carrier'] as const as ShipClass[])[Math.floor(state.rng.next()*5)]; }
 
 function reFormFleets(state: GameState) {
   const leftX = FleetConfig.positioning.leftMargin;
@@ -62,7 +76,7 @@ function initGame(seed?: string) {
   const ui = bindUI();
   const state = createInitialState(seed);
   // Ensure there is an asset pool for GLTFs and textures
-  state.assetPool = new Map<string, any>();
+  state.assetPool = new Map<string, unknown>();
 
   // Initialize SVG loader and preload ship SVGs
   const svgLoader = getSVGLoader();
@@ -86,14 +100,12 @@ function initGame(seed?: string) {
           state.assetPool!.set(svgUrl, asset);
 
           logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
-        } catch (error) {
-          logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, error);
+        } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
         }
       }
 
       logger.debug('[main.ts] SVG asset preloading complete');
-      } catch (error) {
-      logger.error('[main.ts] Error during SVG asset preloading:', error);
+      } catch (_error) { void _error;logger.error('[main.ts] Error during SVG asset preloading:', _error);
     }
   })();
   (window as any).debugSVG = {
@@ -110,8 +122,7 @@ function initGame(seed?: string) {
       try {
         await svgLoader.reloadAllAssets();
         logger.debug('[SVG Debug] All SVG assets reloaded successfully');
-      } catch (error) {
-        logger.error('[SVG Debug] Failed to reload SVG assets:', error);
+      } catch (_error) { void _error;logger.error('[SVG Debug] Failed to reload SVG assets:', _error);
       }
     },
 
@@ -134,8 +145,16 @@ function initGame(seed?: string) {
   logger.debug('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
 
   // Optionally preload common ship assets into the pool (config-driven)
+  // Optionally preload common ship assets into the pool (config-driven)
   (async () => {
     try {
+      // Guard GLTF preloads behind configuration flag to avoid noisy 404s
+      const shouldLoadModels = (RendererConfig as any)?.loadGltfModels ?? false;
+      if (!shouldLoadModels) {
+        logger.debug('[main.ts] Skipping GLTF model preloads (RendererConfig.loadGltfModels=false)');
+        return;
+      }
+
       const classes: string[] = ['fighter','corvette','frigate','destroyer','carrier'];
       for (const cls of classes) {
         const url = `/assets/models/ship-${cls}.gltf`;
@@ -146,36 +165,64 @@ function initGame(seed?: string) {
             state.assetPool.set(`ship-${cls}-red`, res);
             state.assetPool.set(`ship-${cls}-blue`, res);
           }
-        } catch (e) { /* ignore missing assets */ }
+        } catch (_e) { void _e;/* ignore missing assets */ }
       }
-    } catch (e) { /* ignore */ }
+    } catch (_e) { void _e;/* ignore */ }
   })();
 
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
   (async () => {
     try {
-      // Create a module worker for simWorker.ts
-      const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+    // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+  const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
       let ready = false;
       let lastShipDataVersion = -1;
       
       w.addEventListener('message', (ev) => {
-        const { type, ok, transforms } = ev.data || {};
+        const data = ev.data || {};
+        const type = data.type;
+        // init handshake
         if (type === 'init-physics-done') {
-          ready = !!ok;
-        } else if (type === 'step-physics-done' && transforms) {
-          // Update ship positions and velocities from physics transforms
-          for (const transform of transforms) {
-            const ship = state.ships.find(s => s.id === transform.shipId);
-            if (ship) {
-              ship.pos.x = transform.pos.x;
-              ship.pos.y = transform.pos.y;
-              ship.pos.z = transform.pos.z;
-              ship.vel.x = transform.vel.x;
-              ship.vel.y = transform.vel.y;
-              ship.vel.z = transform.vel.z;
+          ready = !!data.ok;
+          return;
+        }
+
+        // step result: supports packed Float32Array buffer (transformsBuffer)
+        if (type === 'step-physics-done') {
+          // Prefer transferable typed-array buffer payload for low-overhead transfer
+          const buf = data.transformsBuffer || (data.transforms && data.transforms.buffer) || null;
+          if (buf) {
+            try {
+              const arr = new Float32Array(buf);
+              // Each entry is [id, px, py, pz, vx, vy, vz]
+              for (let i = 0; i < arr.length; i += 7) {
+                const id = Math.floor(arr[i]);
+                const ship = state.shipIndex?.get(id) ?? state.ships.find(s => s.id === id);
+                if (!ship) continue;
+                ship.pos.x = arr[i + 1]; ship.pos.y = arr[i + 2]; ship.pos.z = arr[i + 3];
+                ship.vel.x = arr[i + 4]; ship.vel.y = arr[i + 5]; ship.vel.z = arr[i + 6];
+              }
+            } catch (_e) { void _e;// Fallback to older object-based transforms if parsing fails
+              const transforms = data.transforms || [];
+              for (const transform of transforms) {
+                const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
+                if (ship) {
+                  ship.pos.x = transform.pos.x; ship.pos.y = transform.pos.y; ship.pos.z = transform.pos.z;
+                  ship.vel.x = transform.vel.x; ship.vel.y = transform.vel.y; ship.vel.z = transform.vel.z;
+                }
+              }
+            }
+          } else if (data.transforms) {
+            // Legacy: array of objects
+            for (const transform of data.transforms) {
+              const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
+              if (ship) {
+                ship.pos.x = transform.pos.x; ship.pos.y = transform.pos.y; ship.pos.z = transform.pos.z;
+                ship.vel.x = transform.vel.x; ship.vel.y = transform.vel.y; ship.vel.z = transform.vel.z;
+              }
             }
           }
+          return;
         }
       });
       
@@ -200,19 +247,18 @@ function initGame(seed?: string) {
             
             // Step physics
             w.postMessage({ type: 'step-physics', payload: { dt } }); 
-          } catch (e) { /* ignore */ }
+          } catch (_e) { void _e;/* ignore */ }
         },
-        dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (e) { /* ignore */ } },
+        dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (_e) { void _e;/* ignore */ } },
       };
 
       // Wait a short time for readiness, then mark initDone if ready
       setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
-    } catch (e) {
-      // Fallback to in-process physics stepper
+    } catch (_e) { void _e;// Fallback to in-process physics stepper
       try {
         const ps = await createPhysicsStepper(state as any);
         (state as any).physicsStepper = ps;
-      } catch (ee) { /* ignore */ }
+      } catch (ee) { void ee;/* ignore */ }
     }
   })();
   // Seeded initial fleets
@@ -309,8 +355,8 @@ function resetToCinematicView(state: GameState) {
   state.renderer.cameraTarget.z = centerZ;
 
   // Calculate optimal distance based on spread and camera FOV
-  const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance = (maxSpread / 2) / Math.tan(fovRadians / 2) * CameraConfig.resetToCinematic.fovMultiplier; // 1.5x for comfortable viewing
+  const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+  const optimalDistance = (maxSpread / 2) / Math.tan(_fovRadians / 2) * CameraConfig.resetToCinematic.fovMultiplier; // 1.5x for comfortable viewing
 
   // Set distance with some minimum/maximum bounds
   state.renderer.cameraDistance = Math.max(CameraConfig.cinematic.minDistance, Math.min(CameraConfig.cinematic.maxDistance, optimalDistance));
@@ -365,7 +411,7 @@ function updateCinematicCamera(state: GameState, dt: number) {
   );
 
   // Calculate optimal camera distance (show both fleets with some margin)
-  const fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+  const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
   const optimalDistance = Math.max(fleetDistance * CameraConfig.cinematic.fleetDistanceMultiplier, CameraConfig.cinematic.minDistance); // Minimum distance of 500
 
   // Smoothly interpolate camera target
@@ -409,11 +455,17 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     const deltaY = (e.clientY - lastMouseY) * sensitivity;
 
     // Update camera rotation
-    state.renderer.cameraRotation.y += deltaX;
-    state.renderer.cameraRotation.x += deltaY;
+    // Orbit controls: yaw left/right with horizontal drag; pitch up/down with vertical drag
+    // Note: invert Y so dragging up rotates camera up (natural control)
+    state.renderer.cameraRotation.y -= deltaX;
+    state.renderer.cameraRotation.x -= deltaY;
 
     // Clamp vertical rotation to prevent flipping
-    state.renderer.cameraRotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, state.renderer.cameraRotation.x));
+  const pitchLimit = (Math.PI / 2) - 0.001;
+  state.renderer.cameraRotation.x = Math.max(-pitchLimit, Math.min(pitchLimit, state.renderer.cameraRotation.x));
+  // Keep yaw within [-PI, PI] to avoid numerical drift
+  if (state.renderer.cameraRotation.y > Math.PI) state.renderer.cameraRotation.y -= Math.PI * 2;
+  if (state.renderer.cameraRotation.y < -Math.PI) state.renderer.cameraRotation.y += Math.PI * 2;
 
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
@@ -425,7 +477,7 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     e.preventDefault();
 
     const zoomSpeed = CameraConfig.controls.zoomSpeed; // Fixed zoom speed
-    const zoomDirection = e.deltaY > 0 ? 1 : -1; // Positive deltaY = zoom out (move back), negative = zoom in (move forward)
+  const zoomDirection = e.deltaY > 0 ? 1 : -1; // Positive deltaY = zoom out (move back), negative = zoom in (move forward)
 
     // Calculate camera's forward vector
     const pitch = state.renderer.cameraRotation.x;
@@ -434,17 +486,23 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     const forwardY = Math.sin(pitch);
     const forwardZ = Math.sin(yaw) * Math.cos(pitch);
 
-    // Move camera and target together along forward vector
-    const moveDistance = zoomSpeed * zoomDirection;
-    state.renderer.cameraTarget.x += forwardX * moveDistance;
-    state.renderer.cameraTarget.y += forwardY * moveDistance;
-    state.renderer.cameraTarget.z += forwardZ * moveDistance;
+  // Move camera and target together along forward vector
+  const moveDistance = zoomSpeed * zoomDirection;
+  // Use camera forward as direction; positive zoomDirection moves outward
+  state.renderer.cameraTarget.x += forwardX * moveDistance;
+  state.renderer.cameraTarget.y += forwardY * moveDistance;
+  state.renderer.cameraTarget.z += forwardZ * moveDistance;
   });
 
   // Keyboard controls for movement
   const keys: { [key: string]: boolean } = {};
   document.addEventListener('keydown', (e) => {
     keys[e.code] = true;
+
+    // Prevent browser defaults on movement keys (e.g., Space scrolling)
+    if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'ShiftLeft' || e.code === 'Space') {
+      e.preventDefault();
+    }
 
     // Cinematic camera with 'C' key
     if (e.code === 'KeyC' && state.renderer) {
@@ -464,14 +522,14 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     if (!state.renderer) return;
 
     const moveSpeed = CameraConfig.controls.moveSpeed * dt;
-    const moveVector = { x: 0, y: 0, z: 0 };
-
-    if (keys['KeyW']) moveVector.z -= moveSpeed; // Forward
-    if (keys['KeyS']) moveVector.z += moveSpeed; // Backward
-    if (keys['KeyA']) moveVector.x += moveSpeed; // Left
-    if (keys['KeyD']) moveVector.x -= moveSpeed; // Right
-    if (keys['ShiftLeft']) moveVector.y -= moveSpeed; // Down
-    if (keys['Space']) moveVector.y += moveSpeed; // Up
+    let moveForward = 0, moveRight = 0, moveUp = 0;
+  // W should move the camera forward (toward where the camera is looking).
+  if (keys['KeyW']) moveForward += moveSpeed;   // Forward (towards forward vector)
+  if (keys['KeyS']) moveForward -= moveSpeed;   // Backward
+    if (keys['KeyD']) moveRight   += moveSpeed;   // Right
+    if (keys['KeyA']) moveRight   -= moveSpeed;   // Left
+    if (keys['Space']) moveUp     += moveSpeed;   // Up
+    if (keys['ShiftLeft']) moveUp -= moveSpeed;   // Down
 
     // Check if any movement keys are pressed to exit cinematic mode
     const hasMovementInput = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || keys['ShiftLeft'] || keys['Space'];
@@ -486,31 +544,41 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
       return; // Skip manual movement when in cinematic mode
     }
 
-    // Calculate camera's local coordinate system
+    // Build an orthonormal basis from yaw/pitch to avoid warped motion
     const pitch = state.renderer.cameraRotation.x;
     const yaw = state.renderer.cameraRotation.y;
+    // Forward (where camera looks)
+    let fx = Math.cos(yaw) * Math.cos(pitch);
+    let fy = Math.sin(pitch);
+    let fz = Math.sin(yaw) * Math.cos(pitch);
+    const fl = Math.hypot(fx, fy, fz) || 1;
+    fx /= fl; fy /= fl; fz /= fl;
+  // The spherical coords above describe the camera position offset from the target.
+  // The camera's forward vector (where it looks) points from the camera into the scene -
+  // i.e., from camera position toward the target, which is the negative of the offset.
+  // Negate to align with THREE.Camera.getWorldDirection and other codepaths.
+  fx = -fx; fy = -fy; fz = -fz;
 
-    // Forward vector (direction camera is facing)
-    const forwardX = Math.cos(yaw) * Math.cos(pitch);
-    const forwardY = Math.sin(pitch);
-    const forwardZ = Math.sin(yaw) * Math.cos(pitch);
+    // Right = normalize(cross(forward, worldUp))
+    const upWorldX = 0, upWorldY = 1, upWorldZ = 0;
+    let rx = fy * upWorldZ - fz * upWorldY; // fy*0 - fz*1 = -fz
+    let ry = fz * upWorldX - fx * upWorldZ; // fz*0 - fx*0 = 0
+    let rz = fx * upWorldY - fy * upWorldX; // fx*1 - fy*0 = fx
+    const rl = Math.hypot(rx, ry, rz) || 1;
+    rx /= rl; ry /= rl; rz /= rl;
 
-    // Right vector (perpendicular to forward in horizontal plane)
-    const rightX = -Math.sin(yaw);
-    const rightY = 0;
-    const rightZ = Math.cos(yaw);
+    // Up (camera-up) = normalize(cross(right, forward))
+    let ux = ry * fz - rz * fy;
+    let uy = rz * fx - rx * fz;
+    let uz = rx * fy - ry * fx;
+    const ul = Math.hypot(ux, uy, uz) || 1;
+    ux /= ul; uy /= ul; uz /= ul;
 
-    // Up vector (perpendicular to both forward and right)
-    const upX = -Math.sin(pitch) * Math.cos(yaw);
-    const upY = Math.cos(pitch);
-    const upZ = -Math.sin(pitch) * Math.sin(yaw);
+  // Compose movement in world space: forward is along camera forward vector
+  const worldMoveX = moveRight * rx + moveUp * upWorldX + moveForward * fx;
+  const worldMoveY = moveRight * ry + moveUp * upWorldY + moveForward * fy;
+  const worldMoveZ = moveRight * rz + moveUp * upWorldZ + moveForward * fz;
 
-    // Calculate movement in world space
-    const worldMoveX = moveVector.x * rightX + moveVector.y * upX + moveVector.z * forwardX;
-    const worldMoveY = moveVector.x * rightY + moveVector.y * upY + moveVector.z * forwardY;
-    const worldMoveZ = moveVector.x * rightZ + moveVector.y * upZ + moveVector.z * forwardZ;
-
-    // Move both camera target and position together to maintain relative orientation
     state.renderer.cameraTarget.x += worldMoveX;
     state.renderer.cameraTarget.y += worldMoveY;
     state.renderer.cameraTarget.z += worldMoveZ;
@@ -528,7 +596,7 @@ function startLoops(state: GameState, ui: UIElements) {
   const fixedDt = 1 / state.simConfig.tickRate;
   let last = performance.now();
   let acc = 0;
-  let fpsAccum = 0, fpsFrames = 0, fpsTime = 0;
+  let fpsAccum = 0, fpsFrames = 0, _fpsTime = 0;
 
   function frame(now: number) {
     const dt = (now - last) / 1000; last = now;
@@ -539,7 +607,7 @@ function startLoops(state: GameState, ui: UIElements) {
       let steps = 0;
       while (acc >= fixedDt && steps < maxSteps) {
         simulateStep(state, fixedDt * state.speedMultiplier);
-        try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (e) { /* ignore if missing */ }
+        try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (_e) { void _e;/* ignore if missing */ }
         state.time += fixedDt * state.speedMultiplier; state.tick++;
         acc -= fixedDt; steps++;
       }
@@ -556,7 +624,7 @@ function startLoops(state: GameState, ui: UIElements) {
     state.renderer?.render(dt);
 
     // Stats
-    fpsAccum += dt; fpsFrames++; fpsTime += dt;
+  fpsAccum += dt; fpsFrames++; _fpsTime += dt;
     if (fpsAccum >= 0.5) {
       const fps = Math.round(fpsFrames / fpsAccum);
       ui.stats.textContent = `FPS ${fps} • Ships ${state.ships.length} • Bullets ${state.bullets.length} • Tick ${state.tick}`;
@@ -576,3 +644,5 @@ function startLoops(state: GameState, ui: UIElements) {
 logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 
 window.addEventListener('DOMContentLoaded', () => initGame());
+
+

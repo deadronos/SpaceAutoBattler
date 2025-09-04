@@ -61,6 +61,20 @@ export interface TurretAIConfig {
   minimumFireRange: number;
   /** Maximum range before firing */
   maximumFireRange: number;
+  /** Optional dynamic behavior switching configuration */
+  dynamicSwitch?: {
+    /** Enable dynamic per-turret behavior switching */
+    enabled: boolean;
+    /** Minimum duration for a chosen behavior (seconds) */
+    minDuration: number;
+    /** Maximum duration for a chosen behavior (seconds) */
+    maxDuration: number;
+    /** Weighted options for behaviors to pick from when switching */
+    options?: Array<{
+      behavior: TurretBehavior;
+      weight: number;
+    }>;
+  };
 }
 
 export interface RoamingPattern {
@@ -140,6 +154,12 @@ export interface BehaviorConfig {
     boundarySafetyMargin: number;
     
     // Separation behavior clustering thresholds
+    /**
+     * Maximum seconds into the future the turret intercept solver will consider.
+     * This prevents aiming at extremely far-future intercept points for very slow projectiles
+     * or pathological geometry. Can be tuned globally by designers.
+     */
+    maxInterceptLookahead: number;
     /** Neighbor count for very tight clusters (default: 8) */
     separationVeryTightCluster: number;
     /** Neighbor count for moderate clusters (default: 5) */
@@ -238,6 +258,16 @@ export interface BehaviorConfig {
     useDecisionEngineEvadeGate?: boolean;
     /** Feature flag: use extracted turret targeting helper instead of legacy inline logic */
     useTurretTargetingHelper?: boolean;
+    /**
+     * Per-level accuracy reduction applied to turret inaccuracy.
+     * Each level reduces inaccuracy by this fraction (e.g., 0.02 = 2% per level).
+     */
+    turretLevelAccuracyPerLevel?: number;
+    /**
+     * Maximum fraction reduction of inaccuracy from leveling (clamped).
+     * For example 0.5 means levels can reduce up to 50% of base inaccuracy.
+     */
+    turretLevelAccuracyMaxReduction?: number;
   };
 }
 
@@ -307,6 +337,19 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   leadPredictionTime: 0.5,
   minimumFireRange: 50,
   maximumFireRange: 800
+  ,
+  // Dynamic switching is disabled by default to preserve existing behavior
+  dynamicSwitch: {
+    enabled: false,
+    minDuration: 1.0,
+    maxDuration: 5.0,
+    options: [
+      { behavior: 'independent', weight: 50 },
+      { behavior: 'synchronized', weight: 20 },
+      { behavior: 'lead_target', weight: 20 },
+      { behavior: 'area_suppression', weight: 10 }
+    ]
+  }
 };
 
 /**
@@ -416,7 +459,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageDecayRate: 0.5,
     evadeSamplingCount: 8,
     evadeDistance: 200,
-  evadeOnlyOnDamage: false,
+    evadeOnlyOnDamage: false,
     evadeRecentDamageWindowSeconds: 2.0,
     evadeBaseScore: 100,
     evadeThreatPenaltyWeight: 0.5,
@@ -433,9 +476,18 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     explorationZoneDuration: 8.0
     ,
     // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
-    useDecisionEngineEvadeGate: false,
+    useDecisionEngineEvadeGate: true,
     // Turret targeting helper enabled by default after parity testing
-    useTurretTargetingHelper: true
+    useTurretTargetingHelper: true,
+  // Per-level accuracy scaling: each level reduces inaccuracy by 2%, up to 50%
+  turretLevelAccuracyPerLevel: 0.02,
+  turretLevelAccuracyMaxReduction: 0.5,
+    /**
+     * Maximum seconds into the future the turret intercept solver will consider.
+     * This prevents aiming at extremely far-future intercept points for very slow projectiles
+     * or pathological geometry. Can be tuned globally by designers.
+     */
+    maxInterceptLookahead: 5.0
   }
 };
 

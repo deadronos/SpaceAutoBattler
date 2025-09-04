@@ -66,7 +66,7 @@ export const DefaultRendererEffectsConfig: RendererEffectsConfig = {
       },
     },
     sphere: {
-      radius: 5000,
+      radius: 19200,
       geometrySegments: 32,
     },
   },

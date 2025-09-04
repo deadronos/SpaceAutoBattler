@@ -18,13 +18,35 @@ export function getForwardVector(pitch: number, yaw: number): Vector3 {
 }
 
 /**
- * Calculate right vector from yaw and roll (for banking/rolling movements)
+ * Calculate right vector from pitch, yaw, and roll.
+ *
+ * Previous implementation ignored the pitch component which caused the
+ * resulting vector to be incorrect when an object was looking straight up or
+ * down (pitch ±90°). This version builds an orthonormal basis from the forward
+ * vector and applies roll around it to obtain the right vector.
  */
-export function getRightVector(yaw: number, roll: number): Vector3 {
+export function getRightVector(pitch: number, yaw: number, roll: number): Vector3 {
+  const forward = getForwardVector(pitch, yaw);
+  // World up vector for initial basis
+  const worldUp: Vector3 = { x: 0, y: 0, z: 1 };
+  // Compute an initial right vector perpendicular to forward and world up
+  let right = cross(worldUp, forward);
+  const mag = magnitude(right);
+  if (mag < 1e-6) {
+    // Forward is parallel (or very close) to worldUp; choose arbitrary right vector
+    right = { x: 1, y: 0, z: 0 };
+  } else {
+    right = scale(right, 1 / mag);
+  }
+  // Up vector prior to roll
+  const up = cross(forward, right);
+  const cosR = Math.cos(roll);
+  const sinR = Math.sin(roll);
+  // Rotate right/up around forward axis by roll
   return {
-    x: -Math.sin(yaw) * Math.cos(roll),
-    y: Math.cos(yaw) * Math.cos(roll),
-    z: Math.sin(roll)
+    x: right.x * cosR + up.x * sinR,
+    y: right.y * cosR + up.y * sinR,
+    z: right.z * cosR + up.z * sinR
   };
 }
 
@@ -33,7 +55,7 @@ export function getRightVector(yaw: number, roll: number): Vector3 {
  */
 export function getUpVector(pitch: number, yaw: number, roll: number): Vector3 {
   const forward = getForwardVector(pitch, yaw);
-  const right = getRightVector(yaw, roll);
+  const right = getRightVector(pitch, yaw, roll);
   
   // Up = forward × right (cross product)
   return {

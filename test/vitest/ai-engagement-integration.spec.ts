@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState } from './setupTests.js';
+import { createMockGameState, createMockShip } from './setupTests.js';
+import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -23,66 +24,32 @@ describe('AI Engagement Integration Test', () => {
     const blueShips: Ship[] = [];
 
     for (let i = 0; i < 3; i++) {
-      const redShip: Ship = {
+      const fighterCfg = getShipClassConfig('fighter');
+      const redShip = createMockShip({
         id: i + 1,
         team: 'red',
         class: 'fighter',
         pos: { x: 100 + i * 50, y: 100, z: 100 },
-        vel: { x: 0, y: 0, z: 0 },
-        orientation: { pitch: 0, yaw: 0, roll: 0 },
-        targetId: null,
-        health: 100,
-        maxHealth: 100,
-        armor: 5,
-        shield: 50,
-        maxShield: 50,
-        shieldRegen: 5,
-        speed: 200,
-        turnRate: 2,
-        turrets: [{ id: 'fighter-cannon', cooldownLeft: 0 }],
-        kills: 0,
-        level: { level: 1, xp: 0, nextLevelXp: 100 },
-        aiState: {
-          currentIntent: 'idle',
-          intentEndTime: 0,
-          lastIntentReevaluation: 0,
-          preferredRange: 150,
-          recentDamage: 0,
-          lastDamageTime: 0
-        }
+      });
+      (redShip as any).aiState = {
+        currentIntent: 'idle',
+        intentEndTime: 0,
+        lastIntentReevaluation: 0,
+        preferredRange: 150,
+        recentDamage: 0,
+        lastDamageTime: 0
       };
 
-      const blueShip: Ship = {
+      const blueShip = createMockShip({
         id: i + 4,
         team: 'blue',
         class: 'fighter',
-        pos: { x: 300 + i * 50, y: 100, z: 100 }, // 200 units away
-        vel: { x: 0, y: 0, z: 0 },
-        orientation: { pitch: 0, yaw: 0, roll: 0 },
-        targetId: null,
-        health: 100,
-        maxHealth: 100,
-        armor: 5,
-        shield: 50,
-        maxShield: 50,
-        shieldRegen: 5,
-        speed: 200,
-        turnRate: 2,
-        turrets: [{ id: 'fighter-cannon', cooldownLeft: 0 }],
-        kills: 0,
-        level: { level: 1, xp: 0, nextLevelXp: 100 },
-        aiState: {
-          currentIntent: 'idle',
-          intentEndTime: 0,
-          lastIntentReevaluation: 0,
-          preferredRange: 150,
-          recentDamage: 0,
-          lastDamageTime: 0
-        }
-      };
+        pos: { x: 300 + i * 50, y: 100, z: 100 },
+      });
+  (blueShip as any).aiState = JSON.parse(JSON.stringify((redShip as any).aiState));
 
-      redShips.push(redShip);
-      blueShips.push(blueShip);
+      redShips.push(redShip as Ship);
+      blueShips.push(blueShip as Ship);
     }
 
     state.ships.push(...redShips, ...blueShips);
@@ -126,36 +93,23 @@ describe('AI Engagement Integration Test', () => {
     const ships: Ship[] = [];
 
     for (let i = 0; i < 4; i++) {
-      const ship: Ship = {
+      const team = i < 2 ? 'red' : 'blue';
+      const corvette = createMockShip({
         id: i + 1,
-        team: i < 2 ? 'red' : 'blue',
-        class: 'corvette', // Use corvettes with mixed mode for more varied behavior
-        pos: { x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100, z: 100 },
-        vel: { x: 0, y: 0, z: 0 },
-        orientation: { pitch: 0, yaw: 0, roll: 0 },
-        targetId: null,
-        health: 100,
-        maxHealth: 100,
-        armor: 5,
-        shield: 50,
-        maxShield: 50,
-        shieldRegen: 5,
-        speed: 200,
-        turnRate: 2,
-        turrets: [{ id: 'corvette-cannon', cooldownLeft: 0 }],
-        kills: 0,
-        level: { level: 1, xp: 0, nextLevelXp: 100 },
-        aiState: {
-          currentIntent: 'idle',
-          intentEndTime: 0,
-          lastIntentReevaluation: 0,
-          preferredRange: 150,
-          recentDamage: 0,
-          lastDamageTime: 0
-        }
+        team,
+        class: 'corvette',
+        pos: { x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100, z: 100 }
+      }) as Ship;
+      (corvette as any).aiState = {
+        currentIntent: 'idle',
+        intentEndTime: 0,
+        lastIntentReevaluation: 0,
+        preferredRange: 150,
+        recentDamage: 0,
+        lastDamageTime: 0
       };
 
-      ships.push(ship);
+      ships.push(corvette);
     }
 
     state.ships.push(...ships);

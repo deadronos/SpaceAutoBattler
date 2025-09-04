@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { HealthBarInstancer } from '../../src/renderer/healthBarInstancer.js';
 import { RendererConfig } from '../../src/config/rendererConfig.js';
 import type { Ship } from '../../src/types/index.js';
+import { createMockShip } from './setupTests.js';
+import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
 
 // Mock logger to avoid console spam during tests
 vi.mock('../../src/utils/logger.js', () => ({
@@ -28,20 +30,14 @@ describe('HealthBarInstancer', () => {
     // Create instancer
     instancer = new HealthBarInstancer(scene, healthBarsGroup);
 
-    // Mock ship
-    mockShip = {
+    // Mock ship derived from fighter config
+    const fighterCfg = getShipClassConfig('fighter');
+    mockShip = createMockShip({
       id: 1,
       pos: { x: 0, y: 0, z: 0 },
-      vel: { x: 0, y: 0, z: 0 },
       team: 'red',
-      class: 'fighter',
-      health: 80,
-      maxHealth: 100,
-      shield: 60,
-      maxShield: 100,
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    } as Ship;
+      class: 'fighter'
+    }) as Ship;
   });
 
   describe('Instance Management', () => {

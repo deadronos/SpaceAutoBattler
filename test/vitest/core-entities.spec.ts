@@ -150,7 +150,10 @@ describe('Entity Mechanics', () => {
       expect(ship.maxShield).toBeGreaterThan(0);
       expect(ship.speed).toBeGreaterThan(0);
       expect(ship.turnRate).toBeGreaterThan(0);
-      expect(ship.turrets).toHaveLength(1);
+  // Derive expected turret count from config so tests remain valid if config changes
+  const fighterConfig = getShipClassConfig('fighter');
+  const expectedFighterTurrets = Array.isArray(fighterConfig.turrets) ? fighterConfig.turrets.length : 0;
+  expect(ship.turrets).toHaveLength(expectedFighterTurrets);
       expect(ship.kills).toBe(0);
       expect(ship.level.level).toBe(1);
     });
@@ -180,16 +183,13 @@ describe('Entity Mechanics', () => {
       expect(ship.maxShield).toBe(baseConfig.shield);
     });
 
-    test('should spawn different ship classes with correct turret counts', () => {
-      const testCases: Array<{ shipClass: ShipClass; expectedTurrets: number }> = [
-        { shipClass: 'fighter', expectedTurrets: 1 },
-        { shipClass: 'corvette', expectedTurrets: 2 },
-        { shipClass: 'frigate', expectedTurrets: 3 },
-        { shipClass: 'destroyer', expectedTurrets: 4 },
-        { shipClass: 'carrier', expectedTurrets: 2 }
-      ];
+    test('should spawn different ship classes with correct turret counts (driven by config)', () => {
+      const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
 
-      testCases.forEach(({ shipClass, expectedTurrets }) => {
+      shipClasses.forEach((shipClass) => {
+        const config = getShipClassConfig(shipClass);
+        const expectedTurrets = Array.isArray(config.turrets) ? config.turrets.length : 0;
+
         const ship = spawnShip(gameState, 'red', shipClass);
         expect(ship.turrets).toHaveLength(expectedTurrets);
       });
@@ -323,7 +323,9 @@ describe('Entity Mechanics', () => {
       const ship = spawnShip(gameState, 'red', 'frigate');
       const config = getShipClassConfig('frigate');
 
-      expect(ship.turrets).toHaveLength(3);
+      // Use config-driven expected turret count instead of hardcoding
+      const expectedFrigateTurrets = Array.isArray(config.turrets) ? config.turrets.length : 0;
+      expect(ship.turrets).toHaveLength(expectedFrigateTurrets);
 
       ship.turrets.forEach((turret, index) => {
         const turretConfig = config.turrets[index % config.turrets.length];

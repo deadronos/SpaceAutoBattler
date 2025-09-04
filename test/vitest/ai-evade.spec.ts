@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState } from './setupTests.js';
+import { createMockGameState, createMockShip } from './setupTests.js';
 import { GameState, Ship, Vector3 } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -15,8 +15,8 @@ describe('AI Evade Behavior', () => {
   });
 
   it('should accumulate recent damage and switch to evade when threshold exceeded', () => {
-    // Create a ship that will take damage
-    const ship: Ship = {
+    // Create a ship that will take damage (derive defaults from canonical config)
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
@@ -24,17 +24,11 @@ describe('AI Evade Behavior', () => {
       vel: { x: 0, y: 0, z: 0 },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      health: 100,
-      maxHealth: 100,
       armor: 5,
-      shield: 50,
-      maxShield: 50,
       shieldRegen: 5,
       speed: 200,
       turnRate: 2,
       turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
@@ -43,7 +37,7 @@ describe('AI Evade Behavior', () => {
         recentDamage: 0,
         lastDamageTime: 0
       }
-    };
+    }) as unknown as Ship;
 
     state.ships.push(ship);
 
@@ -56,26 +50,18 @@ describe('AI Evade Behavior', () => {
     ship.aiState!.lastIntentReevaluation = state.time - 2; // Force reevaluation
 
     // Add an enemy to make evade behavior meaningful
-    const enemy: Ship = {
+    const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
       pos: { x: 150, y: 100, z: 100 }, // Close to our ship
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: 1,
-      health: 100,
-      maxHealth: 100,
       armor: 5,
-      shield: 50,
-      maxShield: 50,
       shieldRegen: 5,
       speed: 200,
       turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    };
+      turrets: []
+    }) as unknown as Ship;
 
     state.ships.push(enemy);
 
@@ -88,25 +74,13 @@ describe('AI Evade Behavior', () => {
 
   it('should increase distance from attackers during evade', () => {
     // Create a ship with evade intent
-    const ship: Ship = {
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
       pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
       turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'evade',
         intentEndTime: state.time + 5,
@@ -115,29 +89,17 @@ describe('AI Evade Behavior', () => {
         recentDamage: 25,
         lastDamageTime: state.time
       }
-    };
+    }) as unknown as Ship;
 
     // Create nearby enemy
-    const enemy: Ship = {
+    const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
       pos: { x: 120, y: 105, z: 100 }, // Close to our ship
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: 1,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    };
+      turrets: []
+    }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
 
@@ -170,34 +132,21 @@ describe('AI Evade Behavior', () => {
   });
 
   it('should decay recent damage over time', () => {
-    const ship: Ship = {
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
       pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
-      targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
       turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: 150,
-        recentDamage: 20, // Start with damage above threshold
+        recentDamage: 20,
         lastDamageTime: state.time
       }
-    };
+    }) as unknown as Ship;
 
     state.ships.push(ship);
 
@@ -222,34 +171,21 @@ describe('AI Evade Behavior', () => {
     customConfig.globalSettings.evadeDistance = 200;
     state.behaviorConfig = customConfig;
 
-    const ship: Ship = {
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
       pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
-      targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
       turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: 150,
-        recentDamage: 12, // Above custom threshold of 10
+        recentDamage: 12,
         lastDamageTime: state.time
       }
-    };
+    }) as unknown as Ship;
 
     state.ships.push(ship);
 
@@ -257,26 +193,14 @@ describe('AI Evade Behavior', () => {
     ship.aiState!.lastIntentReevaluation = state.time - 2;
 
     // Add enemy
-    const enemy: Ship = {
+    const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
       pos: { x: 150, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: 1,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    };
+      turrets: []
+    }) as unknown as Ship;
 
     state.ships.push(enemy);
 
@@ -289,34 +213,21 @@ describe('AI Evade Behavior', () => {
 
   it('should only evade within the recent damage window', () => {
     // Test that evade behavior respects the configurable time window
-    const ship: Ship = {
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
       pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
-      targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
       turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: 150,
-        recentDamage: 30, // Above threshold
-        lastDamageTime: state.time // Recently damaged
+        recentDamage: 30,
+        lastDamageTime: state.time
       }
-    };
+    }) as unknown as Ship;
 
     // Create defensive personality to test defensive evade logic
     const defensivePersonality = {
@@ -338,26 +249,14 @@ describe('AI Evade Behavior', () => {
     state.behaviorConfig!.globalSettings.evadeOnlyOnDamage = true;
     state.behaviorConfig!.globalSettings.evadeRecentDamageWindowSeconds = 2.0;
 
-    const enemy: Ship = {
+    const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
       pos: { x: 130, y: 100, z: 100 }, // Close to trigger evade
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: 1,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    };
+      turrets: []
+    }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
 
@@ -433,26 +332,14 @@ describe('AI Evade Behavior', () => {
     // Enable evadeOnlyOnDamage to test the new logic
     state.behaviorConfig!.globalSettings.evadeOnlyOnDamage = true;
 
-    const enemy: Ship = {
+    const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
       pos: { x: 130, y: 100, z: 100 }, // Close to ship
-      vel: { x: 0, y: 0, z: 0 },
-      orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: 1,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    };
+      turrets: []
+    }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
 

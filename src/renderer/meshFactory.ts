@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GameState, Ship, Bullet } from '../types/index.js';
+import type { GameState, Ship, Bullet, ShipClass } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { loadSVGAsset } from '../core/svgLoader.js';
@@ -47,7 +47,7 @@ export function createShipMesh(
   shipsGroup: THREE.Group, 
   shipMeshes: Map<number, THREE.Object3D>
 ): THREE.Object3D {
-  const pool = (state as any).assetPool as Map<string, any> | undefined;
+  const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
   const svgUrl = getShipSVGUrl(ship.class, defaultSVGConfig);
 
   const createTextured3DShip = (imageBitmap: ImageBitmap) => {
@@ -140,7 +140,7 @@ export function createShipMesh(
       const svgAsset = pool.get(svgUrl);
       if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
     }
-  } catch (e) { /* ignore */ }
+  } catch (_e) { void _e;/* ignore */ }
 
   // Fallback placeholder, and kick off async load to replace visual when ready
   const geom = new THREE.ConeGeometry(8, 24, 8);
@@ -188,7 +188,7 @@ export function createShipMesh(
           // to an instanced slot instead of adding a non-instanced textured mesh.
           if (RendererConfig.instancing.enableShips) {
             try {
-              const allocated = shipInstancer.allocate(ship.id, ship.class, ship.team);
+              const allocated = shipInstancer.allocate(ship.id, ship.class, ship.team, state);
               if (allocated) {
                 // Immediately set transform so the instance appears in the correct place
                 const q = new THREE.Quaternion();
@@ -196,13 +196,12 @@ export function createShipMesh(
                 const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
                 shipInstancer.updateTransform(ship.id, ship.pos, q, scale);
                 // Remove placeholder from scene and track a lightweight object in the mesh map
-                try { if (placeholder.parent) placeholder.parent.remove(placeholder); } catch (e) { /* ignore */ }
+                try { if (placeholder.parent) placeholder.parent.remove(placeholder); } catch (_e) { void _e;/* ignore */ }
                 shipMeshes.set(ship.id, new THREE.Object3D());
                 // Don't add the textured non-instanced mesh
                 return;
               }
-            } catch (err) {
-              logger.warn('shipInstancer.allocate during migration failed', err as any);
+            } catch (e) { void e; logger.warn('shipInstancer.allocate during migration failed', e as unknown);
             }
           }
 
@@ -212,9 +211,8 @@ export function createShipMesh(
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
           shipMeshes.set(ship.id, ship3D);
-        } catch (err) {
-          // Non-fatal - if instancer registration or migration fails, still add the textured mesh
-          logger.warn('shipInstancer.registerPrototype or migration failed', err as any);
+            } catch (e) { void e; logger.warn('shipInstancer.allocate during migration failed', e as unknown);
+          logger.warn('shipInstancer.registerPrototype or migration failed', e as unknown);
           const ship3D = createTextured3DShip(asset.imageBitmap);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
@@ -222,14 +220,76 @@ export function createShipMesh(
           shipMeshes.set(ship.id, ship3D);
         }
       }
-    } catch (err) {
-      // Loading/parsing of SVG failed — log and keep placeholder
-      logger.error('Failed to load SVG asset for ship', err);
+    } catch (e) { void e;// Loading/parsing of SVG failed — log and keep placeholder
+      logger.error('Failed to load SVG asset for ship', e as unknown);
     }
   })();
 
   // Return placeholder while async asset loads
   return placeholder;
+}
+
+/**
+ * Register instancer prototypes from preloaded assets in the state's asset pool.
+ * This builds the same geometries/materials used by `createShipMesh` and calls
+ * `shipInstancer.registerPrototype` so instanced allocations will have correct visuals.
+ */
+export function registerPrototypesFromPool(state: GameState) {
+  try {
+  const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
+  if (!pool) return;
+  const classes: ShipClass[] = ['fighter','corvette','frigate','destroyer','carrier'];
+    for (const cls of classes) {
+      try {
+        const svgUrl = getShipSVGUrl(cls, defaultSVGConfig);
+        const asset = pool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
+        if (!asset?.imageBitmap) continue;
+
+        const tex = new THREE.Texture(asset.imageBitmap);
+        tex.needsUpdate = true;
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+
+        const texturedMaterial = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
+        const teamMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, side: THREE.DoubleSide });
+
+        const size = ShipVisualConfig.ships[cls]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+        const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
+        const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
+        const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
+        const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
+        const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+        const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+
+        const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
+        const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
+
+        try {
+          // Prefer updatePrototype to replace any existing group meshes immediately
+    const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
+          if (typeof up === 'function') {
+            try {
+              up(cls, geoms, mats);
+            } catch (err) {
+              void err;
+              shipInstancer.registerPrototype(cls, geoms, mats);
+            }
+          } else {
+            shipInstancer.registerPrototype(cls, geoms, mats);
+          }
+          if (logger && typeof logger.info === 'function') logger.info(`meshFactory: registered instancer prototype for ${cls}`);
+          // Ensure both team groups exist (dev/diagnostic) by creating empty groups
+          try {
+            if (RendererConfig.instancing.enableShips) {
+              try { (shipInstancer as unknown as { ensureGroup?: (name:string, team?:string)=>void }).ensureGroup?.(cls, 'red'); } catch (_e) { void _e; }
+              try { (shipInstancer as unknown as { ensureGroup?: (name:string, team?:string)=>void }).ensureGroup?.(cls, 'blue'); } catch (_e) { void _e; }
+            }
+          } catch (_e) { void _e; }
+        } catch (_e) { void _e; }
+      } catch (_e) { void _e; }
+    }
+  } catch (_e) { void _e; }
 }
 
 /**
@@ -247,6 +307,20 @@ export function createBulletMesh(bullet: Bullet): THREE.Object3D {
  * Creates a health bar mesh with background, health, and shield components
  */
 export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState): THREE.Object3D {
+  // Defensive guard: avoid creating health bar visuals for unknown/invalid ship entries
+  const hasKnownClass = !!ShipVisualConfig.ships[ship.class as keyof typeof ShipVisualConfig.ships];
+  const posValid = Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
+  if (!hasKnownClass || !posValid) {
+    // Return an empty group as a no-op to callers expecting an Object3D
+    return new THREE.Group();
+  }
+
+  // DEV LOG: record creation of a non-instanced health bar via meshFactory
+  try {
+  console.info(`[HB_TRACE][meshFactory] createHealthBarMesh for ship=${ship.id} class=${ship.class} pos=(${ship.pos.x},${ship.pos.y},${ship.pos.z})`);
+  try { console.info(new Error('HB_STACK createHealthBarMesh').stack); } catch (_e) { void _e; }
+  } catch (_e) { void _e; }
+
   const config = RendererConfig.healthBars;
   const barGroup = new THREE.Group();
 
@@ -285,9 +359,9 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     } else {
       shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
     }
-    shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-    shieldMesh.position.z = 0.1; // slightly in front
-    barGroup.add(shieldMesh);
+  shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+  shieldMesh.position.z = 0.1; // slightly in front
+  barGroup.add(shieldMesh);
   }
 
   // Border
@@ -298,9 +372,10 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
   barGroup.add(borderMesh);
 
   // Store references for updating
-  (barGroup as any).healthMesh = healthMesh;
-  (barGroup as any).shieldMesh = shieldMesh;
-  (barGroup as any).bgMesh = bgMesh;
+  const barRef = barGroup as unknown as { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null; bgMesh?: THREE.Mesh };
+  barRef.healthMesh = healthMesh;
+  barRef.shieldMesh = shieldMesh;
+  barRef.bgMesh = bgMesh;
 
   return barGroup;
 }
@@ -310,8 +385,9 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
  */
 export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void {
   const config = RendererConfig.healthBars;
-  const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
-  const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
+  const barRef = barGroup as unknown as { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null };
+  const healthMesh = barRef.healthMesh as THREE.Mesh;
+  const shieldMesh = barRef.shieldMesh as THREE.Mesh | null;
 
   // Position the bar above the ship (3D)
   barGroup.position.set(
@@ -327,7 +403,7 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
   // Update health color based on percentage
   const healthColor = healthPercent > 0.5 ? config.colors.health.full : config.colors.health.damaged;
   if (healthMesh.material) {
-    const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+  const mat = healthMesh.material as THREE.ShaderMaterial;
     if (mat.uniforms && mat.uniforms.uColor) {
       (mat.uniforms.uColor.value as THREE.Color).set(healthColor);
     } else if ((healthMesh.material as THREE.MeshBasicMaterial).color) {
@@ -342,7 +418,7 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
 
     const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
     if (shieldMesh.material) {
-      const mat = (shieldMesh.material as any) as THREE.ShaderMaterial;
+  const mat = shieldMesh.material as THREE.ShaderMaterial;
       if (mat.uniforms && mat.uniforms.uColor) {
         (mat.uniforms.uColor.value as THREE.Color).set(shieldColor);
       } else if ((shieldMesh.material as THREE.MeshBasicMaterial).color) {
@@ -377,6 +453,8 @@ export function getPooledBillboardMaterial(
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  // Avoid depth-test issues for overlapping transparent billboards
+  (mat as THREE.ShaderMaterial & { depthTest?: boolean }).depthTest = false;
   factoryState.billboardMaterialPool.set(key, mat);
   factoryState.billboardMaterials.add(mat);
   return mat;
@@ -436,8 +514,7 @@ export function disposeMeshFactory(factoryState: MeshFactoryState): void {
   for (const mat of factoryState.billboardMaterialPool.values()) {
     try { 
       mat.dispose(); 
-    } catch (e) { 
-      /* ignore */ 
+    } catch (_e) { void _e;/* ignore */ 
     }
   }
   factoryState.billboardMaterialPool.clear();
@@ -455,3 +532,4 @@ export const meshFactory: MeshFactory = {
   getPooledBillboardMaterial,
   disposeMeshFactory
 };
+

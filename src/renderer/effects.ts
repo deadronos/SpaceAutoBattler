@@ -3,33 +3,51 @@ import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
 import { FloatType, WebGLRenderTarget, NearestFilter, RGBAFormat, UnsignedByteType } from 'three';
 import * as logger from '../utils/logger.js';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Module-scoped helpers for safe readbacks
 const tempRTCache: Record<string, WebGLRenderTarget> = {};
 const blitScene = new three.Scene();
 const blitCamera = new three.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const blitGeom = new three.PlaneGeometry(2, 2);
-const blitMat = new three.MeshBasicMaterial({ map: null as any });
+// helper to avoid repeated `asAny(x)` casts while keeping runtime behavior identical
+// Accept unknown to encourage callers to pass values without using `any` directly.
+const asAny = (v: unknown) => v as any;
+
+const blitMat = new three.MeshBasicMaterial({ map: asAny(null) });
 const blitMesh = new three.Mesh(blitGeom, blitMat);
 blitScene.add(blitMesh);
 
 const packMat = new three.ShaderMaterial({
-  uniforms: { tInput: { value: null as any } },
+  uniforms: { tInput: { value: asAny(null) } },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }',
   fragmentShader: 'precision highp float; varying vec2 vUv; uniform sampler2D tInput; vec4 packDepthToRGBA(const in float v) { vec4 enc = vec4(1.0, 256.0, 256.0*256.0, 256.0*256.0*256.0) * v; enc = fract(enc); enc -= enc.yzww * vec4(1.0/256.0, 1.0/256.0, 1.0/256.0, 0.0); return enc; } void main() { float d = texture2D(tInput, vUv).x; gl_FragColor = packDepthToRGBA(d); }',
   depthTest: false,
   depthWrite: false
 });
 
-const getTempRT = (srcRT: any) => {
-  if (!srcRT || !srcRT.width || !srcRT.height) return null;
-  const srcType = (srcRT.texture && srcRT.texture.type) || UnsignedByteType;
-  const srcFormat = (srcRT.texture && srcRT.texture.format) || RGBAFormat;
-  const needsRGBAUnsigned = !!(srcRT.depthTexture || (srcRT.texture && (srcType !== UnsignedByteType || srcFormat !== RGBAFormat)));
+
+// helper to unpack RGBA->depth for non-float packed textures (matches postprocessing logic)
+const unpackRGBAToDepth = (packedDepth: Uint8Array) => {
+  const unpackDownscale = 255 / 256;
+  const f0 = unpackDownscale;
+  const f1 = unpackDownscale / 256;
+  const f2 = unpackDownscale / (256 ** 2);
+  const f3 = 1 / (256 ** 3);
+  return (packedDepth[0] * f0 + packedDepth[1] * f1 + packedDepth[2] * f2 + packedDepth[3] * f3) / 255;
+};
+
+const getTempRT = (srcRT: unknown) => {
+  const rt: any = asAny(srcRT);
+  if (!rt || !rt.width || !rt.height) return null;
+  const srcType = (rt.texture && rt.texture.type) || UnsignedByteType;
+  const srcFormat = (rt.texture && rt.texture.format) || RGBAFormat;
+  const needsRGBAUnsigned = !!(rt.depthTexture || (rt.texture && (srcType !== UnsignedByteType || srcFormat !== RGBAFormat)));
   const type = UnsignedByteType;
-  const key = `${srcRT.width}x${srcRT.height}_${type}_${needsRGBAUnsigned ? 'RGBA_UBYTE' : 'SRC'}`;
+  const key = `${rt.width}x${rt.height}_${type}_${needsRGBAUnsigned ? 'RGBA_UBYTE' : 'SRC'}`;
   let t = tempRTCache[key];
   if (!t) {
-    t = new WebGLRenderTarget(srcRT.width, srcRT.height, {
+    t = new WebGLRenderTarget(rt.width, rt.height, {
       minFilter: NearestFilter,
       magFilter: NearestFilter,
       format: RGBAFormat,
@@ -42,22 +60,23 @@ const getTempRT = (srcRT: any) => {
   return t;
 };
 
-const blitToTemp = (rend: WebGLRenderer, srcRT: any, dstRT: WebGLRenderTarget) => {
+const blitToTemp = (rend: WebGLRenderer, srcRT: unknown, dstRT: WebGLRenderTarget) => {
   try {
-    const srcTexture = srcRT && srcRT.texture ? srcRT.texture : srcRT;
-    const isDepthSource = !!(srcRT && (srcRT.depthTexture || (srcRT.texture && (srcRT.texture.type !== UnsignedByteType || srcRT.texture.format !== RGBAFormat))));
+    const s: any = asAny(srcRT);
+    const srcTexture = s && s.texture ? s.texture : s;
+    const isDepthSource = !!(s && (s.depthTexture || (s.texture && (s.texture.type !== UnsignedByteType || s.texture.format !== RGBAFormat))));
     if (isDepthSource) {
           try {
-            (packMat as any).uniforms.tInput.value = srcTexture;
+            asAny(packMat).uniforms.tInput.value = srcTexture;
             packMat.needsUpdate = true;
-            (blitMesh as any).material = packMat as any;
-          } catch {
-            (blitMat as any).map = srcTexture;
+            asAny(blitMesh).material = asAny(packMat);
+          } catch (_e) { void _e;
+            asAny(blitMat).map = srcTexture;
             blitMat.needsUpdate = true;
-            (blitMesh as any).material = blitMat as any;
+            asAny(blitMesh).material = asAny(blitMat);
           }
     } else {
-      (blitMat as any).map = srcTexture;
+      asAny(blitMat).map = srcTexture;
       blitMat.needsUpdate = true;
       blitMesh.material = blitMat;
     }
@@ -65,30 +84,30 @@ const blitToTemp = (rend: WebGLRenderer, srcRT: any, dstRT: WebGLRenderTarget) =
     rend.render(blitScene, blitCamera);
     rend.setRenderTarget(null);
   } finally {
-    try { (blitMat as any).map = null; } catch (e) { void e; }
-    try { (packMat as any).uniforms.tInput.value = null; } catch (e) { void e; }
-    try { (blitMesh as any).material = blitMat as any; } catch (e) { void e; }
+    try { asAny(blitMat).map = null; } catch (_e) { void _e; }
+    try { asAny(packMat).uniforms.tInput.value = null; } catch (_e) { void _e; }
+    try { asAny(blitMesh).material = asAny(blitMat); } catch (_e) { void _e; }
   }
 };
 
-const readPixelsSafe = (renderer: WebGLRenderer, renderTarget: any, x: number, y: number, width: number, height: number, buffer: Uint8Array | Uint8ClampedArray) => {
-  const rendererRead = (renderer as any).readRenderTargetPixels;
-  const hasAsync = typeof (renderer as any).readRenderTargetPixelsAsync === 'function';
+const readPixelsSafe = (renderer: WebGLRenderer, renderTarget: unknown, x: number, y: number, width: number, height: number, buffer: Uint8Array | Uint8ClampedArray) => {
+  const rendererRead = asAny(renderer).readRenderTargetPixels;
+  const hasAsync = typeof asAny(renderer).readRenderTargetPixelsAsync === 'function';
   const temp = getTempRT(renderTarget);
-  const src = temp || renderTarget;
+  const src = temp || asAny(renderTarget);
   if (temp) {
-    try { blitToTemp(renderer, renderTarget, temp); } catch (e) { void e; }
+    try { blitToTemp(renderer, renderTarget, temp); } catch (_e) { void _e; }
   }
   if (hasAsync) {
-    return (renderer as any).readRenderTargetPixelsAsync(src, x, y, width, height, buffer);
+    return asAny(renderer).readRenderTargetPixelsAsync(src, x, y, width, height, buffer);
   }
   return new Promise<void>((resolve) => {
     try {
       setTimeout(() => {
-        try { rendererRead.call(renderer, src, x, y, width, height, buffer); } catch (e) { void e; }
+        try { rendererRead.call(renderer, src, x, y, width, height, buffer); } catch (_e) { void _e; }
         resolve();
       }, 0);
-    } catch (e) { void e; resolve(); }
+    } catch (_e) { void _e; resolve(); }
   });
 };
 // Lightweight wrapper around `postprocessing` to manage effect composer and passes.
@@ -109,8 +128,8 @@ export interface EffectsManager {
 export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera): EffectsManager {
   // Lazy import to avoid build-time coupling; most deployments will have `postprocessing` installed.
    
-  let pp: any = null;
-  try { pp = require('postprocessing'); } catch (e) { void e; pp = null; }
+  let pp: unknown = null;
+  try { pp = require('postprocessing'); } catch (_e) { void _e; pp = null; }
   
   if (!pp) {
     // No postprocessing available: return no-op manager
@@ -127,15 +146,16 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   }
 
   // Create composer and passes with defensive checks
-  const EffectComposer = pp.EffectComposer || pp.Composer || pp.default?.EffectComposer;
-  const RenderPass = pp.RenderPass || pp.Pass || pp.default?.RenderPass;
-  const EffectPass = pp.EffectPass || pp.Pass || pp.default?.EffectPass;
-  const BloomEffect = pp.BloomEffect || pp.default?.BloomEffect || pp.default?.SelectiveBloomEffect;
-  const ToneMappingEffect = pp.ToneMappingEffect || pp.default?.ToneMappingEffect;
-  const MotionBlurEffect = pp.MotionBlurEffect || pp.default?.MotionBlurEffect;
-  const DepthOfFieldEffect = pp.DepthOfFieldEffect || pp.default?.DepthOfFieldEffect;
-  const SMAAEffect = pp.SMAAEffect || pp.default?.SMAAEffect;
-  const FXAAEffect = pp.FXAAEffect || pp.default?.FXAAEffect;
+  const ppAny: any = asAny(pp);
+  const EffectComposer = ppAny.EffectComposer || ppAny.Composer || ppAny.default?.EffectComposer;
+  const RenderPass = ppAny.RenderPass || ppAny.Pass || ppAny.default?.RenderPass;
+  const EffectPass = ppAny.EffectPass || ppAny.Pass || ppAny.default?.EffectPass;
+  const BloomEffect = ppAny.BloomEffect || ppAny.default?.BloomEffect || ppAny.default?.SelectiveBloomEffect;
+  const ToneMappingEffect = ppAny.ToneMappingEffect || ppAny.default?.ToneMappingEffect;
+  const MotionBlurEffect = ppAny.MotionBlurEffect || ppAny.default?.MotionBlurEffect;
+  const DepthOfFieldEffect = ppAny.DepthOfFieldEffect || ppAny.default?.DepthOfFieldEffect;
+  const SMAAEffect = ppAny.SMAAEffect || ppAny.default?.SMAAEffect;
+  const FXAAEffect = ppAny.FXAAEffect || ppAny.default?.FXAAEffect;
 
   const composer = new (EffectComposer)(renderer);
 
@@ -147,32 +167,30 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // framebuffer which often trigger GPU stalls on some drivers.
   const wrapReadPixelsForRenderer = (rend: WebGLRenderer) => {
     try {
-      const orig = (rend as any).readRenderTargetPixels;
-      if (!orig || (orig as any).__effectsManagerPatched) return;
+      const orig = asAny(rend).readRenderTargetPixels;
+      if (!orig || asAny(orig).__effectsManagerPatched) return;
 
-      (rend as any).readRenderTargetPixels = function (renderTarget: any, x: number, y: number, width: number, height: number, buffer: any, activeCubeFace?: number, level?: number) {
+      asAny(rend).readRenderTargetPixels = function (renderTarget: any, x: number, y: number, width: number, height: number, buffer: any, activeCubeFace?: number, level?: number) {
         try {
           if (renderTarget && renderTarget.texture) {
             const temp = getTempRT(renderTarget);
             if (temp) {
-              try { logger.info('[EffectsManager] wrapper readRenderTargetPixels: using temp RT'); } catch (e) {}
+              try { logger.info('[EffectsManager] wrapper readRenderTargetPixels: using temp RT'); } catch (_e) { void _e;/* no-op */ }
               blitToTemp(this as WebGLRenderer, renderTarget, temp);
               return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
             }
           }
-        } catch (e) {
-          // ignore wrapper failures and fall back to original
+        } catch (_e) { void _e;// ignore wrapper failures and fall back to original
         }
         return orig.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
       };
-      (rend as any).readRenderTargetPixels.__effectsManagerPatched = true;
-    } catch (e) {
-      // best-effort
+      asAny(rend).readRenderTargetPixels.__effectsManagerPatched = true;
+    } catch (_e) { void _e;// best-effort
     }
   };
 
   // Apply wrapper to the renderer used by this manager
-  try { wrapReadPixelsForRenderer(renderer); } catch (e) { void e; }
+  try { wrapReadPixelsForRenderer(renderer); } catch (_e) { void _e; }
 
   // Instrument low-level GL readPixels to catch any callers (including
   // inlined/minified copies from the bundled runtime). This helps trace
@@ -185,63 +203,59 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // Also try to patch the three.js WebGLRenderer prototype in case the
   // bundle includes multiple copies or other modules create renderers.
   try {
-  try { logger.info('[EffectsManager] attempting to patch WebGLRenderer.prototype'); } catch (e) { void e; }
-    if (three && (three as any).WebGLRenderer && (three as any).WebGLRenderer.prototype) {
-      const proto = (three as any).WebGLRenderer.prototype;
-      if (typeof proto.readRenderTargetPixels === 'function' && !(proto.readRenderTargetPixels as any).__effectsManagerPatched) {
+  try { logger.info('[EffectsManager] attempting to patch WebGLRenderer.prototype'); } catch (_e) { void _e; }
+    if (three && asAny(three).WebGLRenderer && asAny(three).WebGLRenderer.prototype) {
+      const proto = asAny(three).WebGLRenderer.prototype;
+      if (typeof proto.readRenderTargetPixels === 'function' && !asAny(proto.readRenderTargetPixels).__effectsManagerPatched) {
         const orig = proto.readRenderTargetPixels;
         proto.readRenderTargetPixels = function (renderTarget: any, x: number, y: number, width: number, height: number, buffer: any, activeCubeFace?: number, level?: number) {
           try {
             if (renderTarget && renderTarget.texture) {
               const temp = getTempRT(renderTarget);
               if (temp) {
-                try { logger.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (e) {}
+                try { logger.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (_e) { void _e;/* no-op */ }
                 blitToTemp(this as WebGLRenderer, renderTarget, temp);
                 return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
               }
             }
-          } catch (e) {
-            // ignore wrapper failures and fall back to original
+          } catch (_e) { void _e;// ignore wrapper failures and fall back to original
           }
           return orig.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
         };
-        (proto.readRenderTargetPixels as any).__effectsManagerPatched = true;
+        asAny(proto.readRenderTargetPixels).__effectsManagerPatched = true;
       }
     }
 
     // Also attempt to patch any global WebGLRenderer constructor present
     try {
-      const g: any = globalThis as any;
-      if (g.WebGLRenderer && g.WebGLRenderer.prototype && typeof g.WebGLRenderer.prototype.readRenderTargetPixels === 'function' && !(g.WebGLRenderer.prototype.readRenderTargetPixels as any).__effectsManagerPatched) {
+      const g: any = asAny(globalThis);
+      if (g.WebGLRenderer && g.WebGLRenderer.prototype && typeof g.WebGLRenderer.prototype.readRenderTargetPixels === 'function' && !asAny(g.WebGLRenderer.prototype.readRenderTargetPixels).__effectsManagerPatched) {
         const orig2 = g.WebGLRenderer.prototype.readRenderTargetPixels;
         g.WebGLRenderer.prototype.readRenderTargetPixels = function (renderTarget: any, x: number, y: number, width: number, height: number, buffer: any, activeCubeFace?: number, level?: number) {
           try {
             if (renderTarget && renderTarget.texture) {
               const temp = getTempRT(renderTarget);
               if (temp) {
-                try { logger.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (e) {}
+                try { logger.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (_e) { void _e;/* no-op */ }
                 blitToTemp(this as WebGLRenderer, renderTarget, temp);
                 return orig2.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
               }
             }
-          } catch (e) {
-            // ignore
+          } catch (_e) { void _e;// ignore
           }
           return orig2.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
         };
-        (g.WebGLRenderer.prototype.readRenderTargetPixels as any).__effectsManagerPatched = true;
+        asAny(g.WebGLRenderer.prototype.readRenderTargetPixels).__effectsManagerPatched = true;
       }
-    } catch (e) {
-      // ignore
+    } catch (_e) { void _e;// ignore
     }
-  } catch {
-    // best-effort
+  } catch (_e) { void _e; // best-effort
   }
 
   // Expose a global helper so callers (or early bootstrap code) can apply
   // the same global-level patches before createEffectsManager is invoked.
   try {
-    const globalAny: any = (globalThis as any);
+    const globalAny: any = asAny(globalThis);
     if (!globalAny.__applyEffectsManagerGlobalPatches) {
       globalAny.__applyEffectsManagerGlobalPatches = () => {
         try {
@@ -249,21 +263,22 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
           const wrap = (proto: any, name: string) => {
             if (!proto || typeof proto[name] !== 'function') return;
             const orig = proto[name];
-            proto[name] = function () {
+            proto[name] = function (...args: any[]) {
               try {
                 const stack = (new Error()).stack || '';
                 logger.info('[EffectsManager][GL] readPixels called, stack:', stack.split('\n').slice(0,4).join(' | '));
-              } catch (e) {}
-              return orig.apply(this, arguments as any);
+              } catch (_e) { void _e;/* no-op */ }
+              return orig.apply(this, asAny(args));
             };
           };
-          wrap((globalThis as any).WebGLRenderingContext?.prototype, 'readPixels');
-          wrap((globalThis as any).WebGL2RenderingContext?.prototype, 'readPixels');
+          wrap(asAny(globalThis).WebGLRenderingContext?.prototype, 'readPixels');
+          wrap(asAny(globalThis).WebGL2RenderingContext?.prototype, 'readPixels');
           globalAny.__effectsManagerGLPatched = true;
-        } catch (e) { /* ignore */ }
+        } catch (_e) { void _e;/* ignore */ }
+          // Note: temporary early-add instrumentation removed.
       };
     }
-  } catch (e) { /* ignore */ }
+  } catch (_e) { void _e;/* ignore */ }
 
   // Safety patch: postprocessing's DepthCopyPass / DepthPickingPass perform
   // synchronous reads (renderer.readRenderTargetPixels) which can cause
@@ -271,36 +286,28 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // framebuffer/texture is still active. If possible, patch the pass so it
   // uses the non-blocking readRenderTargetPixelsAsync API.
   try {
-    const DepthCopyPass = pp.DepthCopyPass || pp.DepthSavePass || pp.DepthSavePass?.DepthCopyPass;
-    const DepthCopyMode = pp.DepthCopyMode || pp.DepthCopyMode;
+  const DepthCopyPass = ppAny.DepthCopyPass || ppAny.DepthSavePass || ppAny.DepthSavePass?.DepthCopyPass;
+  const _DepthCopyMode = ppAny.DepthCopyMode || ppAny.DepthCopyMode;
       if (DepthCopyPass && typeof DepthCopyPass.prototype.render === 'function') {
       const originalRender = DepthCopyPass.prototype.render;
-  try { logger.info('[EffectsManager] Patched DepthCopyPass.render to use async read when available'); } catch (e) { /* ignore logging errors */ }
+  try { logger.info('[EffectsManager] Patched DepthCopyPass.render to use async read when available'); } catch (_e) { void _e;/* ignore logging errors */ }
 
-      // helper to unpack RGBA->depth for non-float packed textures (matches postprocessing logic)
-      const unpackRGBAToDepth = (packedDepth: Uint8Array) => {
-        const unpackDownscale = 255 / 256;
-        const f0 = unpackDownscale;
-        const f1 = unpackDownscale / 256;
-        const f2 = unpackDownscale / (256 ** 2);
-        const f3 = 1 / (256 ** 3);
-        return (packedDepth[0] * f0 + packedDepth[1] * f1 + packedDepth[2] * f2 + packedDepth[3] * f3) / 255;
-      };
+      // use module-level unpack helper
 
       DepthCopyPass.prototype.render = function (this: any, rendererArg: WebGLRenderer, inputBuffer?: any, delta?: number) {
         // Temporarily stub out the synchronous read to avoid blocking inside
         // the original implementation. Then perform a non-blocking read
         // ourselves if a callback/request is pending.
-        const rendererRead = (rendererArg as any).readRenderTargetPixels;
-        const hasAsyncRead = typeof (rendererArg as any).readRenderTargetPixelsAsync === 'function';
+  const rendererRead = asAny(rendererArg).readRenderTargetPixels;
+  const _hasAsyncRead = typeof asAny(rendererArg).readRenderTargetPixelsAsync === 'function';
 
         // Replace sync read with a no-op while originalRender executes.
-        (rendererArg as any).readRenderTargetPixels = function () { /* noop to avoid sync read */ };
+        asAny(rendererArg).readRenderTargetPixels = function () { /* noop to avoid sync read */ };
         try {
           originalRender.call(this, rendererArg, inputBuffer, delta);
         } finally {
           // restore original
-          (rendererArg as any).readRenderTargetPixels = rendererRead;
+          asAny(rendererArg).readRenderTargetPixels = rendererRead;
         }
 
         // If the pass created a callback (DepthPickingPass usage), perform
@@ -314,17 +321,16 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
 
             let x = 0, y = 0;
             try {
-              const texelPosition = (this.fullscreenMaterial && (this.fullscreenMaterial as any).texelPosition) || { x: 0.5, y: 0.5 };
+              const texelPosition = (this.fullscreenMaterial && asAny(this.fullscreenMaterial).texelPosition) || { x: 0.5, y: 0.5 };
               if (renderTarget && renderTarget.width) x = Math.round(texelPosition.x * renderTarget.width);
               if (renderTarget && renderTarget.height) y = Math.round(texelPosition.y * renderTarget.height);
-            } catch (e) {
-              // fall back to 0,0
+            } catch (_e) { void _e;// fall back to 0,0
             }
 
             const temp = getTempRT(renderTarget);
 
-            if (temp) {
-              try { logger.info('[EffectsManager] depth-read temp=true async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (e) {}
+              if (temp) {
+              try { logger.info('[EffectsManager] depth-read temp=true async=' + _hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (_e) { void _e;/* no-op */ }
               blitToTemp(rendererArg, renderTarget, temp);
               // Use the centralized safe read helper which will prefer async API
               // and otherwise perform a deferred sync read. This makes the
@@ -333,7 +339,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                 readPixelsSafe(rendererArg, temp, x, y, 1, 1, pixelBuffer).then(() => {
                   try {
                     const value = packed ? unpackRGBAToDepth(pixelBuffer) : pixelBuffer[0];
-                    try { this.callback(value); } catch (e) { /* ignore callback errors */ }
+                    try { this.callback(value); } catch (_e) { void _e;/* ignore callback errors */ }
                   } finally {
                     this.callback = null;
                   }
@@ -341,17 +347,16 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                   // If safe-read fails unexpectedly, clear the callback to avoid leaks
                   this.callback = null;
                 });
-              } catch (err) {
-                this.callback = null;
+              } catch (_err) { void _err;this.callback = null;
               }
-            } else {
+              } else {
               // No temp RT available: fall back to previous behavior.
-              try { logger.info('[EffectsManager] depth-read temp=false async=' + hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (e) {}
-              if (hasAsyncRead) {
-                (rendererArg as any).readRenderTargetPixelsAsync(renderTarget, x, y, 1, 1, pixelBuffer).then(() => {
+              try { logger.info('[EffectsManager] depth-read temp=false async=' + _hasAsyncRead + ' src=' + (renderTarget && renderTarget.texture && renderTarget.texture.name)); } catch (_e) { void _e;/* no-op */ }
+              if (_hasAsyncRead) {
+                asAny(rendererArg).readRenderTargetPixelsAsync(renderTarget, x, y, 1, 1, pixelBuffer).then(() => {
                   try {
                     const value = packed ? unpackRGBAToDepth(pixelBuffer) : pixelBuffer[0];
-                    try { this.callback(value); } catch (e) { /* ignore callback errors */ }
+                    try { this.callback(value); } catch (_e) { void _e;/* ignore callback errors */ }
                   } finally {
                     this.callback = null;
                   }
@@ -362,15 +367,13 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                       try {
                         rendererRead.call(rendererArg, renderTarget, x, y, 1, 1, pixelBuffer);
                         const value = packed ? unpackRGBAToDepth(pixelBuffer) : pixelBuffer[0];
-                        try { this.callback(value); } catch (e) { /* ignore */ }
-                      } catch (err) {
-                        // swallow
+                        try { this.callback(value); } catch (_e) { void _e;/* ignore */ }
+                      } catch (_err) { void _err;// swallow
                       } finally {
                         this.callback = null;
                       }
                     }, 0);
-                  } catch (err) {
-                    this.callback = null;
+                  } catch (_err) { void _err;this.callback = null;
                   }
                 });
               } else {
@@ -380,26 +383,22 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                     try {
                       rendererRead.call(rendererArg, renderTarget, x, y, 1, 1, pixelBuffer);
                       const value = packed ? unpackRGBAToDepth(pixelBuffer) : pixelBuffer[0];
-                      try { this.callback(value); } catch (e) { /* ignore */ }
-                    } catch (err) {
-                      // swallow
+                      try { this.callback(value); } catch (_e) { void _e;/* ignore */ }
+                    } catch (_err) { void _err;// swallow
                     } finally {
                       this.callback = null;
                     }
                   }, 0);
-                } catch (err) {
-                  this.callback = null;
+                } catch (_err) { void _err;this.callback = null;
                 }
               }
             }
           }
-        } catch (err) {
-          // Ensure read errors don't break rendering
+        } catch (_err) { void _err;// Ensure read errors don't break rendering
         }
       };
     }
-  } catch (e) {
-    // best-effort patch; silently ignore if anything unexpected happens
+  } catch (_e) { void _e;// best-effort patch; silently ignore if anything unexpected happens
   }
 
   // Feature flags: disable heavier postprocessing passes by default to
@@ -453,8 +452,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
       composer.addPass(depthOfFieldPass);
     }
 
-    // Anti-aliasing (prefer SMAA, fallback to FXAA)
-    let aaEffect: any = null;
+  // Anti-aliasing (prefer SMAA, fallback to FXAA)
+  let aaEffect: any = null;
     if (SMAAEffect) {
       aaEffect = new SMAAEffect();
     } else if (FXAAEffect) {
@@ -482,9 +481,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
       tonePass.renderToScreen = true;
       composer.addPass(tonePass);
     }
-  } catch (e) {
-    // If any pass fails, fall back to just the render pass
-    try { if (RenderPass) composer.addPass(new RenderPass(scene, camera)); } catch (e) { /* ignore */ }
+  } catch (_e) { void _e;// If any pass fails, fall back to just the render pass
+    try { if (RenderPass) composer.addPass(new RenderPass(scene, camera)); } catch (_e) { void _e;/* ignore */ }
   }
 
   // Instance-level patch: some builds inline/duplicate postprocessing so
@@ -493,15 +491,8 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // a pixel read/callback (DepthPickingPass style) to replace the
   // synchronous read with an async read when available.
   try {
-    const hasAsyncRead = typeof (renderer as any).readRenderTargetPixelsAsync === 'function';
-    const unpackRGBAToDepth = (packedDepth: Uint8Array) => {
-      const unpackDownscale = 255 / 256;
-      const f0 = unpackDownscale;
-      const f1 = unpackDownscale / 256;
-      const f2 = unpackDownscale / (256 ** 2);
-      const f3 = 1 / (256 ** 3);
-      return (packedDepth[0] * f0 + packedDepth[1] * f1 + packedDepth[2] * f2 + packedDepth[3] * f3) / 255;
-    };
+  const _hasAsyncRead = typeof asAny(renderer).readRenderTargetPixelsAsync === 'function';
+    // reuse module-level unpack helper
 
 
     const patchInstance = (pass: any) => {
@@ -511,13 +502,13 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
 
       const original = pass.render.bind(pass);
       pass.render = function (rend: WebGLRenderer, inputBuffer?: any, delta?: number) {
-        const rendererRead = (rend as any).readRenderTargetPixels;
+        const rendererRead = asAny(rend).readRenderTargetPixels;
         // noop sync read during original render to avoid immediate ReadPixels
-        (rend as any).readRenderTargetPixels = function () { /* noop */ };
+        asAny(rend).readRenderTargetPixels = function () { /* noop */ };
         try {
           original(rend, inputBuffer, delta);
         } finally {
-          (rend as any).readRenderTargetPixels = rendererRead;
+          asAny(rend).readRenderTargetPixels = rendererRead;
         }
 
         try {
@@ -531,8 +522,7 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
               const texelPosition = (this.fullscreenMaterial && this.fullscreenMaterial.texelPosition) || { x: 0.5, y: 0.5 };
               if (renderTarget && renderTarget.width) x = Math.round(texelPosition.x * renderTarget.width);
               if (renderTarget && renderTarget.height) y = Math.round(texelPosition.y * renderTarget.height);
-            } catch (e) {
-              // fall back to 0,0
+            } catch (_e) { void _e;// fall back to 0,0
             }
 
               // Use centralized safe-read helper for instance patch too.
@@ -540,57 +530,52 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
                 readPixelsSafe(rend, renderTarget, x, y, 1, 1, pixelBuffer).then(() => {
                   try {
                     const value = packed ? unpackRGBAToDepth(pixelBuffer) : pixelBuffer[0];
-                    try { this.callback(value); } catch (e) { /* ignore callback errors */ }
+                    try { this.callback(value); } catch (_e) { void _e;/* ignore callback errors */ }
                   } finally {
                     this.callback = null;
                   }
                 }).catch(() => {
                   this.callback = null;
                 });
-              } catch (err) {
-                this.callback = null;
+              } catch (_err) { void _err;this.callback = null;
               }
           }
-        } catch (err) {
-          // never let read errors break the render loop
+        } catch (_err) { void _err;// never let read errors break the render loop
         }
       };
     };
 
     try {
-      const passes = (composer as any).passes || [];
+      const passes = asAny(composer).passes || [];
       passes.forEach(patchInstance);
-    } catch (e) {
-      // ignore
+    } catch (_e) { void _e;// ignore
     }
     // Also patch EffectComposer.prototype.addPass so any passes added later
     // (e.g. by other modules or delayed initialization) will also be wrapped.
     try {
-      const composerProto: any = (EffectComposer && (EffectComposer as any).prototype) || null;
+      const composerProto: any = (EffectComposer && asAny(EffectComposer).prototype) || null;
       if (composerProto && typeof composerProto.addPass === 'function') {
         const originalAddPass = composerProto.addPass;
         composerProto.addPass = function (this: any, pass: any) {
-          try { originalAddPass.call(this, pass); } catch (e) { /* still try to patch instance */ }
-          try { patchInstance(pass); } catch (err) { /* ignore patch errors */ }
+          try { originalAddPass.call(this, pass); } catch (_e) { void _e;/* still try to patch instance */ }
+          try { patchInstance(pass); } catch (_err) { void _err;/* ignore patch errors */ }
         };
       }
-    } catch (e) {
-      // best-effort
+    } catch (_e) { void _e;// best-effort
     }
-  } catch (e) {
-    // best-effort
+  } catch (_e) { void _e;// best-effort
   }
 
   return {
     initDone: true,
     render(dt: number) {
-      try { (composer as any).render(dt); } catch (e) { try { (composer as any).render(); } catch (_) { /* ignore */ } }
+      try { asAny(composer).render(dt); } catch (_e) { void _e;try { asAny(composer).render(); } catch (_) { void _;/* ignore */ } }
     },
     resize(width: number, height: number) {
-      try { composer.setSize(width, height); } catch (e) { /* ignore */ }
+      try { composer.setSize(width, height); } catch (_e) { void _e;/* ignore */ }
     },
     dispose() {
-      try { composer.dispose?.(); } catch (e) { /* ignore */ }
+      try { composer.dispose?.(); } catch (_e) { void _e;/* ignore */ }
     },
     setBloomIntensity(intensity: number) {
       if (bloomEffect) {
@@ -627,70 +612,77 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   // safe to call multiple times.
   export function applyGlobalPatches() {
     try {
-      const globalAny: any = (globalThis as any);
+      const globalAny: any = asAny(globalThis);
       if (globalAny.__effectsManagerGlobalPatchesApplied) return;
 
       const wrapGLRead = (proto: any, name: string) => {
         if (!proto || typeof proto[name] !== 'function') return;
         const orig = proto[name];
-        proto[name] = function () {
+        proto[name] = function (...args: any[]) {
           try {
             const stack = (new Error()).stack || '';
             logger.info('[EffectsManager][GL] readPixels called, stack:', stack.split('\n').slice(0,4).join(' | '));
-          } catch (e) {}
-          return orig.apply(this, arguments as any);
+          } catch (_e) { void _e;/* no-op */ }
+          return orig.apply(this, asAny(args));
         };
       };
 
-      try { wrapGLRead((globalThis as any).WebGLRenderingContext?.prototype, 'readPixels'); } catch (e) {}
-      try { wrapGLRead((globalThis as any).WebGL2RenderingContext?.prototype, 'readPixels'); } catch (e) {}
+      try { wrapGLRead(asAny(globalThis).WebGLRenderingContext?.prototype, 'readPixels'); } catch (_e) { void _e;/* no-op */ }
+      try { wrapGLRead(asAny(globalThis).WebGL2RenderingContext?.prototype, 'readPixels'); } catch (_e) { void _e;/* no-op */ }
 
       // Patch three.js prototype if available
       try {
-        if (three && (three as any).WebGLRenderer && (three as any).WebGLRenderer.prototype) {
-          const proto = (three as any).WebGLRenderer.prototype;
-          if (typeof proto.readRenderTargetPixels === 'function' && !(proto.readRenderTargetPixels as any).__effectsManagerPatched) {
+        if (three && asAny(three).WebGLRenderer && asAny(three).WebGLRenderer.prototype) {
+          const proto = asAny(three).WebGLRenderer.prototype;
+          if (typeof proto.readRenderTargetPixels === 'function' && !asAny(proto.readRenderTargetPixels).__effectsManagerPatched) {
             const orig = proto.readRenderTargetPixels;
             proto.readRenderTargetPixels = function (renderTarget: any, x: number, y: number, width: number, height: number, buffer: any, activeCubeFace?: number, level?: number) {
               try {
                 if (renderTarget && renderTarget.texture) {
                   const temp = getTempRT(renderTarget);
                   if (temp) {
-                    try { logger.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (e) {}
+                    try { logger.info('[EffectsManager] prototype wrapper: using temp RT'); } catch (_e) { void _e;/* no-op */ }
                     blitToTemp(this as WebGLRenderer, renderTarget, temp);
                     return orig.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
                   }
                 }
-              } catch (e) {}
+              } catch (_e) { void _e;/* no-op */ }
               return orig.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
             };
-            (proto.readRenderTargetPixels as any).__effectsManagerPatched = true;
+            asAny(proto.readRenderTargetPixels).__effectsManagerPatched = true;
           }
         }
-      } catch (e) { /* ignore */ }
+      } catch (_e) { void _e;/* ignore */ }
 
       // Patch any global WebGLRenderer constructor
       try {
-        const g: any = globalThis as any;
-        if (g.WebGLRenderer && g.WebGLRenderer.prototype && typeof g.WebGLRenderer.prototype.readRenderTargetPixels === 'function' && !(g.WebGLRenderer.prototype.readRenderTargetPixels as any).__effectsManagerPatched) {
+        const g: any = asAny(globalThis);
+        if (g.WebGLRenderer && g.WebGLRenderer.prototype && typeof g.WebGLRenderer.prototype.readRenderTargetPixels === 'function' && !asAny(g.WebGLRenderer.prototype.readRenderTargetPixels).__effectsManagerPatched) {
           const orig2 = g.WebGLRenderer.prototype.readRenderTargetPixels;
           g.WebGLRenderer.prototype.readRenderTargetPixels = function (renderTarget: any, x: number, y: number, width: number, height: number, buffer: any, activeCubeFace?: number, level?: number) {
             try {
               if (renderTarget && renderTarget.texture) {
                 const temp = getTempRT(renderTarget);
                 if (temp) {
-                  try { logger.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (e) {}
+                  try { logger.info('[EffectsManager] global prototype wrapper: using temp RT'); } catch (_e) { void _e;/* no-op */ }
                   blitToTemp(this as WebGLRenderer, renderTarget, temp);
                   return orig2.call(this, temp, x, y, width, height, buffer, activeCubeFace, level);
                 }
               }
-            } catch (e) {}
+            } catch (_e) { void _e;/* no-op */ }
             return orig2.call(this, renderTarget, x, y, width, height, buffer, activeCubeFace, level);
           };
-          (g.WebGLRenderer.prototype.readRenderTargetPixels as any).__effectsManagerPatched = true;
+          asAny(g.WebGLRenderer.prototype.readRenderTargetPixels).__effectsManagerPatched = true;
         }
-      } catch (e) { /* ignore */ }
+      } catch (_e) { void _e;/* ignore */ }
+
+      // Also install early Object3D.add wrapper now so calling
+      // applyGlobalPatches() from bootstrap will activate it before
+      // renderer modules create scene objects.
+  // Note: temporary early-add instrumentation removed.
 
       globalAny.__effectsManagerGlobalPatchesApplied = true;
-    } catch (e) { /* ignore */ }
+    } catch (_e) { void _e;/* ignore */ }
   }
+
+

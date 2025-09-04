@@ -8,26 +8,33 @@ import * as logger from '../utils/logger.js';
 
 export interface PhysicsStepper {
   initDone: boolean;
-  world: any;
+  world: unknown;
   step: (dt: number) => void;
   dispose: () => void;
   // Enhanced methods
-  addShip: (ship: any) => any;
+  addShip: (ship: unknown) => unknown;
   removeShip: (shipId: number) => void;
-  raycast: (origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance?: number) => any;
-  sphereCast: (center: { x: number; y: number; z: number }, radius: number) => any[];
+  raycast: (origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance?: number) => unknown;
+  sphereCast: (center: { x: number; y: number; z: number }, radius: number) => unknown[];
   applyForce: (shipId: number, force: { x: number; y: number; z: number }) => void;
   setGravity: (gravity: { x: number; y: number; z: number }) => void;
 }
 
 export async function createPhysicsStepper(state: GameState): Promise<PhysicsStepper> {
   // Dynamically import rapier to avoid loading WASM at module eval time.
-   
-  const Rapier = require('@dimforge/rapier3d-compat') as any;
+  const rapierMod = await import('@dimforge/rapier3d-compat');
+  type RapierAny = { default?: unknown } & Record<string, unknown>;
+  const normalize = (m: unknown): unknown => ((m as RapierAny).default ?? m);
+  const Rapier = normalize(rapierMod) as unknown;
+
+  // Helper to locally escape to any for runtime API calls without adding file-level `any` annotations
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const asAny = (v: unknown) => v as any;
 
   // Create the physics world with enhanced settings
   const gravity = { x: 0, y: 0, z: 0 }; // Space has no gravity
-  const world = new Rapier.World(gravity);
+  const RapierAny = asAny(Rapier);
+  const world = new RapierAny.World(gravity);
 
   // Configure world settings
   world.timestep = PhysicsConfig.world.timestep;
@@ -35,44 +42,43 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
   world.maxPositionIterations = PhysicsConfig.world.maxPositionIterations;
 
   // Store rigid bodies by ship ID
-  const rigidBodies = new Map<number, any>();
-  const colliders = new Map<number, any>();
+  const rigidBodies = new Map<number, unknown>();
+  const colliders = new Map<number, unknown>();
 
-  function addShip(ship: any) {
+  function addShip(ship: unknown) {
     try {
       // Create rigid body descriptor based on ship class
-      const rbDesc = Rapier.RigidBodyDesc.dynamic()
-        .setTranslation(ship.pos.x, ship.pos.y, ship.pos.z)
-        .setLinvel(ship.vel.x, ship.vel.y, ship.vel.z)
+      const rbDesc = RapierAny.RigidBodyDesc.dynamic()
+        .setTranslation(asAny(ship).pos.x, asAny(ship).pos.y, asAny(ship).pos.z)
+        .setLinvel(asAny(ship).vel.x, asAny(ship).vel.y, asAny(ship).vel.z)
         .setAngvel(0, 0, 0) // No initial angular velocity
         .setGravityScale(0) // No gravity in space
         .setLinearDamping(PhysicsConfig.damping.linear) // Small damping to prevent infinite sliding
         .setAngularDamping(PhysicsConfig.damping.angular); // Angular damping for stability
 
-      const rigidBody = world.createRigidBody(rbDesc);
-      rigidBodies.set(ship.id, rigidBody);
+  const rigidBody = asAny(world).createRigidBody(rbDesc);
+  rigidBodies.set(asAny(ship).id, rigidBody);
 
       // Create collider based on ship class
       let colliderDesc;
-      const colliderDims = PhysicsConfig.colliders[ship.class as keyof typeof PhysicsConfig.colliders];
+  const colliderDims = PhysicsConfig.colliders[asAny(ship).class as keyof typeof PhysicsConfig.colliders];
       if (colliderDims) {
-        colliderDesc = Rapier.ColliderDesc.cuboid(colliderDims.width, colliderDims.height, colliderDims.depth);
+  colliderDesc = RapierAny.ColliderDesc.cuboid(colliderDims.width, colliderDims.height, colliderDims.depth);
       } else {
         const defaultCollider = PhysicsConfig.world.defaultCollider;
-        colliderDesc = Rapier.ColliderDesc.cuboid(defaultCollider.width, defaultCollider.height, defaultCollider.depth);
+  colliderDesc = RapierAny.ColliderDesc.cuboid(defaultCollider.width, defaultCollider.height, defaultCollider.depth);
       }
 
       // Configure collider properties
-      colliderDesc.setDensity(PhysicsConfig.properties.density);
-      colliderDesc.setFriction(PhysicsConfig.properties.friction);
-      colliderDesc.setRestitution(PhysicsConfig.properties.restitution);
+  colliderDesc.setDensity(PhysicsConfig.properties.density);
+  colliderDesc.setFriction(PhysicsConfig.properties.friction);
+  colliderDesc.setRestitution(PhysicsConfig.properties.restitution);
 
-      const collider = world.createCollider(colliderDesc, rigidBody);
-      colliders.set(ship.id, collider);
+  const collider = asAny(world).createCollider(colliderDesc, rigidBody);
+  colliders.set(asAny(ship).id, collider);
 
-      return rigidBody;
-    } catch (e) {
-  logger.error('Failed to create physics body for ship:', e);
+  return rigidBody;
+    } catch (_e) { void _e;logger.error('Failed to create physics body for ship:', _e);
       return null;
     }
   }
@@ -81,24 +87,23 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
     try {
       const collider = colliders.get(shipId);
       if (collider) {
-        world.removeCollider(collider, true);
+        asAny(world).removeCollider(collider, true);
         colliders.delete(shipId);
       }
 
       const rigidBody = rigidBodies.get(shipId);
       if (rigidBody) {
-        world.removeRigidBody(rigidBody);
+        asAny(world).removeRigidBody(rigidBody);
         rigidBodies.delete(shipId);
       }
-    } catch (e) {
-      logger.error('Failed to remove physics body:', e);
+    } catch (_e) { void _e;logger.error('Failed to remove physics body:', _e);
     }
   }
 
   function raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDistance = PhysicsConfig.world.defaultRaycastDistance) {
     try {
-      const ray = new Rapier.Ray(origin, direction);
-      const hit = world.castRay(ray, maxDistance, true);
+  const ray = new RapierAny.Ray(origin, direction);
+  const hit = world.castRay(ray, maxDistance, true);
 
       if (hit) {
         return {
@@ -111,19 +116,18 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
       }
 
       return { hit: false };
-    } catch (e) {
-      logger.error('Raycast failed:', e);
+    } catch (_e) { void _e;logger.error('Raycast failed:', _e);
       return { hit: false };
     }
   }
 
   function sphereCast(center: { x: number; y: number; z: number }, radius: number) {
     try {
-      const shape = new Rapier.Ball(radius);
+  const shape = new RapierAny.Ball(radius);
       const shapePos = center;
       const shapeRot = { x: 0, y: 0, z: 0, w: 1 }; // Identity quaternion
 
-      const hit = world.castShape(shapePos, shapeRot, shape, 0, true);
+  const hit = world.castShape(shapePos, shapeRot, shape, 0, true);
 
       if (hit) {
         return [{
@@ -136,8 +140,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
       }
 
       return [];
-    } catch (e) {
-      logger.error('Sphere cast failed:', e);
+    } catch (_e) { void _e;logger.error('Sphere cast failed:', _e);
       return [];
     }
   }
@@ -146,28 +149,26 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
     try {
       const rigidBody = rigidBodies.get(shipId);
       if (rigidBody) {
-        rigidBody.addForce(force, true);
+        asAny(rigidBody).addForce(force, true);
       }
-    } catch (e) {
-      logger.error('Failed to apply force:', e);
+    } catch (_e) { void _e;logger.error('Failed to apply force:', _e);
     }
   }
 
   function setGravity(newGravity: { x: number; y: number; z: number }) {
     try {
-      world.gravity.x = newGravity.x;
-      world.gravity.y = newGravity.y;
-      world.gravity.z = newGravity.z;
-    } catch (e) {
-      logger.error('Failed to set gravity:', e);
+  world.gravity.x = newGravity.x;
+  world.gravity.y = newGravity.y;
+  world.gravity.z = newGravity.z;
+    } catch (_e) { void _e;logger.error('Failed to set gravity:', _e);
     }
   }
 
   function step(dt: number) {
     try {
       // Update physics world
-      world.timestep = dt;
-      world.step();
+  world.timestep = dt;
+  world.step();
 
       // Update ship positions and velocities from physics
       for (const [shipId, rigidBody] of rigidBodies) {
@@ -175,8 +176,8 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
         if (!ship) continue;
 
         try {
-          const translation = rigidBody.translation();
-          const linvel = rigidBody.linvel();
+          const translation = asAny(rigidBody).translation();
+          const linvel = asAny(rigidBody).linvel();
 
           ship.pos.x = translation.x;
           ship.pos.y = translation.y;
@@ -184,12 +185,10 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
           ship.vel.x = linvel.x;
           ship.vel.y = linvel.y;
           ship.vel.z = linvel.z;
-        } catch (e) {
-          logger.error('Failed to update ship from physics:', e);
+        } catch (_e) { void _e;logger.error('Failed to update ship from physics:', _e);
         }
       }
-    } catch (e) {
-      logger.error('Physics step failed:', e);
+    } catch (_e) { void _e;logger.error('Physics step failed:', _e);
     }
   }
 
@@ -209,8 +208,7 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
         rigidBodies.clear();
         colliders.clear();
         world.free?.();
-      } catch (e) {
-        logger.error('Failed to dispose physics world:', e);
+      } catch (_e) { void _e;logger.error('Failed to dispose physics world:', _e);
       }
     },
     addShip,
@@ -221,3 +219,5 @@ export async function createPhysicsStepper(state: GameState): Promise<PhysicsSte
     setGravity
   };
 }
+
+

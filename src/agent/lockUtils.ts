@@ -21,8 +21,7 @@ export function readLock(): Lock | null {
   try {
     const raw = fs.readFileSync(lockPath, "utf8");
     return JSON.parse(raw) as Lock;
-  } catch (e) {
-    void e;
+  } catch (_e) { void _e; void _e;
     return null;
   }
 }
@@ -44,7 +43,7 @@ export function acquireLock(lock: Lock): boolean {
   } catch {
     try {
       if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
-    } catch (e) { void e; }
+    } catch (_e) { void _e; void _e; }
     return false;
   }
 }
@@ -60,12 +59,21 @@ export function releaseLock(): boolean {
 
 export function appendAudit(entry: unknown) {
   // entry is intentionally untyped here; serialize best-effort
-  const safeEntry: any = entry as any;
+  const safeEntry: unknown = entry as unknown;
   const dir = path.join(repoRoot, ".ai-history");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-  const fname = path.join(
-    dir,
-    Date.now() + "-" + (safeEntry?.owner || "unknown") + ".json",
-  );
+  let owner = "unknown";
+  try {
+    if (
+      safeEntry &&
+      Object.prototype.hasOwnProperty.call(safeEntry as object, 'owner') &&
+      typeof (safeEntry as Record<string, unknown>)['owner'] === 'string'
+    ) {
+      owner = (safeEntry as Record<string, unknown>)['owner'] as string;
+    }
+  } catch { /* ignore */ }
+  const fname = path.join(dir, Date.now() + "-" + owner + ".json");
   fs.writeFileSync(fname, JSON.stringify(safeEntry, null, 2), "utf8");
 }
+
+

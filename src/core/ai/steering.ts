@@ -1,4 +1,4 @@
-import type { Vector3, SimBounds, Ship, RNG } from '../../types/index.js';
+import type { Vector3, SimBounds, Ship, RNG as _RNG } from '../../types/index.js';
 import type { BehaviorConfig } from '../../config/behaviorConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn } from '../../utils/vector3.js';
 import { PhysicsConfig } from '../../config/physicsConfig.js';

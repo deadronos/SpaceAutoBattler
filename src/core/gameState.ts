@@ -1,17 +1,14 @@
 import type { GameState, Ship, ShipClass, Team, Vector3, EntityId, Bullet, TurretState } from '../types/index.js';
 import { DefaultSimConfig } from '../config/simConfig.js';
-import { SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
+import { SHIP_CLASS_CONFIGS as _SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
 import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
 import { FleetConfig } from '../config/fleetConfig.js';
-import { PhysicsConfig } from '../config/physicsConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
-import { lookAt, getForwardVector, angleDifference, clampTurn } from '../utils/vector3.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
-import { findNearestEnemy as sharedFindNearestEnemy, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends } from './searchUtils.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 
 export function createInitialState(seed?: string): GameState {
@@ -92,7 +89,22 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   const level = { level: 1, xp: 0, nextLevelXp: nextLevelXp(1) };
   const maxHealth = Math.floor(applyLevelUps(level.level, cfg.baseHealth));
   const maxShield = Math.floor(applyLevelUps(level.level, cfg.shield));
-  const turrets: TurretState[] = cfg.turrets.map((t, i) => ({ id: `${t.id}-${i}`, cooldownLeft: 0 }));
+  const _globalTurretCfg = state.behaviorConfig?.turretConfig;
+  const turrets: TurretState[] = cfg.turrets.map((t, i) => {
+    const pref = (t as unknown as { preferredBehavior?: string }).preferredBehavior;
+    if (pref && pref !== 'dynamic') {
+      // Designer explicitly set a preferred behavior -> initialize aiState with that behavior
+      const aiState = {
+        targetId: null as EntityId | null,
+        lastTargetUpdate: 0,
+        behavior: pref as import('../config/behaviorConfig.js').TurretBehavior,
+        behaviorExpireTime: Infinity
+      };
+      return { id: `${t.id}-${i}`, cooldownLeft: 0, aiState };
+    }
+    // Otherwise, do not initialize aiState here - AIController will set it lazily
+    return { id: `${t.id}-${i}`, cooldownLeft: 0 };
+  });
   const p = pos ?? randomSpawnPos(state, team);
   // Initialize with random yaw, level pitch and roll for natural spawning
   const randomYaw = state.rng.next() * Math.PI * 2;
@@ -162,9 +174,7 @@ export function spawnFleet(state: GameState, team: Team, count = 5) {
 }
 
 // Delegate nearest-enemy lookup to shared search utilities (spatial-grid preferred)
-function findNearestEnemy(state: GameState, ship: Ship): Ship | undefined {
-  return sharedFindNearestEnemy(state, ship) || undefined;
-}
+// Note: use sharedFindNearestEnemy directly where needed - helper removed to avoid unused symbol
 
 function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -191,27 +201,67 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
     const tCfg = cfg.turrets[i % cfg.turrets.length];
     if (tState.cooldownLeft > 0) continue;
     if (dist > tCfg.range) continue;
-    // Fire: create bullet towards target
-    const id = state.nextId++;
-    const dir = Math.atan2(dy, dx);
-    const speed = tCfg.bulletSpeed;
-    const bullet: Bullet = {
-      id,
-      ownerShipId: ship.id,
-      ownerTeam: ship.team,
-      pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
-      vel: { x: Math.cos(dir) * speed, y: Math.sin(dir) * speed, z: 0 },
-      ttl: 3,
-      damage: tCfg.damage,
+
+    // Prefer per-turret lead position if available (computed by AIController when behavior='lead_target')
+    const leadPos = tState.aiState?.leadTargetPos ?? target.pos;
+
+    // If turret behavior is suppression, fire a spread of bullets around leadPos
+  const isSuppression = tState.aiState?.behavior === 'area_suppression';
+  const spreadCount = isSuppression ? (tState.aiState?.suppressionCount ?? 5) : 1;
+  const spreadAngle = isSuppression ? (tState.aiState?.suppressionAngle ?? (Math.PI / 12)) : 0;
+
+
+
+    // Helper: generate a direction vector for a spread index within a cone around the central direction
+    const makeSpreadDir = (index: number, total: number, centerDir: { x: number; y: number; z: number }) => {
+      if (total <= 1) return centerDir;
+      // Evenly sample azimuth around center and jitter by elevation within spreadAngle
+  const _az = (index / total) * Math.PI * 2;
+      const el = (-(total-1)/2 + index) / Math.max(1, total-1) * spreadAngle;
+      // Rotate centerDir by azimuth around Z and then apply small elevation by mixing with perpendicular vector
+      // For simplicity, assume centerDir primarily in XY plane; compute perp in XY
+      const perp = { x: -centerDir.y, y: centerDir.x, z: 0 };
+      const perpLen = Math.hypot(perp.x, perp.y, perp.z) || 1;
+      perp.x /= perpLen; perp.y /= perpLen; perp.z /= perpLen;
+      // Mix centerDir and perp by elevation
+      const cosEl = Math.cos(el);
+      const sinEl = Math.sin(el);
+      return {
+        x: centerDir.x * cosEl + perp.x * sinEl,
+        y: centerDir.y * cosEl + perp.y * sinEl,
+        z: centerDir.z * cosEl + perp.z * sinEl
+      };
     };
-    state.bullets.push(bullet);
+
+    // Fire: single or multiple bullets depending on suppression
+    for (let s = 0; s < spreadCount; s++) {
+      const dirX = leadPos.x - ship.pos.x;
+      const dirY = leadPos.y - ship.pos.y;
+      const dirZ = leadPos.z - ship.pos.z;
+      const centerLen = Math.hypot(dirX, dirY, dirZ) || 1;
+      const centerDir = { x: dirX / centerLen, y: dirY / centerLen, z: dirZ / centerLen };
+      const spreadDir = makeSpreadDir(s, spreadCount, centerDir);
+      const dirLen = Math.hypot(spreadDir.x, spreadDir.y, spreadDir.z) || 1;
+      const id = state.nextId++;
+      const bullet: Bullet = {
+        id,
+        ownerShipId: ship.id,
+        ownerTeam: ship.team,
+        pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
+        vel: { x: (spreadDir.x / dirLen) * tCfg.bulletSpeed, y: (spreadDir.y / dirLen) * tCfg.bulletSpeed, z: (spreadDir.z / dirLen) * tCfg.bulletSpeed },
+        ttl: state.simConfig.bulletLifetime,
+        damage: tCfg.damage,
+      };
+      state.bullets.push(bullet);
+    }
     tState.cooldownLeft = tCfg.cooldown;
   }
 }
 
+
 function updateBullets(state: GameState, dt: number) {
-  const { width, height, depth } = state.simConfig.simBounds;
-  const behavior = state.simConfig.boundaryBehavior.bullets;
+  const { width: _width, height: _height, depth: _depth } = state.simConfig.simBounds;
+  const _behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
 
   for (const b of state.bullets) {
     b.ttl -= dt;
@@ -396,6 +446,80 @@ export function simulateStep(state: GameState, dt: number) {
       runBoundaryCleanup(state);
     }
   }
+
+  // Floating point / timer normalization to avoid drift in very long runs
+  // Runs every `fpNormalizeIntervalTicks` ticks (configurable)
+  // Read optional custom setting safely (avoid `any`) - fall back to 600 ticks
+  const _gs = (state.behaviorConfig?.globalSettings as unknown) as Record<string, unknown> | undefined;
+  const fpNormalizeInterval = (typeof _gs?.fpNormalizeIntervalTicks === 'number') ? (_gs!.fpNormalizeIntervalTicks as number) : 600;
+  if ((state.tick % fpNormalizeInterval) === 0) {
+    normalizeFloatingPointState(state);
+  }
+}
+
+/**
+ * Normalize floating point state occasionally to prevent drift in very long
+ * running simulations. This performs a rebase of time/tick counters and
+ * clamps very small velocity/pos jolts to zero. It also normalizes any
+ * turret/ai timestamps so relative times remain valid.
+ */
+function normalizeFloatingPointState(state: GameState) {
+  try {
+    // Keep relative times small by rebasing when time grows large
+    const TIME_REBASE_THRESHOLD = 1e6; // seconds (~11.5 days) - adjust as needed
+    const EPS = 1e-9; // small epsilon to zero-out negligible values
+
+    if (Math.abs(state.time) > TIME_REBASE_THRESHOLD) {
+      const base = Math.floor(state.time);
+      // Subtract base from all time-like fields
+      state.time -= base;
+      // lastDamageTime, ai timestamps, shield hit times, turret aiState times
+      for (const s of state.ships) {
+        if (s.lastDamageTime !== undefined) s.lastDamageTime = (s.lastDamageTime as number) - base;
+        if (s.aiState) {
+          if (s.aiState.lastDamageTime !== undefined) s.aiState.lastDamageTime = (s.aiState.lastDamageTime as number) - base;
+        }
+        if (s.lastShieldHitTime !== undefined) s.lastShieldHitTime = (s.lastShieldHitTime as number) - base;
+        for (const t of s.turrets) {
+          if (t.aiState) {
+            if (t.aiState.lastTargetUpdate !== undefined) t.aiState.lastTargetUpdate = (t.aiState.lastTargetUpdate as number) - base;
+            if (t.aiState.behaviorExpireTime !== undefined && isFinite(t.aiState.behaviorExpireTime)) t.aiState.behaviorExpireTime = (t.aiState.behaviorExpireTime as number) - base;
+          }
+        }
+      }
+      // If bullets tracked by time (ttl only), no need to shift as ttl is relative
+    }
+
+    // Clamp extremely small positional/velocity noise to zero to avoid accumulating fp error
+    for (const s of state.ships) {
+      if (Math.abs(s.pos.x) < EPS) s.pos.x = 0;
+      if (Math.abs(s.pos.y) < EPS) s.pos.y = 0;
+      if (Math.abs(s.pos.z) < EPS) s.pos.z = 0;
+      if (Math.abs(s.vel.x) < EPS) s.vel.x = 0;
+      if (Math.abs(s.vel.y) < EPS) s.vel.y = 0;
+      if (Math.abs(s.vel.z) < EPS) s.vel.z = 0;
+      // Normalize very small orientation jitter
+      if (s.orientation) {
+        if (Math.abs(s.orientation.pitch) < EPS) s.orientation.pitch = 0;
+        if (Math.abs(s.orientation.yaw) < EPS) s.orientation.yaw = 0;
+        if (Math.abs(s.orientation.roll) < EPS) s.orientation.roll = 0;
+      }
+      // Turret cooldown tiny values to zero
+      for (const t of s.turrets) {
+        if (Math.abs(t.cooldownLeft) < EPS) t.cooldownLeft = 0;
+      }
+    }
+
+    // Also clamp tiny bullet velocities/positions
+    for (const b of state.bullets) {
+      if (Math.abs(b.pos.x) < EPS) b.pos.x = 0;
+      if (Math.abs(b.pos.y) < EPS) b.pos.y = 0;
+      if (Math.abs(b.pos.z) < EPS) b.pos.z = 0;
+      if (Math.abs(b.vel.x) < EPS) b.vel.x = 0;
+      if (Math.abs(b.vel.y) < EPS) b.vel.y = 0;
+      if (Math.abs(b.vel.z) < EPS) b.vel.z = 0;
+    }
+  } catch (_e) { void _e; /* best-effort normalization; ignore errors */ }
 }
 
 function runBoundaryCleanup(state: GameState) {

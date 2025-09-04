@@ -1,0 +1,182 @@
+[
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1770,
+      "y": 400,
+      "z": 944.3176285736263
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1740,
+      "y": 400,
+      "z": 987.2543082013726
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1710,
+      "y": 400,
+      "z": 912.5187172694132
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1680,
+      "y": 400,
+      "z": 953.1983156362548
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1650,
+      "y": 400,
+      "z": 925.6208143103868
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1620,
+      "y": 400,
+      "z": 995.3823306038976
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1770,
+      "y": 400,
+      "z": 944.3176285736263
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1740,
+      "y": 400,
+      "z": 987.2543082013726
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1710,
+      "y": 400,
+      "z": 912.5187172694132
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1680,
+      "y": 400,
+      "z": 953.1983156362548
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1650,
+      "y": 400,
+      "z": 925.6208143103868
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  },
+  {
+    "name": null,
+    "uuid": null,
+    "position": {
+      "x": 1620,
+      "y": 400,
+      "z": 995.3823306038976
+    },
+    "visible": true,
+    "materialType": null,
+    "materialUuid": null,
+    "geometryType": null,
+    "parentName": null,
+    "userData": null
+  }
+]

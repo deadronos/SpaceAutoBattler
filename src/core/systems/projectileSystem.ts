@@ -93,8 +93,7 @@ export class ProjectileSystem {
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
-      } catch (error) {
-        logger.warn('Error in projectile event handler:', error);
+      } catch (_error) { void _error;logger.warn('Error in projectile event handler:', _error);
       }
     }
   }
@@ -131,11 +130,73 @@ export class ProjectileSystem {
 
     // Create bullet
     const bulletId = this.allocateId();
-    const direction = distance > 0 ? {
+    // Base aim direction (unit)
+    let direction = distance > 0 ? {
       x: dx / distance,
       y: dy / distance,
       z: dz / distance
     } : { x: 1, y: 0, z: 0 };
+
+    // Apply accuracy/spread based on turret config and ship level
+    try {
+      const turretAccuracy = typeof turretConfig.accuracy === 'number' ? turretConfig.accuracy : 1.0;
+      const maxSpread = typeof turretConfig.maxSpreadRadians === 'number' ? turretConfig.maxSpreadRadians : (2 * Math.PI) / 180; // default 2 deg
+
+  // Ship level reduction factor: configurable via behaviorConfig.globalSettings
+  const shipLevel = sourceShip.level?.level ?? 1;
+  const globalSettings = this.state.behaviorConfig ? this.state.behaviorConfig.globalSettings : undefined;
+  const perLevel = globalSettings && typeof globalSettings.turretLevelAccuracyPerLevel === 'number' ? globalSettings.turretLevelAccuracyPerLevel : 0.02;
+  const maxReduction = globalSettings && typeof globalSettings.turretLevelAccuracyMaxReduction === 'number' ? globalSettings.turretLevelAccuracyMaxReduction : 0.5;
+  const levelReduction = Math.max(0, Math.min(maxReduction, (shipLevel - 1) * perLevel));
+
+      const baseInaccuracy = Math.max(0, 1 - turretAccuracy);
+      const finalInaccuracy = baseInaccuracy * (1 - levelReduction);
+
+      if (finalInaccuracy > 1e-6) {
+        const coneAngle = finalInaccuracy * maxSpread; // actual cone half-angle to sample within
+
+        // deterministic RNG from game state (falls back to Math.random if absent)
+        const rngNext = (this.state && this.state.rng && typeof this.state.rng.next === 'function')
+          ? (() => this.state.rng.next())
+          : Math.random;
+
+        // Sample a direction uniformly inside cone around 'direction'
+        // Method: pick z = cos(theta) uniformly between cos(coneAngle) and 1, pick phi uniform 0..2pi
+        const cosTheta = 1 - (1 - Math.cos(coneAngle)) * rngNext();
+        const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
+        const phi = 2 * Math.PI * rngNext();
+
+        // Build orthonormal basis around original direction
+        const ux = direction.x, uy = direction.y, uz = direction.z;
+        // Find a vector not parallel to u
+        let vx: number, vy: number, vz: number;
+        if (Math.abs(ux) < 0.9) {
+          // cross with x-axis
+          vx = 0; vy = -uz; vz = uy;
+        } else {
+          // cross with y-axis
+          vx = uz; vy = 0; vz = -ux;
+        }
+        // normalize v
+        const vlen = Math.sqrt(vx*vx + vy*vy + vz*vz) || 1;
+        vx /= vlen; vy /= vlen; vz /= vlen;
+        // w = u x v
+        const wx = uy * vz - uz * vy;
+        const wy = uz * vx - ux * vz;
+        const wz = ux * vy - uy * vx;
+
+        // Spherical sample in basis: sampled = cosTheta * u + sinTheta * (cos(phi)*v + sin(phi)*w)
+        const sampledX = cosTheta * ux + sinTheta * (Math.cos(phi) * vx + Math.sin(phi) * wx);
+        const sampledY = cosTheta * uy + sinTheta * (Math.cos(phi) * vy + Math.sin(phi) * wy);
+        const sampledZ = cosTheta * uz + sinTheta * (Math.cos(phi) * vz + Math.sin(phi) * wz);
+        // normalize just in case
+        const sLen = Math.sqrt(sampledX*sampledX + sampledY*sampledY + sampledZ*sampledZ) || 1;
+        direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
+      }
+    } catch (e) {
+      // If anything goes wrong, fall back to perfect aim
+      void e;
+    }
 
     const bullet: Bullet = {
       id: bulletId,
@@ -450,3 +511,4 @@ export class ProjectileSystem {
     return this.state.nextId++;
   }
 }
+

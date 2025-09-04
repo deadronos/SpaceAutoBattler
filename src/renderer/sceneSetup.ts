@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import type { GameState } from '../types/index.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
-import { RendererConfig } from '../config/rendererConfig.js';
 import { skyboxVertexShader, skyboxFragmentShader } from './shaders/skyboxShader.js';
 import * as logger from '../utils/logger.js';
 
@@ -55,7 +54,8 @@ export function setupScene(state: GameState): SceneElements {
   } catch {
     // ignore - test environments may not support canvas
   }
-  const animatedCube = new THREE.CubeTexture(skyboxCanvases as any);
+  const canvases = skyboxCanvases as unknown as HTMLCanvasElement[];
+  const animatedCube = new THREE.CubeTexture(canvases);
   animatedCube.needsUpdate = true;
   
   // Add lighting

@@ -11,11 +11,38 @@ export class FileWatcher {
   private pollIntervals = new Map<string, number>();
   private lastModifiedTimes = new Map<string, number>();
   private pollInterval = 1000; // Check every second
+  // When true, the watcher will perform a single check at watch() time
+  // and then not start continuous polling. This is safer for production
+  // builds where assets are static and avoids continuous HEAD requests.
+  private oneShotMode = true;
 
   // Watch a file for changes
   watch(filePath: string, callback: FileChangeCallback): void {
     // Stop existing watcher if any
     this.unwatch(filePath);
+
+    // If this is a standalone inlined build and the file is an inlined SVG,
+    // don't start the network polling — treat it as created and use a
+    // surrogate mod-time. This avoids any HEAD requests entirely.
+    try {
+      const standalone = (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
+                         (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
+      const inlineAssets = (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
+                           (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
+      if (standalone && inlineAssets && typeof filePath === 'string' && filePath.endsWith('.svg')) {
+        this.watchers.set(filePath, callback);
+        const cleaned = filePath.split(/[?#]/)[0];
+        const m = cleaned.match(/([^/]+)\.svg$/);
+        const name = m ? m[1] : null;
+        if (name && inlineAssets[name]) {
+          // Treat as created with current time and don't start interval
+          this.lastModifiedTimes.set(filePath, Date.now());
+          // Notify immediately as created
+          this.notifyChange(filePath, 'created');
+          return;
+        }
+      }
+    } catch { /* ignore and fall back to normal behavior */ }
 
     this.watchers.set(filePath, callback);
 
@@ -26,12 +53,14 @@ export class FileWatcher {
       }
     });
 
-    // Start polling
-    const intervalId = setInterval(() => {
-      this.checkFile(filePath);
-    }, this.pollInterval) as unknown as number;
+    // Start polling only when not in one-shot mode
+    if (!this.oneShotMode) {
+      const intervalId = setInterval(() => {
+        this.checkFile(filePath);
+      }, this.pollInterval) as unknown as number;
 
-    this.pollIntervals.set(filePath, intervalId);
+      this.pollIntervals.set(filePath, intervalId);
+    }
   }
 
   // Stop watching a file
@@ -73,9 +102,8 @@ export class FileWatcher {
       }
 
       return modTime;
-    } catch (error) {
-      // Use centralized logger
-      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, error); } catch (e) { void e; }
+    } catch (_error) { void _error;// Use centralized logger
+      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, _error); } catch (_e) { void _e; void _e; }
       return null;
     }
   }
@@ -83,6 +111,32 @@ export class FileWatcher {
   // Get file modification time
   private async getFileModificationTime(filePath: string): Promise<number | null> {
     try {
+      // If the app has inlined SVG assets (standalone), skip network HEAD checks
+      // for those assets to avoid aborted HEAD requests in the browser.
+      try {
+    logger.debug && logger.debug('[FileWatcher] getFileModificationTime called for', filePath);
+        // If the runtime was produced by the standalone inliner, honor the
+        // explicit standalone flag and short-circuit any network HEAD checks
+        // for SVG assets. This prevents browsers from issuing transient HEAD
+        // requests (which can be aborted) when assets are embedded.
+        const standalone = (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
+                           (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
+        const inlineAssets = (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
+                             (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
+        if (standalone && inlineAssets && typeof filePath === 'string' && filePath.endsWith('.svg')) {
+          const cleaned = filePath.split(/[?#]/)[0];
+          const m = cleaned.match(/([^/]+)\.svg$/);
+          const name = m ? m[1] : null;
+          // Diagnostic: log standalone and presence in inlineAssets
+          try { logger.debug && logger.debug('[FileWatcher] standalone=', standalone, 'inlineHasKeys=', Object.keys(inlineAssets).slice(0,5)); } catch (_) { }
+          try { logger.debug && logger.debug('[FileWatcher] checking asset', name, 'present=', !!(name && inlineAssets && inlineAssets[name])); } catch (_) { }
+          if (name && inlineAssets[name]) {
+            logger.debug && logger.debug('[FileWatcher] Short-circuited HEAD for inlined asset ' + name + ' path ' + filePath);
+            return Date.now();
+          }
+        }
+      } catch { }
+    logger.debug && logger.debug('[FileWatcher] Issuing HEAD for', filePath);
       // Try HEAD request to get last-modified header
       const response = await fetch(filePath, {
         method: 'HEAD',
@@ -112,7 +166,7 @@ export class FileWatcher {
       // Last resort: use current time (not ideal but prevents errors)
       return Date.now();
 
-    } catch (e) { void e; return null; }
+    } catch (_e) { void _e; void _e; return null; }
   }
 
   // Notify callback about file change
@@ -121,8 +175,7 @@ export class FileWatcher {
     if (callback) {
       try {
         callback(filePath, changeType);
-      } catch (error) {
-        try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, error); } catch (e) { void e; }
+      } catch (_error) { void _error;try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, _error); } catch (_e) { void _e; void _e; }
       }
     }
   }
@@ -161,6 +214,31 @@ export class FileWatcher {
     });
   }
 
+  // Toggle one-shot mode. Default is true (check once at watch time).
+  // Call setOneShotMode(false) to enable continuous polling behavior.
+  setOneShotMode(oneShot: boolean) {
+    this.oneShotMode = !!oneShot;
+
+    // If switching from one-shot to continuous, restart watchers
+    if (!this.oneShotMode) {
+      const filePaths = Array.from(this.watchers.keys());
+      filePaths.forEach(fp => {
+        // restart watch to ensure interval is set
+        const cb = this.watchers.get(fp);
+        if (cb) {
+          this.unwatch(fp);
+          this.watch(fp, cb);
+        }
+      });
+    } else {
+      // If switching to one-shot, clear all intervals
+      this.pollIntervals.forEach((id, fp) => {
+        clearInterval(id);
+        this.pollIntervals.delete(fp);
+      });
+    }
+  }
+
   // Force check all watched files immediately
   async checkAllFiles(): Promise<void> {
     const filePaths = Array.from(this.watchers.keys());
@@ -188,3 +266,4 @@ export function unwatchSVGFiles(svgUrls: string[]): void {
   const watcher = getFileWatcher();
   svgUrls.forEach(url => watcher.unwatch(url));
 }
+

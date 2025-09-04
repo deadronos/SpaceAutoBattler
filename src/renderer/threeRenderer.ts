@@ -2,16 +2,17 @@ import * as THREE from 'three';
 import * as logger from '../utils/logger.js';
 import type { GameState, RendererHandles, Ship, Bullet } from '../types/index.js';
 import { createEffectsManager } from './effects.js';
-import { loadGLTF } from '../core/assetLoader.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
-import { getSVGLoader, loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
+import { loadSVGAsset } from '../core/svgLoader.js';
 import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
+import { setCachedCameraBasis } from './cameraManager.js';
+import { _ } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
@@ -27,16 +28,140 @@ const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 const tempCamRight = new THREE.Vector3();
 const tempCamUp = new THREE.Vector3(); 
 const tempCamForward = new THREE.Vector3();
-const tempWorldUp = new THREE.Vector3(0, 1, 0);
+const tempQuat = new THREE.Quaternion();
+
+// Note: temporary debug instrumentation removed.
 
 export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement): RendererHandles {
+  // Narrow global debug helpers used by the renderer for safer casting
+  type DebugHelpers = Partial<{
+    __applyEffectsManagerGlobalPatches: () => void;
+    __listNonInstancedMeshes: (opts?: { near?: { x:number,y:number,z:number, radius:number } }) => any[];
+    __focusCameraOn: (pos:{x:number,y:number,z:number}, distance?:number) => any;
+    scene: THREE.Scene;
+    threeCamera: THREE.Camera;
+    __dumpShipsNearBounds: (r?: number) => any[];
+    __listInstancedHealthBarShips: () => number[];
+    __listShipsWithHealthBar: () => number[];
+    __hbInstancerStats: () => any;
+    __hbDebugScale: (shipId:number) => number | null;
+    __hbDebugMatrix: (shipId:number) => any | null;
+    __hbPeriodicStart: () => void;
+    __hbPeriodicStop: () => void;
+  }>;
+  const gAny = globalThis as unknown as DebugHelpers;
   // Apply global readPixels/prototype patches early, if available.
   try {
-    const gAny: any = (globalThis as any);
     if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
-      try { gAny.__applyEffectsManagerGlobalPatches(); } catch (e) { /* ignore */ }
+      try { gAny.__applyEffectsManagerGlobalPatches(); } catch { /* ignore */ }
     }
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
+
+  // Helper: list non-instanced meshes with world positions. Optional filter: { near: {x,y,z, radius} }
+  try {
+    (globalThis as any).__listNonInstancedMeshes = function(opts?: { near?: { x:number,y:number,z:number, radius:number } }) {
+      const out: any[] = [];
+      const groups = [shipsGroup, bulletsGroup, healthBarsGroup, shieldEffectsGroup, scene];
+      const near = opts && opts.near ? opts.near : null;
+      const checkNear = (p:{x:number,y:number,z:number}) => {
+        if (!near) return true;
+        const dx = p.x - near.x; const dy = p.y - near.y; const dz = p.z - near.z;
+        return (dx*dx + dy*dy + dz*dz) <= ((near.radius||10) * (near.radius||10));
+      };
+
+      groups.forEach((g) => {
+        g.traverse((obj: THREE.Object3D) => {
+          // skip instanced meshes
+          if ((obj as any).isInstancedMesh) return;
+          // Cast to Mesh for runtime geometry/isMesh checks
+          const meshObj = obj as unknown as THREE.Mesh;
+          if (!meshObj.geometry && !meshObj.isMesh) return;
+          // get world position
+          const wp = new THREE.Vector3();
+          meshObj.getWorldPosition(wp);
+          const p = { x: wp.x, y: wp.y, z: wp.z };
+          if (!checkNear(p)) return;
+          out.push({
+            id: (meshObj as any).userData?.id || null,
+            name: meshObj.name || null,
+            type: (meshObj as any).type || null,
+            position: p,
+            visible: meshObj.visible === undefined ? true : meshObj.visible
+          });
+        });
+      });
+      console.info('[HB_DEV] Non-instanced meshes found:', out.length);
+      return out;
+    };
+    // Temporarily highlight matching non-instanced meshes. Stores original materials in registry.
+    {
+      type NonInstancedEntry = { id: string|null, name: string|null, type: string|null, position: { x:number,y:number,z:number }, visible: boolean };
+      const G = globalThis as unknown as Record<string, unknown>;
+
+      G.__highlightNonInstancedMeshes = function(opts?: { near?: { x:number,y:number,z:number, radius:number }, color?: number }) {
+        const listFn = G.__listNonInstancedMeshes as unknown as ( (o?: { near?: { x:number,y:number,z:number, radius:number } }) => NonInstancedEntry[] ) | undefined;
+        const list = listFn ? listFn(opts) : [];
+        const registryKey = '__hb_highlight_registry';
+        let registry = G[registryKey] as Map<THREE.Object3D, THREE.Material | THREE.Material[] | null> | undefined;
+        if (!registry) {
+          registry = new Map<THREE.Object3D, THREE.Material | THREE.Material[] | null>();
+          G[registryKey] = registry;
+        }
+        const color = opts && opts.color ? opts.color : 0xffff00;
+
+        list.forEach((entry) => {
+          scene.traverse((o: THREE.Object3D) => {
+            if (!((o as THREE.Mesh).isMesh)) return;
+            const mesh = o as THREE.Mesh;
+            const wp = new THREE.Vector3(); mesh.getWorldPosition(wp);
+            if (Math.abs(wp.x - entry.position.x) < 0.001 && Math.abs(wp.y - entry.position.y) < 0.001 && Math.abs(wp.z - entry.position.z) < 0.001) {
+              if (registry!.has(mesh)) return;
+              const orig = mesh.material;
+              registry!.set(mesh, orig as THREE.Material | THREE.Material[] | null);
+              try {
+                mesh.material = new THREE.MeshBasicMaterial({ color, wireframe: true });
+              } catch {
+                // ignore failures creating material
+              }
+            }
+          });
+        });
+        return { ok: true, count: list.length };
+      } as unknown;
+
+      G.__unhighlightNonInstancedMeshes = function() {
+        const registryKey = '__hb_highlight_registry';
+        const registry = G[registryKey] as Map<THREE.Object3D, THREE.Material | THREE.Material[] | null> | undefined;
+        if (!registry) return { ok: false, reason: 'none' };
+        registry.forEach((orig, obj) => {
+          try {
+            if ((obj as THREE.Mesh).isMesh) {
+              const mesh = obj as THREE.Mesh;
+              try { (mesh.material as THREE.Material)?.dispose?.(); } catch {logger.error('Failed disposing highlight material');}
+              try {
+                if (orig != null) {
+                  mesh.material = orig as THREE.Material | THREE.Material[];
+                } else {
+                  mesh.material = new THREE.MeshBasicMaterial();
+                }
+              } catch {
+                // ignore assignment errors
+              }
+            }
+          } catch {
+            // ignore per-object restore errors
+          }
+        });
+        registry.clear();
+        return { ok: true };
+      } as unknown;
+    }
+  } catch {logger.error('Failed setting up __listNonInstancedMeshes'); }
+
+  // Diagnostic: list all scene objects that have health-bar related probe/origin markers
+  try {
+  // Note: legacy developer object listing removed.
+  } catch {logger.error('Failed setting up __listInstancedHealthBarShips'); }
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -71,6 +196,25 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
   }
 
+  // Expose a simple helper to focus the internal camera on a world position and adjust distance
+  try {
+    (globalThis as any).__focusCameraOn = function(pos:{x:number,y:number,z:number}, distance?:number) {
+      try {
+        if (!pos) return { ok: false, reason: 'no-pos' };
+        // update target
+        cameraTarget.x = pos.x;
+        cameraTarget.y = pos.y;
+        cameraTarget.z = pos.z;
+        if (typeof distance === 'number') _cameraDistance = distance;
+        updateCameraPosition();
+        return { ok: true };
+      } catch (e) { return { ok: false, reason: String(e) }; }
+    };
+    // Also expose scene and camera references for external scripts (read-only)
+    (globalThis as any).scene = scene;
+    (globalThis as any).threeCamera = camera;
+  } catch {logger.error('Failed setting up __focusCameraOn'); }
+  
   // Procedural Skybox Generation
   function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
@@ -78,7 +222,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     canvas.height = height;
   // Prefer a context optimized for frequent readbacks (getImageData).
   // Some browsers may not support the option; fall back gracefully.
-  const ctx = (canvas.getContext as any)('2d', { willReadFrequently: true }) || canvas.getContext('2d')!;
+  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
     // Fill with deep space background
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
@@ -220,7 +364,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     skyboxAnimationTime += dt;
     if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
 
-    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    // const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
     skyboxTextures.forEach((texture, index) => {
       const canvas = skyboxCanvases[index];
       const ctx = canvas.getContext('2d')!;
@@ -354,10 +498,95 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const bulletsGroup = new THREE.Group();
   const healthBarsGroup = new THREE.Group();
   const shieldEffectsGroup = new THREE.Group();
+  // Instrument healthBarsGroup.add to trace unexpected Mesh additions (helpful when debugging stray bars)
+  try {
+    const _origHealthBarsAdd = (healthBarsGroup as any).add.bind(healthBarsGroup);
+    (healthBarsGroup as any).add = function(...objs: any[]) {
+      try {
+        for (const o of objs) {
+          if (!o) continue;
+          // only inspect Mesh-like objects
+          if ((o as any).isMesh) {
+            const wp = new THREE.Vector3();
+            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added health bar mesh');}
+            // If mesh is near the known fleet Y used in formations (y=400), log a stack trace
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { console.info('[HB_TRACE][healthBarsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging health bar add trace');}
+            }
+          }
+        }
+      } catch {logger.error('Error inspecting health bar group additions');}
+      return _origHealthBarsAdd(...objs);
+    };
+  } catch {logger.error('Failed instrumenting healthBarsGroup.add');}
+
+  // Also instrument shipsGroup.add and scene.add to catch stray Mesh additions
+  try {
+    const _origShipsAdd = (shipsGroup as any).add.bind(shipsGroup);
+    (shipsGroup as any).add = function(...objs: any[]) {
+      try {
+        for (const o of objs) {
+          if (!o) continue;
+          if ((o as any).isMesh) {
+            const wp = new THREE.Vector3();
+            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added ship mesh');}
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { const _HB_TRACE_shipgroupname=_origShipsAdd.name;console.info('[HB_TRACE][shipsGroup.add] name=',_HB_TRACE_shipgroupname,' adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging ships group add trace');}
+            }
+          }
+        }
+      } catch {logger.error('Error inspecting ships group additions');}
+      return _origShipsAdd(...objs);
+    };
+  } catch {logger.error('Failed instrumenting shipsGroup.add');}
+
+  try {
+    const _origSceneAdd = (scene as any).add.bind(scene);
+    (scene as any).add = function(...objs: any[]) {
+      try {
+        for (const o of objs) {
+          if (!o) continue;
+          if ((o as any).isMesh) {
+            const wp = new THREE.Vector3();
+            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added scene mesh');}
+            if (Math.abs(wp.y - 400) < 0.001) {
+              try { console.info('[HB_TRACE][scene.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging scene add trace');}
+            }
+          }
+        }
+      } catch {logger.error('Error inspecting scene additions');}
+      return _origSceneAdd(...objs);
+    };
+  } catch {logger.error('Failed instrumenting scene.add');}
+
   scene.add(shipsGroup);
   scene.add(bulletsGroup);
   scene.add(healthBarsGroup);
   scene.add(shieldEffectsGroup);
+
+  // Dev helpers: expose lightweight runtime inspection utilities on globalThis
+  // These are safe no-ops in production but helpful when debugging bundled builds.
+  try {
+  gAny.__dumpShipsNearBounds = function(radius = 1) {
+      const b = state.simConfig.simBounds;
+      const near = state.ships.filter((s: any) => {
+        // consider ships within `radius` units of any boundary plane
+        return (
+          Math.abs(s.pos.x - 0) <= radius || Math.abs(s.pos.x - b.width) <= radius ||
+          Math.abs(s.pos.y - 0) <= radius || Math.abs(s.pos.y - b.height) <= radius ||
+          Math.abs(s.pos.z - 0) <= radius || Math.abs(s.pos.z - b.depth) <= radius
+        );
+      }).map((s: any) => ({ id: s.id, class: s.class, pos: s.pos }));
+      console.info('[HB_DEV] Ships near bounds (radius=' + radius + '):', near);
+      return near;
+    };
+
+    gAny.__listShipsWithHealthBar = function() {
+      const ids = Array.from(healthBarMeshes.keys());
+      console.info('[HB_DEV] Ships with non-instanced health bars:', ids);
+      return ids;
+    };
+  } catch {logger.error('Failed setting up __dumpShipsNearBounds'); }
 
   const shipMeshes = new Map<number, THREE.Object3D>();
   const bulletMeshes = new Map<number, THREE.Object3D>();
@@ -376,14 +605,111 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     healthBarInstancer = new HealthBarInstancer(scene, healthBarsGroup);
   }
 
+  // Additional dev helpers for instanced health bars (if instancer is present)
+  try {
+    gAny.__listInstancedHealthBarShips = function() {
+      if (!healthBarInstancer) {
+        console.info('[HB_DEV] instancer not enabled');
+        return [];
+      }
+      const instDbg = healthBarInstancer as unknown as { getActiveShipIds?: () => number[] };
+      const ids = instDbg.getActiveShipIds ? instDbg.getActiveShipIds() : [];
+      console.info('[HB_DEV] Instanced health bar ship ids:', ids);
+      return ids;
+    };
+
+    gAny.__hbInstancerStats = function() {
+      if (!healthBarInstancer) return null;
+      try { return (healthBarInstancer as unknown as { getStats?: () => any }).getStats?.(); } catch { return null; }
+    };
+
+    gAny.__hbDebugScale = function(shipId:number) {
+      if (!healthBarInstancer) return null;
+      try { return (healthBarInstancer as unknown as { debugGetInstanceScale?: (id:number)=>number | null }).debugGetInstanceScale?.(shipId) ?? null; } catch { return null; }
+    };
+
+    gAny.__hbDebugMatrix = function(shipId:number) {
+      if (!healthBarInstancer) return null;
+      try { return (healthBarInstancer as unknown as { debugGetInstanceMatrix?: (id:number)=>any | null }).debugGetInstanceMatrix?.(shipId) ?? null; } catch { return null; }
+    };
+
+  // Note: temporary developer marker helpers removed.
+  } catch {logger.error('Failed setting up instanced health bar dev helpers'); }
+
+  // Periodic dev logger - reports ships near bounds and instancer stats every intervalMs
+  (function setupPeriodicDevLogger() {
+    let timer: number | null = null;
+    const intervalMs = 2000;
+
+    function logOnce() {
+      try {
+    const G = (typeof gAny !== 'undefined' ? gAny : (globalThis as unknown as Record<string, any>));
+    const near = G.__dumpShipsNearBounds ? G.__dumpShipsNearBounds(5) : [];
+    const instIds = G.__listInstancedHealthBarShips ? G.__listInstancedHealthBarShips() : [];
+    const nonInst = G.__listShipsWithHealthBar ? G.__listShipsWithHealthBar() : [];
+    const stats = G.__hbInstancerStats ? G.__hbInstancerStats() : null;
+        if ((near && near.length > 0) || (instIds && instIds.length > 0) || (nonInst && nonInst.length > 0)) {
+          console.info('[HB_DEV][periodic] near=', near, 'instancedIds=', instIds, 'nonInst=', nonInst, 'stats=', stats);
+        }
+      } catch {logger.error('Failed logging periodic dev stats');}
+    }
+
+    (globalThis as any).__hbPeriodicStart = function() {
+      if (timer != null) return false;
+      timer = window.setInterval(logOnce, intervalMs);
+      return true;
+    };
+
+    (globalThis as any).__hbPeriodicStop = function() {
+      if (timer == null) return false;
+      clearInterval(timer);
+      timer = null;
+      return true;
+    };
+  })();
+
   // Initialize ship instancer if enabled
   if (RendererConfig.instancing.enableShips) {
-    try { shipInstancer.init(scene, shipsGroup); } catch (e) { logger.warn('Ship instancer init failed', e); }
+    try { shipInstancer.init(scene, shipsGroup);
+      logger.info('Ship instancer initialized');  
+     } catch (e) { logger.warn('Ship instancer init failed', e); }
   }
+  // If we have preloaded rasterized SVGs in the state's assetPool, register prototypes
+  // with the shipInstancer so instanced ships get correct textured visuals.
+  try {
+    // Dynamic import to avoid circular import ordering issues at module-eval.
+    // Use then() to avoid top-level await requirement.
+    import('./meshFactory.js').then((mf) => { try { mf.registerPrototypesFromPool(state); } catch (e) { void e; } }).catch(() => {/* ignore */});
+  } catch {logger.error('Failed registering ship instancer prototypes from asset pool');}
   
-  // Dev / feature toggles
-  const DEV_MODE = (typeof window !== 'undefined' && (window as any).__DEV__ === true) || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production');
+
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
+  // Helper to safely access shader-like uniforms from a material without using `any`.
+  function getUniformsSafe(mat?: THREE.Material | THREE.ShaderMaterial | null): Record<string, unknown> | undefined {
+    return (mat as unknown as { uniforms?: Record<string, unknown> })?.uniforms;
+  }
+  // Helper to attach a __renderProgram marker into material.userData without using `any` in multiple places.
+  function setMaterialRenderProgram(material: THREE.Material | null | undefined, val: unknown) {
+    try {
+      const m = material as unknown as { userData?: Record<string, unknown> } | undefined;
+      if (!m) return;
+      m.userData = m.userData || {};
+      m.userData.__renderProgram = val;
+    } catch {
+      // ignore
+    }
+  }
+  // Helper to attach a __renderProgram marker into object.userData without using `any`.
+  function setObjectRenderProgram(obj: THREE.Object3D | null | undefined, val: unknown) {
+    try {
+      const o = obj as unknown as { userData?: Record<string, unknown> } | undefined;
+      if (!o) return;
+      o.userData = o.userData || {};
+      o.userData.__renderProgram = val;
+    } catch {
+      // ignore
+    }
+  }
   // Maintain a short ring buffer of recent hits per ship for hex highlight
   const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
 
@@ -485,7 +811,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const svgAsset = pool.get(svgUrl);
         if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
       }
-    } catch (e) { /* ignore */ }
+    } catch {logger.error('Error accessing asset pool for ship SVG');}
 
     // Fallback placeholder, and kick off async load to replace visual when ready
     const geom = new THREE.ConeGeometry(8, 24, 8);
@@ -525,12 +851,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.SphereGeometry(2.2, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
     const mesh = new THREE.Mesh(geom, mat);
-    try { (mesh as any).userData = (mesh as any).userData || {}; (mesh as any).userData.__renderProgram = mat; } catch (e) { /* ignore test env */ }
+  try { setObjectRenderProgram(mesh, mat); } catch { /* ignore test env */ }
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
 
   function createHealthBar(ship: Ship): THREE.Object3D {
+  try { logger.info(`[HB_TRACE][threeRenderer] createHealthBar() called for ship=${ship?.id} class=${ship?.class} pos=${ship?.pos?.x},${ship?.pos?.y},${ship?.pos?.z}`); } catch (_e) { void _e; }
     const config = RendererConfig.healthBars;
     const barGroup = new THREE.Group();
 
@@ -543,9 +870,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
-    const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { (bgMesh as any).userData = (bgMesh as any).userData || {}; (bgMesh as any).userData.__renderProgram = (bgMat as any).userData?.__renderProgram ?? bgMat; } catch (e) { /* ignore */ }
-    barGroup.add(bgMesh);
+  const bgMesh = new THREE.Mesh(bgGeom, bgMat);
+  try { const m = bgMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((bgMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? bgMat; } catch { /* ignore */ }
+  barGroup.add(bgMesh);
 
     // Health bar
     const healthGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
@@ -556,9 +883,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
-    const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-  try { (healthMesh as any).userData = (healthMesh as any).userData || {}; (healthMesh as any).userData.__renderProgram = (healthMat as any).userData?.__renderProgram ?? healthMat; } catch (e) { /* ignore */ }
-    barGroup.add(healthMesh);
+  const healthMesh = new THREE.Mesh(healthGeom, healthMat);
+  try { const m = healthMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((healthMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? healthMat; } catch { /* ignore */ }
+  barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
     let shieldMesh: THREE.Mesh | null = null;
@@ -571,9 +898,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else {
         shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
       }
-      shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = (shieldMat as any).userData?.__renderProgram ?? shieldMat; } catch (e) { /* ignore */ }
-      shieldMesh.position.z = 0.1; // slightly in front
+    shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+  try { const m = shieldMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((shieldMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? shieldMat; } catch { /* ignore */ }
+    shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
 
@@ -584,25 +911,28 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     borderMesh.position.z = 0.2;
     barGroup.add(borderMesh);
 
-    // Store references for updating
-    (barGroup as any).healthMesh = healthMesh;
-    (barGroup as any).shieldMesh = shieldMesh;
-    (barGroup as any).bgMesh = bgMesh;
+  // Store references for updating
+  (barGroup as unknown as Record<string, unknown>).healthMesh = healthMesh;
+  (barGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
+  (barGroup as unknown as Record<string, unknown>).bgMesh = bgMesh;
 
     return barGroup;
   }
 
+  // DEV LOG: inline health bar creation
+  try {
+    logger.info('[HB_TRACE][threeRenderer] createHealthBar defined (inline)');
+  } catch {logger.error('Failed logging health bar creation trace');}
+
   function updateHealthBar(ship: Ship, barGroup: THREE.Object3D) {
     const config = RendererConfig.healthBars;
-    const healthMesh = (barGroup as any).healthMesh as THREE.Mesh;
-    const shieldMesh = (barGroup as any).shieldMesh as THREE.Mesh | null;
+  const healthMesh = (barGroup as unknown as { healthMesh?: THREE.Mesh }).healthMesh as THREE.Mesh;
+  const shieldMesh = (barGroup as unknown as { shieldMesh?: THREE.Mesh | null }).shieldMesh as THREE.Mesh | null;
 
-    // Position the bar above the ship (3D) - always update position
-    barGroup.position.set(
-      ship.pos.x + config.position.offsetX,
-      ship.pos.y + config.position.offsetY,
-      ship.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
-    );
+  // Position the bar above the ship (3D) - always update position
+  const newPos = { x: ship.pos.x + config.position.offsetX, y: ship.pos.y + config.position.offsetY, z: ship.pos.z + ShipVisualConfig.healthBar.offset.z };
+  try { if (Math.abs(newPos.y - 400) < 0.001) console.info('[HB_TRACE][threeRenderer] updateHealthBar positioning near y=400 for ship=', ship.id, 'pos=', newPos); } catch (_e) { void _e; }
+  barGroup.position.set(newPos.x, newPos.y, newPos.z);
 
     // Only update health bar if health changed (dirty flag optimization)
     if (ship._healthDirty) {
@@ -616,12 +946,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else if (healthPercent < 0.7) {
         healthColor = config.colors.health.damaged;
       }
-      if (GPU_BILLBOARD && (healthMesh.material as any).uniforms && (healthMesh.material as any).uniforms.uColor) {
-        const mat = (healthMesh.material as any) as THREE.ShaderMaterial;
+      const hUniforms = getUniformsSafe(healthMesh.material as THREE.Material | THREE.ShaderMaterial);
+      if (GPU_BILLBOARD && hUniforms && (hUniforms as any).uColor) {
+        const mat = healthMesh.material as THREE.ShaderMaterial;
         // Acquire pooled material for the new color/alpha and swap if different
-        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), (mat.uniforms.uAlpha?.value as number) ?? 1.0);
+        const alphaVal = ((hUniforms as any).uAlpha && ((hUniforms as any).uAlpha.value as number)) ?? 1.0;
+        const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), alphaVal);
         if (newMat !== mat) {
-          (healthMesh.material as any) = newMat;
+          (healthMesh.material as THREE.Material) = newMat;
         }
       } else {
         (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
@@ -638,14 +970,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
       // Color based on shield percentage
       const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-      if (GPU_BILLBOARD && (shieldMesh.material as any).uniforms && (shieldMesh.material as any).uniforms.uColor) {
-        const mat = (shieldMesh.material as any) as THREE.ShaderMaterial;
+  const sUniforms = getUniformsSafe(shieldMesh?.material as THREE.Material | THREE.ShaderMaterial);
+  if (shieldMesh && GPU_BILLBOARD && sUniforms && (sUniforms as any).uColor) {
+        const mat = shieldMesh.material as THREE.ShaderMaterial;
         const alpha = 0.8;
         const newMat = getPooledBillboardMaterial(new THREE.Color(shieldColor), alpha);
         if (newMat !== mat) {
-          (shieldMesh.material as any) = newMat;
+          (shieldMesh.material as THREE.Material) = newMat;
         }
-      } else {
+      } else if (shieldMesh) {
         (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
       }
       
@@ -856,18 +1189,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const shieldMesh = new THREE.Mesh(geom, material);
   // Attach a stable program-like key so external systems can cache
   // parameter introspection keyed by this object.
-  try { (material as any).userData = (material as any).userData || {}; (material as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
-  try { (shieldMesh as any).userData = (shieldMesh as any).userData || {}; (shieldMesh as any).userData.__renderProgram = material; } catch (e) { /* ignore */ }
+  try { setMaterialRenderProgram(material, material); } catch { /* ignore */ }
+  try { setObjectRenderProgram(shieldMesh, material); } catch { /* ignore */ }
   shieldGroup.add(shieldMesh);
-
-    (shieldGroup as any).shieldMesh = shieldMesh;
-    (shieldGroup as any).pulsePhase = Math.random() * Math.PI * 2;
+    (shieldGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
+    (shieldGroup as unknown as Record<string, unknown>).pulsePhase = Math.random() * Math.PI * 2;
     return shieldGroup;
   }
 
   function updateShieldEffect(ship: Ship, shieldGroup: THREE.Object3D, currentTime: number) {
     const config = RendererConfig.shield;
-    const shieldMesh = (shieldGroup as any).shieldMesh as THREE.Mesh;
+  const shieldMesh = (shieldGroup as unknown as { shieldMesh?: THREE.Mesh }).shieldMesh as THREE.Mesh;
     const mat = shieldMesh.material as THREE.ShaderMaterial;
 
     // Position the shield around the ship (3D)
@@ -939,11 +1271,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Ships
+    const useShipInstancing = RendererConfig.instancing.enableShips && shipInstancer.isReady();
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
         // If ship instancing is enabled and we can allocate, don't create an individual mesh
-        if (RendererConfig.instancing.enableShips && (shipInstancer as any).allocate) {
-          const allocated = shipInstancer.allocate(s.id, s.class, s.team);
+        if (useShipInstancing && shipInstancer.allocate) {
+          const allocated = shipInstancer.allocate(s.id, s.class, s.team, state);
           if (allocated) {
             // create a lightweight placeholder transform via the instancer only
             shipMeshes.set(s.id, new THREE.Object3D()); // track existence
@@ -957,20 +1290,26 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
       // Health bars
-      if (RendererConfig.visual.enableHealthBars) {
+      // Guard: only create health bars for recognized ship classes and valid positions.
+      // This avoids accidentally creating bars for non-ship objects or placeholders that
+      // may be present in state.ships (which can show up at the world bounds/box).
+      // DEV LOG: inline health bar creation
+  const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, any>)[s.class];
+      const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
+      if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
         if (RendererConfig.instancing.enableBars && healthBarInstancer) {
-          // Use health bar instancer
-          if (!healthBarInstancer.hasShip(s.id)) {
-            healthBarInstancer.allocateInstance(s.id);
-          }
+          if (!healthBarInstancer.hasShip(s.id)) healthBarInstancer.allocateInstance(s.id);
         } else {
-          // Use traditional approach
           if (!healthBarMeshes.has(s.id)) {
+            try { logger.info('[HB_TRACE] calling createHealthBar for ship', s.id, 'pos', s.pos); logger.info(new Error('HB_STACK createHealthBar').stack); } catch {logger.error('Failed logging health bar creation trace');}}
             const bar = createHealthBar(s);
-            healthBarMeshes.set(s.id, bar); healthBarsGroup.add(bar);
+            try { logger.info(`[HB_TRACE][threeRenderer] created health bar (inline) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch {logger.error('Failed logging health bar creation trace');}
+            healthBarMeshes.set(s.id, bar);
+            healthBarsGroup.add(bar);
           }
-        }
-      }
+        } else { if (RendererConfig.visual.enableHealthBars) {
+          logger.warn(`[HealthBar Debug] (inline) Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
+        }};
       // Shield effects
       if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {
         const shield = createShieldEffect(s);
@@ -1055,14 +1394,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Use simulation time for renderer-driven effects so shader hit timestamps
     // align with game state timestamps like ship.lastShieldHitTime
     const currentTime = state.time;
+    const useShipInstancing = RendererConfig.instancing.enableShips && shipInstancer.isReady();
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
-      if (RendererConfig.instancing.enableShips && shipInstancer.hasShip(s.id)) {
-        const q = new THREE.Quaternion();
-        q.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
+      if (useShipInstancing && shipInstancer.hasShip(s.id)) {
+        // Reuse a shared temp quaternion to avoid per-frame allocations
+        tempQuat.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
-        shipInstancer.updateTransform(s.id, s.pos, q, scale);
+        shipInstancer.updateTransform(s.id, s.pos, tempQuat, scale);
       } else {
         m.position.set(s.pos.x, s.pos.y, s.pos.z);
         // Set 3D rotation using ship's orientation
@@ -1149,14 +1489,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     try {
       canvas.width = w;
       canvas.height = h;
-    } catch (e) { /* ignore if canvas isn't writable in test env */ }
+    } catch {logger.error('Failed to resize canvas');}
 
     // If available, also set the CSS size so the element visually matches the
     // layout; some browsers scale canvas using CSS which can affect the
     // projection if CSS size doesn't match the drawing buffer.
-    if ((canvas as any).style) {
-      (canvas as any).style.width = `${w}px`;
-      (canvas as any).style.height = `${h}px`;
+    if ((canvas as unknown as HTMLElement).style) {
+      (canvas as unknown as HTMLElement).style.width = `${w}px`;
+      (canvas as unknown as HTMLElement).style.height = `${h}px`;
     }
 
     renderer.setPixelRatio(dpr);
@@ -1171,12 +1511,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update camera position using spherical coordinates
     updateCameraPosition();
 
-    try { effectsManager?.resize(w, h); } catch (e) { /* ignore */ }
+    try { effectsManager?.resize(w, h); } catch {logger.error('Failed to resize effects manager');}
   }
 
   // Create effects manager (postprocessing) lazily
   let effectsManager: import('./effects.js').EffectsManager | null = null;
-  try { effectsManager = createEffectsManager(renderer as any, scene as any, camera as any); } catch (e) { effectsManager = null; }
+  try { effectsManager = createEffectsManager(renderer as unknown as any, scene as unknown as any, camera as unknown as any); } catch { effectsManager = null; }
 
   function render(_dt: number) {
 
@@ -1189,11 +1529,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
     // This guarantees bars don't inherit ship rotation.
+    // eslint-disable-next-line no-unused-vars
     for (const [id, bar] of healthBarMeshes) {
       if (bar.parent !== healthBarsGroup) {
         try {
           if (bar.parent) bar.parent.remove(bar);
-        } catch (e) { /* ignore */ }
+        } catch {logger.error('Failed to remove health bar from previous parent');}
         healthBarsGroup.add(bar);
       }
     }
@@ -1202,9 +1543,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     if (GPU_BILLBOARD) {
       // Update shader uniforms with camera basis vectors for all billboard materials
       // Use cached temporary vectors to avoid per-frame allocations
-      camera.getWorldDirection(tempCamForward);
-      tempCamRight.crossVectors(camera.up, tempCamForward).normalize();
-      tempCamUp.copy(camera.up).normalize();
+  camera.getWorldDirection(tempCamForward);
+  // Correct right vector: right = forward x up. Previous order (up x forward)
+  // produced the left vector which mirrored A/D controls.
+  tempCamRight.crossVectors(tempCamForward, camera.up).normalize();
+  tempCamUp.copy(camera.up).normalize();
+  // Cache camera basis for other systems to reuse (best-effort)
+  try { setCachedCameraBasis(camera, { right: tempCamRight.clone(), up: tempCamUp.clone(), forward: tempCamForward.clone() }); } catch {logger.error('Failed to set cached camera basis');}
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
           if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
@@ -1230,7 +1575,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     // Render the scene
   // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-  try { shipInstancer.sync(); } catch (e) { /* ignore instancer sync errors */ }
+  try { shipInstancer.cull(camera); } catch {logger.error('Failed to cull ship instancer');}
+  try { shipInstancer.sync(); } catch {logger.error('Failed to sync ship instancer');}
   renderer.render(scene, camera);
   }
 
@@ -1243,9 +1589,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     render,
     dispose: () => {
       window.removeEventListener('resize', resize);
-      try { effectsManager?.dispose(); } catch (e) { /* ignore */ }
-      try { bulletInstancer?.dispose(); } catch (e) { /* ignore */ }
-      try { healthBarInstancer?.dispose(); } catch (e) { /* ignore */ }
+      try { effectsManager?.dispose(); } catch {logger.error('Failed to dispose effects manager');}
+      try { bulletInstancer?.dispose(); } catch {logger.error('Failed to dispose bullet instancer');}
+      try { healthBarInstancer?.dispose(); } catch {logger.error('Failed to dispose health bar instancer');}
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
@@ -1253,7 +1599,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shieldEffectMeshes.clear();
       // Dispose pooled billboard materials
       for (const m of billboardMaterialPool.values()) {
-        try { m.dispose(); } catch (e) { /* ignore */ }
+        try { m.dispose(); } catch {logger.error('Failed to dispose billboard material');}
       }
       billboardMaterialPool.clear();
       billboardMaterials.clear();
@@ -1267,6 +1613,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // and introspection. These are intentionally non-critical and best-effort.
     getParameters: adapterGetParameters,
     invalidateParameters: adapterInvalidateParameters,
+    // Expose whether ship instancing is currently used/enabled. Tests rely on
+    // this to observe readiness transitions when shipInstancer reports ready.
+    getUseShipInstancing(): boolean {
+      try {
+        return !!(RendererConfig.instancing.enableShips && (shipInstancer && typeof (shipInstancer as any).isReady === 'function' ? (shipInstancer as any).isReady() : false));
+      } catch {
+        return false;
+      }
+    },
   };
 }
 
@@ -1334,7 +1689,7 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
   });
   // Mark a stable program-like key on the material so systems can use it
   // as a canonical identity for GL program-level caching.
-  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch (e) { /* ignore in test env */ }
+  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch {logger.error('Failed to set render program on billboard material');}
   billboardMaterialPool.set(key, mat);
   billboardMaterials.add(mat);
   return mat;
@@ -1342,33 +1697,43 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
 
   // Adapter-level helpers exposed to systems: introspect and cache parameter
   // metadata about a renderer program-like object (material, wrapper, etc.).
-  function adapterGetParameters(programLike?: object | null): unknown {
+  // Return a small, serializable shape for caching/inspection.
+  type ProgramParams = { kind: string; uniforms?: string[]; type?: string };
+  function adapterGetParameters(programLike?: object | null): ProgramParams | undefined {
     if (!programLike) return undefined;
     try {
-      const existing = rendererProgramCache.get(programLike as object);
+      const existing = rendererProgramCache.get(programLike as object) as ProgramParams | undefined;
       if (existing !== undefined) return existing;
 
-      // Best-effort introspection: if it's a THREE.Material/ShaderMaterial,
-      // capture constructor name and uniforms keys (if any). Keep the result
-      // small and serializable-ish to avoid memory bloat.
-      const p: any = programLike as any;
-      const params: any = {
-        kind: p?.constructor?.name ?? typeof p,
+      // Best-effort introspection: treat the incoming value as unknown and
+      // narrow to the minimal shape we need for safe inspection.
+      const p = programLike as unknown as {
+        constructor?: { name?: string };
+        uniforms?: Record<string, unknown> | undefined;
+        type?: string;
       };
+
+      const params: ProgramParams = {
+        kind: (p && p.constructor && typeof p.constructor.name === 'string') ? p.constructor.name : typeof programLike,
+      };
+
       if (p && p.uniforms && typeof p.uniforms === 'object') {
-        try { params.uniforms = Object.keys(p.uniforms); } catch (e) { params.uniforms = undefined; }
+        try {
+          params.uniforms = Object.keys(p.uniforms as Record<string, unknown>);
+        } catch {
+          params.uniforms = undefined;
+        }
       }
       if (p && typeof p.type === 'string') params.type = p.type;
       // Cache the synthesized metadata.
       rendererProgramCache.set(programLike as object, params);
       return params;
-    } catch (e) {
+    } catch {
       return undefined;
     }
   }
 
   function adapterInvalidateParameters(programLike?: object | null): void {
     if (!programLike) return;
-    try { rendererProgramCache.delete(programLike as object); } catch (e) { /* ignore */ }
+    try { rendererProgramCache.delete(programLike as object); } catch { /* ignore */ }
   }
-

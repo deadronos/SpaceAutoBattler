@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Space AutoBattler UI</title>
-  <link rel="stylesheet" href="./styles/ui.css">
+  <!-- stylesheet is extracted and injected by webpack/HtmlWebpackPlugin -->
   <style>
     /* Fallback if CSS fails to load */
     #world { position: fixed; inset: 0; display:block; }
@@ -35,6 +35,18 @@
     <span class="muted">Space Autobattler</span>
   </div>
   <div id="toast"></div>
-  <script type="module" src="../src/main.js"></script>
+  <script>
+    // Bootstrap asset base so worker URLs resolve correctly when the site
+    // is served from repo root (assets under /dist) vs when dist is root.
+    // Heuristic: if the current location contains '/dist/' assume repo-root serving.
+    try {
+      const href = location.href;
+      if (href.includes('/dist/')) {
+        // Ensure no trailing slash
+        window.__ASSET_BASE__ = '/dist';
+      }
+    } catch (_e) { /* ignore */ }
+  </script>
+  <!-- production bundle will be injected by HtmlWebpackPlugin; remove dev module import -->
 </body>
 </html>

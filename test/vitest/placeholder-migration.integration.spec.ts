@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { shipInstancer } from '../../src/renderer/shipInstancer';
 import { createMeshFactoryState, createShipMesh } from '../../src/renderer/meshFactory';
 import { RendererConfig } from '../../src/config/rendererConfig';
+import { createMockShip } from './setupTests';
 
 describe('Placeholder migration to instancer', () => {
   let scene: THREE.Scene;
@@ -18,17 +19,17 @@ describe('Placeholder migration to instancer', () => {
   });
 
   it('migrates an existing placeholder to an instanced slot when prototype registers', async () => {
-    // Create a fake ship entry (minimal shape expected by createShipMesh)
-    const ship = {
+    // Create a fake ship entry (derive defaults from canonical mock ship,
+    // then override class/id/position for this test). We keep shields disabled
+    // to match the original placeholder behavior.
+    const ship = createMockShip({
       id: 42,
       class: 'mig-test',
-      team: 'red',
       pos: { x: 1, y: 2, z: 0 },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       maxShield: 0,
-      health: 100,
-      maxHealth: 100,
-    } as any;
+      shield: 0,
+    }) as any;
 
     const state = { assetPool: new Map<string, any>() } as any;
     const placeholder = createShipMesh(ship, state, shipsGroup, shipMeshes);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ship } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import * as logger from '../utils/logger.js';
+import { getCachedCameraBasis } from './cameraManager.js';
 
 /**
  * Health bar layer types for separate InstancedMesh objects
@@ -19,12 +20,21 @@ export class HealthBarInstancer {
   private freeIndices: number[] = [];
   private usedCount = 0;
   private hasWarned = false;
+  // Readiness signalling: set to true once instanced meshes are created and added to the scene
+  public isReady = false;
+  private readyCallbacks: Array<() => void> = [];
 
   // Shared camera uniforms that need to be updated per frame
   private cameraUniforms = {
     cameraRight: new THREE.Vector3(1, 0, 0),
     cameraUp: new THREE.Vector3(0, 1, 0)
   };
+
+  // Camera forward vector used to offset billboards slightly toward the camera to avoid z-fighting
+  private cameraForward = new THREE.Vector3(0, 0, -1);
+
+  // Extra temp vector to avoid allocations when adjusting world position for z-offset
+  private tempPosition2 = new THREE.Vector3();
 
   // Temporary objects for matrix calculations to avoid allocations
   private tempMatrix = new THREE.Matrix4();
@@ -43,18 +53,65 @@ export class HealthBarInstancer {
     // Create InstancedMesh for each layer
     this.createLayerInstances(healthBarsGroup);
     
+    // Mark as ready and notify any listeners
+    this.isReady = true;
+    for (const cb of this.readyCallbacks) {
+      try {
+        cb();
+      } catch (_e) { void _e;logger.error('Error in HealthBarInstancer readiness callback', _e);
+      }
+    }
+    this.readyCallbacks.length = 0;
+
     logger.info(`HealthBarInstancer initialized with capacity ${this.capacity}`);
+  }
+
+  /**
+   * Return renderOrder for each layer so we can control draw order for transparent billboards
+   */
+  private layerRenderOrder(layer: HealthBarLayer): number {
+    switch (layer) {
+      case 'background': return 0;
+      case 'health': return 1;
+      case 'shield': return 2;
+      case 'border': return 3;
+      default: return 0;
+    }
+  }
+
+  /**
+   * Register a callback to be invoked when the instancer is ready.
+   * If the instancer is already ready the callback is invoked immediately.
+   */
+  onReady(cb: () => void): void {
+    if (this.isReady) {
+      try {
+        cb();
+      } catch (_e) { void _e;logger.error('Error in HealthBarInstancer readiness callback', _e);
+      }
+      return;
+    }
+    this.readyCallbacks.push(cb);
   }
 
   /**
    * Update camera uniforms - call once per frame with current camera
    */
   updateCameraUniforms(camera: THREE.Camera): void {
-    camera.getWorldDirection(this.tempPosition);
-    
-    // Calculate camera right and up vectors for billboard rendering
-    this.cameraUniforms.cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
-    this.cameraUniforms.cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
+    // cameraForward will point from the camera into the scene (camera -Z)
+    camera.getWorldDirection(this.cameraForward);
+
+    // Prefer cached basis (set by threeRenderer) to avoid repeated matrix extracts
+    const cb = getCachedCameraBasis(camera);
+    if (cb) {
+      this.cameraUniforms.cameraRight.copy(cb.right);
+      this.cameraUniforms.cameraUp.copy(cb.up);
+      if (cb.forward) this.cameraForward.copy(cb.forward);
+    } else {
+      // Fallback: calculate camera right and up vectors from matrixWorld
+      this.cameraUniforms.cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
+      this.cameraUniforms.cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
+    }
 
     // Update uniforms in all layer materials
     for (const instancedMesh of this.instancedMeshes.values()) {
@@ -193,6 +250,13 @@ export class HealthBarInstancer {
   }
 
   /**
+   * DEV: return list of active ship ids currently allocated in the instancer
+   */
+  getActiveShipIds(): number[] {
+    return Array.from(this.activeShips.keys());
+  }
+
+  /**
    * Get current usage statistics
    */
   getStats() {
@@ -205,10 +269,49 @@ export class HealthBarInstancer {
   }
 
   /**
+   * Debug helper (DEV only): return the X scale value for the health layer
+   * instance for the given shipId, or null if not allocated.
+   */
+  debugGetInstanceScale(shipId: number): number | null {
+    const idx = this.activeShips.get(shipId);
+    if (idx === undefined) return null;
+    const instancedMesh = this.instancedMeshes.get('health');
+    if (!instancedMesh) return null;
+    const m = new THREE.Matrix4();
+    instancedMesh.getMatrixAt(idx, m);
+    const s = new THREE.Vector3();
+    m.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+    return s.x;
+  }
+
+  /**
+   * Debug helper (DEV only): return decomposed matrix (position, quaternion, scale)
+   * for the given shipId's allocated instance, or null if not allocated.
+   */
+  debugGetInstanceMatrix(shipId: number): { position: { x:number; y:number; z:number }; quaternion: { x:number; y:number; z:number; w:number }; scale: { x:number; y:number; z:number } } | null {
+    const idx = this.activeShips.get(shipId);
+    if (idx === undefined) return null;
+    // Prefer any available layer (health) to read matrix
+    const instancedMesh = this.instancedMeshes.get('health') || Array.from(this.instancedMeshes.values())[0];
+    if (!instancedMesh) return null;
+    const m = new THREE.Matrix4();
+    instancedMesh.getMatrixAt(idx, m);
+    const pos = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    m.decompose(pos, quat, scale);
+    return {
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      quaternion: { x: quat.x, y: quat.y, z: quat.z, w: quat.w },
+      scale: { x: scale.x, y: scale.y, z: scale.z }
+    };
+  }
+
+  /**
    * Dispose resources
    */
   dispose(): void {
-    for (const [layer, instancedMesh] of this.instancedMeshes) {
+    for (const [_layer, instancedMesh] of this.instancedMeshes) {
       instancedMesh.geometry.dispose();
       if (Array.isArray(instancedMesh.material)) {
         instancedMesh.material.forEach(mat => mat.dispose());
@@ -274,12 +377,23 @@ export class HealthBarInstancer {
     
     const material = this.createBillboardMaterial(color, alpha);
     const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+    // Ensure transparent layers render in a predictable order and avoid depth-test artifacts
+    instancedMesh.renderOrder = this.layerRenderOrder(layer);
+    // Many runtimes use a single shared material; make sure depthTest is disabled so
+    // overlapping transparent billboards don't cull each other when facing away.
+    if (Array.isArray(instancedMesh.material)) {
+      instancedMesh.material.forEach((m: THREE.Material) => { (m as THREE.Material & { depthTest?: boolean }).depthTest = false; });
+    } else {
+      (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
+    }
     
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
     
-    this.instancedMeshes.set(layer, instancedMesh);
-    parent.add(instancedMesh);
+  this.instancedMeshes.set(layer, instancedMesh);
+  // Defer adding to the scene until after renderer initialization to avoid
+  // early prototype geometry being visible during createThreeRenderer.
+  this.deferAddToParent(parent, instancedMesh);
   }
 
   /**
@@ -309,14 +423,17 @@ export class HealthBarInstancer {
     geometry.setAttribute('aScaleX', new THREE.InstancedBufferAttribute(scaleXArray, 1));
     geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colorArray, 3));
     
-    const material = this.createBillboardMaterial(config.border.color, 0.5);
-    const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+  const material = this.createBillboardMaterial(config.border.color, 0.5);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+  instancedMesh.renderOrder = this.layerRenderOrder('border');
+  (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
     
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
     
-    this.instancedMeshes.set('border', instancedMesh);
-    parent.add(instancedMesh);
+  this.instancedMeshes.set('border', instancedMesh);
+  // Defer adding border instanced mesh as well for the same reason.
+  this.deferAddToParent(parent, instancedMesh);
   }
 
   /**
@@ -333,6 +450,7 @@ export class HealthBarInstancer {
       vertexShader: `
         uniform vec3 cameraRight;
         uniform vec3 cameraUp;
+        uniform float uAlpha;
         attribute float aScaleX;
         attribute vec3 aColor;
         
@@ -386,7 +504,12 @@ export class HealthBarInstancer {
 
     // Set transform matrix
     this.tempScale.set(scaleX, 1, 1);
-    this.tempMatrix.compose(position, this.tempQuaternion, this.tempScale);
+
+    // Apply a tiny camera-facing offset so the billboard sits slightly in front of other overlapping
+    // transparent layers. This avoids z-fighting without globally disabling depth testing.
+    const OFFSET_DISTANCE = RendererConfig.healthBars.zOffset ?? 0.002; // configurable
+    this.tempPosition2.copy(position).addScaledVector(this.cameraForward, -OFFSET_DISTANCE);
+    this.tempMatrix.compose(this.tempPosition2, this.tempQuaternion, this.tempScale);
     instancedMesh.setMatrixAt(instanceIndex, this.tempMatrix);
 
     // Update color attribute if it exists
@@ -471,4 +594,40 @@ export class HealthBarInstancer {
       instancedMesh.setMatrixAt(i, this.tempMatrix);
     }
   }
+
+  /**
+   * Defer adding a child object to a parent group until after the current
+   * initialization stack -- use requestAnimationFrame when available so
+   * additions happen after renderer/camera setup. This is intentionally
+   * conservative and reversible: it only changes the timing of add().
+   */
+  private deferAddToParent(parent: THREE.Object3D, child: THREE.Object3D): void {
+  // NOTE: This helper exists to avoid early visible prototype geometry
+  // appearing during `createThreeRenderer` initialization. It defers the
+  // `.add()` call to the next animation frame (or macrotask) so the
+  // renderer/camera are initialized and any prototype groups can be
+  // kept hidden. This is a timing-only change and is fully reversible
+  // (remove the helper and restore direct `parent.add(child)` to revert).
+  // During unit tests we prefer synchronous addition so assertions can
+  // inspect the scene immediately. Detect common test env flags and
+  // fall back to sync add in that case.
+    try {
+      const envTest = typeof process !== 'undefined' && process?.env && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true');
+      if (envTest) {
+        parent.add(child);
+        return;
+      }
+    } catch {
+      // If accessing process.env fails in some sandboxed envs, continue to
+      // the normal deferred path.
+    }
+
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => parent.add(child));
+    } else {
+      // Fallback for environments without RAF
+      setTimeout(() => parent.add(child), 0);
+    }
+  }
 }
+
