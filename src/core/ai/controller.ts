@@ -85,6 +85,9 @@ export class AIController {
     const turretTargets = ship.turrets.map(t => t.aiState?.targetId ?? null);
     // Prefer any non-null turret target (first-wins) for backward compatibility.
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
+    // Declare nearestEnemy at a higher scope
+    let nearestEnemy = findNearestEnemy(this.state, ship);
+
     if (firstTarget != null) {
       ship.targetId = firstTarget as number;
       // Record assigned target so simulateStep can preserve it across later
@@ -92,17 +95,16 @@ export class AIController {
       // Use a stable, typed non-enumerable field to avoid polluting ship shape.
       (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
     } else {
-      const nearest = findNearestEnemy(this.state, ship);
       // Eagerly set targetId when any enemy is present to match legacy expectations
-      ship.targetId = nearest ? nearest.id : null;
+      ship.targetId = nearestEnemy ? nearestEnemy.id : null;
       // If we were idle and now have a target, bias to pursue and prime turrets
-  if (nearest && ship.aiState && ship.aiState.currentIntent === 'idle') {
+  if (nearestEnemy && ship.aiState && ship.aiState.currentIntent === 'idle') {
         ship.aiState.currentIntent = 'pursue' as AIIntent;
         for (const t of ship.turrets) {
           if (!t.aiState) t.aiState = { targetId: null, lastTargetUpdate: this.state.time } as TurretState['aiState'];
           // Turret state uses cooldownLeft in the canonical GameState
           t.cooldownLeft = 0;
-          if (t.aiState) t.aiState.targetId = nearest.id;
+          if (t.aiState) t.aiState.targetId = nearestEnemy.id;
         }
       }
     }
@@ -217,12 +219,7 @@ export class AIController {
         }
       } else if (intent === 'evade') {
         // Simple evade: move away from nearest enemy
-        const nearestEnemy = this.state.ships.filter(s => s.team !== ship.team && s.health > 0).reduce((best, s) => {
-          if (!best) return s;
-          const bd = Math.hypot(best.pos.x - ship.pos.x, best.pos.y - ship.pos.y, best.pos.z - ship.pos.z);
-          const sd = Math.hypot(s.pos.x - ship.pos.x, s.pos.y - ship.pos.y, s.pos.z - ship.pos.z);
-          return sd < bd ? s : best;
-        }, null as Ship | null);
+        // Reuse the nearestEnemy found earlier
         if (nearestEnemy) {
           const rx = ship.pos.x - nearestEnemy.pos.x;
           const ry = ship.pos.y - nearestEnemy.pos.y;

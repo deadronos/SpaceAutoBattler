@@ -151,16 +151,24 @@ self.addEventListener('message', async (e) => {
   
   if (type === 'update-ships') {
     // Update/create bodies for ships
-  const ships = payload?.ships || [];
-    
-  for (const ship of ships as unknown as ShipLike[]) {
-      let body = bodies.get(ship.id);
+    const shipDataArray = payload?.ships as Float32Array;
+    const currentShipIds = new Set<number>();
+
+    for (let i = 0; i < shipDataArray.length; i += 7) {
+      const id = shipDataArray[i];
+      const pos = { x: shipDataArray[i + 1], y: shipDataArray[i + 2], z: shipDataArray[i + 3] };
+      const vel = { x: shipDataArray[i + 4], y: shipDataArray[i + 5], z: shipDataArray[i + 6] };
+      const ship = { id, pos, vel }; // Reconstruct ship-like object
+
+      currentShipIds.add(id);
+
+      let body = bodies.get(id);
       
       if (!body) {
         // Create new body
         body = createBodyForShip(ship);
         if (body) {
-          bodies.set(ship.id, body);
+          bodies.set(id, body);
         }
       } else {
         // Update existing body
@@ -169,7 +177,6 @@ self.addEventListener('message', async (e) => {
     }
     
     // Remove bodies for ships that no longer exist
-    const currentShipIds = new Set((ships as unknown as Array<{ id: number }>).map((s) => s.id));
     for (const [shipId, body] of bodies) {
       if (!currentShipIds.has(shipId)) {
         try {
