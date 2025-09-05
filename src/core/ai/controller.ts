@@ -1,9 +1,9 @@
 import type { GameState, Ship, Vector3, SimBounds, TurretState } from '../../types/index.js';
-import type { AIPersonality, AIIntent } from '../../config/behaviorConfig.js';
+import type { AIPersonality } from '../../config/behaviorConfig.js';
 import { IntentManager } from './intentManager.js';
 import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
 import { assignRoamingAnchor, releaseRoamingAnchor } from './roaming.js';
-import { findBestFormation, assignFormationSlot, clearFormationSlot, getFormationCenter } from './formation.js';
+import { findBestFormation, assignFormationSlot, getFormationCenter } from './formation.js';
 import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSystems.js';
 import { updateShieldRegeneration } from './defense.js';
 import { findNearestEnemy, updateTurretLeads } from './targeting.js';
@@ -88,26 +88,114 @@ export class AIController {
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
     // Use grouped resolver to reduce repeated queries when many ships share cells
-    let nearestEnemy = findNearestEnemy(this.state, ship);
+  const nearestEnemy = findNearestEnemy(this.state, ship);
+  if (DEBUG_AI) {
+    const enemies = this.state.ships.filter(s => s.team !== ship.team && s.health > 0);
+    console.log(`DEBUG_AI: controller findNearestEnemy ship=${ship.id} result=${nearestEnemy?.id ?? 'null'} totalEnemies=${enemies.length} spatialGrid=${!!this.state.spatialGrid} enableSpatialIndex=${!!this.state.behaviorConfig?.globalSettings.enableSpatialIndex}`);
+    if (enemies.length > 0 && !nearestEnemy) {
+      console.log(`DEBUG_AI: controller findNearestEnemy PROBLEM - enemies exist but function returned null!`);
+      console.log(`DEBUG_AI: enemies:`, enemies.map(e => `id=${e.id} team=${e.team} health=${e.health} pos=${e.pos.x},${e.pos.y},${e.pos.z}`));
+    }
+  }
 
+    // IMPROVED: Validate turret targets before using them
+    let validatedFirstTarget = firstTarget;
     if (firstTarget != null) {
-      ship.targetId = firstTarget as number;
-      // Record assigned target so simulateStep can preserve it across later
-      // operations that may rebuild arrays or transiently clear targets.
-      // Use a stable, typed non-enumerable field to avoid polluting ship shape.
-      (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
-    } else {
-      // Eagerly set targetId when any enemy is present to match legacy expectations
-      ship.targetId = nearestEnemy ? nearestEnemy.id : null;
-      // If we were idle and now have a target, bias to pursue and prime turrets
-  if (nearestEnemy && ship.aiState && ship.aiState.currentIntent === 'idle') {
-        ship.aiState.currentIntent = 'pursue' as AIIntent;
-        for (const t of ship.turrets) {
-          if (!t.aiState) t.aiState = { targetId: null, lastTargetUpdate: this.state.time } as TurretState['aiState'];
-          // Turret state uses cooldownLeft in the canonical GameState
-          t.cooldownLeft = 0;
-          if (t.aiState) t.aiState.targetId = nearestEnemy.id;
+      const targetShip = this.state.ships.find(s => s.id === firstTarget);
+      if (targetShip) {
+        // Check if target is valid (different team, alive, within range)
+        const isValidTeam = targetShip.team !== ship.team;
+        const isAlive = targetShip.health > 0;
+        const dx = targetShip.pos.x - ship.pos.x;
+        const dy = targetShip.pos.y - ship.pos.y; 
+        const dz = targetShip.pos.z - ship.pos.z;
+        const distance = Math.hypot(dx, dy, dz) || 1;
+        const tc = this.state.behaviorConfig?.turretConfig;
+        const withinRange = !(tc && (distance < (tc.minimumFireRange ?? 0) || distance > (tc.maximumFireRange ?? Infinity)));
+        
+        if (!isValidTeam || !isAlive || (!withinRange && ship.aiState?.currentIntent !== 'evade')) {
+          validatedFirstTarget = null; // Invalid target
+          // Clear the ship's target when it becomes invalid (unless evading)
+          if (ship.aiState?.currentIntent !== 'evade') {
+            ship.targetId = null;
+          }
+          if (DEBUG_AI) {
+            const reason = !isValidTeam ? 'same team' : !isAlive ? 'destroyed' : 'out of range';
+            console.log(`DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${firstTarget} reason=${reason}`);
+          }
         }
+      } else {
+        validatedFirstTarget = null; // Target ship not found
+      }
+    }
+
+    // Target assignment and switching logic
+    if (validatedFirstTarget != null) {
+      // Check if we should switch to a closer enemy (target switching logic)
+      if (nearestEnemy && nearestEnemy.id !== validatedFirstTarget) {
+        const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
+        if (currentTargetShip) {
+          const currentDistance = Math.hypot(
+            currentTargetShip.pos.x - ship.pos.x, 
+            currentTargetShip.pos.y - ship.pos.y, 
+            currentTargetShip.pos.z - ship.pos.z
+          );
+          const nearestDistance = Math.hypot(
+            nearestEnemy.pos.x - ship.pos.x, 
+            nearestEnemy.pos.y - ship.pos.y, 
+            nearestEnemy.pos.z - ship.pos.z
+          );
+          
+          // Switch if nearest enemy is significantly closer (20% closer)
+          const switchThreshold = 0.8; // 20% closer required to switch
+          if (nearestDistance < currentDistance * switchThreshold) {
+            ship.targetId = nearestEnemy.id;
+            if (DEBUG_AI) {
+              console.log(`DEBUG_AI: controller switched target ship=${ship.id} from=${validatedFirstTarget} to=${nearestEnemy.id} oldDist=${currentDistance.toFixed(2)} newDist=${nearestDistance.toFixed(2)}`);
+            }
+          } else {
+            ship.targetId = validatedFirstTarget as number;
+          }
+        } else {
+          ship.targetId = validatedFirstTarget as number;
+        }
+      } else {
+        ship.targetId = validatedFirstTarget as number;
+      }
+      // Record assigned target
+      (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
+    } else if (nearestEnemy) {
+      // No valid current target, but we have a nearest enemy
+      // Check if nearest enemy should be our new target (apply same range validation)
+      const targetShip = nearestEnemy;
+      const dx = targetShip.pos.x - ship.pos.x;
+      const dy = targetShip.pos.y - ship.pos.y; 
+      const dz = targetShip.pos.z - ship.pos.z;
+      const distance = Math.hypot(dx, dy, dz) || 1;
+      const tc = this.state.behaviorConfig?.turretConfig;
+      const withinRange = !(tc && (distance < (tc.minimumFireRange ?? 0) || distance > (tc.maximumFireRange ?? Infinity)));
+      const isValidTeam = targetShip.team !== ship.team;
+      const isAlive = targetShip.health > 0;
+
+      if (isValidTeam && isAlive && (withinRange || ship.aiState?.currentIntent === 'evade')) {
+        // Set new valid target (allow out-of-range for evade awareness)
+        ship.targetId = nearestEnemy.id;
+        if (DEBUG_AI) {
+          console.log(`DEBUG_AI: controller assigned new target ship=${ship.id} target=${nearestEnemy.id} dist=${distance.toFixed(2)} evading=${ship.aiState?.currentIntent === 'evade'}`);
+        }
+      } else {
+        // Nearest enemy is invalid, clear target
+        ship.targetId = null;
+        if (DEBUG_AI) {
+          const reason = !isValidTeam ? 'same team' : !isAlive ? 'destroyed' : 'out of range';
+          console.log(`DEBUG_AI: controller rejected nearest enemy ship=${ship.id} enemy=${nearestEnemy.id} reason=${reason}`);
+        }
+      }
+    } else {
+      // No enemies found, clear target
+      ship.targetId = null;
+      if (DEBUG_AI) {
+        console.log(`DEBUG_AI: controller no enemies found ship=${ship.id}`);
       }
     }
     if (DEBUG_AI) {
@@ -138,15 +226,18 @@ export class AIController {
           return da===db ? (a.id-b.id) : (da-db);
         });
         for (const target of shortlist) {
+          // IMPROVED: Proper team filtering - never target same team ships
           if (target.team === ship.team || target.health <= 0) continue;
           const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
           const d = Math.hypot(dx, dy, dz) || 1;
           const inRange = !(tc && (d < (tc.minimumFireRange ?? 0) || d > (tc.maximumFireRange ?? Infinity)));
           const score = (d > 0 ? 1000 / d : 0) + ((target.maxHealth - target.health) * 0.1) + (target.level.level * 5);
           if (DEBUG_AI) console.log(`DEBUG_AI: controller fallback candidate ship=${ship.id} turret=NA candidate=${target.id} dist=${d.toFixed(2)} hp=${target.health} level=${target.level?.level ?? target.level} score=${score} inRange=${inRange} rangeMin=${tc?.minimumFireRange ?? 0} rangeMax=${tc?.maximumFireRange ?? Infinity}`);
+          // IMPROVED: Strict range checking - don't assign targets out of range
           if (!inRange) continue;
           if (score > bestScore) { bestScore = score; bestId = target.id; }
         }
+        // IMPROVED: Only assign target if we found a valid one
         if (bestId != null) {
           ship.targetId = bestId;
           (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
@@ -161,9 +252,44 @@ export class AIController {
     if (ship.targetId == null) {
       const anyT = ship.turrets.map(t => t.aiState?.targetId ?? null).find(id => id != null) ?? null;
       if (anyT != null) {
-        ship.targetId = anyT as number;
-        (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
-        if (DEBUG_AI) console.log(`DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`);
+        // IMPROVED: Validate this backup target as well
+        const targetShip = this.state.ships.find(s => s.id === anyT);
+        if (targetShip && targetShip.team !== ship.team && targetShip.health > 0) {
+          // FIXED: Also check range for safety assignment 
+          const dx = targetShip.pos.x - ship.pos.x;
+          const dy = targetShip.pos.y - ship.pos.y; 
+          const dz = targetShip.pos.z - ship.pos.z;
+          const distance = Math.hypot(dx, dy, dz) || 1;
+          const tc = this.state.behaviorConfig?.turretConfig;
+          const withinRange = !(tc && (distance < (tc.minimumFireRange ?? 0) || distance > (tc.maximumFireRange ?? Infinity)));
+          
+          if (withinRange) {
+            ship.targetId = anyT as number;
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
+            if (DEBUG_AI) console.log(`DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`);
+          } else if (DEBUG_AI) {
+            console.log(`DEBUG_AI: controller rejected safety target ship=${ship.id} target=${anyT} out of range dist=${distance.toFixed(2)}`);
+          }
+        }
+      }
+    }
+
+    // IMPROVED: Clear invalid targets (destroyed ships, same team ships)
+    if (ship.targetId != null) {
+      const currentTarget = this.state.ships.find(s => s.id === ship.targetId);
+      if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
+        if (DEBUG_AI) {
+          const reason = !currentTarget ? 'not found' : 
+                        currentTarget.health <= 0 ? 'destroyed' : 'same team';
+          console.log(`DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${ship.targetId} reason=${reason}`);
+        }
+        ship.targetId = null;
+        // Also clear turret targets pointing to the same invalid target
+        for (const t of ship.turrets) {
+          if (t.aiState?.targetId === ship.targetId) {
+            t.aiState.targetId = null;
+          }
+        }
       }
     }
     // Roaming anchor assignment: if personality mode is roaming or current intent indicates roaming/patrol
@@ -219,34 +345,42 @@ export class AIController {
 
     // Execute movement based on current intent (minimal back-compat behavior)
     const intent = ship.aiState?.currentIntent;
+    if (DEBUG_AI) {
+      try {
+        console.error(`AI-DEBUG pre-movement ship=${ship.id} intent=${String(intent)} nearestEnemy=${nearestEnemy ? nearestEnemy.id : 'null'} dt=${dt.toFixed(6)}`);
+      } catch { /* best-effort logging */ }
+    }
     // Track whether a branch integrated position already (moveTowards or idle)
     let integrated = false;
     try {
-  if (intent === 'pursue') {
-        // Move toward current target if present, else toward formation/anchor if set
-        const targetShip = ship.targetId != null ? this.state.ships.find(s => s.id === ship.targetId) : null;
-        if (targetShip) {
-          this.moveTowards(ship, targetShip.pos, dt);
-          integrated = true;
-        } else if (ship.aiState?.formationPosition) {
-          this.moveTowards(ship, ship.aiState.formationPosition, dt);
+      if (intent === 'evade') {
+        // Use nearestEnemy computed earlier to remain consistent with targeting
+        const threat = nearestEnemy;
+        if (!threat) {
+          // Nothing to evade from; fall through to fallback integration
+        } else {
+          const dx = ship.pos.x - threat.pos.x;
+          const dy = ship.pos.y - threat.pos.y;
+          const dz = ship.pos.z - threat.pos.z;
+          const dist = Math.hypot(dx, dy, dz) || 1;
+          const escapeDist = this.state.behaviorConfig?.globalSettings.evadeDistance ?? 200;
+          const escapeTarget = {
+            x: ship.pos.x + (dx / dist) * escapeDist,
+            y: ship.pos.y + (dy / dist) * escapeDist,
+            z: ship.pos.z + (dz / dist) * escapeDist,
+          };
+          if (DEBUG_AI) {
+            console.error(`AI-DEBUG evade ship=${ship.id} nearest=${threat.id} dist=${dist.toFixed(6)} dt=${dt.toFixed(6)} speed=${ship.speed}`);
+            console.error(`AI-DEBUG evade preVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
+          }
+          // Force orientation+accel even if within movementCloseEnoughThreshold
+          this.moveTowards(ship, escapeTarget, dt, true);
+          if (DEBUG_AI) {
+            console.error(`AI-DEBUG evade postVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
+          }
           integrated = true;
         }
-      } else if (intent === 'evade') {
-        // Simple evade: move away from nearest enemy
-        // Reuse the nearestEnemy found earlier
-        if (nearestEnemy) {
-          const rx = ship.pos.x - nearestEnemy.pos.x;
-          const ry = ship.pos.y - nearestEnemy.pos.y;
-          const rz = ship.pos.z - nearestEnemy.pos.z;
-          const rlen = Math.hypot(rx, ry, rz) || 1;
-          // Use configured evadeDistance (existing key) as the escape projection
-          const escapeDist = (this.state.behaviorConfig?.globalSettings.evadeDistance) ?? 200;
-          const escapeTarget = { x: ship.pos.x + (rx / rlen) * escapeDist, y: ship.pos.y + (ry / rlen) * escapeDist, z: ship.pos.z + (rz / rlen) * escapeDist };
-          this.moveTowards(ship, escapeTarget, dt);
-          integrated = true;
-        }
-  } else if (intent === 'group') {
+      } else if (intent === 'group') {
         // Ensure formation assignment occurs for formation-mode ships or group intent
         try {
           const best = findBestFormation(this.state, ship);
@@ -358,9 +492,11 @@ export class AIController {
     ship.vel.y += force.y * dt * ship.speed * sepWeight;
     ship.vel.z += force.z * dt * ship.speed * sepWeight;
   }
-  public moveTowards(ship: Ship, targetPos: Vector3, dt: number) {
+  public moveTowards(ship: Ship, targetPos: Vector3, dt: number, ignoreCloseEnough?: boolean) {
     // Use static import at top so this is synchronous for tests
-    return moveTowards(ship, targetPos, dt, this.state.behaviorConfig!.globalSettings);
+    // Forward the optional ignoreCloseEnough flag to the steering helper. We
+    // pass `undefined` for speedOverride to preserve default behavior.
+    return moveTowards(ship, targetPos, dt, this.state.behaviorConfig!.globalSettings, undefined, ignoreCloseEnough);
   }
   public calculateEscapeScore(ship: Ship, targetPos: Vector3, threatsShips: readonly Ship[]) {
     const threats = threatsShips.map(s => s.pos);

@@ -1,0 +1,283 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createMockGameState, createMockShip } from './setupTests';
+import { AIController } from '../../src/core/aiController';
+import type { GameState, Ship } from '../../src/types';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
+
+const DEBUG_AI = false; // Set to true for debug output
+
+describe('AI Enemy Recognition', () => {
+  let state: GameState;
+  let aiController: AIController;
+
+  // Helper to update ships and shipIndex together
+  const setShips = (ships: Ship[]) => {
+    state.ships = ships;
+    if (!state.shipIndex) state.shipIndex = new Map();
+    state.shipIndex.clear();
+    for (const ship of ships) {
+      state.shipIndex.set(ship.id, ship);
+    }
+  };
+
+  const addShip = (ship: Ship) => {
+    state.ships.push(ship);
+    if (!state.shipIndex) state.shipIndex = new Map();
+    state.shipIndex.set(ship.id, ship);
+  };
+
+  beforeEach(() => {
+    state = createMockGameState();
+    state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
+    aiController = new AIController(state);
+  });
+
+  it('should find nearest enemy ship within range', () => {
+    // Create red ship
+    const redShip: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+    }) as unknown as Ship;
+
+    // Create blue ships at different distances
+    const nearBlueShip: Ship = createMockShip({
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 150, y: 100, z: 100 }, // 50 units away
+    }) as unknown as Ship;
+
+    const farBlueShip: Ship = createMockShip({
+      id: 3,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 300, y: 100, z: 100 }, // 200 units away
+    }) as unknown as Ship;
+
+    setShips([redShip, nearBlueShip, farBlueShip]);
+
+    // Update AI which should find nearest enemy
+    aiController.updateAllShips(0.1);
+
+    // Red ship should target the nearest blue ship
+    expect(redShip.targetId).toBe(nearBlueShip.id);
+
+    if (DEBUG_AI) {
+      console.log(`Red ship ${redShip.id} targeting ${redShip.targetId}, expected ${nearBlueShip.id}`);
+    }
+  });
+
+  it('should not target enemies outside detection range', () => {
+    // Create red ship with limited detection range
+    const redShip: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+    }) as unknown as Ship;
+
+    // Create blue ship far away (beyond typical detection range)
+    const farBlueShip: Ship = createMockShip({
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 2000, y: 100, z: 100 }, // Very far away
+    }) as unknown as Ship;
+
+    setShips([redShip, farBlueShip]);
+
+    // Update AI
+    aiController.updateAllShips(0.1);
+
+    // Red ship should not target the far blue ship
+    expect(redShip.targetId).toBeNull();
+
+    if (DEBUG_AI) {
+      console.log(`Red ship ${redShip.id} targeting ${redShip.targetId}, expected null (too far)`);
+    }
+  });
+
+  it('should switch targets when a closer enemy appears', () => {
+    // Create red ship
+    const redShip: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+    }) as unknown as Ship;
+
+    // Create initial blue target
+    const initialTarget: Ship = createMockShip({
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 200, y: 100, z: 100 }, // 100 units away
+    }) as unknown as Ship;
+
+    setShips([redShip, initialTarget]);
+
+    // First update - should target initial enemy
+    aiController.updateAllShips(0.1);
+    expect(redShip.targetId).toBe(initialTarget.id);
+
+    // Add a closer enemy
+    const closerTarget: Ship = createMockShip({
+      id: 3,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 130, y: 100, z: 100 }, // 30 units away
+    }) as unknown as Ship;
+
+    addShip(closerTarget);
+    
+    // Increment time and frame to invalidate cache
+    state.time = 0.2;
+    (state as any).frame = 1;
+
+    // Second update - should switch to closer enemy
+    aiController.updateAllShips(0.1);
+    expect(redShip.targetId).toBe(closerTarget.id);
+
+    if (DEBUG_AI) {
+      console.log(`Red ship ${redShip.id} targeting ${redShip.targetId}, expected ${closerTarget.id} (closer)`);
+    }
+  });
+
+  it('should not target ships of the same team', () => {
+    // Create two red ships
+    const redShip1: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+    }) as unknown as Ship;
+
+    const redShip2: Ship = createMockShip({
+      id: 2,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 120, y: 100, z: 100 }, // Same team, close by
+    }) as unknown as Ship;
+
+    setShips([redShip1, redShip2]);
+
+    // Update AI
+    aiController.updateAllShips(0.1);
+
+    // Neither ship should target the other
+    expect(redShip1.targetId).toBeNull();
+    expect(redShip2.targetId).toBeNull();
+
+    if (DEBUG_AI) {
+      console.log(`Red ships should not target each other: ship1=${redShip1.targetId}, ship2=${redShip2.targetId}`);
+    }
+  });
+
+  it('should clear target when enemy is destroyed', () => {
+    // Create red ship
+    const redShip: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+      targetId: 2, // Already targeting enemy id 2
+    }) as unknown as Ship;
+
+    // Create blue ship
+    const blueShip: Ship = createMockShip({
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 150, y: 100, z: 100 },
+    }) as unknown as Ship;
+
+    setShips([redShip, blueShip]);
+
+    // First update - should maintain target
+    aiController.updateAllShips(0.1);
+    expect(redShip.targetId).toBe(blueShip.id);
+
+    // Remove the blue ship (simulate destruction)
+    setShips([redShip]);
+
+    // Second update - should clear target
+    aiController.updateAllShips(0.1);
+    expect(redShip.targetId).toBeNull();
+
+    if (DEBUG_AI) {
+      console.log(`Red ship ${redShip.id} targeting ${redShip.targetId}, expected null (enemy destroyed)`);
+    }
+  });
+
+  it('should handle evade behavior when enemy is found', () => {
+    // Create red ship with recent damage (should evade)
+    const redShip: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+      aiState: {
+        currentIntent: 'evade',
+        intentEndTime: 999999,
+        lastIntentReevaluation: 0,
+        preferredRange: 150,
+        recentDamage: 25,
+        lastDamageTime: 0
+      }
+    }) as unknown as Ship;
+
+    // Create nearby blue ship
+    const blueShip: Ship = createMockShip({
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 120, y: 100, z: 100 }, // 20 units away
+    }) as unknown as Ship;
+
+    setShips([redShip, blueShip]);
+
+    // Update AI
+    aiController.updateAllShips(0.1);
+
+    // Red ship should recognize the blue ship as a threat
+    expect(redShip.targetId).toBe(blueShip.id);
+    expect(redShip.aiState?.currentIntent).toBe('evade');
+
+    if (DEBUG_AI) {
+      console.log(`Evading ship ${redShip.id} should recognize enemy ${blueShip.id}: targeting=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}`);
+    }
+  });
+
+  it('should maintain target persistence when enemy is still valid', () => {
+    // Create red ship with existing target
+    const redShip: Ship = createMockShip({
+      id: 1,
+      team: 'red',
+      class: 'fighter',
+      pos: { x: 100, y: 100, z: 100 },
+      targetId: 2, // Already targeting enemy id 2
+    }) as unknown as Ship;
+
+    // Create the targeted blue ship
+    const targetedBlueShip: Ship = createMockShip({
+      id: 2,
+      team: 'blue',
+      class: 'fighter',
+      pos: { x: 150, y: 100, z: 100 },
+    }) as unknown as Ship;
+
+    setShips([redShip, targetedBlueShip]);
+
+    // Multiple updates should maintain the same target
+    for (let i = 0; i < 5; i++) {
+      aiController.updateAllShips(0.1);
+      expect(redShip.targetId).toBe(targetedBlueShip.id);
+    }
+
+    if (DEBUG_AI) {
+      console.log(`Red ship ${redShip.id} should maintain target ${targetedBlueShip.id}: current=${redShip.targetId}`);
+    }
+  });
+});
