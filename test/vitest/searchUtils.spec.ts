@@ -59,15 +59,17 @@ describe('searchUtils', () => {
   it('findNearestEnemy prefers spatial index when enabled', () => {
     const ships = [makeShip(1, 'red', 0, 0), makeShip(2, 'blue', 300, 0), makeShip(3, 'blue', 10, 0)];
     const state = makeState(ships, true);
+    
+    // Set a unique frame to avoid cache interference from other tests
+    (state as any).frame = Math.random();
+    
     // Populate spatial grid
     for (const s of ships) state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
-  const nearest = findNearestEnemy(state, ships[0]);
-  expect(nearest).toBeTruthy();
-  const distances = ships.filter(s=>s.team!==ships[0].team).map(s=>({id:s.id,d:Math.hypot(s.pos.x-ships[0].pos.x,s.pos.y-ships[0].pos.y,s.pos.z-ships[0].pos.z)}));
-  const minD = Math.min(...distances.map(d=>d.d));
-  const tieIds = distances.filter(d=>Math.abs(d.d-minD) < 1e-6).map(d=>d.id);
-  // Expect chosen id to be one of minimal-distance set; if ties, it should be lowest id
-  // Accept any minimal-distance id (behavior can vary with optimizations)
-  expect(tieIds).toContain(nearest!.id);
+    
+    const nearest = findNearestEnemy(state, ships[0]);
+    expect(nearest).toBeTruthy();
+    
+    // Ship 3 at distance 10 should be nearest, not ship 2 at distance 300
+    expect(nearest!.id).toBe(3);
   });
 });

@@ -1,4 +1,4 @@
-import type { GameState, Ship, Vector3, SimBounds, TurretState } from '../../types/index.js';
+import type { GameState, Ship, Vector3, SimBounds, TurretState, Team, EntityId } from '../../types/index.js';
 import type { AIPersonality } from '../../config/behaviorConfig.js';
 import { IntentManager } from './intentManager.js';
 import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
@@ -15,6 +15,7 @@ import { calculateEscapeScore as calcEscape, moveTowards } from './steering.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
 import { BatchedQueryManager } from './batchedQueries.js';
+import { AggressiveSpatialOptimizer } from './aggressiveSpatialOptimizer.js';
 
 export class AIController {
   private state: GameState;
@@ -22,6 +23,7 @@ export class AIController {
   private spatial: SpatialHelpers;
   private teams: TeamSystems;
   private batchedQueries: BatchedQueryManager;
+  private spatialOptimizer: AggressiveSpatialOptimizer | null = null;
 
   constructor(state: GameState) {
     this.state = state;
@@ -29,18 +31,33 @@ export class AIController {
     this.spatial = new SpatialHelpers(state);
     this.teams = new TeamSystems(state);
     this.batchedQueries = new BatchedQueryManager();
+    
+    if (state.spatialGrid) {
+      this.spatialOptimizer = new AggressiveSpatialOptimizer(state.spatialGrid, 64);
+    }
   }
 
   public updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
     this.spatial.resetTick();
     
+    // OPTIMIZATION: Update spatial optimizer with reduced frequency
+    const aliveShips = this.state.ships.filter(s => s.health > 0);
+    if (this.spatialOptimizer) {
+      const spatialEntities = aliveShips.map(ship => ({
+        id: ship.id,
+        pos: ship.pos,
+        radius: 20, // Use default ship radius
+        team: ship.team
+      }));
+      this.spatialOptimizer.updateSpatialGrids(spatialEntities);
+    }
+    
     // OPTIMIZATION: Pre-compute common queries for all ships in batches
     const frameId = this.state.tick ?? 0;
     this.batchedQueries.resetForFrame(frameId);
     
     // Batch compute nearest enemies for all ships at once
-    const aliveShips = this.state.ships.filter(s => s.health > 0);
     this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
     this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
     
@@ -511,6 +528,52 @@ export class AIController {
       settings
     });
     return { score, wouldEvade: score >= 1.0 };
+  }
+
+  /**
+   * Get performance-optimized spatial query with approximation
+   */
+  public queryNearbyOptimized(
+    center: Vector3,
+    radius: number,
+    team?: Team,
+    excludeId?: EntityId,
+    approximationLevel = 0.1
+  ) {
+    if (this.spatialOptimizer) {
+      return this.spatialOptimizer.queryRadiusOptimized(center, radius, team, excludeId, approximationLevel);
+    }
+    // Fallback to regular spatial grid
+    const results = this.state.spatialGrid?.queryRadius(center, radius) || [];
+    return results.filter(entity => {
+      if (team !== undefined && entity.team !== team) return false;
+      if (excludeId !== undefined && entity.id === excludeId) return false;
+      return true;
+    });
+  }
+
+  /**
+   * Get performance-optimized K-nearest with approximation
+   */
+  public queryKNearestOptimized(
+    center: Vector3,
+    k: number,
+    team?: Team,
+    excludeId?: EntityId,
+    approximationLevel = 0.2
+  ) {
+    if (this.spatialOptimizer) {
+      return this.spatialOptimizer.queryKNearestApproximate(center, k, team, excludeId, approximationLevel);
+    }
+    // Fallback to regular spatial grid
+    return this.state.spatialGrid?.queryKNearest(center, k, team, excludeId) || [];
+  }
+
+  /**
+   * Get spatial optimizer performance metrics
+   */
+  public getSpatialMetrics() {
+    return this.spatialOptimizer?.getMetrics() || null;
   }
 }
 
