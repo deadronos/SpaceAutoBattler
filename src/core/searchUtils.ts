@@ -38,8 +38,6 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
     return cached.targetId != null ? (state.shipIndex?.get(cached.targetId) || null) : null;
   }
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    // DEBUG: this path shouldn't be taken in tests since spatialGrid is undefined
-    console.log(`DEBUG_SEARCH: findNearestEnemy taking SPATIAL path for ship=${ship.id}`);
     ensureSpatialGridPopulated(state);
     const targetTeam = ship.team === 'red' ? 'blue' : 'red';
     const nearest = state.spatialGrid.queryKNearest(ship.pos, 2, targetTeam);
@@ -62,17 +60,13 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
   }
 
   // Linear fallback
-  console.log(`DEBUG_SEARCH: findNearestEnemy taking LINEAR path for ship=${ship.id} ships=${state.ships.length}`);
   let best: Ship | null = null;
   let bestD = Infinity;
   for (const s of state.ships) {
-    console.log(`DEBUG_SEARCH: checking candidate ship=${s.id} team=${s.team} health=${s.health} shipTeam=${ship.team}`);
     if (s.team === ship.team || s.health <= 0) continue;
     const d = getDistance(ship.pos, s.pos);
-    console.log(`DEBUG_SEARCH: valid candidate ship=${s.id} distance=${d} bestD=${bestD}`);
     if (d < bestD) { bestD = d; best = s; }
   }
-  console.log(`DEBUG_SEARCH: linear result best=${best?.id ?? 'null'} bestD=${bestD}`);
   nearestCache.set(ship.id, { frame, targetId: best?.id ?? null });
   return best;
 }

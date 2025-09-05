@@ -30,7 +30,6 @@ export class AIController {
 
   public updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
-  if (DEBUG_AI) console.log(`DEBUG_AI: AIController.updateAllShips time=${this.state.time} ships=${this.state.ships.length}`);
     this.spatial.resetTick();
     updateTeamAlarms(this.state);
     updateScoutAssignments(this.state);
@@ -79,7 +78,6 @@ export class AIController {
       if (typeof t.cooldownLeft !== 'number') t.cooldownLeft = 0;
     }
   // Example targeting updates preserved from original controller
-  if (DEBUG_AI) console.log(`DEBUG_AI: calling updateTurretLeads for ship=${ship.id}`);
   updateTurretLeads(this.state, ship);
 
     // Maintain targetId behavior similar to original logic; be eager when threats exist
@@ -89,14 +87,6 @@ export class AIController {
     // Declare nearestEnemy at a higher scope
     // Use grouped resolver to reduce repeated queries when many ships share cells
   const nearestEnemy = findNearestEnemy(this.state, ship);
-  if (DEBUG_AI) {
-    const enemies = this.state.ships.filter(s => s.team !== ship.team && s.health > 0);
-    console.log(`DEBUG_AI: controller findNearestEnemy ship=${ship.id} result=${nearestEnemy?.id ?? 'null'} totalEnemies=${enemies.length} spatialGrid=${!!this.state.spatialGrid} enableSpatialIndex=${!!this.state.behaviorConfig?.globalSettings.enableSpatialIndex}`);
-    if (enemies.length > 0 && !nearestEnemy) {
-      console.log(`DEBUG_AI: controller findNearestEnemy PROBLEM - enemies exist but function returned null!`);
-      console.log(`DEBUG_AI: enemies:`, enemies.map(e => `id=${e.id} team=${e.team} health=${e.health} pos=${e.pos.x},${e.pos.y},${e.pos.z}`));
-    }
-  }
 
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;
@@ -118,10 +108,6 @@ export class AIController {
           // Clear the ship's target when it becomes invalid (unless evading)
           if (ship.aiState?.currentIntent !== 'evade') {
             ship.targetId = null;
-          }
-          if (DEBUG_AI) {
-            const reason = !isValidTeam ? 'same team' : !isAlive ? 'destroyed' : 'out of range';
-            console.log(`DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${firstTarget} reason=${reason}`);
           }
         }
       } else {
@@ -150,9 +136,6 @@ export class AIController {
           const switchThreshold = 0.8; // 20% closer required to switch
           if (nearestDistance < currentDistance * switchThreshold) {
             ship.targetId = nearestEnemy.id;
-            if (DEBUG_AI) {
-              console.log(`DEBUG_AI: controller switched target ship=${ship.id} from=${validatedFirstTarget} to=${nearestEnemy.id} oldDist=${currentDistance.toFixed(2)} newDist=${nearestDistance.toFixed(2)}`);
-            }
           } else {
             ship.targetId = validatedFirstTarget as number;
           }
@@ -180,29 +163,13 @@ export class AIController {
       if (isValidTeam && isAlive && (withinRange || ship.aiState?.currentIntent === 'evade')) {
         // Set new valid target (allow out-of-range for evade awareness)
         ship.targetId = nearestEnemy.id;
-        if (DEBUG_AI) {
-          console.log(`DEBUG_AI: controller assigned new target ship=${ship.id} target=${nearestEnemy.id} dist=${distance.toFixed(2)} evading=${ship.aiState?.currentIntent === 'evade'}`);
-        }
       } else {
         // Nearest enemy is invalid, clear target
         ship.targetId = null;
-        if (DEBUG_AI) {
-          const reason = !isValidTeam ? 'same team' : !isAlive ? 'destroyed' : 'out of range';
-          console.log(`DEBUG_AI: controller rejected nearest enemy ship=${ship.id} enemy=${nearestEnemy.id} reason=${reason}`);
-        }
       }
     } else {
       // No enemies found, clear target
       ship.targetId = null;
-      if (DEBUG_AI) {
-        console.log(`DEBUG_AI: controller no enemies found ship=${ship.id}`);
-      }
-    }
-    if (DEBUG_AI) {
-      try {
-        const tTargets = ship.turrets.map(t => t.aiState?.targetId ?? null);
-        console.error(`AI-DEBUG targets ship=${ship.id} turretTargets=${JSON.stringify(tTargets)} ship.targetId=${String(ship.targetId)}`);
-      } catch { console.warn('AI-DEBUG target log failed'); }
     }
     // Compatibility fallback: if targeting helpers returned null, run a
     // deterministic legacy-style scoring pass (respecting turret min/max
@@ -345,11 +312,6 @@ export class AIController {
 
     // Execute movement based on current intent (minimal back-compat behavior)
     const intent = ship.aiState?.currentIntent;
-    if (DEBUG_AI) {
-      try {
-        console.error(`AI-DEBUG pre-movement ship=${ship.id} intent=${String(intent)} nearestEnemy=${nearestEnemy ? nearestEnemy.id : 'null'} dt=${dt.toFixed(6)}`);
-      } catch { /* best-effort logging */ }
-    }
     // Track whether a branch integrated position already (moveTowards or idle)
     let integrated = false;
     try {
@@ -440,9 +402,10 @@ export class AIController {
         ship.pos.y += ship.vel.y * dt;
         ship.pos.z += ship.vel.z * dt;
       } catch (e) {
-        // This catch guards the fallback integration step. Log a precise message
-        // including the error to aid debugging without changing runtime behavior.
-        console.warn('AI-DEBUG fallback integration failed (non-critical)', e);
+        // This catch guards the fallback integration step. 
+        if (DEBUG_AI) {
+          console.warn('AI-DEBUG fallback integration failed (non-critical)', e);
+        }
       }
     }
   }

@@ -23,9 +23,6 @@ export function findBestTurretTarget(state: GameState, ship: Ship, turret: Turre
     if (cached && cached.frame === frame) return cached.targetId ?? null;
 
     const id = pickBestTurretTarget(state, ship, turret, turretConfig);
-    if (DEBUG_AI) {
-      console.error(`AI-DEBUG findBestTurretTarget ship=${ship.id} chosen=${String(id)}`);
-    }
     turretTargetCache.set(key, { frame, targetId: id ?? null });
     return id ?? null;
   }

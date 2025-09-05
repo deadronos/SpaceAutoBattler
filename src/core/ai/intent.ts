@@ -6,7 +6,6 @@ import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretTarget } from './targeting.js';
 import { computeInterceptPoint } from '../math/ballisticIntercept.js';
 import { getTeamScoutId, isTeamUnderAlarm } from './teamSystems.js';
-import * as logger from '../../utils/logger.js';
 
 export function calculatePreferredRange(state: GameState, ship: Ship, personality?: AIPersonality): number {
   const p = personality ?? getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
@@ -23,11 +22,6 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   const timeSinceLastDamage = state.time - lastDamageTime;
   const withinDamageWindow = timeSinceLastDamage <= cfg.globalSettings.evadeRecentDamageWindowSeconds;
   const shouldEvadeFromDamage = recentDamage >= cfg.globalSettings.damageEvadeThreshold && withinDamageWindow;
-  if (DEBUG_AI) {
-    try {
-      console.error(`AI-DEBUG reevaluateIntent ship=${ship.id} recentDamage=${recentDamage} lastDamageTime=${lastDamageTime} state.time=${state.time} timeSinceLastDamage=${timeSinceLastDamage} withinWindow=${withinDamageWindow} shouldEvadeFromDamage=${shouldEvadeFromDamage}`);
-    } catch {logger.error('AI-DEBUG logging error'); /* ignore logging errors in tests */ }
-  }
   // Allow immediate reevaluation on first update, or when clear threat present,
   // even if intentEndTime is in the future. This avoids sticking on 'idle' in tests.
   const nearestEnemy = findNearestEnemy(state, ship);
@@ -195,11 +189,6 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
     }
   }
   ai.currentIntent = newIntent;
-  if (DEBUG_AI) {
-    try {
-      console.error(`AI-DEBUG reevaluateIntent chosen ship=${ship.id} newIntent=${String(newIntent)} recentDamage=${recentDamage} withinWindow=${withinDamageWindow}`);
-    } catch { /* ignore logging errors in tests */ }
-  }
   ai.lastIntentReevaluation = state.time;
 }
 
