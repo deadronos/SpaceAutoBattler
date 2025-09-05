@@ -73,6 +73,7 @@
     "pixi.js": "^8.12.0",
     "playwright": "^1.55.0",
     "postprocessing": "^6.37.7",
+    "puppeteer": "^24.19.0",
     "pyright": "^1.1.404",
     "rimraf": "^6.0.1",
     "three": "^0.179.1",

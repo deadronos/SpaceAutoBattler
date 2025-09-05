@@ -27,6 +27,18 @@ export class SVGLoader {
   private watchedFiles = new Set<string>();
 
   constructor() {
+    // Feature guard: require OffscreenCanvas and createImageBitmap for performant rasterization
+    try {
+      const hasOffscreen = typeof (globalThis as any).OffscreenCanvas !== 'undefined';
+      const hasCIB = typeof (globalThis as any).createImageBitmap === 'function';
+      if (!hasOffscreen || !hasCIB) {
+        throw new Error('SVG rasterization requires OffscreenCanvas and createImageBitmap. Please use an up-to-date Chrome.');
+      }
+    } catch (e) {
+      // Surface a clear error and rethrow to prevent silent fallback to slow paths
+      try { logger.error('[SVGLoader] Feature check failed:', e); } catch { /* ignore */ }
+      throw e;
+    }
     this.initWorker();
     this.setupFileWatching();
   }
@@ -268,6 +280,10 @@ export class SVGLoader {
 
       const messageHandler = (e: MessageEvent) => {
         const data = e.data;
+        // Perf events bubbled from worker
+        if (data && data.type === 'perf' && (globalThis as any).__perf && typeof (globalThis as any).__perf.addEvent === 'function') {
+          try { (globalThis as any).__perf.addEvent({ name: data.name, ms: data.ms }); } catch { /* ignore */ }
+        }
         if (data.type === 'rasterized' && data.assetKey === asset.url) {
           this.worker!.removeEventListener('message', messageHandler);
           resolve(data.imageBitmap);

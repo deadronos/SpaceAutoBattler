@@ -196,16 +196,29 @@ self.addEventListener('message', async (e) => {
     try {
         if (world) {
         world.timestep = dt;
+        const t0 = isDebugPerfEnabled() ? performance.now() : 0;
         if (typeof world.step === 'function') world.step();
+        const stepMs = isDebugPerfEnabled() ? (performance.now() - t0) : 0;
         
         // Collect transforms after physics step
+        const t1 = isDebugPerfEnabled() ? performance.now() : 0;
         const transforms = collectTransforms();
+        const collectMs = isDebugPerfEnabled() ? (performance.now() - t1) : 0;
         
+        const t2 = isDebugPerfEnabled() ? performance.now() : 0;
         (self as unknown as { postMessage: (m: unknown) => void }).postMessage({ 
           type: 'step-physics-done', 
           dt,
           transforms 
         });
+        const postMs = isDebugPerfEnabled() ? (performance.now() - t2) : 0;
+        if (isDebugPerfEnabled()) {
+          postPerf('physics.step', stepMs);
+          postPerf('physics.collect', collectMs);
+          postPerf('physics.postMessage', postMs);
+          // Rough payload size measurement
+          try { const approxBytes = JSON.stringify(transforms).length; postPerf('physics.payload.approxBytes', approxBytes / 1000); } catch {}
+        }
       } else {
         (self as unknown as { postMessage: (m: unknown) => void }).postMessage({ type: 'step-physics-done', dt });
       }
@@ -232,3 +245,25 @@ self.addEventListener('message', async (e) => {
 export {};
 
 
+// Perf toggle via URL param on worker script (debugPerf=1)
+function isDebugPerfEnabled(): boolean {
+  try {
+    const href = (self as any)?.location?.href as string | undefined;
+    if (!href) return false;
+    return href.includes('debugPerf=1');
+  } catch { return false; }
+}
+
+function stepWorldOnce() {
+  if (!world || typeof world.step !== 'function') return;
+  const t0 = isDebugPerfEnabled() ? performance.now() : 0;
+  world.step?.();
+  if (isDebugPerfEnabled()) postPerf('physics.step', performance.now() - t0);
+}
+
+function postPerf(name: string, valueMs: number) {
+  if (!isDebugPerfEnabled()) return;
+  try {
+    (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'perf', name, ms: valueMs });
+  } catch { /* ignore */ }
+}
