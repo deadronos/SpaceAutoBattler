@@ -1,7 +1,7 @@
 ﻿import { writeFileSync, mkdirSync } from 'node:fs';
 import { chromium, test, expect } from '@playwright/test';
 import process from 'process';
-
+import logger from '../../src/utils/logger';
 
 
 const BASE = 'http://localhost:8080/spaceautobattler.html';
@@ -33,10 +33,14 @@ async function waitForUi(page) {
 async function setupCounts(page, redCount, blueCount) {
   console.log('[bench] click #reset');
   await page.locator('#reset').click({ timeout: 30000 });
-  for (let i = 0; i < redCount; i++) console.log('[bench] click #addRed');
-  await page.locator('#addRed').click({ timeout: 30000 });
-  for (let i = 0; i < blueCount; i++) console.log('[bench] click #addBlue');
-  await page.locator('#addBlue').click({ timeout: 30000 });
+  for (let i = 0; i < redCount; i++) {
+    // console.log('[bench] click #addRed');
+    await page.locator('#addRed').click({ timeout: 30000 });
+  }
+  for (let i = 0; i < blueCount; i++) {
+    // console.log('[bench] click #addBlue');
+    await page.locator('#addBlue').click({ timeout: 30000 });
+  }
   const startBtn = page.locator('#startPause');
   const txt = (await startBtn.textContent()) || '';
   if (/start/i.test(txt)) await startBtn.click();
@@ -111,7 +115,7 @@ test.describe('Chromium bench bootstrap first', () => {
         p99Ms50: (p2b.p99FrameMs - p1b.p99FrameMs)
       }
     };
-    try { mkdirSync('test-output', { recursive: true }); } catch {} 
+    try { mkdirSync('test-output', { recursive: true }); } catch {logger.error('Could not create test-output dir');} 
     const ts = new Date().toISOString().replace(/[:.]/g,'-'); writeFileSync(`test-output/bench-${ts}.json`, JSON.stringify(results, null, 2));
     console.log('[bench] Results', results);
 
