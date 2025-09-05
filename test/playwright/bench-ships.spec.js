@@ -2,10 +2,12 @@
 // Run with: E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium
 // Optional strict threshold: E2E_BENCH_STRICT=1
 
-const { test, expect } = require('@playwright/test');
-const cp = require('child_process');
-const fs = require('fs');
-const http = require('http');
+import { test, expect } from '@playwright/test';
+import { spawn, execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import http from 'node:http';
+import process from 'node:process';
+import logger from '../../src/logger.js';
 
 function isBenchEnabled() { return process.env.E2E_BENCH === '1' || process.env.E2E_BENCH === 'true'; }
 
@@ -13,19 +15,19 @@ async function isServerUp() {
   return new Promise((resolve) => {
     const req = http.get('http://localhost:8080/', (res) => { res.resume(); resolve(true); });
     req.on('error', () => resolve(false));
-    req.setTimeout(1000, () => { try { req.destroy(); } catch {} resolve(false); });
+    req.setTimeout(1000, () => { try { req.destroy(); } catch {logger.error('Request timeout');} resolve(false); });
   });
 }
 
 function hasBuiltDist() {
   try {
-    return fs.existsSync('dist/spaceautobattler.html');
+    return existsSync('dist/spaceautobattler.html');
   } catch { return false; }
 }
 
 function run(cmd) {
   console.log(`[bench] ${cmd}`);
-  cp.execSync(cmd, { stdio: 'inherit' });
+  execSync(cmd, { stdio: 'inherit' });
 }
 
 async function ensureBuildAndServer() {
@@ -34,7 +36,7 @@ async function ensureBuildAndServer() {
   if (!built) run('npm run build');
   if (!server) {
     // fire and forget server; rely on playwright webServer in config if present, otherwise local
-    cp.spawn('npm', ['run', 'serve'], { stdio: 'ignore', detached: true });
+    spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'serve'], { stdio: 'ignore', detached: true });
     // wait for port
     const start = Date.now();
     while (!(await isServerUp())) {
@@ -117,4 +119,3 @@ test.describe('bench: ships FPS', () => {
     }
   });
 });
-

@@ -368,7 +368,31 @@ Existing bench spec already leverages window.__perf.getFpsStats() if available; 
 How to use
 
 Manual bench (Chromium):
-E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium
+Benchmarks are opt-in and gated by the `E2E_BENCH` env var.
+
+Cross-platform commands
+
+- PowerShell (Windows):
+  - `$env:E2E_BENCH=1; npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+  - Strict threshold: `$env:E2E_BENCH=1; $env:E2E_BENCH_STRICT=1; npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+
+- CMD (Windows):
+  - `set E2E_BENCH=1 && npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+  - Strict threshold: `set E2E_BENCH=1 && set E2E_BENCH_STRICT=1 && npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+
+- Bash (macOS/Linux):
+  - `E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+  - Strict threshold: `E2E_BENCH=1 E2E_BENCH_STRICT=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+
+- Cross-env (single command for all shells):
+  - `npx cross-env E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+  - Strict threshold: `npx cross-env E2E_BENCH=1 E2E_BENCH_STRICT=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium`
+
+Notes
+
+- The spec will build and/or start the local server if needed, then navigate to `http://localhost:8080/spaceautobattler.html`.
+- It runs two passes (without and with `?debugPerf=1`) to capture telemetry overhead.
+- With `E2E_BENCH_STRICT=1`, it asserts ≥ 60 FPS for the 25-per-team case; otherwise it only logs results.
 E2E_BENCH=1 E2E_BENCH_STRICT=1 ... (enforces ≥60 FPS for 25/team)
 Directly in the browser:
 Open http://localhost:8080/spaceautobattler.html?debugPerf=1
