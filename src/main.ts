@@ -23,7 +23,6 @@ import type { GameState, UIElements, ShipClass } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
-import { loadGLTF } from './core/assetLoader.js';
 import { CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
 // DefaultSimConfig not used here; keep config imports minimal to avoid unused-import ESLint errors
@@ -81,36 +80,45 @@ function initGame(seed?: string) {
   // Initialize SVG loader and preload ship SVGs
   const svgLoader = getSVGLoader();
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
+  const gltfModeEnabled = !!((RendererConfig as any)?.loadGltfModels);
 
-  // Preload SVG assets with change detection enabled
-  (async () => {
-    try {
-      logger.debug('[main.ts] Preloading SVG assets with change detection...');
+  // Preload SVG assets with change detection enabled unless GLTF model loading is enabled
+  if (!gltfModeEnabled) {
+    (async () => {
+      try {
+        logger.debug('[main.ts] Preloading SVG assets with change detection...');
 
-      for (const svgUrl of shipSVGUrls) {
-        try {
-          // Load SVG with rasterization
-          const asset = await loadSVGAsset(svgUrl, {
-            width: defaultSVGConfig.defaultRasterSize.width,
-            height: defaultSVGConfig.defaultRasterSize.height,
-            enableWatching: defaultSVGConfig.cache.enableFileWatching
-          });
+        for (const svgUrl of shipSVGUrls) {
+          try {
+            // Load SVG with rasterization
+            const asset = await loadSVGAsset(svgUrl, {
+              width: defaultSVGConfig.defaultRasterSize.width,
+              height: defaultSVGConfig.defaultRasterSize.height,
+              enableWatching: defaultSVGConfig.cache.enableFileWatching
+            });
 
-          // Store in asset pool for renderer access
-          state.assetPool!.set(svgUrl, asset);
+            // Store in asset pool for renderer access
+            state.assetPool!.set(svgUrl, asset);
 
-          logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
-        } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
+            logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
+          } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
+          }
         }
-      }
 
-      logger.debug('[main.ts] SVG asset preloading complete');
+        logger.debug('[main.ts] SVG asset preloading complete');
       } catch (_error) { void _error;logger.error('[main.ts] Error during SVG asset preloading:', _error);
-    }
-  })();
+      }
+    })();
+  } else {
+    logger.debug('[main.ts] Skipping SVG preload because RendererConfig.loadGltfModels=true');
+  }
   (window as any).debugSVG = {
-    // Get SVG loader stats
+    // Get SVG loader stats (no-op when GLTF mode enabled)
     getStats: () => {
+      if ((RendererConfig as any)?.loadGltfModels) {
+        logger.debug('[SVG Debug] GLTF mode enabled; SVG loader stats are disabled');
+        return { cachedAssets: 0 } as any;
+      }
       const stats = svgLoader.getCacheStats();
       logger.debug('[SVG Debug] Cache stats:', stats);
       return stats;
@@ -118,6 +126,10 @@ function initGame(seed?: string) {
 
     // Manually reload all SVG assets
     reloadAll: async () => {
+      if ((RendererConfig as any)?.loadGltfModels) {
+        logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
+        return;
+      }
       logger.debug('[SVG Debug] Manually reloading all SVG assets...');
       try {
         await svgLoader.reloadAllAssets();
@@ -128,6 +140,10 @@ function initGame(seed?: string) {
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
+      if ((RendererConfig as any)?.loadGltfModels) {
+        logger.debug('[SVG Debug] GLTF mode enabled; clearCache is a no-op');
+        return;
+      }
       logger.debug('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
       svgLoader.clearCache(assetUrl);
       logger.debug('[SVG Debug] SVG cache cleared');
@@ -135,6 +151,10 @@ function initGame(seed?: string) {
 
     // List cached assets
     listCached: () => {
+      if ((RendererConfig as any)?.loadGltfModels) {
+        logger.debug('[SVG Debug] GLTF mode enabled; no cached SVG assets');
+        return [];
+      }
       const assets = Array.from(svgLoader.getCacheStats().cachedAssets > 0 ? 'assets cached' : []);
       logger.debug('[SVG Debug] Cached SVG assets:', assets);
       return assets;
@@ -143,6 +163,26 @@ function initGame(seed?: string) {
 
   logger.debug('[main.ts] SVG debugging functions available at window.debugSVG');
   logger.debug('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
+
+  // Expose lightweight debug helpers for quick console testing
+  (window as any).__appDebug = {
+    getState: () => state,
+    listAssetPool: () => Array.from((state.assetPool ?? new Map()).keys()),
+    getAsset: (k: string) => (state.assetPool as Map<string, unknown>)?.get(k),
+    // lazy loader wrappers to avoid bundling load-only code paths unless used
+    preloadSingleShip: async (cls: string, team = 'red') => {
+      try {
+        const mod = await import('./core/shipModelLoader.js');
+        return (mod.preloadSingleShip as any)(state, cls, team);
+      } catch (err) { console.warn('preloadSingleShip failed', err); return null; }
+    },
+    preloadShipModels: async () => {
+      try {
+        const mod = await import('./core/shipModelLoader.js');
+        return (mod.preloadShipModels as any)(state, ['red','blue']);
+      } catch (err) { console.warn('preloadShipModels failed', err); return null; }
+    }
+  } as any;
 
   // Optionally preload common ship assets into the pool (config-driven)
   // Optionally preload common ship assets into the pool (config-driven)
@@ -155,17 +195,16 @@ function initGame(seed?: string) {
         return;
       }
 
-      const classes: string[] = ['fighter','corvette','frigate','destroyer','carrier'];
-      for (const cls of classes) {
-        const url = `/assets/models/ship-${cls}.gltf`;
-        // Attempt to load; if not present, loader will fail silently
-        try {
-          const res = await loadGLTF(state, url);
-          if (state.assetPool) {
-            state.assetPool.set(`ship-${cls}-red`, res);
-            state.assetPool.set(`ship-${cls}-blue`, res);
-          }
-        } catch (_e) { void _e;/* ignore missing assets */ }
+      // Use the centralized ship model map and loader to preload models
+      try {
+        // Defer to preloadShipModels which reads `src/config/shipModelMap.ts`
+        // and stores protos under keys like `ship-<class>-<team>` in state.assetPool.
+        // This allows model file paths to live in the repository (e.g. src/config/assets/gltf)
+        const { preloadShipModels } = await import('./core/shipModelLoader.js');
+        await preloadShipModels(state, ['red','blue']);
+      } catch (err) {
+        // Keep graceful failure behavior
+        console.warn('[main.ts] preloadShipModels failed:', err);
       }
     } catch (_e) { void _e;/* ignore */ }
   })();

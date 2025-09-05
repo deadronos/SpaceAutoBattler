@@ -24,12 +24,11 @@ export interface ShipVisualConfig {
 
 export const DefaultShipVisualConfig: ShipVisualConfig = {
   ships: {
-    fighter: { scale: 0.7, collisionRadius: 16 },
-    corvette: { scale: 0.9, collisionRadius: 16 },
-    frigate: { scale: 1.1, collisionRadius: 20 },
-    // Increased visual size ~2x for larger capital ships; update collision accordingly
-    destroyer: { scale: 2.7, collisionRadius: 40 },
-    carrier: { scale: 3.2, collisionRadius: 40 },
+    fighter: { scale: 1.0, collisionRadius: 13 },
+    corvette: { scale: 1.0, collisionRadius: 17 },
+    frigate: { scale: 1.0, collisionRadius: 19 },
+    destroyer: { scale: 1.0, collisionRadius: 26 },
+    carrier: { scale: 1.0, collisionRadius: 26 },
   },
   defaults: {
     collisionRadius: 16, // Default collision radius for unknown ship classes
@@ -43,11 +42,11 @@ export const DefaultShipVisualConfig: ShipVisualConfig = {
   },
   shield: {
     scaleMultipliers: {
-      fighter: 0.8,
+      fighter: 1.0,
       corvette: 1.0,
-      frigate: 1.2,
-      destroyer: 1.4,
-      carrier: 1.6,
+      frigate: 1.0,
+      destroyer: 1.0,
+      carrier: 1.0,
     },
   },
 };
