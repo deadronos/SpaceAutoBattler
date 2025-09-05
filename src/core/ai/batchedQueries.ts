@@ -22,6 +22,7 @@ export class BatchedQueryManager {
   };
   
   private frameId = 0;
+  private static BENCH = !!process.env.VITEST_DEBUG_BENCH;
 
   public resetForFrame(newFrameId: number) {
     if (newFrameId !== this.frameId) {
@@ -37,16 +38,27 @@ export class BatchedQueryManager {
    * Pre-compute nearest enemies for all ships in one batch operation
    */
   public precomputeNearestEnemies(state: GameState, ships: Ship[]) {
+    const bench = BatchedQueryManager.BENCH;
+    const t0 = bench ? performance.now() : 0;
     if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
       // Fallback to individual queries
+      if (bench) console.log('[BENCH] precomputeNearestEnemies skipped - no spatialGrid or index');
       return;
     }
 
-    // Ensure spatial grid is populated once for all queries
-    state.spatialGrid.clear();
-    for (const s of state.ships) {
-      if (s.health > 0) {
-        state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
+    // Ensure spatial grid is populated once for all queries. Use shared helper
+    // to avoid duplicating rebuild logic and reduce allocations.
+    try {
+      // Import helper lazily to avoid circular deps at module load
+      const { ensureSpatialGridUpdated } = require('../ai/spatial.js');
+      ensureSpatialGridUpdated(state);
+  } catch {
+      // Fallback: populate directly if helper isn't available
+      state.spatialGrid.clear();
+      for (const s of state.ships) {
+        if (s.health > 0) {
+          state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
+        }
       }
     }
 
@@ -73,6 +85,10 @@ export class BatchedQueryManager {
       
       this.results.nearestEnemyCache.set(ship.id, bestEnemy);
     }
+    if (bench) {
+      const t1 = performance.now();
+      console.log(`[BENCH] precomputeNearestEnemies for ${ships.length} ships: ${(t1 - t0).toFixed(3)}ms`);
+    }
   }
 
   /**
@@ -86,9 +102,12 @@ export class BatchedQueryManager {
    * Batch compute separation neighbors for ships in similar regions
    */
   public precomputeSeparationNeighbors(state: GameState, ships: Ship[]) {
+    const bench = BatchedQueryManager.BENCH;
+    const t0 = bench ? performance.now() : 0;
     const separationDistance = state.behaviorConfig?.globalSettings.separationDistance ?? 50;
     
     if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      if (bench) console.log('[BENCH] precomputeSeparationNeighbors skipped - no spatialGrid or index');
       return;
     }
 
@@ -106,6 +125,10 @@ export class BatchedQueryManager {
         }
       );
       this.results.separationNeighborsCache.set(ship.id, neighbors);
+    }
+    if (bench) {
+      const t1 = performance.now();
+      console.log(`[BENCH] precomputeSeparationNeighbors for ${ships.length} ships: ${(t1 - t0).toFixed(3)}ms`);
     }
   }
 
@@ -153,29 +176,24 @@ export class BatchedQueryManager {
         }
       });
 
-      // Cache results for all ships in this cell
+      // Cache results for all ships in this cell. Use squared-distance math
+      // to avoid repeated Math.sqrt and extra allocations.
       for (const ship of ships) {
         const shipKey = `${ship.id}|${range}`;
-        // Filter enemies by actual distance to this specific ship
+        const range2 = range * range;
         const nearbyEnemies = enemies.filter(enemy => {
           const dx = enemy.pos.x - ship.pos.x;
           const dy = enemy.pos.y - ship.pos.y;
           const dz = enemy.pos.z - ship.pos.z;
-          return Math.sqrt(dx*dx + dy*dy + dz*dz) <= range;
+          return (dx*dx + dy*dy + dz*dz) <= range2;
         }).sort((a, b) => {
-          const distA = Math.sqrt(
-            Math.pow(a.pos.x - ship.pos.x, 2) + 
-            Math.pow(a.pos.y - ship.pos.y, 2) + 
-            Math.pow(a.pos.z - ship.pos.z, 2)
-          );
-          const distB = Math.sqrt(
-            Math.pow(b.pos.x - ship.pos.x, 2) + 
-            Math.pow(b.pos.y - ship.pos.y, 2) + 
-            Math.pow(b.pos.z - ship.pos.z, 2)
-          );
-          return distA - distB;
+          const adx = a.pos.x - ship.pos.x, ady = a.pos.y - ship.pos.y, adz = a.pos.z - ship.pos.z;
+          const bdx = b.pos.x - ship.pos.x, bdy = b.pos.y - ship.pos.y, bdz = b.pos.z - ship.pos.z;
+          const da = adx*adx + ady*ady + adz*adz;
+          const db = bdx*bdx + bdy*bdy + bdz*bdz;
+          return da - db;
         });
-        
+
         this.results.nearbyEnemiesCache.set(shipKey, nearbyEnemies);
       }
     }

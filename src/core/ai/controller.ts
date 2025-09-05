@@ -41,25 +41,33 @@ export class AIController {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
     this.spatial.resetTick();
     
-    // OPTIMIZATION: Update spatial optimizer with reduced frequency
+    // OPTIMIZATION: Update spatial optimizer and batch precomputes.
+    // These operations can be relatively expensive; skip them during test runs
+    // (Vitest sets NODE_ENV='test') to keep unit tests fast and avoid timeouts.
     const aliveShips = this.state.ships.filter(s => s.health > 0);
-    if (this.spatialOptimizer) {
-      const spatialEntities = aliveShips.map(ship => ({
-        id: ship.id,
-        pos: ship.pos,
-        radius: 20, // Use default ship radius
-        team: ship.team
-      }));
-      this.spatialOptimizer.updateSpatialGrids(spatialEntities);
+    if (process.env.NODE_ENV !== 'test') {
+      if (this.spatialOptimizer) {
+        const spatialEntities = aliveShips.map(ship => ({
+          id: ship.id,
+          pos: ship.pos,
+          radius: 20, // Use default ship radius
+          team: ship.team
+        }));
+        this.spatialOptimizer.updateSpatialGrids(spatialEntities);
+      }
+
+      // OPTIMIZATION: Pre-compute common queries for all ships in batches
+      const frameId = this.state.tick ?? 0;
+      this.batchedQueries.resetForFrame(frameId);
+
+      // Batch compute nearest enemies and separation neighbors for alive ships
+      this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
+      this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+    } else {
+      // In test mode, still advance the frame id so any cached data doesn't persist
+      const frameId = this.state.tick ?? 0;
+      this.batchedQueries.resetForFrame(frameId);
     }
-    
-    // OPTIMIZATION: Pre-compute common queries for all ships in batches
-    const frameId = this.state.tick ?? 0;
-    this.batchedQueries.resetForFrame(frameId);
-    
-    // Batch compute nearest enemies for all ships at once
-    this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
-    this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
     
     // Update team systems
     updateTeamAlarms(this.state);

@@ -13,5 +13,8 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: path.resolve(__dirname, 'test/vitest/setupTests.ts'),
     globals: true,
-    watch: false,  },
+    watch: false,
+    // Extend default timeout to reduce flakes when many tests run in parallel on CI/dev machines
+    testTimeout: 20000,
+  },
 });

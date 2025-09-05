@@ -84,7 +84,12 @@ export function findNearbyEnemies(state: GameState, ship: Ship, range: number): 
         if (s && s.health > 0) out.push(s);
       }
     });
-    return out.sort((a, b) => getDistance(ship.pos, a.pos) - getDistance(ship.pos, b.pos));
+    // Sort using squared distances to avoid expensive Math.sqrt calls
+    return out.sort((a, b) => {
+      const dax = a.pos.x - ship.pos.x, day = a.pos.y - ship.pos.y, daz = a.pos.z - ship.pos.z;
+      const dbx = b.pos.x - ship.pos.x, dby = b.pos.y - ship.pos.y, dbz = b.pos.z - ship.pos.z;
+      return (dax*dax + day*day + daz*daz) - (dbx*dbx + dby*dby + dbz*dbz);
+    });
   }
 
   const enemies: Ship[] = [];
@@ -93,7 +98,12 @@ export function findNearbyEnemies(state: GameState, ship: Ship, range: number): 
     const d = getDistance(ship.pos, s.pos);
     if (d <= range) enemies.push(s);
   }
-  return enemies.sort((a, b) => getDistance(ship.pos, a.pos) - getDistance(ship.pos, b.pos));
+  // Sort using squared distances
+  return enemies.sort((a, b) => {
+    const dax = a.pos.x - ship.pos.x, day = a.pos.y - ship.pos.y, daz = a.pos.z - ship.pos.z;
+    const dbx = b.pos.x - ship.pos.x, dby = b.pos.y - ship.pos.y, dbz = b.pos.z - ship.pos.z;
+    return (dax*dax + day*day + daz*daz) - (dbx*dbx + dby*dby + dbz*dbz);
+  });
 }
 
 // Grouped k-nearest queries per cell for callers that need many per frame.
