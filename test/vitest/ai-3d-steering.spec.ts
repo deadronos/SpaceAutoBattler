@@ -134,7 +134,7 @@ describe('3D Steering System', () => {
 
       // Call steering directly for deterministic unit verification
       // Import ESM module directly inside the test
-      const { moveTowards } = await import('../../src/core/ai/steering.ts');
+      const { moveTowards } = await import('../../src/core/ai/steering.js');
       const dt = 0.1;
       for (let i = 0; i < 5; i++) {
         moveTowards(ship, target, dt, gameState.behaviorConfig.globalSettings);

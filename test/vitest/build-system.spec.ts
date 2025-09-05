@@ -12,71 +12,49 @@ const TEST_CONFIG = {
 };
 
 describe('Build System Tests', () => {
-    beforeAll(async () => {
-    // Clean any existing dist directory
+  beforeAll(async () => {
+    // If a recent build exists, keep it; otherwise build once for the suite.
+    let recentBuild = false;
     try {
-      await fs.rm(TEST_CONFIG.distDir, { recursive: true, force: true });
-    } catch {
-      // Directory might not exist, which is fine
-    }
-  });
-
-    afterAll(async () => {
-    // Clean up test artifacts
-    try {
-      await fs.rm(TEST_CONFIG.distDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
-  });
-
-  describe('npm run build', () => {
-  it('should produce expected output files', async () => {
-      // If a recent build exists, skip invoking build again to save time in CI.
-      // Consider build recent if html exists and newest dist file is < 2 minutes old.
-      let shouldBuild = true;
-      try {
-        const entries = await fs.readdir(TEST_CONFIG.distDir, { withFileTypes: true });
-        const names = entries.map(e => e.name);
-        const hasHtml = names.includes('spaceautobattler.html');
-        if (hasHtml) {
-          let newest = 0;
-          for (const e of entries) {
-            try {
-              const st = await fs.stat(path.join(TEST_CONFIG.distDir, e.name));
-              newest = Math.max(newest, st.mtimeMs, st.ctimeMs);
-            } catch {}
-          }
-          if (Date.now() - newest < 2 * 60 * 1000) {
-            shouldBuild = false;
-          }
+      const entries = await fs.readdir(TEST_CONFIG.distDir, { withFileTypes: true });
+      const names = entries.map(e => e.name);
+      if (names.includes('spaceautobattler.html')) {
+        let newest = 0;
+        for (const e of entries) {
+          try {
+            const st = await fs.stat(path.join(TEST_CONFIG.distDir, e.name));
+            newest = Math.max(newest, st.mtimeMs, st.ctimeMs);
+          } catch {}
         }
-      } catch {}
-
-      if (shouldBuild) {
-        // Execute build command
-        execSync('npm run build', {
-          cwd: TEST_CONFIG.repoRoot,
-          timeout: TEST_CONFIG.buildTimeout,
-          stdio: 'inherit'
-        });
+        if (Date.now() - newest < 2 * 60 * 1000) recentBuild = true;
       }
+    } catch {}
 
-      // Poll for dist readiness to avoid race conditions with filesystem
+    if (!recentBuild) {
+      try { await fs.rm(TEST_CONFIG.distDir, { recursive: true, force: true }); } catch {}
+      execSync('npm run build', {
+        cwd: TEST_CONFIG.repoRoot,
+        timeout: TEST_CONFIG.buildTimeout,
+        stdio: 'inherit'
+      });
       const start = Date.now();
-      let ready = false;
       while (Date.now() - start < 3000) {
         try {
           const entries = await fs.readdir(TEST_CONFIG.distDir);
           const hasJs = entries.some(f => f.endsWith('.js'));
           const hasHtml = entries.includes('spaceautobattler.html');
           const hasStyles = entries.includes('styles');
-          if (hasJs && hasHtml && hasStyles) { ready = true; break; }
+          if (hasJs && hasHtml && hasStyles) break;
         } catch {}
         await new Promise(r => setTimeout(r, 50));
       }
-      expect(ready).toBe(true);
+    }
+  }, TEST_CONFIG.buildTimeout + 20000);
 
+  // Note: Keep dist/ after tests for inspection; no cleanup
+
+  describe('npm run build', () => {
+  it('should produce expected output files', async () => {
       // Verify output directory exists
       const distExists = await fs.stat(TEST_CONFIG.distDir).then(() => true).catch(() => false);
       expect(distExists).toBe(true);
