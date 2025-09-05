@@ -14,25 +14,41 @@ import { PhysicsConfig } from '../../config/physicsConfig.js';
 import { calculateEscapeScore as calcEscape, moveTowards } from './steering.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
+import { BatchedQueryManager } from './batchedQueries.js';
 
 export class AIController {
   private state: GameState;
   private intentManager: IntentManager;
   private spatial: SpatialHelpers;
   private teams: TeamSystems;
+  private batchedQueries: BatchedQueryManager;
 
   constructor(state: GameState) {
     this.state = state;
     this.intentManager = new IntentManager();
     this.spatial = new SpatialHelpers(state);
     this.teams = new TeamSystems(state);
+    this.batchedQueries = new BatchedQueryManager();
   }
 
   public updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
     this.spatial.resetTick();
+    
+    // OPTIMIZATION: Pre-compute common queries for all ships in batches
+    const frameId = this.state.tick ?? 0;
+    this.batchedQueries.resetForFrame(frameId);
+    
+    // Batch compute nearest enemies for all ships at once
+    const aliveShips = this.state.ships.filter(s => s.health > 0);
+    this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
+    this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+    
+    // Update team systems
     updateTeamAlarms(this.state);
     updateScoutAssignments(this.state);
+    
+    // Process individual ships with optimized queries
     for (const ship of this.state.ships) {
       if (ship.health <= 0) continue;
       this.updateShipAI(ship, dt);
@@ -85,8 +101,8 @@ export class AIController {
     // Prefer any non-null turret target (first-wins) for backward compatibility.
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
-    // Use grouped resolver to reduce repeated queries when many ships share cells
-  const nearestEnemy = findNearestEnemy(this.state, ship);
+    // OPTIMIZATION: Use batched query result instead of individual search
+    const nearestEnemy = this.batchedQueries.getNearestEnemy(ship) || findNearestEnemy(this.state, ship);
 
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;
@@ -272,7 +288,11 @@ export class AIController {
       // no-op
     }
     // Apply separation forces from spatial helper regardless of intent to avoid clumping
-    const sepRes = this.spatial.calculateSeparationForceWithCount(ship);
+    // OPTIMIZATION: Use pre-computed neighbors from batched queries
+    const precomputedNeighbors = this.batchedQueries.getSeparationNeighbors(ship);
+    const sepRes = precomputedNeighbors.length > 0 
+      ? this.spatial.calculateSeparationFromNeighbors(ship, precomputedNeighbors)
+      : this.spatial.calculateSeparationForceWithCount(ship);
   if (DEBUG_AI) {
         const mag = Math.hypot(sepRes.force.x, sepRes.force.y, sepRes.force.z);
         const prePos = `${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)}`;

@@ -11,8 +11,14 @@ export class SpatialHelpers {
   ensureUpdated() {
     if (!this.state.spatialGrid || this.spatialGridUpdated) return;
     if (this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      // SpatialGrid API uses rebuild in this project
-      (this.state.spatialGrid as any).rebuild?.(this.state.ships);
+      // SpatialGrid API expects SpatialEntity[] not Ship[] directly
+      const spatialEntities = this.state.ships.map(s => ({ 
+        id: s.id, 
+        pos: s.pos, 
+        radius: 16, // Default ship radius
+        team: s.team 
+      }));
+      this.state.spatialGrid.rebuild(spatialEntities);
     }
     this.spatialGridUpdated = true;
   }
@@ -46,12 +52,29 @@ export class SpatialHelpers {
     const res = steeringSeparation(ship.pos, neighborPositions, separationDistance, magnitudeThreshold, () => this.state.rng.next());
     return res;
   }
+
+  /**
+   * OPTIMIZATION: Calculate separation force from pre-computed neighbor positions
+   * This avoids redundant spatial queries when neighbors are already known
+   */
+  calculateSeparationFromNeighbors(ship: Ship, neighbors: Vector3[]): { force: Vector3; neighborCount: number } {
+    const separationDistance = this.state.behaviorConfig!.globalSettings.separationDistance;
+    const magnitudeThreshold = this.state.behaviorConfig!.globalSettings.separationVectorMagnitudeThreshold || 0.0001;
+    return steeringSeparation(ship.pos, neighbors, separationDistance, magnitudeThreshold, () => this.state.rng.next());
+  }
 }
 
 export function ensureSpatialGridUpdated(state: GameState) {
   if (!state.spatialGrid) return;
   if (!state.behaviorConfig?.globalSettings.enableSpatialIndex) return;
-  (state.spatialGrid as any).rebuild?.(state.ships);
+  // SpatialGrid API expects SpatialEntity[] not Ship[] directly
+  const spatialEntities = state.ships.map(s => ({ 
+    id: s.id, 
+    pos: s.pos, 
+    radius: 16, // Default ship radius
+    team: s.team 
+  }));
+  state.spatialGrid.rebuild(spatialEntities);
 }
 
 export function findNearestEnemy(state: GameState, ship: Ship) { return sharedFindNearestEnemy(state, ship); }

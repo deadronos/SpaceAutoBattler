@@ -24,16 +24,19 @@ function ensureSpatialGridPopulated(state: GameState) {
   }
 }
 
-// Simple per-tick target cache to avoid repeated nearest searches for the
-// same ship. The game loop should bump `state.frame` each tick; if that
-// isn't available, this cache will still help within a single call site.
-const nearestCache: Map<number, { frame: number; targetId: number | null }> = new Map();
+// Enhanced per-tick target cache with more comprehensive caching.
+// Cache nearest enemies, nearby results, and spatial queries to avoid redundant work.
+const searchCache = {
+  nearest: new Map<number, { frame: number; targetId: number | null }>(),
+  nearby: new Map<string, { frame: number; results: Ship[] }>(),
+  separation: new Map<number, { frame: number; pos: Vector3; neighbors: Ship[] }>()
+};
 
 export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
-  // Per-frame cache: if we've already resolved a nearest enemy for this ship
+  // Enhanced per-frame cache: if we've already resolved a nearest enemy for this ship
   // during the current frame, reuse it to avoid multiple queryKNearest calls.
-  const frame = (state as any).frame ?? 0;
-  const cached = nearestCache.get(ship.id);
+  const frame = (state as { frame?: number }).frame ?? 0;
+  const cached = searchCache.nearest.get(ship.id);
   if (cached && cached.frame === frame) {
     return cached.targetId != null ? (state.shipIndex?.get(cached.targetId) || null) : null;
   }
@@ -55,7 +58,7 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
       }
     }
     const res = state.shipIndex?.get(best.id) || null;
-    nearestCache.set(ship.id, { frame, targetId: res?.id ?? null });
+    searchCache.nearest.set(ship.id, { frame, targetId: res?.id ?? null });
     return res;
   }
 
@@ -67,7 +70,7 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
     const d = getDistance(ship.pos, s.pos);
     if (d < bestD) { bestD = d; best = s; }
   }
-  nearestCache.set(ship.id, { frame, targetId: best?.id ?? null });
+  searchCache.nearest.set(ship.id, { frame, targetId: best?.id ?? null });
   return best;
 }
 
@@ -98,7 +101,7 @@ export function findNearbyEnemies(state: GameState, ship: Ship, range: number): 
 export function makeCellNearestResolver(state: GameState, radius: number) {
   const grid = state.spatialGrid;
   if (!grid) return null;
-  const cellSize = (grid as any).cellSize ?? state.simConfig.spatialGrid.cellSize;
+  const cellSize = state.simConfig.spatialGrid.cellSize;
   const map = new Map<string, import('../types/index.js').Ship[]>();
   return (center: Vector3, team?: string) => {
     const cx = Math.floor(center.x / cellSize);
