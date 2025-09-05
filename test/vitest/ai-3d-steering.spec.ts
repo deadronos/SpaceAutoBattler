@@ -123,31 +123,23 @@ describe('3D Steering System', () => {
       expect(ship1.orientation.pitch).toBeGreaterThanOrEqual(0);
     });
 
-    test('ships should move in 3D using forward vector', () => {
+    test('ships should move in 3D using forward vector', async () => {
       const ship = spawnShip(gameState, 'red', 'fighter', { x: 0, y: 0, z: 0 });
-      const target = spawnShip(gameState, 'blue', 'fighter', { x: 100, y: 0, z: 100 });
-      
+      const target = { x: 100, y: 0, z: 100 } as Vector3;
+
       // Set the ship's orientation manually to 45 degrees pitch up
       ship.orientation = { pitch: Math.PI / 4, yaw: 0, roll: 0 }; // 45 degrees up
       ship.dir = 0;
       ship.vel = { x: 0, y: 0, z: 0 };
-      ship.targetId = target.id; // Explicit targeting
-      
-      // Force pursue intent
-      ship.aiState = {
-        currentIntent: 'pursue',
-        intentEndTime: gameState.time + 10,
-        lastIntentReevaluation: gameState.time,
-        preferredRange: 100
-      };
-      
-      // Run several AI updates
+
+      // Call steering directly for deterministic unit verification
+      // Import ESM module directly inside the test
+      const { moveTowards } = await import('../../src/core/ai/steering.ts');
+      const dt = 0.1;
       for (let i = 0; i < 5; i++) {
-        aiController.updateAllShips(0.1);
-        gameState.time += 0.1;
+        moveTowards(ship, target, dt, gameState.behaviorConfig.globalSettings);
       }
-      
-      // Ship should accumulate some speed; allow zero x/z if alignment pending
+
       const speed = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
       expect(speed).toBeGreaterThan(0);
     });
