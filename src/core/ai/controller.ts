@@ -101,6 +101,18 @@ export class AIController {
 
     // Intent reevaluation (do this before targeting so first pass can select non-idle)
   const personality = getEffectivePersonality(this.state.behaviorConfig!, ship.class, ship.team);
+  // Before reevaluating, compute boundary proximity value (0..1) to bias decisions if needed
+  try {
+    const cfg = this.state.behaviorConfig!;
+    const safeMargin = cfg.globalSettings.boundarySafetyMargin ?? 50;
+    const dx = Math.min(ship.pos.x, this.state.simConfig.simBounds.width - ship.pos.x);
+    const dy = Math.min(ship.pos.y, this.state.simConfig.simBounds.height - ship.pos.y);
+    const dz = Math.min(ship.pos.z, this.state.simConfig.simBounds.depth - ship.pos.z);
+    const minDist = Math.min(dx, dy, dz);
+    const boundScore = (minDist >= safeMargin) ? 0 : (minDist <= 0 ? 1 : (safeMargin - minDist) / safeMargin);
+    // We avoid mutating typed aiState shape here; controllers may read this temporarily via local variable
+    (ship as unknown as { __boundaryProximity?: number }).__boundaryProximity = boundScore;
+  } catch { /* best-effort */ }
   reevaluateIntent(this.state, ship, personality);
     updateShieldRegeneration(this.state, ship, dt);
 
@@ -347,7 +359,7 @@ export class AIController {
         } catch (e) { console.warn('AI-DEBUG postVel outer failed', e); }
       }
 
-    // Execute movement based on current intent (minimal back-compat behavior)
+  // Execute movement based on current intent (minimal back-compat behavior)
     const intent = ship.aiState?.currentIntent;
     // Track whether a branch integrated position already (moveTowards or idle)
     let integrated = false;
@@ -419,6 +431,21 @@ export class AIController {
     } catch {
       // Movement helpers should not throw in tests; swallow and continue
     }
+    // Apply boundary steering before fallback integration so separation and
+    // steering have had their effect.
+    try {
+      const cfg = this.state.behaviorConfig?.globalSettings;
+      if (cfg) {
+        // apply gentle corrective steer when close to edges
+        // Import helper from steering module by dynamic require to avoid cyclic imports at top
+        try {
+          const { applyBoundarySteer } = require('./steering.js');
+          const margin = cfg.boundarySafetyMargin ?? 50;
+          applyBoundarySteer(ship, this.state.simConfig.simBounds, margin, 0.4, dt);
+        } catch { /* ignore if require fails in some test harness */ }
+      }
+    } catch { /* ignore */ }
+
     // Fallback: if no movement branch integrated position, still integrate velocity
     // so separation nudges affect position. This matches legacy controller which
     // progressed positions each tick regardless of whether a specific intent

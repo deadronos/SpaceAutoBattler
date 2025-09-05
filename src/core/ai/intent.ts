@@ -3,6 +3,7 @@ import type { AIPersonality, AIIntent } from '../../config/behaviorConfig.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
 import { DEBUG_AI } from '../../utils/env';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
+import { scoreBoundaryAvoidance } from './decisionEngine.js';
 import { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretTarget } from './targeting.js';
 import { computeInterceptPoint } from '../math/ballisticIntercept.js';
 import { getTeamScoutId, isTeamUnderAlarm } from './teamSystems.js';
@@ -96,6 +97,21 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   if (shouldEvadeFromDamage) {
     newIntent = 'evade';
   } else {
+    // Compute boundary proximity and, if high, bias away from aggressive intents
+    try {
+      const bounds = state.simConfig.simBounds;
+      const margin = cfg.globalSettings.boundarySafetyMargin ?? 50;
+      const bScore = scoreBoundaryAvoidance({ pos: ship.pos, simBounds: bounds, safeMargin: margin });
+  // Store for tests/debug (non-critical; typed as unknown container)
+  try { (ship.aiState as unknown as { boundaryProximity?: number }).boundaryProximity = bScore; } catch { /* ignore */ }
+      // If very close to edge, prefer non-pursue actions by reducing aggressiveness
+      if (bScore >= 0.6) {
+        // reduce aggressiveness temporarily by mapping aggressive picks to patrol/group
+        // We'll still allow evade to win if required
+  const originalAgg = personality.aggressiveness ?? 0.5;
+  try { (personality as unknown as { aggressiveness?: number }).aggressiveness = Math.max(0, originalAgg - bScore * 0.8); } catch { /* ignore */ }
+        // Choose intent normally with reduced aggressiveness
+      }
     switch (personality.mode) {
       case 'aggressive':
         newIntent = chooseAggressiveIntent(state, ship, personality); break;
@@ -110,6 +126,9 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       case 'mixed':
       default:
         newIntent = chooseMixedIntent(state, ship, personality); break;
+    }
+    } catch {
+      // boundary scoring/temporary personality tweak failed — continue with normal intent selection
     }
   // If evadeOnlyOnDamage is enabled and threat exists within medium range,
   // or turret candidates exist this tick, force engagement so tests don't observe idle.
@@ -187,6 +206,8 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       }
       if (score >= 1.0) newIntent = 'evade';
     }
+  // Restore personality if we modified it in-place
+  try { (personality as unknown as { aggressiveness?: number }).aggressiveness = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team).aggressiveness; } catch (e) { if (DEBUG_AI) console.error('AI-DEBUG restore personality failed', e); }
   }
   ai.currentIntent = newIntent;
   ai.lastIntentReevaluation = state.time;

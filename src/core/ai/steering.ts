@@ -140,6 +140,30 @@ export function moveTowards(
   ship.pos.z += ship.vel.z * dt;
 }
 
+/**
+ * Apply a gentle corrective steer away from map edges when within `margin`.
+ * This mutates ship.vel directly by applying a small acceleration away from the nearest edge.
+ */
+export function applyBoundarySteer(ship: Ship, bounds: SimBounds, margin: number, strength: number, dt: number) {
+  // Compute steer vector pointing toward map center proportional to closeness to edge
+  let sx = 0, sy = 0, sz = 0;
+  if (ship.pos.x < margin) sx += 1 - (ship.pos.x / margin);
+  else if (ship.pos.x > bounds.width - margin) sx -= 1 - ((bounds.width - ship.pos.x) / margin);
+  if (ship.pos.y < margin) sy += 1 - (ship.pos.y / margin);
+  else if (ship.pos.y > bounds.height - margin) sy -= 1 - ((bounds.height - ship.pos.y) / margin);
+  if (ship.pos.z < margin) sz += 1 - (ship.pos.z / margin);
+  else if (ship.pos.z > bounds.depth - margin) sz -= 1 - ((bounds.depth - ship.pos.z) / margin);
+
+  const mag = Math.hypot(sx, sy, sz);
+  if (mag <= 0) return;
+  const nx = sx / mag, ny = sy / mag, nz = sz / mag;
+  // Apply as small acceleration scaled by ship.speed, configured strength and dt
+  const accel = ship.speed * strength;
+  ship.vel.x += nx * accel * dt;
+  ship.vel.y += ny * accel * dt;
+  ship.vel.z += nz * accel * dt;
+}
+
 // Calculate separation force given neighbor positions. Returns unit vector and neighborCount.
 export function calculateSeparationForceWithCount(
   shipPos: Vector3,
