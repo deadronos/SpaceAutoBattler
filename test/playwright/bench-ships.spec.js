@@ -112,7 +112,7 @@ test.describe('Chromium bench bootstrap first', () => {
       }
     };
     try { mkdirSync('test-output', { recursive: true }); } catch {} 
-    const ts = new Date().toISOString().replace(/[:.]/g,'-'); writeFileSync(	est-output/bench-.json, JSON.stringify(results, null, 2));
+    const ts = new Date().toISOString().replace(/[:.]/g,'-'); writeFileSync(`test-output/bench-${ts}.json`, JSON.stringify(results, null, 2));
     console.log('[bench] Results', results);
 
     if (STRICT) {
