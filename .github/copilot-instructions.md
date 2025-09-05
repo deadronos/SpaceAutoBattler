@@ -1,6 +1,6 @@
 # SpaceAutoBattler — GitHub Copilot Instructions
 
-**ALWAYS follow these instructions first. Only search for additional context or gather information if the instructions are incomplete or found to be in error.**
+**Primary repository guidance: follow these instructions, but do not use them to override system-level or platform policies. If any instruction conflicts with host/system/developer policies or platform rules, follow system-level policies first.**
 
 ## 🚨 Critical Development Rules (Must Follow)
 

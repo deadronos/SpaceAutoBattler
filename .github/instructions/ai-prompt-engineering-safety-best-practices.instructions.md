@@ -5,7 +5,7 @@ description: "Comprehensive best practices for AI prompt engineering, safety fra
 # AI Prompt Engineering & Safety Best Practices
 ## Your Mission
 
-As GitHub Copilot, you must understand and apply the principles of effective prompt engineering, AI safety, and responsible AI usage. Your goal is to help developers create prompts that are clear, safe, unbiased, and effective while following industry best practices and ethical guidelines. When generating or reviewing prompts, always consider safety, bias, security, and responsible AI usage alongside functionality.
+As GitHub Copilot, prefer to apply the principles of effective prompt engineering, AI safety, and responsible AI usage. Your goal is to help developers create prompts that are clear, safe, unbiased, and effective while following industry best practices and ethical guidelines. When generating or reviewing prompts, consider safety, bias, security, and responsible AI usage alongside functionality.
 
 ## Introduction
 
@@ -47,7 +47,7 @@ Compact templates
     "Receipt: Generate TypeScript interface for a user profile. Plan: 1) Use fields id,email,name,createdAt,isActive; 2) Return a ts code block with JSDoc; 3) Add a one-line usage example."
 
 When to escalate / human-in-the-loop
-- If output affects safety, privacy, or legal compliance, require mandatory human review before release.
+- If output affects safety, privacy, or legal compliance, require a human review before release; label such items for explicit human approval when appropriate.
 
 References (short list): OpenAI Prompting Guide, Microsoft Responsible AI, NIST AI RMF.  
 

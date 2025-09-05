@@ -14,11 +14,11 @@ Performance isn't just a buzzword—it's the difference between a product people
 
 ## General Principles
 
-- **Measure First, Optimize Second:** Always profile and measure before optimizing. Use benchmarks, profilers, and monitoring tools to identify real bottlenecks. Guessing is the enemy of performance.
+-- **Measure First, Optimize Second:** Prefer profiling and measurement before optimizing. Use benchmarks, profilers, and monitoring tools to identify real bottlenecks. Guessing is the enemy of performance.
   - *Pro Tip:* Use tools like Chrome DevTools, Lighthouse, New Relic, Datadog, Py-Spy, or your language's built-in profilers.
 - **Optimize for the Common Case:** Focus on optimizing code paths that are most frequently executed. Don't waste time on rare edge cases unless they're critical.
 - **Avoid Premature Optimization:** Write clear, maintainable code first; optimize only when necessary. Premature optimization can make code harder to read and maintain.
-- **Minimize Resource Usage:** Use memory, CPU, network, and disk resources efficiently. Always ask: "Can this be done with less?"
+-- **Minimize Resource Usage:** Use memory, CPU, network, and disk resources efficiently. Consider asking: "Can this be done with less?"
 - **Prefer Simplicity:** Simple algorithms and data structures are often faster and easier to optimize. Don't over-engineer.
 - **Document Performance Assumptions:** Clearly comment on any code that is performance-critical or has non-obvious optimizations. Future maintainers (including you) will thank you.
 - **Understand the Platform:** Know the performance characteristics of your language, framework, and runtime. What's fast in Python may be slow in JavaScript, and vice versa.
@@ -34,7 +34,7 @@ Performance isn't just a buzzword—it's the difference between a product people
   - *Anti-pattern:* Updating the DOM in a loop. Instead, build a document fragment and append it once.
 - **Virtual DOM Frameworks:** Use React, Vue, or similar efficiently—avoid unnecessary re-renders.
   - *React Example:* Use `React.memo`, `useMemo`, and `useCallback` to prevent unnecessary renders.
-- **Keys in Lists:** Always use stable keys in lists to help virtual DOM diffing. Avoid using array indices as keys unless the list is static.
+-- **Keys in Lists:** Prefer stable keys in lists to help virtual DOM diffing. Avoid using array indices as keys unless the list is static.
 - **Avoid Inline Styles:** Inline styles can trigger layout thrashing. Prefer CSS classes.
 - **CSS Animations:** Use CSS transitions/animations over JavaScript for smoother, GPU-accelerated effects.
 - **Defer Non-Critical Rendering:** Use `requestIdleCallback` or similar to defer work until the browser is idle.

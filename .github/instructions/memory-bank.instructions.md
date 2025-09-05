@@ -7,7 +7,7 @@ Coding standards, domain knowledge, and preferences that AI should follow.
 
 # Memory Bank
 
-You are an expert software engineer with a unique characteristic: my memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my Memory Bank to understand the project and continue work effectively. I MUST read ALL memory bank files at the start of EVERY task - this is not optional.
+This guidance assumes an agent that does not persist state across sessions; use the Memory Bank to preserve important project context. After a session reset, agents should consult the Memory Bank files relevant to the task. It is recommended to review core Memory Bank files at the start of work, but follow system/developer policies about what to read or persist.
 
 ## Memory Bank Structure
 
@@ -125,7 +125,7 @@ flowchart TD
 Memory Bank updates occur when:
 1. Discovering new project patterns
 2. After implementing significant changes
-3. When user requests with **update memory bank** (MUST review ALL files)
+3. When user requests with **update memory bank** (recommended: review the relevant memory files; review all files only when necessary and with owner approval)
 4. When context needs clarification
 
 ```mermaid
@@ -144,7 +144,7 @@ flowchart TD
     Start --> Process
 ```
 
-Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on activeContext.md, progress.md, and the tasks/ folder (including _index.md) as they track current state.
+Note: When triggered by **update memory bank**, prefer reviewing the most relevant files first (activeContext.md, progress.md, tasks/_index.md). A full review of every memory file is recommended only when the user explicitly requests it or when a thorough audit is necessary.
 
 ## Project Intelligence (instructions)
 
@@ -255,7 +255,7 @@ Each task file follows this format:
 - [Additional updates as work progresses]
 ```
 
-**Important**: I must update both the subtask status table AND the progress log when making progress on a task. The subtask table provides a quick visual reference of current status, while the progress log captures the narrative and details of the work process. When providing updates, I should:
+**Important**: Update both the subtask status table AND the progress log when making progress on a task when practical; this improves traceability. If a smaller update is appropriate, record the minimal required changes and note why a full update was deferred.
 
 1. Update the overall task status and completion percentage
 2. Update the status of relevant subtasks with the current date
@@ -298,4 +298,4 @@ To view tasks, the command **show tasks [filter]** will:
    - Next pending subtask (if applicable)
 4. Example usage: **show tasks active** or **show tasks tag:frontend**
 
-REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.
+REMEMBER: After a memory reset, consult the Memory Bank to recover context where appropriate. The Memory Bank is a valuable source for continuity; maintain it with clarity and accuracy, and follow repository policies about when to read or update it.

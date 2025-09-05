@@ -67,9 +67,9 @@ End.
 - [ ] **Create implementation plan in `tasks.md`:**
   - For each task, include description, expected outcome, and dependencies.
 
-**Critical Constraint:**
+**Critical Constraint (recommended):**
 
-- **Do not proceed to implementation until design and plan are complete and validated.**
+- Prefer to complete design and a minimal validated plan before large-scope implementation. For low-risk changes it may be acceptable to iterate with small, test-backed increments; when deviating, document the deviation and seek owner approval where practical.
 
 ### **Phase 3: IMPLEMENT**
 
@@ -91,9 +91,9 @@ End.
       - Document file creation log.
 - [ ] Update task status in real time.
 
-**Critical Constraint:**
+**Critical Constraint (recommended):**
 
-- **Do not merge or deploy code until all implementation steps are documented and tested.**
+- Aim to document and test implementation steps before merge/deploy. In emergency or experimental scenarios, prefer feature branches and clear risk notes; when merging incomplete work, obtain owner/maintainer approval if possible.
 
 ### **Phase 4: VALIDATE**
 
@@ -115,9 +115,9 @@ End.
 - [ ] Log execution traces.
       - Document path analysis and runtime behavior.
 
-**Critical Constraint:**
+**Critical Constraint (recommended):**
 
-- **Do not proceed until all validation steps are complete and all issues are resolved.**
+- Prefer to complete validation steps and resolve critical issues before proceeding. For non-blocking items, triage with maintainers and document outstanding issues in the PR.
 
 ### **Phase 5: REFLECT**
 
@@ -140,9 +140,9 @@ End.
 - [ ] Auto-create technical debt issues.
       - Document inventory and remediation plans.
 
-**Critical Constraint:**
+**Critical Constraint (recommended):**
 
-- **Do not close the phase until all documentation and improvement actions are logged.**
+- Prefer to close the phase only after documentation and improvement actions are recorded; if exceptional circumstances require early closure, log the reason and follow up with a retrospective.
 
 ### **Phase 6: HANDOFF**
 
@@ -164,9 +164,9 @@ End.
 - [ ] Continue to next task.
       - Document transition or completion.
 
-**Critical Constraint:**
+**Critical Constraint (recommended):**
 
-- **Do not consider the task complete until all handoff steps are finished and documented.**
+- Consider tasks complete when the core acceptance criteria are met and handoff notes are provided; follow team conventions for required documentation and approvals before final closure.
 
 ## Troubleshooting & Retry Protocol
 
@@ -187,9 +187,9 @@ End.
 5. **Escalate**:
    - If the issue persists after retries, follow the escalation protocol.
 
-**Critical Constraint:**
+**Critical Constraint (recommended):**
 
-- **Never proceed with unresolved errors or ambiguities. Always document troubleshooting steps and outcomes.**
+- Avoid proceeding with unresolved errors or ambiguities when feasible; if a pragmatic exception is required, clearly document the risks, mitigation, and plan to resolve outstanding items.
 
 ## Technical Debt Management (Automated)
 
