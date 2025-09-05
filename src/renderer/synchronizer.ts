@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as logger from '../utils/logger.js';
 import type { GameState, Ship, Bullet } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
@@ -134,7 +135,7 @@ export function syncEntities(
         // Use traditional mesh factory approach
         if (!syncState.healthBarMeshes.has(s.id)) {
           const bar = meshFactory.createHealthBarMesh(s, meshFactoryState);
-          try { console.info && console.info(`[HB_TRACE][synchronizer] created health bar (meshFactory) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
+          try { logger.info(`[HB_TRACE][synchronizer] created health bar (meshFactory) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch (_e) { void _e; }
           // Probe tags removed: no-op.
           syncState.healthBarMeshes.set(s.id, bar); 
           groups.healthBarsGroup.add(bar);
@@ -152,9 +153,12 @@ export function syncEntities(
     }
   }
 
+  // Create a set of active ship IDs for efficient lookup
+  const activeShipIds = new Set(state.ships.map(s => s.id));
+
   // Remove ships that no longer exist
   for (const [id, m] of syncState.shipMeshes) {
-    if (!state.ships.find(s => s.id === id)) {
+    if (!activeShipIds.has(id)) { // Use Set for O(1) lookup
       groups.shipsGroup.remove(m); 
       syncState.shipMeshes.delete(id);
       
@@ -182,7 +186,7 @@ export function syncEntities(
   // Remove health bars for ships that no longer exist (non-instanced only)
   if (!useHealthBarInstancing) {
     for (const [id, bar] of syncState.healthBarMeshes) {
-      if (!state.ships.find(s => s.id === id)) {
+      if (!activeShipIds.has(id)) { // Use Set for O(1) lookup
         groups.healthBarsGroup.remove(bar); 
         syncState.healthBarMeshes.delete(id);
       }
@@ -191,7 +195,7 @@ export function syncEntities(
 
   // Remove shield effects for ships that no longer exist or have no shield
   for (const [id, shield] of syncState.shieldEffectMeshes) {
-    const ship = state.ships.find(s => s.id === id);
+    const ship = state.ships.find(s => s.id === id); // Still need to find ship for maxShield check
     if (!ship || ship.maxShield <= 0) {
       shieldEffect.disposeShieldEffect(shield);
       groups.shieldEffectsGroup.remove(shield); 
@@ -208,9 +212,12 @@ export function syncEntities(
     }
   }
 
+  // Create a set of active bullet IDs for efficient lookup
+  const activeBulletIds = new Set(state.bullets.map(b => b.id));
+
   // Remove bullets that no longer exist
   for (const [id, m] of syncState.bulletMeshes) {
-    if (!state.bullets.find(b => b.id === id)) { 
+    if (!activeBulletIds.has(id)) { // Use Set for O(1) lookup
       groups.bulletsGroup.remove(m); 
       syncState.bulletMeshes.delete(id); 
     }

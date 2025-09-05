@@ -2,6 +2,7 @@ import type { Vector3, SimBounds, Ship, RNG as _RNG } from '../../types/index.js
 import type { BehaviorConfig } from '../../config/behaviorConfig.js';
 import { lookAt, getForwardVector, angleDifference, clampTurn } from '../../utils/vector3.js';
 import { PhysicsConfig } from '../../config/physicsConfig.js';
+import { DEBUG_AI } from '../../utils/env.js';
 
 export type RandomFn = () => number; // [0,1)
 
@@ -71,7 +72,12 @@ export function moveTowards(
   targetPos: Vector3,
   dt: number,
   settings: BehaviorConfig['globalSettings'],
-  speedOverride?: number
+  speedOverride?: number,
+  // When true, bypass the "close enough" early-return so callers (like evade)
+  // can force orientation/acceleration even when the target is within the
+  // movementCloseEnoughThreshold. This keeps the function backwards-
+  // compatible while allowing special-case behaviors.
+  ignoreCloseEnough?: boolean
 ): void {
   const moveSpeed = speedOverride || ship.speed;
   // Desired direction
@@ -79,24 +85,39 @@ export function moveTowards(
   const dy = targetPos.y - ship.pos.y;
   const dz = targetPos.z - ship.pos.z;
   const distance = Math.hypot(dx, dy, dz);
-  if (distance < settings.movementCloseEnoughThreshold) return;
+  if (distance <= settings.movementCloseEnoughThreshold && !ignoreCloseEnough) {
+    if (DEBUG_AI) console.error(`AI-DEBUG moveTowards early-return distance=${distance.toFixed(3)} threshold=${settings.movementCloseEnoughThreshold} ignoreCloseEnough=${!!ignoreCloseEnough}`);
+    return;
+  }
 
   // Target orientation
   const targetOrientation = lookAt(ship.pos, targetPos);
-  const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
-  const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
-  const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
-  const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
-  ship.orientation.pitch += pitchTurn;
-  ship.orientation.yaw += yawTurn;
+  if (ignoreCloseEnough) {
+    // For evade and other urgent moves, allow immediate orientation so the
+    // ship's forward vector points toward the escape target during this tick.
+    ship.orientation.pitch = targetOrientation.pitch;
+    ship.orientation.yaw = targetOrientation.yaw;
+  } else {
+    const pitchDiff = angleDifference(ship.orientation.pitch, targetOrientation.pitch);
+    const yawDiff = angleDifference(ship.orientation.yaw, targetOrientation.yaw);
+    const pitchTurn = clampTurn(pitchDiff, ship.turnRate * dt);
+    const yawTurn = clampTurn(yawDiff, ship.turnRate * dt);
+    ship.orientation.pitch += pitchTurn;
+    ship.orientation.yaw += yawTurn;
+  }
   ship.dir = ship.orientation.yaw; // maintain legacy field
 
   // Advance velocity and position using PhysicsConfig
   const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
   const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
-  ship.vel.x += forward.x * accel * dt;
-  ship.vel.y += forward.y * accel * dt;
-  ship.vel.z += forward.z * accel * dt;
+  if (DEBUG_AI) console.error(`AI-DEBUG moveTowards ship=${ship.id} distance=${distance.toFixed(6)} moveSpeed=${moveSpeed} accel=${accel.toFixed(6)} dt=${dt.toFixed(6)} forward=${forward.x.toFixed(6)},${forward.y.toFixed(6)},${forward.z.toFixed(6)}`);
+  const deltaX = forward.x * accel * dt;
+  const deltaY = forward.y * accel * dt;
+  const deltaZ = forward.z * accel * dt;
+  if (DEBUG_AI) console.error(`AI-DEBUG moveTowards deltaVel pre=${deltaX.toFixed(9)},${deltaY.toFixed(9)},${deltaZ.toFixed(9)} preVel=${ship.vel.x.toFixed(9)},${ship.vel.y.toFixed(9)},${ship.vel.z.toFixed(9)}`);
+  ship.vel.x += deltaX;
+  ship.vel.y += deltaY;
+  ship.vel.z += deltaZ;
 
   ship.vel.x *= PhysicsConfig.speed.dampingFactor;
   ship.vel.y *= PhysicsConfig.speed.dampingFactor;
@@ -108,6 +129,10 @@ export function moveTowards(
     ship.vel.x = (ship.vel.x / v) * maxV;
     ship.vel.y = (ship.vel.y / v) * maxV;
     ship.vel.z = (ship.vel.z / v) * maxV;
+  }
+
+  if (DEBUG_AI) {
+    try { console.error(`AI-DEBUG moveTowards postDamp preClampVel ship=${ship.vel.x.toFixed(9)},${ship.vel.y.toFixed(9)},${ship.vel.z.toFixed(9)} maxV=${maxV.toFixed(6)}`); } catch { /* best-effort */ }
   }
 
   ship.pos.x += ship.vel.x * dt;
@@ -123,45 +148,48 @@ export function calculateSeparationForceWithCount(
   magnitudeThreshold: number,
   random: RandomFn
 ): { force: Vector3; neighborCount: number } {
+  // Compute separation vector from nearby neighbors
+  const count = neighbors?.length ?? 0;
+  if (count === 0) return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
+
   let sx = 0, sy = 0, sz = 0;
-  let count = 0;
   const sepDistSq = separationDistance * separationDistance;
   for (const n of neighbors) {
     const dx = shipPos.x - n.x;
     const dy = shipPos.y - n.y;
     const dz = shipPos.z - n.z;
-    const distSq = dx*dx + dy*dy + dz*dz;
-    if (distSq <= 0 || distSq >= sepDistSq) continue;
-    const dist = Math.sqrt(distSq);
-    const weight = (separationDistance - dist) / separationDistance;
-    const inv = 1 / dist;
-    sx += dx * weight * inv;
-    sy += dy * weight * inv;
-    sz += dz * weight * inv;
-    count++;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    if (distSq > 0 && distSq < sepDistSq) {
+      // accumulate vector pointing away from neighbor, weighted by proximity
+      const inv = 1 / Math.sqrt(distSq);
+      sx += (dx * inv);
+      sy += (dy * inv);
+      sz += (dz * inv);
+    }
   }
 
-  if (count === 0) return { force: { x: 0, y: 0, z: 0 }, neighborCount: 0 };
-
+  // Average
   sx /= count; sy /= count; sz /= count;
   const mag = Math.hypot(sx, sy, sz);
   if (mag > magnitudeThreshold) {
     return { force: { x: sx / mag, y: sy / mag, z: sz / mag }, neighborCount: count };
   }
 
-  // Symmetry fallback: push away from local center
+  // Symmetry fallback: compute center and push away
   let cx = 0, cy = 0, cz = 0;
+  let centerCount = 0;
   for (const n of neighbors) {
     const dx = shipPos.x - n.x;
     const dy = shipPos.y - n.y;
     const dz = shipPos.z - n.z;
-    const distSq = dx*dx + dy*dy + dz*dz;
+    const distSq = dx * dx + dy * dy + dz * dz;
     if (distSq > 0 && distSq < sepDistSq) {
-      cx += n.x; cy += n.y; cz += n.z;
+      cx += n.x; cy += n.y; cz += n.z; centerCount++;
     }
   }
-  if (cx !== 0 || cy !== 0 || cz !== 0) {
-    const inv = 1 / count; cx *= inv; cy *= inv; cz *= inv;
+  if (centerCount > 0) {
+    const inv = 1 / centerCount;
+    cx *= inv; cy *= inv; cz *= inv;
     const rx = shipPos.x - cx;
     const ry = shipPos.y - cy;
     const rz = shipPos.z - cz;

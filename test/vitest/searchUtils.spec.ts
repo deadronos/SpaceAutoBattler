@@ -59,9 +59,17 @@ describe('searchUtils', () => {
   it('findNearestEnemy prefers spatial index when enabled', () => {
     const ships = [makeShip(1, 'red', 0, 0), makeShip(2, 'blue', 300, 0), makeShip(3, 'blue', 10, 0)];
     const state = makeState(ships, true);
+    
+    // Set a unique frame to avoid cache interference from other tests
+    (state as any).frame = Math.random();
+    
     // Populate spatial grid
     for (const s of ships) state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
+    
     const nearest = findNearestEnemy(state, ships[0]);
-    expect(nearest?.id).toBe(3);
+    expect(nearest).toBeTruthy();
+    
+    // Ship 3 at distance 10 should be nearest, not ship 2 at distance 300
+    expect(nearest!.id).toBe(3);
   });
 });

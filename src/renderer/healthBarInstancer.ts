@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Ship } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 import * as logger from '../utils/logger.js';
+import { envVar } from '../utils/env.js';
 import { getCachedCameraBasis } from './cameraManager.js';
 
 /**
@@ -260,18 +261,20 @@ export class HealthBarInstancer {
    * Get current usage statistics
    */
   getStats() {
+    // Return usage stats expected by tests and external callers.
+    const used = this.usedCount;
+    const free = this.freeIndices.length;
+    const capacity = this.capacity;
+  const usagePercent = capacity > 0 ? (used / capacity) * 100 : 0;
     return {
-      capacity: this.capacity,
-      used: this.usedCount,
-      free: this.freeIndices.length,
-      usagePercent: Math.round((this.usedCount / this.capacity) * 100),
+      capacity,
+      used,
+      free,
+      usagePercent,
+      activeCount: this.activeShips.size
     };
   }
 
-  /**
-   * Debug helper (DEV only): return the X scale value for the health layer
-   * instance for the given shipId, or null if not allocated.
-   */
   debugGetInstanceScale(shipId: number): number | null {
     const idx = this.activeShips.get(shipId);
     if (idx === undefined) return null;
@@ -611,15 +614,20 @@ export class HealthBarInstancer {
   // During unit tests we prefer synchronous addition so assertions can
   // inspect the scene immediately. Detect common test env flags and
   // fall back to sync add in that case.
+    // Use safe envVar helper (imported at module top) so we don't attempt
+    // a dynamic require which can fail in some test runners due to ESM/CJS
+    // interop. When running under test, add synchronously so assertions
+    // can inspect the scene immediately.
     try {
-      const envTest = typeof process !== 'undefined' && process?.env && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true');
+      const nodeEnv = envVar('NODE_ENV', '');
+      const vitest = envVar('VITEST', '');
+      const envTest = nodeEnv === 'test' || vitest === 'true';
       if (envTest) {
         parent.add(child);
         return;
       }
     } catch {
-      // If accessing process.env fails in some sandboxed envs, continue to
-      // the normal deferred path.
+      // If envVar throws for any reason, fall back to deferred path.
     }
 
     if (typeof requestAnimationFrame !== 'undefined') {

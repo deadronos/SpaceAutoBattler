@@ -137,13 +137,16 @@ beforeAll(() => {
   global.cancelAnimationFrame = vi.fn() as any;
 
   // Mock console methods to reduce noise in tests
-  global.console = {
-    ...console,
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  };
+  // Allow enabling debug logs during test runs by setting DEBUG_AI
+  if (!process.env.DEBUG_AI) {
+    global.console = {
+      ...console,
+      log: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    };
+  }
 
   // Stub global.fetch so tests do not perform real network requests
   // This prevents happy-dom from attempting to connect to localhost:3000

@@ -1,4 +1,5 @@
 import type { GameState, Ship, TurretState } from '../../types/index.js';
+import { DEBUG_AI } from '../../utils/env';
 import type { BehaviorConfig } from '../../config/behaviorConfig.js';
 
 // Compute legacy turret score exactly as in AIController.findBestTurretTarget
@@ -19,19 +20,36 @@ export function isWithinTurretRange(distance: number, cfg: BehaviorConfig['turre
 // Pick best target for a turret, matching legacy semantics (strictly greater replaces, first wins ties)
 export function pickBestTurretTarget(state: GameState, ship: Ship, turret: TurretState, cfg: BehaviorConfig['turretConfig']): number | null {
   let bestId: number | null = null;
-  let bestScore = 0;
-  for (const target of state.ships) {
-    if (target.team === ship.team || target.health <= 0) continue;
-    const dx = target.pos.x - ship.pos.x;
-    const dy = target.pos.y - ship.pos.y;
-    const dz = target.pos.z - ship.pos.z;
-    const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
-    if (!isWithinTurretRange(distance, cfg)) continue;
-    const score = scoreTurretTarget(distance, target);
+  let bestScore = -Infinity;
+  for (const c of state.ships) {
+    if (c.team === ship.team) continue;
+    if (c.health <= 0) continue;
+
+    const dx = c.pos.x - ship.pos.x;
+    const dy = c.pos.y - ship.pos.y;
+    const dz = c.pos.z - ship.pos.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    const score = scoreTurretTarget(dist, c);
+    const inRange = dist >= cfg.minimumFireRange && dist <= cfg.maximumFireRange;
+
+  if (DEBUG_AI) {
+      console.log(
+        `DEBUG_AI: turret pickCandidate: ship=${ship.id} turret=${turret.id} candidate=${c.id} dist=${dist.toFixed(2)} hp=${c.health} level=${c.level?.level ?? c.level} score=${score} inRange=${inRange} rangeMin=${cfg.minimumFireRange} rangeMax=${cfg.maximumFireRange}`
+      );
+    }
+
+    if (!inRange) continue;
+    if (score == null) continue;
     if (score > bestScore) {
       bestScore = score;
-      bestId = target.id;
+      bestId = c.id;
     }
   }
+
+  if (DEBUG_AI) {
+    console.log(`DEBUG_AI: turret pickBestTurretTarget result for ship=${ship.id} turret=${turret.id} => ${bestId ?? 'null'}`);
+  }
+
   return bestId;
 }

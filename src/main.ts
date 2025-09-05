@@ -236,12 +236,20 @@ function initGame(seed?: string) {
             // Send current ship data to worker only if it has changed
             const currentVersion = state.shipDataVersion;
             if (currentVersion !== lastShipDataVersion) {
-              const shipData = state.ships.map(ship => ({
-                id: ship.id,
-                pos: { ...ship.pos },
-                vel: { ...ship.vel }
-              }));
-              w.postMessage({ type: 'update-ships', payload: { ships: shipData } });
+              // Pack ship data into a Float32Array for efficient transfer
+              // Each ship: id, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z (7 elements)
+              const shipDataArray = new Float32Array(state.ships.length * 7);
+              let offset = 0;
+              for (const ship of state.ships) {
+                shipDataArray[offset++] = ship.id;
+                shipDataArray[offset++] = ship.pos.x;
+                shipDataArray[offset++] = ship.pos.y;
+                shipDataArray[offset++] = ship.pos.z;
+                shipDataArray[offset++] = ship.vel.x;
+                shipDataArray[offset++] = ship.vel.y;
+                shipDataArray[offset++] = ship.vel.z;
+              }
+              w.postMessage({ type: 'update-ships', payload: { ships: shipDataArray } }, [shipDataArray.buffer]);
               lastShipDataVersion = currentVersion;
             }
             
@@ -608,7 +616,7 @@ function startLoops(state: GameState, ui: UIElements) {
       while (acc >= fixedDt && steps < maxSteps) {
         simulateStep(state, fixedDt * state.speedMultiplier);
         try { state.physicsStepper?.step(fixedDt * state.speedMultiplier); } catch (_e) { void _e;/* ignore if missing */ }
-        state.time += fixedDt * state.speedMultiplier; state.tick++;
+      state.time += fixedDt * state.speedMultiplier; state.tick++; state.frame = (state.frame ?? 0) + 1;
         acc -= fixedDt; steps++;
       }
       // Auto-respawn if continuous
@@ -644,5 +652,4 @@ function startLoops(state: GameState, ui: UIElements) {
 logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 
 window.addEventListener('DOMContentLoaded', () => initGame());
-
 

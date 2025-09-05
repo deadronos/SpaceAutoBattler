@@ -40,7 +40,6 @@ export class SVGLoader {
       // runtime `window.__ASSET_BASE__` string (e.g. '/dist' or '/').
       try {
   const assetBase = (globalThis as unknown as { __ASSET_BASE__?: string }).__ASSET_BASE__ ?? null;
-        let workerUrl: string;
         if (assetBase) {
           // Ensure no trailing slash issues
           const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
@@ -266,7 +265,6 @@ export class SVGLoader {
         return;
       }
 
-  const _messageId = Math.random().toString(36);
 
       const messageHandler = (e: MessageEvent) => {
         const data = e.data;

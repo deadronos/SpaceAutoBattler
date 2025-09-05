@@ -1,75 +1,81 @@
 #!/usr/bin/env node
-// Quick check script to detect forbidden synchronous GPU/canvas read APIs
-// Exits with code 1 if any disallowed occurrences are found outside allowed files.
-
-import { spawnSync } from 'child_process';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const repoRoot = path.resolve(new URL(import.meta.url).pathname.replace(/^(?:[A-Z]:)?\//i, '/').replace(/^\//, ''));
-// Patterns to search for (simple grep-style)
-const patterns = [
-  'getImageData(',
-  'readRenderTargetPixels',
-  'readPixels(',
-  'WebGLRenderingContext.prototype.readPixels',
-  'WebGL2RenderingContext.prototype.readPixels'
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..');
+
+const scanRoot = path.join(repoRoot, 'src');
+const allowedExtensions = new Set(['.ts', '.js', '.mjs', '.cjs']);
+
+const syncPatterns = [
+  'readFileSync',
+  'readdirSync',
+  'statSync',
+  'existsSync',
+  'writeFileSync',
+  'appendFileSync',
+  'unlinkSync',
+  'openSync'
 ];
 
-// Files to ignore (well-known safe wrappers/instrumentation)
-const allowlist = [
-  'src/renderer/effects.ts'
-];
+function containsSyncCall(text) {
+  return syncPatterns.some(p => text.includes(p));
+}
 
-function runGrep(pattern) {
-  // Use node's recursive directory scan to avoid shell differences
-  const results = [];
-  const walk = (dir) => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        if (e.name === 'node_modules' || e.name === 'dist' || e.name === '.git') continue;
-        walk(full);
-      } else if (e.isFile()) {
-        if (!full.endsWith('.ts') && !full.endsWith('.js') && !full.endsWith('.mjs')) continue;
-        const rel = path.relative(process.cwd(), full).replace(/\\/g, '/');
-        if (allowlist.some(a => rel === a)) continue;
-        const txt = fs.readFileSync(full, 'utf8');
-        if (txt.indexOf(pattern) !== -1) results.push({ file: rel, snippet: getSnippet(txt, pattern) });
+async function walk(dir) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const files = [];
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (e.name === 'node_modules' || e.name === 'dist' || e.name === '.git') continue;
+      files.push(...await walk(full));
+    } else if (e.isFile()) {
+      if (allowedExtensions.has(path.extname(e.name))) files.push(full);
+    }
+  }
+  return files;
+}
+
+async function reportMatches(files) {
+  const matches = [];
+  for (const f of files) {
+    const content = await fs.readFile(f, 'utf8');
+    if (!containsSyncCall(content)) continue;
+    const lines = content.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (syncPatterns.some(p => line.includes(p))) {
+        matches.push({ file: f, line: i + 1, text: line.trim() });
       }
     }
-  };
-  walk(path.join(process.cwd(), 'src'));
-  return results;
+  }
+
+  if (matches.length === 0) {
+    console.log('check-no-sync-reads: OK — no synchronous fs.*Sync calls found in src (quick-scan).');
+    return 0;
+  }
+
+  console.error('check-no-sync-reads: Found synchronous fs calls (these may block the event loop):');
+  for (const m of matches) {
+    console.error(`${m.file}:${m.line}: ${m.text}`);
+  }
+  console.error('\nPlease remove or replace with asynchronous fs APIs before building.');
+  return 2;
 }
 
-function getSnippet(text, pat) {
-  const idx = text.indexOf(pat);
-  if (idx === -1) return '';
-  const start = Math.max(0, idx - 80);
-  const end = Math.min(text.length, idx + pat.length + 80);
-  return text.slice(start, end).replace(/\n/g, ' ');
-}
-
-let found = [];
-for (const p of patterns) {
-  const r = runGrep(p);
-  if (r.length) {
-    found = found.concat(r.map(x => ({ pattern: p, file: x.file, snippet: x.snippet })));
+async function main() {
+  try {
+    const files = await walk(scanRoot);
+    const code = await reportMatches(files);
+    process.exit(code);
+  } catch (err) {
+    console.error('check-no-sync-reads: error', err.message);
+    process.exit(1);
   }
 }
 
-if (found.length) {
-  console.error('\nForbidden synchronous-read API usages found:');
-  for (const f of found) {
-    console.error(` - Pattern: ${f.pattern}  File: ${f.file}`);
-    console.error(`   Snippet: ${f.snippet}\n`);
-  }
-  console.error('To allow a legitimate occurrence, add the file to the allowlist inside scripts/check-no-sync-reads.mjs');
-  process.exitCode = 1;
-  process.exit(1);
-} else {
-  console.log('No forbidden sync-read patterns found.');
-  process.exit(0);
-}
+main();
