@@ -293,7 +293,7 @@ export class SVGLoader {
       this.worker.addEventListener('message', messageHandler);
 
       // Send rasterization request
-      this.worker.postMessage({
+      const msg = {
         type: 'rasterize',
         svgText: asset.svgText,
         width: options.width!,
@@ -302,7 +302,15 @@ export class SVGLoader {
         teamColor: options.teamColor,
         filePath: asset.url,
         fileModTime: asset.lastModified
-      });
+      } as const;
+      try {
+        // Message-size audit for raster requests (approximate, JSON-based)
+        if ((globalThis as any).__perf && typeof (globalThis as any).__perf.addEvent === 'function') {
+          const approxKB = JSON.stringify(msg).length / 1000;
+          (globalThis as any).__perf.addEvent({ name: 'raster.request.sendKB', ms: approxKB });
+        }
+      } catch { /* ignore */ }
+      this.worker.postMessage(msg);
 
       // Timeout after 8 seconds (increased timeout)
       setTimeout(() => {
