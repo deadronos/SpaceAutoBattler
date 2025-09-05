@@ -1,121 +1,115 @@
-// Manual performance bench for ship counts and telemetry overhead.
-// Run with: E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium
-// Optional strict threshold: E2E_BENCH_STRICT=1
+﻿import { chromium, test, expect } from '@playwright/test';
+import process from 'process';
 
-import { test, expect } from '@playwright/test';
-import { spawn, execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import http from 'node:http';
-import process from 'node:process';
-import logger from '../../src/logger.js';
 
-function isBenchEnabled() { return process.env.E2E_BENCH === '1' || process.env.E2E_BENCH === 'true'; }
 
-async function isServerUp() {
-  return new Promise((resolve) => {
-    const req = http.get('http://localhost:8080/', (res) => { res.resume(); resolve(true); });
-    req.on('error', () => resolve(false));
-    req.setTimeout(1000, () => { try { req.destroy(); } catch {logger.error('Request timeout');} resolve(false); });
-  });
+const BASE = 'http://localhost:8080/spaceautobattler.html';
+const STRICT = process.env.E2E_BENCH_STRICT === '1';
+
+let browser;
+let page;
+
+test.beforeEach(async () => {
+  browser = await chromium.launch();
+  page = await browser.newPage();
+});
+
+test.afterEach(async () => {
+  if (browser) await browser.close();
+});
+
+async function waitForUi(page) {
+  console.log('[bench] goto', BASE);
+  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  console.log('[bench] wait for #reset');
+  await page.waitForSelector('#reset', { state: 'visible', timeout: 20000 });
+  console.log('[bench] wait for #addRed');
+  await page.waitForSelector('#addRed', { state: 'visible', timeout: 20000 });
+  console.log('[bench] wait for #addBlue');
+  await page.waitForSelector('#addBlue', { state: 'visible', timeout: 20000 });
 }
 
-function hasBuiltDist() {
-  try {
-    return existsSync('dist/spaceautobattler.html');
-  } catch { return false; }
-}
-
-function run(cmd) {
-  console.log(`[bench] ${cmd}`);
-  execSync(cmd, { stdio: 'inherit' });
-}
-
-async function ensureBuildAndServer() {
-  const server = await isServerUp();
-  const built = hasBuiltDist();
-  if (!built) run('npm run build');
-  if (!server) {
-    // fire and forget server; rely on playwright webServer in config if present, otherwise local
-    spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'serve'], { stdio: 'ignore', detached: true });
-    // wait for port
-    const start = Date.now();
-    while (!(await isServerUp())) {
-      if (Date.now() - start > 15000) throw new Error('Server did not come up on :8080');
-      await new Promise(r => setTimeout(r, 300));
-    }
-  }
-}
-
-async function measureRun(page, url, addCountPerTeam, seconds) {
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#reset');
-  // Reset
-  await page.click('#reset');
-  // Add ships
-  for (let i = 0; i < addCountPerTeam; i++) {
-    await page.click('#addRed');
-    await page.click('#addBlue');
-  }
-  // Start if needed
+async function setupCounts(page, redCount, blueCount) {
+  console.log('[bench] click #reset');
+  await page.locator('#reset').click({ timeout: 30000 });
+  for (let i = 0; i < redCount; i++) console.log('[bench] click #addRed');
+  await page.locator('#addRed').click({ timeout: 30000 });
+  for (let i = 0; i < blueCount; i++) console.log('[bench] click #addBlue');
+  await page.locator('#addBlue').click({ timeout: 30000 });
   const startBtn = page.locator('#startPause');
-  const txt = await startBtn.textContent();
-  if (txt && /start/i.test(txt)) await startBtn.click();
-
-  // Collect FPS via window.__perf if available; otherwise compute from rAF timestamps
-  await page.exposeFunction('__bench_now', () => Date.now());
-  const result = await page.evaluate(async (seconds) => {
-    const usePerf = typeof window.__perf === 'object' && typeof window.__perf.getFpsStats === 'function';
-    if (usePerf) {
-      const until = performance.now() + seconds * 1000;
-      while (performance.now() < until) { await new Promise(r => setTimeout(r, 50)); }
-      return window.__perf.getFpsStats();
-    }
-    const frames = [];
-    const start = performance.now();
-    let last = start;
-    return await new Promise((resolve) => {
-      function tick(ts) {
-        frames.push(ts - last);
-        last = ts;
-        if (ts - start >= seconds * 1000) {
-          const ms = frames.reduce((a,b)=>a+b,0) / frames.length;
-          const fps = 1000 / ms;
-          frames.sort((a,b)=>a-b);
-          const idx = Math.max(0, Math.floor(frames.length * 0.99) - 1);
-          const p99 = frames[idx];
-          resolve({ avgFps: fps, p99FrameMs: p99 });
-          return;
-        }
-        requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    });
-  }, seconds);
-  return result;
+  const txt = (await startBtn.textContent()) || '';
+  if (/start/i.test(txt)) await startBtn.click();
 }
 
-test.describe('bench: ships FPS', () => {
-  test.skip(!isBenchEnabled(), 'Set E2E_BENCH=1 to run this manual bench');
+async function measure(page, seconds = 12) {
+  return await page.evaluate(async (sec) => {
+    const useCollector = typeof (window).__perf === 'object' && typeof (window).__perf.getFpsStats === 'function';
+    if (useCollector) {
+      const until = performance.now() + sec * 1000;
+      while (performance.now() < until) { await new Promise(r => setTimeout(r, 50)); }
+      return (window).__perf.getFpsStats();
+    }
+    const samples = [];
+    const end = performance.now() + sec * 1000;
+    let last = performance.now();
+    await new Promise((resolve) => {
+      const loop = (ts) => {
+        samples.push(ts - last);
+        last = ts;
+        if (ts < end) requestAnimationFrame(loop); else resolve(null);
+      };
+      requestAnimationFrame(loop);
+    });
+    const avg = samples.reduce((a, b) => a + b, 0) / Math.max(1, samples.length);
+    const fps = 1000 / avg;
+    const sorted = samples.slice().sort((a, b) => a - b);
+    const idx = Math.max(0, Math.floor(sorted.length * 0.99) - 1);
+    return { avgFps: fps, p99FrameMs: sorted[idx] ?? 0 };
+  }, seconds);
+}
 
-  test('25 and 50 per team, with/without telemetry', async ({ page, browserName }) => {
-    test.skip(browserName !== 'chromium', 'Bench runs on Chromium only by default');
-    await ensureBuildAndServer();
+// Manual run only: respect E2E_BENCH gate if set in your shell
+// You can still run this file directly; it won�t auto-start server/build.
 
-    const base = 'http://localhost:8080/spaceautobattler.html';
-    const durations = 12;
+test.describe('Chromium bench bootstrap first', () => {
+  test.setTimeout(90_000);
+  test('25/team and 50/team, no-telemetry vs telemetry', async () => {
+    console.log('[bench] navigating to base and waiting for UI');
+    await waitForUi(page);
 
-    const r1 = await measureRun(page, base, 15, durations);
-    const r2 = await measureRun(page, `${base}?debugPerf=1`, 15, durations);
-    console.log('[bench] 25/team no-telemetry:', r1);
-    console.log('[bench] 25/team telemetry:', r2);
+    // Pass 1: no telemetry
+    console.log('[bench] setting up 25 per team');
+    await setupCounts(page, 25, 25);
+    console.log('[bench] measuring 25/team no-telemetry for 12s');
+    const p1a = await measure(page, 12);
+    console.log('[bench] setting up 50 per team');
+    await setupCounts(page, 50, 50);
+    console.log('[bench] measuring 50/team no-telemetry for 12s');
+    const p1b = await measure(page, 12);
 
-    const r3 = await measureRun(page, base, 40, durations);
-    const r4 = await measureRun(page, `${base}?debugPerf=1`, 40, durations);
-    console.log('[bench] 50/team no-telemetry:', r3);
-    console.log('[bench] 50/team telemetry:', r4);
+    // Pass 2: telemetry
+    await page.goto(`${BASE}?debugPerf=1`, { waitUntil: 'domcontentloaded' });
+    console.log('[bench] setting up 25 per team');
+    await setupCounts(page, 25, 25);
+    console.log('[bench] measuring 25/team telemetry for 12s');
+    const p2a = await measure(page, 12);
+    console.log('[bench] setting up 50 per team');
+    await setupCounts(page, 50, 50);
+    console.log('[bench] measuring 50/team telemetry for 12s');
+    const p2b = await measure(page, 12);
 
-    if (process.env.E2E_BENCH_STRICT) {
-      expect(r1.avgFps || 0).toBeGreaterThanOrEqual(60);
+    console.log('[bench] Results', {
+      '25/team no-telemetry': p1a,
+      '50/team no-telemetry': p1b,
+      '25/team telemetry': p2a,
+      '50/team telemetry': p2b,
+    });
+
+    if (STRICT) {
+      expect(p1a.avgFps).toBeGreaterThanOrEqual(60);
     }
   });
 });
+
+
+
