@@ -126,6 +126,15 @@ type GetCanvasResponse = { type: 'canvas-result'; assetKey: string; canvas: Offs
 
 self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
   const request = e.data;
+  // Feature guard: ensure required APIs exist in the worker context
+  const hasOffscreen = typeof (self as any).OffscreenCanvas !== 'undefined';
+  const hasCIB = typeof (self as any).createImageBitmap === 'function';
+  if (!hasOffscreen || !hasCIB) {
+    try {
+      (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'worker-error', message: 'OffscreenCanvas/createImageBitmap required for rasterization', stack: '' });
+    } catch { /* ignore */ }
+    return;
+  }
   try {
     switch (request.type) { 
       case 'rasterize': {
@@ -135,8 +144,12 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
           (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'rasterized', assetKey, imageBitmap: cached, width, height } as RasterizeResponse);
           return;
         }
+        const t0 = (self as any).performance ? (self as any).performance.now() : Date.now();
         const imageBitmap = await rasterizeSvgToImageBitmap(svgText, width, height, teamColor);
+        const t1 = (self as any).performance ? (self as any).performance.now() : Date.now();
         rasterCache.set(assetKey, imageBitmap, fileModTime);
+        const rasterMs = t1 - t0;
+        try { if ((self as any).location?.href?.includes('debugPerf=1')) (self as any).postMessage({ type: 'perf', name: 'raster.render', ms: rasterMs }); } catch {}
   (self as unknown as { postMessage(m: unknown): void }).postMessage({ type: 'rasterized', assetKey, imageBitmap, width, height } as RasterizeResponse);
         break;
       }

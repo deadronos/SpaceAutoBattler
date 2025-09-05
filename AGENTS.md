@@ -29,7 +29,9 @@
 
 ## Testing Guidelines
 
-- Frameworks: Vitest (unit) and Playwright (E2E).
+- Frameworks: Vitest (unit) and Playwright (E2E). use Playwright's docs at <https://playwright.dev/docs/codegen> as a reference for authoring Playwright tests.
+- Coverage: aim for 90%+ on new code; use `--watch` mode during development.
+- Mocking: use Vitest's built-in mocking; avoid complex setups.
 - Naming: `*.spec.ts` under `test/`. Keep tests deterministic (seeded RNG, pooled objects).
 - Run locally: `npx tsc --noEmit` then `npm test`; use Playwright for flow verification.
 

@@ -181,6 +181,11 @@ function initGame(seed?: string) {
       w.addEventListener('message', (ev) => {
         const data = ev.data || {};
         const type = data.type;
+        // Perf events from simWorker
+        if (type === 'perf' && (window as any).__perf && typeof (window as any).__perf.addEvent === 'function') {
+          try { (window as any).__perf.addEvent({ name: data.name, ms: data.ms }); } catch { /* ignore */ }
+          return;
+        }
         // init handshake
         if (type === 'init-physics-done') {
           ready = !!data.ok;
@@ -204,6 +209,8 @@ function initGame(seed?: string) {
               }
             } catch (_e) { void _e;// Fallback to older object-based transforms if parsing fails
               const transforms = data.transforms || [];
+              // Optional payload size audit
+              try { if ((window as any).__perf) (window as any).__perf.addEvent({ name: 'physics.payload.recvKB', ms: JSON.stringify(transforms).length / 1000 }); } catch {}
               for (const transform of transforms) {
                 const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
                 if (ship) {
@@ -651,5 +658,91 @@ function startLoops(state: GameState, ui: UIElements) {
 // Initialize logger debug mode from global game config so devs can toggle verbosity
 logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 
-window.addEventListener('DOMContentLoaded', () => initGame());
+// Helper: enable perf collector when URL has ?debugPerf=1. Safe to call multiple times.
+function enablePerfCollectorIfRequested() {
+  try {
+    const enabled = typeof location !== 'undefined' && location.search.includes('debugPerf=1');
+    if (!enabled) {
+      return;
+    }
+    if ((window as any).__perf && typeof (window as any).__perf.addEvent === 'function') {
+      try { console.debug('[perf] collector already active (init)'); } catch {}
+      return;
+    }
+    const perf = {
+      _frameTimes: [] as number[],
+      _events: [] as { name: string; ms: number; t: number }[],
+      addEvent(e: { name: string; ms: number }) {
+        this._events.push({ name: e.name, ms: e.ms, t: performance.now() });
+        if (this._events.length > 2000) this._events.shift();
+      },
+      startFpsSampling() {
+        let last = performance.now();
+        const loop = (ts: number) => {
+          const dt = ts - last; last = ts;
+          this._frameTimes.push(dt);
+          if (this._frameTimes.length > 600) this._frameTimes.shift();
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      },
+      getFpsStats() {
+        const arr = this._frameTimes.slice();
+        if (!arr.length) return { avgFps: 0, p99FrameMs: 0 };
+        const avg = arr.reduce((a: number, b: number)=>a+b,0) / arr.length;
+        const fps = 1000 / avg;
+        const sorted = arr.slice().sort((a: number, b: number)=>a-b);
+        const idx = Math.max(0, Math.floor(sorted.length * 0.99) - 1);
+        return { avgFps: fps, p99FrameMs: sorted[idx] };
+      },
+      getEvents() { return this._events.slice(); }
+    } as any;
+    (window as any).__perf = perf;
+    perf.startFpsSampling();
+    try { console.debug('[perf] collector enabled (init)'); } catch {}
+  } catch { /* ignore */ }
+}
 
+window.addEventListener('DOMContentLoaded', () => { 
+  try { enablePerfCollectorIfRequested(); } catch {}
+  initGame();
+});
+
+// Lightweight main-thread perf collector, enabled via ?debugPerf=1
+(() => {
+  try {
+    const enabled = typeof location !== 'undefined' && location.search.includes('debugPerf=1');
+    if (!enabled) return;
+    const perf = {
+      _frameTimes: [] as number[],
+      _events: [] as { name: string; ms: number; t: number }[],
+      addEvent(e: { name: string; ms: number }) {
+        this._events.push({ name: e.name, ms: e.ms, t: performance.now() });
+        if (this._events.length > 2000) this._events.shift();
+      },
+      startFpsSampling() {
+        let last = performance.now();
+        const loop = (ts: number) => {
+          const dt = ts - last; last = ts;
+          this._frameTimes.push(dt);
+          if (this._frameTimes.length > 600) this._frameTimes.shift();
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      },
+      getFpsStats() {
+        const arr = this._frameTimes.slice();
+        if (!arr.length) return { avgFps: 0, p99FrameMs: 0 };
+        const avg = arr.reduce((a: number, b: number)=>a+b,0) / arr.length;
+        const fps = 1000 / avg;
+        const sorted = arr.slice().sort((a: number, b: number)=>a-b);
+        const idx = Math.max(0, Math.floor(sorted.length * 0.99) - 1);
+        return { avgFps: fps, p99FrameMs: sorted[idx] };
+      },
+      getEvents() { return this._events.slice(); }
+    } as any;
+    (window as any).__perf = perf;
+    perf.startFpsSampling();
+    try { console.debug('[perf] collector enabled'); } catch {}
+  } catch { /* ignore */ }
+})();
