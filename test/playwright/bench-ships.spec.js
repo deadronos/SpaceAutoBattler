@@ -1,4 +1,5 @@
-﻿import { chromium, test, expect } from '@playwright/test';
+﻿import { writeFileSync, mkdirSync } from 'node:fs';
+import { chromium, test, expect } from '@playwright/test';
 import process from 'process';
 
 
@@ -98,18 +99,29 @@ test.describe('Chromium bench bootstrap first', () => {
     console.log('[bench] measuring 50/team telemetry for 12s');
     const p2b = await measure(page, 12);
 
-    console.log('[bench] Results', {
-      '25/team no-telemetry': p1a,
-      '50/team no-telemetry': p1b,
-      '25/team telemetry': p2a,
-      '50/team telemetry': p2b,
-    });
+    const results = {
+      noTelemetry25: p1a,
+      noTelemetry50: p1b,
+      telemetry25: p2a,
+      telemetry50: p2b,
+      deltas: {
+        avgFps25: (p2a.avgFps - p1a.avgFps),
+        avgFps50: (p2b.avgFps - p1b.avgFps),
+        p99Ms25: (p2a.p99FrameMs - p1a.p99FrameMs),
+        p99Ms50: (p2b.p99FrameMs - p1b.p99FrameMs)
+      }
+    };
+    try { mkdirSync('test-output', { recursive: true }); } catch {} 
+    const ts = new Date().toISOString().replace(/[:.]/g,'-'); writeFileSync(	est-output/bench-.json, JSON.stringify(results, null, 2));
+    console.log('[bench] Results', results);
 
     if (STRICT) {
       expect(p1a.avgFps).toBeGreaterThanOrEqual(60);
     }
   });
 });
+
+
 
 
 
