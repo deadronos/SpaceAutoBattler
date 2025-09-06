@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
+import { createMockGameState, createMockShip, getTestDtFromState, TEST_DEFAULTS } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { simulateStep, applyBoundaryPhysics } from '../../src/core/gameState.js';
@@ -15,14 +15,14 @@ describe('AI Boundary Physics', () => {
 
   it('should enforce boundary physics when using AIController', () => {
     // Test that AIController now properly applies boundary physics
-    const ship = createMockShip({ id: 1, team: 'red', class: 'fighter', pos: { x: 1005, y: 100, z: 100 }, vel: { x: 0, y: 0, z: 0 } }) as Ship;
+    const ship = createMockShip({ id: 1, team: 'red', class: 'fighter', pos: { ...TEST_DEFAULTS.defaultPos, x: 1005 }, vel: { ...TEST_DEFAULTS.zeroPos } }) as Ship;
   (ship as Ship).dir = 0;
   (ship as Ship).targetId = null;
   (ship as Ship).aiState = {
       currentIntent: 'idle',
       intentEndTime: 0,
       lastIntentReevaluation: 0,
-      preferredRange: 150,
+      preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
       recentDamage: 0,
       lastDamageTime: 0
   } as unknown as Ship['aiState'];
@@ -45,14 +45,14 @@ describe('AI Boundary Physics', () => {
     state.simConfig.boundaryBehavior.ships = 'wrap';
     
     // Create a ship near the boundary with velocity pushing it out of bounds
-    const ship2 = createMockShip({ id: 1, team: 'red', class: 'fighter', pos: { x: 990, y: 100, z: 100 }, vel: { x: 500, y: 0, z: 0 } }) as Ship;
+    const ship2 = createMockShip({ id: 1, team: 'red', class: 'fighter', pos: { ...TEST_DEFAULTS.defaultPos, x: 990 }, vel: { ...TEST_DEFAULTS.zeroPos, x: 500 } }) as Ship;
   (ship2 as Ship).dir = 0;
   (ship2 as Ship).targetId = null;
   (ship2 as Ship).aiState = {
       currentIntent: 'idle',
       intentEndTime: 0,
       lastIntentReevaluation: 0,
-      preferredRange: 150,
+      preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
       recentDamage: 0,
       lastDamageTime: 0
   } as unknown as Ship['aiState'];
@@ -73,22 +73,22 @@ describe('AI Boundary Physics', () => {
 
   it('should apply same boundary physics for legacy AI and AIController', () => {
     // Test both paths produce same boundary behavior
-    const shipA = createMockShip({ id: 1, team: 'red', class: 'fighter', pos: { x: 995, y: 100, z: 100 }, vel: { x: 50, y: 0, z: 0 } }) as Ship;
+    const shipA = createMockShip({ id: 1, team: 'red', class: 'fighter', pos: { ...TEST_DEFAULTS.defaultPos, x: 995 }, vel: { ...TEST_DEFAULTS.zeroPos, x: 50 } }) as Ship;
   (shipA as Ship).dir = 0;
 
-    const shipB = createMockShip({ id: 2, team: 'red', class: 'fighter', pos: { x: 995, y: 100, z: 100 }, vel: { x: 50, y: 0, z: 0 } }) as Ship;
+    const shipB = createMockShip({ id: 2, team: 'red', class: 'fighter', pos: { ...TEST_DEFAULTS.defaultPos, x: 995 }, vel: { ...TEST_DEFAULTS.zeroPos, x: 50 } }) as Ship;
   (shipB as Ship).dir = 0;
   (shipB as Ship).aiState = {
       currentIntent: 'idle',
       intentEndTime: 0,
       lastIntentReevaluation: 0,
-      preferredRange: 150,
+      preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
       recentDamage: 0,
       lastDamageTime: 0
   } as unknown as Ship['aiState'];
 
     // Add an enemy target for both ships to pursue
-    const enemyShip = createMockShip({ id: 3, team: 'blue', class: 'fighter', pos: { x: 1050, y: 100, z: 100 } }) as Ship;
+    const enemyShip = createMockShip({ id: 3, team: 'blue', class: 'fighter', pos: { ...TEST_DEFAULTS.defaultPos, x: 1050 } }) as Ship;
 
     // State 1: Use legacy AI (no behaviorConfig)
     const state1 = createMockGameState();

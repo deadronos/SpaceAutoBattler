@@ -3,6 +3,7 @@ import { createInitialState, spawnShip, simulateStep } from '../../src/core/game
 import { AIController } from '../../src/core/aiController.js';
 import type { GameState } from '../../src/types/index.js';
 import { TEST_DEFAULTS, getTestDtFromState } from './setupTests.js';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 describe('AI Roaming and Formation Systems', () => {
   let gameState: GameState;
@@ -14,7 +15,7 @@ describe('AI Roaming and Formation Systems', () => {
     
     // Ensure AI is enabled and configure for testing
     gameState.behaviorConfig!.globalSettings.aiEnabled = true;
-    gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = 150;
+    gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation;
     
     // Disable interfering features for focused testing
     gameState.behaviorConfig!.globalSettings.enableScoutBehavior = false;
@@ -41,7 +42,7 @@ describe('AI Roaming and Formation Systems', () => {
       };
 
       // Reduce separation for deterministic test and force intent reevaluation
-      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = 40;
+      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation / 2;
       gameState.time = 10;
 
       // Step the simulation to trigger AI updates
@@ -186,7 +187,7 @@ describe('AI Roaming and Formation Systems', () => {
             Math.pow(pos1.z - pos2.z, 2)
           );
           // Formation positions should be separated by at least formation spacing / 2
-          expect(distance).toBeGreaterThan(40); // Half of typical formation spacing
+          expect(distance).toBeGreaterThan(DEFAULT_BEHAVIOR_CONFIG.formations.line.spacing / 2); // Half of typical formation spacing
         }
       }
     });

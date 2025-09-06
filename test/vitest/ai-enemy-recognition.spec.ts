@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
 import { AIController } from '../../src/core/aiController';
 import type { GameState, Ship } from '../../src/types';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
+import { SHIP_CLASS_CONFIGS } from '../../src/config/entitiesConfig.js';
 
 const DEBUG_AI = false; // Set to true for debug output
 
@@ -60,7 +61,7 @@ describe('AI Enemy Recognition', () => {
       id: 3,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 300, y: 100, z: 100 }, // 200 units away
+      pos: { x: 100 + (SHIP_CLASS_CONFIGS.fighter.turrets[0].range ?? 300) + 50, y: 100, z: 100 }, // 200 units away
     }) as unknown as Ship;
 
     setShips([redShip, nearBlueShip, farBlueShip]);
@@ -92,7 +93,7 @@ describe('AI Enemy Recognition', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 2000, y: 100, z: 100 }, // Very far away
+      pos: { x: 100 + (DEFAULT_BEHAVIOR_CONFIG.turretConfig.maximumFireRange ?? 800) + 100, y: 100, z: 100 }, // Very far away
     }) as unknown as Ship;
 
     setShips([redShip, farBlueShip]);
@@ -147,7 +148,8 @@ describe('AI Enemy Recognition', () => {
     addShip(closerTarget);
     
     // Increment time and frame to invalidate cache
-    state.time = 0.2;
+    // We need to advance time significantly to overcome the target switching throttle
+    state.time = 1.0;
   (state as unknown as { frame: number }).frame = 1;
 
   // Second update - should switch to closer enemy

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
+import { createMockGameState, createMockShip, getTestDtFromState, TEST_DEFAULTS } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -27,13 +27,13 @@ describe('AI Engagement Integration Test', () => {
         id: i + 1,
         team: 'red',
         class: 'fighter',
-        pos: { x: 100 + i * 50, y: 100, z: 100 },
+        pos: { ...TEST_DEFAULTS.defaultPos, x: 100 + i * 50 },
       });
   (redShip as Ship).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
         lastDamageTime: 0
       };
@@ -42,7 +42,7 @@ describe('AI Engagement Integration Test', () => {
         id: i + 4,
         team: 'blue',
         class: 'fighter',
-        pos: { x: 300 + i * 50, y: 100, z: 100 },
+        pos: { ...TEST_DEFAULTS.defaultPos, x: 300 + i * 50 },
       });
   (blueShip as Ship).aiState = JSON.parse(JSON.stringify((redShip as Ship).aiState));
 
@@ -85,7 +85,7 @@ describe('AI Engagement Integration Test', () => {
     console.log(`Engagement stats - Engaged: ${engagedShips}, Evading: ${evadingShips}, Ratio: ${engagementRatio.toFixed(2)}`);
 
     // With aggressive fighters and no damage, we should see primarily engagement behavior
-    expect(engagementRatio).toBeGreaterThan(0.6); // At least 60% engagement vs evasion
+    expect(engagementRatio).toBeGreaterThan(DEFAULT_BEHAVIOR_CONFIG.defaultPersonality.aggressiveness - 0.3); // At least 60% engagement vs evasion
     expect(engagedShips).toBeGreaterThan(evadingShips); // More engagement than evasion
   });
 
@@ -102,13 +102,13 @@ describe('AI Engagement Integration Test', () => {
         id: i + 1,
         team,
         class: 'corvette',
-        pos: { x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100, z: 100 }
+        pos: { ...TEST_DEFAULTS.defaultPos, x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100 }
       }) as Ship;
   (corvette as Ship).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
         lastDamageTime: 0
       };

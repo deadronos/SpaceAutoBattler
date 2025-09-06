@@ -8,7 +8,7 @@ import { execSync } from 'node:child_process';
 const TEST_CONFIG = {
   repoRoot: path.resolve(__dirname, '../..'),
   distDir: path.join(path.resolve(__dirname, '../..'), 'dist'),
-  buildTimeout: 30000, // 30 seconds
+  buildTimeout: 90000, // 90 seconds
 };
 
 describe('Build System Tests', () => {

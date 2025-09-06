@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
+import { createMockGameState, createMockShip, getTestDtFromState, TEST_DEFAULTS } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -21,20 +21,15 @@ describe('AI Evade Behavior', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
+      vel: { ...TEST_DEFAULTS.zeroPos },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
         lastDamageTime: 0
       }
@@ -48,7 +43,7 @@ describe('AI Evade Behavior', () => {
 
     // Simulate damage accumulation by directly updating aiState
     // This simulates the damage tracking that would happen in updateBullets
-    ship.aiState!.recentDamage = 30; // Above threshold of 25
+    ship.aiState!.recentDamage = DEFAULT_BEHAVIOR_CONFIG.globalSettings.damageEvadeThreshold + 5; // Above threshold of 25
     ship.aiState!.lastDamageTime = state.time;
 
     // Force reevaluation of intent
@@ -59,13 +54,8 @@ describe('AI Evade Behavior', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 150, y: 100, z: 100 }, // Close to our ship
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 150 }, // Close to our ship
       targetId: 1,
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: []
     }) as unknown as Ship;
 
     state.ships.push(enemy);
@@ -88,8 +78,8 @@ describe('AI Evade Behavior', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
+      vel: { ...TEST_DEFAULTS.zeroPos },
       speed: 20,  // Increase ship speed for faster movement
       turnRate: 10 // Increase turn rate for more responsive movement
     }) as unknown as Ship;
@@ -99,7 +89,7 @@ describe('AI Evade Behavior', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 120, y: 100, z: 100 }, // Directly to the right of our ship
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 120 }, // Directly to the right of our ship
     }) as unknown as Ship;
 
     state.ships = [ship, enemy]; // Replace all ships with just these two
@@ -113,7 +103,7 @@ describe('AI Evade Behavior', () => {
       currentIntent: 'evade',
       intentEndTime: 999999, // Far future
       lastIntentReevaluation: 0,
-      preferredRange: 150,
+      preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
       recentDamage: 50,
       lastDamageTime: 0
     };
@@ -170,13 +160,13 @@ describe('AI Evade Behavior', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
       turrets: [],
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 20,
         lastDamageTime: state.time
       }
@@ -210,14 +200,14 @@ describe('AI Evade Behavior', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
       turrets: [],
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
-        recentDamage: 12,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
+        recentDamage: DEFAULT_BEHAVIOR_CONFIG.globalSettings.damageEvadeThreshold + 2,
         lastDamageTime: state.time
       }
     }) as unknown as Ship;
@@ -232,7 +222,7 @@ describe('AI Evade Behavior', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 150, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 150 },
       targetId: 1,
       turrets: []
     }) as unknown as Ship;
@@ -252,14 +242,14 @@ describe('AI Evade Behavior', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
       turrets: [],
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
-        recentDamage: 30,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
+        recentDamage: DEFAULT_BEHAVIOR_CONFIG.globalSettings.damageEvadeThreshold + 10,
         lastDamageTime: state.time
       }
     }) as unknown as Ship;
@@ -288,7 +278,7 @@ describe('AI Evade Behavior', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 130, y: 100, z: 100 }, // Close to trigger evade
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 130 }, // Close to trigger evade
       targetId: 1,
       turrets: []
     }) as unknown as Ship;
@@ -319,34 +309,23 @@ describe('AI Evade Behavior', () => {
 
   it('should not evade when unrelated ships have no recent damage', () => {
     // Test that ships without recent damage don't enter evade
-    const ship: Ship = {
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
+      vel: { ...TEST_DEFAULTS.zeroPos },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0, // No damage
         lastDamageTime: 0 // No damage time
       }
-    };
+    }) as unknown as Ship;
 
     // Create defensive personality to test defensive evade logic
     const defensivePersonality = {
@@ -371,7 +350,7 @@ describe('AI Evade Behavior', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 130, y: 100, z: 100 }, // Close to ship
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 130 }, // Close to ship
       targetId: 1,
       turrets: []
     }) as unknown as Ship;
