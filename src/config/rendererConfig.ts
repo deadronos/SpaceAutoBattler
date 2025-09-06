@@ -186,6 +186,13 @@ export interface RendererConfig {
   // Default values for entities
   defaultCollisionRadius: number;
   defaultScale: number;
+
+  // Performance monitoring settings
+  performance: {
+    enableProfiling: boolean; // enable hotpath profiling
+    showOverlay: boolean; // show performance overlay on screen
+    overlayUpdateMs: number; // how often to update overlay (ms)
+  };
 }
 
 export const DefaultRendererConfig: RendererConfig = {
@@ -348,6 +355,12 @@ export const DefaultRendererConfig: RendererConfig = {
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
   loadGltfModels: false,
+
+  performance: {
+    enableProfiling: false, // disabled by default, enable via query param or explicit config
+    showOverlay: false, // disabled by default
+    overlayUpdateMs: 250, // update overlay 4 times per second
+  },
 };
 
 // Export the default config as RendererConfig for backward compatibility

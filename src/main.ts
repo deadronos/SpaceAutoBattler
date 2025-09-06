@@ -31,6 +31,7 @@ import { getSVGLoader, loadSVGAsset } from './core/svgLoader.js';
 import * as logger from './utils/logger.js';
 import { DefaultGameConfig } from './config/gameConfig.js';
 import { defaultSVGConfig, getShipSVGUrls } from './config/svgConfig.js';
+import { perf, perfBegin, perfEnd } from './utils/perf.js';
 
 function $(id: string) { return document.getElementById(id)!; }
 
@@ -284,6 +285,7 @@ function initGame(seed?: string) {
   state.renderer = renderer;
   wireControls(state, ui);
   setupCameraControls(state, ui.canvas);
+  setupPerfOverlay();
   startLoops(state, ui);
 }
 
@@ -614,10 +616,14 @@ function startLoops(state: GameState, ui: UIElements) {
   let fpsAccum = 0, fpsFrames = 0, _fpsTime = 0;
 
   function frame(now: number) {
+    perfBegin('frame.total');
+    
     const dt = (now - last) / 1000; last = now;
     acc += dt;
+    
     if (state.running) {
       // Fixed-step simulation with speed multiplier
+      perfBegin('simulation.step');
       const maxSteps = 5;
       let steps = 0;
       while (acc >= fixedDt && steps < maxSteps) {
@@ -626,20 +632,27 @@ function startLoops(state: GameState, ui: UIElements) {
       state.time += fixedDt * state.speedMultiplier; state.tick++; state.frame = (state.frame ?? 0) + 1;
         acc -= fixedDt; steps++;
       }
+      perfEnd('simulation.step');
+      
       // Auto-respawn if continuous
+      perfBegin('game.respawn');
       if ((ui.continuous.checked)) {
         const redAlive = state.ships.some(s => s.team === 'red');
         const blueAlive = state.ships.some(s => s.team === 'blue');
         if (!redAlive) spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
         if (!blueAlive) spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
       }
+      perfEnd('game.respawn');
     }
 
     // Render
+    perfBegin('renderer.total');
     state.renderer?.render(dt);
+    perfEnd('renderer.total');
 
     // Stats
-  fpsAccum += dt; fpsFrames++; _fpsTime += dt;
+    perfBegin('ui.stats');
+    fpsAccum += dt; fpsFrames++; _fpsTime += dt;
     if (fpsAccum >= 0.5) {
       const fps = Math.round(fpsFrames / fpsAccum);
       ui.stats.textContent = `FPS ${fps} • Ships ${state.ships.length} • Bullets ${state.bullets.length} • Tick ${state.tick}`;
@@ -648,10 +661,84 @@ function startLoops(state: GameState, ui: UIElements) {
       (document.getElementById('blueScore') as HTMLDivElement).textContent = `Blue ${state.score.blue}`;
       fpsAccum = 0; fpsFrames = 0;
     }
+    perfEnd('ui.stats');
 
+    perfEnd('frame.total');
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
+
+function setupPerfOverlay() {
+  // Only show overlay if enabled via query param or config
+  const showOverlay = perf.isEnabled() && (
+    typeof location !== 'undefined' && location.search.includes('showPerf=1')
+  );
+  
+  if (!showOverlay) return;
+
+  // Create overlay element
+  const overlay = document.createElement('div');
+  overlay.id = 'perfOverlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ff00;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.3;
+    border-radius: 4px;
+    z-index: 1000;
+    min-width: 200px;
+    max-width: 300px;
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Update overlay periodically
+  let lastUpdate = 0;
+  const updateInterval = 250; // 4fps
+
+  function updateOverlay() {
+    const now = performance.now();
+    if (now - lastUpdate < updateInterval) {
+      requestAnimationFrame(updateOverlay);
+      return;
+    }
+    lastUpdate = now;
+
+    const summary = perf.getSummary();
+    if (summary.frameCount === 0) {
+      overlay.textContent = 'Performance Monitor\nNo data yet...';
+      requestAnimationFrame(updateOverlay);
+      return;
+    }
+
+    // Build display content
+    let content = 'Performance Monitor\n';
+    content += `Frames: ${summary.frameCount}\n`;
+    content += `Total: ${summary.totalFrameMs}ms\n`;
+    content += `Avg: ${summary.avgFrameMs}ms\n`;
+    content += `P95: ${summary.p95FrameMs}ms\n\n`;
+
+    // Show top 8 subsystems
+    const topSubsystems = summary.subsystems.slice(0, 8);
+    for (const subsystem of topSubsystems) {
+      const percentage = summary.totalFrameMs > 0 
+        ? Math.round((subsystem.totalMs / summary.totalFrameMs) * 100)
+        : 0;
+      
+      content += `${subsystem.name}: ${percentage}% (${subsystem.avgMs}ms)\n`;
+    }
+
+    overlay.textContent = content;
+    requestAnimationFrame(updateOverlay);
+  }
+
+  requestAnimationFrame(updateOverlay);
 }
 
 // Boot

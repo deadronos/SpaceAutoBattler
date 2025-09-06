@@ -14,6 +14,7 @@ import { updateBillboardBars } from './overlay.js';
 import { setCachedCameraBasis } from './cameraManager.js';
 import { _ } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import { createRNG } from '../utils/rng.js';
+import { perfBegin, perfEnd } from '../utils/perf.js';
 export { updateBillboardBars };
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
@@ -1521,14 +1522,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   try { effectsManager = createEffectsManager(renderer as unknown as any, scene as unknown as any, camera as unknown as any); } catch { effectsManager = null; }
 
   function render(_dt: number) {
-
+    perfBegin('renderer.camera');
     // Update camera position based on current rotation, distance, and target
     updateCameraPosition();
+    perfEnd('renderer.camera');
 
+    perfBegin('renderer.sync');
     // Sync entities and update transforms
     syncEntities();
     updateTransforms();
+    perfEnd('renderer.sync');
 
+    perfBegin('renderer.healthbars');
     // Ensure no health bar remained parented to a ship (re-parent to healthBarsGroup)
     // This guarantees bars don't inherit ship rotation.
     for (const [_id, bar] of healthBarMeshes) {
@@ -1560,25 +1565,36 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       updateBillboardBars(Array.from(healthBarMeshes.values()), camera);
     }
+    perfEnd('renderer.healthbars');
 
+    perfBegin('renderer.skybox');
     // Update animated skybox
     updateSkyboxAnimation(_dt);
+    perfEnd('renderer.skybox');
 
+    perfBegin('renderer.effects');
     // Prefer postprocessing composer when available
     if (effectsManager && effectsManager.initDone) {
         try {
             effectsManager.render(_dt);
+            perfEnd('renderer.effects');
             return;
     } catch (e) {
       logger.warn('Effects manager render failed, falling back to default renderer', e);
     }
     }
+    perfEnd('renderer.effects');
 
+    perfBegin('renderer.culling');
     // Render the scene
   // Ensure instanced meshes have their instanceMatrix flags updated before rendering
   try { shipInstancer.cull(camera); } catch {logger.error('Failed to cull ship instancer');}
   try { shipInstancer.sync(); } catch {logger.error('Failed to sync ship instancer');}
+    perfEnd('renderer.culling');
+    
+    perfBegin('renderer.webgl');
   renderer.render(scene, camera);
+    perfEnd('renderer.webgl');
   }
 
   window.addEventListener('resize', resize);

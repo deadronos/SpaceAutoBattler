@@ -11,6 +11,7 @@ import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 import { DEBUG_AI } from '../utils/env';
+import { perfBegin, perfEnd } from '../utils/perf.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -417,6 +418,7 @@ function carrierSpawnLogic(state: GameState, dt: number) {
 
 export function simulateStep(state: GameState, dt: number) {
   // Ship AI logic - Always use AIController for unified behavior
+  perfBegin('ai.total');
   // Lazily create and reuse AIController instance
   const aiController = state.aiController ?? (state.aiController = new AIController(state));
   aiController.updateAllShips(dt);
@@ -437,25 +439,39 @@ export function simulateStep(state: GameState, dt: number) {
       if (DEBUG_AI) console.error(`DEBUG_AI: simulateStep restored ship=${s.id} target=${s.targetId}`);
     }
   }
+  perfEnd('ai.total');
   
   // Update spatial grid with current ship positions after AI movement
+  perfBegin('spatial.update');
   updateSpatialGrid(state);
+  perfEnd('spatial.update');
   
   // Turret firing for all ships
+  perfBegin('turrets.fire');
   for (const s of state.ships) {
     if (s.health <= 0) continue;
     fireTurrets(state, s, dt);
   }
+  perfEnd('turrets.fire');
   
   // Bullets
+  perfBegin('projectiles.update');
   updateBullets(state, dt);
+  perfEnd('projectiles.update');
+  
   // Deaths/XP
+  perfBegin('game.deaths');
   processDeathsAndXP(state);
   handleLevelUps(state);
+  perfEnd('game.deaths');
+  
   // Carriers spawning
+  perfBegin('game.carriers');
   carrierSpawnLogic(state, dt);
+  perfEnd('game.carriers');
 
   // Periodic boundary cleanup (teleport or prune entities outside bounds)
+  perfBegin('game.cleanup');
   const cleanupEnabled = state.behaviorConfig?.globalSettings.enableBoundaryCleanup;
   const cleanupInterval = state.behaviorConfig?.globalSettings.boundaryCleanupIntervalTicks ?? 600;
   if (cleanupEnabled) {
@@ -473,6 +489,7 @@ export function simulateStep(state: GameState, dt: number) {
   if ((state.tick % fpNormalizeInterval) === 0) {
     normalizeFloatingPointState(state);
   }
+  perfEnd('game.cleanup');
 
   // Re-apply any AI-assigned targets once more after all simulation subsystems
   // have run. Some subsystems (e.g., boundary cleanup) may clear targets; to
