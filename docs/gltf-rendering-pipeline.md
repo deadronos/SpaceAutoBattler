@@ -76,3 +76,5 @@ The pipeline can be broken down into three main phases:
 *   **`src/renderer/threeRenderer.ts`**: The main renderer that drives the `shipInstancer` every frame.
 *   **`state.assetPool`**: A `Map` that serves as the central cache and handoff point between the loading and rendering systems.
 *   **`gltfProto`**: The object stored in the `assetPool`. It contains the raw GLTF data and, most importantly, the pre-extracted `threePrototypes` (geometries and materials).
+
+Related: see also docs/data-flow-diagrams.md for end-to-end flows (boot/worker, spawn, projectiles, AI, effects).

@@ -83,6 +83,7 @@ export class SVGLoader {
       } catch (_e) { void _e; this.worker = null; }
       // Single consolidated message handler for both rasterized responses and structured errors
       if (this.worker) {
+  try { logger.info('[SVGLoader] Worker instance created (lazy init)'); } catch { /* ignore */ }
         this.worker.addEventListener('message', (ev) => {
           try {
             const data = ev.data;
@@ -265,7 +266,8 @@ export class SVGLoader {
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-    // Prefer worker-based rasterization when available for performance.
+    // Lazily initialize worker and prefer worker-based rasterization when available for performance.
+    try { this.ensureWorkerInitialized(); } catch { /* ignore */ }
     if (this.worker) {
       try {
         logger.debug('[SVGLoader] Rasterizing SVG using worker:', asset.url);

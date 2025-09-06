@@ -128,3 +128,5 @@ finally into the Three.js renderer’s per‑frame update loop.
   - `src/renderer/shipInstancer.ts`
 - Renderer Integration
   - `src/renderer/threeRenderer.ts`
+
+Related: see also docs/data-flow-diagrams.md for orchestrated render data flows and adapter boundaries.
