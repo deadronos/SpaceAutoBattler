@@ -3,10 +3,49 @@ import { createRNG } from '../utils/rng.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 
 /**
+ * Simple string hash function for seed derivation
+ * Uses the same hash algorithm as the RNG system (xmur3)
+ */
+function hashString(str: string): number {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h ^= h >>> 16) >>> 0;
+}
+
+/**
  * ParticleSystem skeleton
  * - Provides addParticleExplosion(state, opts)
  * - Maintains a simple pool of ParticleInstance objects
  * - Uses state's RNG when available to generate deterministic initial values
+ *
+ * RNG Contract:
+ * =============
+ * The particle system uses the game's seeded RNG system to ensure deterministic
+ * particle generation for testing and replay purposes.
+ * 
+ * Seed Derivation:
+ * - When opts.seed is provided: Uses "${globalSeed}:${opts.seed}" as seed string
+ * - When opts.seed is not provided: Uses XOR-based derivation per specification:
+ *   seedStr = "${globalSeed}:${hashString(globalSeed) ^ opts.entityId ^ floor(time*1000)}"
+ * - globalSeed is derived from state.rng?.seed or state.simConfig?.seed or '0'
+ * - opts.entityId defaults to 0 if not provided (e.g., when ship.id unavailable)
+ * 
+ * Deterministic Properties:
+ * - Particle initial positions (within explosion radius sphere)
+ * - Particle initial velocities (radial with configurable spread)
+ * - Particle sizes (within configured min/max range)
+ * - Particle colors (from configured color palette)
+ * - Particle lifetimes (from configuration or opts.lifetime)
+ *
+ * Reproducibility:
+ * Given identical GameState (time, rng.seed) and ParticleExplosionOptions,
+ * the system will generate identical particle initial states across multiple
+ * invocations, enabling deterministic testing and simulation replay.
  *
  * Note: This is a non-rendering, minimal skeleton focused on data and API.
  * Real rendering (Three.js instancing, buffer uploads, shader code) will be implemented
@@ -22,6 +61,8 @@ export interface ParticleExplosionOptions {
   colorOverride?: string[];
   count?: number;
   lifetime?: number;
+  /** Optional entity ID for improved seed derivation (e.g., ship.id) */
+  entityId?: number;
 }
 
 export interface ParticleInstance {
@@ -78,10 +119,25 @@ export class ParticleSystem {
     const cfg = RendererConfig.particles.explosion;
     if (!cfg || !cfg.enabled) return;
 
-    // Build a deterministic seed string using global seed + optional per-explosion seed
-    const globalSeed = this.state.rng?.seed ?? this.state.simConfig?.seed ?? '0';
-    const timePart = Math.floor((this.state.time ?? 0) * 1000);
-    const seedStr = typeof opts.seed === 'number' ? `${globalSeed}:${opts.seed}` : `${globalSeed}:${timePart}`;
+    // Build a deterministic seed using the game's seeded RNG system
+    let seedStr: string;
+    if (typeof opts.seed === 'number') {
+      // Use explicit seed when provided
+      const globalSeed = this.state.rng?.seed ?? this.state.simConfig?.seed ?? '0';
+      seedStr = `${globalSeed}:${opts.seed}`;
+    } else {
+      // Derive seed using XOR-based approach as specified: baseSeed XOR entityId XOR floor(time*1000)
+      const globalSeed = this.state.rng?.seed ?? this.state.simConfig?.seed ?? '0';
+      // Convert string seed to numeric hash for XOR operations
+      const baseSeedHash = hashString(globalSeed);
+      const timePart = Math.floor((this.state.time ?? 0) * 1000);
+      const entityPart = opts.entityId ?? 0; // Use 0 if no entity ID provided
+      
+      // XOR the components together for seed derivation
+      const derivedSeed = baseSeedHash ^ entityPart ^ timePart;
+      seedStr = `${globalSeed}:${derivedSeed}`;
+    }
+    
     const rng = createRNG(seedStr);
 
     const countBase = Math.round(cfg.countPerRadius * Math.max(1, opts.radius));
