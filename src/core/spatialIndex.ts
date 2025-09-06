@@ -226,13 +226,14 @@ export class SpatialGridAdapter implements SpatialIndex {
       const dx = entity.pos.x - center.x;
       const dy = entity.pos.y - center.y;
       const dz = entity.pos.z - center.z;
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      
-      if (distance <= radius) {
+      const distSq = dx * dx + dy * dy + dz * dz;
+
+      if (distSq <= radius * radius) {
+        const distance = Math.sqrt(distSq);
         const direction = distance > 0 ? 
           { x: dx / distance, y: dy / distance, z: dz / distance } :
           { x: 0, y: 0, z: 0 };
-        
+
         results.push({ entity, distance, direction });
       }
     }
@@ -244,16 +245,15 @@ export class SpatialGridAdapter implements SpatialIndex {
     this.trackQuery();
     const results: Array<{ entityId: EntityId; t: number; point: Vector3 }> = [];
     
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const dz = to.z - from.z;
-    const rayLength = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    
-    if (rayLength === 0) return results;
-    
-    const dirX = dx / rayLength;
-    const dirY = dy / rayLength;
-    const dirZ = dz / rayLength;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  const rayLengthSq = dx * dx + dy * dy + dz * dz;
+  if (rayLengthSq === 0) return results;
+  const rayLength = Math.sqrt(rayLengthSq);
+  const dirX = dx / rayLength;
+  const dirY = dy / rayLength;
+  const dirZ = dz / rayLength;
     
     // Query entities along the ray path with some padding
     const center = {

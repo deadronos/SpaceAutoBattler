@@ -446,27 +446,15 @@ export class SpatialGrid {
     const cosHalfAngle = Math.cos(angleRadians / 2);
     const results: SpatialEntity[] = [];
     
-    this.forEachInRadius(center, range, (dx, dy, dz, _distSq, entity) => {
+    this.forEachInRadius(center, range, (dx, dy, dz, distSq, entity) => {
       // Filter by team and exclude id if specified
       if (team !== undefined && entity.team !== team) return;
       if (excludeId !== undefined && entity.id === excludeId) return;
-      
-      // Check if within cone angle
-      const toEntityMag = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (toEntityMag === 0) return;
-      
-      // Normalized vector to entity (dx,dy,dz are already entity.pos - center)
-      const toEntityNormX = dx / toEntityMag;
-      const toEntityNormY = dy / toEntityMag;
-      const toEntityNormZ = dz / toEntityMag;
-      
-      // Dot product with direction
-      const dotProduct = dirX * toEntityNormX + dirY * toEntityNormY + dirZ * toEntityNormZ;
-      
-      // Check if within cone angle
-      if (dotProduct >= cosHalfAngle) {
-        results.push(entity);
-      }
+      // Avoid normalizing every candidate: dot(u, v/|v|) = dot(u,v)/|v|
+      if (distSq === 0) return;
+      const dotUV = dirX * dx + dirY * dy + dirZ * dz;
+      const threshold = cosHalfAngle * Math.sqrt(distSq);
+      if (dotUV >= threshold) results.push(entity);
     });
     
     return results;

@@ -8,16 +8,17 @@ import type { GameState, Ship, Vector3 } from '../../types/index.js';
 
 interface BatchedResults {
   nearestEnemyCache: Map<number, Ship | null>;
-  nearbyEnemiesCache: Map<string, Ship[]>;
-  nearbyFriendsCache: Map<string, Ship[]>;
+  // Map shipId -> Map<range, Ship[]>
+  nearbyEnemiesCache: Map<number, Map<number, Ship[]>>;
+  nearbyFriendsCache: Map<number, Map<number, Ship[]>>;
   separationNeighborsCache: Map<number, Vector3[]>;
 }
 
 export class BatchedQueryManager {
   private results: BatchedResults = {
     nearestEnemyCache: new Map(),
-    nearbyEnemiesCache: new Map(),
-    nearbyFriendsCache: new Map(),
+  nearbyEnemiesCache: new Map(),
+  nearbyFriendsCache: new Map(),
     separationNeighborsCache: new Map()
   };
   
@@ -111,8 +112,17 @@ export class BatchedQueryManager {
       return;
     }
 
-    for (const ship of ships) {
-      const neighbors: Vector3[] = [];
+  // Reuse cached arrays when available to avoid allocations
+  for (const ship of ships) {
+      // Reuse existing array if present to avoid allocating a fresh array
+      let neighbors = this.results.separationNeighborsCache.get(ship.id);
+      if (!neighbors) {
+        neighbors = [] as Vector3[];
+        this.results.separationNeighborsCache.set(ship.id, neighbors);
+      } else {
+        neighbors.length = 0; // clear in-place
+      }
+
       state.spatialGrid.forEachNeighborsDelta(
         ship.pos,
         separationDistance,
@@ -124,7 +134,6 @@ export class BatchedQueryManager {
           }
         }
       );
-      this.results.separationNeighborsCache.set(ship.id, neighbors);
     }
     if (bench) {
       const t1 = performance.now();
@@ -179,9 +188,8 @@ export class BatchedQueryManager {
       // Cache results for all ships in this cell. Use squared-distance math
       // to avoid repeated Math.sqrt and extra allocations.
       for (const ship of ships) {
-        const shipKey = `${ship.id}|${range}`;
-        const range2 = range * range;
-        const nearbyEnemies = enemies.filter(enemy => {
+  const range2 = range * range;
+  const nearbyEnemies = enemies.filter(enemy => {
           const dx = enemy.pos.x - ship.pos.x;
           const dy = enemy.pos.y - ship.pos.y;
           const dz = enemy.pos.z - ship.pos.z;
@@ -194,7 +202,12 @@ export class BatchedQueryManager {
           return da - db;
         });
 
-        this.results.nearbyEnemiesCache.set(shipKey, nearbyEnemies);
+        let inner = this.results.nearbyEnemiesCache.get(ship.id);
+        if (!inner) {
+          inner = new Map<number, Ship[]>();
+          this.results.nearbyEnemiesCache.set(ship.id, inner);
+        }
+        inner.set(range, nearbyEnemies);
       }
     }
   }
@@ -203,7 +216,7 @@ export class BatchedQueryManager {
    * Get cached nearby enemies
    */
   public getNearbyEnemies(ship: Ship, range: number): Ship[] {
-    const shipKey = `${ship.id}|${range}`;
-    return this.results.nearbyEnemiesCache.get(shipKey) || [];
+  const inner = this.results.nearbyEnemiesCache.get(ship.id);
+  return inner ? (inner.get(range) || []) : [];
   }
 }
