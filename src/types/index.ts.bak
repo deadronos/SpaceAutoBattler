@@ -1,0 +1,291 @@
+import type { AggressiveSpatialOptimizer } from '../core/ai/aggressiveSpatialOptimizer.js';
+
+export type EntityId = number;
+
+export type Team = 'red' | 'blue';
+
+export type ShipClass = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carrier';
+
+export type BoundaryBehavior = 'bounce' | 'wrap' | 'remove';
+
+export interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+// Keep Vector2 for backward compatibility and 2D operations
+export interface Vector2 {
+  x: number;
+  y: number;
+}
+
+export interface RNG {
+  seed: string;
+  next(): number; // [0,1)
+  int(min: number, max: number): number; // inclusive
+  pick<T>(arr: readonly T[]): T;
+}
+
+export interface TurretConfig {
+  id: string;
+  cooldown: number; // seconds
+  bulletSpeed: number; // units/sec
+  damage: number;
+  range: number; // units
+  /**
+   * Accuracy: 0..1 where 1.0 is perfectly accurate and 0 is maximally inaccurate.
+   * This will be combined with ship level to compute firing spread/jitter.
+   * Optional - if absent, treated as 1.0 (perfect).
+   */
+  accuracy?: number;
+  /**
+   * Maximum spread angle (radians) applied when accuracy < 1.0. Represents the
+   * maximum cone half-angle within which the actual fired bullet direction may
+   * deviate from the aim direction. Optional - default ~2 degrees.
+   */
+  maxSpreadRadians?: number;
+  /** Optional designer preferred behavior for this turret. If set to 'dynamic',
+   * the global dynamic switching rules will apply; otherwise the turret will
+   * initialize with this behavior at spawn and hold it indefinitely (designer override).
+   */
+  preferredBehavior?: import('../config/behaviorConfig.js').TurretBehavior | 'dynamic';
+  /** Optional per-turret override for how far (seconds) to look ahead when computing intercepts. If absent, use behaviorConfig.globalSettings.maxInterceptLookahead */
+  maxInterceptLookahead?: number;
+}
+
+export interface ShipClassConfig {
+  class: ShipClass;
+  baseHealth: number;
+  armor: number;
+  shield: number;
+  shieldRegen: number; // per second
+  speed: number; // units/sec
+  turnRate: number; // rad/sec
+  turrets: TurretConfig[];
+  maxFighters?: number; // carriers only
+  fighterSpawnCooldown?: number; // carriers only, seconds
+}
+
+export interface SimBounds {
+  width: number;
+  height: number;
+  depth: number;
+}
+
+export interface Bullet {
+  id: EntityId;
+  ownerShipId: EntityId;
+  ownerTeam: Team;
+  pos: Vector3;
+  prevPos?: Vector3; // New for interpolation (optional to ease test creation)
+  vel: Vector3;
+  ttl: number; // seconds
+  damage: number;
+  // Optional weapon identifier used by tests and instancing logic
+  weaponId?: string;
+}
+
+export interface TurretState {
+  id: string; // from config
+  cooldownLeft: number; // seconds
+  // AI state for independent targeting
+  aiState?: {
+    targetId: EntityId | null;
+    lastTargetUpdate: number;
+    leadTargetPos?: Vector3;
+    /** Current behavior for this turret (may override global turret config) */
+    behavior?: import('../config/behaviorConfig.js').TurretBehavior;
+    /** Timestamp when the current behavior expires and should be reconsidered */
+    behaviorExpireTime?: number;
+    /** Optional suppression parameters when behavior == 'area_suppression' */
+    suppressionCount?: number;
+    suppressionAngle?: number;
+  };
+}
+
+export interface Leveling {
+  level: number;
+  xp: number;
+  nextLevelXp: number;
+}
+
+export interface Ship {
+  id: EntityId;
+  team: Team;
+  class: ShipClass;
+  pos: Vector3;
+  prevPos?: Vector3; // New for interpolation (optional to ease test creation)
+  vel: Vector3;
+  // 3D orientation using Euler angles (in radians)
+  orientation: {
+    pitch: number; // rotation around X axis (nose up/down)
+    yaw: number;   // rotation around Y axis (nose left/right)
+    roll: number;  // rotation around Z axis (ship rolling)
+  };
+  prevOrientation?: { // New for interpolation (optional to ease test creation)
+    pitch: number;
+    yaw: number;
+    roll: number;
+  };
+  // Keep legacy dir field for backward compatibility during transition
+  dir?: number; // deprecated - use orientation.yaw instead
+  targetId: EntityId | null;
+  health: number;
+  maxHealth: number;
+  armor: number;
+  shield: number;
+  maxShield: number;
+  shieldRegen: number;
+  speed: number;
+  turnRate: number;
+  turrets: TurretState[];
+  kills: number;
+  level: Leveling;
+  spawnedFighters?: number; // for carriers
+  fighterSpawnCdLeft?: number; // seconds
+  parentCarrierId?: EntityId; // for fighters spawned by carriers
+  lastShieldHitTime?: number; // timestamp when shield was last hit
+  // Amount of shield damage absorbed by the last hit (raw damage units)
+  lastShieldHitStrength?: number;
+  // Direction from which the last shield impact came (unit vector, world space)
+  lastShieldHitDir?: Vector3;
+  // AI state
+  aiState?: {
+    currentIntent: import('../config/behaviorConfig.js').AIIntent;
+    intentEndTime: number;
+    lastIntentReevaluation: number;
+    roamingPattern?: import('../config/behaviorConfig.js').RoamingPattern;
+    roamingStartTime?: number;
+    roamingAnchor?: Vector3;
+    formationId?: string;
+    formationPosition?: Vector3;
+    formationSlotIndex?: number;
+    lastTargetSwitchTime?: number;
+    preferredRange?: number;
+    // Damage-based evasion tracking
+    recentDamage?: number;
+    lastDamageTime?: number;
+  };
+  // Track last damage source and timestamp for kill crediting
+  lastDamageBy?: EntityId;
+  lastDamageTime?: number;
+  // Dirty flags for UI optimization - only update visuals when these change
+  _healthDirty?: boolean;
+  _shieldDirty?: boolean;
+}
+
+export interface ScoreBoard {
+  red: number;
+  blue: number;
+}
+
+export interface RendererHandles {
+  initDone: boolean;
+  resize: () => void;
+  render: (dt: number) => void;
+  dispose: () => void;
+  // Camera controls
+  cameraRotation: Vector3; // x: pitch, y: yaw, z: roll
+  cameraDistance: number;
+  cameraTarget: Vector3;
+  // Optional adapter hooks for renderer-level caching and introspection.
+  // These are best-effort and may be absent in some renderer implementations.
+  getParameters?: (programLike?: object | null) => unknown;
+  invalidateParameters?: (programLike?: object | null) => void;
+  // Test/runtime accessor to expose whether ship instancing is enabled/ready
+  getUseShipInstancing?: () => boolean;
+}
+
+
+
+export interface GameState {
+  time: number; // seconds
+  tick: number;
+  /** Monotonic frame counter, increments once per render/update frame */
+  frame?: number;
+  running: boolean;
+  speedMultiplier: number; // 0.5x/1x/2x/4x
+  rng: RNG;
+  nextId: number;
+  simConfig: {
+    simBounds: SimBounds;
+    tickRate: number;
+    maxEntities: number;
+    bulletLifetime: number;
+    maxSimulationSteps: number;
+    targetUpdateRate: number;
+    boundaryBehavior: {
+      ships: BoundaryBehavior;
+      bullets: BoundaryBehavior;
+    };
+    spatialGrid: {
+      cellSize: number;
+    };
+    seed: string;
+    useTimeBasedSeed: boolean;
+  };
+  ships: Ship[];
+  // Fast lookup by id to avoid O(n) array scans in hot paths
+  shipIndex?: Map<EntityId, Ship>;
+  // Version counter for efficient ship data change detection
+  shipDataVersion: number;
+  bullets: Bullet[];
+  score: ScoreBoard;
+  renderer?: RendererHandles;
+  // Simple asset pool for caching loaded assets (GLTFs, textures, etc.)
+  assetPool?: Map<string, unknown>;
+  // Optional physics stepper initialized by bootstrap (kept as a lightweight shape to avoid tight coupling)
+  physicsStepper?: {
+    initDone: boolean;
+    step: (dt: number) => void;
+    dispose: () => void;
+  world?: unknown;
+  };
+  behaviorConfig: import('../config/behaviorConfig.js').BehaviorConfig;
+  // Optional spatial index for efficient AI proximity queries (neighbors, targeting)
+  spatialGrid?: import('../utils/spatialGrid.js').SpatialGrid;
+  // Reused AI controller instance to avoid per-tick allocations
+  aiController?: import('../core/aiController.js').AIController;
+  aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer;
+}
+
+export type UIElements = {
+  canvas: HTMLCanvasElement;
+  startPause: HTMLButtonElement;
+  reset: HTMLButtonElement;
+  addRed: HTMLButtonElement;
+  addBlue: HTMLButtonElement;
+  toggleTrails: HTMLButtonElement;
+  speed: HTMLDivElement;
+  redScore: HTMLDivElement;
+  blueScore: HTMLDivElement;
+  stats: HTMLDivElement;
+  continuous: HTMLInputElement;
+  seedBtn: HTMLButtonElement;
+  formationBtn: HTMLButtonElement;
+};
+
+// Particle system types
+export interface ParticleExplosionOptions {
+  pos: Vector3;
+  radius: number;
+  seed?: number;
+  colorOverride?: string[];
+  count?: number;
+  lifetime?: number;
+  /** Optional entity ID for improved seed derivation (e.g., ship.id) */
+  entityId?: number;
+}
+
+export interface ParticleInstance {
+  id: number;
+  pos: Vector3;
+  vel: Vector3;
+  size: number;
+  age: number;
+  lifetime: number;
+  color: string;
+  active: boolean;
+}
+

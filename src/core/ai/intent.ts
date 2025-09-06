@@ -246,7 +246,7 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   if (DEBUG_AI) {
     console.error(`AI-DEBUG intent changed from ${oldIntent} to ${newIntent}`);
   };
-  ai.lastIntentReevaluation = state.time;
+  ai.lastIntentReevaluation = state.time; // updated when reevaluation actually occurs
 }
 
 // Below choose* implementations mirror the original controller strategies at a high level,
@@ -323,3 +323,4 @@ export function chooseMixedIntent(state: GameState, ship: Ship, personality: AIP
   }
   return chooseDefensiveIntent(state, ship, personality);
 }
+

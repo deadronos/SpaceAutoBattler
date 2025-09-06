@@ -52,11 +52,16 @@ export function findBestTurretTarget(state: GameState, ship: Ship, turret: Turre
   return best?.id ?? null;
 }
 
-export function updateTurretLeads(state: GameState, ship: Ship) {
-  const cfg = state.behaviorConfig!;
+export function updateTurretLeads(state: GameState, ship: Ship) {  const cfg = state.behaviorConfig!;
   for (const turretState of ship.turrets) {
-    const targetId = findBestTurretTarget(state, ship, turretState);
     if (!turretState.aiState) turretState.aiState = { targetId: null, lastTargetUpdate: state.time } as TurretState['aiState'];
+    const rate = (state.simConfig?.targetUpdateRate ?? 0.5);
+    const now = state.time;
+    if ((now - (turretState.aiState!.lastTargetUpdate ?? -1e9)) < rate) {
+      continue; // throttle turret target/lead updates
+    }
+    turretState.aiState!.lastTargetUpdate = now;
+    const targetId = findBestTurretTarget(state, ship, turretState);
     turretState.aiState!.targetId = targetId ?? null;
     // Use globalSettings.maxInterceptLookahead and turretConfig.leadPredictionTime per config
     if (targetId != null) {
@@ -79,5 +84,4 @@ export function updateTurretLeads(state: GameState, ship: Ship) {
     } else if (turretState.aiState) {
       delete turretState.aiState!.leadTargetPos;
     }
-  }
-}
+  }}\n
