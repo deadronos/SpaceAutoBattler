@@ -703,13 +703,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       logger.info('Ship instancer initialized');  
      } catch (e) { logger.warn('Ship instancer init failed', e); }
   }
-  // If we have preloaded rasterized SVGs in the state's assetPool, register prototypes
-  // with the shipInstancer so instanced ships get correct textured visuals.
-  try {
-    // Dynamic import to avoid circular import ordering issues at module-eval.
-    // Use then() to avoid top-level await requirement.
-    import('./meshFactory.js').then((mf) => { try { mf.registerPrototypesFromPool(state); } catch (e) { void e; } }).catch(() => {/* ignore */});
-  } catch {logger.error('Failed registering ship instancer prototypes from asset pool');}
+  // Prototype registration is now handled after GLTF models are loaded in main.ts
+  // to fix the timing race condition that caused placeholder models to appear.
   
 
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars

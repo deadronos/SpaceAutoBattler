@@ -191,31 +191,6 @@ function initGame(seed?: string) {
     }
   } as any;
 
-  // Optionally preload common ship assets into the pool (config-driven)
-  // Optionally preload common ship assets into the pool (config-driven)
-  (async () => {
-    try {
-      // Guard GLTF preloads behind configuration flag to avoid noisy 404s
-      const shouldLoadModels = (RendererConfig as any)?.loadGltfModels ?? false;
-      if (!shouldLoadModels) {
-        logger.debug('[main.ts] Skipping GLTF model preloads (RendererConfig.loadGltfModels=false)');
-        return;
-      }
-
-      // Use the centralized ship model map and loader to preload models
-      try {
-        // Defer to preloadShipModels which reads `src/config/shipModelMap.ts`
-        // and stores protos under keys like `ship-<class>-<team>` in state.assetPool.
-        // This allows model file paths to live in the repository (e.g. src/config/assets/gltf)
-        const { preloadShipModels } = await import('./core/shipModelLoader.js');
-        await preloadShipModels(state, ['red','blue']);
-      } catch (err) {
-        // Keep graceful failure behavior
-        console.warn('[main.ts] preloadShipModels failed:', err);
-      }
-    } catch (_e) { void _e;/* ignore */ }
-  })();
-
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
   (async () => {
     try {
@@ -337,16 +312,45 @@ function initGame(seed?: string) {
       } catch (ee) { void ee;/* ignore */ }
     }
   })();
-  // Seeded initial fleets
-  spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
-  spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
-  reFormFleets(state);
-  const renderer = createThreeRenderer(state, ui.canvas);
-  state.renderer = renderer;
-  wireControls(state, ui);
-  setupCameraControls(state, ui.canvas);
-  setupPerfOverlay();
-  startLoops(state, ui);
+
+  // Wait for GLTF models to load before spawning ships and creating renderer
+  // This ensures ships use GLTF prototypes instead of placeholder geometry
+  (async () => {
+    try {
+      // Guard GLTF preloads behind configuration flag to avoid noisy 404s
+      const shouldLoadModels = (RendererConfig as any)?.loadGltfModels ?? false;
+      if (shouldLoadModels) {
+        // Wait for GLTF models to load first
+        try {
+          const { preloadShipModels } = await import('./core/shipModelLoader.js');
+          await preloadShipModels(state, ['red','blue']);
+          logger.debug('[main.ts] GLTF models loaded, now spawning ships');
+          
+          // Register prototypes with the shipInstancer
+          try {
+            const { registerPrototypesFromPool } = await import('./renderer/meshFactory.js');
+            registerPrototypesFromPool(state);
+            logger.debug('[main.ts] Successfully registered GLTF prototypes with shipInstancer');
+          } catch (err) {
+            console.warn('[main.ts] Failed to register GLTF prototypes:', err);
+          }
+        } catch (err) {
+          console.warn('[main.ts] preloadShipModels failed:', err);
+        }
+      }
+    } catch (_e) { void _e; }
+
+    // Now spawn fleets and create renderer - GLTF models should be available
+    spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
+    spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
+    reFormFleets(state);
+    const renderer = createThreeRenderer(state, ui.canvas);
+    state.renderer = renderer;
+    wireControls(state, ui);
+    setupCameraControls(state, ui.canvas);
+    setupPerfOverlay();
+    startLoops(state, ui);
+  })();
 }
 
 function wireControls(state: GameState, ui: UIElements) {
