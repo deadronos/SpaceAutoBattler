@@ -16,6 +16,7 @@ import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
 import { BatchedQueryManager } from './batchedQueries.js';
 import { AggressiveSpatialOptimizer } from './aggressiveSpatialOptimizer.js';
+import { perfBegin, perfEnd } from '../../utils/perf.js';
 
 export class AIController {
   private state: GameState;
@@ -39,6 +40,8 @@ export class AIController {
 
   public updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
+    
+    perfBegin('ai.spatial');
     this.spatial.resetTick();
     
     // OPTIMIZATION: Update spatial optimizer and batch precomputes.
@@ -57,27 +60,34 @@ export class AIController {
       }
 
       // OPTIMIZATION: Pre-compute common queries for all ships in batches
+      perfBegin('ai.batched');
       const frameId = this.state.tick ?? 0;
       this.batchedQueries.resetForFrame(frameId);
 
       // Batch compute nearest enemies and separation neighbors for alive ships
       this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
       this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+      perfEnd('ai.batched');
     } else {
       // In test mode, still advance the frame id so any cached data doesn't persist
       const frameId = this.state.tick ?? 0;
       this.batchedQueries.resetForFrame(frameId);
     }
-    
+    perfEnd('ai.spatial');
+
+  perfBegin('ai.teams');
     // Update team systems
     updateTeamAlarms(this.state);
     updateScoutAssignments(this.state);
+    perfEnd('ai.teams');
     
+    perfBegin('ai.individual');
     // Process individual ships with optimized queries
     for (const ship of this.state.ships) {
       if (ship.health <= 0) continue;
       this.updateShipAI(ship, dt);
     }
+    perfEnd('ai.individual');
   }
 
   // Test visibility for team systems (back-compat expectations)
