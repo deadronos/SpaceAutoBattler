@@ -85,6 +85,93 @@ export function resetState(state: GameState, seed?: string) {
 
 function allocateId(state: GameState): EntityId { return state.nextId++; }
 
+// Small helpers retained for backward compatibility with older modules/tests
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+export function randomSpawnPos(state: GameState, team: Team): Vector3 {
+  const margin = FleetConfig.spawning.margin;
+  const y = state.rng.int(margin, state.simConfig.simBounds.height - margin);
+  const z = state.rng.int(margin, state.simConfig.simBounds.depth - margin);
+  const x = team === 'red'
+    ? state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth)
+    : state.rng.int(state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth, state.simConfig.simBounds.width - margin);
+  return { x, y, z };
+}
+
+/** Lightweight turret handler kept for compatibility; defers to projectile system in full implementations. */
+export function fireTurrets(state: GameState, ship: Ship, dt: number) {
+  // Progress cooldowns and fire when ready. This mirrors the simplified logic
+  // used by the ProjectileSystem to keep unit tests and legacy callers working.
+  const shipCfg = getShipClassConfig(ship.class);
+  for (let ti = 0; ti < ship.turrets.length; ti++) {
+    const t = ship.turrets[ti];
+    t.cooldownLeft = Math.max(0, t.cooldownLeft - dt);
+    if (t.cooldownLeft > 0) continue;
+
+    // Find turret config (wrap if turret list shorter than shipCfg turrets)
+    const turretConfig = shipCfg.turrets[ti % shipCfg.turrets.length];
+
+    // Determine target position: turret.aiState.targetId -> ship.targetId -> none
+    const targetId = t.aiState?.targetId ?? ship.targetId;
+    if (targetId == null) continue;
+    const target = state.shipIndex?.get(targetId) ?? state.ships.find(s => s.id === targetId);
+    if (!target || target.health <= 0) continue;
+
+    // Range check
+    const dx = target.pos.x - ship.pos.x;
+    const dy = target.pos.y - ship.pos.y;
+    const dz = target.pos.z - ship.pos.z;
+    const distSq = dx*dx + dy*dy + dz*dz;
+    const range = turretConfig.range;
+    if (distSq > range * range) continue;
+
+    // Create bullets. Support area_suppression behavior which emits multiple
+    // projectiles in a small angular spread. For backward compatibility tests
+    // expect at least multiple bullets when suppressionCount > 1.
+    const idBase = allocateId(state);
+    const dist = distSq > 0 ? Math.sqrt(distSq) : 1;
+    const baseDir = { x: dx / dist, y: dy / dist, z: dz / dist };
+    const suppressionCount = t.aiState?.behavior === 'area_suppression' ? (t.aiState?.suppressionCount ?? 1) : 1;
+    const spread = t.aiState?.suppressionAngle ?? 0.0;
+    for (let bi = 0; bi < Math.max(1, suppressionCount); bi++) {
+      // Slight angular offset within cone for suppression pattern
+      const angleOffset = (suppressionCount <= 1) ? 0 : ( (bi / (suppressionCount - 1)) * 2 - 1) * spread;
+      // Rotate baseDir around Y-axis approximately for a simple spread in horizontal plane
+      const cos = Math.cos(angleOffset); const sin = Math.sin(angleOffset);
+      const dir = { x: baseDir.x * cos - baseDir.z * sin, y: baseDir.y, z: baseDir.x * sin + baseDir.z * cos };
+      const bullet = {
+        id: idBase + bi,
+        ownerShipId: ship.id,
+        ownerTeam: ship.team,
+        pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
+        vel: { x: dir.x * turretConfig.bulletSpeed, y: dir.y * turretConfig.bulletSpeed, z: dir.z * turretConfig.bulletSpeed },
+        ttl: state.simConfig.bulletLifetime,
+        damage: turretConfig.damage
+      } as Bullet;
+      state.bullets.push(bullet);
+    }
+
+    // Set cooldown
+    t.cooldownLeft = turretConfig.cooldown;
+  }
+}
+
+/** Convenience wrapper to spawn a simple fleet using existing spawnShip helper. */
+export function spawnFleet(state: GameState, team: Team, count: number = 5) {
+  const created: Ship[] = [];
+  for (let i = 0; i < count; i++) {
+    const cls = state.rng.pick(['fighter','corvette','frigate','destroyer','carrier'] as const);
+    const ship = spawnShip(state, team, cls, undefined);
+    created.push(ship);
+  }
+  return created;
+}
+
+// Backwards-compatible boundary API used by some tests
+export function applyBoundaryPhysics(ship: Ship, state: GameState) {
+  return applyBoundaryPhysicsShip(ship, state);
+}
+
 export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Vector3, parentCarrierId?: EntityId): Ship {
   const cfg = getShipClassConfig(cls);
   const id = allocateId(state);
@@ -142,201 +229,137 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
   // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
   // intentionally very small (fractional) and scale with ship speed so larger ships
-  // get a slightly larger jitter but remain subtle in gameplay. This behavior can
-  // be toggled via behaviorConfig.globalSettings.enableSpawnJitter.
-  const enableJitter = state.behaviorConfig?.globalSettings.enableSpawnJitter;
-  if (enableJitter) {
-    const jitterScale = 0.02; // fraction of ship.speed per second
-    const angle = state.rng.next() * Math.PI * 2;
-    const jitterMag = ship.speed * jitterScale;
-    ship.vel.x += Math.cos(angle) * jitterMag;
-    ship.vel.y += Math.sin(angle) * jitterMag;
-  }
-
+  // get a slightly larger jitter but remain subtle in gameplay.
+  // Register in game state
   state.ships.push(ship);
-  state.shipIndex?.set(ship.id, ship);
-  // Increment version for efficient change detection
+  if (!state.shipIndex) state.shipIndex = new Map();
+  state.shipIndex.set(id, ship);
   state.shipDataVersion++;
+  // Update spatial grid if present
+  if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    state.spatialGrid.update(id, ship.pos, ShipVisualConfig.ships[cls]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius, team);
+  }
   return ship;
 }
 
-function randomSpawnPos(state: GameState, team: Team): Vector3 {
-  const margin = FleetConfig.spawning.margin;
-  const y = state.rng.int(margin, state.simConfig.simBounds.height - margin);
-  const z = state.rng.int(margin, state.simConfig.simBounds.depth - margin);
-  const x = team === 'red' ? state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth) : state.rng.int(state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth, state.simConfig.simBounds.width - margin);
-  return { x, y, z };
-}
-
-export function spawnFleet(state: GameState, team: Team, count = 5) {
-  for (let i = 0; i < count; i++) {
-    const cls = state.rng.pick(['fighter','corvette','frigate','destroyer','carrier'] as const);
-    spawnShip(state, team, cls);
-  }
-}
-
-// Delegate nearest-enemy lookup to shared search utilities (spatial-grid preferred)
-// Note: use sharedFindNearestEnemy directly where needed - helper removed to avoid unused symbol
-
-function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
-
-/**
- * Apply boundary physics to a ship based on simulation configuration
- * This handles bounce, wrap, and remove behaviors consistently across AI systems
- */
-export function applyBoundaryPhysics(ship: Ship, state: GameState) {
-  // Keep compatibility API but delegate to centralized boundary utils for ships
-  applyBoundaryPhysicsShip(ship, state);
-}
-
-function fireTurrets(state: GameState, ship: Ship, dt: number) {
-  const target = ship.targetId ? state.ships.find(s => s.id === ship.targetId!) : undefined;
-  for (const t of ship.turrets) {
-    t.cooldownLeft = Math.max(0, t.cooldownLeft - dt);
-  }
-  if (!target) return;
-  const cfg = getShipClassConfig(ship.class);
-  const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
-  const distSq = dx*dx + dy*dy + dz*dz;
-  const dist = Math.sqrt(distSq);
-  for (let i = 0; i < ship.turrets.length; i++) {
-    const tState = ship.turrets[i];
-    const tCfg = cfg.turrets[i % cfg.turrets.length];
-    if (tState.cooldownLeft > 0) continue;
-    if (dist > tCfg.range) continue;
-
-    // Prefer per-turret lead position if available (computed by AIController when behavior='lead_target')
-    const leadPos = tState.aiState?.leadTargetPos ?? target.pos;
-
-    // If turret behavior is suppression, fire a spread of bullets around leadPos
-  const isSuppression = tState.aiState?.behavior === 'area_suppression';
-  const spreadCount = isSuppression ? (tState.aiState?.suppressionCount ?? 5) : 1;
-  const spreadAngle = isSuppression ? (tState.aiState?.suppressionAngle ?? (Math.PI / 12)) : 0;
-
-
-
-    // Helper: generate a direction vector for a spread index within a cone around the central direction
-    const makeSpreadDir = (index: number, total: number, centerDir: { x: number; y: number; z: number }) => {
-      if (total <= 1) return centerDir;
-      // Evenly sample azimuth around center and jitter by elevation within spreadAngle
-  const _az = (index / total) * Math.PI * 2;
-      const el = (-(total-1)/2 + index) / Math.max(1, total-1) * spreadAngle;
-      // Rotate centerDir by azimuth around Z and then apply small elevation by mixing with perpendicular vector
-      // For simplicity, assume centerDir primarily in XY plane; compute perp in XY
-  const perp = { x: -centerDir.y, y: centerDir.x, z: 0 };
-  const perpLenSq = perp.x*perp.x + perp.y*perp.y + perp.z*perp.z;
-  const perpLen = perpLenSq > 0 ? Math.sqrt(perpLenSq) : 1;
-  perp.x /= perpLen; perp.y /= perpLen; perp.z /= perpLen;
-      // Mix centerDir and perp by elevation
-      const cosEl = Math.cos(el);
-      const sinEl = Math.sin(el);
-      return {
-        x: centerDir.x * cosEl + perp.x * sinEl,
-        y: centerDir.y * cosEl + perp.y * sinEl,
-        z: centerDir.z * cosEl + perp.z * sinEl
-      };
-    };
-
-    // Fire: single or multiple bullets depending on suppression
-    for (let s = 0; s < spreadCount; s++) {
-  const dirX = leadPos.x - ship.pos.x;
-  const dirY = leadPos.y - ship.pos.y;
-  const dirZ = leadPos.z - ship.pos.z;
-  const centerLenSq = dirX*dirX + dirY*dirY + dirZ*dirZ;
-  const centerLen = centerLenSq > 0 ? Math.sqrt(centerLenSq) : 1;
-  const centerDir = { x: dirX / centerLen, y: dirY / centerLen, z: dirZ / centerLen };
-  const spreadDir = makeSpreadDir(s, spreadCount, centerDir);
-  const dirLenSq = spreadDir.x*spreadDir.x + spreadDir.y*spreadDir.y + spreadDir.z*spreadDir.z;
-  const dirLen = dirLenSq > 0 ? Math.sqrt(dirLenSq) : 1;
-      const id = state.nextId++;
-      const bullet: Bullet = {
-        id,
-        ownerShipId: ship.id,
-        ownerTeam: ship.team,
-        pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
-        vel: { x: (spreadDir.x / dirLen) * tCfg.bulletSpeed, y: (spreadDir.y / dirLen) * tCfg.bulletSpeed, z: (spreadDir.z / dirLen) * tCfg.bulletSpeed },
-        ttl: state.simConfig.bulletLifetime,
-        damage: tCfg.damage,
-      };
-      state.bullets.push(bullet);
-    }
-    tState.cooldownLeft = tCfg.cooldown;
-  }
-}
-
-
 function updateBullets(state: GameState, dt: number) {
-  const { width: _width, height: _height, depth: _depth } = state.simConfig.simBounds;
-  const _behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
+    const { width: _width, height: _height, depth: _depth } = state.simConfig.simBounds;
+    const _behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
 
-  for (const b of state.bullets) {
-    b.ttl -= dt;
-    b.pos.x += b.vel.x * dt;
-    b.pos.y += b.vel.y * dt;
-    b.pos.z += b.vel.z * dt;
-  }
+    // Integrate bullet motion
+    for (const b of state.bullets) {
+      b.ttl -= dt;
+      b.pos.x += b.vel.x * dt;
+      b.pos.y += b.vel.y * dt;
+      b.pos.z += b.vel.z * dt;
+    }
 
-  // Handle bullet boundary conditions using shared helper
-  for (const b of state.bullets) {
-    if (b.ttl <= 0) continue;
-    applyBoundaryPhysicsBullet(b, state);
-    if (b.ttl <= 0) continue; // bullet removed by boundary behavior
+    // Handle boundary and collisions
+    for (const b of state.bullets) {
+      if (b.ttl <= 0) continue;
+      applyBoundaryPhysicsBullet(b, state);
+      if (b.ttl <= 0) continue; // bullet removed by boundary behavior
 
-    // Collisions (simple radius approx)
-    for (const s of state.ships) {
-      if (s.team === b.ownerTeam || s.health <= 0) continue;
-  const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
-  const dSq = dx*dx + dy*dy + dz*dz;
-  const d = Math.sqrt(dSq);
-      const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
-      if (d < hitR) {
-        // Apply damage to shield first
-        let dmgLeft = b.damage;
-        let totalDamage = 0; // Track total damage for recent damage accumulator
-        
-        if (s.shield > 0) {
-          const absorb = Math.min(s.shield, dmgLeft);
-          s.shield -= absorb;
-          dmgLeft -= absorb;
-          totalDamage += absorb;
-          // Track shield hit for visual effects
-          s.lastShieldHitTime = state.time;
-          // Record direction of impact on shield as a unit vector from ship center to bullet position
-          const len = Math.max(1e-6, d);
-          s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
-          s.lastShieldHitStrength = absorb; // use absorbed shield damage as strength proxy
-        }
-        if (dmgLeft > 0) {
-          // Armor reduces damage
-          const effective = Math.max(1, dmgLeft - s.armor * 0.3);
-          s.health -= effective;
-          totalDamage += effective;
-          // XP to owner
-            // Cache owner lookup once per hit for efficiency
+      // Collisions (simple radius approx)
+      const useGrid = !!state.spatialGrid && !!state.behaviorConfig?.globalSettings.enableSpatialIndex;
+      if (useGrid) {
+        // Narrow spatial grid for TypeScript and avoid re-checking optional each callback
+        const grid = state.spatialGrid!;
+        const maxHitR = ShipVisualConfig.defaults.collisionRadius;
+        grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
+          if (b.ttl <= 0) return; // already consumed by another hit
+          const s = state.shipIndex?.get(entity.id) ?? state.ships.find(sh => sh.id === entity.id);
+          if (!s) return;
+          if (s.team === b.ownerTeam || s.health <= 0) return;
+          const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
+          if (distSq > hitR * hitR) return;
+
+          const d = Math.sqrt(distSq);
+          // Apply damage to shield first
+          let dmgLeft = b.damage;
+          let totalDamage = 0;
+
+          if (s.shield > 0) {
+            const absorb = Math.min(s.shield, dmgLeft);
+            s.shield -= absorb;
+            dmgLeft -= absorb;
+            totalDamage += absorb;
+            s.lastShieldHitTime = state.time;
+            const len = Math.max(1e-6, d);
+            s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+            s.lastShieldHitStrength = absorb;
+          }
+
+          if (dmgLeft > 0) {
+            const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+            s.health -= effective;
+            totalDamage += effective;
             const owner = state.shipIndex?.get(b.ownerShipId) ?? state.ships.find(sh => sh.id === b.ownerShipId);
             if (owner) {
               owner.level.xp += effective * XP_PER_DAMAGE;
-              // Track last damage source for kill crediting (timestamped)
               s.lastDamageBy = owner.id;
               s.lastDamageTime = state.time;
             }
+          }
+
+          if (s.aiState && totalDamage > 0) {
+            s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
+            s.aiState.lastDamageTime = state.time;
+          }
+
+          // Consume bullet
+          b.ttl = 0;
+        });
+      } else {
+        // Fallback: full scan
+        for (const s of state.ships) {
+          if (s.team === b.ownerTeam || s.health <= 0) continue;
+          const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
+          const dSq = dx*dx + dy*dy + dz*dz;
+          const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
+          if (dSq <= hitR * hitR) {
+            const d = Math.sqrt(dSq);
+            let dmgLeft = b.damage;
+            let totalDamage = 0;
+
+            if (s.shield > 0) {
+              const absorb = Math.min(s.shield, dmgLeft);
+              s.shield -= absorb;
+              dmgLeft -= absorb;
+              totalDamage += absorb;
+              s.lastShieldHitTime = state.time;
+              const len = Math.max(1e-6, d);
+              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+              s.lastShieldHitStrength = absorb;
+            }
+
+            if (dmgLeft > 0) {
+              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+              s.health -= effective;
+              totalDamage += effective;
+              const owner = state.shipIndex?.get(b.ownerShipId) ?? state.ships.find(sh => sh.id === b.ownerShipId);
+              if (owner) {
+                owner.level.xp += effective * XP_PER_DAMAGE;
+                s.lastDamageBy = owner.id;
+                s.lastDamageTime = state.time;
+              }
+            }
+
+            if (s.aiState && totalDamage > 0) {
+              s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
+              s.aiState.lastDamageTime = state.time;
+            }
+
+            b.ttl = 0;
+            break;
+          }
         }
-        
-        // Update recent damage tracking for AI
-        if (s.aiState && totalDamage > 0) {
-          s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
-          s.aiState.lastDamageTime = state.time;
-        }
-        
-        // Bullet consumed
-        b.ttl = 0;
-        break;
       }
     }
+
+    // Remove dead bullets
+    state.bullets = state.bullets.filter(b => b.ttl > 0);
   }
-  // Remove dead bullets
-  state.bullets = state.bullets.filter(b => b.ttl > 0);
-}
 
 function processDeathsAndXP(state: GameState) {
   for (const s of state.ships) {

@@ -44,15 +44,21 @@ describe('Scout Exploration System', () => {
     simulateStep(state, 1.0);
 
     // Both teams should have scouts assigned
-    const aiController = (state as any).aiController;
-    expect(aiController.teamScouts.has('red')).toBe(true);
-    expect(aiController.teamScouts.has('blue')).toBe(true);
+    expect(state.aiController?.teamScouts.has('red')).toBe(true);
+    expect(state.aiController?.teamScouts.has('blue')).toBe(true);
   });
 
   it('should assign explore intent to scouts when no enemies are visible', () => {
     // Create single ships far apart (using default spawn locations)
     spawnFleet(state, 'red', 1);
     spawnFleet(state, 'blue', 1);
+
+    // Position ships far apart so they can't see each other initially
+    const redShip = state.ships.find(s => s.team === 'red')!;
+    const blueShip = state.ships.find(s => s.team === 'blue')!;
+    
+    redShip.pos = { x: -1500, y: -1500, z: -1500 };
+    blueShip.pos = { x: 1500, y: 1500, z: 1500 };
 
     // Ships should spawn far apart by default config
     // Initialize AI states
