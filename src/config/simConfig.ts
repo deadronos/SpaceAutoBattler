@@ -15,6 +15,7 @@ export interface SimConfig {
   useBVH: boolean;
   // AI settings
   targetUpdateRate: number; // how often AI updates targets (seconds)
+  intentReevaluationRate: number; // how often to reevaluate intents (seconds)
   // Boundary settings
   boundaryBehavior: {
     ships: BoundaryBehavior;
@@ -31,12 +32,13 @@ export interface SimConfig {
 
 export const DefaultSimConfig: SimConfig = {
   simBounds: { width: 1920, height: 1920, depth: 1920 },
-  tickRate: 60,
-  maxEntities: 5000,
-  bulletLifetime: 3.0, // bullets live for 3 seconds
+  tickRate: 10,
+  maxEntities: 50000,
+  bulletLifetime: 5.0, // bullets live for 3 seconds
   maxSimulationSteps: 5, // max steps per frame to prevent spiral of death
   useBVH: true, // use Bounding Volume Hierarchy for collision detection
   targetUpdateRate: 0.5, // AI updates targets every 0.5 seconds
+  intentReevaluationRate: 0.3, // AI reevaluates intent every 0.3 seconds
   boundaryBehavior: {
     ships: 'bounce', // ships bounce off boundaries
     bullets: 'remove', // bullets are removed when hitting boundaries
@@ -47,3 +49,4 @@ export const DefaultSimConfig: SimConfig = {
   seed: 'SPACE-001',
   useTimeBasedSeed: false,
 };
+

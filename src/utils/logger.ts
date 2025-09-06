@@ -30,6 +30,33 @@ export function debug(...args: unknown[]) {
   console.log(...(args as any));
 }
 
+// Accept a thunk so callers can avoid any formatting/allocations when debug is disabled.
+export function debugLazy(fn: () => unknown | unknown[]) {
+  if (!DEBUG_ENABLED || !shouldLog('debug')) return;
+  let res: unknown = undefined;
+  try {
+    res = fn();
+  } catch (e) {
+    // If the thunk throws, surface the error as a warn but avoid crashing.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    console.warn('[logger] debugLazy thunk threw', e as any);
+    return;
+  }
+  if (Array.isArray(res)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    console.log(...(res as any));
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    console.log(res as any);
+  }
+}
+
+// Conditional lazy debug that checks an additional condition (like DEBUG_AI)
+export function debugIf(cond: boolean, fn: () => unknown | unknown[]) {
+  if (!cond) return;
+  debugLazy(fn);
+}
+
 export function info(...args: unknown[]) {
   if (!shouldLog('info')) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- safe call to console
@@ -48,5 +75,5 @@ export function error(...args: unknown[]) {
   console.error(...(args as any));
 }
 
-export default { debug, info, warn, error, setDebug, setLevel };
+export default { debug, debugLazy, debugIf, info, warn, error, setDebug, setLevel };
 

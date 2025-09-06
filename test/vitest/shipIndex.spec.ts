@@ -15,9 +15,9 @@ describe('shipIndex cache', () => {
 
     // Kill s2 and run a step to process removal
     s2.health = 0;
-    // advance time a bit and run simulateStep to trigger removal
-    state.time += 1;
-    simulateStep(state, 0.016);
+  // advance time a bit and run simulateStep to trigger removal
+  state.time += 1;
+  simulateStep(state, 1 / state.simConfig.tickRate);
 
     // After simulateStep, s2 should be removed and shipIndex rebuilt
     expect(state.shipIndex!.has(s2.id)).toBe(false);

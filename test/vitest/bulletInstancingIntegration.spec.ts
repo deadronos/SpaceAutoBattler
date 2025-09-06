@@ -52,7 +52,7 @@ vi.mock('three', async () => {
     ConeGeometry: vi.fn(),
     MeshPhongMaterial: vi.fn(),
     Mesh: vi.fn().mockImplementation(() => ({
-      position: { set: vi.fn() },
+      position: { set: vi.fn(), copy: vi.fn() },
       rotation: { set: vi.fn() },
       scale: { setScalar: vi.fn() }
     })),
@@ -70,13 +70,14 @@ vi.mock('three', async () => {
       compose: vi.fn(),
       makeScale: vi.fn()
     })),
-    Vector3: vi.fn().mockImplementation(() => ({
+      Vector3: vi.fn().mockImplementation(() => ({
       set: vi.fn(),
       copy: vi.fn().mockReturnThis(),
       crossVectors: vi.fn().mockReturnThis(),
       normalize: vi.fn().mockReturnThis(),
       clone: vi.fn().mockReturnThis(),
-      setFromMatrixColumn: vi.fn().mockReturnThis()
+      setFromMatrixColumn: vi.fn().mockReturnThis(),
+      lerpVectors: vi.fn().mockImplementation(function thisAsVec3(this: { x: number; y: number; z: number }, a: any, b: any, t: number) { this.x = (a.x ?? 0) + ((b.x ?? 0) - (a.x ?? 0)) * t; this.y = (a.y ?? 0) + ((b.y ?? 0) - (a.y ?? 0)) * t; this.z = (a.z ?? 0) + ((b.z ?? 0) - (a.z ?? 0)) * t; return this; })
     })),
     Quaternion: vi.fn().mockImplementation(() => ({})),
     CanvasTexture: vi.fn(),
@@ -181,10 +182,11 @@ describe('Bullet Instancing Integration', () => {
   { id: 3, ownerShipId: 0, pos: { x: 70, y: 80, z: 90 }, vel: { x: 0, y: 1, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'red', weaponId: 'test' }
     ];
     
-    state.bullets = bullets;
-    
-    // Render a frame - this should trigger bullet sync and transforms
-    renderer.render(1/60); // 60 FPS delta time
+  state.bullets = bullets.map(b => ({ ...b, prevPos: { ...b.pos } }));
+
+  // Render a frame - this should trigger bullet sync and transforms
+  const dt = 1 / (state.simConfig?.tickRate ?? 60);
+  renderer.render(dt);
     
     // Cleanup
     renderer.dispose();
@@ -201,10 +203,11 @@ describe('Bullet Instancing Integration', () => {
   { id: 2, ownerShipId: 0, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' }
     ];
     
-    state.bullets = bullets;
-    
-    // Render a frame - this should use legacy individual mesh rendering
-    renderer.render(1/60);
+  state.bullets = bullets.map(b => ({ ...b, prevPos: { ...b.pos } }));
+
+  // Render a frame - this should use legacy individual mesh rendering
+  const dt = 1 / (state.simConfig?.tickRate ?? 60);
+  renderer.render(dt);
     
     // Cleanup
     renderer.dispose();
@@ -215,26 +218,27 @@ describe('Bullet Instancing Integration', () => {
     
     const renderer = createThreeRenderer(state, mockCanvas);
     
-    // Start with no bullets
-    state.bullets = [];
-    renderer.render(1/60);
+  // Start with no bullets
+  state.bullets = [];
+  const dt = 1 / (state.simConfig?.tickRate ?? 60);
+  renderer.render(dt);
     
     // Add bullets dynamically
     state.bullets = [
   { id: 1, ownerShipId: 0, pos: { x: 10, y: 20, z: 30 }, vel: { x: 1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'red', weaponId: 'test' },
   { id: 2, ownerShipId: 0, pos: { x: 40, y: 50, z: 60 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' }
     ];
-    renderer.render(1/60);
+  renderer.render(dt);
     
     // Remove one bullet
     state.bullets = [
   { id: 2, ownerShipId: 0, pos: { x: 45, y: 55, z: 65 }, vel: { x: -1, y: 0, z: 0 }, ttl: 5, damage: 1, ownerTeam: 'blue', weaponId: 'test' }
     ];
-    renderer.render(1/60);
+  renderer.render(dt);
     
     // Remove all bullets
     state.bullets = [];
-    renderer.render(1/60);
+  renderer.render(dt);
     
     // Cleanup
     renderer.dispose();

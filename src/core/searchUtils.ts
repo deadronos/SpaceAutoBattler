@@ -16,17 +16,9 @@ export function getDistance(a: Vector3, b: Vector3): number {
   return Math.sqrt(distanceSq(a, b));
 }
 
-function ensureSpatialGridPopulated(state: GameState) {
-  if (!state.spatialGrid) return;
-  // Rebuild the spatial grid from current ships to provide a consistent
-  // snapshot for queries when called outside the main update pass.
-  state.spatialGrid.clear();
-  for (const s of state.ships) {
-    if (s.health > 0) {
-      state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
-    }
-  }
-}
+// The spatial grid is now updated incrementally by updateSpatialGrid in gameState.ts
+// No need for a full rebuild here.
+
 
 // Enhanced per-tick target cache with more comprehensive caching.
 // Cache nearest enemies, nearby results, and spatial queries to avoid redundant work.
@@ -45,7 +37,7 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
     return cached.targetId != null ? (state.shipIndex?.get(cached.targetId) || null) : null;
   }
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    ensureSpatialGridPopulated(state);
+
     const targetTeam = ship.team === 'red' ? 'blue' : 'red';
     const nearest = state.spatialGrid.queryKNearest(ship.pos, 2, targetTeam);
     if (!nearest || nearest.length === 0) return null;
@@ -80,7 +72,7 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
 
 export function findNearbyEnemies(state: GameState, ship: Ship, range: number): Ship[] {
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    ensureSpatialGridPopulated(state);
+
     const out: Ship[] = [];
     state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
       if (entity.team !== ship.team) {
@@ -164,7 +156,7 @@ export function pickKNearestFromCandidates(center: Vector3, candidates: readonly
 
 export function findNearbyFriends(state: GameState, ship: Ship, range: number): Ship[] {
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    ensureSpatialGridPopulated(state);
+
     const out: Ship[] = [];
     state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
       if (entity.team === ship.team && entity.id !== ship.id) {

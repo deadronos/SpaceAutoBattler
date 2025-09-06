@@ -1,3 +1,5 @@
+import type { AggressiveSpatialOptimizer } from '../core/ai/aggressiveSpatialOptimizer.js';
+
 export type EntityId = number;
 
 export type Team = 'red' | 'blue';
@@ -76,6 +78,7 @@ export interface Bullet {
   ownerShipId: EntityId;
   ownerTeam: Team;
   pos: Vector3;
+  prevPos?: Vector3; // New for interpolation (optional to ease test creation)
   vel: Vector3;
   ttl: number; // seconds
   damage: number;
@@ -112,12 +115,18 @@ export interface Ship {
   team: Team;
   class: ShipClass;
   pos: Vector3;
+  prevPos?: Vector3; // New for interpolation (optional to ease test creation)
   vel: Vector3;
   // 3D orientation using Euler angles (in radians)
   orientation: {
     pitch: number; // rotation around X axis (nose up/down)
     yaw: number;   // rotation around Y axis (nose left/right)
     roll: number;  // rotation around Z axis (ship rolling)
+  };
+  prevOrientation?: { // New for interpolation (optional to ease test creation)
+    pitch: number;
+    yaw: number;
+    roll: number;
   };
   // Keep legacy dir field for backward compatibility during transition
   dir?: number; // deprecated - use orientation.yaw instead
@@ -188,6 +197,8 @@ export interface RendererHandles {
   getUseShipInstancing?: () => boolean;
 }
 
+
+
 export interface GameState {
   time: number; // seconds
   tick: number;
@@ -204,6 +215,7 @@ export interface GameState {
     bulletLifetime: number;
     maxSimulationSteps: number;
     targetUpdateRate: number;
+    intentReevaluationRate: number;
     boundaryBehavior: {
       ships: BoundaryBehavior;
       bullets: BoundaryBehavior;
@@ -236,6 +248,7 @@ export interface GameState {
   spatialGrid?: import('../utils/spatialGrid.js').SpatialGrid;
   // Reused AI controller instance to avoid per-tick allocations
   aiController?: import('../core/aiController.js').AIController;
+  aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer;
 }
 
 export type UIElements = {
@@ -253,3 +266,27 @@ export type UIElements = {
   seedBtn: HTMLButtonElement;
   formationBtn: HTMLButtonElement;
 };
+
+// Particle system types
+export interface ParticleExplosionOptions {
+  pos: Vector3;
+  radius: number;
+  seed?: number;
+  colorOverride?: string[];
+  count?: number;
+  lifetime?: number;
+  /** Optional entity ID for improved seed derivation (e.g., ship.id) */
+  entityId?: number;
+}
+
+export interface ParticleInstance {
+  id: number;
+  pos: Vector3;
+  vel: Vector3;
+  size: number;
+  age: number;
+  lifetime: number;
+  color: string;
+  active: boolean;
+}
+

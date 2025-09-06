@@ -106,7 +106,12 @@ export interface RendererConfig {
         initial: number; // initial pool size
         growTo: number; // max pool size under stress
       };
-      // LOD fallback sizes or thresholds can be added later
+      // LOD (Level of Detail) system for distance-based performance optimization
+      lod: {
+        enabled: boolean; // enable/disable LOD system
+        distanceThresholds: number[]; // camera distances where LOD changes occur
+        particleScaling: number[]; // particle count multipliers at each LOD level
+      };
     };
   };
 
@@ -301,6 +306,11 @@ export const DefaultRendererConfig: RendererConfig = {
       },
       colors: ['#fffbda', '#ff8c00', '#440000'],
       pooling: { initial: 256, growTo: 2048 },
+      lod: {
+        enabled: false, // disabled by default for compatibility
+        distanceThresholds: [500, 1500, 3000], // distances for LOD0, LOD1, LOD2
+        particleScaling: [1.0, 0.6, 0.3], // particle count multipliers at each LOD
+      },
     },
   },
 

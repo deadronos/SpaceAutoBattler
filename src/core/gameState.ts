@@ -5,6 +5,7 @@ import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
+import { AggressiveSpatialOptimizer } from './ai/aggressiveSpatialOptimizer.js';
 import { FleetConfig } from '../config/fleetConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
@@ -144,6 +145,7 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
         ownerShipId: ship.id,
         ownerTeam: ship.team,
         pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
+        prevPos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z }, // Initialize for interpolation
         vel: { x: dir.x * turretConfig.bulletSpeed, y: dir.y * turretConfig.bulletSpeed, z: dir.z * turretConfig.bulletSpeed },
         ttl: state.simConfig.bulletLifetime,
         damage: turretConfig.damage
@@ -201,11 +203,17 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   const ship: Ship = {
     id, team, class: cls,
     pos: { x: p.x, y: p.y, z: p.z }, 
+    prevPos: { x: p.x, y: p.y, z: p.z }, // Initialize for interpolation
     vel: { x: 0, y: 0, z: 0 }, 
     orientation: {
       pitch: 0, // level flight initially
       yaw: randomYaw,
       roll: 0   // no banking initially
+    },
+    prevOrientation: {
+      pitch: 0, // Initialize for interpolation
+      yaw: randomYaw,
+      roll: 0
     },
     // Keep legacy dir field for backward compatibility
     dir: randomYaw,
@@ -445,10 +453,22 @@ function carrierSpawnLogic(state: GameState, dt: number) {
 }
 
 export function simulateStep(state: GameState, dt: number) {
+  // --- NEW: Capture previous state for interpolation ---
+  for (const ship of state.ships) {
+    ship.prevPos = { ...ship.pos }; // Deep copy
+    ship.prevOrientation = { ...ship.orientation }; // Deep copy
+  }
+  for (const bullet of state.bullets) {
+    bullet.prevPos = { ...bullet.pos }; // Deep copy
+  }
+  // --- END NEW ---
+
   // Ship AI logic - Always use AIController for unified behavior
   perfBegin('ai.total');
   // Lazily create and reuse AIController instance
-  const aiController = state.aiController ?? (state.aiController = new AIController(state));
+  const aiController = state.aiController ?? (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
+  if (DEBUG_AI) console.log(`[gameState] aiController:`, aiController);
+  if (DEBUG_AI) console.log(`[gameState] state.aiController:`, state.aiController);
   aiController.updateAllShips(dt);
   if (DEBUG_AI) {
     try {

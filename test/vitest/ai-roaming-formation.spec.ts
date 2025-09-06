@@ -2,6 +2,8 @@ import { describe, test, expect, beforeEach } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 import { AIController } from '../../src/core/aiController.js';
 import type { GameState } from '../../src/types/index.js';
+import { TEST_DEFAULTS, getTestDtFromState } from './setupTests.js';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 describe('AI Roaming and Formation Systems', () => {
   let gameState: GameState;
@@ -13,7 +15,7 @@ describe('AI Roaming and Formation Systems', () => {
     
     // Ensure AI is enabled and configure for testing
     gameState.behaviorConfig!.globalSettings.aiEnabled = true;
-    gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = 150;
+    gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation;
     
     // Disable interfering features for focused testing
     gameState.behaviorConfig!.globalSettings.enableScoutBehavior = false;
@@ -26,9 +28,9 @@ describe('AI Roaming and Formation Systems', () => {
       const ships = [];
       for (let i = 0; i < 4; i++) {
         const ship = spawnShip(gameState, 'red', 'fighter', {
-          x: 100 + i * 20, // Close together
-          y: 100,
-          z: 100
+          x: TEST_DEFAULTS.simBounds.width * 0.1 + i * 20, // Close together relative to bounds
+          y: TEST_DEFAULTS.simBounds.height * 0.1,
+          z: TEST_DEFAULTS.simBounds.depth * 0.1
         });
         ships.push(ship);
       }
@@ -40,13 +42,19 @@ describe('AI Roaming and Formation Systems', () => {
       };
 
       // Reduce separation for deterministic test and force intent reevaluation
-      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = 40;
+      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation / 2;
       gameState.time = 10;
 
       // Step the simulation to trigger AI updates
-      for (let i = 0; i < 10; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+      const dt = getTestDtFromState(gameState);
+      for (let i = 0; i < Math.ceil(10 / dt); i++) {
+        aiController.updateAllShips(dt);
+        simulateStep(gameState, dt);
+        gameState.time += dt;
+        gameState.tick++;
+        if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+        }
       }
 
       // Collect assigned roaming anchors
@@ -75,7 +83,7 @@ describe('AI Roaming and Formation Systems', () => {
 
     test('roaming anchors should be released when ships leave roaming mode', () => {
       // Spawn a ship in roaming mode
-      const ship = spawnShip(gameState, 'red', 'fighter', { x: 100, y: 100, z: 100 });
+  const ship = spawnShip(gameState, 'red', 'fighter', { x: TEST_DEFAULTS.simBounds.width * 0.1, y: TEST_DEFAULTS.simBounds.height * 0.1, z: TEST_DEFAULTS.simBounds.depth * 0.1 });
       
       // Set to roaming mode
       gameState.behaviorConfig!.shipPersonalities.fighter = {
@@ -87,9 +95,15 @@ describe('AI Roaming and Formation Systems', () => {
       gameState.time = 10;
 
       // Step simulation to assign anchor
-      for (let i = 0; i < 10; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+      const dt2 = getTestDtFromState(gameState);
+      for (let i = 0; i < Math.ceil(10 / dt2); i++) {
+        aiController.updateAllShips(dt2);
+        simulateStep(gameState, dt2);
+        gameState.time += dt2;
+        gameState.tick++;
+        if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+        }
       }
 
       // Should have anchor assigned
@@ -101,11 +115,12 @@ describe('AI Roaming and Formation Systems', () => {
         mode: 'aggressive'
       };
 
-      // Force intent reevaluation by advancing time
-      gameState.time += 10;
       
-      // Step simulation to trigger cleanup
-      aiController.updateAllShips(0.1);
+  // Force intent reevaluation by advancing time
+  gameState.time += 10;
+      
+  // Step simulation to trigger cleanup
+  aiController.updateAllShips(getTestDtFromState(gameState));
 
       // Anchor should be released
       expect(ship.aiState?.roamingAnchor).toBeUndefined();
@@ -118,9 +133,9 @@ describe('AI Roaming and Formation Systems', () => {
       const ships = [];
       for (let i = 0; i < 4; i++) {
         const ship = spawnShip(gameState, 'red', 'frigate', {
-          x: 200 + i * 30,
-          y: 200,
-          z: 200
+          x: TEST_DEFAULTS.simBounds.width * 0.2 + i * 30,
+          y: TEST_DEFAULTS.simBounds.height * 0.2,
+          z: TEST_DEFAULTS.simBounds.depth * 0.2
         });
         ships.push(ship);
       }
@@ -135,9 +150,15 @@ describe('AI Roaming and Formation Systems', () => {
       gameState.time = 10;
 
       // Step simulation to trigger formation assignment
-      for (let i = 0; i < 15; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+      const dt3 = getTestDtFromState(gameState);
+      for (let i = 0; i < Math.ceil(15 / dt3); i++) {
+        aiController.updateAllShips(dt3);
+        simulateStep(gameState, dt3);
+        gameState.time += dt3;
+        gameState.tick++;
+        if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+        }
       }
 
       // Check that ships have formation data assigned
@@ -166,7 +187,7 @@ describe('AI Roaming and Formation Systems', () => {
             Math.pow(pos1.z - pos2.z, 2)
           );
           // Formation positions should be separated by at least formation spacing / 2
-          expect(distance).toBeGreaterThan(40); // Half of typical formation spacing
+          expect(distance).toBeGreaterThan(DEFAULT_BEHAVIOR_CONFIG.formations.line.spacing / 2); // Half of typical formation spacing
         }
       }
     });
@@ -188,9 +209,15 @@ describe('AI Roaming and Formation Systems', () => {
       }
 
       // Step simulation to establish formation
-      for (let i = 0; i < 10; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+      const dt4 = getTestDtFromState(gameState);
+      for (let i = 0; i < Math.ceil(10 / dt4); i++) {
+        aiController.updateAllShips(dt4);
+        simulateStep(gameState, dt4);
+        gameState.time += dt4;
+        gameState.tick++;
+        if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+        }
       }
 
       // Record initial formation assignments
@@ -201,8 +228,9 @@ describe('AI Roaming and Formation Systems', () => {
 
       // Continue simulation for several more steps
       for (let i = 0; i < 10; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+        const _dt_stable4 = getTestDtFromState(gameState);
+        aiController.updateAllShips(_dt_stable4);
+        simulateStep(gameState, _dt_stable4);
       }
 
       // Check that assignments remained stable
@@ -249,9 +277,15 @@ describe('AI Roaming and Formation Systems', () => {
       gameState.time = 10;
 
       // Step simulation
-      for (let i = 0; i < 15; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+      const dt5 = getTestDtFromState(gameState);
+      for (let i = 0; i < Math.ceil(15 / dt5); i++) {
+        aiController.updateAllShips(dt5);
+        simulateStep(gameState, dt5);
+        gameState.time += dt5;
+        gameState.tick++;
+        if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+        }
       }
 
       // Check that both systems are working

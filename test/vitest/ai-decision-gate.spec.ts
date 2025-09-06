@@ -3,7 +3,7 @@ import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 import type { GameState, Ship } from '../../src/types/index.js';
 import { createRNG } from '../../src/utils/rng.js';
-import { createMockShip } from './setupTests.js';
+import { createMockShip, TEST_DEFAULTS } from './setupTests.js';
 
 function makeState(overrides?: Partial<GameState>): GameState {
   const bounds = { width: 1000, height: 800, depth: 600 };
@@ -41,8 +41,8 @@ describe('DecisionEngine Evade Gate', () => {
     // Ensure flag is false
     state.behaviorConfig.globalSettings.useDecisionEngineEvadeGate = false;
 
-  const red = createMockShip({ id: 1, team: 'red', pos: { x: 200, y: 200, z: 0 } }) as unknown as Ship;
-  const blue = createMockShip({ id: 2, team: 'blue', pos: { x: 230, y: 200, z: 0 } }) as unknown as Ship; // close opponent
+  const red = createMockShip({ id: 1, team: 'red', pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 } }) as unknown as Ship;
+  const blue = createMockShip({ id: 2, team: 'blue', pos: { ...TEST_DEFAULTS.zeroPos, x: 230, y: 200 } }) as unknown as Ship; // close opponent
 
     state.ships = [red, blue];
 
@@ -73,8 +73,8 @@ describe('DecisionEngine Evade Gate', () => {
     const state = makeState();
     state.behaviorConfig.globalSettings.useDecisionEngineEvadeGate = true;
 
-  const red = createMockShip({ id: 1, team: 'red', pos: { x: 200, y: 200, z: 0 } }) as unknown as Ship;
-  const blue = createMockShip({ id: 2, team: 'blue', pos: { x: 205, y: 200, z: 0 } }) as unknown as Ship; // extremely close threat (distance 5)
+  const red = createMockShip({ id: 1, team: 'red', pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 } }) as unknown as Ship;
+  const blue = createMockShip({ id: 2, team: 'blue', pos: { ...TEST_DEFAULTS.zeroPos, x: 205, y: 200 } }) as unknown as Ship; // extremely close threat (distance 5)
 
     // Ensure reevaluation by time (not by damage), and keep recentDamage below threshold
     red.aiState = {
@@ -102,8 +102,8 @@ describe('DecisionEngine Evade Gate', () => {
 
   it('preview method returns score and wouldEvade boolean', () => {
     const state = makeState();
-  const red = createMockShip({ id: 1, team: 'red', pos: { x: 200, y: 200, z: 0 } }) as unknown as Ship;
-  const blue = createMockShip({ id: 2, team: 'blue', pos: { x: 210, y: 200, z: 0 } }) as unknown as Ship;
+  const red = createMockShip({ id: 1, team: 'red', pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 } }) as unknown as Ship;
+  const blue = createMockShip({ id: 2, team: 'blue', pos: { ...TEST_DEFAULTS.zeroPos, x: 210, y: 200 } }) as unknown as Ship;
     state.ships = [red, blue];
 
     const ai = new AIController(state);

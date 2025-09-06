@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createInitialState, spawnFleet, simulateStep, resetState } from '../../src/core/gameState.js';
-import { GameState, Ship } from '../../src/types/index.js';
+import { GameState, Ship as _Ship } from '../../src/types/index.js';
 
 describe('Scout and Alarm System Tests', () => {
   let state: GameState;
@@ -37,14 +37,13 @@ describe('Scout and Alarm System Tests', () => {
       }
     }
     
-    const aiController = state.aiController!;
+  const _aiController = state.aiController!;
     
     // Run a few simulation steps to trigger scout assignment
     const fixedDt = 1 / state.simConfig.tickRate;
-    for (let i = 0; i < 60; i++) { // 1 second
+    const steps = Math.max(1, Math.floor(1 * (state.simConfig?.tickRate ?? 60)));
+    for (let i = 0; i < steps; i++) { // 1 second worth of ticks
       simulateStep(state, fixedDt);
-      state.time += fixedDt;
-      state.tick++;
     }
     
     expect(redShips.length, 'Should have red ships').toBeGreaterThan(0);
@@ -97,12 +96,10 @@ describe('Scout and Alarm System Tests', () => {
     redShip.aiState!.lastDamageTime = state.time;
     
     const fixedDt = 1 / state.simConfig.tickRate;
-    
-    // Run simulation to process alarm system
-    for (let i = 0; i < 60; i++) { // 1 second
+    // Run simulation to process alarm system (1 second)
+    const alarmSteps = Math.max(1, Math.floor(1 * (state.simConfig?.tickRate ?? 60)));
+    for (let i = 0; i < alarmSteps; i++) {
       simulateStep(state, fixedDt);
-      state.time += fixedDt;
-      state.tick++;
     }
     
     // Check that red team ships are pursuing due to alarm
@@ -158,12 +155,10 @@ describe('Scout and Alarm System Tests', () => {
     });
     
     const fixedDt = 1 / state.simConfig.tickRate;
-    
-    // Run simulation for several seconds
-    for (let i = 0; i < 300; i++) { // 5 seconds
+    // Run simulation for several seconds (5s)
+    const runSteps = Math.max(1, Math.floor(5 * (state.simConfig?.tickRate ?? 60)));
+    for (let i = 0; i < runSteps; i++) {
       simulateStep(state, fixedDt);
-      state.time += fixedDt;
-      state.tick++;
     }
     
     // Check that at least one ship per team is still pursuing despite distance

@@ -360,8 +360,9 @@ describe('Entity Mechanics', () => {
       const initialHealth = ship.health;
 
       // Run a few simulation steps
+      const dt = 1 / gameState.simConfig.tickRate;
       for (let i = 0; i < 10; i++) {
-        simulateStep(gameState, 0.016); // ~60fps
+        simulateStep(gameState, dt);
       }
 
       // Ship should still exist and have valid health
@@ -376,8 +377,10 @@ describe('Entity Mechanics', () => {
       const initialShipCount = gameState.ships.length;
 
       // Run simulation
-      for (let i = 0; i < 60; i++) { // 1 second at 60fps
-        simulateStep(gameState, 0.016);
+      const dt = 1 / gameState.simConfig.tickRate;
+      const steps = Math.max(1, Math.floor(1 * (gameState.simConfig?.tickRate ?? 60)));
+      for (let i = 0; i < steps; i++) { // ~1 second
+        simulateStep(gameState, dt);
       }
 
       // Should still have same number of ships (no deaths yet)

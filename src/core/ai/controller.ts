@@ -1,7 +1,6 @@
 import type { GameState, Ship, Vector3, SimBounds, TurretState, Team, EntityId } from '../../types/index.js';
 import type { AIPersonality } from '../../config/behaviorConfig.js';
 import { IntentManager } from './intentManager.js';
-import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
 import { assignRoamingAnchor, releaseRoamingAnchor } from './roaming.js';
 import { findBestFormation, assignFormationSlot, getFormationCenter } from './formation.js';
 import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSystems.js';
@@ -9,6 +8,7 @@ import { updateShieldRegeneration } from './defense.js';
 import { findNearestEnemy, updateTurretLeads } from './targeting.js';
 import { SpatialHelpers } from './spatial.js';
 import { DEBUG_AI } from '../../utils/env';
+import logger from '../../utils/logger';
 import { calculatePreferredRange, reevaluateIntent, chooseAggressiveIntent } from './intent.js';
 import { PhysicsConfig } from '../../config/physicsConfig.js';
 import { calculateEscapeScore as calcEscape, moveTowards } from './steering.js';
@@ -24,18 +24,23 @@ export class AIController {
   private spatial: SpatialHelpers;
   private teams: TeamSystems;
   private batchedQueries: BatchedQueryManager;
-  private spatialOptimizer: AggressiveSpatialOptimizer | null = null;
+  private spatialOptimizer: AggressiveSpatialOptimizer | undefined = undefined;
 
-  constructor(state: GameState) {
+  constructor(state: GameState, aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer) {
     this.state = state;
     this.intentManager = new IntentManager();
-    this.spatial = new SpatialHelpers(state);
     this.teams = new TeamSystems(state);
-    this.batchedQueries = new BatchedQueryManager();
-    
-    if (state.spatialGrid) {
+
+    if (aggressiveSpatialOptimizer) {
+      this.spatialOptimizer = aggressiveSpatialOptimizer;
+    } else if (state.spatialGrid) {
+      // Fallback for tests that don't provide the optimizer directly
       this.spatialOptimizer = new AggressiveSpatialOptimizer(state.spatialGrid, 64);
     }
+
+    this.spatial = new SpatialHelpers(state, this.spatialOptimizer ?? undefined);
+    this.batchedQueries = new BatchedQueryManager(this.spatialOptimizer);
+    if (DEBUG_AI) console.log(`[AIController Constructor] batchedQueries assigned:`, this.batchedQueries);
   }
 
   public updateAllShips(dt: number) {
@@ -48,31 +53,31 @@ export class AIController {
     // These operations can be relatively expensive; skip them during test runs
     // (Vitest sets NODE_ENV='test') to keep unit tests fast and avoid timeouts.
     const aliveShips = this.state.ships.filter(s => s.health > 0);
-    if (process.env.NODE_ENV !== 'test') {
-      if (this.spatialOptimizer) {
-        const spatialEntities = aliveShips.map(ship => ({
-          id: ship.id,
-          pos: ship.pos,
-          radius: 20, // Use default ship radius
-          team: ship.team
-        }));
-        this.spatialOptimizer.updateSpatialGrids(spatialEntities);
-      }
-
-      // OPTIMIZATION: Pre-compute common queries for all ships in batches
-      perfBegin('ai.batched');
-      const frameId = this.state.tick ?? 0;
-      this.batchedQueries.resetForFrame(frameId);
-
-      // Batch compute nearest enemies and separation neighbors for alive ships
-      this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
-      this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
-      perfEnd('ai.batched');
-    } else {
-      // In test mode, still advance the frame id so any cached data doesn't persist
-      const frameId = this.state.tick ?? 0;
-      this.batchedQueries.resetForFrame(frameId);
+    if (this.spatialOptimizer) {
+      const spatialEntities = aliveShips.map(ship => ({
+        id: ship.id,
+        pos: ship.pos,
+        radius: 20, // Use default ship radius
+        team: ship.team
+      }));
+      if (DEBUG_AI) console.log(`[AIController] Calling spatialOptimizer.updateSpatialGrids with ${spatialEntities.length} entities.`);
+      this.spatialOptimizer.updateSpatialGrids(spatialEntities);
     }
+
+    // OPTIMIZATION: Pre-compute common queries for all ships in batches
+    perfBegin('ai.batched');
+    const frameId = this.state.tick ?? 0;
+    if (DEBUG_AI) console.log(`[AIController] this.batchedQueries:`, this.batchedQueries);
+    if (this.batchedQueries && typeof this.batchedQueries.resetForFrame === 'function') {
+      this.batchedQueries.resetForFrame(frameId);
+    } else {
+      if (DEBUG_AI) console.error(`[AIController] ERROR: this.batchedQueries or resetForFrame is not valid!`, this.batchedQueries);
+    }
+
+    // Batch compute nearest enemies and separation neighbors for alive ships
+    this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
+    this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+    perfEnd('ai.batched');
     perfEnd('ai.spatial');
 
   perfBegin('ai.teams');
@@ -96,16 +101,7 @@ export class AIController {
 
   public updateShipAI(ship: Ship, dt: number) {
     // Ensure aiState exists for downstream modules
-    if (!ship.aiState) {
-      ship.aiState = {
-        currentIntent: 'idle',
-        intentEndTime: 0,
-        lastIntentReevaluation: 0,
-        preferredRange: calculatePreferredRange(this.state, ship),
-        recentDamage: 0,
-        lastDamageTime: 0
-      } as Ship['aiState'];
-    }
+    if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0, preferredRange: calculatePreferredRange(this.state, ship), recentDamage: 0, lastDamageTime: 0 } as Ship['aiState']; }
 
     // Decay recentDamage over time so evade gating behaves like legacy controller
     try {
@@ -131,7 +127,7 @@ export class AIController {
     // We avoid mutating typed aiState shape here; controllers may read this temporarily via local variable
     (ship as unknown as { __boundaryProximity?: number }).__boundaryProximity = boundScore;
   } catch { /* best-effort */ }
-  reevaluateIntent(this.state, ship, personality);
+  { const rate=this.state.simConfig?.intentReevaluationRate ?? 0.3; const now=this.state.time; if ((now - (ship.aiState!.lastIntentReevaluation ?? -1e9)) >= rate) { reevaluateIntent(this.state, ship, personality); } }
     updateShieldRegeneration(this.state, ship, dt);
 
     // Ensure turrets have aiState and cooldownLeft initialised so
@@ -149,12 +145,20 @@ export class AIController {
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
     // OPTIMIZATION: Use batched query result instead of individual search
-    const nearestEnemy = this.batchedQueries.getNearestEnemy(ship) || findNearestEnemy(this.state, ship);
+    const batchedNearest = this.batchedQueries.getNearestEnemy(ship);
+    const fallbackCandidates = this.queryKNearestOptimized(ship.pos, 8, ship.team === 'red' ? 'blue' : 'red', ship.id);
+    const nearestEnemyEntity = batchedNearest || (fallbackCandidates.length > 0 ? fallbackCandidates[0] : undefined);
+    const nearestEnemy = nearestEnemyEntity ? (this.state.shipIndex?.get(nearestEnemyEntity.id) ?? null) : null;
+    logger.debugIf(DEBUG_AI, () => {
+      const batchedStr = batchedNearest ? String(batchedNearest.id) : 'null';
+      const fbIds = fallbackCandidates.map(c => c.id).join(',') || '[]';
+      return `[AIController] nearestEnemy - batched=${batchedStr} fallback[0]=${nearestEnemyEntity ? nearestEnemyEntity.id : 'null'} fallbackList=[${fbIds}]`;
+    });
 
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;
     if (firstTarget != null) {
-      const targetShip = this.state.ships.find(s => s.id === firstTarget);
+      const targetShip = this.state.shipIndex?.get(firstTarget);
       if (targetShip) {
         // Check if target is valid (different team, alive, within range)
   const isValidTeam = targetShip.team !== ship.team;
@@ -174,7 +178,8 @@ export class AIController {
           validatedFirstTarget = null; // Invalid target
           // Clear the ship's target when it becomes invalid (unless evading)
           if (ship.aiState?.currentIntent !== 'evade') {
-            ship.targetId = null;
+            const ais = ship.aiState!;
+            const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
           }
         }
       } else {
@@ -182,26 +187,36 @@ export class AIController {
       }
     }
 
-    // Target assignment and switching logic
+  // Target assignment and switching logic
     if (validatedFirstTarget != null) {
-      // Check if we should switch to a closer enemy (target switching logic)
+      // If we have a validated turret target, decide whether to keep it or
+      // switch to a closer nearestEnemy (if available) subject to throttling.
       if (nearestEnemy && nearestEnemy.id !== validatedFirstTarget) {
-        const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
+        const switchThreshold = this.state.behaviorConfig?.globalSettings.targetSwitchThreshold ?? 0.8;
+        const rate = this.state.simConfig?.targetUpdateRate ?? 0.5;
+        const now = this.state.time;
+        const throttled = (ship.aiState && typeof ship.aiState.lastTargetSwitchTime === 'number' && (now - ship.aiState.lastTargetSwitchTime) < rate);
+        if (!throttled) {
+          const currentTargetShip = this.state.shipIndex?.get(validatedFirstTarget);
           if (currentTargetShip) {
-          const cdx = currentTargetShip.pos.x - ship.pos.x;
-          const cdy = currentTargetShip.pos.y - ship.pos.y;
-          const cdz = currentTargetShip.pos.z - ship.pos.z;
-          const ndx = nearestEnemy.pos.x - ship.pos.x;
-          const ndy = nearestEnemy.pos.y - ship.pos.y;
-          const ndz = nearestEnemy.pos.z - ship.pos.z;
-          const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
-          const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
+            const cdx = currentTargetShip.pos.x - ship.pos.x;
+            const cdy = currentTargetShip.pos.y - ship.pos.y;
+            const cdz = currentTargetShip.pos.z - ship.pos.z;
+            const ndx = nearestEnemy.pos.x - ship.pos.x;
+            const ndy = nearestEnemy.pos.y - ship.pos.y;
+            const ndz = nearestEnemy.pos.z - ship.pos.z;
+            const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
+            const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
 
-          // Switch if nearest enemy is significantly closer (20% closer)
-          // Use squared distance comparison to avoid sqrt in hot path
-          const switchThreshold = 0.8; // 20% closer required to switch
-          if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
-            ship.targetId = nearestEnemy.id;
+            // Switch if nearest enemy is significantly closer
+            if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
+              if ((this.state.time - (ship.aiState!.lastTargetSwitchTime ?? -1e9)) >= rate) {
+                ship.targetId = nearestEnemy.id;
+                ship.aiState!.lastTargetSwitchTime = this.state.time;
+              }
+            } else {
+              ship.targetId = validatedFirstTarget as number;
+            }
           } else {
             ship.targetId = validatedFirstTarget as number;
           }
@@ -209,10 +224,11 @@ export class AIController {
           ship.targetId = validatedFirstTarget as number;
         }
       } else {
+        // No nearer enemy or same as validated target — keep validated target
         ship.targetId = validatedFirstTarget as number;
       }
-      // Record assigned target
-      (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
+  // Record assigned target (normalize null -> undefined for legacy expectations)
+  (ship as unknown as { __aiAssignedTarget?: number | undefined }).__aiAssignedTarget = ship.targetId ?? undefined;
     } else if (nearestEnemy) {
       // No valid current target, but we have a nearest enemy
       // Check if nearest enemy should be our new target (apply same range validation)
@@ -235,17 +251,21 @@ export class AIController {
       
       const isValidTeam = targetShip.team !== ship.team;
       const isAlive = targetShip.health > 0;
+      if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id}, targetShip: ${targetShip.id}, isValidTeam: ${isValidTeam}, isAlive: ${isAlive}, withinRange: ${withinRange}`);
 
       if (isValidTeam && isAlive && (withinRange || ship.aiState?.currentIntent === 'evade')) {
-        // Set new valid target (allow out-of-range for evade awareness)
-        ship.targetId = nearestEnemy.id;
+        const ais = ship.aiState!;
+        const _rate=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate) { ship.targetId = nearestEnemy.id; ais.lastTargetSwitchTime=this.state.time; }
+        if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: ${ship.targetId}`);
       } else {
-        // Nearest enemy is invalid, clear target
-        ship.targetId = null;
+        const ais = ship.aiState!;
+        const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
+        if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: null`);
       }
     } else {
       // No enemies found, clear target
-      ship.targetId = null;
+  const ais = ship.aiState!;
+  const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
     }
     // Compatibility fallback: if targeting helpers returned null, run a
     // deterministic legacy-style scoring pass (respecting turret min/max
@@ -255,12 +275,15 @@ export class AIController {
       try {
         const tc = this.state.behaviorConfig?.turretConfig;
         let bestId: number | null = null; let bestScore = -Infinity;
-        // Use grouped resolver to reduce search work when many ships share cells
-        const resolve = makeCellNearestResolver(this.state, tc?.maximumFireRange ?? this.state.simConfig.spatialGrid.cellSize * 2);
-        const candidates = resolve ? resolve(ship.pos, undefined) : this.state.ships;
-        const shortlist = (Array.isArray(candidates) && candidates.length > 0)
-          ? pickKNearestFromCandidates(ship.pos, candidates, 24)
-          : this.state.ships;
+        // Use optimized K-nearest query for candidates
+        const candidates = this.queryKNearestOptimized(
+          ship.pos,
+          24, // Request a reasonable number of candidates
+          ship.team === 'red' ? 'blue' : 'red', // Target opposite team
+          ship.id
+        );
+        const shortlist = candidates.map(e => this.state.shipIndex?.get(e.id)).filter((s): s is Ship => s != null);
+
         // Deterministic secondary ordering by distance then id before scoring
         shortlist.sort((a,b)=>{
           const dax=a.pos.x-ship.pos.x, day=a.pos.y-ship.pos.y, daz=a.pos.z-ship.pos.z;
@@ -280,7 +303,7 @@ export class AIController {
           const inRange = !(tc && (distSq < minRSq || distSq > maxRSq));
           const d = inRange ? Math.sqrt(distSq) : 1;
           const score = (d > 0 ? 1000 / d : 0) + ((target.maxHealth - target.health) * 0.1) + (target.level.level * 5);
-          if (DEBUG_AI) console.log(`DEBUG_AI: controller fallback candidate ship=${ship.id} turret=NA candidate=${target.id} dist=${d.toFixed(2)} hp=${target.health} level=${target.level?.level ?? target.level} score=${score} inRange=${inRange} rangeMin=${tc?.minimumFireRange ?? 0} rangeMax=${tc?.maximumFireRange ?? Infinity}`);
+          logger.debugIf(DEBUG_AI, () => `DEBUG_AI: controller fallback candidate ship=${ship.id} turret=NA candidate=${target.id} dist=${d.toFixed(2)} hp=${target.health} level=${target.level?.level ?? target.level} score=${score} inRange=${inRange} rangeMin=${tc?.minimumFireRange ?? 0} rangeMax=${tc?.maximumFireRange ?? Infinity}`);
           // IMPROVED: Strict range checking - don't assign targets out of range
           if (!inRange) continue;
           if (score > bestScore) { bestScore = score; bestId = target.id; }
@@ -290,7 +313,7 @@ export class AIController {
           ship.targetId = bestId;
           (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
         }
-  if (DEBUG_AI) console.log(`DEBUG_AI: controller fallback chosen for ship=${ship.id} => ${ship.targetId ?? 'null'}`);
+  logger.debugIf(DEBUG_AI, () => `DEBUG_AI: controller fallback chosen for ship=${ship.id} => ${ship.targetId ?? 'null'}`);
       } catch { /* best-effort fallback; avoid throwing in tests */ }
     }
     // Safety: if still null, but turrets have chosen targets (race/order differences
@@ -323,10 +346,12 @@ export class AIController {
           if (withinRange) {
             ship.targetId = anyT as number;
             (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
-            if (DEBUG_AI) console.log(`DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`);
-          } else if (DEBUG_AI) {
-            const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
-            console.log(`DEBUG_AI: controller rejected safety target ship=${ship.id} target=${anyT} out of range dist=${distance.toFixed(2)}`);
+            logger.debugIf(DEBUG_AI, () => `DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`);
+          } else {
+            logger.debugIf(DEBUG_AI, () => {
+              const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
+              return `DEBUG_AI: controller rejected safety target ship=${ship.id} target=${anyT} out of range dist=${distance.toFixed(2)}`;
+            });
           }
         }
       }
@@ -334,13 +359,13 @@ export class AIController {
 
     // IMPROVED: Clear invalid targets (destroyed ships, same team ships)
     if (ship.targetId != null) {
-      const currentTarget = this.state.ships.find(s => s.id === ship.targetId);
+      const currentTarget = this.state.shipIndex?.get(ship.targetId);
       if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
-        if (DEBUG_AI) {
-          const reason = !currentTarget ? 'not found' : 
+        logger.debugIf(DEBUG_AI, () => {
+          const reason = !currentTarget ? 'not found' :
                         currentTarget.health <= 0 ? 'destroyed' : 'same team';
-          console.log(`DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${ship.targetId} reason=${reason}`);
-        }
+          return `DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${ship.targetId} reason=${reason}`;
+        });
         ship.targetId = null;
         // Also clear turret targets pointing to the same invalid target
         for (const t of ship.turrets) {
@@ -368,17 +393,13 @@ export class AIController {
     const sepRes = precomputedNeighbors.length > 0 
       ? this.spatial.calculateSeparationFromNeighbors(ship, precomputedNeighbors)
       : this.spatial.calculateSeparationForceWithCount(ship);
-  if (DEBUG_AI) {
+  logger.debugIf(DEBUG_AI, () => {
         const magSq = sepRes.force.x * sepRes.force.x + sepRes.force.y * sepRes.force.y + sepRes.force.z * sepRes.force.z;
         const mag = Math.sqrt(magSq);
         const prePos = `${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)}`;
         const preVel = `${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`;
-        const msg = `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}\n`;
-        try {
-            // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
-            try { console.error(msg); } catch { if (DEBUG_AI) console.warn('AI-DEBUG log failed'); }
-          } catch { if (DEBUG_AI) console.warn('AI-DEBUG outer log failed'); }
-      }
+        return `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}`;
+      });
     const gs = this.state.behaviorConfig?.globalSettings;
     let sepWeight = gs?.separationWeight ?? 0.3;
     // Apply cluster-weight multipliers based on neighbor count to make separation
@@ -399,12 +420,7 @@ export class AIController {
     ship.vel.y += sepRes.force.y * dt * ship.speed * sepWeight;
     ship.vel.z += sepRes.force.z * dt * ship.speed * sepWeight;
 
-  if (DEBUG_AI) {
-        try {
-          // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
-          try { console.error(`AI-DEBUG controller sep ship=${ship.id} postVel=${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`); } catch (e) { if (DEBUG_AI) console.warn('AI-DEBUG postVel log failed', e); }
-        } catch (e) { if (DEBUG_AI) console.warn('AI-DEBUG postVel outer failed', e); }
-      }
+  logger.debugIf(DEBUG_AI, () => `AI-DEBUG controller sep ship=${ship.id} postVel=${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`);
 
   // Execute movement based on current intent (minimal back-compat behavior)
     const intent = ship.aiState?.currentIntent;
@@ -441,16 +457,11 @@ export class AIController {
             z: ship.pos.z + dz * inv * escapeDist,
           };
 
-          if (DEBUG_AI) {
-            // Use the cached distForLog for human-friendly diagnostics.
-            console.error(`AI-DEBUG evade ship=${ship.id} nearest=${threat.id} dist=${(distForLog ?? 1).toFixed(6)} dt=${dt.toFixed(6)} speed=${ship.speed}`);
-            console.error(`AI-DEBUG evade preVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
-          }
+          logger.debugIf(DEBUG_AI, () => `AI-DEBUG evade ship=${ship.id} nearest=${threat.id} dist=${(distForLog ?? 1).toFixed(6)} dt=${dt.toFixed(6)} speed=${ship.speed}`);
+          logger.debugIf(DEBUG_AI, () => `AI-DEBUG evade preVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
           // Force orientation+accel even if within movementCloseEnoughThreshold
           this.moveTowards(ship, escapeTarget, dt, true);
-          if (DEBUG_AI) {
-            console.error(`AI-DEBUG evade postVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
-          }
+          logger.debugIf(DEBUG_AI, () => `AI-DEBUG evade postVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
           integrated = true;
         }
       } else if (intent === 'group') {
@@ -586,25 +597,32 @@ export class AIController {
     ship.vel.z += force.z * dt * ship.speed * sepWeight;
   }
   public moveTowards(ship: Ship, targetPos: Vector3, dt: number, ignoreCloseEnough?: boolean) {
+    if (!this.state.behaviorConfig) return;
     // Use static import at top so this is synchronous for tests
     // Forward the optional ignoreCloseEnough flag to the steering helper. We
     // pass `undefined` for speedOverride to preserve default behavior.
-    return moveTowards(ship, targetPos, dt, this.state.behaviorConfig!.globalSettings, undefined, ignoreCloseEnough);
+    return moveTowards(ship, targetPos, dt, this.state.behaviorConfig.globalSettings, undefined, ignoreCloseEnough);
   }
   public calculateEscapeScore(ship: Ship, targetPos: Vector3, threatsShips: readonly Ship[]) {
     const threats = threatsShips.map(s => s.pos);
     const friends = this.state.ships.filter(s => s.team === ship.team && s.id !== ship.id).map(s => s.pos);
     const bounds: SimBounds = this.state.simConfig?.simBounds ?? { width: 1000, height: 1000, depth: 1000 };
-    return calcEscape(ship.pos, targetPos, threats, friends, bounds, this.state.behaviorConfig!.globalSettings);
+    if (!this.state.behaviorConfig) {
+      return 0;
+    }
+    return calcEscape(ship.pos, targetPos, threats, friends, bounds, this.state.behaviorConfig.globalSettings);
   }
   public executeEvade(_ship: Ship, _dt: number) {
     // Placeholder to satisfy config spec; detailed path sampling lives in movement system.
-    return;
+
   }
 
   // Preview helper for decision engine evade gate expected by tests
   public previewDecisionEngineEvade(ship: Ship) {
-    const settings = this.state.behaviorConfig!.globalSettings;
+    if (!this.state.behaviorConfig) {
+      return { score: 0, wouldEvade: false };
+    }
+    const settings = this.state.behaviorConfig.globalSettings;
     const nearest = findNearestEnemy(this.state, ship);
     // Compute squared distance to avoid Math.sqrt in hot path. Only compute
     // the real distance when we need to pass a numeric value to the scoring
@@ -685,3 +703,21 @@ export class AIController {
 export { IntentManager } from './intentManager.js';
 export { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretTarget } from './targeting.js';
 export { calculateSeparationForceWithCount } from './spatial.js';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

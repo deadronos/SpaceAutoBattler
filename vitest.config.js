@@ -4,8 +4,9 @@ import path from 'path';
 export default defineConfig({
   test: {
     include: [
+      'test/vitest/*.spec.ts',
+      'test/vitest/*.test.ts',
       'test/vitest/**/*.spec.ts',
-      'test/vitest/**/*.test.ts',
     ],
     exclude: [
       'test/playwright/**',
@@ -16,5 +17,8 @@ export default defineConfig({
     watch: false,
     // Extend default timeout to reduce flakes when many tests run in parallel on CI/dev machines
     testTimeout: 20000,
+    pool: 'threads',
+    maxThreads: 24,
+    threads: true,
   },
 });

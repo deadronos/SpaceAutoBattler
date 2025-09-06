@@ -33,8 +33,8 @@ describe('kill crediting', () => {
     // We advance time so state.time matches lastDamageTime window
     state.time += 1;
     // run a simulate step to trigger processDeathsAndXP via simulateStep
-  // Call simulateStep which triggers death processing
-  simulateStep(state, 0.016);
+    // Call simulateStep which triggers death processing
+    simulateStep(state, 1 / state.simConfig.tickRate);
 
     // After step, s1 should have a kill
     const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find(s => s.id === s1.id);
@@ -49,9 +49,9 @@ describe('kill crediting', () => {
     // s1 damaged s2 long ago
     simulateDamage(state, s2.id, s1.id, 10, -100); // lastDamageTime well in the past
 
-    // Advance time
-    state.time += 200;
-  simulateStep(state, 0.016);
+  // Advance time
+  state.time += 200;
+  simulateStep(state, 1 / state.simConfig.tickRate);
 
     const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find(s => s.id === s1.id);
     // attacker should not have credited kill here
@@ -68,8 +68,8 @@ describe('kill crediting', () => {
 
     // s1 damaged s2 2 seconds ago
     simulateDamage(state, s2.id, s1.id, 9999, -2);
-    state.time += 2;
-    simulateStep(state, 0.016);
+  state.time += 2;
+  simulateStep(state, 1 / state.simConfig.tickRate);
 
     const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find(s => s.id === s1.id);
     expect(attacker?.kills).toBe(0);

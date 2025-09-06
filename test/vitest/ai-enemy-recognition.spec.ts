@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip } from './setupTests';
+import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
 import { AIController } from '../../src/core/aiController';
 import type { GameState, Ship } from '../../src/types';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
+import { SHIP_CLASS_CONFIGS } from '../../src/config/entitiesConfig.js';
 
 const DEBUG_AI = false; // Set to true for debug output
 
@@ -18,12 +19,19 @@ describe('AI Enemy Recognition', () => {
     for (const ship of ships) {
       state.shipIndex.set(ship.id, ship);
     }
+    // Rebuild spatial index for accurate neighbor queries in tests
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
   };
 
   const addShip = (ship: Ship) => {
     state.ships.push(ship);
     if (!state.shipIndex) state.shipIndex = new Map();
     state.shipIndex.set(ship.id, ship);
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
   };
 
   beforeEach(() => {
@@ -53,13 +61,15 @@ describe('AI Enemy Recognition', () => {
       id: 3,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 300, y: 100, z: 100 }, // 200 units away
+      pos: { x: 100 + (SHIP_CLASS_CONFIGS.fighter.turrets[0].range ?? 300) + 50, y: 100, z: 100 }, // 200 units away
     }) as unknown as Ship;
 
     setShips([redShip, nearBlueShip, farBlueShip]);
 
-    // Update AI which should find nearest enemy
-    aiController.updateAllShips(0.1);
+  // Update AI which should find nearest enemy
+  const dt = getTestDtFromState(state);
+  aiController.updateAllShips(dt);
+  state.time += dt;
 
     // Red ship should target the nearest blue ship
     expect(redShip.targetId).toBe(nearBlueShip.id);
@@ -83,15 +93,18 @@ describe('AI Enemy Recognition', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 2000, y: 100, z: 100 }, // Very far away
+      pos: { x: 100 + (DEFAULT_BEHAVIOR_CONFIG.turretConfig.maximumFireRange ?? 800) + 100, y: 100, z: 100 }, // Very far away
     }) as unknown as Ship;
 
     setShips([redShip, farBlueShip]);
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Update AI
+  const dt2 = getTestDtFromState(state);
+  aiController.updateAllShips(dt2);
+  state.time += dt2;
 
     // Red ship should not target the far blue ship
+    if (DEBUG_AI) console.log(`[Test] Red ship targetId: ${redShip.targetId}`);
     expect(redShip.targetId).toBeNull();
 
     if (DEBUG_AI) {
@@ -118,8 +131,10 @@ describe('AI Enemy Recognition', () => {
 
     setShips([redShip, initialTarget]);
 
-    // First update - should target initial enemy
-    aiController.updateAllShips(0.1);
+  // First update - should target initial enemy
+  const dt3 = getTestDtFromState(state);
+  aiController.updateAllShips(dt3);
+  state.time += dt3;
     expect(redShip.targetId).toBe(initialTarget.id);
 
     // Add a closer enemy
@@ -133,11 +148,14 @@ describe('AI Enemy Recognition', () => {
     addShip(closerTarget);
     
     // Increment time and frame to invalidate cache
-    state.time = 0.2;
-    (state as any).frame = 1;
+    // We need to advance time significantly to overcome the target switching throttle
+    state.time = 1.0;
+  (state as unknown as { frame: number }).frame = 1;
 
-    // Second update - should switch to closer enemy
-    aiController.updateAllShips(0.1);
+  // Second update - should switch to closer enemy
+  const dt4 = getTestDtFromState(state);
+  aiController.updateAllShips(dt4);
+  state.time += dt4;
     expect(redShip.targetId).toBe(closerTarget.id);
 
     if (DEBUG_AI) {
@@ -163,12 +181,16 @@ describe('AI Enemy Recognition', () => {
 
     setShips([redShip1, redShip2]);
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Update AI
+  const dt5 = getTestDtFromState(state);
+  aiController.updateAllShips(dt5);
+  state.time += dt5;
 
     // Neither ship should target the other
-    expect(redShip1.targetId).toBeNull();
-    expect(redShip2.targetId).toBeNull();
+    const updatedRedShip1 = state.shipIndex?.get(redShip1.id);
+    const updatedRedShip2 = state.shipIndex?.get(redShip2.id);
+    expect(updatedRedShip1?.targetId).toBeNull();
+    expect(updatedRedShip2?.targetId).toBeNull();
 
     if (DEBUG_AI) {
       console.log(`Red ships should not target each other: ship1=${redShip1.targetId}, ship2=${redShip2.targetId}`);
@@ -195,16 +217,21 @@ describe('AI Enemy Recognition', () => {
 
     setShips([redShip, blueShip]);
 
-    // First update - should maintain target
-    aiController.updateAllShips(0.1);
+  // First update - should maintain target
+  const dt6 = getTestDtFromState(state);
+  aiController.updateAllShips(dt6);
+  state.time += dt6;
     expect(redShip.targetId).toBe(blueShip.id);
 
     // Remove the blue ship (simulate destruction)
     setShips([redShip]);
 
-    // Second update - should clear target
-    aiController.updateAllShips(0.1);
-    expect(redShip.targetId).toBeNull();
+  // Second update - should clear target
+  const dt7 = getTestDtFromState(state);
+  aiController.updateAllShips(dt7);
+  state.time += dt7;
+    const updatedRedShip = state.shipIndex?.get(redShip.id);
+    expect(updatedRedShip?.targetId).toBe(null);
 
     if (DEBUG_AI) {
       console.log(`Red ship ${redShip.id} targeting ${redShip.targetId}, expected null (enemy destroyed)`);
@@ -238,12 +265,15 @@ describe('AI Enemy Recognition', () => {
 
     setShips([redShip, blueShip]);
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Update AI
+  const dt8 = getTestDtFromState(state);
+  aiController.updateAllShips(dt8);
+  state.time += dt8;
+    const updatedRedShip = state.shipIndex?.get(redShip.id);
 
     // Red ship should recognize the blue ship as a threat
-    expect(redShip.targetId).toBe(blueShip.id);
-    expect(redShip.aiState?.currentIntent).toBe('evade');
+    expect(updatedRedShip?.targetId).toBe(blueShip.id);
+    expect(updatedRedShip?.aiState?.currentIntent).toBe('evade');
 
     if (DEBUG_AI) {
       console.log(`Evading ship ${redShip.id} should recognize enemy ${blueShip.id}: targeting=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}`);
@@ -272,7 +302,9 @@ describe('AI Enemy Recognition', () => {
 
     // Multiple updates should maintain the same target
     for (let i = 0; i < 5; i++) {
-      aiController.updateAllShips(0.1);
+      const dt9 = getTestDtFromState(state);
+      aiController.updateAllShips(dt9);
+      state.time += dt9;
       expect(redShip.targetId).toBe(targetedBlueShip.id);
     }
 
@@ -281,3 +313,4 @@ describe('AI Enemy Recognition', () => {
     }
   });
 });
+
