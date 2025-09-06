@@ -47,6 +47,14 @@ export function createShipMesh(
   shipsGroup: THREE.Group, 
   shipMeshes: Map<number, THREE.Object3D>
 ): THREE.Object3D {
+  // Defensive: ensure position values are finite before creating meshes
+  const posValid = Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
+  if (!posValid) {
+    try {
+      logger.error('[meshFactory] createShipMesh called with invalid position for ship', { id: ship.id, pos: ship.pos });
+    } catch (_e) { void _e; }
+    return new THREE.Group();
+  }
   const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
   const svgUrl = getShipSVGUrl(ship.class, defaultSVGConfig);
 
@@ -363,6 +371,13 @@ export function registerPrototypesFromPool(state: GameState) {
  * Creates a mesh for a bullet
  */
 export function createBulletMesh(bullet: Bullet): THREE.Object3D {
+  // Defensive: validate bullet position
+  const posValid = Number.isFinite(bullet.pos?.x) && Number.isFinite(bullet.pos?.y) && Number.isFinite(bullet.pos?.z);
+  if (!posValid) {
+    try { logger.error('[meshFactory] createBulletMesh invalid pos', { id: bullet.id, pos: bullet.pos }); } catch (_e) { void _e; }
+    return new THREE.Group();
+  }
+
   const geom = new THREE.SphereGeometry(2.2, 8, 8);
   const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
   const mesh = new THREE.Mesh(geom, mat);
