@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RendererConfig } from '../../src/config/rendererConfig.js';
 import { getSVGLoader, loadSVGAsset } from '../../src/core/svgLoader.js';
@@ -8,7 +9,7 @@ describe('SVG worker lazy initialization', () => {
   beforeEach(() => {
     // Preserve original Worker and replace with spy
     origWorker = (global as any).Worker;
-    (global as any).Worker = vi.fn(function WorkerMock(...args: any[]) {
+  (global as any).Worker = vi.fn(function(this: any, ...args: any[]) {
       // Simulate minimal Worker API used by SVGLoader
       this.postMessage = vi.fn();
       this.addEventListener = vi.fn();

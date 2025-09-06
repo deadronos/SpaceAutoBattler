@@ -148,7 +148,7 @@ function initGame(seed?: string) {
         return;
       }
       logger.debug('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
-      svgLoader.clearCache(assetUrl);
+  svgLoader?.clearCache(assetUrl);
       logger.debug('[SVG Debug] SVG cache cleared');
     },
 
@@ -158,7 +158,9 @@ function initGame(seed?: string) {
         logger.debug('[SVG Debug] GLTF mode enabled; no cached SVG assets');
         return [];
       }
-      const assets = Array.from(svgLoader.getCacheStats().cachedAssets > 0 ? 'assets cached' : []);
+  if (!svgLoader) return [];
+  const stats = svgLoader.getCacheStats();
+  const assets = Array.from(stats && stats.cachedAssets > 0 ? 'assets cached' : []);
       logger.debug('[SVG Debug] Cached SVG assets:', assets);
       return assets;
     }
