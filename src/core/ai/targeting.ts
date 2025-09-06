@@ -15,6 +15,7 @@ export function findNearbyFriends(state: GameState, ship: Ship, range: number): 
 export function findBestTurretTarget(state: GameState, ship: Ship, turret: TurretState): EntityId | null {
   const cfg = state.behaviorConfig!;
   const turretConfig = cfg.turretConfig;
+  const sqrt = Math.sqrt;
   if (cfg.globalSettings.useTurretTargetingHelper) {
     // Check per-frame cache first
     const frame = (state as any).frame ?? state.tick;
@@ -30,11 +31,17 @@ export function findBestTurretTarget(state: GameState, ship: Ship, turret: Turre
   for (const target of state.ships) {
     if (target.team === ship.team || target.health <= 0) continue;
     const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
-    const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
-    if (d < turretConfig.minimumFireRange || d > turretConfig.maximumFireRange) {
-      if (DEBUG_AI) console.log(`DEBUG_AI: local scoring candidate OUT_OF_RANGE ship=${ship.id} candidate=${target.id} dist=${d.toFixed(2)} rangeMin=${turretConfig.minimumFireRange} rangeMax=${turretConfig.maximumFireRange}`);
+    const distSq = dx*dx + dy*dy + dz*dz;
+    const minR = turretConfig.minimumFireRange; const maxR = turretConfig.maximumFireRange;
+    const minRSq = minR * minR; const maxRSq = maxR * maxR;
+    if (distSq < minRSq || distSq > maxRSq) {
+      if (DEBUG_AI) {
+    const dtmp = sqrt(distSq);
+        console.log(`DEBUG_AI: local scoring candidate OUT_OF_RANGE ship=${ship.id} candidate=${target.id} dist=${dtmp.toFixed(2)} rangeMin=${minR} rangeMax=${maxR}`);
+      }
       continue;
     }
+  const d = sqrt(distSq);
     let score = 1000 / d;
     score += (target.maxHealth - target.health) * 0.1;
     score += target.level.level * 5;

@@ -14,49 +14,53 @@ This llms.txt file lists prioritized navigation targets for LLMs and contributor
 - [shipIndex](docs/shipIndex.md): Index of ship-related documentation and references.
 - [RESEARCH_GPT5_COOKBOOK](docs/RESEARCH_GPT5_COOKBOOK.md): Research notes valuable for model-driven changes.
 
-## Specifications & Design
+SpaceAutoBattler — Quick LLM Navigation Guide
 
-- [Source Structure](spec/src-structure.md): High-level layout and rationale for source directories.
-- [Game Prompt / Scenario](spec/gameprompt.md): Domain prompt and simulation scenarios used for AI/agent behavior.
-- [.github/prompts](.github/prompts/): Repository-specific AI and automation prompt templates (useful for generating tasks and docs).
+This file gives a concise, up-to-date map for contributors and LLMs to find the most authoritative documentation, high-value source files, and test locations in the repository.
 
-## Important Source Locations
+Top-level goals
+- Focus on the pure simulation core (deterministic game logic and AI) separated from the renderer.
+- Keep changes safe and test-driven: unit tests in `test/vitest/` validate simulation behavior without rendering.
 
-- [Simulation Core (`src/core/`)](src/core/): Pure simulation logic, deterministic RNG, game state management, and physics.
-  - [gameState.ts](src/core/gameState.ts): Canonical GameState shape and state transitions.
-  - [aiController.ts](src/core/aiController.ts): AI behaviors and decision logic.
-  - [physics.ts](src/core/physics.ts): Physics integration and movement logic.
-- [Renderer (`src/renderer/`)](src/renderer/): Visualization code using Three.js, effects, and camera management.
-  - [threeRenderer.ts](src/renderer/threeRenderer.ts): WebGL rendering implementation.
-- [Orchestration / Entry (`src/main.ts`)](src/main.ts): Application entry, game loop, and UI bindings.
-- [Configuration (`src/config/`)](src/config/): Balance and renderer configuration (simConfig.ts, entitiesConfig.ts, rendererConfig.ts, progression.ts).
-- [Types (`src/types/`)](src/types/): TypeScript interfaces and GameState types.
+Documentation (high-value)
+- `README.md` — project overview, quick start, and development commands.
+- `docs/CURRENT_STATUS_NEXT_STEPS.md` — active work, blockers, and next tasks.
+- `docs/AI_Review_and_Improvements.md` — notes on AI behavior, optimization targets, and rationale.
 
-## Scripts & Tooling
+Key source locations
+- `src/core/` — simulation core (AI, physics, game state). Primary area for logic changes.
+  - `src/core/gameState.ts` — canonical `GameState` type and state transition helpers (single source of truth for runtime state).
+  - `src/core/ai/` — AI modules (controller, steering, intent, targeting, spatial helpers). Hotpaths for perf work.
+  - `src/core/physics.ts` — deterministic physics and movement helpers.
+- `src/types/` — TypeScript types used across the codebase (including `GameState`).
+- `src/config/` — All balance and runtime configuration (entities, behavior, physics, renderer). Prefer changing config over code when tuning behavior.
 
-- [package.json](package.json): Project metadata and important npm scripts (serve, build, build-standalone, test, test:e2e, typecheck).
-- [scripts/](scripts/): Build and utility scripts used to create standalone HTML, validate config, and manage memory index.
+Testing and verification
+- Unit tests (fast): `npm test` / `test/vitest/` — primary validation for simulation logic.
+- Typecheck: `npm run typecheck` (fast) — prevents type regressions.
+- Build: `npm run build` / `npm run build-standalone` — quick bundle verification.
 
-## Testing
+Tooling & scripts
+- `package.json` — scripts (serve, build, test, typecheck).
+- `scripts/` — helper scripts (generating memory files, validators, builds).
 
-- [Unit tests (Vitest)](test/vitest/README.md): Unit and logic tests that exercise simulation functions without rendering.
-- [E2E tests (Playwright)](test/playwright/): End-to-end tests and visual regression suites.
+Performance hotspots (where LLMs often help)
+- `src/core/ai/controller.ts` — `updateShipAI` hot path; careful, atomic edits required with tests after each change.
+- `src/core/ai/steering.ts`, `src/core/ai/intent.ts`, `src/core/ai/targeting.ts` — priority targets for math/sqrt/hypot reductions.
+- `src/utils/vector3.ts` and `src/core/spatial.*` — geometry helpers and spatial queries.
 
-## Development & Run Quick-links
+Conventions & safety
+- Edit only TypeScript under `src/` (do not edit `dist/` or built artifacts).
+- Preserve determinism: use the seeded RNG utilities when needed and avoid non-deterministic operations in simulation code paths.
+- Keep changes atomic and test-driven: run unit tests and typecheck after each change.
 
-- [Quick Start (README)](README.md#-quick-start): Install, serve, build and test commands.
-- [Dev Server script (package.json -> serve)](package.json#L1): Use `npm run serve` to host a local server for development.
+Where to start for common tasks
+- Add/adjust AI behavior: `src/core/ai/*` + tests in `test/vitest/ai-*.spec.ts`.
+- Fix a failing test: run `npx vitest` and open the failing test file under `test/vitest/`.
+- Performance micro-optimizations: search for `Math.hypot`/`Math.sqrt` in `src/core/ai/` and replace with squared-distance gating where safe.
 
-## Auxiliary & Governance
+Governance & notes
+- Maintainer: `deadronos` — main branch is `main`, active development on `dev`.
+- Follow the repository's Copilot/agent guidance in `.github/copilot-instructions.md` for automated edits.
 
-- [AGENTS.md](AGENTS.md): Notes about agents used in the project.
-- [.github/copilot-instructions.md](.github/copilot-instructions.md): Guidance for automated code assistance.
-- [LICENSE.MD](LICENSE.MD): Project license (MIT).
-
-## Files to Ignore for LLMs
-
-- Build artifacts, test-output folders, node_modules, and temporary runtime files are omitted on purpose. See .gitignore for details.
-
----
-
-If you need more detail on any section, open the linked file(s). This llms.txt aims to give LLMs and contributors a prioritized path to the repository's authoritative documents and source-code entry points.
+If you need a tailored quickstart or a minimal patch (tests + typecheck run), open an issue or ask for an automated change.

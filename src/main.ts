@@ -23,7 +23,6 @@ import type { GameState, UIElements, ShipClass } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
-import { loadGLTF } from './core/assetLoader.js';
 import { CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
 // DefaultSimConfig not used here; keep config imports minimal to avoid unused-import ESLint errors
@@ -79,39 +78,51 @@ function initGame(seed?: string) {
   // Ensure there is an asset pool for GLTFs and textures
   state.assetPool = new Map<string, unknown>();
 
-  // Initialize SVG loader and preload ship SVGs
-  const svgLoader = getSVGLoader();
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
+  const gltfModeEnabled = !!((RendererConfig as any)?.loadGltfModels);
+  const svgDisabled = !!((RendererConfig as any)?.disableSvgSubsystem);
 
-  // Preload SVG assets with change detection enabled
-  (async () => {
-    try {
-      logger.debug('[main.ts] Preloading SVG assets with change detection...');
+  // Preload SVG assets and construct the SVG loader only when GLTF model loading is disabled.
+  // This avoids creating the raster worker and warming the asset pool when using GLTF prototypes.
+  let svgLoader: ReturnType<typeof getSVGLoader> | undefined;
+  if (!gltfModeEnabled && !svgDisabled) {
+    svgLoader = getSVGLoader();
+    (async () => {
+      try {
+        logger.debug('[main.ts] Preloading SVG assets with change detection...');
 
-      for (const svgUrl of shipSVGUrls) {
-        try {
-          // Load SVG with rasterization
-          const asset = await loadSVGAsset(svgUrl, {
-            width: defaultSVGConfig.defaultRasterSize.width,
-            height: defaultSVGConfig.defaultRasterSize.height,
-            enableWatching: defaultSVGConfig.cache.enableFileWatching
-          });
+        for (const svgUrl of shipSVGUrls) {
+          try {
+            // Load SVG with rasterization
+            const asset = await loadSVGAsset(svgUrl, {
+              width: defaultSVGConfig.defaultRasterSize.width,
+              height: defaultSVGConfig.defaultRasterSize.height,
+              enableWatching: defaultSVGConfig.cache.enableFileWatching
+            });
 
-          // Store in asset pool for renderer access
-          state.assetPool!.set(svgUrl, asset);
+            // Store in asset pool for renderer access
+            state.assetPool!.set(svgUrl, asset);
 
-          logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
-        } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
+            logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
+          } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
+          }
         }
-      }
 
-      logger.debug('[main.ts] SVG asset preloading complete');
+        logger.debug('[main.ts] SVG asset preloading complete');
       } catch (_error) { void _error;logger.error('[main.ts] Error during SVG asset preloading:', _error);
-    }
-  })();
+      }
+    })();
+  } else {
+    logger.debug('[main.ts] Skipping SVG preload because GLTF mode or SVG subsystem disabled');
+  }
   (window as any).debugSVG = {
-    // Get SVG loader stats
+    // Get SVG loader stats (no-op when GLTF mode enabled)
     getStats: () => {
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; SVG loader stats are disabled');
+        return { cachedAssets: 0 } as any;
+      }
+      if (!svgLoader) return { cachedAssets: 0 } as any;
       const stats = svgLoader.getCacheStats();
       logger.debug('[SVG Debug] Cache stats:', stats);
       return stats;
@@ -119,6 +130,11 @@ function initGame(seed?: string) {
 
     // Manually reload all SVG assets
     reloadAll: async () => {
+  if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
+        return;
+      }
+      if (!svgLoader) return;
       logger.debug('[SVG Debug] Manually reloading all SVG assets...');
       try {
         await svgLoader.reloadAllAssets();
@@ -129,14 +145,24 @@ function initGame(seed?: string) {
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; clearCache is a no-op');
+        return;
+      }
       logger.debug('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
-      svgLoader.clearCache(assetUrl);
+  svgLoader?.clearCache(assetUrl);
       logger.debug('[SVG Debug] SVG cache cleared');
     },
 
     // List cached assets
     listCached: () => {
-      const assets = Array.from(svgLoader.getCacheStats().cachedAssets > 0 ? 'assets cached' : []);
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; no cached SVG assets');
+        return [];
+      }
+      if (!svgLoader) return [];
+      const stats = svgLoader.getCacheStats();
+      const assets = Array.from(stats && stats.cachedAssets > 0 ? 'assets cached' : []);
       logger.debug('[SVG Debug] Cached SVG assets:', assets);
       return assets;
     }
@@ -144,6 +170,26 @@ function initGame(seed?: string) {
 
   logger.debug('[main.ts] SVG debugging functions available at window.debugSVG');
   logger.debug('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
+
+  // Expose lightweight debug helpers for quick console testing
+  (window as any).__appDebug = {
+    getState: () => state,
+    listAssetPool: () => Array.from((state.assetPool ?? new Map()).keys()),
+    getAsset: (k: string) => (state.assetPool as Map<string, unknown>)?.get(k),
+    // lazy loader wrappers to avoid bundling load-only code paths unless used
+    preloadSingleShip: async (cls: string, team = 'red') => {
+      try {
+        const mod = await import('./core/shipModelLoader.js');
+        return (mod.preloadSingleShip as any)(state, cls, team);
+      } catch (err) { console.warn('preloadSingleShip failed', err); return null; }
+    },
+    preloadShipModels: async () => {
+      try {
+        const mod = await import('./core/shipModelLoader.js');
+        return (mod.preloadShipModels as any)(state, ['red','blue']);
+      } catch (err) { console.warn('preloadShipModels failed', err); return null; }
+    }
+  } as any;
 
   // Optionally preload common ship assets into the pool (config-driven)
   // Optionally preload common ship assets into the pool (config-driven)
@@ -156,17 +202,16 @@ function initGame(seed?: string) {
         return;
       }
 
-      const classes: string[] = ['fighter','corvette','frigate','destroyer','carrier'];
-      for (const cls of classes) {
-        const url = `/assets/models/ship-${cls}.gltf`;
-        // Attempt to load; if not present, loader will fail silently
-        try {
-          const res = await loadGLTF(state, url);
-          if (state.assetPool) {
-            state.assetPool.set(`ship-${cls}-red`, res);
-            state.assetPool.set(`ship-${cls}-blue`, res);
-          }
-        } catch (_e) { void _e;/* ignore missing assets */ }
+      // Use the centralized ship model map and loader to preload models
+      try {
+        // Defer to preloadShipModels which reads `src/config/shipModelMap.ts`
+        // and stores protos under keys like `ship-<class>-<team>` in state.assetPool.
+        // This allows model file paths to live in the repository (e.g. src/config/assets/gltf)
+        const { preloadShipModels } = await import('./core/shipModelLoader.js');
+        await preloadShipModels(state, ['red','blue']);
+      } catch (err) {
+        // Keep graceful failure behavior
+        console.warn('[main.ts] preloadShipModels failed:', err);
       }
     } catch (_e) { void _e;/* ignore */ }
   })();
@@ -175,11 +220,25 @@ function initGame(seed?: string) {
   (async () => {
     try {
     // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-  const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
-      let ready = false;
-      let lastShipDataVersion = -1;
-      
-      w.addEventListener('message', (ev) => {
+  const useSimWorker = (RendererConfig as any)?.useSimWorker ?? true;
+  let w: Worker | null = null;
+  // If the config opts out of creating a sim worker, run the physics stepper in-thread immediately
+  if (!useSimWorker) {
+    console.debug('[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false); using in-thread physics');
+    try {
+      const ps = await createPhysicsStepper(state as any);
+      (state as any).physicsStepper = ps;
+    } catch (ee) { void ee; /* ignore and continue */ }
+    return; // no worker setup required
+  }
+
+  // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+  w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+  let ready = false;
+  let lastShipDataVersion = -1;
+
+  if (w) {
+    w.addEventListener('message', (ev) => {
         const data = ev.data || {};
         const type = data.type;
         // Perf events from simWorker
@@ -234,7 +293,7 @@ function initGame(seed?: string) {
         }
       });
       
-      w.postMessage({ type: 'init-physics' });
+  w.postMessage({ type: 'init-physics' });
 
       // Expose a small shim for callers that expects physicsStepper API
       (state as any).physicsStepper = {
@@ -268,9 +327,10 @@ function initGame(seed?: string) {
         dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (_e) { void _e;/* ignore */ } },
       };
 
-      // Wait a short time for readiness, then mark initDone if ready
-      setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
-    } catch (_e) { void _e;// Fallback to in-process physics stepper
+  // Wait a short time for readiness, then mark initDone if ready
+  setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
+  }
+  } catch (_e) { void _e;// Fallback to in-process physics stepper
       try {
         const ps = await createPhysicsStepper(state as any);
         (state as any).physicsStepper = ps;
@@ -421,11 +481,10 @@ function updateCinematicCamera(state: GameState, dt: number) {
   const centerZ = (redCenterZ + blueCenterZ) / 2;
 
   // Calculate distance between fleets for optimal zoom
-  const fleetDistance = Math.sqrt(
-    Math.pow(redCenterX - blueCenterX, 2) +
-    Math.pow(redCenterY - blueCenterY, 2) +
-    Math.pow(redCenterZ - blueCenterZ, 2)
-  );
+  const dxF = redCenterX - blueCenterX;
+  const dyF = redCenterY - blueCenterY;
+  const dzF = redCenterZ - blueCenterZ;
+  const fleetDistance = Math.sqrt(dxF * dxF + dyF * dyF + dzF * dzF);
 
   // Calculate optimal camera distance (show both fleets with some margin)
   const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
@@ -568,8 +627,10 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     let fx = Math.cos(yaw) * Math.cos(pitch);
     let fy = Math.sin(pitch);
     let fz = Math.sin(yaw) * Math.cos(pitch);
-    const fl = Math.hypot(fx, fy, fz) || 1;
-    fx /= fl; fy /= fl; fz /= fl;
+  // Compute squared length and do a single sqrt for normalization (avoid Math.hypot allocation)
+  const flSq = fx * fx + fy * fy + fz * fz;
+  const fl = Math.sqrt(flSq) || 1;
+  fx /= fl; fy /= fl; fz /= fl;
   // The spherical coords above describe the camera position offset from the target.
   // The camera's forward vector (where it looks) points from the camera into the scene -
   // i.e., from camera position toward the target, which is the negative of the offset.
@@ -581,15 +642,17 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     let rx = fy * upWorldZ - fz * upWorldY; // fy*0 - fz*1 = -fz
     let ry = fz * upWorldX - fx * upWorldZ; // fz*0 - fx*0 = 0
     let rz = fx * upWorldY - fy * upWorldX; // fx*1 - fy*0 = fx
-    const rl = Math.hypot(rx, ry, rz) || 1;
-    rx /= rl; ry /= rl; rz /= rl;
+  const rlSq = rx * rx + ry * ry + rz * rz;
+  const rl = Math.sqrt(rlSq) || 1;
+  rx /= rl; ry /= rl; rz /= rl;
 
     // Up (camera-up) = normalize(cross(right, forward))
     let ux = ry * fz - rz * fy;
     let uy = rz * fx - rx * fz;
     let uz = rx * fy - ry * fx;
-    const ul = Math.hypot(ux, uy, uz) || 1;
-    ux /= ul; uy /= ul; uz /= ul;
+  const ulSq = ux * ux + uy * uy + uz * uz;
+  const ul = Math.sqrt(ulSq) || 1;
+  ux /= ul; uy /= ul; uz /= ul;
 
   // Compose movement in world space: forward is along camera forward vector
   const worldMoveX = moveRight * rx + moveUp * upWorldX + moveForward * fx;

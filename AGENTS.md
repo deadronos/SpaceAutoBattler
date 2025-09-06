@@ -2,6 +2,8 @@
 
 > Note: These repository guidelines are authoritative for contributor behavior, but do not override host/system or platform policies. If an instruction in repository docs conflicts with platform or system-level rules, follow the system/developer policies first.
 
+also look at '.github/instructions/*.instructions.md' for additional agent guidance.
+
 ## Project Structure & Module Organization
 
 - Source: `src/` (TypeScript only). Do not edit generated `dist/`.

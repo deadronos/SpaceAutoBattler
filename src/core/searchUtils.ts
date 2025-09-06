@@ -5,11 +5,15 @@ import type { GameState, Ship, Vector3 } from '../types/index.js';
  * These prefer the spatial grid when available, but fall back to linear
  * searches so behavior is consistent regardless of configuration.
  */
-export function getDistance(a: Vector3, b: Vector3): number {
+export function distanceSq(a: Vector3, b: Vector3): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   const dz = a.z - b.z;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  return dx * dx + dy * dy + dz * dz;
+}
+
+export function getDistance(a: Vector3, b: Vector3): number {
+  return Math.sqrt(distanceSq(a, b));
 }
 
 function ensureSpatialGridPopulated(state: GameState) {
@@ -67,8 +71,8 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
   let bestD = Infinity;
   for (const s of state.ships) {
     if (s.team === ship.team || s.health <= 0) continue;
-    const d = getDistance(ship.pos, s.pos);
-    if (d < bestD) { bestD = d; best = s; }
+    const d2 = distanceSq(ship.pos, s.pos);
+    if (d2 < bestD * bestD) { bestD = Math.sqrt(d2); best = s; }
   }
   searchCache.nearest.set(ship.id, { frame, targetId: best?.id ?? null });
   return best;
@@ -84,16 +88,27 @@ export function findNearbyEnemies(state: GameState, ship: Ship, range: number): 
         if (s && s.health > 0) out.push(s);
       }
     });
-    return out.sort((a, b) => getDistance(ship.pos, a.pos) - getDistance(ship.pos, b.pos));
+    // Sort using squared distances to avoid expensive Math.sqrt calls
+    return out.sort((a, b) => {
+      const dax = a.pos.x - ship.pos.x, day = a.pos.y - ship.pos.y, daz = a.pos.z - ship.pos.z;
+      const dbx = b.pos.x - ship.pos.x, dby = b.pos.y - ship.pos.y, dbz = b.pos.z - ship.pos.z;
+      return (dax*dax + day*day + daz*daz) - (dbx*dbx + dby*dby + dbz*dbz);
+    });
   }
 
   const enemies: Ship[] = [];
+  const rangeSq = range * range;
   for (const s of state.ships) {
     if (s.team === ship.team || s.health <= 0) continue;
-    const d = getDistance(ship.pos, s.pos);
-    if (d <= range) enemies.push(s);
+    const d2 = distanceSq(ship.pos, s.pos);
+    if (d2 <= rangeSq) enemies.push(s);
   }
-  return enemies.sort((a, b) => getDistance(ship.pos, a.pos) - getDistance(ship.pos, b.pos));
+  // Sort using squared distances
+  return enemies.sort((a, b) => {
+    const dax = a.pos.x - ship.pos.x, day = a.pos.y - ship.pos.y, daz = a.pos.z - ship.pos.z;
+    const dbx = b.pos.x - ship.pos.x, dby = b.pos.y - ship.pos.y, dbz = b.pos.z - ship.pos.z;
+    return (dax*dax + day*day + daz*daz) - (dbx*dbx + dby*dby + dbz*dbz);
+  });
 }
 
 // Grouped k-nearest queries per cell for callers that need many per frame.
@@ -161,10 +176,11 @@ export function findNearbyFriends(state: GameState, ship: Ship, range: number): 
   }
 
   const friends: Ship[] = [];
+  const rangeSq = range * range;
   for (const s of state.ships) {
     if (s.team !== ship.team || s.health <= 0 || s.id === ship.id) continue;
-    const d = getDistance(ship.pos, s.pos);
-    if (d <= range) friends.push(s);
+    const d2 = distanceSq(ship.pos, s.pos);
+    if (d2 <= rangeSq) friends.push(s);
   }
   return friends;
 }
@@ -175,11 +191,12 @@ export function findNearbyFriends(state: GameState, ship: Ship, range: number): 
  * query is not desired.
  */
 export function getNearbySeparationShipsLinear(state: GameState, ship: Ship, separationDistance: number): Ship[] {
-  const nearby: Ship[] = [];
-  for (const other of state.ships) {
-    if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
-    const dist = getDistance(ship.pos, other.pos);
-    if (dist > 0 && dist < separationDistance) nearby.push(other);
-  }
+    const nearby: Ship[] = [];
+    const sepSq = separationDistance * separationDistance;
+    for (const other of state.ships) {
+      if (other.team !== ship.team || other.health <= 0 || other.id === ship.id) continue;
+      const d2 = distanceSq(ship.pos, other.pos);
+      if (d2 > 0 && d2 < sepSq) nearby.push(other);
+    }
   return nearby;
 }

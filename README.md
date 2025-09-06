@@ -1,4 +1,4 @@
-# SpaceAutoBattler
+﻿# SpaceAutoBattler
 
 ![Gameplay preview](VideoCapture.gif)
 
@@ -22,14 +22,14 @@ Open the local server at [http://localhost:8080](http://localhost:8080) (or the 
 
 Edit TypeScript sources in `src/` only. Key folders:
 
-- `src/main.ts` — application entry and main loop
-- `src/simWorker.ts` — deterministic physics worker (Rapier3D)
-- `src/core/` — pure game logic, AI, entity management (simulation)
-- `src/renderer/` — Three.js renderer, scene and effects
-- `src/config/` — balance and behaviour configuration (entities, AI, sim, renderer)
-- `src/types/` — canonical types including `GameState`
-- `src/utils/` — seeded RNG and shared helpers
-- `src/styles/` and `src/ui.html` — minimal UI/front-end glue
+- `src/main.ts` â€” application entry and main loop
+- `src/simWorker.ts` â€” deterministic physics worker (Rapier3D)
+- `src/core/` â€” pure game logic, AI, entity management (simulation)
+- `src/renderer/` â€” Three.js renderer, scene and effects
+- `src/config/` â€” balance and behaviour configuration (entities, AI, sim, renderer)
+- `src/types/` â€” canonical types including `GameState`
+- `src/utils/` â€” seeded RNG and shared helpers
+- `src/styles/` and `src/ui.html` â€” minimal UI/front-end glue
 
 Build artifacts and generated files live in `dist/` (do not edit).
 
@@ -72,7 +72,7 @@ npm run typecheck; npm test
 ## Codebase notes (#codebase)
 
 - `llms.txt` and a `docs/` folder were added to help contributors and automated tools discover entry points and developer notes.
-- Public helpers and stable APIs live under `src/core` and `src/types` — prefer configuration-driven interfaces (`src/config/*`) when adding or changing behavior.
+- Public helpers and stable APIs live under `src/core` and `src/types` â€” prefer configuration-driven interfaces (`src/config/*`) when adding or changing behavior.
 - The project preserves determinism: runtime randomness uses the seeded RNG in `src/utils/rng.ts` and `GameState` is the canonical runtime state (see `src/types/index.ts`).
 
 Proposed small improvements (low-risk):
@@ -92,4 +92,5 @@ Fork the repository, create a feature branch, add tests, and open a pull request
 
 ## License
 
-MIT — see `LICENSE.MD`.
+MIT â€” see `LICENSE.MD`.
+

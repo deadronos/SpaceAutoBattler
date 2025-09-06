@@ -220,29 +220,59 @@ class ShipInstancerImpl {
   try {
     if (!this.prototypeRegistry.has(className) && state && state.assetPool) {
       try {
-    const svgUrl = getShipSVGUrl(className, defaultSVGConfig);
-  const asset = state.assetPool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
-  if (asset && asset.imageBitmap) {
-              // Build lightweight geometries/materials similar to meshFactory
+        // Prefer glTF prototype if present in the asset pool
+        const gltfKeyTeam = `ship-${className}-${team}`;
+        const gltfKey = `ship-${className}`;
+        const gltfProto = state.assetPool.get(gltfKeyTeam) ?? state.assetPool.get(gltfKey);
+        if (gltfProto && typeof gltfProto === 'object') {
+          try {
+            // If the loader extracted threePrototypes (geometries/materials), use them directly.
+            const tp = (gltfProto as unknown as { threePrototypes?: { geometries?: unknown[]; materials?: unknown[] } }).threePrototypes;
+            if (tp && Array.isArray(tp.geometries) && Array.isArray(tp.materials) && tp.geometries.length > 0) {
+              // Clone to avoid shared mutable state; use unknown guards to satisfy linter
+              const clonedGeoms = tp.geometries.map((g: unknown) => {
+                try { const c = g as unknown as { clone?: (...args: unknown[]) => unknown }; if (g && typeof c.clone === 'function') return c.clone(); } catch (_e) { void _e; }
+                return g as unknown;
+              });
+              const clonedMats = tp.materials.map((m: unknown) => {
+                try { const c = m as unknown as { clone?: (...args: unknown[]) => unknown }; if (m && typeof c.clone === 'function') return c.clone(); } catch (_e) { void _e; }
+                return m as unknown;
+              });
+              this.registerPrototype(className, clonedGeoms as unknown as THREE.BufferGeometry[], clonedMats as unknown as THREE.Material[]);
+            } else if ('gltf' in Object(gltfProto)) {
+              // No pre-extracted prototypes but we have a raw glTF; fall back to a lightweight marker geometry so allocation can proceed.
               const size = (ShipVisualConfig.ships as Partial<Record<string, { collisionRadius: number }>>)[className]?.collisionRadius ?? 16;
-              const tex = new THREE.Texture(asset.imageBitmap);
-              tex.needsUpdate = true;
-              tex.generateMipmaps = false;
-              tex.minFilter = THREE.LinearFilter;
-              tex.magFilter = THREE.LinearFilter;
-              const texturedMaterial = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
-              const teamMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, side: THREE.DoubleSide });
               const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
-              const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
-              const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
-              const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
-              const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
-              const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
-              const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
-              const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
-              this.registerPrototype(className, geoms, mats);
+              const mat = new THREE.MeshStandardMaterial({ color: 0x9999ff });
+              this.registerPrototype(className, [bodyGeometry], [mat]);
             }
           } catch (_e) { void _e; }
+        } else {
+          // No glTF proto; fallback to existing SVG rasterization path if available
+          const svgUrl = getShipSVGUrl(className, defaultSVGConfig);
+          const asset = state.assetPool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
+          if (asset && asset.imageBitmap) {
+            // Build lightweight geometries/materials similar to meshFactory
+            const size = (ShipVisualConfig.ships as Partial<Record<string, { collisionRadius: number }>>)[className]?.collisionRadius ?? 16;
+            const tex = new THREE.Texture(asset.imageBitmap);
+            tex.needsUpdate = true;
+            tex.generateMipmaps = false;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            const texturedMaterial = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
+            const teamMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, side: THREE.DoubleSide });
+            const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
+            const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
+            const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
+            const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
+            const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+            const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+            const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
+            const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
+            this.registerPrototype(className, geoms, mats);
+          }
+        }
+      } catch (_e) { void _e; }
         }
       } catch (_e) { void _e; }
   group = this.createGroup(className, team);
