@@ -548,11 +548,23 @@ export class AIController {
   public previewDecisionEngineEvade(ship: Ship) {
     const settings = this.state.behaviorConfig!.globalSettings;
     const nearest = findNearestEnemy(this.state, ship);
-    const distanceToThreat = nearest ? Math.sqrt(
-      Math.pow(nearest.pos.x - ship.pos.x, 2) +
-      Math.pow(nearest.pos.y - ship.pos.y, 2) +
-      Math.pow(nearest.pos.z - ship.pos.z, 2)
-    ) : null;
+    // Compute squared distance to avoid Math.sqrt in hot path. Only compute
+    // the real distance when we need to pass a numeric value to the scoring
+    // helper (i.e. when inside the safety threshold) to preserve behavior.
+    let distanceToThreat: number | null = null;
+    if (nearest) {
+      const dx = nearest.pos.x - ship.pos.x;
+      const dy = nearest.pos.y - ship.pos.y;
+      const dz = nearest.pos.z - ship.pos.z;
+      const distSq = dx * dx + dy * dy + dz * dz;
+      const threshold = (settings.minimumSafeDistance * settings.closeRangeMultiplier);
+      if (distSq < threshold * threshold) {
+        distanceToThreat = Math.sqrt(distSq);
+      } else {
+        // Keep null when outside threshold so scoreEvade treats it as non-immediate
+        distanceToThreat = null;
+      }
+    }
     const recentDamage = ship.aiState?.recentDamage ?? 0;
     const withinWindow = (this.state.time - (ship.aiState?.lastDamageTime ?? 0)) <= settings.evadeRecentDamageWindowSeconds;
     const score = deScoreEvade({

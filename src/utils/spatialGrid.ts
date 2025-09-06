@@ -453,8 +453,11 @@ export class SpatialGrid {
       // Avoid normalizing every candidate: dot(u, v/|v|) = dot(u,v)/|v|
       if (distSq === 0) return;
       const dotUV = dirX * dx + dirY * dy + dirZ * dz;
-      const threshold = cosHalfAngle * Math.sqrt(distSq);
-      if (dotUV >= threshold) results.push(entity);
+      // Compare squared values to avoid Math.sqrt: (dotUV/|v|) >= cosHalfAngle
+      // => dotUV^2 >= cosHalfAngle^2 * distSq
+      const lhs = dotUV * dotUV;
+      const rhs = cosHalfAngle * cosHalfAngle * distSq;
+      if (lhs >= rhs) results.push(entity);
     });
     
     return results;

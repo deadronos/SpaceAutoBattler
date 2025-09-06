@@ -123,6 +123,13 @@ export function magnitude(v: Vector3): number {
 }
 
 /**
+ * Squared magnitude (length squared) — useful for threshold comparisons
+ */
+export function magnitudeSq(v: Vector3): number {
+  return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+/**
  * Normalize vector
  */
 export function normalize(v: Vector3): Vector3 {

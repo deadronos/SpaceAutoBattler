@@ -22,9 +22,13 @@ export function calculateEscapeScore(
     const dx = targetPos.x - t.x;
     const dy = targetPos.y - t.y;
     const dz = targetPos.z - t.z;
-    const dist = Math.hypot(dx, dy, dz);
-    const threatPenalty = Math.max(0, 200 - dist) * settings.evadeThreatPenaltyWeight;
-    score -= threatPenalty;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    // Only compute actual distance when inside the penalty radius to avoid sqrt
+    if (distSq < 200 * 200) {
+      const dist = Math.sqrt(distSq);
+      const threatPenalty = Math.max(0, 200 - dist) * settings.evadeThreatPenaltyWeight;
+      score -= threatPenalty;
+    }
   }
 
   // Boundary penalties
@@ -42,12 +46,15 @@ export function calculateEscapeScore(
     const cdx = shipPos.x - t.x;
     const cdy = shipPos.y - t.y;
     const cdz = shipPos.z - t.z;
-    const currentDistance = Math.hypot(cdx, cdy, cdz);
     const ndx = targetPos.x - t.x;
     const ndy = targetPos.y - t.y;
     const ndz = targetPos.z - t.z;
-    const newDistance = Math.hypot(ndx, ndy, ndz);
-    if (newDistance > currentDistance) {
+    const currentDistSq = cdx * cdx + cdy * cdy + cdz * cdz;
+    const newDistSq = ndx * ndx + ndy * ndy + ndz * ndz;
+    if (newDistSq > currentDistSq) {
+      // compute sqrt difference only when beneficial
+      const currentDistance = Math.sqrt(currentDistSq);
+      const newDistance = Math.sqrt(newDistSq);
       score += (newDistance - currentDistance) * settings.evadeDistanceImprovementWeight;
     }
   }
@@ -57,8 +64,10 @@ export function calculateEscapeScore(
     const dx = targetPos.x - f.x;
     const dy = targetPos.y - f.y;
     const dz = targetPos.z - f.z;
-    const dist = Math.hypot(dx, dy, dz);
-    if (dist < settings.friendlyAvoidanceDistance) {
+    const distSq = dx * dx + dy * dy + dz * dz;
+    const thresholdSq = settings.friendlyAvoidanceDistance * settings.friendlyAvoidanceDistance;
+    if (distSq < thresholdSq) {
+      const dist = Math.sqrt(distSq);
       score -= (settings.friendlyAvoidanceDistance - dist) * settings.evadeFriendlyPenaltyWeight;
     }
   }
@@ -84,9 +93,13 @@ export function moveTowards(
   const dx = targetPos.x - ship.pos.x;
   const dy = targetPos.y - ship.pos.y;
   const dz = targetPos.z - ship.pos.z;
-  const distance = Math.hypot(dx, dy, dz);
-  if (distance <= settings.movementCloseEnoughThreshold && !ignoreCloseEnough) {
-    if (DEBUG_AI) console.error(`AI-DEBUG moveTowards early-return distance=${distance.toFixed(3)} threshold=${settings.movementCloseEnoughThreshold} ignoreCloseEnough=${!!ignoreCloseEnough}`);
+  const distanceSq = dx * dx + dy * dy + dz * dz;
+  const thresholdSq = settings.movementCloseEnoughThreshold * settings.movementCloseEnoughThreshold;
+  if (distanceSq <= thresholdSq && !ignoreCloseEnough) {
+    if (DEBUG_AI) {
+      const distance = Math.sqrt(distanceSq);
+      console.error(`AI-DEBUG moveTowards early-return distance=${distance.toFixed(3)} threshold=${settings.movementCloseEnoughThreshold} ignoreCloseEnough=${!!ignoreCloseEnough}`);
+    }
     return;
   }
 
@@ -110,7 +123,10 @@ export function moveTowards(
   // Advance velocity and position using PhysicsConfig
   const forward = getForwardVector(ship.orientation.pitch, ship.orientation.yaw);
   const accel = moveSpeed * PhysicsConfig.acceleration.forwardMultiplier;
-  if (DEBUG_AI) console.error(`AI-DEBUG moveTowards ship=${ship.id} distance=${distance.toFixed(6)} moveSpeed=${moveSpeed} accel=${accel.toFixed(6)} dt=${dt.toFixed(6)} forward=${forward.x.toFixed(6)},${forward.y.toFixed(6)},${forward.z.toFixed(6)}`);
+  if (DEBUG_AI) {
+    const distance = Math.sqrt(distanceSq);
+    console.error(`AI-DEBUG moveTowards ship=${ship.id} distance=${distance.toFixed(6)} moveSpeed=${moveSpeed} accel=${accel.toFixed(6)} dt=${dt.toFixed(6)} forward=${forward.x.toFixed(6)},${forward.y.toFixed(6)},${forward.z.toFixed(6)}`);
+  }
   const deltaX = forward.x * accel * dt;
   const deltaY = forward.y * accel * dt;
   const deltaZ = forward.z * accel * dt;
@@ -124,8 +140,9 @@ export function moveTowards(
   ship.vel.z *= PhysicsConfig.speed.dampingFactor;
 
   const maxV = moveSpeed * PhysicsConfig.speed.maxSpeedMultiplier;
-  const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
-  if (v > maxV && v > 0) {
+  const vSq = ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z;
+  if (vSq > maxV * maxV && vSq > 0) {
+    const v = Math.sqrt(vSq);
     ship.vel.x = (ship.vel.x / v) * maxV;
     ship.vel.y = (ship.vel.y / v) * maxV;
     ship.vel.z = (ship.vel.z / v) * maxV;
@@ -154,8 +171,9 @@ export function applyBoundarySteer(ship: Ship, bounds: SimBounds, margin: number
   if (ship.pos.z < margin) sz += 1 - (ship.pos.z / margin);
   else if (ship.pos.z > bounds.depth - margin) sz -= 1 - ((bounds.depth - ship.pos.z) / margin);
 
-  const mag = Math.hypot(sx, sy, sz);
-  if (mag <= 0) return;
+  const magSq = sx * sx + sy * sy + sz * sz;
+  if (magSq <= 0) return;
+  const mag = Math.sqrt(magSq);
   const nx = sx / mag, ny = sy / mag, nz = sz / mag;
   // Apply as small acceleration scaled by ship.speed, configured strength and dt
   const accel = ship.speed * strength;
@@ -185,7 +203,7 @@ export function calculateSeparationForceWithCount(
     const distSq = dx * dx + dy * dy + dz * dz;
     if (distSq > 0 && distSq < sepDistSq) {
       // accumulate vector pointing away from neighbor, weighted by proximity
-      const inv = 1 / Math.sqrt(distSq);
+    const inv = 1 / Math.sqrt(distSq);
       sx += (dx * inv);
       sy += (dy * inv);
       sz += (dz * inv);
@@ -217,8 +235,9 @@ export function calculateSeparationForceWithCount(
     const rx = shipPos.x - cx;
     const ry = shipPos.y - cy;
     const rz = shipPos.z - cz;
-    const rmag = Math.hypot(rx, ry, rz);
-    if (rmag > magnitudeThreshold) {
+    const rmagSq = rx * rx + ry * ry + rz * rz;
+    if (rmagSq > magnitudeThreshold * magnitudeThreshold) {
+      const rmag = Math.sqrt(rmagSq);
       return { force: { x: rx / rmag, y: ry / rmag, z: rz / rmag }, neighborCount: count };
     }
   }

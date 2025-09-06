@@ -179,11 +179,14 @@ export class SpatialGridAdapter implements SpatialIndex {
       z: (aabb.min.z + aabb.max.z) / 2,
     };
     
-    // Use diagonal distance to ensure we capture all possible entities
-    const dx = aabb.max.x - aabb.min.x;
-    const dy = aabb.max.y - aabb.min.y;
-    const dz = aabb.max.z - aabb.min.z;
-    const searchRadius = Math.sqrt(dx*dx + dy*dy + dz*dz) / 2 + 50; // Add buffer for entity radius
+  // Use diagonal distance to ensure we capture all possible entities
+  const dx = aabb.max.x - aabb.min.x;
+  const dy = aabb.max.y - aabb.min.y;
+  const dz = aabb.max.z - aabb.min.z;
+  // Avoid sqrt: compare squared distances. We still need a radius value for the grid query,
+  // so compute squared diagonal and then take sqrt once to produce a radius (infrequent).
+  const diagSq = dx * dx + dy * dy + dz * dz;
+  const searchRadius = Math.sqrt(diagSq) / 2 + 50; // infrequent; keep sqrt here
 
     const entities = this.grid.queryRadius(center, searchRadius);
     for (const entity of entities) {
@@ -229,10 +232,9 @@ export class SpatialGridAdapter implements SpatialIndex {
       const distSq = dx * dx + dy * dy + dz * dz;
 
       if (distSq <= radius * radius) {
+        // We need a true distance and normalized direction for the result. Compute sqrt here.
         const distance = Math.sqrt(distSq);
-        const direction = distance > 0 ? 
-          { x: dx / distance, y: dy / distance, z: dz / distance } :
-          { x: 0, y: 0, z: 0 };
+        const direction = distance > 0 ? { x: dx / distance, y: dy / distance, z: dz / distance } : { x: 0, y: 0, z: 0 };
 
         results.push({ entity, distance, direction });
       }
@@ -250,6 +252,7 @@ export class SpatialGridAdapter implements SpatialIndex {
   const dz = to.z - from.z;
   const rayLengthSq = dx * dx + dy * dy + dz * dz;
   if (rayLengthSq === 0) return results;
+  // We need the ray length and normalized direction for intersection math. Compute once.
   const rayLength = Math.sqrt(rayLengthSq);
   const dirX = dx / rayLength;
   const dirY = dy / rayLength;
@@ -261,7 +264,7 @@ export class SpatialGridAdapter implements SpatialIndex {
       y: (from.y + to.y) / 2,
       z: (from.z + to.z) / 2,
     };
-    const queryRadius = rayLength / 2 + 50; // Add padding for entity radii
+  const queryRadius = rayLength / 2 + 50; // Add padding for entity radii
     
     const entities = this.grid.queryRadius(center, queryRadius);
     
@@ -271,30 +274,26 @@ export class SpatialGridAdapter implements SpatialIndex {
         continue;
       }
 
-      // Simple sphere-ray intersection
+      // Simple sphere-ray intersection using normalized ray direction
       const sphereX = entity.pos.x - from.x;
       const sphereY = entity.pos.y - from.y;
       const sphereZ = entity.pos.z - from.z;
-      
+
       const dot = sphereX * dirX + sphereY * dirY + sphereZ * dirZ;
       if (dot < 0 || dot > rayLength) continue; // Behind ray or beyond end
-      
+
       const closestX = from.x + dirX * dot;
       const closestY = from.y + dirY * dot;
       const closestZ = from.z + dirZ * dot;
-      
+
       const distX = entity.pos.x - closestX;
       const distY = entity.pos.y - closestY;
       const distZ = entity.pos.z - closestZ;
       const distSq = distX * distX + distY * distY + distZ * distZ;
-      
+
       if (distSq <= entity.radius * entity.radius) {
         const t = dot / rayLength;
-        results.push({
-          entityId: entity.id,
-          t,
-          point: { x: closestX, y: closestY, z: closestZ }
-        });
+        results.push({ entityId: entity.id, t, point: { x: closestX, y: closestY, z: closestZ } });
       }
     }
     

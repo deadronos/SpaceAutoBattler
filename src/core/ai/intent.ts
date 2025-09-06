@@ -70,10 +70,14 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
             const dx = turretCandidateLeadPos.x - ship.pos.x;
             const dy = turretCandidateLeadPos.y - ship.pos.y;
             const dz = turretCandidateLeadPos.z - ship.pos.z;
-            const dist = Math.hypot(dx, dy, dz);
+            const distSq = dx * dx + dy * dy + dz * dz;
             const minR = cfg.turretConfig.minimumFireRange;
             const maxR = cfg.turretConfig.maximumFireRange;
-            const inRange = dist >= minR && dist <= maxR;
+            const minRSq = minR * minR;
+            const maxRSq = maxR * maxR;
+            const inRange = distSq >= minRSq && distSq <= maxRSq;
+            // Score needs the real distance (inverse). Compute sqrt only when needed.
+            const dist = distSq > 0 ? Math.sqrt(distSq) : 0;
             const score = (dist > 0 ? 1000 / dist : 0) + ((targetShip.maxHealth - targetShip.health) * 0.1) + ((targetShip.level?.level ?? 0) * 5);
             turretCandidateInRange = inRange;
             turretCandidateScore = score;
@@ -137,23 +141,24 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       // higher than the nearest enemy's score. This makes intent selection
       // observe the same threat prioritization turrets would use.
   let threatShip: Ship | null = null;
-      try {
+  try {
         const nearest = nearestEnemy ?? null;
         if (nearest && turretCandidateId != null && turretCandidateScore != null) {
           // Compute a comparable score for the nearest enemy using the same
           // distance->score formula but using a lead-predicted position if possible.
           let nearestScore: number | null = null;
-    try {
+  try {
       // Safely read optional projectileSpeed without using `any` casts
       const shipProjectile = ((ship as unknown) as { projectileSpeed?: number }).projectileSpeed;
       const cfgProjectile = ((cfg.turretConfig as unknown) as { projectileSpeed?: number }).projectileSpeed;
       const projectileSpeed: number = (typeof shipProjectile === 'number') ? shipProjectile : (typeof cfgProjectile === 'number' ? cfgProjectile : 0);
       const lookahead = cfg.globalSettings.maxInterceptLookahead ?? cfg.turretConfig.leadPredictionTime ?? 0.5;
       const intercept = projectileSpeed > 0 ? computeInterceptPoint(ship.pos, projectileSpeed, nearest.pos, nearest.vel, lookahead) : null;
-            const leadPos = intercept ?? { x: nearest.pos.x + (nearest.vel?.x ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5), y: nearest.pos.y + (nearest.vel?.y ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5), z: nearest.pos.z + (nearest.vel?.z ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5) };
-            const dx = leadPos.x - ship.pos.x; const dy = leadPos.y - ship.pos.y; const dz = leadPos.z - ship.pos.z;
-            const dist = Math.hypot(dx, dy, dz);
-            nearestScore = (dist > 0 ? 1000 / dist : 0) + ((nearest.maxHealth - nearest.health) * 0.1) + ((nearest.level?.level ?? 0) * 5);
+                  const leadPos = intercept ?? { x: nearest.pos.x + (nearest.vel?.x ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5), y: nearest.pos.y + (nearest.vel?.y ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5), z: nearest.pos.z + (nearest.vel?.z ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5) };
+                  const dx = leadPos.x - ship.pos.x; const dy = leadPos.y - ship.pos.y; const dz = leadPos.z - ship.pos.z;
+                  const distSq2 = dx * dx + dy * dy + dz * dz;
+                  const dist2 = distSq2 > 0 ? Math.sqrt(distSq2) : 0;
+                  nearestScore = (dist2 > 0 ? 1000 / dist2 : 0) + ((nearest.maxHealth - nearest.health) * 0.1) + ((nearest.level?.level ?? 0) * 5);
           } catch { nearestScore = null; }
             if (nearestScore == null || (turretCandidateScore ?? 0) > nearestScore) {
             threatShip = state.ships.find(s => s.id === turretCandidateId) ?? null;
@@ -173,7 +178,8 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
         // use it for distance checks so intent sees the same intercept target
         // that turrets would aim at. Fallback to target current position.
     const targetPos = (turretCandidateLeadPos && turretCandidateId === threatShip.id) ? turretCandidateLeadPos : threatShip.pos;
-        const d = Math.hypot(targetPos.x - ship.pos.x, targetPos.y - ship.pos.y, targetPos.z - ship.pos.z);
+        const dx2 = targetPos.x - ship.pos.x; const dy2 = targetPos.y - ship.pos.y; const dz2 = targetPos.z - ship.pos.z;
+        const dSq = dx2 * dx2 + dy2 * dy2 + dz2 * dz2;
       const preferredRange = ship.aiState!.preferredRange ?? cfg.globalSettings.separationDistance;
       // If the turret probe predicted an in-range intercept for this threat, prefer
       // to engage (pursue) even if the raw distance is outside the medium range.
@@ -183,7 +189,8 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       // prefer pursue for close targets even when chooser returned other
       // non-evade intents (group/patrol/explore) so ships don't idle-away from
       // obvious turret threats in tests.
-      if ((turretCandidateInRange && turretCandidateId === threatShip.id && (turretCandidateScore ?? 0) >= TURRET_PURSUE_SCORE_THRESHOLD) || (d < preferredRange * cfg.globalSettings.mediumRangeMultiplier)) {
+  const mediumRangeSq = (preferredRange * cfg.globalSettings.mediumRangeMultiplier) * (preferredRange * cfg.globalSettings.mediumRangeMultiplier);
+  if ((turretCandidateInRange && turretCandidateId === threatShip.id && (turretCandidateScore ?? 0) >= TURRET_PURSUE_SCORE_THRESHOLD) || (dSq < mediumRangeSq)) {
         if (newIntent !== 'evade') newIntent = 'pursue';
       }
       }
@@ -197,7 +204,11 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       }
   if (cfg.globalSettings.useDecisionEngineEvadeGate) {
       const nearest = nearestEnemy ?? findNearestEnemy(state, ship);
-      const distanceToThreat = nearest ? Math.hypot(nearest.pos.x - ship.pos.x, nearest.pos.y - ship.pos.y, nearest.pos.z - ship.pos.z) : null;
+      const distanceToThreat = nearest ? ((): number => {
+        const dx = nearest!.pos.x - ship.pos.x; const dy = nearest!.pos.y - ship.pos.y; const dz = nearest!.pos.z - ship.pos.z;
+        const dSq = dx * dx + dy * dy + dz * dz;
+        return Math.sqrt(dSq);
+      })() : null;
       const score = deScoreEvade({ distanceToThreat, recentDamage, damageEvadeThreshold: cfg.globalSettings.damageEvadeThreshold, withinRecentDamageWindow: withinDamageWindow, settings: cfg.globalSettings });
       // Be slightly more aggressive at close range to satisfy decision-gate tests
       const closeRange = (ship.aiState!.preferredRange ?? cfg.globalSettings.separationDistance) * 0.6;
@@ -221,12 +232,15 @@ export function chooseAggressiveIntent(state: GameState, ship: Ship, personality
   const nearestEnemy = findNearestEnemy(state, ship);
   const preferredRange = ship.aiState!.preferredRange ?? cfg.globalSettings.separationDistance;
   if (nearestEnemy) {
-    const d = Math.hypot(nearestEnemy.pos.x - ship.pos.x, nearestEnemy.pos.y - ship.pos.y, nearestEnemy.pos.z - ship.pos.z);
+  const dx = nearestEnemy.pos.x - ship.pos.x, dy = nearestEnemy.pos.y - ship.pos.y, dz = nearestEnemy.pos.z - ship.pos.z;
+  const dSq = dx * dx + dy * dy + dz * dz;
     const scoutId = cfg.globalSettings.enableScoutBehavior ? getTeamScoutId(state, ship.team) : null;
     const isScout = scoutId != null && scoutId === ship.id;
     const teamUnderAlarm = isTeamUnderAlarm(state, ship.team);
-    if (d < preferredRange * cfg.globalSettings.closeRangeMultiplier) return 'pursue';
-    if (d < preferredRange * cfg.globalSettings.mediumRangeMultiplier) return 'pursue';
+  const closeRangeSq = (preferredRange * cfg.globalSettings.closeRangeMultiplier) * (preferredRange * cfg.globalSettings.closeRangeMultiplier);
+  const mediumRangeSq = (preferredRange * cfg.globalSettings.mediumRangeMultiplier) * (preferredRange * cfg.globalSettings.mediumRangeMultiplier);
+  if (dSq < closeRangeSq) return 'pursue';
+  if (dSq < mediumRangeSq) return 'pursue';
     if (isScout) return 'pursue';
     if (teamUnderAlarm) return 'pursue';
     return state.rng.next() < personality.aggressiveness ? 'pursue' : 'strafe';
@@ -243,9 +257,12 @@ export function chooseDefensiveIntent(state: GameState, ship: Ship, personality:
   const nearestEnemy = findNearestEnemy(state, ship);
   const preferredRange = ship.aiState!.preferredRange ?? cfg.globalSettings.separationDistance;
   if (nearestEnemy) {
-    const d = Math.hypot(nearestEnemy.pos.x - ship.pos.x, nearestEnemy.pos.y - ship.pos.y, nearestEnemy.pos.z - ship.pos.z);
-    if (d < preferredRange * cfg.globalSettings.closeRangeMultiplier) return 'evade';
-    if (d < preferredRange * cfg.globalSettings.mediumRangeMultiplier) return 'strafe';
+  const dx = nearestEnemy.pos.x - ship.pos.x, dy = nearestEnemy.pos.y - ship.pos.y, dz = nearestEnemy.pos.z - ship.pos.z;
+  const dSq = dx * dx + dy * dy + dz * dz;
+  const closeRangeSq = (preferredRange * cfg.globalSettings.closeRangeMultiplier) * (preferredRange * cfg.globalSettings.closeRangeMultiplier);
+  const mediumRangeSq = (preferredRange * cfg.globalSettings.mediumRangeMultiplier) * (preferredRange * cfg.globalSettings.mediumRangeMultiplier);
+  if (dSq < closeRangeSq) return 'evade';
+  if (dSq < mediumRangeSq) return 'strafe';
     return state.rng.next() < personality.caution ? 'evade' : 'group';
   }
   // Without enemies: favor grouping to maintain cohesion

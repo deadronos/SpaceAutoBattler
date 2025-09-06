@@ -118,25 +118,27 @@ export class ProjectileSystem {
     const turretIndex = sourceShip.turrets.indexOf(turret);
     const turretConfig = shipConfig.turrets[turretIndex % shipConfig.turrets.length];
 
-    // Check range
+    // Check range (use squared distance to avoid sqrt in the common out-of-range case)
     const target = intent.leadTargetPos ?? intent.targetPosition;
     const dx = target.x - sourceShip.pos.x;
     const dy = target.y - sourceShip.pos.y;
     const dz = target.z - sourceShip.pos.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const distSq = dx * dx + dy * dy + dz * dz;
+    const range = turretConfig.range;
+    const rangeSq = range * range;
 
-    if (distance > turretConfig.range) {
+    if (distSq > rangeSq) {
       return null;
     }
 
     // Create bullet
     const bulletId = this.allocateId();
-    // Base aim direction (unit)
-    let direction = distance > 0 ? {
-      x: dx / distance,
-      y: dy / distance,
-      z: dz / distance
-    } : { x: 1, y: 0, z: 0 };
+    // Base aim direction (unit) — compute sqrt only when needed for normalization
+    let direction = { x: 1, y: 0, z: 0 };
+    if (distSq > 0) {
+      const distance = Math.sqrt(distSq);
+      direction = { x: dx / distance, y: dy / distance, z: dz / distance };
+    }
 
     // Apply accuracy/spread based on turret config and ship level
     try {
