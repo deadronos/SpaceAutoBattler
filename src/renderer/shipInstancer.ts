@@ -41,6 +41,49 @@ class ShipInstancerImpl {
   private fallbackMaterial?: THREE.MeshStandardMaterial;
 
   private prototypeRegistry = new Map<string, { geometries: THREE.BufferGeometry[]; materials: THREE.Material[] }>();
+  // Expose prototype metadata in a read-only shape for tests and debugging
+  getPrototypeMetadata(className: string) {
+    const entry = this.prototypeRegistry.get(className);
+    if (!entry) return null;
+    return { geometries: entry.geometries.map(g => g), materials: entry.materials.map(m => m) };
+  }
+  /**
+   * Return a richer, serializable view of a registered prototype useful for tests:
+   * - per-submesh geometry vertex counts and attribute names
+   * - per-submesh material type, name, uuid
+   */
+  getPrototypeInfo(className: string) {
+    const entry = this.prototypeRegistry.get(className);
+    if (!entry) return null;
+    try {
+      const subs = entry.geometries.map((geom, i) => {
+        const attrNames: string[] = [];
+        try {
+          const attrs = (geom as unknown as { attributes?: Record<string, unknown> }).attributes;
+          if (attrs) for (const k of Object.keys(attrs)) attrNames.push(k);
+        } catch (_e) { void _e; }
+        const vertexCount = (() => {
+          try {
+            const posAttr = (geom as unknown as { attributes?: { position?: { count?: number } } }).attributes?.position;
+            if (posAttr && typeof posAttr.count === 'number') return posAttr.count;
+          } catch (_e) { void _e; }
+          return -1;
+        })();
+        const mat = entry.materials[i] ?? entry.materials[0];
+        const matInfo = mat ? {
+          type: (mat as unknown as { type?: string }).type ?? 'Material',
+          name: (mat as unknown as { name?: string }).name ?? '',
+          uuid: (mat as unknown as { uuid?: string }).uuid ?? ''
+        } : null;
+        return { vertexCount, attributes: attrNames, material: matInfo };
+      });
+      return { className, submeshes: subs };
+    } catch (_e) { void _e; return null; }
+  }
+  /**
+   * List all registered prototype class names
+   */
+  listPrototypes() { return Array.from(this.prototypeRegistry.keys()); }
   // Helper: patch built-in materials' shaders to read an instanced attribute
   // named `instanceColor` and expose it to the fragment shader as
   // `vInstanceColor` which we multiply into diffuse color.
@@ -572,6 +615,11 @@ export const shipInstancer = {
   cull: (camera: THREE.Camera) => impl.cull(camera),
   dispose: () => impl.dispose(),
   getStats: () => impl.getStats(),
+  // Test helper: read-only view of prototype metadata
+  getPrototypeMetadata: (className: string) => impl.getPrototypeMetadata(className),
+  // Richer inspection helpers for tests
+  getPrototypeInfo: (className: string) => impl.getPrototypeInfo(className),
+  listPrototypes: () => impl.listPrototypes(),
   isReady: () => impl.isReady,
 } as const;
 
