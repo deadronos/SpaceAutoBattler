@@ -228,6 +228,7 @@ class ShipInstancerImpl {
           try {
             // If the loader extracted threePrototypes (geometries/materials), use them directly.
             const tp = (gltfProto as unknown as { threePrototypes?: { geometries?: unknown[]; materials?: unknown[] } }).threePrototypes;
+            
             if (tp && Array.isArray(tp.geometries) && Array.isArray(tp.materials) && tp.geometries.length > 0) {
               // Clone to avoid shared mutable state; use unknown guards to satisfy linter
               const clonedGeoms = tp.geometries.map((g: unknown) => {
@@ -246,7 +247,9 @@ class ShipInstancerImpl {
               const mat = new THREE.MeshStandardMaterial({ color: 0x9999ff });
               this.registerPrototype(className, [bodyGeometry], [mat]);
             }
-          } catch (_e) { void _e; }
+          } catch (_e) { 
+            void _e; /* ignore errors and continue with other fallback paths */
+          }
         } else {
           // No glTF proto; fallback to existing SVG rasterization path if available
           const svgUrl = getShipSVGUrl(className, defaultSVGConfig);
