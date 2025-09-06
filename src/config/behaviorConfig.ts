@@ -342,7 +342,7 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   ,
   // Dynamic switching is disabled by default to preserve existing behavior
   dynamicSwitch: {
-    enabled: false,
+    enabled: true,
     minDuration: 1.0,
     maxDuration: 5.0,
     options: [

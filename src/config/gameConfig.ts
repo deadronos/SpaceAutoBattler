@@ -34,7 +34,7 @@ export const DefaultGameConfig: GameConfig = {
   },
   performance: {
     enableLOD: true,
-    maxParticles: 1000,
+    maxParticles: 10000,
     particleLifetime: 2.0,
   },
 };
