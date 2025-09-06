@@ -187,6 +187,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     z: state.simConfig.simBounds.depth / 2
   };
 
+  let lastSimulatedTime = state.time; // Track last simulated time for interpolation
+  const fixedSimulationDt = 1 / state.simConfig.tickRate; // Fixed timestep for simulation
+
   // Set initial camera position using spherical coordinates
   updateCameraPosition();
 
@@ -1436,7 +1439,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     if (RendererConfig.instancing.enableShips) shipInstancer.markMatricesNeedUpdate();
   }
 
-  function updateTransforms() {
+  function updateTransforms(interpolationFactor: number) {
     // Use simulation time for renderer-driven effects so shader hit timestamps
     // align with game state timestamps like ship.lastShieldHitTime
     const currentTime = state.time;
@@ -1444,17 +1447,22 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
+
+      // Interpolate position and orientation
+      const interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(s.prevPos.x, s.prevPos.y, s.prevPos.z), new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z), interpolationFactor);
+      const interpolatedOrientation = new THREE.Euler().set(s.prevOrientation.pitch, s.prevOrientation.yaw, s.prevOrientation.roll).slerp(new THREE.Euler(s.orientation.pitch, s.orientation.yaw, s.orientation.roll), interpolationFactor);
+
       if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         // Reuse a shared temp quaternion to avoid per-frame allocations
-        tempQuat.setFromEuler(new THREE.Euler(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll));
+        tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
-        shipInstancer.updateTransform(s.id, s.pos, tempQuat, scale);
+        shipInstancer.updateTransform(s.id, interpolatedPos, tempQuat, scale);
       } else {
-        m.position.set(s.pos.x, s.pos.y, s.pos.z);
-        // Set 3D rotation using ship's orientation
+        m.position.copy(interpolatedPos);
+        // Set 3D rotation using ship's interpolated orientation
         // Ships are modeled pointing along +X axis, so we need to adjust
         // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-        m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
+        m.rotation.set(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z);
         
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         m.scale.setScalar(scale);
@@ -1487,7 +1495,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     if (RendererConfig.instancing.enableBullets && bulletInstancer) {
       // Update instanced bullet transforms
       for (const b of state.bullets) {
-        bulletInstancer.updateBulletTransform(b);
+        const interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(b.prevPos.x, b.prevPos.y, b.prevPos.z), new THREE.Vector3(b.pos.x, b.pos.y, b.pos.z), interpolationFactor);
+        bulletInstancer.updateBulletTransform(b, interpolatedPos);
       }
       // Mark instance matrix as needing update once per frame
       bulletInstancer.markMatrixNeedsUpdate();
@@ -1496,7 +1505,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       for (const b of state.bullets) {
         const m = bulletMeshes.get(b.id);
         if (m) {
-          m.position.set(b.pos.x, b.pos.y, b.pos.z);
+          const interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(b.prevPos.x, b.prevPos.y, b.prevPos.z), new THREE.Vector3(b.pos.x, b.pos.y, b.pos.z), interpolationFactor);
+          m.position.copy(interpolatedPos);
         }
       }
     }
@@ -1565,6 +1575,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   try { effectsManager = createEffectsManager(renderer as unknown as any, scene as unknown as any, camera as unknown as any); } catch { effectsManager = null; }
 
   function render(_dt: number) {
+    // Calculate interpolation factor
+    const interpolationFactor = Math.min(1, (state.time - lastSimulatedTime) / fixedSimulationDt);
+
     perfBegin('renderer.camera');
     // Update camera position based on current rotation, distance, and target
     updateCameraPosition();
@@ -1573,7 +1586,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     perfBegin('renderer.sync');
     // Sync entities and update transforms
     syncEntities();
-    updateTransforms();
+    updateTransforms(interpolationFactor);
     perfEnd('renderer.sync');
 
     perfBegin('renderer.healthbars');
@@ -1638,6 +1651,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     perfBegin('renderer.webgl');
   renderer.render(scene, camera);
     perfEnd('renderer.webgl');
+
+    lastSimulatedTime = state.time; // Update last simulated time for next frame's interpolation
   }
 
   window.addEventListener('resize', resize);

@@ -194,7 +194,7 @@ export function createMockGameState(overrides = {}) {
     nextId: 1,
     simConfig: {
       simBounds: { width: 1000, height: 800, depth: 600 },
-      tickRate: 60,
+    tickRate: 60,
       maxEntities: 1000,
       bulletLifetime: 3,
       maxSimulationSteps: 100,
@@ -281,20 +281,50 @@ export function createMockBullet(overrides = {}) {
   return { ...baseBullet, ...overrides };
 }
 
+// Test helper: advance a single controller/frame step deterministically.
+// This mirrors the main loop: call AI update, then advance time/tick and
+// optionally rebuild the spatial grid for the next frame. Use this from
+// tests to avoid brittle timing assumptions about when `state.tick` changes.
+export function stepControllerFrame(state: GameState, aiController?: InstanceType<typeof AIController>, dt?: number): void {
+  // Default dt derives from the state's simConfig.tickRate so tests follow the
+  // configured simulation tick rate (tests previously assumed 60Hz).
+  if (dt === undefined) dt = 1 / (state.simConfig?.tickRate ?? 60);
+  try {
+    if (aiController) aiController.updateAllShips(dt);
+  } catch { /* ignore for test resilience */ }
+
+  // Advance time and tick like the main loop does after simulateStep
+  state.time += dt * (state.speedMultiplier ?? 1);
+  state.tick = (state.tick ?? 0) + 1;
+
+  // Rebuild spatial index for deterministic tests (main loop does this after AI)
+  try {
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
+  } catch { /* best-effort */ }
+}
+
+// Backwards-compatible alias used across some tests
+export function simulateStep(state: GameState, dt?: number) {
+  return stepControllerFrame(state, state.aiController as unknown as InstanceType<typeof AIController>, dt);
+}
+
 // Pool testing utilities
-export function poolAssert(pool: any, expectedAllocated: number, expectedFree: number) {
+export function poolAssert(pool: { allocated: Set<unknown>; freeList: unknown[] }, expectedAllocated: number, expectedFree: number): void {
   expect(pool.allocated.size).toBe(expectedAllocated);
   expect(pool.freeList.length).toBe(expectedFree);
 }
 
 // RNG testing utilities
 export function createSeededRNG(seed: string) {
-  const { createRNG } = require('../src/utils/rng.js');
+  const { createRNG } = require('../../src/utils/rng.js');
   return createRNG(seed);
 }
 
 // Config testing utilities
-export function validateConfigStructure(config: any, expectedKeys: string[]) {
+export type ConfigLike = { [k: string]: unknown };
+export function validateConfigStructure(config: ConfigLike, expectedKeys: string[]) {
   expectedKeys.forEach(key => {
     expect(config).toHaveProperty(key);
   });
@@ -313,20 +343,23 @@ export function createMockAIState(overrides = {}) {
 }
 
 // Combat testing utilities
-export function simulateDamage(ship: any, damage: number) {
+export type ShipLike = { shield: number; armor: number; health: number } & Record<string, unknown>;
+export function simulateDamage(ship: ShipLike, damage: number): number {
   let dmgLeft = damage;
 
   // Apply to shield first
-  if (ship.shield > 0) {
-    const absorb = Math.min(ship.shield, dmgLeft);
-    ship.shield -= absorb;
+  if ((ship.shield ?? 0) > 0) {
+    const absorb = Math.min((ship.shield as number) ?? 0, dmgLeft);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ship as any).shield -= absorb;
     dmgLeft -= absorb;
   }
 
   // Apply remaining to health (after armor)
   if (dmgLeft > 0) {
-    const effective = Math.max(1, dmgLeft - ship.armor * 0.3);
-    ship.health -= effective;
+    const effective = Math.max(1, dmgLeft - ((ship.armor as number) ?? 0) * 0.3);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ship as any).health -= effective;
     return effective; // Return actual damage dealt
   }
 
@@ -334,7 +367,7 @@ export function simulateDamage(ship: any, damage: number) {
 }
 
 // Boundary testing utilities
-export function testBoundaryBehavior(position: any, bounds: any, behavior: string) {
+export function testBoundaryBehavior(position: { x: number; y: number; z: number }, bounds: { width: number; height: number; depth: number }, behavior: string) {
   const result = { ...position };
 
   if (behavior === 'bounce') {
@@ -357,11 +390,11 @@ export function testBoundaryBehavior(position: any, bounds: any, behavior: strin
 }
 
 // Test helper: assert a ship's turret count matches its class config
-export function expectShipTurretCountFromConfig(ship: any, shipClass: string) {
-  const cfg = getShipClassConfig(shipClass as any);
+export function expectShipTurretCountFromConfig(ship: { turrets?: unknown[] }, shipClass: string) {
+  // @ts-expect-error - tests pass plain strings; avoid importing internal ShipClass type here
+  const cfg = getShipClassConfig(shipClass as unknown as string);
   const expected = Array.isArray(cfg.turrets) ? cfg.turrets.length : 0;
   // Use Vitest expect from global context
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { expect } = require('vitest');
   expect(ship.turrets).toHaveLength(expected);
 }

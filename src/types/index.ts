@@ -78,6 +78,7 @@ export interface Bullet {
   ownerShipId: EntityId;
   ownerTeam: Team;
   pos: Vector3;
+  prevPos: Vector3; // New for interpolation
   vel: Vector3;
   ttl: number; // seconds
   damage: number;
@@ -114,12 +115,18 @@ export interface Ship {
   team: Team;
   class: ShipClass;
   pos: Vector3;
+  prevPos: Vector3; // New for interpolation
   vel: Vector3;
   // 3D orientation using Euler angles (in radians)
   orientation: {
     pitch: number; // rotation around X axis (nose up/down)
     yaw: number;   // rotation around Y axis (nose left/right)
     roll: number;  // rotation around Z axis (ship rolling)
+  };
+  prevOrientation: { // New for interpolation
+    pitch: number;
+    yaw: number;
+    roll: number;
   };
   // Keep legacy dir field for backward compatibility during transition
   dir?: number; // deprecated - use orientation.yaw instead

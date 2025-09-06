@@ -11,9 +11,9 @@ describe('Turret targeting (characterization)', () => {
     state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
 
     const ship = spawnShip(state, 'red', 'frigate', { x: 100, y: 100, z: 0 });
-    const nearEnemy = spawnShip(state, 'blue', 'fighter', { x: 120, y: 100, z: 0 }); // 20 units away (below min 50)
-    const farEnemy = spawnShip(state, 'blue', 'fighter', { x: 100 + 1000, y: 100, z: 0 }); // beyond max 800
-    const midEnemy = spawnShip(state, 'blue', 'fighter', { x: 100 + 300, y: 100, z: 0 }); // within [50,800]
+  const _nearEnemy = spawnShip(state, 'blue', 'fighter', { x: 120, y: 100, z: 0 }); // 20 units away (below min 50)
+  const _farEnemy = spawnShip(state, 'blue', 'fighter', { x: 100 + 1000, y: 100, z: 0 }); // beyond max 800
+  const _midEnemy = spawnShip(state, 'blue', 'fighter', { x: 100 + 300, y: 100, z: 0 }); // within [50,800]
 
     // Force reevaluation and run AI once via simulateStep-like targeting path.
     // Instead of driving the full sim, call the AIController method through simulateStep.
@@ -40,12 +40,12 @@ describe('Turret targeting (characterization)', () => {
   // Run a tiny integration by calling the state stepper; allow a few steps for assignment
   let steps = 0;
   while ((ship.targetId == null) && steps < 5) {
-    simulateStep(state, 0.016);
+  simulateStep(state);
     steps++;
   }
   // Allow transient picks; wait until target is both set and in-range (or timeout)
   let settledInRange = false;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < Math.max(1, Math.floor((state.simConfig?.tickRate ?? 60) * 1)); i++) {
     const chosen = ship.targetId != null ? state.ships.find(s => s.id === ship.targetId)! : null;
     if (chosen) {
       const dx = (ship.pos.x - chosen.pos.x);
@@ -57,7 +57,7 @@ describe('Turret targeting (characterization)', () => {
         break;
       }
     }
-    simulateStep(state, 0.016);
+  simulateStep(state, 1 / (state.simConfig?.tickRate ?? 60));
   }
   expect(settledInRange).toBe(true);
   // Already validated range above when a chosen target exists
@@ -80,7 +80,7 @@ describe('Turret targeting (characterization)', () => {
     for (const t of ship.turrets) {
       if (t.aiState) t.aiState.lastTargetUpdate = 0;
     }
-  simulateStep(state, 0.016);
+  simulateStep(state, 1 / (state.simConfig?.tickRate ?? 60));
 
   // Compute expected best-scoring candidate using the same scoring logic
   const candidates = [weakerFar, strongerNear];
@@ -90,7 +90,7 @@ describe('Turret targeting (characterization)', () => {
   // Allow a few steps for target assignment
   let tries = 0;
   while ((ship.targetId == null) && tries < 10) {
-    simulateStep(state, 0.016);
+    simulateStep(state, 1 / (state.simConfig?.tickRate ?? 60));
     tries++;
   }
   // If still null due to controller timing, at least ensure when present it matches expected best-scoring

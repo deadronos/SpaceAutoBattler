@@ -140,21 +140,21 @@ export class BulletInstancer {
   /**
    * Update bullet transform
    */
-  updateBulletTransform(bullet: Bullet): boolean {
+  updateBulletTransform(bullet: Bullet, interpolatedPos: THREE.Vector3): boolean {
     const instanceIndex = this.activeBullets.get(bullet.id);
     if (instanceIndex === undefined) {
       return false;
     }
 
     // Defensive: check for non-finite bullet positions before applying
-    const p = bullet.pos;
+    const p = interpolatedPos;
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) {
       try { logger.error('[INSTANCER_ERROR][BulletInstancer] non-finite bullet pos', { bulletId: bullet.id, pos: p }); } catch (_e) { void _e; }
       return false;
     }
 
     // Set position and identity rotation/scale
-    this.tempPosition.set(bullet.pos.x, bullet.pos.y, bullet.pos.z);
+    this.tempPosition.copy(interpolatedPos);
     this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
     this.instancedMesh.setMatrixAt(instanceIndex, this.tempMatrix);
 

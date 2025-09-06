@@ -23,7 +23,7 @@ export class AIController {
   private spatial: SpatialHelpers;
   private teams: TeamSystems;
   private batchedQueries: BatchedQueryManager;
-  private spatialOptimizer: AggressiveSpatialOptimizer | null = null;
+  private spatialOptimizer: AggressiveSpatialOptimizer | undefined = undefined;
 
   constructor(state: GameState, aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer) {
     this.state = state;
@@ -153,8 +153,17 @@ export class AIController {
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
     // OPTIMIZATION: Use batched query result instead of individual search
-    const nearestEnemyEntity = this.batchedQueries.getNearestEnemy(ship) || this.queryKNearestOptimized(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red')[0];
+    const batchedNearest = this.batchedQueries.getNearestEnemy(ship);
+    const fallbackCandidates = this.queryKNearestOptimized(ship.pos, 8, ship.team === 'red' ? 'blue' : 'red', ship.id);
+    const nearestEnemyEntity = batchedNearest || (fallbackCandidates.length > 0 ? fallbackCandidates[0] : undefined);
     const nearestEnemy = nearestEnemyEntity ? (this.state.shipIndex?.get(nearestEnemyEntity.id) ?? null) : null;
+    if (DEBUG_AI) {
+      try {
+        const batchedStr = batchedNearest ? String(batchedNearest.id) : 'null';
+        const fbIds = fallbackCandidates.map(c => c.id).join(',') || '[]';
+        console.log(`[AIController] nearestEnemy - batched=${batchedStr} fallback[0]=${nearestEnemyEntity ? nearestEnemyEntity.id : 'null'} fallbackList=[${fbIds}]`);
+  } catch { /* best-effort logging */ }
+    }
 
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;

@@ -47,7 +47,7 @@ export class BatchedQueryManager {
     // Batch query nearest enemies for all ships
     for (const ship of ships) {
       const targetTeam = ship.team === 'red' ? 'blue' : 'red';
-      const nearest = this.spatialOptimizer.queryKNearestApproximate(ship.pos, 2, targetTeam);
+  const nearest = this.spatialOptimizer.queryKNearestApproximate(ship.pos, 2, targetTeam);
       
       let bestEnemy: Ship | null = null;
       if (nearest && nearest.length > 0) {
@@ -66,6 +66,15 @@ export class BatchedQueryManager {
       }
       
       this.results.nearestEnemyCache.set(ship.id, bestEnemy);
+      // Optional debug logging for failing tests: enable by setting VITEST_DEBUG_AI=1
+      try {
+        if (process.env.VITEST_DEBUG_AI) {
+          const ids = nearest ? nearest.map(n => `${n.id}@(${n.pos.x.toFixed(1)},${n.pos.y.toFixed(1)},${n.pos.z.toFixed(1)})`) : [];
+          console.log(`[DEBUG_AI] ship=${ship.id} nearestCandidates=${ids.join(', ')} selected=${bestEnemy ? bestEnemy.id : 'null'}`);
+        }
+      } catch {
+        // ignore debug logging errors in test env
+      }
     }
     if (bench) {
       const t1 = performance.now();
@@ -201,5 +210,20 @@ export class BatchedQueryManager {
   public getNearbyEnemies(ship: Ship, range: number): Ship[] {
   const inner = this.results.nearbyEnemiesCache.get(ship.id);
   return inner ? (inner.get(range) || []) : [];
+  }
+
+  /**
+   * Reset per-frame caches. Controller calls this each frame to ensure
+   * batched results are fresh for the current frame.
+   */
+  public resetForFrame(frameId: number) {
+    // Clear all cached result maps but keep the object references to allow
+    // callers to re-use allocated Maps/arrays where possible.
+    this.results.nearestEnemyCache.clear();
+    this.results.nearbyEnemiesCache.clear();
+    this.results.nearbyFriendsCache.clear();
+    this.results.separationNeighborsCache.clear();
+    this.frameId = frameId;
+    if (BatchedQueryManager.BENCH) console.log(`[BENCH] resetForFrame: ${frameId}`);
   }
 }

@@ -31,7 +31,7 @@ export interface SimConfig {
 
 export const DefaultSimConfig: SimConfig = {
   simBounds: { width: 1920, height: 1920, depth: 1920 },
-  tickRate: 60,
+  tickRate: 10,
   maxEntities: 5000,
   bulletLifetime: 3.0, // bullets live for 3 seconds
   maxSimulationSteps: 5, // max steps per frame to prevent spiral of death
