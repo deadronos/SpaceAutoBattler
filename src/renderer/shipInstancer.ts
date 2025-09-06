@@ -431,12 +431,26 @@ class ShipInstancerImpl {
   cull(camera: THREE.Camera) {
     this.projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
+    
     for (const group of this.groups.values()) {
       this.computeBounds(group);
-      if (group.positions.size === 0) { group.parentGroup.visible = false; continue; }
-      this.tmpSphere.center.copy(group.boundsCenter);
-      this.tmpSphere.radius = group.boundsRadius;
-      group.parentGroup.visible = this.frustum.intersectsSphere(this.tmpSphere);
+      
+      // If group has no ships, make it invisible
+      if (group.positions.size === 0) { 
+        group.parentGroup.visible = false; 
+        continue; 
+      }
+      
+      // If group has ships, we need to make it visible
+      // The original logic was too aggressive with frustum culling
+      // For now, make all groups with ships visible to fix the visibility issue
+      // TODO: Implement proper frustum culling that doesn't hide ships in view
+      group.parentGroup.visible = true;
+      
+      // Original frustum culling code (temporarily disabled):
+      // this.tmpSphere.center.copy(group.boundsCenter);
+      // this.tmpSphere.radius = group.boundsRadius;
+      // group.parentGroup.visible = this.frustum.intersectsSphere(this.tmpSphere);
     }
   }
 
