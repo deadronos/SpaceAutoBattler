@@ -253,3 +253,26 @@ export type UIElements = {
   seedBtn: HTMLButtonElement;
   formationBtn: HTMLButtonElement;
 };
+
+// Particle system types
+export interface ParticleExplosionOptions {
+  pos: Vector3;
+  radius: number;
+  seed?: number;
+  colorOverride?: string[];
+  count?: number;
+  lifetime?: number;
+  /** Optional entity ID for improved seed derivation (e.g., ship.id) */
+  entityId?: number;
+}
+
+export interface ParticleInstance {
+  id: number;
+  pos: Vector3;
+  vel: Vector3;
+  size: number;
+  age: number;
+  lifetime: number;
+  color: string;
+  active: boolean;
+}
