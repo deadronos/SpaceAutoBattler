@@ -350,6 +350,7 @@ export const DefaultRendererConfig: RendererConfig = {
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
   loadGltfModels: true,
+  disableSvgSubsystem: false
 };
 
 // Export the default config as RendererConfig for backward compatibility

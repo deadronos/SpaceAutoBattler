@@ -67,6 +67,14 @@ export class SVGLoader {
 
   private initWorker() {
     try {
+      // Defensive guard: never create a Worker if the SVG subsystem is disabled.
+      try {
+        if ((RendererConfig as any)?.disableSvgSubsystem) {
+          logger.debug('[SVGLoader] initWorker aborting because RendererConfig.disableSvgSubsystem is true');
+          this.worker = null;
+          return;
+        }
+      } catch (_e) { /* ignore */ }
       // Enable worker-based SVG rasterization for better performance
       // Resolve worker URL robustly so the app works whether the server
       // serves the repo root (assets under /dist) or serves the dist
@@ -74,7 +82,7 @@ export class SVGLoader {
       // runtime `window.__ASSET_BASE__` string (e.g. '/dist' or '/').
       try {
   const assetBase = (globalThis as unknown as { __ASSET_BASE__?: string }).__ASSET_BASE__ ?? null;
-        if (assetBase) {
+  if (assetBase) {
           // Ensure no trailing slash issues
           const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
           // If the runtime provides an explicit asset base, fall back to the

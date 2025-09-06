@@ -169,6 +169,12 @@ export function createShipMesh(
           }
         }
       } catch (_e) { void _e; }
+      // If SVG subsystem is disabled, skip rasterization and keep placeholder
+      if ((RendererConfig as any)?.disableSvgSubsystem) {
+        logger.debug('[meshFactory] SVG subsystem disabled; skipping rasterization for', svgUrl);
+        return; // keep placeholder
+      }
+
       const teamColor = ship.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
       const asset = await loadSVGAsset(svgUrl, {
         width: defaultSVGConfig.defaultRasterSize.width,

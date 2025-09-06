@@ -840,6 +840,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         } catch (_e) { void _e; }
 
         const teamColor = s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
+        // If SVG subsystem has been explicitly disabled, skip rasterization and keep placeholder.
+        if ((RendererConfig as any)?.disableSvgSubsystem) {
+          logger.debug('[threeRenderer] SVG subsystem disabled; skipping SVG rasterization for', svgUrl);
+          return; // keep placeholder
+        }
+
         const asset = await loadSVGAsset(svgUrl, {
           width: defaultSVGConfig.defaultRasterSize.width,
           height: defaultSVGConfig.defaultRasterSize.height,
