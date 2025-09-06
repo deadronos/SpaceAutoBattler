@@ -449,7 +449,9 @@ export function simulateStep(state: GameState, dt: number) {
   // Ship AI logic - Always use AIController for unified behavior
   perfBegin('ai.total');
   // Lazily create and reuse AIController instance
-  const aiController = state.aiController ?? (state.aiController = new AIController(state));
+  const aiController = state.aiController ?? (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
+  if (DEBUG_AI) console.log(`[gameState] aiController:`, aiController);
+  if (DEBUG_AI) console.log(`[gameState] state.aiController:`, state.aiController);
   aiController.updateAllShips(dt);
   if (DEBUG_AI) {
     try {

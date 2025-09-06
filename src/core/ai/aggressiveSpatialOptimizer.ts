@@ -1,3 +1,4 @@
+import { DEBUG_AI } from '../../utils/env';
 import type { Vector3, EntityId, Team } from '../../types/index.js';
 import type { SpatialEntity } from '../../utils/spatialGrid.js';
 
@@ -143,10 +144,12 @@ export class AggressiveSpatialOptimizer {
     // Return what we found, even if less than k
     const allCandidates = this.baseGrid.queryRadius(center, maxSearchRadius)
       .filter(entity => {
+        if (DEBUG_AI) console.log(`[AggressiveSpatialOptimizer] queryKNearestApproximate - allCandidates: ${entity.id}, team: ${entity.team}, pos: ${entity.pos.x},${entity.pos.y},${entity.pos.z}`);
         if (team !== undefined && entity.team !== team) return false;
         if (excludeId !== undefined && entity.id === excludeId) return false;
         return true;
       });
+    if (DEBUG_AI) console.log(`[AggressiveSpatialOptimizer] queryKNearestApproximate - maxSearchRadius: ${maxSearchRadius}, allCandidates.length: ${allCandidates.length}`);
     
     allCandidates.sort((a, b) => {
       const distA = this.getDistanceSqFast(center, a.pos);

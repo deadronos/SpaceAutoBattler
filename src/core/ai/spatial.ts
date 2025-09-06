@@ -1,4 +1,5 @@
 import type { GameState, Ship, Vector3 } from '../../types/index.js';
+import type { AggressiveSpatialOptimizer } from './aggressiveSpatialOptimizer.js';
 import { getDistance as sharedGetDistance, findNearbyEnemies as sharedFindNearbyEnemies, findNearbyFriends as sharedFindNearbyFriends, findNearestEnemy as sharedFindNearestEnemy, getNearbySeparationShipsLinear as sharedGetNearbySeparationShipsLinear } from '../searchUtils.js';
 import { calculateSeparationForceWithCount as steeringSeparation } from './steering.js';
 

@@ -37,7 +37,7 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
     return cached.targetId != null ? (state.shipIndex?.get(cached.targetId) || null) : null;
   }
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    ensureSpatialGridPopulated(state);
+
     const targetTeam = ship.team === 'red' ? 'blue' : 'red';
     const nearest = state.spatialGrid.queryKNearest(ship.pos, 2, targetTeam);
     if (!nearest || nearest.length === 0) return null;
@@ -72,7 +72,7 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
 
 export function findNearbyEnemies(state: GameState, ship: Ship, range: number): Ship[] {
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    ensureSpatialGridPopulated(state);
+
     const out: Ship[] = [];
     state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
       if (entity.team !== ship.team) {
@@ -156,7 +156,7 @@ export function pickKNearestFromCandidates(center: Vector3, candidates: readonly
 
 export function findNearbyFriends(state: GameState, ship: Ship, range: number): Ship[] {
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    ensureSpatialGridPopulated(state);
+
     const out: Ship[] = [];
     state.spatialGrid.forEachInRadius(ship.pos, range, (_dx, _dy, _dz, _distSq, entity) => {
       if (entity.team === ship.team && entity.id !== ship.id) {

@@ -92,6 +92,7 @@ describe('AI Enemy Recognition', () => {
     aiController.updateAllShips(0.1);
 
     // Red ship should not target the far blue ship
+    if (DEBUG_AI) console.log(`[Test] Red ship targetId: ${redShip.targetId}`);
     expect(redShip.targetId).toBeNull();
 
     if (DEBUG_AI) {
@@ -167,8 +168,10 @@ describe('AI Enemy Recognition', () => {
     aiController.updateAllShips(0.1);
 
     // Neither ship should target the other
-    expect(redShip1.targetId).toBeNull();
-    expect(redShip2.targetId).toBeNull();
+    const updatedRedShip1 = state.shipIndex?.get(redShip1.id);
+    const updatedRedShip2 = state.shipIndex?.get(redShip2.id);
+    expect(updatedRedShip1?.targetId).toBeNull();
+    expect(updatedRedShip2?.targetId).toBeNull();
 
     if (DEBUG_AI) {
       console.log(`Red ships should not target each other: ship1=${redShip1.targetId}, ship2=${redShip2.targetId}`);
@@ -204,7 +207,8 @@ describe('AI Enemy Recognition', () => {
 
     // Second update - should clear target
     aiController.updateAllShips(0.1);
-    expect(redShip.targetId).toBeNull();
+    const updatedRedShip = state.shipIndex?.get(redShip.id);
+    expect(updatedRedShip?.targetId).toBe(null);
 
     if (DEBUG_AI) {
       console.log(`Red ship ${redShip.id} targeting ${redShip.targetId}, expected null (enemy destroyed)`);
@@ -240,10 +244,11 @@ describe('AI Enemy Recognition', () => {
 
     // Update AI
     aiController.updateAllShips(0.1);
+    const updatedRedShip = state.shipIndex?.get(redShip.id);
 
     // Red ship should recognize the blue ship as a threat
-    expect(redShip.targetId).toBe(blueShip.id);
-    expect(redShip.aiState?.currentIntent).toBe('evade');
+    expect(updatedRedShip?.targetId).toBe(blueShip.id);
+    expect(updatedRedShip?.aiState?.currentIntent).toBe('evade');
 
     if (DEBUG_AI) {
       console.log(`Evading ship ${redShip.id} should recognize enemy ${blueShip.id}: targeting=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}`);
@@ -281,3 +286,4 @@ describe('AI Enemy Recognition', () => {
     }
   });
 });
+

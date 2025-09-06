@@ -28,16 +28,18 @@ export class AIController {
   constructor(state: GameState, aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer) {
     this.state = state;
     this.intentManager = new IntentManager();
-    this.spatial = new SpatialHelpers(state, this.spatialOptimizer);
     this.teams = new TeamSystems(state);
-    this.batchedQueries = new BatchedQueryManager();
-    
+
     if (aggressiveSpatialOptimizer) {
       this.spatialOptimizer = aggressiveSpatialOptimizer;
     } else if (state.spatialGrid) {
       // Fallback for tests that don't provide the optimizer directly
       this.spatialOptimizer = new AggressiveSpatialOptimizer(state.spatialGrid, 64);
     }
+
+    this.spatial = new SpatialHelpers(state, this.spatialOptimizer ?? undefined);
+    this.batchedQueries = new BatchedQueryManager(this.spatialOptimizer);
+    if (DEBUG_AI) console.log(`[AIController Constructor] batchedQueries assigned:`, this.batchedQueries);
   }
 
   public updateAllShips(dt: number) {
@@ -50,31 +52,31 @@ export class AIController {
     // These operations can be relatively expensive; skip them during test runs
     // (Vitest sets NODE_ENV='test') to keep unit tests fast and avoid timeouts.
     const aliveShips = this.state.ships.filter(s => s.health > 0);
-    if (process.env.NODE_ENV !== 'test') {
-      if (this.spatialOptimizer) {
-        const spatialEntities = aliveShips.map(ship => ({
-          id: ship.id,
-          pos: ship.pos,
-          radius: 20, // Use default ship radius
-          team: ship.team
-        }));
-        this.spatialOptimizer.updateSpatialGrids(spatialEntities);
-      }
-
-      // OPTIMIZATION: Pre-compute common queries for all ships in batches
-      perfBegin('ai.batched');
-      const frameId = this.state.tick ?? 0;
-      this.batchedQueries.resetForFrame(frameId);
-
-      // Batch compute nearest enemies and separation neighbors for alive ships
-      this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
-      this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
-      perfEnd('ai.batched');
-    } else {
-      // In test mode, still advance the frame id so any cached data doesn't persist
-      const frameId = this.state.tick ?? 0;
-      this.batchedQueries.resetForFrame(frameId);
+    if (this.spatialOptimizer) {
+      const spatialEntities = aliveShips.map(ship => ({
+        id: ship.id,
+        pos: ship.pos,
+        radius: 20, // Use default ship radius
+        team: ship.team
+      }));
+      if (DEBUG_AI) console.log(`[AIController] Calling spatialOptimizer.updateSpatialGrids with ${spatialEntities.length} entities.`);
+      this.spatialOptimizer.updateSpatialGrids(spatialEntities);
     }
+
+    // OPTIMIZATION: Pre-compute common queries for all ships in batches
+    perfBegin('ai.batched');
+    const frameId = this.state.tick ?? 0;
+    if (DEBUG_AI) console.log(`[AIController] this.batchedQueries:`, this.batchedQueries);
+    if (this.batchedQueries && typeof this.batchedQueries.resetForFrame === 'function') {
+      this.batchedQueries.resetForFrame(frameId);
+    } else {
+      if (DEBUG_AI) console.error(`[AIController] ERROR: this.batchedQueries or resetForFrame is not valid!`, this.batchedQueries);
+    }
+
+    // Batch compute nearest enemies and separation neighbors for alive ships
+    this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
+    this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+    perfEnd('ai.batched');
     perfEnd('ai.spatial');
 
   perfBegin('ai.teams');
@@ -151,7 +153,8 @@ export class AIController {
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
     // OPTIMIZATION: Use batched query result instead of individual search
-    const nearestEnemy = this.batchedQueries.getNearestEnemy(ship) || this.queryKNearestOptimized(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red')[0];
+    const nearestEnemyEntity = this.batchedQueries.getNearestEnemy(ship) || this.queryKNearestOptimized(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red')[0];
+    const nearestEnemy = nearestEnemyEntity ? (this.state.shipIndex?.get(nearestEnemyEntity.id) ?? null) : null;
 
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;
@@ -188,6 +191,7 @@ export class AIController {
     if (validatedFirstTarget != null) {
       // Check if we should switch to a closer enemy (target switching logic)
       if (nearestEnemy && nearestEnemy.id !== validatedFirstTarget) {
+        const switchThreshold = 0.8; // 20% closer required to switch
         const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
           if (currentTargetShip) {
           const cdx = currentTargetShip.pos.x - ship.pos.x;
@@ -198,10 +202,12 @@ export class AIController {
           const ndz = nearestEnemy.pos.z - ship.pos.z;
           const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
           const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
+          if (DEBUG_AI) console.log(`[AIController] Target switching - ship: ${ship.id}, currentTarget: ${validatedFirstTarget}, nearestEnemy: ${nearestEnemy.id}`);
+          if (DEBUG_AI) console.log(`[AIController]   currentDistSq: ${currentDistSq}, nearestDistSq: ${nearestDistSq}, switchThreshold: ${switchThreshold}`);
+          if (DEBUG_AI) console.log(`[AIController]   comparison: ${nearestDistSq} < ${currentDistSq} * ${switchThreshold * switchThreshold} (${currentDistSq * (switchThreshold * switchThreshold)})`);
 
           // Switch if nearest enemy is significantly closer (20% closer)
           // Use squared distance comparison to avoid sqrt in hot path
-          const switchThreshold = 0.8; // 20% closer required to switch
           if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
             ship.targetId = nearestEnemy.id;
           } else {
@@ -237,13 +243,14 @@ export class AIController {
       
       const isValidTeam = targetShip.team !== ship.team;
       const isAlive = targetShip.health > 0;
+      if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id}, targetShip: ${targetShip.id}, isValidTeam: ${isValidTeam}, isAlive: ${isAlive}, withinRange: ${withinRange}`);
 
       if (isValidTeam && isAlive && (withinRange || ship.aiState?.currentIntent === 'evade')) {
-        // Set new valid target (allow out-of-range for evade awareness)
         ship.targetId = nearestEnemy.id;
+        if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: ${ship.targetId}`);
       } else {
-        // Nearest enemy is invalid, clear target
         ship.targetId = null;
+        if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: null`);
       }
     } else {
       // No enemies found, clear target
@@ -264,7 +271,7 @@ export class AIController {
           ship.team === 'red' ? 'blue' : 'red', // Target opposite team
           ship.id
         );
-        const shortlist = candidates.map(e => this.state.shipIndex?.get(e.id)).filter(s => s != null) as Ship[];
+        const shortlist = candidates.map(e => this.state.shipIndex?.get(e.id)).filter((s): s is Ship => s != null);
 
         // Deterministic secondary ordering by distance then id before scoring
         shortlist.sort((a,b)=>{
@@ -340,6 +347,7 @@ export class AIController {
     // IMPROVED: Clear invalid targets (destroyed ships, same team ships)
     if (ship.targetId != null) {
       const currentTarget = this.state.ships.find(s => s.id === ship.targetId);
+      if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} checking target: ${ship.targetId}, currentTarget: ${currentTarget?.id ?? 'null'}`);
       if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
         if (DEBUG_AI) {
           const reason = !currentTarget ? 'not found' : 

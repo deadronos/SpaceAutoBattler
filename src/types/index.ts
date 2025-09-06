@@ -1,3 +1,5 @@
+import type { AggressiveSpatialOptimizer } from '../core/ai/aggressiveSpatialOptimizer.js';
+
 export type EntityId = number;
 
 export type Team = 'red' | 'blue';
@@ -187,6 +189,8 @@ export interface RendererHandles {
   // Test/runtime accessor to expose whether ship instancing is enabled/ready
   getUseShipInstancing?: () => boolean;
 }
+
+
 
 export interface GameState {
   time: number; // seconds

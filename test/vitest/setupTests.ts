@@ -1,5 +1,8 @@
 import { beforeAll, vi } from 'vitest';
 import type { GameState, Ship, Bullet } from '../../src/types/index.js';
+import { SpatialGrid } from '../../src/utils/spatialGrid.js';
+import { AIController } from '../../src/core/ai/controller.js';
+import { AggressiveSpatialOptimizer } from '../../src/core/ai/aggressiveSpatialOptimizer.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 import { getShipClassConfig, TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
 
@@ -215,7 +218,15 @@ export function createMockGameState(overrides = {}) {
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
   };
 
-  return { ...baseState, ...overrides };
+  // Initialize spatial grid and optimizer for tests
+  const spatialGrid = new SpatialGrid(baseState.simConfig.spatialGrid.cellSize, baseState.simConfig.simBounds);
+  const aggressiveSpatialOptimizer = new AggressiveSpatialOptimizer(spatialGrid, baseState.simConfig.spatialGrid.cellSize);
+  const aiController = new AIController(baseState, aggressiveSpatialOptimizer);
+
+  // Assign the created AIController to the baseState
+  baseState.aiController = aiController;
+
+  return { ...baseState, spatialGrid, aggressiveSpatialOptimizer, aiController, ...overrides };
 }
 
 export function createMockShip(overrides = {}) {

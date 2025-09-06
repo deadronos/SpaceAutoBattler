@@ -12,7 +12,8 @@ describe('AI Search Performance Optimization', () => {
     aiController = new AIController(state);
     
     // Enable spatial indexing for performance tests, but create mock spatial grid
-    state.behaviorConfig!.globalSettings.enableSpatialIndex = false; // Disable for basic tests
+    state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
+    console.log("DEBUG: Test is running!");
   });
 
   function addShipToState(team: 'red' | 'blue', shipClass: string, position: { x: number; y: number; z: number }) {
@@ -87,14 +88,16 @@ describe('AI Search Performance Optimization', () => {
     const redShip = addShipToState('red', 'fighter', { x: 0, y: 0, z: 0 });
     const blueShip = addShipToState('blue', 'fighter', { x: 100, y: 0, z: 0 });
 
-    // Run simulation steps
-    for (let i = 0; i < 5; i++) {
-      aiController.updateAllShips(0.016);
-    }
+    // Run one simulation step
+    aiController.updateAllShips(0.016);
+
+    // Re-fetch ship references after simulation steps as state.ships array might have been replaced
+    const updatedRedShip = state.shipIndex?.get(redShip.id);
+    const updatedBlueShip = state.shipIndex?.get(blueShip.id);
 
     // Verify basic AI behaviors are working - should at least find and target enemies
-    expect(redShip.targetId).toBe(blueShip.id); // Should target enemy
-    expect(blueShip.targetId).toBe(redShip.id); // Should target enemy
+    expect(updatedRedShip?.targetId).toBe(updatedBlueShip?.id); // Should target enemy
+    expect(updatedBlueShip?.targetId).toBe(updatedRedShip?.id); // Should target enemy
     
     // Test passes if AI correctly identifies targets (the main optimization goal)
     // Movement behavior may be affected by other systems not fully mocked

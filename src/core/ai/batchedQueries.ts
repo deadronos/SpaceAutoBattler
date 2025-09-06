@@ -1,4 +1,5 @@
 import type { GameState, Ship, Vector3 } from '../../types/index.js';
+import type { AggressiveSpatialOptimizer } from './aggressiveSpatialOptimizer.js';
 
 
 /**
@@ -25,15 +26,10 @@ export class BatchedQueryManager {
   
   private frameId = 0;
   private static BENCH = !!process.env.VITEST_DEBUG_BENCH;
+  private spatialOptimizer: AggressiveSpatialOptimizer | undefined;
 
-  public resetForFrame(newFrameId: number) {
-    if (newFrameId !== this.frameId) {
-      this.results.nearestEnemyCache.clear();
-      this.results.nearbyEnemiesCache.clear();
-      this.results.nearbyFriendsCache.clear();
-      this.results.separationNeighborsCache.clear();
-      this.frameId = newFrameId;
-    }
+  constructor(spatialOptimizer?: AggressiveSpatialOptimizer) {
+    this.spatialOptimizer = spatialOptimizer;
   }
 
   /**
@@ -42,32 +38,16 @@ export class BatchedQueryManager {
   public precomputeNearestEnemies(state: GameState, ships: Ship[]) {
     const bench = BatchedQueryManager.BENCH;
     const t0 = bench ? performance.now() : 0;
-    if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    if (!this.spatialOptimizer || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
       // Fallback to individual queries
-      if (bench) console.log('[BENCH] precomputeNearestEnemies skipped - no spatialGrid or index');
+      if (bench) console.log('[BENCH] precomputeNearestEnemies skipped - no spatialOptimizer or index');
       return;
-    }
-
-    // Ensure spatial grid is populated once for all queries. Use shared helper
-    // to avoid duplicating rebuild logic and reduce allocations.
-    try {
-      // Import helper lazily to avoid circular deps at module load
-      const { ensureSpatialGridUpdated } = require('../ai/spatial.js');
-      ensureSpatialGridUpdated(state);
-  } catch {
-      // Fallback: populate directly if helper isn't available
-      state.spatialGrid.clear();
-      for (const s of state.ships) {
-        if (s.health > 0) {
-          state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
-        }
-      }
     }
 
     // Batch query nearest enemies for all ships
     for (const ship of ships) {
       const targetTeam = ship.team === 'red' ? 'blue' : 'red';
-      const nearest = state.spatialGrid.queryKNearest(ship.pos, 2, targetTeam);
+      const nearest = this.spatialOptimizer.queryKNearestApproximate(ship.pos, 2, targetTeam);
       
       let bestEnemy: Ship | null = null;
       if (nearest && nearest.length > 0) {
@@ -108,8 +88,8 @@ export class BatchedQueryManager {
     const t0 = bench ? performance.now() : 0;
     const separationDistance = state.behaviorConfig?.globalSettings.separationDistance ?? 50;
     
-    if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      if (bench) console.log('[BENCH] precomputeSeparationNeighbors skipped - no spatialGrid or index');
+    if (!this.spatialOptimizer || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      if (bench) console.log('[BENCH] precomputeSeparationNeighbors skipped - no spatialOptimizer or index');
       return;
     }
 
@@ -124,17 +104,18 @@ export class BatchedQueryManager {
         neighbors.length = 0; // clear in-place
       }
 
-      state.spatialGrid.forEachNeighborsDelta(
+      const entities = this.spatialOptimizer.queryRadiusOptimized(
         ship.pos,
         separationDistance,
         ship.team,
-        ship.id,
-        (_dxp, _dyp, _dzp, distSq, entity) => {
-          if (distSq > 0 && distSq < separationDistance * separationDistance) {
-            neighbors.push(entity.pos);
-          }
-        }
+        ship.id
       );
+      for (const entity of entities) {
+        const distSq = (entity.pos.x - ship.pos.x)**2 + (entity.pos.y - ship.pos.y)**2 + (entity.pos.z - ship.pos.z)**2;
+        if (distSq > 0 && distSq < separationDistance * separationDistance) {
+          neighbors.push(entity.pos);
+        }
+      }
     }
     if (bench) {
       const t1 = performance.now();
@@ -153,7 +134,7 @@ export class BatchedQueryManager {
    * Batch query for nearby enemies within range, grouped by spatial regions
    */
   public precomputeNearbyEnemies(state: GameState, ships: Ship[], range: number) {
-    if (!state.spatialGrid || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    if (!this.spatialOptimizer || !state.behaviorConfig?.globalSettings.enableSpatialIndex) {
       return;
     }
 
@@ -179,12 +160,13 @@ export class BatchedQueryManager {
     // Execute one query per cell region
     for (const [_cellKey, { ships, center }] of cellQueries) {
       const enemies: Ship[] = [];
-      state.spatialGrid.forEachInRadius(center, range + cellSize, (_dx, _dy, _dz, _distSq, entity) => {
+      const entities = this.spatialOptimizer.queryRadiusOptimized(center, range + cellSize);
+      for (const entity of entities) {
         if (ships[0].team !== entity.team) {
           const s = state.shipIndex?.get(entity.id);
           if (s && s.health > 0) enemies.push(s);
         }
-      });
+      }
 
       // Cache results for all ships in this cell. Use squared-distance math
       // to avoid repeated Math.sqrt and extra allocations.
