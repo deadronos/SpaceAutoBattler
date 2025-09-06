@@ -1,4 +1,4 @@
-# SpaceAutoBattler - Source Code Structure Specification
+﻿# SpaceAutoBattler - Source Code Structure Specification
 
 ## Overview
 
@@ -12,15 +12,15 @@ The source code is organized into logical modules with clear separation of conce
 
 ```text
 src/
-├── main.ts                 # Application entry point and main game loop
-├── simWorker.ts           # Web Worker for simulation processing
-├── ui.html               # Main UI template
-├── config/               # Configuration-driven game parameters
-├── core/                 # Core game logic and state management
-├── renderer/             # Three.js rendering system and visual effects
-├── types/                # TypeScript type definitions
-├── utils/                # Shared utility functions
-└── styles/               # CSS stylesheets
+â”œâ”€â”€ main.ts                 # Application entry point and main game loop
+â”œâ”€â”€ simWorker.ts           # Web Worker for simulation processing
+â”œâ”€â”€ ui.html               # Main UI template
+â”œâ”€â”€ config/               # Configuration-driven game parameters
+â”œâ”€â”€ core/                 # Core game logic and state management
+â”œâ”€â”€ renderer/             # Three.js rendering system and visual effects
+â”œâ”€â”€ types/                # TypeScript type definitions
+â”œâ”€â”€ utils/                # Shared utility functions
+â””â”€â”€ styles/               # CSS stylesheets
 ```
 
 ## Module Breakdown
@@ -139,12 +139,12 @@ The configuration system provides a centralized, data-driven approach to game ba
 
 ```text
 assets/
-└── svg/                    # Ship SVG assets
-    ├── fighter.svg
-    ├── corvette.svg
-    ├── frigate.svg
-    ├── destroyer.svg
-    └── carrier.svg
+â””â”€â”€ svg/                    # Ship SVG assets
+    â”œâ”€â”€ fighter.svg
+    â”œâ”€â”€ corvette.svg
+    â”œâ”€â”€ frigate.svg
+    â”œâ”€â”€ destroyer.svg
+    â””â”€â”€ carrier.svg
 ```
 
 **Purpose**: Vector graphics for ship models, extruded into 3D meshes
@@ -495,3 +495,6 @@ This specification should be referenced by:
 - `/copilot-instructions.md` - AI coding assistant rules
 - `/test/vitest/README.md` - Test suite documentation
 - Development workflow documentation
+
+
+See also: docs/renderer-pipeline.md for the renderer data flow.

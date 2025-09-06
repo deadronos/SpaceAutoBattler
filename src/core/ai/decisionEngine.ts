@@ -56,3 +56,19 @@ export function chooseBestIntent(scores: Partial<Record<AIIntent, number>>): AII
   }
   return best ? best.intent : 'idle';
 }
+
+// Score proximity to world bounds. Returns 0..1 where 1 means dangerously close to edge.
+export function scoreBoundaryAvoidance(params: {
+  pos: { x: number; y: number; z: number };
+  simBounds: { width: number; height: number; depth: number };
+  safeMargin: number;
+}): number {
+  const { pos, simBounds, safeMargin } = params;
+  const dx = Math.min(pos.x, simBounds.width - pos.x);
+  const dy = Math.min(pos.y, simBounds.height - pos.y);
+  const dz = Math.min(pos.z, simBounds.depth - pos.z);
+  const minDist = Math.min(dx, dy, dz);
+  if (minDist >= safeMargin) return 0;
+  if (minDist <= 0) return 1;
+  return (safeMargin - minDist) / safeMargin;
+}

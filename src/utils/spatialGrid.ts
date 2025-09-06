@@ -435,38 +435,29 @@ export class SpatialGrid {
    * Query entities within a sector (cone) from a position
    */
   querySector(center: Vector3, direction: Vector3, angleRadians: number, range: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
-    // Normalize direction vector
-    const dirMag = Math.sqrt(direction.x ** 2 + direction.y ** 2 + direction.z ** 2);
-    if (dirMag === 0) return [];
-    
-    const dirX = direction.x / dirMag;
-    const dirY = direction.y / dirMag;
-    const dirZ = direction.z / dirMag;
+  // Normalize direction vector: compute squared magnitude and sqrt once
+  const dirMagSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+  if (dirMagSq === 0) return [];
+  const dirMag = Math.sqrt(dirMagSq);
+  const dirX = direction.x / dirMag;
+  const dirY = direction.y / dirMag;
+  const dirZ = direction.z / dirMag;
     
     const cosHalfAngle = Math.cos(angleRadians / 2);
     const results: SpatialEntity[] = [];
     
-    this.forEachInRadius(center, range, (dx, dy, dz, _distSq, entity) => {
+    this.forEachInRadius(center, range, (dx, dy, dz, distSq, entity) => {
       // Filter by team and exclude id if specified
       if (team !== undefined && entity.team !== team) return;
       if (excludeId !== undefined && entity.id === excludeId) return;
-      
-      // Check if within cone angle
-      const toEntityMag = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (toEntityMag === 0) return;
-      
-      // Normalized vector to entity (dx,dy,dz are already entity.pos - center)
-      const toEntityNormX = dx / toEntityMag;
-      const toEntityNormY = dy / toEntityMag;
-      const toEntityNormZ = dz / toEntityMag;
-      
-      // Dot product with direction
-      const dotProduct = dirX * toEntityNormX + dirY * toEntityNormY + dirZ * toEntityNormZ;
-      
-      // Check if within cone angle
-      if (dotProduct >= cosHalfAngle) {
-        results.push(entity);
-      }
+      // Avoid normalizing every candidate: dot(u, v/|v|) = dot(u,v)/|v|
+      if (distSq === 0) return;
+      const dotUV = dirX * dx + dirY * dy + dirZ * dz;
+      // Compare squared values to avoid Math.sqrt: (dotUV/|v|) >= cosHalfAngle
+      // => dotUV^2 >= cosHalfAngle^2 * distSq
+      const lhs = dotUV * dotUV;
+      const rhs = cosHalfAngle * cosHalfAngle * distSq;
+      if (lhs >= rhs) results.push(entity);
     });
     
     return results;

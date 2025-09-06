@@ -31,12 +31,14 @@ export function getRightVector(pitch: number, yaw: number, roll: number): Vector
   const worldUp: Vector3 = { x: 0, y: 0, z: 1 };
   // Compute an initial right vector perpendicular to forward and world up
   let right = cross(worldUp, forward);
-  const mag = magnitude(right);
-  if (mag < 1e-6) {
+  // Use squared-magnitude to avoid an unnecessary sqrt in the common case
+  const rightMagSq = magnitudeSq(right);
+  if (rightMagSq < 1e-12) {
     // Forward is parallel (or very close) to worldUp; choose arbitrary right vector
     right = { x: 1, y: 0, z: 0 };
   } else {
-    right = scale(right, 1 / mag);
+    const inv = 1 / Math.sqrt(rightMagSq);
+    right = scale(right, inv);
   }
   // Up vector prior to roll
   const up = cross(forward, right);
@@ -75,7 +77,8 @@ export function lookAt(fromPos: Vector3, targetPos: Vector3): { pitch: number; y
   const dz = targetPos.z - fromPos.z;
   
   // Calculate horizontal distance for pitch calculation
-  const horizontalDistance = Math.sqrt(dx * dx + dy * dy);
+  const sqrt = Math.sqrt;
+  const horizontalDistance = sqrt(dx * dx + dy * dy);
   
   return {
     yaw: Math.atan2(dy, dx),
@@ -119,19 +122,30 @@ export function clampTurn(angleDiff: number, maxTurnRate: number): number {
  * Vector magnitude
  */
 export function magnitude(v: Vector3): number {
-  return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  const sqrt = Math.sqrt;
+  return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+/**
+ * Squared magnitude (length squared) — useful for threshold comparisons
+ */
+export function magnitudeSq(v: Vector3): number {
+  return v.x * v.x + v.y * v.y + v.z * v.z;
 }
 
 /**
  * Normalize vector
  */
 export function normalize(v: Vector3): Vector3 {
-  const mag = magnitude(v);
-  if (mag === 0) return { x: 0, y: 0, z: 0 };
+  // Use squared magnitude to avoid an unnecessary sqrt when vector is zero
+  const magSq = magnitudeSq(v);
+  if (magSq === 0) return { x: 0, y: 0, z: 0 };
+  const sqrt = Math.sqrt;
+  const inv = 1 / sqrt(magSq);
   return {
-    x: v.x / mag,
-    y: v.y / mag,
-    z: v.z / mag
+    x: v.x * inv,
+    y: v.y * inv,
+    z: v.z * inv
   };
 }
 
