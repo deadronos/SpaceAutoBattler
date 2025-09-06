@@ -16,17 +16,9 @@ export function getDistance(a: Vector3, b: Vector3): number {
   return Math.sqrt(distanceSq(a, b));
 }
 
-function ensureSpatialGridPopulated(state: GameState) {
-  if (!state.spatialGrid) return;
-  // Rebuild the spatial grid from current ships to provide a consistent
-  // snapshot for queries when called outside the main update pass.
-  state.spatialGrid.clear();
-  for (const s of state.ships) {
-    if (s.health > 0) {
-      state.spatialGrid.insert({ id: s.id, pos: s.pos, radius: 16, team: s.team });
-    }
-  }
-}
+// The spatial grid is now updated incrementally by updateSpatialGrid in gameState.ts
+// No need for a full rebuild here.
+
 
 // Enhanced per-tick target cache with more comprehensive caching.
 // Cache nearest enemies, nearby results, and spatial queries to avoid redundant work.

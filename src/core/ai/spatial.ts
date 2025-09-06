@@ -6,43 +6,37 @@ export class SpatialHelpers {
   private state: GameState;
   private sepCache: Map<number, { x: number; y: number; z: number; sepDist: number; tick: number; res: { force: Vector3; neighborCount: number } } > = new Map();
   private spatialGridUpdated = false;
-  constructor(state: GameState) { this.state = state; }
-  resetTick() { this.spatialGridUpdated = false; }
-  ensureUpdated() {
-    if (!this.state.spatialGrid || this.spatialGridUpdated) return;
-    if (this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      // SpatialGrid API expects SpatialEntity[] not Ship[] directly
-      const spatialEntities = this.state.ships.map(s => ({ 
-        id: s.id, 
-        pos: s.pos, 
-        radius: 16, // Default ship radius
-        team: s.team 
-      }));
-      this.state.spatialGrid.rebuild(spatialEntities);
-    }
-    this.spatialGridUpdated = true;
+  private spatialOptimizer: AggressiveSpatialOptimizer | undefined;
+
+  constructor(state: GameState, spatialOptimizer?: AggressiveSpatialOptimizer) {
+    this.state = state;
+    this.spatialOptimizer = spatialOptimizer;
   }
+  resetTick() { this.spatialGridUpdated = false; }
+  // The spatial grid is now updated incrementally by updateSpatialGrid in gameState.ts
+  // No need for a full rebuild here.
   calculateSeparationForceWithCount(ship: Ship): { force: Vector3; neighborCount: number } {
     const separationDistance = this.state.behaviorConfig!.globalSettings.separationDistance;
     const magnitudeThreshold = this.state.behaviorConfig!.globalSettings.separationVectorMagnitudeThreshold || 0.0001;
     const cached = this.sepCache.get(ship.id);
-    if (this.state.spatialGrid && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    if (this.spatialOptimizer && this.state.behaviorConfig?.globalSettings.enableSpatialIndex) {
       if (cached && cached.tick === this.state.tick && cached.sepDist === separationDistance && cached.x === ship.pos.x && cached.y === ship.pos.y && cached.z === ship.pos.z) {
         return cached.res;
       }
-      this.ensureUpdated();
-      const neighbors: Vector3[] = [];
-      this.state.spatialGrid.forEachNeighborsDelta(
+      // Use the optimized spatial query
+      const entities = this.spatialOptimizer.queryRadiusOptimized(
         ship.pos,
         separationDistance,
         ship.team,
-        ship.id,
-        (_dxp, _dyp, _dzp, distSq, entity) => {
-          if (distSq > 0 && distSq < separationDistance * separationDistance) {
-            neighbors.push(entity.pos);
-          }
-        }
+        ship.id
       );
+      const neighbors: Vector3[] = [];
+      for (const entity of entities) {
+        const distSq = (entity.pos.x - ship.pos.x)**2 + (entity.pos.y - ship.pos.y)**2 + (entity.pos.z - ship.pos.z)**2;
+        if (distSq > 0 && distSq < separationDistance * separationDistance) {
+          neighbors.push(entity.pos);
+        }
+      }
       const res = steeringSeparation(ship.pos, neighbors, separationDistance, magnitudeThreshold, () => this.state.rng.next());
       this.sepCache.set(ship.id, { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z, sepDist: separationDistance, tick: this.state.tick, res });
       return res;
@@ -64,18 +58,7 @@ export class SpatialHelpers {
   }
 }
 
-export function ensureSpatialGridUpdated(state: GameState) {
-  if (!state.spatialGrid) return;
-  if (!state.behaviorConfig?.globalSettings.enableSpatialIndex) return;
-  // SpatialGrid API expects SpatialEntity[] not Ship[] directly
-  const spatialEntities = state.ships.map(s => ({ 
-    id: s.id, 
-    pos: s.pos, 
-    radius: 16, // Default ship radius
-    team: s.team 
-  }));
-  state.spatialGrid.rebuild(spatialEntities);
-}
+
 
 export function findNearestEnemy(state: GameState, ship: Ship) { return sharedFindNearestEnemy(state, ship); }
 export function findNearbyEnemies(state: GameState, ship: Ship, range: number) { return sharedFindNearbyEnemies(state, ship, range); }

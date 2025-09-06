@@ -1,7 +1,6 @@
 import type { GameState, Ship, Vector3, SimBounds, TurretState, Team, EntityId } from '../../types/index.js';
 import type { AIPersonality } from '../../config/behaviorConfig.js';
 import { IntentManager } from './intentManager.js';
-import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
 import { assignRoamingAnchor, releaseRoamingAnchor } from './roaming.js';
 import { findBestFormation, assignFormationSlot, getFormationCenter } from './formation.js';
 import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSystems.js';
@@ -26,14 +25,17 @@ export class AIController {
   private batchedQueries: BatchedQueryManager;
   private spatialOptimizer: AggressiveSpatialOptimizer | null = null;
 
-  constructor(state: GameState) {
+  constructor(state: GameState, aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer) {
     this.state = state;
     this.intentManager = new IntentManager();
-    this.spatial = new SpatialHelpers(state);
+    this.spatial = new SpatialHelpers(state, this.spatialOptimizer);
     this.teams = new TeamSystems(state);
     this.batchedQueries = new BatchedQueryManager();
     
-    if (state.spatialGrid) {
+    if (aggressiveSpatialOptimizer) {
+      this.spatialOptimizer = aggressiveSpatialOptimizer;
+    } else if (state.spatialGrid) {
+      // Fallback for tests that don't provide the optimizer directly
       this.spatialOptimizer = new AggressiveSpatialOptimizer(state.spatialGrid, 64);
     }
   }
@@ -149,7 +151,7 @@ export class AIController {
     const firstTarget = turretTargets.find((id) => id != null) ?? null;
     // Declare nearestEnemy at a higher scope
     // OPTIMIZATION: Use batched query result instead of individual search
-    const nearestEnemy = this.batchedQueries.getNearestEnemy(ship) || findNearestEnemy(this.state, ship);
+    const nearestEnemy = this.batchedQueries.getNearestEnemy(ship) || this.queryKNearestOptimized(ship.pos, 1, ship.team === 'red' ? 'blue' : 'red')[0];
 
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;
@@ -255,12 +257,15 @@ export class AIController {
       try {
         const tc = this.state.behaviorConfig?.turretConfig;
         let bestId: number | null = null; let bestScore = -Infinity;
-        // Use grouped resolver to reduce search work when many ships share cells
-        const resolve = makeCellNearestResolver(this.state, tc?.maximumFireRange ?? this.state.simConfig.spatialGrid.cellSize * 2);
-        const candidates = resolve ? resolve(ship.pos, undefined) : this.state.ships;
-        const shortlist = (Array.isArray(candidates) && candidates.length > 0)
-          ? pickKNearestFromCandidates(ship.pos, candidates, 24)
-          : this.state.ships;
+        // Use optimized K-nearest query for candidates
+        const candidates = this.queryKNearestOptimized(
+          ship.pos,
+          24, // Request a reasonable number of candidates
+          ship.team === 'red' ? 'blue' : 'red', // Target opposite team
+          ship.id
+        );
+        const shortlist = candidates.map(e => this.state.shipIndex?.get(e.id)).filter(s => s != null) as Ship[];
+
         // Deterministic secondary ordering by distance then id before scoring
         shortlist.sort((a,b)=>{
           const dax=a.pos.x-ship.pos.x, day=a.pos.y-ship.pos.y, daz=a.pos.z-ship.pos.z;

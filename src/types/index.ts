@@ -236,6 +236,7 @@ export interface GameState {
   spatialGrid?: import('../utils/spatialGrid.js').SpatialGrid;
   // Reused AI controller instance to avoid per-tick allocations
   aiController?: import('../core/aiController.js').AIController;
+  aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer;
 }
 
 export type UIElements = {
