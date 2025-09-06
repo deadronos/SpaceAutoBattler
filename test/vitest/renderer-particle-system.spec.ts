@@ -17,7 +17,7 @@ describe('ParticleSystem - Deterministic RNG', () => {
       nextId: 100,
       simConfig: {
         seed: 'sim-seed-123',
-        simBounds: { minX: -500, maxX: 500, minY: -500, maxY: 500, minZ: -100, maxZ: 100 },
+        simBounds: { width: 1000, height: 1000, depth: 200 },
         tickRate: 60,
         maxEntities: 1000,
         bulletLifetime: 5,
@@ -330,7 +330,5 @@ function extractActiveParticles(particleSystem: any) {
       });
     }
   }
-  // Sort by id to ensure consistent order
-  particles.sort((a, b) => a.id - b.id);
   return particles;
 }
