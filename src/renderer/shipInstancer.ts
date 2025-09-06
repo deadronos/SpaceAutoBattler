@@ -224,11 +224,17 @@ class ShipInstancerImpl {
         const gltfKeyTeam = `ship-${className}-${team}`;
         const gltfKey = `ship-${className}`;
         const gltfProto = state.assetPool.get(gltfKeyTeam) ?? state.assetPool.get(gltfKey);
+        console.log(`[shipInstancer] Looking for GLTF proto: ${gltfKeyTeam} or ${gltfKey}`);
+        console.log(`[shipInstancer] Found GLTF proto:`, gltfProto ? 'yes' : 'no');
+        
         if (gltfProto && typeof gltfProto === 'object') {
           try {
             // If the loader extracted threePrototypes (geometries/materials), use them directly.
             const tp = (gltfProto as unknown as { threePrototypes?: { geometries?: unknown[]; materials?: unknown[] } }).threePrototypes;
+            console.log(`[shipInstancer] GLTF proto has threePrototypes:`, !!tp);
+            
             if (tp && Array.isArray(tp.geometries) && Array.isArray(tp.materials) && tp.geometries.length > 0) {
+              console.log(`[shipInstancer] Using extracted threePrototypes for ${className}: ${tp.geometries.length} geometries, ${tp.materials.length} materials`);
               // Clone to avoid shared mutable state; use unknown guards to satisfy linter
               const clonedGeoms = tp.geometries.map((g: unknown) => {
                 try { const c = g as unknown as { clone?: (...args: unknown[]) => unknown }; if (g && typeof c.clone === 'function') return c.clone(); } catch (_e) { void _e; }
@@ -239,14 +245,19 @@ class ShipInstancerImpl {
                 return m as unknown;
               });
               this.registerPrototype(className, clonedGeoms as unknown as THREE.BufferGeometry[], clonedMats as unknown as THREE.Material[]);
+              console.log(`[shipInstancer] Successfully registered prototype for ${className} using threePrototypes`);
             } else if ('gltf' in Object(gltfProto)) {
               // No pre-extracted prototypes but we have a raw glTF; fall back to a lightweight marker geometry so allocation can proceed.
+              console.log(`[shipInstancer] No threePrototypes for ${className}, using fallback cylinder geometry`);
               const size = (ShipVisualConfig.ships as Partial<Record<string, { collisionRadius: number }>>)[className]?.collisionRadius ?? 16;
               const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
               const mat = new THREE.MeshStandardMaterial({ color: 0x9999ff });
               this.registerPrototype(className, [bodyGeometry], [mat]);
+              console.log(`[shipInstancer] Registered fallback prototype for ${className}`);
             }
-          } catch (_e) { void _e; }
+          } catch (_e) { 
+            console.error(`[shipInstancer] Error processing GLTF proto for ${className}:`, _e);
+          }
         } else {
           // No glTF proto; fallback to existing SVG rasterization path if available
           const svgUrl = getShipSVGUrl(className, defaultSVGConfig);
