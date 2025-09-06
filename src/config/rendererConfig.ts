@@ -155,11 +155,25 @@ export interface RendererConfig {
 
   instancingDebug?: boolean;
 
-  // Whether to eagerly load GLTF models (set to false for lightweight deployments)
+  /**
+   * Whether to eagerly load GLTF models at startup.
+   * - true: attempt to load and register GLTF prototypes so renderer can prefer them over SVG rasterized sprites.
+   * - false: skip GLTF preloads for lightweight or test deployments (SVG rasterization may be used as fallback).
+   */
   loadGltfModels?: boolean;
-  // When true, completely disable the SVG subsystem (no worker, no rasterization, no preloads)
+
+  /**
+   * When true, completely disable the SVG rasterization subsystem.
+   * This guarantees: no SVG Worker will be constructed, rasterization calls become no-ops, and SVG preloads are skipped.
+   * Use this for minimal builds or environments where OffscreenCanvas / Workers are unavailable.
+   */
   disableSvgSubsystem?: boolean;
-  // Whether to run the physics simulation in a dedicated Web Worker. Set false to force in-thread physics (useful for some test envs).
+
+  /**
+   * Whether to run the physics simulation in a dedicated Web Worker.
+   * Set false to force in-thread physics. This flag is independent of the SVG subsystem and is useful for test
+   * environments that don't allow Worker creation or for debugging.
+   */
   useSimWorker?: boolean;
 
   // Instancing settings for performance optimization
@@ -352,7 +366,9 @@ export const DefaultRendererConfig: RendererConfig = {
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
   loadGltfModels: true,
-  disableSvgSubsystem: false,
+  // Default to disabling the SVG subsystem since the project will primarily use GLTF models.
+  // Set to true to avoid creating Workers/OffscreenCanvas in typical runtime.
+  disableSvgSubsystem: true,
   useSimWorker: true
 };
 

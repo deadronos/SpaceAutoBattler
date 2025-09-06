@@ -221,17 +221,23 @@ function initGame(seed?: string) {
     // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
   const useSimWorker = (RendererConfig as any)?.useSimWorker ?? true;
   let w: Worker | null = null;
-  if (useSimWorker) {
-    // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-    w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
-  } else {
-    // Tests or lightweight deployments may prefer in-thread physics; leave w null
-    console.debug('[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false)');
+  // If the config opts out of creating a sim worker, run the physics stepper in-thread immediately
+  if (!useSimWorker) {
+    console.debug('[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false); using in-thread physics');
+    try {
+      const ps = await createPhysicsStepper(state as any);
+      (state as any).physicsStepper = ps;
+    } catch (ee) { void ee; /* ignore and continue */ }
+    return; // no worker setup required
   }
-      let ready = false;
-      let lastShipDataVersion = -1;
-      
-      w.addEventListener('message', (ev) => {
+
+  // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+  w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+  let ready = false;
+  let lastShipDataVersion = -1;
+
+  if (w) {
+    w.addEventListener('message', (ev) => {
         const data = ev.data || {};
         const type = data.type;
         // Perf events from simWorker
@@ -286,7 +292,7 @@ function initGame(seed?: string) {
         }
       });
       
-      w.postMessage({ type: 'init-physics' });
+  w.postMessage({ type: 'init-physics' });
 
       // Expose a small shim for callers that expects physicsStepper API
       (state as any).physicsStepper = {
@@ -320,9 +326,10 @@ function initGame(seed?: string) {
         dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (_e) { void _e;/* ignore */ } },
       };
 
-      // Wait a short time for readiness, then mark initDone if ready
-      setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
-    } catch (_e) { void _e;// Fallback to in-process physics stepper
+  // Wait a short time for readiness, then mark initDone if ready
+  setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
+  }
+  } catch (_e) { void _e;// Fallback to in-process physics stepper
       try {
         const ps = await createPhysicsStepper(state as any);
         (state as any).physicsStepper = ps;

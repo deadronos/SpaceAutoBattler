@@ -25,7 +25,7 @@ describe('SVG worker lazy initialization', () => {
     // Restore Worker
     (global as any).Worker = origWorker;
     // Reset RendererConfig to defaults (do not persist between tests)
-    try { (RendererConfig as any).loadGltfModels = false; } catch { /* ignore */ }
+  try { (RendererConfig as any).loadGltfModels = false; (RendererConfig as any).disableSvgSubsystem = false; } catch { /* ignore */ }
     vi.resetAllMocks();
   });
 
