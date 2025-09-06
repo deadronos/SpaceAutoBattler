@@ -114,11 +114,12 @@ describe('AI Roaming and Formation Systems', () => {
         mode: 'aggressive'
       };
 
-      // Force intent reevaluation by advancing time
-      gameState.time += 10;
       
-      // Step simulation to trigger cleanup
-      aiController.updateAllShips(0.1);
+  // Force intent reevaluation by advancing time
+  gameState.time += 10;
+      
+  // Step simulation to trigger cleanup
+  aiController.updateAllShips(getTestDtFromState(gameState));
 
       // Anchor should be released
       expect(ship.aiState?.roamingAnchor).toBeUndefined();
