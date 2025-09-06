@@ -27,7 +27,22 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   // Allow immediate reevaluation on first update, or when clear threat present,
   // even if intentEndTime is in the future. This avoids sticking on 'idle' in tests.
   const nearestEnemy = findNearestEnemy(state, ship);
-  const hasImmediateThreat = !!nearestEnemy;
+  // Consider an enemy an "immediate threat" only when it's within a reasonable
+  // detection/engagement range. This prevents far-away enemies from blocking
+  // scout exploration behavior in unit tests where ships spawn far apart.
+  let hasImmediateThreat = false;
+  if (nearestEnemy) {
+    try {
+      const tc = state.behaviorConfig?.turretConfig;
+      const preferredRange = ship.aiState?.preferredRange ?? state.behaviorConfig!.globalSettings.separationDistance;
+      const detectionRange = (tc?.maximumFireRange ?? (preferredRange * state.behaviorConfig!.globalSettings.mediumRangeMultiplier)) * 1.0;
+      const dx = nearestEnemy.pos.x - ship.pos.x; const dy = nearestEnemy.pos.y - ship.pos.y; const dz = nearestEnemy.pos.z - ship.pos.z;
+      const dSq = dx*dx + dy*dy + dz*dz;
+      hasImmediateThreat = dSq <= detectionRange * detectionRange;
+    } catch {
+      hasImmediateThreat = true; // conservative fallback
+    }
+  }
   // Probe turret candidate targets without mutating turret state or computing
   // leads. This makes intent selection aware of per-turret candidate picks
   // while avoiding side-effects that `updateTurretLeads` performs.
@@ -96,7 +111,11 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   } catch {
     // swallow any errors probing turrets (best-effort, non-critical)
   }
-  if (state.time < ai.intentEndTime && !shouldEvadeFromDamage && !hasImmediateThreat) return;
+  const scoutIdForGuard = cfg.globalSettings.enableScoutBehavior ? getTeamScoutId(state, ship.team) : null;
+  const isScoutForGuard = scoutIdForGuard != null && scoutIdForGuard === ship.id;
+  // Allow scouts to reevaluate early when exploration is enabled so tests that
+  // initialize intents with short durations don't get stuck on 'pursue'.
+  if (state.time < ai.intentEndTime && !shouldEvadeFromDamage && !hasImmediateThreat && !(isScoutForGuard && cfg.globalSettings.enableScoutExploration)) return;
 
   let newIntent: AIIntent = 'idle';
   if (shouldEvadeFromDamage) {
@@ -221,8 +240,10 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   // Restore personality if we modified it in-place
   try { (personality as unknown as { aggressiveness?: number }).aggressiveness = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team).aggressiveness; } catch (e) { if (DEBUG_AI) console.error('AI-DEBUG restore personality failed', e); }
   }
+  const oldIntent = ai.currentIntent;
   ai.currentIntent = newIntent;
-  ai.lastIntentReevaluation = state.time;
+  console.error(`AI-DEBUG intent changed from ${oldIntent} to ${newIntent}`);
+    ai.lastIntentReevaluation = state.time;
 }
 
 // Below choose* implementations mirror the original controller strategies at a high level,

@@ -47,6 +47,14 @@ export function createShipMesh(
   shipsGroup: THREE.Group, 
   shipMeshes: Map<number, THREE.Object3D>
 ): THREE.Object3D {
+  // Defensive: ensure position values are finite before creating meshes
+  const posValid = Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
+  if (!posValid) {
+    try {
+      logger.error('[meshFactory] createShipMesh called with invalid position for ship', { id: ship.id, pos: ship.pos });
+    } catch (_e) { void _e; }
+    return new THREE.Group();
+  }
   const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
   const svgUrl = getShipSVGUrl(ship.class, defaultSVGConfig);
 
@@ -260,6 +268,53 @@ export function registerPrototypesFromPool(state: GameState) {
   if (!pool) return;
   const classes: ShipClass[] = ['fighter','corvette','frigate','destroyer','carrier'];
     for (const cls of classes) {
+      // First, attempt to register any glTF-derived threePrototypes found in the asset pool.
+      try {
+        try {
+          const teamsToCheck = ['red', 'blue'];
+          let gltfProto: unknown | undefined;
+          for (const t of teamsToCheck) {
+            const key = `ship-${cls}-${t}`;
+            const p = pool.get(key) as unknown | undefined;
+            if (p) { gltfProto = p; break; }
+          }
+          if (!gltfProto) gltfProto = pool.get(`ship-${cls}`) as unknown | undefined;
+          if (gltfProto && typeof gltfProto === 'object') {
+            const tp = (gltfProto as unknown as { threePrototypes?: { geometries?: unknown[]; materials?: unknown[] } }).threePrototypes;
+            if (tp && Array.isArray(tp.geometries) && Array.isArray(tp.materials) && tp.geometries.length > 0) {
+              // Clone geometries/materials defensively before registering
+              const clonedGeoms: THREE.BufferGeometry[] = [];
+              const clonedMats: THREE.Material[] = [];
+              for (let i = 0; i < tp.geometries.length; i++) {
+                try {
+                  const g = tp.geometries[i] as unknown;
+                  const geom = (g && typeof (g as unknown as { clone?: unknown }).clone === 'function') ? ((g as unknown as { clone: () => unknown }).clone() as THREE.BufferGeometry) : (g as unknown as THREE.BufferGeometry);
+                  clonedGeoms.push(geom);
+                } catch (_e) { void _e; }
+              }
+              for (let i = 0; i < tp.materials.length; i++) {
+                try {
+                  const m = tp.materials[i] as unknown;
+                  const mat = (m && typeof (m as unknown as { clone?: unknown }).clone === 'function') ? ((m as unknown as { clone: () => unknown }).clone() as THREE.Material) : (m as unknown as THREE.Material);
+                  clonedMats.push(mat);
+                } catch (_e) { void _e; }
+              }
+              // Prefer updatePrototype if available so existing groups are updated in-place
+              const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
+              if (typeof up === 'function') {
+                try { up(cls, clonedGeoms, clonedMats); } catch (_e) { void _e; shipInstancer.registerPrototype(cls, clonedGeoms, clonedMats); }
+              } else {
+                shipInstancer.registerPrototype(cls, clonedGeoms, clonedMats);
+              }
+              // Ensure team groups exist so allocate() can find them deterministically
+              try { shipInstancer.ensureGroup?.(cls, 'red'); } catch (_e) { void _e; }
+              try { shipInstancer.ensureGroup?.(cls, 'blue'); } catch (_e) { void _e; }
+              if (logger && typeof logger.info === 'function') logger.info(`meshFactory: registered glTF instancer prototype for ${cls}`);
+            }
+          }
+        } catch (_e) { void _e; }
+      } catch (_e) { void _e; }
+
       try {
         const svgUrl = getShipSVGUrl(cls, defaultSVGConfig);
         const asset = pool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
@@ -316,6 +371,13 @@ export function registerPrototypesFromPool(state: GameState) {
  * Creates a mesh for a bullet
  */
 export function createBulletMesh(bullet: Bullet): THREE.Object3D {
+  // Defensive: validate bullet position
+  const posValid = Number.isFinite(bullet.pos?.x) && Number.isFinite(bullet.pos?.y) && Number.isFinite(bullet.pos?.z);
+  if (!posValid) {
+    try { logger.error('[meshFactory] createBulletMesh invalid pos', { id: bullet.id, pos: bullet.pos }); } catch (_e) { void _e; }
+    return new THREE.Group();
+  }
+
   const geom = new THREE.SphereGeometry(2.2, 8, 8);
   const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
   const mesh = new THREE.Mesh(geom, mat);

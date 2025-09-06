@@ -16,6 +16,7 @@ import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
 import { BatchedQueryManager } from './batchedQueries.js';
 import { AggressiveSpatialOptimizer } from './aggressiveSpatialOptimizer.js';
+import { perfBegin, perfEnd } from '../../utils/perf.js';
 
 export class AIController {
   private state: GameState;
@@ -39,6 +40,8 @@ export class AIController {
 
   public updateAllShips(dt: number) {
     if (!this.state.behaviorConfig?.globalSettings.aiEnabled) return;
+    
+    perfBegin('ai.spatial');
     this.spatial.resetTick();
     
     // OPTIMIZATION: Update spatial optimizer and batch precomputes.
@@ -57,27 +60,34 @@ export class AIController {
       }
 
       // OPTIMIZATION: Pre-compute common queries for all ships in batches
+      perfBegin('ai.batched');
       const frameId = this.state.tick ?? 0;
       this.batchedQueries.resetForFrame(frameId);
 
       // Batch compute nearest enemies and separation neighbors for alive ships
       this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
       this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+      perfEnd('ai.batched');
     } else {
       // In test mode, still advance the frame id so any cached data doesn't persist
       const frameId = this.state.tick ?? 0;
       this.batchedQueries.resetForFrame(frameId);
     }
-    
+    perfEnd('ai.spatial');
+
+  perfBegin('ai.teams');
     // Update team systems
     updateTeamAlarms(this.state);
     updateScoutAssignments(this.state);
+    perfEnd('ai.teams');
     
+    perfBegin('ai.individual');
     // Process individual ships with optimized queries
     for (const ship of this.state.ships) {
       if (ship.health <= 0) continue;
       this.updateShipAI(ship, dt);
     }
+    perfEnd('ai.individual');
   }
 
   // Test visibility for team systems (back-compat expectations)
@@ -366,8 +376,8 @@ export class AIController {
         const msg = `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}\n`;
         try {
             // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
-            try { console.error(msg); } catch { console.warn('AI-DEBUG log failed'); }
-          } catch { console.warn('AI-DEBUG outer log failed'); }
+            try { console.error(msg); } catch { if (DEBUG_AI) console.warn('AI-DEBUG log failed'); }
+          } catch { if (DEBUG_AI) console.warn('AI-DEBUG outer log failed'); }
       }
     const gs = this.state.behaviorConfig?.globalSettings;
     let sepWeight = gs?.separationWeight ?? 0.3;
@@ -392,8 +402,8 @@ export class AIController {
   if (DEBUG_AI) {
         try {
           // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
-          try { console.error(`AI-DEBUG controller sep ship=${ship.id} postVel=${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`); } catch (e) { console.warn('AI-DEBUG postVel log failed', e); }
-        } catch (e) { console.warn('AI-DEBUG postVel outer failed', e); }
+          try { console.error(`AI-DEBUG controller sep ship=${ship.id} postVel=${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`); } catch (e) { if (DEBUG_AI) console.warn('AI-DEBUG postVel log failed', e); }
+        } catch (e) { if (DEBUG_AI) console.warn('AI-DEBUG postVel outer failed', e); }
       }
 
   // Execute movement based on current intent (minimal back-compat behavior)
@@ -524,7 +534,7 @@ export class AIController {
       } catch (e) {
         // This catch guards the fallback integration step. 
         if (DEBUG_AI) {
-          console.warn('AI-DEBUG fallback integration failed (non-critical)', e);
+          if (DEBUG_AI) console.warn('AI-DEBUG fallback integration failed (non-critical)', e);
         }
       }
     }

@@ -204,6 +204,13 @@ export interface RendererConfig {
   // Default values for entities
   defaultCollisionRadius: number;
   defaultScale: number;
+
+  // Performance monitoring settings
+  performance: {
+    enableProfiling: boolean; // enable hotpath profiling
+    showOverlay: boolean; // show performance overlay on screen
+    overlayUpdateMs: number; // how often to update overlay (ms)
+  };
 }
 
 export const DefaultRendererConfig: RendererConfig = {
@@ -365,11 +372,20 @@ export const DefaultRendererConfig: RendererConfig = {
 
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
+  // Prefer GLTF models by default on `dev` to avoid the SVG worker subsystem in most runtime
   loadGltfModels: true,
   // Default to disabling the SVG subsystem since the project will primarily use GLTF models.
   // Set to true to avoid creating Workers/OffscreenCanvas in typical runtime.
   disableSvgSubsystem: true,
-  useSimWorker: true
+  useSimWorker: true,
+
+  // Performance instrumentation settings — preserved from incoming PR to keep
+  // hotpath frame-time attribution available while remaining disabled by default.
+  performance: {
+    enableProfiling: false, // disabled by default, enable via query param or explicit config
+    showOverlay: false, // disabled by default
+    overlayUpdateMs: 250, // update overlay 4 times per second
+  },
 };
 
 // Export the default config as RendererConfig for backward compatibility
