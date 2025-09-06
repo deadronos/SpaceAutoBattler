@@ -118,25 +118,28 @@ export class ProjectileSystem {
     const turretIndex = sourceShip.turrets.indexOf(turret);
     const turretConfig = shipConfig.turrets[turretIndex % shipConfig.turrets.length];
 
-    // Check range
+    // Check range (use squared distance to avoid sqrt in the common out-of-range case)
     const target = intent.leadTargetPos ?? intent.targetPosition;
     const dx = target.x - sourceShip.pos.x;
     const dy = target.y - sourceShip.pos.y;
     const dz = target.z - sourceShip.pos.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const distSq = dx * dx + dy * dy + dz * dz;
+    const range = turretConfig.range;
+    const rangeSq = range * range;
 
-    if (distance > turretConfig.range) {
+    if (distSq > rangeSq) {
       return null;
     }
 
     // Create bullet
     const bulletId = this.allocateId();
-    // Base aim direction (unit)
-    let direction = distance > 0 ? {
-      x: dx / distance,
-      y: dy / distance,
-      z: dz / distance
-    } : { x: 1, y: 0, z: 0 };
+    // Base aim direction (unit) — compute sqrt only when needed for normalization
+    let direction = { x: 1, y: 0, z: 0 };
+    if (distSq > 0) {
+  const sqrt = Math.sqrt;
+  const distance = sqrt(distSq); // single sqrt for initial direction
+      direction = { x: dx / distance, y: dy / distance, z: dz / distance };
+    }
 
     // Apply accuracy/spread based on turret config and ship level
     try {
@@ -163,7 +166,7 @@ export class ProjectileSystem {
         // Sample a direction uniformly inside cone around 'direction'
         // Method: pick z = cos(theta) uniformly between cos(coneAngle) and 1, pick phi uniform 0..2pi
         const cosTheta = 1 - (1 - Math.cos(coneAngle)) * rngNext();
-        const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
+  const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
         const phi = 2 * Math.PI * rngNext();
 
         // Build orthonormal basis around original direction
@@ -177,9 +180,10 @@ export class ProjectileSystem {
           // cross with y-axis
           vx = uz; vy = 0; vz = -ux;
         }
-        // normalize v
-        const vlen = Math.sqrt(vx*vx + vy*vy + vz*vz) || 1;
-        vx /= vlen; vy /= vlen; vz /= vlen;
+  // normalize v (use single sqrt and guard against tiny length)
+  const vlenSq = vx*vx + vy*vy + vz*vz;
+  const vlen = vlenSq > 0 ? Math.sqrt(vlenSq) : 1;
+  vx /= vlen; vy /= vlen; vz /= vlen;
         // w = u x v
         const wx = uy * vz - uz * vy;
         const wy = uz * vx - ux * vz;
@@ -190,8 +194,9 @@ export class ProjectileSystem {
         const sampledY = cosTheta * uy + sinTheta * (Math.cos(phi) * vy + Math.sin(phi) * wy);
         const sampledZ = cosTheta * uz + sinTheta * (Math.cos(phi) * vz + Math.sin(phi) * wz);
         // normalize just in case
-        const sLen = Math.sqrt(sampledX*sampledX + sampledY*sampledY + sampledZ*sampledZ) || 1;
-        direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
+  const sLenSq = sampledX*sampledX + sampledY*sampledY + sampledZ*sampledZ;
+  const sLen = sLenSq > 0 ? Math.sqrt(sLenSq) : 1;
+  direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
       }
     } catch (e) {
       // If anything goes wrong, fall back to perfect aim but log the error

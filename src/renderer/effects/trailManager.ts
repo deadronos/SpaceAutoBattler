@@ -194,15 +194,16 @@ export class TrailManager {
     for (const s of ships) {
       if (!s) continue;
       alive.add(s.id);
-      const vel = s.vel || { x: 0, y: 0, z: 0 };
-      const speed = Math.sqrt(vel.x*vel.x + vel.y*vel.y + vel.z*vel.z);
+  const vel = s.vel || { x: 0, y: 0, z: 0 };
+  const speedSq = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
+  const speed = Math.sqrt(speedSq);
       const color = s.team === 'red' ? RendererConfig.trails.colors.red : RendererConfig.trails.colors.blue;
       const trail = this.ensureTrail(s.id, color);
 
       // Always age existing particles
       trail.step(dt, this.lifetime);
 
-      if (speed > 0.5) {
+      if (speedSq > 0.25) {
         // Offset behind the ship along -velocity
         const inv = 1 / speed;
         const back = { x: -vel.x * inv, y: -vel.y * inv, z: -vel.z * inv };

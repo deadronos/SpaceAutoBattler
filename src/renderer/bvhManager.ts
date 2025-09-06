@@ -130,15 +130,11 @@ export function createBVHManager(state: GameState): BVHManager {
     const hits: Ship[] = [];
 
     state.ships.forEach(ship => {
-      const distance = Math.sqrt(
-        Math.pow(ship.pos.x - center.x, 2) +
-        Math.pow(ship.pos.y - center.y, 2) +
-        Math.pow(ship.pos.z - center.z, 2)
-      );
-
-      if (distance <= radius) {
-        hits.push(ship);
-      }
+      const dx = ship.pos.x - center.x;
+      const dy = ship.pos.y - center.y;
+      const dz = ship.pos.z - center.z;
+      const distSq = dx*dx + dy*dy + dz*dz;
+      if (distSq <= radius * radius) hits.push(ship);
     });
 
     return hits;
