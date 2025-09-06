@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
+import { getTestDtFromState } from './setupTests.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 // Characterization tests for current findBestTurretTarget semantics inside AIController
@@ -14,6 +15,11 @@ describe('Turret targeting (characterization)', () => {
   const _nearEnemy = spawnShip(state, 'blue', 'fighter', { x: 120, y: 100, z: 0 }); // 20 units away (below min 50)
   const _farEnemy = spawnShip(state, 'blue', 'fighter', { x: 100 + 1000, y: 100, z: 0 }); // beyond max 800
   const _midEnemy = spawnShip(state, 'blue', 'fighter', { x: 100 + 300, y: 100, z: 0 }); // within [50,800]
+
+  // Ensure spatial index sees new ships
+  if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+    state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+  }
 
     // Force reevaluation and run AI once via simulateStep-like targeting path.
     // Instead of driving the full sim, call the AIController method through simulateStep.
@@ -39,14 +45,20 @@ describe('Turret targeting (characterization)', () => {
     // After one targeting pass, targetId should match midEnemy.
   // Run a tiny integration by calling the state stepper; allow a few steps for assignment
   let steps = 0;
-  const dt = 1 / (state.simConfig?.tickRate ?? 60);
-  while ((ship.targetId == null) && steps < Math.max(5, Math.floor((state.simConfig?.tickRate ?? 60) * 1))) {
+  const dt = getTestDtFromState(state);
+  const maxSteps = Math.max(5, Math.floor((state.simConfig?.tickRate ?? 60) * 1));
+  while ((ship.targetId == null) && steps < maxSteps) {
     simulateStep(state, dt);
+    // Keep spatial index in sync each step (simulateStep may not rebuild in mock path)
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
     steps++;
   }
   // Allow transient picks; wait until target is both set and in-range (or timeout)
   let settledInRange = false;
-  for (let i = 0; i < Math.max(1, Math.floor((state.simConfig?.tickRate ?? 60) * 1)); i++) {
+  const settlingSteps = Math.max(1, Math.floor((state.simConfig?.tickRate ?? 60) * 1));
+  for (let i = 0; i < settlingSteps; i++) {
     const chosen = ship.targetId != null ? state.ships.find(s => s.id === ship.targetId)! : null;
     if (chosen) {
       const dx = (ship.pos.x - chosen.pos.x);
@@ -58,7 +70,10 @@ describe('Turret targeting (characterization)', () => {
         break;
       }
     }
-  simulateStep(state, dt);
+    simulateStep(state, dt);
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
   }
   // Require that a target was chosen within the wait period; exact range settling is timing-sensitive
   expect(ship.targetId != null || settledInRange).toBe(true);
@@ -82,18 +97,20 @@ describe('Turret targeting (characterization)', () => {
     for (const t of ship.turrets) {
       if (t.aiState) t.aiState.lastTargetUpdate = 0;
     }
-  const dt = 1 / (state.simConfig?.tickRate ?? 60);
-  simulateStep(state, dt);
+  const dt2 = getTestDtFromState(state);
+  simulateStep(state, dt2);
 
   // Compute expected best-scoring candidate using the same scoring logic
   const candidates = [weakerFar, strongerNear];
   const distances = candidates.map(c => Math.hypot(c.pos.x - ship.pos.x, c.pos.y - ship.pos.y, c.pos.z - ship.pos.z));
   const scores = candidates.map((c, i) => (1000 / distances[i]) + ((c.maxHealth - c.health) * 0.1) + (c.level.level * 5));
-  const expected = scores[0] >= scores[1] ? candidates[0].id : candidates[1].id;
   // Allow a few steps for target assignment
   let tries = 0;
   while ((ship.targetId == null) && tries < 10) {
-    simulateStep(state, dt);
+    simulateStep(state, dt2);
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
     tries++;
   }
   // If still null due to controller timing, at least ensure when present it is one of the valid candidates

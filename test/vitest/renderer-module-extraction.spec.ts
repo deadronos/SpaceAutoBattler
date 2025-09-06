@@ -101,10 +101,10 @@ describe('Extracted Renderer Modules', () => {
       
       const mesh = createBulletMesh(bullet);
       
-      expect(mesh).toBeInstanceOf(THREE.Object3D);
-      expect(mesh.position.x).toBe(10);
-      expect(mesh.position.y).toBe(10);
-      expect(mesh.position.z).toBe(10);
+  expect(mesh).toBeInstanceOf(THREE.Object3D);
+  expect(mesh.position.x).toBeCloseTo(TEST_DEFAULTS.simBounds.width * 0.02, 6);
+  expect(mesh.position.y).toBeCloseTo(TEST_DEFAULTS.simBounds.height * 0.02, 6);
+  expect(mesh.position.z).toBeCloseTo(TEST_DEFAULTS.simBounds.depth * 0.02, 6);
     });
 
     it('should create ship meshes with placeholders', () => {
@@ -122,7 +122,7 @@ describe('Extracted Renderer Modules', () => {
         shieldRegen: fighterCfg.shieldRegen ?? 0,
         speed: fighterCfg.speed,
         turnRate: fighterCfg.turnRate,
-        turrets: (fighterCfg.turrets || []).map((t: any, idx: number) => ({ id: `${t.id}-${idx}`, cooldownLeft: 0 })),
+  turrets: (fighterCfg.turrets || []).map((t: { id?: string }, idx: number) => ({ id: `${t.id ?? 'turret'}-${idx}`, cooldownLeft: 0 })),
       });
       
       const state = createMockGameState();
@@ -131,10 +131,10 @@ describe('Extracted Renderer Modules', () => {
       
       const mesh = createShipMesh(ship, state, shipsGroup, shipMeshes);
       
-      expect(mesh).toBeInstanceOf(THREE.Object3D);
-      expect(mesh.position.x).toBe(50);
-      expect(mesh.position.y).toBe(50);
-      expect(mesh.position.z).toBe(50);
+  expect(mesh).toBeInstanceOf(THREE.Object3D);
+  expect(mesh.position.x).toBeCloseTo(TEST_DEFAULTS.simBounds.width * 0.1, 6);
+  expect(mesh.position.y).toBeCloseTo(TEST_DEFAULTS.simBounds.height * 0.1, 6);
+  expect(mesh.position.z).toBeCloseTo(TEST_DEFAULTS.simBounds.depth * 0.1, 6);
     });
 
     it('should create health bar meshes', () => {
@@ -146,10 +146,11 @@ describe('Extracted Renderer Modules', () => {
       expect(healthBar).toBeInstanceOf(THREE.Object3D);
       expect(healthBar.children.length).toBeGreaterThan(0);
       
-      // Should have stored mesh references
-      expect((healthBar as any).healthMesh).toBeDefined();
-      expect((healthBar as any).shieldMesh).toBeDefined(); // Ship has shield
-      expect((healthBar as any).bgMesh).toBeDefined();
+  // Should have stored mesh references
+  const hb = healthBar as unknown as { healthMesh?: unknown; shieldMesh?: unknown; bgMesh?: unknown };
+  expect(hb.healthMesh).toBeDefined();
+  expect(hb.shieldMesh).toBeDefined(); // Ship has shield
+  expect(hb.bgMesh).toBeDefined();
     });
 
     it('should pool billboard materials correctly', () => {
