@@ -159,7 +159,7 @@ export class AIController {
     // IMPROVED: Validate turret targets before using them
     let validatedFirstTarget = firstTarget;
     if (firstTarget != null) {
-      const targetShip = this.state.ships.find(s => s.id === firstTarget);
+      const targetShip = this.state.shipIndex?.get(firstTarget);
       if (targetShip) {
         // Check if target is valid (different team, alive, within range)
   const isValidTeam = targetShip.team !== ship.team;
@@ -193,12 +193,12 @@ export class AIController {
       // If we have a validated turret target, decide whether to keep it or
       // switch to a closer nearestEnemy (if available) subject to throttling.
       if (nearestEnemy && nearestEnemy.id !== validatedFirstTarget) {
-        const switchThreshold = 0.8;
+        const switchThreshold = this.state.behaviorConfig?.globalSettings.targetSwitchThreshold ?? 0.8;
         const rate = this.state.simConfig?.targetUpdateRate ?? 0.5;
         const now = this.state.time;
         const throttled = (ship.aiState && typeof ship.aiState.lastTargetSwitchTime === 'number' && (now - ship.aiState.lastTargetSwitchTime) < rate);
         if (!throttled) {
-          const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
+          const currentTargetShip = this.state.shipIndex?.get(validatedFirstTarget);
           if (currentTargetShip) {
             const cdx = currentTargetShip.pos.x - ship.pos.x;
             const cdy = currentTargetShip.pos.y - ship.pos.y;
@@ -208,11 +208,8 @@ export class AIController {
             const ndz = nearestEnemy.pos.z - ship.pos.z;
             const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
             const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
-            if (DEBUG_AI) console.log(`[AIController] Target switching - ship: ${ship.id}, currentTarget: ${validatedFirstTarget}, nearestEnemy: ${nearestEnemy.id}`);
-            if (DEBUG_AI) console.log(`[AIController]   currentDistSq: ${currentDistSq}, nearestDistSq: ${nearestDistSq}, switchThreshold: ${switchThreshold}`);
-            if (DEBUG_AI) console.log(`[AIController]   comparison: ${nearestDistSq} < ${currentDistSq} * ${switchThreshold * switchThreshold} (${currentDistSq * (switchThreshold * switchThreshold)})`);
 
-            // Switch if nearest enemy is significantly closer (20% closer)
+            // Switch if nearest enemy is significantly closer
             if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
               if ((this.state.time - (ship.aiState!.lastTargetSwitchTime ?? -1e9)) >= rate) {
                 ship.targetId = nearestEnemy.id;
@@ -222,11 +219,9 @@ export class AIController {
               ship.targetId = validatedFirstTarget as number;
             }
           } else {
-            // If current target ship not found, keep validatedFirstTarget as value
             ship.targetId = validatedFirstTarget as number;
           }
         } else {
-          // Throttled: keep validated target for now
           ship.targetId = validatedFirstTarget as number;
         }
       } else {
@@ -363,16 +358,14 @@ export class AIController {
 
     // IMPROVED: Clear invalid targets (destroyed ships, same team ships)
     if (ship.targetId != null) {
-      const currentTarget = this.state.ships.find(s => s.id === ship.targetId);
-      if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} checking target: ${ship.targetId}, currentTarget: ${currentTarget?.id ?? 'null'}`);
-  if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
+      const currentTarget = this.state.shipIndex?.get(ship.targetId);
+      if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
         if (DEBUG_AI) {
-          const reason = !currentTarget ? 'not found' : 
+          const reason = !currentTarget ? 'not found' :
                         currentTarget.health <= 0 ? 'destroyed' : 'same team';
           console.log(`DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${ship.targetId} reason=${reason}`);
         }
-  const ais = ship.aiState!;
-  const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
+        ship.targetId = null;
         // Also clear turret targets pointing to the same invalid target
         for (const t of ship.turrets) {
           if (t.aiState?.targetId === ship.targetId) {
@@ -618,16 +611,20 @@ export class AIController {
     ship.vel.z += force.z * dt * ship.speed * sepWeight;
   }
   public moveTowards(ship: Ship, targetPos: Vector3, dt: number, ignoreCloseEnough?: boolean) {
+    if (!this.state.behaviorConfig) return;
     // Use static import at top so this is synchronous for tests
     // Forward the optional ignoreCloseEnough flag to the steering helper. We
     // pass `undefined` for speedOverride to preserve default behavior.
-    return moveTowards(ship, targetPos, dt, this.state.behaviorConfig!.globalSettings, undefined, ignoreCloseEnough);
+    return moveTowards(ship, targetPos, dt, this.state.behaviorConfig.globalSettings, undefined, ignoreCloseEnough);
   }
   public calculateEscapeScore(ship: Ship, targetPos: Vector3, threatsShips: readonly Ship[]) {
     const threats = threatsShips.map(s => s.pos);
     const friends = this.state.ships.filter(s => s.team === ship.team && s.id !== ship.id).map(s => s.pos);
     const bounds: SimBounds = this.state.simConfig?.simBounds ?? { width: 1000, height: 1000, depth: 1000 };
-    return calcEscape(ship.pos, targetPos, threats, friends, bounds, this.state.behaviorConfig!.globalSettings);
+    if (!this.state.behaviorConfig) {
+      return 0;
+    }
+    return calcEscape(ship.pos, targetPos, threats, friends, bounds, this.state.behaviorConfig.globalSettings);
   }
   public executeEvade(_ship: Ship, _dt: number) {
     // Placeholder to satisfy config spec; detailed path sampling lives in movement system.
@@ -636,7 +633,10 @@ export class AIController {
 
   // Preview helper for decision engine evade gate expected by tests
   public previewDecisionEngineEvade(ship: Ship) {
-    const settings = this.state.behaviorConfig!.globalSettings;
+    if (!this.state.behaviorConfig) {
+      return { score: 0, wouldEvade: false };
+    }
+    const settings = this.state.behaviorConfig.globalSettings;
     const nearest = findNearestEnemy(this.state, ship);
     // Compute squared distance to avoid Math.sqrt in hot path. Only compute
     // the real distance when we need to pass a numeric value to the scoring

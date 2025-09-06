@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
+import { createMockGameState, createMockShip, getTestDtFromState, TEST_DEFAULTS } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG, AIPersonality } from '../../src/config/behaviorConfig.js';
@@ -24,20 +24,15 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
         lastDamageTime: 0,
       },
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
     }) as unknown as Ship;
 
     // Place an enemy very close (within defensive evade range)
@@ -45,12 +40,7 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 120, y: 100, z: 100 }, // 20 units away, well within preferredRange * 0.5 = 75
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 120 }, // 20 units away, well within preferredRange * 0.5 = 75
     }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
@@ -94,32 +84,22 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
-        recentDamage: 30,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
+        recentDamage: DEFAULT_BEHAVIOR_CONFIG.globalSettings.damageEvadeThreshold + 5,
         lastDamageTime: state.time
       },
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
     }) as unknown as Ship;
 
     const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 120, y: 100, z: 100 }, // Close enemy
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 120 }, // Close enemy
     }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
@@ -147,55 +127,33 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
     state.behaviorConfig!.globalSettings.enableScoutBehavior = false;
     state.behaviorConfig!.globalSettings.enableAlarmSystem = false;
 
-    const ship: Ship = {
+    const ship: Ship = createMockShip({
       id: 1,
       team: 'red',
       class: 'fighter',
-      pos: { x: 100, y: 100, z: 100 },
-      vel: { x: 0, y: 0, z: 0 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
+      vel: { ...TEST_DEFAULTS.zeroPos },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0, // No recent damage
         lastDamageTime: 0
       }
-    };
+    }) as unknown as Ship;
 
-    const enemy: Ship = {
+    const enemy: Ship = createMockShip({
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 120, y: 100, z: 100 }, // Close enemy
-      vel: { x: 0, y: 0, z: 0 },
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 120 }, // Close enemy
+      vel: { ...TEST_DEFAULTS.zeroPos },
       orientation: { pitch: 0, yaw: 0, roll: 0 },
       targetId: null,
-      health: 100,
-      maxHealth: 100,
-      armor: 5,
-      shield: 50,
-      maxShield: 50,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
-      kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 100 }
-    };
+    }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
 
@@ -243,20 +201,15 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
       id: 1,
       team: 'red',
       class: 'fighter', // Fighter has mode: 'aggressive' by default
-      pos: { x: 100, y: 100, z: 100 },
+      pos: { ...TEST_DEFAULTS.defaultPos },
       aiState: {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 150,
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
         lastDamageTime: 0
       },
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
     }) as unknown as Ship;
 
     // Place enemy at medium range to trigger pursue
@@ -264,12 +217,7 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
       id: 2,
       team: 'blue',
       class: 'fighter',
-      pos: { x: 250, y: 100, z: 100 }, // 150 units away, within preferredRange * 1.2 = 180
-      armor: 5,
-      shieldRegen: 5,
-      speed: 200,
-      turnRate: 2,
-      turrets: [],
+      pos: { ...TEST_DEFAULTS.defaultPos, x: 250 }, // 150 units away, within preferredRange * 1.2 = 180
     }) as unknown as Ship;
 
     state.ships.push(ship, enemy);

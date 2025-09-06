@@ -268,6 +268,8 @@ export interface BehaviorConfig {
      * For example 0.5 means levels can reduce up to 50% of base inaccuracy.
      */
     turretLevelAccuracyMaxReduction?: number;
+    /** Threshold for switching targets (0-1), lower is more 'sticky' */
+    targetSwitchThreshold?: number;
   };
 }
 
@@ -482,6 +484,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   // Per-level accuracy scaling: each level reduces inaccuracy by 2%, up to 50%
   turretLevelAccuracyPerLevel: 0.02,
   turretLevelAccuracyMaxReduction: 0.5,
+  targetSwitchThreshold: 0.8,
     /**
      * Maximum seconds into the future the turret intercept solver will consider.
      * This prevents aiming at extremely far-future intercept points for very slow projectiles

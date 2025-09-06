@@ -231,9 +231,9 @@ export function createMockShip(overrides = {}) {
     id: 1,
     team: 'red' as const,
     class: 'fighter' as const,
-    pos: { x: 100, y: 100, z: 100 },
+    pos: { ...TEST_DEFAULTS.defaultPos },
   // prevPos used by renderer interpolation; keep in sync with pos for tests
-  prevPos: { x: 100, y: 100, z: 100 },
+  prevPos: { ...TEST_DEFAULTS.defaultPos },
     vel: { x: 0, y: 0, z: 0 },
     orientation: {
       pitch: 0,
@@ -267,10 +267,10 @@ export function createMockBullet(overrides = {}) {
     id: 1,
     ownerShipId: 1,
     ownerTeam: 'red' as const,
-    pos: { x: 100, y: 100, z: 100 },
+    pos: { ...TEST_DEFAULTS.defaultPos },
   // prevPos used by renderer interpolation
-  prevPos: { x: 100, y: 100, z: 100 },
-    vel: { x: 400, y: 0, z: 0 },
+  prevPos: { ...TEST_DEFAULTS.defaultPos },
+    vel: { x: TEST_DEFAULTS.defaultVelX, y: 0, z: 0 },
     ttl: 3,
     damage: fighterTurretDamage,
   };
@@ -411,6 +411,7 @@ export const TEST_DEFAULTS = {
 
   // Positioning and velocities used across many tests
   defaultPos: { x: 100, y: 100, z: 100 },
+  zeroPos: { x: 0, y: 0, z: 0 },
   defaultVelX: 400,
 
   // AI / behavior defaults (fall back to DEFAULT_BEHAVIOR_CONFIG)
