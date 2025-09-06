@@ -100,16 +100,7 @@ export class AIController {
 
   public updateShipAI(ship: Ship, dt: number) {
     // Ensure aiState exists for downstream modules
-    if (!ship.aiState) {
-      ship.aiState = {
-        currentIntent: 'idle',
-        intentEndTime: 0,
-        lastIntentReevaluation: 0,
-        preferredRange: calculatePreferredRange(this.state, ship),
-        recentDamage: 0,
-        lastDamageTime: 0
-      } as Ship['aiState'];
-    }
+    if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0, preferredRange: calculatePreferredRange(this.state, ship), recentDamage: 0, lastDamageTime: 0 } as Ship['aiState']; }
 
     // Decay recentDamage over time so evade gating behaves like legacy controller
     try {
@@ -188,7 +179,8 @@ export class AIController {
           validatedFirstTarget = null; // Invalid target
           // Clear the ship's target when it becomes invalid (unless evading)
           if (ship.aiState?.currentIntent !== 'evade') {
-            const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as any; } if ((this.state.time - (ship.aiState.lastTargetSwitchTime??-1e9)) >= _rate2) { ship.targetId = null; ship.aiState.lastTargetSwitchTime=this.state.time; }
+            const ais = ship.aiState!;
+            const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
           }
         }
       } else {
@@ -196,40 +188,53 @@ export class AIController {
       }
     }
 
-    // Target assignment and switching logic
+  // Target assignment and switching logic
     if (validatedFirstTarget != null) {
-      // Check if we should switch to a closer enemy (target switching logic)
+      // If we have a validated turret target, decide whether to keep it or
+      // switch to a closer nearestEnemy (if available) subject to throttling.
       if (nearestEnemy && nearestEnemy.id !== validatedFirstTarget) {
-        const switchThreshold = 0.8; const rate = this.state.simConfig?.targetUpdateRate ?? 0.5; const now = this.state.time; if (ship.aiState && typeof ship.aiState.lastTargetSwitchTime === 'number' && (now - ship.aiState.lastTargetSwitchTime) < rate) { /* throttle target switching */ return; } // 20% closer required to switch
-        const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
+        const switchThreshold = 0.8;
+        const rate = this.state.simConfig?.targetUpdateRate ?? 0.5;
+        const now = this.state.time;
+        const throttled = (ship.aiState && typeof ship.aiState.lastTargetSwitchTime === 'number' && (now - ship.aiState.lastTargetSwitchTime) < rate);
+        if (!throttled) {
+          const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
           if (currentTargetShip) {
-          const cdx = currentTargetShip.pos.x - ship.pos.x;
-          const cdy = currentTargetShip.pos.y - ship.pos.y;
-          const cdz = currentTargetShip.pos.z - ship.pos.z;
-          const ndx = nearestEnemy.pos.x - ship.pos.x;
-          const ndy = nearestEnemy.pos.y - ship.pos.y;
-          const ndz = nearestEnemy.pos.z - ship.pos.z;
-          const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
-          const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
-          if (DEBUG_AI) console.log(`[AIController] Target switching - ship: ${ship.id}, currentTarget: ${validatedFirstTarget}, nearestEnemy: ${nearestEnemy.id}`);
-          if (DEBUG_AI) console.log(`[AIController]   currentDistSq: ${currentDistSq}, nearestDistSq: ${nearestDistSq}, switchThreshold: ${switchThreshold}`);
-          if (DEBUG_AI) console.log(`[AIController]   comparison: ${nearestDistSq} < ${currentDistSq} * ${switchThreshold * switchThreshold} (${currentDistSq * (switchThreshold * switchThreshold)})`);
+            const cdx = currentTargetShip.pos.x - ship.pos.x;
+            const cdy = currentTargetShip.pos.y - ship.pos.y;
+            const cdz = currentTargetShip.pos.z - ship.pos.z;
+            const ndx = nearestEnemy.pos.x - ship.pos.x;
+            const ndy = nearestEnemy.pos.y - ship.pos.y;
+            const ndz = nearestEnemy.pos.z - ship.pos.z;
+            const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
+            const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
+            if (DEBUG_AI) console.log(`[AIController] Target switching - ship: ${ship.id}, currentTarget: ${validatedFirstTarget}, nearestEnemy: ${nearestEnemy.id}`);
+            if (DEBUG_AI) console.log(`[AIController]   currentDistSq: ${currentDistSq}, nearestDistSq: ${nearestDistSq}, switchThreshold: ${switchThreshold}`);
+            if (DEBUG_AI) console.log(`[AIController]   comparison: ${nearestDistSq} < ${currentDistSq} * ${switchThreshold * switchThreshold} (${currentDistSq * (switchThreshold * switchThreshold)})`);
 
-          // Switch if nearest enemy is significantly closer (20% closer)
-          // Use squared distance comparison to avoid sqrt in hot path
-          if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
-            if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as any; } const _rate=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - (ship.aiState.lastTargetSwitchTime??-1e9)) >= _rate) { ship.targetId = nearestEnemy.id; ship.aiState.lastTargetSwitchTime=this.state.time; }
+            // Switch if nearest enemy is significantly closer (20% closer)
+            if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
+              if ((this.state.time - (ship.aiState!.lastTargetSwitchTime ?? -1e9)) >= rate) {
+                ship.targetId = nearestEnemy.id;
+                ship.aiState!.lastTargetSwitchTime = this.state.time;
+              }
+            } else {
+              ship.targetId = validatedFirstTarget as number;
+            }
           } else {
+            // If current target ship not found, keep validatedFirstTarget as value
             ship.targetId = validatedFirstTarget as number;
           }
         } else {
+          // Throttled: keep validated target for now
           ship.targetId = validatedFirstTarget as number;
         }
       } else {
+        // No nearer enemy or same as validated target — keep validated target
         ship.targetId = validatedFirstTarget as number;
       }
-      // Record assigned target
-      (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
+  // Record assigned target (normalize null -> undefined for legacy expectations)
+  (ship as unknown as { __aiAssignedTarget?: number | undefined }).__aiAssignedTarget = ship.targetId ?? undefined;
     } else if (nearestEnemy) {
       // No valid current target, but we have a nearest enemy
       // Check if nearest enemy should be our new target (apply same range validation)
@@ -255,15 +260,18 @@ export class AIController {
       if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id}, targetShip: ${targetShip.id}, isValidTeam: ${isValidTeam}, isAlive: ${isAlive}, withinRange: ${withinRange}`);
 
       if (isValidTeam && isAlive && (withinRange || ship.aiState?.currentIntent === 'evade')) {
-        if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as any; } const _rate=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - (ship.aiState.lastTargetSwitchTime??-1e9)) >= _rate) { ship.targetId = nearestEnemy.id; ship.aiState.lastTargetSwitchTime=this.state.time; }
+        const ais = ship.aiState!;
+        const _rate=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate) { ship.targetId = nearestEnemy.id; ais.lastTargetSwitchTime=this.state.time; }
         if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: ${ship.targetId}`);
       } else {
-        const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as any; } if ((this.state.time - (ship.aiState.lastTargetSwitchTime??-1e9)) >= _rate2) { ship.targetId = null; ship.aiState.lastTargetSwitchTime=this.state.time; }
+        const ais = ship.aiState!;
+        const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
         if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: null`);
       }
     } else {
       // No enemies found, clear target
-      const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as any; } if ((this.state.time - (ship.aiState.lastTargetSwitchTime??-1e9)) >= _rate2) { ship.targetId = null; ship.aiState.lastTargetSwitchTime=this.state.time; }
+  const ais = ship.aiState!;
+  const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
     }
     // Compatibility fallback: if targeting helpers returned null, run a
     // deterministic legacy-style scoring pass (respecting turret min/max
@@ -357,13 +365,14 @@ export class AIController {
     if (ship.targetId != null) {
       const currentTarget = this.state.ships.find(s => s.id === ship.targetId);
       if (DEBUG_AI) console.log(`[AIController] updateShipAI - ship: ${ship.id} checking target: ${ship.targetId}, currentTarget: ${currentTarget?.id ?? 'null'}`);
-      if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
+  if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
         if (DEBUG_AI) {
           const reason = !currentTarget ? 'not found' : 
                         currentTarget.health <= 0 ? 'destroyed' : 'same team';
           console.log(`DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${ship.targetId} reason=${reason}`);
         }
-        const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if (!ship.aiState) { ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0 } as any; } if ((this.state.time - (ship.aiState.lastTargetSwitchTime??-1e9)) >= _rate2) { ship.targetId = null; ship.aiState.lastTargetSwitchTime=this.state.time; }
+  const ais = ship.aiState!;
+  const _rate2=this.state.simConfig?.targetUpdateRate ?? 0.5; if ((this.state.time - ((ais.lastTargetSwitchTime ?? -1e9))) >= _rate2) { ship.targetId = null; ais.lastTargetSwitchTime=this.state.time; }
         // Also clear turret targets pointing to the same invalid target
         for (const t of ship.turrets) {
           if (t.aiState?.targetId === ship.targetId) {
@@ -395,7 +404,8 @@ export class AIController {
         const mag = Math.sqrt(magSq);
         const prePos = `${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)}`;
         const preVel = `${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`;
-        const msg = `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}\n`;
+        const msg = `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}
+`;
         try {
             // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
             try { console.error(msg); } catch { if (DEBUG_AI) console.warn('AI-DEBUG log failed'); }
@@ -621,7 +631,7 @@ export class AIController {
   }
   public executeEvade(_ship: Ship, _dt: number) {
     // Placeholder to satisfy config spec; detailed path sampling lives in movement system.
-    return;
+
   }
 
   // Preview helper for decision engine evade gate expected by tests
@@ -707,6 +717,20 @@ export class AIController {
 export { IntentManager } from './intentManager.js';
 export { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretTarget } from './targeting.js';
 export { calculateSeparationForceWithCount } from './spatial.js';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

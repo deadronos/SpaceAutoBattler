@@ -84,4 +84,7 @@ export function updateTurretLeads(state: GameState, ship: Ship) {  const cfg = s
     } else if (turretState.aiState) {
       delete turretState.aiState!.leadTargetPos;
     }
-  }}\n
+  }
+}
+
+

@@ -23,6 +23,7 @@ describe('ParticleSystem - Deterministic RNG', () => {
         bulletLifetime: 5,
         maxSimulationSteps: 10,
         targetUpdateRate: 60,
+  intentReevaluationRate: 1,
         boundaryBehavior: { ships: 'bounce', bullets: 'remove' },
         spatialGrid: { cellSize: 50 },
         useTimeBasedSeed: false

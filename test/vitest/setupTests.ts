@@ -440,3 +440,11 @@ export function getTestDtFromState(state: GameState | { simConfig?: { tickRate?:
 export function getSimBoundsFromState(state: GameState | { simConfig?: { simBounds?: { width: number; height: number; depth: number } } } = { simConfig: DefaultSimConfig }) {
   return state?.simConfig?.simBounds ?? TEST_DEFAULTS.simBounds;
 }
+
+// Centralized accessors for sim config rates used by tests
+export function getTargetUpdateRate() {
+  return DefaultSimConfig?.targetUpdateRate ?? 0.5;
+}
+export function getIntentReevaluationRate() {
+  return DefaultSimConfig?.intentReevaluationRate ?? 0.3;
+}

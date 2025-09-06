@@ -215,6 +215,7 @@ export interface GameState {
     bulletLifetime: number;
     maxSimulationSteps: number;
     targetUpdateRate: number;
+    intentReevaluationRate: number;
     boundaryBehavior: {
       ships: BoundaryBehavior;
       bullets: BoundaryBehavior;
@@ -288,3 +289,4 @@ export interface ParticleInstance {
   color: string;
   active: boolean;
 }
+
