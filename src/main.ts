@@ -219,7 +219,15 @@ function initGame(seed?: string) {
   (async () => {
     try {
     // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-  const w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+  const useSimWorker = (RendererConfig as any)?.useSimWorker ?? true;
+  let w: Worker | null = null;
+  if (useSimWorker) {
+    // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+    w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+  } else {
+    // Tests or lightweight deployments may prefer in-thread physics; leave w null
+    console.debug('[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false)');
+  }
       let ready = false;
       let lastShipDataVersion = -1;
       

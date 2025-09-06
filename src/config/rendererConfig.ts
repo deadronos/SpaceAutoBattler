@@ -159,6 +159,8 @@ export interface RendererConfig {
   loadGltfModels?: boolean;
   // When true, completely disable the SVG subsystem (no worker, no rasterization, no preloads)
   disableSvgSubsystem?: boolean;
+  // Whether to run the physics simulation in a dedicated Web Worker. Set false to force in-thread physics (useful for some test envs).
+  useSimWorker?: boolean;
 
   // Instancing settings for performance optimization
   instancing: {
@@ -350,7 +352,8 @@ export const DefaultRendererConfig: RendererConfig = {
   defaultCollisionRadius: 1.0,
   defaultScale: 1.0,
   loadGltfModels: true,
-  disableSvgSubsystem: false
+  disableSvgSubsystem: false,
+  useSimWorker: true
 };
 
 // Export the default config as RendererConfig for backward compatibility
