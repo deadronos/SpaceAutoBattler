@@ -157,6 +157,8 @@ export interface RendererConfig {
 
   // Whether to eagerly load GLTF models (set to false for lightweight deployments)
   loadGltfModels?: boolean;
+  // When true, completely disable the SVG subsystem (no worker, no rasterization, no preloads)
+  disableSvgSubsystem?: boolean;
 
   // Instancing settings for performance optimization
   instancing: {

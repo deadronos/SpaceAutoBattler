@@ -4,6 +4,7 @@
 import type { GameState as _GameState } from '../types/index.js';
 import { getFileWatcher } from '../utils/fileWatcher.js';
 import * as logger from '../utils/logger.js';
+import { RendererConfig } from '../config/rendererConfig.js';
 
 export interface SVGAsset {
   url: string;
@@ -27,6 +28,13 @@ export class SVGLoader {
   private watchedFiles = new Set<string>();
 
   constructor() {
+    // If the application explicitly disables SVG subsystem, avoid initializing anything here.
+    try {
+      if ((RendererConfig as any)?.disableSvgSubsystem) {
+        logger.debug('[SVGLoader] SVG subsystem disabled via RendererConfig.disableSvgSubsystem');
+        return;
+      }
+    } catch (_e) { void _e; }
     // Feature guard: require OffscreenCanvas and createImageBitmap for performant rasterization
     try {
       const hasOffscreen = typeof (globalThis as any).OffscreenCanvas !== 'undefined';
@@ -49,7 +57,9 @@ export class SVGLoader {
   // initWorker performs synchronous setup of event listeners and may set
   // this.worker to null on failure.
   private ensureWorkerInitialized() {
-    if (this.worker) return;
+  // If the SVG subsystem is disabled, never initialize the worker
+  try { if ((RendererConfig as any)?.disableSvgSubsystem) return; } catch { /* ignore */ }
+  if (this.worker) return;
     try {
       this.initWorker();
     } catch (_e) { /* ignore - initWorker handles its own errors */ }
@@ -266,8 +276,10 @@ export class SVGLoader {
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-    // Lazily initialize worker and prefer worker-based rasterization when available for performance.
-    try { this.ensureWorkerInitialized(); } catch { /* ignore */ }
+  // If the SVG subsystem is disabled, fail-fast to avoid creating workers or rasterizing.
+  try { if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled'); } catch (_e) { throw _e; }
+  // Lazily initialize worker and prefer worker-based rasterization when available for performance.
+  try { this.ensureWorkerInitialized(); } catch { /* ignore */ }
     if (this.worker) {
       try {
         logger.debug('[SVGLoader] Rasterizing SVG using worker:', asset.url);
@@ -285,9 +297,11 @@ export class SVGLoader {
   }
 
   private async rasterizeWithWorker(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-    // Lazily initialize the worker here so the worker is only created when
-    // rasterization is actually needed.
-    this.ensureWorkerInitialized();
+  // Respect disableSvgSubsystem flag
+  try { if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled'); } catch (_e) { throw _e; }
+  // Lazily initialize the worker here so the worker is only created when
+  // rasterization is actually needed.
+  this.ensureWorkerInitialized();
 
     return new Promise((resolve, reject) => {
       if (!this.worker) {

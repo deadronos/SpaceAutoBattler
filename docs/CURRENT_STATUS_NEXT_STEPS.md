@@ -25,3 +25,7 @@ The project has a foundational structure for a space auto-battler, with key comp
         *   Playwright for end-to-end tests, with a new microbenchmark for ship counts.
     *   **Telemetry:** Basic performance telemetry is integrated, accessible via `?debugPerf=1` URL parameter, tracking physics step times, rasterization, and message sizes.
     *   **Documentation
+## Performance & Instrumentation Tasks
+- Track: Investigate and refactor hot loops (AI, camera, projectiles, renderer sync) — https://github.com/deadronos/SpaceAutoBattler/issues/93
+- Track: Instrument hotpath meter for frame-time attribution — https://github.com/deadronos/SpaceAutoBattler/issues/94
+

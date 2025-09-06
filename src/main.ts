@@ -79,11 +79,12 @@ function initGame(seed?: string) {
 
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
   const gltfModeEnabled = !!((RendererConfig as any)?.loadGltfModels);
+  const svgDisabled = !!((RendererConfig as any)?.disableSvgSubsystem);
 
   // Preload SVG assets and construct the SVG loader only when GLTF model loading is disabled.
   // This avoids creating the raster worker and warming the asset pool when using GLTF prototypes.
   let svgLoader: ReturnType<typeof getSVGLoader> | undefined;
-  if (!gltfModeEnabled) {
+  if (!gltfModeEnabled && !svgDisabled) {
     svgLoader = getSVGLoader();
     (async () => {
       try {
@@ -111,13 +112,13 @@ function initGame(seed?: string) {
       }
     })();
   } else {
-    logger.debug('[main.ts] Skipping SVG preload because RendererConfig.loadGltfModels=true');
+    logger.debug('[main.ts] Skipping SVG preload because GLTF mode or SVG subsystem disabled');
   }
   (window as any).debugSVG = {
     // Get SVG loader stats (no-op when GLTF mode enabled)
     getStats: () => {
-      if ((RendererConfig as any)?.loadGltfModels) {
-        logger.debug('[SVG Debug] GLTF mode enabled; SVG loader stats are disabled');
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; SVG loader stats are disabled');
         return { cachedAssets: 0 } as any;
       }
       if (!svgLoader) return { cachedAssets: 0 } as any;
@@ -128,7 +129,7 @@ function initGame(seed?: string) {
 
     // Manually reload all SVG assets
     reloadAll: async () => {
-      if ((RendererConfig as any)?.loadGltfModels) {
+  if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
         logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
         return;
       }
@@ -143,8 +144,8 @@ function initGame(seed?: string) {
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
-      if ((RendererConfig as any)?.loadGltfModels) {
-        logger.debug('[SVG Debug] GLTF mode enabled; clearCache is a no-op');
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; clearCache is a no-op');
         return;
       }
       logger.debug('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
@@ -154,13 +155,13 @@ function initGame(seed?: string) {
 
     // List cached assets
     listCached: () => {
-      if ((RendererConfig as any)?.loadGltfModels) {
-        logger.debug('[SVG Debug] GLTF mode enabled; no cached SVG assets');
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; no cached SVG assets');
         return [];
       }
-  if (!svgLoader) return [];
-  const stats = svgLoader.getCacheStats();
-  const assets = Array.from(stats && stats.cachedAssets > 0 ? 'assets cached' : []);
+      if (!svgLoader) return [];
+      const stats = svgLoader.getCacheStats();
+      const assets = Array.from(stats && stats.cachedAssets > 0 ? 'assets cached' : []);
       logger.debug('[SVG Debug] Cached SVG assets:', assets);
       return assets;
     }
