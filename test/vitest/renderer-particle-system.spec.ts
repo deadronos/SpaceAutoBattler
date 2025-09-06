@@ -309,6 +309,74 @@ describe('ParticleSystem - Deterministic RNG', () => {
         expect(p1.color).toBe(p2.color);
       }
     });
+
+    test('should validate seed derivation components affect final result', () => {
+      // Test that each component of XOR derivation (globalSeed, entityId, time) affects the result
+      const baseTime = 1.5;
+      const baseEntityId = 100;
+      
+      // Base case
+      const mockState1 = { ...mockGameState, time: baseTime };
+      const ps1 = new ParticleSystem(mockState1, 64);
+      
+      // Different time
+      const mockState2 = { ...mockGameState, time: baseTime + 1.0 };
+      const ps2 = new ParticleSystem(mockState2, 64);
+      
+      // Different entity ID (same time as base)
+      const ps3 = new ParticleSystem(mockState1, 64);
+      
+      const baseOpts: ParticleExplosionOptions = {
+        pos: { x: 0, y: 0, z: 0 },
+        radius: 5,
+        count: 10,
+        entityId: baseEntityId
+      };
+      
+      const differentEntityOpts: ParticleExplosionOptions = {
+        pos: { x: 0, y: 0, z: 0 },
+        radius: 5,
+        count: 10,
+        entityId: baseEntityId + 50 // different entity ID
+      };
+
+      ps1.addParticleExplosion(baseOpts);
+      ps2.addParticleExplosion(baseOpts); // same opts, different time
+      ps3.addParticleExplosion(differentEntityOpts); // different entityId
+
+      const particles1 = extractActiveParticles(ps1);
+      const particles2 = extractActiveParticles(ps2);
+      const particles3 = extractActiveParticles(ps3);
+
+      expect(particles1).toHaveLength(10);
+      expect(particles2).toHaveLength(10);
+      expect(particles3).toHaveLength(10);
+
+      // All three should be different due to different XOR components
+      const tolerance = 1e-10;
+      
+      // Verify particles1 != particles2 (different time)
+      let timeBasedDifferences = 0;
+      for (let i = 0; i < particles1.length; i++) {
+        if (Math.abs(particles1[i].pos.x - particles2[i].pos.x) > tolerance ||
+            Math.abs(particles1[i].pos.y - particles2[i].pos.y) > tolerance ||
+            Math.abs(particles1[i].pos.z - particles2[i].pos.z) > tolerance) {
+          timeBasedDifferences++;
+        }
+      }
+      expect(timeBasedDifferences).toBeGreaterThan(0);
+
+      // Verify particles1 != particles3 (different entityId)
+      let entityBasedDifferences = 0;
+      for (let i = 0; i < particles1.length; i++) {
+        if (Math.abs(particles1[i].pos.x - particles3[i].pos.x) > tolerance ||
+            Math.abs(particles1[i].pos.y - particles3[i].pos.y) > tolerance ||
+            Math.abs(particles1[i].pos.z - particles3[i].pos.z) > tolerance) {
+          entityBasedDifferences++;
+        }
+      }
+      expect(entityBasedDifferences).toBeGreaterThan(0);
+    });
   });
 });
 
