@@ -1,10 +1,9 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import type { GameState, Ship, Vector3 } from '../../src/types/index.js';
+import type { GameState, Vector3 } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
-import { DefaultSimConfig } from '../../src/config/simConfig.js';
 import { createInitialState, spawnShip } from '../../src/core/gameState.js';
-import { createRNG } from '../../src/utils/rng.js';
+import { getTestDtFromState } from './setupTests.js';
 import { lookAt, getForwardVector, angleDifference } from '../../src/utils/vector3.js';
 
 /**
@@ -114,8 +113,9 @@ describe('3D Steering System', () => {
       
       // Run several AI updates to allow orientation to change noticeably
       for (let i = 0; i < 5; i++) {
-        aiController.updateAllShips(0.1);
-        gameState.time += 0.1;
+        const _dt = getTestDtFromState(gameState);
+        aiController.updateAllShips(_dt);
+        gameState.time += _dt;
       }
       
       // The ship should have adjusted its orientation towards the target
@@ -135,7 +135,7 @@ describe('3D Steering System', () => {
       // Call steering directly for deterministic unit verification
       // Import ESM module directly inside the test
       const { moveTowards } = await import('../../src/core/ai/steering.js');
-      const dt = 0.1;
+      const dt = getTestDtFromState(gameState);
       for (let i = 0; i < 5; i++) {
         moveTowards(ship, target, dt, gameState.behaviorConfig.globalSettings);
       }
@@ -159,7 +159,7 @@ describe('3D Steering System', () => {
         ship.targetId = target.id; // Explicit targeting
       });
       
-      const initialDistance12 = Math.hypot(
+  const _initialDistance12 = Math.hypot(
         ship1.pos.x - ship2.pos.x,
         ship1.pos.y - ship2.pos.y,
         ship1.pos.z - ship2.pos.z
@@ -167,8 +167,9 @@ describe('3D Steering System', () => {
       
       // Run AI updates to let separation forces take effect
       for (let i = 0; i < 20; i++) {
-        aiController.updateAllShips(0.1);
-        gameState.time += 0.1;
+        const _dt2 = getTestDtFromState(gameState);
+        aiController.updateAllShips(_dt2);
+        gameState.time += _dt2;
       }
       
       // All ships should be moving toward the target (have non-zero velocity)
@@ -182,14 +183,14 @@ describe('3D Steering System', () => {
   describe('Legacy Compatibility', () => {
     test('legacy dir field should stay synchronized with yaw', () => {
       const ship = spawnShip(gameState, 'red', 'fighter');
-      const target = spawnShip(gameState, 'blue', 'fighter', { x: 100, y: 100, z: 0 });
+  const _target = spawnShip(gameState, 'blue', 'fighter', { x: 100, y: 100, z: 0 });
       
       const initialYaw = ship.orientation.yaw;
       const initialDir = ship.dir;
       expect(initialDir).toBe(initialYaw);
       
       // Update AI
-      aiController.updateAllShips(0.1);
+  aiController.updateAllShips(getTestDtFromState(gameState));
       
       // dir and yaw should remain synchronized
       expect(ship.dir).toBe(ship.orientation.yaw);

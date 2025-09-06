@@ -101,9 +101,9 @@ describe('Turret targeting (characterization)', () => {
   simulateStep(state, dt2);
 
   // Compute expected best-scoring candidate using the same scoring logic
-  const candidates = [weakerFar, strongerNear];
-  const distances = candidates.map(c => Math.hypot(c.pos.x - ship.pos.x, c.pos.y - ship.pos.y, c.pos.z - ship.pos.z));
-  const scores = candidates.map((c, i) => (1000 / distances[i]) + ((c.maxHealth - c.health) * 0.1) + (c.level.level * 5));
+  const _candidates = [weakerFar, strongerNear];
+  // Compute expected best-scoring candidate using the same scoring logic (diagnostic only)
+  // We intentionally avoid creating intermediate arrays that are unused by tests to satisfy lint rules.
   // Allow a few steps for target assignment
   let tries = 0;
   while ((ship.targetId == null) && tries < 10) {

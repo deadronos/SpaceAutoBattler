@@ -226,8 +226,9 @@ describe('AI Roaming and Formation Systems', () => {
 
       // Continue simulation for several more steps
       for (let i = 0; i < 10; i++) {
-        aiController.updateAllShips(0.1);
-        simulateStep(gameState, 0.1);
+        const _dt_stable4 = getTestDtFromState(gameState);
+        aiController.updateAllShips(_dt_stable4);
+        simulateStep(gameState, _dt_stable4);
       }
 
       // Check that assignments remained stable
