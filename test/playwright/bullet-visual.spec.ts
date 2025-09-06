@@ -3,6 +3,8 @@ import * as fs from 'fs';
 
 test.use({ viewport: { width: 1280, height: 720 } });
 
+const baseUrl = process.env.TEST_BASE_URL || 'http://localhost:8080/spaceautobattler.html';
+
 test('bullet visual smoke test - collect state and screenshot', async ({ page }, testInfo) => {
   const logs: string[] = [];
   page.on('console', msg => {
