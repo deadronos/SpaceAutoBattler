@@ -376,8 +376,8 @@ export class AIController {
         const msg = `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}\n`;
         try {
             // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
-            try { console.error(msg); } catch { console.warn('AI-DEBUG log failed'); }
-          } catch { console.warn('AI-DEBUG outer log failed'); }
+            try { console.error(msg); } catch { if (DEBUG_AI) console.warn('AI-DEBUG log failed'); }
+          } catch { if (DEBUG_AI) console.warn('AI-DEBUG outer log failed'); }
       }
     const gs = this.state.behaviorConfig?.globalSettings;
     let sepWeight = gs?.separationWeight ?? 0.3;
@@ -402,8 +402,8 @@ export class AIController {
   if (DEBUG_AI) {
         try {
           // Avoid synchronous fs calls in tests; prefer console logging for diagnostics.
-          try { console.error(`AI-DEBUG controller sep ship=${ship.id} postVel=${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`); } catch (e) { console.warn('AI-DEBUG postVel log failed', e); }
-        } catch (e) { console.warn('AI-DEBUG postVel outer failed', e); }
+          try { console.error(`AI-DEBUG controller sep ship=${ship.id} postVel=${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`); } catch (e) { if (DEBUG_AI) console.warn('AI-DEBUG postVel log failed', e); }
+        } catch (e) { if (DEBUG_AI) console.warn('AI-DEBUG postVel outer failed', e); }
       }
 
   // Execute movement based on current intent (minimal back-compat behavior)
@@ -534,7 +534,7 @@ export class AIController {
       } catch (e) {
         // This catch guards the fallback integration step. 
         if (DEBUG_AI) {
-          console.warn('AI-DEBUG fallback integration failed (non-critical)', e);
+          if (DEBUG_AI) console.warn('AI-DEBUG fallback integration failed (non-critical)', e);
         }
       }
     }
