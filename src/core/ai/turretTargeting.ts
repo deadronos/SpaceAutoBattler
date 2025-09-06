@@ -1,5 +1,6 @@
 import type { GameState, Ship, TurretState } from '../../types/index.js';
 import { DEBUG_AI } from '../../utils/env';
+import logger from '../../utils/logger';
 import type { BehaviorConfig } from '../../config/behaviorConfig.js';
 
 // Compute legacy turret score exactly as in AIController.findBestTurretTarget
@@ -33,11 +34,7 @@ export function pickBestTurretTarget(state: GameState, ship: Ship, turret: Turre
     const score = scoreTurretTarget(dist, c);
     const inRange = dist >= cfg.minimumFireRange && dist <= cfg.maximumFireRange;
 
-  if (DEBUG_AI) {
-      console.log(
-        `DEBUG_AI: turret pickCandidate: ship=${ship.id} turret=${turret.id} candidate=${c.id} dist=${dist.toFixed(2)} hp=${c.health} level=${c.level?.level ?? c.level} score=${score} inRange=${inRange} rangeMin=${cfg.minimumFireRange} rangeMax=${cfg.maximumFireRange}`
-      );
-    }
+  logger.debugIf(DEBUG_AI, () => `DEBUG_AI: turret pickCandidate: ship=${ship.id} turret=${turret.id} candidate=${c.id} dist=${dist.toFixed(2)} hp=${c.health} level=${c.level?.level ?? c.level} score=${score} inRange=${inRange} rangeMin=${cfg.minimumFireRange} rangeMax=${cfg.maximumFireRange}`);
 
     if (!inRange) continue;
     if (score == null) continue;
@@ -47,9 +44,7 @@ export function pickBestTurretTarget(state: GameState, ship: Ship, turret: Turre
     }
   }
 
-  if (DEBUG_AI) {
-    console.log(`DEBUG_AI: turret pickBestTurretTarget result for ship=${ship.id} turret=${turret.id} => ${bestId ?? 'null'}`);
-  }
+  logger.debugIf(DEBUG_AI, () => `DEBUG_AI: turret pickBestTurretTarget result for ship=${ship.id} turret=${turret.id} => ${bestId ?? 'null'}`);
 
   return bestId;
 }
