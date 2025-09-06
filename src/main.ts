@@ -77,13 +77,14 @@ function initGame(seed?: string) {
   // Ensure there is an asset pool for GLTFs and textures
   state.assetPool = new Map<string, unknown>();
 
-  // Initialize SVG loader and preload ship SVGs
-  const svgLoader = getSVGLoader();
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
   const gltfModeEnabled = !!((RendererConfig as any)?.loadGltfModels);
 
-  // Preload SVG assets with change detection enabled unless GLTF model loading is enabled
+  // Preload SVG assets and construct the SVG loader only when GLTF model loading is disabled.
+  // This avoids creating the raster worker and warming the asset pool when using GLTF prototypes.
+  let svgLoader: ReturnType<typeof getSVGLoader> | undefined;
   if (!gltfModeEnabled) {
+    svgLoader = getSVGLoader();
     (async () => {
       try {
         logger.debug('[main.ts] Preloading SVG assets with change detection...');
@@ -119,6 +120,7 @@ function initGame(seed?: string) {
         logger.debug('[SVG Debug] GLTF mode enabled; SVG loader stats are disabled');
         return { cachedAssets: 0 } as any;
       }
+      if (!svgLoader) return { cachedAssets: 0 } as any;
       const stats = svgLoader.getCacheStats();
       logger.debug('[SVG Debug] Cache stats:', stats);
       return stats;
@@ -130,6 +132,7 @@ function initGame(seed?: string) {
         logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
         return;
       }
+      if (!svgLoader) return;
       logger.debug('[SVG Debug] Manually reloading all SVG assets...');
       try {
         await svgLoader.reloadAllAssets();

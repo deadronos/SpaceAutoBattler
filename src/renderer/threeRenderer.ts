@@ -825,6 +825,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Lazy-load SVG and swap geometry/material once available
     (async () => {
       try {
+        // If GLTF models are enabled and a glTF prototype exists in the asset pool, skip SVG rasterization.
+        try {
+          const shouldUseGltf = (RendererConfig as any)?.loadGltfModels ?? false;
+          if (shouldUseGltf && state && state.assetPool) {
+            const gltfKeyTeam = `ship-${s.class}-${s.team}`;
+            const gltfKey = `ship-${s.class}`;
+            const proto = state.assetPool.get(gltfKeyTeam) ?? state.assetPool.get(gltfKey);
+            if (proto && typeof proto === 'object') {
+              try { shipInstancer.allocate(s.id, s.class, s.team, state); } catch (_) { void _; }
+              return; // skip SVG rasterization
+            }
+          }
+        } catch (_e) { void _e; }
+
         const teamColor = s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
         const asset = await loadSVGAsset(svgUrl, {
           width: defaultSVGConfig.defaultRasterSize.width,

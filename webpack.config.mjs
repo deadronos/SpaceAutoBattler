@@ -8,6 +8,8 @@ import webpack from 'webpack';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Capture env flag once to avoid referencing `process` inline in the config object
+const VITEST_DEBUG_BENCH = typeof process !== 'undefined' && Boolean(process.env && process.env.VITEST_DEBUG_BENCH);
 
 export default (env = {}, argv) => {
   const isProd = argv.mode === 'production';
@@ -65,6 +67,11 @@ export default (env = {}, argv) => {
   ] }),
   // optional analyzer
   ...(shouldAnalyze ? [new BundleAnalyzerPlugin()] : []),
+      // Define compile-time environment flags so browser bundles don't reference `process` at runtime
+      new webpack.DefinePlugin({
+        __VITEST_DEBUG_BENCH__: JSON.stringify(VITEST_DEBUG_BENCH),
+        'process.env.VITEST_DEBUG_BENCH': JSON.stringify(VITEST_DEBUG_BENCH)
+      }),
       // Replace internal .js import specifiers with .ts but only when the importer is in our src/ tree.
       // This prevents rewriting third-party package imports (for example three) which might import
       // './something.js' internally but do not ship .ts sources.

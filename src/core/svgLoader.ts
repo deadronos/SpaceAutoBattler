@@ -39,8 +39,20 @@ export class SVGLoader {
       try { logger.error('[SVGLoader] Feature check failed:', e); } catch { /* ignore */ }
       throw e;
     }
-    this.initWorker();
+    // Defer worker initialization until actually needed (lazy) so that
+    // consumers that prefer GLTF models won't spawn the SVG raster worker.
+    // Worker will be created on first rasterization attempt.
     this.setupFileWatching();
+  }
+
+  // Ensure the worker is initialized (lazy). This is synchronous because
+  // initWorker performs synchronous setup of event listeners and may set
+  // this.worker to null on failure.
+  private ensureWorkerInitialized() {
+    if (this.worker) return;
+    try {
+      this.initWorker();
+    } catch (_e) { /* ignore - initWorker handles its own errors */ }
   }
 
   private initWorker() {
@@ -271,6 +283,10 @@ export class SVGLoader {
   }
 
   private async rasterizeWithWorker(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
+    // Lazily initialize the worker here so the worker is only created when
+    // rasterization is actually needed.
+    this.ensureWorkerInitialized();
+
     return new Promise((resolve, reject) => {
       if (!this.worker) {
         reject(new Error('Worker not available'));
