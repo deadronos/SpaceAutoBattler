@@ -4,6 +4,7 @@ import { SpatialGrid } from '../../src/utils/spatialGrid.js';
 import { AIController } from '../../src/core/ai/controller.js';
 import { AggressiveSpatialOptimizer } from '../../src/core/ai/aggressiveSpatialOptimizer.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
+import { DefaultSimConfig } from '../../src/config/simConfig.js';
 import { getShipClassConfig, TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
 
 // Mock WebGL context for tests
@@ -180,6 +181,11 @@ beforeAll(() => {
 
 // Test utilities
 export function createMockGameState(overrides = {}) {
+  // Use the project's DefaultSimConfig as the base for test mocks so tests
+  // automatically follow upstream changes (tickRate, bounds, spatialGrid, etc.).
+  const baseSim = { ...DefaultSimConfig };
+  baseSim.seed = 'test-seed';
+
   const baseState: GameState = {
     time: 0,
     tick: 0,
@@ -192,27 +198,12 @@ export function createMockGameState(overrides = {}) {
       pick: <T>(arr: T[]) => arr[0],
     },
     nextId: 1,
-    simConfig: {
-      simBounds: { width: 1000, height: 800, depth: 600 },
-    tickRate: 60,
-      maxEntities: 1000,
-      bulletLifetime: 3,
-      maxSimulationSteps: 100,
-      targetUpdateRate: 1,
-      boundaryBehavior: {
-        ships: 'bounce' as const,
-        bullets: 'remove' as const,
-      },
-      spatialGrid: {
-        cellSize: 64,
-      },
-      seed: 'test-seed',
-      useTimeBasedSeed: false,
-    },
+    // Merge DefaultSimConfig with any lightweight test overrides
+    simConfig: { ...baseSim },
     ships: [] as Ship[],
     shipIndex: new Map(),
-  // Version counter required by GameState type
-  shipDataVersion: 0,
+    // Version counter required by GameState type
+    shipDataVersion: 0,
     bullets: [] as Bullet[],
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
@@ -241,12 +232,16 @@ export function createMockShip(overrides = {}) {
     team: 'red' as const,
     class: 'fighter' as const,
     pos: { x: 100, y: 100, z: 100 },
+  // prevPos used by renderer interpolation; keep in sync with pos for tests
+  prevPos: { x: 100, y: 100, z: 100 },
     vel: { x: 0, y: 0, z: 0 },
     orientation: {
       pitch: 0,
       yaw: 0,
       roll: 0,
     },
+  // prevOrientation used by renderer interpolation
+  prevOrientation: { pitch: 0, yaw: 0, roll: 0 },
     dir: 0,
     targetId: null,
     health: fighterCfg.baseHealth,
@@ -273,6 +268,8 @@ export function createMockBullet(overrides = {}) {
     ownerShipId: 1,
     ownerTeam: 'red' as const,
     pos: { x: 100, y: 100, z: 100 },
+  // prevPos used by renderer interpolation
+  prevPos: { x: 100, y: 100, z: 100 },
     vel: { x: 400, y: 0, z: 0 },
     ttl: 3,
     damage: fighterTurretDamage,
@@ -397,4 +394,49 @@ export function expectShipTurretCountFromConfig(ship: { turrets?: unknown[] }, s
   // Use Vitest expect from global context
   const { expect } = require('vitest');
   expect(ship.turrets).toHaveLength(expected);
+}
+
+// Canonical test constants and helpers
+// These provide a single source of truth for tests so hardcoded numbers
+// are easy to maintain and driven from real configs when possible.
+export const TEST_DEFAULTS = {
+  // Derived from DefaultSimConfig where sensible
+  tickRate: DefaultSimConfig?.tickRate ?? 10,
+  simBounds: DefaultSimConfig?.simBounds ?? { width: 2000, height: 2000, depth: 1000 },
+  spatialCellSize: DefaultSimConfig?.spatialGrid?.cellSize ?? 64,
+
+  // Animation / timing
+  animationFrameMs: 16,
+  longTimeoutMs: 60000,
+
+  // Positioning and velocities used across many tests
+  defaultPos: { x: 100, y: 100, z: 100 },
+  defaultVelX: 400,
+
+  // AI / behavior defaults (fall back to DEFAULT_BEHAVIOR_CONFIG)
+  // Test-only: access behavior config with a minimal lint suppression so tests can
+  // follow changes to DEFAULT_BEHAVIOR_CONFIG without importing deep types.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  preferredRange: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.preferredRange ?? 300,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  closeRangeMultiplier: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.closeRangeMultiplier ?? 0.6,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mediumRangeMultiplier: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.mediumRangeMultiplier ?? 1.0,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  boundarySafetyMargin: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.globalSettings?.boundarySafetyMargin ?? 50,
+
+  // Renderer / DOM sizes used in integration tests
+  rendererDom: { width: 800, height: 600 },
+
+  // Movement thresholds used by smoke / movement assertions
+  movementThreshold: 10,
+};
+
+export function getTestDtFromState(state: GameState | { simConfig?: { tickRate?: number } } = { simConfig: DefaultSimConfig }) {
+  const rate = state?.simConfig?.tickRate ?? TEST_DEFAULTS.tickRate;
+  return 1 / rate;
+}
+
+export function getSimBoundsFromState(state: GameState | { simConfig?: { simBounds?: { width: number; height: number; depth: number } } } = { simConfig: DefaultSimConfig }) {
+  return state?.simConfig?.simBounds ?? TEST_DEFAULTS.simBounds;
 }

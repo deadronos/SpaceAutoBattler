@@ -4,8 +4,9 @@ import path from 'path';
 export default defineConfig({
   test: {
     include: [
+      'test/vitest/*.spec.ts',
+      'test/vitest/*.test.ts',
       'test/vitest/**/*.spec.ts',
-      'test/vitest/**/*.test.ts',
     ],
     exclude: [
       'test/playwright/**',

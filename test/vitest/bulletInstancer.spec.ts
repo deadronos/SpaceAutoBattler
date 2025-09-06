@@ -137,8 +137,8 @@ describe('BulletInstancer', () => {
       weaponId: 'test'
     };
 
-    bulletInstancer.allocateInstance(bulletId);
-    const success = bulletInstancer.updateBulletTransform(bullet);
+  bulletInstancer.allocateInstance(bulletId);
+  const success = bulletInstancer.updateBulletTransform(bullet);
     
     expect(success).toBe(true);
   });

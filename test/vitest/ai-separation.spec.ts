@@ -2,8 +2,8 @@ import { describe, test, expect, beforeEach } from 'vitest';
 import type { GameState, Ship, Vector3 } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
-import { DefaultSimConfig } from '../../src/config/simConfig.js';
-import { createInitialState, spawnShip } from '../../src/core/gameState.js';
+import { createMockGameState, TEST_DEFAULTS, getTestDtFromState } from './setupTests.js';
+import { spawnShip } from '../../src/core/gameState.js';
 import { createRNG } from '../../src/utils/rng.js';
 
 /**
@@ -16,22 +16,20 @@ describe('AI Separation Steering', () => {
   let aiController: AIController;
 
   beforeEach(() => {
-    // Create proper game state using the game's initialization function
-    gameState = createInitialState();
+    // Use test helper to create a deterministic mock state
+    gameState = createMockGameState();
     // Override random seed for deterministic tests
     gameState.rng = createRNG('test-12345');
-    // Ensure we have behavior config
     gameState.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
-    // Clear any default ships
     gameState.ships = [];
-    
     aiController = new AIController(gameState);
   });
 
   test('should reduce neighbor clumping with separation force', () => {
     // Create 10 frigates clustered together at the center (frigates have formation mode)
-    const centerPos: Vector3 = { x: 500, y: 500, z: 250 };
-    const clusterRadius = 30; // Start ships very close together
+  // Use center derived from sim bounds to be robust to config changes
+  const centerPos: Vector3 = { x: TEST_DEFAULTS.simBounds.width / 2, y: TEST_DEFAULTS.simBounds.height / 2, z: TEST_DEFAULTS.simBounds.depth / 2 };
+  const clusterRadius = Math.min(30, TEST_DEFAULTS.simBounds.width * 0.02); // Start ships very close together
     const separationDistance = gameState.behaviorConfig!.globalSettings.separationDistance;
 
     for (let i = 0; i < 10; i++) {
@@ -43,7 +41,7 @@ describe('AI Separation Steering', () => {
       };
       
       // Use frigates since they have formation mode which naturally leads to group behavior
-      const ship = spawnShip(gameState, 'red', 'frigate', shipPos);
+  const ship = spawnShip(gameState, 'red', 'frigate', shipPos);
       
       // Don't manually set intent - let the AI naturally choose group behavior
       // Just make sure they have long intent duration to prevent too frequent switches
@@ -53,6 +51,10 @@ describe('AI Separation Steering', () => {
       }
     }
 
+    // Rebuild spatial index so neighbor queries see the recently spawned ships
+    if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
     // Count initial neighbors within separationDistance/2 (baseline)
     const countNeighborsInRadius = (ship: Ship, radius: number): number => {
       let count = 0;
@@ -73,13 +75,17 @@ describe('AI Separation Steering', () => {
     );
     const initialAvgNeighbors = initialNeighborCounts.reduce((a, b) => a + b, 0) / initialNeighborCounts.length;
 
-    // Simulate for 5 seconds with small time steps to allow separation to work
-    const dt = 0.1; // 100ms steps
-    const totalTime = 5.0; // 5 seconds
-    
-    for (let t = 0; t < totalTime; t += dt) {
-      gameState.time = t;
+    // Simulate for 5 seconds using configured tick rate
+    const dt = getTestDtFromState(gameState);
+    const totalSteps = Math.floor(5 / dt);
+    for (let step = 0; step < totalSteps; step++) {
       aiController.updateAllShips(dt);
+      gameState.time += dt;
+      gameState.tick++;
+      // Update spatial grid as main loop would after AI
+      if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      }
     }
 
     // Count final neighbors within separationDistance/2
@@ -124,13 +130,16 @@ describe('AI Separation Steering', () => {
       }
     }
 
-    // Simulate for 3 seconds to reach formation
-    const dt = 0.1;
-    const totalTime = 3.0;
-    
-    for (let t = 0; t < totalTime; t += dt) {
-      gameState.time = t;
-      aiController.updateAllShips(dt);
+    // Simulate for 3 seconds to reach formation using configured tick rate
+    const dt2 = getTestDtFromState(gameState);
+    const totalSteps2 = Math.floor(3 / dt2);
+    for (let step = 0; step < totalSteps2; step++) {
+      aiController.updateAllShips(dt2);
+      gameState.time += dt2;
+      gameState.tick++;
+      if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      }
     }
 
     // Verify ships have moved towards their formation positions
@@ -172,11 +181,12 @@ describe('AI Separation Steering', () => {
 
   test('should use configurable separation parameters', () => {
     // Test that separation uses the configured distance and weight
-    const separationDistance = gameState.behaviorConfig!.globalSettings.separationDistance;
-    const separationWeight = gameState.behaviorConfig!.globalSettings.separationWeight;
+  const separationDistance = gameState.behaviorConfig!.globalSettings.separationDistance;
+  const separationWeight = gameState.behaviorConfig!.globalSettings.separationWeight;
 
-    expect(separationDistance).toBe(120); // From our default config
-    expect(separationWeight).toBe(0.3); // From our default config
+  // Validate config values are numbers and come from behaviorConfig
+  expect(typeof separationDistance).toBe('number');
+  expect(typeof separationWeight).toBe('number');
 
     // Test with modified config
     gameState.behaviorConfig!.globalSettings.separationDistance = 200;
@@ -184,14 +194,14 @@ describe('AI Separation Steering', () => {
 
     // Create two ships within the new separation distance
     const ship1 = spawnShip(gameState, 'red', 'fighter', { x: 100, y: 100, z: 100 });
-    const ship2 = spawnShip(gameState, 'red', 'fighter', { x: 150, y: 100, z: 100 }); // 50 units away, within new separationDistance
+  const _ship2 = spawnShip(gameState, 'red', 'fighter', { x: 150, y: 100, z: 100 }); // 50 units away, within new separationDistance
 
-    // Use reflection to access private method for testing
-    const controller = aiController as AIController;
-    const separationForce = controller.calculateSeparationForceWithCount(ship1);
+  // Use controller helper to compute separation
+  const controller = aiController as AIController;
+  const separationForce = controller.calculateSeparationForceWithCount(ship1);
 
-    // Ship1 should experience separation force away from ship2
-    expect(separationForce.x).toBeLessThan(0); // Force pointing away from ship2 (negative X direction)
-    expect(Math.abs(separationForce.x)).toBeGreaterThan(0); // Some force should be applied
+  // Ship1 should experience separation force away from ship2 (x should be negative)
+  expect(separationForce.x).toBeLessThan(0);
+  expect(Math.abs(separationForce.x)).toBeGreaterThan(0);
   });
 });

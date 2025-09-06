@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip } from './setupTests.js';
+import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -42,6 +42,10 @@ describe('AI Evade Behavior', () => {
 
     state.ships.push(ship);
 
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
+
     // Simulate damage accumulation by directly updating aiState
     // This simulates the damage tracking that would happen in updateBullets
     ship.aiState!.recentDamage = 30; // Above threshold of 25
@@ -66,8 +70,12 @@ describe('AI Evade Behavior', () => {
 
     state.ships.push(enemy);
 
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
+
     // Update AI - should switch to evade due to recent damage
-    aiController.updateAllShips(0.1);
+    aiController.updateAllShips(getTestDtFromState(state));
 
     // Ship should now have evade intent
     expect(ship.aiState?.currentIntent).toBe('evade');
@@ -95,6 +103,10 @@ describe('AI Evade Behavior', () => {
     }) as unknown as Ship;
 
     state.ships = [ship, enemy]; // Replace all ships with just these two
+
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
     
     // Set up the ship's aiState with evade intent
     ship.aiState = {
@@ -127,12 +139,13 @@ describe('AI Evade Behavior', () => {
     // Apply movement for multiple ticks
     for (let i = 0; i < 10; i++) {
       // Directly call moveTowards with the escape target and force movement
-      aiController.moveTowards(ship, escapeTarget, 0.1, true);
+      aiController.moveTowards(ship, escapeTarget, getTestDtFromState(state), true);
       
       // Move the ship based on its velocity
-      ship.pos.x += ship.vel.x * 0.1;
-      ship.pos.y += ship.vel.y * 0.1;
-      ship.pos.z += ship.vel.z * 0.1;
+  const dt = getTestDtFromState(state);
+  ship.pos.x += ship.vel.x * dt;
+  ship.pos.y += ship.vel.y * dt;
+  ship.pos.z += ship.vel.z * dt;
       
       if (DEBUG_AI && i % 2 === 0) {
         console.error(`AI-DEBUG direct evade iter=${i} pos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} vel=${ship.vel.x.toFixed(2)},${ship.vel.y.toFixed(2)},${ship.vel.z.toFixed(2)}`);
@@ -175,8 +188,9 @@ describe('AI Evade Behavior', () => {
 
     // Simulate time passing with damage decay
     for (let i = 0; i < 50; i++) {
-      aiController.updateAllShips(0.1);
-      state.time += 0.1;
+      const dt = getTestDtFromState(state);
+      aiController.updateAllShips(dt);
+      state.time += dt;
     }
 
     // Recent damage should have decayed
@@ -226,7 +240,7 @@ describe('AI Evade Behavior', () => {
     state.ships.push(enemy);
 
     // Update AI with custom config
-    aiController.updateAllShips(0.1);
+  aiController.updateAllShips(getTestDtFromState(state));
 
     // Should switch to evade with lower threshold
     expect(ship.aiState?.currentIntent).toBe('evade');
@@ -285,7 +299,7 @@ describe('AI Evade Behavior', () => {
     ship.aiState!.lastIntentReevaluation = state.time - 2;
 
     // Test 1: Within damage window - should evade
-    aiController.updateAllShips(0.1);
+  aiController.updateAllShips(getTestDtFromState(state));
     expect(ship.aiState?.currentIntent).toBe('evade');
 
     // Test 2: Wait until outside damage window - should not evade

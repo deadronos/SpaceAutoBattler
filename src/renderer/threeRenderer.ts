@@ -1449,9 +1449,27 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (!m) continue;
 
       // Interpolate position and orientation
-      const interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(s.prevPos.x, s.prevPos.y, s.prevPos.z), new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z), interpolationFactor);
-      const interpolatedOrientation = new THREE.Euler().set(s.prevOrientation.pitch, s.prevOrientation.yaw, s.prevOrientation.roll).slerp(new THREE.Euler(s.orientation.pitch, s.orientation.yaw, s.orientation.roll), interpolationFactor);
-
+      // Guard when prevPos is optional; fall back to current pos when missing
+      let interpolatedPos: THREE.Vector3;
+      if (s.prevPos) {
+        interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(s.prevPos.x, s.prevPos.y, s.prevPos.z), new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z), interpolationFactor);
+      } else {
+        interpolatedPos = new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z);
+      }
+      // Use quaternions for smooth spherical interpolation between orientations
+      // Guard when prevOrientation is missing (tests may omit it); fall back to current orientation
+      let interpolatedOrientationEuler: THREE.Euler;
+      if (s.prevOrientation) {
+        const prevEuler = new THREE.Euler(s.prevOrientation.pitch, s.prevOrientation.yaw, s.prevOrientation.roll);
+        const nextEuler = new THREE.Euler(s.orientation.pitch, s.orientation.yaw, s.orientation.roll);
+        const qPrev = new THREE.Quaternion().setFromEuler(prevEuler);
+        const qNext = new THREE.Quaternion().setFromEuler(nextEuler);
+        const qInterp = new THREE.Quaternion().slerpQuaternions(qPrev, qNext, interpolationFactor);
+        interpolatedOrientationEuler = new THREE.Euler().setFromQuaternion(qInterp);
+      } else {
+        interpolatedOrientationEuler = new THREE.Euler(s.orientation.pitch, s.orientation.yaw, s.orientation.roll);
+      }
+      const interpolatedOrientation = interpolatedOrientationEuler;
       if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         // Reuse a shared temp quaternion to avoid per-frame allocations
         tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z));
@@ -1493,9 +1511,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     
     // Update bullets - use instanced rendering if enabled, otherwise individual meshes
     if (RendererConfig.instancing.enableBullets && bulletInstancer) {
-      // Update instanced bullet transforms
+      // Update instanced bullet transforms. Some tests construct bullets with
+      // only `pos` and omit `prevPos`. Guard access to avoid TypeErrors by
+      // falling back to `pos` when `prevPos` is missing.
       for (const b of state.bullets) {
-        const interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(b.prevPos.x, b.prevPos.y, b.prevPos.z), new THREE.Vector3(b.pos.x, b.pos.y, b.pos.z), interpolationFactor);
+        const px = (b.prevPos && typeof b.prevPos.x === 'number') ? b.prevPos.x : b.pos.x;
+        const py = (b.prevPos && typeof b.prevPos.y === 'number') ? b.prevPos.y : b.pos.y;
+        const pz = (b.prevPos && typeof b.prevPos.z === 'number') ? b.prevPos.z : b.pos.z;
+        const nx = b.pos.x;
+        const ny = b.pos.y;
+        const nz = b.pos.z;
+        const interpolatedPos = new THREE.Vector3();
+        interpolatedPos.x = px + (nx - px) * interpolationFactor;
+        interpolatedPos.y = py + (ny - py) * interpolationFactor;
+        interpolatedPos.z = pz + (nz - pz) * interpolationFactor;
         bulletInstancer.updateBulletTransform(b, interpolatedPos);
       }
       // Mark instance matrix as needing update once per frame
@@ -1505,7 +1534,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       for (const b of state.bullets) {
         const m = bulletMeshes.get(b.id);
         if (m) {
-          const interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(b.prevPos.x, b.prevPos.y, b.prevPos.z), new THREE.Vector3(b.pos.x, b.pos.y, b.pos.z), interpolationFactor);
+          const px = (b.prevPos && typeof b.prevPos.x === 'number') ? b.prevPos.x : b.pos.x;
+          const py = (b.prevPos && typeof b.prevPos.y === 'number') ? b.prevPos.y : b.pos.y;
+          const pz = (b.prevPos && typeof b.prevPos.z === 'number') ? b.prevPos.z : b.pos.z;
+          const nx = b.pos.x;
+          const ny = b.pos.y;
+          const nz = b.pos.z;
+          const interpolatedPos = new THREE.Vector3();
+          interpolatedPos.x = px + (nx - px) * interpolationFactor;
+          interpolatedPos.y = py + (ny - py) * interpolationFactor;
+          interpolatedPos.z = pz + (nz - pz) * interpolationFactor;
           m.position.copy(interpolatedPos);
         }
       }

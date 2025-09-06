@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip } from './setupTests.js';
-import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
+import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -24,14 +23,13 @@ describe('AI Engagement Integration Test', () => {
     const blueShips: Ship[] = [];
 
     for (let i = 0; i < 3; i++) {
-      const fighterCfg = getShipClassConfig('fighter');
-      const redShip = createMockShip({
+  const redShip = createMockShip({
         id: i + 1,
         team: 'red',
         class: 'fighter',
         pos: { x: 100 + i * 50, y: 100, z: 100 },
       });
-      (redShip as any).aiState = {
+  (redShip as Ship).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
@@ -46,7 +44,7 @@ describe('AI Engagement Integration Test', () => {
         class: 'fighter',
         pos: { x: 300 + i * 50, y: 100, z: 100 },
       });
-  (blueShip as any).aiState = JSON.parse(JSON.stringify((redShip as any).aiState));
+  (blueShip as Ship).aiState = JSON.parse(JSON.stringify((redShip as Ship).aiState));
 
       redShips.push(redShip as Ship);
       blueShips.push(blueShip as Ship);
@@ -54,13 +52,19 @@ describe('AI Engagement Integration Test', () => {
 
     state.ships.push(...redShips, ...blueShips);
 
+    // Rebuild spatial grid so AI queries see spawned ships
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
+
     // Simulate for 2 seconds (20 ticks at 10 updates per second)
     let engagedShips = 0;
     let evadingShips = 0;
 
+    const dt = getTestDtFromState(state);
     for (let tick = 0; tick < 20; tick++) {
-      aiController.updateAllShips(0.1);
-      state.time += 0.1;
+      aiController.updateAllShips(dt);
+      state.time += dt;
 
       // Count engagement behaviors after ships have had time to choose intents
       if (tick >= 5) {
@@ -100,7 +104,7 @@ describe('AI Engagement Integration Test', () => {
         class: 'corvette',
         pos: { x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100, z: 100 }
       }) as Ship;
-      (corvette as any).aiState = {
+  (corvette as Ship).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
@@ -113,6 +117,10 @@ describe('AI Engagement Integration Test', () => {
     }
 
     state.ships.push(...ships);
+
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
 
     // Set some ships to defensive personalities to increase evade likelihood
     const defensivePersonality = {
@@ -133,9 +141,10 @@ describe('AI Engagement Integration Test', () => {
     let totalIntentChecks = 0;
 
     // Simulate for a shorter time to capture initial defensive responses
+    const dt2 = getTestDtFromState(state);
     for (let tick = 0; tick < 10; tick++) {
-      aiController.updateAllShips(0.1);
-      state.time += 0.1;
+      aiController.updateAllShips(dt2);
+      state.time += dt2;
 
       // Count evade intents after initial evaluation
       if (tick >= 3) {

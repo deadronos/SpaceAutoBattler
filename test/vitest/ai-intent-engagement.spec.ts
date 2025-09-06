@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip } from './setupTests.js';
+import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG, AIPersonality } from '../../src/config/behaviorConfig.js';
@@ -55,20 +55,26 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
 
     state.ships.push(ship, enemy);
 
+    // Rebuild spatial index so AI nearest/enemy queries see the new ships
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
+
     // Use deterministic RNG for consistent test results
-    let rngCallCount = 0;
+  let _rngCallCount = 0;
     const originalRng = state.rng.next;
     state.rng.next = () => {
-      rngCallCount++;
+      _rngCallCount++;
       // Return values that favor aggressive intent selection
       return 0.1; // Well below aggressiveness threshold of 0.9
     };
 
-    // Force intent reevaluation
-    ship.aiState!.lastIntentReevaluation = state.time - 10;
+  // Force intent reevaluation
+  ship.aiState!.lastIntentReevaluation = state.time - 10;
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Update AI using configured dt
+  const dt = getTestDtFromState(state);
+  aiController.updateAllShips(dt);
 
     // With evadeOnlyOnDamage=true and no recent damage, ship should NOT evade
     // Instead it should choose an aggressive or group intent
@@ -118,11 +124,16 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
 
     state.ships.push(ship, enemy);
 
-    // Force intent reevaluation
-    ship.aiState!.lastIntentReevaluation = state.time - 10;
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Force intent reevaluation
+  ship.aiState!.lastIntentReevaluation = state.time - 10;
+
+  // Update AI using configured dt
+  const dt2 = getTestDtFromState(state);
+  aiController.updateAllShips(dt2);
 
     // With recent damage, ship should evade
   expect(['evade','pursue','strafe','group','patrol','explore']).toContain(ship.aiState?.currentIntent);
@@ -188,6 +199,10 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
 
     state.ships.push(ship, enemy);
 
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
+
     // Set ship to defensive mode to trigger defensive intent selection
     const defensivePersonality: AIPersonality = {
       mode: 'defensive',
@@ -204,11 +219,12 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
     const originalGetPersonality = state.behaviorConfig!.shipPersonalities.fighter;
     state.behaviorConfig!.shipPersonalities.fighter = defensivePersonality;
 
-    // Force intent reevaluation
-    ship.aiState!.lastIntentReevaluation = state.time - 10;
+  // Force intent reevaluation
+  ship.aiState!.lastIntentReevaluation = state.time - 10;
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Update AI using configured dt
+  const dt3 = getTestDtFromState(state);
+  aiController.updateAllShips(dt3);
 
     // With backwards compatibility, ship should evade based on proximity
   expect(['evade','pursue','strafe','group','patrol','explore']).toContain(ship.aiState?.currentIntent);
@@ -258,11 +274,16 @@ describe('AI Intent Selection - Engagement vs Evasion', () => {
 
     state.ships.push(ship, enemy);
 
-    // Force intent reevaluation
-    ship.aiState!.lastIntentReevaluation = state.time - 10;
+    if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+    }
 
-    // Update AI
-    aiController.updateAllShips(0.1);
+  // Force intent reevaluation
+  ship.aiState!.lastIntentReevaluation = state.time - 10;
+
+  // Update AI using configured dt
+  const dt4 = getTestDtFromState(state);
+  aiController.updateAllShips(dt4);
 
     // Fighter in aggressive mode should pursue
   expect(['pursue','strafe','group','explore']).toContain(ship.aiState?.currentIntent);

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { setupScene, updateSkyboxAnimation, disposeScene } from '../../src/renderer/sceneSetup.js';
 import { setupCamera, updateCameraPosition, setCameraDistance, getCameraDistance } from '../../src/renderer/cameraManager.js';
 import { createMeshFactoryState, createShipMesh, createBulletMesh, createHealthBarMesh, getPooledBillboardMaterial } from '../../src/renderer/meshFactory.js';
-import { createMockGameState, createMockShip } from './setupTests.js';
+import { createMockGameState, createMockShip, TEST_DEFAULTS } from './setupTests.js';
 import { getShipClassConfig, TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
 import * as THREE from 'three';
 
@@ -93,7 +93,7 @@ describe('Extracted Renderer Modules', () => {
         id: 1,
         ownerShipId: 1,
         ownerTeam: 'red' as const,
-        pos: { x: 10, y: 10, z: 10 },
+        pos: { x: TEST_DEFAULTS.simBounds.width * 0.02, y: TEST_DEFAULTS.simBounds.height * 0.02, z: TEST_DEFAULTS.simBounds.depth * 0.02 },
         vel: { x: 100, y: 0, z: 0 },
         ttl: 3,
         damage: defaultDamage
@@ -110,8 +110,8 @@ describe('Extracted Renderer Modules', () => {
     it('should create ship meshes with placeholders', () => {
       const fighterCfg = getShipClassConfig('fighter');
       const ship = createMockShip({
-        id: 1,
-        pos: { x: 50, y: 50, z: 50 },
+  id: 1,
+  pos: { x: TEST_DEFAULTS.simBounds.width * 0.1, y: TEST_DEFAULTS.simBounds.height * 0.1, z: TEST_DEFAULTS.simBounds.depth * 0.1 },
         team: 'blue',
         class: 'fighter',
         health: fighterCfg.baseHealth,

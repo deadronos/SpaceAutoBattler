@@ -32,8 +32,8 @@ export interface SimConfig {
 export const DefaultSimConfig: SimConfig = {
   simBounds: { width: 1920, height: 1920, depth: 1920 },
   tickRate: 10,
-  maxEntities: 5000,
-  bulletLifetime: 3.0, // bullets live for 3 seconds
+  maxEntities: 50000,
+  bulletLifetime: 5.0, // bullets live for 3 seconds
   maxSimulationSteps: 5, // max steps per frame to prevent spiral of death
   useBVH: true, // use Bounding Volume Hierarchy for collision detection
   targetUpdateRate: 0.5, // AI updates targets every 0.5 seconds

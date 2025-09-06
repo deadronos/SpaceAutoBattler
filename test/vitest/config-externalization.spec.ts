@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, test, expect, beforeEach } from 'vitest';
-import { createMockGameState } from './setupTests.js';
+import { createMockGameState, TEST_DEFAULTS } from './setupTests.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 import { spawnShip } from '../../src/core/gameState.js';
@@ -21,15 +22,19 @@ describe('Config Externalization Tests', () => {
       const ship1 = spawnShip(state, 'red', 'fighter');
       const ship2 = spawnShip(state, 'blue', 'fighter');
       
-      ship1.pos = { x: 100, y: 100, z: 100 };
-      ship2.pos = { x: 150, y: 100, z: 100 }; // 50 units apart
+  ship1.pos = { ...TEST_DEFAULTS.defaultPos };
+  ship2.pos = { x: TEST_DEFAULTS.defaultPos.x + 50, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z }; // 50 units apart
+      // Rebuild spatial index so nearest/enemy queries reflect updated positions
+      if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      }
       
       // Initialize AI state
       ship1.aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 100, // Preferred range of 100
+  preferredRange: TEST_DEFAULTS.preferredRange, // Preferred range from TEST_DEFAULTS
         recentDamage: 0,
         lastDamageTime: 0
       };
@@ -52,14 +57,18 @@ describe('Config Externalization Tests', () => {
       const ship1 = spawnShip(state, 'red', 'fighter');
       const ship2 = spawnShip(state, 'blue', 'fighter');
       
-      ship1.pos = { x: 100, y: 100, z: 100 };
-      ship2.pos = { x: 210, y: 100, z: 100 }; // 110 units apart
+  ship1.pos = { ...TEST_DEFAULTS.defaultPos };
+  ship2.pos = { x: TEST_DEFAULTS.defaultPos.x + 110, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z }; // 110 units apart
+      // Rebuild spatial index so nearest/enemy queries reflect updated positions
+      if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      }
       
       ship1.aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
-        preferredRange: 100,
+  preferredRange: TEST_DEFAULTS.preferredRange,
         recentDamage: 0,
         lastDamageTime: 0
       };
@@ -82,8 +91,8 @@ describe('Config Externalization Tests', () => {
 
   describe('Separation Clustering Thresholds', () => {
     test('should apply different separation weights based on neighbor count thresholds', () => {
-      const ship = spawnShip(state, 'red', 'fighter');
-      ship.pos = { x: 100, y: 100, z: 100 };
+  const ship = spawnShip(state, 'red', 'fighter');
+  ship.pos = { ...TEST_DEFAULTS.defaultPos };
       ship.vel = { x: 0, y: 0, z: 0 };
       ship.speed = 50;
 
@@ -92,13 +101,17 @@ describe('Config Externalization Tests', () => {
       for (let i = 0; i < 6; i++) {
         const neighbor = spawnShip(state, 'red', 'fighter');
         neighbor.pos = { 
-          x: 100 + (i * 15), // Close enough to trigger separation
-          y: 100, 
-          z: 100 
+          x: TEST_DEFAULTS.defaultPos.x + (i * 15), // Close enough to trigger separation
+            y: TEST_DEFAULTS.defaultPos.y, 
+            z: TEST_DEFAULTS.defaultPos.z 
         };
         neighbors.push(neighbor);
       }
 
+      // Rebuild spatial index so separation queries see the new neighbor positions
+      if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+        state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      }
       // With 6 neighbors (default moderate cluster threshold is 5)
       // Should apply moderate weight (2.0)
       
@@ -129,15 +142,15 @@ describe('Config Externalization Tests', () => {
   describe('Movement and Boundary Configuration', () => {
     test('should use configurable movement close enough threshold', () => {
       const ship = spawnShip(state, 'red', 'fighter');
-      ship.pos = { x: 100, y: 100, z: 100 };
-      ship.vel = { x: 0, y: 0, z: 0 };
+  ship.pos = { ...TEST_DEFAULTS.defaultPos };
+  ship.vel = { x: 0, y: 0, z: 0 };
 
       // Target position exactly at default threshold distance (10)
-      const targetPos = { x: 110, y: 100, z: 100 };
+  const targetPos = { x: TEST_DEFAULTS.defaultPos.x + TEST_DEFAULTS.movementThreshold, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z };
 
       // Test with default threshold (10)
-      const originalThreshold = state.behaviorConfig!.globalSettings.movementCloseEnoughThreshold;
-      expect(originalThreshold).toBe(10);
+  const originalThreshold = state.behaviorConfig!.globalSettings.movementCloseEnoughThreshold;
+  expect(originalThreshold).toBe(TEST_DEFAULTS.movementThreshold);
 
       // Movement should stop at threshold
       (aiController as any).moveTowards(ship, targetPos, 0.1);
@@ -153,17 +166,18 @@ describe('Config Externalization Tests', () => {
 
     test('should use configurable boundary safety margin in evade scoring', () => {
       const ship = spawnShip(state, 'red', 'fighter');
-      ship.pos = { x: 100, y: 100, z: 100 };
+  ship.pos = { ...TEST_DEFAULTS.defaultPos };
       
-      const threat = spawnShip(state, 'blue', 'fighter');
-      threat.pos = { x: 120, y: 100, z: 100 };
+  const threat = spawnShip(state, 'blue', 'fighter');
+  threat.pos = { x: TEST_DEFAULTS.defaultPos.x + 20, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z };
 
       // Test position near boundary with default margin (50)
-      const nearBoundaryPos = { x: 40, y: 100, z: 100 }; // 40 units from edge
+  // nearBoundaryPos is intentionally within TEST_DEFAULTS.boundarySafetyMargin from edge for default margin
+  const nearBoundaryPos = { x: TEST_DEFAULTS.boundarySafetyMargin - 10, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z };
       const defaultScore = (aiController as any).calculateEscapeScore(ship, nearBoundaryPos, [threat]);
 
       // Test with modified boundary margin (25)
-      state.behaviorConfig!.globalSettings.boundarySafetyMargin = 25;
+  state.behaviorConfig!.globalSettings.boundarySafetyMargin = Math.max(25, Math.floor(TEST_DEFAULTS.boundarySafetyMargin / 2));
       const modifiedScore = (aiController as any).calculateEscapeScore(ship, nearBoundaryPos, [threat]);
 
       // Scores should be different due to different boundary penalties
@@ -178,10 +192,10 @@ describe('Config Externalization Tests', () => {
       const ship = spawnShip(state, 'red', 'fighter');
       ship.pos = { x: 100, y: 100, z: 100 };
       
-      const threat = spawnShip(state, 'blue', 'fighter');
-      threat.pos = { x: 150, y: 100, z: 100 };
+  const threat = spawnShip(state, 'blue', 'fighter');
+  threat.pos = { x: TEST_DEFAULTS.defaultPos.x + 50, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z };
 
-      const targetPos = { x: 80, y: 100, z: 100 };
+  const targetPos = { x: TEST_DEFAULTS.defaultPos.x - 20, y: TEST_DEFAULTS.defaultPos.y, z: TEST_DEFAULTS.defaultPos.z };
 
       // Test with default weights
       const defaultScore = (aiController as any).calculateEscapeScore(ship, targetPos, [threat]);
