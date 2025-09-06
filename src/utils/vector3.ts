@@ -77,7 +77,8 @@ export function lookAt(fromPos: Vector3, targetPos: Vector3): { pitch: number; y
   const dz = targetPos.z - fromPos.z;
   
   // Calculate horizontal distance for pitch calculation
-  const horizontalDistance = Math.sqrt(dx * dx + dy * dy);
+  const sqrt = Math.sqrt;
+  const horizontalDistance = sqrt(dx * dx + dy * dy);
   
   return {
     yaw: Math.atan2(dy, dx),
@@ -121,7 +122,8 @@ export function clampTurn(angleDiff: number, maxTurnRate: number): number {
  * Vector magnitude
  */
 export function magnitude(v: Vector3): number {
-  return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  const sqrt = Math.sqrt;
+  return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 /**
@@ -138,7 +140,8 @@ export function normalize(v: Vector3): Vector3 {
   // Use squared magnitude to avoid an unnecessary sqrt when vector is zero
   const magSq = magnitudeSq(v);
   if (magSq === 0) return { x: 0, y: 0, z: 0 };
-  const inv = 1 / Math.sqrt(magSq);
+  const sqrt = Math.sqrt;
+  const inv = 1 / sqrt(magSq);
   return {
     x: v.x * inv,
     y: v.y * inv,

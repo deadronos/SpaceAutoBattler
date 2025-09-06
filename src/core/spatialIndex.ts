@@ -186,7 +186,8 @@ export class SpatialGridAdapter implements SpatialIndex {
   // Avoid sqrt: compare squared distances. We still need a radius value for the grid query,
   // so compute squared diagonal and then take sqrt once to produce a radius (infrequent).
   const diagSq = dx * dx + dy * dy + dz * dz;
-  const searchRadius = Math.sqrt(diagSq) / 2 + 50; // infrequent; keep sqrt here
+  const sqrt = Math.sqrt;
+  const searchRadius = sqrt(diagSq) / 2 + 50; // infrequent; keep sqrt here
 
     const entities = this.grid.queryRadius(center, searchRadius);
     for (const entity of entities) {
@@ -233,7 +234,8 @@ export class SpatialGridAdapter implements SpatialIndex {
 
       if (distSq <= radius * radius) {
         // We need a true distance and normalized direction for the result. Compute sqrt here.
-        const distance = Math.sqrt(distSq);
+        const sqrt = Math.sqrt;
+        const distance = sqrt(distSq);
         const direction = distance > 0 ? { x: dx / distance, y: dy / distance, z: dz / distance } : { x: 0, y: 0, z: 0 };
 
         results.push({ entity, distance, direction });
@@ -253,7 +255,8 @@ export class SpatialGridAdapter implements SpatialIndex {
   const rayLengthSq = dx * dx + dy * dy + dz * dz;
   if (rayLengthSq === 0) return results;
   // We need the ray length and normalized direction for intersection math. Compute once.
-  const rayLength = Math.sqrt(rayLengthSq);
+  const sqrt = Math.sqrt;
+  const rayLength = sqrt(rayLengthSq);
   const dirX = dx / rayLength;
   const dirY = dy / rayLength;
   const dirZ = dz / rayLength;

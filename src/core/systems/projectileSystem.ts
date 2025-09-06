@@ -136,7 +136,8 @@ export class ProjectileSystem {
     // Base aim direction (unit) — compute sqrt only when needed for normalization
     let direction = { x: 1, y: 0, z: 0 };
     if (distSq > 0) {
-      const distance = Math.sqrt(distSq); // single sqrt for initial direction
+  const sqrt = Math.sqrt;
+  const distance = sqrt(distSq); // single sqrt for initial direction
       direction = { x: dx / distance, y: dy / distance, z: dz / distance };
     }
 

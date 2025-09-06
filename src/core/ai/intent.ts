@@ -16,6 +16,7 @@ export function calculatePreferredRange(state: GameState, ship: Ship, personalit
 
 export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPersonality): void {
   if (!ship.aiState) return;
+  const sqrt = Math.sqrt;
   const ai = ship.aiState;
   const cfg = state.behaviorConfig!;
   const recentDamage = ai.recentDamage || 0;
@@ -77,7 +78,7 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
             const maxRSq = maxR * maxR;
             const inRange = distSq >= minRSq && distSq <= maxRSq;
             // Score needs the real distance (inverse). Compute sqrt only when needed.
-            const dist = distSq > 0 ? Math.sqrt(distSq) : 0;
+            const dist = distSq > 0 ? sqrt(distSq) : 0;
             const score = (dist > 0 ? 1000 / dist : 0) + ((targetShip.maxHealth - targetShip.health) * 0.1) + ((targetShip.level?.level ?? 0) * 5);
             turretCandidateInRange = inRange;
             turretCandidateScore = score;
@@ -157,7 +158,7 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
                   const leadPos = intercept ?? { x: nearest.pos.x + (nearest.vel?.x ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5), y: nearest.pos.y + (nearest.vel?.y ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5), z: nearest.pos.z + (nearest.vel?.z ?? 0) * (cfg.turretConfig.leadPredictionTime ?? 0.5) };
                   const dx = leadPos.x - ship.pos.x; const dy = leadPos.y - ship.pos.y; const dz = leadPos.z - ship.pos.z;
                   const distSq2 = dx * dx + dy * dy + dz * dz;
-                  const dist2 = distSq2 > 0 ? Math.sqrt(distSq2) : 0;
+                  const dist2 = distSq2 > 0 ? sqrt(distSq2) : 0;
                   nearestScore = (dist2 > 0 ? 1000 / dist2 : 0) + ((nearest.maxHealth - nearest.health) * 0.1) + ((nearest.level?.level ?? 0) * 5);
           } catch { nearestScore = null; }
             if (nearestScore == null || (turretCandidateScore ?? 0) > nearestScore) {
@@ -207,7 +208,7 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       const distanceToThreat = nearest ? ((): number => {
         const dx = nearest!.pos.x - ship.pos.x; const dy = nearest!.pos.y - ship.pos.y; const dz = nearest!.pos.z - ship.pos.z;
         const dSq = dx * dx + dy * dy + dz * dz;
-        return Math.sqrt(dSq);
+  return sqrt(dSq);
       })() : null;
       const score = deScoreEvade({ distanceToThreat, recentDamage, damageEvadeThreshold: cfg.globalSettings.damageEvadeThreshold, withinRecentDamageWindow: withinDamageWindow, settings: cfg.globalSettings });
       // Be slightly more aggressive at close range to satisfy decision-gate tests

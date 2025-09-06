@@ -390,15 +390,30 @@ export class AIController {
           const dx = ship.pos.x - threat.pos.x;
           const dy = ship.pos.y - threat.pos.y;
           const dz = ship.pos.z - threat.pos.z;
-          const dist = Math.hypot(dx, dy, dz) || 1;
+          // Use squared distance gating to avoid Math.sqrt allocations in the hot path.
+          const distSq = dx * dx + dy * dy + dz * dz;
           const escapeDist = this.state.behaviorConfig?.globalSettings.evadeDistance ?? 200;
-          const escapeTarget = {
-            x: ship.pos.x + (dx / dist) * escapeDist,
-            y: ship.pos.y + (dy / dist) * escapeDist,
-            z: ship.pos.z + (dz / dist) * escapeDist,
-          };
+          // Compute an inverse distance for normalization. Only compute Math.sqrt
+          // once when DEBUG_AI is enabled to power logging; otherwise use the
+          // sqrt result directly for inv without keeping the numeric distance.
+          let inv: number;
+          let distForLog: number | undefined;
           if (DEBUG_AI) {
-            console.error(`AI-DEBUG evade ship=${ship.id} nearest=${threat.id} dist=${dist.toFixed(6)} dt=${dt.toFixed(6)} speed=${ship.speed}`);
+            distForLog = Math.sqrt(distSq) || 1;
+            inv = distForLog > 0 ? 1 / distForLog : 1;
+          } else {
+            inv = distSq > 0 ? 1 / Math.sqrt(distSq) : 1;
+          }
+
+          const escapeTarget = {
+            x: ship.pos.x + dx * inv * escapeDist,
+            y: ship.pos.y + dy * inv * escapeDist,
+            z: ship.pos.z + dz * inv * escapeDist,
+          };
+
+          if (DEBUG_AI) {
+            // Use the cached distForLog for human-friendly diagnostics.
+            console.error(`AI-DEBUG evade ship=${ship.id} nearest=${threat.id} dist=${(distForLog ?? 1).toFixed(6)} dt=${dt.toFixed(6)} speed=${ship.speed}`);
             console.error(`AI-DEBUG evade preVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
           }
           // Force orientation+accel even if within movementCloseEnoughThreshold
