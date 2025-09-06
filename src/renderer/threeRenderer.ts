@@ -570,6 +570,29 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Dev helpers: expose lightweight runtime inspection utilities on globalThis
   // These are safe no-ops in production but helpful when debugging bundled builds.
   try {
+    // Guarded, opt-in GameState exposure for Playwright debugging.
+    // Only enabled when URL contains ?debugState=1 or ?debugState=true to avoid accidental exposure.
+    try {
+      const params = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+      const dbg = params.get('debugState');
+      if (dbg === '1' || dbg === 'true') {
+        // Expose a minimal, read-only snapshot accessor that Playwright can call.
+        (globalThis as any).__GAME_STATE__ = {
+          // Return a small snapshot with only primitive values for quick inspection
+          getSnapshot: () => {
+            try {
+              const safeShips = state.ships.map((s: any) => ({ id: s.id, class: s.class, team: s.team, pos: { x: s.pos?.x, y: s.pos?.y, z: s.pos?.z }, hp: s.hp ?? null }));
+              const safeBullets = state.bullets.map((b: any) => ({ id: b.id, pos: { x: b.pos?.x, y: b.pos?.y, z: b.pos?.z }, vel: { x: b.vel?.x, y: b.vel?.y, z: b.vel?.z }, ttl: b.ttl ?? null }));
+              return { ships: safeShips, bullets: safeBullets, time: Date.now() };
+            } catch (e) { return { error: String(e) }; }
+          },
+          // Convenience: shallow lists of ids for quick checks
+          listShipIds: () => state.ships.map((s: any) => s.id),
+          listBulletIds: () => state.bullets.map((b: any) => b.id)
+        };
+        try { console.info('[HB_DEV] __GAME_STATE__ snapshot accessor enabled (debugState)'); } catch (_e) { void _e; }
+      }
+    } catch (_e) { void _e; }
   gAny.__dumpShipsNearBounds = function(radius = 1) {
       const b = state.simConfig.simBounds;
       const near = state.ships.filter((s: any) => {

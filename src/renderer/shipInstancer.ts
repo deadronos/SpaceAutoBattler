@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as logger from '../utils/logger.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import type { GameState } from '../types/index.js';
@@ -385,6 +386,14 @@ class ShipInstancerImpl {
       const idx = g.idToIndex.get(shipId);
       if (idx === undefined) continue;
   // Reuse temporary vectors/matrix to avoid allocations
+  // Defensive: check for non-finite transform inputs and log offending id
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z) ||
+      !Number.isFinite(quat.x) || !Number.isFinite(quat.y) || !Number.isFinite(quat.z) || !Number.isFinite(quat.w) ||
+      !Number.isFinite(scale)) {
+    try { logger.error('[INSTANCER_ERROR][ShipInstancer] non-finite transform', { shipId, pos, quat, scale }); } catch (_e) { void _e; }
+    return false;
+  }
+
   this.tmpVec.set(pos.x, pos.y, pos.z);
   this.tmpScale.set(scale, scale, scale);
   this.tmpMatrix.compose(this.tmpVec, quat, this.tmpScale);

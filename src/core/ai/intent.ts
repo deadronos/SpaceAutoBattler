@@ -8,6 +8,7 @@ import { findNearestEnemy, findNearbyEnemies, findNearbyFriends, findBestTurretT
 import { computeInterceptPoint } from '../math/ballisticIntercept.js';
 import { getTeamScoutId, isTeamUnderAlarm } from './teamSystems.js';
 
+
 export function calculatePreferredRange(state: GameState, ship: Ship, personality?: AIPersonality): number {
   const p = personality ?? getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
   const baseRange = state.behaviorConfig!.globalSettings.separationDistance;
@@ -242,8 +243,10 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   }
   const oldIntent = ai.currentIntent;
   ai.currentIntent = newIntent;
-  console.error(`AI-DEBUG intent changed from ${oldIntent} to ${newIntent}`);
-    ai.lastIntentReevaluation = state.time;
+  if (DEBUG_AI) {
+    console.error(`AI-DEBUG intent changed from ${oldIntent} to ${newIntent}`);
+  };
+  ai.lastIntentReevaluation = state.time;
 }
 
 // Below choose* implementations mirror the original controller strategies at a high level,

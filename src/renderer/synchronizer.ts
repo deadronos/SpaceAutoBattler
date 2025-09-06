@@ -251,7 +251,26 @@ export function updateTransforms(
   for (const s of state.ships) {
     const m = syncState.shipMeshes.get(s.id);
     if (!m) continue;
-    
+  // Defensive: detect non-finite positions/orientation/scale and log them for diagnostics
+  const pos = s.pos;
+  const ori = s.orientation;
+  const sv = (ShipVisualConfig.ships as Record<string, unknown>)[s.class];
+    let shipScale = RendererConfig.defaultScale;
+    if (sv && typeof sv === 'object') {
+      const maybeScale = (sv as Record<string, unknown>)['scale'];
+      if (typeof maybeScale === 'number') shipScale = maybeScale;
+    }
+  const posFinite = pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z);
+  const oriFinite = ori && Number.isFinite(ori.pitch) && Number.isFinite(ori.yaw) && Number.isFinite(ori.roll);
+  const scaleFinite = Number.isFinite(shipScale);
+    if (!posFinite || !oriFinite || !scaleFinite) {
+      try {
+    logger.error(`[SYNC_ERROR][updateTransforms] ship=${s.id} non-finite transform detected`, { pos, orientation: ori, scale: shipScale });
+      } catch (_e) { void _e; }
+      // skip applying invalid transforms to avoid throwing in Three.js
+      continue;
+    }
+
     m.position.set(s.pos.x, s.pos.y, s.pos.z);
     
     // Set 3D rotation using ship's orientation
@@ -259,8 +278,7 @@ export function updateTransforms(
     // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
     m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
     
-    const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
-    m.scale.setScalar(scale);
+  m.scale.setScalar(shipScale);
 
     // Update health bar
     if (RendererConfig.visual.enableHealthBars) {
@@ -289,6 +307,13 @@ export function updateTransforms(
   for (const b of state.bullets) {
     const m = syncState.bulletMeshes.get(b.id);
     if (!m) continue;
+    // Defensive: log and skip if bullet position contains non-finite values
+    const bp = b.pos;
+    if (!bp || !Number.isFinite(bp.x) || !Number.isFinite(bp.y) || !Number.isFinite(bp.z)) {
+      try { logger.error(`[SYNC_ERROR][updateTransforms] bullet=${b.id} non-finite pos detected`, { pos: bp }); } catch (_e) { void _e; }
+      continue;
+    }
+
     m.position.set(b.pos.x, b.pos.y, b.pos.z);
   }
 
