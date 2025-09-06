@@ -147,14 +147,18 @@ export class AIController {
       const targetShip = this.state.ships.find(s => s.id === firstTarget);
       if (targetShip) {
         // Check if target is valid (different team, alive, within range)
-        const isValidTeam = targetShip.team !== ship.team;
-        const isAlive = targetShip.health > 0;
-        const dx = targetShip.pos.x - ship.pos.x;
-        const dy = targetShip.pos.y - ship.pos.y; 
-        const dz = targetShip.pos.z - ship.pos.z;
-        const distance = Math.hypot(dx, dy, dz) || 1;
-        const tc = this.state.behaviorConfig?.turretConfig;
-        const withinRange = !(tc && (distance < (tc.minimumFireRange ?? 0) || distance > (tc.maximumFireRange ?? Infinity)));
+  const isValidTeam = targetShip.team !== ship.team;
+  const isAlive = targetShip.health > 0;
+  const dx = targetShip.pos.x - ship.pos.x;
+  const dy = targetShip.pos.y - ship.pos.y;
+  const dz = targetShip.pos.z - ship.pos.z;
+  const distSq = dx*dx + dy*dy + dz*dz;
+  const tc = this.state.behaviorConfig?.turretConfig;
+  const minR = tc?.minimumFireRange ?? 0;
+  const maxR = tc?.maximumFireRange ?? Infinity;
+  const minRSq = minR * minR;
+  const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
+  const withinRange = !(tc && (distSq < minRSq || distSq > maxRSq));
         
         if (!isValidTeam || !isAlive || (!withinRange && ship.aiState?.currentIntent !== 'evade')) {
           validatedFirstTarget = null; // Invalid target
@@ -173,21 +177,20 @@ export class AIController {
       // Check if we should switch to a closer enemy (target switching logic)
       if (nearestEnemy && nearestEnemy.id !== validatedFirstTarget) {
         const currentTargetShip = this.state.ships.find(s => s.id === validatedFirstTarget);
-        if (currentTargetShip) {
-          const currentDistance = Math.hypot(
-            currentTargetShip.pos.x - ship.pos.x, 
-            currentTargetShip.pos.y - ship.pos.y, 
-            currentTargetShip.pos.z - ship.pos.z
-          );
-          const nearestDistance = Math.hypot(
-            nearestEnemy.pos.x - ship.pos.x, 
-            nearestEnemy.pos.y - ship.pos.y, 
-            nearestEnemy.pos.z - ship.pos.z
-          );
-          
+          if (currentTargetShip) {
+          const cdx = currentTargetShip.pos.x - ship.pos.x;
+          const cdy = currentTargetShip.pos.y - ship.pos.y;
+          const cdz = currentTargetShip.pos.z - ship.pos.z;
+          const ndx = nearestEnemy.pos.x - ship.pos.x;
+          const ndy = nearestEnemy.pos.y - ship.pos.y;
+          const ndz = nearestEnemy.pos.z - ship.pos.z;
+          const currentDistSq = cdx*cdx + cdy*cdy + cdz*cdz;
+          const nearestDistSq = ndx*ndx + ndy*ndy + ndz*ndz;
+
           // Switch if nearest enemy is significantly closer (20% closer)
+          // Use squared distance comparison to avoid sqrt in hot path
           const switchThreshold = 0.8; // 20% closer required to switch
-          if (nearestDistance < currentDistance * switchThreshold) {
+          if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
             ship.targetId = nearestEnemy.id;
           } else {
             ship.targetId = validatedFirstTarget as number;
@@ -249,8 +252,13 @@ export class AIController {
           // IMPROVED: Proper team filtering - never target same team ships
           if (target.team === ship.team || target.health <= 0) continue;
           const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
-          const d = Math.hypot(dx, dy, dz) || 1;
-          const inRange = !(tc && (d < (tc.minimumFireRange ?? 0) || d > (tc.maximumFireRange ?? Infinity)));
+          const distSq = dx*dx + dy*dy + dz*dz;
+          const minR = tc?.minimumFireRange ?? 0;
+          const maxR = tc?.maximumFireRange ?? Infinity;
+          const minRSq = minR * minR;
+          const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
+          const inRange = !(tc && (distSq < minRSq || distSq > maxRSq));
+          const d = inRange ? Math.sqrt(distSq) : 1;
           const score = (d > 0 ? 1000 / d : 0) + ((target.maxHealth - target.health) * 0.1) + (target.level.level * 5);
           if (DEBUG_AI) console.log(`DEBUG_AI: controller fallback candidate ship=${ship.id} turret=NA candidate=${target.id} dist=${d.toFixed(2)} hp=${target.health} level=${target.level?.level ?? target.level} score=${score} inRange=${inRange} rangeMin=${tc?.minimumFireRange ?? 0} rangeMax=${tc?.maximumFireRange ?? Infinity}`);
           // IMPROVED: Strict range checking - don't assign targets out of range
@@ -331,7 +339,8 @@ export class AIController {
       ? this.spatial.calculateSeparationFromNeighbors(ship, precomputedNeighbors)
       : this.spatial.calculateSeparationForceWithCount(ship);
   if (DEBUG_AI) {
-        const mag = Math.hypot(sepRes.force.x, sepRes.force.y, sepRes.force.z);
+        const magSq = sepRes.force.x * sepRes.force.x + sepRes.force.y * sepRes.force.y + sepRes.force.z * sepRes.force.z;
+        const mag = Math.sqrt(magSq);
         const prePos = `${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)}`;
         const preVel = `${ship.vel.x.toFixed(3)},${ship.vel.y.toFixed(3)},${ship.vel.z.toFixed(3)}`;
         const msg = `AI-DEBUG controller sep ship=${ship.id} neighbors=${sepRes.neighborCount} forceMag=${mag.toFixed(3)} prePos=${prePos} preVel=${preVel}\n`;
@@ -417,24 +426,25 @@ export class AIController {
         // idle already had separation nudges applied above; integrate velocity so
         // separation has effect even when not actively moving via moveTowards.
         // Apply damping and clamp to max speed similar to moveTowards.
-        try {
-          ship.vel.x *= PhysicsConfig.speed.dampingFactor;
-          ship.vel.y *= PhysicsConfig.speed.dampingFactor;
-          ship.vel.z *= PhysicsConfig.speed.dampingFactor;
-          const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
-          const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
-          if (v > maxV && v > 0) {
-            ship.vel.x = (ship.vel.x / v) * maxV;
-            ship.vel.y = (ship.vel.y / v) * maxV;
-            ship.vel.z = (ship.vel.z / v) * maxV;
+          try {
+            ship.vel.x *= PhysicsConfig.speed.dampingFactor;
+            ship.vel.y *= PhysicsConfig.speed.dampingFactor;
+            ship.vel.z *= PhysicsConfig.speed.dampingFactor;
+            const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
+            const vSq = ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z;
+            if (vSq > maxV * maxV && vSq > 0) {
+              const v = Math.sqrt(vSq);
+              ship.vel.x = (ship.vel.x / v) * maxV;
+              ship.vel.y = (ship.vel.y / v) * maxV;
+              ship.vel.z = (ship.vel.z / v) * maxV;
+            }
+            ship.pos.x += ship.vel.x * dt;
+            ship.pos.y += ship.vel.y * dt;
+            ship.pos.z += ship.vel.z * dt;
+            integrated = true;
+          } catch {
+            // keep safe for tests
           }
-          ship.pos.x += ship.vel.x * dt;
-          ship.pos.y += ship.vel.y * dt;
-          ship.pos.z += ship.vel.z * dt;
-          integrated = true;
-        } catch {
-          // keep safe for tests
-        }
       }
     } catch {
       // Movement helpers should not throw in tests; swallow and continue

@@ -212,8 +212,9 @@ export function calculateSeparationForceWithCount(
 
   // Average
   sx /= count; sy /= count; sz /= count;
-  const mag = Math.hypot(sx, sy, sz);
-  if (mag > magnitudeThreshold) {
+  const magSq = sx * sx + sy * sy + sz * sz;
+  if (magSq > magnitudeThreshold * magnitudeThreshold) {
+    const mag = Math.sqrt(magSq);
     return { force: { x: sx / mag, y: sy / mag, z: sz / mag }, neighborCount: count };
   }
 

@@ -435,13 +435,13 @@ export class SpatialGrid {
    * Query entities within a sector (cone) from a position
    */
   querySector(center: Vector3, direction: Vector3, angleRadians: number, range: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
-    // Normalize direction vector
-    const dirMag = Math.sqrt(direction.x ** 2 + direction.y ** 2 + direction.z ** 2);
-    if (dirMag === 0) return [];
-    
-    const dirX = direction.x / dirMag;
-    const dirY = direction.y / dirMag;
-    const dirZ = direction.z / dirMag;
+  // Normalize direction vector: compute squared magnitude and sqrt once
+  const dirMagSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+  if (dirMagSq === 0) return [];
+  const dirMag = Math.sqrt(dirMagSq);
+  const dirX = direction.x / dirMag;
+  const dirY = direction.y / dirMag;
+  const dirZ = direction.z / dirMag;
     
     const cosHalfAngle = Math.cos(angleRadians / 2);
     const results: SpatialEntity[] = [];

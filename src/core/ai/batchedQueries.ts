@@ -1,5 +1,6 @@
 import type { GameState, Ship, Vector3 } from '../../types/index.js';
 
+
 /**
  * Batched query system to reduce redundant spatial searches.
  * Instead of each ship making individual queries, we batch similar

@@ -458,11 +458,10 @@ function updateCinematicCamera(state: GameState, dt: number) {
   const centerZ = (redCenterZ + blueCenterZ) / 2;
 
   // Calculate distance between fleets for optimal zoom
-  const fleetDistance = Math.sqrt(
-    Math.pow(redCenterX - blueCenterX, 2) +
-    Math.pow(redCenterY - blueCenterY, 2) +
-    Math.pow(redCenterZ - blueCenterZ, 2)
-  );
+  const dxF = redCenterX - blueCenterX;
+  const dyF = redCenterY - blueCenterY;
+  const dzF = redCenterZ - blueCenterZ;
+  const fleetDistance = Math.sqrt(dxF * dxF + dyF * dyF + dzF * dzF);
 
   // Calculate optimal camera distance (show both fleets with some margin)
   const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
@@ -605,8 +604,10 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     let fx = Math.cos(yaw) * Math.cos(pitch);
     let fy = Math.sin(pitch);
     let fz = Math.sin(yaw) * Math.cos(pitch);
-    const fl = Math.hypot(fx, fy, fz) || 1;
-    fx /= fl; fy /= fl; fz /= fl;
+  // Compute squared length and do a single sqrt for normalization (avoid Math.hypot allocation)
+  const flSq = fx * fx + fy * fy + fz * fz;
+  const fl = Math.sqrt(flSq) || 1;
+  fx /= fl; fy /= fl; fz /= fl;
   // The spherical coords above describe the camera position offset from the target.
   // The camera's forward vector (where it looks) points from the camera into the scene -
   // i.e., from camera position toward the target, which is the negative of the offset.
@@ -618,15 +619,17 @@ function setupCameraControls(state: GameState, canvas: HTMLCanvasElement) {
     let rx = fy * upWorldZ - fz * upWorldY; // fy*0 - fz*1 = -fz
     let ry = fz * upWorldX - fx * upWorldZ; // fz*0 - fx*0 = 0
     let rz = fx * upWorldY - fy * upWorldX; // fx*1 - fy*0 = fx
-    const rl = Math.hypot(rx, ry, rz) || 1;
-    rx /= rl; ry /= rl; rz /= rl;
+  const rlSq = rx * rx + ry * ry + rz * rz;
+  const rl = Math.sqrt(rlSq) || 1;
+  rx /= rl; ry /= rl; rz /= rl;
 
     // Up (camera-up) = normalize(cross(right, forward))
     let ux = ry * fz - rz * fy;
     let uy = rz * fx - rx * fz;
     let uz = rx * fy - ry * fx;
-    const ul = Math.hypot(ux, uy, uz) || 1;
-    ux /= ul; uy /= ul; uz /= ul;
+  const ulSq = ux * ux + uy * uy + uz * uz;
+  const ul = Math.sqrt(ulSq) || 1;
+  ux /= ul; uy /= ul; uz /= ul;
 
   // Compose movement in world space: forward is along camera forward vector
   const worldMoveX = moveRight * rx + moveUp * upWorldX + moveForward * fx;

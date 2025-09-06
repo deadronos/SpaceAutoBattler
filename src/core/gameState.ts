@@ -196,7 +196,8 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
   if (!target) return;
   const cfg = getShipClassConfig(ship.class);
   const dx = target.pos.x - ship.pos.x; const dy = target.pos.y - ship.pos.y; const dz = target.pos.z - ship.pos.z;
-  const dist = Math.hypot(dx, dy, dz);
+  const distSq = dx*dx + dy*dy + dz*dz;
+  const dist = Math.sqrt(distSq);
   for (let i = 0; i < ship.turrets.length; i++) {
     const tState = ship.turrets[i];
     const tCfg = cfg.turrets[i % cfg.turrets.length];
@@ -221,9 +222,10 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
       const el = (-(total-1)/2 + index) / Math.max(1, total-1) * spreadAngle;
       // Rotate centerDir by azimuth around Z and then apply small elevation by mixing with perpendicular vector
       // For simplicity, assume centerDir primarily in XY plane; compute perp in XY
-      const perp = { x: -centerDir.y, y: centerDir.x, z: 0 };
-      const perpLen = Math.hypot(perp.x, perp.y, perp.z) || 1;
-      perp.x /= perpLen; perp.y /= perpLen; perp.z /= perpLen;
+  const perp = { x: -centerDir.y, y: centerDir.x, z: 0 };
+  const perpLenSq = perp.x*perp.x + perp.y*perp.y + perp.z*perp.z;
+  const perpLen = perpLenSq > 0 ? Math.sqrt(perpLenSq) : 1;
+  perp.x /= perpLen; perp.y /= perpLen; perp.z /= perpLen;
       // Mix centerDir and perp by elevation
       const cosEl = Math.cos(el);
       const sinEl = Math.sin(el);
@@ -236,13 +238,15 @@ function fireTurrets(state: GameState, ship: Ship, dt: number) {
 
     // Fire: single or multiple bullets depending on suppression
     for (let s = 0; s < spreadCount; s++) {
-      const dirX = leadPos.x - ship.pos.x;
-      const dirY = leadPos.y - ship.pos.y;
-      const dirZ = leadPos.z - ship.pos.z;
-      const centerLen = Math.hypot(dirX, dirY, dirZ) || 1;
-      const centerDir = { x: dirX / centerLen, y: dirY / centerLen, z: dirZ / centerLen };
-      const spreadDir = makeSpreadDir(s, spreadCount, centerDir);
-      const dirLen = Math.hypot(spreadDir.x, spreadDir.y, spreadDir.z) || 1;
+  const dirX = leadPos.x - ship.pos.x;
+  const dirY = leadPos.y - ship.pos.y;
+  const dirZ = leadPos.z - ship.pos.z;
+  const centerLenSq = dirX*dirX + dirY*dirY + dirZ*dirZ;
+  const centerLen = centerLenSq > 0 ? Math.sqrt(centerLenSq) : 1;
+  const centerDir = { x: dirX / centerLen, y: dirY / centerLen, z: dirZ / centerLen };
+  const spreadDir = makeSpreadDir(s, spreadCount, centerDir);
+  const dirLenSq = spreadDir.x*spreadDir.x + spreadDir.y*spreadDir.y + spreadDir.z*spreadDir.z;
+  const dirLen = dirLenSq > 0 ? Math.sqrt(dirLenSq) : 1;
       const id = state.nextId++;
       const bullet: Bullet = {
         id,
@@ -280,8 +284,9 @@ function updateBullets(state: GameState, dt: number) {
     // Collisions (simple radius approx)
     for (const s of state.ships) {
       if (s.team === b.ownerTeam || s.health <= 0) continue;
-      const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
-      const d = Math.hypot(dx, dy, dz);
+  const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
+  const dSq = dx*dx + dy*dy + dz*dz;
+  const d = Math.sqrt(dSq);
       const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
       if (d < hitR) {
         // Apply damage to shield first
@@ -424,7 +429,7 @@ export function simulateStep(state: GameState, dt: number) {
     try {
       const map = state.ships.map(s => `ship=${s.id}->target=${String(s.targetId)}`).join(', ');
       console.error(`DEBUG_AI: simulateStep post-AI targets: ${map}`);
-    } catch (e) { /* best-effort debug only */ }
+    } catch { /* best-effort debug only */ }
   }
   // Restore any assigned targets recorded by AIController to protect against
     // downstream operations that may temporarily clear targetId (e.g., pruning
