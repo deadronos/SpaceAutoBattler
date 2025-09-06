@@ -210,9 +210,19 @@ export class AIController {
       const dx = targetShip.pos.x - ship.pos.x;
       const dy = targetShip.pos.y - ship.pos.y; 
       const dz = targetShip.pos.z - ship.pos.z;
-      const distance = Math.hypot(dx, dy, dz) || 1;
       const tc = this.state.behaviorConfig?.turretConfig;
-      const withinRange = !(tc && (distance < (tc.minimumFireRange ?? 0) || distance > (tc.maximumFireRange ?? Infinity)));
+      const minR = tc?.minimumFireRange ?? 0;
+      const maxR = tc?.maximumFireRange ?? Infinity;
+      
+      // Use squared distance for range checking to avoid Math.hypot allocation
+      let withinRange = true;
+      if (tc) {
+        const distSq = dx*dx + dy*dy + dz*dz;
+        const minRSq = minR * minR;
+        const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
+        withinRange = !(distSq < minRSq || (maxRSq !== Infinity && distSq > maxRSq));
+      }
+      
       const isValidTeam = targetShip.team !== ship.team;
       const isAlive = targetShip.health > 0;
 
@@ -287,15 +297,25 @@ export class AIController {
           const dx = targetShip.pos.x - ship.pos.x;
           const dy = targetShip.pos.y - ship.pos.y; 
           const dz = targetShip.pos.z - ship.pos.z;
-          const distance = Math.hypot(dx, dy, dz) || 1;
           const tc = this.state.behaviorConfig?.turretConfig;
-          const withinRange = !(tc && (distance < (tc.minimumFireRange ?? 0) || distance > (tc.maximumFireRange ?? Infinity)));
+          
+          // Use squared distance for range checking to avoid Math.hypot allocation
+          let withinRange = true;
+          if (tc) {
+            const distSq = dx*dx + dy*dy + dz*dz;
+            const minR = tc.minimumFireRange ?? 0;
+            const maxR = tc.maximumFireRange ?? Infinity;
+            const minRSq = minR * minR;
+            const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
+            withinRange = !(distSq < minRSq || (maxRSq !== Infinity && distSq > maxRSq));
+          }
           
           if (withinRange) {
             ship.targetId = anyT as number;
             (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
             if (DEBUG_AI) console.log(`DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`);
           } else if (DEBUG_AI) {
+            const distance = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
             console.log(`DEBUG_AI: controller rejected safety target ship=${ship.id} target=${anyT} out of range dist=${distance.toFixed(2)}`);
           }
         }
@@ -489,8 +509,11 @@ export class AIController {
         ship.vel.y *= PhysicsConfig.speed.dampingFactor;
         ship.vel.z *= PhysicsConfig.speed.dampingFactor;
         const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
-        const v = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
-        if (v > maxV && v > 0) {
+        // Use squared velocity magnitude to avoid Math.sqrt in hot path
+        const vSq = ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z;
+        const maxVSq = maxV * maxV;
+        if (vSq > maxVSq && vSq > 0) {
+          const v = Math.sqrt(vSq);
           ship.vel.x = (ship.vel.x / v) * maxV;
           ship.vel.y = (ship.vel.y / v) * maxV;
           ship.vel.z = (ship.vel.z / v) * maxV;

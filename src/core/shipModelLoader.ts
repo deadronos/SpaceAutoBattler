@@ -17,7 +17,16 @@ export async function preloadShipModels(state: GameState, teams: string[] = ['re
     try {
       const res = await loadGLTF(state, entry.file);
       // We'll store an object with metadata so renderer/instancer can consume it.
-        const proto: any = {
+      const proto: {
+        className: string;
+        url: string;
+        gltf: unknown;
+        scale: number;
+        pivotOffset: [number, number, number];
+        boundsRadius: number;
+        attribution: string;
+        threePrototypes?: { geometries: unknown[]; materials: unknown[] };
+      } = {
           className: cls,
           url: entry.file,
           gltf: res.data,
@@ -29,24 +38,31 @@ export async function preloadShipModels(state: GameState, teams: string[] = ['re
 
         // Try to extract Three.js prototype geometries/materials lazily.
         try {
-          // Dynamic import to avoid bundling three in non-render paths
-          const THREE = await import('three');
+          // Dynamic import to avoid bundling three in non-render paths (we don't need the THREE namespace directly)
+          await import('three');
           // glTF loader returns an object where .scene contains Object3D hierarchy
-          const scene = (res.data as any)?.scene ?? (res.data as any)?.scenes?.[0] ?? null;
+          const gltfData = res.data as unknown as { scene?: unknown; scenes?: unknown[] };
+          const scene = gltfData?.scene ?? gltfData?.scenes?.[0] ?? null;
           if (scene) {
-            const geoms: any[] = [];
-            const mats: any[] = [];
-            scene.traverse((node: any) => {
-              if (node && node.isMesh) {
-                try {
-                  // Clone geometry and material to avoid sharing mutable state
-                  const g = (node.geometry as any).clone();
-                  const m = (node.material as any).clone ? (node.material as any).clone() : node.material;
-                  geoms.push(g);
-                  mats.push(m);
-                } catch (_e) { void _e; }
-              }
-            });
+            const geoms: unknown[] = [];
+            const mats: unknown[] = [];
+            const sceneObj = scene as unknown as { traverse?: (callback: (node: unknown) => void) => void };
+            if (sceneObj.traverse) {
+              sceneObj.traverse((node: unknown) => {
+                const meshNode = node as unknown as { isMesh?: boolean; geometry?: unknown; material?: unknown };
+                if (meshNode && meshNode.isMesh) {
+                  try {
+                    // Clone geometry and material to avoid sharing mutable state
+                    const geom = meshNode.geometry as unknown as { clone?: () => unknown };
+                    const mat = meshNode.material as unknown as { clone?: () => unknown };
+                    const g = geom?.clone ? geom.clone() : meshNode.geometry;
+                    const m = mat?.clone ? mat.clone() : meshNode.material;
+                    geoms.push(g);
+                    mats.push(m);
+                  } catch (_e) { void _e; }
+                }
+              });
+            }
             if (geoms.length > 0) proto.threePrototypes = { geometries: geoms, materials: mats };
           }
         } catch (e) { void e; /* non-fatal: keep gltf only */ }
