@@ -75,7 +75,7 @@ describe('AI Evade Behavior', () => {
     }
 
     // Update AI - should switch to evade due to recent damage
-    aiController.updateAllShips(getTestDtFromState(state));
+  aiController.updateAllShips(getTestDtFromState(state));
 
     // Ship should now have evade intent
     expect(ship.aiState?.currentIntent).toBe('evade');

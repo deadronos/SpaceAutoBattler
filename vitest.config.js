@@ -18,7 +18,7 @@ export default defineConfig({
     // Extend default timeout to reduce flakes when many tests run in parallel on CI/dev machines
     testTimeout: 20000,
     pool: 'threads',
-    maxThreads: 12,
+    maxThreads: 24,
     threads: true,
   },
 });
