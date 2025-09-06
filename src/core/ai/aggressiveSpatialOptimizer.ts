@@ -255,20 +255,11 @@ export class AggressiveSpatialOptimizer {
    * Fast distance calculation using lookup table
    */
   private getDistanceSqFast(p1: Vector3, p2: Vector3): number {
-    // Round to LUT precision for cache hits
-    const dx = Math.round((p1.x - p2.x) / this.lutPrecision) * this.lutPrecision;
-    const dy = Math.round((p1.y - p2.y) / this.lutPrecision) * this.lutPrecision;
-    const dz = Math.round((p1.z - p2.z) / this.lutPrecision) * this.lutPrecision;
-    
-    const lutKey = `${dx},${dy},${dz}`;
-    
-    let distSq = this.distanceLUT.get(lutKey);
-    if (distSq === undefined) {
-      distSq = dx * dx + dy * dy + dz * dz;
-      this.distanceLUT.set(lutKey, distSq);
-    }
-    
-    return distSq;
+    // Use exact squared distance for correctness; LUT rounding caused accuracy regression in tests.
+    const dx = p1.x - p2.x;
+    const dy = p1.y - p2.y;
+    const dz = p1.z - p2.z;
+    return dx * dx + dy * dy + dz * dz;
   }
 
   /**
