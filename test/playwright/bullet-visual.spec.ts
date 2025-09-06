@@ -11,7 +11,7 @@ test('bullet visual smoke test - collect state and screenshot', async ({ page },
 
   // Load the running app (user-provided server) and wait for initial load
   // Load with debugState flag so the renderer may expose a safe snapshot accessor
-  await page.goto('http://localhost:8080/spaceautobattler.html?debugState=1', { waitUntil: 'load' });
+    await page.goto(`${baseUrl}/dist/spaceautobattler.html?debugState=1`);
   // Click Start so the simulation begins
   const start = await page.locator('#startPause');
   if (await start.count() > 0) {
@@ -59,9 +59,88 @@ test('bullet visual smoke test - collect state and screenshot', async ({ page },
   // If the guarded debug accessor returned a snapshot, save it and scan for
   // any non-finite coordinates (Number.isFinite). If any are found, fail
   // the test and write a small report listing offending ids.
-  if (result && result.snapshot) {
-    const snap = result.snapshot as unknown;
-    fs.writeFileSync(`${outDir}/state-snapshot.json`, JSON.stringify(snap, null, 2));
+  test('Visual - bullets spawn & no NaN transforms (polled)', async ({ page, context }) => {
+    await page.goto(`${baseUrl}/dist/spaceautobattler.html?debugState=1`);
+    const consoleLines: string[] = [];
+    page.on('console', (msg) => consoleLines.push(`${msg.type()}: ${msg.text()}`));
+
+    // Start the sim
+    await page.getByRole('button', { name: 'Start' }).click();
+    await page.getByRole('button', { name: 'Speed x2' }).click();
+
+    // Poll snapshot every 100ms for up to 3500ms to catch transient NaNs
+    const fs = require('fs');
+    const maxMs = 3500;
+    const intervalMs = 100;
+    let elapsed = 0;
+    let foundSnapshot = null as any;
+    let foundOffenders: any[] = [];
+
+    while (elapsed < maxMs) {
+      // evaluate snapshot if accessor present
+      const hasAccessor = await page.evaluate(() => {
+        // @ts-ignore
+        return typeof (globalThis as any).__GAME_STATE__ !== 'undefined';
+      });
+      if (hasAccessor) {
+        const snapshot = await page.evaluate(() => {
+          // @ts-ignore
+          return (globalThis as any).__GAME_STATE__.getSnapshot();
+        });
+        // scan for non-finite
+        const offenders: any[] = [];
+        if (Array.isArray(snapshot.ships)) {
+          snapshot.ships.forEach((s: any) => {
+            const p = s.pos || {};
+            if (!(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z))) {
+              offenders.push({ type: 'ship', id: s.id, pos: p });
+            }
+          });
+        }
+        if (Array.isArray(snapshot.bullets)) {
+          snapshot.bullets.forEach((b: any) => {
+            const p = b.pos || {};
+            if (!(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z))) {
+              offenders.push({ type: 'bullet', id: b.id, pos: p });
+            }
+          });
+        }
+        if (offenders.length > 0) {
+          foundSnapshot = snapshot;
+          foundOffenders = offenders;
+          break;
+        }
+      }
+
+      await page.waitForTimeout(intervalMs);
+      elapsed += intervalMs;
+    }
+
+    // write artifacts
+    await context.tracing.stop({ path: 'test-output/trace.zip' }).catch(() => {});
+    await page.screenshot({ path: 'test-output/bullet-visual.png', fullPage: true });
+    fs.writeFileSync('test-output/console.log', consoleLines.join('\n'));
+    if (foundSnapshot) {
+      fs.writeFileSync('test-output/state-snapshot.json', JSON.stringify(foundSnapshot, null, 2));
+      fs.writeFileSync('test-output/state-snapshot-report.json', JSON.stringify({ offenders: foundOffenders }, null, 2));
+    } else {
+      // no offenders found during poll; capture last-known snapshot if accessor present
+      const hasAccessor = await page.evaluate(() => {
+        // @ts-ignore
+        return typeof (globalThis as any).__GAME_STATE__ !== 'undefined';
+      });
+      if (hasAccessor) {
+        const snapshot = await page.evaluate(() => {
+          // @ts-ignore
+          return (globalThis as any).__GAME_STATE__.getSnapshot();
+        });
+        fs.writeFileSync('test-output/state-snapshot.json', JSON.stringify(snapshot, null, 2));
+        fs.writeFileSync('test-output/state-snapshot-report.json', JSON.stringify({ offenders: [] }, null, 2));
+      }
+    }
+
+    expect(foundOffenders.length, 'no non-finite coords detected during poll').toBe(0);
+  });
 
     const offendingShips: Array<{ id: string | number | null; issues: string[] }> = [];
     const offendingBullets: Array<{ id: string | number | null; issues: string[] }> = [];
