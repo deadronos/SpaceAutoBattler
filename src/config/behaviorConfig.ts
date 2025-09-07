@@ -279,7 +279,7 @@ export interface BehaviorConfig {
 export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   fighter: {
     mode: 'aggressive',
-    intentReevaluationRate: 0.3,
+  intentReevaluationRate: 0.6,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.9,
@@ -289,7 +289,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   corvette: {
     mode: 'aggressive',
-    intentReevaluationRate: 0.3,
+  intentReevaluationRate: 0.6,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.7,
@@ -299,7 +299,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   frigate: {
     mode: 'aggressive',
-    intentReevaluationRate: 0.3,
+  intentReevaluationRate: 0.6,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.6,
@@ -309,7 +309,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   destroyer: {
     mode: 'mixed',
-    intentReevaluationRate: 0.3,
+  intentReevaluationRate: 0.6,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.5,
@@ -319,7 +319,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   carrier: {
     mode: 'mixed',
-    intentReevaluationRate: 0.3,
+  intentReevaluationRate: 3.0,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.3,
@@ -334,7 +334,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
  */
 export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   behavior: 'independent',
-  targetReevaluationRate: 0.3,
+  targetReevaluationRate: 0.6,
   maxTargetSwitchAngle: Math.PI / 3, // 60 degrees
   leadPredictionTime: 0.5,
   minimumFireRange: 50,
@@ -404,8 +404,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   defaultPersonality: {
     mode: 'mixed',
     intentReevaluationRate: 0.5,
-    minIntentDuration: 3,
-    maxIntentDuration: 10,
+    minIntentDuration: 0.3,
+    maxIntentDuration: 1,
     aggressiveness: 0.8,
     caution: 0.4,
     groupCohesion: 0.5,
@@ -461,7 +461,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageDecayRate: 0.5,
     evadeSamplingCount: 8,
     evadeDistance: 200,
-    evadeOnlyOnDamage: true,
+    evadeOnlyOnDamage: false,
     evadeRecentDamageWindowSeconds: 2.0,
     evadeBaseScore: 100,
     evadeThreatPenaltyWeight: 0.5,
@@ -471,8 +471,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     evadeMaxPitch: Math.PI * 0.5,
     enableSpatialIndex: true,
     enableScoutBehavior: true,
-    enableAlarmSystem: true,
-    alarmSystemWindowSeconds: 5.0,
+  enableAlarmSystem: true,
+  alarmSystemWindowSeconds: 5.0,
     enableScoutExploration: true,
     explorationZoneCount: 6,
     explorationZoneDuration: 8.0

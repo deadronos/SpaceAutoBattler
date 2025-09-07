@@ -48,7 +48,74 @@ export class AggressiveSpatialOptimizer {
     hierarchicalQueries: 0,
   };
 
-  constructor(private baseGrid: { queryRadius: (center: Vector3, radius: number) => SpatialEntity[] }, private cellSize: number) {}
+  constructor(private baseGrid: { queryRadius: (center: Vector3, radius: number) => SpatialEntity[] } , private cellSize: number) {}
+
+  /**
+   * Helper to obtain candidates from the wrapped baseGrid while avoiding
+   * large array allocations when possible. Prefers streaming via
+   * `forEachInRadius` when available. Falls back to pooled results if the
+   * baseGrid exposes pooling helpers, otherwise uses `queryRadius`.
+   */
+  private getCandidatesFromBaseGrid(center: Vector3, radius: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
+    type OptionalGrid = {
+      forEachInRadius?: (center: Vector3, radius: number, fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void) => void;
+      getPooledResults?: () => SpatialEntity[];
+      releasePooledResults?: (arr: SpatialEntity[]) => void;
+      queryRadius?: (center: Vector3, radius: number, out?: SpatialEntity[]) => SpatialEntity[];
+    };
+
+    const bg = this.baseGrid as unknown as OptionalGrid;
+
+    // Prefer streaming API if present - this avoids allocations entirely
+    if (typeof bg.forEachInRadius === 'function') {
+      const out: SpatialEntity[] = [];
+      try {
+        bg.forEachInRadius!(center, radius, (_dx, _dy, _dz, _distSq, entity) => {
+          if (team !== undefined && entity.team !== team) return;
+          if (excludeId !== undefined && entity.id === excludeId) return;
+          out.push(entity);
+        });
+        return out;
+      } catch {
+        // Fall through to pooled attempts on error
+      }
+    }
+
+    // Try pooled results if available: call queryRadius with provided buffer
+    if (typeof bg.getPooledResults === 'function' && typeof bg.releasePooledResults === 'function') {
+      const buf: SpatialEntity[] = bg.getPooledResults!();
+      try {
+        if (typeof bg.queryRadius === 'function') {
+          bg.queryRadius!(center, radius, buf);
+        }
+        const res: SpatialEntity[] = [];
+        for (const e of buf) {
+          if (team !== undefined && e.team !== team) continue;
+          if (excludeId !== undefined && e.id === excludeId) continue;
+          res.push(e);
+        }
+        return res;
+      } finally {
+        bg.releasePooledResults!(buf);
+      }
+    }
+
+    // As a last resort, call queryRadius and pass an out array if supported
+    try {
+      if (typeof this.baseGrid.queryRadius === 'function') {
+        const arr = this.baseGrid.queryRadius(center, radius) || [];
+        // Filter in-place into a new array to preserve caller expectations
+        return arr.filter((entity: SpatialEntity) => {
+          if (team !== undefined && entity.team !== team) return false;
+          if (excludeId !== undefined && entity.id === excludeId) return false;
+          return true;
+        });
+      }
+    } catch {
+      // ignore errors and fall through
+    }
+    return [];
+  }
 
   /**
    * Optimized radius query with hierarchical approximation
@@ -58,7 +125,7 @@ export class AggressiveSpatialOptimizer {
     radius: number, 
     team?: Team,
     excludeId?: EntityId,
-    approximationLevel = 0.1 // 0 = exact, 1 = very approximate
+  approximationLevel = 0.2 // 0 = exact, 1 = very approximate (default nudged to favor cheaper queries)
   ): SpatialEntity[] {
     this.currentFrame++;
     
@@ -115,12 +182,7 @@ export class AggressiveSpatialOptimizer {
       // which is populated by updateSpatialGrids. This ensures tests that
       // drive the optimizer via updateSpatialGrids still get candidates even
       // when the wrapped baseGrid isn't populated by the test harness.
-      let candidates = this.baseGrid.queryRadius(center, searchRadius)
-        .filter(entity => {
-          if (team !== undefined && entity.team !== team) return false;
-          if (excludeId !== undefined && entity.id === excludeId) return false;
-          return true;
-        });
+  let candidates = this.getCandidatesFromBaseGrid(center, searchRadius, team, excludeId);
       if (candidates.length === 0) {
         // Use internal fineGrid if available
         candidates = this.queryFineGrid(center, searchRadius, team, excludeId);
@@ -150,13 +212,7 @@ export class AggressiveSpatialOptimizer {
     }
     
     // Return what we found, even if less than k
-    const allCandidates = this.baseGrid.queryRadius(center, maxSearchRadius)
-      .filter(entity => {
-        if (DEBUG_AI) console.log(`[AggressiveSpatialOptimizer] queryKNearestApproximate - allCandidates: ${entity.id}, team: ${entity.team}, pos: ${entity.pos.x},${entity.pos.y},${entity.pos.z}`);
-        if (team !== undefined && entity.team !== team) return false;
-        if (excludeId !== undefined && entity.id === excludeId) return false;
-        return true;
-      });
+  const allCandidates = this.getCandidatesFromBaseGrid(center, maxSearchRadius, team, excludeId);
     if (DEBUG_AI) console.log(`[AggressiveSpatialOptimizer] queryKNearestApproximate - maxSearchRadius: ${maxSearchRadius}, allCandidates.length: ${allCandidates.length}`);
     
     allCandidates.sort((a, b) => {
@@ -184,12 +240,7 @@ export class AggressiveSpatialOptimizer {
     // behavior backward-compatible while still allowing the optimizer's
     // internal grids to be used as a fallback when baseGrid is empty.
     try {
-      const baseCandidates = this.baseGrid.queryRadius(center, radius)
-        .filter(entity => {
-          if (team !== undefined && entity.team !== team) return false;
-          if (excludeId !== undefined && entity.id === excludeId) return false;
-          return true;
-        });
+  const baseCandidates = this.getCandidatesFromBaseGrid(center, radius, team, excludeId);
       if (baseCandidates.length > 0) return baseCandidates;
     } catch {
       // Ignore errors from baseGrid and fall through to internal grids

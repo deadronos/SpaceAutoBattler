@@ -189,8 +189,10 @@ export class SpatialGridAdapter implements SpatialIndex {
   const sqrt = Math.sqrt;
   const searchRadius = sqrt(diagSq) / 2 + 50; // infrequent; keep sqrt here
 
-    const entities = this.grid.queryRadius(center, searchRadius);
-    for (const entity of entities) {
+    const buf = this.grid.getPooledResults();
+    try {
+      this.grid.queryRadius(center, searchRadius, buf);
+      for (const entity of buf) {
       // Test if entity's position (considering its radius) intersects with AABB
       const entityMin = {
         x: entity.pos.x - entity.radius,
@@ -212,16 +214,21 @@ export class SpatialGridAdapter implements SpatialIndex {
           results.push(entity.id);
         }
       }
+      }
+      return results;
+    } finally {
+      this.grid.releasePooledResults(buf);
     }
-    return results;
   }
 
   queryRadiusWithDistance(center: Vector3, radius: number, layerMask?: number): SpatialQueryResult[] {
     this.trackQuery();
     const results: SpatialQueryResult[] = [];
-    const entities = this.grid.queryRadius(center, radius);
-    
-    for (const entity of entities) {
+    const buf = this.grid.getPooledResults();
+    try {
+      this.grid.queryRadius(center, radius, buf);
+
+      for (const entity of buf) {
       // Apply layer mask if provided
       if (layerMask !== undefined && !((1 << (entity.team === 'red' ? 0 : 1)) & layerMask)) {
         continue;
@@ -240,9 +247,12 @@ export class SpatialGridAdapter implements SpatialIndex {
 
         results.push({ entity, distance, direction });
       }
+      }
+
+      return results.sort((a, b) => a.distance - b.distance);
+    } finally {
+      this.grid.releasePooledResults(buf);
     }
-    
-    return results.sort((a, b) => a.distance - b.distance);
   }
 
   raycast(from: Vector3, to: Vector3, layerMask?: number): Array<{ entityId: EntityId; t: number; point: Vector3 }> {
@@ -269,9 +279,11 @@ export class SpatialGridAdapter implements SpatialIndex {
     };
   const queryRadius = rayLength / 2 + 50; // Add padding for entity radii
     
-    const entities = this.grid.queryRadius(center, queryRadius);
-    
-    for (const entity of entities) {
+    const buf2 = this.grid.getPooledResults();
+    try {
+      this.grid.queryRadius(center, queryRadius, buf2);
+
+      for (const entity of buf2) {
       // Apply layer mask if provided
       if (layerMask !== undefined && !((1 << (entity.team === 'red' ? 0 : 1)) & layerMask)) {
         continue;
@@ -298,25 +310,38 @@ export class SpatialGridAdapter implements SpatialIndex {
         const t = dot / rayLength;
         results.push({ entityId: entity.id, t, point: { x: closestX, y: closestY, z: closestZ } });
       }
+      }
+
+      return results.sort((a, b) => a.t - b.t);
+    } finally {
+      this.grid.releasePooledResults(buf2);
     }
-    
-    return results.sort((a, b) => a.t - b.t);
   }
 
   queryLayer(center: Vector3, radius: number, layer: number): SpatialEntity[] {
     this.trackQuery();
-    const entities = this.grid.queryRadius(center, radius);
-    const teamLayer = layer === 0 ? 'red' : 'blue';
-    return entities.filter(e => e.team === teamLayer);
+    const buf3 = this.grid.getPooledResults();
+    try {
+      this.grid.queryRadius(center, radius, buf3);
+      const teamLayer = layer === 0 ? 'red' : 'blue';
+      return buf3.filter(e => e.team === teamLayer);
+    } finally {
+      this.grid.releasePooledResults(buf3);
+    }
   }
 
   queryLayerMask(center: Vector3, radius: number, layerMask: number): SpatialEntity[] {
     this.trackQuery();
-    const entities = this.grid.queryRadius(center, radius);
-    return entities.filter(e => {
-      const entityLayer = e.team === 'red' ? 0 : 1;
-      return (1 << entityLayer) & layerMask;
-    });
+    const buf4 = this.grid.getPooledResults();
+    try {
+      this.grid.queryRadius(center, radius, buf4);
+      return buf4.filter(e => {
+        const entityLayer = e.team === 'red' ? 0 : 1;
+        return (1 << entityLayer) & layerMask;
+      });
+    } finally {
+      this.grid.releasePooledResults(buf4);
+    }
   }
 
   getStats() {

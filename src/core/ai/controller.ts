@@ -667,12 +667,23 @@ export class AIController {
       return this.spatialOptimizer.queryRadiusOptimized(center, radius, team, excludeId, approximationLevel);
     }
     // Fallback to regular spatial grid
-    const results = this.state.spatialGrid?.queryRadius(center, radius) || [];
-    return results.filter(entity => {
-      if (team !== undefined && entity.team !== team) return false;
-      if (excludeId !== undefined && entity.id === excludeId) return false;
-      return true;
-    });
+    const grid = this.state.spatialGrid;
+    if (!grid) return [];
+    // Use pooled results to avoid per-call allocations in the hot path
+    const buf = grid.getPooledResults();
+    try {
+      grid.queryRadius(center, radius, buf);
+      // Filter in-place into a fresh array for the caller
+      const out: typeof buf = [];
+      for (const entity of buf) {
+        if (team !== undefined && entity.team !== team) continue;
+        if (excludeId !== undefined && entity.id === excludeId) continue;
+        out.push(entity);
+      }
+      return out;
+    } finally {
+      grid.releasePooledResults(buf);
+    }
   }
 
   /**
