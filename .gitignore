@@ -103,3 +103,6 @@ test-output/
 /blob-report/
 /playwright/.cache/
 
+
+.gemini/
+gha-creds-*.json
