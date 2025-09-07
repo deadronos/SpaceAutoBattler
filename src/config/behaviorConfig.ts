@@ -305,7 +305,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     aggressiveness: 0.6,
     caution: 0.4,
     groupCohesion: 0.7,
-    preferredRangeMultiplier: 1.2
+    preferredRangeMultiplier: 1.0
   },
   destroyer: {
     mode: 'mixed',
@@ -315,7 +315,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     aggressiveness: 0.5,
     caution: 0.5,
     groupCohesion: 0.8,
-    preferredRangeMultiplier: 1.5
+    preferredRangeMultiplier: 1.0
   },
   carrier: {
     mode: 'mixed',
@@ -325,7 +325,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
     aggressiveness: 0.3,
     caution: 0.7,
     groupCohesion: 0.9,
-    preferredRangeMultiplier: 2.0
+    preferredRangeMultiplier: 1.2
   }
 };
 
@@ -440,7 +440,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     separationDistance: 120,
     separationWeight: 0.3,
     roamingAnchorMinSeparation: 150,
-    killCreditWindowSeconds: 5,
+    killCreditWindowSeconds: 8,
     enableBoundaryCleanup: true,
     boundaryCleanupIntervalTicks: 600,
     enableSpawnJitter: true,
@@ -460,7 +460,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageEvadeThreshold: 0.2,
     damageDecayRate: 0.5,
     evadeSamplingCount: 8,
-    evadeDistance: 200,
+    evadeDistance: 100,
     evadeOnlyOnDamage: false,
     evadeRecentDamageWindowSeconds: 2.0,
     evadeBaseScore: 100,
@@ -475,7 +475,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   alarmSystemWindowSeconds: 5.0,
     enableScoutExploration: true,
     explorationZoneCount: 6,
-    explorationZoneDuration: 8.0
+    explorationZoneDuration: 1.0
     ,
     // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
     useDecisionEngineEvadeGate: true,

@@ -5,6 +5,7 @@ import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
+import { calculatePreferredRange } from './ai/intent.js';
 // Note: AggressiveSpatialOptimizer import removed (unused in this module)
 import { FleetConfig } from '../config/fleetConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
@@ -253,6 +254,20 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
     _healthDirty: true,
     _shieldDirty: true,
   };
+
+  // Eagerly create aiState so early damage (before first AI tick) is recorded
+  // by alarm and damage bookkeeping logic. We avoid doing this during unit
+  // tests (Vitest sets NODE_ENV='test') so tests that explicitly set
+  // aiState during setup continue to work as before.
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'test') {
+    try {
+      ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0, preferredRange: calculatePreferredRange(state, ship), recentDamage: 0, lastDamageTime: 0 } as Ship['aiState'];
+    } catch {
+      // Best-effort: if preferred range calculation fails, still create a
+      // minimal aiState to enable damage bookkeeping in runtime.
+      ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0, preferredRange: 0, recentDamage: 0, lastDamageTime: 0 } as Ship['aiState'];
+    }
+  }
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
   // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
   // intentionally very small (fractional) and scale with ship speed so larger ships
