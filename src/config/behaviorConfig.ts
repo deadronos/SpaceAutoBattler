@@ -279,9 +279,9 @@ export interface BehaviorConfig {
 export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   fighter: {
     mode: 'aggressive',
-    intentReevaluationRate: 0.5,
-    minIntentDuration: 2,
-    maxIntentDuration: 8,
+    intentReevaluationRate: 0.3,
+    minIntentDuration: 0.3,
+    maxIntentDuration: 1,
     aggressiveness: 0.9,
     caution: 0.1,
     groupCohesion: 0.3,
@@ -289,9 +289,9 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   corvette: {
     mode: 'aggressive',
-    intentReevaluationRate: 1.0,
-    minIntentDuration: 3,
-    maxIntentDuration: 12,
+    intentReevaluationRate: 0.3,
+    minIntentDuration: 0.3,
+    maxIntentDuration: 1,
     aggressiveness: 0.7,
     caution: 0.3,
     groupCohesion: 0.5,
@@ -299,9 +299,9 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   frigate: {
     mode: 'aggressive',
-    intentReevaluationRate: 1.5,
-    minIntentDuration: 4,
-    maxIntentDuration: 15,
+    intentReevaluationRate: 0.3,
+    minIntentDuration: 0.3,
+    maxIntentDuration: 1,
     aggressiveness: 0.6,
     caution: 0.4,
     groupCohesion: 0.7,
@@ -309,9 +309,9 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   destroyer: {
     mode: 'mixed',
-    intentReevaluationRate: 2.0,
-    minIntentDuration: 5,
-    maxIntentDuration: 20,
+    intentReevaluationRate: 0.3,
+    minIntentDuration: 0.3,
+    maxIntentDuration: 1,
     aggressiveness: 0.5,
     caution: 0.5,
     groupCohesion: 0.8,
@@ -319,9 +319,9 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   carrier: {
     mode: 'mixed',
-    intentReevaluationRate: 3.0,
-    minIntentDuration: 8,
-    maxIntentDuration: 30,
+    intentReevaluationRate: 0.3,
+    minIntentDuration: 0.3,
+    maxIntentDuration: 1,
     aggressiveness: 0.3,
     caution: 0.7,
     groupCohesion: 0.9,
@@ -343,8 +343,8 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   // Dynamic switching is disabled by default to preserve existing behavior
   dynamicSwitch: {
     enabled: true,
-    minDuration: 1.0,
-    maxDuration: 5.0,
+    minDuration: 0.2,
+    maxDuration: 2.0,
     options: [
       { behavior: 'independent', weight: 50 },
       { behavior: 'synchronized', weight: 20 },
@@ -403,7 +403,7 @@ export const DEFAULT_FORMATIONS: Record<string, FormationConfig> = {
 export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   defaultPersonality: {
     mode: 'mixed',
-    intentReevaluationRate: 1.0,
+    intentReevaluationRate: 0.5,
     minIntentDuration: 3,
     maxIntentDuration: 10,
     aggressiveness: 0.8,

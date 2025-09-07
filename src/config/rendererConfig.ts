@@ -362,7 +362,7 @@ export const DefaultRendererConfig: RendererConfig = {
     enableShips: true, // default false until ship instancing is ready
     bullets: {
       initialCapacity: 800, // start with capacity for 800 bullets (raised to reduce instancer growth/warnings)
-      maxCapacity: 2000, // max 2000 bullets before warning
+      maxCapacity: 4000, // max 2000 bullets before warning
       growthFactor: 1.5, // grow capacity by 50% when needed
       warnThreshold: 0.8, // warn when 80% capacity is reached
     },

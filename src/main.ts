@@ -35,9 +35,8 @@ import { perf, perfBegin, perfEnd } from './utils/perf.js';
 
 // Strongly-typed runtime debug hooks exposed on globalThis when enabled.
 declare global {
-  interface Window { __appDebug?: unknown; }
-  var __shipInstancer?: typeof shipInstancer;
-  var DEBUG_SHIP_INSTANCER?: boolean;
+  interface Window { __appDebug?: unknown; __shipInstancer?: typeof shipInstancer; DEBUG_SHIP_INSTANCER?: boolean; }
+  interface GlobalEventHandlers { }
 }
 
 function $(id: string) { return document.getElementById(id)!; }
@@ -366,14 +365,14 @@ function initGame(seed?: string) {
       const p = url.searchParams.get('instancerDebug');
       const enabled = p === '1' || p === 'true';
       if (enabled) {
-        // Use typed globals rather than `any` casts so the linter is happy.
-        try { DEBUG_SHIP_INSTANCER = true; } catch (_e) { void _e; }
-        try { __shipInstancer = shipInstancer; } catch (_e) { void _e; }
+        // Use typed globals on window rather than `any` casts so the linter is happy.
+        try { window.DEBUG_SHIP_INSTANCER = true; } catch (_e) { void _e; }
+        try { window.__shipInstancer = shipInstancer; } catch (_e) { void _e; }
         // One-shot sample dump to verify wiring
         try { shipInstancer.debugDumpSample?.(); } catch (_e) { void _e; }
       } else {
-        try { DEBUG_SHIP_INSTANCER = undefined; } catch (_e) { void _e; }
-        try { __shipInstancer = undefined; } catch (_e) { void _e; }
+        try { window.DEBUG_SHIP_INSTANCER = undefined; } catch (_e) { void _e; }
+        try { window.__shipInstancer = undefined; } catch (_e) { void _e; }
       }
     } catch (_e) { void _e; }
   })();
