@@ -279,7 +279,7 @@ export interface BehaviorConfig {
 export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   fighter: {
     mode: 'aggressive',
-  intentReevaluationRate: 0.6,
+  intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.9,
@@ -289,7 +289,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   corvette: {
     mode: 'aggressive',
-  intentReevaluationRate: 0.6,
+  intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.7,
@@ -299,7 +299,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   frigate: {
     mode: 'aggressive',
-  intentReevaluationRate: 0.6,
+  intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.6,
@@ -309,7 +309,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   },
   destroyer: {
     mode: 'mixed',
-  intentReevaluationRate: 0.6,
+  intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.5,
@@ -334,7 +334,7 @@ export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
  */
 export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   behavior: 'independent',
-  targetReevaluationRate: 0.6,
+  targetReevaluationRate: 0.3,
   maxTargetSwitchAngle: Math.PI / 3, // 60 degrees
   leadPredictionTime: 0.5,
   minimumFireRange: 50,
@@ -403,7 +403,7 @@ export const DEFAULT_FORMATIONS: Record<string, FormationConfig> = {
 export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   defaultPersonality: {
     mode: 'mixed',
-    intentReevaluationRate: 0.5,
+  intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.8,

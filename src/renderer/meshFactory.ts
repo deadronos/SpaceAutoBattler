@@ -61,7 +61,7 @@ export function createShipMesh(
   const createTextured3DShip = (imageBitmap: ImageBitmap) => {
     const texture = new THREE.Texture(imageBitmap);
     texture.needsUpdate = true;
-    texture.generateMipmaps = false;
+    texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
 
@@ -220,7 +220,7 @@ export function createShipMesh(
               if (allocated) {
                 // Immediately set transform so the instance appears in the correct place
                 const q = new THREE.Quaternion();
-                q.setFromEuler(new THREE.Euler(ship.orientation.pitch, ship.orientation.yaw - Math.PI/2, ship.orientation.roll));
+                q.setFromEuler(new THREE.Euler(ship.orientation.pitch, ship.orientation.yaw, ship.orientation.roll));
                 const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
                 shipInstancer.updateTransform(ship.id, ship.pos, q, scale);
                 // Remove placeholder from scene and track a lightweight object in the mesh map
