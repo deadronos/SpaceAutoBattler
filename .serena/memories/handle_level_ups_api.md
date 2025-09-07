@@ -1,4 +1,7 @@
 handleLevelUps(state: GameState)
+
+Last-Reviewed: 2025-09-07
+
 - Purpose: Apply level-up progression for ships whose XP exceeds their nextLevelXp, increasing stats and resetting/subtracting XP accordingly.
 - Inputs: `state` (GameState mutable)
 - Outputs: None (mutates ships' `level`, `maxHealth`, `maxShield`, `health`, and `shield`)

@@ -1,5 +1,7 @@
 ## AIController
 
+Last-Reviewed: 2025-09-07
+
 The `AIController` class is the central component for managing ship AI in the simulation. It is responsible for orchestrating ship behaviors, intents, and actions based on the game state and configurable AI personalities.
 
 ### Public Methods

@@ -1,5 +1,7 @@
 # threeRenderer.ts — Renderer overview
 
+Last-Reviewed: 2025-09-07
+
 This memory captures the state and responsibilities of `src/renderer/threeRenderer.ts` based on the provided file excerpt.
 
 ## Purpose

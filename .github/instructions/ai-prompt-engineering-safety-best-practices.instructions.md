@@ -71,3 +71,6 @@ Checklist:
 
 End.
 
+Repo notes (SpaceAutoBattler):
+- When generating code for this repository, explicitly respect the canonical `GameState` rules (all runtime state lives on `GameState`) and preserve deterministic RNG usage (`src/utils/rng.ts`). Mention these constraints in prompts when requesting code edits.
+

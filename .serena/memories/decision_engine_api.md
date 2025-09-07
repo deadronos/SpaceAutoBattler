@@ -1,5 +1,7 @@
 ## Decision Engine
 
+Last-Reviewed: 2025-09-07
+
 The `decisionEngine.ts` module provides a set of functions for scoring different AI intents and selecting the best one. This is used by the `AIController` to make more nuanced decisions about ship behavior.
 
 ### Exported Functions
