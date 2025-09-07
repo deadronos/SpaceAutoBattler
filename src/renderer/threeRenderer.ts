@@ -1471,7 +1471,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const interpolatedOrientation = interpolatedOrientationEuler;
       if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         // Reuse a shared temp quaternion to avoid per-frame allocations
-        tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z));
+        tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y, interpolatedOrientation.z));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         shipInstancer.updateTransform(s.id, interpolatedPos, tempQuat, scale);
       } else {
@@ -1479,7 +1479,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         // Set 3D rotation using ship's interpolated orientation
         // Ships are modeled pointing along +X axis, so we need to adjust
         // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-        m.rotation.set(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z);
+        m.rotation.set(interpolatedOrientation.x, interpolatedOrientation.y, interpolatedOrientation.z);
         
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         m.scale.setScalar(scale);
