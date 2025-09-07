@@ -1,22 +1,16 @@
 ## Turret Targeting
 
-The `turretTargeting.ts` module provides functions for handling the logic of turret target selection. This is a key part of the AI, allowing turrets to independently choose the best enemy to engage.
+Last-Reviewed: 2025-09-07
 
-### Exported Functions
+This memory documents how turrets pick and track targets.
 
-- **`scoreTurretTarget(distance: number, target: Ship): number`**
-  - **Purpose:** Computes a score for a potential turret target.
-  - **Inputs:** `distance` to the target and the `target` ship object.
-  - **Outputs:** A numerical score for the target. Higher scores are better.
-  - **Logic:** The score is based on a formula that prioritizes closer targets, more damaged targets, and higher-level targets.
+### Responsibilities
+- Select nearest or highest-priority enemy within turret range and arc.
+- Lead targets by predicting target movement using current velocity and projectile speed.
+- Apply aim smoothing and tracking mechanics so turrets don't snap instantly.
 
-- **`isWithinTurretRange(distance: number, cfg: BehaviorConfig['turretConfig']): boolean`**
-  - **Purpose:** Checks if a given distance is within the effective firing range of a turret.
-  - **Inputs:** The `distance` to check and the `turretConfig`.
-  - **Outputs:** `true` if the distance is within the minimum and maximum fire range, `false` otherwise.
+### API
+- `selectTurretTarget(turret: Turret, ship: Ship, state: GameState): Ship | null`
 
-- **`pickBestTurretTarget(state: GameState, ship: Ship, turret: TurretState, cfg: BehaviorConfig['turretConfig']): number | null`**
-  - **Purpose:** Selects the best target for a turret to engage.
-  - **Inputs:** The current `GameState`, the `ship` that owns the turret, the `turret` itself, and the `turretConfig`.
-  - **Outputs:** The `id` of the best target ship, or `null` if no suitable target is found.
-  - **Logic:** This function iterates through all enemy ships, checks if they are within range, calculates a score for each using `scoreTurretTarget`, and returns the ID of the ship with the highest score.
+### Notes
+- Uses spatial queries and team checks to avoid friendly fire; configurable via `behaviorConfig`.

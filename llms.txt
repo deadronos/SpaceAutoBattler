@@ -63,4 +63,7 @@ Governance & notes
 - Maintainer: `deadronos` — main branch is `main`, active development on `dev`.
 - Follow the repository's Copilot/agent guidance in `.github/copilot-instructions.md` for automated edits.
 
+# Repo instructions
+For agent guidance and repository-specific rules, see `.github/instructions/*.instructions.md`.
+
 If you need a tailored quickstart or a minimal patch (tests + typecheck run), open an issue or ask for an automated change.
