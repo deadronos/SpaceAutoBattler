@@ -7,13 +7,13 @@ on:
   pull_request_review:
     types:
       - 'submitted'
-  pull_request:
-    types:
-      - 'opened'
-  issues:
-    types:
-      - 'opened'
-      - 'reopened'
+#  pull_request:
+#    types:
+#      - 'opened'
+#  issues:
+#    types:
+#      - 'opened'
+#      - 'reopened'
   issue_comment:
     types:
       - 'created'
