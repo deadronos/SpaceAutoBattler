@@ -5,7 +5,7 @@ import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
-import { AggressiveSpatialOptimizer } from './ai/aggressiveSpatialOptimizer.js';
+// Note: AggressiveSpatialOptimizer import removed (unused in this module)
 import { FleetConfig } from '../config/fleetConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
@@ -38,6 +38,25 @@ export function createInitialState(seed?: string): GameState {
     score: { red: 0, blue: 0 },
     behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
   };
+
+  // Expose the live, mutable GameState on globalThis for advanced debugging.
+  // WARNING: this intentionally exposes the real state object. Use with care —
+  // modifying `globalThis.__GameState` or its properties during runtime can
+  // affect deterministic behavior and tests. This is a deliberate developer
+  // convenience and should be used only in local/dev scenarios.
+  try {
+    if (typeof globalThis !== 'undefined') {
+      const g = globalThis as unknown as Record<string, unknown>;
+      // Preserve any existing helpers under __GameState while also exposing the
+      // live state object as `__GameState.state` for backward compatibility.
+  type GameStateExposed = { state?: GameState; [k: string]: unknown };
+  const current = (g.__GameState as GameStateExposed) || {} as GameStateExposed;
+  current.state = state;
+  g.__GameState = current;
+    }
+  } catch {
+    // Best-effort only; avoid throwing in initialization.
+  }
 
   // Initialize spatial grid if enabled
   if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {

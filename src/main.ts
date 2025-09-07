@@ -21,6 +21,7 @@ if (!(globalThis as any).THREE) {
 }
 import type { GameState, UIElements, ShipClass } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
+import { shipInstancer } from './renderer/shipInstancer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
 import { CameraConfig } from './config/cameraConfig.js';
@@ -31,6 +32,13 @@ import * as logger from './utils/logger.js';
 import { DefaultGameConfig } from './config/gameConfig.js';
 import { defaultSVGConfig, getShipSVGUrls } from './config/svgConfig.js';
 import { perf, perfBegin, perfEnd } from './utils/perf.js';
+
+// Strongly-typed runtime debug hooks exposed on globalThis when enabled.
+declare global {
+  interface Window { __appDebug?: unknown; }
+  var __shipInstancer?: typeof shipInstancer;
+  var DEBUG_SHIP_INSTANCER?: boolean;
+}
 
 function $(id: string) { return document.getElementById(id)!; }
 
@@ -344,12 +352,30 @@ function initGame(seed?: string) {
     spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
     spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
     reFormFleets(state);
-    const renderer = createThreeRenderer(state, ui.canvas);
-    state.renderer = renderer;
+  const renderer = createThreeRenderer(state, ui.canvas);
+  state.renderer = renderer;
     wireControls(state, ui);
     setupCameraControls(state, ui.canvas);
     setupPerfOverlay();
     startLoops(state, ui);
+    // Gate noisy instancer debug hooks behind a URL parameter so they are
+    // disabled by default in production. To enable, append ?instancerDebug=1
+    // or ?instancerDebug=true to the app URL.
+    try {
+      const url = new URL(window.location.href);
+      const p = url.searchParams.get('instancerDebug');
+      const enabled = p === '1' || p === 'true';
+      if (enabled) {
+        // Use typed globals rather than `any` casts so the linter is happy.
+        try { DEBUG_SHIP_INSTANCER = true; } catch (_e) { void _e; }
+        try { __shipInstancer = shipInstancer; } catch (_e) { void _e; }
+        // One-shot sample dump to verify wiring
+        try { shipInstancer.debugDumpSample?.(); } catch (_e) { void _e; }
+      } else {
+        try { DEBUG_SHIP_INSTANCER = undefined; } catch (_e) { void _e; }
+        try { __shipInstancer = undefined; } catch (_e) { void _e; }
+      }
+    } catch (_e) { void _e; }
   })();
 }
 

@@ -569,6 +569,15 @@ export function createEffectsManager(renderer: WebGLRenderer, scene: Scene, came
   return {
     initDone: true,
     render(dt: number) {
+      // Import and call ship instancer methods before rendering
+      try {
+        const { shipInstancer } = require('./shipInstancer.js');
+        if (shipInstancer && camera) {
+          shipInstancer.cull(camera);
+          shipInstancer.sync();
+        }
+      } catch (_e) { void _e; /* ignore if ship instancer not available */ }
+      
       try { asAny(composer).render(dt); } catch (_e) { void _e;try { asAny(composer).render(); } catch (_) { void _;/* ignore */ } }
     },
     resize(width: number, height: number) {
