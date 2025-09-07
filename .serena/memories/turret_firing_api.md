@@ -1,17 +1,18 @@
-fireTurrets(state: GameState, ship: Ship, dt: number)
-- Purpose: Evaluate a ship's turrets and create bullets when turret cooldowns allow and target is in range.
-- Inputs:
-  - `state` (GameState mutable)
-  - `ship` (Ship object; must have `turrets` and `class` fields)
-  - `dt` (time delta in seconds)
-- Outputs: None (mutates `state.bullets` and `ship.turrets` cooldowns, may increment state.nextId)
-- Side effects:
-  - Decrements turret cooldowns by dt.
-  - If ship has a valid `targetId` and the target is within turret range, creates Bullet objects and appends to `state.bullets`.
-  - Sets turret `cooldownLeft` to the turret's configured cooldown after firing.
-- Edge cases and error modes:
-  - Requires `getShipClassConfig(ship.class)` to return turret configs; missing config will throw.
-  - If `targetId` refers to a non-existent ship, the function safely skips firing.
-  - If bullets are created rapidly and `state.nextId` is not numeric, ID allocation will fail.
-- Determinism: Uses ship and turret configs and does not rely on RNG. For deterministic replay ensure `state` is consistent between runs.
-- Notes: Caller should ensure `ship.health > 0` and `ship.turrets` exist; the implementation iterates over turrets and matches turret config by index modulo turret definitions for classes with fewer turret types than turret instances.
+## Turret Firing
+
+Last-Reviewed: 2025-09-07
+
+This memory documents the turret firing logic used by ships.
+
+### Responsibilities
+- Decide when turrets should fire based on turret cooldown, target lock, and ship commands.
+- Compute projectile spawn position and direction, applying turret-level spread.
+- Deduct ammo or energy if applicable and place projectile entities into `state.projectiles`.
+- Record `lastFired` timestamps and manage turret cooldowns.
+
+### API
+- `fireTurrets(ship: Ship, state: GameState, now: number)`
+  - Advances turret cooldowns and spawns projectiles when appropriate.
+
+### Notes
+- Turret firing is deterministic; uses seeded RNG for spread.

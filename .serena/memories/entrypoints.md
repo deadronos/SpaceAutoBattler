@@ -1,1 +1,10 @@
-NPM scripts: test (vitest), serve (http-server), serve:dist, build (node scripts/build.mjs), build-standalone, build-standalone:watch, test:e2e (playwright), typecheck (tsc). Main entry files: `src/main.ts` (app boot), `src/simWorker.ts` (physics worker fallback), `scripts/build-standalone.mjs` (standalone bundling). Web entry: `src/ui.html` for index UI. Tests: test/vitest/*.spec.ts and Playwright tests under test/playwright. Updated 2025-08-31.
+## Entrypoints
+
+Last-Reviewed: 2025-09-07
+
+Lists the application's entrypoints and how they are used.
+- `src/main.ts` - main app bootstrap (UI wiring, renderer creation, worker handshake)
+- `src/simWorker.ts` - physics worker entry script
+- `scripts/build.mjs` and `scripts/build-standalone.mjs` - build helpers for dist and standalone HTML
+
+Notes: Use `npm run serve` or `npm run serve:dist` after building for manual testing.

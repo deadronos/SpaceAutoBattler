@@ -1315,7 +1315,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Ships
-    const useShipInstancing = RendererConfig.instancing.enableShips && shipInstancer.isReady();
+  // Previously this required shipInstancer.isReady(), but that created a circular
+  // dependency (isReady only becomes true after first allocation/createGroup).
+  // Allow allocate() to drive readiness transition.
+  const useShipInstancing = RendererConfig.instancing.enableShips; 
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
         // If ship instancing is enabled and we can allocate, don't create an individual mesh
@@ -1438,7 +1441,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Use simulation time for renderer-driven effects so shader hit timestamps
     // align with game state timestamps like ship.lastShieldHitTime
     const currentTime = state.time;
-    const useShipInstancing = RendererConfig.instancing.enableShips && shipInstancer.isReady();
+  // Do not gate on isReady here either; after first allocate groups exist.
+  const useShipInstancing = RendererConfig.instancing.enableShips; 
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
@@ -1467,7 +1471,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const interpolatedOrientation = interpolatedOrientationEuler;
       if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         // Reuse a shared temp quaternion to avoid per-frame allocations
-        tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z));
+        tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y, interpolatedOrientation.z));
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         shipInstancer.updateTransform(s.id, interpolatedPos, tempQuat, scale);
       } else {
@@ -1475,7 +1479,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         // Set 3D rotation using ship's interpolated orientation
         // Ships are modeled pointing along +X axis, so we need to adjust
         // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-        m.rotation.set(interpolatedOrientation.x, interpolatedOrientation.y - Math.PI/2, interpolatedOrientation.z);
+        m.rotation.set(interpolatedOrientation.x, interpolatedOrientation.y, interpolatedOrientation.z);
         
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         m.scale.setScalar(scale);
@@ -1677,8 +1681,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     perfBegin('renderer.culling');
     // Render the scene
   // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-  try { shipInstancer.cull(camera); } catch {logger.error('Failed to cull ship instancer');}
-  try { shipInstancer.sync(); } catch {logger.error('Failed to sync ship instancer');}
+  console.log('About to call shipInstancer.cull()');
+  try { shipInstancer.cull(camera); } catch (e) {logger.error('Failed to cull ship instancer', e);}
+  console.log('About to call shipInstancer.sync()');
+  try { shipInstancer.sync(); } catch (e) {logger.error('Failed to sync ship instancer', e);}
+    perfEnd('renderer.culling');
     perfEnd('renderer.culling');
     
     perfBegin('renderer.webgl');

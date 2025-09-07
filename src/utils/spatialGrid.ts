@@ -580,7 +580,15 @@ export class SpatialGrid {
    * Optimized query for bullet-ship collisions
    */
   queryBulletCollisions(bulletPos: Vector3, bulletRadius: number, maxShipRadius: number = 20): SpatialEntity[] {
-    return this.queryRadius(bulletPos, bulletRadius + maxShipRadius);
+    // Use streaming forEachInRadius to avoid allocating an intermediate
+    // array from queryRadius in this hot path. Caller expects an array of
+    // candidate entities; collect them into a fresh results array.
+    const results: SpatialEntity[] = [];
+    const queryRadius = bulletRadius + maxShipRadius;
+    this.forEachInRadius(bulletPos, queryRadius, (_dx, _dy, _dz, _distSq, entity) => {
+      results.push(entity);
+    });
+    return results;
   }
 
   /**

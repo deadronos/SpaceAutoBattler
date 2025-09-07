@@ -1,16 +1,13 @@
-# System Patterns — SpaceAutoBattler
+## System Patterns
 
-Architecture overview
-- Two-layer architecture: deterministic simulation (`src/core`) and renderer (`src/renderer`). The front-end (`src/main.ts`) orchestrates IPC with `src/simWorker.ts` for headless simulation runs.
+Last-Reviewed: 2025-09-07
 
-Patterns
-- Message-based simWorker protocol: small, serializable messages to update game state and request snapshots.
-- AssetPool: LRU cache for assets to avoid reloading large GLTFs.
-- Lock utilities: file-based locks under `src/agent/lockUtils.ts` for concurrent tooling.
-- Config-driven behavior toggles: `behaviorConfig` centralizes experimental flags.
+Key architectural patterns used in the repo:
+- Canonical `GameState` for all runtime state.
+- Worker for deterministic physics (`simWorker.ts`) with packed Float32Array transfers.
+- Renderer uses instancing and an `assetPool` for shared geometries/materials.
+- Config-driven behavior: all balance and AI parameters in `src/config`.
 
-Testing patterns
-- Unit tests for core logic under `test/vitest`.
-- Playwright for E2E and UI tests under `test/playwright`.
-
-Generated/updated: 2025-09-02 by Serena agent.
+Design rationale:
+- Determinism simplifies replay and testing.
+- Asset pooling reduces GPU overhead and garbage collection pressure.

@@ -64,7 +64,7 @@ export const DefaultPhysicsConfig: PhysicsConfigType = {
     maxSpeedMultiplier: 1.0, // Multiplier for ship's base speed
   },
   world: {
-    timestep: 1 / 60,
+    timestep: 1 / 10,
     maxVelocityIterations: 8,
     maxPositionIterations: 4,
     defaultRaycastDistance: 1000,

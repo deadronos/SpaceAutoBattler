@@ -276,7 +276,7 @@ export function updateTransforms(
     // Set 3D rotation using ship's orientation
     // Ships are modeled pointing along +X axis, so we need to adjust
     // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-    m.rotation.set(s.orientation.pitch, s.orientation.yaw - Math.PI/2, s.orientation.roll);
+    m.rotation.set(s.orientation.pitch, s.orientation.yaw, s.orientation.roll);
     
   m.scale.setScalar(shipScale);
 

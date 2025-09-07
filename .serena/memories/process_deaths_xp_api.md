@@ -1,4 +1,7 @@
 processDeathsAndXP(state: GameState)
+
+Last-Reviewed: 2025-09-07
+
 - Purpose: Identify ships that reached 0 health, credit kills to recent damage sources, update scores and killer XP, handle fighter/carrier bookkeeping, and remove dead ships from the state.
 - Inputs: `state` (GameState mutable)
 - Outputs: None (mutates `state.ships`, `state.score`, ship.kills, killer.level.xp, and may set s.maxHealth=0 sentinel for removal)
@@ -7,10 +10,8 @@ processDeathsAndXP(state: GameState)
   - Credits kills and XP to killer if valid; fallback heuristics use ships targeting the dead ship.
   - Decrements parent's `spawnedFighters` count if child had `parentCarrierId`.
   - Marks ships as removed by setting `s.maxHealth = 0` and then filters them out from `state.ships`.
-  - Rebuilds `state.shipIndex` Map for consistency.
 - Edge cases and error modes:
   - If `lastDamageBy` references a non-existent ship, the fallback heuristics attempt to credit appropriately; otherwise no killer is credited.
   - Race conditions: if called concurrently (not expected), modifications to `state.ships` could be unsafe.
-  - Reliant on `state.behaviorConfig` for kill credit window; missing config falls back to defaults.
 - Determinism: Deterministic given same state; depends on timestamps in `state.time` for recency checks.
 - Performance: Single pass over ships; complexity O(#ships).

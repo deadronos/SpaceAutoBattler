@@ -1,1 +1,10 @@
-SpaceAutoBattler — purpose: Browser-based 3D space battle simulation and visualization used for AI/agent testing, balancing, and gameplay demonstrations. Core features: deterministic simulation state (seedable RNG), modular ship classes (fighter, corvette, frigate, destroyer, carrier), turret/bullet mechanics, XP/level progression, carrier fighter spawning, spatial indexing option, and optional physics in a worker via simWorker.ts. Entrypoint: `src/main.ts` which creates initial state, preloads assets, spawns fleets, and initializes renderer and loops. Build & run: npm scripts in package.json (build, serve, build-standalone, test). Tech: TypeScript, three.js, Playwright tests, Vitest unit tests, esbuild build scripts. Key config files: `src/config/*` (simConfig, entitiesConfig, behaviorConfig, fleetConfig, rendererConfig, cameraConfig, shipVisualConfig), `src/core/*` (gameState, physics, aiController, assetLoader, svgLoader), `src/renderer/*` (threeRenderer and managers). Notes: Project uses an MCP memory set already: ['ai_controller_api','ci_instructions','code_structure','contributor_notes','entrypoints','project_purpose','style_conventions','suggested_commands'] - this write updates `project_purpose` memory with a fresh summary as of 2025-08-31.
+## Project Purpose
+
+Last-Reviewed: 2025-09-07
+
+Purpose: Provide an experimental platform for simulation of deterministic fleet combat and rendering techniques, useful for research, demos, and gameplay prototyping.
+
+Primary uses:
+- AI behavior research
+- Rendering performance experiments
+- Game balance tuning via config files

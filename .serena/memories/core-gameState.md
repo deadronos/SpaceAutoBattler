@@ -1,4 +1,6 @@
-# core/gameState.ts
+# core/gameState
+
+Last-Reviewed: 2025-09-07
 
 **Memory name:** core-gameState
 
@@ -7,12 +9,55 @@ Summary:
 - Purpose: Core simulation state management and game logic. Exposes functions to create and reset the canonical GameState and simulation mechanics for spawning ships, bullets, handling collisions, XP, level-ups, carrier spawn logic, boundary handling, spatial grid updates, and the main `simulateStep` method.
 
 Key exports and responsibilities:
-- createInitialState(seed?: string): GameState — builds an initial GameState with default sim config, RNG, and optionally spatial grid.
-- resetState(state, seed?): void — resets an existing GameState to initial conditions while preserving structural objects and clearing runtime arrays.
-- spawnShip(state, team, cls, pos?, parentCarrierId?) — creates a new Ship entity with proper initialization of stats, level, turrets, and optional spawn jitter.
-- spawnFleet(state, team, count?) — convenience to spawn multiple ships.
-- applyBoundaryPhysics(ship, state) — delegates ship boundary behaviors to `boundaryUtils` centralized helpers.
-- simulateStep(state, dt) — orchestrates AI updates (via `AIController`), spatial grid updates, turret firing, bullets update, deaths and XP processing, level-ups, carrier-spawn logic, and boundary cleanup.
+- createInitialState(seed?: string): GameState 
+
+
+
+
+
+
+
+builds an initial GameState with default sim config, RNG, and optionally spatial grid.
+- resetState(state, seed?): void 
+
+
+
+
+
+
+resets an existing GameState to initial conditions while preserving structural objects and clearing runtime arrays.
+- spawnShip(state, team, cls, pos?, parentCarrierId?) 
+
+
+
+
+
+
+creates a new Ship entity with proper initialization of stats, level, turrets, and optional spawn jitter.
+- spawnFleet(state, team, count?) 
+
+
+
+
+
+
+convenience to spawn multiple ships.
+- applyBoundaryPhysics(ship, state) 
+
+
+
+
+
+
+delegates ship boundary behaviors to `boundaryUtils` centralized helpers.
+- simulateStep(state, dt) 
+
+
+
+
+
+
+orchestrates AI updates (via `AIController`), spatial grid updates, turret firing, bullets update, deaths and XP processing, level-ups, carrier-spawn logic, and boundary cleanup.
 
 Important internal helpers:
 - fireTurrets(state, ship, dt)

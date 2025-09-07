@@ -1,11 +1,13 @@
-Top-level structure (summary):
-- src/main.ts: app entry - initializes GameState, preloads assets, spawns fleets, starts render loop
-- src/core/: simulation logic - gameState.ts (state, spawning, simulate step), physics.ts (physics stepper), aiController.ts, assetLoader.ts, svgLoader.ts, searchUtils.ts, spatialIndex.ts
-- src/config/: configuration modules for sim, behavior, entities, fleet, renderer, camera, progression
-- src/renderer/: three.js renderer integration, scene setup, animation managers, bvh manager, effects
-- src/agent/: agent-level utilities (lockUtils)
-- src/utils/: helpers (rng, spatialGrid, vector3, logger, fileWatcher)
-- tests: vitest unit tests under test/vitest; playwright end-to-end tests under test/playwright
-- scripts/: build tooling (build.mjs, build-standalone.mjs)
-Entrypoints & important behaviors: createInitialState (src/core/gameState.ts) and initGame (src/main.ts). Build scripts and test commands available in package.json.
-Notes: supports optional worker-based physics (simWorker.ts) and SVG rasterization caching. This memory added on 2025-08-31.
+## Code Structure
+
+Last-Reviewed: 2025-09-07
+
+High-level layout:
+- `src/main.ts` - bootstrap and UI
+- `src/core/` - pure game logic, AI, entity management
+- `src/renderer/` - three.js rendering and instancing
+- `src/simWorker.ts` - worker-based physics
+- `src/config/` - all configuration parameters
+- `test/vitest/` - unit tests
+
+Notes: Follow repository's `spec/src-structure.md` for detailed component relationships.

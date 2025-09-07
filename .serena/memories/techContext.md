@@ -1,20 +1,13 @@
-# Tech Context — SpaceAutoBattler
+## Tech Context
 
-Languages & runtimes
-- TypeScript targeting Node and browser (ES Module)
-- Bundler: esbuild-based scripts in `scripts/` for standalone builds
-- Renderer: three.js (instancing + BVH)
+Last-Reviewed: 2025-09-07
 
-Key deps
-- three, three-mesh-bvh, rapier3d-compat, gsap, postprocessing
-- Dev tools: vitest, playwright, eslint, prettier
+Technologies used:
+- TypeScript, Three.js for rendering
+- Rapier (WASM) for physics in a Worker
+- Vitest for unit tests
+- Webpack for builds
 
-Build & CI notes
-- Build scripts: `scripts/build.mjs`, `build-standalone.mjs` produce dist/ artifacts.
-- Use `http-server` for quick local serving; `serve:dist` serves built artifacts.
-
-Running tests
-- Unit tests: `npm test` (vitest)
-- E2E: `npm run test:e2e` (Playwright)
-
-Generated/updated: 2025-09-02 by Serena agent.
+Constraints:
+- Keep deterministic RNG usage via `src/utils/rng.ts`.
+- Avoid module-level mutable state; use `GameState`.

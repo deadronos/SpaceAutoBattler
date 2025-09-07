@@ -1,5 +1,7 @@
 # main.ts <-> simWorker.ts Message Protocol
 
+Last-Reviewed: 2025-09-07
+
 **Memory name:** main-simWorker-protocol
 
 Summary:

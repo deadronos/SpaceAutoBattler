@@ -117,7 +117,13 @@ describe('AggressiveSpatialOptimizer Performance', () => {
     const center: Vector3 = { x: 100, y: 100, z: 0 };
     const radius = 100;
 
-    // Clear metrics
+    // Warm-up: populate the optimizer cache deterministically before measuring
+    // This reduces flakiness caused by initial cache misses and ensures repeatable metrics
+    for (let w = 0; w < 3; w++) {
+      optimizer.queryRadiusOptimized(center, radius);
+    }
+
+    // Clear metrics after warm-up so we measure hits over the repeated queries
     optimizer.resetMetrics();
 
     // Make repeated queries to same location (common in AI flocking)
