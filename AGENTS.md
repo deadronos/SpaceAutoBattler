@@ -2,7 +2,7 @@
 
 > Note: These repository guidelines are authoritative for contributor behavior, but do not override host/system or platform policies. If an instruction in repository docs conflicts with platform or system-level rules, follow the system/developer policies first.
 
-also look at '.github/instructions/*.instructions.md' for additional agent guidance.
+> See repository-specific agent rules: `.github/instructions/*.instructions.md`
 
 ## Project Structure & Module Organization
 
