@@ -344,7 +344,7 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   dynamicSwitch: {
     enabled: true,
     minDuration: 0.2,
-    maxDuration: 2.0,
+    maxDuration: 0.5,
     options: [
       { behavior: 'independent', weight: 50 },
       { behavior: 'synchronized', weight: 20 },
@@ -461,7 +461,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     damageDecayRate: 0.5,
     evadeSamplingCount: 8,
     evadeDistance: 200,
-    evadeOnlyOnDamage: false,
+    evadeOnlyOnDamage: true,
     evadeRecentDamageWindowSeconds: 2.0,
     evadeBaseScore: 100,
     evadeThreatPenaltyWeight: 0.5,
