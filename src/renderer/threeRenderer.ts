@@ -1611,6 +1611,108 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   let effectsManager: import('./effects.js').EffectsManager | null = null;
   try { effectsManager = createEffectsManager(renderer as unknown as any, scene as unknown as any, camera as unknown as any); } catch { effectsManager = null; }
 
+  // Particle renderer setup (Instanced quads) - guarded so tests without WebGL won't fail.
+  let particleInstancedMesh: THREE.InstancedMesh | null = null;
+  let particleGeometry: THREE.BufferGeometry | null = null;
+  let particleMaterial: THREE.ShaderMaterial | null = null;
+  try {
+    // Attempt to require the particle system module (may be missing in some test envs)
+    try {
+      const psMod = require('./particleSystem.js');
+      const ensure = psMod.ensureParticleSystem;
+      const sys = ensure ? ensure((state as unknown) as any) : null;
+      // Create buffers for a reasonable max particle count (match initial pool)
+      const maxCount = (sys && sys.stats && sys.stats().poolSize) ? sys.stats().poolSize : 256;
+
+      // Base quad geometry (unit quad centered at origin)
+      const baseQuad = new THREE.PlaneGeometry(1.0, 1.0);
+
+      // Try to load billboard shaders
+      let billboardShaders: any = null;
+      try { billboardShaders = require('./shaders/billboardExplosionShader.js'); } catch { billboardShaders = null; }
+
+      // Attempt to provide an explosion texture uniform from the shared asset pool (use cached texture key if present)
+      const pool = (state as any).assetPool as Map<string, unknown> | undefined;
+      let explosionTex: THREE.Texture | null = null;
+      try {
+        const rawTex = pool ? (pool.get('textures/explosionSoftCircleTexture') ?? pool.get('textures/explosionSoftCircle')) : undefined;
+        if (rawTex && (rawTex as any) instanceof THREE.Texture) {
+          explosionTex = rawTex as THREE.Texture;
+        } else if (rawTex) {
+          // Wrap canvas/imagebitmap into THREE.Texture and cache it
+          try {
+            const t = new THREE.Texture(rawTex as any);
+            t.needsUpdate = true;
+            explosionTex = t;
+            if (pool) pool.set('textures/explosionSoftCircleTexture', t);
+          } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+
+      // Create material using billboard shader if available
+      if (billboardShaders && billboardShaders.billboardExplosionVertexShader) {
+        const vs = billboardShaders.billboardExplosionVertexShader as string;
+        const fs = billboardShaders.billboardExplosionFragmentShader as string;
+        const defaults = billboardShaders.DefaultBillboardExplosionParams as any;
+
+        particleMaterial = new THREE.ShaderMaterial({
+          uniforms: {
+            explosionTexture: { value: explosionTex },
+            fadeInDuration: { value: defaults.fadeInDuration },
+            fadeOutStart: { value: defaults.fadeOutStart },
+            softEdgePower: { value: defaults.softEdgePower },
+            colorIntensity: { value: defaults.colorIntensity },
+            billboardScale: { value: defaults.billboardScale },
+            colorStop1: { value: new THREE.Vector3(...defaults.colorStop1) },
+            colorStop2: { value: new THREE.Vector3(...defaults.colorStop2) },
+            colorStop3: { value: new THREE.Vector3(...defaults.colorStop3) },
+            colorStop1Pos: { value: defaults.colorStop1Pos },
+            colorStop2Pos: { value: defaults.colorStop2Pos },
+            colorStop3Pos: { value: defaults.colorStop3Pos }
+          },
+          vertexShader: vs,
+          fragmentShader: fs,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide
+        });
+      } else {
+        // Fallback basic textured shader (keeps functionality when shaders are missing)
+        particleMaterial = new THREE.ShaderMaterial({
+          uniforms: { explosionTexture: { value: explosionTex }, uColor: { value: new THREE.Color(1,1,1) } },
+          vertexShader: `attribute float instanceSize; attribute vec4 instanceColor; varying vec4 vColor; void main(){ vColor = instanceColor; vec3 pos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(pos,1.0); gl_PointSize = instanceSize; }`,
+          fragmentShader: `varying vec4 vColor; uniform sampler2D explosionTexture; void main(){ vec4 tex = vec4(1.0); #ifdef GL_ES\nprecision mediump float; #endif\ntex = texture2D(explosionTexture, gl_PointCoord); gl_FragColor = vColor * tex; }`,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
+      }
+
+      // Create an InstancedMesh with the base quad and our shader material
+      try {
+        particleInstancedMesh = new THREE.InstancedMesh(baseQuad, particleMaterial, maxCount);
+        particleInstancedMesh.frustumCulled = false;
+
+        // Prepare per-instance attributes and attach to geometry
+        const geom = particleInstancedMesh.geometry as THREE.BufferGeometry;
+        const instancePositions = new Float32Array(maxCount * 3);
+        const instanceSizes = new Float32Array(maxCount);
+        const instanceColors = new Float32Array(maxCount * 4);
+        const instanceAges = new Float32Array(maxCount);
+        const instanceLifetimes = new Float32Array(maxCount);
+
+        geom.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
+        geom.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(instanceSizes, 1));
+        geom.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(instanceColors, 4));
+        geom.setAttribute('instanceAge', new THREE.InstancedBufferAttribute(instanceAges, 1));
+        geom.setAttribute('instanceLifetime', new THREE.InstancedBufferAttribute(instanceLifetimes, 1));
+
+        scene.add(particleInstancedMesh);
+      } catch (e) { /* ignore instancing failures in some envs */ }
+    } catch { /* ignore in test env */ }
+  } catch { /* ignore */ }
+
   function render(_dt: number) {
     // Calculate interpolation factor
     const interpolationFactor = Math.min(1, (state.time - lastSimulatedTime) / fixedSimulationDt);
@@ -1664,6 +1766,88 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update animated skybox
     updateSkyboxAnimation(_dt);
     perfEnd('renderer.skybox');
+
+    // Update particle system (data + GPU buffers) if available
+    perfBegin('renderer.particles');
+    try {
+      try {
+        const psMod = require('./particleSystem.js');
+        const ensure = psMod.ensureParticleSystem;
+        const sys = ensure ? ensure((state as unknown) as any) : null;
+        if (sys && typeof sys.update === 'function') {
+          try { sys.update(_dt); } catch { /* ignore */ }
+
+          const instances = typeof sys.getActiveInstances === 'function' ? sys.getActiveInstances() : [];
+          const cnt = instances.length;
+
+          // If we have an instanced mesh, write into its InstancedBufferAttributes
+          if (particleInstancedMesh) {
+            try {
+              const geom = particleInstancedMesh.geometry as THREE.BufferGeometry;
+              const posAttr = geom.getAttribute('instancePosition') as THREE.InstancedBufferAttribute | undefined;
+              const sizeAttr = geom.getAttribute('instanceSize') as THREE.InstancedBufferAttribute | undefined;
+              const colorAttr = geom.getAttribute('instanceColor') as THREE.InstancedBufferAttribute | undefined;
+              const ageAttr = geom.getAttribute('instanceAge') as THREE.InstancedBufferAttribute | undefined;
+              const lifeAttr = geom.getAttribute('instanceLifetime') as THREE.InstancedBufferAttribute | undefined;
+
+              const hexToRgb = (hex: string) => {
+                const h = hex.replace('#','');
+                let r=255,g=255,b=255;
+                if (h.length===3) { r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16); }
+                else if (h.length===6) { r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16); }
+                return [r/255, g/255, b/255];
+              };
+
+              for (let i = 0; i < cnt; i++) {
+                const it = instances[i];
+                if (posAttr) posAttr.setXYZ(i, it.pos.x, it.pos.y, it.pos.z);
+                if (sizeAttr) sizeAttr.setX(i, it.size);
+                if (colorAttr) {
+                  const [r,g,b] = hexToRgb(it.color || '#ffffff');
+                  colorAttr.setXYZW(i, r, g, b, 1.0);
+                }
+                if (ageAttr) ageAttr.setX(i, it.age ?? 0);
+                if (lifeAttr) lifeAttr.setX(i, it.lifetime ?? (it.size > 0 ? 1.0 : 1.0));
+              }
+
+              if (posAttr) posAttr.needsUpdate = true;
+              if (sizeAttr) sizeAttr.needsUpdate = true;
+              if (colorAttr) colorAttr.needsUpdate = true;
+              if (ageAttr) ageAttr.needsUpdate = true;
+              if (lifeAttr) lifeAttr.needsUpdate = true;
+
+              particleInstancedMesh.count = Math.max(0, cnt);
+            } catch { /* ignore per-frame instancing updates in some envs */ }
+          } else if (particleGeometry) {
+            const posAttr = particleGeometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+            const sizeAttr = particleGeometry.getAttribute('instanceSize') as THREE.BufferAttribute | undefined;
+            const colorAttr = particleGeometry.getAttribute('instanceColor') as THREE.BufferAttribute | undefined;
+            if (posAttr && sizeAttr && colorAttr) {
+              const hexToRgb = (hex: string) => {
+                const h = hex.replace('#','');
+                let r=255,g=255,b=255;
+                if (h.length===3) { r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16); }
+                else if (h.length===6) { r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16); }
+                return [r/255, g/255, b/255];
+              };
+
+              for (let i = 0; i < cnt; i++) {
+                const it = instances[i];
+                posAttr.setXYZ(i, it.pos.x, it.pos.y, it.pos.z);
+                sizeAttr.setX(i, it.size);
+                const [r,g,b] = hexToRgb(it.color || '#ffffff');
+                colorAttr.setXYZW(i, r, g, b, 1.0);
+              }
+              posAttr.needsUpdate = true;
+              sizeAttr.needsUpdate = true;
+              colorAttr.needsUpdate = true;
+              particleGeometry.setDrawRange(0, Math.max(0, cnt));
+            }
+          }
+        }
+      } catch { /* ignore missing particle system in some envs */ }
+    } catch { /* ignore */ }
+    perfEnd('renderer.particles');
 
     perfBegin('renderer.effects');
     // Prefer postprocessing composer when available

@@ -53,6 +53,42 @@ function initGame(seed?: string) {
   // Ensure there is an asset pool for GLTFs and textures
   state.assetPool = new Map<string, unknown>();
 
+  // Generate a lightweight soft-circle explosion sprite and store in asset pool.
+  // We create a small canvas with radial gradient so we don't need an external asset.
+  try {
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
+      // center bright, edges transparent
+      grad.addColorStop(0.0, 'rgba(255,255,255,1.0)');
+      grad.addColorStop(0.25, 'rgba(255,200,80,0.95)');
+      grad.addColorStop(0.5, 'rgba(200,80,30,0.6)');
+      grad.addColorStop(1.0, 'rgba(0,0,0,0.0)');
+      ctx.clearRect(0, 0, size, size);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+
+      // Convert to ImageBitmap when supported for faster GPU upload
+      (async () => {
+        try {
+          let bitmap: ImageBitmap | null = null;
+          if ((window as any).createImageBitmap) {
+            bitmap = await (window as any).createImageBitmap(canvas);
+          }
+          // Store both canvas and bitmap for callers that expect either
+          state.assetPool!.set('textures/explosionSoftCircle', bitmap ?? canvas);
+          logger.debug('[main.ts] Generated explosion sprite and stored in assetPool as textures/explosionSoftCircle');
+        } catch (e) { void e; state.assetPool!.set('textures/explosionSoftCircle', canvas); }
+      })();
+    }
+  } catch (ee) { void ee; /* ignore canvas generation failures in test envs */ }
+
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
   const gltfModeEnabled = !!((RendererConfig as any)?.loadGltfModels);
   const svgDisabled = !!((RendererConfig as any)?.disableSvgSubsystem);

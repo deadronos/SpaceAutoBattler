@@ -217,6 +217,22 @@ export class ParticleSystem {
       freeCount: this.pool.length - this.active.size,
     };
   }
+
+  /**
+   * Return a snapshot array of active instances for rendering.
+   * This intentionally returns shallow copies of the instance objects so
+   * renderers can safely read positions/colors without touching internal state.
+   */
+  public getActiveInstances() {
+    return this.pool.filter(p => p.active).map(p => ({
+      id: p.id,
+      pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z },
+      size: p.size,
+      age: p.age,
+      lifetime: p.lifetime,
+      color: p.color
+    }));
+  }
 }
 
 // Singleton helper pattern: renderer can instantiate and reuse

@@ -166,6 +166,14 @@ export function createAnimationManager(state: GameState): AnimationManager {
         effectsManager.addExplosionEffect(position, intensity);
       }
 
+      // Spawn particle data for the explosion so renderers can draw it.
+      try {
+        const { addParticleExplosion } = require('./particleSystem.js');
+        // radius derived from intensity for now
+        const radius = Math.max(8, intensity * 12);
+        try { addParticleExplosion(state, { pos: position, radius, entityId: 0, count: Math.round(intensity * 40) }); } catch (_) { /* ignore */ }
+  } catch { /* ignore if particle system not available in test env */ }
+
       // Camera shake
       shakeCamera(intensity * 0.5, 0.3);
 
