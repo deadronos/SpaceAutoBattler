@@ -32,11 +32,26 @@ describe('Build System Tests', () => {
 
     if (!recentBuild) {
       try { await fs.rm(TEST_CONFIG.distDir, { recursive: true, force: true }); } catch {}
-      execSync('npm run build', {
-        cwd: TEST_CONFIG.repoRoot,
-        timeout: TEST_CONFIG.buildTimeout,
-        stdio: 'inherit'
-      });
+      try {
+        // Run build with piped stdio so worker threads don't inherit parent's stdio
+        // which can cause failures in some CI/worker environments. Capture output
+        // and rethrow with details on failure for easier debugging.
+        const out = execSync('npm run build', {
+          cwd: TEST_CONFIG.repoRoot,
+          timeout: TEST_CONFIG.buildTimeout,
+          stdio: 'pipe',
+          encoding: 'utf8'
+        });
+        // eslint-disable-next-line no-console
+        console.debug && console.debug('build output:', out);
+      } catch (err: any) {
+        // If the build fails, include captured stdout/stderr when available
+        const messageParts: string[] = [];
+        if (err.stdout) messageParts.push('stdout:\n' + String(err.stdout));
+        if (err.stderr) messageParts.push('stderr:\n' + String(err.stderr));
+        messageParts.push('error:' + (err && err.message ? err.message : String(err)));
+        throw new Error(messageParts.join('\n---\n'));
+      }
       const start = Date.now();
       while (Date.now() - start < 3000) {
         try {
