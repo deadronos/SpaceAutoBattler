@@ -13,8 +13,8 @@ describe('perfCollector enable', () => {
     const origRAF = (globalThis as any).requestAnimationFrame;
     const origCancelRAF = (globalThis as any).cancelAnimationFrame;
     const origPerfNow = (globalThis as any).performance?.now;
-  (globalThis as any).requestAnimationFrame = (_cb: unknown) => 0;
-  (globalThis as any).cancelAnimationFrame = (_: unknown) => {};
+    (globalThis as any).requestAnimationFrame = (_cb: unknown) => 0;
+    (globalThis as any).cancelAnimationFrame = (_: unknown) => {};
     (globalThis as any).performance = (globalThis as any).performance || { now: () => Date.now() };
     (globalThis as any).performance.now = (globalThis as any).performance.now || (() => Date.now());
 

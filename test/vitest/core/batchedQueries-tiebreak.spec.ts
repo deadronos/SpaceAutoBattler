@@ -7,8 +7,11 @@ describe('BatchedQueryManager tie-break behavior', () => {
     // Create a fake spatial optimizer that returns two candidates at equal distance
     const fakeOptimizer: any = {
       queryKNearestApproximate: (_pos: any, _k: number, _team: any) => {
-        return [ { id: 2, pos: { x: 10, y: 0, z: 0 } }, { id: 1, pos: { x: 10, y: 0, z: 0 } } ];
-      }
+        return [
+          { id: 2, pos: { x: 10, y: 0, z: 0 } },
+          { id: 1, pos: { x: 10, y: 0, z: 0 } },
+        ];
+      },
     };
 
     const mgr = new BatchedQueryManager(fakeOptimizer);
@@ -20,7 +23,10 @@ describe('BatchedQueryManager tie-break behavior', () => {
 
     const gameState: any = {
       behaviorConfig: { globalSettings: { enableSpatialIndex: true } },
-      shipIndex: new Map([[2, candidate1], [1, candidate2]])
+      shipIndex: new Map([
+        [2, candidate1],
+        [1, candidate2],
+      ]),
     };
 
     mgr.precomputeNearestEnemies(gameState, [shipA]);

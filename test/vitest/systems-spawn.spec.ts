@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  SpawnSystem, 
-  SpawnIntent, 
-  SpawnResult, 
-  SpawnEvent 
+import {
+  SpawnSystem,
+  SpawnIntent,
+  SpawnResult,
+  SpawnEvent,
 } from '../../src/core/systems/spawnSystem.js';
-import { 
-  NoopPhysicsAdapter, 
-  NoopRendererAdapter, 
-  NoopSpatialIndex 
+import {
+  NoopPhysicsAdapter,
+  NoopRendererAdapter,
+  NoopSpatialIndex,
 } from '../../src/core/adapters/index.js';
 import { createMockGameState } from './setupTests.js';
 import type { GameState, Team, ShipClass } from '../../src/types/index.js';
@@ -30,11 +30,11 @@ describe('SpawnSystem', () => {
     physicsAdapter = new NoopPhysicsAdapter();
     rendererAdapter = new NoopRendererAdapter();
     spatialIndex = new NoopSpatialIndex();
-    
+
     spawnSystem = new SpawnSystem(gameState, {
       physics: physicsAdapter,
       renderer: rendererAdapter,
-      spatial: spatialIndex
+      spatial: spatialIndex,
     });
   });
 
@@ -43,7 +43,7 @@ describe('SpawnSystem', () => {
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
 
       const result = spawnSystem.spawnShip(intent);
@@ -53,7 +53,7 @@ describe('SpawnSystem', () => {
       expect(result.spawnedEntity).toBeDefined();
       expect(result.spawnedEntity!.team).toBe('red');
       expect(result.spawnedEntity!.class).toBe('fighter');
-      
+
       // Check that ship was added to game state
       expect(gameState.ships).toHaveLength(1);
       expect(gameState.ships[0].id).toBe(result.entityId);
@@ -66,7 +66,7 @@ describe('SpawnSystem', () => {
         type: 'ship',
         team: 'blue',
         class: 'destroyer',
-        position: customPos
+        position: customPos,
       };
 
       const result = spawnSystem.spawnShip(intent);
@@ -83,7 +83,7 @@ describe('SpawnSystem', () => {
         team: 'red',
         class: 'corvette',
         initialOrientation: customOrientation,
-        initialVelocity: customVelocity
+        initialVelocity: customVelocity,
       };
 
       const result = spawnSystem.spawnShip(intent);
@@ -97,7 +97,7 @@ describe('SpawnSystem', () => {
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'blue',
-        class: 'carrier'
+        class: 'carrier',
       };
 
       const result = spawnSystem.spawnShip(intent);
@@ -110,7 +110,7 @@ describe('SpawnSystem', () => {
     it('should fail to spawn invalid ship intent', () => {
       const invalidIntent: SpawnIntent = {
         type: 'ship',
-        team: 'red'
+        team: 'red',
         // Missing class
       };
 
@@ -125,7 +125,7 @@ describe('SpawnSystem', () => {
       const invalidIntent: SpawnIntent = {
         type: 'bullet',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
 
       const result = spawnSystem.spawnShip(invalidIntent);
@@ -140,9 +140,9 @@ describe('SpawnSystem', () => {
       const results = spawnSystem.spawnFleet('red', 3);
 
       expect(results).toHaveLength(3);
-      expect(results.every(r => r.success)).toBe(true);
+      expect(results.every((r) => r.success)).toBe(true);
       expect(gameState.ships).toHaveLength(3);
-      expect(gameState.ships.every(s => s.team === 'red')).toBe(true);
+      expect(gameState.ships.every((s) => s.team === 'red')).toBe(true);
     });
 
     it('should spawn fleet with specific ship classes', () => {
@@ -150,16 +150,16 @@ describe('SpawnSystem', () => {
       const results = spawnSystem.spawnFleet('blue', 4, { classes });
 
       expect(results).toHaveLength(4);
-      expect(results.every(r => r.success)).toBe(true);
-      expect(gameState.ships.every(s => classes.includes(s.class))).toBe(true);
+      expect(results.every((r) => r.success)).toBe(true);
+      expect(gameState.ships.every((s) => classes.includes(s.class))).toBe(true);
     });
 
     it('should spawn fleet in line formation', () => {
       const results = spawnSystem.spawnFleet('red', 3, { formation: 'line' });
 
       expect(results).toHaveLength(3);
-      expect(results.every(r => r.success)).toBe(true);
-      
+      expect(results.every((r) => r.success)).toBe(true);
+
       // Check that ships are positioned in a line (same x and z, different y)
       const ships = gameState.ships;
       expect(ships[0].pos.x).toBeCloseTo(ships[1].pos.x, 1);
@@ -174,13 +174,13 @@ describe('SpawnSystem', () => {
       const results = spawnSystem.spawnFleet('blue', 5, { formation: 'wedge' });
 
       expect(results).toHaveLength(5);
-      expect(results.every(r => r.success)).toBe(true);
-      
+      expect(results.every((r) => r.success)).toBe(true);
+
       // Wedge formation should have varying x and y positions
       const ships = gameState.ships;
-      const xPositions = ships.map(s => s.pos.x);
-      const yPositions = ships.map(s => s.pos.y);
-      
+      const xPositions = ships.map((s) => s.pos.x);
+      const yPositions = ships.map((s) => s.pos.y);
+
       // Should have at least some variation in both x and y
       expect(Math.max(...xPositions) - Math.min(...xPositions)).toBeGreaterThan(10);
       expect(Math.max(...yPositions) - Math.min(...yPositions)).toBeGreaterThan(10);
@@ -192,7 +192,7 @@ describe('SpawnSystem', () => {
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
       const result = spawnSystem.spawnShip(intent);
       expect(gameState.ships).toHaveLength(1);
@@ -213,12 +213,12 @@ describe('SpawnSystem', () => {
   describe('Event System', () => {
     it('should emit spawn events', () => {
       const events: SpawnEvent[] = [];
-      spawnSystem.onSpawnEvent(event => events.push(event));
+      spawnSystem.onSpawnEvent((event) => events.push(event));
 
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
       spawnSystem.spawnShip(intent);
 
@@ -230,11 +230,11 @@ describe('SpawnSystem', () => {
 
     it('should emit failure events', () => {
       const events: SpawnEvent[] = [];
-      spawnSystem.onSpawnEvent(event => events.push(event));
+      spawnSystem.onSpawnEvent((event) => events.push(event));
 
       const invalidIntent: SpawnIntent = {
         type: 'ship',
-        team: 'red'
+        team: 'red',
         // Missing class
       };
       spawnSystem.spawnShip(invalidIntent);
@@ -246,14 +246,14 @@ describe('SpawnSystem', () => {
 
     it('should unsubscribe from events', () => {
       const events: SpawnEvent[] = [];
-      const unsubscribe = spawnSystem.onSpawnEvent(event => events.push(event));
+      const unsubscribe = spawnSystem.onSpawnEvent((event) => events.push(event));
 
       unsubscribe();
 
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
       spawnSystem.spawnShip(intent);
 
@@ -285,7 +285,7 @@ describe('SpawnSystem', () => {
       expect(stats.totalShips).toBe(0);
       expect(stats.shipsByTeam.red).toBe(0);
       expect(stats.shipsByTeam.blue).toBe(0);
-      expect(Object.values(stats.shipsByClass).every(count => count === 0)).toBe(true);
+      expect(Object.values(stats.shipsByClass).every((count) => count === 0)).toBe(true);
     });
   });
 
@@ -298,7 +298,7 @@ describe('SpawnSystem', () => {
         type: 'ship',
         team: 'red',
         class: 'fighter',
-        initialVelocity: { x: 0, y: 0, z: 0 }
+        initialVelocity: { x: 0, y: 0, z: 0 },
       };
 
       const result = spawnSystem.spawnShip(intent);
@@ -319,7 +319,7 @@ describe('SpawnSystem', () => {
         type: 'ship',
         team: 'red',
         class: 'fighter',
-        initialVelocity: initialVel
+        initialVelocity: initialVel,
       };
 
       const result = spawnSystem.spawnShip(intent);
@@ -332,11 +332,11 @@ describe('SpawnSystem', () => {
   describe('Adapter Integration', () => {
     it('should work without adapters', () => {
       const spawnSystemNoAdapters = new SpawnSystem(gameState);
-      
+
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
 
       const result = spawnSystemNoAdapters.spawnShip(intent);
@@ -349,17 +349,19 @@ describe('SpawnSystem', () => {
       // Create an adapter that throws errors
       const errorAdapter = {
         ...rendererAdapter,
-        ensureMeshForShip: () => { throw new Error('Renderer error'); }
+        ensureMeshForShip: () => {
+          throw new Error('Renderer error');
+        },
       };
 
       const spawnSystemWithErrorAdapter = new SpawnSystem(gameState, {
-        renderer: errorAdapter as any
+        renderer: errorAdapter as any,
       });
 
       const intent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'fighter'
+        class: 'fighter',
       };
 
       // Should still succeed even with adapter errors
@@ -373,7 +375,7 @@ describe('SpawnSystem', () => {
       const carrierIntent: SpawnIntent = {
         type: 'ship',
         team: 'red',
-        class: 'carrier'
+        class: 'carrier',
       };
       const carrierResult = spawnSystem.spawnShip(carrierIntent);
 
@@ -381,7 +383,7 @@ describe('SpawnSystem', () => {
         type: 'ship',
         team: 'red',
         class: 'fighter',
-        parentId: carrierResult.entityId
+        parentId: carrierResult.entityId,
       };
       const fighterResult = spawnSystem.spawnShip(fighterIntent);
 

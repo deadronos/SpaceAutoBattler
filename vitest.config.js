@@ -3,14 +3,8 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    include: [
-      'test/vitest/*.spec.ts',
-      'test/vitest/*.test.ts',
-      'test/vitest/**/*.spec.ts',
-    ],
-    exclude: [
-      'test/playwright/**',
-    ],
+    include: ['test/vitest/*.spec.ts', 'test/vitest/*.test.ts', 'test/vitest/**/*.spec.ts'],
+    exclude: ['test/playwright/**'],
     environment: 'happy-dom',
     setupFiles: path.resolve(__dirname, 'test/vitest/setupTests.ts'),
     globals: true,
@@ -19,6 +13,6 @@ export default defineConfig({
     testTimeout: 20000,
     pool: 'threads',
     maxThreads: 24,
-    threads: true, 
+    threads: true,
   },
 });

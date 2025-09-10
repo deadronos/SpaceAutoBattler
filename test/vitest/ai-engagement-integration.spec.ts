@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip, getTestDtFromState, TEST_DEFAULTS } from './setupTests.js';
+import {
+  createMockGameState,
+  createMockShip,
+  getTestDtFromState,
+  TEST_DEFAULTS,
+} from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -23,19 +28,19 @@ describe('AI Engagement Integration Test', () => {
     const blueShips: Ship[] = [];
 
     for (let i = 0; i < 3; i++) {
-  const redShip = createMockShip({
+      const redShip = createMockShip({
         id: i + 1,
         team: 'red',
         class: 'fighter',
         pos: { ...TEST_DEFAULTS.defaultPos, x: 100 + i * 50 },
       });
-  (redShip as Ship).aiState = {
+      (redShip as Ship).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
-        lastDamageTime: 0
+        lastDamageTime: 0,
       };
 
       const blueShip = createMockShip({
@@ -44,7 +49,7 @@ describe('AI Engagement Integration Test', () => {
         class: 'fighter',
         pos: { ...TEST_DEFAULTS.defaultPos, x: 300 + i * 50 },
       });
-  (blueShip as Ship).aiState = JSON.parse(JSON.stringify((redShip as Ship).aiState));
+      (blueShip as Ship).aiState = JSON.parse(JSON.stringify((redShip as Ship).aiState));
 
       redShips.push(redShip as Ship);
       blueShips.push(blueShip as Ship);
@@ -54,7 +59,9 @@ describe('AI Engagement Integration Test', () => {
 
     // Rebuild spatial grid so AI queries see spawned ships
     if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
 
     // Simulate for 2 seconds (20 ticks at 10 updates per second)
@@ -69,7 +76,10 @@ describe('AI Engagement Integration Test', () => {
       // Count engagement behaviors after ships have had time to choose intents
       if (tick >= 5) {
         for (const ship of state.ships) {
-          if (ship.aiState?.currentIntent === 'pursue' || ship.aiState?.currentIntent === 'strafe') {
+          if (
+            ship.aiState?.currentIntent === 'pursue' ||
+            ship.aiState?.currentIntent === 'strafe'
+          ) {
             engagedShips++;
           } else if (ship.aiState?.currentIntent === 'evade') {
             evadingShips++;
@@ -82,10 +92,14 @@ describe('AI Engagement Integration Test', () => {
     const totalBehaviorCount = engagedShips + evadingShips;
     const engagementRatio = totalBehaviorCount > 0 ? engagedShips / totalBehaviorCount : 0;
 
-    console.log(`Engagement stats - Engaged: ${engagedShips}, Evading: ${evadingShips}, Ratio: ${engagementRatio.toFixed(2)}`);
+    console.log(
+      `Engagement stats - Engaged: ${engagedShips}, Evading: ${evadingShips}, Ratio: ${engagementRatio.toFixed(2)}`,
+    );
 
     // With aggressive fighters and no damage, we should see primarily engagement behavior
-    expect(engagementRatio).toBeGreaterThan(DEFAULT_BEHAVIOR_CONFIG.defaultPersonality.aggressiveness - 0.3); // At least 60% engagement vs evasion
+    expect(engagementRatio).toBeGreaterThan(
+      DEFAULT_BEHAVIOR_CONFIG.defaultPersonality.aggressiveness - 0.3,
+    ); // At least 60% engagement vs evasion
     expect(engagedShips).toBeGreaterThan(evadingShips); // More engagement than evasion
   });
 
@@ -102,15 +116,19 @@ describe('AI Engagement Integration Test', () => {
         id: i + 1,
         team,
         class: 'corvette',
-        pos: { ...TEST_DEFAULTS.defaultPos, x: 150 + (i % 2) * 100, y: 100 + Math.floor(i / 2) * 100 }
+        pos: {
+          ...TEST_DEFAULTS.defaultPos,
+          x: 150 + (i % 2) * 100,
+          y: 100 + Math.floor(i / 2) * 100,
+        },
       }) as Ship;
-  (corvette as Ship).aiState = {
+      (corvette as Ship).aiState = {
         currentIntent: 'idle',
         intentEndTime: 0,
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
-        lastDamageTime: 0
+        lastDamageTime: 0,
       };
 
       ships.push(corvette);
@@ -119,7 +137,9 @@ describe('AI Engagement Integration Test', () => {
     state.ships.push(...ships);
 
     if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
 
     // Set some ships to defensive personalities to increase evade likelihood
@@ -131,7 +151,7 @@ describe('AI Engagement Integration Test', () => {
       aggressiveness: 0.2,
       caution: 0.8,
       groupCohesion: 0.3,
-      preferredRangeMultiplier: 1.0
+      preferredRangeMultiplier: 1.0,
     };
 
     // Override some ship personalities to be defensive
@@ -159,7 +179,9 @@ describe('AI Engagement Integration Test', () => {
       }
     }
 
-    console.log(`Backwards compatibility - Evade count: ${evadeCount}, Total checks: ${totalIntentChecks}`);
+    console.log(
+      `Backwards compatibility - Evade count: ${evadeCount}, Total checks: ${totalIntentChecks}`,
+    );
 
     // With backwards compatibility, defensive ships should still evade based on proximity
     // This test mainly verifies the system doesn't break existing behavior

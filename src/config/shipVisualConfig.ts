@@ -2,10 +2,13 @@
 import type { ShipClass } from '../types/index.js';
 
 export interface ShipVisualConfig {
-  ships: Record<ShipClass, {
-    scale: number; // Visual scale multiplier
-    collisionRadius: number; // Collision detection radius
-  }>;
+  ships: Record<
+    ShipClass,
+    {
+      scale: number; // Visual scale multiplier
+      collisionRadius: number; // Collision detection radius
+    }
+  >;
   // Default fallback values when ship class is not found
   defaults: {
     collisionRadius: number; // Fallback collision radius for unknown ship classes

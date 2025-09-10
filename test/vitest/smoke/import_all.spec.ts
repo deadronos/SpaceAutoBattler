@@ -103,10 +103,10 @@ describe('smoke imports', () => {
         ok = false;
         // eslint-disable-next-line no-console
         console.warn('smoke import failed', m, (err && (err as any).message) || err);
-  }
-  // Do not fail the test if an import cannot be satisfied in this environment.
-  // We want these smoke imports to increase coverage where possible but not
-  // cause the entire test run to fail due to environment-specific modules.
+      }
+      // Do not fail the test if an import cannot be satisfied in this environment.
+      // We want these smoke imports to increase coverage where possible but not
+      // cause the entire test run to fail due to environment-specific modules.
     });
   }
 });

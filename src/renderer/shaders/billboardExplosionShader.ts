@@ -1,9 +1,9 @@
 /**
  * Billboard Explosion Shader
- * 
+ *
  * Reference additive billboard shader for particle explosions with configurable
  * color stops, size, and soft-edge falloff parameters.
- * 
+ *
  * Features:
  * - Automatic camera-facing billboarding
  * - Configurable color interpolation over lifetime
@@ -161,24 +161,24 @@ export const billboardExplosionFragmentShader = `
 export interface BillboardExplosionShaderParams {
   // Texture
   explosionTexture?: WebGLTexture;
-  
+
   // Timing parameters
-  fadeInDuration?: number;    // How quickly particle fades in (0.0-1.0)
-  fadeOutStart?: number;      // When fade-out begins (0.0-1.0)
-  
-  // Visual parameters  
-  billboardScale?: number;    // Overall size multiplier
-  softEdgePower?: number;     // Power for soft-edge falloff (higher = sharper)
-  colorIntensity?: number;    // Overall color intensity multiplier
-  
+  fadeInDuration?: number; // How quickly particle fades in (0.0-1.0)
+  fadeOutStart?: number; // When fade-out begins (0.0-1.0)
+
+  // Visual parameters
+  billboardScale?: number; // Overall size multiplier
+  softEdgePower?: number; // Power for soft-edge falloff (higher = sharper)
+  colorIntensity?: number; // Overall color intensity multiplier
+
   // Color stops (vec3 RGB values 0.0-1.0)
-  colorStop1?: [number, number, number];  // Birth color
-  colorStop2?: [number, number, number];  // Mid-life color  
-  colorStop3?: [number, number, number];  // Death color
-  
+  colorStop1?: [number, number, number]; // Birth color
+  colorStop2?: [number, number, number]; // Mid-life color
+  colorStop3?: [number, number, number]; // Death color
+
   // Color stop positions (0.0-1.0)
   colorStop1Pos?: number;
-  colorStop2Pos?: number; 
+  colorStop2Pos?: number;
   colorStop3Pos?: number;
 }
 
@@ -189,21 +189,21 @@ export interface BillboardExplosionShaderParams {
 export const DefaultBillboardExplosionParams: Required<BillboardExplosionShaderParams> = {
   // Texture will be set by renderer
   explosionTexture: null as any,
-  
+
   // Timing - quick fade-in, long visibility, gradual fade-out
   fadeInDuration: 0.1,
   fadeOutStart: 0.7,
-  
+
   // Visual - moderate billboard scale, soft edges, full intensity
   billboardScale: 1.0,
-  softEdgePower: 2.2,      // Gamma-corrected falloff
-  colorIntensity: 1.2,     // Slightly brighter for additive blending
-  
+  softEdgePower: 2.2, // Gamma-corrected falloff
+  colorIntensity: 1.2, // Slightly brighter for additive blending
+
   // Color stops - fire-like progression from white-hot to dark red
-  colorStop1: [1.0, 0.98, 0.85],  // Bright white-yellow (birth)
-  colorStop2: [1.0, 0.55, 0.0],   // Orange (mid-life)
-  colorStop3: [0.27, 0.0, 0.0],   // Dark red (death)
-  
+  colorStop1: [1.0, 0.98, 0.85], // Bright white-yellow (birth)
+  colorStop2: [1.0, 0.55, 0.0], // Orange (mid-life)
+  colorStop3: [0.27, 0.0, 0.0], // Dark red (death)
+
   // Color stop positions - even distribution with emphasis on mid-life
   colorStop1Pos: 0.0,
   colorStop2Pos: 0.4,
@@ -215,34 +215,34 @@ export const DefaultBillboardExplosionParams: Required<BillboardExplosionShaderP
  */
 export const ExplosionColorSchemes = {
   fire: {
-    colorStop1: [1.0, 0.98, 0.85],  // Hot white
-    colorStop2: [1.0, 0.55, 0.0],   // Orange  
-    colorStop3: [0.27, 0.0, 0.0],   // Dark red
+    colorStop1: [1.0, 0.98, 0.85], // Hot white
+    colorStop2: [1.0, 0.55, 0.0], // Orange
+    colorStop3: [0.27, 0.0, 0.0], // Dark red
   },
-  
+
   electric: {
-    colorStop1: [1.0, 1.0, 1.0],    // Pure white
-    colorStop2: [0.0, 1.0, 1.0],    // Cyan
-    colorStop3: [0.0, 0.27, 1.0],   // Blue
+    colorStop1: [1.0, 1.0, 1.0], // Pure white
+    colorStop2: [0.0, 1.0, 1.0], // Cyan
+    colorStop3: [0.0, 0.27, 1.0], // Blue
   },
-  
+
   plasma: {
-    colorStop1: [1.0, 0.0, 1.0],    // Magenta
-    colorStop2: [0.5, 0.0, 1.0],    // Purple
-    colorStop3: [0.1, 0.0, 0.3],    // Dark purple
+    colorStop1: [1.0, 0.0, 1.0], // Magenta
+    colorStop2: [0.5, 0.0, 1.0], // Purple
+    colorStop3: [0.1, 0.0, 0.3], // Dark purple
   },
-  
+
   toxic: {
-    colorStop1: [0.8, 1.0, 0.0],    // Bright yellow-green
-    colorStop2: [0.0, 0.8, 0.0],    // Green
-    colorStop3: [0.0, 0.2, 0.1],    // Dark green
+    colorStop1: [0.8, 1.0, 0.0], // Bright yellow-green
+    colorStop2: [0.0, 0.8, 0.0], // Green
+    colorStop3: [0.0, 0.2, 0.1], // Dark green
   },
-  
+
   smoke: {
-    colorStop1: [0.7, 0.7, 0.7],    // Light gray
-    colorStop2: [0.4, 0.4, 0.4],    // Medium gray
-    colorStop3: [0.1, 0.1, 0.1],    // Dark gray
-  }
+    colorStop1: [0.7, 0.7, 0.7], // Light gray
+    colorStop2: [0.4, 0.4, 0.4], // Medium gray
+    colorStop3: [0.1, 0.1, 0.1], // Dark gray
+  },
 };
 
 /**
@@ -251,7 +251,7 @@ export const ExplosionColorSchemes = {
  */
 export function hexToVec3(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');
-  
+
   if (clean.length === 3) {
     // #rgb format
     const r = parseInt(clean[0] + clean[0], 16) / 255;
@@ -261,7 +261,7 @@ export function hexToVec3(hex: string): [number, number, number] {
   } else if (clean.length === 6) {
     // #rrggbb format
     const r = parseInt(clean.slice(0, 2), 16) / 255;
-    const g = parseInt(clean.slice(2, 4), 16) / 255; 
+    const g = parseInt(clean.slice(2, 4), 16) / 255;
     const b = parseInt(clean.slice(4, 6), 16) / 255;
     return [r, g, b];
   } else {
@@ -274,17 +274,19 @@ export function hexToVec3(hex: string): [number, number, number] {
  * Convert colorOverride array to shader parameters
  * Maps the color override system to shader uniforms
  */
-export function colorOverrideToShaderParams(colorOverride?: string[]): Partial<BillboardExplosionShaderParams> {
+export function colorOverrideToShaderParams(
+  colorOverride?: string[],
+): Partial<BillboardExplosionShaderParams> {
   if (!colorOverride || colorOverride.length === 0) {
     return {}; // Use defaults
   }
-  
+
   // Ensure we have at least 3 colors, repeat last color if needed
   const colors = [...colorOverride];
   while (colors.length < 3) {
     colors.push(colors[colors.length - 1]);
   }
-  
+
   return {
     colorStop1: hexToVec3(colors[0]),
     colorStop2: hexToVec3(colors[1]),

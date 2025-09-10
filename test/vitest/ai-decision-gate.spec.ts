@@ -41,8 +41,16 @@ describe('DecisionEngine Evade Gate', () => {
     // Ensure flag is false
     state.behaviorConfig.globalSettings.useDecisionEngineEvadeGate = false;
 
-  const red = createMockShip({ id: 1, team: 'red', pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 } }) as unknown as Ship;
-  const blue = createMockShip({ id: 2, team: 'blue', pos: { ...TEST_DEFAULTS.zeroPos, x: 230, y: 200 } }) as unknown as Ship; // close opponent
+    const red = createMockShip({
+      id: 1,
+      team: 'red',
+      pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 },
+    }) as unknown as Ship;
+    const blue = createMockShip({
+      id: 2,
+      team: 'blue',
+      pos: { ...TEST_DEFAULTS.zeroPos, x: 230, y: 200 },
+    }) as unknown as Ship; // close opponent
 
     state.ships = [red, blue];
 
@@ -73,8 +81,16 @@ describe('DecisionEngine Evade Gate', () => {
     const state = makeState();
     state.behaviorConfig.globalSettings.useDecisionEngineEvadeGate = true;
 
-  const red = createMockShip({ id: 1, team: 'red', pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 } }) as unknown as Ship;
-  const blue = createMockShip({ id: 2, team: 'blue', pos: { ...TEST_DEFAULTS.zeroPos, x: 205, y: 200 } }) as unknown as Ship; // extremely close threat (distance 5)
+    const red = createMockShip({
+      id: 1,
+      team: 'red',
+      pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 },
+    }) as unknown as Ship;
+    const blue = createMockShip({
+      id: 2,
+      team: 'blue',
+      pos: { ...TEST_DEFAULTS.zeroPos, x: 205, y: 200 },
+    }) as unknown as Ship; // extremely close threat (distance 5)
 
     // Ensure reevaluation by time (not by damage), and keep recentDamage below threshold
     red.aiState = {
@@ -95,15 +111,23 @@ describe('DecisionEngine Evade Gate', () => {
     ai.updateShipAI(red, 0.016);
 
     // With DE gate on and clear proximity + damage, evade is acceptable
-  // In optimized search mode, intent selection can differ on borderline setups.
-  // Assert that evade is a allowed outcome by verifying the decision score favors evasion.
-  expect(['evade','pursue','strafe','group','patrol']).toContain(red.aiState!.currentIntent);
+    // In optimized search mode, intent selection can differ on borderline setups.
+    // Assert that evade is a allowed outcome by verifying the decision score favors evasion.
+    expect(['evade', 'pursue', 'strafe', 'group', 'patrol']).toContain(red.aiState!.currentIntent);
   });
 
   it('preview method returns score and wouldEvade boolean', () => {
     const state = makeState();
-  const red = createMockShip({ id: 1, team: 'red', pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 } }) as unknown as Ship;
-  const blue = createMockShip({ id: 2, team: 'blue', pos: { ...TEST_DEFAULTS.zeroPos, x: 210, y: 200 } }) as unknown as Ship;
+    const red = createMockShip({
+      id: 1,
+      team: 'red',
+      pos: { ...TEST_DEFAULTS.zeroPos, x: 200, y: 200 },
+    }) as unknown as Ship;
+    const blue = createMockShip({
+      id: 2,
+      team: 'blue',
+      pos: { ...TEST_DEFAULTS.zeroPos, x: 210, y: 200 },
+    }) as unknown as Ship;
     state.ships = [red, blue];
 
     const ai = new AIController(state);

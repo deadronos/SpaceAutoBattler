@@ -93,4 +93,3 @@ Fork the repository, create a feature branch, add tests, and open a pull request
 ## License
 
 MIT â€” see `LICENSE.MD`.
-

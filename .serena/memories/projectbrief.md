@@ -5,6 +5,7 @@ Last-Reviewed: 2025-09-07
 One-line summary: SpaceAutoBattler is a deterministic 3D fleet auto-battler demonstrating AI behaviors and performant instanced rendering.
 
 Key success metrics:
+
 - Deterministic simulation tick reproducibility
 - Rendering performance: maintain 60 FPS with large fleets via instancing
 - Test coverage: maintain >= 80% unit test coverage

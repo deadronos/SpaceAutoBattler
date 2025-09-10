@@ -59,29 +59,29 @@ finally into the Three.js renderer’s per‑frame update loop.
       z‑fighting. Supports capacity growth and per‑layer replacement.
   - Ships (`src/renderer/shipInstancer.ts`)
     - Groups keyed by `className` and optional `team`, each holding one
-    `InstancedMesh` per prototype geometry, plus capacity/free‑list and id
-    mappings. Supports `instanceColor` attribute via an `onBeforeCompile`
-    shader patch that multiplies instance color into diffuse output.
+      `InstancedMesh` per prototype geometry, plus capacity/free‑list and id
+      mappings. Supports `instanceColor` attribute via an `onBeforeCompile`
+      shader patch that multiplies instance color into diffuse output.
     - Provides `allocate`, `free`, `updateTransform`, `markMatricesNeedUpdate`,
       `sync`, and `cull(camera)` for coarse bounds pruning.
 
 ## Data Flow
 
-1) Model discovery
+1. Model discovery
    - `src/config/shipModelMap.ts` maps ship classes to `.glb` files and basic
      metadata (`scale`, `boundsRadius`, …).
 
-2) Load and cache
+2. Load and cache
    - `preloadShipModels` calls `loadGLTF`, which caches the loaded glTF in
      `state.assetPool` under the URL key and emits a prototype per class/team
      key (`ship-<class>`, `ship-<class>-<team>`).
 
-3) Prototype registration
+3. Prototype registration
    - During renderer init, if `threePrototypes` exist in the asset pool for a
      class, the renderer registers those geometries/materials with the ship
      instancer. Otherwise, the ship instancer falls back to its internal defaults.
 
-4) Frame updates
+4. Frame updates
    - Ships: ensure instance allocation for each ship id/class/team, then
      `updateTransform(id, pos, quat, scale)`. End of frame: `shipInstancer.sync()`
      marks buffers for GPU update; optional `cull(camera)` to skip work.

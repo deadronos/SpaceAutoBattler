@@ -1,6 +1,6 @@
 Debugging & Runtime Flags
 
-This project includes several runtime flags and URL parameters to help with debugging while keeping normal runs quiet and deterministic. This doc summarizes what’s available and how to use them.
+This project includes several runtime flags and URL parameters to help with debugging while keeping normal runs quiet and deterministic. This doc summarizes whatï¿½s available and how to use them.
 
 Environment variables
 
@@ -33,5 +33,6 @@ Notes
 Extending
 
 To add a new flag:
+
 - For environment flags, add a typed export in src/utils/env.ts and gate logs or features with it.
 - For URL flags, parse new URLSearchParams(window.location.search) in the relevant UI/debug module and toggle the feature based on (param === '1' || param === 'true').

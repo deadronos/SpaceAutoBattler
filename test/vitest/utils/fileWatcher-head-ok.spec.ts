@@ -6,11 +6,17 @@ describe('FileWatcher HEAD ok', () => {
   // store original fetch reference (may be undefined in test env)
   type FetchType = (...args: any[]) => Promise<any>;
   const origFetch = (global as unknown as { fetch?: FetchType }).fetch;
-  afterEach(() => { (global as unknown as { fetch?: FetchType }).fetch = origFetch; });
+  afterEach(() => {
+    (global as unknown as { fetch?: FetchType }).fetch = origFetch;
+  });
 
   it('treats remote HEAD ok as exists', async () => {
     // mock global fetch to return ok and a last-modified header
-  (global as any).fetch = async () => ({ ok: true, headers: { get: (k: string) => (k === 'last-modified' ? new Date().toUTCString() : null) } } as any);
+    (global as any).fetch = async () =>
+      ({
+        ok: true,
+        headers: { get: (k: string) => (k === 'last-modified' ? new Date().toUTCString() : null) },
+      }) as any;
 
     const fw = getFileWatcher();
     const events: string[] = [];

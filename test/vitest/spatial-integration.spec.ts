@@ -31,7 +31,7 @@ describe('Spatial Index Integration Tests', () => {
             id: ship.id,
             pos: ship.pos,
             radius: 16,
-            team: ship.team
+            team: ship.team,
           });
         }
       }
@@ -61,7 +61,7 @@ describe('Spatial Index Integration Tests', () => {
             id: ship.id,
             pos: ship.pos,
             radius: 16,
-            team: ship.team
+            team: ship.team,
           });
         }
       }
@@ -70,6 +70,8 @@ describe('Spatial Index Integration Tests', () => {
     // Test separation force calculation
     const result = aiController.calculateSeparationForceWithCount(ship1);
     expect(result.neighborCount).toBeGreaterThan(0);
-    expect(Math.abs(result.force.x) + Math.abs(result.force.y) + Math.abs(result.force.z)).toBeGreaterThan(0);
+    expect(
+      Math.abs(result.force.x) + Math.abs(result.force.y) + Math.abs(result.force.z),
+    ).toBeGreaterThan(0);
   });
 });

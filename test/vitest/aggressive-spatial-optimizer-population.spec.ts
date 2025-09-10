@@ -14,7 +14,7 @@ describe('AggressiveSpatialOptimizer - internal population contract', () => {
     // Create a baseGrid that always returns empty results to simulate tests
     // that do not populate the wrapped spatial grid directly.
     const baseGrid = {
-      queryRadius: (_center: Vector3, _radius: number) => [] as SpatialEntity[]
+      queryRadius: (_center: Vector3, _radius: number) => [] as SpatialEntity[],
     };
 
     const cellSize = 64;
@@ -22,7 +22,7 @@ describe('AggressiveSpatialOptimizer - internal population contract', () => {
 
     // Create a single entity near origin and populate optimizer grids only
     const entities: SpatialEntity[] = [
-      { id: 9999, pos: { x: 10, y: 5, z: 0 }, radius: 10, team: 'blue' }
+      { id: 9999, pos: { x: 10, y: 5, z: 0 }, radius: 10, team: 'blue' },
     ];
 
     // Populate optimizer internal grids

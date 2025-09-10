@@ -18,7 +18,7 @@ export interface OverlayManager {
     healthBarMeshes: Map<number, THREE.Object3D>,
     cameraState: CameraState,
     factoryState: MeshFactoryState,
-    overlayState: OverlayState
+    overlayState: OverlayState,
   ): void;
   disposeOverlays(overlayState: OverlayState): void;
 }
@@ -28,7 +28,7 @@ export interface OverlayManager {
  */
 export function createOverlayState(): OverlayState {
   return {
-    GPU_BILLBOARD: true // Use shader-based billboarding for health bars
+    GPU_BILLBOARD: true, // Use shader-based billboarding for health bars
   };
 }
 
@@ -39,7 +39,7 @@ export function updateBillboardOverlays(
   healthBarMeshes: Map<number, THREE.Object3D>,
   cameraState: CameraState,
   factoryState: MeshFactoryState,
-  overlayState: OverlayState
+  overlayState: OverlayState,
 ): void {
   if (overlayState.GPU_BILLBOARD) {
     // Prefer cached camera basis attached by the renderer to avoid redundant
@@ -53,16 +53,17 @@ export function updateBillboardOverlays(
       camUp.copy(cb.up);
     } else {
       // Compute forward then derive right/up
-  const forward = new THREE.Vector3();
-  cameraState.camera.getWorldDirection(forward);
-  // right = forward x up
-  camRight.crossVectors(forward, cameraState.camera.up).normalize();
+      const forward = new THREE.Vector3();
+      cameraState.camera.getWorldDirection(forward);
+      // right = forward x up
+      camRight.crossVectors(forward, cameraState.camera.up).normalize();
       camUp.copy(cameraState.camera.up).normalize();
     }
 
     for (const mat of factoryState.billboardMaterials) {
       if (mat.uniforms) {
-        if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(camRight);
+        if (mat.uniforms.cameraRight)
+          (mat.uniforms.cameraRight.value as THREE.Vector3).copy(camRight);
         if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(camUp);
       }
     }
@@ -71,7 +72,11 @@ export function updateBillboardOverlays(
     const cb2 = getCachedCameraBasis(cameraState.camera);
     if (cb2) {
       const m = new THREE.Matrix4();
-      m.makeBasis(cb2.right.clone(), cb2.up.clone(), cb2.forward?.clone() ?? new THREE.Vector3().crossVectors(cb2.right, cb2.up));
+      m.makeBasis(
+        cb2.right.clone(),
+        cb2.up.clone(),
+        cb2.forward?.clone() ?? new THREE.Vector3().crossVectors(cb2.right, cb2.up),
+      );
       for (const bar of healthBarMeshes.values()) {
         bar.quaternion.setFromRotationMatrix(m);
       }
@@ -95,10 +100,7 @@ export function handleOverlayResize(_width: number, _height: number): void {
 /**
  * Updates overlay positions and visibility
  */
-export function updateOverlayPositions(
-  _overlayState: OverlayState,
-  _cameraDistance: number
-): void {
+export function updateOverlayPositions(_overlayState: OverlayState, _cameraDistance: number): void {
   // Scale overlay elements based on camera distance if needed (placeholder)
 }
 
@@ -116,7 +118,7 @@ export function disposeOverlays(_overlayState: OverlayState): void {
 export const overlayManager: OverlayManager = {
   createOverlayState,
   updateBillboardOverlays,
-  disposeOverlays
+  disposeOverlays,
 };
 
 /**
@@ -124,7 +126,7 @@ export const overlayManager: OverlayManager = {
  */
 export const OverlayUtils = {
   handleOverlayResize,
-  updateOverlayPositions
+  updateOverlayPositions,
 };
 
 /**
@@ -136,7 +138,11 @@ export function updateBillboardBars(bars: THREE.Object3D[], camera: THREE.Camera
   const cb = getCachedCameraBasis(camera);
   if (cb) {
     const m = new THREE.Matrix4();
-    m.makeBasis(cb.right.clone(), cb.up.clone(), cb.forward?.clone() ?? new THREE.Vector3().crossVectors(cb.right, cb.up));
+    m.makeBasis(
+      cb.right.clone(),
+      cb.up.clone(),
+      cb.forward?.clone() ?? new THREE.Vector3().crossVectors(cb.right, cb.up),
+    );
     for (const bar of bars) bar.quaternion.setFromRotationMatrix(m);
     return;
   }

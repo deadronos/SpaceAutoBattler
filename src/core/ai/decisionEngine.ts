@@ -11,7 +11,8 @@ export function scorePursue(params: {
   isScout: boolean;
   teamUnderAlarm: boolean;
 }): number {
-  const { distanceToEnemy, preferredRange, settings, personality, isScout, teamUnderAlarm } = params;
+  const { distanceToEnemy, preferredRange, settings, personality, isScout, teamUnderAlarm } =
+    params;
   if (distanceToEnemy == null) return (isScout ? 0.5 : 0) + (teamUnderAlarm ? 0.4 : 0);
   let score = 0;
   if (distanceToEnemy < preferredRange * settings.closeRangeMultiplier) score += 1.0;
@@ -29,9 +30,19 @@ export function scoreEvade(params: {
   withinRecentDamageWindow: boolean;
   settings: BehaviorConfig['globalSettings'];
 }): number {
-  const { distanceToThreat, recentDamage, damageEvadeThreshold, withinRecentDamageWindow, settings } = params;
+  const {
+    distanceToThreat,
+    recentDamage,
+    damageEvadeThreshold,
+    withinRecentDamageWindow,
+    settings,
+  } = params;
   let score = 0;
-  if (distanceToThreat != null && distanceToThreat < settings.minimumSafeDistance * settings.closeRangeMultiplier) score += 1.0;
+  if (
+    distanceToThreat != null &&
+    distanceToThreat < settings.minimumSafeDistance * settings.closeRangeMultiplier
+  )
+    score += 1.0;
   if (recentDamage >= damageEvadeThreshold && withinRecentDamageWindow) score += 1.0;
   return score;
 }

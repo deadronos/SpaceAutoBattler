@@ -26,11 +26,14 @@ describe('perfOverlay enabled', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).document = { body: { appendChild: () => {} } } as any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).window = (global as any);
+    (global as any).window = global as any;
 
     // stub RAF to avoid infinite loops
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).requestAnimationFrame = (cb: any) => { cb(0); return 1; };
+    (global as any).requestAnimationFrame = (cb: any) => {
+      cb(0);
+      return 1;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).cancelAnimationFrame = () => {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -3,7 +3,6 @@ import { chromium, test, expect } from '@playwright/test';
 import process from 'process';
 import logger from '../../src/utils/logger';
 
-
 const BASE = 'http://localhost:8080/spaceautobattler.html';
 const STRICT = process.env.E2E_BENCH_STRICT === '1';
 
@@ -48,11 +47,14 @@ async function setupCounts(page, redCount, blueCount) {
 
 async function measure(page, seconds = 12) {
   return await page.evaluate(async (sec) => {
-    const useCollector = typeof (window).__perf === 'object' && typeof (window).__perf.getFpsStats === 'function';
+    const useCollector =
+      typeof window.__perf === 'object' && typeof window.__perf.getFpsStats === 'function';
     if (useCollector) {
       const until = performance.now() + sec * 1000;
-      while (performance.now() < until) { await new Promise(r => setTimeout(r, 50)); }
-      return (window).__perf.getFpsStats();
+      while (performance.now() < until) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      return window.__perf.getFpsStats();
     }
     const samples = [];
     const end = performance.now() + sec * 1000;
@@ -61,7 +63,8 @@ async function measure(page, seconds = 12) {
       const loop = (ts) => {
         samples.push(ts - last);
         last = ts;
-        if (ts < end) requestAnimationFrame(loop); else resolve(null);
+        if (ts < end) requestAnimationFrame(loop);
+        else resolve(null);
       };
       requestAnimationFrame(loop);
     });
@@ -109,14 +112,19 @@ test.describe('Chromium bench bootstrap first', () => {
       telemetry25: p2a,
       telemetry50: p2b,
       deltas: {
-        avgFps25: (p2a.avgFps - p1a.avgFps),
-        avgFps50: (p2b.avgFps - p1b.avgFps),
-        p99Ms25: (p2a.p99FrameMs - p1a.p99FrameMs),
-        p99Ms50: (p2b.p99FrameMs - p1b.p99FrameMs)
-      }
+        avgFps25: p2a.avgFps - p1a.avgFps,
+        avgFps50: p2b.avgFps - p1b.avgFps,
+        p99Ms25: p2a.p99FrameMs - p1a.p99FrameMs,
+        p99Ms50: p2b.p99FrameMs - p1b.p99FrameMs,
+      },
     };
-    try { mkdirSync('test-output', { recursive: true }); } catch {logger.error('Could not create test-output dir');} 
-    const ts = new Date().toISOString().replace(/[:.]/g,'-'); writeFileSync(`test-output/bench-${ts}.json`, JSON.stringify(results, null, 2));
+    try {
+      mkdirSync('test-output', { recursive: true });
+    } catch {
+      logger.error('Could not create test-output dir');
+    }
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    writeFileSync(`test-output/bench-${ts}.json`, JSON.stringify(results, null, 2));
     console.log('[bench] Results', results);
 
     if (STRICT) {
@@ -124,8 +132,3 @@ test.describe('Chromium bench bootstrap first', () => {
     }
   });
 });
-
-
-
-
-

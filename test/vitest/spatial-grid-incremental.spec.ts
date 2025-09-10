@@ -18,7 +18,7 @@ describe('SpatialGrid incremental operations', () => {
     // After moving, it should no longer be near entity 2
     const neighborsAt100 = grid.queryNeighbors({ x: 120, y: 110, z: 50 }, 100, 'red');
     // Only id 2 should remain near the original cluster
-    expect(neighborsAt100.map(n => n.id)).toEqual([2]);
+    expect(neighborsAt100.map((n) => n.id)).toEqual([2]);
 
     // Remove entity 2
     grid.remove(2);
@@ -35,6 +35,6 @@ describe('SpatialGrid incremental operations', () => {
     // Ensure queries still work for remaining entity (id 1)
     const found = grid.queryRadius({ x: 600, y: 600, z: 50 }, 10);
     expect(found.length).toBeGreaterThanOrEqual(1);
-    expect(found.some(e => e.id === 1)).toBe(true);
+    expect(found.some((e) => e.id === 1)).toBe(true);
   });
 });

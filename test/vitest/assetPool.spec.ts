@@ -4,11 +4,13 @@ import LRUAssetPool from '../../src/core/assetPool.js';
 describe('LRUAssetPool', () => {
   it('evicts least recently used items beyond capacity', () => {
     const pool = new LRUAssetPool<string>(3);
-    pool.set('a','A'); pool.set('b','B'); pool.set('c','C');
-    expect(Array.from(pool.keys())).toEqual(['a','b','c']);
+    pool.set('a', 'A');
+    pool.set('b', 'B');
+    pool.set('c', 'C');
+    expect(Array.from(pool.keys())).toEqual(['a', 'b', 'c']);
     // access 'a' to make it most recent
     expect(pool.get('a')).toBe('A');
-    pool.set('d','D');
+    pool.set('d', 'D');
     // 'b' should be evicted (least recently used)
     expect(pool.has('b')).toBe(false);
     expect(pool.has('a')).toBe(true);
@@ -26,7 +28,9 @@ describe('LRUAssetPool', () => {
   });
 
   it('rethrows dispose errors in test env', () => {
-    const pool = new LRUAssetPool<string>(1, () => { throw new Error('fail'); });
+    const pool = new LRUAssetPool<string>(1, () => {
+      throw new Error('fail');
+    });
     pool.set('a', 'A');
     expect(() => pool.set('b', 'B')).toThrow('fail');
   });

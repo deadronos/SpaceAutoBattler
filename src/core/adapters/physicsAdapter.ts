@@ -84,7 +84,13 @@ export interface PhysicsAdapter {
 
   // Collision and overlap queries
   raycast(from: Vector3, to: Vector3, mask?: number): RaycastHit | null;
-  sweepSphere(center: Vector3, radius: number, dir: Vector3, maxDist: number, mask?: number): SweepHit | null;
+  sweepSphere(
+    center: Vector3,
+    radius: number,
+    dir: Vector3,
+    maxDist: number,
+    mask?: number,
+  ): SweepHit | null;
   overlapAABB(aabb: AABB, mask?: number): EntityId[];
 
   // Body management
@@ -129,7 +135,13 @@ export class NoopPhysicsAdapter implements PhysicsAdapter {
     return null;
   }
 
-  sweepSphere(_center: Vector3, _radius: number, _dir: Vector3, _maxDist: number, _mask?: number): SweepHit | null {
+  sweepSphere(
+    _center: Vector3,
+    _radius: number,
+    _dir: Vector3,
+    _maxDist: number,
+    _mask?: number,
+  ): SweepHit | null {
     return null;
   }
 
@@ -152,7 +164,7 @@ export class NoopPhysicsAdapter implements PhysicsAdapter {
       this.eventHandlers.set(event, []);
     }
     this.eventHandlers.get(event)!.push(handler);
-    
+
     return {
       dispose: () => {
         const handlers = this.eventHandlers.get(event);
@@ -162,7 +174,7 @@ export class NoopPhysicsAdapter implements PhysicsAdapter {
             handlers.splice(index, 1);
           }
         }
-      }
+      },
     };
   }
 }

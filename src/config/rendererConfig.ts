@@ -376,8 +376,8 @@ export const DefaultRendererConfig: RendererConfig = {
       initialCapacity: 50,
       maxCapacity: 500,
       growthFactor: 1.5,
-      warnThreshold: 0.8
-    }
+      warnThreshold: 0.8,
+    },
   },
 
   defaultCollisionRadius: 1.0,

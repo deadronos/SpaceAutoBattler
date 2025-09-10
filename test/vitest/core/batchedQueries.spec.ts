@@ -25,20 +25,26 @@ describe('BatchedQueryManager', () => {
     const spatialOptimizer: any = {
       queryKNearestApproximate: (pos: any, n: number, team: string) => {
         // return two candidates in predictable order
-        return [ { id: 2, pos: { x: 10, y:0, z:0 } }, { id: 3, pos: { x: 5, y:0, z:0 } } ];
-      }
+        return [
+          { id: 2, pos: { x: 10, y: 0, z: 0 } },
+          { id: 3, pos: { x: 5, y: 0, z: 0 } },
+        ];
+      },
     };
 
     const mgr = new BatchedQueryManager(spatialOptimizer);
 
     const ship = { id: 1, pos: { x: 0, y: 0, z: 0 }, team: 'red' } as any;
 
-    const a = { id: 2, pos: { x: 10, y:0, z:0 } } as any;
-    const b = { id: 3, pos: { x: 5, y:0, z:0 } } as any;
+    const a = { id: 2, pos: { x: 10, y: 0, z: 0 } } as any;
+    const b = { id: 3, pos: { x: 5, y: 0, z: 0 } } as any;
 
     const state: any = {
       behaviorConfig: { globalSettings: { enableSpatialIndex: true } },
-      shipIndex: new Map([[2, a], [3, b]])
+      shipIndex: new Map([
+        [2, a],
+        [3, b],
+      ]),
     };
 
     mgr.precomputeNearestEnemies(state, [ship]);
@@ -47,8 +53,11 @@ describe('BatchedQueryManager', () => {
     expect(nearest!.id).toBe(3); // b is closer
 
     // now test tie-breaker: equal distances but lower id wins (b.id < a.id)
-    spatialOptimizer.queryKNearestApproximate = () => [ { id: 4, pos: { x: 5, y:0, z:0 } }, { id: 3, pos: { x: 5, y:0, z:0 } } ];
-    const a2 = { id: 4, pos: { x:5,y:0,z:0 } } as any;
+    spatialOptimizer.queryKNearestApproximate = () => [
+      { id: 4, pos: { x: 5, y: 0, z: 0 } },
+      { id: 3, pos: { x: 5, y: 0, z: 0 } },
+    ];
+    const a2 = { id: 4, pos: { x: 5, y: 0, z: 0 } } as any;
     state.shipIndex.set(4, a2);
 
     mgr.precomputeNearestEnemies(state, [ship]);
@@ -64,14 +73,16 @@ describe('BatchedQueryManager', () => {
     const spatialOptimizer: any = {
       queryRadiusOptimized: (pos: any, range: number, team: string, id: number) => {
         // return one neighbor at (3,0,0) and the ship itself
-        return [ { id: 99, pos: { x: 3, y:0, z:0 }, team: team } ];
-      }
+        return [{ id: 99, pos: { x: 3, y: 0, z: 0 }, team: team }];
+      },
     };
 
     const mgr = new BatchedQueryManager(spatialOptimizer);
 
-    const ship = { id: 1, pos: { x: 0, y:0, z:0 }, team: 'red' } as any;
-    const state: any = { behaviorConfig: { globalSettings: { enableSpatialIndex: true, separationDistance: 10 } } };
+    const ship = { id: 1, pos: { x: 0, y: 0, z: 0 }, team: 'red' } as any;
+    const state: any = {
+      behaviorConfig: { globalSettings: { enableSpatialIndex: true, separationDistance: 10 } },
+    };
 
     mgr.precomputeSeparationNeighbors(state, [ship]);
     const first = mgr.getSeparationNeighbors(ship);

@@ -15,7 +15,10 @@ export interface UnifiedEffectsManager {
   update: (dt: number) => void;
   handleShipSpawn: (ship: Ship) => void;
   handleShipDestruction: (ship: Ship) => Promise<void>;
-  handleExplosion: (position: { x: number; y: number; z: number }, intensity?: number) => Promise<void>;
+  handleExplosion: (
+    position: { x: number; y: number; z: number },
+    intensity?: number,
+  ) => Promise<void>;
   setQuality: (quality: 'low' | 'medium' | 'high') => void;
   dispose: () => void;
 }
@@ -42,7 +45,7 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
         setBloomIntensity: () => {},
         enableMotionBlur: () => {},
         enableDepthOfField: () => {},
-        addExplosionEffect: () => {}
+        addExplosionEffect: () => {},
       };
     }
   }
@@ -71,7 +74,10 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     }
   }
 
-  async function handleExplosion(position: { x: number; y: number; z: number }, intensity = 1.0): Promise<void> {
+  async function handleExplosion(
+    position: { x: number; y: number; z: number },
+    intensity = 1.0,
+  ): Promise<void> {
     // Combine multiple effects for explosions
     const promises: Promise<void>[] = [];
 
@@ -128,7 +134,7 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     setBloomIntensity: () => {},
     enableMotionBlur: () => {},
     enableDepthOfField: () => {},
-    addExplosionEffect: () => {}
+    addExplosionEffect: () => {},
   };
 
   return {
@@ -145,6 +151,6 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
       finalEffects.dispose();
       animation.dispose();
       bvh.dispose();
-    }
+    },
   };
 }

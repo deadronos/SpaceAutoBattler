@@ -15,14 +15,19 @@ export class SpatialGrid {
   private cellSize: number;
   private grid: Map<number, SpatialEntity[]> = new Map();
   // Fast lookup of an entity's current cell and reference for incremental updates
-  private entityById: Map<EntityId, { key: number; entity: SpatialEntity } > = new Map();
+  private entityById: Map<EntityId, { key: number; entity: SpatialEntity }> = new Map();
   private bounds: { width: number; height: number; depth: number };
   private nx: number; // cells along x
   private ny: number; // cells along y
   private nz: number; // cells along z
   private version = 0; // increments on any mutation
   private lastRadiusCache: {
-    cx: number; cy: number; cz: number; cellRadius: number; version: number; cellKeys: number[]
+    cx: number;
+    cy: number;
+    cz: number;
+    cellRadius: number;
+    version: number;
+    cellKeys: number[];
   } | null = null;
   // Reusable scratch array to reduce allocations when building occupied cell lists
   private _occupiedKeysScratch: number[] = [];
@@ -62,10 +67,10 @@ export class SpatialGrid {
 
   private linearIndex(cx: number, cy: number, cz: number): number {
     // Clamp to bounds to avoid out-of-range indices from precision issues
-    const x = cx < 0 ? 0 : (cx >= this.nx ? this.nx - 1 : cx);
-    const y = cy < 0 ? 0 : (cy >= this.ny ? this.ny - 1 : cy);
-    const z = cz < 0 ? 0 : (cz >= this.nz ? this.nz - 1 : cz);
-    return ((x * this.ny) + y) * this.nz + z;
+    const x = cx < 0 ? 0 : cx >= this.nx ? this.nx - 1 : cx;
+    const y = cy < 0 ? 0 : cy >= this.ny ? this.ny - 1 : cy;
+    const z = cz < 0 ? 0 : cz >= this.nz ? this.nz - 1 : cz;
+    return (x * this.ny + y) * this.nz + z;
   }
 
   /**
@@ -101,19 +106,19 @@ export class SpatialGrid {
       this.lastRadiusCache = null;
       return;
     }
-    
+
     // Existing entity: check if significant change occurred
     const oldEntity = rec.entity;
-    const positionChanged = (rec.key !== newKey);
+    const positionChanged = rec.key !== newKey;
     const radiusChanged = Math.abs(oldEntity.radius - radius) > 0.1;
     const teamChanged = oldEntity.team !== team;
-    
+
     // Only update if there's a significant change
     if (positionChanged) {
       // Remove from old cell array
       const oldArr = this.grid.get(rec.key);
       if (oldArr) {
-        const idx = oldArr.findIndex(e => e.id === id);
+        const idx = oldArr.findIndex((e) => e.id === id);
         if (idx !== -1) {
           oldArr.splice(idx, 1);
           if (oldArr.length === 0) this.grid.delete(rec.key);
@@ -126,7 +131,7 @@ export class SpatialGrid {
       this.version++;
       this.lastRadiusCache = null;
     }
-    
+
     // Always update reference fields for position/radius/team changes
     if (positionChanged || radiusChanged || teamChanged) {
       rec.entity.pos = pos;
@@ -141,7 +146,7 @@ export class SpatialGrid {
     if (!rec) return;
     const arr = this.grid.get(rec.key);
     if (arr) {
-      const idx = arr.findIndex(e => e.id === id);
+      const idx = arr.findIndex((e) => e.id === id);
       if (idx !== -1) {
         arr.splice(idx, 1);
         if (arr.length === 0) this.grid.delete(rec.key);
@@ -194,8 +199,11 @@ export class SpatialGrid {
     let occupiedKeys: number[] | null = null;
     const lrc = this.lastRadiusCache;
     if (
-      lrc && lrc.version === this.version &&
-      lrc.cx === centerCellX && lrc.cy === centerCellY && lrc.cz === centerCellZ &&
+      lrc &&
+      lrc.version === this.version &&
+      lrc.cx === centerCellX &&
+      lrc.cy === centerCellY &&
+      lrc.cz === centerCellZ &&
       lrc.cellRadius === cellRadius
     ) {
       occupiedKeys = lrc.cellKeys;
@@ -209,14 +217,14 @@ export class SpatialGrid {
         const cellX = centerCellX + dx;
         const minX = cellX * cellSize;
         const maxX = minX + cellSize;
-        const distX = center.x < minX ? (minX - center.x) : (center.x > maxX ? (center.x - maxX) : 0);
+        const distX = center.x < minX ? minX - center.x : center.x > maxX ? center.x - maxX : 0;
         const distXSq = distX * distX;
 
         for (let dy = -cellRadius; dy <= cellRadius; dy++) {
           const cellY = centerCellY + dy;
           const minY = cellY * cellSize;
           const maxY = minY + cellSize;
-          const distY = center.y < minY ? (minY - center.y) : (center.y > maxY ? (center.y - maxY) : 0);
+          const distY = center.y < minY ? minY - center.y : center.y > maxY ? center.y - maxY : 0;
           const distYSq = distY * distY;
           if (distXSq + distYSq > radiusSq) continue;
 
@@ -224,7 +232,7 @@ export class SpatialGrid {
             const cellZ = centerCellZ + dz;
             const minZ = cellZ * cellSize;
             const maxZ = minZ + cellSize;
-            const distZ = center.z < minZ ? (minZ - center.z) : (center.z > maxZ ? (center.z - maxZ) : 0);
+            const distZ = center.z < minZ ? minZ - center.z : center.z > maxZ ? center.z - maxZ : 0;
             const minDistSq = distXSq + distYSq + distZ * distZ;
             if (minDistSq > radiusSq) continue;
 
@@ -236,7 +244,14 @@ export class SpatialGrid {
       }
       // Copy scratch to cache so later modifications to scratch don't mutate cache
       const keysCopy = scratch.slice();
-      this.lastRadiusCache = { cx: centerCellX, cy: centerCellY, cz: centerCellZ, cellRadius, version: this.version, cellKeys: keysCopy };
+      this.lastRadiusCache = {
+        cx: centerCellX,
+        cy: centerCellY,
+        cz: centerCellZ,
+        cellRadius,
+        version: this.version,
+        cellKeys: keysCopy,
+      };
       occupiedKeys = keysCopy;
     }
 
@@ -272,7 +287,7 @@ export class SpatialGrid {
   forEachInRadius(
     center: Vector3,
     radius: number,
-    fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void
+    fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void,
   ): void {
     const cellRadius = Math.ceil(radius / this.cellSize);
     const centerCellX = Math.floor(center.x / this.cellSize);
@@ -285,7 +300,12 @@ export class SpatialGrid {
     let occupiedKeys: number[] | null = null;
     const lrc = this.lastRadiusCache;
     if (
-      lrc && lrc.version === this.version && lrc.cx === centerCellX && lrc.cy === centerCellY && lrc.cz === centerCellZ && lrc.cellRadius === cellRadius
+      lrc &&
+      lrc.version === this.version &&
+      lrc.cx === centerCellX &&
+      lrc.cy === centerCellY &&
+      lrc.cz === centerCellZ &&
+      lrc.cellRadius === cellRadius
     ) {
       occupiedKeys = lrc.cellKeys;
     }
@@ -297,14 +317,14 @@ export class SpatialGrid {
         const cellX = centerCellX + dx;
         const minX = cellX * cellSize;
         const maxX = minX + cellSize;
-        const distX = center.x < minX ? (minX - center.x) : (center.x > maxX ? (center.x - maxX) : 0);
+        const distX = center.x < minX ? minX - center.x : center.x > maxX ? center.x - maxX : 0;
         const distXSq = distX * distX;
 
         for (let dy = -cellRadius; dy <= cellRadius; dy++) {
           const cellY = centerCellY + dy;
           const minY = cellY * cellSize;
           const maxY = minY + cellSize;
-          const distY = center.y < minY ? (minY - center.y) : (center.y > maxY ? (center.y - maxY) : 0);
+          const distY = center.y < minY ? minY - center.y : center.y > maxY ? center.y - maxY : 0;
           const distYSq = distY * distY;
           if (distXSq + distYSq > radiusSq) continue;
 
@@ -312,7 +332,7 @@ export class SpatialGrid {
             const cellZ = centerCellZ + dz;
             const minZ = cellZ * cellSize;
             const maxZ = minZ + cellSize;
-            const distZ = center.z < minZ ? (minZ - center.z) : (center.z > maxZ ? (center.z - maxZ) : 0);
+            const distZ = center.z < minZ ? minZ - center.z : center.z > maxZ ? center.z - maxZ : 0;
             const minDistSq = distXSq + distYSq + distZ * distZ;
             if (minDistSq > radiusSq) continue;
 
@@ -323,7 +343,14 @@ export class SpatialGrid {
         }
       }
       const keysCopy = scratch.slice();
-      this.lastRadiusCache = { cx: centerCellX, cy: centerCellY, cz: centerCellZ, cellRadius, version: this.version, cellKeys: keysCopy };
+      this.lastRadiusCache = {
+        cx: centerCellX,
+        cy: centerCellY,
+        cz: centerCellZ,
+        cellRadius,
+        version: this.version,
+        cellKeys: keysCopy,
+      };
       occupiedKeys = keysCopy;
     }
 
@@ -377,15 +404,15 @@ export class SpatialGrid {
       // Use pooled array for temporary batch
       const batch = this.getPooledResults();
       this.queryRadius(center, radius, batch);
-      
+
       for (const entity of batch) {
         if (team !== undefined && entity.team !== team) continue;
         if (excludeId !== undefined && entity.id === excludeId) continue;
         filtered.push(entity);
       }
-      
+
       this.releasePooledResults(batch);
-      
+
       if (filtered.length < k) {
         radius *= 2; // Expand search radius
       }
@@ -411,22 +438,29 @@ export class SpatialGrid {
 
       if (best.length < k) {
         best.push({ e, d2 });
-        if (d2 > maxD2) { maxD2 = d2; maxIdx = best.length - 1; }
+        if (d2 > maxD2) {
+          maxD2 = d2;
+          maxIdx = best.length - 1;
+        }
       } else if (d2 < maxD2) {
         // Replace current worst
         best[maxIdx] = { e, d2 };
         // Recompute worst among best
-        maxD2 = -1; maxIdx = 0;
+        maxD2 = -1;
+        maxIdx = 0;
         for (let j = 0; j < best.length; j++) {
-          if (best[j].d2 > maxD2) { maxD2 = best[j].d2; maxIdx = j; }
+          if (best[j].d2 > maxD2) {
+            maxD2 = best[j].d2;
+            maxIdx = j;
+          }
         }
       }
     }
 
     // Return entities sorted by distance for determinism
     best.sort((a, b) => a.d2 - b.d2);
-    const results = best.map(b => b.e);
-    
+    const results = best.map((b) => b.e);
+
     this.releasePooledResults(filtered);
     return results;
   }
@@ -434,18 +468,26 @@ export class SpatialGrid {
   /**
    * Query entities within a sector (cone) from a position
    */
-  querySector(center: Vector3, direction: Vector3, angleRadians: number, range: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
-  // Normalize direction vector: compute squared magnitude and sqrt once
-  const dirMagSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
-  if (dirMagSq === 0) return [];
-  const dirMag = Math.sqrt(dirMagSq);
-  const dirX = direction.x / dirMag;
-  const dirY = direction.y / dirMag;
-  const dirZ = direction.z / dirMag;
-    
+  querySector(
+    center: Vector3,
+    direction: Vector3,
+    angleRadians: number,
+    range: number,
+    team?: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
+    // Normalize direction vector: compute squared magnitude and sqrt once
+    const dirMagSq =
+      direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+    if (dirMagSq === 0) return [];
+    const dirMag = Math.sqrt(dirMagSq);
+    const dirX = direction.x / dirMag;
+    const dirY = direction.y / dirMag;
+    const dirZ = direction.z / dirMag;
+
     const cosHalfAngle = Math.cos(angleRadians / 2);
     const results: SpatialEntity[] = [];
-    
+
     this.forEachInRadius(center, range, (dx, dy, dz, distSq, entity) => {
       // Filter by team and exclude id if specified
       if (team !== undefined && entity.team !== team) return;
@@ -459,14 +501,19 @@ export class SpatialGrid {
       const rhs = cosHalfAngle * cosHalfAngle * distSq;
       if (lhs >= rhs) results.push(entity);
     });
-    
+
     return results;
   }
 
   /**
    * Query neighbors (same team) within radius
    */
-  queryNeighbors(center: Vector3, radius: number, team: Team, excludeId?: EntityId): SpatialEntity[] {
+  queryNeighbors(
+    center: Vector3,
+    radius: number,
+    team: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
     const results: SpatialEntity[] = [];
     this.forEachInRadius(center, radius, (_dx, _dy, _dz, _distSq, entity) => {
       if (entity.team === team && (excludeId === undefined || entity.id !== excludeId)) {
@@ -488,21 +535,26 @@ export class SpatialGrid {
     team: Team,
     excludeId: EntityId | undefined,
     // Note: callback receives distSq (squared distance) to avoid inner sqrt; callers can sqrt if needed
-    fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void
+    fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void,
   ): void {
     const cellRadius = Math.ceil(radius / this.cellSize);
     const centerCellX = Math.floor(center.x / this.cellSize);
     const centerCellY = Math.floor(center.y / this.cellSize);
     const centerCellZ = Math.floor(center.z / this.cellSize);
     const cellSize = this.cellSize;
-  const radiusSq = radius * radius;
+    const radiusSq = radius * radius;
     const grid = this.grid;
 
     // Use cached occupied cell keys for this center cell and radius if grid hasn't changed
     let occupiedKeys: number[] | null = null;
     const lrc = this.lastRadiusCache;
     if (
-      lrc && lrc.version === this.version && lrc.cx === centerCellX && lrc.cy === centerCellY && lrc.cz === centerCellZ && lrc.cellRadius === cellRadius
+      lrc &&
+      lrc.version === this.version &&
+      lrc.cx === centerCellX &&
+      lrc.cy === centerCellY &&
+      lrc.cz === centerCellZ &&
+      lrc.cellRadius === cellRadius
     ) {
       occupiedKeys = lrc.cellKeys;
     }
@@ -514,14 +566,14 @@ export class SpatialGrid {
         const cellX = centerCellX + dx;
         const minX = cellX * cellSize;
         const maxX = minX + cellSize;
-        const distX = center.x < minX ? (minX - center.x) : (center.x > maxX ? (center.x - maxX) : 0);
+        const distX = center.x < minX ? minX - center.x : center.x > maxX ? center.x - maxX : 0;
         const distXSq = distX * distX;
 
         for (let dy = -cellRadius; dy <= cellRadius; dy++) {
           const cellY = centerCellY + dy;
           const minY = cellY * cellSize;
           const maxY = minY + cellSize;
-          const distY = center.y < minY ? (minY - center.y) : (center.y > maxY ? (center.y - maxY) : 0);
+          const distY = center.y < minY ? minY - center.y : center.y > maxY ? center.y - maxY : 0;
           const distYSq = distY * distY;
           if (distXSq + distYSq > radiusSq) continue;
 
@@ -529,7 +581,7 @@ export class SpatialGrid {
             const cellZ = centerCellZ + dz;
             const minZ = cellZ * cellSize;
             const maxZ = minZ + cellSize;
-            const distZ = center.z < minZ ? (minZ - center.z) : (center.z > maxZ ? (center.z - maxZ) : 0);
+            const distZ = center.z < minZ ? minZ - center.z : center.z > maxZ ? center.z - maxZ : 0;
             const minDistSq = distXSq + distYSq + distZ * distZ;
             if (minDistSq > radiusSq) continue;
 
@@ -540,7 +592,14 @@ export class SpatialGrid {
         }
       }
       const keysCopy = scratch.slice();
-      this.lastRadiusCache = { cx: centerCellX, cy: centerCellY, cz: centerCellZ, cellRadius, version: this.version, cellKeys: keysCopy };
+      this.lastRadiusCache = {
+        cx: centerCellX,
+        cy: centerCellY,
+        cz: centerCellZ,
+        cellRadius,
+        version: this.version,
+        cellKeys: keysCopy,
+      };
       occupiedKeys = keysCopy;
     }
 
@@ -579,7 +638,11 @@ export class SpatialGrid {
   /**
    * Optimized query for bullet-ship collisions
    */
-  queryBulletCollisions(bulletPos: Vector3, bulletRadius: number, maxShipRadius: number = 20): SpatialEntity[] {
+  queryBulletCollisions(
+    bulletPos: Vector3,
+    bulletRadius: number,
+    maxShipRadius: number = 20,
+  ): SpatialEntity[] {
     // Use streaming forEachInRadius to avoid allocating an intermediate
     // array from queryRadius in this hot path. Caller expects an array of
     // candidate entities; collect them into a fresh results array.
@@ -594,7 +657,12 @@ export class SpatialGrid {
   /**
    * Get statistics about the spatial grid (useful for debugging/tuning)
    */
-  getStats(): { totalCells: number; occupiedCells: number; totalEntities: number; avgEntitiesPerCell: number } {
+  getStats(): {
+    totalCells: number;
+    occupiedCells: number;
+    totalEntities: number;
+    avgEntitiesPerCell: number;
+  } {
     const totalCells = this.grid.size;
     const totalEntities = this.entityById.size;
     let sum = 0;
@@ -603,7 +671,7 @@ export class SpatialGrid {
       totalCells,
       occupiedCells: totalCells,
       totalEntities,
-      avgEntitiesPerCell: totalCells > 0 ? sum / totalCells : 0
+      avgEntitiesPerCell: totalCells > 0 ? sum / totalCells : 0,
     };
   }
 

@@ -27,14 +27,14 @@ function hashString(str: string): number {
  * =============
  * The particle system uses the game's seeded RNG system to ensure deterministic
  * particle generation for testing and replay purposes.
- * 
+ *
  * Seed Derivation:
  * - When opts.seed is provided: Uses "${globalSeed}:${opts.seed}" as seed string
  * - When opts.seed is not provided: Uses XOR-based derivation per specification:
  *   seedStr = "${globalSeed}:${hashString(globalSeed) ^ opts.entityId ^ floor(time*1000)}"
  * - globalSeed is derived from state.rng?.seed or state.simConfig?.seed or '0'
  * - opts.entityId defaults to 0 if not provided (e.g., when ship.id unavailable)
- * 
+ *
  * Deterministic Properties:
  * - Particle initial positions (within explosion radius sphere)
  * - Particle initial velocities (radial with configurable spread)
@@ -132,12 +132,12 @@ export class ParticleSystem {
       const baseSeedHash = hashString(globalSeed);
       const timePart = Math.floor((this.state.time ?? 0) * 1000);
       const entityPart = opts.entityId ?? 0; // Use 0 if no entity ID provided
-      
+
       // XOR the components together for seed derivation
       const derivedSeed = baseSeedHash ^ entityPart ^ timePart;
       seedStr = `${globalSeed}:${derivedSeed}`;
     }
-    
+
     const rng = createRNG(seedStr);
 
     const countBase = Math.round(cfg.countPerRadius * Math.max(1, opts.radius));
@@ -173,7 +173,8 @@ export class ParticleSystem {
       };
 
       // velocity: radial direction with some randomized spread
-      const speed = rng.next() * (cfg.velocity.radial.max - cfg.velocity.radial.min) + cfg.velocity.radial.min;
+      const speed =
+        rng.next() * (cfg.velocity.radial.max - cfg.velocity.radial.min) + cfg.velocity.radial.min;
       const spread = cfg.velocity.randomSpread;
       const dirX = instance.pos.x - opts.pos.x;
       const dirY = instance.pos.y - opts.pos.y;
@@ -185,7 +186,8 @@ export class ParticleSystem {
       };
 
       const t = rng.next();
-      const colors = opts.colorOverride && opts.colorOverride.length > 0 ? opts.colorOverride : cfg.colors;
+      const colors =
+        opts.colorOverride && opts.colorOverride.length > 0 ? opts.colorOverride : cfg.colors;
       instance.color = colors[Math.floor(t * colors.length)];
       instance.size = rng.next() * (cfg.size.max - cfg.size.min) + cfg.size.min;
       this.active.add(instance.id);
@@ -224,21 +226,24 @@ export class ParticleSystem {
    * renderers can safely read positions/colors without touching internal state.
    */
   public getActiveInstances() {
-    return this.pool.filter(p => p.active).map(p => ({
-      id: p.id,
-      pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z },
-      size: p.size,
-      age: p.age,
-      lifetime: p.lifetime,
-      color: p.color
-    }));
+    return this.pool
+      .filter((p) => p.active)
+      .map((p) => ({
+        id: p.id,
+        pos: { x: p.pos.x, y: p.pos.y, z: p.pos.z },
+        size: p.size,
+        age: p.age,
+        lifetime: p.lifetime,
+        color: p.color,
+      }));
   }
 }
 
 // Singleton helper pattern: renderer can instantiate and reuse
 let _system: ParticleSystem | null = null;
 export function ensureParticleSystem(state: GameState) {
-  if (!_system) _system = new ParticleSystem(state, RendererConfig.particles.explosion.pooling.initial);
+  if (!_system)
+    _system = new ParticleSystem(state, RendererConfig.particles.explosion.pooling.initial);
   return _system;
 }
 

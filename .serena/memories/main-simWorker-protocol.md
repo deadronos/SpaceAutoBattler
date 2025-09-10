@@ -8,6 +8,7 @@ Summary:
 This document records the message protocol used between the main thread (`src/main.ts`) and the simulation worker (`src/simWorker.ts`). The protocol is implemented using standard `postMessage` and `message` event listeners on a module Worker.
 
 Messages FROM main.ts -> simWorker.ts
+
 - { type: 'init-physics' }
   - Purpose: Initialize Rapier physics in the worker. Worker responds with `init-physics-done`.
   - Payload: none
@@ -28,6 +29,7 @@ Messages FROM main.ts -> simWorker.ts
   - Response: Worker replies with `{ type: 'dispose-physics-done' }`.
 
 Messages FROM simWorker.ts -> main.ts (worker -> main)
+
 - { type: 'init-physics-done', ok: boolean }
   - Sent after `init-physics` indicating whether Rapier world creation succeeded.
 
@@ -47,6 +49,7 @@ Messages FROM simWorker.ts -> main.ts (worker -> main)
   - Worker echoes unknown messages back as `unknown`.
 
 Notes and recommendations:
+
 - `main.ts` minimizes worker traffic by only sending `update-ships` when `state.shipDataVersion` changes — this avoids sending full ship lists every frame.
 - `main.ts` expects `step-physics-done` responses and uses `transforms` to update ship positions and velocities in the main-thread GameState.
 - Error handling should be robust: worker sends error messages and `main.ts` logs but continues; there is fall-back to in-thread physics if worker creation fails.

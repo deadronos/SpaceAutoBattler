@@ -14,12 +14,20 @@ export function scoreTurretTarget(distance: number, target: Ship): number {
   return score;
 }
 
-export function isWithinTurretRange(distance: number, cfg: BehaviorConfig['turretConfig']): boolean {
+export function isWithinTurretRange(
+  distance: number,
+  cfg: BehaviorConfig['turretConfig'],
+): boolean {
   return distance >= cfg.minimumFireRange && distance <= cfg.maximumFireRange;
 }
 
 // Pick best target for a turret, matching legacy semantics (strictly greater replaces, first wins ties)
-export function pickBestTurretTarget(state: GameState, ship: Ship, turret: TurretState, cfg: BehaviorConfig['turretConfig']): number | null {
+export function pickBestTurretTarget(
+  state: GameState,
+  ship: Ship,
+  turret: TurretState,
+  cfg: BehaviorConfig['turretConfig'],
+): number | null {
   let bestId: number | null = null;
   let bestScore = -Infinity;
   for (const c of state.ships) {
@@ -34,7 +42,11 @@ export function pickBestTurretTarget(state: GameState, ship: Ship, turret: Turre
     const score = scoreTurretTarget(dist, c);
     const inRange = dist >= cfg.minimumFireRange && dist <= cfg.maximumFireRange;
 
-  logger.debugIf(DEBUG_AI, () => `DEBUG_AI: turret pickCandidate: ship=${ship.id} turret=${turret.id} candidate=${c.id} dist=${dist.toFixed(2)} hp=${c.health} level=${c.level?.level ?? c.level} score=${score} inRange=${inRange} rangeMin=${cfg.minimumFireRange} rangeMax=${cfg.maximumFireRange}`);
+    logger.debugIf(
+      DEBUG_AI,
+      () =>
+        `DEBUG_AI: turret pickCandidate: ship=${ship.id} turret=${turret.id} candidate=${c.id} dist=${dist.toFixed(2)} hp=${c.health} level=${c.level?.level ?? c.level} score=${score} inRange=${inRange} rangeMin=${cfg.minimumFireRange} rangeMax=${cfg.maximumFireRange}`,
+    );
 
     if (!inRange) continue;
     if (score == null) continue;
@@ -44,7 +56,11 @@ export function pickBestTurretTarget(state: GameState, ship: Ship, turret: Turre
     }
   }
 
-  logger.debugIf(DEBUG_AI, () => `DEBUG_AI: turret pickBestTurretTarget result for ship=${ship.id} turret=${turret.id} => ${bestId ?? 'null'}`);
+  logger.debugIf(
+    DEBUG_AI,
+    () =>
+      `DEBUG_AI: turret pickBestTurretTarget result for ship=${ship.id} turret=${turret.id} => ${bestId ?? 'null'}`,
+  );
 
   return bestId;
 }

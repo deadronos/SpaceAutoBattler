@@ -1,9 +1,9 @@
 /**
  * Explosion Effect Test Suite
- * 
+ *
  * Development utility for technical artists to test explosion effects,
  * textures, and shader parameters in real-time.
- * 
+ *
  * Features:
  * - Live parameter adjustment
  * - Texture hot-swapping
@@ -18,17 +18,17 @@ export interface ExplosionTestConfig {
   lifetime: number;
   size: { min: number; max: number };
   velocity: { min: number; max: number };
-  
+
   // Visual parameters
   colors: string[];
   fadeInDuration: number;
   fadeOutStart: number;
   softEdgePower: number;
-  
+
   // Test parameters
-  spawnRate: number;      // Explosions per second
-  testDuration: number;   // How long to run test
-  showStats: boolean;     // Show performance stats
+  spawnRate: number; // Explosions per second
+  testDuration: number; // How long to run test
+  showStats: boolean; // Show performance stats
 }
 
 export class ExplosionTester {
@@ -80,7 +80,8 @@ export class ExplosionTester {
 
     // Stats display
     this.statsDisplay = document.createElement('div');
-    this.statsDisplay.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 1px solid #333;';
+    this.statsDisplay.style.cssText =
+      'margin-top: 10px; padding-top: 10px; border-top: 1px solid #333;';
     this.testContainer.appendChild(this.statsDisplay);
 
     // Add to document
@@ -94,13 +95,19 @@ export class ExplosionTester {
    */
   private setupControls() {
     // Preset selector
-    this.addControl('Preset', 'select', 'fire', {
-      fire: 'Fire Explosion',
-      electric: 'Electric Explosion', 
-      plasma: 'Plasma Explosion',
-      toxic: 'Toxic Gas',
-      smoke: 'Smoke Cloud'
-    }, (value) => this.loadPreset(value));
+    this.addControl(
+      'Preset',
+      'select',
+      'fire',
+      {
+        fire: 'Fire Explosion',
+        electric: 'Electric Explosion',
+        plasma: 'Plasma Explosion',
+        toxic: 'Toxic Gas',
+        smoke: 'Smoke Cloud',
+      },
+      (value) => this.loadPreset(value),
+    );
 
     // Color controls
     this.addControl('Color 1 (Birth)', 'color', '#fffbda');
@@ -151,11 +158,11 @@ export class ExplosionTester {
    * Add a control element
    */
   private addControl(
-    label: string, 
-    type: string, 
+    label: string,
+    type: string,
     defaultValue: any,
     options: any = {},
-    callback?: (value: any) => void
+    callback?: (value: any) => void,
   ) {
     const container = document.createElement('div');
     container.style.cssText = 'margin-bottom: 8px;';
@@ -178,7 +185,7 @@ export class ExplosionTester {
     } else {
       input = document.createElement('input');
       input.type = type;
-      
+
       if (type === 'range') {
         input.min = options.min?.toString() || '0';
         input.max = options.max?.toString() || '100';
@@ -187,8 +194,9 @@ export class ExplosionTester {
     }
 
     input.value = defaultValue.toString();
-    input.style.cssText = 'width: 100%; padding: 2px; background: #333; color: white; border: 1px solid #666;';
-    
+    input.style.cssText =
+      'width: 100%; padding: 2px; background: #333; color: white; border: 1px solid #666;';
+
     // Add value display for ranges
     let valueDisplay: HTMLSpanElement | undefined;
     if (type === 'range') {
@@ -211,7 +219,7 @@ export class ExplosionTester {
     if (valueDisplay) {
       container.appendChild(valueDisplay);
     }
-    
+
     this.controls.appendChild(container);
 
     // Store reference for later access
@@ -234,7 +242,7 @@ export class ExplosionTester {
       border-radius: 3px;
       cursor: pointer;
     `;
-    
+
     button.addEventListener('click', callback);
     this.controls.appendChild(button);
   }
@@ -253,8 +261,9 @@ export class ExplosionTester {
 
     const input = document.createElement('input');
     input.type = 'file';
-    input.style.cssText = 'width: 100%; padding: 2px; background: #333; color: white; border: 1px solid #666;';
-    
+    input.style.cssText =
+      'width: 100%; padding: 2px; background: #333; color: white; border: 1px solid #666;';
+
     input.addEventListener('change', (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) callback(file);
@@ -284,7 +293,7 @@ export class ExplosionTester {
         fadeIn: 0.1,
         fadeOut: 0.7,
         particles: 18,
-        softEdge: 2.2
+        softEdge: 2.2,
       },
       electric: {
         colors: ['#ffffff', '#00ffff', '#0044ff'],
@@ -292,7 +301,7 @@ export class ExplosionTester {
         fadeIn: 0.05,
         fadeOut: 0.8,
         particles: 15,
-        softEdge: 3.5
+        softEdge: 3.5,
       },
       plasma: {
         colors: ['#ff00ff', '#8000ff', '#1a0033'],
@@ -300,7 +309,7 @@ export class ExplosionTester {
         fadeIn: 0.15,
         fadeOut: 0.6,
         particles: 25,
-        softEdge: 1.8
+        softEdge: 1.8,
       },
       toxic: {
         colors: ['#ccff00', '#00cc00', '#003311'],
@@ -308,7 +317,7 @@ export class ExplosionTester {
         fadeIn: 0.2,
         fadeOut: 0.5,
         particles: 30,
-        softEdge: 1.5
+        softEdge: 1.5,
       },
       smoke: {
         colors: ['#bbbbbb', '#777777', '#111111'],
@@ -316,8 +325,8 @@ export class ExplosionTester {
         fadeIn: 0.3,
         fadeOut: 0.4,
         particles: 35,
-        softEdge: 1.2
-      }
+        softEdge: 1.2,
+      },
     };
 
     const config = presets[preset as keyof typeof presets];
@@ -338,7 +347,7 @@ export class ExplosionTester {
    */
   private fireSingleExplosion() {
     const config = this.getCurrentConfig();
-    
+
     // Use particle system API
     if (typeof addParticleExplosion !== 'undefined') {
       (window as any).addParticleExplosion(this.gameState, {
@@ -347,13 +356,13 @@ export class ExplosionTester {
         colorOverride: [
           this.getControlValue('Color 1 (Birth)'),
           this.getControlValue('Color 2 (Mid-life)'),
-          this.getControlValue('Color 3 (Death)')
+          this.getControlValue('Color 3 (Death)'),
         ],
         count: this.getControlValue('Particle Count'),
-        lifetime: this.getControlValue('Lifetime')
+        lifetime: this.getControlValue('Lifetime'),
       });
     }
-    
+
     this.stats.explosions++;
     this.updateStatsDisplay();
   }
@@ -363,11 +372,11 @@ export class ExplosionTester {
    */
   private startContinuousTest() {
     if (this.isRunning) return;
-    
+
     this.isRunning = true;
     const rate = this.getControlValue('Spawn Rate');
     const interval = 1000 / rate; // Convert to milliseconds
-    
+
     this.testInterval = window.setInterval(() => {
       this.fireSingleExplosion();
     }, interval);
@@ -404,13 +413,13 @@ export class ExplosionTester {
     try {
       const url = URL.createObjectURL(file);
       const img = new Image();
-      
+
       img.onload = () => {
         console.log(`Loaded custom texture: ${img.width}x${img.height}`);
         // Apply to next explosion test
         URL.revokeObjectURL(url);
       };
-      
+
       img.src = url;
     } catch (error) {
       console.error('Failed to load texture:', error);
@@ -436,15 +445,15 @@ export class ExplosionTester {
   private exportConfig() {
     const config = this.getCurrentConfig();
     const json = JSON.stringify(config, null, 2);
-    
+
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = 'explosion-config.json';
     link.click();
-    
+
     URL.revokeObjectURL(url);
   }
 
@@ -455,12 +464,12 @@ export class ExplosionTester {
     try {
       const text = await file.text();
       const config = JSON.parse(text);
-      
+
       // Apply configuration to controls
       for (const [key, value] of Object.entries(config)) {
         this.setControlValue(key, value);
       }
-      
+
       console.log('Imported configuration:', config);
     } catch (error) {
       console.error('Failed to import config:', error);
@@ -476,23 +485,23 @@ export class ExplosionTester {
       lifetime: this.getControlValue('Lifetime'),
       size: {
         min: this.getControlValue('Min Size'),
-        max: this.getControlValue('Max Size')
+        max: this.getControlValue('Max Size'),
       },
       velocity: {
         min: this.getControlValue('Velocity Min'),
-        max: this.getControlValue('Velocity Max')
+        max: this.getControlValue('Velocity Max'),
       },
       colors: [
         this.getControlValue('Color 1 (Birth)'),
         this.getControlValue('Color 2 (Mid-life)'),
-        this.getControlValue('Color 3 (Death)')
+        this.getControlValue('Color 3 (Death)'),
       ],
       fadeInDuration: this.getControlValue('Fade In'),
       fadeOutStart: this.getControlValue('Fade Out Start'),
       softEdgePower: this.getControlValue('Soft Edge Power'),
       spawnRate: this.getControlValue('Spawn Rate'),
       testDuration: 10, // Default
-      showStats: true
+      showStats: true,
     };
   }
 
@@ -500,14 +509,15 @@ export class ExplosionTester {
    * Get control value by name
    */
   private getControlValue(name: string): any {
-    const input = Array.from(this.controls.querySelectorAll('input, select'))
-      .find(el => (el as any).controlName === name) as HTMLInputElement;
-    
+    const input = Array.from(this.controls.querySelectorAll('input, select')).find(
+      (el) => (el as any).controlName === name,
+    ) as HTMLInputElement;
+
     if (input) {
       const value = input.value;
       return input.type === 'range' || input.type === 'number' ? parseFloat(value) : value;
     }
-    
+
     return null;
   }
 
@@ -515,12 +525,13 @@ export class ExplosionTester {
    * Set control value by name
    */
   private setControlValue(name: string, value: any) {
-    const input = Array.from(this.controls.querySelectorAll('input, select'))
-      .find(el => (el as any).controlName === name) as HTMLInputElement;
-    
+    const input = Array.from(this.controls.querySelectorAll('input, select')).find(
+      (el) => (el as any).controlName === name,
+    ) as HTMLInputElement;
+
     if (input) {
       input.value = value.toString();
-      
+
       // Trigger change event
       input.dispatchEvent(new Event('input', { bubbles: true }));
     }
@@ -556,7 +567,7 @@ export class ExplosionTester {
    * Show/hide the tester UI
    */
   public toggle() {
-    this.testContainer.style.display = 
+    this.testContainer.style.display =
       this.testContainer.style.display === 'none' ? 'block' : 'none';
   }
 
@@ -585,7 +596,7 @@ export function setupTestKeyBinds(tester: ExplosionTester) {
   document.addEventListener('keydown', (e) => {
     // Only in development mode
     if (!window.location.search.includes('dev=1')) return;
-    
+
     switch (e.key) {
       case 'F1':
         e.preventDefault();

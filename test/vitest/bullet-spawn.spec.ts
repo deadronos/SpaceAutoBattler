@@ -23,7 +23,9 @@ describe('Projectile spawn integration', () => {
         console.log(`Ship ${ship.id} team=${ship.team}`);
         for (const t of ship.turrets) {
           // eslint-disable-next-line no-console
-          console.log(`  turret ${t.id} cooldownLeft=${t.cooldownLeft} aiTarget=${t.aiState?.targetId}`);
+          console.log(
+            `  turret ${t.id} cooldownLeft=${t.cooldownLeft} aiTarget=${t.aiState?.targetId}`,
+          );
         }
       }
     }

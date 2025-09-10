@@ -13,14 +13,14 @@ describe('AggressiveSpatialOptimizer Performance', () => {
     mockGrid = {
       queryRadius: (center: Vector3, radius: number) => {
         // Simple brute force implementation for baseline comparison
-        return entities.filter(entity => {
+        return entities.filter((entity) => {
           const dx = entity.pos.x - center.x;
           const dy = entity.pos.y - center.y;
           const dz = entity.pos.z - center.z;
           const distSq = dx * dx + dy * dy + dz * dz;
           return distSq <= radius * radius;
         });
-      }
+      },
     };
 
     optimizer = new AggressiveSpatialOptimizer(mockGrid, 64);
@@ -43,7 +43,7 @@ describe('AggressiveSpatialOptimizer Performance', () => {
         id: i,
         pos: { x, y, z },
         radius: 20,
-        team: teams[i % 2]
+        team: teams[i % 2],
       });
     }
   });
@@ -81,20 +81,24 @@ describe('AggressiveSpatialOptimizer Performance', () => {
     console.log(`Baseline time: ${baselineTime.toFixed(2)}ms`);
     console.log(`Optimized time: ${optimizedTime.toFixed(2)}ms`);
     console.log(`Approximate time: ${approximateTime.toFixed(2)}ms`);
-    console.log(`Optimization improvement: ${((baselineTime - optimizedTime) / baselineTime * 100).toFixed(1)}%`);
-    console.log(`Approximation improvement: ${((baselineTime - approximateTime) / baselineTime * 100).toFixed(1)}%`);
+    console.log(
+      `Optimization improvement: ${(((baselineTime - optimizedTime) / baselineTime) * 100).toFixed(1)}%`,
+    );
+    console.log(
+      `Approximation improvement: ${(((baselineTime - approximateTime) / baselineTime) * 100).toFixed(1)}%`,
+    );
 
     // Get cache statistics
     const metrics = optimizer.getMetrics();
     console.log('Cache metrics:', metrics);
 
-  // Timings can be noisy in CI; assert sane numeric results and that cache metrics are healthy.
-  expect(typeof optimizedTime).toBe('number');
-  expect(typeof approximateTime).toBe('number');
-  expect(optimizedTime).toBeGreaterThanOrEqual(0);
-  expect(approximateTime).toBeGreaterThanOrEqual(0);
-  // Expect a healthy cache hit rate (most queries should hit after warm-up)
-  expect(metrics.cacheHitRate).toBeGreaterThanOrEqual(0.8);
+    // Timings can be noisy in CI; assert sane numeric results and that cache metrics are healthy.
+    expect(typeof optimizedTime).toBe('number');
+    expect(typeof approximateTime).toBe('number');
+    expect(optimizedTime).toBeGreaterThanOrEqual(0);
+    expect(approximateTime).toBeGreaterThanOrEqual(0);
+    // Expect a healthy cache hit rate (most queries should hit after warm-up)
+    expect(metrics.cacheHitRate).toBeGreaterThanOrEqual(0.8);
   });
 
   it('should maintain reasonable accuracy with approximation', () => {
@@ -111,7 +115,9 @@ describe('AggressiveSpatialOptimizer Performance', () => {
 
     // Should find most of the entities (allow some approximation error)
     const accuracyRatio = approximate.length / Math.max(exact.length, 1);
-    console.log(`Exact results: ${exact.length}, Approximate: ${approximate.length}, Accuracy: ${(accuracyRatio * 100).toFixed(1)}%`);
+    console.log(
+      `Exact results: ${exact.length}, Approximate: ${approximate.length}, Accuracy: ${(accuracyRatio * 100).toFixed(1)}%`,
+    );
 
     // With 30% approximation, should still be reasonably accurate
     expect(accuracyRatio).toBeGreaterThan(0.6); // At least 60% accuracy
@@ -183,10 +189,10 @@ describe('AggressiveSpatialOptimizer Performance', () => {
           pos: {
             x: (Math.random() - 0.5) * 1000,
             y: (Math.random() - 0.5) * 1000,
-            z: (Math.random() - 0.5) * 200
+            z: (Math.random() - 0.5) * 200,
           },
           radius: 20,
-          team: i % 2 === 0 ? 'red' : 'blue'
+          team: i % 2 === 0 ? 'red' : 'blue',
         });
       }
 
@@ -201,7 +207,9 @@ describe('AggressiveSpatialOptimizer Performance', () => {
       const time = performance.now() - start;
 
       const metrics = optimizer.getMetrics();
-      console.log(`${count} entities: ${time.toFixed(2)}ms, cache hit rate: ${(metrics.cacheHitRate * 100).toFixed(1)}%`);
+      console.log(
+        `${count} entities: ${time.toFixed(2)}ms, cache hit rate: ${(metrics.cacheHitRate * 100).toFixed(1)}%`,
+      );
 
       // Performance should not degrade linearly with entity count due to spatial partitioning
       expect(time).toBeLessThan(count * 0.5); // Should be sub-linear
@@ -213,7 +221,7 @@ describe('AggressiveSpatialOptimizer Performance', () => {
       cacheTTL: 10,
       spatialUpdateFrequency: 5,
       coarseThreshold: 300,
-      mediumThreshold: 150
+      mediumThreshold: 150,
     });
 
     optimizer.updateSpatialGrids(entities);
@@ -222,10 +230,12 @@ describe('AggressiveSpatialOptimizer Performance', () => {
 
     // Test that different thresholds use different grid resolutions
     const coarseResult = optimizer.queryRadiusOptimized(center, 350); // Should use coarse
-    const mediumResult = optimizer.queryRadiusOptimized(center, 200); // Should use medium  
-    const fineResult = optimizer.queryRadiusOptimized(center, 80);   // Should use fine
+    const mediumResult = optimizer.queryRadiusOptimized(center, 200); // Should use medium
+    const fineResult = optimizer.queryRadiusOptimized(center, 80); // Should use fine
 
-    console.log(`Coarse (r=350): ${coarseResult.length}, Medium (r=200): ${mediumResult.length}, Fine (r=80): ${fineResult.length}`);
+    console.log(
+      `Coarse (r=350): ${coarseResult.length}, Medium (r=200): ${mediumResult.length}, Fine (r=80): ${fineResult.length}`,
+    );
 
     // Results should be reasonable
     expect(coarseResult.length).toBeGreaterThanOrEqual(mediumResult.length);
@@ -238,13 +248,13 @@ describe('AggressiveSpatialOptimizer Performance', () => {
 
     for (let frame = 0; frame < updateCount; frame++) {
       // Simulate movement by slightly modifying entity positions
-      const movedEntities = entities.map(entity => ({
+      const movedEntities = entities.map((entity) => ({
         ...entity,
         pos: {
           x: entity.pos.x + (Math.random() - 0.5) * 10,
           y: entity.pos.y + (Math.random() - 0.5) * 10,
-          z: entity.pos.z + (Math.random() - 0.5) * 2
-        }
+          z: entity.pos.z + (Math.random() - 0.5) * 2,
+        },
       }));
 
       const start = performance.now();

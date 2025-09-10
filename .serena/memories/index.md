@@ -45,5 +45,6 @@ This index lists known memory nodes and their Last-Reviewed dates (where availab
 - update_bullets_api — Last-Reviewed: 2025-09-07
 
 Notes:
+
 - If you want this formatted as a table or exported to `memory/index.json`, tell me and I'll add it.
 - To keep this index accurate, add a script that scans the `memory/` folder for `Last-Reviewed:` entries and regenerates this file periodically.

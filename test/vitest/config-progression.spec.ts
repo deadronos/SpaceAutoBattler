@@ -1,5 +1,10 @@
 import { describe, test, expect } from 'vitest';
-import { XP_PER_DAMAGE, XP_PER_KILL, nextLevelXp, applyLevelUps } from '../../src/config/progression.js';
+import {
+  XP_PER_DAMAGE,
+  XP_PER_KILL,
+  nextLevelXp,
+  applyLevelUps,
+} from '../../src/config/progression.js';
 
 describe('Progression Configuration', () => {
   describe('XP Constants', () => {
@@ -186,10 +191,10 @@ describe('Progression Configuration', () => {
       const scenarios = [
         { damage: 1000, kills: 0, description: 'High damage, no kills' },
         { damage: 0, kills: 5, description: 'No damage, multiple kills' },
-        { damage: 500, kills: 2, description: 'Mixed damage and kills' }
+        { damage: 500, kills: 2, description: 'Mixed damage and kills' },
       ];
 
-      scenarios.forEach(scenario => {
+      scenarios.forEach((scenario) => {
         const xpFromDamage = scenario.damage * XP_PER_DAMAGE;
         const xpFromKills = scenario.kills * XP_PER_KILL;
         const totalXp = xpFromDamage + xpFromKills;

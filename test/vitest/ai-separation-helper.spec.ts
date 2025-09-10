@@ -25,7 +25,11 @@ describe('AI Separation Helper', () => {
 
     // Place ship1 at x and ship2 to the right within separationDistance
     const ship1 = spawnShip(state, 'red', 'fighter', { x: 200, y: 200, z: 200 });
-    const ship2 = spawnShip(state, 'red', 'fighter', { x: 200 + separationDistance / 2, y: 200, z: 200 });
+    const ship2 = spawnShip(state, 'red', 'fighter', {
+      x: 200 + separationDistance / 2,
+      y: 200,
+      z: 200,
+    });
 
     const controller = new AIController(state) as any;
     const res = controller.calculateSeparationForceWithCount(ship1);
@@ -46,9 +50,21 @@ describe('AI Separation Helper', () => {
     const ship = spawnShip(state, 'red', 'frigate', center);
 
     // Place several friends around within separationDistance
-    spawnShip(state, 'red', 'frigate', { x: center.x + separationDistance * 0.4, y: center.y + 10, z: center.z });
-    spawnShip(state, 'red', 'frigate', { x: center.x - separationDistance * 0.3, y: center.y - 5, z: center.z });
-    spawnShip(state, 'red', 'frigate', { x: center.x + 5, y: center.y + separationDistance * 0.45, z: center.z });
+    spawnShip(state, 'red', 'frigate', {
+      x: center.x + separationDistance * 0.4,
+      y: center.y + 10,
+      z: center.z,
+    });
+    spawnShip(state, 'red', 'frigate', {
+      x: center.x - separationDistance * 0.3,
+      y: center.y - 5,
+      z: center.z,
+    });
+    spawnShip(state, 'red', 'frigate', {
+      x: center.x + 5,
+      y: center.y + separationDistance * 0.45,
+      z: center.z,
+    });
 
     const controller = new AIController(state) as any;
     const res = controller.calculateSeparationForceWithCount(ship);

@@ -5,41 +5,47 @@ import type { SpatialEntity } from '../../utils/spatialGrid.js';
 /**
  * High-performance spatial optimization system that reduces expensive spatial queries
  * through approximation algorithms, hierarchical caching, and reduced update frequency.
- * 
+ *
  * Targets the core bottlenecks identified in Chrome DevTools profiler:
  * - queryRadius: 8,533.4ms (86.7% self time)
  * - queryKNearest: 7,682.3ms (78.0% self time)
  */
 export class AggressiveSpatialOptimizer {
-  private hierarchicalCache = new Map<string, {
-    results: SpatialEntity[];
-    timestamp: number;
-    hitCount: number;
-  }>();
-  
+  private hierarchicalCache = new Map<
+    string,
+    {
+      results: SpatialEntity[];
+      timestamp: number;
+      hitCount: number;
+    }
+  >();
+
   // Multi-resolution grids for different query scales
   private coarseGrid = new Map<number, SpatialEntity[]>(); // 4x cell size
   private mediumGrid = new Map<number, SpatialEntity[]>(); // 2x cell size
-  private fineGrid = new Map<number, SpatialEntity[]>();   // 1x cell size
-  
+  private fineGrid = new Map<number, SpatialEntity[]>(); // 1x cell size
+
   private cacheTTL = 5; // frames
   private coarseThreshold = 200; // Use coarse grid for radius > 200
   private mediumThreshold = 100; // Use medium grid for radius > 100
-  
+
   // Approximation tables for fast distance calculations
   private distanceLUT = new Map<string, number>();
   private lutPrecision = 4; // Round to nearest 4 units
-  
+
   // Pre-computed neighbor tables for common scenarios
-  private commonNeighborCache = new Map<string, {
-    entities: SpatialEntity[];
-    frame: number;
-  }>();
-  
+  private commonNeighborCache = new Map<
+    string,
+    {
+      entities: SpatialEntity[];
+      frame: number;
+    }
+  >();
+
   private currentFrame = 0;
   private spatialUpdateFrequency = 3; // Update spatial data every 3 frames
   private lastSpatialUpdate = 0;
-  
+
   // Performance metrics
   private metrics = {
     cacheHits: 0,
@@ -48,7 +54,10 @@ export class AggressiveSpatialOptimizer {
     hierarchicalQueries: 0,
   };
 
-  constructor(private baseGrid: { queryRadius: (center: Vector3, radius: number) => SpatialEntity[] } , private cellSize: number) {}
+  constructor(
+    private baseGrid: { queryRadius: (center: Vector3, radius: number) => SpatialEntity[] },
+    private cellSize: number,
+  ) {}
 
   /**
    * Helper to obtain candidates from the wrapped baseGrid while avoiding
@@ -56,9 +65,18 @@ export class AggressiveSpatialOptimizer {
    * `forEachInRadius` when available. Falls back to pooled results if the
    * baseGrid exposes pooling helpers, otherwise uses `queryRadius`.
    */
-  private getCandidatesFromBaseGrid(center: Vector3, radius: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
+  private getCandidatesFromBaseGrid(
+    center: Vector3,
+    radius: number,
+    team?: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
     type OptionalGrid = {
-      forEachInRadius?: (center: Vector3, radius: number, fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void) => void;
+      forEachInRadius?: (
+        center: Vector3,
+        radius: number,
+        fn: (dx: number, dy: number, dz: number, distSq: number, entity: SpatialEntity) => void,
+      ) => void;
       getPooledResults?: () => SpatialEntity[];
       releasePooledResults?: (arr: SpatialEntity[]) => void;
       queryRadius?: (center: Vector3, radius: number, out?: SpatialEntity[]) => SpatialEntity[];
@@ -82,7 +100,10 @@ export class AggressiveSpatialOptimizer {
     }
 
     // Try pooled results if available: call queryRadius with provided buffer
-    if (typeof bg.getPooledResults === 'function' && typeof bg.releasePooledResults === 'function') {
+    if (
+      typeof bg.getPooledResults === 'function' &&
+      typeof bg.releasePooledResults === 'function'
+    ) {
       const buf: SpatialEntity[] = bg.getPooledResults!();
       try {
         if (typeof bg.queryRadius === 'function') {
@@ -121,37 +142,43 @@ export class AggressiveSpatialOptimizer {
    * Optimized radius query with hierarchical approximation
    */
   queryRadiusOptimized(
-    center: Vector3, 
-    radius: number, 
+    center: Vector3,
+    radius: number,
     team?: Team,
     excludeId?: EntityId,
-  approximationLevel = 0.2 // 0 = exact, 1 = very approximate (default nudged to favor cheaper queries)
+    approximationLevel = 0.2, // 0 = exact, 1 = very approximate (default nudged to favor cheaper queries)
   ): SpatialEntity[] {
     this.currentFrame++;
-    
+
     // Generate cache key for this query
     const cacheKey = this.generateCacheKey(center, radius, team, excludeId, approximationLevel);
-    
+
     // Check hierarchical cache first
     const cached = this.hierarchicalCache.get(cacheKey);
-    if (cached && (this.currentFrame - cached.timestamp) < this.cacheTTL) {
+    if (cached && this.currentFrame - cached.timestamp < this.cacheTTL) {
       cached.hitCount++;
       this.metrics.cacheHits++;
       return cached.results;
     }
-    
+
     this.metrics.cacheMisses++;
-    
+
     // Choose grid resolution based on query radius
-    const results = this.executeHierarchicalQuery(center, radius, approximationLevel, team, excludeId);
-    
+    const results = this.executeHierarchicalQuery(
+      center,
+      radius,
+      approximationLevel,
+      team,
+      excludeId,
+    );
+
     // Cache the results
     this.hierarchicalCache.set(cacheKey, {
       results: results,
       timestamp: this.currentFrame,
-      hitCount: 1
+      hitCount: 1,
     });
-    
+
     return results;
   }
 
@@ -163,31 +190,31 @@ export class AggressiveSpatialOptimizer {
     k: number,
     team?: Team,
     excludeId?: EntityId,
-    approximationLevel = 0.2
+    approximationLevel = 0.2,
   ): SpatialEntity[] {
     const cacheKey = `knearest:${this.positionKey(center)}:${k}:${team}:${excludeId}:${approximationLevel}`;
-    
+
     const cached = this.commonNeighborCache.get(cacheKey);
-    if (cached && (this.currentFrame - cached.frame) < this.cacheTTL * 2) {
+    if (cached && this.currentFrame - cached.frame < this.cacheTTL * 2) {
       this.metrics.cacheHits++;
       return cached.entities.slice(0, k);
     }
-    
+
     // Use simple expanding radius with base grid
     let searchRadius = this.cellSize * 2;
     const maxSearchRadius = Math.max(400, this.cellSize * 8);
-    
+
     while (searchRadius <= maxSearchRadius) {
       // Prefer baseGrid when available, but fall back to internal fineGrid
       // which is populated by updateSpatialGrids. This ensures tests that
       // drive the optimizer via updateSpatialGrids still get candidates even
       // when the wrapped baseGrid isn't populated by the test harness.
-  let candidates = this.getCandidatesFromBaseGrid(center, searchRadius, team, excludeId);
+      let candidates = this.getCandidatesFromBaseGrid(center, searchRadius, team, excludeId);
       if (candidates.length === 0) {
         // Use internal fineGrid if available
         candidates = this.queryFineGrid(center, searchRadius, team, excludeId);
       }
-      
+
       if (candidates.length >= k) {
         // Sort by distance and take k nearest
         candidates.sort((a, b) => {
@@ -195,32 +222,35 @@ export class AggressiveSpatialOptimizer {
           const distB = this.getDistanceSqFast(center, b.pos);
           return distA - distB;
         });
-        
+
         const results = candidates.slice(0, k);
-        
+
         // Cache for next frame
         this.commonNeighborCache.set(cacheKey, {
           entities: results,
-          frame: this.currentFrame
+          frame: this.currentFrame,
         });
-        
+
         this.metrics.approximationUses++;
         return results;
       }
-      
+
       searchRadius *= 1.5;
     }
-    
+
     // Return what we found, even if less than k
-  const allCandidates = this.getCandidatesFromBaseGrid(center, maxSearchRadius, team, excludeId);
-    if (DEBUG_AI) console.log(`[AggressiveSpatialOptimizer] queryKNearestApproximate - maxSearchRadius: ${maxSearchRadius}, allCandidates.length: ${allCandidates.length}`);
-    
+    const allCandidates = this.getCandidatesFromBaseGrid(center, maxSearchRadius, team, excludeId);
+    if (DEBUG_AI)
+      console.log(
+        `[AggressiveSpatialOptimizer] queryKNearestApproximate - maxSearchRadius: ${maxSearchRadius}, allCandidates.length: ${allCandidates.length}`,
+      );
+
     allCandidates.sort((a, b) => {
       const distA = this.getDistanceSqFast(center, a.pos);
       const distB = this.getDistanceSqFast(center, b.pos);
       return distA - distB;
     });
-    
+
     return allCandidates.slice(0, k);
   }
 
@@ -232,7 +262,7 @@ export class AggressiveSpatialOptimizer {
     radius: number,
     _approximationLevel: number,
     team?: Team,
-    excludeId?: EntityId
+    excludeId?: EntityId,
   ): SpatialEntity[] {
     this.metrics.hierarchicalQueries++;
     // Prefer the wrapped baseGrid when it returns results (tests and some
@@ -240,7 +270,7 @@ export class AggressiveSpatialOptimizer {
     // behavior backward-compatible while still allowing the optimizer's
     // internal grids to be used as a fallback when baseGrid is empty.
     try {
-  const baseCandidates = this.getCandidatesFromBaseGrid(center, radius, team, excludeId);
+      const baseCandidates = this.getCandidatesFromBaseGrid(center, radius, team, excludeId);
       if (baseCandidates.length > 0) return baseCandidates;
     } catch {
       // Ignore errors from baseGrid and fall through to internal grids
@@ -259,33 +289,46 @@ export class AggressiveSpatialOptimizer {
   /**
    * Coarse grid query - 4x cell size, fast but approximate
    */
-  private queryCoarseGrid(center: Vector3, radius: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
+  private queryCoarseGrid(
+    center: Vector3,
+    radius: number,
+    team?: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
     const coarseCellSize = this.cellSize * 4;
     const centerCellX = Math.floor(center.x / coarseCellSize);
     const centerCellY = Math.floor(center.y / coarseCellSize);
     const centerCellZ = Math.floor(center.z / coarseCellSize);
-    
+
     const results: SpatialEntity[] = [];
     const radiusSq = radius * radius;
     const seen = new Set<EntityId>();
-    
+
     // Simplified iteration - only check 6 cardinal directions + center for very fast approximation
-    const offsets = [[0,0,0], [-1,0,0], [1,0,0], [0,-1,0], [0,1,0], [0,0,-1], [0,0,1]]; // Cardinal directions
-    
+    const offsets = [
+      [0, 0, 0],
+      [-1, 0, 0],
+      [1, 0, 0],
+      [0, -1, 0],
+      [0, 1, 0],
+      [0, 0, -1],
+      [0, 0, 1],
+    ]; // Cardinal directions
+
     for (const [dx, dy, dz] of offsets) {
       const cellX = centerCellX + dx;
       const cellY = centerCellY + dy;
       const cellZ = centerCellZ + dz;
-      
+
       const key = this.linearIndex(cellX, cellY, cellZ, coarseCellSize);
       const bucket = this.coarseGrid.get(key);
       if (!bucket) continue;
-      
+
       for (const entity of bucket) {
         if (seen.has(entity.id)) continue;
         if (team !== undefined && entity.team !== team) continue;
         if (excludeId !== undefined && entity.id === excludeId) continue;
-        
+
         const distSq = this.getDistanceSqFast(center, entity.pos);
         if (distSq <= radiusSq) {
           seen.add(entity.id);
@@ -293,43 +336,72 @@ export class AggressiveSpatialOptimizer {
         }
       }
     }
-    
+
     return results;
   }
 
   /**
    * Medium resolution grid query
    */
-  private queryMediumGrid(center: Vector3, radius: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
+  private queryMediumGrid(
+    center: Vector3,
+    radius: number,
+    team?: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
     // Similar to coarse but with 2x cell size and more thorough search
     const mediumCellSize = this.cellSize * 2;
-    return this.queryGridWithCellSize(center, radius, this.mediumGrid, mediumCellSize, team, excludeId);
+    return this.queryGridWithCellSize(
+      center,
+      radius,
+      this.mediumGrid,
+      mediumCellSize,
+      team,
+      excludeId,
+    );
   }
 
   /**
    * Fine grid query - fallback to original implementation for precision
    */
-  private queryFineGrid(center: Vector3, radius: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
-  // Query the internal fineGrid (1x cell size) for precise results.
-  // This avoids relying on the wrapped baseGrid, which tests sometimes
-  // leave unpopulated while the optimizer's internal grids are populated
-  // via updateSpatialGrids.
-  return this.queryGridWithCellSize(center, radius, this.fineGrid, this.cellSize, team, excludeId);
+  private queryFineGrid(
+    center: Vector3,
+    radius: number,
+    team?: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
+    // Query the internal fineGrid (1x cell size) for precise results.
+    // This avoids relying on the wrapped baseGrid, which tests sometimes
+    // leave unpopulated while the optimizer's internal grids are populated
+    // via updateSpatialGrids.
+    return this.queryGridWithCellSize(
+      center,
+      radius,
+      this.fineGrid,
+      this.cellSize,
+      team,
+      excludeId,
+    );
   }
 
   /**
    * Query ring at specific radius for expanding search
    */
-  private queryRingApproximate(center: Vector3, radius: number, team?: Team, excludeId?: EntityId): SpatialEntity[] {
+  private queryRingApproximate(
+    center: Vector3,
+    radius: number,
+    team?: Team,
+    excludeId?: EntityId,
+  ): SpatialEntity[] {
     // Use coarse grid for ring queries to be very fast
     const innerRadius = radius * 0.7; // Inner ring boundary
     const outerResults = this.queryCoarseGrid(center, radius, team, excludeId);
-    const innerResults = radius > this.cellSize * 2 ? 
-      this.queryCoarseGrid(center, innerRadius, team, excludeId) : [];
-    
+    const innerResults =
+      radius > this.cellSize * 2 ? this.queryCoarseGrid(center, innerRadius, team, excludeId) : [];
+
     // Return entities in the ring (outer - inner)
-    const innerIds = new Set(innerResults.map(e => e.id));
-    return outerResults.filter(e => !innerIds.has(e.id));
+    const innerIds = new Set(innerResults.map((e) => e.id));
+    return outerResults.filter((e) => !innerIds.has(e.id));
   }
 
   /**
@@ -350,24 +422,27 @@ export class AggressiveSpatialOptimizer {
     // If we've recently updated, skip to reduce work - but always allow an update
     // when grids are currently empty (initial population) so the first call
     // actually populates the multi-resolution grids.
-    if (this.currentFrame - this.lastSpatialUpdate < this.spatialUpdateFrequency && this.fineGrid.size > 0) {
+    if (
+      this.currentFrame - this.lastSpatialUpdate < this.spatialUpdateFrequency &&
+      this.fineGrid.size > 0
+    ) {
       return; // Skip update this frame
     }
-    
+
     this.lastSpatialUpdate = this.currentFrame;
-    
+
     // Clear grids
     this.coarseGrid.clear();
     this.mediumGrid.clear();
     this.fineGrid.clear();
-    
+
     // Populate all resolution levels
     for (const entity of entities) {
       this.insertIntoGrid(entity, this.coarseGrid, this.cellSize * 4);
       this.insertIntoGrid(entity, this.mediumGrid, this.cellSize * 2);
       this.insertIntoGrid(entity, this.fineGrid, this.cellSize);
     }
-    
+
     // Expire old cache entries
     this.expireCache();
   }
@@ -375,14 +450,18 @@ export class AggressiveSpatialOptimizer {
   /**
    * Insert entity into specific grid
    */
-  private insertIntoGrid(entity: SpatialEntity, grid: Map<number, SpatialEntity[]>, cellSize: number) {
+  private insertIntoGrid(
+    entity: SpatialEntity,
+    grid: Map<number, SpatialEntity[]>,
+    cellSize: number,
+  ) {
     const key = this.linearIndex(
       Math.floor(entity.pos.x / cellSize),
       Math.floor(entity.pos.y / cellSize),
       Math.floor(entity.pos.z / cellSize),
-      cellSize
+      cellSize,
     );
-    
+
     let bucket = grid.get(key);
     if (!bucket) {
       bucket = [];
@@ -400,17 +479,17 @@ export class AggressiveSpatialOptimizer {
     grid: Map<number, SpatialEntity[]>,
     cellSize: number,
     team?: Team,
-    excludeId?: EntityId
+    excludeId?: EntityId,
   ): SpatialEntity[] {
     const cellRadius = Math.ceil(radius / cellSize);
     const centerCellX = Math.floor(center.x / cellSize);
     const centerCellY = Math.floor(center.y / cellSize);
     const centerCellZ = Math.floor(center.z / cellSize);
-    
+
     const results: SpatialEntity[] = [];
     const radiusSq = radius * radius;
     const seen = new Set<EntityId>();
-    
+
     for (let dx = -cellRadius; dx <= cellRadius; dx++) {
       for (let dy = -cellRadius; dy <= cellRadius; dy++) {
         for (let dz = -cellRadius; dz <= cellRadius; dz++) {
@@ -418,17 +497,17 @@ export class AggressiveSpatialOptimizer {
             centerCellX + dx,
             centerCellY + dy,
             centerCellZ + dz,
-            cellSize
+            cellSize,
           );
-          
+
           const bucket = grid.get(key);
           if (!bucket) continue;
-          
+
           for (const entity of bucket) {
             if (seen.has(entity.id)) continue;
             if (team !== undefined && entity.team !== team) continue;
             if (excludeId !== undefined && entity.id === excludeId) continue;
-            
+
             const distSq = this.getDistanceSqFast(center, entity.pos);
             if (distSq <= radiusSq) {
               seen.add(entity.id);
@@ -438,7 +517,7 @@ export class AggressiveSpatialOptimizer {
         }
       }
     }
-    
+
     return results;
   }
 
@@ -450,7 +529,7 @@ export class AggressiveSpatialOptimizer {
     radius: number,
     team?: Team,
     excludeId?: EntityId,
-    approximationLevel?: number
+    approximationLevel?: number,
   ): string {
     const posKey = this.positionKey(center);
     return `${posKey}:${Math.round(radius)}:${team}:${excludeId}:${approximationLevel}`;
@@ -481,13 +560,13 @@ export class AggressiveSpatialOptimizer {
         this.hierarchicalCache.delete(key);
       }
     }
-    
+
     for (const [key, entry] of this.commonNeighborCache.entries()) {
       if (this.currentFrame - entry.frame > this.cacheTTL * 2) {
         this.commonNeighborCache.delete(key);
       }
     }
-    
+
     // Limit LUT size
     if (this.distanceLUT.size > 10000) {
       this.distanceLUT.clear();
@@ -498,13 +577,14 @@ export class AggressiveSpatialOptimizer {
    * Get performance metrics
    */
   getMetrics() {
-    const cacheHitRate = this.metrics.cacheHits / (this.metrics.cacheHits + this.metrics.cacheMisses);
+    const cacheHitRate =
+      this.metrics.cacheHits / (this.metrics.cacheHits + this.metrics.cacheMisses);
     return {
       ...this.metrics,
       cacheHitRate: cacheHitRate || 0,
       cacheSize: this.hierarchicalCache.size,
       neighborCacheSize: this.commonNeighborCache.size,
-      lutSize: this.distanceLUT.size
+      lutSize: this.distanceLUT.size,
     };
   }
 

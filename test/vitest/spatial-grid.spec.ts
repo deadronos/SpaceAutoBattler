@@ -14,14 +14,14 @@ describe('Spatial Grid Unit Tests', () => {
       id: 1,
       pos: { x: 100, y: 100, z: 100 },
       radius: 16,
-      team: 'red'
+      team: 'red',
     };
 
     const entity2: SpatialEntity = {
       id: 2,
       pos: { x: 150, y: 100, z: 100 },
       radius: 16,
-      team: 'red'
+      team: 'red',
     };
 
     spatialGrid.insert(entity1);
@@ -30,8 +30,8 @@ describe('Spatial Grid Unit Tests', () => {
     // Query radius should find both entities
     const results = spatialGrid.queryRadius({ x: 125, y: 100, z: 100 }, 50);
     expect(results).toHaveLength(2);
-    expect(results.some(e => e.id === 1)).toBe(true);
-    expect(results.some(e => e.id === 2)).toBe(true);
+    expect(results.some((e) => e.id === 1)).toBe(true);
+    expect(results.some((e) => e.id === 2)).toBe(true);
   });
 
   it('should filter by team correctly', () => {
@@ -39,14 +39,14 @@ describe('Spatial Grid Unit Tests', () => {
       id: 1,
       pos: { x: 100, y: 100, z: 100 },
       radius: 16,
-      team: 'red'
+      team: 'red',
     };
 
     const blueEntity: SpatialEntity = {
       id: 2,
       pos: { x: 150, y: 100, z: 100 },
       radius: 16,
-      team: 'blue'
+      team: 'blue',
     };
 
     spatialGrid.insert(redEntity);
@@ -73,7 +73,7 @@ describe('Spatial Grid Unit Tests', () => {
       id: 1,
       pos: { x: 100, y: 100, z: 100 },
       radius: 16,
-      team: 'red'
+      team: 'red',
     };
 
     spatialGrid.insert(entity);

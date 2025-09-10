@@ -8,6 +8,7 @@ This document provides specific examples and templates for creating explosion te
 
 **File**: `soft-circle-512.png`
 **Specifications**:
+
 - **Size**: 512×512 pixels
 - **Format**: PNG with alpha channel
 - **Colors**: White (#FFFFFF) to transparent black (#00000000)
@@ -15,6 +16,7 @@ This document provides specific examples and templates for creating explosion te
 - **Edge**: Smooth falloff, no hard transitions
 
 **Photoshop/GIMP Creation Steps**:
+
 1. Create new 512×512 document with transparent background
 2. Select Radial Gradient tool
 3. Set foreground to white (#FFFFFF), background to transparent
@@ -24,14 +26,21 @@ This document provides specific examples and templates for creating explosion te
 7. Save as PNG with transparency
 
 **CSS Background Equivalent** (for reference):
+
 ```css
-background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 40%, rgba(255,255,255,0) 100%);
+background: radial-gradient(
+  circle,
+  rgba(255, 255, 255, 1) 0%,
+  rgba(255, 255, 255, 0.8) 40%,
+  rgba(255, 255, 255, 0) 100%
+);
 ```
 
 ### Performance Soft-Circle (256×256)
 
 **File**: `soft-circle-256.png`
 **Same specifications as 512×512 but at 256×256 resolution**
+
 - Use for mobile or when many particles are on screen
 - Maintains visual quality while reducing memory usage by 75%
 
@@ -39,6 +48,7 @@ background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8
 
 **File**: `soft-circle-1024.png`
 **Same specifications as 512×512 but at 1024×1024 resolution**
+
 - Use sparingly for hero effects only
 - 4x memory usage - ensure adequate GPU memory
 
@@ -48,6 +58,7 @@ background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8
 
 **File**: `noise-perlin-512.png`
 **Specifications**:
+
 - **Size**: 512×512 pixels
 - **Format**: PNG, RGB channels used
 - **Red Channel**: Primary noise (0-255)
@@ -56,6 +67,7 @@ background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8
 - **Alpha Channel**: Optional masking (255 for full coverage)
 
 **Generation Parameters**:
+
 - **Frequency**: 0.02 (low frequency for large features)
 - **Octaves**: 4 (multi-scale detail)
 - **Persistence**: 0.5 (how much each octave contributes)
@@ -67,6 +79,7 @@ background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8
 
 **File**: `noise-fractal-512.png`
 **More complex noise for detailed explosions**
+
 - Higher octave count (6-8)
 - Lower persistence (0.3-0.4) for sharp details
 - Higher lacunarity (2.5-3.0) for fine structure
@@ -77,20 +90,23 @@ background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8
 
 **File**: `palette-fire.png`
 **Specifications**:
+
 - **Size**: 16×1 pixels (horizontal strip)
 - **Format**: PNG, RGB
 - **Usage**: Lookup texture for color progression
 
 **Color Stops** (left to right):
+
 ```
 Pixel 0:  #FFFBDA (bright white-yellow)
 Pixel 4:  #FFD700 (gold)
 Pixel 8:  #FF8C00 (orange)
-Pixel 12: #FF4500 (red-orange)  
+Pixel 12: #FF4500 (red-orange)
 Pixel 15: #440000 (dark red)
 ```
 
 **Shader Usage**:
+
 ```glsl
 vec3 fireColor = texture2D(firePalette, vec2(lifeRatio, 0.5)).rgb;
 ```
@@ -99,6 +115,7 @@ vec3 fireColor = texture2D(firePalette, vec2(lifeRatio, 0.5)).rgb;
 
 **File**: `palette-electric.png`
 **Color Stops**:
+
 ```
 Pixel 0:  #FFFFFF (pure white)
 Pixel 4:  #E0FFFF (light cyan)
@@ -129,28 +146,28 @@ Action: "Create Soft Circle"
 (define (create-soft-circle size filename)
   (let* ((img (car (gimp-image-new size size RGB)))
          (layer (car (gimp-layer-new img size size RGBA-IMAGE "Soft Circle" 100 NORMAL-MODE))))
-    
+
     (gimp-image-add-layer img layer 0)
     (gimp-context-set-foreground '(255 255 255))
     (gimp-context-set-background '(0 0 0))
-    
+
     ; Create radial gradient
-    (gimp-edit-blend layer FG-BG-RGB-MODE NORMAL-MODE 
-                     GRADIENT-RADIAL 100 0 REPEAT-NONE FALSE 
-                     FALSE 0 0 TRUE 
+    (gimp-edit-blend layer FG-BG-RGB-MODE NORMAL-MODE
+                     GRADIENT-RADIAL 100 0 REPEAT-NONE FALSE
+                     FALSE 0 0 TRUE
                      (/ size 2) (/ size 2)    ; center
                      (* size 0.45) (* size 0.45))  ; radius
-    
+
     ; Add transparency
     (gimp-layer-add-alpha layer)
-    
+
     ; Apply gamma correction
     (gimp-levels layer HISTOGRAM-VALUE 0 255 0.45 0 255)
-    
+
     ; Export
     (file-png-save RUN-NONINTERACTIVE img layer filename filename
                    0 9 0 0 0 0 0)
-    
+
     (gimp-image-delete img)))
 
 ; Usage: (create-soft-circle 512 "soft-circle-512.png")
@@ -165,7 +182,7 @@ Nodes for procedural soft-circle texture:
 3. ColorRamp -> Constant, Black to White
 4. Math -> Distance, UV to (0.5, 0.5)
 5. Math -> Power, Distance result ^ 2.2
-6. Math -> Subtract, 1.0 - Power result  
+6. Math -> Subtract, 1.0 - Power result
 7. ColorRamp -> Linear, adjust stops
 8. Output to Alpha of Principled BSDF
 ```
@@ -199,6 +216,7 @@ assets/textures/
 **Format**: `[type]-[variant]-[size].[ext]`
 
 **Examples**:
+
 ```
 soft-circle-standard-512.png    # Standard soft circle, 512px
 soft-circle-sharp-256.png       # Sharp-edged variant, 256px
@@ -207,8 +225,9 @@ palette-fire-warm-16x1.png      # Fire palette, warm colors, 16x1
 ```
 
 **Variants**:
+
 - `standard` - Default parameters
-- `sharp` - Higher contrast, defined edges  
+- `sharp` - Higher contrast, defined edges
 - `soft` - Lower contrast, blurry edges
 - `organic` - Natural, irregular patterns
 - `geometric` - Clean, mathematical patterns
@@ -248,14 +267,14 @@ palette-fire-warm-16x1.png      # Fire palette, warm colors, 16x1
 // Load and test custom textures
 async function testCustomTexture(url) {
   const texture = await textureLoader.loadAsync(url);
-  
+
   // Apply to test explosion
   addParticleExplosion(gameState, {
     pos: { x: 0, y: 0, z: 0 },
     radius: 25,
-    customTexture: texture
+    customTexture: texture,
   });
-  
+
   console.log(`Loaded texture: ${texture.image.width}x${texture.image.height}`);
 }
 
@@ -269,19 +288,19 @@ testCustomTexture('assets/textures/explosions/soft-circle-512.png');
 // Validate texture properties
 function validateExplosionTexture(texture) {
   const issues = [];
-  
+
   if (!isPowerOfTwo(texture.image.width)) {
     issues.push('Width is not power of 2');
   }
-  
+
   if (texture.image.width !== texture.image.height) {
     issues.push('Texture is not square');
   }
-  
+
   if (!texture.format === THREE.RGBAFormat) {
     issues.push('Missing alpha channel');
   }
-  
+
   return issues;
 }
 

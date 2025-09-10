@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // Smoke test: load the standalone build and ensure no console errors and at least one InstancedMesh exists
 test('instancing smoke - no console errors and instanced mesh present', async ({ page }) => {
   const consoleMessages: string[] = [];
-  page.on('console', msg => {
+  page.on('console', (msg) => {
     if (msg.type() === 'error') consoleMessages.push(msg.text());
   });
 
@@ -29,11 +29,16 @@ test('instancing smoke - no console errors and instanced mesh present', async ({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // test helper probing global scene; narrow casts are noisy here
       if (typeof (scene as unknown as { traverse?: unknown }).traverse === 'function') {
-        const traverseFn = (scene as unknown as { traverse: (cb: (o: unknown) => void) => void }).traverse;
-        traverseFn((o: unknown) => { if (o && (o as unknown as { isInstancedMesh?: boolean }).isInstancedMesh) count++; });
+        const traverseFn = (scene as unknown as { traverse: (cb: (o: unknown) => void) => void })
+          .traverse;
+        traverseFn((o: unknown) => {
+          if (o && (o as unknown as { isInstancedMesh?: boolean }).isInstancedMesh) count++;
+        });
       }
       return count;
-    } catch { return 0; }
+    } catch {
+      return 0;
+    }
   });
 
   expect(consoleMessages.length).toBe(0);

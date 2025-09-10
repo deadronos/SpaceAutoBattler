@@ -29,7 +29,7 @@ describe('debugSVG no-op when GLTF mode enabled', () => {
       },
       reloadAll: async () => {},
       clearCache: (_?: string) => {},
-      listCached: () => []
+      listCached: () => [],
     } as any;
 
     const stats = (global as any).debugSVG.getStats();

@@ -25,10 +25,12 @@ export class FileWatcher {
     // don't start the network polling — treat it as created and use a
     // surrogate mod-time. This avoids any HEAD requests entirely.
     try {
-      const standalone = (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
-                         (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
-      const inlineAssets = (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
-                           (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
+      const standalone =
+        (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
+        (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
+      const inlineAssets =
+        (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
+        (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
       if (standalone && inlineAssets && typeof filePath === 'string' && filePath.endsWith('.svg')) {
         this.watchers.set(filePath, callback);
         const cleaned = filePath.split(/[?#]/)[0];
@@ -42,12 +44,14 @@ export class FileWatcher {
           return;
         }
       }
-    } catch { /* ignore and fall back to normal behavior */ }
+    } catch {
+      /* ignore and fall back to normal behavior */
+    }
 
     this.watchers.set(filePath, callback);
 
     // Get initial modification time
-    this.checkFile(filePath).then(modTime => {
+    this.checkFile(filePath).then((modTime) => {
       if (modTime !== null) {
         this.lastModifiedTimes.set(filePath, modTime);
       }
@@ -102,8 +106,14 @@ export class FileWatcher {
       }
 
       return modTime;
-    } catch (_error) { void _error;// Use centralized logger
-      try { logger.warn(`[FileWatcher] Error checking file ${filePath}:`, _error); } catch (_e) { void _e; void _e; }
+    } catch (_error) {
+      void _error; // Use centralized logger
+      try {
+        logger.warn(`[FileWatcher] Error checking file ${filePath}:`, _error);
+      } catch (_e) {
+        void _e;
+        void _e;
+      }
       return null;
     }
   }
@@ -114,33 +124,64 @@ export class FileWatcher {
       // If the app has inlined SVG assets (standalone), skip network HEAD checks
       // for those assets to avoid aborted HEAD requests in the browser.
       try {
-    logger.debug && logger.debug('[FileWatcher] getFileModificationTime called for', filePath);
+        logger.debug && logger.debug('[FileWatcher] getFileModificationTime called for', filePath);
         // If the runtime was produced by the standalone inliner, honor the
         // explicit standalone flag and short-circuit any network HEAD checks
         // for SVG assets. This prevents browsers from issuing transient HEAD
         // requests (which can be aborted) when assets are embedded.
-        const standalone = (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
-                           (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
-        const inlineAssets = (typeof globalThis !== 'undefined' ? (globalThis as any).__INLINE_SVG_ASSETS : undefined) ||
-                             (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
-        if (standalone && inlineAssets && typeof filePath === 'string' && filePath.endsWith('.svg')) {
+        const standalone =
+          (typeof globalThis !== 'undefined' ? (globalThis as any).__STANDALONE : undefined) ||
+          (typeof window !== 'undefined' ? (window as any).__STANDALONE : undefined);
+        const inlineAssets =
+          (typeof globalThis !== 'undefined'
+            ? (globalThis as any).__INLINE_SVG_ASSETS
+            : undefined) ||
+          (typeof window !== 'undefined' ? (window as any).__INLINE_SVG_ASSETS : undefined);
+        if (
+          standalone &&
+          inlineAssets &&
+          typeof filePath === 'string' &&
+          filePath.endsWith('.svg')
+        ) {
           const cleaned = filePath.split(/[?#]/)[0];
           const m = cleaned.match(/([^/]+)\.svg$/);
           const name = m ? m[1] : null;
           // Diagnostic: log standalone and presence in inlineAssets
-          try { logger.debug && logger.debug('[FileWatcher] standalone=', standalone, 'inlineHasKeys=', Object.keys(inlineAssets).slice(0,5)); } catch (_) { }
-          try { logger.debug && logger.debug('[FileWatcher] checking asset', name, 'present=', !!(name && inlineAssets && inlineAssets[name])); } catch (_) { }
+          try {
+            logger.debug &&
+              logger.debug(
+                '[FileWatcher] standalone=',
+                standalone,
+                'inlineHasKeys=',
+                Object.keys(inlineAssets).slice(0, 5),
+              );
+          } catch (_) {}
+          try {
+            logger.debug &&
+              logger.debug(
+                '[FileWatcher] checking asset',
+                name,
+                'present=',
+                !!(name && inlineAssets && inlineAssets[name]),
+              );
+          } catch (_) {}
           if (name && inlineAssets[name]) {
-            logger.debug && logger.debug('[FileWatcher] Short-circuited HEAD for inlined asset ' + name + ' path ' + filePath);
+            logger.debug &&
+              logger.debug(
+                '[FileWatcher] Short-circuited HEAD for inlined asset ' +
+                  name +
+                  ' path ' +
+                  filePath,
+              );
             return Date.now();
           }
         }
-      } catch { }
-    logger.debug && logger.debug('[FileWatcher] Issuing HEAD for', filePath);
+      } catch {}
+      logger.debug && logger.debug('[FileWatcher] Issuing HEAD for', filePath);
       // Try HEAD request to get last-modified header
       const response = await fetch(filePath, {
         method: 'HEAD',
-        cache: 'no-cache' // Ensure we don't get cached response
+        cache: 'no-cache', // Ensure we don't get cached response
       });
 
       if (!response.ok) {
@@ -153,20 +194,23 @@ export class FileWatcher {
       }
 
       // Fallback: try to get etag or content-length change
-  const etag = response.headers.get('etag');
-  const _contentLength = response.headers.get('content-length');
+      const etag = response.headers.get('etag');
+      const _contentLength = response.headers.get('content-length');
 
       if (etag) {
         // Use etag as a simple change indicator
         return etag.split('').reduce((hash, char) => {
-          return ((hash << 5) - hash) + char.charCodeAt(0);
+          return (hash << 5) - hash + char.charCodeAt(0);
         }, 0);
       }
 
       // Last resort: use current time (not ideal but prevents errors)
       return Date.now();
-
-    } catch (_e) { void _e; void _e; return null; }
+    } catch (_e) {
+      void _e;
+      void _e;
+      return null;
+    }
   }
 
   // Notify callback about file change
@@ -175,20 +219,27 @@ export class FileWatcher {
     if (callback) {
       try {
         callback(filePath, changeType);
-      } catch (_error) { void _error;try { logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, _error); } catch (_e) { void _e; void _e; }
+      } catch (_error) {
+        void _error;
+        try {
+          logger.error(`[FileWatcher] Error in change callback for ${filePath}:`, _error);
+        } catch (_e) {
+          void _e;
+          void _e;
+        }
       }
     }
   }
 
   // Watch multiple files
   watchMultiple(filePaths: string[], callback: FileChangeCallback): void {
-    filePaths.forEach(filePath => this.watch(filePath, callback));
+    filePaths.forEach((filePath) => this.watch(filePath, callback));
   }
 
   // Stop watching all files
   unwatchAll(): void {
     const filePaths = Array.from(this.watchers.keys());
-    filePaths.forEach(filePath => this.unwatch(filePath));
+    filePaths.forEach((filePath) => this.unwatch(filePath));
   }
 
   // Get list of watched files
@@ -206,7 +257,7 @@ export class FileWatcher {
 
     this.unwatchAll();
 
-    filePaths.forEach(filePath => {
+    filePaths.forEach((filePath) => {
       const callback = callbacks.get(filePath);
       if (callback) {
         this.watch(filePath, callback);
@@ -222,7 +273,7 @@ export class FileWatcher {
     // If switching from one-shot to continuous, restart watchers
     if (!this.oneShotMode) {
       const filePaths = Array.from(this.watchers.keys());
-      filePaths.forEach(fp => {
+      filePaths.forEach((fp) => {
         // restart watch to ensure interval is set
         const cb = this.watchers.get(fp);
         if (cb) {
@@ -242,7 +293,7 @@ export class FileWatcher {
   // Force check all watched files immediately
   async checkAllFiles(): Promise<void> {
     const filePaths = Array.from(this.watchers.keys());
-    await Promise.all(filePaths.map(filePath => this.checkFile(filePath)));
+    await Promise.all(filePaths.map((filePath) => this.checkFile(filePath)));
   }
 }
 
@@ -264,6 +315,5 @@ export function watchSVGFiles(svgUrls: string[], callback: FileChangeCallback): 
 // Convenience function to unwatch SVG files
 export function unwatchSVGFiles(svgUrls: string[]): void {
   const watcher = getFileWatcher();
-  svgUrls.forEach(url => watcher.unwatch(url));
+  svgUrls.forEach((url) => watcher.unwatch(url));
 }
-

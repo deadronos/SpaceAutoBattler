@@ -13,7 +13,7 @@ export function getForwardVector(pitch: number, yaw: number): Vector3 {
   return {
     x: Math.cos(yaw) * cosPitch,
     y: Math.sin(yaw) * cosPitch,
-    z: Math.sin(pitch)
+    z: Math.sin(pitch),
   };
 }
 
@@ -48,7 +48,7 @@ export function getRightVector(pitch: number, yaw: number, roll: number): Vector
   return {
     x: right.x * cosR + up.x * sinR,
     y: right.y * cosR + up.y * sinR,
-    z: right.z * cosR + up.z * sinR
+    z: right.z * cosR + up.z * sinR,
   };
 }
 
@@ -58,12 +58,12 @@ export function getRightVector(pitch: number, yaw: number, roll: number): Vector
 export function getUpVector(pitch: number, yaw: number, roll: number): Vector3 {
   const forward = getForwardVector(pitch, yaw);
   const right = getRightVector(pitch, yaw, roll);
-  
+
   // Up = forward × right (cross product)
   return {
     x: forward.y * right.z - forward.z * right.y,
     y: forward.z * right.x - forward.x * right.z,
-    z: forward.x * right.y - forward.y * right.x
+    z: forward.x * right.y - forward.y * right.x,
   };
 }
 
@@ -75,15 +75,15 @@ export function lookAt(fromPos: Vector3, targetPos: Vector3): { pitch: number; y
   const dx = targetPos.x - fromPos.x;
   const dy = targetPos.y - fromPos.y;
   const dz = targetPos.z - fromPos.z;
-  
+
   // Calculate horizontal distance for pitch calculation
   const sqrt = Math.sqrt;
   const horizontalDistance = sqrt(dx * dx + dy * dy);
-  
+
   return {
     yaw: Math.atan2(dy, dx),
     // Pitch is the angle above/below the horizontal plane
-    pitch: Math.atan2(dz, horizontalDistance)
+    pitch: Math.atan2(dz, horizontalDistance),
   };
 }
 
@@ -145,7 +145,7 @@ export function normalize(v: Vector3): Vector3 {
   return {
     x: v.x * inv,
     y: v.y * inv,
-    z: v.z * inv
+    z: v.z * inv,
   };
 }
 
@@ -163,7 +163,7 @@ export function cross(a: Vector3, b: Vector3): Vector3 {
   return {
     x: a.y * b.z - a.z * b.y,
     y: a.z * b.x - a.x * b.z,
-    z: a.x * b.y - a.y * b.x
+    z: a.x * b.y - a.y * b.x,
   };
 }
 
@@ -174,7 +174,7 @@ export function scale(v: Vector3, s: number): Vector3 {
   return {
     x: v.x * s,
     y: v.y * s,
-    z: v.z * s
+    z: v.z * s,
   };
 }
 
@@ -185,7 +185,7 @@ export function add(a: Vector3, b: Vector3): Vector3 {
   return {
     x: a.x + b.x,
     y: a.y + b.y,
-    z: a.z + b.z
+    z: a.z + b.z,
   };
 }
 
@@ -196,6 +196,6 @@ export function subtract(a: Vector3, b: Vector3): Vector3 {
   return {
     x: a.x - b.x,
     y: a.y - b.y,
-    z: a.z - b.z
+    z: a.z - b.z,
   };
 }

@@ -13,18 +13,18 @@ vi.mock('three', async () => {
       setPixelRatio: vi.fn(),
       render: vi.fn(),
       dispose: vi.fn(),
-      domElement: { width: 800, height: 600 }
+      domElement: { width: 800, height: 600 },
     })),
     Scene: vi.fn().mockImplementation(() => ({
       add: vi.fn(),
       remove: vi.fn(),
-      background: null
+      background: null,
     })),
     PerspectiveCamera: vi.fn().mockImplementation(() => ({
       aspect: 1,
       updateProjectionMatrix: vi.fn(),
       position: { set: vi.fn() },
-      lookAt: vi.fn()
+      lookAt: vi.fn(),
     })),
     OrthographicCamera: vi.fn().mockImplementation(() => ({
       left: -1,
@@ -33,33 +33,34 @@ vi.mock('three', async () => {
       bottom: -1,
       near: 0,
       far: 1,
-      updateProjectionMatrix: vi.fn()
+      updateProjectionMatrix: vi.fn(),
     })),
     // keep PlaneGeometry and InstancedBufferAttribute from actual if available
-  PlaneGeometry: (actual && actual.PlaneGeometry) ? actual.PlaneGeometry : vi.fn(),
-  InstancedBufferAttribute: (actual && actual.InstancedBufferAttribute) ? actual.InstancedBufferAttribute : vi.fn(),
+    PlaneGeometry: actual && actual.PlaneGeometry ? actual.PlaneGeometry : vi.fn(),
+    InstancedBufferAttribute:
+      actual && actual.InstancedBufferAttribute ? actual.InstancedBufferAttribute : vi.fn(),
     // provide the other mocks we previously had
     Color: vi.fn(),
     AmbientLight: vi.fn(),
     DirectionalLight: vi.fn().mockImplementation(() => ({
-      position: { set: vi.fn() }
+      position: { set: vi.fn() },
     })),
     BoxGeometry: vi.fn(),
     EdgesGeometry: vi.fn(),
     LineBasicMaterial: vi.fn(),
     LineSegments: vi.fn().mockImplementation(() => ({
-      position: { set: vi.fn() }
+      position: { set: vi.fn() },
     })),
     Group: vi.fn().mockImplementation(() => ({
       add: vi.fn(),
-      remove: vi.fn()
+      remove: vi.fn(),
     })),
     ConeGeometry: vi.fn(),
     MeshPhongMaterial: vi.fn(),
     Mesh: vi.fn().mockImplementation(() => ({
       position: { set: vi.fn() },
       rotation: { set: vi.fn() },
-      scale: { setScalar: vi.fn() }
+      scale: { setScalar: vi.fn() },
     })),
     SphereGeometry: vi.fn(),
     MeshBasicMaterial: vi.fn(),
@@ -69,17 +70,17 @@ vi.mock('three', async () => {
       instanceMatrix: { needsUpdate: false },
       geometry: { dispose: vi.fn() },
       material: { dispose: vi.fn() },
-      parent: null
+      parent: null,
     })),
     Matrix4: vi.fn().mockImplementation(() => ({
       compose: vi.fn(),
-      makeScale: vi.fn()
+      makeScale: vi.fn(),
     })),
     Vector3: vi.fn().mockImplementation(() => ({
       set: vi.fn(),
       copy: vi.fn(),
       clone: vi.fn().mockReturnThis(),
-      setFromMatrixColumn: vi.fn().mockReturnThis()
+      setFromMatrixColumn: vi.fn().mockReturnThis(),
     })),
     Quaternion: vi.fn().mockImplementation(() => ({})),
     CanvasTexture: vi.fn(),
@@ -93,13 +94,13 @@ vi.mock('three', async () => {
       fragmentShader: opts && opts.fragmentShader,
       depthTest: opts && opts.depthTest,
       depthWrite: opts && opts.depthWrite,
-      needsUpdate: false
+      needsUpdate: false,
     })),
     WebGLRenderTarget: vi.fn().mockImplementation(() => ({
       width: 0,
       height: 0,
       texture: { type: undefined, format: undefined, name: '' },
-      dispose: vi.fn()
+      dispose: vi.fn(),
     })),
     // Numeric constants used by effects
     FloatType: 102,
@@ -108,7 +109,7 @@ vi.mock('three', async () => {
     UnsignedByteType: 103,
     // Add missing constants
     BackSide: 2,
-    DoubleSide: 2
+    DoubleSide: 2,
   };
 });
 
@@ -118,7 +119,7 @@ vi.mock('postprocessing', () => ({
     addPass: vi.fn(),
     render: vi.fn(),
     setSize: vi.fn(),
-    dispose: vi.fn()
+    dispose: vi.fn(),
   })),
   RenderPass: vi.fn(),
   EffectPass: vi.fn(),
@@ -126,7 +127,7 @@ vi.mock('postprocessing', () => ({
   ToneMappingEffect: vi.fn(),
   MotionBlurEffect: vi.fn(),
   DepthOfFieldEffect: vi.fn(),
-  SMAAEffect: vi.fn()
+  SMAAEffect: vi.fn(),
 }));
 
 describe('Three.js Renderer', () => {
@@ -142,7 +143,7 @@ describe('Three.js Renderer', () => {
       clientHeight: 600,
       getContext: vi.fn(),
       addEventListener: vi.fn(),
-      removeEventListener: vi.fn()
+      removeEventListener: vi.fn(),
     } as any;
 
     // Create initial state

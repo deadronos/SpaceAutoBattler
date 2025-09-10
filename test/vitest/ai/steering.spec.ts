@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { calculateEscapeScore, calculateSeparationForceWithCount, moveTowards } from '../../../src/core/ai/steering.js';
+import {
+  calculateEscapeScore,
+  calculateSeparationForceWithCount,
+  moveTowards,
+} from '../../../src/core/ai/steering.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../../src/config/behaviorConfig.js';
 
 describe('steering.calculateEscapeScore', () => {
@@ -25,14 +29,23 @@ describe('steering.calculateEscapeScore', () => {
 
 describe('steering.calculateSeparationForceWithCount', () => {
   it('returns zero force when no neighbors', () => {
-    const res = calculateSeparationForceWithCount({ x: 0, y: 0, z: 0 }, [], 100, 0.0001, Math.random);
+    const res = calculateSeparationForceWithCount(
+      { x: 0, y: 0, z: 0 },
+      [],
+      100,
+      0.0001,
+      Math.random,
+    );
     expect(res.neighborCount).toBe(0);
     expect(res.force).toEqual({ x: 0, y: 0, z: 0 });
   });
 
   it('points away from nearby neighbor cluster', () => {
     const ship = { x: 0, y: 0, z: 0 };
-    const neighbors = [ { x: 10, y: 0, z: 0 }, { x: 12, y: 0, z: 0 } ];
+    const neighbors = [
+      { x: 10, y: 0, z: 0 },
+      { x: 12, y: 0, z: 0 },
+    ];
     const res = calculateSeparationForceWithCount(ship, neighbors, 100, 0.0001, Math.random);
     // Should generally push left (negative x)
     expect(res.neighborCount).toBe(2);
@@ -62,7 +75,7 @@ describe('steering.moveTowards', () => {
       turnRate: 2,
       turrets: [],
       kills: 0,
-      level: { level: 1, xp: 0, nextLevelXp: 10 }
+      level: { level: 1, xp: 0, nextLevelXp: 10 },
     } as any;
 
     // Pick a target that requires a small yaw change from initial orientation (yaw=0)

@@ -1,11 +1,4 @@
-import type { 
-  GameState, 
-  Bullet, 
-  Ship, 
-  EntityId, 
-  Vector3, 
-  Team 
-} from '../../types/index.js';
+import type { GameState, Bullet, Ship, EntityId, Vector3, Team } from '../../types/index.js';
 import type { PhysicsAdapter } from '../adapters/physicsAdapter.js';
 import type { RendererAdapter } from '../adapters/rendererAdapter.js';
 import type { SpatialIndex } from '../spatialIndex.js';
@@ -68,7 +61,7 @@ export class ProjectileSystem {
       renderer?: RendererAdapter;
       spatial?: SpatialIndex;
       time?: TimeAdapter;
-    }
+    },
   ) {
     this.state = state;
     this.physicsAdapter = adapters?.physics;
@@ -94,7 +87,9 @@ export class ProjectileSystem {
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
-      } catch (_error) { void _error;logger.warn('Error in projectile event handler:', _error);
+      } catch (_error) {
+        void _error;
+        logger.warn('Error in projectile event handler:', _error);
       }
     }
   }
@@ -103,12 +98,12 @@ export class ProjectileSystem {
    * Fire a projectile from a ship's turret
    */
   fire(intent: FireIntent): EntityId | null {
-    const sourceShip = this.state.ships.find(s => s.id === intent.sourceShipId);
+    const sourceShip = this.state.ships.find((s) => s.id === intent.sourceShipId);
     if (!sourceShip) {
       return null;
     }
 
-    const turret = sourceShip.turrets.find(t => t.id === intent.turretId);
+    const turret = sourceShip.turrets.find((t) => t.id === intent.turretId);
     if (!turret || turret.cooldownLeft > 0) {
       return null;
     }
@@ -136,22 +131,34 @@ export class ProjectileSystem {
     // Base aim direction (unit) — compute sqrt only when needed for normalization
     let direction = { x: 1, y: 0, z: 0 };
     if (distSq > 0) {
-  const sqrt = Math.sqrt;
-  const distance = sqrt(distSq); // single sqrt for initial direction
+      const sqrt = Math.sqrt;
+      const distance = sqrt(distSq); // single sqrt for initial direction
       direction = { x: dx / distance, y: dy / distance, z: dz / distance };
     }
 
     // Apply accuracy/spread based on turret config and ship level
     try {
-      const turretAccuracy = typeof turretConfig.accuracy === 'number' ? turretConfig.accuracy : 1.0;
-      const maxSpread = typeof turretConfig.maxSpreadRadians === 'number' ? turretConfig.maxSpreadRadians : (2 * Math.PI) / 180; // default 2 deg
+      const turretAccuracy =
+        typeof turretConfig.accuracy === 'number' ? turretConfig.accuracy : 1.0;
+      const maxSpread =
+        typeof turretConfig.maxSpreadRadians === 'number'
+          ? turretConfig.maxSpreadRadians
+          : (2 * Math.PI) / 180; // default 2 deg
 
-  // Ship level reduction factor: configurable via behaviorConfig.globalSettings
-  const shipLevel = sourceShip.level?.level ?? 1;
-  const globalSettings = this.state.behaviorConfig ? this.state.behaviorConfig.globalSettings : undefined;
-  const perLevel = globalSettings && typeof globalSettings.turretLevelAccuracyPerLevel === 'number' ? globalSettings.turretLevelAccuracyPerLevel : 0.02;
-  const maxReduction = globalSettings && typeof globalSettings.turretLevelAccuracyMaxReduction === 'number' ? globalSettings.turretLevelAccuracyMaxReduction : 0.5;
-  const levelReduction = Math.max(0, Math.min(maxReduction, (shipLevel - 1) * perLevel));
+      // Ship level reduction factor: configurable via behaviorConfig.globalSettings
+      const shipLevel = sourceShip.level?.level ?? 1;
+      const globalSettings = this.state.behaviorConfig
+        ? this.state.behaviorConfig.globalSettings
+        : undefined;
+      const perLevel =
+        globalSettings && typeof globalSettings.turretLevelAccuracyPerLevel === 'number'
+          ? globalSettings.turretLevelAccuracyPerLevel
+          : 0.02;
+      const maxReduction =
+        globalSettings && typeof globalSettings.turretLevelAccuracyMaxReduction === 'number'
+          ? globalSettings.turretLevelAccuracyMaxReduction
+          : 0.5;
+      const levelReduction = Math.max(0, Math.min(maxReduction, (shipLevel - 1) * perLevel));
 
       const baseInaccuracy = Math.max(0, 1 - turretAccuracy);
       const finalInaccuracy = baseInaccuracy * (1 - levelReduction);
@@ -166,24 +173,32 @@ export class ProjectileSystem {
         // Sample a direction uniformly inside cone around 'direction'
         // Method: pick z = cos(theta) uniformly between cos(coneAngle) and 1, pick phi uniform 0..2pi
         const cosTheta = 1 - (1 - Math.cos(coneAngle)) * rngNext();
-  const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
+        const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
         const phi = 2 * Math.PI * rngNext();
 
         // Build orthonormal basis around original direction
-        const ux = direction.x, uy = direction.y, uz = direction.z;
+        const ux = direction.x,
+          uy = direction.y,
+          uz = direction.z;
         // Find a vector not parallel to u
         let vx: number, vy: number, vz: number;
         if (Math.abs(ux) < 0.9) {
           // cross with x-axis
-          vx = 0; vy = -uz; vz = uy;
+          vx = 0;
+          vy = -uz;
+          vz = uy;
         } else {
           // cross with y-axis
-          vx = uz; vy = 0; vz = -ux;
+          vx = uz;
+          vy = 0;
+          vz = -ux;
         }
-  // normalize v (use single sqrt and guard against tiny length)
-  const vlenSq = vx*vx + vy*vy + vz*vz;
-  const vlen = vlenSq > 0 ? Math.sqrt(vlenSq) : 1;
-  vx /= vlen; vy /= vlen; vz /= vlen;
+        // normalize v (use single sqrt and guard against tiny length)
+        const vlenSq = vx * vx + vy * vy + vz * vz;
+        const vlen = vlenSq > 0 ? Math.sqrt(vlenSq) : 1;
+        vx /= vlen;
+        vy /= vlen;
+        vz /= vlen;
         // w = u x v
         const wx = uy * vz - uz * vy;
         const wy = uz * vx - ux * vz;
@@ -194,9 +209,9 @@ export class ProjectileSystem {
         const sampledY = cosTheta * uy + sinTheta * (Math.cos(phi) * vy + Math.sin(phi) * wy);
         const sampledZ = cosTheta * uz + sinTheta * (Math.cos(phi) * vz + Math.sin(phi) * wz);
         // normalize just in case
-  const sLenSq = sampledX*sampledX + sampledY*sampledY + sampledZ*sampledZ;
-  const sLen = sLenSq > 0 ? Math.sqrt(sLenSq) : 1;
-  direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
+        const sLenSq = sampledX * sampledX + sampledY * sampledY + sampledZ * sampledZ;
+        const sLen = sLenSq > 0 ? Math.sqrt(sLenSq) : 1;
+        direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
       }
     } catch (e) {
       // If anything goes wrong, fall back to perfect aim but log the error
@@ -211,10 +226,10 @@ export class ProjectileSystem {
       vel: {
         x: direction.x * turretConfig.bulletSpeed,
         y: direction.y * turretConfig.bulletSpeed,
-        z: direction.z * turretConfig.bulletSpeed
+        z: direction.z * turretConfig.bulletSpeed,
       },
       ttl: this.state.simConfig.bulletLifetime,
-      damage: turretConfig.damage
+      damage: turretConfig.damage,
     };
 
     // Add to state
@@ -231,7 +246,7 @@ export class ProjectileSystem {
       type: 'fired',
       bulletId,
       timestamp: this.state.time,
-      sourceShipId: sourceShip.id
+      sourceShipId: sourceShip.id,
     });
 
     return bulletId;
@@ -245,7 +260,7 @@ export class ProjectileSystem {
 
     for (let i = 0; i < this.state.bullets.length; i++) {
       const bullet = this.state.bullets[i];
-      
+
       // Update position
       bullet.pos.x += bullet.vel.x * dt;
       bullet.pos.y += bullet.vel.y * dt;
@@ -257,7 +272,7 @@ export class ProjectileSystem {
         this.emitEvent({
           type: 'expired',
           bulletId: bullet.id,
-          timestamp: this.state.time
+          timestamp: this.state.time,
         });
         bulletsToRemove.push(i);
         continue;
@@ -269,7 +284,7 @@ export class ProjectileSystem {
         this.emitEvent({
           type: 'destroyed',
           bulletId: bullet.id,
-          timestamp: this.state.time
+          timestamp: this.state.time,
         });
         bulletsToRemove.push(i);
         continue;
@@ -299,7 +314,7 @@ export class ProjectileSystem {
    * Remove a specific bullet
    */
   removeBullet(bulletId: EntityId): boolean {
-    const index = this.state.bullets.findIndex(b => b.id === bulletId);
+    const index = this.state.bullets.findIndex((b) => b.id === bulletId);
     if (index === -1) {
       return false;
     }
@@ -311,7 +326,7 @@ export class ProjectileSystem {
     this.emitEvent({
       type: 'destroyed',
       bulletId,
-      timestamp: this.state.time
+      timestamp: this.state.time,
     });
 
     return true;
@@ -333,11 +348,7 @@ export class ProjectileSystem {
     for (const bullet of this.state.bullets) {
       bulletsByTeam[bullet.ownerTeam]++;
       totalTTL += bullet.ttl;
-      const speed = Math.sqrt(
-        bullet.vel.x ** 2 + 
-        bullet.vel.y ** 2 + 
-        bullet.vel.z ** 2
-      );
+      const speed = Math.sqrt(bullet.vel.x ** 2 + bullet.vel.y ** 2 + bullet.vel.z ** 2);
       totalSpeed += speed;
     }
 
@@ -346,7 +357,7 @@ export class ProjectileSystem {
       totalBullets: count,
       bulletsByTeam,
       avgTTL: count > 0 ? totalTTL / count : 0,
-      avgSpeed: count > 0 ? totalSpeed / count : 0
+      avgSpeed: count > 0 ? totalSpeed / count : 0,
     };
   }
 
@@ -358,13 +369,13 @@ export class ProjectileSystem {
 
     // Use spatial index for efficient collision detection
     const candidates = this.spatialIndex.queryBulletCollisions(
-      bullet.pos, 
+      bullet.pos,
       2, // bullet radius
-      25 // max ship radius
+      25, // max ship radius
     );
 
     for (const candidate of candidates) {
-      const ship = this.state.ships.find(s => s.id === candidate.id);
+      const ship = this.state.ships.find((s) => s.id === candidate.id);
       if (!ship || ship.team === bullet.ownerTeam) {
         continue;
       }
@@ -398,11 +409,11 @@ export class ProjectileSystem {
     const dy = bullet.pos.y - ship.pos.y;
     const dz = bullet.pos.z - ship.pos.z;
     const distSq = dx * dx + dy * dy + dz * dz;
-    
+
     const shipRadius = 20; // Ship collision radius
     const bulletRadius = 2; // Bullet collision radius
     const totalRadius = shipRadius + bulletRadius;
-    
+
     return distSq <= totalRadius * totalRadius;
   }
 
@@ -415,17 +426,17 @@ export class ProjectileSystem {
       const shieldDamage = Math.min(damage, ship.shield);
       ship.shield -= shieldDamage;
       damage -= shieldDamage;
-      
+
       // Mark shield as dirty for UI optimization
       ship._shieldDirty = true;
-      
+
       // Record shield hit for visual effects
       ship.lastShieldHitTime = this.state.time;
       ship.lastShieldHitStrength = shieldDamage;
       ship.lastShieldHitDir = {
         x: ship.pos.x - bullet.pos.x,
         y: ship.pos.y - bullet.pos.y,
-        z: ship.pos.z - bullet.pos.z
+        z: ship.pos.z - bullet.pos.z,
       };
     }
 
@@ -450,7 +461,7 @@ export class ProjectileSystem {
       targetId: ship.id,
       damage: bullet.damage,
       hitPosition: { ...bullet.pos },
-      penetrated
+      penetrated,
     };
 
     this.emitEvent({
@@ -459,7 +470,7 @@ export class ProjectileSystem {
       timestamp: this.state.time,
       sourceShipId: bullet.ownerShipId,
       targetId: ship.id,
-      hitResult
+      hitResult,
     });
   }
 
@@ -478,7 +489,7 @@ export class ProjectileSystem {
         velocity: bullet.vel,
         mass: 0.1, // Light bullet mass
         radius: 2, // Small bullet radius
-        collisionMask: bullet.ownerTeam === 'red' ? 0x02 : 0x01 // Hit opposite team
+        collisionMask: bullet.ownerTeam === 'red' ? 0x02 : 0x01, // Hit opposite team
       });
     }
 
@@ -497,7 +508,7 @@ export class ProjectileSystem {
         position: bullet.pos,
         velocity: bullet.vel,
         mass: 0.1,
-        radius: 2
+        radius: 2,
       });
     }
 
@@ -516,4 +527,3 @@ export class ProjectileSystem {
     return this.state.nextId++;
   }
 }
-

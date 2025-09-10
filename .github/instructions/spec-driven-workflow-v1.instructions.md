@@ -8,23 +8,26 @@ applyTo: '**'
 Receipt: "Follow a 6-phase spec-driven loop: Analyze → Design → Implement → Validate → Reflect → Handoff."
 
 6-phase micro-plan (one sentence each):
-- Analyze: gather facts, write 2–5 EARS-style requirements.  
-- Design: write a short design (diagram + interfaces) and tasks list.  
-- Implement: small commits, tests, and update tasks.md as you go.  
-- Validate: run automated tests, manual checks, and performance verifications.  
-- Reflect: refactor, update docs, and record technical debt.  
+
+- Analyze: gather facts, write 2–5 EARS-style requirements.
+- Design: write a short design (diagram + interfaces) and tasks list.
+- Implement: small commits, tests, and update tasks.md as you go.
+- Validate: run automated tests, manual checks, and performance verifications.
+- Reflect: refactor, update docs, and record technical debt.
 - Handoff: prepare PR with executive summary, changelog, tests, and artifacts.
 
 Quick templates
+
 - Requirement (EARS): WHEN <event>, THE SYSTEM SHALL <behavior> [Acceptance: how to test].
 - PR summary (3 lines): 1) Goal: <one-line> 2) Key changes: <files/functions> 3) Validation: <tests/metrics>. Attach decision records if any.
 
 Minimal acceptance checklist before merge:
-- [ ] 2–5 testable requirements written.  
-- [ ] Design doc linked in PR.  
-- [ ] Tests for each requirement (unit/integration).  
-- [ ] Performance baseline if applicable.  
-- [ ] Decision records for non-trivial trade-offs.  
+
+- [ ] 2–5 testable requirements written.
+- [ ] Design doc linked in PR.
+- [ ] Tests for each requirement (unit/integration).
+- [ ] Performance baseline if applicable.
+- [ ] Decision records for non-trivial trade-offs.
 - [ ] Exec summary and streamlined action log included.
 
 If blocked: re-run Analyze → adjust Confidence Score → pick PoC if medium/low confidence.
@@ -79,16 +82,11 @@ End.
 
 **Checklist:**
 
-- [ ] Code in small, testable increments.
-      - Document each increment with code changes, results, and test links.
-- [ ] Implement from dependencies upward.
-      - Document resolution order, justification, and verification.
-- [ ] Follow conventions.
-      - Document adherence and any deviations with a Decision Record.
-- [ ] Add meaningful comments.
-      - Focus on intent ("why"), not mechanics ("what").
-- [ ] Create files as planned.
-      - Document file creation log.
+- [ ] Code in small, testable increments. - Document each increment with code changes, results, and test links.
+- [ ] Implement from dependencies upward. - Document resolution order, justification, and verification.
+- [ ] Follow conventions. - Document adherence and any deviations with a Decision Record.
+- [ ] Add meaningful comments. - Focus on intent ("why"), not mechanics ("what").
+- [ ] Create files as planned. - Document file creation log.
 - [ ] Update task status in real time.
 
 **Critical Constraint (recommended):**
@@ -103,17 +101,11 @@ End.
 
 **Checklist:**
 
-- [ ] Execute automated tests.
-      - Document outputs, logs, and coverage reports.
-      - For failures, document root cause analysis and remediation.
-- [ ] Perform manual verification if necessary.
-      - Document procedures, checklists, and results.
-- [ ] Test edge cases and errors.
-      - Document results and evidence of correct error handling.
-- [ ] Verify performance.
-      - Document metrics and profile critical sections.
-- [ ] Log execution traces.
-      - Document path analysis and runtime behavior.
+- [ ] Execute automated tests. - Document outputs, logs, and coverage reports. - For failures, document root cause analysis and remediation.
+- [ ] Perform manual verification if necessary. - Document procedures, checklists, and results.
+- [ ] Test edge cases and errors. - Document results and evidence of correct error handling.
+- [ ] Verify performance. - Document metrics and profile critical sections.
+- [ ] Log execution traces. - Document path analysis and runtime behavior.
 
 **Critical Constraint (recommended):**
 
@@ -127,18 +119,12 @@ End.
 
 **Checklist:**
 
-- [ ] Refactor for maintainability.
-      - Document decisions, before/after comparisons, and impact.
-- [ ] Update all project documentation.
-      - Ensure all READMEs, diagrams, and comments are current.
-- [ ] Identify potential improvements.
-      - Document backlog with prioritization.
-- [ ] Validate success criteria.
-      - Document final verification matrix.
-- [ ] Perform meta-analysis.
-      - Reflect on efficiency, tool usage, and protocol adherence.
-- [ ] Auto-create technical debt issues.
-      - Document inventory and remediation plans.
+- [ ] Refactor for maintainability. - Document decisions, before/after comparisons, and impact.
+- [ ] Update all project documentation. - Ensure all READMEs, diagrams, and comments are current.
+- [ ] Identify potential improvements. - Document backlog with prioritization.
+- [ ] Validate success criteria. - Document final verification matrix.
+- [ ] Perform meta-analysis. - Reflect on efficiency, tool usage, and protocol adherence.
+- [ ] Auto-create technical debt issues. - Document inventory and remediation plans.
 
 **Critical Constraint (recommended):**
 
@@ -152,17 +138,14 @@ End.
 
 **Checklist:**
 
-- [ ] Generate executive summary.
-      - Use **Compressed Decision Record** format.
+- [ ] Generate executive summary. - Use **Compressed Decision Record** format.
 - [ ] Prepare pull request (if applicable):
-    1. Executive summary.
-    2. Changelog from **Streamlined Action Log**.
-    3. Links to validation artifacts and Decision Records.
-    4. Links to final `requirements.md`, `design.md`, and `tasks.md`.
-- [ ] Finalize workspace.
-      - Archive intermediate files, logs, and temporary artifacts to `.agent_work/`.
-- [ ] Continue to next task.
-      - Document transition or completion.
+  1. Executive summary.
+  2. Changelog from **Streamlined Action Log**.
+  3. Links to validation artifacts and Decision Records.
+  4. Links to final `requirements.md`, `design.md`, and `tasks.md`.
+- [ ] Finalize workspace. - Archive intermediate files, logs, and temporary artifacts to `.agent_work/`.
+- [ ] Continue to next task. - Document transition or completion.
 
 **Critical Constraint (recommended):**
 
@@ -214,11 +197,11 @@ applyTo: '**'
 Receipt: "Follow a 6-phase spec-driven loop: Analyze → Design → Implement → Validate → Reflect → Handoff."
 
 6-phase micro-plan (one sentence each):
-- Analyze: gather facts, write 2–5 EARS-style requirements.  
-- Design: write a short design (diagram + interfaces) and tasks list.  
-- Implement: small commits, tests, and update tasks.md as you go.  
-- Validate: run automated tests, manual checks, and performance verifications.  
-- Reflect: refactor, update docs, and record technical debt.  
+- Analyze: gather facts, write 2–5 EARS-style requirements.
+- Design: write a short design (diagram + interfaces) and tasks list.
+- Implement: small commits, tests, and update tasks.md as you go.
+- Validate: run automated tests, manual checks, and performance verifications.
+- Reflect: refactor, update docs, and record technical debt.
 - Handoff: prepare PR with executive summary, changelog, tests, and artifacts.
 
 Quick templates
@@ -226,14 +209,15 @@ Quick templates
 - PR summary (3 lines): 1) Goal: <one-line> 2) Key changes: <files/functions> 3) Validation: <tests/metrics>. Attach decision records if any.
 
 Minimal acceptance checklist before merge:
-- [ ] 2–5 testable requirements written.  
-- [ ] Design doc linked in PR.  
-- [ ] Tests for each requirement (unit/integration).  
-- [ ] Performance baseline if applicable.  
-- [ ] Decision records for non-trivial trade-offs.  
+- [ ] 2–5 testable requirements written.
+- [ ] Design doc linked in PR.
+- [ ] Tests for each requirement (unit/integration).
+- [ ] Performance baseline if applicable.
+- [ ] Decision records for non-trivial trade-offs.
 - [ ] Exec summary and streamlined action log included.
 
 If blocked: re-run Analyze → adjust Confidence Score → pick PoC if medium/low confidence.
 
 End.
 **EARS (Easy Approach to Requirements Syntax)** - Standard format for requirements:
+```

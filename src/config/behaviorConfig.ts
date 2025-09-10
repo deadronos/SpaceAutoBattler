@@ -6,27 +6,27 @@ import type { ShipClass, Team, Vector3, RNG } from '../types/index.js';
  */
 
 export type AIBehaviorMode =
-  | 'aggressive'      // Always pursue and attack nearest enemy
-  | 'defensive'       // Prioritize evasion and kiting
-  | 'roaming'         // Free movement patterns, occasional combat
-  | 'formation'       // Group with friendly ships
-  | 'carrier_group'   // Carriers stay with escorts, fighters patrol
-  | 'mixed';          // Dynamic behavior selection
+  | 'aggressive' // Always pursue and attack nearest enemy
+  | 'defensive' // Prioritize evasion and kiting
+  | 'roaming' // Free movement patterns, occasional combat
+  | 'formation' // Group with friendly ships
+  | 'carrier_group' // Carriers stay with escorts, fighters patrol
+  | 'mixed'; // Dynamic behavior selection
 
 export type AIIntent =
-  | 'idle'           // No specific action
-  | 'pursue'         // Move towards target
-  | 'evade'          // Move away from threat
-  | 'strafe'         // Circle around target
-  | 'group'          // Move towards friendly ships
-  | 'patrol'         // Follow patrol pattern
-  | 'explore'        // Scout map for enemies
-  | 'retreat';       // Move to safe position
+  | 'idle' // No specific action
+  | 'pursue' // Move towards target
+  | 'evade' // Move away from threat
+  | 'strafe' // Circle around target
+  | 'group' // Move towards friendly ships
+  | 'patrol' // Follow patrol pattern
+  | 'explore' // Scout map for enemies
+  | 'retreat'; // Move to safe position
 
 export type TurretBehavior =
-  | 'independent'    // Each turret targets independently
-  | 'synchronized'   // All turrets target same enemy
-  | 'lead_target'    // Aim ahead of moving targets
+  | 'independent' // Each turret targets independently
+  | 'synchronized' // All turrets target same enemy
+  | 'lead_target' // Aim ahead of moving targets
   | 'area_suppression'; // Fire in patterns to suppress areas
 
 export interface AIPersonality {
@@ -111,11 +111,16 @@ export interface BehaviorConfig {
   shipPersonalities: Partial<Record<ShipClass, AIPersonality>>;
 
   /** Team-specific behavior modifiers */
-  teamModifiers: Partial<Record<Team, {
-    aggressiveness: number;
-    caution: number;
-    groupCohesion: number;
-  }>>;
+  teamModifiers: Partial<
+    Record<
+      Team,
+      {
+        aggressiveness: number;
+        caution: number;
+        groupCohesion: number;
+      }
+    >
+  >;
 
   /** Turret AI configuration */
   turretConfig: TurretAIConfig;
@@ -138,7 +143,7 @@ export interface BehaviorConfig {
     formationSearchRadius: number;
     /** Enable dynamic behavior switching */
     enableDynamicBehavior: boolean;
-    
+
     // Combat range and engagement settings
     /** Multiplier for close range combat (default: 0.6) */
     closeRangeMultiplier: number;
@@ -152,7 +157,7 @@ export interface BehaviorConfig {
     friendlyAvoidanceDistance: number;
     /** Safety margin from boundaries (default: 50) */
     boundarySafetyMargin: number;
-    
+
     // Separation behavior clustering thresholds
     /**
      * Maximum seconds into the future the turret intercept solver will consider.
@@ -172,7 +177,7 @@ export interface BehaviorConfig {
     separationModerateWeight: number;
     /** Weight multiplier for mild clusters (default: 1.2) */
     separationMildWeight: number;
-    
+
     // Evade behavior settings
     /** Maximum pitch angle for evade sampling in radians (default: PI * 0.5) */
     evadeMaxPitch: number;
@@ -186,7 +191,7 @@ export interface BehaviorConfig {
     evadeDistanceImprovementWeight: number;
     /** Weight for friendly collision penalty (default: 0.2) */
     evadeFriendlyPenaltyWeight: number;
-    
+
     // Existing separation and damage settings
     /** Distance within which separation forces apply */
     separationDistance: number;
@@ -279,54 +284,54 @@ export interface BehaviorConfig {
 export const DEFAULT_PERSONALITIES: Record<ShipClass, AIPersonality> = {
   fighter: {
     mode: 'aggressive',
-  intentReevaluationRate: 0.3,
+    intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.9,
     caution: 0.1,
     groupCohesion: 0.3,
-    preferredRangeMultiplier: 0.8
+    preferredRangeMultiplier: 0.8,
   },
   corvette: {
     mode: 'aggressive',
-  intentReevaluationRate: 0.3,
+    intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.7,
     caution: 0.3,
     groupCohesion: 0.5,
-    preferredRangeMultiplier: 1.0
+    preferredRangeMultiplier: 1.0,
   },
   frigate: {
     mode: 'aggressive',
-  intentReevaluationRate: 0.3,
+    intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.6,
     caution: 0.4,
     groupCohesion: 0.7,
-    preferredRangeMultiplier: 1.0
+    preferredRangeMultiplier: 1.0,
   },
   destroyer: {
     mode: 'mixed',
-  intentReevaluationRate: 0.3,
+    intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.5,
     caution: 0.5,
     groupCohesion: 0.8,
-    preferredRangeMultiplier: 1.0
+    preferredRangeMultiplier: 1.0,
   },
   carrier: {
     mode: 'mixed',
-  intentReevaluationRate: 3.0,
+    intentReevaluationRate: 3.0,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.3,
     caution: 0.7,
     groupCohesion: 0.9,
-    preferredRangeMultiplier: 1.2
-  }
+    preferredRangeMultiplier: 1.2,
+  },
 };
 
 /**
@@ -338,8 +343,7 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
   maxTargetSwitchAngle: Math.PI / 3, // 60 degrees
   leadPredictionTime: 0.5,
   minimumFireRange: 50,
-  maximumFireRange: 800
-  ,
+  maximumFireRange: 800,
   // Dynamic switching is disabled by default to preserve existing behavior
   dynamicSwitch: {
     enabled: true,
@@ -349,9 +353,9 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
       { behavior: 'independent', weight: 50 },
       { behavior: 'synchronized', weight: 20 },
       { behavior: 'lead_target', weight: 20 },
-      { behavior: 'area_suppression', weight: 10 }
-    ]
-  }
+      { behavior: 'area_suppression', weight: 10 },
+    ],
+  },
 };
 
 /**
@@ -360,7 +364,7 @@ export const DEFAULT_TURRET_CONFIG: TurretAIConfig = {
 export const DEFAULT_ROAMING_PATTERNS: RoamingPattern[] = [
   { type: 'random', radius: 200, speed: 50, duration: 10 },
   { type: 'circular', radius: 300, speed: 40, duration: 15 },
-  { type: 'figure_eight', radius: 250, speed: 45, duration: 12 }
+  { type: 'figure_eight', radius: 250, speed: 45, duration: 12 },
 ];
 
 /**
@@ -372,29 +376,29 @@ export const DEFAULT_FORMATIONS: Record<string, FormationConfig> = {
     spacing: 80,
     leaderId: null,
     maxSize: 8,
-    cohesionStrength: 0.7
+    cohesionStrength: 0.7,
   },
   circle: {
     type: 'circle',
     spacing: 100,
     leaderId: null,
     maxSize: 12,
-    cohesionStrength: 0.8
+    cohesionStrength: 0.8,
   },
   wedge: {
     type: 'wedge',
     spacing: 90,
     leaderId: null,
     maxSize: 6,
-    cohesionStrength: 0.9
+    cohesionStrength: 0.9,
   },
   escort: {
     type: 'sphere',
     spacing: 120,
     leaderId: null,
     maxSize: 4,
-    cohesionStrength: 0.95
-  }
+    cohesionStrength: 0.95,
+  },
 };
 
 /**
@@ -403,18 +407,18 @@ export const DEFAULT_FORMATIONS: Record<string, FormationConfig> = {
 export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
   defaultPersonality: {
     mode: 'mixed',
-  intentReevaluationRate: 0.3,
+    intentReevaluationRate: 0.3,
     minIntentDuration: 0.3,
     maxIntentDuration: 1,
     aggressiveness: 0.8,
     caution: 0.4,
     groupCohesion: 0.5,
-    preferredRangeMultiplier: 1.0
+    preferredRangeMultiplier: 1.0,
   },
   shipPersonalities: DEFAULT_PERSONALITIES,
   teamModifiers: {
     red: { aggressiveness: 1.1, caution: 0.9, groupCohesion: 0.8 },
-    blue: { aggressiveness: 0.9, caution: 1.1, groupCohesion: 0.8 }
+    blue: { aggressiveness: 0.9, caution: 1.1, groupCohesion: 0.8 },
   },
   turretConfig: DEFAULT_TURRET_CONFIG,
   roamingPatterns: DEFAULT_ROAMING_PATTERNS,
@@ -471,27 +475,26 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
     evadeMaxPitch: Math.PI * 0.5,
     enableSpatialIndex: true,
     enableScoutBehavior: true,
-  enableAlarmSystem: true,
-  alarmSystemWindowSeconds: 5.0,
+    enableAlarmSystem: true,
+    alarmSystemWindowSeconds: 5.0,
     enableScoutExploration: true,
     explorationZoneCount: 6,
-    explorationZoneDuration: 1.0
-    ,
+    explorationZoneDuration: 1.0,
     // Feature flag default: keep disabled to ensure zero behavior change unless explicitly enabled
     useDecisionEngineEvadeGate: true,
     // Turret targeting helper enabled by default after parity testing
     useTurretTargetingHelper: true,
-  // Per-level accuracy scaling: each level reduces inaccuracy by 2%, up to 50%
-  turretLevelAccuracyPerLevel: 0.02,
-  turretLevelAccuracyMaxReduction: 0.5,
-  targetSwitchThreshold: 0.8,
+    // Per-level accuracy scaling: each level reduces inaccuracy by 2%, up to 50%
+    turretLevelAccuracyPerLevel: 0.02,
+    turretLevelAccuracyMaxReduction: 0.5,
+    targetSwitchThreshold: 0.8,
     /**
      * Maximum seconds into the future the turret intercept solver will consider.
      * This prevents aiming at extremely far-future intercept points for very slow projectiles
      * or pathological geometry. Can be tuned globally by designers.
      */
-    maxInterceptLookahead: 5.0
-  }
+    maxInterceptLookahead: 5.0,
+  },
 };
 
 /**
@@ -500,7 +503,7 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
 export function getEffectivePersonality(
   config: BehaviorConfig,
   shipClass: ShipClass,
-  team: Team
+  team: Team,
 ): AIPersonality {
   const basePersonality = config.shipPersonalities[shipClass] || config.defaultPersonality;
   const teamModifier = config.teamModifiers[team];
@@ -516,7 +519,7 @@ export function getEffectivePersonality(
     ...basePersonality,
     aggressiveness: clamp(basePersonality.aggressiveness * teamModifier.aggressiveness),
     caution: clamp(basePersonality.caution * teamModifier.caution),
-    groupCohesion: clamp(basePersonality.groupCohesion * teamModifier.groupCohesion)
+    groupCohesion: clamp(basePersonality.groupCohesion * teamModifier.groupCohesion),
   };
 }
 
@@ -531,6 +534,9 @@ export function selectRoamingPattern(config: BehaviorConfig, rng: RNG): RoamingP
 /**
  * Get a formation configuration by name
  */
-export function getFormationConfig(config: BehaviorConfig, name: string): FormationConfig | undefined {
+export function getFormationConfig(
+  config: BehaviorConfig,
+  name: string,
+): FormationConfig | undefined {
   return config.formations[name];
 }

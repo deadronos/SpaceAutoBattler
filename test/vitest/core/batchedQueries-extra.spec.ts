@@ -15,9 +15,9 @@ describe('BatchedQueryManager extra precompute tests', () => {
         // Return two entities near the ship for separation
         return [
           { id: 300, pos: { x: pos.x + 1, y: pos.y, z: pos.z }, team: team || 'red' },
-          { id: 301, pos: { x: pos.x + 2, y: pos.y, z: pos.z }, team: team || 'red' }
+          { id: 301, pos: { x: pos.x + 2, y: pos.y, z: pos.z }, team: team || 'red' },
         ];
-      }
+      },
     };
 
     const manager = new BatchedQueryManager(fakeOptimizer);
@@ -26,7 +26,7 @@ describe('BatchedQueryManager extra precompute tests', () => {
     const state: any = {
       behaviorConfig: { globalSettings: { enableSpatialIndex: true, separationDistance: 50 } },
       simConfig: { spatialGrid: { cellSize: 100 } },
-      shipIndex: new Map()
+      shipIndex: new Map(),
     };
 
     const ship = { id: 1, pos: { x: 0, y: 0, z: 0 }, team: 'red', health: 100 };

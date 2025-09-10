@@ -22,15 +22,15 @@ describe('HealthBarInstancer basic behavior', () => {
     instancer.updateHealthBar(ship as any);
     instancer.markMatricesNeedUpdate();
 
-  // Find health layer instanced mesh and the allocated instance index
-  const healthMesh = (instancer as any).instancedMeshes.get('health') as THREE.InstancedMesh;
-  expect(healthMesh).toBeDefined();
+    // Find health layer instanced mesh and the allocated instance index
+    const healthMesh = (instancer as any).instancedMeshes.get('health') as THREE.InstancedMesh;
+    expect(healthMesh).toBeDefined();
 
-  const instanceIndex = (instancer as any).activeShips.get(ship.id);
-  expect(typeof instanceIndex).toBe('number');
+    const instanceIndex = (instancer as any).activeShips.get(ship.id);
+    expect(typeof instanceIndex).toBe('number');
 
-  const mat = new THREE.Matrix4();
-  healthMesh.getMatrixAt(instanceIndex, mat);
+    const mat = new THREE.Matrix4();
+    healthMesh.getMatrixAt(instanceIndex, mat);
     // Decompose and ensure scale.x is > 0 (not zero-scale hidden)
     const pos = new THREE.Vector3();
     const quat = new THREE.Quaternion();

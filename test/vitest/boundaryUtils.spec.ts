@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from '../../src/core/boundaryUtils.js';
+import {
+  applyBoundaryPhysicsShip,
+  applyBoundaryPhysicsBullet,
+} from '../../src/core/boundaryUtils.js';
 
 function makeShip(x: number, y: number, z = 0) {
   return {
@@ -7,7 +10,7 @@ function makeShip(x: number, y: number, z = 0) {
     team: 'red',
     pos: { x, y, z },
     vel: { x: 0, y: 0, z: 0 },
-    health: 100
+    health: 100,
   } as any;
 }
 
@@ -15,12 +18,15 @@ function makeBullet(x: number, y: number, z = 0) {
   return { pos: { x, y, z }, vel: { x: 0, y: 0, z: 0 }, ttl: 10 } as any;
 }
 
-function makeState(behaviorShips: 'bounce' | 'wrap' | 'remove', behaviorBullets: 'bounce' | 'wrap' | 'remove') {
+function makeState(
+  behaviorShips: 'bounce' | 'wrap' | 'remove',
+  behaviorBullets: 'bounce' | 'wrap' | 'remove',
+) {
   return {
     simConfig: {
       simBounds: { width: 100, height: 100, depth: 100 },
-      boundaryBehavior: { ships: behaviorShips, bullets: behaviorBullets }
-    }
+      boundaryBehavior: { ships: behaviorShips, bullets: behaviorBullets },
+    },
   } as any;
 }
 

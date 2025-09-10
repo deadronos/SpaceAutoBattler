@@ -5,10 +5,12 @@ import { getFileWatcher } from '../../../src/utils/fileWatcher';
 describe('FileWatcher missing/HEAD not ok', () => {
   type FetchType = (...args: any[]) => Promise<any>;
   const origFetch = (global as unknown as { fetch?: FetchType }).fetch;
-  afterEach(() => { (global as unknown as { fetch?: FetchType }).fetch = origFetch; });
+  afterEach(() => {
+    (global as unknown as { fetch?: FetchType }).fetch = origFetch;
+  });
 
   it('handles HEAD returning non-ok gracefully', async () => {
-    (global as any).fetch = async () => ({ ok: false } as any);
+    (global as any).fetch = async () => ({ ok: false }) as any;
 
     const fw = getFileWatcher();
     const events: string[] = [];
@@ -21,7 +23,7 @@ describe('FileWatcher missing/HEAD not ok', () => {
   });
 
   it('handles missing headers by not throwing', async () => {
-    (global as any).fetch = async () => ({ ok: true, headers: { get: () => null } } as any);
+    (global as any).fetch = async () => ({ ok: true, headers: { get: () => null } }) as any;
 
     const fw = getFileWatcher();
     const events: string[] = [];

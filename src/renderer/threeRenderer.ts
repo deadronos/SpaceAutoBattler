@@ -21,14 +21,14 @@ export { updateBillboardBars };
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
 const billboardMaterialPool = new Map<string, THREE.ShaderMaterial>();
 
-  // Renderer-side cache for program-like parameter introspection.
-  // Keyed by a renderer-owned object (usually the material instance) so it
-  // can be GC'd when the material/mesh is disposed.
-  const rendererProgramCache = new WeakMap<object, unknown>();
+// Renderer-side cache for program-like parameter introspection.
+// Keyed by a renderer-owned object (usually the material instance) so it
+// can be GC'd when the material/mesh is disposed.
+const rendererProgramCache = new WeakMap<object, unknown>();
 
 // Cached temporary vectors to reduce per-frame allocations
 const tempCamRight = new THREE.Vector3();
-const tempCamUp = new THREE.Vector3(); 
+const tempCamUp = new THREE.Vector3();
 const tempCamForward = new THREE.Vector3();
 const tempQuat = new THREE.Quaternion();
 
@@ -38,16 +38,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Narrow global debug helpers used by the renderer for safer casting
   type DebugHelpers = Partial<{
     __applyEffectsManagerGlobalPatches: () => void;
-    __listNonInstancedMeshes: (opts?: { near?: { x:number,y:number,z:number, radius:number } }) => any[];
-    __focusCameraOn: (pos:{x:number,y:number,z:number}, distance?:number) => any;
+    __listNonInstancedMeshes: (opts?: {
+      near?: { x: number; y: number; z: number; radius: number };
+    }) => any[];
+    __focusCameraOn: (pos: { x: number; y: number; z: number }, distance?: number) => any;
     scene: THREE.Scene;
     threeCamera: THREE.Camera;
     __dumpShipsNearBounds: (r?: number) => any[];
     __listInstancedHealthBarShips: () => number[];
     __listShipsWithHealthBar: () => number[];
     __hbInstancerStats: () => any;
-    __hbDebugScale: (shipId:number) => number | null;
-    __hbDebugMatrix: (shipId:number) => any | null;
+    __hbDebugScale: (shipId: number) => number | null;
+    __hbDebugMatrix: (shipId: number) => any | null;
     __hbPeriodicStart: () => void;
     __hbPeriodicStop: () => void;
   }>;
@@ -56,20 +58,30 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Apply global readPixels/prototype patches early, if available.
   try {
     if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
-      try { gAny.__applyEffectsManagerGlobalPatches(); } catch { /* ignore */ }
+      try {
+        gAny.__applyEffectsManagerGlobalPatches();
+      } catch {
+        /* ignore */
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // Helper: list non-instanced meshes with world positions. Optional filter: { near: {x,y,z, radius} }
   try {
-    (globalThis as any).__listNonInstancedMeshes = function(opts?: { near?: { x:number,y:number,z:number, radius:number } }) {
+    (globalThis as any).__listNonInstancedMeshes = function (opts?: {
+      near?: { x: number; y: number; z: number; radius: number };
+    }) {
       const out: any[] = [];
       const groups = [shipsGroup, bulletsGroup, healthBarsGroup, shieldEffectsGroup, scene];
       const near = opts && opts.near ? opts.near : null;
-      const checkNear = (p:{x:number,y:number,z:number}) => {
+      const checkNear = (p: { x: number; y: number; z: number }) => {
         if (!near) return true;
-        const dx = p.x - near.x; const dy = p.y - near.y; const dz = p.z - near.z;
-        return (dx*dx + dy*dy + dz*dz) <= ((near.radius||10) * (near.radius||10));
+        const dx = p.x - near.x;
+        const dy = p.y - near.y;
+        const dz = p.z - near.z;
+        return dx * dx + dy * dy + dz * dz <= (near.radius || 10) * (near.radius || 10);
       };
 
       groups.forEach((g) => {
@@ -89,7 +101,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             name: meshObj.name || null,
             type: (meshObj as any).type || null,
             position: p,
-            visible: meshObj.visible === undefined ? true : meshObj.visible
+            visible: meshObj.visible === undefined ? true : meshObj.visible,
           });
         });
       });
@@ -98,14 +110,29 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     };
     // Temporarily highlight matching non-instanced meshes. Stores original materials in registry.
     {
-      type NonInstancedEntry = { id: string|null, name: string|null, type: string|null, position: { x:number,y:number,z:number }, visible: boolean };
+      type NonInstancedEntry = {
+        id: string | null;
+        name: string | null;
+        type: string | null;
+        position: { x: number; y: number; z: number };
+        visible: boolean;
+      };
       const G = globalThis as unknown as Record<string, unknown>;
 
-      G.__highlightNonInstancedMeshes = function(opts?: { near?: { x:number,y:number,z:number, radius:number }, color?: number }) {
-        const listFn = G.__listNonInstancedMeshes as unknown as ( (o?: { near?: { x:number,y:number,z:number, radius:number } }) => NonInstancedEntry[] ) | undefined;
+      G.__highlightNonInstancedMeshes = function (opts?: {
+        near?: { x: number; y: number; z: number; radius: number };
+        color?: number;
+      }) {
+        const listFn = G.__listNonInstancedMeshes as unknown as
+          | ((o?: {
+              near?: { x: number; y: number; z: number; radius: number };
+            }) => NonInstancedEntry[])
+          | undefined;
         const list = listFn ? listFn(opts) : [];
         const registryKey = '__hb_highlight_registry';
-        let registry = G[registryKey] as Map<THREE.Object3D, THREE.Material | THREE.Material[] | null> | undefined;
+        let registry = G[registryKey] as
+          | Map<THREE.Object3D, THREE.Material | THREE.Material[] | null>
+          | undefined;
         if (!registry) {
           registry = new Map<THREE.Object3D, THREE.Material | THREE.Material[] | null>();
           G[registryKey] = registry;
@@ -114,10 +141,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
         list.forEach((entry) => {
           scene.traverse((o: THREE.Object3D) => {
-            if (!((o as THREE.Mesh).isMesh)) return;
+            if (!(o as THREE.Mesh).isMesh) return;
             const mesh = o as THREE.Mesh;
-            const wp = new THREE.Vector3(); mesh.getWorldPosition(wp);
-            if (Math.abs(wp.x - entry.position.x) < 0.001 && Math.abs(wp.y - entry.position.y) < 0.001 && Math.abs(wp.z - entry.position.z) < 0.001) {
+            const wp = new THREE.Vector3();
+            mesh.getWorldPosition(wp);
+            if (
+              Math.abs(wp.x - entry.position.x) < 0.001 &&
+              Math.abs(wp.y - entry.position.y) < 0.001 &&
+              Math.abs(wp.z - entry.position.z) < 0.001
+            ) {
               if (registry!.has(mesh)) return;
               const orig = mesh.material;
               registry!.set(mesh, orig as THREE.Material | THREE.Material[] | null);
@@ -132,15 +164,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         return { ok: true, count: list.length };
       } as unknown;
 
-      G.__unhighlightNonInstancedMeshes = function() {
+      G.__unhighlightNonInstancedMeshes = function () {
         const registryKey = '__hb_highlight_registry';
-        const registry = G[registryKey] as Map<THREE.Object3D, THREE.Material | THREE.Material[] | null> | undefined;
+        const registry = G[registryKey] as
+          | Map<THREE.Object3D, THREE.Material | THREE.Material[] | null>
+          | undefined;
         if (!registry) return { ok: false, reason: 'none' };
         registry.forEach((orig, obj) => {
           try {
             if ((obj as THREE.Mesh).isMesh) {
               const mesh = obj as THREE.Mesh;
-              try { (mesh.material as THREE.Material)?.dispose?.(); } catch {logger.error('Failed disposing highlight material');}
+              try {
+                (mesh.material as THREE.Material)?.dispose?.();
+              } catch {
+                logger.error('Failed disposing highlight material');
+              }
               try {
                 if (orig != null) {
                   mesh.material = orig as THREE.Material | THREE.Material[];
@@ -159,23 +197,32 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         return { ok: true };
       } as unknown;
     }
-  } catch {logger.error('Failed setting up __listNonInstancedMeshes'); }
+  } catch {
+    logger.error('Failed setting up __listNonInstancedMeshes');
+  }
 
   // Diagnostic: list all scene objects that have health-bar related probe/origin markers
   try {
-  // Note: legacy developer object listing removed.
-  } catch {logger.error('Failed setting up __listInstancedHealthBarShips'); }
+    // Note: legacy developer object listing removed.
+  } catch {
+    logger.error('Failed setting up __listInstancedHealthBarShips');
+  }
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(RendererConfig.camera.fov, 1, RendererConfig.camera.near, RendererConfig.camera.far);
+  const camera = new THREE.PerspectiveCamera(
+    RendererConfig.camera.fov,
+    1,
+    RendererConfig.camera.near,
+    RendererConfig.camera.far,
+  );
 
   // Initialize camera controls
   const cameraRotation = {
     x: RendererConfig.camera.rotation.pitch,
     y: RendererConfig.camera.rotation.yaw,
-    z: RendererConfig.camera.rotation.roll
+    z: RendererConfig.camera.rotation.roll,
   };
   // Make camera distance mutable inside renderer and expose via getter/setter so callers
   // (for example `resetToCinematicView` in main.ts) can update it and the internal
@@ -184,7 +231,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const cameraTarget = {
     x: state.simConfig.simBounds.width / 2,
     y: state.simConfig.simBounds.height / 2,
-    z: state.simConfig.simBounds.depth / 2
+    z: state.simConfig.simBounds.depth / 2,
   };
 
   let lastSimulatedTime = state.time; // Track last simulated time for interpolation
@@ -194,9 +241,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   updateCameraPosition();
 
   function updateCameraPosition() {
-  const x = cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
-  const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
-  const z = cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
+    const x =
+      cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
+    const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
+    const z =
+      cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
 
     camera.position.set(x, y, z);
     camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
@@ -204,7 +253,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Expose a simple helper to focus the internal camera on a world position and adjust distance
   try {
-    (globalThis as any).__focusCameraOn = function(pos:{x:number,y:number,z:number}, distance?:number) {
+    (globalThis as any).__focusCameraOn = function (
+      pos: { x: number; y: number; z: number },
+      distance?: number,
+    ) {
       try {
         if (!pos) return { ok: false, reason: 'no-pos' };
         // update target
@@ -214,24 +266,43 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         if (typeof distance === 'number') _cameraDistance = distance;
         updateCameraPosition();
         return { ok: true };
-      } catch (e) { return { ok: false, reason: String(e) }; }
+      } catch (e) {
+        return { ok: false, reason: String(e) };
+      }
     };
     // Also expose scene and camera references for external scripts (read-only)
     (globalThis as any).scene = scene;
     (globalThis as any).threeCamera = camera;
-  } catch {logger.error('Failed setting up __focusCameraOn'); }
-  
+  } catch {
+    logger.error('Failed setting up __focusCameraOn');
+  }
+
   // Procedural Skybox Generation
-  function generateStarfieldTexture(width: number, height: number, face: string, seed: number): HTMLCanvasElement {
+  function generateStarfieldTexture(
+    width: number,
+    height: number,
+    face: string,
+    seed: number,
+  ): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-  // Prefer a context optimized for frequent readbacks (getImageData).
-  // Some browsers may not support the option; fall back gracefully.
-  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
+    // Prefer a context optimized for frequent readbacks (getImageData).
+    // Some browsers may not support the option; fall back gracefully.
+    const ctx =
+      (canvas.getContext('2d', {
+        willReadFrequently: true,
+      } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
     // Fill with deep space background
-    const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
+    const gradient = ctx.createRadialGradient(
+      width / 2,
+      height / 2,
+      0,
+      width / 2,
+      height / 2,
+      Math.max(width, height) / 2,
+    );
     gradient.addColorStop(0, '#000011');
     gradient.addColorStop(0.5, '#000033');
     gradient.addColorStop(1, '#000000');
@@ -246,7 +317,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     };
 
     // Generate stars based on face
-    const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
+    const starCount =
+      face === 'top' || face === 'bottom'
+        ? RendererEffectsConfig.skybox.starfield.starCounts.top
+        : RendererEffectsConfig.skybox.starfield.starCounts.sides;
     const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
 
     for (let i = 0; i < starCount; i++) {
@@ -261,8 +335,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       let shouldDraw = true;
       if (face === 'top') {
         // Milky Way-like band across top face
-        const centerDist = Math.abs(y - height/2) / (height/2);
-        shouldDraw = random() < (1 - centerDist * 0.7);
+        const centerDist = Math.abs(y - height / 2) / (height / 2);
+        shouldDraw = random() < 1 - centerDist * 0.7;
       } else if (face === 'bottom') {
         // Sparse stars on bottom face
         shouldDraw = random() < 0.3;
@@ -279,7 +353,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           ctx.fillRect(x, y, 1, 1);
         } else {
           ctx.beginPath();
-          ctx.arc(x, y, size/2, 0, Math.PI * 2);
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -291,9 +365,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       for (let i = 0; i < RendererEffectsConfig.skybox.starfield.nebula.count; i++) {
         const nebulaX = random() * width;
         const nebulaY = random() * height;
-        const nebulaRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
+        const nebulaRadius =
+          RendererEffectsConfig.skybox.starfield.nebula.minRadius +
+          random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
 
-        const nebulaGradient = ctx.createRadialGradient(nebulaX, nebulaY, 0, nebulaX, nebulaY, nebulaRadius);
+        const nebulaGradient = ctx.createRadialGradient(
+          nebulaX,
+          nebulaY,
+          0,
+          nebulaX,
+          nebulaY,
+          nebulaRadius,
+        );
         nebulaGradient.addColorStop(0, `hsl(${200 + random() * 60}, 30%, 20%)`);
         nebulaGradient.addColorStop(0.5, `hsl(${200 + random() * 60}, 20%, 10%)`);
         nebulaGradient.addColorStop(1, 'transparent');
@@ -314,8 +397,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const skyboxTextures: THREE.CanvasTexture[] = [];
 
   function createAnimatedSkybox(): THREE.CubeTexture {
-  const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
-  const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
+    const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
+    const baseSeed = RendererEffectsConfig.skybox.starfield.baseSeed;
 
     const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
 
@@ -332,8 +415,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       skyboxTextures.push(texture);
     });
 
-  const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
-  cubeTexture.needsUpdate = true;
+    const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
+    cubeTexture.needsUpdate = true;
 
     return cubeTexture;
   }
@@ -342,7 +425,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   let sphereSkybox: THREE.Mesh | null = null;
 
   // Precompute star fields as simple arrays so we can redraw without pixel reads
-  interface StarData { x: number; y: number; size: number; color: string; baseBrightness: number }
+  interface StarData {
+    x: number;
+    y: number;
+    size: number;
+    color: string;
+    baseBrightness: number;
+  }
   const skyboxStarFields: StarData[][] = [];
   (function initStarFields() {
     const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
@@ -350,8 +439,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'];
     faces.forEach((face, faceIndex) => {
       let rng = baseSeed + faceIndex;
-      const random = () => { rng = (rng * 9301 + 49297) % 233280; return rng / 233280; };
-      const starCount = face === 'top' || face === 'bottom' ? RendererEffectsConfig.skybox.starfield.starCounts.top : RendererEffectsConfig.skybox.starfield.starCounts.sides;
+      const random = () => {
+        rng = (rng * 9301 + 49297) % 233280;
+        return rng / 233280;
+      };
+      const starCount =
+        face === 'top' || face === 'bottom'
+          ? RendererEffectsConfig.skybox.starfield.starCounts.top
+          : RendererEffectsConfig.skybox.starfield.starCounts.sides;
       const list: StarData[] = [];
       const starColors = ['#ffffff', '#e6e6ff', '#ccccff', '#b3b3ff', '#9999ff'];
       for (let i = 0; i < starCount; i++) {
@@ -368,7 +463,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function updateSkyboxAnimation(dt: number) {
     skyboxAnimationTime += dt;
-    if (Math.floor(skyboxAnimationTime * 10) % RendererEffectsConfig.skybox.starfield.animation.updateFrequency !== 0) return;
+    if (
+      Math.floor(skyboxAnimationTime * 10) %
+        RendererEffectsConfig.skybox.starfield.animation.updateFrequency !==
+      0
+    )
+      return;
 
     // const textureSize = RendererEffectsConfig.skybox.starfield.textureSize;
     skyboxTextures.forEach((texture, index) => {
@@ -377,7 +477,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Clear and redraw background and stars from precomputed data
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // Recreate gradient background quickly
-      const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)/2);
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2,
+        canvas.height / 2,
+        0,
+        canvas.width / 2,
+        canvas.height / 2,
+        Math.max(canvas.width, canvas.height) / 2,
+      );
       gradient.addColorStop(0, '#000011');
       gradient.addColorStop(0.5, '#000033');
       gradient.addColorStop(1, '#000000');
@@ -390,7 +497,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         for (let n = 0; n < RendererEffectsConfig.skybox.starfield.nebula.count; n++) {
           const nebX = rng.next() * canvas.width;
           const nebY = rng.next() * canvas.height;
-          const nebRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + rng.next() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
+          const nebRadius =
+            RendererEffectsConfig.skybox.starfield.nebula.minRadius +
+            rng.next() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
           const nebulaGradient = ctx.createRadialGradient(nebX, nebY, 0, nebX, nebY, nebRadius);
           nebulaGradient.addColorStop(0, `hsl(${200 + rng.next() * 60}, 30%, 20%)`);
           nebulaGradient.addColorStop(0.5, `hsl(${200 + rng.next() * 60}, 20%, 10%)`);
@@ -407,7 +516,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const stars = skyboxStarFields[index] || [];
       for (let i = 0; i < stars.length; i++) {
         const s = stars[i];
-        const twinkle = Math.sin(skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed + i * 0.001) * 0.3 + s.baseBrightness;
+        const twinkle =
+          Math.sin(
+            skyboxAnimationTime * RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed +
+              i * 0.001,
+          ) *
+            0.3 +
+          s.baseBrightness;
         ctx.globalAlpha = Math.max(0.15, Math.min(1, twinkle));
         ctx.fillStyle = s.color;
         if (s.size === 1) ctx.fillRect(s.x, s.y, 1, 1);
@@ -422,7 +537,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     });
 
     // Update sphere skybox texture
-    if (sphereSkybox && sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
+    if (
+      sphereSkybox &&
+      sphereSkybox.material instanceof THREE.MeshBasicMaterial &&
+      skyboxTextures.length > 0
+    ) {
       (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
       sphereSkybox.material.needsUpdate = true;
     }
@@ -433,11 +552,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const skyboxGeometry = new THREE.SphereGeometry(
       RendererEffectsConfig.skybox.sphere.radius,
       RendererEffectsConfig.skybox.sphere.geometrySegments,
-      RendererEffectsConfig.skybox.sphere.geometrySegments
+      RendererEffectsConfig.skybox.sphere.geometrySegments,
     );
     const skyboxMaterial = new THREE.MeshBasicMaterial({
       map: skyboxTextures[0], // Use first face texture for now
-      side: THREE.BackSide // Render inside of sphere
+      side: THREE.BackSide, // Render inside of sphere
     });
     const skyboxMesh = new THREE.Mesh(skyboxGeometry, skyboxMaterial);
     return skyboxMesh;
@@ -447,7 +566,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // This populates `skyboxCanvases` and `skyboxTextures` and returns a CubeTexture.
   try {
     const animatedSkyboxTexture = createAnimatedSkybox();
-  scene.background = animatedSkyboxTexture;
+    scene.background = animatedSkyboxTexture;
 
     // Also create an interior sphere skybox that uses the first generated face texture as a fallback
     // (useful for snapshotting or when CubeTexture sampling is undesirable).
@@ -458,7 +577,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0];
         sphereSkybox.material.needsUpdate = true;
       }
-  scene.add(sphereSkybox);
+      scene.add(sphereSkybox);
     }
   } catch (e) {
     // Fallback: solid deep blue background if procedural generation fails
@@ -471,32 +590,40 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Add some basic lighting to help with wireframe visibility
   const ambientLight = new THREE.AmbientLight(
     RendererEffectsConfig.lighting.ambient.color,
-    RendererEffectsConfig.lighting.ambient.intensity
+    RendererEffectsConfig.lighting.ambient.intensity,
   );
   scene.add(ambientLight);
 
   const directionalLight = new THREE.DirectionalLight(
     RendererEffectsConfig.lighting.directional.color,
-    RendererEffectsConfig.lighting.directional.intensity
+    RendererEffectsConfig.lighting.directional.intensity,
   );
   directionalLight.position.set(
     RendererEffectsConfig.lighting.directional.position.x,
     RendererEffectsConfig.lighting.directional.position.y,
-    RendererEffectsConfig.lighting.directional.position.z
+    RendererEffectsConfig.lighting.directional.position.z,
   );
   scene.add(directionalLight);
 
   // World boundaries visualization (wireframe-only box)
-  const boxGeom = new THREE.BoxGeometry(state.simConfig.simBounds.width, state.simConfig.simBounds.height, state.simConfig.simBounds.depth);
+  const boxGeom = new THREE.BoxGeometry(
+    state.simConfig.simBounds.width,
+    state.simConfig.simBounds.height,
+    state.simConfig.simBounds.depth,
+  );
   // Use edges geometry to display only the boundary lines (no filled interior)
   const edges = new THREE.EdgesGeometry(boxGeom);
   const lineMat = new THREE.LineBasicMaterial({
     color: RendererEffectsConfig.worldBoundaries.color,
     transparent: true,
-    opacity: RendererEffectsConfig.worldBoundaries.opacity
+    opacity: RendererEffectsConfig.worldBoundaries.opacity,
   });
   const boxWire = new THREE.LineSegments(edges, lineMat);
-  boxWire.position.set(state.simConfig.simBounds.width/2, state.simConfig.simBounds.height/2, state.simConfig.simBounds.depth/2);
+  boxWire.position.set(
+    state.simConfig.simBounds.width / 2,
+    state.simConfig.simBounds.height / 2,
+    state.simConfig.simBounds.depth / 2,
+  );
   scene.add(boxWire);
 
   // Containers for ships and bullets
@@ -507,63 +634,117 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // Instrument healthBarsGroup.add to trace unexpected Mesh additions (helpful when debugging stray bars)
   try {
     const _origHealthBarsAdd = (healthBarsGroup as any).add.bind(healthBarsGroup);
-    (healthBarsGroup as any).add = function(...objs: any[]) {
+    (healthBarsGroup as any).add = function (...objs: any[]) {
       try {
         for (const o of objs) {
           if (!o) continue;
           // only inspect Mesh-like objects
           if ((o as any).isMesh) {
             const wp = new THREE.Vector3();
-            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added health bar mesh');}
+            try {
+              o.getWorldPosition(wp);
+            } catch {
+              logger.error('Failed getting world position of added health bar mesh');
+            }
             // If mesh is near the known fleet Y used in formations (y=400), log a stack trace
             if (Math.abs(wp.y - 400) < 0.001) {
-              try { console.info('[HB_TRACE][healthBarsGroup.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging health bar add trace');}
+              try {
+                console.info(
+                  '[HB_TRACE][healthBarsGroup.add] adding mesh near y=400 pos=',
+                  wp,
+                  '\nstack=',
+                  new Error().stack,
+                );
+              } catch {
+                logger.error('Failed logging health bar add trace');
+              }
             }
           }
         }
-      } catch {logger.error('Error inspecting health bar group additions');}
+      } catch {
+        logger.error('Error inspecting health bar group additions');
+      }
       return _origHealthBarsAdd(...objs);
     };
-  } catch {logger.error('Failed instrumenting healthBarsGroup.add');}
+  } catch {
+    logger.error('Failed instrumenting healthBarsGroup.add');
+  }
 
   // Also instrument shipsGroup.add and scene.add to catch stray Mesh additions
   try {
     const _origShipsAdd = (shipsGroup as any).add.bind(shipsGroup);
-    (shipsGroup as any).add = function(...objs: any[]) {
+    (shipsGroup as any).add = function (...objs: any[]) {
       try {
         for (const o of objs) {
           if (!o) continue;
           if ((o as any).isMesh) {
             const wp = new THREE.Vector3();
-            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added ship mesh');}
+            try {
+              o.getWorldPosition(wp);
+            } catch {
+              logger.error('Failed getting world position of added ship mesh');
+            }
             if (Math.abs(wp.y - 400) < 0.001) {
-              try { const _HB_TRACE_shipgroupname=_origShipsAdd.name;console.info('[HB_TRACE][shipsGroup.add] name=',_HB_TRACE_shipgroupname,' adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging ships group add trace');}
+              try {
+                const _HB_TRACE_shipgroupname = _origShipsAdd.name;
+                console.info(
+                  '[HB_TRACE][shipsGroup.add] name=',
+                  _HB_TRACE_shipgroupname,
+                  ' adding mesh near y=400 pos=',
+                  wp,
+                  '\nstack=',
+                  new Error().stack,
+                );
+              } catch {
+                logger.error('Failed logging ships group add trace');
+              }
             }
           }
         }
-      } catch {logger.error('Error inspecting ships group additions');}
+      } catch {
+        logger.error('Error inspecting ships group additions');
+      }
       return _origShipsAdd(...objs);
     };
-  } catch {logger.error('Failed instrumenting shipsGroup.add');}
+  } catch {
+    logger.error('Failed instrumenting shipsGroup.add');
+  }
 
   try {
     const _origSceneAdd = (scene as any).add.bind(scene);
-    (scene as any).add = function(...objs: any[]) {
+    (scene as any).add = function (...objs: any[]) {
       try {
         for (const o of objs) {
           if (!o) continue;
           if ((o as any).isMesh) {
             const wp = new THREE.Vector3();
-            try { o.getWorldPosition(wp); } catch {logger.error('Failed getting world position of added scene mesh');}
+            try {
+              o.getWorldPosition(wp);
+            } catch {
+              logger.error('Failed getting world position of added scene mesh');
+            }
             if (Math.abs(wp.y - 400) < 0.001) {
-              try { console.info('[HB_TRACE][scene.add] adding mesh near y=400 pos=', wp, '\nstack=', (new Error()).stack); } catch {logger.error('Failed logging scene add trace');}
+              try {
+                console.info(
+                  '[HB_TRACE][scene.add] adding mesh near y=400 pos=',
+                  wp,
+                  '\nstack=',
+                  new Error().stack,
+                );
+              } catch {
+                logger.error('Failed logging scene add trace');
+              }
             }
           }
         }
-      } catch {logger.error('Error inspecting scene additions');}
+      } catch {
+        logger.error('Error inspecting scene additions');
+      }
       return _origSceneAdd(...objs);
     };
-  } catch {logger.error('Failed instrumenting scene.add');}
+  } catch {
+    logger.error('Failed instrumenting scene.add');
+  }
 
   scene.add(shipsGroup);
   scene.add(bulletsGroup);
@@ -584,50 +765,76 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           // Return a small snapshot with only primitive values for quick inspection
           getSnapshot: () => {
             try {
-              const safeShips = state.ships.map((s: any) => ({ id: s.id, class: s.class, team: s.team, pos: { x: s.pos?.x, y: s.pos?.y, z: s.pos?.z }, hp: s.hp ?? null }));
-              const safeBullets = state.bullets.map((b: any) => ({ id: b.id, pos: { x: b.pos?.x, y: b.pos?.y, z: b.pos?.z }, vel: { x: b.vel?.x, y: b.vel?.y, z: b.vel?.z }, ttl: b.ttl ?? null }));
+              const safeShips = state.ships.map((s: any) => ({
+                id: s.id,
+                class: s.class,
+                team: s.team,
+                pos: { x: s.pos?.x, y: s.pos?.y, z: s.pos?.z },
+                hp: s.hp ?? null,
+              }));
+              const safeBullets = state.bullets.map((b: any) => ({
+                id: b.id,
+                pos: { x: b.pos?.x, y: b.pos?.y, z: b.pos?.z },
+                vel: { x: b.vel?.x, y: b.vel?.y, z: b.vel?.z },
+                ttl: b.ttl ?? null,
+              }));
               return { ships: safeShips, bullets: safeBullets, time: Date.now() };
-            } catch (e) { return { error: String(e) }; }
+            } catch (e) {
+              return { error: String(e) };
+            }
           },
           // Convenience: shallow lists of ids for quick checks
           listShipIds: () => state.ships.map((s: any) => s.id),
-          listBulletIds: () => state.bullets.map((b: any) => b.id)
+          listBulletIds: () => state.bullets.map((b: any) => b.id),
         };
-        try { console.info('[HB_DEV] __GAME_STATE__ snapshot accessor enabled (debugState)'); } catch (_e) { void _e; }
+        try {
+          console.info('[HB_DEV] __GAME_STATE__ snapshot accessor enabled (debugState)');
+        } catch (_e) {
+          void _e;
+        }
       }
-    } catch (_e) { void _e; }
-  gAny.__dumpShipsNearBounds = function(radius = 1) {
+    } catch (_e) {
+      void _e;
+    }
+    gAny.__dumpShipsNearBounds = function (radius = 1) {
       const b = state.simConfig.simBounds;
-      const near = state.ships.filter((s: any) => {
-        // consider ships within `radius` units of any boundary plane
-        return (
-          Math.abs(s.pos.x - 0) <= radius || Math.abs(s.pos.x - b.width) <= radius ||
-          Math.abs(s.pos.y - 0) <= radius || Math.abs(s.pos.y - b.height) <= radius ||
-          Math.abs(s.pos.z - 0) <= radius || Math.abs(s.pos.z - b.depth) <= radius
-        );
-      }).map((s: any) => ({ id: s.id, class: s.class, pos: s.pos }));
+      const near = state.ships
+        .filter((s: any) => {
+          // consider ships within `radius` units of any boundary plane
+          return (
+            Math.abs(s.pos.x - 0) <= radius ||
+            Math.abs(s.pos.x - b.width) <= radius ||
+            Math.abs(s.pos.y - 0) <= radius ||
+            Math.abs(s.pos.y - b.height) <= radius ||
+            Math.abs(s.pos.z - 0) <= radius ||
+            Math.abs(s.pos.z - b.depth) <= radius
+          );
+        })
+        .map((s: any) => ({ id: s.id, class: s.class, pos: s.pos }));
       console.info('[HB_DEV] Ships near bounds (radius=' + radius + '):', near);
       return near;
     };
 
-    gAny.__listShipsWithHealthBar = function() {
+    gAny.__listShipsWithHealthBar = function () {
       const ids = Array.from(healthBarMeshes.keys());
       console.info('[HB_DEV] Ships with non-instanced health bars:', ids);
       return ids;
     };
-  } catch {logger.error('Failed setting up __dumpShipsNearBounds'); }
+  } catch {
+    logger.error('Failed setting up __dumpShipsNearBounds');
+  }
 
   const shipMeshes = new Map<number, THREE.Object3D>();
   const bulletMeshes = new Map<number, THREE.Object3D>();
   const healthBarMeshes = new Map<number, THREE.Object3D>();
   const shieldEffectMeshes = new Map<number, THREE.Object3D>();
-  
+
   // Initialize bullet instancer if enabled
   let bulletInstancer: BulletInstancer | null = null;
   if (RendererConfig.instancing.enableBullets) {
     bulletInstancer = new BulletInstancer(scene, bulletsGroup);
   }
-  
+
   // Initialize health bar instancer if enabled
   let healthBarInstancer: HealthBarInstancer | null = null;
   if (RendererConfig.instancing.enableBars) {
@@ -636,7 +843,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Additional dev helpers for instanced health bars (if instancer is present)
   try {
-    gAny.__listInstancedHealthBarShips = function() {
+    gAny.__listInstancedHealthBarShips = function () {
       if (!healthBarInstancer) {
         console.info('[HB_DEV] instancer not enabled');
         return [];
@@ -647,23 +854,47 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       return ids;
     };
 
-    gAny.__hbInstancerStats = function() {
+    gAny.__hbInstancerStats = function () {
       if (!healthBarInstancer) return null;
-      try { return (healthBarInstancer as unknown as { getStats?: () => any }).getStats?.(); } catch { return null; }
+      try {
+        return (healthBarInstancer as unknown as { getStats?: () => any }).getStats?.();
+      } catch {
+        return null;
+      }
     };
 
-    gAny.__hbDebugScale = function(shipId:number) {
+    gAny.__hbDebugScale = function (shipId: number) {
       if (!healthBarInstancer) return null;
-      try { return (healthBarInstancer as unknown as { debugGetInstanceScale?: (id:number)=>number | null }).debugGetInstanceScale?.(shipId) ?? null; } catch { return null; }
+      try {
+        return (
+          (
+            healthBarInstancer as unknown as {
+              debugGetInstanceScale?: (id: number) => number | null;
+            }
+          ).debugGetInstanceScale?.(shipId) ?? null
+        );
+      } catch {
+        return null;
+      }
     };
 
-    gAny.__hbDebugMatrix = function(shipId:number) {
+    gAny.__hbDebugMatrix = function (shipId: number) {
       if (!healthBarInstancer) return null;
-      try { return (healthBarInstancer as unknown as { debugGetInstanceMatrix?: (id:number)=>any | null }).debugGetInstanceMatrix?.(shipId) ?? null; } catch { return null; }
+      try {
+        return (
+          (
+            healthBarInstancer as unknown as { debugGetInstanceMatrix?: (id: number) => any | null }
+          ).debugGetInstanceMatrix?.(shipId) ?? null
+        );
+      } catch {
+        return null;
+      }
     };
 
-  // Note: temporary developer marker helpers removed.
-  } catch {logger.error('Failed setting up instanced health bar dev helpers'); }
+    // Note: temporary developer marker helpers removed.
+  } catch {
+    logger.error('Failed setting up instanced health bar dev helpers');
+  }
 
   // Periodic dev logger - reports ships near bounds and instancer stats every intervalMs
   (function setupPeriodicDevLogger() {
@@ -672,24 +903,40 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     function logOnce() {
       try {
-    const G = (typeof gAny !== 'undefined' ? gAny : (globalThis as unknown as Record<string, any>));
-    const near = G.__dumpShipsNearBounds ? G.__dumpShipsNearBounds(5) : [];
-    const instIds = G.__listInstancedHealthBarShips ? G.__listInstancedHealthBarShips() : [];
-    const nonInst = G.__listShipsWithHealthBar ? G.__listShipsWithHealthBar() : [];
-    const stats = G.__hbInstancerStats ? G.__hbInstancerStats() : null;
-        if ((near && near.length > 0) || (instIds && instIds.length > 0) || (nonInst && nonInst.length > 0)) {
-          console.info('[HB_DEV][periodic] near=', near, 'instancedIds=', instIds, 'nonInst=', nonInst, 'stats=', stats);
+        const G =
+          typeof gAny !== 'undefined' ? gAny : (globalThis as unknown as Record<string, any>);
+        const near = G.__dumpShipsNearBounds ? G.__dumpShipsNearBounds(5) : [];
+        const instIds = G.__listInstancedHealthBarShips ? G.__listInstancedHealthBarShips() : [];
+        const nonInst = G.__listShipsWithHealthBar ? G.__listShipsWithHealthBar() : [];
+        const stats = G.__hbInstancerStats ? G.__hbInstancerStats() : null;
+        if (
+          (near && near.length > 0) ||
+          (instIds && instIds.length > 0) ||
+          (nonInst && nonInst.length > 0)
+        ) {
+          console.info(
+            '[HB_DEV][periodic] near=',
+            near,
+            'instancedIds=',
+            instIds,
+            'nonInst=',
+            nonInst,
+            'stats=',
+            stats,
+          );
         }
-      } catch {logger.error('Failed logging periodic dev stats');}
+      } catch {
+        logger.error('Failed logging periodic dev stats');
+      }
     }
 
-    (globalThis as any).__hbPeriodicStart = function() {
+    (globalThis as any).__hbPeriodicStart = function () {
       if (timer != null) return false;
       timer = window.setInterval(logOnce, intervalMs);
       return true;
     };
 
-    (globalThis as any).__hbPeriodicStop = function() {
+    (globalThis as any).__hbPeriodicStop = function () {
       if (timer == null) return false;
       clearInterval(timer);
       timer = null;
@@ -699,17 +946,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Initialize ship instancer if enabled
   if (RendererConfig.instancing.enableShips) {
-    try { shipInstancer.init(scene, shipsGroup);
-      logger.info('Ship instancer initialized');  
-     } catch (e) { logger.warn('Ship instancer init failed', e); }
+    try {
+      shipInstancer.init(scene, shipsGroup);
+      logger.info('Ship instancer initialized');
+    } catch (e) {
+      logger.warn('Ship instancer init failed', e);
+    }
   }
   // Prototype registration is now handled after GLTF models are loaded in main.ts
   // to fix the timing race condition that caused placeholder models to appear.
-  
 
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
   // Helper to safely access shader-like uniforms from a material without using `any`.
-  function getUniformsSafe(mat?: THREE.Material | THREE.ShaderMaterial | null): Record<string, unknown> | undefined {
+  function getUniformsSafe(
+    mat?: THREE.Material | THREE.ShaderMaterial | null,
+  ): Record<string, unknown> | undefined {
     return (mat as unknown as { uniforms?: Record<string, unknown> })?.uniforms;
   }
   // Helper to attach a __renderProgram marker into material.userData without using `any` in multiple places.
@@ -735,9 +986,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
   }
   // Maintain a short ring buffer of recent hits per ship for hex highlight
-  const recentShieldHits = new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>();
+  const recentShieldHits = new Map<
+    number,
+    { dir: THREE.Vector3; time: number; strength: number }[]
+  >();
 
-  function colorForTeam(team: 'red' | 'blue'): number { return team === 'red' ? 0xff5050 : 0x50a0ff; }
+  function colorForTeam(team: 'red' | 'blue'): number {
+    return team === 'red' ? 0xff5050 : 0x50a0ff;
+  }
 
   function meshForShip(s: Ship): THREE.Object3D {
     const pool = (state as any).assetPool as Map<string, any> | undefined;
@@ -758,19 +1014,20 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         map: texture,
         transparent: true,
         alphaTest: 0.05,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
       });
       const teamMaterial = new THREE.MeshBasicMaterial({
         color: teamColor,
         transparent: true,
         opacity: 0.8,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
       });
 
       // Create a group to hold the ship parts
       const shipGroup = new THREE.Group();
 
-      const size = ShipVisualConfig.ships[s.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+      const size =
+        ShipVisualConfig.ships[s.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
 
       // Main body - cylinder with SVG texture on the caps and team color on the sides
       const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
@@ -835,13 +1092,15 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const svgAsset = pool.get(svgUrl);
         if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
       }
-    } catch {logger.error('Error accessing asset pool for ship SVG');}
+    } catch {
+      logger.error('Error accessing asset pool for ship SVG');
+    }
 
     // Fallback placeholder, and kick off async load to replace visual when ready
     const geom = new THREE.ConeGeometry(8, 24, 8);
     const mat = new THREE.MeshPhongMaterial({ color: colorForTeam(s.team), emissive: 0x111122 });
-  const placeholder = new THREE.Mesh(geom, mat);
-  placeholder.rotation.z = 0; // Will be set correctly in updateTransforms
+    const placeholder = new THREE.Mesh(geom, mat);
+    placeholder.rotation.z = 0; // Will be set correctly in updateTransforms
     placeholder.position.set(s.pos.x, s.pos.y, s.pos.z);
 
     // Lazy-load SVG and swap geometry/material once available
@@ -855,23 +1114,33 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             const gltfKey = `ship-${s.class}`;
             const proto = state.assetPool.get(gltfKeyTeam) ?? state.assetPool.get(gltfKey);
             if (proto && typeof proto === 'object') {
-              try { shipInstancer.allocate(s.id, s.class, s.team, state); } catch (_) { void _; }
+              try {
+                shipInstancer.allocate(s.id, s.class, s.team, state);
+              } catch (_) {
+                void _;
+              }
               return; // skip SVG rasterization
             }
           }
-        } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
 
-        const teamColor = s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
+        const teamColor =
+          s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
         // If SVG subsystem has been explicitly disabled, skip rasterization and keep placeholder.
         if ((RendererConfig as any)?.disableSvgSubsystem) {
-          logger.debug('[threeRenderer] SVG subsystem disabled; skipping SVG rasterization for', svgUrl);
+          logger.debug(
+            '[threeRenderer] SVG subsystem disabled; skipping SVG rasterization for',
+            svgUrl,
+          );
           return; // keep placeholder
         }
 
         const asset = await loadSVGAsset(svgUrl, {
           width: defaultSVGConfig.defaultRasterSize.width,
           height: defaultSVGConfig.defaultRasterSize.height,
-          teamColor: teamColor
+          teamColor: teamColor,
         });
         if (pool) pool.set(svgUrl, asset);
         if (asset?.imageBitmap && placeholder.parent) {
@@ -895,13 +1164,23 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const geom = new THREE.SphereGeometry(2.2, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
     const mesh = new THREE.Mesh(geom, mat);
-  try { setObjectRenderProgram(mesh, mat); } catch { /* ignore test env */ }
+    try {
+      setObjectRenderProgram(mesh, mat);
+    } catch {
+      /* ignore test env */
+    }
     mesh.position.set(b.pos.x, b.pos.y, b.pos.z);
     return mesh;
   }
 
   function createHealthBar(ship: Ship): THREE.Object3D {
-  try { logger.info(`[HB_TRACE][threeRenderer] createHealthBar() called for ship=${ship?.id} class=${ship?.class} pos=${ship?.pos?.x},${ship?.pos?.y},${ship?.pos?.z}`); } catch (_e) { void _e; }
+    try {
+      logger.info(
+        `[HB_TRACE][threeRenderer] createHealthBar() called for ship=${ship?.id} class=${ship?.class} pos=${ship?.pos?.x},${ship?.pos?.y},${ship?.pos?.z}`,
+      );
+    } catch (_e) {
+      void _e;
+    }
     const config = RendererConfig.healthBars;
     const barGroup = new THREE.Group();
 
@@ -914,9 +1193,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
     }
-  const bgMesh = new THREE.Mesh(bgGeom, bgMat);
-  try { const m = bgMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((bgMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? bgMat; } catch { /* ignore */ }
-  barGroup.add(bgMesh);
+    const bgMesh = new THREE.Mesh(bgGeom, bgMat);
+    try {
+      const m = bgMesh as unknown as { userData?: Record<string, unknown> };
+      m.userData = m.userData || {};
+      m.userData.__renderProgram =
+        ((bgMat as unknown as { userData?: Record<string, unknown> }).userData
+          ?.__renderProgram as unknown) ?? bgMat;
+    } catch {
+      /* ignore */
+    }
+    barGroup.add(bgMesh);
 
     // Health bar
     const healthGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
@@ -927,9 +1214,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     } else {
       healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
     }
-  const healthMesh = new THREE.Mesh(healthGeom, healthMat);
-  try { const m = healthMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((healthMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? healthMat; } catch { /* ignore */ }
-  barGroup.add(healthMesh);
+    const healthMesh = new THREE.Mesh(healthGeom, healthMat);
+    try {
+      const m = healthMesh as unknown as { userData?: Record<string, unknown> };
+      m.userData = m.userData || {};
+      m.userData.__renderProgram =
+        ((healthMat as unknown as { userData?: Record<string, unknown> }).userData
+          ?.__renderProgram as unknown) ?? healthMat;
+    } catch {
+      /* ignore */
+    }
+    barGroup.add(healthMesh);
 
     // Shield bar (if ship has shield)
     let shieldMesh: THREE.Mesh | null = null;
@@ -940,25 +1235,45 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const mat = getPooledBillboardMaterial(new THREE.Color(config.colors.shield.full), 0.8);
         shieldMat = mat;
       } else {
-        shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+        shieldMat = new THREE.MeshBasicMaterial({
+          color: config.colors.shield.full,
+          transparent: true,
+          opacity: 0.8,
+        });
       }
-    shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-  try { const m = shieldMesh as unknown as { userData?: Record<string, unknown> }; m.userData = m.userData || {}; m.userData.__renderProgram = ((shieldMat as unknown as { userData?: Record<string, unknown> }).userData?.__renderProgram as unknown) ?? shieldMat; } catch { /* ignore */ }
-    shieldMesh.position.z = 0.1; // slightly in front
+      shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+      try {
+        const m = shieldMesh as unknown as { userData?: Record<string, unknown> };
+        m.userData = m.userData || {};
+        m.userData.__renderProgram =
+          ((shieldMat as unknown as { userData?: Record<string, unknown> }).userData
+            ?.__renderProgram as unknown) ?? shieldMat;
+      } catch {
+        /* ignore */
+      }
+      shieldMesh.position.z = 0.1; // slightly in front
       barGroup.add(shieldMesh);
     }
 
     // Border
-    const borderGeom = new THREE.RingGeometry(config.width/2 - config.border.width/2, config.width/2 + config.border.width/2, 8);
-    const borderMat = new THREE.MeshBasicMaterial({ color: config.border.color, transparent: true, opacity: 0.5 });
+    const borderGeom = new THREE.RingGeometry(
+      config.width / 2 - config.border.width / 2,
+      config.width / 2 + config.border.width / 2,
+      8,
+    );
+    const borderMat = new THREE.MeshBasicMaterial({
+      color: config.border.color,
+      transparent: true,
+      opacity: 0.5,
+    });
     const borderMesh = new THREE.Mesh(borderGeom, borderMat);
     borderMesh.position.z = 0.2;
     barGroup.add(borderMesh);
 
-  // Store references for updating
-  (barGroup as unknown as Record<string, unknown>).healthMesh = healthMesh;
-  (barGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
-  (barGroup as unknown as Record<string, unknown>).bgMesh = bgMesh;
+    // Store references for updating
+    (barGroup as unknown as Record<string, unknown>).healthMesh = healthMesh;
+    (barGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
+    (barGroup as unknown as Record<string, unknown>).bgMesh = bgMesh;
 
     return barGroup;
   }
@@ -966,17 +1281,35 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   // DEV LOG: inline health bar creation
   try {
     logger.info('[HB_TRACE][threeRenderer] createHealthBar defined (inline)');
-  } catch {logger.error('Failed logging health bar creation trace');}
+  } catch {
+    logger.error('Failed logging health bar creation trace');
+  }
 
   function updateHealthBar(ship: Ship, barGroup: THREE.Object3D) {
     const config = RendererConfig.healthBars;
-  const healthMesh = (barGroup as unknown as { healthMesh?: THREE.Mesh }).healthMesh as THREE.Mesh;
-  const shieldMesh = (barGroup as unknown as { shieldMesh?: THREE.Mesh | null }).shieldMesh as THREE.Mesh | null;
+    const healthMesh = (barGroup as unknown as { healthMesh?: THREE.Mesh })
+      .healthMesh as THREE.Mesh;
+    const shieldMesh = (barGroup as unknown as { shieldMesh?: THREE.Mesh | null })
+      .shieldMesh as THREE.Mesh | null;
 
-  // Position the bar above the ship (3D) - always update position
-  const newPos = { x: ship.pos.x + config.position.offsetX, y: ship.pos.y + config.position.offsetY, z: ship.pos.z + ShipVisualConfig.healthBar.offset.z };
-  try { if (Math.abs(newPos.y - 400) < 0.001) console.info('[HB_TRACE][threeRenderer] updateHealthBar positioning near y=400 for ship=', ship.id, 'pos=', newPos); } catch (_e) { void _e; }
-  barGroup.position.set(newPos.x, newPos.y, newPos.z);
+    // Position the bar above the ship (3D) - always update position
+    const newPos = {
+      x: ship.pos.x + config.position.offsetX,
+      y: ship.pos.y + config.position.offsetY,
+      z: ship.pos.z + ShipVisualConfig.healthBar.offset.z,
+    };
+    try {
+      if (Math.abs(newPos.y - 400) < 0.001)
+        console.info(
+          '[HB_TRACE][threeRenderer] updateHealthBar positioning near y=400 for ship=',
+          ship.id,
+          'pos=',
+          newPos,
+        );
+    } catch (_e) {
+      void _e;
+    }
+    barGroup.position.set(newPos.x, newPos.y, newPos.z);
 
     // Only update health bar if health changed (dirty flag optimization)
     if (ship._healthDirty) {
@@ -990,11 +1323,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else if (healthPercent < 0.7) {
         healthColor = config.colors.health.damaged;
       }
-      const hUniforms = getUniformsSafe(healthMesh.material as THREE.Material | THREE.ShaderMaterial);
+      const hUniforms = getUniformsSafe(
+        healthMesh.material as THREE.Material | THREE.ShaderMaterial,
+      );
       if (GPU_BILLBOARD && hUniforms && (hUniforms as any).uColor) {
         const mat = healthMesh.material as THREE.ShaderMaterial;
         // Acquire pooled material for the new color/alpha and swap if different
-        const alphaVal = ((hUniforms as any).uAlpha && ((hUniforms as any).uAlpha.value as number)) ?? 1.0;
+        const alphaVal =
+          ((hUniforms as any).uAlpha && ((hUniforms as any).uAlpha.value as number)) ?? 1.0;
         const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), alphaVal);
         if (newMat !== mat) {
           (healthMesh.material as THREE.Material) = newMat;
@@ -1002,7 +1338,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else {
         (healthMesh.material as THREE.MeshBasicMaterial).color.setStyle(healthColor);
       }
-      
+
       // Clear dirty flag after update
       ship._healthDirty = false;
     }
@@ -1013,9 +1349,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shieldMesh.scale.x = Math.max(0, shieldPercent);
 
       // Color based on shield percentage
-      const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-  const sUniforms = getUniformsSafe(shieldMesh?.material as THREE.Material | THREE.ShaderMaterial);
-  if (shieldMesh && GPU_BILLBOARD && sUniforms && (sUniforms as any).uColor) {
+      const shieldColor =
+        shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
+      const sUniforms = getUniformsSafe(
+        shieldMesh?.material as THREE.Material | THREE.ShaderMaterial,
+      );
+      if (shieldMesh && GPU_BILLBOARD && sUniforms && (sUniforms as any).uColor) {
         const mat = shieldMesh.material as THREE.ShaderMaterial;
         const alpha = 0.8;
         const newMat = getPooledBillboardMaterial(new THREE.Color(shieldColor), alpha);
@@ -1025,8 +1364,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } else if (shieldMesh) {
         (shieldMesh.material as THREE.MeshBasicMaterial).color.setStyle(shieldColor);
       }
-      
-      // Clear dirty flag after update  
+
+      // Clear dirty flag after update
       ship._shieldDirty = false;
     }
   }
@@ -1036,9 +1375,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const shieldGroup = new THREE.Group();
 
     // Spherical shield bubble with rim lighting and directional hit arc
-    const geom = new THREE.SphereGeometry( 
+    const geom = new THREE.SphereGeometry(
       (ShipVisualConfig.ships[ship.class]?.collisionRadius ?? 16) * 1.1,
-      24, 24
+      24,
+      24,
     );
     const teamColor = new THREE.Color(ship.team === 'red' ? config.colors.red : config.colors.blue);
 
@@ -1056,7 +1396,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         uHitStrength: { value: 0.0 },
         // Hex hit highlighting
         uHitCount: { value: 0 },
-        uHitDirs: { value: Array.from({ length: HIT_MAX }, () => new THREE.Vector3(0,0,1)) },
+        uHitDirs: { value: Array.from({ length: HIT_MAX }, () => new THREE.Vector3(0, 0, 1)) },
         uHitTimes: { value: new Float32Array(HIT_MAX).fill(-1000) },
         uHitStrengths: { value: new Float32Array(HIT_MAX).fill(0) },
         uHitWindow: { value: config.hexGrid.hitWindow },
@@ -1231,11 +1571,19 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     });
 
     const shieldMesh = new THREE.Mesh(geom, material);
-  // Attach a stable program-like key so external systems can cache
-  // parameter introspection keyed by this object.
-  try { setMaterialRenderProgram(material, material); } catch { /* ignore */ }
-  try { setObjectRenderProgram(shieldMesh, material); } catch { /* ignore */ }
-  shieldGroup.add(shieldMesh);
+    // Attach a stable program-like key so external systems can cache
+    // parameter introspection keyed by this object.
+    try {
+      setMaterialRenderProgram(material, material);
+    } catch {
+      /* ignore */
+    }
+    try {
+      setObjectRenderProgram(shieldMesh, material);
+    } catch {
+      /* ignore */
+    }
+    shieldGroup.add(shieldMesh);
     (shieldGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
     (shieldGroup as unknown as Record<string, unknown>).pulsePhase = rng.next() * Math.PI * 2;
     return shieldGroup;
@@ -1243,7 +1591,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   function updateShieldEffect(ship: Ship, shieldGroup: THREE.Object3D, currentTime: number) {
     const config = RendererConfig.shield;
-  const shieldMesh = (shieldGroup as unknown as { shieldMesh?: THREE.Mesh }).shieldMesh as THREE.Mesh;
+    const shieldMesh = (shieldGroup as unknown as { shieldMesh?: THREE.Mesh })
+      .shieldMesh as THREE.Mesh;
     const mat = shieldMesh.material as THREE.ShaderMaterial;
 
     // Position the shield around the ship (3D)
@@ -1256,10 +1605,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update uniforms
     mat.uniforms.uTime.value = currentTime;
     const shieldPercent = ship.maxShield > 0 ? ship.shield / ship.maxShield : 0;
-    mat.uniforms.uOpacity.value = config.opacity.base * shieldPercent + config.opacity.min * (1 - shieldPercent);
+    mat.uniforms.uOpacity.value =
+      config.opacity.base * shieldPercent + config.opacity.min * (1 - shieldPercent);
 
-  const lastHitTime = ship.lastShieldHitTime || 0;
-  const hitWindow = RendererConfig.shield.hexGrid.hitWindow; // seconds
+    const lastHitTime = ship.lastShieldHitTime || 0;
+    const hitWindow = RendererConfig.shield.hexGrid.hitWindow; // seconds
     let timeDecay = 0.0;
     if (currentTime - lastHitTime < hitWindow) {
       timeDecay = 1.0 - (currentTime - lastHitTime) / hitWindow;
@@ -1274,7 +1624,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Keep only the most recent few and drop stale ones
       const HIT_MAX = Math.max(1, Math.floor(RendererConfig.shield.hexGrid.hitMax));
       while (list.length > HIT_MAX) list.shift();
-      const pruned = list.filter(h => currentTime - h.time <= hitWindow);
+      const pruned = list.filter((h) => currentTime - h.time <= hitWindow);
       recentShieldHits.set(ship.id, pruned);
     }
     // Scale directional arc by damage as well
@@ -1288,13 +1638,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     (mat.uniforms.uHitDir.value as THREE.Vector3).set(dir.x, dir.y, dir.z).normalize();
 
     // Update array uniforms for hex highlights
-  const list = recentShieldHits.get(ship.id) ?? [];
-  const HIT_MAX = Math.max(1, Math.floor(RendererConfig.shield.hexGrid.hitMax));
+    const list = recentShieldHits.get(ship.id) ?? [];
+    const HIT_MAX = Math.max(1, Math.floor(RendererConfig.shield.hexGrid.hitMax));
     const maxN = Math.min(HIT_MAX, list.length);
     mat.uniforms.uHitCount.value = maxN;
-    const uDirs = (mat.uniforms.uHitDirs.value as THREE.Vector3[]);
-    const uTimes = (mat.uniforms.uHitTimes.value as Float32Array);
-    const uStrengths = (mat.uniforms.uHitStrengths.value as Float32Array);
+    const uDirs = mat.uniforms.uHitDirs.value as THREE.Vector3[];
+    const uTimes = mat.uniforms.uHitTimes.value as Float32Array;
+    const uStrengths = mat.uniforms.uHitStrengths.value as Float32Array;
     for (let i = 0; i < HIT_MAX; i++) {
       if (i < maxN) {
         uDirs[i].copy(list[i].dir).normalize();
@@ -1315,10 +1665,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
 
     // Ships
-  // Previously this required shipInstancer.isReady(), but that created a circular
-  // dependency (isReady only becomes true after first allocation/createGroup).
-  // Allow allocate() to drive readiness transition.
-  const useShipInstancing = RendererConfig.instancing.enableShips; 
+    // Previously this required shipInstancer.isReady(), but that created a circular
+    // dependency (isReady only becomes true after first allocation/createGroup).
+    // Allow allocate() to drive readiness transition.
+    const useShipInstancing = RendererConfig.instancing.enableShips;
     for (const s of state.ships) {
       if (!shipMeshes.has(s.id)) {
         // If ship instancing is enabled and we can allocate, don't create an individual mesh
@@ -1329,11 +1679,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             shipMeshes.set(s.id, new THREE.Object3D()); // track existence
           } else {
             const m = meshForShip(s);
-            shipMeshes.set(s.id, m); shipsGroup.add(m);
+            shipMeshes.set(s.id, m);
+            shipsGroup.add(m);
           }
         } else {
           const m = meshForShip(s);
-          shipMeshes.set(s.id, m); shipsGroup.add(m);
+          shipMeshes.set(s.id, m);
+          shipsGroup.add(m);
         }
       }
       // Health bars
@@ -1341,41 +1693,79 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // This avoids accidentally creating bars for non-ship objects or placeholders that
       // may be present in state.ships (which can show up at the world bounds/box).
       // DEV LOG: inline health bar creation
-  const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, any>)[s.class];
-      const posValid = Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
+      const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, any>)[s.class];
+      const posValid =
+        Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
       if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
         if (RendererConfig.instancing.enableBars && healthBarInstancer) {
           if (!healthBarInstancer.hasShip(s.id)) healthBarInstancer.allocateInstance(s.id);
         } else {
           if (!healthBarMeshes.has(s.id)) {
-            try { logger.info('[HB_TRACE] calling createHealthBar for ship', s.id, 'pos', s.pos); logger.info(new Error('HB_STACK createHealthBar').stack); } catch {logger.error('Failed logging health bar creation trace');}}
-            const bar = createHealthBar(s);
-            try { logger.info(`[HB_TRACE][threeRenderer] created health bar (inline) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`); } catch {logger.error('Failed logging health bar creation trace');}
-            healthBarMeshes.set(s.id, bar);
-            healthBarsGroup.add(bar);
+            try {
+              logger.info('[HB_TRACE] calling createHealthBar for ship', s.id, 'pos', s.pos);
+              logger.info(new Error('HB_STACK createHealthBar').stack);
+            } catch {
+              logger.error('Failed logging health bar creation trace');
+            }
           }
-        } else { if (RendererConfig.visual.enableHealthBars) {
-          logger.warn(`[HealthBar Debug] (inline) Skipping health bar for ship`, s.id, `class:`, s.class, `knownClass:`, hasKnownClass, `posValid:`, posValid, `pos:`, s.pos);
-        }};
+          const bar = createHealthBar(s);
+          try {
+            logger.info(
+              `[HB_TRACE][threeRenderer] created health bar (inline) for ship=${s.id} class=${s.class} pos=(${s.pos.x},${s.pos.y},${s.pos.z})`,
+            );
+          } catch {
+            logger.error('Failed logging health bar creation trace');
+          }
+          healthBarMeshes.set(s.id, bar);
+          healthBarsGroup.add(bar);
+        }
+      } else {
+        if (RendererConfig.visual.enableHealthBars) {
+          logger.warn(
+            `[HealthBar Debug] (inline) Skipping health bar for ship`,
+            s.id,
+            `class:`,
+            s.class,
+            `knownClass:`,
+            hasKnownClass,
+            `posValid:`,
+            posValid,
+            `pos:`,
+            s.pos,
+          );
+        }
+      }
       // Shield effects
-      if (RendererConfig.visual.enableShieldEffects && s.maxShield > 0 && !shieldEffectMeshes.has(s.id)) {
+      if (
+        RendererConfig.visual.enableShieldEffects &&
+        s.maxShield > 0 &&
+        !shieldEffectMeshes.has(s.id)
+      ) {
         const shield = createShieldEffect(s);
-        shieldEffectMeshes.set(s.id, shield); shieldEffectsGroup.add(shield);
+        shieldEffectMeshes.set(s.id, shield);
+        shieldEffectsGroup.add(shield);
       }
     }
     for (const [id, m] of shipMeshes) {
-      if (!state.ships.find(s => s.id === id)) {
-        shipsGroup.remove(m); shipMeshes.delete(id);
+      if (!state.ships.find((s) => s.id === id)) {
+        shipsGroup.remove(m);
+        shipMeshes.delete(id);
         // Also remove health bar
         if (RendererConfig.instancing.enableBars && healthBarInstancer) {
           healthBarInstancer.freeInstance(id);
         } else {
           const bar = healthBarMeshes.get(id);
-          if (bar) { healthBarsGroup.remove(bar); healthBarMeshes.delete(id); }
+          if (bar) {
+            healthBarsGroup.remove(bar);
+            healthBarMeshes.delete(id);
+          }
         }
         // Also remove shield effect
         const shield = shieldEffectMeshes.get(id);
-        if (shield) { shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id); }
+        if (shield) {
+          shieldEffectsGroup.remove(shield);
+          shieldEffectMeshes.delete(id);
+        }
         // Free ship instancer entry if present
         if (RendererConfig.instancing.enableShips) shipInstancer.free(id);
       }
@@ -1383,16 +1773,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Remove health bars for ships that no longer exist (non-instanced only)
     if (!RendererConfig.instancing.enableBars) {
       for (const [id, bar] of healthBarMeshes) {
-        if (!state.ships.find(s => s.id === id)) {
-          healthBarsGroup.remove(bar); healthBarMeshes.delete(id);
+        if (!state.ships.find((s) => s.id === id)) {
+          healthBarsGroup.remove(bar);
+          healthBarMeshes.delete(id);
         }
       }
     }
     // Remove shield effects for ships that no longer exist or have no shield
     for (const [id, shield] of shieldEffectMeshes) {
-      const ship = state.ships.find(s => s.id === id);
+      const ship = state.ships.find((s) => s.id === id);
       if (!ship || ship.maxShield <= 0) {
-        shieldEffectsGroup.remove(shield); shieldEffectMeshes.delete(id);
+        shieldEffectsGroup.remove(shield);
+        shieldEffectMeshes.delete(id);
       }
     }
 
@@ -1405,9 +1797,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           bulletInstancer.allocateInstance(b.id);
         }
       }
-      
+
       // Remove bullets that no longer exist
-      const currentBulletIds = new Set(state.bullets.map(b => b.id));
+      const currentBulletIds = new Set(state.bullets.map((b) => b.id));
       for (const bulletId of bulletInstancer.getActiveBulletIds()) {
         if (!currentBulletIds.has(bulletId)) {
           bulletInstancer.freeInstance(bulletId);
@@ -1418,14 +1810,14 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       for (const b of state.bullets) {
         if (!bulletMeshes.has(b.id)) {
           const m = meshForBullet(b);
-          bulletMeshes.set(b.id, m); 
+          bulletMeshes.set(b.id, m);
           bulletsGroup.add(m);
         }
       }
       for (const [id, m] of bulletMeshes) {
-        if (!state.bullets.find(b => b.id === id)) { 
-          bulletsGroup.remove(m); 
-          bulletMeshes.delete(id); 
+        if (!state.bullets.find((b) => b.id === id)) {
+          bulletsGroup.remove(m);
+          bulletMeshes.delete(id);
         }
       }
     }
@@ -1441,8 +1833,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Use simulation time for renderer-driven effects so shader hit timestamps
     // align with game state timestamps like ship.lastShieldHitTime
     const currentTime = state.time;
-  // Do not gate on isReady here either; after first allocate groups exist.
-  const useShipInstancing = RendererConfig.instancing.enableShips; 
+    // Do not gate on isReady here either; after first allocate groups exist.
+    const useShipInstancing = RendererConfig.instancing.enableShips;
     for (const s of state.ships) {
       const m = shipMeshes.get(s.id)!;
       if (!m) continue;
@@ -1451,7 +1843,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Guard when prevPos is optional; fall back to current pos when missing
       let interpolatedPos: THREE.Vector3;
       if (s.prevPos) {
-        interpolatedPos = new THREE.Vector3().lerpVectors(new THREE.Vector3(s.prevPos.x, s.prevPos.y, s.prevPos.z), new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z), interpolationFactor);
+        interpolatedPos = new THREE.Vector3().lerpVectors(
+          new THREE.Vector3(s.prevPos.x, s.prevPos.y, s.prevPos.z),
+          new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z),
+          interpolationFactor,
+        );
       } else {
         interpolatedPos = new THREE.Vector3(s.pos.x, s.pos.y, s.pos.z);
       }
@@ -1459,19 +1855,37 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // Guard when prevOrientation is missing (tests may omit it); fall back to current orientation
       let interpolatedOrientationEuler: THREE.Euler;
       if (s.prevOrientation) {
-        const prevEuler = new THREE.Euler(s.prevOrientation.pitch, s.prevOrientation.yaw, s.prevOrientation.roll);
-        const nextEuler = new THREE.Euler(s.orientation.pitch, s.orientation.yaw, s.orientation.roll);
+        const prevEuler = new THREE.Euler(
+          s.prevOrientation.pitch,
+          s.prevOrientation.yaw,
+          s.prevOrientation.roll,
+        );
+        const nextEuler = new THREE.Euler(
+          s.orientation.pitch,
+          s.orientation.yaw,
+          s.orientation.roll,
+        );
         const qPrev = new THREE.Quaternion().setFromEuler(prevEuler);
         const qNext = new THREE.Quaternion().setFromEuler(nextEuler);
         const qInterp = new THREE.Quaternion().slerpQuaternions(qPrev, qNext, interpolationFactor);
         interpolatedOrientationEuler = new THREE.Euler().setFromQuaternion(qInterp);
       } else {
-        interpolatedOrientationEuler = new THREE.Euler(s.orientation.pitch, s.orientation.yaw, s.orientation.roll);
+        interpolatedOrientationEuler = new THREE.Euler(
+          s.orientation.pitch,
+          s.orientation.yaw,
+          s.orientation.roll,
+        );
       }
       const interpolatedOrientation = interpolatedOrientationEuler;
       if (useShipInstancing && shipInstancer.hasShip(s.id)) {
         // Reuse a shared temp quaternion to avoid per-frame allocations
-        tempQuat.setFromEuler(new THREE.Euler(interpolatedOrientation.x, interpolatedOrientation.y, interpolatedOrientation.z));
+        tempQuat.setFromEuler(
+          new THREE.Euler(
+            interpolatedOrientation.x,
+            interpolatedOrientation.y,
+            interpolatedOrientation.z,
+          ),
+        );
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         shipInstancer.updateTransform(s.id, interpolatedPos, tempQuat, scale);
       } else {
@@ -1479,8 +1893,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         // Set 3D rotation using ship's interpolated orientation
         // Ships are modeled pointing along +X axis, so we need to adjust
         // Order: first yaw (Y-axis), then pitch (X-axis), then roll (Z-axis)
-        m.rotation.set(interpolatedOrientation.x, interpolatedOrientation.y, interpolatedOrientation.z);
-        
+        m.rotation.set(
+          interpolatedOrientation.x,
+          interpolatedOrientation.y,
+          interpolatedOrientation.z,
+        );
+
         const scale = ShipVisualConfig.ships[s.class]?.scale ?? RendererConfig.defaultScale;
         m.scale.setScalar(scale);
       }
@@ -1507,16 +1925,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
     }
-    
+
     // Update bullets - use instanced rendering if enabled, otherwise individual meshes
     if (RendererConfig.instancing.enableBullets && bulletInstancer) {
       // Update instanced bullet transforms. Some tests construct bullets with
       // only `pos` and omit `prevPos`. Guard access to avoid TypeErrors by
       // falling back to `pos` when `prevPos` is missing.
       for (const b of state.bullets) {
-        const px = (b.prevPos && typeof b.prevPos.x === 'number') ? b.prevPos.x : b.pos.x;
-        const py = (b.prevPos && typeof b.prevPos.y === 'number') ? b.prevPos.y : b.pos.y;
-        const pz = (b.prevPos && typeof b.prevPos.z === 'number') ? b.prevPos.z : b.pos.z;
+        const px = b.prevPos && typeof b.prevPos.x === 'number' ? b.prevPos.x : b.pos.x;
+        const py = b.prevPos && typeof b.prevPos.y === 'number' ? b.prevPos.y : b.pos.y;
+        const pz = b.prevPos && typeof b.prevPos.z === 'number' ? b.prevPos.z : b.pos.z;
         const nx = b.pos.x;
         const ny = b.pos.y;
         const nz = b.pos.z;
@@ -1533,9 +1951,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       for (const b of state.bullets) {
         const m = bulletMeshes.get(b.id);
         if (m) {
-          const px = (b.prevPos && typeof b.prevPos.x === 'number') ? b.prevPos.x : b.pos.x;
-          const py = (b.prevPos && typeof b.prevPos.y === 'number') ? b.prevPos.y : b.pos.y;
-          const pz = (b.prevPos && typeof b.prevPos.z === 'number') ? b.prevPos.z : b.pos.z;
+          const px = b.prevPos && typeof b.prevPos.x === 'number' ? b.prevPos.x : b.pos.x;
+          const py = b.prevPos && typeof b.prevPos.y === 'number' ? b.prevPos.y : b.pos.y;
+          const pz = b.prevPos && typeof b.prevPos.z === 'number' ? b.prevPos.z : b.pos.z;
           const nx = b.pos.x;
           const ny = b.pos.y;
           const nz = b.pos.z;
@@ -1554,9 +1972,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const bar = healthBarMeshes.get(s.id);
         if (bar) {
           bar.position.set(
-              s.pos.x + RendererConfig.healthBars.position.offsetX,
-              s.pos.y + RendererConfig.healthBars.position.offsetY,
-              s.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
+            s.pos.x + RendererConfig.healthBars.position.offsetX,
+            s.pos.y + RendererConfig.healthBars.position.offsetY,
+            s.pos.z + ShipVisualConfig.healthBar.offset.z, // Above the ship
           );
         }
       }
@@ -1582,7 +2000,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     try {
       canvas.width = w;
       canvas.height = h;
-    } catch {logger.error('Failed to resize canvas');}
+    } catch {
+      logger.error('Failed to resize canvas');
+    }
 
     // If available, also set the CSS size so the element visually matches the
     // layout; some browsers scale canvas using CSS which can affect the
@@ -1604,12 +2024,24 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Update camera position using spherical coordinates
     updateCameraPosition();
 
-    try { effectsManager?.resize(w, h); } catch {logger.error('Failed to resize effects manager');}
+    try {
+      effectsManager?.resize(w, h);
+    } catch {
+      logger.error('Failed to resize effects manager');
+    }
   }
 
   // Create effects manager (postprocessing) lazily
   let effectsManager: import('./effects.js').EffectsManager | null = null;
-  try { effectsManager = createEffectsManager(renderer as unknown as any, scene as unknown as any, camera as unknown as any); } catch { effectsManager = null; }
+  try {
+    effectsManager = createEffectsManager(
+      renderer as unknown as any,
+      scene as unknown as any,
+      camera as unknown as any,
+    );
+  } catch {
+    effectsManager = null;
+  }
 
   // Particle renderer setup (Instanced quads) - guarded so tests without WebGL won't fail.
   let particleInstancedMesh: THREE.InstancedMesh | null = null;
@@ -1620,22 +2052,29 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     try {
       const psMod = require('./particleSystem.js');
       const ensure = psMod.ensureParticleSystem;
-      const sys = ensure ? ensure((state as unknown) as any) : null;
+      const sys = ensure ? ensure(state as unknown as any) : null;
       // Create buffers for a reasonable max particle count (match initial pool)
-      const maxCount = (sys && sys.stats && sys.stats().poolSize) ? sys.stats().poolSize : 256;
+      const maxCount = sys && sys.stats && sys.stats().poolSize ? sys.stats().poolSize : 256;
 
       // Base quad geometry (unit quad centered at origin)
       const baseQuad = new THREE.PlaneGeometry(1.0, 1.0);
 
       // Try to load billboard shaders
       let billboardShaders: any = null;
-      try { billboardShaders = require('./shaders/billboardExplosionShader.js'); } catch { billboardShaders = null; }
+      try {
+        billboardShaders = require('./shaders/billboardExplosionShader.js');
+      } catch {
+        billboardShaders = null;
+      }
 
       // Attempt to provide an explosion texture uniform from the shared asset pool (use cached texture key if present)
       const pool = (state as any).assetPool as Map<string, unknown> | undefined;
       let explosionTex: THREE.Texture | null = null;
       try {
-        const rawTex = pool ? (pool.get('textures/explosionSoftCircleTexture') ?? pool.get('textures/explosionSoftCircle')) : undefined;
+        const rawTex = pool
+          ? (pool.get('textures/explosionSoftCircleTexture') ??
+            pool.get('textures/explosionSoftCircle'))
+          : undefined;
         if (rawTex && (rawTex as any) instanceof THREE.Texture) {
           explosionTex = rawTex as THREE.Texture;
         } else if (rawTex) {
@@ -1645,9 +2084,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             t.needsUpdate = true;
             explosionTex = t;
             if (pool) pool.set('textures/explosionSoftCircleTexture', t);
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       // Create material using billboard shader if available
       if (billboardShaders && billboardShaders.billboardExplosionVertexShader) {
@@ -1668,24 +2111,27 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             colorStop3: { value: new THREE.Vector3(...defaults.colorStop3) },
             colorStop1Pos: { value: defaults.colorStop1Pos },
             colorStop2Pos: { value: defaults.colorStop2Pos },
-            colorStop3Pos: { value: defaults.colorStop3Pos }
+            colorStop3Pos: { value: defaults.colorStop3Pos },
           },
           vertexShader: vs,
           fragmentShader: fs,
           transparent: true,
           depthWrite: false,
           blending: THREE.AdditiveBlending,
-          side: THREE.DoubleSide
+          side: THREE.DoubleSide,
         });
       } else {
         // Fallback basic textured shader (keeps functionality when shaders are missing)
         particleMaterial = new THREE.ShaderMaterial({
-          uniforms: { explosionTexture: { value: explosionTex }, uColor: { value: new THREE.Color(1,1,1) } },
+          uniforms: {
+            explosionTexture: { value: explosionTex },
+            uColor: { value: new THREE.Color(1, 1, 1) },
+          },
           vertexShader: `attribute float instanceSize; attribute vec4 instanceColor; varying vec4 vColor; void main(){ vColor = instanceColor; vec3 pos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(pos,1.0); gl_PointSize = instanceSize; }`,
           fragmentShader: `varying vec4 vColor; uniform sampler2D explosionTexture; void main(){ vec4 tex = vec4(1.0); #ifdef GL_ES\nprecision mediump float; #endif\ntex = texture2D(explosionTexture, gl_PointCoord); gl_FragColor = vColor * tex; }`,
           transparent: true,
           depthWrite: false,
-          blending: THREE.AdditiveBlending
+          blending: THREE.AdditiveBlending,
         });
       }
 
@@ -1702,16 +2148,28 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const instanceAges = new Float32Array(maxCount);
         const instanceLifetimes = new Float32Array(maxCount);
 
-        geom.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
+        geom.setAttribute(
+          'instancePosition',
+          new THREE.InstancedBufferAttribute(instancePositions, 3),
+        );
         geom.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(instanceSizes, 1));
         geom.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(instanceColors, 4));
         geom.setAttribute('instanceAge', new THREE.InstancedBufferAttribute(instanceAges, 1));
-        geom.setAttribute('instanceLifetime', new THREE.InstancedBufferAttribute(instanceLifetimes, 1));
+        geom.setAttribute(
+          'instanceLifetime',
+          new THREE.InstancedBufferAttribute(instanceLifetimes, 1),
+        );
 
         scene.add(particleInstancedMesh);
-      } catch (e) { /* ignore instancing failures in some envs */ }
-    } catch { /* ignore in test env */ }
-  } catch { /* ignore */ }
+      } catch (e) {
+        /* ignore instancing failures in some envs */
+      }
+    } catch {
+      /* ignore in test env */
+    }
+  } catch {
+    /* ignore */
+  }
 
   function render(_dt: number) {
     // Calculate interpolation factor
@@ -1735,7 +2193,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       if (bar.parent !== healthBarsGroup) {
         try {
           if (bar.parent) bar.parent.remove(bar);
-        } catch {logger.error('Failed to remove health bar from previous parent');}
+        } catch {
+          logger.error('Failed to remove health bar from previous parent');
+        }
         healthBarsGroup.add(bar);
       }
     }
@@ -1744,16 +2204,25 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     if (GPU_BILLBOARD) {
       // Update shader uniforms with camera basis vectors for all billboard materials
       // Use cached temporary vectors to avoid per-frame allocations
-  camera.getWorldDirection(tempCamForward);
-  // Correct right vector: right = forward x up. Previous order (up x forward)
-  // produced the left vector which mirrored A/D controls.
-  tempCamRight.crossVectors(tempCamForward, camera.up).normalize();
-  tempCamUp.copy(camera.up).normalize();
-  // Cache camera basis for other systems to reuse (best-effort)
-  try { setCachedCameraBasis(camera, { right: tempCamRight.clone(), up: tempCamUp.clone(), forward: tempCamForward.clone() }); } catch {logger.error('Failed to set cached camera basis');}
+      camera.getWorldDirection(tempCamForward);
+      // Correct right vector: right = forward x up. Previous order (up x forward)
+      // produced the left vector which mirrored A/D controls.
+      tempCamRight.crossVectors(tempCamForward, camera.up).normalize();
+      tempCamUp.copy(camera.up).normalize();
+      // Cache camera basis for other systems to reuse (best-effort)
+      try {
+        setCachedCameraBasis(camera, {
+          right: tempCamRight.clone(),
+          up: tempCamUp.clone(),
+          forward: tempCamForward.clone(),
+        });
+      } catch {
+        logger.error('Failed to set cached camera basis');
+      }
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
-          if (mat.uniforms.cameraRight) (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
+          if (mat.uniforms.cameraRight)
+            (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
           if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
         }
       }
@@ -1773,29 +2242,53 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       try {
         const psMod = require('./particleSystem.js');
         const ensure = psMod.ensureParticleSystem;
-        const sys = ensure ? ensure((state as unknown) as any) : null;
+        const sys = ensure ? ensure(state as unknown as any) : null;
         if (sys && typeof sys.update === 'function') {
-          try { sys.update(_dt); } catch { /* ignore */ }
+          try {
+            sys.update(_dt);
+          } catch {
+            /* ignore */
+          }
 
-          const instances = typeof sys.getActiveInstances === 'function' ? sys.getActiveInstances() : [];
+          const instances =
+            typeof sys.getActiveInstances === 'function' ? sys.getActiveInstances() : [];
           const cnt = instances.length;
 
           // If we have an instanced mesh, write into its InstancedBufferAttributes
           if (particleInstancedMesh) {
             try {
               const geom = particleInstancedMesh.geometry as THREE.BufferGeometry;
-              const posAttr = geom.getAttribute('instancePosition') as THREE.InstancedBufferAttribute | undefined;
-              const sizeAttr = geom.getAttribute('instanceSize') as THREE.InstancedBufferAttribute | undefined;
-              const colorAttr = geom.getAttribute('instanceColor') as THREE.InstancedBufferAttribute | undefined;
-              const ageAttr = geom.getAttribute('instanceAge') as THREE.InstancedBufferAttribute | undefined;
-              const lifeAttr = geom.getAttribute('instanceLifetime') as THREE.InstancedBufferAttribute | undefined;
+              const posAttr = geom.getAttribute('instancePosition') as
+                | THREE.InstancedBufferAttribute
+                | undefined;
+              const sizeAttr = geom.getAttribute('instanceSize') as
+                | THREE.InstancedBufferAttribute
+                | undefined;
+              const colorAttr = geom.getAttribute('instanceColor') as
+                | THREE.InstancedBufferAttribute
+                | undefined;
+              const ageAttr = geom.getAttribute('instanceAge') as
+                | THREE.InstancedBufferAttribute
+                | undefined;
+              const lifeAttr = geom.getAttribute('instanceLifetime') as
+                | THREE.InstancedBufferAttribute
+                | undefined;
 
               const hexToRgb = (hex: string) => {
-                const h = hex.replace('#','');
-                let r=255,g=255,b=255;
-                if (h.length===3) { r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16); }
-                else if (h.length===6) { r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16); }
-                return [r/255, g/255, b/255];
+                const h = hex.replace('#', '');
+                let r = 255,
+                  g = 255,
+                  b = 255;
+                if (h.length === 3) {
+                  r = parseInt(h[0] + h[0], 16);
+                  g = parseInt(h[1] + h[1], 16);
+                  b = parseInt(h[2] + h[2], 16);
+                } else if (h.length === 6) {
+                  r = parseInt(h.slice(0, 2), 16);
+                  g = parseInt(h.slice(2, 4), 16);
+                  b = parseInt(h.slice(4, 6), 16);
+                }
+                return [r / 255, g / 255, b / 255];
               };
 
               for (let i = 0; i < cnt; i++) {
@@ -1803,7 +2296,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
                 if (posAttr) posAttr.setXYZ(i, it.pos.x, it.pos.y, it.pos.z);
                 if (sizeAttr) sizeAttr.setX(i, it.size);
                 if (colorAttr) {
-                  const [r,g,b] = hexToRgb(it.color || '#ffffff');
+                  const [r, g, b] = hexToRgb(it.color || '#ffffff');
                   colorAttr.setXYZW(i, r, g, b, 1.0);
                 }
                 if (ageAttr) ageAttr.setX(i, it.age ?? 0);
@@ -1817,25 +2310,42 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
               if (lifeAttr) lifeAttr.needsUpdate = true;
 
               particleInstancedMesh.count = Math.max(0, cnt);
-            } catch { /* ignore per-frame instancing updates in some envs */ }
+            } catch {
+              /* ignore per-frame instancing updates in some envs */
+            }
           } else if (particleGeometry) {
-            const posAttr = particleGeometry.getAttribute('position') as THREE.BufferAttribute | undefined;
-            const sizeAttr = particleGeometry.getAttribute('instanceSize') as THREE.BufferAttribute | undefined;
-            const colorAttr = particleGeometry.getAttribute('instanceColor') as THREE.BufferAttribute | undefined;
+            const posAttr = particleGeometry.getAttribute('position') as
+              | THREE.BufferAttribute
+              | undefined;
+            const sizeAttr = particleGeometry.getAttribute('instanceSize') as
+              | THREE.BufferAttribute
+              | undefined;
+            const colorAttr = particleGeometry.getAttribute('instanceColor') as
+              | THREE.BufferAttribute
+              | undefined;
             if (posAttr && sizeAttr && colorAttr) {
               const hexToRgb = (hex: string) => {
-                const h = hex.replace('#','');
-                let r=255,g=255,b=255;
-                if (h.length===3) { r = parseInt(h[0]+h[0],16); g = parseInt(h[1]+h[1],16); b = parseInt(h[2]+h[2],16); }
-                else if (h.length===6) { r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16); }
-                return [r/255, g/255, b/255];
+                const h = hex.replace('#', '');
+                let r = 255,
+                  g = 255,
+                  b = 255;
+                if (h.length === 3) {
+                  r = parseInt(h[0] + h[0], 16);
+                  g = parseInt(h[1] + h[1], 16);
+                  b = parseInt(h[2] + h[2], 16);
+                } else if (h.length === 6) {
+                  r = parseInt(h.slice(0, 2), 16);
+                  g = parseInt(h.slice(2, 4), 16);
+                  b = parseInt(h.slice(4, 6), 16);
+                }
+                return [r / 255, g / 255, b / 255];
               };
 
               for (let i = 0; i < cnt; i++) {
                 const it = instances[i];
                 posAttr.setXYZ(i, it.pos.x, it.pos.y, it.pos.z);
                 sizeAttr.setX(i, it.size);
-                const [r,g,b] = hexToRgb(it.color || '#ffffff');
+                const [r, g, b] = hexToRgb(it.color || '#ffffff');
                 colorAttr.setXYZW(i, r, g, b, 1.0);
               }
               posAttr.needsUpdate = true;
@@ -1845,35 +2355,47 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             }
           }
         }
-      } catch { /* ignore missing particle system in some envs */ }
-    } catch { /* ignore */ }
+      } catch {
+        /* ignore missing particle system in some envs */
+      }
+    } catch {
+      /* ignore */
+    }
     perfEnd('renderer.particles');
 
     perfBegin('renderer.effects');
     // Prefer postprocessing composer when available
     if (effectsManager && effectsManager.initDone) {
-        try {
-            effectsManager.render(_dt);
-            perfEnd('renderer.effects');
-            return;
-    } catch (e) {
-      logger.warn('Effects manager render failed, falling back to default renderer', e);
-    }
+      try {
+        effectsManager.render(_dt);
+        perfEnd('renderer.effects');
+        return;
+      } catch (e) {
+        logger.warn('Effects manager render failed, falling back to default renderer', e);
+      }
     }
     perfEnd('renderer.effects');
 
     perfBegin('renderer.culling');
     // Render the scene
-  // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-  console.log('About to call shipInstancer.cull()');
-  try { shipInstancer.cull(camera); } catch (e) {logger.error('Failed to cull ship instancer', e);}
-  console.log('About to call shipInstancer.sync()');
-  try { shipInstancer.sync(); } catch (e) {logger.error('Failed to sync ship instancer', e);}
+    // Ensure instanced meshes have their instanceMatrix flags updated before rendering
+    console.log('About to call shipInstancer.cull()');
+    try {
+      shipInstancer.cull(camera);
+    } catch (e) {
+      logger.error('Failed to cull ship instancer', e);
+    }
+    console.log('About to call shipInstancer.sync()');
+    try {
+      shipInstancer.sync();
+    } catch (e) {
+      logger.error('Failed to sync ship instancer', e);
+    }
     perfEnd('renderer.culling');
     perfEnd('renderer.culling');
-    
+
     perfBegin('renderer.webgl');
-  renderer.render(scene, camera);
+    renderer.render(scene, camera);
     perfEnd('renderer.webgl');
 
     lastSimulatedTime = state.time; // Update last simulated time for next frame's interpolation
@@ -1888,9 +2410,21 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     render,
     dispose: () => {
       window.removeEventListener('resize', resize);
-      try { effectsManager?.dispose(); } catch {logger.error('Failed to dispose effects manager');}
-      try { bulletInstancer?.dispose(); } catch {logger.error('Failed to dispose bullet instancer');}
-      try { healthBarInstancer?.dispose(); } catch {logger.error('Failed to dispose health bar instancer');}
+      try {
+        effectsManager?.dispose();
+      } catch {
+        logger.error('Failed to dispose effects manager');
+      }
+      try {
+        bulletInstancer?.dispose();
+      } catch {
+        logger.error('Failed to dispose bullet instancer');
+      }
+      try {
+        healthBarInstancer?.dispose();
+      } catch {
+        logger.error('Failed to dispose health bar instancer');
+      }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
@@ -1898,15 +2432,24 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       shieldEffectMeshes.clear();
       // Dispose pooled billboard materials
       for (const m of billboardMaterialPool.values()) {
-        try { m.dispose(); } catch {logger.error('Failed to dispose billboard material');}
+        try {
+          m.dispose();
+        } catch {
+          logger.error('Failed to dispose billboard material');
+        }
       }
       billboardMaterialPool.clear();
       billboardMaterials.clear();
     },
     cameraRotation,
     // Expose camera distance as getter/setter so external callers can adjust it.
-    get cameraDistance() { return _cameraDistance; },
-    set cameraDistance(v: number) { _cameraDistance = v; updateCameraPosition(); },
+    get cameraDistance() {
+      return _cameraDistance;
+    },
+    set cameraDistance(v: number) {
+      _cameraDistance = v;
+      updateCameraPosition();
+    },
     cameraTarget,
     // Adapter helpers: optional hooks used by higher-level systems for caching
     // and introspection. These are intentionally non-critical and best-effort.
@@ -1916,7 +2459,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // this to observe readiness transitions when shipInstancer reports ready.
     getUseShipInstancing(): boolean {
       try {
-        return !!(RendererConfig.instancing.enableShips && (shipInstancer && typeof (shipInstancer as any).isReady === 'function' ? (shipInstancer as any).isReady() : false));
+        return !!(
+          RendererConfig.instancing.enableShips &&
+          (shipInstancer && typeof (shipInstancer as any).isReady === 'function'
+            ? (shipInstancer as any).isReady()
+            : false)
+        );
       } catch {
         return false;
       }
@@ -1929,8 +2477,6 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
  * @param bars - Array of health/shield bar meshes.
  * @param camera - The active camera.
  */
-
-
 
 // Billboard shader: place quad in world space using camera right/up vectors so it always faces the camera.
 const billboardVertexShader = `
@@ -1968,7 +2514,10 @@ function billboardPoolKey(color: THREE.Color, alpha: number) {
 }
 
 // Get or create a pooled ShaderMaterial for the given color/alpha
-function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xffffff), alpha: number = 1.0): THREE.ShaderMaterial {
+function getPooledBillboardMaterial(
+  color: THREE.Color = new THREE.Color(0xffffff),
+  alpha: number = 1.0,
+): THREE.ShaderMaterial {
   const key = billboardPoolKey(color, alpha);
   const existing = billboardMaterialPool.get(key);
   if (existing) return existing;
@@ -1988,51 +2537,63 @@ function getPooledBillboardMaterial(color: THREE.Color = new THREE.Color(0xfffff
   });
   // Mark a stable program-like key on the material so systems can use it
   // as a canonical identity for GL program-level caching.
-  try { (mat as any).userData = (mat as any).userData || {}; (mat as any).userData.__renderProgram = mat; } catch {logger.error('Failed to set render program on billboard material');}
+  try {
+    (mat as any).userData = (mat as any).userData || {};
+    (mat as any).userData.__renderProgram = mat;
+  } catch {
+    logger.error('Failed to set render program on billboard material');
+  }
   billboardMaterialPool.set(key, mat);
   billboardMaterials.add(mat);
   return mat;
 }
 
-  // Adapter-level helpers exposed to systems: introspect and cache parameter
-  // metadata about a renderer program-like object (material, wrapper, etc.).
-  // Return a small, serializable shape for caching/inspection.
-  type ProgramParams = { kind: string; uniforms?: string[]; type?: string };
-  function adapterGetParameters(programLike?: object | null): ProgramParams | undefined {
-    if (!programLike) return undefined;
-    try {
-      const existing = rendererProgramCache.get(programLike as object) as ProgramParams | undefined;
-      if (existing !== undefined) return existing;
+// Adapter-level helpers exposed to systems: introspect and cache parameter
+// metadata about a renderer program-like object (material, wrapper, etc.).
+// Return a small, serializable shape for caching/inspection.
+type ProgramParams = { kind: string; uniforms?: string[]; type?: string };
+function adapterGetParameters(programLike?: object | null): ProgramParams | undefined {
+  if (!programLike) return undefined;
+  try {
+    const existing = rendererProgramCache.get(programLike as object) as ProgramParams | undefined;
+    if (existing !== undefined) return existing;
 
-      // Best-effort introspection: treat the incoming value as unknown and
-      // narrow to the minimal shape we need for safe inspection.
-      const p = programLike as unknown as {
-        constructor?: { name?: string };
-        uniforms?: Record<string, unknown> | undefined;
-        type?: string;
-      };
+    // Best-effort introspection: treat the incoming value as unknown and
+    // narrow to the minimal shape we need for safe inspection.
+    const p = programLike as unknown as {
+      constructor?: { name?: string };
+      uniforms?: Record<string, unknown> | undefined;
+      type?: string;
+    };
 
-      const params: ProgramParams = {
-        kind: (p && p.constructor && typeof p.constructor.name === 'string') ? p.constructor.name : typeof programLike,
-      };
+    const params: ProgramParams = {
+      kind:
+        p && p.constructor && typeof p.constructor.name === 'string'
+          ? p.constructor.name
+          : typeof programLike,
+    };
 
-      if (p && p.uniforms && typeof p.uniforms === 'object') {
-        try {
-          params.uniforms = Object.keys(p.uniforms as Record<string, unknown>);
-        } catch {
-          params.uniforms = undefined;
-        }
+    if (p && p.uniforms && typeof p.uniforms === 'object') {
+      try {
+        params.uniforms = Object.keys(p.uniforms as Record<string, unknown>);
+      } catch {
+        params.uniforms = undefined;
       }
-      if (p && typeof p.type === 'string') params.type = p.type;
-      // Cache the synthesized metadata.
-      rendererProgramCache.set(programLike as object, params);
-      return params;
-    } catch {
-      return undefined;
     }
+    if (p && typeof p.type === 'string') params.type = p.type;
+    // Cache the synthesized metadata.
+    rendererProgramCache.set(programLike as object, params);
+    return params;
+  } catch {
+    return undefined;
   }
+}
 
-  function adapterInvalidateParameters(programLike?: object | null): void {
-    if (!programLike) return;
-    try { rendererProgramCache.delete(programLike as object); } catch { /* ignore */ }
+function adapterInvalidateParameters(programLike?: object | null): void {
+  if (!programLike) return;
+  try {
+    rendererProgramCache.delete(programLike as object);
+  } catch {
+    /* ignore */
   }
+}

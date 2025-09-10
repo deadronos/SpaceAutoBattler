@@ -7,6 +7,7 @@ description: 'Interactive, input-tool powered, task refinement workflow: interro
 - Keep refining until the human has no further input.
 
 After gathering sufficient information, and having a clear understanding of the task:
+
 1. Show your plan to the user with redundancy kept to a minimum
 2. Create a todo list
 3. Get to work!

@@ -16,7 +16,10 @@ export interface ValidationResult {
   details?: Record<string, unknown>;
 }
 
-export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: ValidatorOptions = {}): ValidationResult {
+export function validateInstancedMesh(
+  mesh: THREE.InstancedMesh,
+  options: ValidatorOptions = {},
+): ValidationResult {
   const warnings: string[] = [];
   const errors: string[] = [];
   const details: Record<string, unknown> = {};
@@ -50,7 +53,11 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
   }
 
   // R4/R5: scale and position validation
-  if (options.minScale !== undefined || options.maxScale !== undefined || options.positionThreshold !== undefined) {
+  if (
+    options.minScale !== undefined ||
+    options.maxScale !== undefined ||
+    options.positionThreshold !== undefined
+  ) {
     const matrix = new THREE.Matrix4();
     const pos = new THREE.Vector3();
     const scale = new THREE.Vector3();
@@ -66,7 +73,9 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
         break;
       }
       if (options.positionThreshold !== undefined && pos.length() > options.positionThreshold) {
-        warnings.push(`instance ${i} position magnitude ${pos.length()} exceeds threshold ${options.positionThreshold}`);
+        warnings.push(
+          `instance ${i} position magnitude ${pos.length()} exceeds threshold ${options.positionThreshold}`,
+        );
         break;
       }
     }
@@ -74,12 +83,15 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
 
   // R6: lighting validation
   if (options.warnOnUnlit) {
-    const needsLight = materials.some(m => !(m instanceof THREE.MeshBasicMaterial));
+    const needsLight = materials.some((m) => !(m instanceof THREE.MeshBasicMaterial));
     if (needsLight) {
       const scene = options.scene ?? mesh.parent;
       let hasLight = false;
-      scene?.traverse(obj => { if ((obj as THREE.Light).isLight) hasLight = true; });
-      if (!hasLight) warnings.push('mesh uses lighting-dependent material but no lights found in scene');
+      scene?.traverse((obj) => {
+        if ((obj as THREE.Light).isLight) hasLight = true;
+      });
+      if (!hasLight)
+        warnings.push('mesh uses lighting-dependent material but no lights found in scene');
     }
   }
 
@@ -87,24 +99,39 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
   const posAttr = geom.getAttribute('position');
   if (!posAttr || posAttr.count === 0) {
     const msg = 'geometry missing position attribute or has zero size';
-    if (options.failOnMissingAttributes) errors.push(msg); else warnings.push(msg);
+    if (options.failOnMissingAttributes) errors.push(msg);
+    else warnings.push(msg);
   }
 
   // R6b / R9b: normals validation for lighting materials
-  const lightingMaterialUsed = materials.some(m => {
-    const mt = m as unknown as { isMeshStandardMaterial?: boolean; isMeshPhongMaterial?: boolean; isMeshLambertMaterial?: boolean; needsLights?: boolean };
-    return !!(mt.isMeshStandardMaterial || mt.isMeshPhongMaterial || mt.isMeshLambertMaterial || mt.needsLights === true);
+  const lightingMaterialUsed = materials.some((m) => {
+    const mt = m as unknown as {
+      isMeshStandardMaterial?: boolean;
+      isMeshPhongMaterial?: boolean;
+      isMeshLambertMaterial?: boolean;
+      needsLights?: boolean;
+    };
+    return !!(
+      mt.isMeshStandardMaterial ||
+      mt.isMeshPhongMaterial ||
+      mt.isMeshLambertMaterial ||
+      mt.needsLights === true
+    );
   });
   if (lightingMaterialUsed) {
     const normalAttr = geom.getAttribute('normal');
     const msg = 'geometry missing normal attribute required by lighting materials';
     if (!normalAttr || normalAttr.count === 0) {
-      if (options.failOnMissingAttributes) errors.push(msg); else warnings.push(msg);
+      if (options.failOnMissingAttributes) errors.push(msg);
+      else warnings.push(msg);
     }
   }
 
   // R10: worker transfer validation
-  const arr = (mesh.instanceMatrix && (mesh.instanceMatrix as unknown as { array?: ArrayLike<number> }).array) || null;
+  const arr =
+    (mesh.instanceMatrix &&
+      (mesh.instanceMatrix as unknown as { array?: ArrayLike<number> }).array) ||
+    null;
   if (!arr) {
     errors.push('instanceMatrix.array is missing or null');
   } else if (!(arr instanceof Float32Array)) {
@@ -123,13 +150,18 @@ export function validateInstancedMesh(mesh: THREE.InstancedMesh, options: Valida
 
   // Additional checks: material expects vertex colors? ensure instanceColor exists
   const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  const needsVertexColors = mats.some(m => (m as unknown as { vertexColors?: boolean }).vertexColors === true);
+  const needsVertexColors = mats.some(
+    (m) => (m as unknown as { vertexColors?: boolean }).vertexColors === true,
+  );
   if (needsVertexColors) {
     // Three.js uses instancedColor attribute name sometimes; check common place
     const colorAttr = (mesh.geometry as THREE.BufferGeometry).getAttribute('color');
-    const instColor = (mesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute }).instanceColor;
+    const instColor = (mesh as unknown as { instanceColor?: THREE.InstancedBufferAttribute })
+      .instanceColor;
     if (!instColor && !colorAttr) {
-      warnings.push('material requests vertexColors but geometry has no "color" attribute and mesh has no instanceColor');
+      warnings.push(
+        'material requests vertexColors but geometry has no "color" attribute and mesh has no instanceColor',
+      );
     }
   }
 
@@ -157,4 +189,3 @@ export function traceVisibility(object: THREE.Object3D): TraceResult {
   }
   return { object: null, path };
 }
-

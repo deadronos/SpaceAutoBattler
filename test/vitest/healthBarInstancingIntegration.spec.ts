@@ -26,7 +26,7 @@ describe('HealthBarInstancer Integration', () => {
     scene = new THREE.Scene();
     healthBarsGroup = new THREE.Group();
     scene.add(healthBarsGroup);
-    
+
     camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
     camera.position.set(0, 0, 100);
   });
@@ -39,11 +39,11 @@ describe('HealthBarInstancer Integration', () => {
   describe('Performance Benefits', () => {
     test('should manage many ships efficiently', () => {
       const instancer = new HealthBarInstancer(scene, healthBarsGroup);
-      
+
       // Create many test ships
       const numShips = 50;
       const ships: Ship[] = [];
-      
+
       for (let i = 0; i < numShips; i++) {
         const ship: Ship = {
           id: i,
@@ -56,19 +56,19 @@ describe('HealthBarInstancer Integration', () => {
           shield: 60 + Math.random() * 40,
           maxShield: 100,
           orientation: { pitch: 0, yaw: 0, roll: 0 },
-          level: { level: 1, xp: 0, nextLevelXp: 100 }
+          level: { level: 1, xp: 0, nextLevelXp: 100 },
         } as Ship;
         ships.push(ship);
       }
 
       // Allocate instances for all ships
-      ships.forEach(ship => {
+      ships.forEach((ship) => {
         const success = instancer.allocateInstance(ship.id);
         expect(success).toBe(true);
       });
 
       // Update health bars
-      ships.forEach(ship => {
+      ships.forEach((ship) => {
         const success = instancer.updateHealthBar(ship);
         expect(success).toBe(true);
       });
@@ -86,7 +86,7 @@ describe('HealthBarInstancer Integration', () => {
       expect(healthBarsGroup.children.length).toBe(4); // background, health, shield, border layers
 
       // Each child should be an InstancedMesh
-      healthBarsGroup.children.forEach(child => {
+      healthBarsGroup.children.forEach((child) => {
         expect(child).toBeInstanceOf(THREE.InstancedMesh);
         const instancedMesh = child as THREE.InstancedMesh;
         expect(instancedMesh.count).toBeGreaterThanOrEqual(numShips);
@@ -97,10 +97,10 @@ describe('HealthBarInstancer Integration', () => {
 
     test('should handle dynamic ship addition and removal efficiently', () => {
       const instancer = new HealthBarInstancer(scene, healthBarsGroup);
-      
+
       // Start with some ships
       const initialShipIds = [1, 2, 3, 4, 5];
-      initialShipIds.forEach(id => {
+      initialShipIds.forEach((id) => {
         instancer.allocateInstance(id);
       });
 
@@ -109,7 +109,7 @@ describe('HealthBarInstancer Integration', () => {
 
       // Add more ships
       const additionalShipIds = [6, 7, 8, 9, 10];
-      additionalShipIds.forEach(id => {
+      additionalShipIds.forEach((id) => {
         instancer.allocateInstance(id);
       });
 
@@ -117,7 +117,7 @@ describe('HealthBarInstancer Integration', () => {
       expect(stats.used).toBe(initialShipIds.length + additionalShipIds.length);
 
       // Remove some ships
-      [1, 3, 5].forEach(id => {
+      [1, 3, 5].forEach((id) => {
         instancer.freeInstance(id);
       });
 
@@ -137,19 +137,19 @@ describe('HealthBarInstancer Integration', () => {
 
     test('should handle ships with different health states efficiently', () => {
       const instancer = new HealthBarInstancer(scene, healthBarsGroup);
-      
+
       // Create ships with various health states
       const testCases = [
         { id: 1, health: 100, maxHealth: 100, shield: 100, maxShield: 100 }, // Full health & shield
-        { id: 2, health: 75, maxHealth: 100, shield: 50, maxShield: 100 },   // Good health, damaged shield
-        { id: 3, health: 25, maxHealth: 100, shield: 25, maxShield: 100 },   // Critical health & shield
-        { id: 4, health: 10, maxHealth: 100, shield: 0, maxShield: 100 },    // Critical health, no shield
-        { id: 5, health: 100, maxHealth: 100, shield: 0, maxShield: 0 },     // Full health, no shield capability
+        { id: 2, health: 75, maxHealth: 100, shield: 50, maxShield: 100 }, // Good health, damaged shield
+        { id: 3, health: 25, maxHealth: 100, shield: 25, maxShield: 100 }, // Critical health & shield
+        { id: 4, health: 10, maxHealth: 100, shield: 0, maxShield: 100 }, // Critical health, no shield
+        { id: 5, health: 100, maxHealth: 100, shield: 0, maxShield: 0 }, // Full health, no shield capability
       ];
 
-      testCases.forEach(testCase => {
+      testCases.forEach((testCase) => {
         instancer.allocateInstance(testCase.id);
-        
+
         const ship: Ship = {
           id: testCase.id,
           pos: { x: testCase.id * 10, y: 0, z: 0 },
@@ -161,7 +161,7 @@ describe('HealthBarInstancer Integration', () => {
           shield: testCase.shield,
           maxShield: testCase.maxShield,
           orientation: { pitch: 0, yaw: 0, roll: 0 },
-          level: { level: 1, xp: 0, nextLevelXp: 100 }
+          level: { level: 1, xp: 0, nextLevelXp: 100 },
         } as Ship;
 
         expect(instancer.updateHealthBar(ship)).toBe(true);
@@ -181,14 +181,14 @@ describe('HealthBarInstancer Integration', () => {
     test('should respect the enableBars configuration flag', () => {
       // Test with flag enabled (default for this test)
       expect(RendererConfig.instancing.enableBars).toBe(true);
-      
+
       const instancer = new HealthBarInstancer(scene, healthBarsGroup);
       expect(instancer).toBeDefined();
-      
+
       // Verify instancer works when enabled
       const success = instancer.allocateInstance(1);
       expect(success).toBe(true);
-      
+
       instancer.dispose();
     });
 
@@ -197,15 +197,15 @@ describe('HealthBarInstancer Integration', () => {
       const initialCapacity = RendererConfig.instancing.bars.initialCapacity;
       const warnThreshold = RendererConfig.instancing.bars.warnThreshold;
       const warnCount = Math.floor(initialCapacity * warnThreshold) + 1;
-      
+
       // Allocate up to warning threshold
       for (let i = 0; i < warnCount; i++) {
         instancer.allocateInstance(i);
       }
-      
+
       const stats = instancer.getStats();
       expect(stats.usagePercent).toBeGreaterThan(warnThreshold * 100);
-      
+
       instancer.dispose();
     });
   });
@@ -214,32 +214,32 @@ describe('HealthBarInstancer Integration', () => {
     test('should create fewer scene objects than traditional approach', () => {
       const instancer = new HealthBarInstancer(scene, healthBarsGroup);
       const numShips = 20;
-      
+
       // With instancing: allocate instances for many ships
       for (let i = 0; i < numShips; i++) {
         instancer.allocateInstance(i);
       }
-      
+
       // With instancing, we should have exactly 4 InstancedMesh objects (layers)
       // vs traditional approach which would have numShips * 4 individual meshes
       expect(healthBarsGroup.children.length).toBe(4);
-      
+
       // Each layer should be an InstancedMesh capable of rendering numShips instances
-      healthBarsGroup.children.forEach(child => {
+      healthBarsGroup.children.forEach((child) => {
         expect(child).toBeInstanceOf(THREE.InstancedMesh);
         const instancedMesh = child as THREE.InstancedMesh;
         expect(instancedMesh.count).toBeGreaterThanOrEqual(numShips);
       });
-      
+
       // This represents a significant reduction in scene complexity:
       // Traditional: 20 ships * 4 layers = 80 mesh objects
       // Instanced: 4 InstancedMesh objects total
       const instancedObjectCount = healthBarsGroup.children.length;
       const traditionalObjectCount = numShips * 4;
-      
+
       expect(instancedObjectCount).toBeLessThan(traditionalObjectCount);
       expect(instancedObjectCount / traditionalObjectCount).toBeLessThan(0.1); // At least 90% reduction
-      
+
       instancer.dispose();
     });
   });

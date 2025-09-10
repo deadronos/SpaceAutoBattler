@@ -75,13 +75,13 @@ describe('RNG Utility', () => {
       const buckets = new Array(10).fill(0);
 
       // Count values in each decile
-      values.forEach(value => {
+      values.forEach((value) => {
         const bucket = Math.floor(value * 10);
         buckets[bucket]++;
       });
 
       // Each bucket should have roughly 100 values (with some tolerance)
-      buckets.forEach(count => {
+      buckets.forEach((count) => {
         expect(count).toBeGreaterThan(70); // Allow 30% variance
         expect(count).toBeLessThan(130);
       });
@@ -181,7 +181,7 @@ describe('RNG Utility', () => {
       }
 
       // Each option should be picked roughly 100 times
-      Object.values(counts).forEach(count => {
+      Object.values(counts).forEach((count) => {
         expect(count).toBeGreaterThan(70); // Allow 30% variance
         expect(count).toBeLessThan(130);
       });
@@ -197,7 +197,7 @@ describe('RNG Utility', () => {
       const sequence1 = {
         next: Array.from({ length: 50 }, () => rng1.next()),
         ints: Array.from({ length: 20 }, () => rng1.int(0, 1000)),
-        picks: Array.from({ length: 15 }, () => rng1.pick(['X', 'Y', 'Z']))
+        picks: Array.from({ length: 15 }, () => rng1.pick(['X', 'Y', 'Z'])),
       };
 
       // Reset and generate again
@@ -205,7 +205,7 @@ describe('RNG Utility', () => {
       const sequence2 = {
         next: Array.from({ length: 50 }, () => rng3.next()),
         ints: Array.from({ length: 20 }, () => rng3.int(0, 1000)),
-        picks: Array.from({ length: 15 }, () => rng3.pick(['X', 'Y', 'Z']))
+        picks: Array.from({ length: 15 }, () => rng3.pick(['X', 'Y', 'Z'])),
       };
 
       expect(sequence1).toEqual(sequence2);
@@ -251,10 +251,10 @@ describe('RNG Utility', () => {
         'a'.repeat(100),
         'special-chars-!@#$%^&*()',
         'unicode-🚀🌟💫',
-        'very-long-seed-that-might-cause-issues-with-hash-function-and-should-still-work-properly'
+        'very-long-seed-that-might-cause-issues-with-hash-function-and-should-still-work-properly',
       ];
 
-      extremeSeeds.forEach(seed => {
+      extremeSeeds.forEach((seed) => {
         const testRng = createRNG(seed);
         expect(() => testRng.next()).not.toThrow();
         expect(() => testRng.int(0, 1)).not.toThrow();
@@ -290,7 +290,8 @@ describe('RNG Utility', () => {
       expect(mean).toBeCloseTo(0.5, 1);
 
       // Variance should be reasonable
-      const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+      const variance =
+        values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
       expect(variance).toBeGreaterThan(0.05);
       expect(variance).toBeLessThan(0.15);
     });
@@ -301,7 +302,7 @@ describe('RNG Utility', () => {
       // Check for alternating patterns (should be rare)
       let alternations = 0;
       for (let i = 1; i < sequence.length; i++) {
-        if ((sequence[i] > 0.5) !== (sequence[i - 1] > 0.5)) {
+        if (sequence[i] > 0.5 !== sequence[i - 1] > 0.5) {
           alternations++;
         }
       }

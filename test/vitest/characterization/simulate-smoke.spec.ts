@@ -20,7 +20,7 @@ describe('Characterization: simulate smoke', () => {
 
     // Run a handful of ticks
     for (let t = 0; t < 10; t++) {
-      simulateStep(state, 1/60);
+      simulateStep(state, 1 / 60);
 
       // Invariants
       // - All vectors finite
@@ -33,7 +33,7 @@ describe('Characterization: simulate smoke', () => {
         expect(isFiniteVector3(b.vel)).toBe(true);
       }
       // - Ids unique and index matches
-      const ids = new Set(state.ships.map(s => s.id));
+      const ids = new Set(state.ships.map((s) => s.id));
       expect(ids.size).toBe(state.ships.length);
       if (state.shipIndex) {
         for (const s of state.ships) {

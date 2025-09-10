@@ -17,7 +17,7 @@ describe('Spatial Index Performance Benchmark', () => {
     // Create a dense cluster of ships to maximize neighbor queries
     const shipCount = 500;
     const clusterRadius = 300; // Tight cluster to ensure many neighbors
-    
+
     // Spawn ships in a cluster
     for (let i = 0; i < shipCount; i++) {
       const angle = (i / shipCount) * Math.PI * 2;
@@ -26,15 +26,15 @@ describe('Spatial Index Performance Benchmark', () => {
       const y = 500 + Math.sin(angle) * radius;
       const z = 300 + (Math.random() - 0.5) * 100;
       const team = i % 2 === 0 ? 'red' : 'blue';
-      
+
       spawnShip(state, team, 'fighter', { x, y, z });
     }
 
     // Ensure spatial index is enabled
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
-    
-  // Warm up: populate spatial index directly to avoid extra AI work before benchmarking
-  populateSpatialGridForTest(state);
+
+    // Warm up: populate spatial index directly to avoid extra AI work before benchmarking
+    populateSpatialGridForTest(state);
 
     // Benchmark separation calculation with spatial index enabled
     const sampleShips = state.ships.slice(0, 50);
@@ -96,20 +96,22 @@ describe('Spatial Index Performance Benchmark', () => {
     const ship3 = spawnShip(state, 'red', 'fighter', { x: 600, y: 500, z: 300 }); // 100 units away
     const ship4 = spawnShip(state, 'blue', 'fighter', { x: 520, y: 500, z: 300 }); // Enemy, 20 units away
 
-  // Test with spatial index enabled
-  state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
-  populateSpatialGridForTest(state); // Populate spatial index
-    
+    // Test with spatial index enabled
+    state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
+    populateSpatialGridForTest(state); // Populate spatial index
+
     const separationWithIndex = aiController.calculateSeparationForceWithCount(ship1);
 
     // Test with spatial index disabled
     state.behaviorConfig!.globalSettings.enableSpatialIndex = false;
     state.spatialGrid = undefined;
-    
+
     const separationLinear = aiController.calculateSeparationForceWithCount(ship1);
 
     // Results should be very similar (within floating point precision)
-    expect(Math.abs(separationWithIndex.neighborCount - separationLinear.neighborCount)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(separationWithIndex.neighborCount - separationLinear.neighborCount),
+    ).toBeLessThanOrEqual(1);
     expect(Math.abs(separationWithIndex.force.x - separationLinear.force.x)).toBeLessThan(0.01);
     expect(Math.abs(separationWithIndex.force.y - separationLinear.force.y)).toBeLessThan(0.01);
     expect(Math.abs(separationWithIndex.force.z - separationLinear.force.z)).toBeLessThan(0.01);

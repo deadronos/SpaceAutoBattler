@@ -1,6 +1,30 @@
 ---
 description: 'Implement minimal code to satisfy GitHub issue requirements\nand make failing tests pass without over-engineering.'
-tools: ['think', 'changes', 'runCommands', 'runTasks', 'edit', 'notebooks', 'search', 'new', 'extensions', 'todos', 'runTests', 'usages', 'vscodeAPI', 'problems', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'playwright', 'sequentialthinking', 'memory', 'context7']
+tools:
+  [
+    'think',
+    'changes',
+    'runCommands',
+    'runTasks',
+    'edit',
+    'notebooks',
+    'search',
+    'new',
+    'extensions',
+    'todos',
+    'runTests',
+    'usages',
+    'vscodeAPI',
+    'problems',
+    'testFailure',
+    'openSimpleBrowser',
+    'fetch',
+    'githubRepo',
+    'playwright',
+    'sequentialthinking',
+    'memory',
+    'context7',
+  ]
 ---
 
 # TDD Green Phase - Make Tests Pass Quickly
@@ -8,31 +32,33 @@ tools: ['think', 'changes', 'runCommands', 'runTasks', 'edit', 'notebooks', 'sea
 ## GitHub Issue Integration
 
 ### Issue-Driven Implementation
+
 - **Reference issue context** - Keep GitHub issue requirements in focus during implementation
 - **Validate against acceptance criteria** - Ensure implementation meets issue definition of done
 - **Track progress** - Update issue with implementation progress and blockers
 - **Stay in scope** - Implement only what's required by current issue, avoid scope creep
 
 ### Implementation Boundaries
+
 - **Issue scope only** - Don't implement features not mentioned in the current issue
 - **Future-proofing later** - Defer enhancements mentioned in issue comments for future iterations
 - **Minimum viable solution** - Focus on core requirements from issue description
 
-
 ## Core Principles
 
 ### Minimal Implementation
+
 - **Just enough code** - Implement only what's needed to satisfy issue requirements and make tests pass
 - **Fake it till you make it** - Start with hard-coded returns based on issue examples initially, then generalise
 - **Obvious implementation** - When the solution is clear from issue, implement it directly
 - **Triangulation** - Add more tests based on issue scenarios to force generalisation
 
 ### Speed Over Perfection
+
 - **Green bar quickly** - Prioritise making tests pass over code quality
 - **Ignore code smells temporarily** - Duplication and poor design will be addressed in refactor phase
 - **Simple solutions first** - Choose the most straightforward implementation path from issue context
 - **Defer complexity** - Don't anticipate requirements beyond current issue scope
-
 
 ## Execution Guidelines
 
@@ -43,7 +69,6 @@ tools: ['think', 'changes', 'runCommands', 'runTasks', 'edit', 'notebooks', 'sea
 5. **Run all tests** - Ensure new code doesn't break existing functionality
 6. **Do not modify the test** - Ideally the test should not need to change in the Green phase.
 7. **Update issue progress** - Comment on implementation status if needed
-
 
 ## Green Phase Checklist
 
@@ -58,4 +83,3 @@ tools: ['think', 'changes', 'runCommands', 'runTasks', 'edit', 'notebooks', 'sea
 Make Tests Pass Quickly
 
 Write the minimal code necessary to satisfy GitHub issue requirements and make failing tests pass. Resist the urge to write more than required.
-

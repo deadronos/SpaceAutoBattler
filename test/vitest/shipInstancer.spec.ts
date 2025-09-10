@@ -54,6 +54,6 @@ describe('ShipInstancer basic allocation and growth', () => {
     // free all
     for (const id of allocated) shipInstancer.free(id);
 
-    expect(allocated.every(id => !shipInstancer.hasShip(id))).toBe(true);
+    expect(allocated.every((id) => !shipInstancer.hasShip(id))).toBe(true);
   });
 });

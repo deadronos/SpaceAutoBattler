@@ -1,6 +1,18 @@
-import type { GameState, Ship, ShipClass, Team, Vector3, EntityId, Bullet, TurretState } from '../types/index.js';
+import type {
+  GameState,
+  Ship,
+  ShipClass,
+  Team,
+  Vector3,
+  EntityId,
+  Bullet,
+  TurretState,
+} from '../types/index.js';
 import { DefaultSimConfig } from '../config/simConfig.js';
-import { SHIP_CLASS_CONFIGS as _SHIP_CLASS_CONFIGS, getShipClassConfig } from '../config/entitiesConfig.js';
+import {
+  SHIP_CLASS_CONFIGS as _SHIP_CLASS_CONFIGS,
+  getShipClassConfig,
+} from '../config/entitiesConfig.js';
 import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
@@ -37,7 +49,7 @@ export function createInitialState(seed?: string): GameState {
     shipDataVersion: 0,
     bullets: [],
     score: { red: 0, blue: 0 },
-    behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG }
+    behaviorConfig: { ...DEFAULT_BEHAVIOR_CONFIG },
   };
 
   // Expose the live, mutable GameState on globalThis for advanced debugging.
@@ -50,10 +62,10 @@ export function createInitialState(seed?: string): GameState {
       const g = globalThis as unknown as Record<string, unknown>;
       // Preserve any existing helpers under __GameState while also exposing the
       // live state object as `__GameState.state` for backward compatibility.
-  type GameStateExposed = { state?: GameState; [k: string]: unknown };
-  const current = (g.__GameState as GameStateExposed) || {} as GameStateExposed;
-  current.state = state;
-  g.__GameState = current;
+      type GameStateExposed = { state?: GameState; [k: string]: unknown };
+      const current = (g.__GameState as GameStateExposed) || ({} as GameStateExposed);
+      current.state = state;
+      g.__GameState = current;
     }
   } catch {
     // Best-effort only; avoid throwing in initialization.
@@ -64,7 +76,7 @@ export function createInitialState(seed?: string): GameState {
     const bounds = {
       width: config.simBounds.width,
       height: config.simBounds.height,
-      depth: config.simBounds.depth
+      depth: config.simBounds.depth,
     };
     state.spatialGrid = new SpatialGrid(config.spatialGrid.cellSize, bounds);
   }
@@ -90,13 +102,13 @@ export function resetState(state: GameState, seed?: string) {
   state.aiController = undefined;
   // Reset behavior config to defaults
   state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
-  
+
   // Reset spatial grid if enabled
   if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {
     const bounds = {
       width: state.simConfig.simBounds.width,
       height: state.simConfig.simBounds.height,
-      depth: state.simConfig.simBounds.depth
+      depth: state.simConfig.simBounds.depth,
     };
     state.spatialGrid = new SpatialGrid(state.simConfig.spatialGrid.cellSize, bounds);
   } else {
@@ -104,7 +116,9 @@ export function resetState(state: GameState, seed?: string) {
   }
 }
 
-function allocateId(state: GameState): EntityId { return state.nextId++; }
+function allocateId(state: GameState): EntityId {
+  return state.nextId++;
+}
 
 // Small helpers retained for backward compatibility with older modules/tests
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -113,9 +127,13 @@ export function randomSpawnPos(state: GameState, team: Team): Vector3 {
   const margin = FleetConfig.spawning.margin;
   const y = state.rng.int(margin, state.simConfig.simBounds.height - margin);
   const z = state.rng.int(margin, state.simConfig.simBounds.depth - margin);
-  const x = team === 'red'
-    ? state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth)
-    : state.rng.int(state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth, state.simConfig.simBounds.width - margin);
+  const x =
+    team === 'red'
+      ? state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth)
+      : state.rng.int(
+          state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth,
+          state.simConfig.simBounds.width - margin,
+        );
   return { x, y, z };
 }
 
@@ -135,14 +153,14 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
     // Determine target position: turret.aiState.targetId -> ship.targetId -> none
     const targetId = t.aiState?.targetId ?? ship.targetId;
     if (targetId == null) continue;
-    const target = state.shipIndex?.get(targetId) ?? state.ships.find(s => s.id === targetId);
+    const target = state.shipIndex?.get(targetId) ?? state.ships.find((s) => s.id === targetId);
     if (!target || target.health <= 0) continue;
 
     // Range check
     const dx = target.pos.x - ship.pos.x;
     const dy = target.pos.y - ship.pos.y;
     const dz = target.pos.z - ship.pos.z;
-    const distSq = dx*dx + dy*dy + dz*dz;
+    const distSq = dx * dx + dy * dy + dz * dz;
     const range = turretConfig.range;
     if (distSq > range * range) continue;
 
@@ -152,23 +170,34 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
     const idBase = allocateId(state);
     const dist = distSq > 0 ? Math.sqrt(distSq) : 1;
     const baseDir = { x: dx / dist, y: dy / dist, z: dz / dist };
-    const suppressionCount = t.aiState?.behavior === 'area_suppression' ? (t.aiState?.suppressionCount ?? 1) : 1;
+    const suppressionCount =
+      t.aiState?.behavior === 'area_suppression' ? (t.aiState?.suppressionCount ?? 1) : 1;
     const spread = t.aiState?.suppressionAngle ?? 0.0;
     for (let bi = 0; bi < Math.max(1, suppressionCount); bi++) {
       // Slight angular offset within cone for suppression pattern
-      const angleOffset = (suppressionCount <= 1) ? 0 : ( (bi / (suppressionCount - 1)) * 2 - 1) * spread;
+      const angleOffset =
+        suppressionCount <= 1 ? 0 : ((bi / (suppressionCount - 1)) * 2 - 1) * spread;
       // Rotate baseDir around Y-axis approximately for a simple spread in horizontal plane
-      const cos = Math.cos(angleOffset); const sin = Math.sin(angleOffset);
-      const dir = { x: baseDir.x * cos - baseDir.z * sin, y: baseDir.y, z: baseDir.x * sin + baseDir.z * cos };
+      const cos = Math.cos(angleOffset);
+      const sin = Math.sin(angleOffset);
+      const dir = {
+        x: baseDir.x * cos - baseDir.z * sin,
+        y: baseDir.y,
+        z: baseDir.x * sin + baseDir.z * cos,
+      };
       const bullet = {
         id: idBase + bi,
         ownerShipId: ship.id,
         ownerTeam: ship.team,
         pos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
         prevPos: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z }, // Initialize for interpolation
-        vel: { x: dir.x * turretConfig.bulletSpeed, y: dir.y * turretConfig.bulletSpeed, z: dir.z * turretConfig.bulletSpeed },
+        vel: {
+          x: dir.x * turretConfig.bulletSpeed,
+          y: dir.y * turretConfig.bulletSpeed,
+          z: dir.z * turretConfig.bulletSpeed,
+        },
         ttl: state.simConfig.bulletLifetime,
-        damage: turretConfig.damage
+        damage: turretConfig.damage,
       } as Bullet;
       state.bullets.push(bullet);
     }
@@ -182,7 +211,7 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
 export function spawnFleet(state: GameState, team: Team, count: number = 5) {
   const created: Ship[] = [];
   for (let i = 0; i < count; i++) {
-    const cls = state.rng.pick(['fighter','corvette','frigate','destroyer','carrier'] as const);
+    const cls = state.rng.pick(['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'] as const);
     const ship = spawnShip(state, team, cls, undefined);
     created.push(ship);
   }
@@ -194,7 +223,13 @@ export function applyBoundaryPhysics(ship: Ship, state: GameState) {
   return applyBoundaryPhysicsShip(ship, state);
 }
 
-export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Vector3, parentCarrierId?: EntityId): Ship {
+export function spawnShip(
+  state: GameState,
+  team: Team,
+  cls: ShipClass,
+  pos?: Vector3,
+  parentCarrierId?: EntityId,
+): Ship {
   const cfg = getShipClassConfig(cls);
   const id = allocateId(state);
   const level = { level: 1, xp: 0, nextLevelXp: nextLevelXp(1) };
@@ -209,7 +244,7 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
         targetId: null as EntityId | null,
         lastTargetUpdate: 0,
         behavior: pref as import('../config/behaviorConfig.js').TurretBehavior,
-        behaviorExpireTime: Infinity
+        behaviorExpireTime: Infinity,
       };
       return { id: `${t.id}-${i}`, cooldownLeft: 0, aiState };
     }
@@ -219,28 +254,32 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   const p = pos ?? randomSpawnPos(state, team);
   // Initialize with random yaw, level pitch and roll for natural spawning
   const randomYaw = state.rng.next() * Math.PI * 2;
-  
+
   const ship: Ship = {
-    id, team, class: cls,
-    pos: { x: p.x, y: p.y, z: p.z }, 
+    id,
+    team,
+    class: cls,
+    pos: { x: p.x, y: p.y, z: p.z },
     prevPos: { x: p.x, y: p.y, z: p.z }, // Initialize for interpolation
-    vel: { x: 0, y: 0, z: 0 }, 
+    vel: { x: 0, y: 0, z: 0 },
     orientation: {
       pitch: 0, // level flight initially
       yaw: randomYaw,
-      roll: 0   // no banking initially
+      roll: 0, // no banking initially
     },
     prevOrientation: {
       pitch: 0, // Initialize for interpolation
       yaw: randomYaw,
-      roll: 0
+      roll: 0,
     },
     // Keep legacy dir field for backward compatibility
     dir: randomYaw,
     targetId: null,
-    health: maxHealth, maxHealth,
+    health: maxHealth,
+    maxHealth,
     armor: cfg.armor,
-    shield: maxShield, maxShield,
+    shield: maxShield,
+    maxShield,
     shieldRegen: cfg.shieldRegen,
     speed: cfg.speed,
     turnRate: cfg.turnRate,
@@ -261,11 +300,25 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   // aiState during setup continue to work as before.
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'test') {
     try {
-      ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0, preferredRange: calculatePreferredRange(state, ship), recentDamage: 0, lastDamageTime: 0 } as Ship['aiState'];
+      ship.aiState = {
+        currentIntent: 'idle',
+        intentEndTime: 0,
+        lastIntentReevaluation: 0,
+        preferredRange: calculatePreferredRange(state, ship),
+        recentDamage: 0,
+        lastDamageTime: 0,
+      } as Ship['aiState'];
     } catch {
       // Best-effort: if preferred range calculation fails, still create a
       // minimal aiState to enable damage bookkeeping in runtime.
-      ship.aiState = { currentIntent: 'idle', intentEndTime: 0, lastIntentReevaluation: 0, preferredRange: 0, recentDamage: 0, lastDamageTime: 0 } as Ship['aiState'];
+      ship.aiState = {
+        currentIntent: 'idle',
+        intentEndTime: 0,
+        lastIntentReevaluation: 0,
+        preferredRange: 0,
+        recentDamage: 0,
+        lastDamageTime: 0,
+      } as Ship['aiState'];
     }
   }
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
@@ -279,45 +332,102 @@ export function spawnShip(state: GameState, team: Team, cls: ShipClass, pos?: Ve
   state.shipDataVersion++;
   // Update spatial grid if present
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-    state.spatialGrid.update(id, ship.pos, ShipVisualConfig.ships[cls]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius, team);
+    state.spatialGrid.update(
+      id,
+      ship.pos,
+      ShipVisualConfig.ships[cls]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius,
+      team,
+    );
   }
   return ship;
 }
 
 function updateBullets(state: GameState, dt: number) {
-    const { width: _width, height: _height, depth: _depth } = state.simConfig.simBounds;
-    const _behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
+  const { width: _width, height: _height, depth: _depth } = state.simConfig.simBounds;
+  const _behavior = state.simConfig.boundaryBehavior.bullets; // kept for future use
 
-    // Integrate bullet motion
-    for (const b of state.bullets) {
-      b.ttl -= dt;
-      b.pos.x += b.vel.x * dt;
-      b.pos.y += b.vel.y * dt;
-      b.pos.z += b.vel.z * dt;
-    }
+  // Integrate bullet motion
+  for (const b of state.bullets) {
+    b.ttl -= dt;
+    b.pos.x += b.vel.x * dt;
+    b.pos.y += b.vel.y * dt;
+    b.pos.z += b.vel.z * dt;
+  }
 
-    // Handle boundary and collisions
-    for (const b of state.bullets) {
-      if (b.ttl <= 0) continue;
-      applyBoundaryPhysicsBullet(b, state);
-      if (b.ttl <= 0) continue; // bullet removed by boundary behavior
+  // Handle boundary and collisions
+  for (const b of state.bullets) {
+    if (b.ttl <= 0) continue;
+    applyBoundaryPhysicsBullet(b, state);
+    if (b.ttl <= 0) continue; // bullet removed by boundary behavior
 
-      // Collisions (simple radius approx)
-      const useGrid = !!state.spatialGrid && !!state.behaviorConfig?.globalSettings.enableSpatialIndex;
-      if (useGrid) {
-        // Narrow spatial grid for TypeScript and avoid re-checking optional each callback
-        const grid = state.spatialGrid!;
-        const maxHitR = ShipVisualConfig.defaults.collisionRadius;
-        grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
-          if (b.ttl <= 0) return; // already consumed by another hit
-          const s = state.shipIndex?.get(entity.id) ?? state.ships.find(sh => sh.id === entity.id);
-          if (!s) return;
-          if (s.team === b.ownerTeam || s.health <= 0) return;
-          const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
-          if (distSq > hitR * hitR) return;
+    // Collisions (simple radius approx)
+    const useGrid =
+      !!state.spatialGrid && !!state.behaviorConfig?.globalSettings.enableSpatialIndex;
+    if (useGrid) {
+      // Narrow spatial grid for TypeScript and avoid re-checking optional each callback
+      const grid = state.spatialGrid!;
+      const maxHitR = ShipVisualConfig.defaults.collisionRadius;
+      grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
+        if (b.ttl <= 0) return; // already consumed by another hit
+        const s = state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
+        if (!s) return;
+        if (s.team === b.ownerTeam || s.health <= 0) return;
+        const hitR =
+          ShipVisualConfig.ships[s.class]?.collisionRadius ??
+          ShipVisualConfig.defaults.collisionRadius;
+        if (distSq > hitR * hitR) return;
 
-          const d = Math.sqrt(distSq);
-          // Apply damage to shield first
+        const d = Math.sqrt(distSq);
+        // Apply damage to shield first
+        let dmgLeft = b.damage;
+        let totalDamage = 0;
+
+        if (s.shield > 0) {
+          const absorb = Math.min(s.shield, dmgLeft);
+          s.shield -= absorb;
+          dmgLeft -= absorb;
+          totalDamage += absorb;
+          s.lastShieldHitTime = state.time;
+          const len = Math.max(1e-6, d);
+          s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+          s.lastShieldHitStrength = absorb;
+        }
+
+        if (dmgLeft > 0) {
+          const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+          s.health -= effective;
+          totalDamage += effective;
+          const owner =
+            state.shipIndex?.get(b.ownerShipId) ??
+            state.ships.find((sh) => sh.id === b.ownerShipId);
+          if (owner) {
+            owner.level.xp += effective * XP_PER_DAMAGE;
+            s.lastDamageBy = owner.id;
+            s.lastDamageTime = state.time;
+          }
+        }
+
+        if (s.aiState && totalDamage > 0) {
+          s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
+          s.aiState.lastDamageTime = state.time;
+        }
+
+        // Consume bullet
+        b.ttl = 0;
+      });
+    } else {
+      // Fallback: full scan
+      for (const s of state.ships) {
+        if (s.team === b.ownerTeam || s.health <= 0) continue;
+        const dx = s.pos.x - b.pos.x;
+        const dy = s.pos.y - b.pos.y;
+        const dz = s.pos.z - b.pos.z;
+        const dSq = dx * dx + dy * dy + dz * dz;
+        const hitR =
+          ShipVisualConfig.ships[s.class]?.collisionRadius ??
+          ShipVisualConfig.defaults.collisionRadius;
+        if (dSq <= hitR * hitR) {
+          const d = Math.sqrt(dSq);
           let dmgLeft = b.damage;
           let totalDamage = 0;
 
@@ -336,7 +446,9 @@ function updateBullets(state: GameState, dt: number) {
             const effective = Math.max(1, dmgLeft - s.armor * 0.3);
             s.health -= effective;
             totalDamage += effective;
-            const owner = state.shipIndex?.get(b.ownerShipId) ?? state.ships.find(sh => sh.id === b.ownerShipId);
+            const owner =
+              state.shipIndex?.get(b.ownerShipId) ??
+              state.ships.find((sh) => sh.id === b.ownerShipId);
             if (owner) {
               owner.level.xp += effective * XP_PER_DAMAGE;
               s.lastDamageBy = owner.id;
@@ -349,59 +461,16 @@ function updateBullets(state: GameState, dt: number) {
             s.aiState.lastDamageTime = state.time;
           }
 
-          // Consume bullet
           b.ttl = 0;
-        });
-      } else {
-        // Fallback: full scan
-        for (const s of state.ships) {
-          if (s.team === b.ownerTeam || s.health <= 0) continue;
-          const dx = s.pos.x - b.pos.x; const dy = s.pos.y - b.pos.y; const dz = s.pos.z - b.pos.z;
-          const dSq = dx*dx + dy*dy + dz*dz;
-          const hitR = ShipVisualConfig.ships[s.class]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius;
-          if (dSq <= hitR * hitR) {
-            const d = Math.sqrt(dSq);
-            let dmgLeft = b.damage;
-            let totalDamage = 0;
-
-            if (s.shield > 0) {
-              const absorb = Math.min(s.shield, dmgLeft);
-              s.shield -= absorb;
-              dmgLeft -= absorb;
-              totalDamage += absorb;
-              s.lastShieldHitTime = state.time;
-              const len = Math.max(1e-6, d);
-              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
-              s.lastShieldHitStrength = absorb;
-            }
-
-            if (dmgLeft > 0) {
-              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
-              s.health -= effective;
-              totalDamage += effective;
-              const owner = state.shipIndex?.get(b.ownerShipId) ?? state.ships.find(sh => sh.id === b.ownerShipId);
-              if (owner) {
-                owner.level.xp += effective * XP_PER_DAMAGE;
-                s.lastDamageBy = owner.id;
-                s.lastDamageTime = state.time;
-              }
-            }
-
-            if (s.aiState && totalDamage > 0) {
-              s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
-              s.aiState.lastDamageTime = state.time;
-            }
-
-            b.ttl = 0;
-            break;
-          }
+          break;
         }
       }
     }
-
-    // Remove dead bullets
-    state.bullets = state.bullets.filter(b => b.ttl > 0);
   }
+
+  // Remove dead bullets
+  state.bullets = state.bullets.filter((b) => b.ttl > 0);
+}
 
 function processDeathsAndXP(state: GameState) {
   for (const s of state.ships) {
@@ -412,12 +481,12 @@ function processDeathsAndXP(state: GameState) {
         // Prefer recent damage within configurable window to avoid long-dead credit
         const recentWindow = state.behaviorConfig?.globalSettings.killCreditWindowSeconds ?? 5;
         if ((s.lastDamageTime ?? -Infinity) >= state.time - recentWindow) {
-          killer = state.ships.find(sh => sh.id === s.lastDamageBy && sh.team !== s.team);
+          killer = state.ships.find((sh) => sh.id === s.lastDamageBy && sh.team !== s.team);
         }
       }
       // Fallback: approximate via target linking
       if (!killer) {
-        killer = state.ships.find(sh => sh.targetId === s.id && sh.team !== s.team) ?? null;
+        killer = state.ships.find((sh) => sh.targetId === s.id && sh.team !== s.team) ?? null;
       }
       if (killer) {
         killer.kills += 1;
@@ -426,7 +495,7 @@ function processDeathsAndXP(state: GameState) {
       }
       // If this was a fighter spawned by a carrier, decrement the carrier's alive counter
       if (s.parentCarrierId) {
-        const carrier = state.ships.find(sh => sh.id === s.parentCarrierId);
+        const carrier = state.ships.find((sh) => sh.id === s.parentCarrierId);
         if (carrier && typeof carrier.spawnedFighters === 'number') {
           carrier.spawnedFighters = Math.max(0, (carrier.spawnedFighters ?? 0) - 1);
         }
@@ -435,7 +504,7 @@ function processDeathsAndXP(state: GameState) {
       s.maxHealth = 0;
     }
   }
-  state.ships = state.ships.filter(s => s.maxHealth > 0);
+  state.ships = state.ships.filter((s) => s.maxHealth > 0);
   // Rebuild shipIndex for consistency (cheap relative to simulation sizes)
   if (state.shipIndex) {
     state.shipIndex.clear();
@@ -457,7 +526,7 @@ function handleLevelUps(state: GameState) {
       s.maxShield = Math.floor(applyLevelUps(s.level.level, cfg.shield));
       s.health = Math.min(s.maxHealth, s.health + Math.floor(s.maxHealth * 0.2));
       s.shield = s.maxShield; // refill on level
-      
+
       // Mark as dirty for UI optimization
       s._healthDirty = true;
       s._shieldDirty = true;
@@ -473,15 +542,24 @@ function carrierSpawnLogic(state: GameState, dt: number) {
     const cfg = getShipClassConfig('carrier');
     if ((s.spawnedFighters ?? 0) < (cfg.maxFighters ?? 0) && s.fighterSpawnCdLeft === 0) {
       // Use carrier's current yaw for spawning direction
-      const angle = s.orientation.yaw + ((state.rng.next() - 0.5) * CarrierSpawnConfig.fighterSpawn.angleRandomization);
-      const offset = { x: s.pos.x + Math.cos(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance, y: s.pos.y + Math.sin(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance, z: s.pos.z };
+      const angle =
+        s.orientation.yaw +
+        (state.rng.next() - 0.5) * CarrierSpawnConfig.fighterSpawn.angleRandomization;
+      const offset = {
+        x: s.pos.x + Math.cos(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance,
+        y: s.pos.y + Math.sin(angle) * CarrierSpawnConfig.fighterSpawn.offsetDistance,
+        z: s.pos.z,
+      };
       const child = spawnShip(state, s.team, 'fighter', offset, s.id);
-      child.vel.x = s.vel.x; child.vel.y = s.vel.y; child.vel.z = s.vel.z;
+      child.vel.x = s.vel.x;
+      child.vel.y = s.vel.y;
+      child.vel.z = s.vel.z;
       // Inherit some of parent's orientation
       child.orientation.yaw = angle;
       child.dir = angle;
       s.spawnedFighters = (s.spawnedFighters ?? 0) + 1;
-      s.fighterSpawnCdLeft = cfg.fighterSpawnCooldown ?? CarrierSpawnConfig.fighterSpawn.baseCooldown;
+      s.fighterSpawnCdLeft =
+        cfg.fighterSpawnCooldown ?? CarrierSpawnConfig.fighterSpawn.baseCooldown;
     }
   }
 }
@@ -500,34 +578,39 @@ export function simulateStep(state: GameState, dt: number) {
   // Ship AI logic - Always use AIController for unified behavior
   perfBegin('ai.total');
   // Lazily create and reuse AIController instance
-  const aiController = state.aiController ?? (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
+  const aiController =
+    state.aiController ??
+    (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
   if (DEBUG_AI) console.log(`[gameState] aiController:`, aiController);
   if (DEBUG_AI) console.log(`[gameState] state.aiController:`, state.aiController);
   aiController.updateAllShips(dt);
   if (DEBUG_AI) {
     try {
-      const map = state.ships.map(s => `ship=${s.id}->target=${String(s.targetId)}`).join(', ');
+      const map = state.ships.map((s) => `ship=${s.id}->target=${String(s.targetId)}`).join(', ');
       console.error(`DEBUG_AI: simulateStep post-AI targets: ${map}`);
-    } catch { /* best-effort debug only */ }
+    } catch {
+      /* best-effort debug only */
+    }
   }
   // Restore any assigned targets recorded by AIController to protect against
-    // downstream operations that may temporarily clear targetId (e.g., pruning
+  // downstream operations that may temporarily clear targetId (e.g., pruning
   // out-of-bounds or rebuilds). This preserves test expectations that target
   // assignment from AIController is visible after simulateStep returns.
   for (const s of state.ships) {
     const assigned = (s as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget;
     if (assigned !== undefined && (s.targetId === null || s.targetId === undefined)) {
       s.targetId = assigned;
-      if (DEBUG_AI) console.error(`DEBUG_AI: simulateStep restored ship=${s.id} target=${s.targetId}`);
+      if (DEBUG_AI)
+        console.error(`DEBUG_AI: simulateStep restored ship=${s.id} target=${s.targetId}`);
     }
   }
   perfEnd('ai.total');
-  
+
   // Update spatial grid with current ship positions after AI movement
   perfBegin('spatial.update');
   updateSpatialGrid(state);
   perfEnd('spatial.update');
-  
+
   // Turret firing for all ships
   perfBegin('turrets.fire');
   for (const s of state.ships) {
@@ -535,18 +618,18 @@ export function simulateStep(state: GameState, dt: number) {
     fireTurrets(state, s, dt);
   }
   perfEnd('turrets.fire');
-  
+
   // Bullets
   perfBegin('projectiles.update');
   updateBullets(state, dt);
   perfEnd('projectiles.update');
-  
+
   // Deaths/XP
   perfBegin('game.deaths');
   processDeathsAndXP(state);
   handleLevelUps(state);
   perfEnd('game.deaths');
-  
+
   // Carriers spawning
   perfBegin('game.carriers');
   carrierSpawnLogic(state, dt);
@@ -558,7 +641,7 @@ export function simulateStep(state: GameState, dt: number) {
   const cleanupInterval = state.behaviorConfig?.globalSettings.boundaryCleanupIntervalTicks ?? 600;
   if (cleanupEnabled) {
     // Run once every cleanupInterval ticks
-    if ((state.tick % cleanupInterval) === 0) {
+    if (state.tick % cleanupInterval === 0) {
       runBoundaryCleanup(state);
     }
   }
@@ -566,9 +649,14 @@ export function simulateStep(state: GameState, dt: number) {
   // Floating point / timer normalization to avoid drift in very long runs
   // Runs every `fpNormalizeIntervalTicks` ticks (configurable)
   // Read optional custom setting safely (avoid `any`) - fall back to 600 ticks
-  const _gs = (state.behaviorConfig?.globalSettings as unknown) as Record<string, unknown> | undefined;
-  const fpNormalizeInterval = (typeof _gs?.fpNormalizeIntervalTicks === 'number') ? (_gs!.fpNormalizeIntervalTicks as number) : 600;
-  if ((state.tick % fpNormalizeInterval) === 0) {
+  const _gs = state.behaviorConfig?.globalSettings as unknown as
+    | Record<string, unknown>
+    | undefined;
+  const fpNormalizeInterval =
+    typeof _gs?.fpNormalizeIntervalTicks === 'number'
+      ? (_gs!.fpNormalizeIntervalTicks as number)
+      : 600;
+  if (state.tick % fpNormalizeInterval === 0) {
     normalizeFloatingPointState(state);
   }
   perfEnd('game.cleanup');
@@ -581,7 +669,8 @@ export function simulateStep(state: GameState, dt: number) {
     const assigned = (s as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget;
     if (assigned !== undefined && (s.targetId === null || s.targetId === undefined)) {
       s.targetId = assigned;
-      if (DEBUG_AI) console.error(`DEBUG_AI: simulateStep final-restore ship=${s.id} target=${s.targetId}`);
+      if (DEBUG_AI)
+        console.error(`DEBUG_AI: simulateStep final-restore ship=${s.id} target=${s.targetId}`);
     }
   }
 }
@@ -606,13 +695,20 @@ function normalizeFloatingPointState(state: GameState) {
       for (const s of state.ships) {
         if (s.lastDamageTime !== undefined) s.lastDamageTime = (s.lastDamageTime as number) - base;
         if (s.aiState) {
-          if (s.aiState.lastDamageTime !== undefined) s.aiState.lastDamageTime = (s.aiState.lastDamageTime as number) - base;
+          if (s.aiState.lastDamageTime !== undefined)
+            s.aiState.lastDamageTime = (s.aiState.lastDamageTime as number) - base;
         }
-        if (s.lastShieldHitTime !== undefined) s.lastShieldHitTime = (s.lastShieldHitTime as number) - base;
+        if (s.lastShieldHitTime !== undefined)
+          s.lastShieldHitTime = (s.lastShieldHitTime as number) - base;
         for (const t of s.turrets) {
           if (t.aiState) {
-            if (t.aiState.lastTargetUpdate !== undefined) t.aiState.lastTargetUpdate = (t.aiState.lastTargetUpdate as number) - base;
-            if (t.aiState.behaviorExpireTime !== undefined && isFinite(t.aiState.behaviorExpireTime)) t.aiState.behaviorExpireTime = (t.aiState.behaviorExpireTime as number) - base;
+            if (t.aiState.lastTargetUpdate !== undefined)
+              t.aiState.lastTargetUpdate = (t.aiState.lastTargetUpdate as number) - base;
+            if (
+              t.aiState.behaviorExpireTime !== undefined &&
+              isFinite(t.aiState.behaviorExpireTime)
+            )
+              t.aiState.behaviorExpireTime = (t.aiState.behaviorExpireTime as number) - base;
           }
         }
       }
@@ -648,14 +744,23 @@ function normalizeFloatingPointState(state: GameState) {
       if (Math.abs(b.vel.y) < EPS) b.vel.y = 0;
       if (Math.abs(b.vel.z) < EPS) b.vel.z = 0;
     }
-  } catch (_e) { void _e; /* best-effort normalization; ignore errors */ }
+  } catch (_e) {
+    void _e; /* best-effort normalization; ignore errors */
+  }
 }
 
 function runBoundaryCleanup(state: GameState) {
   const bounds = state.simConfig.simBounds;
   const shipsOutside: Ship[] = [];
   for (const s of state.ships) {
-    if (s.pos.x < 0 || s.pos.x > bounds.width || s.pos.y < 0 || s.pos.y > bounds.height || s.pos.z < 0 || s.pos.z > bounds.depth) {
+    if (
+      s.pos.x < 0 ||
+      s.pos.x > bounds.width ||
+      s.pos.y < 0 ||
+      s.pos.y > bounds.height ||
+      s.pos.z < 0 ||
+      s.pos.z > bounds.depth
+    ) {
       shipsOutside.push(s);
     }
   }
@@ -665,7 +770,10 @@ function runBoundaryCleanup(state: GameState) {
     // Attempt to find team spawn center using FleetConfig spawning margin/width
     const margin = FleetConfig.spawning.margin;
     const spawnWidth = FleetConfig.spawning.spawnWidth;
-    const teamCenterX = s.team === 'red' ? margin + Math.floor(spawnWidth / 2) : state.simConfig.simBounds.width - margin - Math.floor(spawnWidth / 2);
+    const teamCenterX =
+      s.team === 'red'
+        ? margin + Math.floor(spawnWidth / 2)
+        : state.simConfig.simBounds.width - margin - Math.floor(spawnWidth / 2);
     const centerY = Math.floor(state.simConfig.simBounds.height / 2);
     const centerZ = Math.floor(state.simConfig.simBounds.depth / 2);
     // Deterministic jitter using state's RNG
@@ -677,19 +785,28 @@ function runBoundaryCleanup(state: GameState) {
     s.pos.y = clamp(centerY + jy, 0, state.simConfig.simBounds.height);
     s.pos.z = clamp(centerZ + jz, 0, state.simConfig.simBounds.depth);
     // Reset velocity to zero to avoid teleporting while moving out
-    s.vel.x = 0; s.vel.y = 0; s.vel.z = 0;
+    s.vel.x = 0;
+    s.vel.y = 0;
+    s.vel.z = 0;
     // Clear target to avoid immediate re-targeting of far-away entities
     s.targetId = null;
   }
 
   // Prune bullets out of bounds (set ttl=0)
   for (const b of state.bullets) {
-    if (b.pos.x < 0 || b.pos.x > bounds.width || b.pos.y < 0 || b.pos.y > bounds.height || b.pos.z < 0 || b.pos.z > bounds.depth) {
+    if (
+      b.pos.x < 0 ||
+      b.pos.x > bounds.width ||
+      b.pos.y < 0 ||
+      b.pos.y > bounds.height ||
+      b.pos.z < 0 ||
+      b.pos.z > bounds.depth
+    ) {
       b.ttl = 0;
     }
   }
   // Remove dead bullets immediately
-  state.bullets = state.bullets.filter(b => b.ttl > 0);
+  state.bullets = state.bullets.filter((b) => b.ttl > 0);
 }
 
 /**

@@ -97,7 +97,8 @@ export class RealTimeAdapter implements TimeAdapter {
 
   resume(): void {
     if (this.paused) {
-      this.accumulatedTime += this.pausedTime - (performance.now() - this.startTime) * this.timeScale;
+      this.accumulatedTime +=
+        this.pausedTime - (performance.now() - this.startTime) * this.timeScale;
       this.paused = false;
     }
   }

@@ -10,11 +10,14 @@ export interface PhysicsConfigType {
     forwardMultiplier: number; // Forward acceleration multiplier
     zAxisMultiplier: number; // Z-axis movement multiplier
   };
-  colliders: Record<ShipClass, {
-    width: number;
-    height: number;
-    depth: number;
-  }>;
+  colliders: Record<
+    ShipClass,
+    {
+      width: number;
+      height: number;
+      depth: number;
+    }
+  >;
   properties: {
     density: number;
     friction: number;

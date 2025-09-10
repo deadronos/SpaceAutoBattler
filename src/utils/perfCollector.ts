@@ -5,7 +5,9 @@ export function enablePerfCollectorIfRequested(): void {
       return;
     }
     if ((window as any).__perf && typeof (window as any).__perf.addEvent === 'function') {
-      try { console.debug('[perf] collector already active (init)'); } catch {}
+      try {
+        console.debug('[perf] collector already active (init)');
+      } catch {}
       return;
     }
     const perf = {
@@ -18,7 +20,8 @@ export function enablePerfCollectorIfRequested(): void {
       startFpsSampling() {
         let last = performance.now();
         const loop = (ts: number) => {
-          const dt = ts - last; last = ts;
+          const dt = ts - last;
+          last = ts;
           this._frameTimes.push(dt);
           if (this._frameTimes.length > 600) this._frameTimes.shift();
           requestAnimationFrame(loop);
@@ -28,16 +31,22 @@ export function enablePerfCollectorIfRequested(): void {
       getFpsStats() {
         const arr = this._frameTimes.slice();
         if (!arr.length) return { avgFps: 0, p99FrameMs: 0 };
-        const avg = arr.reduce((a: number, b: number)=>a+b,0) / arr.length;
+        const avg = arr.reduce((a: number, b: number) => a + b, 0) / arr.length;
         const fps = 1000 / avg;
-        const sorted = arr.slice().sort((a: number, b: number)=>a-b);
+        const sorted = arr.slice().sort((a: number, b: number) => a - b);
         const idx = Math.max(0, Math.floor(sorted.length * 0.99) - 1);
         return { avgFps: fps, p99FrameMs: sorted[idx] };
       },
-      getEvents() { return this._events.slice(); }
+      getEvents() {
+        return this._events.slice();
+      },
     } as any;
     (window as any).__perf = perf;
     perf.startFpsSampling();
-    try { console.debug('[perf] collector enabled (init)'); } catch {}
-  } catch { /* ignore */ }
+    try {
+      console.debug('[perf] collector enabled (init)');
+    } catch {}
+  } catch {
+    /* ignore */
+  }
 }

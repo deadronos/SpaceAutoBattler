@@ -4,7 +4,13 @@ export type Vector3 = { x: number; y: number; z: number };
 export const DEFAULT_MAX_LOOKAHEAD = 5.0; // seconds - clamp to avoid extremely long intercept times
 export const EPS = 1e-6;
 
-export function computeInterceptPoint(shooterPos: Vector3, projectileSpeed: number, targetPos: Vector3, targetVel: Vector3, maxLookahead = DEFAULT_MAX_LOOKAHEAD): Vector3 | null {
+export function computeInterceptPoint(
+  shooterPos: Vector3,
+  projectileSpeed: number,
+  targetPos: Vector3,
+  targetVel: Vector3,
+  maxLookahead = DEFAULT_MAX_LOOKAHEAD,
+): Vector3 | null {
   // Guard: non-positive projectile speed cannot intercept
   if (!isFinite(projectileSpeed) || projectileSpeed <= EPS) return null;
 
@@ -17,11 +23,11 @@ export function computeInterceptPoint(shooterPos: Vector3, projectileSpeed: numb
   const vz = targetVel.z;
 
   const s = projectileSpeed;
-  const vv = vx*vx + vy*vy + vz*vz;
-  const rv = rx*vx + ry*vy + rz*vz;
-  const rr = rx*rx + ry*ry + rz*rz;
+  const vv = vx * vx + vy * vy + vz * vz;
+  const rv = rx * vx + ry * vy + rz * vz;
+  const rr = rx * rx + ry * ry + rz * rz;
 
-  const a = vv - s*s;
+  const a = vv - s * s;
   const b = 2 * rv;
   const c = rr;
 
@@ -33,13 +39,13 @@ export function computeInterceptPoint(shooterPos: Vector3, projectileSpeed: numb
     const t0 = -c / b;
     if (t0 > EPS) t = t0;
   } else {
-    const disc = b*b - 4*a*c;
+    const disc = b * b - 4 * a * c;
     if (disc < -EPS) return null; // negative discriminant -> no real roots
     const safeDisc = Math.max(0, disc);
     const sqrtD = Math.sqrt(safeDisc);
-    const t1 = (-b - sqrtD) / (2*a);
-    const t2 = (-b + sqrtD) / (2*a);
-    const candidates = [t1, t2].filter(v => isFinite(v) && v > EPS).sort((x,y) => x - y);
+    const t1 = (-b - sqrtD) / (2 * a);
+    const t2 = (-b + sqrtD) / (2 * a);
+    const candidates = [t1, t2].filter((v) => isFinite(v) && v > EPS).sort((x, y) => x - y);
     if (candidates.length > 0) t = candidates[0];
   }
 
@@ -54,6 +60,6 @@ export function computeInterceptPoint(shooterPos: Vector3, projectileSpeed: numb
   return {
     x: targetPos.x + vx * t,
     y: targetPos.y + vy * t,
-    z: targetPos.z + vz * t
+    z: targetPos.z + vz * t,
   };
 }

@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  PhysicsAdapter, 
+import {
+  PhysicsAdapter,
   NoopPhysicsAdapter,
   BodyProps,
   BodyState,
   RaycastHit,
   SweepHit,
   AABB,
-  PhysicsEvent
+  PhysicsEvent,
 } from '../../src/core/adapters/physicsAdapter.js';
 
 describe('PhysicsAdapter', () => {
@@ -55,7 +55,7 @@ describe('PhysicsAdapter', () => {
         position: { x: 0, y: 0, z: 0 },
         velocity: { x: 1, y: 0, z: 0 },
         mass: 1.0,
-        radius: 2.0
+        radius: 2.0,
       };
 
       // These should not throw
@@ -90,8 +90,10 @@ describe('PhysicsAdapter', () => {
 
     it('should dispose cleanly', () => {
       let disposed = false;
-      const handler = () => { disposed = true; };
-      
+      const handler = () => {
+        disposed = true;
+      };
+
       const sub1 = adapter.on('collision', handler);
       const sub2 = adapter.on('sleep', handler);
 
@@ -108,10 +110,19 @@ describe('PhysicsAdapter', () => {
       const adapter = new NoopPhysicsAdapter();
 
       const requiredMethods = [
-        'step', 'getLastStepInfo', 'dispose',
-        'raycast', 'sweepSphere', 'overlapAABB',
-        'addBody', 'removeBody', 'setBodyState', 'getBodyState',
-        'applyImpulse', 'applyForce', 'on'
+        'step',
+        'getLastStepInfo',
+        'dispose',
+        'raycast',
+        'sweepSphere',
+        'overlapAABB',
+        'addBody',
+        'removeBody',
+        'setBodyState',
+        'getBodyState',
+        'applyImpulse',
+        'applyForce',
+        'on',
       ];
 
       for (const method of requiredMethods) {
@@ -128,7 +139,7 @@ describe('PhysicsAdapter', () => {
         mass: 10,
         radius: 5,
         isStatic: false,
-        collisionMask: 0xFF
+        collisionMask: 0xff,
       };
 
       expect(bodyProps.position).toBeDefined();
@@ -136,7 +147,7 @@ describe('PhysicsAdapter', () => {
       expect(bodyProps.mass).toBe(10);
       expect(bodyProps.radius).toBe(5);
       expect(bodyProps.isStatic).toBe(false);
-      expect(bodyProps.collisionMask).toBe(0xFF);
+      expect(bodyProps.collisionMask).toBe(0xff);
     });
 
     it('should have correct type structure for BodyState', () => {
@@ -144,7 +155,7 @@ describe('PhysicsAdapter', () => {
         position: { x: 1, y: 2, z: 3 },
         velocity: { x: 4, y: 5, z: 6 },
         mass: 10,
-        radius: 5
+        radius: 5,
       };
 
       expect(bodyState.position).toBeDefined();
@@ -158,7 +169,7 @@ describe('PhysicsAdapter', () => {
         entityId: 42,
         point: { x: 1, y: 2, z: 3 },
         normal: { x: 0, y: 1, z: 0 },
-        distance: 10.5
+        distance: 10.5,
       };
 
       expect(hit.entityId).toBe(42);
@@ -173,7 +184,7 @@ describe('PhysicsAdapter', () => {
         point: { x: 1, y: 2, z: 3 },
         normal: { x: 0, y: 1, z: 0 },
         distance: 10.5,
-        time: 0.7
+        time: 0.7,
       };
 
       expect(hit.entityId).toBe(42);
@@ -186,7 +197,7 @@ describe('PhysicsAdapter', () => {
     it('should have correct type structure for AABB', () => {
       const aabb: AABB = {
         min: { x: -10, y: -5, z: -2 },
-        max: { x: 10, y: 5, z: 2 }
+        max: { x: 10, y: 5, z: 2 },
       };
 
       expect(aabb.min).toBeDefined();
@@ -199,7 +210,7 @@ describe('PhysicsAdapter', () => {
         entityIds: [1, 2],
         point: { x: 0, y: 0, z: 0 },
         normal: { x: 0, y: 1, z: 0 },
-        impulse: 50.0
+        impulse: 50.0,
       };
 
       expect(event.type).toBe('collision');
@@ -219,7 +230,7 @@ describe('PhysicsAdapter', () => {
 
     it('should manage event subscriptions correctly', () => {
       const events: PhysicsEvent[] = [];
-      
+
       const sub1 = adapter.on('collision', (e) => events.push(e));
       const sub2 = adapter.on('collision', (e) => events.push(e));
 
@@ -227,10 +238,10 @@ describe('PhysicsAdapter', () => {
 
       // Dispose first subscription
       sub1.dispose();
-      
+
       // Dispose second subscription
       sub2.dispose();
-      
+
       // Should not crash
       expect(() => sub1.dispose()).not.toThrow();
     });

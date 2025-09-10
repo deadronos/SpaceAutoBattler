@@ -34,7 +34,7 @@ export interface SVGConfig {
 }
 
 export const defaultSVGConfig: SVGConfig = {
-  // File paths and loading  
+  // File paths and loading
   // Use relative paths that work with http-server serving from project root
   svgDir: 'src/config/assets/svg/',
   defaultFileNames: ['fighter.svg', 'corvette.svg', 'frigate.svg', 'destroyer.svg', 'carrier.svg'],
@@ -42,7 +42,7 @@ export const defaultSVGConfig: SVGConfig = {
   // Rasterization settings
   defaultRasterSize: {
     width: 256,
-    height: 256
+    height: 256,
   },
 
   // Caching settings
@@ -50,25 +50,25 @@ export const defaultSVGConfig: SVGConfig = {
     maxEntries: 50,
     maxAgeMs: 300000, // 5 minutes
     enableFileWatching: true,
-    watchPollIntervalMs: 2000 // Check every 2 seconds
+    watchPollIntervalMs: 2000, // Check every 2 seconds
   },
 
   // Team colors for tinting
   teamColors: {
     red: '#ff5050',
-    blue: '#50a0ff'
+    blue: '#50a0ff',
   },
 
   // Performance settings
   worker: {
     enableOffscreenCanvas: true,
-    rasterTimeoutMs: 10000
-  }
+    rasterTimeoutMs: 10000,
+  },
 };
 
 // Get SVG URLs for all default ship types
 export function getShipSVGUrls(config: SVGConfig = defaultSVGConfig): string[] {
-  return config.defaultFileNames.map(fileName => `${config.svgDir}${fileName}`);
+  return config.defaultFileNames.map((fileName) => `${config.svgDir}${fileName}`);
 }
 
 // Get SVG URL for specific ship class
@@ -78,8 +78,10 @@ export function getShipSVGUrl(shipClass: string, config: SVGConfig = defaultSVGC
 
 // Check if OffscreenCanvas is supported
 export function isOffscreenCanvasSupported(): boolean {
-  return typeof OffscreenCanvas !== 'undefined' &&
-         typeof OffscreenCanvas.prototype.getContext === 'function';
+  return (
+    typeof OffscreenCanvas !== 'undefined' &&
+    typeof OffscreenCanvas.prototype.getContext === 'function'
+  );
 }
 
 // Get team color for tinting

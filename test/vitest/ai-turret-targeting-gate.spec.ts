@@ -13,7 +13,9 @@ describe('Turret targeting helper gate (parity)', () => {
       const e2 = spawnShip(state, 'blue', 'destroyer', { x: 500, y: 0, z: 0 });
       // Ensure in-range and force reevaluation
       state.time += state.behaviorConfig.turretConfig.targetReevaluationRate + 0.05;
-      for (const t of ship.turrets) { if (t.aiState) t.aiState.lastTargetUpdate = 0; }
+      for (const t of ship.turrets) {
+        if (t.aiState) t.aiState.lastTargetUpdate = 0;
+      }
       return { state, ship, e1, e2 };
     };
 

@@ -10,32 +10,20 @@ import SHIP_MODEL_MAP from '../../src/config/shipModelMap';
 
 describe('shipModelLoader normals/tangents baking', () => {
   beforeEach(() => {
-  (SHIP_MODEL_MAP as unknown as Record<string, { file: string; scale?: number }>).fighter = { file: 'models/fighter.glb', scale: 1 };
+    (SHIP_MODEL_MAP as unknown as Record<string, { file: string; scale?: number }>).fighter = {
+      file: 'models/fighter.glb',
+      scale: 1,
+    };
     (loadGLTF as unknown as ReturnType<typeof vi.fn>).mockReset?.();
   });
 
   it('preserves normals and tangents when applying matrix4 bake', async () => {
     // Build a simple geometry: two triangles (a quad) with positions and normals
     const geom = new THREE.BufferGeometry();
-    const positions = new Float32Array([
-      -0.5, -0.5, 0,
-       0.5, -0.5, 0,
-       0.5,  0.5, 0,
-      -0.5,  0.5, 0
-    ]);
-    const normals = new Float32Array([
-      0, 0, 1,
-      0, 0, 1,
-      0, 0, 1,
-      0, 0, 1
-    ]);
+    const positions = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+    const normals = new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
     // Synthetic tangent attribute (4 components often used, but we'll keep 3 for simplicity)
-    const tangents = new Float32Array([
-      1, 0, 0,
-      1, 0, 0,
-      1, 0, 0,
-      1, 0, 0
-    ]);
+    const tangents = new Float32Array([1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0]);
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geom.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
     geom.setAttribute('tangent', new THREE.BufferAttribute(tangents, 3));
@@ -49,12 +37,17 @@ describe('shipModelLoader normals/tangents baking', () => {
     const mesh = new THREE.Mesh(geom, mat);
     parent.add(mesh);
 
-    (loadGLTF as unknown as ReturnType<typeof vi.fn>).mockImplementation(async () => ({ url: 'models/fighter.glb', data: { scene } }));
+    (loadGLTF as unknown as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+      url: 'models/fighter.glb',
+      data: { scene },
+    }));
 
     const state = { assetPool: new Map<string, unknown>() } as unknown as GameState;
     await preloadShipModels(state, ['red']);
 
-    const stored = state.assetPool!.get('ship-fighter') as unknown as { threePrototypes?: { geometries: THREE.BufferGeometry[]; materials: THREE.Material[] } } | undefined;
+    const stored = state.assetPool!.get('ship-fighter') as unknown as
+      | { threePrototypes?: { geometries: THREE.BufferGeometry[]; materials: THREE.Material[] } }
+      | undefined;
     expect(stored).toBeDefined();
     expect(stored && stored.threePrototypes).toBeDefined();
     const geoms = stored?.threePrototypes?.geometries ?? [];

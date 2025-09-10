@@ -5,61 +5,38 @@ Last-Reviewed: 2025-09-07
 **Memory name:** core-gameState
 
 Summary:
+
 - Location: `src/core/gameState.ts`
 - Purpose: Core simulation state management and game logic. Exposes functions to create and reset the canonical GameState and simulation mechanics for spawning ships, bullets, handling collisions, XP, level-ups, carrier spawn logic, boundary handling, spatial grid updates, and the main `simulateStep` method.
 
 Key exports and responsibilities:
-- createInitialState(seed?: string): GameState 
 
-
-
-
-
-
+- createInitialState(seed?: string): GameState
 
 builds an initial GameState with default sim config, RNG, and optionally spatial grid.
-- resetState(state, seed?): void 
 
-
-
-
-
+- resetState(state, seed?): void
 
 resets an existing GameState to initial conditions while preserving structural objects and clearing runtime arrays.
-- spawnShip(state, team, cls, pos?, parentCarrierId?) 
 
-
-
-
-
+- spawnShip(state, team, cls, pos?, parentCarrierId?)
 
 creates a new Ship entity with proper initialization of stats, level, turrets, and optional spawn jitter.
-- spawnFleet(state, team, count?) 
 
-
-
-
-
+- spawnFleet(state, team, count?)
 
 convenience to spawn multiple ships.
-- applyBoundaryPhysics(ship, state) 
 
-
-
-
-
+- applyBoundaryPhysics(ship, state)
 
 delegates ship boundary behaviors to `boundaryUtils` centralized helpers.
-- simulateStep(state, dt) 
 
-
-
-
-
+- simulateStep(state, dt)
 
 orchestrates AI updates (via `AIController`), spatial grid updates, turret firing, bullets update, deaths and XP processing, level-ups, carrier-spawn logic, and boundary cleanup.
 
 Important internal helpers:
+
 - fireTurrets(state, ship, dt)
 - updateBullets(state, dt)
 - processDeathsAndXP(state)
@@ -69,6 +46,7 @@ Important internal helpers:
 - updateSpatialGrid(state)
 
 Patterns & notes:
+
 - Uses a single canonical GameState object passed around and mutated.
 - Uses `state.rng` for deterministic behavior when seeded.
 - Spatial index is optional and toggled by behaviorConfig.
@@ -76,6 +54,7 @@ Patterns & notes:
 - Defensive programming: many best-effort try/catches and fallbacks to avoid simulation crashes.
 
 Suggested follow-ups:
+
 - Add a memory describing the `AIController` (src/core/aiController.ts).
 - Document the message formats used to sync GameState incremental updates to renderer or UI.
 

@@ -6,7 +6,11 @@ import './styles/ui.css';
 // renderer instances are created by other modules.
 import { applyGlobalPatches } from './renderer/effects.js';
 
-try { applyGlobalPatches(); } catch (_e) { void _e;/* ignore */ }
+try {
+  applyGlobalPatches();
+} catch (_e) {
+  void _e; /* ignore */
+}
 import * as THREE from 'three';
 
 // Expose canonical Three.js runtime to globalThis so modules using different
@@ -14,7 +18,7 @@ import * as THREE from 'three';
 // This mitigates "Multiple instances of Three.js being imported" issues
 // which can break attribute/constructor identity used by the renderer.
 // Keep this as early as possible in the bootstrap sequence.
-/* eslint-disable no-void */
+
 /* global globalThis */
 if (!(globalThis as any).THREE) {
   (globalThis as any).THREE = THREE;
@@ -43,8 +47,12 @@ import { setupCameraControls } from './renderer/cameraControls.js';
 
 // Strongly-typed runtime debug hooks exposed on globalThis when enabled.
 declare global {
-  interface Window { __appDebug?: unknown; __shipInstancer?: typeof shipInstancer; DEBUG_SHIP_INSTANCER?: boolean; }
-  interface GlobalEventHandlers { }
+  interface Window {
+    __appDebug?: unknown;
+    __shipInstancer?: typeof shipInstancer;
+    DEBUG_SHIP_INSTANCER?: boolean;
+  }
+  interface GlobalEventHandlers {}
 }
 
 function initGame(seed?: string) {
@@ -83,15 +91,22 @@ function initGame(seed?: string) {
           }
           // Store both canvas and bitmap for callers that expect either
           state.assetPool!.set('textures/explosionSoftCircle', bitmap ?? canvas);
-          logger.debug('[main.ts] Generated explosion sprite and stored in assetPool as textures/explosionSoftCircle');
-        } catch (e) { void e; state.assetPool!.set('textures/explosionSoftCircle', canvas); }
+          logger.debug(
+            '[main.ts] Generated explosion sprite and stored in assetPool as textures/explosionSoftCircle',
+          );
+        } catch (e) {
+          void e;
+          state.assetPool!.set('textures/explosionSoftCircle', canvas);
+        }
       })();
     }
-  } catch (ee) { void ee; /* ignore canvas generation failures in test envs */ }
+  } catch (ee) {
+    void ee; /* ignore canvas generation failures in test envs */
+  }
 
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
-  const gltfModeEnabled = !!((RendererConfig as any)?.loadGltfModels);
-  const svgDisabled = !!((RendererConfig as any)?.disableSvgSubsystem);
+  const gltfModeEnabled = !!(RendererConfig as any)?.loadGltfModels;
+  const svgDisabled = !!(RendererConfig as any)?.disableSvgSubsystem;
 
   // Preload SVG assets and construct the SVG loader only when GLTF model loading is disabled.
   // This avoids creating the raster worker and warming the asset pool when using GLTF prototypes.
@@ -108,19 +123,23 @@ function initGame(seed?: string) {
             const asset = await loadSVGAsset(svgUrl, {
               width: defaultSVGConfig.defaultRasterSize.width,
               height: defaultSVGConfig.defaultRasterSize.height,
-              enableWatching: defaultSVGConfig.cache.enableFileWatching
+              enableWatching: defaultSVGConfig.cache.enableFileWatching,
             });
 
             // Store in asset pool for renderer access
             state.assetPool!.set(svgUrl, asset);
 
             logger.debug(`[main.ts] Loaded SVG asset: ${svgUrl}`);
-          } catch (_error) { void _error;logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
+          } catch (_error) {
+            void _error;
+            logger.warn(`[main.ts] Failed to load SVG asset ${svgUrl}:`, _error);
           }
         }
 
         logger.debug('[main.ts] SVG asset preloading complete');
-      } catch (_error) { void _error;logger.error('[main.ts] Error during SVG asset preloading:', _error);
+      } catch (_error) {
+        void _error;
+        logger.error('[main.ts] Error during SVG asset preloading:', _error);
       }
     })();
   } else {
@@ -130,7 +149,9 @@ function initGame(seed?: string) {
     // Get SVG loader stats (no-op when GLTF mode enabled)
     getStats: () => {
       if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
-        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; SVG loader stats are disabled');
+        logger.debug(
+          '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; SVG loader stats are disabled',
+        );
         return { cachedAssets: 0 } as any;
       }
       if (!svgLoader) return { cachedAssets: 0 } as any;
@@ -141,7 +162,7 @@ function initGame(seed?: string) {
 
     // Manually reload all SVG assets
     reloadAll: async () => {
-  if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
         logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
         return;
       }
@@ -150,25 +171,34 @@ function initGame(seed?: string) {
       try {
         await svgLoader.reloadAllAssets();
         logger.debug('[SVG Debug] All SVG assets reloaded successfully');
-      } catch (_error) { void _error;logger.error('[SVG Debug] Failed to reload SVG assets:', _error);
+      } catch (_error) {
+        void _error;
+        logger.error('[SVG Debug] Failed to reload SVG assets:', _error);
       }
     },
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
       if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
-        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; clearCache is a no-op');
+        logger.debug(
+          '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; clearCache is a no-op',
+        );
         return;
       }
-      logger.debug('[SVG Debug] Clearing SVG cache...', assetUrl ? `for ${assetUrl}` : 'all assets');
-  svgLoader?.clearCache(assetUrl);
+      logger.debug(
+        '[SVG Debug] Clearing SVG cache...',
+        assetUrl ? `for ${assetUrl}` : 'all assets',
+      );
+      svgLoader?.clearCache(assetUrl);
       logger.debug('[SVG Debug] SVG cache cleared');
     },
 
     // List cached assets
     listCached: () => {
       if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
-        logger.debug('[SVG Debug] GLTF mode enabled or SVG subsystem disabled; no cached SVG assets');
+        logger.debug(
+          '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; no cached SVG assets',
+        );
         return [];
       }
       if (!svgLoader) return [];
@@ -176,11 +206,13 @@ function initGame(seed?: string) {
       const assets = Array.from(stats && stats.cachedAssets > 0 ? 'assets cached' : []);
       logger.debug('[SVG Debug] Cached SVG assets:', assets);
       return assets;
-    }
+    },
   };
 
   logger.debug('[main.ts] SVG debugging functions available at window.debugSVG');
-  logger.debug('[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()');
+  logger.debug(
+    '[main.ts] Use debugSVG.getStats(), debugSVG.reloadAll(), debugSVG.clearCache(), debugSVG.listCached()',
+  );
 
   // Expose lightweight debug helpers for quick console testing
   (window as any).__appDebug = {
@@ -192,135 +224,192 @@ function initGame(seed?: string) {
       try {
         const mod = await import('./core/shipModelLoader.js');
         return (mod.preloadSingleShip as any)(state, cls, team);
-      } catch (err) { console.warn('preloadSingleShip failed', err); return null; }
+      } catch (err) {
+        console.warn('preloadSingleShip failed', err);
+        return null;
+      }
     },
     preloadShipModels: async () => {
       try {
         const mod = await import('./core/shipModelLoader.js');
-        return (mod.preloadShipModels as any)(state, ['red','blue']);
-      } catch (err) { console.warn('preloadShipModels failed', err); return null; }
-    }
+        return (mod.preloadShipModels as any)(state, ['red', 'blue']);
+      } catch (err) {
+        console.warn('preloadShipModels failed', err);
+        return null;
+      }
+    },
   } as any;
 
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
   (async () => {
     try {
-    // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-  const useSimWorker = (RendererConfig as any)?.useSimWorker ?? true;
-  let w: Worker | null = null;
-  // If the config opts out of creating a sim worker, run the physics stepper in-thread immediately
-  if (!useSimWorker) {
-    console.debug('[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false); using in-thread physics');
-    try {
-      const ps = await createPhysicsStepper(state as any);
-      (state as any).physicsStepper = ps;
-    } catch (ee) { void ee; /* ignore and continue */ }
-    return; // no worker setup required
-  }
-
-  // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-  w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
-  let ready = false;
-  let lastShipDataVersion = -1;
-
-  if (w) {
-    w.addEventListener('message', (ev) => {
-        const data = ev.data || {};
-        const type = data.type;
-        // Perf events from simWorker
-        if (type === 'perf' && (window as any).__perf && typeof (window as any).__perf.addEvent === 'function') {
-          try { (window as any).__perf.addEvent({ name: data.name, ms: data.ms }); } catch { /* ignore */ }
-          return;
+      // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+      const useSimWorker = (RendererConfig as any)?.useSimWorker ?? true;
+      let w: Worker | null = null;
+      // If the config opts out of creating a sim worker, run the physics stepper in-thread immediately
+      if (!useSimWorker) {
+        console.debug(
+          '[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false); using in-thread physics',
+        );
+        try {
+          const ps = await createPhysicsStepper(state as any);
+          (state as any).physicsStepper = ps;
+        } catch (ee) {
+          void ee; /* ignore and continue */
         }
-        // init handshake
-        if (type === 'init-physics-done') {
-          ready = !!data.ok;
-          return;
-        }
+        return; // no worker setup required
+      }
 
-        // step result: supports packed Float32Array buffer (transformsBuffer)
-        if (type === 'step-physics-done') {
-          // Prefer transferable typed-array buffer payload for low-overhead transfer
-          const buf = data.transformsBuffer || (data.transforms && data.transforms.buffer) || null;
-          if (buf) {
+      // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
+      w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+      let ready = false;
+      let lastShipDataVersion = -1;
+
+      if (w) {
+        w.addEventListener('message', (ev) => {
+          const data = ev.data || {};
+          const type = data.type;
+          // Perf events from simWorker
+          if (
+            type === 'perf' &&
+            (window as any).__perf &&
+            typeof (window as any).__perf.addEvent === 'function'
+          ) {
             try {
-              const arr = new Float32Array(buf);
-              // Each entry is [id, px, py, pz, vx, vy, vz]
-              for (let i = 0; i < arr.length; i += 7) {
-                const id = Math.floor(arr[i]);
-                const ship = state.shipIndex?.get(id) ?? state.ships.find(s => s.id === id);
-                if (!ship) continue;
-                ship.pos.x = arr[i + 1]; ship.pos.y = arr[i + 2]; ship.pos.z = arr[i + 3];
-                ship.vel.x = arr[i + 4]; ship.vel.y = arr[i + 5]; ship.vel.z = arr[i + 6];
+              (window as any).__perf.addEvent({ name: data.name, ms: data.ms });
+            } catch {
+              /* ignore */
+            }
+            return;
+          }
+          // init handshake
+          if (type === 'init-physics-done') {
+            ready = !!data.ok;
+            return;
+          }
+
+          // step result: supports packed Float32Array buffer (transformsBuffer)
+          if (type === 'step-physics-done') {
+            // Prefer transferable typed-array buffer payload for low-overhead transfer
+            const buf =
+              data.transformsBuffer || (data.transforms && data.transforms.buffer) || null;
+            if (buf) {
+              try {
+                const arr = new Float32Array(buf);
+                // Each entry is [id, px, py, pz, vx, vy, vz]
+                for (let i = 0; i < arr.length; i += 7) {
+                  const id = Math.floor(arr[i]);
+                  const ship = state.shipIndex?.get(id) ?? state.ships.find((s) => s.id === id);
+                  if (!ship) continue;
+                  ship.pos.x = arr[i + 1];
+                  ship.pos.y = arr[i + 2];
+                  ship.pos.z = arr[i + 3];
+                  ship.vel.x = arr[i + 4];
+                  ship.vel.y = arr[i + 5];
+                  ship.vel.z = arr[i + 6];
+                }
+              } catch (_e) {
+                void _e; // Fallback to older object-based transforms if parsing fails
+                const transforms = data.transforms || [];
+                // Optional payload size audit
+                try {
+                  if ((window as any).__perf)
+                    (window as any).__perf.addEvent({
+                      name: 'physics.payload.recvKB',
+                      ms: JSON.stringify(transforms).length / 1000,
+                    });
+                } catch {}
+                for (const transform of transforms) {
+                  const ship =
+                    state.shipIndex?.get(transform.shipId) ??
+                    state.ships.find((s) => s.id === transform.shipId);
+                  if (ship) {
+                    ship.pos.x = transform.pos.x;
+                    ship.pos.y = transform.pos.y;
+                    ship.pos.z = transform.pos.z;
+                    ship.vel.x = transform.vel.x;
+                    ship.vel.y = transform.vel.y;
+                    ship.vel.z = transform.vel.z;
+                  }
+                }
               }
-            } catch (_e) { void _e;// Fallback to older object-based transforms if parsing fails
-              const transforms = data.transforms || [];
-              // Optional payload size audit
-              try { if ((window as any).__perf) (window as any).__perf.addEvent({ name: 'physics.payload.recvKB', ms: JSON.stringify(transforms).length / 1000 }); } catch {}
-              for (const transform of transforms) {
-                const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
+            } else if (data.transforms) {
+              // Legacy: array of objects
+              for (const transform of data.transforms) {
+                const ship =
+                  state.shipIndex?.get(transform.shipId) ??
+                  state.ships.find((s) => s.id === transform.shipId);
                 if (ship) {
-                  ship.pos.x = transform.pos.x; ship.pos.y = transform.pos.y; ship.pos.z = transform.pos.z;
-                  ship.vel.x = transform.vel.x; ship.vel.y = transform.vel.y; ship.vel.z = transform.vel.z;
+                  ship.pos.x = transform.pos.x;
+                  ship.pos.y = transform.pos.y;
+                  ship.pos.z = transform.pos.z;
+                  ship.vel.x = transform.vel.x;
+                  ship.vel.y = transform.vel.y;
+                  ship.vel.z = transform.vel.z;
                 }
               }
             }
-          } else if (data.transforms) {
-            // Legacy: array of objects
-            for (const transform of data.transforms) {
-              const ship = state.shipIndex?.get(transform.shipId) ?? state.ships.find(s => s.id === transform.shipId);
-              if (ship) {
-                ship.pos.x = transform.pos.x; ship.pos.y = transform.pos.y; ship.pos.z = transform.pos.z;
-                ship.vel.x = transform.vel.x; ship.vel.y = transform.vel.y; ship.vel.z = transform.vel.z;
-              }
-            }
+            return;
           }
-          return;
-        }
-      });
-      
-  w.postMessage({ type: 'init-physics' });
+        });
 
-      // Expose a small shim for callers that expects physicsStepper API
-      (state as any).physicsStepper = {
-        initDone: false,
-        step(dt: number) {
-          try { 
-            // Send current ship data to worker only if it has changed
-            const currentVersion = state.shipDataVersion;
-            if (currentVersion !== lastShipDataVersion) {
-              // Pack ship data into a Float32Array for efficient transfer
-              // Each ship: id, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z (7 elements)
-              const shipDataArray = new Float32Array(state.ships.length * 7);
-              let offset = 0;
-              for (const ship of state.ships) {
-                shipDataArray[offset++] = ship.id;
-                shipDataArray[offset++] = ship.pos.x;
-                shipDataArray[offset++] = ship.pos.y;
-                shipDataArray[offset++] = ship.pos.z;
-                shipDataArray[offset++] = ship.vel.x;
-                shipDataArray[offset++] = ship.vel.y;
-                shipDataArray[offset++] = ship.vel.z;
+        w.postMessage({ type: 'init-physics' });
+
+        // Expose a small shim for callers that expects physicsStepper API
+        (state as any).physicsStepper = {
+          initDone: false,
+          step(dt: number) {
+            try {
+              // Send current ship data to worker only if it has changed
+              const currentVersion = state.shipDataVersion;
+              if (currentVersion !== lastShipDataVersion) {
+                // Pack ship data into a Float32Array for efficient transfer
+                // Each ship: id, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z (7 elements)
+                const shipDataArray = new Float32Array(state.ships.length * 7);
+                let offset = 0;
+                for (const ship of state.ships) {
+                  shipDataArray[offset++] = ship.id;
+                  shipDataArray[offset++] = ship.pos.x;
+                  shipDataArray[offset++] = ship.pos.y;
+                  shipDataArray[offset++] = ship.pos.z;
+                  shipDataArray[offset++] = ship.vel.x;
+                  shipDataArray[offset++] = ship.vel.y;
+                  shipDataArray[offset++] = ship.vel.z;
+                }
+                w.postMessage({ type: 'update-ships', payload: { ships: shipDataArray } }, [
+                  shipDataArray.buffer,
+                ]);
+                lastShipDataVersion = currentVersion;
               }
-              w.postMessage({ type: 'update-ships', payload: { ships: shipDataArray } }, [shipDataArray.buffer]);
-              lastShipDataVersion = currentVersion;
-            }
-            
-            // Step physics
-            w.postMessage({ type: 'step-physics', payload: { dt } }); 
-          } catch (_e) { void _e;/* ignore */ }
-        },
-        dispose() { try { w.postMessage({ type: 'dispose-physics' }); } catch (_e) { void _e;/* ignore */ } },
-      };
 
-  // Wait a short time for readiness, then mark initDone if ready
-  setTimeout(() => { if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready; }, 200);
-  }
-  } catch (_e) { void _e;// Fallback to in-process physics stepper
+              // Step physics
+              w.postMessage({ type: 'step-physics', payload: { dt } });
+            } catch (_e) {
+              void _e; /* ignore */
+            }
+          },
+          dispose() {
+            try {
+              w.postMessage({ type: 'dispose-physics' });
+            } catch (_e) {
+              void _e; /* ignore */
+            }
+          },
+        };
+
+        // Wait a short time for readiness, then mark initDone if ready
+        setTimeout(() => {
+          if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready;
+        }, 200);
+      }
+    } catch (_e) {
+      void _e; // Fallback to in-process physics stepper
       try {
         const ps = await createPhysicsStepper(state as any);
         (state as any).physicsStepper = ps;
-      } catch (ee) { void ee;/* ignore */ }
+      } catch (ee) {
+        void ee; /* ignore */
+      }
     }
   })();
 
@@ -334,9 +423,9 @@ function initGame(seed?: string) {
         // Wait for GLTF models to load first
         try {
           const { preloadShipModels } = await import('./core/shipModelLoader.js');
-          await preloadShipModels(state, ['red','blue']);
+          await preloadShipModels(state, ['red', 'blue']);
           logger.debug('[main.ts] GLTF models loaded, now spawning ships');
-          
+
           // Register prototypes with the shipInstancer
           try {
             const { registerPrototypesFromPool } = await import('./renderer/meshFactory.js');
@@ -349,14 +438,16 @@ function initGame(seed?: string) {
           console.warn('[main.ts] preloadShipModels failed:', err);
         }
       }
-    } catch (_e) { void _e; }
+    } catch (_e) {
+      void _e;
+    }
 
     // Now spawn fleets and create renderer - GLTF models should be available
     spawnFleet(state, 'red', FleetConfig.spawning.defaultFleetSize);
     spawnFleet(state, 'blue', FleetConfig.spawning.defaultFleetSize);
     reFormFleets(state);
-  const renderer = createThreeRenderer(state, ui.canvas);
-  state.renderer = renderer;
+    const renderer = createThreeRenderer(state, ui.canvas);
+    state.renderer = renderer;
     wireControls(state, ui);
     setupCameraControls(state, ui.canvas);
     setupPerfOverlay();
@@ -370,28 +461,48 @@ function initGame(seed?: string) {
       const enabled = p === '1' || p === 'true';
       if (enabled) {
         // Use typed globals on window rather than `any` casts so the linter is happy.
-        try { window.DEBUG_SHIP_INSTANCER = true; } catch (_e) { void _e; }
-        try { window.__shipInstancer = shipInstancer; } catch (_e) { void _e; }
+        try {
+          window.DEBUG_SHIP_INSTANCER = true;
+        } catch (_e) {
+          void _e;
+        }
+        try {
+          window.__shipInstancer = shipInstancer;
+        } catch (_e) {
+          void _e;
+        }
         // One-shot sample dump to verify wiring
-        try { shipInstancer.debugDumpSample?.(); } catch (_e) { void _e; }
+        try {
+          shipInstancer.debugDumpSample?.();
+        } catch (_e) {
+          void _e;
+        }
       } else {
-        try { window.DEBUG_SHIP_INSTANCER = undefined; } catch (_e) { void _e; }
-        try { window.__shipInstancer = undefined; } catch (_e) { void _e; }
+        try {
+          window.DEBUG_SHIP_INSTANCER = undefined;
+        } catch (_e) {
+          void _e;
+        }
+        try {
+          window.__shipInstancer = undefined;
+        } catch (_e) {
+          void _e;
+        }
       }
-    } catch (_e) { void _e; }
+    } catch (_e) {
+      void _e;
+    }
   })();
 }
-
-
-
 
 // Boot
 // Initialize logger debug mode from global game config so devs can toggle verbosity
 logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 
 // Helper: enable perf collector when URL has ?debugPerf=1. Safe to call multiple times.
-window.addEventListener('DOMContentLoaded', () => { 
-  try { enablePerfCollectorIfRequested(); } catch {}
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    enablePerfCollectorIfRequested();
+  } catch {}
   initGame();
 });
-

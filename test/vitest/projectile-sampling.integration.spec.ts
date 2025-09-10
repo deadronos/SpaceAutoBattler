@@ -7,21 +7,39 @@ import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
 // Simple deterministic LCG RNG for tests
 class TestRNG {
   private state: number;
-  constructor(seed = 12345) { this.state = seed >>> 0; }
+  constructor(seed = 12345) {
+    this.state = seed >>> 0;
+  }
   next() {
     // 32-bit LCG
     this.state = (this.state * 1664525 + 1013904223) >>> 0;
     return this.state / 0x100000000;
   }
-  int(min: number, max: number) { return Math.floor(this.next() * (max - min + 1)) + min; }
-  pick<T>(arr: T[]){ return arr[Math.floor(this.next() * arr.length)]; }
+  int(min: number, max: number) {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
+  pick<T>(arr: T[]) {
+    return arr[Math.floor(this.next() * arr.length)];
+  }
 }
 
-function vecLen(v: {x:number,y:number,z:number}){ return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); }
-function normalize(v:{x:number,y:number,z:number}){ const l=vecLen(v)||1; return {x:v.x/l,y:v.y/l,z:v.z/l}; }
-function dot(a:{x:number,y:number,z:number}, b:{x:number,y:number,z:number}){ return a.x*b.x + a.y*b.y + a.z*b.z; }
+function vecLen(v: { x: number; y: number; z: number }) {
+  return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+function normalize(v: { x: number; y: number; z: number }) {
+  const l = vecLen(v) || 1;
+  return { x: v.x / l, y: v.y / l, z: v.z / l };
+}
+function dot(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
 
-function computeFinalInaccuracy(turretAccuracy:number|undefined, shipLevel:number, perLevel:number, maxReduction:number){
+function computeFinalInaccuracy(
+  turretAccuracy: number | undefined,
+  shipLevel: number,
+  perLevel: number,
+  maxReduction: number,
+) {
   const turretAcc = typeof turretAccuracy === 'number' ? turretAccuracy : 1.0;
   const baseInaccuracy = Math.max(0, 1 - turretAcc);
   const levelReduction = Math.max(0, Math.min(maxReduction, (shipLevel - 1) * perLevel));
@@ -42,7 +60,7 @@ describe('ProjectileSystem sampling integration', () => {
       simConfig: { bulletLifetime: 5 },
       ships: [],
       bullets: [],
-      behaviorConfig: DEFAULT_BEHAVIOR_CONFIG
+      behaviorConfig: DEFAULT_BEHAVIOR_CONFIG,
     };
 
     // create a fighter ship
@@ -64,7 +82,7 @@ describe('ProjectileSystem sampling integration', () => {
       aiState: {},
       armor: 0,
       speed: 0,
-      turnRate: 0
+      turnRate: 0,
     }) as any;
 
     state.ships.push(ship);
@@ -72,7 +90,11 @@ describe('ProjectileSystem sampling integration', () => {
     const ps = new ProjectileSystem(state as any);
 
     const targetPos = { x: 200, y: 0, z: 0 };
-    const aimDir = normalize({ x: targetPos.x - ship.pos.x, y: targetPos.y - ship.pos.y, z: targetPos.z - ship.pos.z });
+    const aimDir = normalize({
+      x: targetPos.x - ship.pos.x,
+      y: targetPos.y - ship.pos.y,
+      z: targetPos.z - ship.pos.z,
+    });
 
     const perLevel = state.behaviorConfig.globalSettings.turretLevelAccuracyPerLevel ?? 0.02;
     const maxReduction = state.behaviorConfig.globalSettings.turretLevelAccuracyMaxReduction ?? 0.5;
@@ -80,7 +102,7 @@ describe('ProjectileSystem sampling integration', () => {
     const maxSpread = (turretCfg as any).maxSpreadRadians;
 
     // Test for level 1 and level 10
-    for (const level of [1, 10]){
+    for (const level of [1, 10]) {
       ship.level.level = level;
 
       // compute expected cone angle
@@ -88,13 +110,17 @@ describe('ProjectileSystem sampling integration', () => {
       const coneAngle = finalInaccuracy * maxSpread;
 
       // fire multiple shots, resetting cooldown each time
-      for (let i=0;i<20;i++){
+      for (let i = 0; i < 20; i++) {
         turretState.cooldownLeft = 0;
         state.bullets.length = 0; // clear
-        const id = ps.fire({ sourceShipId: ship.id, turretId: turretState.id, targetPosition: targetPos });
+        const id = ps.fire({
+          sourceShipId: ship.id,
+          turretId: turretState.id,
+          targetPosition: targetPos,
+        });
         expect(id).not.toBeNull();
         expect(state.bullets.length).toBeGreaterThan(0);
-        const bullet = state.bullets[ state.bullets.length - 1 ];
+        const bullet = state.bullets[state.bullets.length - 1];
         const bulletDir = normalize({ x: bullet.vel.x, y: bullet.vel.y, z: bullet.vel.z });
         const cosAngle = dot(aimDir, bulletDir);
         // clamp numeric errors

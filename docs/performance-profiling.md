@@ -7,6 +7,7 @@ SpaceAutoBattler includes a lightweight hotpath performance meter that attribute
 ### Via Query Parameter (Recommended)
 
 Add `?debugPerf=1` to the URL:
+
 ```
 http://localhost:8080/dist/spaceautobattler.html?debugPerf=1
 ```
@@ -14,6 +15,7 @@ http://localhost:8080/dist/spaceautobattler.html?debugPerf=1
 ### Via Configuration (Programmatic)
 
 Set the performance config in renderer configuration:
+
 ```typescript
 import { perf } from './utils/perf.js';
 
@@ -23,11 +25,13 @@ perf.enable();
 ## Performance Overlay
 
 To show the on-screen performance overlay, add both query parameters:
+
 ```
 http://localhost:8080/dist/spaceautobattler.html?debugPerf=1&showPerf=1
 ```
 
 The overlay appears in the top-right corner and shows:
+
 - Total frame count and timing statistics
 - Top subsystems ranked by time consumption
 - Real-time averages and percentiles
@@ -37,23 +41,29 @@ The overlay appears in the top-right corner and shows:
 When the performance meter is enabled, the following commands are available in the browser console:
 
 ### `perf.getSummary()`
+
 Returns detailed performance statistics:
+
 ```javascript
-perf.getSummary()
+perf.getSummary();
 // Returns: { frameCount, totalFrameMs, avgFrameMs, p95FrameMs, subsystems }
 ```
 
 ### `perf.printSummary()`
+
 Prints formatted performance statistics to console:
+
 ```javascript
-perf.printSummary()
+perf.printSummary();
 // Outputs a ranked list of subsystems with percentages and timings
 ```
 
 ### `perf.clear()`
+
 Clears all collected performance data:
+
 ```javascript
-perf.clear()
+perf.clear();
 ```
 
 ## Measured Subsystems
@@ -61,6 +71,7 @@ perf.clear()
 The performance meter instruments the following key subsystems:
 
 ### Frame-level
+
 - `frame.total` - Complete frame time including all subsystems
 - `simulation.step` - Fixed-timestep simulation updates
 - `renderer.total` - Complete rendering pipeline
@@ -68,6 +79,7 @@ The performance meter instruments the following key subsystems:
 - `game.respawn` - Auto-respawn logic for continuous mode
 
 ### Simulation Subsystems
+
 - `ai.total` - Complete AI processing
 - `ai.spatial` - Spatial optimization and grid updates
 - `ai.batched` - Batch query processing
@@ -81,6 +93,7 @@ The performance meter instruments the following key subsystems:
 - `game.cleanup` - Boundary cleanup and normalization
 
 ### Renderer Subsystems
+
 - `renderer.camera` - Camera position updates
 - `renderer.sync` - Entity synchronization with graphics
 - `renderer.healthbars` - Health bar positioning and billboarding
@@ -102,7 +115,6 @@ Recommended per-frame budgets for 60 FPS (16.67ms total):
 1. **AI Subsystems**: Often the heaviest load
    - Focus on `ai.individual` and `ai.spatial` first
    - Consider reducing AI update frequency for distant ships
-   
 2. **Renderer Culling**: Second-highest impact
    - `renderer.culling` should be optimized for large ship counts
    - Check instancing efficiency
@@ -113,6 +125,7 @@ Recommended per-frame budgets for 60 FPS (16.67ms total):
 ## Zero-Cost When Disabled
 
 The performance meter has zero runtime cost when disabled:
+
 - All `perfBegin()`/`perfEnd()` calls are no-ops
 - No data collection or storage overhead
 - Safe to leave instrumentation in production builds
@@ -132,9 +145,9 @@ import { perfBegin, perfEnd } from './utils/perf.js';
 
 function expensiveOperation() {
   perfBegin('custom.operation');
-  
+
   // ... expensive work ...
-  
+
   perfEnd('custom.operation');
 }
 ```

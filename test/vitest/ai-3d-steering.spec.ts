@@ -25,10 +25,13 @@ describe('3D Steering System', () => {
   describe('Vector3 Utilities', () => {
     test('lookAt should calculate correct orientation for target directly ahead', () => {
       const fromPos = { ...TEST_DEFAULTS.zeroPos };
-      const targetPos = { ...TEST_DEFAULTS.zeroPos, x: DEFAULT_BEHAVIOR_CONFIG.globalSettings.orientationProjectionDistance };
-      
+      const targetPos = {
+        ...TEST_DEFAULTS.zeroPos,
+        x: DEFAULT_BEHAVIOR_CONFIG.globalSettings.orientationProjectionDistance,
+      };
+
       const orientation = lookAt(fromPos, targetPos);
-      
+
       expect(orientation.yaw).toBeCloseTo(0, 5); // Looking along +X axis
       expect(orientation.pitch).toBeCloseTo(0, 5); // No vertical angle
     });
@@ -36,9 +39,9 @@ describe('3D Steering System', () => {
     test('lookAt should calculate correct orientation for target above and to the right', () => {
       const fromPos = { ...TEST_DEFAULTS.zeroPos };
       const targetPos = { ...TEST_DEFAULTS.defaultPos };
-      
+
       const orientation = lookAt(fromPos, targetPos);
-      
+
       expect(orientation.yaw).toBeCloseTo(Math.PI / 4, 5); // 45 degrees right
       expect(orientation.pitch).toBeGreaterThan(0); // Looking up
     });
@@ -67,21 +70,21 @@ describe('3D Steering System', () => {
   describe('Ship 3D Orientation', () => {
     test('spawned ships should have valid 3D orientation', () => {
       const ship = spawnShip(gameState, 'red', 'fighter');
-      
+
       expect(ship.orientation).toBeDefined();
       expect(ship.orientation.pitch).toBeDefined();
       expect(ship.orientation.yaw).toBeDefined();
       expect(ship.orientation.roll).toBeDefined();
-      
+
       // Legacy dir field should match yaw
       expect(ship.dir).toBe(ship.orientation.yaw);
     });
 
     test('ship orientation should start with level flight', () => {
       const ship = spawnShip(gameState, 'red', 'fighter');
-      
+
       expect(ship.orientation.pitch).toBe(0); // Level flight
-      expect(ship.orientation.roll).toBe(0);  // No banking
+      expect(ship.orientation.roll).toBe(0); // No banking
       // Yaw can be random
     });
   });
@@ -90,34 +93,38 @@ describe('3D Steering System', () => {
     test('ships should orient towards targets in 3D space', () => {
       // Create two ships at different Z levels
       const ship1 = spawnShip(gameState, 'red', 'fighter', { ...TEST_DEFAULTS.zeroPos });
-      const ship2 = spawnShip(gameState, 'blue', 'fighter', { ...TEST_DEFAULTS.zeroPos, x: 100, z: 100 });
-      
+      const ship2 = spawnShip(gameState, 'blue', 'fighter', {
+        ...TEST_DEFAULTS.zeroPos,
+        x: 100,
+        z: 100,
+      });
+
       ship1.orientation = { pitch: 0, yaw: 0, roll: 0 };
       ship1.dir = 0;
-      
+
       // Set explicit targeting to ensure ship1 targets ship2
       ship1.targetId = ship2.id;
-      
+
       // Debug: Test the lookAt function directly
       const expectedOrientation = lookAt(ship1.pos, ship2.pos);
       expect(expectedOrientation.pitch).toBeCloseTo(Math.PI / 4, 2); // Should be 45 degrees
-      
+
       // For now, let's test the basic movement system by directly calling the movement function
       // Get the AI controller's private moveTowards method by testing it indirectly
       ship1.aiState = {
         currentIntent: 'pursue',
         intentEndTime: gameState.time + 10,
         lastIntentReevaluation: gameState.time,
-        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance
+        preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
       };
-      
+
       // Run several AI updates to allow orientation to change noticeably
       for (let i = 0; i < 5; i++) {
         const _dt = getTestDtFromState(gameState);
         aiController.updateAllShips(_dt);
         gameState.time += _dt;
       }
-      
+
       // The ship should have adjusted its orientation towards the target
       // At this point we expect non-negative pitch; allow zero if controller delays turning
       expect(ship1.orientation.pitch).toBeGreaterThanOrEqual(0);
@@ -150,30 +157,30 @@ describe('3D Steering System', () => {
       const ship2 = spawnShip(gameState, 'red', 'fighter', { ...TEST_DEFAULTS.zeroPos, x: 50 }); // Close but not too close to trigger separation
       const ship3 = spawnShip(gameState, 'red', 'fighter', { ...TEST_DEFAULTS.zeroPos, y: 50 });
       const target = spawnShip(gameState, 'blue', 'fighter', { x: 300, y: 300, z: 100 });
-      
+
       // Clear velocities
-      [ship1, ship2, ship3].forEach(ship => {
+      [ship1, ship2, ship3].forEach((ship) => {
         ship.vel = { ...TEST_DEFAULTS.zeroPos };
         ship.orientation = { pitch: 0, yaw: 0, roll: 0 };
         ship.dir = 0;
         ship.targetId = target.id; // Explicit targeting
       });
-      
-  const _initialDistance12 = Math.hypot(
+
+      const _initialDistance12 = Math.hypot(
         ship1.pos.x - ship2.pos.x,
         ship1.pos.y - ship2.pos.y,
-        ship1.pos.z - ship2.pos.z
+        ship1.pos.z - ship2.pos.z,
       );
-      
+
       // Run AI updates to let separation forces take effect
       for (let i = 0; i < 20; i++) {
         const _dt2 = getTestDtFromState(gameState);
         aiController.updateAllShips(_dt2);
         gameState.time += _dt2;
       }
-      
+
       // All ships should be moving toward the target (have non-zero velocity)
-      [ship1, ship2, ship3].forEach(ship => {
+      [ship1, ship2, ship3].forEach((ship) => {
         const speed = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
         expect(speed).toBeGreaterThan(0); // Ships should be moving
       });
@@ -183,15 +190,19 @@ describe('3D Steering System', () => {
   describe('Legacy Compatibility', () => {
     test('legacy dir field should stay synchronized with yaw', () => {
       const ship = spawnShip(gameState, 'red', 'fighter');
-  const _target = spawnShip(gameState, 'blue', 'fighter', { ...TEST_DEFAULTS.zeroPos, x: 100, y: 100 });
-      
+      const _target = spawnShip(gameState, 'blue', 'fighter', {
+        ...TEST_DEFAULTS.zeroPos,
+        x: 100,
+        y: 100,
+      });
+
       const initialYaw = ship.orientation.yaw;
       const initialDir = ship.dir;
       expect(initialDir).toBe(initialYaw);
-      
+
       // Update AI
-  aiController.updateAllShips(getTestDtFromState(gameState));
-      
+      aiController.updateAllShips(getTestDtFromState(gameState));
+
       // dir and yaw should remain synchronized
       expect(ship.dir).toBe(ship.orientation.yaw);
     });
@@ -199,36 +210,42 @@ describe('3D Steering System', () => {
 
   describe('3D Formation Behavior', () => {
     test('ships should move toward targets in 3D formations', () => {
-      gameState.behaviorConfig!.globalSettings.separationWeight = DEFAULT_BEHAVIOR_CONFIG.globalSettings.separationWeight;
-      
+      gameState.behaviorConfig!.globalSettings.separationWeight =
+        DEFAULT_BEHAVIOR_CONFIG.globalSettings.separationWeight;
+
       // Create a formation of ships at different Z levels
       const ships = [];
       for (let i = 0; i < 3; i++) {
         const ship = spawnShip(gameState, 'red', 'fighter', {
           x: 50 + i * 30,
           y: 50,
-          z: 50 + i * 20 // Create a 3D formation
+          z: 50 + i * 20, // Create a 3D formation
         });
         ship.vel = { ...TEST_DEFAULTS.zeroPos };
         ships.push(ship);
       }
-      
+
       // Add a target for them to pursue
-      const target = spawnShip(gameState, 'blue', 'fighter', { ...TEST_DEFAULTS.zeroPos, x: 300, y: 300, z: 150 });
-      
+      const target = spawnShip(gameState, 'blue', 'fighter', {
+        ...TEST_DEFAULTS.zeroPos,
+        x: 300,
+        y: 300,
+        z: 150,
+      });
+
       // Set explicit targeting
-      ships.forEach(ship => {
+      ships.forEach((ship) => {
         ship.targetId = target.id;
       });
-      
+
       // Let the formation move toward the target
       for (let i = 0; i < 20; i++) {
         aiController.updateAllShips(0.1);
         gameState.time += 0.1;
       }
-      
+
       // All ships should be moving (have non-zero velocity)
-      ships.forEach(ship => {
+      ships.forEach((ship) => {
         const speed = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z);
         expect(speed).toBeGreaterThan(0); // Ships should be moving
       });

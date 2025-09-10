@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createInitialState, spawnFleet, simulateStep, resetState } from '../../src/core/gameState.js';
+import {
+  createInitialState,
+  spawnFleet,
+  simulateStep,
+  resetState,
+} from '../../src/core/gameState.js';
 import { GameState } from '../../src/types/index.js';
 
 describe('Scout Exploration System', () => {
@@ -8,7 +13,7 @@ describe('Scout Exploration System', () => {
   beforeEach(() => {
     state = createInitialState('scout-exploration-test-seed');
     resetState(state); // Initialize AI controller and other systems
-    
+
     // Enable scout exploration
     state.behaviorConfig!.globalSettings.enableScoutBehavior = true;
     state.behaviorConfig!.globalSettings.enableScoutExploration = true;
@@ -22,9 +27,9 @@ describe('Scout Exploration System', () => {
     spawnFleet(state, 'blue', 1);
 
     // Position ships far apart so they don't detect each other
-    const redShip = state.ships.find(s => s.team === 'red')!;
-    const blueShip = state.ships.find(s => s.team === 'blue')!;
-    
+    const redShip = state.ships.find((s) => s.team === 'red')!;
+    const blueShip = state.ships.find((s) => s.team === 'blue')!;
+
     redShip.pos = { x: 100, y: 100, z: 100 };
     blueShip.pos = { x: 1800, y: 1800, z: 1800 };
 
@@ -35,7 +40,7 @@ describe('Scout Exploration System', () => {
           currentIntent: 'pursue',
           intentEndTime: state.time + 1.0,
           lastIntentReevaluation: state.time,
-          preferredRange: 200
+          preferredRange: 200,
         };
       }
     }
@@ -54,9 +59,9 @@ describe('Scout Exploration System', () => {
     spawnFleet(state, 'blue', 1);
 
     // Position ships far apart so they can't see each other initially
-    const redShip = state.ships.find(s => s.team === 'red')!;
-    const blueShip = state.ships.find(s => s.team === 'blue')!;
-    
+    const redShip = state.ships.find((s) => s.team === 'red')!;
+    const blueShip = state.ships.find((s) => s.team === 'blue')!;
+
     redShip.pos = { x: -1500, y: -1500, z: -1500 };
     blueShip.pos = { x: 1500, y: 1500, z: 1500 };
 
@@ -68,23 +73,24 @@ describe('Scout Exploration System', () => {
           currentIntent: 'pursue',
           intentEndTime: state.time + 1.0,
           lastIntentReevaluation: state.time,
-          preferredRange: 200
+          preferredRange: 200,
         };
       }
     }
 
     // Run multiple simulation steps like the working tests
     const fixedDt = 1 / state.simConfig.tickRate;
-    for (let i = 0; i < 120; i++) { // 2 seconds
+    for (let i = 0; i < 120; i++) {
+      // 2 seconds
       simulateStep(state, fixedDt);
       state.time += fixedDt;
       state.tick++;
     }
-    
+
     // Check if we have any exploration behavior
-    const exploringShips = state.ships.filter(s => s.aiState?.currentIntent === 'explore');
-    const patrollingShips = state.ships.filter(s => s.aiState?.currentIntent === 'patrol');
-    
+    const exploringShips = state.ships.filter((s) => s.aiState?.currentIntent === 'explore');
+    const patrollingShips = state.ships.filter((s) => s.aiState?.currentIntent === 'patrol');
+
     // At least one ship should have explore intent when no enemies are visible
     // If no exploration, at least they should be patrolling (not pursuing)
     expect(exploringShips.length > 0 || patrollingShips.length > 0).toBe(true);

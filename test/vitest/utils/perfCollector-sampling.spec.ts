@@ -24,7 +24,11 @@ describe('perfCollector sampling', () => {
       let ts = 1000;
       for (let i = 0; i < 5; i++) {
         ts += 16;
-  try { cb(ts); } catch { /* ignore */ }
+        try {
+          cb(ts);
+        } catch {
+          /* ignore */
+        }
       }
       return 0;
     };

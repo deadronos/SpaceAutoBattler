@@ -21,8 +21,12 @@ describe('Detailed Engagement Debug', () => {
 
     const debugLog: string[] = [];
     debugLog.push('=== INITIAL STATE ===');
-    debugLog.push(`Red ship (${redShip.id}): pos=${JSON.stringify(redShip.pos)}, targetId=${redShip.targetId}, aiState=${JSON.stringify(redShip.aiState)}`);
-    debugLog.push(`Blue ship (${blueShip.id}): pos=${JSON.stringify(blueShip.pos)}, targetId=${blueShip.targetId}, aiState=${JSON.stringify(blueShip.aiState)}`);
+    debugLog.push(
+      `Red ship (${redShip.id}): pos=${JSON.stringify(redShip.pos)}, targetId=${redShip.targetId}, aiState=${JSON.stringify(redShip.aiState)}`,
+    );
+    debugLog.push(
+      `Blue ship (${blueShip.id}): pos=${JSON.stringify(blueShip.pos)}, targetId=${blueShip.targetId}, aiState=${JSON.stringify(blueShip.aiState)}`,
+    );
 
     // Create an AI controller to test directly
     const aiController = new AIController(state);
@@ -30,8 +34,12 @@ describe('Detailed Engagement Debug', () => {
     // Test one step of AI update before simulation
     debugLog.push('\n=== AFTER AI UPDATE (step 1) ===');
     aiController.updateAllShips(0.1);
-    debugLog.push(`Red ship: pos=(${redShip.pos.x.toFixed(1)}, ${redShip.pos.y.toFixed(1)}), target=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}`);
-    debugLog.push(`Blue ship: pos=(${blueShip.pos.x.toFixed(1)}, ${blueShip.pos.y.toFixed(1)}), target=${blueShip.targetId}, intent=${blueShip.aiState?.currentIntent}`);
+    debugLog.push(
+      `Red ship: pos=(${redShip.pos.x.toFixed(1)}, ${redShip.pos.y.toFixed(1)}), target=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}`,
+    );
+    debugLog.push(
+      `Blue ship: pos=(${blueShip.pos.x.toFixed(1)}, ${blueShip.pos.y.toFixed(1)}), target=${blueShip.targetId}, intent=${blueShip.aiState?.currentIntent}`,
+    );
 
     let bulletsCreated = false;
     // Now run simulation which includes firing
@@ -39,16 +47,26 @@ describe('Detailed Engagement Debug', () => {
       state.time += 0.1;
       state.tick++;
       simulateStep(state, 0.1);
-      
+
       debugLog.push(`\n--- Step ${i + 1} ---`);
-      debugLog.push(`Red: pos=(${redShip.pos.x.toFixed(1)}, ${redShip.pos.y.toFixed(1)}), target=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}, health=${redShip.health}`);
-      debugLog.push(`Blue: pos=(${blueShip.pos.x.toFixed(1)}, ${blueShip.pos.y.toFixed(1)}), target=${blueShip.targetId}, intent=${blueShip.aiState?.currentIntent}, health=${blueShip.health}`);
-      debugLog.push(`Distance: ${Math.hypot(redShip.pos.x - blueShip.pos.x, redShip.pos.y - blueShip.pos.y, redShip.pos.z - blueShip.pos.z).toFixed(1)}`);
+      debugLog.push(
+        `Red: pos=(${redShip.pos.x.toFixed(1)}, ${redShip.pos.y.toFixed(1)}), target=${redShip.targetId}, intent=${redShip.aiState?.currentIntent}, health=${redShip.health}`,
+      );
+      debugLog.push(
+        `Blue: pos=(${blueShip.pos.x.toFixed(1)}, ${blueShip.pos.y.toFixed(1)}), target=${blueShip.targetId}, intent=${blueShip.aiState?.currentIntent}, health=${blueShip.health}`,
+      );
+      debugLog.push(
+        `Distance: ${Math.hypot(redShip.pos.x - blueShip.pos.x, redShip.pos.y - blueShip.pos.y, redShip.pos.z - blueShip.pos.z).toFixed(1)}`,
+      );
       debugLog.push(`Bullets: ${state.bullets.length}`);
-      
+
       // Check turret cooldowns
-      debugLog.push(`Red turret cooldowns: ${redShip.turrets.map(t => t.cooldownLeft.toFixed(2)).join(', ')}`);
-      debugLog.push(`Blue turret cooldowns: ${blueShip.turrets.map(t => t.cooldownLeft.toFixed(2)).join(', ')}`);
+      debugLog.push(
+        `Red turret cooldowns: ${redShip.turrets.map((t) => t.cooldownLeft.toFixed(2)).join(', ')}`,
+      );
+      debugLog.push(
+        `Blue turret cooldowns: ${blueShip.turrets.map((t) => t.cooldownLeft.toFixed(2)).join(', ')}`,
+      );
 
       if (state.bullets.length > 0) {
         debugLog.push('*** BULLETS DETECTED! ***');
@@ -60,7 +78,9 @@ describe('Detailed Engagement Debug', () => {
     // Show debug output if no bullets were created
     if (!bulletsCreated) {
       // Force test failure with debug info
-      expect(false, `No bullets were created during simulation:\n${debugLog.join('\n')}`).toBe(true);
+      expect(false, `No bullets were created during simulation:\n${debugLog.join('\n')}`).toBe(
+        true,
+      );
     }
 
     // Check if ships got targets

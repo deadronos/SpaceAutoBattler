@@ -9,7 +9,9 @@ import type { GameState } from '../../../src/types/index.js';
 export function populateSpatialGridForTest(state: GameState) {
   const bounds = state?.simConfig?.simBounds ?? { width: 1920, height: 1080, depth: 600 };
   if (!state.spatialGrid) state.spatialGrid = new SpatialGrid(64, bounds);
-  state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+  state.spatialGrid.rebuild(
+    state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+  );
 }
 
 export default populateSpatialGridForTest;

@@ -120,10 +120,11 @@ export interface Ship {
   // 3D orientation using Euler angles (in radians)
   orientation: {
     pitch: number; // rotation around X axis (nose up/down)
-    yaw: number;   // rotation around Y axis (nose left/right)
-    roll: number;  // rotation around Z axis (ship rolling)
+    yaw: number; // rotation around Y axis (nose left/right)
+    roll: number; // rotation around Z axis (ship rolling)
   };
-  prevOrientation?: { // New for interpolation (optional to ease test creation)
+  prevOrientation?: {
+    // New for interpolation (optional to ease test creation)
     pitch: number;
     yaw: number;
     roll: number;
@@ -197,8 +198,6 @@ export interface RendererHandles {
   getUseShipInstancing?: () => boolean;
 }
 
-
-
 export interface GameState {
   time: number; // seconds
   tick: number;
@@ -241,7 +240,7 @@ export interface GameState {
     initDone: boolean;
     step: (dt: number) => void;
     dispose: () => void;
-  world?: unknown;
+    world?: unknown;
   };
   behaviorConfig: import('../config/behaviorConfig.js').BehaviorConfig;
   // Optional spatial index for efficient AI proximity queries (neighbors, targeting)
@@ -289,4 +288,3 @@ export interface ParticleInstance {
   color: string;
   active: boolean;
 }
-

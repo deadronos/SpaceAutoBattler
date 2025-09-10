@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  TimeAdapter, 
-  RealTimeAdapter, 
-  MockTimeAdapter 
+import {
+  TimeAdapter,
+  RealTimeAdapter,
+  MockTimeAdapter,
 } from '../../src/core/adapters/timeAdapter.js';
 
 describe('TimeAdapter', () => {
@@ -23,7 +23,7 @@ describe('TimeAdapter', () => {
     it('should advance time with step()', () => {
       timeAdapter.step(1000); // 1 second in milliseconds
       expect(timeAdapter.now()).toBe(1000);
-      
+
       timeAdapter.step(500); // 0.5 seconds
       expect(timeAdapter.now()).toBe(1500);
     });
@@ -100,10 +100,10 @@ describe('TimeAdapter', () => {
 
     it('should advance time automatically', async () => {
       const time1 = timeAdapter.now();
-      
+
       // Wait a small amount
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const time2 = timeAdapter.now();
       expect(time2).toBeGreaterThan(time1);
     });
@@ -111,12 +111,12 @@ describe('TimeAdapter', () => {
     it('should respect scaling', async () => {
       timeAdapter.scale(2.0);
       const time1 = timeAdapter.now();
-      
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const time2 = timeAdapter.now();
       const elapsed = time2 - time1;
-      
+
       // With 2x scaling, elapsed time should be roughly 2x real time
       // We can't be too precise due to timing variations
       expect(elapsed).toBeGreaterThan(15); // Should be at least 1.5x the real wait
@@ -125,9 +125,9 @@ describe('TimeAdapter', () => {
     it('should pause correctly', async () => {
       const time1 = timeAdapter.now();
       timeAdapter.pause();
-      
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const time2 = timeAdapter.now();
       // For real time adapter, paused time should be very close to the initial time
       expect(Math.abs(time2 - time1)).toBeLessThan(5); // Allow small tolerance
@@ -144,8 +144,17 @@ describe('TimeAdapter', () => {
       const realAdapter = new RealTimeAdapter();
 
       // Check that both implementations have all required methods
-      const requiredMethods = ['now', 'delta', 'scale', 'pause', 'resume', 'getState', 'step', 'reset'];
-      
+      const requiredMethods = [
+        'now',
+        'delta',
+        'scale',
+        'pause',
+        'resume',
+        'getState',
+        'step',
+        'reset',
+      ];
+
       for (const method of requiredMethods) {
         expect(typeof (mockAdapter as any)[method]).toBe('function');
         expect(typeof (realAdapter as any)[method]).toBe('function');

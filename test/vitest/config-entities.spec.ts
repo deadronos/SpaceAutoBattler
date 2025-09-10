@@ -5,13 +5,13 @@ import {
   getShipClassConfig,
   getTurretConfig,
   getAllShipClasses,
-  getAllTurretConfigs
+  getAllTurretConfigs,
 } from '../../src/config/entitiesConfig.js';
 import type { ShipClass } from '../../src/types/index.js';
 
 // Test utilities
 function validateConfigStructure(config: any, expectedKeys: string[]) {
-  expectedKeys.forEach(key => {
+  expectedKeys.forEach((key) => {
     expect(config).toHaveProperty(key);
   });
 }
@@ -24,16 +24,16 @@ describe('Entities Configuration', () => {
         'corvette-cannon',
         'frigate-cannon',
         'destroyer-cannon',
-        'carrier-cannon'
+        'carrier-cannon',
       ];
 
-      expectedTurrets.forEach(turretId => {
+      expectedTurrets.forEach((turretId) => {
         expect(TURRET_CONFIGS).toHaveProperty(turretId);
       });
     });
 
     test('should have valid turret config structure', () => {
-      Object.values(TURRET_CONFIGS).forEach(config => {
+      Object.values(TURRET_CONFIGS).forEach((config) => {
         validateConfigStructure(config, ['id', 'cooldown', 'bulletSpeed', 'damage', 'range']);
 
         expect(config.cooldown).toBeGreaterThan(0);
@@ -49,7 +49,7 @@ describe('Entities Configuration', () => {
         TURRET_CONFIGS['corvette-cannon'],
         TURRET_CONFIGS['frigate-cannon'],
         TURRET_CONFIGS['destroyer-cannon'],
-        TURRET_CONFIGS['carrier-cannon']
+        TURRET_CONFIGS['carrier-cannon'],
       ];
 
       // Damage should generally increase, but carriers have less than destroyers (by design)
@@ -86,14 +86,23 @@ describe('Entities Configuration', () => {
   describe('Ship Class Configurations', () => {
     test('should have all expected ship classes', () => {
       const expectedClasses = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      expectedClasses.forEach(shipClass => {
+      expectedClasses.forEach((shipClass) => {
         expect(SHIP_CLASS_CONFIGS).toHaveProperty(shipClass);
       });
     });
 
     test('should have valid ship config structure', () => {
-      Object.values(SHIP_CLASS_CONFIGS).forEach(config => {
-        validateConfigStructure(config, ['class', 'baseHealth', 'armor', 'shield', 'shieldRegen', 'speed', 'turnRate', 'turrets']);
+      Object.values(SHIP_CLASS_CONFIGS).forEach((config) => {
+        validateConfigStructure(config, [
+          'class',
+          'baseHealth',
+          'armor',
+          'shield',
+          'shieldRegen',
+          'speed',
+          'turnRate',
+          'turrets',
+        ]);
 
         expect(config.baseHealth).toBeGreaterThan(0);
         expect(config.armor).toBeGreaterThanOrEqual(0);
@@ -108,7 +117,7 @@ describe('Entities Configuration', () => {
 
     test('should have progressive stat increases by ship class', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      const configs = shipClasses.map(cls => SHIP_CLASS_CONFIGS[cls]);
+      const configs = shipClasses.map((cls) => SHIP_CLASS_CONFIGS[cls]);
 
       // Health should increase progressively
       for (let i = 1; i < configs.length; i++) {
@@ -130,7 +139,7 @@ describe('Entities Configuration', () => {
     test('should have appropriate turret counts per ship class', () => {
       // Derive expected turret counts from the authoritative getter to avoid hardcoded numbers
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      shipClasses.forEach(cls => {
+      shipClasses.forEach((cls) => {
         const cfg = SHIP_CLASS_CONFIGS[cls];
         const expected = getShipClassConfig(cls).turrets.length;
         expect(cfg.turrets).toHaveLength(expected);
@@ -159,25 +168,30 @@ describe('Entities Configuration', () => {
     test('getAllShipClasses should return all ship classes', () => {
       const allClasses = getAllShipClasses();
       expect(allClasses).toHaveLength(Object.keys(SHIP_CLASS_CONFIGS).length);
-      expect(allClasses).toEqual(expect.arrayContaining(['fighter', 'corvette', 'frigate', 'destroyer', 'carrier']));
+      expect(allClasses).toEqual(
+        expect.arrayContaining(['fighter', 'corvette', 'frigate', 'destroyer', 'carrier']),
+      );
     });
   });
 
   describe('Configuration Balance Validation', () => {
     test('turret damage should scale appropriately with ship health', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      const configs = shipClasses.map(cls => SHIP_CLASS_CONFIGS[cls]);
+      const configs = shipClasses.map((cls) => SHIP_CLASS_CONFIGS[cls]);
 
-      configs.forEach(config => {
-        const totalTurretDamage = config.turrets.reduce((sum: number, turret) => sum + turret.damage, 0);
+      configs.forEach((config) => {
+        const totalTurretDamage = config.turrets.reduce(
+          (sum: number, turret) => sum + turret.damage,
+          0,
+        );
         const avgTurretDamage = totalTurretDamage / config.turrets.length;
 
         // Average turret damage should be proportional to ship health
         // Fighters should have lower relative damage, capital ships higher
-  const expectedRatio = config.baseHealth / 100; // Normalized to fighter baseline
-  // Use the fighter turret damage from canonical turret configs instead of a literal baseline
-  const fighterBaseline = TURRET_CONFIGS['fighter-cannon'].damage;
-  const actualRatio = avgTurretDamage / fighterBaseline; // Normalized to fighter baseline
+        const expectedRatio = config.baseHealth / 100; // Normalized to fighter baseline
+        // Use the fighter turret damage from canonical turret configs instead of a literal baseline
+        const fighterBaseline = TURRET_CONFIGS['fighter-cannon'].damage;
+        const actualRatio = avgTurretDamage / fighterBaseline; // Normalized to fighter baseline
 
         // Adjust expectations based on actual config - carriers have less damage than destroyers
         if (config.class === 'carrier') {
@@ -192,7 +206,7 @@ describe('Entities Configuration', () => {
 
     test('ship speed should be inversely related to size/complexity', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      const configs = shipClasses.map(cls => SHIP_CLASS_CONFIGS[cls]);
+      const configs = shipClasses.map((cls) => SHIP_CLASS_CONFIGS[cls]);
 
       // Fighters should be fastest, carriers slowest
       for (let i = 1; i < configs.length; i++) {
@@ -202,7 +216,7 @@ describe('Entities Configuration', () => {
 
     test('turn rate should decrease with ship size', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      const configs = shipClasses.map(cls => SHIP_CLASS_CONFIGS[cls]);
+      const configs = shipClasses.map((cls) => SHIP_CLASS_CONFIGS[cls]);
 
       // Fighters should turn fastest, carriers slowest
       for (let i = 1; i < configs.length; i++) {
@@ -212,7 +226,7 @@ describe('Entities Configuration', () => {
 
     test('shield regen should scale with ship size', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      const configs = shipClasses.map(cls => SHIP_CLASS_CONFIGS[cls]);
+      const configs = shipClasses.map((cls) => SHIP_CLASS_CONFIGS[cls]);
 
       // Larger ships should have higher shield regen
       for (let i = 1; i < configs.length; i++) {

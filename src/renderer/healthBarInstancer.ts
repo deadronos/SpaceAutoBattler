@@ -28,7 +28,7 @@ export class HealthBarInstancer {
   // Shared camera uniforms that need to be updated per frame
   private cameraUniforms = {
     cameraRight: new THREE.Vector3(1, 0, 0),
-    cameraUp: new THREE.Vector3(0, 1, 0)
+    cameraUp: new THREE.Vector3(0, 1, 0),
   };
 
   // Camera forward vector used to offset billboards slightly toward the camera to avoid z-fighting
@@ -45,7 +45,7 @@ export class HealthBarInstancer {
 
   constructor(scene: THREE.Scene, healthBarsGroup: THREE.Group) {
     this.capacity = RendererConfig.instancing.bars.initialCapacity;
-    
+
     // Initialize free indices pool
     for (let i = 0; i < this.capacity; i++) {
       this.freeIndices.push(i);
@@ -53,13 +53,15 @@ export class HealthBarInstancer {
 
     // Create InstancedMesh for each layer
     this.createLayerInstances(healthBarsGroup);
-    
+
     // Mark as ready and notify any listeners
     this.isReady = true;
     for (const cb of this.readyCallbacks) {
       try {
         cb();
-      } catch (_e) { void _e;logger.error('Error in HealthBarInstancer readiness callback', _e);
+      } catch (_e) {
+        void _e;
+        logger.error('Error in HealthBarInstancer readiness callback', _e);
       }
     }
     this.readyCallbacks.length = 0;
@@ -72,11 +74,16 @@ export class HealthBarInstancer {
    */
   private layerRenderOrder(layer: HealthBarLayer): number {
     switch (layer) {
-      case 'background': return 0;
-      case 'health': return 1;
-      case 'shield': return 2;
-      case 'border': return 3;
-      default: return 0;
+      case 'background':
+        return 0;
+      case 'health':
+        return 1;
+      case 'shield':
+        return 2;
+      case 'border':
+        return 3;
+      default:
+        return 0;
     }
   }
 
@@ -88,7 +95,9 @@ export class HealthBarInstancer {
     if (this.isReady) {
       try {
         cb();
-      } catch (_e) { void _e;logger.error('Error in HealthBarInstancer readiness callback', _e);
+      } catch (_e) {
+        void _e;
+        logger.error('Error in HealthBarInstancer readiness callback', _e);
       }
       return;
     }
@@ -149,7 +158,9 @@ export class HealthBarInstancer {
     // Check if we should warn about capacity usage
     const usage = this.usedCount / this.capacity;
     if (!this.hasWarned && usage > RendererConfig.instancing.bars.warnThreshold) {
-      logger.warn(`Health bar instancer usage high: ${Math.round(usage * 100)}% (${this.usedCount}/${this.capacity})`);
+      logger.warn(
+        `Health bar instancer usage high: ${Math.round(usage * 100)}% (${this.usedCount}/${this.capacity})`,
+      );
       this.hasWarned = true;
     }
 
@@ -177,7 +188,10 @@ export class HealthBarInstancer {
     this.usedCount--;
 
     // Reset warning flag if usage is low again
-    if (this.hasWarned && this.usedCount / this.capacity < RendererConfig.instancing.bars.warnThreshold * 0.8) {
+    if (
+      this.hasWarned &&
+      this.usedCount / this.capacity < RendererConfig.instancing.bars.warnThreshold * 0.8
+    ) {
       this.hasWarned = false;
     }
 
@@ -194,32 +208,54 @@ export class HealthBarInstancer {
     }
 
     const config = RendererConfig.healthBars;
-    
+
     // Calculate position above ship
     this.tempPosition.set(
       ship.pos.x + config.position.offsetX,
       ship.pos.y + config.position.offsetY,
-      ship.pos.z + 10 // Above the ship in 3D space
+      ship.pos.z + 10, // Above the ship in 3D space
     );
 
     // Update background layer
-    this.updateLayerInstance('background', instanceIndex, this.tempPosition, 1.0, config.colors.background);
+    this.updateLayerInstance(
+      'background',
+      instanceIndex,
+      this.tempPosition,
+      1.0,
+      config.colors.background,
+    );
 
     // Update health layer with health percentage
     const healthPercent = Math.max(0, ship.health / ship.maxHealth);
-    const healthColor = healthPercent > 0.5 ? config.colors.health.full : 
-                       healthPercent > 0.25 ? config.colors.health.damaged : 
-                       config.colors.health.critical;
-    this.updateLayerInstance('health', instanceIndex, this.tempPosition, healthPercent, healthColor);
+    const healthColor =
+      healthPercent > 0.5
+        ? config.colors.health.full
+        : healthPercent > 0.25
+          ? config.colors.health.damaged
+          : config.colors.health.critical;
+    this.updateLayerInstance(
+      'health',
+      instanceIndex,
+      this.tempPosition,
+      healthPercent,
+      healthColor,
+    );
 
     // Update shield layer if ship has shields
     if (ship.maxShield > 0) {
       const shieldPercent = Math.max(0, ship.shield / ship.maxShield);
-      const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
-      
+      const shieldColor =
+        shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
+
       // Offset shield slightly forward
       this.tempPosition.z += 0.1;
-      this.updateLayerInstance('shield', instanceIndex, this.tempPosition, shieldPercent, shieldColor);
+      this.updateLayerInstance(
+        'shield',
+        instanceIndex,
+        this.tempPosition,
+        shieldPercent,
+        shieldColor,
+      );
       this.tempPosition.z -= 0.1; // Reset for border
     } else {
       // Hide shield layer
@@ -265,13 +301,13 @@ export class HealthBarInstancer {
     const used = this.usedCount;
     const free = this.freeIndices.length;
     const capacity = this.capacity;
-  const usagePercent = capacity > 0 ? (used / capacity) * 100 : 0;
+    const usagePercent = capacity > 0 ? (used / capacity) * 100 : 0;
     return {
       capacity,
       used,
       free,
       usagePercent,
-      activeCount: this.activeShips.size
+      activeCount: this.activeShips.size,
     };
   }
 
@@ -291,11 +327,18 @@ export class HealthBarInstancer {
    * Debug helper (DEV only): return decomposed matrix (position, quaternion, scale)
    * for the given shipId's allocated instance, or null if not allocated.
    */
-  debugGetInstanceMatrix(shipId: number): { position: { x:number; y:number; z:number }; quaternion: { x:number; y:number; z:number; w:number }; scale: { x:number; y:number; z:number } } | null {
+  debugGetInstanceMatrix(
+    shipId: number,
+  ): {
+    position: { x: number; y: number; z: number };
+    quaternion: { x: number; y: number; z: number; w: number };
+    scale: { x: number; y: number; z: number };
+  } | null {
     const idx = this.activeShips.get(shipId);
     if (idx === undefined) return null;
     // Prefer any available layer (health) to read matrix
-    const instancedMesh = this.instancedMeshes.get('health') || Array.from(this.instancedMeshes.values())[0];
+    const instancedMesh =
+      this.instancedMeshes.get('health') || Array.from(this.instancedMeshes.values())[0];
     if (!instancedMesh) return null;
     const m = new THREE.Matrix4();
     instancedMesh.getMatrixAt(idx, m);
@@ -306,7 +349,7 @@ export class HealthBarInstancer {
     return {
       position: { x: pos.x, y: pos.y, z: pos.z },
       quaternion: { x: quat.x, y: quat.y, z: quat.z, w: quat.w },
-      scale: { x: scale.x, y: scale.y, z: scale.z }
+      scale: { x: scale.x, y: scale.y, z: scale.z },
     };
   }
 
@@ -317,7 +360,7 @@ export class HealthBarInstancer {
     for (const [_layer, instancedMesh] of this.instancedMeshes) {
       instancedMesh.geometry.dispose();
       if (Array.isArray(instancedMesh.material)) {
-        instancedMesh.material.forEach(mat => mat.dispose());
+        instancedMesh.material.forEach((mat) => mat.dispose());
       } else {
         instancedMesh.material.dispose();
       }
@@ -333,16 +376,37 @@ export class HealthBarInstancer {
    */
   private createLayerInstances(healthBarsGroup: THREE.Group): void {
     const config = RendererConfig.healthBars;
-    
+
     // Background layer - full width
-    this.createLayerInstance('background', config.width, config.position.height, config.colors.background, 1.0, healthBarsGroup);
-    
+    this.createLayerInstance(
+      'background',
+      config.width,
+      config.position.height,
+      config.colors.background,
+      1.0,
+      healthBarsGroup,
+    );
+
     // Health layer - variable width based on health percentage
-    this.createLayerInstance('health', config.width - 2, config.position.height - 2, config.colors.health.full, 1.0, healthBarsGroup);
-    
+    this.createLayerInstance(
+      'health',
+      config.width - 2,
+      config.position.height - 2,
+      config.colors.health.full,
+      1.0,
+      healthBarsGroup,
+    );
+
     // Shield layer - variable width based on shield percentage
-    this.createLayerInstance('shield', config.width - 2, config.position.height - 2, config.colors.shield.full, 0.8, healthBarsGroup);
-    
+    this.createLayerInstance(
+      'shield',
+      config.width - 2,
+      config.position.height - 2,
+      config.colors.shield.full,
+      0.8,
+      healthBarsGroup,
+    );
+
     // Border layer - ring geometry
     this.createBorderLayerInstance(healthBarsGroup);
   }
@@ -351,21 +415,21 @@ export class HealthBarInstancer {
    * Create an InstancedMesh for a specific layer
    */
   private createLayerInstance(
-    layer: HealthBarLayer, 
-    width: number, 
-    height: number, 
-    color: string, 
+    layer: HealthBarLayer,
+    width: number,
+    height: number,
+    color: string,
     alpha: number,
-    parent: THREE.Group
+    parent: THREE.Group,
   ): void {
     if (layer === 'border') return; // Border uses special geometry
 
     const geometry = new THREE.PlaneGeometry(width, height);
-    
+
     // Add instanced buffer attributes
     const scaleXArray = new Float32Array(this.capacity);
     const colorArray = new Float32Array(this.capacity * 3);
-    
+
     // Initialize with default values
     for (let i = 0; i < this.capacity; i++) {
       scaleXArray[i] = 1.0;
@@ -374,10 +438,10 @@ export class HealthBarInstancer {
       colorArray[i * 3 + 1] = colorObj.g;
       colorArray[i * 3 + 2] = colorObj.b;
     }
-    
+
     geometry.setAttribute('aScaleX', new THREE.InstancedBufferAttribute(scaleXArray, 1));
     geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colorArray, 3));
-    
+
     const material = this.createBillboardMaterial(color, alpha);
     const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
     // Ensure transparent layers render in a predictable order and avoid depth-test artifacts
@@ -385,18 +449,20 @@ export class HealthBarInstancer {
     // Many runtimes use a single shared material; make sure depthTest is disabled so
     // overlapping transparent billboards don't cull each other when facing away.
     if (Array.isArray(instancedMesh.material)) {
-      instancedMesh.material.forEach((m: THREE.Material) => { (m as THREE.Material & { depthTest?: boolean }).depthTest = false; });
+      instancedMesh.material.forEach((m: THREE.Material) => {
+        (m as THREE.Material & { depthTest?: boolean }).depthTest = false;
+      });
     } else {
       (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
     }
-    
+
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
-    
-  this.instancedMeshes.set(layer, instancedMesh);
-  // Defer adding to the scene until after renderer initialization to avoid
-  // early prototype geometry being visible during createThreeRenderer.
-  this.deferAddToParent(parent, instancedMesh);
+
+    this.instancedMeshes.set(layer, instancedMesh);
+    // Defer adding to the scene until after renderer initialization to avoid
+    // early prototype geometry being visible during createThreeRenderer.
+    this.deferAddToParent(parent, instancedMesh);
   }
 
   /**
@@ -405,15 +471,15 @@ export class HealthBarInstancer {
   private createBorderLayerInstance(parent: THREE.Group): void {
     const config = RendererConfig.healthBars;
     const geometry = new THREE.RingGeometry(
-      config.width/2 - config.border.width/2, 
-      config.width/2 + config.border.width/2, 
-      8
+      config.width / 2 - config.border.width / 2,
+      config.width / 2 + config.border.width / 2,
+      8,
     );
-    
+
     // Add instanced buffer attributes for border
     const scaleXArray = new Float32Array(this.capacity);
     const colorArray = new Float32Array(this.capacity * 3);
-    
+
     // Initialize with default values
     for (let i = 0; i < this.capacity; i++) {
       scaleXArray[i] = 1.0;
@@ -422,21 +488,21 @@ export class HealthBarInstancer {
       colorArray[i * 3 + 1] = colorObj.g;
       colorArray[i * 3 + 2] = colorObj.b;
     }
-    
+
     geometry.setAttribute('aScaleX', new THREE.InstancedBufferAttribute(scaleXArray, 1));
     geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colorArray, 3));
-    
-  const material = this.createBillboardMaterial(config.border.color, 0.5);
-  const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
-  instancedMesh.renderOrder = this.layerRenderOrder('border');
-  (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
-    
+
+    const material = this.createBillboardMaterial(config.border.color, 0.5);
+    const instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+    instancedMesh.renderOrder = this.layerRenderOrder('border');
+    (instancedMesh.material as THREE.Material & { depthTest?: boolean }).depthTest = false;
+
     // Hide all instances initially
     this.hideUnusedInstances(instancedMesh);
-    
-  this.instancedMeshes.set('border', instancedMesh);
-  // Defer adding border instanced mesh as well for the same reason.
-  this.deferAddToParent(parent, instancedMesh);
+
+    this.instancedMeshes.set('border', instancedMesh);
+    // Defer adding border instanced mesh as well for the same reason.
+    this.deferAddToParent(parent, instancedMesh);
   }
 
   /**
@@ -496,11 +562,11 @@ export class HealthBarInstancer {
    * Update a specific layer instance
    */
   private updateLayerInstance(
-    layer: HealthBarLayer, 
-    instanceIndex: number, 
-    position: THREE.Vector3, 
-    scaleX: number, 
-    color: string
+    layer: HealthBarLayer,
+    instanceIndex: number,
+    position: THREE.Vector3,
+    scaleX: number,
+    color: string,
   ): void {
     const instancedMesh = this.instancedMeshes.get(layer);
     if (!instancedMesh) return;
@@ -538,11 +604,13 @@ export class HealthBarInstancer {
   private growCapacity(): boolean {
     const newCapacity = Math.min(
       Math.ceil(this.capacity * RendererConfig.instancing.bars.growthFactor),
-      RendererConfig.instancing.bars.maxCapacity
+      RendererConfig.instancing.bars.maxCapacity,
     );
 
     if (newCapacity <= this.capacity) {
-      logger.error(`Cannot grow health bar instancer capacity beyond ${this.capacity} (max: ${RendererConfig.instancing.bars.maxCapacity})`);
+      logger.error(
+        `Cannot grow health bar instancer capacity beyond ${this.capacity} (max: ${RendererConfig.instancing.bars.maxCapacity})`,
+      );
       return false;
     }
 
@@ -550,12 +618,12 @@ export class HealthBarInstancer {
 
     // Create new instanced meshes for each layer
     const newInstancedMeshes = new Map<HealthBarLayer, THREE.InstancedMesh>();
-    
+
     for (const [layer, oldInstancedMesh] of this.instancedMeshes) {
       const geometry = oldInstancedMesh.geometry;
       const material = oldInstancedMesh.material;
       const newInstancedMesh = new THREE.InstancedMesh(geometry, material, newCapacity);
-      
+
       // Copy existing matrices
       for (let i = 0; i < this.capacity; i++) {
         oldInstancedMesh.getMatrixAt(i, this.tempMatrix);
@@ -564,7 +632,7 @@ export class HealthBarInstancer {
 
       // Hide new unused instances
       this.hideUnusedInstances(newInstancedMesh, this.capacity);
-      
+
       // Replace in scene
       const parent = oldInstancedMesh.parent;
       if (parent) {
@@ -605,15 +673,15 @@ export class HealthBarInstancer {
    * conservative and reversible: it only changes the timing of add().
    */
   private deferAddToParent(parent: THREE.Object3D, child: THREE.Object3D): void {
-  // NOTE: This helper exists to avoid early visible prototype geometry
-  // appearing during `createThreeRenderer` initialization. It defers the
-  // `.add()` call to the next animation frame (or macrotask) so the
-  // renderer/camera are initialized and any prototype groups can be
-  // kept hidden. This is a timing-only change and is fully reversible
-  // (remove the helper and restore direct `parent.add(child)` to revert).
-  // During unit tests we prefer synchronous addition so assertions can
-  // inspect the scene immediately. Detect common test env flags and
-  // fall back to sync add in that case.
+    // NOTE: This helper exists to avoid early visible prototype geometry
+    // appearing during `createThreeRenderer` initialization. It defers the
+    // `.add()` call to the next animation frame (or macrotask) so the
+    // renderer/camera are initialized and any prototype groups can be
+    // kept hidden. This is a timing-only change and is fully reversible
+    // (remove the helper and restore direct `parent.add(child)` to revert).
+    // During unit tests we prefer synchronous addition so assertions can
+    // inspect the scene immediately. Detect common test env flags and
+    // fall back to sync add in that case.
     // Use safe envVar helper (imported at module top) so we don't attempt
     // a dynamic require which can fail in some test runners due to ESM/CJS
     // interop. When running under test, add synchronously so assertions
@@ -638,4 +706,3 @@ export class HealthBarInstancer {
     }
   }
 }
-

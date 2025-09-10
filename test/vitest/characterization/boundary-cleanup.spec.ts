@@ -17,11 +17,15 @@ describe('Characterization: boundary cleanup', () => {
 
     const ship = spawnShip(state, 'red', 'fighter');
     // Place ship clearly out of bounds
-    ship.pos.x = -1000; ship.pos.y = -1000; ship.pos.z = -1000;
-    ship.vel.x = 10; ship.vel.y = 10; ship.vel.z = 10;
+    ship.pos.x = -1000;
+    ship.pos.y = -1000;
+    ship.pos.z = -1000;
+    ship.vel.x = 10;
+    ship.vel.y = 10;
+    ship.vel.z = 10;
 
     // One tick should trigger cleanup
-    simulateStep(state, 1/60);
+    simulateStep(state, 1 / 60);
 
     const { width, height, depth } = state.simConfig.simBounds;
     expect(ship.pos.x).toBeGreaterThanOrEqual(0);

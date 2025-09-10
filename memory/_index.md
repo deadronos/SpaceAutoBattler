@@ -3,12 +3,14 @@
 This index lists the short searchable memory summaries generated for the `src/` codebase. These are intended to help new contributors and automated agents quickly find per-file summaries and integration notes.
 
 ## How to use
+
 - Each memory is a short, focused Markdown document describing a single source file's responsibility, key functions, integration points, and suggested follow-ups.
 - Use these when onboarding, writing tests, or making changes so you can quickly find where behavior is implemented.
 - If you change source files, consider updating the corresponding memory entry.
 - If you add new important modules, create a new memory file under `memory/` and add a link to this index.
 
 ## Per-file memories
+
 - [core-gameState.md](./core-gameState.md) — `src/core/gameState.ts` responsibilities and key functions.
 - [core-aiController.md](./core-aiController.md) — `src/core/aiController.ts` (intents, steering, formation, roaming anchors).
 - [renderer-effects.md](./renderer-effects.md) — `src/renderer/effects.ts` (EffectsManager, safe readbacks).
@@ -22,6 +24,7 @@ This index lists the short searchable memory summaries generated for the `src/` 
 - [core-assetPool.md](./core-assetPool.md) — `src/core/assetPool.ts` (LRU asset pool implementation).
 
 ## Maintenance guidelines
+
 - Keep each memory short (200-800 words) and focused on the file's responsibilities.
 - Link to relevant config files and note key tunables where appropriate.
 - Prefer short examples and references to where the file is used (e.g., `main.ts` or `simWorker.ts`).

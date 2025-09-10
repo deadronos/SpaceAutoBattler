@@ -21,19 +21,37 @@ describe('perfOverlay (more)', () => {
     let appended: any = null;
     (global as any).document = {
       body: {
-        appendChild: (el: any) => { appended = el; }
+        appendChild: (el: any) => {
+          appended = el;
+        },
       },
       createElement: (tag: string) => {
         // simple element stub
-        const el: any = { tagName: tag.toUpperCase(), id: '', style: { cssText: '' }, textContent: '' };
+        const el: any = {
+          tagName: tag.toUpperCase(),
+          id: '',
+          style: { cssText: '' },
+          textContent: '',
+        };
         return el;
       },
       getElementById: (id: string) => (id === 'perfOverlay' ? appended : null),
-      removeChild: (el: any) => { if (appended === el) appended = null; }
+      removeChild: (el: any) => {
+        if (appended === el) appended = null;
+      },
     } as any;
 
     // stub RAF to synchronously call callback once
-  (global as any).requestAnimationFrame = (cb: any) => { setTimeout(() => { try { cb(16); } catch { /* ignore */ } }, 0); return 1; };
+    (global as any).requestAnimationFrame = (cb: any) => {
+      setTimeout(() => {
+        try {
+          cb(16);
+        } catch {
+          /* ignore */
+        }
+      }, 0);
+      return 1;
+    };
     (global as any).cancelAnimationFrame = () => {};
     (global as any).performance = { now: () => 123 } as any;
 
@@ -41,7 +59,11 @@ describe('perfOverlay (more)', () => {
     (global as any).location = { search: '?showPerf=1' } as any;
     const perfMod = await import('../../../src/utils/perf');
     // enable the global perf meter for the overlay to show
-  try { (perfMod as any).perf.enable(); } catch { /* ignore */ }
+    try {
+      (perfMod as any).perf.enable();
+    } catch {
+      /* ignore */
+    }
 
     const mod = await import('../../../src/utils/perfOverlay');
     const res = await (mod as any).setupPerfOverlay?.();

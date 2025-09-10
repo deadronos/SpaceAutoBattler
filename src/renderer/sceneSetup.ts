@@ -34,7 +34,7 @@ export interface SceneManager {
  */
 export function setupScene(state: GameState): SceneElements {
   const scene = new THREE.Scene();
-  
+
   // Create shader-based animated skybox
   const { skybox, skyboxShaderMaterial, staticSkyboxTexture } = createShaderBasedSkybox();
   scene.add(skybox);
@@ -43,7 +43,8 @@ export function setupScene(state: GameState): SceneElements {
   const skyboxTextures: THREE.CanvasTexture[] = [];
   try {
     for (let i = 0; i < 6; i++) {
-      const canvas = (staticSkyboxTexture.image as HTMLCanvasElement) || document.createElement('canvas');
+      const canvas =
+        (staticSkyboxTexture.image as HTMLCanvasElement) || document.createElement('canvas');
       skyboxCanvases.push(canvas);
       const tex = new THREE.CanvasTexture(canvas);
       tex.generateMipmaps = false;
@@ -57,22 +58,22 @@ export function setupScene(state: GameState): SceneElements {
   const canvases = skyboxCanvases as unknown as HTMLCanvasElement[];
   const animatedCube = new THREE.CubeTexture(canvases);
   animatedCube.needsUpdate = true;
-  
+
   // Add lighting
   const ambientLight = new THREE.AmbientLight(
     RendererEffectsConfig.lighting.ambient.color,
-    RendererEffectsConfig.lighting.ambient.intensity
+    RendererEffectsConfig.lighting.ambient.intensity,
   );
   scene.add(ambientLight);
 
   const directionalLight = new THREE.DirectionalLight(
     RendererEffectsConfig.lighting.directional.color,
-    RendererEffectsConfig.lighting.directional.intensity
+    RendererEffectsConfig.lighting.directional.intensity,
   );
   directionalLight.position.set(
     RendererEffectsConfig.lighting.directional.position.x,
     RendererEffectsConfig.lighting.directional.position.y,
-    RendererEffectsConfig.lighting.directional.position.z
+    RendererEffectsConfig.lighting.directional.position.z,
   );
   scene.add(directionalLight);
 
@@ -90,7 +91,7 @@ export function setupScene(state: GameState): SceneElements {
     staticSkyboxTexture,
     animatedSkyboxTexture: animatedCube,
     skyboxCanvases,
-    skyboxTextures
+    skyboxTextures,
   };
 }
 
@@ -101,7 +102,7 @@ export function setupScene(state: GameState): SceneElements {
 let skyboxAnimationTime = 0;
 export function updateSkyboxAnimation(elements: SceneElements, dt: number): void {
   skyboxAnimationTime += dt;
-  
+
   // Update shader uniforms for GPU-based animation
   if (elements.skyboxShaderMaterial && elements.skyboxShaderMaterial.uniforms) {
     elements.skyboxShaderMaterial.uniforms.time.value = skyboxAnimationTime;
@@ -114,14 +115,14 @@ export function updateSkyboxAnimation(elements: SceneElements, dt: number): void
 export function disposeScene(elements: SceneElements): void {
   // Dispose textures
   elements.staticSkyboxTexture?.dispose();
-  
+
   // Dispose shader material
   elements.skyboxShaderMaterial?.dispose();
-  
+
   // Dispose geometries and materials
   elements.boundaryWireframe.geometry?.dispose();
   if (Array.isArray(elements.boundaryWireframe.material)) {
-    elements.boundaryWireframe.material.forEach(mat => mat.dispose());
+    elements.boundaryWireframe.material.forEach((mat) => mat.dispose());
   } else {
     elements.boundaryWireframe.material?.dispose();
   }
@@ -129,7 +130,7 @@ export function disposeScene(elements: SceneElements): void {
   if (elements.skybox.geometry) elements.skybox.geometry.dispose();
   if (elements.skybox.material) {
     if (Array.isArray(elements.skybox.material)) {
-      elements.skybox.material.forEach(mat => mat.dispose());
+      elements.skybox.material.forEach((mat) => mat.dispose());
     } else {
       elements.skybox.material.dispose();
     }
@@ -146,23 +147,23 @@ function createBoundaryWireframe(state: GameState): THREE.LineSegments {
   const boxGeom = new THREE.BoxGeometry(
     state.simConfig.simBounds.width,
     state.simConfig.simBounds.height,
-    state.simConfig.simBounds.depth
+    state.simConfig.simBounds.depth,
   );
   const edges = new THREE.EdgesGeometry(boxGeom);
   const lineMat = new THREE.LineBasicMaterial({
     color: RendererEffectsConfig.worldBoundaries.color,
     transparent: true,
-    opacity: RendererEffectsConfig.worldBoundaries.opacity
+    opacity: RendererEffectsConfig.worldBoundaries.opacity,
   });
   const boxWire = new THREE.LineSegments(edges, lineMat);
   boxWire.position.set(
     state.simConfig.simBounds.width / 2,
     state.simConfig.simBounds.height / 2,
-    state.simConfig.simBounds.depth / 2
+    state.simConfig.simBounds.depth / 2,
   );
-  
+
   boxGeom.dispose(); // Clean up intermediate geometry
-  
+
   return boxWire;
 }
 
@@ -177,27 +178,27 @@ function createShaderBasedSkybox(): {
 } {
   // Generate static starfield texture (done once, not animated on CPU)
   const staticTexture = generateStaticStarfieldTexture();
-  
+
   // Create shader material with GPU-based animation
   const skyboxShaderMaterial = new THREE.ShaderMaterial({
     uniforms: {
       time: { value: 0.0 },
       twinkleSpeed: { value: RendererEffectsConfig.skybox.starfield.animation.twinkleSpeed },
       starfieldTexture: { value: staticTexture },
-      baseColor: { value: new THREE.Vector3(0.0, 0.05, 0.2) } // Deep space blue
+      baseColor: { value: new THREE.Vector3(0.0, 0.05, 0.2) }, // Deep space blue
     },
     vertexShader: skyboxVertexShader,
     fragmentShader: skyboxFragmentShader,
     side: THREE.BackSide,
     depthWrite: false,
-    depthTest: false
+    depthTest: false,
   });
 
   // Create sphere geometry for skybox
   const skyboxGeometry = new THREE.SphereGeometry(
     RendererEffectsConfig.skybox.sphere.radius,
     RendererEffectsConfig.skybox.sphere.geometrySegments,
-    RendererEffectsConfig.skybox.sphere.geometrySegments
+    RendererEffectsConfig.skybox.sphere.geometrySegments,
   );
 
   const skybox = new THREE.Mesh(skyboxGeometry, skyboxShaderMaterial);
@@ -205,7 +206,7 @@ function createShaderBasedSkybox(): {
   return {
     skybox,
     skyboxShaderMaterial,
-    staticSkyboxTexture: staticTexture
+    staticSkyboxTexture: staticTexture,
   };
 }
 
@@ -235,13 +236,17 @@ function generateStaticStarfieldTexture(): THREE.Texture {
 
   // Create gradient background
   const gradient = ctx.createRadialGradient(
-    textureSize/2, textureSize/2, 0, 
-    textureSize/2, textureSize/2, textureSize/2
+    textureSize / 2,
+    textureSize / 2,
+    0,
+    textureSize / 2,
+    textureSize / 2,
+    textureSize / 2,
   );
   gradient.addColorStop(0, '#001122');
   gradient.addColorStop(0.5, '#000811');
   gradient.addColorStop(1, '#000000');
-  
+
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, textureSize, textureSize);
 
@@ -265,7 +270,7 @@ function generateStaticStarfieldTexture(): THREE.Texture {
 
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.3 + brightness * 0.7;
-    ctx.fillRect(x - size/2, y - size/2, size, size);
+    ctx.fillRect(x - size / 2, y - size / 2, size, size);
   }
 
   // Add nebula clouds
@@ -273,14 +278,28 @@ function generateStaticStarfieldTexture(): THREE.Texture {
     for (let i = 0; i < RendererEffectsConfig.skybox.starfield.nebula.count; i++) {
       const nebulaX = random() * textureSize;
       const nebulaY = random() * textureSize;
-      const nebulaRadius = RendererEffectsConfig.skybox.starfield.nebula.minRadius + 
+      const nebulaRadius =
+        RendererEffectsConfig.skybox.starfield.nebula.minRadius +
         random() * RendererEffectsConfig.skybox.starfield.nebula.maxRadius;
-      
-      const nebulaGradient = ctx.createRadialGradient(nebulaX, nebulaY, 0, nebulaX, nebulaY, nebulaRadius);
-      nebulaGradient.addColorStop(0, `rgba(${100 + random() * 100}, ${50 + random() * 100}, ${150 + random() * 100}, ${0.1 + random() * 0.2})`);
-      nebulaGradient.addColorStop(0.5, `rgba(${50 + random() * 100}, ${25 + random() * 75}, ${100 + random() * 100}, ${0.05 + random() * 0.1})`);
+
+      const nebulaGradient = ctx.createRadialGradient(
+        nebulaX,
+        nebulaY,
+        0,
+        nebulaX,
+        nebulaY,
+        nebulaRadius,
+      );
+      nebulaGradient.addColorStop(
+        0,
+        `rgba(${100 + random() * 100}, ${50 + random() * 100}, ${150 + random() * 100}, ${0.1 + random() * 0.2})`,
+      );
+      nebulaGradient.addColorStop(
+        0.5,
+        `rgba(${50 + random() * 100}, ${25 + random() * 75}, ${100 + random() * 100}, ${0.05 + random() * 0.1})`,
+      );
       nebulaGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      
+
       ctx.fillStyle = nebulaGradient;
       ctx.globalAlpha = 1;
       ctx.beginPath();
@@ -302,13 +321,11 @@ function generateStaticStarfieldTexture(): THREE.Texture {
   return texture;
 }
 
-
-
 /**
  * Default scene manager implementation
  */
 export const sceneManager: SceneManager = {
   setupScene,
   updateSkyboxAnimation,
-  disposeScene
+  disposeScene,
 };

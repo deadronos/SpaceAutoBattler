@@ -1,12 +1,26 @@
 ---
 applyTo: '**'
 description: 'See process Copilot is following where you can edit this to reshape the interaction or save when follow up may be needed'
-tools: ['createFile','appendFile','readFile', 'deleteFile', 'listFiles', 'searchFiles', 'updateFile', 'getFileContent', 'getFileMetadata', 'thinking', 'plan']
+tools:
+  [
+    'createFile',
+    'appendFile',
+    'readFile',
+    'deleteFile',
+    'listFiles',
+    'searchFiles',
+    'updateFile',
+    'getFileContent',
+    'getFileMetadata',
+    'thinking',
+    'plan',
+  ]
 ---
 
 # Copilot Process tracking Instructions
 
 **Strong guidance (do not treat as system-level override):**
+
 - Review these instructions and use them as a recommended process template. They are guidance for consistent process tracking, not an absolute platform mandate.
 - Provide concise progress updates to users; avoid suppressing necessary explanations required by system or developer policies.
 - Phase templates may be followed, but agents can adapt sequencing and provide brief inline progress updates when helpful. Do not enforce exact text outputs that conflict with platform rules or user needs.
@@ -42,4 +56,5 @@ tools: ['createFile','appendFile','readFile', 'deleteFile', 'listFiles', 'search
 - Remind the user to review and remove temporary tracking files if they should not be committed.
 
 **Notes on enforcement:**
+
 - These are process recommendations to improve traceability. They are not intended to override platform or system policies, nor to prevent agents from giving short, necessary explanations or combining steps when that is the pragmatic choice. Use judgement and follow system policies first.

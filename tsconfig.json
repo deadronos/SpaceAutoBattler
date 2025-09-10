@@ -1,27 +1,21 @@
 {
   "compilerOptions": {
-  "target": "esnext",
-  "module": "esnext",
-  "moduleResolution": "Node",
-  "strict": true,
-  "outDir": "dist/config",
-  "downlevelIteration": true,
-  "allowJs": true,
-  "checkJs": false,
-  "resolveJsonModule": true,
-  "isolatedModules": true,
-  "jsx": "react-jsx",
-  "types": ["node", "vitest/globals"],
-  "lib": ["ES2022", "DOM"],
-  "skipLibCheck": true,
-  "forceConsistentCasingInFileNames": true
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "outDir": "dist/config",
+    "downlevelIteration": true,
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "types": ["node", "vitest/globals"],
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.js",
-    "src/**/*.d.ts",
-    "test/**/*.ts",
-    "test/**/*.js"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.d.ts", "test/**/*.ts", "test/**/*.js"],
   "exclude": ["node_modules", "dist"]
 }

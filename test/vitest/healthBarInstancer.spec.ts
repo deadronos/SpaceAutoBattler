@@ -36,7 +36,7 @@ describe('HealthBarInstancer', () => {
       id: 1,
       pos: { x: 0, y: 0, z: 0 },
       team: 'red',
-      class: 'fighter'
+      class: 'fighter',
     }) as Ship;
   });
 
@@ -57,7 +57,7 @@ describe('HealthBarInstancer', () => {
     test('should free instance for removed ship', () => {
       instancer.allocateInstance(mockShip.id);
       expect(instancer.hasShip(mockShip.id)).toBe(true);
-      
+
       const success = instancer.freeInstance(mockShip.id);
       expect(success).toBe(true);
       expect(instancer.hasShip(mockShip.id)).toBe(false);
@@ -130,8 +130,8 @@ describe('HealthBarInstancer', () => {
 
     test('should handle multiple ship allocations', () => {
       const shipIds = [1, 2, 3, 4, 5];
-      
-      shipIds.forEach(id => {
+
+      shipIds.forEach((id) => {
         instancer.allocateInstance(id);
       });
 
@@ -150,23 +150,23 @@ describe('HealthBarInstancer', () => {
 
     test('should handle updates to all layers', () => {
       instancer.allocateInstance(mockShip.id);
-      
+
       // Test with different health/shield states
       const testCases = [
         { health: 100, maxHealth: 100, shield: 100, maxShield: 100 }, // Full health & shield
-        { health: 50, maxHealth: 100, shield: 50, maxShield: 100 },   // Half health & shield
-        { health: 10, maxHealth: 100, shield: 0, maxShield: 100 },    // Critical health, no shield
-        { health: 100, maxHealth: 100, shield: 0, maxShield: 0 },     // Full health, no shield capability
+        { health: 50, maxHealth: 100, shield: 50, maxShield: 100 }, // Half health & shield
+        { health: 10, maxHealth: 100, shield: 0, maxShield: 100 }, // Critical health, no shield
+        { health: 100, maxHealth: 100, shield: 0, maxShield: 0 }, // Full health, no shield capability
       ];
 
       testCases.forEach((testCase, index) => {
-        const testShip = { 
-          ...mockShip, 
+        const testShip = {
+          ...mockShip,
           id: mockShip.id,
           health: testCase.health,
           maxHealth: testCase.maxHealth,
           shield: testCase.shield,
-          maxShield: testCase.maxShield
+          maxShield: testCase.maxShield,
         } as Ship;
 
         expect(() => {
@@ -179,7 +179,7 @@ describe('HealthBarInstancer', () => {
   describe('Resource Management', () => {
     test('should dispose resources without error', () => {
       instancer.allocateInstance(mockShip.id);
-      
+
       expect(() => {
         instancer.dispose();
       }).not.toThrow();
@@ -196,7 +196,7 @@ describe('HealthBarInstancer', () => {
   describe('Configuration Integration', () => {
     test('should respect health bar configuration', () => {
       const config = RendererConfig.healthBars;
-      
+
       // Verify that the instancer uses the configuration values
       expect(config.position.offsetX).toBeDefined();
       expect(config.position.offsetY).toBeDefined();
@@ -208,7 +208,7 @@ describe('HealthBarInstancer', () => {
 
     test('should respect instancing configuration', () => {
       const config = RendererConfig.instancing.bars;
-      
+
       expect(config.initialCapacity).toBeGreaterThan(0);
       expect(config.maxCapacity).toBeGreaterThanOrEqual(config.initialCapacity);
       expect(config.growthFactor).toBeGreaterThan(1);

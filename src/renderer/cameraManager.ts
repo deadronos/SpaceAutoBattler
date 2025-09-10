@@ -31,19 +31,19 @@ export function setupCamera(state: GameState): CameraState {
     RendererConfig.camera.fov,
     1, // Will be updated on resize
     RendererConfig.camera.near,
-    RendererConfig.camera.far
+    RendererConfig.camera.far,
   );
 
   const rotation = {
     x: RendererConfig.camera.rotation.pitch,
     y: RendererConfig.camera.rotation.yaw,
-    z: RendererConfig.camera.rotation.roll
+    z: RendererConfig.camera.rotation.roll,
   };
 
   const target = {
     x: state.simConfig.simBounds.width / 2,
     y: state.simConfig.simBounds.height / 2,
-    z: state.simConfig.simBounds.depth / 2
+    z: state.simConfig.simBounds.depth / 2,
   };
 
   const distance = RendererConfig.camera.cameraZ;
@@ -52,7 +52,7 @@ export function setupCamera(state: GameState): CameraState {
     camera,
     rotation,
     target,
-    distance
+    distance,
   };
 
   // Set initial camera position
@@ -80,10 +80,10 @@ export function updateCameraPosition(cameraState: CameraState): void {
  */
 export function handleResize(cameraState: CameraState, width: number, height: number): void {
   const { camera } = cameraState;
-  
+
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  
+
   // Update camera position after aspect ratio change
   updateCameraPosition(cameraState);
 }
@@ -106,7 +106,10 @@ export function getCameraDistance(cameraState: CameraState): number {
 /**
  * Updates camera rotation and position
  */
-export function setCameraRotation(cameraState: CameraState, rotation: { x?: number; y?: number; z?: number }): void {
+export function setCameraRotation(
+  cameraState: CameraState,
+  rotation: { x?: number; y?: number; z?: number },
+): void {
   if (rotation.x !== undefined) cameraState.rotation.x = rotation.x;
   if (rotation.y !== undefined) cameraState.rotation.y = rotation.y;
   if (rotation.z !== undefined) cameraState.rotation.z = rotation.z;
@@ -116,7 +119,10 @@ export function setCameraRotation(cameraState: CameraState, rotation: { x?: numb
 /**
  * Updates camera target and position
  */
-export function setCameraTarget(cameraState: CameraState, target: { x?: number; y?: number; z?: number }): void {
+export function setCameraTarget(
+  cameraState: CameraState,
+  target: { x?: number; y?: number; z?: number },
+): void {
   if (target.x !== undefined) cameraState.target.x = target.x;
   if (target.y !== undefined) cameraState.target.y = target.y;
   if (target.z !== undefined) cameraState.target.z = target.z;
@@ -126,13 +132,18 @@ export function setCameraTarget(cameraState: CameraState, target: { x?: number; 
 /**
  * Gets camera basis vectors for billboard rendering
  */
-export function getCameraBasisVectors(cameraState: CameraState): { right: THREE.Vector3; up: THREE.Vector3 } {
+export function getCameraBasisVectors(cameraState: CameraState): {
+  right: THREE.Vector3;
+  up: THREE.Vector3;
+} {
   const { camera } = cameraState;
   // Prefer cached basis when available
   try {
     const cached = getCachedCameraBasis(camera);
     if (cached) return { right: cached.right.clone(), up: cached.up.clone() };
-  } catch { /* ignore and fallback */ }
+  } catch {
+    /* ignore and fallback */
+  }
 
   const camRight = new THREE.Vector3();
   const camUp = new THREE.Vector3();
@@ -155,12 +166,16 @@ export function getCameraMatrix(cameraState: CameraState): THREE.Matrix4 {
   try {
     const cached = getCachedCameraBasis(cameraState.camera);
     if (cached) {
-      const fwd = cached.forward ? cached.forward.clone() : new THREE.Vector3().crossVectors(cached.right, cached.up).normalize();
+      const fwd = cached.forward
+        ? cached.forward.clone()
+        : new THREE.Vector3().crossVectors(cached.right, cached.up).normalize();
       const m = new THREE.Matrix4();
       m.makeBasis(cached.right.clone(), cached.up.clone(), fwd);
       return m;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return new THREE.Matrix4().extractRotation(cameraState.camera.matrixWorld);
 }
 
@@ -181,7 +196,7 @@ export const cameraManager: CameraManager = {
   handleResize,
   setCameraDistance,
   getCameraDistance,
-  disposeCamera
+  disposeCamera,
 };
 
 /**
@@ -192,7 +207,7 @@ export const CameraUtils = {
   setCameraRotation,
   setCameraTarget,
   getCameraBasisVectors,
-  getCameraMatrix
+  getCameraMatrix,
 };
 
 /**
@@ -216,12 +231,22 @@ export function getCachedCameraBasis(camera: THREE.Camera): CameraBasis | null {
 
   // Basic structural validation: check for numeric x,y,z fields
   const isVecLike = (v: unknown): v is THREE.Vector3 => {
-    return typeof v === 'object' && v !== null && 'x' in (v as object) && 'y' in (v as object) && 'z' in (v as object);
+    return (
+      typeof v === 'object' &&
+      v !== null &&
+      'x' in (v as object) &&
+      'y' in (v as object) &&
+      'z' in (v as object)
+    );
   };
 
   if (!isVecLike(right) || !isVecLike(up)) return null;
 
-  return { right: right as THREE.Vector3, up: up as THREE.Vector3, forward: isVecLike(forward) ? (forward as THREE.Vector3) : undefined };
+  return {
+    right: right as THREE.Vector3,
+    up: up as THREE.Vector3,
+    forward: isVecLike(forward) ? (forward as THREE.Vector3) : undefined,
+  };
 }
 
 /**
@@ -237,7 +262,9 @@ export function setCachedCameraBasis(camera: THREE.Camera, basis: CameraBasis): 
       return;
     }
     // If userData missing or not an object, assign a fresh object
-    (camera as unknown as { userData: Record<string, unknown> }).userData = { __cameraBasis: basis };
+    (camera as unknown as { userData: Record<string, unknown> }).userData = {
+      __cameraBasis: basis,
+    };
   } catch {
     // Best-effort: do not throw if assignment fails in constrained environments
   }

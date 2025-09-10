@@ -19,11 +19,20 @@ export interface MeshFactoryState {
 }
 
 export interface MeshFactory {
-  createShipMesh(ship: Ship, state: GameState, shipsGroup: THREE.Group, shipMeshes: Map<number, THREE.Object3D>): THREE.Object3D;
+  createShipMesh(
+    ship: Ship,
+    state: GameState,
+    shipsGroup: THREE.Group,
+    shipMeshes: Map<number, THREE.Object3D>,
+  ): THREE.Object3D;
   createBulletMesh(bullet: Bullet): THREE.Object3D;
   createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState): THREE.Object3D;
   updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void;
-  getPooledBillboardMaterial(color: THREE.Color, alpha: number, factoryState: MeshFactoryState): THREE.ShaderMaterial;
+  getPooledBillboardMaterial(
+    color: THREE.Color,
+    alpha: number,
+    factoryState: MeshFactoryState,
+  ): THREE.ShaderMaterial;
   disposeMeshFactory(factoryState: MeshFactoryState): void;
 }
 
@@ -34,7 +43,7 @@ export function createMeshFactoryState(): MeshFactoryState {
   return {
     billboardMaterials: new Set<THREE.ShaderMaterial>(),
     billboardMaterialPool: new Map<string, THREE.ShaderMaterial>(),
-    GPU_BILLBOARD: true // set to true to use shader-based billboarding for health bars
+    GPU_BILLBOARD: true, // set to true to use shader-based billboarding for health bars
   };
 }
 
@@ -42,17 +51,23 @@ export function createMeshFactoryState(): MeshFactoryState {
  * Creates a mesh for a ship with async SVG loading
  */
 export function createShipMesh(
-  ship: Ship, 
-  state: GameState, 
-  shipsGroup: THREE.Group, 
-  shipMeshes: Map<number, THREE.Object3D>
+  ship: Ship,
+  state: GameState,
+  shipsGroup: THREE.Group,
+  shipMeshes: Map<number, THREE.Object3D>,
 ): THREE.Object3D {
   // Defensive: ensure position values are finite before creating meshes
-  const posValid = Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
+  const posValid =
+    Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
   if (!posValid) {
     try {
-      logger.error('[meshFactory] createShipMesh called with invalid position for ship', { id: ship.id, pos: ship.pos });
-    } catch (_e) { void _e; }
+      logger.error('[meshFactory] createShipMesh called with invalid position for ship', {
+        id: ship.id,
+        pos: ship.pos,
+      });
+    } catch (_e) {
+      void _e;
+    }
     return new THREE.Group();
   }
   const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
@@ -71,19 +86,20 @@ export function createShipMesh(
       map: texture,
       transparent: true,
       alphaTest: 0.05,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
     const teamMaterial = new THREE.MeshBasicMaterial({
       color: teamColor,
       transparent: true,
       opacity: 0.8,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
 
     // Create a group to hold the ship parts
     const shipGroup = new THREE.Group();
 
-    const size = ShipVisualConfig.ships[ship.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+    const size =
+      ShipVisualConfig.ships[ship.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
 
     // Main body - cylinder with SVG texture on the caps and team color on the sides
     const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
@@ -148,13 +164,15 @@ export function createShipMesh(
       const svgAsset = pool.get(svgUrl);
       if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
     }
-  } catch (_e) { void _e;/* ignore */ }
+  } catch (_e) {
+    void _e; /* ignore */
+  }
 
   // Fallback placeholder, and kick off async load to replace visual when ready
   const geom = new THREE.ConeGeometry(8, 24, 8);
-  const mat = new THREE.MeshPhongMaterial({ 
-    color: colorForTeam(ship.team), 
-    emissive: 0x111122 
+  const mat = new THREE.MeshPhongMaterial({
+    color: colorForTeam(ship.team),
+    emissive: 0x111122,
   });
   const placeholder = new THREE.Mesh(geom, mat);
   placeholder.rotation.z = 0; // Will be set correctly in updateTransforms
@@ -172,33 +190,52 @@ export function createShipMesh(
           const proto = state.assetPool.get(gltfKeyTeam) ?? state.assetPool.get(gltfKey);
           if (proto && typeof proto === 'object') {
             // Register prototype if threePrototypes exist, or allocate a marker so instancing can proceed
-            try { shipInstancer.allocate(ship.id, ship.class, ship.team, state); } catch (_) { void _; }
+            try {
+              shipInstancer.allocate(ship.id, ship.class, ship.team, state);
+            } catch (_) {
+              void _;
+            }
             return; // skip SVG rasterization
           }
         }
-      } catch (_e) { void _e; }
+      } catch (_e) {
+        void _e;
+      }
       // If SVG subsystem is disabled, skip rasterization and keep placeholder
       if ((RendererConfig as any)?.disableSvgSubsystem) {
         logger.debug('[meshFactory] SVG subsystem disabled; skipping rasterization for', svgUrl);
         return; // keep placeholder
       }
 
-      const teamColor = ship.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
+      const teamColor =
+        ship.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
       const asset = await loadSVGAsset(svgUrl, {
         width: defaultSVGConfig.defaultRasterSize.width,
         height: defaultSVGConfig.defaultRasterSize.height,
-        teamColor: teamColor
+        teamColor: teamColor,
       });
       if (pool) pool.set(svgUrl, asset);
       if (asset?.imageBitmap && placeholder.parent) {
         // Build a representative list of geometries and materials matching the textured ship parts.
         try {
           const teamColor = ship.team === 'red' ? 0xff4444 : 0x4444ff;
-          const texturedMaterial = new THREE.MeshBasicMaterial({ map: new THREE.Texture(asset.imageBitmap), transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
+          const texturedMaterial = new THREE.MeshBasicMaterial({
+            map: new THREE.Texture(asset.imageBitmap),
+            transparent: true,
+            alphaTest: 0.05,
+            side: THREE.DoubleSide,
+          });
           texturedMaterial.map!.needsUpdate = true;
-          const teamMaterial = new THREE.MeshBasicMaterial({ color: teamColor, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+          const teamMaterial = new THREE.MeshBasicMaterial({
+            color: teamColor,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+          });
 
-          const size = ShipVisualConfig.ships[ship.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+          const size =
+            ShipVisualConfig.ships[ship.class]?.collisionRadius ??
+            RendererConfig.defaultCollisionRadius;
           const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
           const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
           const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
@@ -206,8 +243,28 @@ export function createShipMesh(
           const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
           const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
 
-          const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
-          const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
+          const geoms = [
+            bodyGeometry,
+            noseGeometry,
+            wingGeometry,
+            wingGeometry,
+            sidePanelGeometry,
+            sidePanelGeometry,
+            rearPanelGeometry,
+            rearFinGeometry,
+            rearFinGeometry,
+          ];
+          const mats = [
+            texturedMaterial,
+            teamMaterial,
+            texturedMaterial,
+            texturedMaterial,
+            texturedMaterial,
+            texturedMaterial,
+            texturedMaterial,
+            texturedMaterial,
+            texturedMaterial,
+          ];
 
           // Register prototype for the instancer so future ships of this class can use instancing.
           shipInstancer.registerPrototype(ship.class, geoms, mats);
@@ -220,16 +277,29 @@ export function createShipMesh(
               if (allocated) {
                 // Immediately set transform so the instance appears in the correct place
                 const q = new THREE.Quaternion();
-                q.setFromEuler(new THREE.Euler(ship.orientation.pitch, ship.orientation.yaw, ship.orientation.roll));
-                const scale = ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
+                q.setFromEuler(
+                  new THREE.Euler(
+                    ship.orientation.pitch,
+                    ship.orientation.yaw,
+                    ship.orientation.roll,
+                  ),
+                );
+                const scale =
+                  ShipVisualConfig.ships[ship.class]?.scale ?? RendererConfig.defaultScale;
                 shipInstancer.updateTransform(ship.id, ship.pos, q, scale);
                 // Remove placeholder from scene and track a lightweight object in the mesh map
-                try { if (placeholder.parent) placeholder.parent.remove(placeholder); } catch (_e) { void _e;/* ignore */ }
+                try {
+                  if (placeholder.parent) placeholder.parent.remove(placeholder);
+                } catch (_e) {
+                  void _e; /* ignore */
+                }
                 shipMeshes.set(ship.id, new THREE.Object3D());
                 // Don't add the textured non-instanced mesh
                 return;
               }
-            } catch (e) { void e; logger.warn('shipInstancer.allocate during migration failed', e as unknown);
+            } catch (e) {
+              void e;
+              logger.warn('shipInstancer.allocate during migration failed', e as unknown);
             }
           }
 
@@ -239,7 +309,9 @@ export function createShipMesh(
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
           shipMeshes.set(ship.id, ship3D);
-            } catch (e) { void e; logger.warn('shipInstancer.allocate during migration failed', e as unknown);
+        } catch (e) {
+          void e;
+          logger.warn('shipInstancer.allocate during migration failed', e as unknown);
           logger.warn('shipInstancer.registerPrototype or migration failed', e as unknown);
           const ship3D = createTextured3DShip(asset.imageBitmap);
           ship3D.position.copy(placeholder.position);
@@ -248,7 +320,8 @@ export function createShipMesh(
           shipMeshes.set(ship.id, ship3D);
         }
       }
-    } catch (e) { void e;// Loading/parsing of SVG failed — log and keep placeholder
+    } catch (e) {
+      void e; // Loading/parsing of SVG failed — log and keep placeholder
       logger.error('Failed to load SVG asset for ship', e as unknown);
     }
   })();
@@ -264,9 +337,9 @@ export function createShipMesh(
  */
 export function registerPrototypesFromPool(state: GameState) {
   try {
-  const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
-  if (!pool) return;
-  const classes: ShipClass[] = ['fighter','corvette','frigate','destroyer','carrier'];
+    const pool = state.assetPool as Map<string, { imageBitmap?: ImageBitmap }> | undefined;
+    if (!pool) return;
+    const classes: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
     for (const cls of classes) {
       // First, attempt to register any glTF-derived threePrototypes found in the asset pool.
       try {
@@ -276,44 +349,92 @@ export function registerPrototypesFromPool(state: GameState) {
           for (const t of teamsToCheck) {
             const key = `ship-${cls}-${t}`;
             const p = pool.get(key) as unknown | undefined;
-            if (p) { gltfProto = p; break; }
+            if (p) {
+              gltfProto = p;
+              break;
+            }
           }
           if (!gltfProto) gltfProto = pool.get(`ship-${cls}`) as unknown | undefined;
           if (gltfProto && typeof gltfProto === 'object') {
-            const tp = (gltfProto as unknown as { threePrototypes?: { geometries?: unknown[]; materials?: unknown[] } }).threePrototypes;
-            if (tp && Array.isArray(tp.geometries) && Array.isArray(tp.materials) && tp.geometries.length > 0) {
+            const tp = (
+              gltfProto as unknown as {
+                threePrototypes?: { geometries?: unknown[]; materials?: unknown[] };
+              }
+            ).threePrototypes;
+            if (
+              tp &&
+              Array.isArray(tp.geometries) &&
+              Array.isArray(tp.materials) &&
+              tp.geometries.length > 0
+            ) {
               // Clone geometries/materials defensively before registering
               const clonedGeoms: THREE.BufferGeometry[] = [];
               const clonedMats: THREE.Material[] = [];
               for (let i = 0; i < tp.geometries.length; i++) {
                 try {
                   const g = tp.geometries[i] as unknown;
-                  const geom = (g && typeof (g as unknown as { clone?: unknown }).clone === 'function') ? ((g as unknown as { clone: () => unknown }).clone() as THREE.BufferGeometry) : (g as unknown as THREE.BufferGeometry);
+                  const geom =
+                    g && typeof (g as unknown as { clone?: unknown }).clone === 'function'
+                      ? ((g as unknown as { clone: () => unknown }).clone() as THREE.BufferGeometry)
+                      : (g as unknown as THREE.BufferGeometry);
                   clonedGeoms.push(geom);
-                } catch (_e) { void _e; }
+                } catch (_e) {
+                  void _e;
+                }
               }
               for (let i = 0; i < tp.materials.length; i++) {
                 try {
                   const m = tp.materials[i] as unknown;
-                  const mat = (m && typeof (m as unknown as { clone?: unknown }).clone === 'function') ? ((m as unknown as { clone: () => unknown }).clone() as THREE.Material) : (m as unknown as THREE.Material);
+                  const mat =
+                    m && typeof (m as unknown as { clone?: unknown }).clone === 'function'
+                      ? ((m as unknown as { clone: () => unknown }).clone() as THREE.Material)
+                      : (m as unknown as THREE.Material);
                   clonedMats.push(mat);
-                } catch (_e) { void _e; }
+                } catch (_e) {
+                  void _e;
+                }
               }
               // Prefer updatePrototype if available so existing groups are updated in-place
-              const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
+              const up = (
+                shipInstancer as unknown as {
+                  updatePrototype?: (
+                    name: string,
+                    geoms: THREE.BufferGeometry[],
+                    mats: THREE.Material[],
+                  ) => void;
+                }
+              ).updatePrototype;
               if (typeof up === 'function') {
-                try { up(cls, clonedGeoms, clonedMats); } catch (_e) { void _e; shipInstancer.registerPrototype(cls, clonedGeoms, clonedMats); }
+                try {
+                  up(cls, clonedGeoms, clonedMats);
+                } catch (_e) {
+                  void _e;
+                  shipInstancer.registerPrototype(cls, clonedGeoms, clonedMats);
+                }
               } else {
                 shipInstancer.registerPrototype(cls, clonedGeoms, clonedMats);
               }
               // Ensure team groups exist so allocate() can find them deterministically
-              try { shipInstancer.ensureGroup?.(cls, 'red'); } catch (_e) { void _e; }
-              try { shipInstancer.ensureGroup?.(cls, 'blue'); } catch (_e) { void _e; }
-              if (logger && typeof logger.info === 'function') logger.info(`meshFactory: registered glTF instancer prototype for ${cls}`);
+              try {
+                shipInstancer.ensureGroup?.(cls, 'red');
+              } catch (_e) {
+                void _e;
+              }
+              try {
+                shipInstancer.ensureGroup?.(cls, 'blue');
+              } catch (_e) {
+                void _e;
+              }
+              if (logger && typeof logger.info === 'function')
+                logger.info(`meshFactory: registered glTF instancer prototype for ${cls}`);
             }
           }
-        } catch (_e) { void _e; }
-      } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
+      } catch (_e) {
+        void _e;
+      }
 
       try {
         const svgUrl = getShipSVGUrl(cls, defaultSVGConfig);
@@ -326,10 +447,21 @@ export function registerPrototypesFromPool(state: GameState) {
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
 
-        const texturedMaterial = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
-        const teamMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, side: THREE.DoubleSide });
+        const texturedMaterial = new THREE.MeshBasicMaterial({
+          map: tex,
+          transparent: true,
+          alphaTest: 0.05,
+          side: THREE.DoubleSide,
+        });
+        const teamMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1.0,
+          side: THREE.DoubleSide,
+        });
 
-        const size = ShipVisualConfig.ships[cls]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
+        const size =
+          ShipVisualConfig.ships[cls]?.collisionRadius ?? RendererConfig.defaultCollisionRadius;
         const bodyGeometry = new THREE.CylinderGeometry(size * 0.3, size * 0.4, size * 0.8, 8);
         const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
         const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
@@ -337,12 +469,40 @@ export function registerPrototypesFromPool(state: GameState) {
         const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
         const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
 
-        const geoms = [bodyGeometry, noseGeometry, wingGeometry, wingGeometry, sidePanelGeometry, sidePanelGeometry, rearPanelGeometry, rearFinGeometry, rearFinGeometry];
-        const mats = [texturedMaterial, teamMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial, texturedMaterial];
+        const geoms = [
+          bodyGeometry,
+          noseGeometry,
+          wingGeometry,
+          wingGeometry,
+          sidePanelGeometry,
+          sidePanelGeometry,
+          rearPanelGeometry,
+          rearFinGeometry,
+          rearFinGeometry,
+        ];
+        const mats = [
+          texturedMaterial,
+          teamMaterial,
+          texturedMaterial,
+          texturedMaterial,
+          texturedMaterial,
+          texturedMaterial,
+          texturedMaterial,
+          texturedMaterial,
+          texturedMaterial,
+        ];
 
         try {
           // Prefer updatePrototype to replace any existing group meshes immediately
-    const up = (shipInstancer as unknown as { updatePrototype?: (name: string, geoms: THREE.BufferGeometry[], mats: THREE.Material[]) => void }).updatePrototype;
+          const up = (
+            shipInstancer as unknown as {
+              updatePrototype?: (
+                name: string,
+                geoms: THREE.BufferGeometry[],
+                mats: THREE.Material[],
+              ) => void;
+            }
+          ).updatePrototype;
           if (typeof up === 'function') {
             try {
               up(cls, geoms, mats);
@@ -353,18 +513,43 @@ export function registerPrototypesFromPool(state: GameState) {
           } else {
             shipInstancer.registerPrototype(cls, geoms, mats);
           }
-          if (logger && typeof logger.info === 'function') logger.info(`meshFactory: registered instancer prototype for ${cls}`);
+          if (logger && typeof logger.info === 'function')
+            logger.info(`meshFactory: registered instancer prototype for ${cls}`);
           // Ensure both team groups exist (dev/diagnostic) by creating empty groups
           try {
             if (RendererConfig.instancing.enableShips) {
-              try { (shipInstancer as unknown as { ensureGroup?: (name:string, team?:string)=>void }).ensureGroup?.(cls, 'red'); } catch (_e) { void _e; }
-              try { (shipInstancer as unknown as { ensureGroup?: (name:string, team?:string)=>void }).ensureGroup?.(cls, 'blue'); } catch (_e) { void _e; }
+              try {
+                (
+                  shipInstancer as unknown as {
+                    ensureGroup?: (name: string, team?: string) => void;
+                  }
+                ).ensureGroup?.(cls, 'red');
+              } catch (_e) {
+                void _e;
+              }
+              try {
+                (
+                  shipInstancer as unknown as {
+                    ensureGroup?: (name: string, team?: string) => void;
+                  }
+                ).ensureGroup?.(cls, 'blue');
+              } catch (_e) {
+                void _e;
+              }
             }
-          } catch (_e) { void _e; }
-        } catch (_e) { void _e; }
-      } catch (_e) { void _e; }
+          } catch (_e) {
+            void _e;
+          }
+        } catch (_e) {
+          void _e;
+        }
+      } catch (_e) {
+        void _e;
+      }
     }
-  } catch (_e) { void _e; }
+  } catch (_e) {
+    void _e;
+  }
 }
 
 /**
@@ -372,9 +557,19 @@ export function registerPrototypesFromPool(state: GameState) {
  */
 export function createBulletMesh(bullet: Bullet): THREE.Object3D {
   // Defensive: validate bullet position
-  const posValid = Number.isFinite(bullet.pos?.x) && Number.isFinite(bullet.pos?.y) && Number.isFinite(bullet.pos?.z);
+  const posValid =
+    Number.isFinite(bullet.pos?.x) &&
+    Number.isFinite(bullet.pos?.y) &&
+    Number.isFinite(bullet.pos?.z);
   if (!posValid) {
-    try { logger.error('[meshFactory] createBulletMesh invalid pos', { id: bullet.id, pos: bullet.pos }); } catch (_e) { void _e; }
+    try {
+      logger.error('[meshFactory] createBulletMesh invalid pos', {
+        id: bullet.id,
+        pos: bullet.pos,
+      });
+    } catch (_e) {
+      void _e;
+    }
     return new THREE.Group();
   }
 
@@ -391,7 +586,8 @@ export function createBulletMesh(bullet: Bullet): THREE.Object3D {
 export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState): THREE.Object3D {
   // Defensive guard: avoid creating health bar visuals for unknown/invalid ship entries
   const hasKnownClass = !!ShipVisualConfig.ships[ship.class as keyof typeof ShipVisualConfig.ships];
-  const posValid = Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
+  const posValid =
+    Number.isFinite(ship.pos?.x) && Number.isFinite(ship.pos?.y) && Number.isFinite(ship.pos?.z);
   if (!hasKnownClass || !posValid) {
     // Return an empty group as a no-op to callers expecting an Object3D
     return new THREE.Group();
@@ -399,9 +595,17 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
 
   // DEV LOG: record creation of a non-instanced health bar via meshFactory
   try {
-  console.info(`[HB_TRACE][meshFactory] createHealthBarMesh for ship=${ship.id} class=${ship.class} pos=(${ship.pos.x},${ship.pos.y},${ship.pos.z})`);
-  try { console.info(new Error('HB_STACK createHealthBarMesh').stack); } catch (_e) { void _e; }
-  } catch (_e) { void _e; }
+    console.info(
+      `[HB_TRACE][meshFactory] createHealthBarMesh for ship=${ship.id} class=${ship.class} pos=(${ship.pos.x},${ship.pos.y},${ship.pos.z})`,
+    );
+    try {
+      console.info(new Error('HB_STACK createHealthBarMesh').stack);
+    } catch (_e) {
+      void _e;
+    }
+  } catch (_e) {
+    void _e;
+  }
 
   const config = RendererConfig.healthBars;
   const barGroup = new THREE.Group();
@@ -410,7 +614,11 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
   const bgGeom = new THREE.PlaneGeometry(config.width, config.position.height);
   let bgMat: THREE.Material;
   if (factoryState.GPU_BILLBOARD) {
-    const mat = getPooledBillboardMaterial(new THREE.Color(config.colors.background), 1.0, factoryState);
+    const mat = getPooledBillboardMaterial(
+      new THREE.Color(config.colors.background),
+      1.0,
+      factoryState,
+    );
     bgMat = mat;
   } else {
     bgMat = new THREE.MeshBasicMaterial({ color: config.colors.background });
@@ -422,7 +630,11 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
   const healthGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
   let healthMat: THREE.Material;
   if (factoryState.GPU_BILLBOARD) {
-    const mat = getPooledBillboardMaterial(new THREE.Color(config.colors.health.full), 1.0, factoryState);
+    const mat = getPooledBillboardMaterial(
+      new THREE.Color(config.colors.health.full),
+      1.0,
+      factoryState,
+    );
     healthMat = mat;
   } else {
     healthMat = new THREE.MeshBasicMaterial({ color: config.colors.health.full });
@@ -436,25 +648,45 @@ export function createHealthBarMesh(ship: Ship, factoryState: MeshFactoryState):
     const shieldGeom = new THREE.PlaneGeometry(config.width - 2, config.position.height - 2);
     let shieldMat: THREE.Material;
     if (factoryState.GPU_BILLBOARD) {
-      const mat = getPooledBillboardMaterial(new THREE.Color(config.colors.shield.full), 0.8, factoryState);
+      const mat = getPooledBillboardMaterial(
+        new THREE.Color(config.colors.shield.full),
+        0.8,
+        factoryState,
+      );
       shieldMat = mat;
     } else {
-      shieldMat = new THREE.MeshBasicMaterial({ color: config.colors.shield.full, transparent: true, opacity: 0.8 });
+      shieldMat = new THREE.MeshBasicMaterial({
+        color: config.colors.shield.full,
+        transparent: true,
+        opacity: 0.8,
+      });
     }
-  shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-  shieldMesh.position.z = 0.1; // slightly in front
-  barGroup.add(shieldMesh);
+    shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+    shieldMesh.position.z = 0.1; // slightly in front
+    barGroup.add(shieldMesh);
   }
 
   // Border
-  const borderGeom = new THREE.RingGeometry(config.width/2 - config.border.width/2, config.width/2 + config.border.width/2, 8);
-  const borderMat = new THREE.MeshBasicMaterial({ color: config.border.color, transparent: true, opacity: 0.5 });
+  const borderGeom = new THREE.RingGeometry(
+    config.width / 2 - config.border.width / 2,
+    config.width / 2 + config.border.width / 2,
+    8,
+  );
+  const borderMat = new THREE.MeshBasicMaterial({
+    color: config.border.color,
+    transparent: true,
+    opacity: 0.5,
+  });
   const borderMesh = new THREE.Mesh(borderGeom, borderMat);
   borderMesh.position.z = 0.2;
   barGroup.add(borderMesh);
 
   // Store references for updating
-  const barRef = barGroup as unknown as { healthMesh?: THREE.Mesh; shieldMesh?: THREE.Mesh | null; bgMesh?: THREE.Mesh };
+  const barRef = barGroup as unknown as {
+    healthMesh?: THREE.Mesh;
+    shieldMesh?: THREE.Mesh | null;
+    bgMesh?: THREE.Mesh;
+  };
   barRef.healthMesh = healthMesh;
   barRef.shieldMesh = shieldMesh;
   barRef.bgMesh = bgMesh;
@@ -475,7 +707,7 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
   barGroup.position.set(
     ship.pos.x + config.position.offsetX,
     ship.pos.y + config.position.offsetY,
-    ship.pos.z + ShipVisualConfig.healthBar.offset.z // Above the ship
+    ship.pos.z + ShipVisualConfig.healthBar.offset.z, // Above the ship
   );
 
   // Update health bar
@@ -483,9 +715,10 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
   healthMesh.scale.x = Math.max(0, healthPercent);
 
   // Update health color based on percentage
-  const healthColor = healthPercent > 0.5 ? config.colors.health.full : config.colors.health.damaged;
+  const healthColor =
+    healthPercent > 0.5 ? config.colors.health.full : config.colors.health.damaged;
   if (healthMesh.material) {
-  const mat = healthMesh.material as THREE.ShaderMaterial;
+    const mat = healthMesh.material as THREE.ShaderMaterial;
     if (mat.uniforms && mat.uniforms.uColor) {
       (mat.uniforms.uColor.value as THREE.Color).set(healthColor);
     } else if ((healthMesh.material as THREE.MeshBasicMaterial).color) {
@@ -498,9 +731,10 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
     const shieldPercent = ship.shield / ship.maxShield;
     shieldMesh.scale.x = Math.max(0, shieldPercent);
 
-    const shieldColor = shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
+    const shieldColor =
+      shieldPercent > 0.5 ? config.colors.shield.full : config.colors.shield.damaged;
     if (shieldMesh.material) {
-  const mat = shieldMesh.material as THREE.ShaderMaterial;
+      const mat = shieldMesh.material as THREE.ShaderMaterial;
       if (mat.uniforms && mat.uniforms.uColor) {
         (mat.uniforms.uColor.value as THREE.Color).set(shieldColor);
       } else if ((shieldMesh.material as THREE.MeshBasicMaterial).color) {
@@ -514,9 +748,9 @@ export function updateHealthBarMesh(ship: Ship, barGroup: THREE.Object3D): void 
  * Get or create a pooled ShaderMaterial for the given color/alpha
  */
 export function getPooledBillboardMaterial(
-  color: THREE.Color = new THREE.Color(0xffffff), 
+  color: THREE.Color = new THREE.Color(0xffffff),
   alpha: number = 1.0,
-  factoryState: MeshFactoryState
+  factoryState: MeshFactoryState,
 ): THREE.ShaderMaterial {
   const key = billboardPoolKey(color, alpha);
   const existing = factoryState.billboardMaterialPool.get(key);
@@ -594,9 +828,10 @@ function colorForTeam(team: 'red' | 'blue'): number {
 export function disposeMeshFactory(factoryState: MeshFactoryState): void {
   // Dispose pooled billboard materials
   for (const mat of factoryState.billboardMaterialPool.values()) {
-    try { 
-      mat.dispose(); 
-    } catch (_e) { void _e;/* ignore */ 
+    try {
+      mat.dispose();
+    } catch (_e) {
+      void _e; /* ignore */
     }
   }
   factoryState.billboardMaterialPool.clear();
@@ -612,6 +847,5 @@ export const meshFactory: MeshFactory = {
   createHealthBarMesh,
   updateHealthBarMesh,
   getPooledBillboardMaterial,
-  disposeMeshFactory
+  disposeMeshFactory,
 };
-

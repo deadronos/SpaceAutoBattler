@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  RendererAdapter, 
+import {
+  RendererAdapter,
   NoopRendererAdapter,
   VisualDescriptor,
   Transform,
   EffectDescriptor,
   CameraParams,
   RendererInitOptions,
-  RendererStats
+  RendererStats,
 } from '../../src/core/adapters/rendererAdapter.js';
 import { createMockShip, createMockBullet } from './setupTests.js';
 
@@ -26,7 +26,7 @@ describe('RendererAdapter', () => {
       const options: RendererInitOptions = {
         antialias: true,
         shadows: true,
-        quality: 'medium'
+        quality: 'medium',
       };
 
       await adapter.init(canvas, options);
@@ -39,7 +39,7 @@ describe('RendererAdapter', () => {
         type: 'ship',
         modelPath: 'ship.gltf',
         color: { r: 1, g: 0, b: 0 },
-        scale: { x: 1, y: 1, z: 1 }
+        scale: { x: 1, y: 1, z: 1 },
       };
 
       expect(adapter.hasEntity(entityId)).toBe(false);
@@ -79,7 +79,7 @@ describe('RendererAdapter', () => {
         position: { x: 10, y: 5, z: 15 },
         target: { x: 0, y: 0, z: 0 },
         fov: 60,
-        zoom: 1.0
+        zoom: 1.0,
       };
 
       adapter.setCamera(cameraParams);
@@ -96,7 +96,7 @@ describe('RendererAdapter', () => {
       const transform: Transform = {
         position: { x: 5, y: 10, z: 15 },
         rotation: { x: 0, y: Math.PI / 2, z: 0 },
-        scale: { x: 2, y: 2, z: 2 }
+        scale: { x: 2, y: 2, z: 2 },
       };
 
       expect(adapter.getTransform(entityId)).toBeNull();
@@ -117,7 +117,7 @@ describe('RendererAdapter', () => {
         position: { x: 0, y: 0, z: 0 },
         scale: 2.0,
         duration: 1.5,
-        color: { r: 1, g: 0.5, b: 0 }
+        color: { r: 1, g: 0.5, b: 0 },
       };
 
       const effectId = adapter.playEffect(entityId, effect);
@@ -188,7 +188,10 @@ describe('RendererAdapter', () => {
     it('should dispose cleanly', () => {
       const entityId = 42;
       adapter.addEntity(entityId, { type: 'ship' });
-      adapter.setTransform(entityId, { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
+      adapter.setTransform(entityId, {
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+      });
       adapter.playEffect(entityId, { type: 'explosion', position: { x: 0, y: 0, z: 0 } });
 
       adapter.dispose();
@@ -201,14 +204,14 @@ describe('RendererAdapter', () => {
     it('should clean up effects when entity is removed', () => {
       const entityId = 42;
       adapter.addEntity(entityId, { type: 'ship' });
-      
-      const effectId = adapter.playEffect(entityId, { 
-        type: 'explosion', 
-        position: { x: 0, y: 0, z: 0 } 
+
+      const effectId = adapter.playEffect(entityId, {
+        type: 'explosion',
+        position: { x: 0, y: 0, z: 0 },
       });
 
       adapter.removeEntity(entityId);
-      
+
       // Effects should be cleaned up automatically
       expect(adapter.hasEntity(entityId)).toBe(false);
     });
@@ -219,14 +222,33 @@ describe('RendererAdapter', () => {
       const adapter = new NoopRendererAdapter();
 
       const requiredMethods = [
-        'init', 'dispose', 'isInitialized',
-        'addEntity', 'updateEntity', 'removeEntity', 'hasEntity',
-        'ensureMeshForShip', 'updateMeshFromShip', 'removeShip',
-        'ensureMeshForBullet', 'updateMeshFromBullet', 'removeBullet',
-        'setCamera', 'getCamera', 'setTransform', 'getTransform',
-        'playEffect', 'removeEffect', 'clearEffects',
-        'renderFrame', 'resize', 'getStats',
-        'setQuality', 'getQuality', 'clearScene', 'setBackground'
+        'init',
+        'dispose',
+        'isInitialized',
+        'addEntity',
+        'updateEntity',
+        'removeEntity',
+        'hasEntity',
+        'ensureMeshForShip',
+        'updateMeshFromShip',
+        'removeShip',
+        'ensureMeshForBullet',
+        'updateMeshFromBullet',
+        'removeBullet',
+        'setCamera',
+        'getCamera',
+        'setTransform',
+        'getTransform',
+        'playEffect',
+        'removeEffect',
+        'clearEffects',
+        'renderFrame',
+        'resize',
+        'getStats',
+        'setQuality',
+        'getQuality',
+        'clearScene',
+        'setBackground',
       ];
 
       for (const method of requiredMethods) {
@@ -242,7 +264,7 @@ describe('RendererAdapter', () => {
         color: { r: 0.8, g: 0.2, b: 0.1 },
         scale: { x: 1.5, y: 1.5, z: 1.5 },
         opacity: 0.9,
-        material: 'metallic'
+        material: 'metallic',
       };
 
       expect(visual.type).toBe('ship');
@@ -258,7 +280,7 @@ describe('RendererAdapter', () => {
       const transform: Transform = {
         position: { x: 1, y: 2, z: 3 },
         rotation: { x: 0, y: Math.PI, z: 0 },
-        scale: { x: 2, y: 2, z: 2 }
+        scale: { x: 2, y: 2, z: 2 },
       };
 
       expect(transform.position).toEqual({ x: 1, y: 2, z: 3 });
@@ -273,7 +295,7 @@ describe('RendererAdapter', () => {
         scale: 1.5,
         duration: 2.0,
         color: { r: 1, g: 0.5, b: 0 },
-        params: { intensity: 0.8, sparks: true }
+        params: { intensity: 0.8, sparks: true },
       };
 
       expect(effect.type).toBe('explosion');
@@ -291,7 +313,7 @@ describe('RendererAdapter', () => {
         fov: 75,
         near: 0.1,
         far: 1000,
-        zoom: 1.2
+        zoom: 1.2,
       };
 
       expect(camera.position).toEqual({ x: 10, y: 20, z: 30 });
@@ -331,7 +353,12 @@ describe('RendererAdapter', () => {
       // These should not throw
       expect(() => adapter.updateEntity(nonExistentId, { type: 'ship' })).not.toThrow();
       expect(() => adapter.removeEntity(nonExistentId)).not.toThrow();
-      expect(() => adapter.setTransform(nonExistentId, { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } })).not.toThrow();
+      expect(() =>
+        adapter.setTransform(nonExistentId, {
+          position: { x: 0, y: 0, z: 0 },
+          rotation: { x: 0, y: 0, z: 0 },
+        }),
+      ).not.toThrow();
       expect(() => adapter.removeEffect(nonExistentId, 'fake-effect')).not.toThrow();
 
       // After setting transform, it should exist even for non-existent entity
@@ -341,7 +368,7 @@ describe('RendererAdapter', () => {
 
     it('should handle multiple disposals gracefully', () => {
       adapter.dispose();
-      
+
       // Should not throw when disposing again
       expect(() => adapter.dispose()).not.toThrow();
     });

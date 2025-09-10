@@ -10,7 +10,11 @@ describe('shipInstancer.ensureGroup', () => {
     scene = new THREE.Scene();
     parent = new THREE.Group();
     // initialize fresh state
-    try { shipInstancer.dispose(); } catch { /* ignore */ }
+    try {
+      shipInstancer.dispose();
+    } catch {
+      /* ignore */
+    }
     shipInstancer.init(scene, parent);
   });
 

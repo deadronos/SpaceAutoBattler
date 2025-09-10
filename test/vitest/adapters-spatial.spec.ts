@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  SpatialIndex, 
+import {
+  SpatialIndex,
   SpatialGridAdapter,
   NoopSpatialIndex,
   AABB,
-  SpatialQueryResult
+  SpatialQueryResult,
 } from '../../src/core/spatialIndex.js';
 import { SpatialGrid, SpatialEntity } from '../../src/utils/spatialGrid.js';
 
@@ -27,22 +27,22 @@ describe('SpatialIndex', () => {
 
       // Insert entity
       adapter.insert(entityId, pos, radius, team);
-      
+
       // Query should find the entity
       const results = adapter.queryRadius(pos, 50);
       expect(results.length).toBeGreaterThan(0);
-      expect(results.some(e => e.id === entityId)).toBe(true);
+      expect(results.some((e) => e.id === entityId)).toBe(true);
 
       // Remove entity
       adapter.remove(entityId);
       const resultsAfterRemoval = adapter.queryRadius(pos, 50);
-      expect(resultsAfterRemoval.some(e => e.id === entityId)).toBe(false);
+      expect(resultsAfterRemoval.some((e) => e.id === entityId)).toBe(false);
     });
 
     it('should provide enhanced AABB queries', () => {
       // Clear any existing entities first
       adapter.clear();
-      
+
       // Add some entities
       adapter.insert(1, { x: 0, y: 0, z: 0 }, 5, 'red');
       adapter.insert(2, { x: 100, y: 100, z: 100 }, 5, 'blue');
@@ -50,11 +50,11 @@ describe('SpatialIndex', () => {
 
       const aabb: AABB = {
         min: { x: -10, y: -10, z: -10 },
-        max: { x: 60, y: 60, z: 60 }
+        max: { x: 60, y: 60, z: 60 },
       };
 
       const results = adapter.queryAABB(aabb);
-      
+
       // Should include entities 1 and 3, but not 2
       expect(results).toContain(1);
       expect(results).toContain(3);
@@ -68,7 +68,7 @@ describe('SpatialIndex', () => {
 
       const aabb: AABB = {
         min: { x: -50, y: -50, z: -50 },
-        max: { x: 50, y: 50, z: 50 }
+        max: { x: 50, y: 50, z: 50 },
       };
 
       // Layer 0 = red team, Layer 1 = blue team
@@ -103,7 +103,7 @@ describe('SpatialIndex', () => {
       const results = adapter.queryRadiusWithDistance(center, 50);
 
       expect(results.length).toBe(3);
-      
+
       // Results should be sorted by distance
       expect(results[0].distance).toBeLessThanOrEqual(results[1].distance);
       expect(results[1].distance).toBeLessThanOrEqual(results[2].distance);
@@ -116,9 +116,7 @@ describe('SpatialIndex', () => {
       for (const result of results) {
         if (result.distance > 0) {
           const dirLength = Math.sqrt(
-            result.direction.x ** 2 + 
-            result.direction.y ** 2 + 
-            result.direction.z ** 2
+            result.direction.x ** 2 + result.direction.y ** 2 + result.direction.z ** 2,
           );
           expect(dirLength).toBeCloseTo(1, 3);
         }
@@ -138,7 +136,7 @@ describe('SpatialIndex', () => {
       const results = adapter.raycast(from, to);
 
       expect(results.length).toBe(3);
-      
+
       // Results should be sorted by t (time along ray)
       expect(results[0].t).toBeLessThanOrEqual(results[1].t);
       expect(results[1].t).toBeLessThanOrEqual(results[2].t);
@@ -160,8 +158,8 @@ describe('SpatialIndex', () => {
       const redLayer = adapter.queryLayer(center, radius, 0); // red = layer 0
       const blueLayer = adapter.queryLayer(center, radius, 1); // blue = layer 1
 
-      expect(redLayer.every(e => e.team === 'red')).toBe(true);
-      expect(blueLayer.every(e => e.team === 'blue')).toBe(true);
+      expect(redLayer.every((e) => e.team === 'red')).toBe(true);
+      expect(blueLayer.every((e) => e.team === 'blue')).toBe(true);
 
       // Test layer mask queries
       const redMask = 1 << 0;
@@ -172,8 +170,8 @@ describe('SpatialIndex', () => {
       const blueMaskResults = adapter.queryLayerMask(center, radius, blueMask);
       const bothMaskResults = adapter.queryLayerMask(center, radius, bothMask);
 
-      expect(redMaskResults.every(e => e.team === 'red')).toBe(true);
-      expect(blueMaskResults.every(e => e.team === 'blue')).toBe(true);
+      expect(redMaskResults.every((e) => e.team === 'red')).toBe(true);
+      expect(blueMaskResults.every((e) => e.team === 'blue')).toBe(true);
       expect(bothMaskResults.length).toBe(redMaskResults.length + blueMaskResults.length);
     });
 
@@ -190,8 +188,11 @@ describe('SpatialIndex', () => {
     });
 
     it('should handle initialization and disposal', () => {
-      const config = { cellSize: 50, worldAABB: { min: { x: -1000, y: -1000, z: -1000 }, max: { x: 1000, y: 1000, z: 1000 } } };
-      
+      const config = {
+        cellSize: 50,
+        worldAABB: { min: { x: -1000, y: -1000, z: -1000 }, max: { x: 1000, y: 1000, z: 1000 } },
+      };
+
       // Should not throw
       expect(() => adapter.init(config)).not.toThrow();
       expect(() => adapter.dispose?.()).not.toThrow();
@@ -207,10 +208,10 @@ describe('SpatialIndex', () => {
       adapter.gcExcept(activeIds);
 
       const allResults = adapter.queryRadius({ x: 15, y: 15, z: 15 }, 50);
-      
-      expect(allResults.some(e => e.id === 1)).toBe(true);
-      expect(allResults.some(e => e.id === 2)).toBe(false); // Should be removed
-      expect(allResults.some(e => e.id === 3)).toBe(true);
+
+      expect(allResults.some((e) => e.id === 1)).toBe(true);
+      expect(allResults.some((e) => e.id === 2)).toBe(false); // Should be removed
+      expect(allResults.some((e) => e.id === 3)).toBe(true);
     });
   });
 
@@ -248,7 +249,9 @@ describe('SpatialIndex', () => {
 
     it('should handle forEach methods without throwing', () => {
       let callCount = 0;
-      const fn = () => { callCount++; };
+      const fn = () => {
+        callCount++;
+      };
 
       adapter.forEachInRadius({ x: 0, y: 0, z: 0 }, 10, fn);
       adapter.forEachNeighborsDelta({ x: 0, y: 0, z: 0 }, 10, 'red', undefined, fn);
@@ -263,11 +266,26 @@ describe('SpatialIndex', () => {
       const noopAdapter = new NoopSpatialIndex();
 
       const requiredMethods = [
-        'init', 'clear', 'insert', 'update', 'remove', 'gcExcept',
-        'queryRadius', 'forEachInRadius', 'queryKNearest', 'querySector',
-        'queryNeighbors', 'forEachNeighborsDelta', 'queryEnemies', 'queryBulletCollisions',
-        'queryAABB', 'queryRadiusWithDistance', 'raycast', 'queryLayer', 'queryLayerMask',
-        'getStats'
+        'init',
+        'clear',
+        'insert',
+        'update',
+        'remove',
+        'gcExcept',
+        'queryRadius',
+        'forEachInRadius',
+        'queryKNearest',
+        'querySector',
+        'queryNeighbors',
+        'forEachNeighborsDelta',
+        'queryEnemies',
+        'queryBulletCollisions',
+        'queryAABB',
+        'queryRadiusWithDistance',
+        'raycast',
+        'queryLayer',
+        'queryLayerMask',
+        'getStats',
       ];
 
       for (const method of requiredMethods) {
@@ -279,7 +297,7 @@ describe('SpatialIndex', () => {
     it('should have correct type structure for AABB', () => {
       const aabb: AABB = {
         min: { x: -100, y: -50, z: -25 },
-        max: { x: 100, y: 50, z: 25 }
+        max: { x: 100, y: 50, z: 25 },
       };
 
       expect(aabb.min).toBeDefined();
@@ -294,10 +312,10 @@ describe('SpatialIndex', () => {
           id: 42,
           pos: { x: 1, y: 2, z: 3 },
           radius: 5,
-          team: 'red'
+          team: 'red',
         },
         distance: 10.5,
-        direction: { x: 0.6, y: 0.8, z: 0 }
+        direction: { x: 0.6, y: 0.8, z: 0 },
       };
 
       expect(result.entity).toBeDefined();
@@ -318,14 +336,14 @@ describe('SpatialIndex', () => {
 
     it('should handle large numbers of entities efficiently', () => {
       const entityCount = 1000;
-      
+
       // Add many entities
       for (let i = 0; i < entityCount; i++) {
         adapter.insert(
           i,
           { x: Math.random() * 1000, y: Math.random() * 1000, z: Math.random() * 1000 },
           5,
-          i % 2 === 0 ? 'red' : 'blue'
+          i % 2 === 0 ? 'red' : 'blue',
         );
       }
 
@@ -345,7 +363,7 @@ describe('SpatialIndex', () => {
       }
 
       const stats = adapter.getStats();
-      
+
       expect(stats).toHaveProperty('items');
       expect(stats).toHaveProperty('cells');
       expect(stats).toHaveProperty('avgItemsPerCell');

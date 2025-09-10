@@ -20,14 +20,15 @@ function makeSoftCircleTexture(size = 64): THREE.Texture {
     return _softCircleTextureCache;
   }
   const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext('2d')!;
-  const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   g.addColorStop(0, 'rgba(255,255,255,1)');
   g.addColorStop(0.6, 'rgba(255,255,255,0.6)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
-  ctx.fillRect(0,0,size,size);
+  ctx.fillRect(0, 0, size, size);
   const tex = new THREE.CanvasTexture(canvas);
   tex.needsUpdate = true;
   _softCircleTextureCache = tex;
@@ -38,8 +39,11 @@ function makeSoftCircleTexture(size = 64): THREE.Texture {
 function createTrailMaterial(colorHex: string): THREE.ShaderMaterial {
   // Cache shader materials by color so we don't recreate shader programs
   // every time a trail is created. Key by color string.
-  const globalAny = createTrailMaterial as unknown as { _trailMaterialCache?: Map<string, THREE.ShaderMaterial> };
-  globalAny._trailMaterialCache = globalAny._trailMaterialCache || new Map<string, THREE.ShaderMaterial>();
+  const globalAny = createTrailMaterial as unknown as {
+    _trailMaterialCache?: Map<string, THREE.ShaderMaterial>;
+  };
+  globalAny._trailMaterialCache =
+    globalAny._trailMaterialCache || new Map<string, THREE.ShaderMaterial>();
   const cache = globalAny._trailMaterialCache;
   const key = colorHex;
   const existing = cache.get(key);
@@ -50,7 +54,9 @@ function createTrailMaterial(colorHex: string): THREE.ShaderMaterial {
     uStartOpacity: { value: RendererConfig.trails.opacity.start },
     uEndOpacity: { value: RendererConfig.trails.opacity.end },
     uColor: { value: new THREE.Color(colorHex) },
-    uPixelRatio: { value: Math.max(1, (typeof window !== 'undefined' ? window.devicePixelRatio : 1)) }
+    uPixelRatio: {
+      value: Math.max(1, typeof window !== 'undefined' ? window.devicePixelRatio : 1),
+    },
   };
 
   const vert = `
@@ -94,7 +100,7 @@ function createTrailMaterial(colorHex: string): THREE.ShaderMaterial {
     fragmentShader: frag,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending
+    blending: THREE.AdditiveBlending,
   });
   cache.set(key, mat);
   return mat.clone();
@@ -119,9 +125,18 @@ class ShipTrail {
     this.sizes = new Float32Array(this.max);
 
     this.geometry = new THREE.BufferGeometry();
-    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage));
-    this.geometry.setAttribute('aAge', new THREE.BufferAttribute(this.ages, 1).setUsage(THREE.DynamicDrawUsage));
-    this.geometry.setAttribute('aSize', new THREE.BufferAttribute(this.sizes, 1).setUsage(THREE.DynamicDrawUsage));
+    this.geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage),
+    );
+    this.geometry.setAttribute(
+      'aAge',
+      new THREE.BufferAttribute(this.ages, 1).setUsage(THREE.DynamicDrawUsage),
+    );
+    this.geometry.setAttribute(
+      'aSize',
+      new THREE.BufferAttribute(this.sizes, 1).setUsage(THREE.DynamicDrawUsage),
+    );
     this.geometry.setDrawRange(0, 0);
 
     const mat = createTrailMaterial(colorHex);
@@ -139,10 +154,10 @@ class ShipTrail {
     this.sizes[i] = size;
     this.head = (this.head + 1) % this.max;
     this.count = Math.min(this.count + 1, this.max);
-  // Mark attributes as dirty; draw range is set once during construction
-  this.geometry.attributes.position.needsUpdate = true;
-  this.geometry.attributes.aAge.needsUpdate = true;
-  this.geometry.attributes.aSize.needsUpdate = true;
+    // Mark attributes as dirty; draw range is set once during construction
+    this.geometry.attributes.position.needsUpdate = true;
+    this.geometry.attributes.aAge.needsUpdate = true;
+    this.geometry.attributes.aSize.needsUpdate = true;
   }
 
   step(dt: number, lifetime: number) {
@@ -155,12 +170,24 @@ class ShipTrail {
   }
 
   setPixelRatio(dpr: number) {
-    try { (this.points.material as THREE.ShaderMaterial).uniforms.uPixelRatio.value = Math.max(1, dpr); } catch { /* noop */ }
+    try {
+      (this.points.material as THREE.ShaderMaterial).uniforms.uPixelRatio.value = Math.max(1, dpr);
+    } catch {
+      /* noop */
+    }
   }
 
   dispose() {
-    try { this.geometry.dispose(); } catch { /* ignore */ }
-    try { (this.points.material as THREE.ShaderMaterial).dispose(); } catch { /* ignore */ }
+    try {
+      this.geometry.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
+      (this.points.material as THREE.ShaderMaterial).dispose();
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -194,10 +221,11 @@ export class TrailManager {
     for (const s of ships) {
       if (!s) continue;
       alive.add(s.id);
-  const vel = s.vel || { x: 0, y: 0, z: 0 };
-  const speedSq = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
-  const speed = Math.sqrt(speedSq);
-      const color = s.team === 'red' ? RendererConfig.trails.colors.red : RendererConfig.trails.colors.blue;
+      const vel = s.vel || { x: 0, y: 0, z: 0 };
+      const speedSq = vel.x * vel.x + vel.y * vel.y + vel.z * vel.z;
+      const speed = Math.sqrt(speedSq);
+      const color =
+        s.team === 'red' ? RendererConfig.trails.colors.red : RendererConfig.trails.colors.blue;
       const trail = this.ensureTrail(s.id, color);
 
       // Always age existing particles
@@ -207,9 +235,17 @@ export class TrailManager {
         // Offset behind the ship along -velocity
         const inv = 1 / speed;
         const back = { x: -vel.x * inv, y: -vel.y * inv, z: -vel.z * inv };
-        const offset = (ShipVisualConfig.ships[s.class]?.collisionRadius ?? RendererConfig.defaultCollisionRadius) * 0.7;
-        const pos = { x: s.pos.x + back.x * offset, y: s.pos.y + back.y * offset, z: s.pos.z + back.z * offset };
-        const size = Math.max(1, RendererConfig.trails.width) * ((ShipVisualConfig.ships[s.class]?.scale ?? 1) * 2.0);
+        const offset =
+          (ShipVisualConfig.ships[s.class]?.collisionRadius ??
+            RendererConfig.defaultCollisionRadius) * 0.7;
+        const pos = {
+          x: s.pos.x + back.x * offset,
+          y: s.pos.y + back.y * offset,
+          z: s.pos.z + back.z * offset,
+        };
+        const size =
+          Math.max(1, RendererConfig.trails.width) *
+          ((ShipVisualConfig.ships[s.class]?.scale ?? 1) * 2.0);
         trail.push(pos, size);
       }
     }
@@ -227,7 +263,11 @@ export class TrailManager {
   remove(shipId: number) {
     const t = this.trails.get(shipId);
     if (!t) return;
-    try { this.scene.remove(t.points); } catch { /* ignore */ }
+    try {
+      this.scene.remove(t.points);
+    } catch {
+      /* ignore */
+    }
     t.dispose();
     this.trails.delete(shipId);
   }

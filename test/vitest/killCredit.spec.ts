@@ -3,9 +3,15 @@ import { createInitialState, spawnShip, simulateStep } from '../../src/core/game
 import type { GameState } from '../../src/types/index.js';
 
 // Small helper to simulate a bullet hit by directly mutating ship health and setting lastDamageBy/time
-function simulateDamage(state: GameState, victimId: number, attackerId: number, damage: number, timeOffset = 0) {
-  const victim = state.shipIndex?.get(victimId) ?? state.ships.find(s => s.id === victimId);
-  const attacker = state.shipIndex?.get(attackerId) ?? state.ships.find(s => s.id === attackerId);
+function simulateDamage(
+  state: GameState,
+  victimId: number,
+  attackerId: number,
+  damage: number,
+  timeOffset = 0,
+) {
+  const victim = state.shipIndex?.get(victimId) ?? state.ships.find((s) => s.id === victimId);
+  const attacker = state.shipIndex?.get(attackerId) ?? state.ships.find((s) => s.id === attackerId);
   if (!victim || !attacker) throw new Error('ship missing');
   // Apply damage
   victim.health -= damage;
@@ -37,7 +43,7 @@ describe('kill crediting', () => {
     simulateStep(state, 1 / state.simConfig.tickRate);
 
     // After step, s1 should have a kill
-    const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find(s => s.id === s1.id);
+    const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find((s) => s.id === s1.id);
     expect(attacker?.kills).toBeGreaterThanOrEqual(1);
   });
 
@@ -49,11 +55,11 @@ describe('kill crediting', () => {
     // s1 damaged s2 long ago
     simulateDamage(state, s2.id, s1.id, 10, -100); // lastDamageTime well in the past
 
-  // Advance time
-  state.time += 200;
-  simulateStep(state, 1 / state.simConfig.tickRate);
+    // Advance time
+    state.time += 200;
+    simulateStep(state, 1 / state.simConfig.tickRate);
 
-    const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find(s => s.id === s1.id);
+    const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find((s) => s.id === s1.id);
     // attacker should not have credited kill here
     expect(attacker?.kills).toBe(0);
   });
@@ -68,10 +74,10 @@ describe('kill crediting', () => {
 
     // s1 damaged s2 2 seconds ago
     simulateDamage(state, s2.id, s1.id, 9999, -2);
-  state.time += 2;
-  simulateStep(state, 1 / state.simConfig.tickRate);
+    state.time += 2;
+    simulateStep(state, 1 / state.simConfig.tickRate);
 
-    const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find(s => s.id === s1.id);
+    const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find((s) => s.id === s1.id);
     expect(attacker?.kills).toBe(0);
   });
 });

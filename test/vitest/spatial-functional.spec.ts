@@ -25,7 +25,9 @@ describe('Spatial Index Functional Verification', () => {
 
     // Populate spatial index directly to avoid running full AI simulation in tests
     if (state.spatialGrid) {
-      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
 
     // Verify spatial index has entities
@@ -34,15 +36,13 @@ describe('Spatial Index Functional Verification', () => {
 
     // Test separation force calculation uses spatial index
     const separationResult = aiController.calculateSeparationForceWithCount(ship1);
-    
+
     // Should find at least one neighbor (ship2 is 50 units away, within default separation distance of 120)
     expect(separationResult.neighborCount).toBeGreaterThan(0);
-    
+
     // Force should be non-zero (pointing away from neighbors)
     const forceMagnitude = Math.sqrt(
-      separationResult.force.x ** 2 + 
-      separationResult.force.y ** 2 + 
-      separationResult.force.z ** 2
+      separationResult.force.x ** 2 + separationResult.force.y ** 2 + separationResult.force.z ** 2,
     );
     expect(forceMagnitude).toBeGreaterThan(0);
   });
@@ -56,7 +56,9 @@ describe('Spatial Index Functional Verification', () => {
     // Test with spatial index enabled (populate index directly)
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
     if (state.spatialGrid) {
-      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
     const resultWithIndex = aiController.calculateSeparationForceWithCount(ship1);
 
@@ -85,7 +87,9 @@ describe('Spatial Index Functional Verification', () => {
     // Populate spatial index directly and verify it doesn't crash
     if (state.spatialGrid) {
       expect(() => {
-  state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+        state.spatialGrid!.rebuild(
+          state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+        );
       }).not.toThrow();
       const stats = state.spatialGrid!.getStats();
       expect(stats.totalEntities).toBe(shipCount);
@@ -101,22 +105,24 @@ describe('Spatial Index Functional Verification', () => {
   it('should correctly query different types of spatial relationships', () => {
     // Create a controlled layout
     const centerShip = spawnShip(state, 'red', 'fighter', { x: 500, y: 500, z: 300 });
-    
+
     // Nearby red ships (neighbors)
     spawnShip(state, 'red', 'fighter', { x: 520, y: 500, z: 300 });
     spawnShip(state, 'red', 'fighter', { x: 480, y: 520, z: 300 });
-    
+
     // Nearby blue ships (enemies)
     spawnShip(state, 'blue', 'fighter', { x: 530, y: 490, z: 300 });
     spawnShip(state, 'blue', 'fighter', { x: 470, y: 510, z: 300 });
-    
+
     // Distant ships (shouldn't affect separation)
     spawnShip(state, 'red', 'fighter', { x: 800, y: 500, z: 300 });
     spawnShip(state, 'blue', 'fighter', { x: 200, y: 500, z: 300 });
 
     // Populate spatial index directly for deterministic queries
     if (state.spatialGrid) {
-      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
 
     // Test spatial queries directly
@@ -130,7 +136,12 @@ describe('Spatial Index Functional Verification', () => {
       expect(enemies.length).toBe(2); // Two nearby blue ships
 
       // Should find fewer entities with smaller radius
-      const closeNeighbors = state.spatialGrid.queryNeighbors(centerShip.pos, 50, 'red', centerShip.id);
+      const closeNeighbors = state.spatialGrid.queryNeighbors(
+        centerShip.pos,
+        50,
+        'red',
+        centerShip.id,
+      );
       expect(closeNeighbors.length).toBeLessThanOrEqual(neighbors.length);
     }
 
@@ -156,9 +167,11 @@ describe('Spatial Index Functional Verification', () => {
     const startTime = performance.now();
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
     if (state.spatialGrid) {
-      state.spatialGrid!.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid!.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
-    
+
     for (let i = 0; i < 50; i++) {
       aiController.calculateSeparationForceWithCount(testShip);
     }
@@ -167,7 +180,7 @@ describe('Spatial Index Functional Verification', () => {
     // Test that linear method also completes (but potentially slower)
     const startLinearTime = performance.now();
     state.behaviorConfig!.globalSettings.enableSpatialIndex = false;
-    
+
     for (let i = 0; i < 50; i++) {
       aiController.calculateSeparationForceWithCount(testShip);
     }

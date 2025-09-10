@@ -47,7 +47,7 @@ test('vector ops', () => {
   expect(v.scale(a, 2)).toEqual({ x: 2, y: 4, z: 6 });
   expect(v.dot(a, b)).toEqual(1 * -1 + 2 * 0 + 3 * 2);
   const c = v.cross(a, b);
-  expect(c).toEqual({ x: (2 * 2 - 3 * 0), y: (3 * -1 - 1 * 2), z: (1 * 0 - 2 * -1) });
+  expect(c).toEqual({ x: 2 * 2 - 3 * 0, y: 3 * -1 - 1 * 2, z: 1 * 0 - 2 * -1 });
 
   const zero = { x: 0, y: 0, z: 0 };
   expect(v.normalize(zero)).toEqual(zero);

@@ -15,7 +15,7 @@ describe('Spatial Index Quick Benchmark', () => {
   it('should provide significant speedup for neighbor queries', () => {
     // Create a moderate number of ships for testing
     const shipCount = 200;
-    
+
     // Spawn ships in a cluster for maximum neighbor interactions
     for (let i = 0; i < shipCount; i++) {
       const angle = (i / shipCount) * Math.PI * 2;
@@ -24,18 +24,22 @@ describe('Spatial Index Quick Benchmark', () => {
       const y = 500 + Math.sin(angle) * radius;
       const z = 300;
       const team = i % 2 === 0 ? 'red' : 'blue';
-      
+
       spawnShip(state, team, 'fighter', { x, y, z });
     }
 
     // Pick a ship in the middle for testing
     const testShip = state.ships[50];
-    console.log(`Test ship ID: ${testShip.id}, position: (${testShip.pos.x}, ${testShip.pos.y}, ${testShip.pos.z})`);
-    
+    console.log(
+      `Test ship ID: ${testShip.id}, position: (${testShip.pos.x}, ${testShip.pos.y}, ${testShip.pos.z})`,
+    );
+
     // Benchmark with spatial index enabled
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
-    console.log(`Spatial index enabled: ${state.behaviorConfig!.globalSettings.enableSpatialIndex}`);
-    
+    console.log(
+      `Spatial index enabled: ${state.behaviorConfig!.globalSettings.enableSpatialIndex}`,
+    );
+
     // Warm up spatial index
     if (state.spatialGrid) {
       state.spatialGrid.clear();
@@ -45,19 +49,24 @@ describe('Spatial Index Quick Benchmark', () => {
             id: ship.id,
             pos: ship.pos,
             radius: 16,
-            team: ship.team
+            team: ship.team,
           });
         }
       }
-      console.log(`Spatial grid populated with ${state.spatialGrid.getStats().totalEntities} entities`);
+      console.log(
+        `Spatial grid populated with ${state.spatialGrid.getStats().totalEntities} entities`,
+      );
     }
 
     // Test one call to see if it's working
     const testResult = aiController.calculateSeparationForceWithCount(testShip);
-    console.log(`Test separation result: neighbors=${testResult.neighborCount}, force=(${testResult.force.x.toFixed(3)}, ${testResult.force.y.toFixed(3)}, ${testResult.force.z.toFixed(3)})`);
+    console.log(
+      `Test separation result: neighbors=${testResult.neighborCount}, force=(${testResult.force.x.toFixed(3)}, ${testResult.force.y.toFixed(3)}, ${testResult.force.z.toFixed(3)})`,
+    );
 
     const startTimeWithIndex = performance.now();
-    for (let i = 0; i < 1000; i++) { // Increased iterations
+    for (let i = 0; i < 1000; i++) {
+      // Increased iterations
       aiController.calculateSeparationForceWithCount(testShip);
     }
     const endTimeWithIndex = performance.now();
@@ -66,14 +75,19 @@ describe('Spatial Index Quick Benchmark', () => {
 
     // Benchmark with spatial index disabled (linear search)
     state.behaviorConfig!.globalSettings.enableSpatialIndex = false;
-    console.log(`Spatial index disabled: ${state.behaviorConfig!.globalSettings.enableSpatialIndex}`);
+    console.log(
+      `Spatial index disabled: ${state.behaviorConfig!.globalSettings.enableSpatialIndex}`,
+    );
 
     // Test one call
     const testResult2 = aiController.calculateSeparationForceWithCount(testShip);
-    console.log(`Test linear result: neighbors=${testResult2.neighborCount}, force=(${testResult2.force.x.toFixed(3)}, ${testResult2.force.y.toFixed(3)}, ${testResult2.force.z.toFixed(3)})`);
+    console.log(
+      `Test linear result: neighbors=${testResult2.neighborCount}, force=(${testResult2.force.x.toFixed(3)}, ${testResult2.force.y.toFixed(3)}, ${testResult2.force.z.toFixed(3)})`,
+    );
 
     const startTimeLinear = performance.now();
-    for (let i = 0; i < 1000; i++) { // Increased iterations
+    for (let i = 0; i < 1000; i++) {
+      // Increased iterations
       aiController.calculateSeparationForceWithCount(testShip);
     }
     const endTimeLinear = performance.now();
@@ -91,11 +105,13 @@ describe('Spatial Index Quick Benchmark', () => {
     // Check for zero timings which would cause NaN
     expect(timeWithLinearSearch).toBeGreaterThan(0);
     expect(timeWithSpatialIndex).toBeGreaterThan(0);
-    
+
     // Verify that spatial index provides at least 2x speedup as required
     // If spatial index is too fast to measure, consider it a success
     if (timeWithSpatialIndex < 0.1) {
-      console.log('  Spatial index too fast to measure accurately - considering as performance success');
+      console.log(
+        '  Spatial index too fast to measure accurately - considering as performance success',
+      );
       expect(true).toBe(true); // Pass the test
     } else {
       expect(speedupRatio).toBeGreaterThanOrEqual(2.0);
@@ -119,12 +135,12 @@ describe('Spatial Index Quick Benchmark', () => {
             id: ship.id,
             pos: ship.pos,
             radius: 16,
-            team: ship.team
+            team: ship.team,
           });
         }
       }
     }
-    
+
     const resultWithIndex = aiController.calculateSeparationForceWithCount(ship1);
 
     // Test with linear search

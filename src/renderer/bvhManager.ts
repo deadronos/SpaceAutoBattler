@@ -10,7 +10,11 @@ THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 export interface BVHManager {
   initDone: boolean;
   updateBVH: (ships: Ship[]) => void;
-  raycast: (origin: THREE.Vector3, direction: THREE.Vector3, maxDistance?: number) => THREE.Intersection[];
+  raycast: (
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance?: number,
+  ) => THREE.Intersection[];
   sphereCast: (center: THREE.Vector3, radius: number) => Ship[];
   dispose: () => void;
 }
@@ -53,15 +57,31 @@ export function createBVHManager(state: GameState): BVHManager {
       // Define 8 vertices of the bounding box
       const vertices = [
         // Bottom face
-        ship.pos.x - halfWidth, ship.pos.y - halfHeight, ship.pos.z - halfDepth,
-        ship.pos.x + halfWidth, ship.pos.y - halfHeight, ship.pos.z - halfDepth,
-        ship.pos.x + halfWidth, ship.pos.y - halfHeight, ship.pos.z + halfDepth,
-        ship.pos.x - halfWidth, ship.pos.y - halfHeight, ship.pos.z + halfDepth,
+        ship.pos.x - halfWidth,
+        ship.pos.y - halfHeight,
+        ship.pos.z - halfDepth,
+        ship.pos.x + halfWidth,
+        ship.pos.y - halfHeight,
+        ship.pos.z - halfDepth,
+        ship.pos.x + halfWidth,
+        ship.pos.y - halfHeight,
+        ship.pos.z + halfDepth,
+        ship.pos.x - halfWidth,
+        ship.pos.y - halfHeight,
+        ship.pos.z + halfDepth,
         // Top face
-        ship.pos.x - halfWidth, ship.pos.y + halfHeight, ship.pos.z - halfDepth,
-        ship.pos.x + halfWidth, ship.pos.y + halfHeight, ship.pos.z - halfDepth,
-        ship.pos.x + halfWidth, ship.pos.y + halfHeight, ship.pos.z + halfDepth,
-        ship.pos.x - halfWidth, ship.pos.y + halfHeight, ship.pos.z + halfDepth,
+        ship.pos.x - halfWidth,
+        ship.pos.y + halfHeight,
+        ship.pos.z - halfDepth,
+        ship.pos.x + halfWidth,
+        ship.pos.y + halfHeight,
+        ship.pos.z - halfDepth,
+        ship.pos.x + halfWidth,
+        ship.pos.y + halfHeight,
+        ship.pos.z + halfDepth,
+        ship.pos.x - halfWidth,
+        ship.pos.y + halfHeight,
+        ship.pos.z + halfDepth,
       ];
 
       const vertexOffset = positions.length / 3;
@@ -86,7 +106,7 @@ export function createBVHManager(state: GameState): BVHManager {
       ];
 
       // Add indices with offset
-      indices.push(...boxIndices.map(i => i + vertexOffset));
+      indices.push(...boxIndices.map((i) => i + vertexOffset));
 
       // Store ship reference (we'll use the ship index to map back)
       shipData[shipIndex] = ship;
@@ -105,12 +125,16 @@ export function createBVHManager(state: GameState): BVHManager {
     shipMesh = new THREE.Mesh(shipGeometry, material);
     bvhScene.add(shipMesh);
 
-  // Store BVH reference (three-mesh-bvh augments BufferGeometry with boundsTree)
-  type GeometryWithBVH = THREE.BufferGeometry & { boundsTree?: MeshBVH };
-  shipBVH = (shipGeometry as GeometryWithBVH).boundsTree ?? null;
+    // Store BVH reference (three-mesh-bvh augments BufferGeometry with boundsTree)
+    type GeometryWithBVH = THREE.BufferGeometry & { boundsTree?: MeshBVH };
+    shipBVH = (shipGeometry as GeometryWithBVH).boundsTree ?? null;
   }
 
-  function raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance = 1000): THREE.Intersection[] {
+  function raycast(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    maxDistance = 1000,
+  ): THREE.Intersection[] {
     if (!shipBVH || !shipMesh) return [];
 
     const raycaster = new THREE.Raycaster(origin, direction.normalize(), 0, maxDistance);
@@ -129,11 +153,11 @@ export function createBVHManager(state: GameState): BVHManager {
     // In a more advanced implementation, you could use BVH for sphere queries
     const hits: Ship[] = [];
 
-    state.ships.forEach(ship => {
+    state.ships.forEach((ship) => {
       const dx = ship.pos.x - center.x;
       const dy = ship.pos.y - center.y;
       const dz = ship.pos.z - center.z;
-      const distSq = dx*dx + dy*dy + dz*dz;
+      const distSq = dx * dx + dy * dy + dz * dz;
       if (distSq <= radius * radius) hits.push(ship);
     });
 
@@ -156,6 +180,6 @@ export function createBVHManager(state: GameState): BVHManager {
       shipBVH = null;
       shipGeometry = null;
       shipMesh = null;
-    }
+    },
   };
 }

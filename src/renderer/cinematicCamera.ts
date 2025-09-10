@@ -5,7 +5,9 @@ import { CameraConfig } from '../config/cameraConfig.js';
 export function resetToCinematicView(state: GameState): void {
   if (!state.renderer || state.ships.length === 0) return;
 
-  let centerX = 0, centerY = 0, centerZ = 0;
+  let centerX = 0,
+    centerY = 0,
+    centerZ = 0;
   let shipCount = 0;
 
   for (const ship of state.ships) {
@@ -22,9 +24,12 @@ export function resetToCinematicView(state: GameState): void {
   centerY /= shipCount;
   centerZ /= shipCount;
 
-  let minX = Infinity, maxX = -Infinity;
-  let minY = Infinity, maxY = -Infinity;
-  let minZ = Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity;
+  let minY = Infinity,
+    maxY = -Infinity;
+  let minZ = Infinity,
+    maxZ = -Infinity;
 
   for (const ship of state.ships) {
     if (ship.health > 0) {
@@ -47,10 +52,11 @@ export function resetToCinematicView(state: GameState): void {
   state.renderer.cameraTarget.z = centerZ;
 
   const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance = (maxSpread / 2) / Math.tan(_fovRadians / 2) * CameraConfig.resetToCinematic.fovMultiplier;
+  const optimalDistance =
+    (maxSpread / 2 / Math.tan(_fovRadians / 2)) * CameraConfig.resetToCinematic.fovMultiplier;
   state.renderer.cameraDistance = Math.max(
     CameraConfig.cinematic.minDistance,
-    Math.min(CameraConfig.cinematic.maxDistance, optimalDistance)
+    Math.min(CameraConfig.cinematic.maxDistance, optimalDistance),
   );
 
   state.renderer.cameraRotation.x = CameraConfig.resetToCinematic.cameraRotation.x;
@@ -61,12 +67,16 @@ export function resetToCinematicView(state: GameState): void {
 export function updateCinematicCamera(state: GameState, dt: number): void {
   if (!state.renderer || state.ships.length === 0) return;
 
-  const redShips = state.ships.filter(s => s.team === 'red' && s.health > 0);
-  const blueShips = state.ships.filter(s => s.team === 'blue' && s.health > 0);
+  const redShips = state.ships.filter((s) => s.team === 'red' && s.health > 0);
+  const blueShips = state.ships.filter((s) => s.team === 'blue' && s.health > 0);
   if (redShips.length === 0 || blueShips.length === 0) return;
 
-  let redCenterX = 0, redCenterY = 0, redCenterZ = 0;
-  let blueCenterX = 0, blueCenterY = 0, blueCenterZ = 0;
+  let redCenterX = 0,
+    redCenterY = 0,
+    redCenterZ = 0;
+  let blueCenterX = 0,
+    blueCenterY = 0,
+    blueCenterZ = 0;
 
   for (const ship of redShips) {
     redCenterX += ship.pos.x;
@@ -96,7 +106,10 @@ export function updateCinematicCamera(state: GameState, dt: number): void {
   const fleetDistance = Math.sqrt(dxF * dxF + dyF * dyF + dzF * dzF);
 
   const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance = Math.max(fleetDistance * CameraConfig.cinematic.fleetDistanceMultiplier, CameraConfig.cinematic.minDistance);
+  const optimalDistance = Math.max(
+    fleetDistance * CameraConfig.cinematic.fleetDistanceMultiplier,
+    CameraConfig.cinematic.minDistance,
+  );
 
   const lerpFactor = Math.min(dt * CameraConfig.cinematic.lerpFactor, 1);
   state.renderer.cameraTarget.x += (centerX - state.renderer.cameraTarget.x) * lerpFactor;
@@ -104,9 +117,10 @@ export function updateCinematicCamera(state: GameState, dt: number): void {
   state.renderer.cameraTarget.z += (centerZ - state.renderer.cameraTarget.z) * lerpFactor;
 
   const distanceLerpFactor = Math.min(dt * CameraConfig.cinematic.distanceLerpFactor, 1);
-  state.renderer.cameraDistance += (optimalDistance - state.renderer.cameraDistance) * distanceLerpFactor;
+  state.renderer.cameraDistance +=
+    (optimalDistance - state.renderer.cameraDistance) * distanceLerpFactor;
   state.renderer.cameraDistance = Math.max(
     CameraConfig.cinematic.minDistance,
-    Math.min(CameraConfig.cinematic.maxDistance, state.renderer.cameraDistance)
+    Math.min(CameraConfig.cinematic.maxDistance, state.renderer.cameraDistance),
   );
 }

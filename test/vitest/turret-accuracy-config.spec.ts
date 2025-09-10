@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
 
-function computeFinalInaccuracy(turretAccuracy: number | undefined, shipLevel: number, perLevel = 0.02, maxReduction = 0.5) {
+function computeFinalInaccuracy(
+  turretAccuracy: number | undefined,
+  shipLevel: number,
+  perLevel = 0.02,
+  maxReduction = 0.5,
+) {
   const turretAcc = typeof turretAccuracy === 'number' ? turretAccuracy : 1.0;
   const baseInaccuracy = Math.max(0, 1 - turretAcc);
   const levelReduction = Math.max(0, Math.min(maxReduction, (shipLevel - 1) * perLevel));

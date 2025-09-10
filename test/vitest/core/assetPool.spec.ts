@@ -26,7 +26,9 @@ describe('LRUAssetPool', () => {
 
   it('calls dispose callback on eviction and delete/clear', () => {
     const disposed: string[] = [];
-    const dispose = (v: string) => { disposed.push(v); };
+    const dispose = (v: string) => {
+      disposed.push(v);
+    };
     const p = new LRUAssetPool<string>(2, dispose);
     p.set('x', 'X').set('y', 'Y');
     // adding third causes eviction of 'x'
@@ -46,7 +48,9 @@ describe('LRUAssetPool', () => {
   });
 
   it('rethrows dispose errors when NODE_ENV=test', () => {
-    const dispose = () => { throw new Error('fail-dispose'); };
+    const dispose = () => {
+      throw new Error('fail-dispose');
+    };
     const p = new LRUAssetPool<string>(1, dispose);
     // first set will attempt to evict nothing, second will evict and call dispose which should throw
     p.set('one', '1');

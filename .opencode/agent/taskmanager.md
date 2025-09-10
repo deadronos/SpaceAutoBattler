@@ -3,7 +3,7 @@ description: Task store and status manager. Documents the task API used by core 
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.0
-prompt: ""
+prompt: ''
 tools:
   read: true
   write: true

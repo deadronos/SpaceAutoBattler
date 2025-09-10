@@ -38,7 +38,7 @@ export class LRUAssetPool<T = unknown> {
         const oldValue = this.map.get(oldest);
         this.map.delete(oldest);
         // Call dispose callback if provided
-            if (oldValue && this.disposeCallback) {
+        if (oldValue && this.disposeCallback) {
           try {
             this.disposeCallback(oldValue);
           } catch (e) {
@@ -66,14 +66,14 @@ export class LRUAssetPool<T = unknown> {
     if (deleted && value && this.disposeCallback) {
       try {
         this.disposeCallback(value);
-        } catch (e) {
-          logger.error('Asset disposal error', e);
-          const nodeEnv = envVar('NODE_ENV', '');
-          const ci = envVar('CI', '');
-          if (nodeEnv === 'test' || ci === 'true') {
-            throw e;
-          }
+      } catch (e) {
+        logger.error('Asset disposal error', e);
+        const nodeEnv = envVar('NODE_ENV', '');
+        const ci = envVar('CI', '');
+        if (nodeEnv === 'test' || ci === 'true') {
+          throw e;
         }
+      }
     }
     return deleted;
   }
@@ -116,5 +116,3 @@ export class LRUAssetPool<T = unknown> {
 }
 
 export default LRUAssetPool;
-
-

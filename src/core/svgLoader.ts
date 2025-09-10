@@ -34,17 +34,25 @@ export class SVGLoader {
         logger.debug('[SVGLoader] SVG subsystem disabled via RendererConfig.disableSvgSubsystem');
         return;
       }
-    } catch (_e) { void _e; }
+    } catch (_e) {
+      void _e;
+    }
     // Feature guard: require OffscreenCanvas and createImageBitmap for performant rasterization
     try {
       const hasOffscreen = typeof (globalThis as any).OffscreenCanvas !== 'undefined';
       const hasCIB = typeof (globalThis as any).createImageBitmap === 'function';
       if (!hasOffscreen || !hasCIB) {
-        throw new Error('SVG rasterization requires OffscreenCanvas and createImageBitmap. Please use an up-to-date Chrome.');
+        throw new Error(
+          'SVG rasterization requires OffscreenCanvas and createImageBitmap. Please use an up-to-date Chrome.',
+        );
       }
     } catch (e) {
       // Surface a clear error and rethrow to prevent silent fallback to slow paths
-      try { logger.error('[SVGLoader] Feature check failed:', e); } catch { /* ignore */ }
+      try {
+        logger.error('[SVGLoader] Feature check failed:', e);
+      } catch {
+        /* ignore */
+      }
       throw e;
     }
     // Defer worker initialization until actually needed (lazy) so that
@@ -57,12 +65,18 @@ export class SVGLoader {
   // initWorker performs synchronous setup of event listeners and may set
   // this.worker to null on failure.
   private ensureWorkerInitialized() {
-  // If the SVG subsystem is disabled, never initialize the worker
-  try { if ((RendererConfig as any)?.disableSvgSubsystem) return; } catch { /* ignore */ }
-  if (this.worker) return;
+    // If the SVG subsystem is disabled, never initialize the worker
+    try {
+      if ((RendererConfig as any)?.disableSvgSubsystem) return;
+    } catch {
+      /* ignore */
+    }
+    if (this.worker) return;
     try {
       this.initWorker();
-    } catch (_e) { /* ignore - initWorker handles its own errors */ }
+    } catch (_e) {
+      /* ignore - initWorker handles its own errors */
+    }
   }
 
   private initWorker() {
@@ -70,19 +84,24 @@ export class SVGLoader {
       // Defensive guard: never create a Worker if the SVG subsystem is disabled.
       try {
         if ((RendererConfig as any)?.disableSvgSubsystem) {
-          logger.debug('[SVGLoader] initWorker aborting because RendererConfig.disableSvgSubsystem is true');
+          logger.debug(
+            '[SVGLoader] initWorker aborting because RendererConfig.disableSvgSubsystem is true',
+          );
           this.worker = null;
           return;
         }
-      } catch (_e) { /* ignore */ }
+      } catch (_e) {
+        /* ignore */
+      }
       // Enable worker-based SVG rasterization for better performance
       // Resolve worker URL robustly so the app works whether the server
       // serves the repo root (assets under /dist) or serves the dist
       // directory as the site root. Consumers can override with a
       // runtime `window.__ASSET_BASE__` string (e.g. '/dist' or '/').
       try {
-  const assetBase = (globalThis as unknown as { __ASSET_BASE__?: string }).__ASSET_BASE__ ?? null;
-  if (assetBase) {
+        const assetBase =
+          (globalThis as unknown as { __ASSET_BASE__?: string }).__ASSET_BASE__ ?? null;
+        if (assetBase) {
           // Ensure no trailing slash issues
           const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
           // If the runtime provides an explicit asset base, fall back to the
@@ -94,52 +113,77 @@ export class SVGLoader {
           // this causes the worker to be emitted as a JS chunk and the URL
           // will point at the emitted worker file (no raw .ts asset will be
           // requested at runtime).
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
           // @ts-ignore - import.meta.url usage is supported in ESM builds
-          this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), { type: 'module' });
+          this.worker = new Worker(new URL('./svgRasterWorker.ts', import.meta.url), {
+            type: 'module',
+          });
         }
-      } catch (_e) { void _e; this.worker = null; }
+      } catch (_e) {
+        void _e;
+        this.worker = null;
+      }
       // Single consolidated message handler for both rasterized responses and structured errors
       if (this.worker) {
-  try { logger.info('[SVGLoader] Worker instance created (lazy init)'); } catch { /* ignore */ }
+        try {
+          logger.info('[SVGLoader] Worker instance created (lazy init)');
+        } catch {
+          /* ignore */
+        }
         this.worker.addEventListener('message', (ev) => {
           try {
             const data = ev.data;
-                // Structured worker-side error reporting
-                if (data && data.type === 'worker-error') {
-                  logger.error('[SVGLoader] Worker reported error:', data.message, data.stack);
-                  this.worker?.terminate();
-                  this.worker = null;
-                  return;
-                }
+            // Structured worker-side error reporting
+            if (data && data.type === 'worker-error') {
+              logger.error('[SVGLoader] Worker reported error:', data.message, data.stack);
+              this.worker?.terminate();
+              this.worker = null;
+              return;
+            }
 
-                if (data && data.type === 'worker-messageerror') {
-                  logger.error('[SVGLoader] Worker messageerror:', data.detail);
-                  return;
-                }
+            if (data && data.type === 'worker-messageerror') {
+              logger.error('[SVGLoader] Worker messageerror:', data.detail);
+              return;
+            }
 
-                // Developer checkpoints from worker module evaluation
-                if (data && data.type === 'worker-checkpoint') {
-                  try { logger.debug('[SVGLoader] Worker checkpoint:', (data as any).name); } catch { /* ignore */ }
-                  return;
-                }
+            // Developer checkpoints from worker module evaluation
+            if (data && data.type === 'worker-checkpoint') {
+              try {
+                logger.debug('[SVGLoader] Worker checkpoint:', (data as any).name);
+              } catch {
+                /* ignore */
+              }
+              return;
+            }
 
             // Rasterized responses and other messages
             this.handleWorkerMessage(data);
-          } catch (_err) { void _err; }
+          } catch (_err) {
+            void _err;
+          }
         });
 
         this.worker.addEventListener('error', (e) => {
           try {
             // Better logging: include stack if available
-            const err = (e && (e as unknown as { error?: unknown }).error) ? (e as unknown as { error?: unknown }).error : e;
+            const err =
+              e && (e as unknown as { error?: unknown }).error
+                ? (e as unknown as { error?: unknown }).error
+                : e;
             logger.warn('[SVGLoader] Worker error event, falling back to main thread:', err);
-          } catch (_err) { void _err; }
+          } catch (_err) {
+            void _err;
+          }
           this.worker = null;
         });
         logger.debug('[SVGLoader] SVG rasterization worker initialized');
       }
-    } catch (_e) { void _e;logger.debug('[SVGLoader] Worker initialization failed, using main thread SVG rasterization:', _e);
+    } catch (_e) {
+      void _e;
+      logger.debug(
+        '[SVGLoader] Worker initialization failed, using main thread SVG rasterization:',
+        _e,
+      );
       this.worker = null;
     }
   }
@@ -166,7 +210,7 @@ export class SVGLoader {
   }
 
   private handleFileChange(filePath: string, changeType: 'modified' | 'deleted' | 'created') {
-  logger.debug(`[SVGLoader] File ${changeType}: ${filePath}`);
+    logger.debug(`[SVGLoader] File ${changeType}: ${filePath}`);
 
     if (changeType === 'modified' || changeType === 'deleted') {
       // Invalidate cache for this file
@@ -220,19 +264,20 @@ export class SVGLoader {
   }
 
   private async performLoad(url: string, options: SVGLoadOptions): Promise<SVGAsset> {
-  logger.debug(`[SVGLoader] Attempting to load SVG from: ${url}`);
-    
+    logger.debug(`[SVGLoader] Attempting to load SVG from: ${url}`);
+
     // Check for inlined SVG assets first (standalone build)
     let svgText: string;
     let lastModified: number;
-    
-  const inlineAssets = (globalThis as unknown as { __INLINE_SVG_ASSETS?: Record<string, string> }).__INLINE_SVG_ASSETS;
-  const standalone = (globalThis as unknown as { __STANDALONE?: boolean }).__STANDALONE;
-  if (inlineAssets) {
+
+    const inlineAssets = (globalThis as unknown as { __INLINE_SVG_ASSETS?: Record<string, string> })
+      .__INLINE_SVG_ASSETS;
+    const standalone = (globalThis as unknown as { __STANDALONE?: boolean }).__STANDALONE;
+    if (inlineAssets) {
       // Extract asset name from URL (e.g., "frigate" from "src/config/assets/svg/frigate.svg")
       const assetMatch = url.match(/([^/]+)\.svg$/);
       const assetName = assetMatch ? assetMatch[1] : null;
-      
+
       if (assetName && inlineAssets[assetName]) {
         logger.debug(`[SVGLoader] Using inlined SVG asset: ${assetName}`);
         svgText = inlineAssets[assetName];
@@ -247,7 +292,9 @@ export class SVGLoader {
         // Fall back to HTTP fetch
         const response = await fetch(url);
         if (!response.ok) {
-          logger.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
+          logger.error(
+            `[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`,
+          );
           throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
         }
         svgText = await response.text();
@@ -257,19 +304,23 @@ export class SVGLoader {
       // No inlined assets, use HTTP fetch
       const response = await fetch(url);
       if (!response.ok) {
-        logger.error(`[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`);
+        logger.error(
+          `[SVGLoader] Failed to fetch SVG: ${response.status} ${response.statusText} for ${url}`,
+        );
         throw new Error(`Failed to load SVG: ${response.status} ${response.statusText}`);
       }
       svgText = await response.text();
       lastModified = await this.getFileModificationTime(url);
     }
-    
-    logger.debug(`[SVGLoader] Successfully loaded SVG content for ${url}, length: ${svgText.length}`);
+
+    logger.debug(
+      `[SVGLoader] Successfully loaded SVG content for ${url}, length: ${svgText.length}`,
+    );
 
     const asset: SVGAsset = {
       url,
       svgText,
-      lastModified
+      lastModified,
     };
 
     // Rasterize if dimensions provided
@@ -284,10 +335,18 @@ export class SVGLoader {
   }
 
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-  // If the SVG subsystem is disabled, fail-fast to avoid creating workers or rasterizing.
-  try { if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled'); } catch (_e) { throw _e; }
-  // Lazily initialize worker and prefer worker-based rasterization when available for performance.
-  try { this.ensureWorkerInitialized(); } catch { /* ignore */ }
+    // If the SVG subsystem is disabled, fail-fast to avoid creating workers or rasterizing.
+    try {
+      if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled');
+    } catch (_e) {
+      throw _e;
+    }
+    // Lazily initialize worker and prefer worker-based rasterization when available for performance.
+    try {
+      this.ensureWorkerInitialized();
+    } catch {
+      /* ignore */
+    }
     if (this.worker) {
       try {
         logger.debug('[SVGLoader] Rasterizing SVG using worker:', asset.url);
@@ -304,12 +363,19 @@ export class SVGLoader {
     return this.rasterizeMainThread(asset, options);
   }
 
-  private async rasterizeWithWorker(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
-  // Respect disableSvgSubsystem flag
-  try { if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled'); } catch (_e) { throw _e; }
-  // Lazily initialize the worker here so the worker is only created when
-  // rasterization is actually needed.
-  this.ensureWorkerInitialized();
+  private async rasterizeWithWorker(
+    asset: SVGAsset,
+    options: SVGLoadOptions,
+  ): Promise<ImageBitmap> {
+    // Respect disableSvgSubsystem flag
+    try {
+      if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled');
+    } catch (_e) {
+      throw _e;
+    }
+    // Lazily initialize the worker here so the worker is only created when
+    // rasterization is actually needed.
+    this.ensureWorkerInitialized();
 
     return new Promise((resolve, reject) => {
       if (!this.worker) {
@@ -317,12 +383,20 @@ export class SVGLoader {
         return;
       }
 
-
       const messageHandler = (e: MessageEvent) => {
         const data = e.data;
         // Perf events bubbled from worker
-        if (data && data.type === 'perf' && (globalThis as any).__perf && typeof (globalThis as any).__perf.addEvent === 'function') {
-          try { (globalThis as any).__perf.addEvent({ name: data.name, ms: data.ms }); } catch { /* ignore */ }
+        if (
+          data &&
+          data.type === 'perf' &&
+          (globalThis as any).__perf &&
+          typeof (globalThis as any).__perf.addEvent === 'function'
+        ) {
+          try {
+            (globalThis as any).__perf.addEvent({ name: data.name, ms: data.ms });
+          } catch {
+            /* ignore */
+          }
         }
         if (data.type === 'rasterized' && data.assetKey === asset.url) {
           this.worker!.removeEventListener('message', messageHandler);
@@ -341,15 +415,20 @@ export class SVGLoader {
         assetKey: asset.url,
         teamColor: options.teamColor,
         filePath: asset.url,
-        fileModTime: asset.lastModified
+        fileModTime: asset.lastModified,
       } as const;
       try {
         // Message-size audit for raster requests (approximate, JSON-based)
-        if ((globalThis as any).__perf && typeof (globalThis as any).__perf.addEvent === 'function') {
+        if (
+          (globalThis as any).__perf &&
+          typeof (globalThis as any).__perf.addEvent === 'function'
+        ) {
           const approxKB = JSON.stringify(msg).length / 1000;
           (globalThis as any).__perf.addEvent({ name: 'raster.request.sendKB', ms: approxKB });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       this.worker.postMessage(msg);
 
       // Timeout after 8 seconds (increased timeout)
@@ -360,90 +439,100 @@ export class SVGLoader {
     });
   }
 
-  private async rasterizeMainThread(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
+  private async rasterizeMainThread(
+    asset: SVGAsset,
+    options: SVGLoadOptions,
+  ): Promise<ImageBitmap> {
     // Use regular Canvas instead of OffscreenCanvas for better SVG compatibility
     const canvas = document.createElement('canvas');
     canvas.width = options.width!;
     canvas.height = options.height!;
     // Request a 2D context optimized for frequent readbacks (tinting, getImageData).
-  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
+    const ctx =
+      (canvas.getContext('2d', {
+        willReadFrequently: true,
+      } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
 
     // Clear canvas
     ctx.clearRect(0, 0, options.width!, options.height!);
 
     try {
-  logger.debug('[SVGLoader] Attempting to rasterize SVG in main thread for:', asset.url);
-      
+      logger.debug('[SVGLoader] Attempting to rasterize SVG in main thread for:', asset.url);
+
       // Create a properly formatted SVG data URL
       let svgContent = asset.svgText;
-      
+
       // Ensure SVG has proper dimensions if missing
       if (!svgContent.includes('width=') || !svgContent.includes('height=')) {
         svgContent = svgContent.replace(
           /<svg([^>]*)>/,
-          `<svg$1 width="${options.width}" height="${options.height}">`
+          `<svg$1 width="${options.width}" height="${options.height}">`,
         );
       }
-      
+
       // Create data URL with proper encoding
       const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgContent)))}`;
-      
+
       // Load SVG as image
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      
+
       await new Promise<void>((resolve, reject) => {
         const timeoutId = setTimeout(() => {
           reject(new Error('SVG image load timeout after 10 seconds'));
         }, 10000);
-        
+
         img.onload = () => {
           clearTimeout(timeoutId);
-    logger.debug('[SVGLoader] Successfully loaded SVG image:', asset.url);
+          logger.debug('[SVGLoader] Successfully loaded SVG image:', asset.url);
           resolve();
         };
-        
+
         img.onerror = (e) => {
           clearTimeout(timeoutId);
           logger.error('[SVGLoader] Failed to load SVG image:', e);
           reject(new Error(`SVG image load failed`));
         };
-        
+
         img.src = svgDataUrl;
       });
 
       // Draw the SVG image to canvas with proper scaling
       ctx.save();
       ctx.clearRect(0, 0, options.width!, options.height!);
-      
+
       // Scale image to fit canvas
       const scale = Math.min(options.width! / img.width, options.height! / img.height);
       const scaledWidth = img.width * scale;
       const scaledHeight = img.height * scale;
       const offsetX = (options.width! - scaledWidth) / 2;
       const offsetY = (options.height! - scaledHeight) / 2;
-      
+
       ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
       ctx.restore();
 
       // Apply team color tinting if specified
       if (options.teamColor) {
         // When applying tinting we do pixel reads; request willReadFrequently where supported.
-  const ctx = (canvas.getContext('2d', { willReadFrequently: true } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
+        const ctx =
+          (canvas.getContext('2d', {
+            willReadFrequently: true,
+          } as unknown) as CanvasRenderingContext2D) || canvas.getContext('2d')!;
         this.applyTeamColorTint(ctx, options.width!, options.height!, options.teamColor);
       }
 
-  logger.debug('[SVGLoader] Successfully rasterized SVG to canvas:', asset.url);
-      
+      logger.debug('[SVGLoader] Successfully rasterized SVG to canvas:', asset.url);
+
       // Convert canvas to ImageBitmap
       return await createImageBitmap(canvas);
-      
-    } catch (_error) { void _error;logger.error('[SVGLoader] SVG rasterization failed completely:', _error);
+    } catch (_error) {
+      void _error;
+      logger.error('[SVGLoader] SVG rasterization failed completely:', _error);
 
       // Return error - don't create geometric fallback here anymore
       // Let the renderer handle fallbacks appropriately
-  const errorMessage = _error instanceof Error ? _error.message : String(_error);
-  throw new Error(`Failed to rasterize SVG ${asset.url}: ${errorMessage}`);
+      const errorMessage = _error instanceof Error ? _error.message : String(_error);
+      throw new Error(`Failed to rasterize SVG ${asset.url}: ${errorMessage}`);
     }
   }
 
@@ -452,7 +541,7 @@ export class SVGLoader {
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    teamColor: string
+    teamColor: string,
   ) {
     // Avoid expensive pixel readbacks by using 2D compositing operations.
     // Draw a solid rectangle filled with the team color using a compositing
@@ -486,7 +575,9 @@ export class SVGLoader {
     try {
       // If asset is inlined in the standalone HTML, avoid HEAD requests
       try {
-  const inlineAssets = (globalThis as unknown as { __INLINE_SVG_ASSETS?: Record<string, string> }).__INLINE_SVG_ASSETS;
+        const inlineAssets = (
+          globalThis as unknown as { __INLINE_SVG_ASSETS?: Record<string, string> }
+        ).__INLINE_SVG_ASSETS;
         if (inlineAssets && typeof url === 'string' && url.endsWith('.svg')) {
           const m = url.match(/([^/]+)\.svg$/);
           const name = m ? m[1] : null;
@@ -495,22 +586,26 @@ export class SVGLoader {
             return Date.now();
           }
         }
-      } catch (_e) { void _e; }
+      } catch (_e) {
+        void _e;
+      }
 
       // Try to get from response headers
       // If running as a standalone inlined build, avoid issuing HEAD requests
       // for SVG assets because they are embedded. This prevents browsers from
       // creating transient HEAD requests that can be aborted and logged.
       try {
-  const standalone = (globalThis as unknown as { __STANDALONE?: boolean }).__STANDALONE;
+        const standalone = (globalThis as unknown as { __STANDALONE?: boolean }).__STANDALONE;
         if (standalone && typeof url === 'string' && url.endsWith('.svg')) {
           return Date.now();
         }
-      } catch (_e) { void _e; }
+      } catch (_e) {
+        void _e;
+      }
 
       const response = await fetch(url, {
         method: 'HEAD',
-        cache: 'no-cache'
+        cache: 'no-cache',
       });
       const lastModified = response.headers.get('last-modified');
       if (lastModified) {
@@ -568,7 +663,7 @@ export class SVGLoader {
     // Notify worker to clear cache
     if (this.worker) {
       this.worker.postMessage({
-        type: 'clear-cache'
+        type: 'clear-cache',
       });
     }
   }
@@ -576,7 +671,7 @@ export class SVGLoader {
   // Force reload of all assets
   async reloadAllAssets(): Promise<void> {
     const urls = Array.from(this.assets.keys());
-    await Promise.all(urls.map(url => this.loadSVG(url, { forceReload: true })));
+    await Promise.all(urls.map((url) => this.loadSVG(url, { forceReload: true })));
   }
 
   // Get asset without loading
@@ -594,7 +689,7 @@ export class SVGLoader {
     return {
       cachedAssets: this.assets.size,
       loadingPromises: this.loadingPromises.size,
-      watchedFiles: this.watchedFiles.size
+      watchedFiles: this.watchedFiles.size,
     };
   }
 
@@ -607,7 +702,7 @@ export class SVGLoader {
 
     // Stop watching all files
     const fileWatcher = getFileWatcher();
-    this.watchedFiles.forEach(url => {
+    this.watchedFiles.forEach((url) => {
       fileWatcher.unwatch(url);
     });
     this.watchedFiles.clear();
@@ -628,10 +723,7 @@ export function getSVGLoader(): SVGLoader {
 }
 
 // Convenience function to load SVG asset
-export async function loadSVGAsset(
-  url: string,
-  options: SVGLoadOptions = {}
-): Promise<SVGAsset> {
+export async function loadSVGAsset(url: string, options: SVGLoadOptions = {}): Promise<SVGAsset> {
   return getSVGLoader().loadSVG(url, options);
 }
 
@@ -640,7 +732,7 @@ export async function loadSVGBitmap(
   url: string,
   width: number,
   height: number,
-  teamColor?: string
+  teamColor?: string,
 ): Promise<ImageBitmap> {
   const asset = await loadSVGAsset(url, { width, height, teamColor });
   if (!asset.imageBitmap) {
@@ -648,4 +740,3 @@ export async function loadSVGBitmap(
   }
   return asset.imageBitmap;
 }
-

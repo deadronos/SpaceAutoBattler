@@ -62,7 +62,10 @@ describe('IntentManager', () => {
     const ship = makeShip();
 
     const short = 2.0; // shorter than p.minIntentDuration
-    const duration = im.applyIntent(ship, 10, 'evade', p, rng, { damageEvade: true, damageEvadeDuration: short });
+    const duration = im.applyIntent(ship, 10, 'evade', p, rng, {
+      damageEvade: true,
+      damageEvadeDuration: short,
+    });
     expect(duration).toBeGreaterThanOrEqual(short);
     expect(duration).toBeLessThanOrEqual(p.maxIntentDuration);
     expect(ship.aiState!.currentIntent).toBe('evade');

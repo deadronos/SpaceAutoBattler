@@ -12,11 +12,12 @@ describe('AI Roaming and Formation Systems', () => {
   beforeEach(() => {
     gameState = createInitialState('test-seed-roaming-formation');
     aiController = new AIController(gameState);
-    
+
     // Ensure AI is enabled and configure for testing
     gameState.behaviorConfig!.globalSettings.aiEnabled = true;
-    gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation;
-    
+    gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation =
+      DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation;
+
     // Disable interfering features for focused testing
     gameState.behaviorConfig!.globalSettings.enableScoutBehavior = false;
     gameState.behaviorConfig!.globalSettings.enableAlarmSystem = false;
@@ -30,7 +31,7 @@ describe('AI Roaming and Formation Systems', () => {
         const ship = spawnShip(gameState, 'red', 'fighter', {
           x: TEST_DEFAULTS.simBounds.width * 0.1 + i * 20, // Close together relative to bounds
           y: TEST_DEFAULTS.simBounds.height * 0.1,
-          z: TEST_DEFAULTS.simBounds.depth * 0.1
+          z: TEST_DEFAULTS.simBounds.depth * 0.1,
         });
         ships.push(ship);
       }
@@ -38,11 +39,12 @@ describe('AI Roaming and Formation Systems', () => {
       // Set all fighters to roaming mode
       gameState.behaviorConfig!.shipPersonalities.fighter = {
         ...gameState.behaviorConfig!.shipPersonalities.fighter!,
-        mode: 'roaming'
+        mode: 'roaming',
       };
 
       // Reduce separation for deterministic test and force intent reevaluation
-      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation = DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation / 2;
+      gameState.behaviorConfig!.globalSettings.roamingAnchorMinSeparation =
+        DEFAULT_BEHAVIOR_CONFIG.globalSettings.roamingAnchorMinSeparation / 2;
       gameState.time = 10;
 
       // Step the simulation to trigger AI updates
@@ -53,14 +55,16 @@ describe('AI Roaming and Formation Systems', () => {
         gameState.time += dt;
         gameState.tick++;
         if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
-          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+          gameState.spatialGrid.rebuild(
+            gameState.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+          );
         }
       }
 
       // Collect assigned roaming anchors
       const anchors = ships
-        .map(ship => ship.aiState?.roamingAnchor)
-        .filter(anchor => anchor !== undefined);
+        .map((ship) => ship.aiState?.roamingAnchor)
+        .filter((anchor) => anchor !== undefined);
 
       // Should have anchors assigned
       expect(anchors.length).toBeGreaterThan(0);
@@ -73,8 +77,8 @@ describe('AI Roaming and Formation Systems', () => {
           const anchor2 = anchors[j]!;
           const distance = Math.sqrt(
             Math.pow(anchor1.x - anchor2.x, 2) +
-            Math.pow(anchor1.y - anchor2.y, 2) +
-            Math.pow(anchor1.z - anchor2.z, 2)
+              Math.pow(anchor1.y - anchor2.y, 2) +
+              Math.pow(anchor1.z - anchor2.z, 2),
           );
           expect(distance).toBeGreaterThanOrEqual(minSeparation);
         }
@@ -83,12 +87,16 @@ describe('AI Roaming and Formation Systems', () => {
 
     test('roaming anchors should be released when ships leave roaming mode', () => {
       // Spawn a ship in roaming mode
-  const ship = spawnShip(gameState, 'red', 'fighter', { x: TEST_DEFAULTS.simBounds.width * 0.1, y: TEST_DEFAULTS.simBounds.height * 0.1, z: TEST_DEFAULTS.simBounds.depth * 0.1 });
-      
+      const ship = spawnShip(gameState, 'red', 'fighter', {
+        x: TEST_DEFAULTS.simBounds.width * 0.1,
+        y: TEST_DEFAULTS.simBounds.height * 0.1,
+        z: TEST_DEFAULTS.simBounds.depth * 0.1,
+      });
+
       // Set to roaming mode
       gameState.behaviorConfig!.shipPersonalities.fighter = {
         ...gameState.behaviorConfig!.shipPersonalities.fighter!,
-        mode: 'roaming'
+        mode: 'roaming',
       };
 
       // Force intent reevaluation
@@ -102,7 +110,9 @@ describe('AI Roaming and Formation Systems', () => {
         gameState.time += dt2;
         gameState.tick++;
         if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
-          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+          gameState.spatialGrid.rebuild(
+            gameState.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+          );
         }
       }
 
@@ -112,15 +122,14 @@ describe('AI Roaming and Formation Systems', () => {
       // Change to aggressive mode (non-roaming)
       gameState.behaviorConfig!.shipPersonalities.fighter = {
         ...gameState.behaviorConfig!.shipPersonalities.fighter!,
-        mode: 'aggressive'
+        mode: 'aggressive',
       };
 
-      
-  // Force intent reevaluation by advancing time
-  gameState.time += 10;
-      
-  // Step simulation to trigger cleanup
-  aiController.updateAllShips(getTestDtFromState(gameState));
+      // Force intent reevaluation by advancing time
+      gameState.time += 10;
+
+      // Step simulation to trigger cleanup
+      aiController.updateAllShips(getTestDtFromState(gameState));
 
       // Anchor should be released
       expect(ship.aiState?.roamingAnchor).toBeUndefined();
@@ -135,7 +144,7 @@ describe('AI Roaming and Formation Systems', () => {
         const ship = spawnShip(gameState, 'red', 'frigate', {
           x: TEST_DEFAULTS.simBounds.width * 0.2 + i * 30,
           y: TEST_DEFAULTS.simBounds.height * 0.2,
-          z: TEST_DEFAULTS.simBounds.depth * 0.2
+          z: TEST_DEFAULTS.simBounds.depth * 0.2,
         });
         ships.push(ship);
       }
@@ -143,7 +152,7 @@ describe('AI Roaming and Formation Systems', () => {
       // Set to formation mode
       gameState.behaviorConfig!.shipPersonalities.frigate = {
         ...gameState.behaviorConfig!.shipPersonalities.frigate!,
-        mode: 'formation'
+        mode: 'formation',
       };
 
       // Force intent reevaluation
@@ -157,34 +166,37 @@ describe('AI Roaming and Formation Systems', () => {
         gameState.time += dt3;
         gameState.tick++;
         if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
-          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+          gameState.spatialGrid.rebuild(
+            gameState.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+          );
         }
       }
 
       // Check that ships have formation data assigned
-      const formationShips = ships.filter(ship => 
-        ship.aiState?.formationId && 
-        ship.aiState?.formationSlotIndex !== undefined &&
-        ship.aiState?.formationPosition
+      const formationShips = ships.filter(
+        (ship) =>
+          ship.aiState?.formationId &&
+          ship.aiState?.formationSlotIndex !== undefined &&
+          ship.aiState?.formationPosition,
       );
 
       expect(formationShips.length).toBeGreaterThan(0);
 
       // Verify slot indices are unique
-      const slotIndices = formationShips.map(ship => ship.aiState!.formationSlotIndex!);
+      const slotIndices = formationShips.map((ship) => ship.aiState!.formationSlotIndex!);
       const uniqueSlotIndices = new Set(slotIndices);
       expect(uniqueSlotIndices.size).toBe(slotIndices.length);
 
       // Verify formation positions are different
-      const positions = formationShips.map(ship => ship.aiState!.formationPosition!);
+      const positions = formationShips.map((ship) => ship.aiState!.formationPosition!);
       for (let i = 0; i < positions.length; i++) {
         for (let j = i + 1; j < positions.length; j++) {
           const pos1 = positions[i];
           const pos2 = positions[j];
           const distance = Math.sqrt(
             Math.pow(pos1.x - pos2.x, 2) +
-            Math.pow(pos1.y - pos2.y, 2) +
-            Math.pow(pos1.z - pos2.z, 2)
+              Math.pow(pos1.y - pos2.y, 2) +
+              Math.pow(pos1.z - pos2.z, 2),
           );
           // Formation positions should be separated by at least formation spacing / 2
           expect(distance).toBeGreaterThan(DEFAULT_BEHAVIOR_CONFIG.formations.line.spacing / 2); // Half of typical formation spacing
@@ -199,11 +211,11 @@ describe('AI Roaming and Formation Systems', () => {
         const ship = spawnShip(gameState, 'blue', 'frigate', {
           x: 300 + i * 25,
           y: 300,
-          z: 300
+          z: 300,
         });
         gameState.behaviorConfig!.shipPersonalities.frigate = {
           ...gameState.behaviorConfig!.shipPersonalities.frigate!,
-          mode: 'formation'
+          mode: 'formation',
         };
         ships.push(ship);
       }
@@ -216,14 +228,16 @@ describe('AI Roaming and Formation Systems', () => {
         gameState.time += dt4;
         gameState.tick++;
         if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
-          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+          gameState.spatialGrid.rebuild(
+            gameState.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+          );
         }
       }
 
       // Record initial formation assignments
-      const initialAssignments = ships.map(ship => ({
+      const initialAssignments = ships.map((ship) => ({
         slotIndex: ship.aiState?.formationSlotIndex,
-        position: ship.aiState?.formationPosition ? { ...ship.aiState.formationPosition } : null
+        position: ship.aiState?.formationPosition ? { ...ship.aiState.formationPosition } : null,
       }));
 
       // Continue simulation for several more steps
@@ -251,26 +265,26 @@ describe('AI Roaming and Formation Systems', () => {
       // Create formation ships
       const formationShips = [];
       for (let i = 0; i < 3; i++) {
-        const ship = spawnShip(gameState, 'red', 'frigate', { 
-          x: 400 + i * 25, 
-          y: 400, 
-          z: 400 
+        const ship = spawnShip(gameState, 'red', 'frigate', {
+          x: 400 + i * 25,
+          y: 400,
+          z: 400,
         });
         formationShips.push(ship);
       }
-      
+
       // Create roaming ship
       const roamingShip = spawnShip(gameState, 'red', 'fighter', { x: 500, y: 500, z: 500 });
-      
+
       // Set different modes
       gameState.behaviorConfig!.shipPersonalities.frigate = {
         ...gameState.behaviorConfig!.shipPersonalities.frigate!,
-        mode: 'formation'
+        mode: 'formation',
       };
-      
+
       gameState.behaviorConfig!.shipPersonalities.fighter = {
         ...gameState.behaviorConfig!.shipPersonalities.fighter!,
-        mode: 'roaming'
+        mode: 'roaming',
       };
 
       // Force intent reevaluation
@@ -284,21 +298,25 @@ describe('AI Roaming and Formation Systems', () => {
         gameState.time += dt5;
         gameState.tick++;
         if (gameState.spatialGrid && gameState.behaviorConfig?.globalSettings.enableSpatialIndex) {
-          gameState.spatialGrid.rebuild(gameState.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+          gameState.spatialGrid.rebuild(
+            gameState.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+          );
         }
       }
 
       // Check that both systems are working
       // Formation ships should have formation data
-      const formationShipsWithFormation = formationShips.filter(ship => ship.aiState?.formationId);
+      const formationShipsWithFormation = formationShips.filter(
+        (ship) => ship.aiState?.formationId,
+      );
       expect(formationShipsWithFormation.length).toBeGreaterThan(0);
-      
+
       // Roaming ship should have roaming anchor
       expect(roamingShip.aiState?.roamingAnchor).toBeDefined();
-      
+
       // Systems should not interfere with each other
       expect(roamingShip.aiState?.formationId).toBeUndefined();
-      formationShipsWithFormation.forEach(ship => {
+      formationShipsWithFormation.forEach((ship) => {
         expect(ship.aiState?.roamingAnchor).toBeUndefined();
       });
     });

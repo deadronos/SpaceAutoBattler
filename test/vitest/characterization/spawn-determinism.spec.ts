@@ -19,7 +19,8 @@ describe('Characterization: spawn determinism', () => {
     expect(a2.id).toBe(1);
 
     // positions should match exactly for equal seeds
-    const p1: Vector3 = a1.pos; const p2: Vector3 = a2.pos;
+    const p1: Vector3 = a1.pos;
+    const p2: Vector3 = a2.pos;
     expect(p1.x).toBe(p2.x);
     expect(p1.y).toBe(p2.y);
     expect(p1.z).toBe(p2.z);

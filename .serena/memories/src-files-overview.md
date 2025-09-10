@@ -3,6 +3,7 @@
 Last-Reviewed: 2025-09-07
 
 Top-level source files of interest:
+
 - `src/main.ts` — bootstrap and UI
 - `src/simWorker.ts` — physics worker
 - `src/core/gameState.ts` — simulation lifecycle

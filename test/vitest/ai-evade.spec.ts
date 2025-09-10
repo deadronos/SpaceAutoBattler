@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockGameState, createMockShip, getTestDtFromState, TEST_DEFAULTS } from './setupTests.js';
+import {
+  createMockGameState,
+  createMockShip,
+  getTestDtFromState,
+  TEST_DEFAULTS,
+} from './setupTests.js';
 import { GameState, Ship } from '../../src/types/index.js';
 import { AIController } from '../../src/core/aiController.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
@@ -31,14 +36,16 @@ describe('AI Evade Behavior', () => {
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0,
-        lastDamageTime: 0
-      }
+        lastDamageTime: 0,
+      },
     }) as unknown as Ship;
 
     state.ships.push(ship);
 
     if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
 
     // Simulate damage accumulation by directly updating aiState
@@ -61,11 +68,13 @@ describe('AI Evade Behavior', () => {
     state.ships.push(enemy);
 
     if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
 
     // Update AI - should switch to evade due to recent damage
-  aiController.updateAllShips(getTestDtFromState(state));
+    aiController.updateAllShips(getTestDtFromState(state));
 
     // Ship should now have evade intent
     expect(ship.aiState?.currentIntent).toBe('evade');
@@ -80,8 +89,8 @@ describe('AI Evade Behavior', () => {
       class: 'fighter',
       pos: { ...TEST_DEFAULTS.defaultPos },
       vel: { ...TEST_DEFAULTS.zeroPos },
-      speed: 20,  // Increase ship speed for faster movement
-      turnRate: 10 // Increase turn rate for more responsive movement
+      speed: 20, // Increase ship speed for faster movement
+      turnRate: 10, // Increase turn rate for more responsive movement
     }) as unknown as Ship;
 
     // Create nearby enemy
@@ -95,9 +104,11 @@ describe('AI Evade Behavior', () => {
     state.ships = [ship, enemy]; // Replace all ships with just these two
 
     if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
-    
+
     // Set up the ship's aiState with evade intent
     ship.aiState = {
       currentIntent: 'evade',
@@ -105,7 +116,7 @@ describe('AI Evade Behavior', () => {
       lastIntentReevaluation: 0,
       preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
       recentDamage: 50,
-      lastDamageTime: 0
+      lastDamageTime: 0,
     };
 
     // Force target ID assignment to ensure the ship evades from this enemy
@@ -114,8 +125,8 @@ describe('AI Evade Behavior', () => {
     // Get initial distance
     const initialDistance = Math.sqrt(
       Math.pow(ship.pos.x - enemy.pos.x, 2) +
-      Math.pow(ship.pos.y - enemy.pos.y, 2) +
-      Math.pow(ship.pos.z - enemy.pos.z, 2)
+        Math.pow(ship.pos.y - enemy.pos.y, 2) +
+        Math.pow(ship.pos.z - enemy.pos.z, 2),
     );
 
     // Directly use the controller's moveTowards function with an escape target
@@ -123,33 +134,37 @@ describe('AI Evade Behavior', () => {
     const escapeTarget = {
       x: ship.pos.x - (enemy.pos.x - ship.pos.x), // Double the vector away from enemy
       y: ship.pos.y - (enemy.pos.y - ship.pos.y),
-      z: ship.pos.z - (enemy.pos.z - ship.pos.z)
+      z: ship.pos.z - (enemy.pos.z - ship.pos.z),
     };
 
     // Apply movement for multiple ticks
     for (let i = 0; i < 10; i++) {
       // Directly call moveTowards with the escape target and force movement
       aiController.moveTowards(ship, escapeTarget, getTestDtFromState(state), true);
-      
+
       // Move the ship based on its velocity
-  const dt = getTestDtFromState(state);
-  ship.pos.x += ship.vel.x * dt;
-  ship.pos.y += ship.vel.y * dt;
-  ship.pos.z += ship.vel.z * dt;
-      
+      const dt = getTestDtFromState(state);
+      ship.pos.x += ship.vel.x * dt;
+      ship.pos.y += ship.vel.y * dt;
+      ship.pos.z += ship.vel.z * dt;
+
       if (DEBUG_AI && i % 2 === 0) {
-        console.error(`AI-DEBUG direct evade iter=${i} pos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} vel=${ship.vel.x.toFixed(2)},${ship.vel.y.toFixed(2)},${ship.vel.z.toFixed(2)}`);
+        console.error(
+          `AI-DEBUG direct evade iter=${i} pos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} vel=${ship.vel.x.toFixed(2)},${ship.vel.y.toFixed(2)},${ship.vel.z.toFixed(2)}`,
+        );
       }
     }
 
     // Calculate final distance
     const finalDistance = Math.sqrt(
       Math.pow(ship.pos.x - enemy.pos.x, 2) +
-      Math.pow(ship.pos.y - enemy.pos.y, 2) +
-      Math.pow(ship.pos.z - enemy.pos.z, 2)
+        Math.pow(ship.pos.y - enemy.pos.y, 2) +
+        Math.pow(ship.pos.z - enemy.pos.z, 2),
     );
 
-    console.log(`Initial distance: ${initialDistance.toFixed(2)}, Final distance: ${finalDistance.toFixed(2)}, Change: ${(finalDistance - initialDistance).toFixed(2)}`);
+    console.log(
+      `Initial distance: ${initialDistance.toFixed(2)}, Final distance: ${finalDistance.toFixed(2)}, Change: ${(finalDistance - initialDistance).toFixed(2)}`,
+    );
 
     // Ship should have increased distance from enemy
     expect(finalDistance).toBeGreaterThan(initialDistance + 4);
@@ -168,8 +183,8 @@ describe('AI Evade Behavior', () => {
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 20,
-        lastDamageTime: state.time
-      }
+        lastDamageTime: state.time,
+      },
     }) as unknown as Ship;
 
     state.ships.push(ship);
@@ -208,8 +223,8 @@ describe('AI Evade Behavior', () => {
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: DEFAULT_BEHAVIOR_CONFIG.globalSettings.damageEvadeThreshold + 2,
-        lastDamageTime: state.time
-      }
+        lastDamageTime: state.time,
+      },
     }) as unknown as Ship;
 
     state.ships.push(ship);
@@ -224,13 +239,13 @@ describe('AI Evade Behavior', () => {
       class: 'fighter',
       pos: { ...TEST_DEFAULTS.defaultPos, x: 150 },
       targetId: 1,
-      turrets: []
+      turrets: [],
     }) as unknown as Ship;
 
     state.ships.push(enemy);
 
     // Update AI with custom config
-  aiController.updateAllShips(getTestDtFromState(state));
+    aiController.updateAllShips(getTestDtFromState(state));
 
     // Should switch to evade with lower threshold
     expect(ship.aiState?.currentIntent).toBe('evade');
@@ -250,8 +265,8 @@ describe('AI Evade Behavior', () => {
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: DEFAULT_BEHAVIOR_CONFIG.globalSettings.damageEvadeThreshold + 10,
-        lastDamageTime: state.time
-      }
+        lastDamageTime: state.time,
+      },
     }) as unknown as Ship;
 
     // Create defensive personality to test defensive evade logic
@@ -263,7 +278,7 @@ describe('AI Evade Behavior', () => {
       aggressiveness: 0.2,
       caution: 0.8,
       groupCohesion: 0.3,
-      preferredRangeMultiplier: 0.8
+      preferredRangeMultiplier: 0.8,
     };
 
     // Override personality for this test
@@ -280,7 +295,7 @@ describe('AI Evade Behavior', () => {
       class: 'fighter',
       pos: { ...TEST_DEFAULTS.defaultPos, x: 130 }, // Close to trigger evade
       targetId: 1,
-      turrets: []
+      turrets: [],
     }) as unknown as Ship;
 
     state.ships.push(ship, enemy);
@@ -289,7 +304,7 @@ describe('AI Evade Behavior', () => {
     ship.aiState!.lastIntentReevaluation = state.time - 2;
 
     // Test 1: Within damage window - should evade
-  aiController.updateAllShips(getTestDtFromState(state));
+    aiController.updateAllShips(getTestDtFromState(state));
     expect(ship.aiState?.currentIntent).toBe('evade');
 
     // Test 2: Wait until outside damage window - should not evade
@@ -323,8 +338,8 @@ describe('AI Evade Behavior', () => {
         lastIntentReevaluation: 0,
         preferredRange: DEFAULT_BEHAVIOR_CONFIG.globalSettings.minimumSafeDistance,
         recentDamage: 0, // No damage
-        lastDamageTime: 0 // No damage time
-      }
+        lastDamageTime: 0, // No damage time
+      },
     }) as unknown as Ship;
 
     // Create defensive personality to test defensive evade logic
@@ -336,7 +351,7 @@ describe('AI Evade Behavior', () => {
       aggressiveness: 0.2,
       caution: 0.8,
       groupCohesion: 0.3,
-      preferredRangeMultiplier: 0.8
+      preferredRangeMultiplier: 0.8,
     };
 
     // Override personality for this test
@@ -352,7 +367,7 @@ describe('AI Evade Behavior', () => {
       class: 'fighter',
       pos: { ...TEST_DEFAULTS.defaultPos, x: 130 }, // Close to ship
       targetId: 1,
-      turrets: []
+      turrets: [],
     }) as unknown as Ship;
 
     state.ships.push(ship, enemy);

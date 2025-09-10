@@ -2,9 +2,8 @@ import { perf } from './perf.js';
 
 export function setupPerfOverlay(): void {
   // Only show overlay if enabled via query param or config
-  const showOverlay = perf.isEnabled() && (
-    typeof location !== 'undefined' && location.search.includes('showPerf=1')
-  );
+  const showOverlay =
+    perf.isEnabled() && typeof location !== 'undefined' && location.search.includes('showPerf=1');
 
   if (!showOverlay) return;
 
@@ -58,9 +57,8 @@ export function setupPerfOverlay(): void {
     // Show top 8 subsystems
     const topSubsystems = summary.subsystems.slice(0, 8);
     for (const subsystem of topSubsystems) {
-      const percentage = summary.totalFrameMs > 0
-        ? Math.round((subsystem.totalMs / summary.totalFrameMs) * 100)
-        : 0;
+      const percentage =
+        summary.totalFrameMs > 0 ? Math.round((subsystem.totalMs / summary.totalFrameMs) * 100) : 0;
 
       content += `${subsystem.name}: ${percentage}% (${subsystem.avgMs}ms)\n`;
     }

@@ -15,7 +15,7 @@ describe('Particle Explosion Renderer Export', () => {
     // This test will fail to compile if the type isn't properly exported
     const opts: ParticleExplosionOptions = {
       pos: { x: 0, y: 0, z: 0 },
-      radius: 5
+      radius: 5,
     };
     expect(opts).toBeDefined();
   });
@@ -24,7 +24,7 @@ describe('Particle Explosion Renderer Export', () => {
     const gameState = createInitialState('export-test');
     const opts: ParticleExplosionOptions = {
       pos: { x: 0, y: 0, z: 0 },
-      radius: 5
+      radius: 5,
     };
 
     // Should not throw when called

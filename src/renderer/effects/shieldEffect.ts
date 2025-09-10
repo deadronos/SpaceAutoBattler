@@ -10,12 +10,17 @@ import { shieldVertexShader, createShieldFragmentShader } from './shieldShaders.
  */
 
 export interface ShieldEffectState {
-  recentShieldHits: Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>;
+  recentShieldHits: Map<number, { dir: THREE.Vector3; time: number; strength: number }[]>;
 }
 
 export interface ShieldEffect {
   createShieldEffect(ship: Ship, state: ShieldEffectState): THREE.Object3D;
-  updateShieldEffect(ship: Ship, shieldGroup: THREE.Object3D, currentTime: number, state: ShieldEffectState): void;
+  updateShieldEffect(
+    ship: Ship,
+    shieldGroup: THREE.Object3D,
+    currentTime: number,
+    state: ShieldEffectState,
+  ): void;
   disposeShieldEffect(shieldGroup: THREE.Object3D): void;
 }
 
@@ -24,7 +29,7 @@ export interface ShieldEffect {
  */
 export function createShieldEffectState(): ShieldEffectState {
   return {
-    recentShieldHits: new Map<number, { dir: THREE.Vector3; time: number; strength: number; }[]>()
+    recentShieldHits: new Map<number, { dir: THREE.Vector3; time: number; strength: number }[]>(),
   };
 }
 
@@ -36,9 +41,10 @@ export function createShieldEffect(ship: Ship, _state: ShieldEffectState): THREE
   const shieldGroup = new THREE.Group();
 
   // Spherical shield bubble with rim lighting and directional hit arc
-  const geom = new THREE.SphereGeometry( 
+  const geom = new THREE.SphereGeometry(
     (ShipVisualConfig.ships[ship.class]?.collisionRadius ?? 16) * 1.1,
-    24, 24
+    24,
+    24,
   );
   const teamColor = new THREE.Color(ship.team === 'red' ? config.colors.red : config.colors.blue);
 
@@ -56,7 +62,7 @@ export function createShieldEffect(ship: Ship, _state: ShieldEffectState): THREE
       uHitStrength: { value: 0.0 },
       // Hex hit highlighting
       uHitCount: { value: 0 },
-      uHitDirs: { value: Array.from({ length: HIT_MAX }, () => new THREE.Vector3(0,0,1)) },
+      uHitDirs: { value: Array.from({ length: HIT_MAX }, () => new THREE.Vector3(0, 0, 1)) },
       uHitTimes: { value: new Float32Array(HIT_MAX).fill(-1000) },
       uHitStrengths: { value: new Float32Array(HIT_MAX).fill(0) },
       uHitWindow: { value: config.hexGrid.hitWindow },
@@ -97,10 +103,10 @@ export function createShieldEffect(ship: Ship, _state: ShieldEffectState): THREE
  * Updates the shield effect based on ship status and hits
  */
 export function updateShieldEffect(
-  ship: Ship, 
-  shieldGroup: THREE.Object3D, 
-  currentTime: number, 
-  state: ShieldEffectState
+  ship: Ship,
+  shieldGroup: THREE.Object3D,
+  currentTime: number,
+  state: ShieldEffectState,
 ): void {
   const config = RendererConfig.shield;
   type ShieldGroup = THREE.Object3D & { shieldMesh?: THREE.Mesh };
@@ -117,26 +123,27 @@ export function updateShieldEffect(
   // Update uniforms
   mat.uniforms.uTime.value = currentTime;
   const shieldPercent = ship.maxShield > 0 ? ship.shield / ship.maxShield : 0;
-  mat.uniforms.uOpacity.value = config.opacity.base * shieldPercent + config.opacity.min * (1 - shieldPercent);
+  mat.uniforms.uOpacity.value =
+    config.opacity.base * shieldPercent + config.opacity.min * (1 - shieldPercent);
 
   // Handle recent hit tracking and visual effects
   const lastHitTime = ship.lastShieldHitTime || 0;
   const hitWindow = RendererConfig.shield.hexGrid.hitWindow; // seconds
   let timeDecay = 0.0;
-  
+
   if (currentTime - lastHitTime < hitWindow) {
     timeDecay = 1.0 - (currentTime - lastHitTime) / hitWindow;
     // Push into recent hits buffer for hex highlighting (avoid duplicates per hit)
     const list = state.recentShieldHits.get(ship.id) ?? [];
     const d = ship.lastShieldHitDir || { x: 0, y: 0, z: 1 };
     const dmg = Math.max(0, ship.lastShieldHitStrength ?? 0);
-    
+
     // Only push once per unique hit time
-    if (!list.find(h => Math.abs(h.time - lastHitTime) < 0.01)) {
+    if (!list.find((h) => Math.abs(h.time - lastHitTime) < 0.01)) {
       const HIT_MAX = Math.max(1, Math.floor(RendererConfig.shield.hexGrid.hitMax));
       list.push({ dir: new THREE.Vector3(d.x, d.y, d.z), time: lastHitTime, strength: dmg });
       // Keep only recent hits
-      const pruned = list.filter(h => currentTime - h.time <= hitWindow);
+      const pruned = list.filter((h) => currentTime - h.time <= hitWindow);
       // Keep only the most recent HIT_MAX hits
       while (pruned.length > HIT_MAX) pruned.shift();
       state.recentShieldHits.set(ship.id, pruned);
@@ -158,10 +165,10 @@ export function updateShieldEffect(
   const HIT_MAX = Math.max(1, Math.floor(RendererConfig.shield.hexGrid.hitMax));
   const maxN = Math.min(HIT_MAX, list.length);
   mat.uniforms.uHitCount.value = maxN;
-  const uDirs = (mat.uniforms.uHitDirs.value as unknown as THREE.Vector3[]);
-  const uTimes = (mat.uniforms.uHitTimes.value as unknown as Float32Array);
-  const uStrengths = (mat.uniforms.uHitStrengths.value as unknown as Float32Array);
-  
+  const uDirs = mat.uniforms.uHitDirs.value as unknown as THREE.Vector3[];
+  const uTimes = mat.uniforms.uHitTimes.value as unknown as Float32Array;
+  const uStrengths = mat.uniforms.uHitStrengths.value as unknown as Float32Array;
+
   for (let i = 0; i < HIT_MAX; i++) {
     if (i < maxN) {
       uDirs[i].copy(list[i].dir).normalize();
@@ -185,7 +192,7 @@ export function disposeShieldEffect(shieldGroup: THREE.Object3D): void {
     if (shieldMesh.geometry) shieldMesh.geometry.dispose();
     if (shieldMesh.material) {
       if (Array.isArray(shieldMesh.material)) {
-        shieldMesh.material.forEach(mat => mat.dispose());
+        shieldMesh.material.forEach((mat) => mat.dispose());
       } else {
         shieldMesh.material.dispose();
       }
@@ -199,5 +206,5 @@ export function disposeShieldEffect(shieldGroup: THREE.Object3D): void {
 export const shieldEffect: ShieldEffect = {
   createShieldEffect,
   updateShieldEffect,
-  disposeShieldEffect
+  disposeShieldEffect,
 };

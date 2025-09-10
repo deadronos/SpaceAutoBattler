@@ -3,7 +3,7 @@ description: Global policies and limits for the opencode agent pack.
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.0
-prompt: ""
+prompt: ''
 tools:
   read: true
   write: false

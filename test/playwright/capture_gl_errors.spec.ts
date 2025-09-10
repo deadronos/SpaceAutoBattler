@@ -44,6 +44,10 @@ test('capture webgl and console errors from standalone build', async ({ page, br
   fs.writeFileSync(path.join(OUT_DIR, `page-${timestamp}.html`), html);
 
   // Attach output paths to test info for easier retrieval
-  test.info().attachments.push({ name: 'screenshot', contentType: 'image/png', path: screenshotPath });
-  test.info().attachments.push({ name: 'console', contentType: 'application/json', path: logsPath });
+  test
+    .info()
+    .attachments.push({ name: 'screenshot', contentType: 'image/png', path: screenshotPath });
+  test
+    .info()
+    .attachments.push({ name: 'console', contentType: 'application/json', path: logsPath });
 });

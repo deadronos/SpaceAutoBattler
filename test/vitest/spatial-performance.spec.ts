@@ -16,10 +16,10 @@ describe('Spatial Index Performance Validation', () => {
         pos: {
           x: Math.random() * 2000,
           y: Math.random() * 2000,
-          z: Math.random() * 1000
+          z: Math.random() * 1000,
         },
         radius: 16,
-        team: i % 2 === 0 ? 'red' : 'blue'
+        team: i % 2 === 0 ? 'red' : 'blue',
       };
       entities.push(entity);
       spatialGrid.insert(entity);
@@ -30,9 +30,9 @@ describe('Spatial Index Performance Validation', () => {
     const queryRadius = 300;
 
     // Benchmark spatial grid query
-  // Increase iterations to reduce variance across machines
-  const iterations = 2000;
-    
+    // Increase iterations to reduce variance across machines
+    const iterations = 2000;
+
     const startSpatial = performance.now();
     for (let i = 0; i < iterations; i++) {
       spatialGrid.queryRadius(queryPos, queryRadius);
@@ -45,7 +45,7 @@ describe('Spatial Index Performance Validation', () => {
     for (let i = 0; i < iterations; i++) {
       const results: SpatialEntity[] = [];
       for (const entity of entities) {
-        const distSq = 
+        const distSq =
           (entity.pos.x - queryPos.x) ** 2 +
           (entity.pos.y - queryPos.y) ** 2 +
           (entity.pos.z - queryPos.z) ** 2;
@@ -61,7 +61,7 @@ describe('Spatial Index Performance Validation', () => {
     const spatialResults = spatialGrid.queryRadius(queryPos, queryRadius);
     const linearResults: SpatialEntity[] = [];
     for (const entity of entities) {
-      const distSq = 
+      const distSq =
         (entity.pos.x - queryPos.x) ** 2 +
         (entity.pos.y - queryPos.y) ** 2 +
         (entity.pos.z - queryPos.z) ** 2;
@@ -89,7 +89,8 @@ describe('Spatial Index Performance Validation', () => {
 
   it('should scale better than linear search with entity count', () => {
     const entityCounts = [100, 500, 1000];
-    const results: { count: number; spatialTime: number; linearTime: number; speedup: number }[] = [];
+    const results: { count: number; spatialTime: number; linearTime: number; speedup: number }[] =
+      [];
 
     for (const count of entityCounts) {
       const spatialGrid = new SpatialGrid(64, { width: 2000, height: 2000, depth: 1000 });
@@ -102,10 +103,10 @@ describe('Spatial Index Performance Validation', () => {
           pos: {
             x: Math.random() * 2000,
             y: Math.random() * 2000,
-            z: Math.random() * 1000
+            z: Math.random() * 1000,
           },
           radius: 16,
-          team: i % 2 === 0 ? 'red' : 'blue'
+          team: i % 2 === 0 ? 'red' : 'blue',
         };
         entities.push(entity);
         spatialGrid.insert(entity);
@@ -113,8 +114,8 @@ describe('Spatial Index Performance Validation', () => {
 
       const queryPos = { x: 1000, y: 1000, z: 500 };
       const queryRadius = 300;
-  // Increase iterations to stabilize timing measurements
-  const iterations = 200;
+      // Increase iterations to stabilize timing measurements
+      const iterations = 200;
 
       // Benchmark spatial grid
       const startSpatial = performance.now();
@@ -129,7 +130,7 @@ describe('Spatial Index Performance Validation', () => {
       for (let i = 0; i < iterations; i++) {
         const queryResults: SpatialEntity[] = [];
         for (const entity of entities) {
-          const distSq = 
+          const distSq =
             (entity.pos.x - queryPos.x) ** 2 +
             (entity.pos.y - queryPos.y) ** 2 +
             (entity.pos.z - queryPos.z) ** 2;

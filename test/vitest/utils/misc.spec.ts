@@ -25,7 +25,9 @@ test('logger debug lazy and levels', () => {
 
   logger.debug('hello');
   logger.debugLazy(() => ['a', 'b']);
-  logger.debugLazy(() => { throw new Error('boom'); });
+  logger.debugLazy(() => {
+    throw new Error('boom');
+  });
   logger.debugIf(true, () => 'x');
 
   expect(logSpy).toHaveBeenCalled();

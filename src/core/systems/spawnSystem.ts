@@ -1,11 +1,11 @@
-import type { 
-  GameState, 
-  Ship, 
-  ShipClass, 
-  Team, 
-  Vector3, 
-  EntityId, 
-  TurretState 
+import type {
+  GameState,
+  Ship,
+  ShipClass,
+  Team,
+  Vector3,
+  EntityId,
+  TurretState,
 } from '../../types/index.js';
 import type { PhysicsAdapter } from '../adapters/physicsAdapter.js';
 import type { RendererAdapter } from '../adapters/rendererAdapter.js';
@@ -73,7 +73,7 @@ export class SpawnSystem {
       physics?: PhysicsAdapter;
       renderer?: RendererAdapter;
       spatial?: SpatialIndex;
-    }
+    },
   ) {
     this.state = state;
     this.physicsAdapter = adapters?.physics;
@@ -98,7 +98,9 @@ export class SpawnSystem {
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
-      } catch (_error) { void _error;logger.warn('Error in spawn event handler:', _error);
+      } catch (_error) {
+        void _error;
+        logger.warn('Error in spawn event handler:', _error);
       }
     }
   }
@@ -111,13 +113,13 @@ export class SpawnSystem {
       const result: SpawnResult = {
         entityId: -1,
         success: false,
-        error: 'Invalid ship spawn intent'
+        error: 'Invalid ship spawn intent',
       };
       this.emitEvent({
         type: 'failed',
         intent,
         result,
-        timestamp: this.state.time
+        timestamp: this.state.time,
       });
       return result;
     }
@@ -127,7 +129,7 @@ export class SpawnSystem {
       const result: SpawnResult = {
         entityId: ship.id,
         success: true,
-        spawnedEntity: ship
+        spawnedEntity: ship,
       };
 
       // Register with adapters
@@ -137,20 +139,22 @@ export class SpawnSystem {
         type: 'spawned',
         intent,
         result,
-        timestamp: this.state.time
+        timestamp: this.state.time,
       });
 
       return result;
-    } catch (_error) { void _error;const result: SpawnResult = {
+    } catch (_error) {
+      void _error;
+      const result: SpawnResult = {
         entityId: -1,
         success: false,
-        error: _error instanceof Error ? _error.message : 'Unknown spawn error'
+        error: _error instanceof Error ? _error.message : 'Unknown spawn error',
       };
       this.emitEvent({
         type: 'failed',
         intent,
         result,
-        timestamp: this.state.time
+        timestamp: this.state.time,
       });
       return result;
     }
@@ -159,28 +163,33 @@ export class SpawnSystem {
   /**
    * Spawn multiple ships (fleet spawning)
    */
-  spawnFleet(team: Team, count: number = 5, options?: { 
-    classes?: ShipClass[];
-    formation?: 'random' | 'line' | 'wedge';
-  }): SpawnResult[] {
+  spawnFleet(
+    team: Team,
+    count: number = 5,
+    options?: {
+      classes?: ShipClass[];
+      formation?: 'random' | 'line' | 'wedge';
+    },
+  ): SpawnResult[] {
     const results: SpawnResult[] = [];
-    
+
     for (let i = 0; i < count; i++) {
-      const cls = options?.classes 
+      const cls = options?.classes
         ? this.state.rng.pick(options.classes)
         : this.state.rng.pick(['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'] as const);
-      
-      const position = options?.formation === 'line' 
-        ? this.calculateFormationPosition(team, i, count, 'line')
-        : options?.formation === 'wedge'
-        ? this.calculateFormationPosition(team, i, count, 'wedge')
-        : undefined; // Random position
+
+      const position =
+        options?.formation === 'line'
+          ? this.calculateFormationPosition(team, i, count, 'line')
+          : options?.formation === 'wedge'
+            ? this.calculateFormationPosition(team, i, count, 'wedge')
+            : undefined; // Random position
 
       const intent: SpawnIntent = {
         type: 'ship',
         team,
         class: cls,
-        position
+        position,
       };
 
       results.push(this.spawnShip(intent));
@@ -193,7 +202,7 @@ export class SpawnSystem {
    * Remove ship and clean up adapters
    */
   removeShip(shipId: EntityId): boolean {
-    const shipIndex = this.state.ships.findIndex(s => s.id === shipId);
+    const shipIndex = this.state.ships.findIndex((s) => s.id === shipId);
     if (shipIndex === -1) {
       return false;
     }
@@ -201,11 +210,15 @@ export class SpawnSystem {
 
     // Attempt to invalidate any renderer-side cached parameters for this ship's program-like object
     try {
-      const programLike = (ship as unknown as Record<string, unknown>).__renderProgram as object | undefined;
+      const programLike = (ship as unknown as Record<string, unknown>).__renderProgram as
+        | object
+        | undefined;
       if (programLike) {
         // Ask adapter to invalidate its internal cache if it supports it
         try {
-          const maybeAdapter = this.rendererAdapter as unknown as { invalidateParameters?: (p: object) => void } | undefined;
+          const maybeAdapter = this.rendererAdapter as unknown as
+            | { invalidateParameters?: (p: object) => void }
+            | undefined;
           if (maybeAdapter && typeof maybeAdapter.invalidateParameters === 'function') {
             maybeAdapter.invalidateParameters(programLike);
           }
@@ -246,12 +259,12 @@ export class SpawnSystem {
     nextId: number;
   } {
     const shipsByTeam = { red: 0, blue: 0 } as Record<Team, number>;
-    const shipsByClass = { 
-      fighter: 0, 
-      corvette: 0, 
-      frigate: 0, 
-      destroyer: 0, 
-      carrier: 0 
+    const shipsByClass = {
+      fighter: 0,
+      corvette: 0,
+      frigate: 0,
+      destroyer: 0,
+      carrier: 0,
     } as Record<ShipClass, number>;
 
     for (const ship of this.state.ships) {
@@ -263,7 +276,7 @@ export class SpawnSystem {
       totalShips: this.state.ships.length,
       shipsByTeam,
       shipsByClass,
-      nextId: this.state.nextId
+      nextId: this.state.nextId,
     };
   }
 
@@ -273,14 +286,14 @@ export class SpawnSystem {
     const level = { level: 1, xp: 0, nextLevelXp: nextLevelXp(1) };
     const maxHealth = Math.floor(applyLevelUps(level.level, cfg.baseHealth));
     const maxShield = Math.floor(applyLevelUps(level.level, cfg.shield));
-    const turrets: TurretState[] = cfg.turrets.map((t, i) => ({ 
-      id: `${t.id}-${i}`, 
-      cooldownLeft: 0 
+    const turrets: TurretState[] = cfg.turrets.map((t, i) => ({
+      id: `${t.id}-${i}`,
+      cooldownLeft: 0,
     }));
 
     const pos = intent.position ?? this.randomSpawnPos(intent.team);
     const randomYaw = this.state.rng.next() * Math.PI * 2;
-    
+
     const ship: Ship = {
       id,
       team: intent.team,
@@ -290,7 +303,7 @@ export class SpawnSystem {
       orientation: intent.initialOrientation ?? {
         pitch: 0,
         yaw: randomYaw,
-        roll: 0
+        roll: 0,
       },
       dir: randomYaw, // Legacy compatibility
       targetId: null,
@@ -306,7 +319,8 @@ export class SpawnSystem {
       kills: 0,
       level,
       spawnedFighters: intent.class === 'carrier' ? 0 : undefined,
-      fighterSpawnCdLeft: intent.class === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
+      fighterSpawnCdLeft:
+        intent.class === 'carrier' ? CarrierSpawnConfig.fighter.initialCooldown : undefined,
       parentCarrierId: intent.parentId,
     };
 
@@ -335,16 +349,22 @@ export class SpawnSystem {
     const margin = FleetConfig.spawning.margin;
     const y = this.state.rng.int(margin, this.state.simConfig.simBounds.height - margin);
     const z = this.state.rng.int(margin, this.state.simConfig.simBounds.depth - margin);
-    const x = team === 'red' 
-      ? this.state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth)
-      : this.state.rng.int(
-          this.state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth,
-          this.state.simConfig.simBounds.width - margin
-        );
+    const x =
+      team === 'red'
+        ? this.state.rng.int(margin, margin + FleetConfig.spawning.spawnWidth)
+        : this.state.rng.int(
+            this.state.simConfig.simBounds.width - margin - FleetConfig.spawning.spawnWidth,
+            this.state.simConfig.simBounds.width - margin,
+          );
     return { x, y, z };
   }
 
-  private calculateFormationPosition(team: Team, index: number, total: number, formation: 'line' | 'wedge'): Vector3 {
+  private calculateFormationPosition(
+    team: Team,
+    index: number,
+    total: number,
+    formation: 'line' | 'wedge',
+  ): Vector3 {
     const basePos = this.randomSpawnPos(team);
     const spacing = 50; // Distance between ships in formation
 
@@ -354,7 +374,7 @@ export class SpawnSystem {
         return {
           x: basePos.x,
           y: basePos.y + offset,
-          z: basePos.z
+          z: basePos.z,
         };
       }
       case 'wedge': {
@@ -363,11 +383,11 @@ export class SpawnSystem {
         const rowWidth = (row + 1) * spacing;
         const yOffset = posInRow * spacing - rowWidth / 2;
         const xOffset = row * spacing * 0.5;
-        
+
         return {
           x: basePos.x + (team === 'red' ? xOffset : -xOffset),
           y: basePos.y + yOffset,
-          z: basePos.z
+          z: basePos.z,
         };
       }
       default:
@@ -385,18 +405,25 @@ export class SpawnSystem {
           velocity: ship.vel,
           mass: cfg.baseHealth, // Use health as mass approximation
           radius: 20, // Default ship radius
-          collisionMask: ship.team === 'red' ? 0x01 : 0x02
+          collisionMask: ship.team === 'red' ? 0x01 : 0x02,
         });
       }
-    } catch (_error) { void _error;logger.warn('Failed to register ship with physics adapter:', _error);
+    } catch (_error) {
+      void _error;
+      logger.warn('Failed to register ship with physics adapter:', _error);
     }
 
     // Register with renderer
     try {
       if (this.rendererAdapter) {
-            if (this.instrumentationEnabled) {
-              try { logger.debug('renderer.ensureMeshForShip'); } catch (_e) { void _e; void _e; }
-            }
+        if (this.instrumentationEnabled) {
+          try {
+            logger.debug('renderer.ensureMeshForShip');
+          } catch (_e) {
+            void _e;
+            void _e;
+          }
+        }
 
         // If the renderer adapter exposes a program/parameter object on the ship (conventionally
         // some adapters attach a reference after first creation) we try to avoid repeated expensive
@@ -404,7 +431,9 @@ export class SpawnSystem {
         // that don't follow that convention.
         // Usage: adapter implementations may choose to attach `__renderProgram` or similar to ship
         // after the first call. This helper is intentionally conservative and will not mutate ship.
-  const programLike = (ship as unknown as Record<string, unknown>).__renderProgram as object | undefined;
+        const programLike = (ship as unknown as Record<string, unknown>).__renderProgram as
+          | object
+          | undefined;
         if (programLike && typeof this.rendererParametersCache.get === 'function') {
           // If we already have cached parameters for this program-like object, we could use it.
           // We don't change adapter behavior here, but this cache can be read by future helpers
@@ -412,7 +441,9 @@ export class SpawnSystem {
           if (!this.rendererParametersCache.has(programLike)) {
             try {
               // If adapter exposes a `getParameters` method we call it once and cache the result.
-              const maybeAdapter = this.rendererAdapter as unknown as { getParameters?: (p: object) => unknown } | undefined;
+              const maybeAdapter = this.rendererAdapter as unknown as
+                | { getParameters?: (p: object) => unknown }
+                | undefined;
               if (maybeAdapter && typeof maybeAdapter.getParameters === 'function') {
                 const params = maybeAdapter.getParameters(programLike);
                 this.rendererParametersCache.set(programLike, params);
@@ -425,7 +456,9 @@ export class SpawnSystem {
 
         this.rendererAdapter.ensureMeshForShip(ship);
       }
-    } catch (_error) { void _error;logger.warn('Failed to register ship with renderer adapter:', _error);
+    } catch (_error) {
+      void _error;
+      logger.warn('Failed to register ship with renderer adapter:', _error);
     }
 
     // Register with spatial index
@@ -433,7 +466,9 @@ export class SpawnSystem {
       if (this.spatialIndex) {
         this.spatialIndex.insert(ship.id, ship.pos, 20, ship.team);
       }
-    } catch (_error) { void _error;logger.warn('Failed to register ship with spatial index:', _error);
+    } catch (_error) {
+      void _error;
+      logger.warn('Failed to register ship with spatial index:', _error);
     }
   }
 
@@ -441,4 +476,3 @@ export class SpawnSystem {
     return this.state.nextId++;
   }
 }
-

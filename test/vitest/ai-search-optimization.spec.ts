@@ -10,18 +10,22 @@ describe('AI Search Performance Optimization', () => {
   beforeEach(() => {
     state = createMockGameState();
     aiController = new AIController(state);
-    
+
     // Enable spatial indexing for performance tests, but create mock spatial grid
     state.behaviorConfig!.globalSettings.enableSpatialIndex = true;
-    console.log("DEBUG: Test is running!");
+    console.log('DEBUG: Test is running!');
   });
 
-  function addShipToState(team: 'red' | 'blue', shipClass: string, position: { x: number; y: number; z: number }) {
+  function addShipToState(
+    team: 'red' | 'blue',
+    shipClass: string,
+    position: { x: number; y: number; z: number },
+  ) {
     const ship = createMockShip({
       id: state.ships.length + 1,
       team,
       class: shipClass,
-      pos: position
+      pos: position,
     });
     state.ships.push(ship);
     return ship;
@@ -30,15 +34,15 @@ describe('AI Search Performance Optimization', () => {
   it('should handle large fleets efficiently with batched queries', () => {
     // Create a large fleet scenario (40 ships: 20 red vs 20 blue)
     for (let i = 0; i < 20; i++) {
-      addShipToState('red', 'fighter', { 
-        x: Math.random() * 200, 
-        y: Math.random() * 200, 
-        z: Math.random() * 200 
+      addShipToState('red', 'fighter', {
+        x: Math.random() * 200,
+        y: Math.random() * 200,
+        z: Math.random() * 200,
       });
-      addShipToState('blue', 'fighter', { 
-        x: Math.random() * 200 + 300, 
-        y: Math.random() * 200, 
-        z: Math.random() * 200 
+      addShipToState('blue', 'fighter', {
+        x: Math.random() * 200 + 300,
+        y: Math.random() * 200,
+        z: Math.random() * 200,
       });
     }
 
@@ -49,7 +53,10 @@ describe('AI Search Performance Optimization', () => {
     // wall-clock flakiness when running the entire test suite in parallel.
     const realPerfNow = performance.now.bind(performance);
     let fakeNow = 0;
-    performance.now = () => { fakeNow += 1; return fakeNow; };
+    performance.now = () => {
+      fakeNow += 1;
+      return fakeNow;
+    };
 
     const startTime = performance.now();
 
@@ -60,21 +67,21 @@ describe('AI Search Performance Optimization', () => {
 
     const endTime = performance.now();
     const totalTime = endTime - startTime;
-  const timePerStep = totalTime / 10;
-  const timePerShipPerStep = timePerStep / 40;
-  // restore
-  performance.now = realPerfNow;
-    
+    const timePerStep = totalTime / 10;
+    const timePerShipPerStep = timePerStep / 40;
+    // restore
+    performance.now = realPerfNow;
+
     console.log(`Performance metrics for 40 ships:`);
     console.log(`  Total time for 10 steps: ${totalTime.toFixed(2)}ms`);
     console.log(`  Time per step: ${timePerStep.toFixed(2)}ms`);
     console.log(`  Time per ship per step: ${timePerShipPerStep.toFixed(3)}ms`);
-    
+
     // Performance expectations: should complete efficiently
-  // With optimizations we expect low per-ship cost, but CI/dev machines running many suites
-  // in parallel can add overhead. Use a conservative threshold here to avoid flakes while
-  // preserving a performance guard. Lower this threshold when optimizing further.
-  expect(timePerShipPerStep).toBeLessThan(30.0); // Conservative performance threshold
+    // With optimizations we expect low per-ship cost, but CI/dev machines running many suites
+    // in parallel can add overhead. Use a conservative threshold here to avoid flakes while
+    // preserving a performance guard. Lower this threshold when optimizing further.
+    expect(timePerShipPerStep).toBeLessThan(30.0); // Conservative performance threshold
     expect(timePerStep).toBeLessThan(100); // Total step time should be reasonable
   });
 
@@ -98,7 +105,7 @@ describe('AI Search Performance Optimization', () => {
     // Verify basic AI behaviors are working - should at least find and target enemies
     expect(updatedRedShip?.targetId).toBe(updatedBlueShip?.id); // Should target enemy
     expect(updatedBlueShip?.targetId).toBe(updatedRedShip?.id); // Should target enemy
-    
+
     // Test passes if AI correctly identifies targets (the main optimization goal)
     // Movement behavior may be affected by other systems not fully mocked
   });

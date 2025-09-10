@@ -54,7 +54,7 @@ npm run typecheck
 
 ## Development Conventions
 
-*   **Code Style:** The project uses ESLint for code linting. The configuration can be found in `eslint.config.ts`.
-*   **Testing:** Unit tests are located in `test/vitest` and end-to-end tests are in `test/playwright`.
-*   **Modularity:** The codebase is organized into modules, with a clear separation of concerns. The core simulation logic is in `src/core`, the rendering logic is in `src/renderer`, and the configuration is in `src/config`.
-*   **Web Workers:** The project uses a web worker to run the physics simulation, which is a good practice for performance-intensive tasks.
+- **Code Style:** The project uses ESLint for code linting. The configuration can be found in `eslint.config.ts`.
+- **Testing:** Unit tests are located in `test/vitest` and end-to-end tests are in `test/playwright`.
+- **Modularity:** The codebase is organized into modules, with a clear separation of concerns. The core simulation logic is in `src/core`, the rendering logic is in `src/renderer`, and the configuration is in `src/config`.
+- **Web Workers:** The project uses a web worker to run the physics simulation, which is a good practice for performance-intensive tasks.

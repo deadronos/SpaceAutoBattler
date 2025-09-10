@@ -49,4 +49,3 @@ export const DefaultSimConfig: SimConfig = {
   seed: 'SPACE-001',
   useTimeBasedSeed: false,
 };
-

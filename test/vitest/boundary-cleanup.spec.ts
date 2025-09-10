@@ -16,13 +16,13 @@ describe('Boundary cleanup', () => {
     // Advance ticks until cleanup runs (simulateStep doesn't increment tick; we emulate ticks manually)
     // simulateStep uses state.tick to decide when to run cleanup, so increment tick manually
     state.tick = 1;
-    simulateStep(state, 1/60);
+    simulateStep(state, 1 / 60);
     // After first step (tick=1), cleanup interval 2 not yet hit
     expect(ship.pos.x).toBeLessThan(0);
 
     // Next tick should trigger cleanup
     state.tick = 2;
-    simulateStep(state, 1/60);
+    simulateStep(state, 1 / 60);
 
     // After cleanup, ship should be within bounds and velocity zero
     const bounds = state.simConfig.simBounds;
@@ -43,13 +43,21 @@ describe('Boundary cleanup', () => {
     state.behaviorConfig!.globalSettings.boundaryCleanupIntervalTicks = 2;
 
     // Add an out-of-bounds bullet object to state.bullets
-    state.bullets.push({ id: 9999, ownerShipId: 0, ownerTeam: 'red', pos: { x: -9999, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, ttl: 10, damage: 1 });
+    state.bullets.push({
+      id: 9999,
+      ownerShipId: 0,
+      ownerTeam: 'red',
+      pos: { x: -9999, y: 0, z: 0 },
+      vel: { x: 0, y: 0, z: 0 },
+      ttl: 10,
+      damage: 1,
+    });
     expect(state.bullets.length).toBeGreaterThan(0);
 
     state.tick = 2;
-    simulateStep(state, 1/60);
+    simulateStep(state, 1 / 60);
 
     // Bullet should be pruned
-    expect(state.bullets.find(b => b.id === 9999)).toBeUndefined();
+    expect(state.bullets.find((b) => b.id === 9999)).toBeUndefined();
   });
 });

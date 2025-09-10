@@ -26,37 +26,39 @@ export class BulletInstancer {
 
   constructor(scene: THREE.Scene, bulletsGroup: THREE.Group) {
     this.capacity = RendererConfig.instancing.bullets.initialCapacity;
-    
+
     // Create shared geometry and material for all bullet instances
     const geometry = new THREE.SphereGeometry(2.2, 8, 8);
     const material = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
-    
+
     // Create the instanced mesh
     this.instancedMesh = new THREE.InstancedMesh(geometry, material, this.capacity);
-  // InstancedMesh frustum culling doesn't account for per-instance transforms.
-  // Disable frustum culling so instances aren't incorrectly culled when their
-  // transforms move them outside the original geometry bounding sphere.
-  this.instancedMesh.frustumCulled = false;
-    
+    // InstancedMesh frustum culling doesn't account for per-instance transforms.
+    // Disable frustum culling so instances aren't incorrectly culled when their
+    // transforms move them outside the original geometry bounding sphere.
+    this.instancedMesh.frustumCulled = false;
+
     // Initialize free indices pool
     for (let i = 0; i < this.capacity; i++) {
       this.freeIndices.push(i);
     }
-    
+
     // Hide unused instances by setting them to zero scale
     this.hideUnusedInstances();
-  // Ensure the GPU sees the initial matrices we wrote during hideUnusedInstances
-  this.instancedMesh.instanceMatrix.needsUpdate = true;
-    
+    // Ensure the GPU sees the initial matrices we wrote during hideUnusedInstances
+    this.instancedMesh.instanceMatrix.needsUpdate = true;
+
     // Add to scene
     bulletsGroup.add(this.instancedMesh);
-    
+
     // Mark as ready and notify any listeners
     this.isReady = true;
     for (const cb of this.readyCallbacks) {
       try {
         cb();
-      } catch (_e) { void _e;logger.error('Error in BulletInstancer readiness callback', _e);
+      } catch (_e) {
+        void _e;
+        logger.error('Error in BulletInstancer readiness callback', _e);
       }
     }
     this.readyCallbacks.length = 0;
@@ -72,7 +74,9 @@ export class BulletInstancer {
     if (this.isReady) {
       try {
         cb();
-      } catch (_e) { void _e;logger.error('Error in BulletInstancer readiness callback', _e);
+      } catch (_e) {
+        void _e;
+        logger.error('Error in BulletInstancer readiness callback', _e);
       }
       return;
     }
@@ -104,7 +108,9 @@ export class BulletInstancer {
     // Check if we should warn about capacity usage
     const usage = this.usedCount / this.capacity;
     if (!this.hasWarned && usage > RendererConfig.instancing.bullets.warnThreshold) {
-      logger.warn(`Bullet instancer usage high: ${Math.round(usage * 100)}% (${this.usedCount}/${this.capacity})`);
+      logger.warn(
+        `Bullet instancer usage high: ${Math.round(usage * 100)}% (${this.usedCount}/${this.capacity})`,
+      );
       this.hasWarned = true;
     }
 
@@ -130,7 +136,10 @@ export class BulletInstancer {
     this.usedCount--;
 
     // Reset warning flag if usage is low again
-    if (this.hasWarned && this.usedCount / this.capacity < RendererConfig.instancing.bullets.warnThreshold * 0.8) {
+    if (
+      this.hasWarned &&
+      this.usedCount / this.capacity < RendererConfig.instancing.bullets.warnThreshold * 0.8
+    ) {
       this.hasWarned = false;
     }
 
@@ -148,23 +157,36 @@ export class BulletInstancer {
     // Defensive: derive an interpolated position if not provided. Many tests
     // construct bullets with only `pos` and omit `prevPos`; default to `pos`
     // to avoid runtime errors during rendering tests.
-    const pAny: any = interpolatedPos ?? new THREE.Vector3(bullet.pos.x, bullet.pos.y, bullet.pos.z);
+    const pAny: any =
+      interpolatedPos ?? new THREE.Vector3(bullet.pos.x, bullet.pos.y, bullet.pos.z);
     // Ensure numeric x/y/z are present — test mocks for THREE.Vector3 may not set them.
     if (!Number.isFinite(pAny.x) || !Number.isFinite(pAny.y) || !Number.isFinite(pAny.z)) {
-      if (bullet.pos && Number.isFinite(bullet.pos.x) && Number.isFinite(bullet.pos.y) && Number.isFinite(bullet.pos.z)) {
+      if (
+        bullet.pos &&
+        Number.isFinite(bullet.pos.x) &&
+        Number.isFinite(bullet.pos.y) &&
+        Number.isFinite(bullet.pos.z)
+      ) {
         pAny.x = bullet.pos.x;
         pAny.y = bullet.pos.y;
         pAny.z = bullet.pos.z;
       }
     }
     if (!pAny || !Number.isFinite(pAny.x) || !Number.isFinite(pAny.y) || !Number.isFinite(pAny.z)) {
-      try { logger.error('[INSTANCER_ERROR][BulletInstancer] non-finite bullet pos', { bulletId: bullet.id, pos: pAny }); } catch (_e) { void _e; }
+      try {
+        logger.error('[INSTANCER_ERROR][BulletInstancer] non-finite bullet pos', {
+          bulletId: bullet.id,
+          pos: pAny,
+        });
+      } catch (_e) {
+        void _e;
+      }
       return false;
     }
 
     // Set position and identity rotation/scale
-  // tempPosition.copy expects a THREE.Vector3-like object; our pAny may be a plain object, but copy mock accepts it in tests.
-  this.tempPosition.copy(pAny as any);
+    // tempPosition.copy expects a THREE.Vector3-like object; our pAny may be a plain object, but copy mock accepts it in tests.
+    this.tempPosition.copy(pAny as any);
     this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
     this.instancedMesh.setMatrixAt(instanceIndex, this.tempMatrix);
 
@@ -210,7 +232,7 @@ export class BulletInstancer {
   dispose(): void {
     this.instancedMesh.geometry.dispose();
     if (Array.isArray(this.instancedMesh.material)) {
-      this.instancedMesh.material.forEach(mat => mat.dispose());
+      this.instancedMesh.material.forEach((mat) => mat.dispose());
     } else {
       this.instancedMesh.material.dispose();
     }
@@ -225,11 +247,13 @@ export class BulletInstancer {
   private growCapacity(): boolean {
     const newCapacity = Math.min(
       Math.ceil(this.capacity * RendererConfig.instancing.bullets.growthFactor),
-      RendererConfig.instancing.bullets.maxCapacity
+      RendererConfig.instancing.bullets.maxCapacity,
     );
 
     if (newCapacity <= this.capacity) {
-      logger.error(`Cannot grow bullet instancer capacity beyond ${this.capacity} (max: ${RendererConfig.instancing.bullets.maxCapacity})`);
+      logger.error(
+        `Cannot grow bullet instancer capacity beyond ${this.capacity} (max: ${RendererConfig.instancing.bullets.maxCapacity})`,
+      );
       return false;
     }
 
@@ -239,11 +263,11 @@ export class BulletInstancer {
     const oldInstancedMesh = this.instancedMesh;
     const geometry = oldInstancedMesh.geometry;
     const material = oldInstancedMesh.material;
-    
-  this.instancedMesh = new THREE.InstancedMesh(geometry, material, newCapacity);
-  // Same reason as above: disable frustum culling for the new instanced mesh
-  this.instancedMesh.frustumCulled = false;
-    
+
+    this.instancedMesh = new THREE.InstancedMesh(geometry, material, newCapacity);
+    // Same reason as above: disable frustum culling for the new instanced mesh
+    this.instancedMesh.frustumCulled = false;
+
     // Copy existing matrices
     for (let i = 0; i < this.capacity; i++) {
       oldInstancedMesh.getMatrixAt(i, this.tempMatrix);
@@ -281,4 +305,3 @@ export class BulletInstancer {
     }
   }
 }
-

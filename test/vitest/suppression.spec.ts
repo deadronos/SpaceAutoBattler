@@ -18,15 +18,15 @@ describe('area suppression behavior', () => {
       lastTargetUpdate: state.time,
       behavior: 'area_suppression',
       suppressionCount: 4,
-      suppressionAngle: Math.PI / 16
+      suppressionAngle: Math.PI / 16,
     } as TurretState['aiState'];
     shooter.targetId = target.id;
 
     // Simulate one step - turrets should fire
-    simulateStep(state, 1/60);
+    simulateStep(state, 1 / 60);
 
     // Expect multiple bullets created by the shooter turret
-    const byShooter = state.bullets.filter(b => b.ownerShipId === shooter.id);
+    const byShooter = state.bullets.filter((b) => b.ownerShipId === shooter.id);
     expect(byShooter.length).toBeGreaterThanOrEqual(2);
   });
 });

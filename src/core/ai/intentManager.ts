@@ -36,7 +36,7 @@ export class IntentManager {
     intent: AIIntent,
     personality: AIPersonality,
     rng: RNG,
-    opts?: ComputeOptions
+    opts?: ComputeOptions,
   ): number {
     const duration = this.computeDuration(personality, rng, opts);
     if (!ship.aiState) ship.aiState = {} as any;

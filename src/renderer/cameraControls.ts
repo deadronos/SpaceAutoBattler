@@ -30,8 +30,11 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
     state.renderer.cameraRotation.y -= deltaX;
     state.renderer.cameraRotation.x -= deltaY;
 
-    const pitchLimit = (Math.PI / 2) - 0.001;
-    state.renderer.cameraRotation.x = Math.max(-pitchLimit, Math.min(pitchLimit, state.renderer.cameraRotation.x));
+    const pitchLimit = Math.PI / 2 - 0.001;
+    state.renderer.cameraRotation.x = Math.max(
+      -pitchLimit,
+      Math.min(pitchLimit, state.renderer.cameraRotation.x),
+    );
     if (state.renderer.cameraRotation.y > Math.PI) state.renderer.cameraRotation.y -= Math.PI * 2;
     if (state.renderer.cameraRotation.y < -Math.PI) state.renderer.cameraRotation.y += Math.PI * 2;
 
@@ -48,7 +51,7 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
     state.renderer.cameraDistance += zoomDirection * zoomSpeed;
     state.renderer.cameraDistance = Math.max(
       CameraConfig.cinematic.minDistance,
-      Math.min(CameraConfig.cinematic.maxDistance, state.renderer.cameraDistance)
+      Math.min(CameraConfig.cinematic.maxDistance, state.renderer.cameraDistance),
     );
   });
 

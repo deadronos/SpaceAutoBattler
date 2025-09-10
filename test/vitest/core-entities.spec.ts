@@ -4,7 +4,7 @@ import {
   resetState,
   spawnShip,
   spawnFleet,
-  simulateStep
+  simulateStep,
 } from '../../src/core/gameState.js';
 import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
 import type { GameState, Ship, ShipClass, Team } from '../../src/types/index.js';
@@ -56,7 +56,7 @@ function createMockShip(overrides = {}) {
     orientation: {
       pitch: 0,
       yaw: 0,
-      roll: 0
+      roll: 0,
     },
     dir: 0, // legacy field for backward compatibility
     targetId: null,
@@ -150,10 +150,12 @@ describe('Entity Mechanics', () => {
       expect(ship.maxShield).toBeGreaterThan(0);
       expect(ship.speed).toBeGreaterThan(0);
       expect(ship.turnRate).toBeGreaterThan(0);
-  // Derive expected turret count from config so tests remain valid if config changes
-  const fighterConfig = getShipClassConfig('fighter');
-  const expectedFighterTurrets = Array.isArray(fighterConfig.turrets) ? fighterConfig.turrets.length : 0;
-  expect(ship.turrets).toHaveLength(expectedFighterTurrets);
+      // Derive expected turret count from config so tests remain valid if config changes
+      const fighterConfig = getShipClassConfig('fighter');
+      const expectedFighterTurrets = Array.isArray(fighterConfig.turrets)
+        ? fighterConfig.turrets.length
+        : 0;
+      expect(ship.turrets).toHaveLength(expectedFighterTurrets);
       expect(ship.kills).toBe(0);
       expect(ship.level.level).toBe(1);
     });
@@ -228,7 +230,7 @@ describe('Entity Mechanics', () => {
       spawnFleet(gameState, 'red', 5);
 
       expect(gameState.ships).toHaveLength(5);
-      gameState.ships.forEach(ship => {
+      gameState.ships.forEach((ship) => {
         expect(ship.team).toBe('red');
       });
     });
@@ -237,7 +239,7 @@ describe('Entity Mechanics', () => {
       spawnFleet(gameState, 'blue', 10);
 
       expect(gameState.ships).toHaveLength(10);
-      const shipClasses = gameState.ships.map(ship => ship.class);
+      const shipClasses = gameState.ships.map((ship) => ship.class);
       const uniqueClasses = new Set(shipClasses);
 
       // Should have some variety (not all the same class)
@@ -249,7 +251,7 @@ describe('Entity Mechanics', () => {
 
       const validClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
 
-      gameState.ships.forEach(ship => {
+      gameState.ships.forEach((ship) => {
         expect(validClasses).toContain(ship.class);
       });
     });
@@ -259,7 +261,7 @@ describe('Entity Mechanics', () => {
     test('should have balanced stats across ship classes', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
 
-      shipClasses.forEach(shipClass => {
+      shipClasses.forEach((shipClass) => {
         const ship = spawnShip(gameState, 'red', shipClass);
         const config = getShipClassConfig(shipClass);
 
@@ -287,7 +289,7 @@ describe('Entity Mechanics', () => {
 
     test('should have progressive stat increases', () => {
       const shipClasses: ShipClass[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-      const ships = shipClasses.map(cls => spawnShip(gameState, 'red', cls));
+      const ships = shipClasses.map((cls) => spawnShip(gameState, 'red', cls));
 
       // Health should increase progressively
       for (let i = 1; i < ships.length; i++) {
@@ -337,7 +339,7 @@ describe('Entity Mechanics', () => {
     test('should have unique turret IDs', () => {
       const ship = spawnShip(gameState, 'red', 'destroyer'); // Has 4 turrets
 
-      const turretIds = ship.turrets.map(t => t.id);
+      const turretIds = ship.turrets.map((t) => t.id);
       const uniqueIds = new Set(turretIds);
 
       expect(uniqueIds.size).toBe(ship.turrets.length);
@@ -346,7 +348,7 @@ describe('Entity Mechanics', () => {
     test('should initialize turret AI state', () => {
       const ship = spawnShip(gameState, 'red', 'fighter');
 
-      ship.turrets.forEach(turret => {
+      ship.turrets.forEach((turret) => {
         expect(turret.cooldownLeft).toBe(0);
         // AI state should be undefined initially (will be set by AI controller)
         expect(turret.aiState).toBeUndefined();
@@ -379,7 +381,8 @@ describe('Entity Mechanics', () => {
       // Run simulation
       const dt = 1 / gameState.simConfig.tickRate;
       const steps = Math.max(1, Math.floor(1 * (gameState.simConfig?.tickRate ?? 60)));
-      for (let i = 0; i < steps; i++) { // ~1 second
+      for (let i = 0; i < steps; i++) {
+        // ~1 second
         simulateStep(gameState, dt);
       }
 
@@ -411,7 +414,7 @@ describe('Entity Mechanics', () => {
       spawnFleet(gameState, 'red', largeCount);
 
       expect(gameState.ships).toHaveLength(largeCount);
-      gameState.ships.forEach(ship => {
+      gameState.ships.forEach((ship) => {
         expect(ship.team).toBe('red');
       });
     });

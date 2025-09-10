@@ -10,7 +10,6 @@ This document consolidates MDN-backed Canvas API guidance and tailored recommend
 - Use `Path2D` for reusable complex shapes.
 - Use `requestAnimationFrame()` for animations.
 
-
 ## 1. API Reference (short)
 
 - getContext(type, attributes)
@@ -24,7 +23,6 @@ This document consolidates MDN-backed Canvas API guidance and tailored recommend
   - Pixel access: `getImageData()`, `putImageData()`
   - State & transforms: `save()`, `restore()`, `setTransform()`, `getTransform()`, `reset()`, `translate()`, `scale()`, `rotate()`
   - Text: `fillText()`, `strokeText()`, `measureText()`
-
 
 ## 2. Performance best practices (tailored)
 
@@ -66,26 +64,21 @@ function setupHiDPI(canvas, widthCss, heightCss) {
 
 - Avoid `shadowBlur` and heavy filters on many objects — pre-render glow/shadow into a sprite or cached canvas and re-use it.
 
-
 ## 3. Offscreen-worker pattern (svg rasterization example)
 
 - Main thread:
-
   - `const off = canvas.transferControlToOffscreen(); worker.postMessage({canvas: off}, [off]);`
 
   - Or for rasterization-only worker: `worker.postMessage({svgText, width, height});` and receive `ImageBitmap`.
 
 - Worker:
-
   - Use `OffscreenCanvas` and `createImageBitmap()` for efficient rasterization and transferring back to main thread.
-
 
 ## 4. Suggested repo additions (code + tests)
 
 - `src/render/canvasUtils.ts` — helpers: `setupHiDPI`, `createWorkerRasterizer`, `poolCanvas`, `drawImageSafe`.
 - `src/assets/svgWorker.ts` — worker-side rasterizer that accepts SVG text and returns `ImageBitmap` via `postMessage`.
 - Tests: small Playwright test that loads a page, draws to a canvas, and asserts non-empty pixels via screenshot.
-
 
 ## 5. Quick reference snippets
 
@@ -107,7 +100,6 @@ async function drawSprite(ctx, src) {
 const shipPath = new Path2D('M10 10 L20 10 L15 20 Z');
 ctx.fill(shipPath);
 ```
-
 
 ## 6. Accessibility & testing
 

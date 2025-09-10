@@ -22,7 +22,10 @@ vi.mock('three', async () => {
   class WebGLRendererStub {
     domElement: HTMLCanvasElement;
     gl: { clearDepth: () => void };
-    constructor(_opts?: unknown) { this.domElement = document.createElement('canvas'); this.gl = { clearDepth: () => {} }; }
+    constructor(_opts?: unknown) {
+      this.domElement = document.createElement('canvas');
+      this.gl = { clearDepth: () => {} };
+    }
     setPixelRatio(_v?: number) {}
     setSize(_w?: number, _h?: number) {}
     render() {}
@@ -38,8 +41,12 @@ vi.mock('../../src/renderer/shipInstancer', () => {
   const readyCallbacks: ReadyCallback[] = [];
   const obj: ShipInstancerMock = {
     _isReady: false,
-    isReady() { return obj._isReady; },
-    onReady(cb: ReadyCallback) { readyCallbacks.push(cb); },
+    isReady() {
+      return obj._isReady;
+    },
+    onReady(cb: ReadyCallback) {
+      readyCallbacks.push(cb);
+    },
     // minimal API used by renderer
     allocate: () => false,
     free: () => {},
@@ -48,7 +55,10 @@ vi.mock('../../src/renderer/shipInstancer', () => {
     sync: () => {},
   };
   // expose for test code to manipulate without referencing outer-scope lets
-  const globals = globalThis as unknown as { __SHIP_MOCK?: ShipInstancerMock; __SHIP_READY_CALLBACKS?: ReadyCallback[] };
+  const globals = globalThis as unknown as {
+    __SHIP_MOCK?: ShipInstancerMock;
+    __SHIP_READY_CALLBACKS?: ReadyCallback[];
+  };
   globals.__SHIP_MOCK = obj;
   globals.__SHIP_READY_CALLBACKS = readyCallbacks;
   return { shipInstancer: obj };
@@ -59,7 +69,10 @@ import { createThreeRenderer } from '../../src/renderer/threeRenderer';
 describe('threeRenderer instancing readiness', () => {
   beforeEach(() => {
     // reset mocked state (use globals set by the mock factory)
-    const globals = globalThis as unknown as { __SHIP_MOCK?: ShipInstancerMock; __SHIP_READY_CALLBACKS?: ReadyCallback[] };
+    const globals = globalThis as unknown as {
+      __SHIP_MOCK?: ShipInstancerMock;
+      __SHIP_READY_CALLBACKS?: ReadyCallback[];
+    };
     globals.__SHIP_READY_CALLBACKS = globals.__SHIP_READY_CALLBACKS || [];
     globals.__SHIP_READY_CALLBACKS.length = 0;
     if (globals.__SHIP_MOCK) globals.__SHIP_MOCK._isReady = false;
@@ -68,22 +81,39 @@ describe('threeRenderer instancing readiness', () => {
   });
 
   it('flips useShipInstancing when shipInstancer onReady is fired', () => {
-    type FakeState = { ships: unknown[]; bullets: unknown[]; time: number; simConfig: { simBounds: { width: number; height: number; depth: number } }; visual: Record<string, unknown> };
-    const fakeState: FakeState = { ships: [], bullets: [], time: 0, simConfig: { simBounds: { width: 100, height: 100, depth: 100 } }, visual: {} };
+    type FakeState = {
+      ships: unknown[];
+      bullets: unknown[];
+      time: number;
+      simConfig: { simBounds: { width: number; height: number; depth: number } };
+      visual: Record<string, unknown>;
+    };
+    const fakeState: FakeState = {
+      ships: [],
+      bullets: [],
+      time: 0,
+      simConfig: { simBounds: { width: 100, height: 100, depth: 100 } },
+      visual: {},
+    };
     const canvas = document.createElement('canvas');
-  const renderer = createThreeRenderer(fakeState as unknown as GameState, canvas);
+    const renderer = createThreeRenderer(fakeState as unknown as GameState, canvas);
 
     // initial flag
-    const getUseFn = (renderer as unknown as { getUseShipInstancing?: () => boolean }).getUseShipInstancing;
+    const getUseFn = (renderer as unknown as { getUseShipInstancing?: () => boolean })
+      .getUseShipInstancing;
     const before = getUseFn ? getUseFn() : undefined;
 
     // simulate shipInstancer becoming ready
     // set mocked internal state then call callbacks
-    const globals = globalThis as unknown as { __SHIP_MOCK?: ShipInstancerMock; __SHIP_READY_CALLBACKS?: ReadyCallback[] };
+    const globals = globalThis as unknown as {
+      __SHIP_MOCK?: ShipInstancerMock;
+      __SHIP_READY_CALLBACKS?: ReadyCallback[];
+    };
     if (globals.__SHIP_MOCK) globals.__SHIP_MOCK._isReady = true;
-    for (const cb of (globals.__SHIP_READY_CALLBACKS ?? [])) cb();
+    for (const cb of globals.__SHIP_READY_CALLBACKS ?? []) cb();
 
-    const getUseFnAfter = (renderer as unknown as { getUseShipInstancing?: () => boolean }).getUseShipInstancing;
+    const getUseFnAfter = (renderer as unknown as { getUseShipInstancing?: () => boolean })
+      .getUseShipInstancing;
     const after = getUseFnAfter ? getUseFnAfter() : undefined;
     expect(before).toBeDefined();
     expect(after).toBeDefined();

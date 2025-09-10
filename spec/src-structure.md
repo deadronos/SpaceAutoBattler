@@ -28,9 +28,11 @@ src/
 ### Entry Points
 
 #### `main.ts`
+
 **Purpose**: Main application entry point and game loop coordinator
 
 **Responsibilities**:
+
 - Initialize the application and load required assets
 - Set up the main game loop (simulation + rendering)
 - Manage application lifecycle (loading, running, paused states)
@@ -38,15 +40,18 @@ src/
 - Handle user input and UI interactions
 
 **Key Functions**:
+
 - `initializeGame()` - Set up Three.js scene, load configs, initialize workers
 - `gameLoop()` - Main update loop at 60 FPS
 - `startSimulation()` / `pauseSimulation()` - Control simulation state
 - `spawnFleet()` - Manual ship spawning for testing
 
 #### `simWorker.ts`
+
 **Purpose**: Web Worker for deterministic simulation processing
 
 **Responsibilities**:
+
 - Run physics simulation and AI logic in separate thread
 - Maintain deterministic simulation state using seeded RNG
 - Process ship AI, turret targeting, bullet physics
@@ -54,6 +59,7 @@ src/
 - Communicate simulation updates back to main thread
 
 **Key Features**:
+
 - Isolated from rendering thread for consistent 60 TPS
 - Uses seeded RNG for deterministic replay capability
 - Processes AI decision-making and physics calculations
@@ -63,9 +69,11 @@ src/
 The configuration system provides a centralized, data-driven approach to game balance and behavior:
 
 #### `behaviorConfig.ts`
+
 **Purpose**: AI behavior and personality configuration
 
 **Contains**:
+
 - `AIPersonality` definitions for each ship class
 - Team modifiers for red/blue team behavior variations
 - Formation configurations and spacing
@@ -73,66 +81,80 @@ The configuration system provides a centralized, data-driven approach to game ba
 - Turret AI settings and targeting behavior
 
 **Key Exports**:
+
 - `DEFAULT_PERSONALITIES` - AI traits per ship class
 - `DEFAULT_FORMATIONS` - Fleet formation patterns
 - `getEffectivePersonality()` - Apply team modifiers to base personality
 
 #### `entitiesConfig.ts`
+
 **Purpose**: Ship and turret entity definitions
 
 **Contains**:
+
 - Ship class configurations (health, armor, speed, turrets)
 - Turret configurations (damage, range, cooldown)
 - Ship progression stats and capabilities
 - Carrier fighter spawning parameters
 
 **Key Exports**:
+
 - `SHIP_CLASS_CONFIGS` - Complete ship definitions
 - `TURRET_CONFIGS` - Turret specifications
 - `getShipClassConfig()` / `getTurretConfig()` - Access functions
 
 #### `progression.ts`
+
 **Purpose**: XP and leveling system configuration
 
 **Contains**:
+
 - XP calculation functions and rates
 - Level progression curves
 - Stat scaling formulas
 - Level-up bonuses and multipliers
 
 **Key Exports**:
+
 - `XP_PER_DAMAGE` / `XP_PER_KILL` - XP reward rates
 - `nextLevelXp()` - Calculate XP requirements
 - `applyLevelUps()` - Apply level-based stat bonuses
 
 #### `gameConfig.ts`
+
 **Purpose**: Global game parameters and constants
 
 **Contains**:
+
 - Simulation boundaries and world size
 - Global timing constants (FPS, TPS)
 - Game rules and constraints
 - Default game state parameters
 
 #### `rendererConfig.ts`
+
 **Purpose**: Three.js rendering configuration
 
 **Contains**:
+
 - Camera settings and viewport configuration
 - Visual effects parameters
 - Asset loading and management settings
 - Performance optimization settings
 
 #### `simConfig.ts`
+
 **Purpose**: Simulation engine configuration
 
 **Contains**:
+
 - Physics simulation parameters
 - AI update frequencies
 - Collision detection settings
 - Performance tuning parameters
 
 #### `assets/` - Asset Configuration
+
 **Purpose**: Game asset definitions and loading configuration
 
 **Structure**:
@@ -495,6 +517,5 @@ This specification should be referenced by:
 - `/copilot-instructions.md` - AI coding assistant rules
 - `/test/vitest/README.md` - Test suite documentation
 - Development workflow documentation
-
 
 See also: docs/renderer-pipeline.md for the renderer data flow.

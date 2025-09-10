@@ -6,7 +6,7 @@ describe('FileWatcher content-length fallback', () => {
 
     const response = {
       ok: true,
-      headers: { get: (k: string) => (k === 'content-length' ? '12345' : null) }
+      headers: { get: (k: string) => (k === 'content-length' ? '12345' : null) },
     };
 
     const origFetch = (globalThis as any).fetch;
@@ -17,7 +17,9 @@ describe('FileWatcher content-length fallback', () => {
     const watcher = getFileWatcher();
 
     let event: any = null;
-    watcher.watch(url, (p: string, change: any) => { event = { p, change }; });
+    watcher.watch(url, (p: string, change: any) => {
+      event = { p, change };
+    });
 
     // checkAllFiles should call into HEAD and (since no last-modified/etag) fall back
     await watcher.checkAllFiles();

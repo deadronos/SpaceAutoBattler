@@ -3,7 +3,9 @@
 
 import { hasProcess, envVar } from './env';
 
-export let DEBUG_ENABLED = (typeof window !== 'undefined' && (window as unknown as { __DEBUG__?: boolean }).__DEBUG__ === true) ||
+export let DEBUG_ENABLED =
+  (typeof window !== 'undefined' &&
+    (window as unknown as { __DEBUG__?: boolean }).__DEBUG__ === true) ||
   (hasProcess && envVar('DEBUG', '') === 'true');
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
@@ -76,4 +78,3 @@ export function error(...args: unknown[]) {
 }
 
 export default { debug, debugLazy, debugIf, info, warn, error, setDebug, setLevel };
-

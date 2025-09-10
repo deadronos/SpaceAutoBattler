@@ -5,10 +5,16 @@ import { getFileWatcher } from '../../../src/utils/fileWatcher';
 describe('FileWatcher one-shot like behavior', () => {
   type FetchType = (...args: any[]) => Promise<any>;
   const origFetch = (global as unknown as { fetch?: FetchType }).fetch;
-  afterEach(() => { (global as unknown as { fetch?: FetchType }).fetch = origFetch; });
+  afterEach(() => {
+    (global as unknown as { fetch?: FetchType }).fetch = origFetch;
+  });
 
   it('quick check flow does not throw and calls callback when ok', async () => {
-    (global as any).fetch = async () => ({ ok: true, headers: { get: (k: string) => (k === 'last-modified' ? new Date().toUTCString() : null) } } as any);
+    (global as any).fetch = async () =>
+      ({
+        ok: true,
+        headers: { get: (k: string) => (k === 'last-modified' ? new Date().toUTCString() : null) },
+      }) as any;
 
     const fw = getFileWatcher();
     const events: string[] = [];

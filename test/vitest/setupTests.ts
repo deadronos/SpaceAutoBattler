@@ -75,14 +75,47 @@ export const mockThree = {
       this.y = y;
       this.z = z;
     }
-    clone() { return new Vector3(this.x, this.y, this.z); }
-    copy(v: Vector3) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }
-    set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; return this; }
-    add(v: Vector3) { this.x += v.x; this.y += v.y; this.z += v.z; return this; }
-    sub(v: Vector3) { this.x -= v.x; this.y -= v.y; this.z -= v.z; return this; }
-    multiplyScalar(s: number) { this.x *= s; this.y *= s; this.z *= s; return this; }
-    length() { return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z); }
-    normalize() { const l = this.length(); if (l > 0) this.multiplyScalar(1 / l); return this; }
+    clone() {
+      return new Vector3(this.x, this.y, this.z);
+    }
+    copy(v: Vector3) {
+      this.x = v.x;
+      this.y = v.y;
+      this.z = v.z;
+      return this;
+    }
+    set(x: number, y: number, z: number) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      return this;
+    }
+    add(v: Vector3) {
+      this.x += v.x;
+      this.y += v.y;
+      this.z += v.z;
+      return this;
+    }
+    sub(v: Vector3) {
+      this.x -= v.x;
+      this.y -= v.y;
+      this.z -= v.z;
+      return this;
+    }
+    multiplyScalar(s: number) {
+      this.x *= s;
+      this.y *= s;
+      this.z *= s;
+      return this;
+    }
+    length() {
+      return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+    normalize() {
+      const l = this.length();
+      if (l > 0) this.multiplyScalar(1 / l);
+      return this;
+    }
   },
   Matrix4: class Matrix4 {
     elements: number[] = new Array(16).fill(0);
@@ -137,7 +170,9 @@ beforeAll(() => {
 
   // Mock requestAnimationFrame
   // Cast to any to avoid NodeJS Timeout vs number return-type mismatch in tests
-  global.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => (setTimeout(cb, 16) as unknown as number)) as any;
+  global.requestAnimationFrame = vi.fn(
+    (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number,
+  ) as any;
   global.cancelAnimationFrame = vi.fn() as any;
 
   // Mock console methods to reduce noise in tests
@@ -162,8 +197,10 @@ beforeAll(() => {
     text: async () => '',
     json: async () => ({}),
     arrayBuffer: async () => new ArrayBuffer(0),
-    blob: async () => ({} as any),
-    clone() { return this; }
+    blob: async () => ({}) as any,
+    clone() {
+      return this;
+    },
   };
 
   (global as any).fetch = vi.fn(async (url: any, opts?: any) => {
@@ -210,8 +247,14 @@ export function createMockGameState(overrides = {}) {
   };
 
   // Initialize spatial grid and optimizer for tests
-  const spatialGrid = new SpatialGrid(baseState.simConfig.spatialGrid.cellSize, baseState.simConfig.simBounds);
-  const aggressiveSpatialOptimizer = new AggressiveSpatialOptimizer(spatialGrid, baseState.simConfig.spatialGrid.cellSize);
+  const spatialGrid = new SpatialGrid(
+    baseState.simConfig.spatialGrid.cellSize,
+    baseState.simConfig.simBounds,
+  );
+  const aggressiveSpatialOptimizer = new AggressiveSpatialOptimizer(
+    spatialGrid,
+    baseState.simConfig.spatialGrid.cellSize,
+  );
   const aiController = new AIController(baseState, aggressiveSpatialOptimizer);
 
   // Assign the created AIController to the baseState
@@ -232,16 +275,16 @@ export function createMockShip(overrides = {}) {
     team: 'red' as const,
     class: 'fighter' as const,
     pos: { ...TEST_DEFAULTS.defaultPos },
-  // prevPos used by renderer interpolation; keep in sync with pos for tests
-  prevPos: { ...TEST_DEFAULTS.defaultPos },
+    // prevPos used by renderer interpolation; keep in sync with pos for tests
+    prevPos: { ...TEST_DEFAULTS.defaultPos },
     vel: { x: 0, y: 0, z: 0 },
     orientation: {
       pitch: 0,
       yaw: 0,
       roll: 0,
     },
-  // prevOrientation used by renderer interpolation
-  prevOrientation: { pitch: 0, yaw: 0, roll: 0 },
+    // prevOrientation used by renderer interpolation
+    prevOrientation: { pitch: 0, yaw: 0, roll: 0 },
     dir: 0,
     targetId: null,
     health: fighterCfg.baseHealth,
@@ -262,14 +305,15 @@ export function createMockShip(overrides = {}) {
 
 export function createMockBullet(overrides = {}) {
   // Derive default bullet damage from the fighter turret config when available
-  const fighterTurretDamage = (TURRET_CONFIGS['fighter-cannon'] && TURRET_CONFIGS['fighter-cannon'].damage) || 1;
+  const fighterTurretDamage =
+    (TURRET_CONFIGS['fighter-cannon'] && TURRET_CONFIGS['fighter-cannon'].damage) || 1;
   const baseBullet = {
     id: 1,
     ownerShipId: 1,
     ownerTeam: 'red' as const,
     pos: { ...TEST_DEFAULTS.defaultPos },
-  // prevPos used by renderer interpolation
-  prevPos: { ...TEST_DEFAULTS.defaultPos },
+    // prevPos used by renderer interpolation
+    prevPos: { ...TEST_DEFAULTS.defaultPos },
     vel: { x: TEST_DEFAULTS.defaultVelX, y: 0, z: 0 },
     ttl: 3,
     damage: fighterTurretDamage,
@@ -282,13 +326,19 @@ export function createMockBullet(overrides = {}) {
 // This mirrors the main loop: call AI update, then advance time/tick and
 // optionally rebuild the spatial grid for the next frame. Use this from
 // tests to avoid brittle timing assumptions about when `state.tick` changes.
-export function stepControllerFrame(state: GameState, aiController?: InstanceType<typeof AIController>, dt?: number): void {
+export function stepControllerFrame(
+  state: GameState,
+  aiController?: InstanceType<typeof AIController>,
+  dt?: number,
+): void {
   // Default dt derives from the state's simConfig.tickRate so tests follow the
   // configured simulation tick rate (tests previously assumed 60Hz).
   if (dt === undefined) dt = 1 / (state.simConfig?.tickRate ?? 60);
   try {
     if (aiController) aiController.updateAllShips(dt);
-  } catch { /* ignore for test resilience */ }
+  } catch {
+    /* ignore for test resilience */
+  }
 
   // Advance time and tick like the main loop does after simulateStep
   state.time += dt * (state.speedMultiplier ?? 1);
@@ -297,18 +347,30 @@ export function stepControllerFrame(state: GameState, aiController?: InstanceTyp
   // Rebuild spatial index for deterministic tests (main loop does this after AI)
   try {
     if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
-      state.spatialGrid.rebuild(state.ships.map(s => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })));
+      state.spatialGrid.rebuild(
+        state.ships.map((s) => ({ id: s.id, pos: s.pos, radius: 16, team: s.team })),
+      );
     }
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 }
 
 // Backwards-compatible alias used across some tests
 export function simulateStep(state: GameState, dt?: number) {
-  return stepControllerFrame(state, state.aiController as unknown as InstanceType<typeof AIController>, dt);
+  return stepControllerFrame(
+    state,
+    state.aiController as unknown as InstanceType<typeof AIController>,
+    dt,
+  );
 }
 
 // Pool testing utilities
-export function poolAssert(pool: { allocated: Set<unknown>; freeList: unknown[] }, expectedAllocated: number, expectedFree: number): void {
+export function poolAssert(
+  pool: { allocated: Set<unknown>; freeList: unknown[] },
+  expectedAllocated: number,
+  expectedFree: number,
+): void {
   expect(pool.allocated.size).toBe(expectedAllocated);
   expect(pool.freeList.length).toBe(expectedFree);
 }
@@ -322,7 +384,7 @@ export function createSeededRNG(seed: string) {
 // Config testing utilities
 export type ConfigLike = { [k: string]: unknown };
 export function validateConfigStructure(config: ConfigLike, expectedKeys: string[]) {
-  expectedKeys.forEach(key => {
+  expectedKeys.forEach((key) => {
     expect(config).toHaveProperty(key);
   });
 }
@@ -364,16 +426,29 @@ export function simulateDamage(ship: ShipLike, damage: number): number {
 }
 
 // Boundary testing utilities
-export function testBoundaryBehavior(position: { x: number; y: number; z: number }, bounds: { width: number; height: number; depth: number }, behavior: string) {
+export function testBoundaryBehavior(
+  position: { x: number; y: number; z: number },
+  bounds: { width: number; height: number; depth: number },
+  behavior: string,
+) {
   const result = { ...position };
 
   if (behavior === 'bounce') {
-    if (result.x < 0) { result.x = 0; }
-    else if (result.x > bounds.width) { result.x = bounds.width; }
-    if (result.y < 0) { result.y = 0; }
-    else if (result.y > bounds.height) { result.y = bounds.height; }
-    if (result.z < 0) { result.z = 0; }
-    else if (result.z > bounds.depth) { result.z = bounds.depth; }
+    if (result.x < 0) {
+      result.x = 0;
+    } else if (result.x > bounds.width) {
+      result.x = bounds.width;
+    }
+    if (result.y < 0) {
+      result.y = 0;
+    } else if (result.y > bounds.height) {
+      result.y = bounds.height;
+    }
+    if (result.z < 0) {
+      result.z = 0;
+    } else if (result.z > bounds.depth) {
+      result.z = bounds.depth;
+    }
   } else if (behavior === 'wrap') {
     if (result.x < 0) result.x += bounds.width;
     else if (result.x > bounds.width) result.x -= bounds.width;
@@ -418,13 +493,14 @@ export const TEST_DEFAULTS = {
   // Test-only: access behavior config with a minimal lint suppression so tests can
   // follow changes to DEFAULT_BEHAVIOR_CONFIG without importing deep types.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  preferredRange: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.preferredRange ?? 300,
+  preferredRange: (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.preferredRange ?? 300,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  closeRangeMultiplier: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.closeRangeMultiplier ?? 0.6,
+  closeRangeMultiplier: (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.closeRangeMultiplier ?? 0.6,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mediumRangeMultiplier: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.mediumRangeMultiplier ?? 1.0,
+  mediumRangeMultiplier: (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.mediumRangeMultiplier ?? 1.0,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  boundarySafetyMargin: ((DEFAULT_BEHAVIOR_CONFIG as unknown) as any)?.globalSettings?.boundarySafetyMargin ?? 50,
+  boundarySafetyMargin:
+    (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.globalSettings?.boundarySafetyMargin ?? 50,
 
   // Renderer / DOM sizes used in integration tests
   rendererDom: { width: 800, height: 600 },
@@ -433,12 +509,20 @@ export const TEST_DEFAULTS = {
   movementThreshold: 10,
 };
 
-export function getTestDtFromState(state: GameState | { simConfig?: { tickRate?: number } } = { simConfig: DefaultSimConfig }) {
+export function getTestDtFromState(
+  state: GameState | { simConfig?: { tickRate?: number } } = { simConfig: DefaultSimConfig },
+) {
   const rate = state?.simConfig?.tickRate ?? TEST_DEFAULTS.tickRate;
   return 1 / rate;
 }
 
-export function getSimBoundsFromState(state: GameState | { simConfig?: { simBounds?: { width: number; height: number; depth: number } } } = { simConfig: DefaultSimConfig }) {
+export function getSimBoundsFromState(
+  state:
+    | GameState
+    | { simConfig?: { simBounds?: { width: number; height: number; depth: number } } } = {
+    simConfig: DefaultSimConfig,
+  },
+) {
   return state?.simConfig?.simBounds ?? TEST_DEFAULTS.simBounds;
 }
 

@@ -29,7 +29,11 @@ describe('ShipInstancer integration: prototype registration and sync', () => {
     const allocated: number[] = [];
     const target = 180; // force at least a couple growths
     for (let i = 0; i < target; i++) {
-      const ok = shipInstancer.allocate(1000 + i, 'integration-test-ship', i % 2 === 0 ? 'red' : 'blue');
+      const ok = shipInstancer.allocate(
+        1000 + i,
+        'integration-test-ship',
+        i % 2 === 0 ? 'red' : 'blue',
+      );
       if (!ok) break;
       allocated.push(1000 + i);
     }
@@ -39,7 +43,12 @@ describe('ShipInstancer integration: prototype registration and sync', () => {
     // Update transforms for all allocated
     const q = new THREE.Quaternion();
     for (const id of allocated) {
-      const updated = shipInstancer.updateTransform(id, { x: id % 10, y: (id % 7) * 0.5, z: (id % 5) * 0.25 }, q, 1);
+      const updated = shipInstancer.updateTransform(
+        id,
+        { x: id % 10, y: (id % 7) * 0.5, z: (id % 5) * 0.25 },
+        q,
+        1,
+      );
       expect(updated).toBe(true);
     }
 
