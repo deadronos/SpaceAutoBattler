@@ -32,6 +32,8 @@ export default defineConfig([
     },
     plugins: { '@typescript-eslint': tsPlugin as any },
     rules: {
+      // Turn off the core ESLint rule in favor of the TypeScript-aware one
+      'no-unused-vars': 'off',
       // basic safe defaults; project can opt-in to stricter rules later
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -76,6 +78,26 @@ export default defineConfig([
         'error',
         { object: 'Math', property: 'random', message: 'Use GameState.rng.next() for determinism' },
       ],
+    },
+  },
+  // Worker and bundler-specific files often rely on globals like `process`, `require`,
+  // or `__webpack_public_path__`. Declare those as readonly for matching files to
+  // avoid flooding the lint report with false positives (we don't change runtime
+  // semantics here, only inform ESLint about available globals).
+  {
+    files: [
+      'src/simWorker.ts',
+      'src/**/svgRasterWorker*.ts',
+      'src/**/worker*.ts',
+      'src/utils/env.ts',
+    ],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        require: 'readonly',
+        __webpack_public_path__: 'readonly',
+        self: 'readonly',
+      },
     },
   },
   { files: ['**/*.json'], plugins: { json }, language: 'json/json', extends: ['json/recommended'] },

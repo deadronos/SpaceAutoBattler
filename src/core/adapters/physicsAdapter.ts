@@ -78,33 +78,33 @@ export interface PhysicsAdapter {
   world?: unknown;
 
   // Core simulation
-  step(dt: number, opts?: { iterations?: number; substeps?: number }): void;
+  step(_dt: number, _opts?: { iterations?: number; substeps?: number }): void;
   getLastStepInfo(): { dt: number; iterations: number; substeps: number };
   dispose(): void;
 
   // Collision and overlap queries
-  raycast(from: Vector3, to: Vector3, mask?: number): RaycastHit | null;
+  raycast(_from: Vector3, _to: Vector3, _mask?: number): RaycastHit | null;
   sweepSphere(
-    center: Vector3,
-    radius: number,
-    dir: Vector3,
-    maxDist: number,
-    mask?: number,
+    _center: Vector3,
+    _radius: number,
+    _dir: Vector3,
+    _maxDist: number,
+    _mask?: number,
   ): SweepHit | null;
-  overlapAABB(aabb: AABB, mask?: number): EntityId[];
+  overlapAABB(_aabb: AABB, _mask?: number): EntityId[];
 
   // Body management
-  addBody(entityId: EntityId, props: BodyProps): void;
-  removeBody(entityId: EntityId): void;
-  setBodyState(entityId: EntityId, state: Partial<BodyState>): void;
-  getBodyState(entityId: EntityId): BodyState | null;
+  addBody(_entityId: EntityId, _props: BodyProps): void;
+  removeBody(_entityId: EntityId): void;
+  setBodyState(_entityId: EntityId, _state: Partial<BodyState>): void;
+  getBodyState(_entityId: EntityId): BodyState | null;
 
   // Forces and impulses
-  applyImpulse(entityId: EntityId, impulse: Vector3): void;
-  applyForce(entityId: EntityId, force: Vector3): void;
+  applyImpulse(_entityId: EntityId, _impulse: Vector3): void;
+  applyForce(_entityId: EntityId, _force: Vector3): void;
 
   // Events
-  on(event: 'collision' | 'sleep' | 'wake', handler: (e: PhysicsEvent) => void): Disposable;
+  on(_event: 'collision' | 'sleep' | 'wake', _handler: (e: PhysicsEvent) => void): Disposable;
 }
 
 /**
