@@ -24,7 +24,7 @@ import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
-import { DEBUG_AI } from '../utils/env';
+import { DEBUG_AI } from '../utils/env.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
 
 export function createInitialState(seed?: string): GameState {
@@ -126,7 +126,9 @@ function ensureAIState(s: Ship) {
     s.aiState = {
       currentIntent: 'idle',
       intentEndTime: 0,
-      lastIntentReevaluation: 0,
+      // Initialize to a very negative value so the first controller update
+      // always triggers an intent reevaluation (now - lastIntentReevaluation >= rate)
+      lastIntentReevaluation: -1e9,
       preferredRange: 0,
       recentDamage: 0,
       lastDamageTime: 0,
@@ -143,7 +145,8 @@ function ensureAIState(s: Ship) {
 export function recordDamage(state: GameState, s: Ship, damage: number, ownerShipId?: EntityId) {
   // Award XP to owner and set lastDamageBy if owner exists
   if (ownerShipId !== undefined && ownerShipId !== null) {
-    const owner = state.shipIndex?.get(ownerShipId) ?? state.ships.find((sh) => sh.id === ownerShipId);
+    const owner =
+      state.shipIndex?.get(ownerShipId) ?? state.ships.find((sh) => sh.id === ownerShipId);
     if (owner) {
       owner.level.xp += damage * XP_PER_DAMAGE;
       s.lastDamageBy = owner.id;
@@ -190,16 +193,33 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
   for (let ti = 0; ti < ship.turrets.length; ti++) {
     const t = ship.turrets[ti];
     t.cooldownLeft = Math.max(0, t.cooldownLeft - dt);
+    if (DEBUG_AI) {
+      console.error(
+        `DEBUG_AI: fireTurrets ship=${ship.id} turret=${t.id} cooldownLeft=${t.cooldownLeft.toFixed(3)}`,
+      );
+    }
     if (t.cooldownLeft > 0) continue;
 
     // Find turret config (wrap if turret list shorter than shipCfg turrets)
     const turretConfig = shipCfg.turrets[ti % shipCfg.turrets.length];
 
     // Determine target position: turret.aiState.targetId -> ship.targetId -> none
+    // Resolve targetId, prefer turret.aiState if present
+    const turretSource = t.aiState && t.aiState.targetId != null ? 'turret' : 'ship';
     const targetId = t.aiState?.targetId ?? ship.targetId;
+    if (DEBUG_AI)
+      console.error(
+        `DEBUG_AI: fireTurrets resolving target for ship=${ship.id} turret=${t.id} source=${turretSource} targetId=${targetId}`,
+      );
     if (targetId == null) continue;
     const target = state.shipIndex?.get(targetId) ?? state.ships.find((s) => s.id === targetId);
-    if (!target || target.health <= 0) continue;
+    if (!target || target.health <= 0) {
+      if (DEBUG_AI)
+        console.error(
+          `DEBUG_AI: fireTurrets skipping ship=${ship.id} turret=${t.id} - invalid target ${targetId}`,
+        );
+      continue;
+    }
 
     // Range check
     const dx = target.pos.x - ship.pos.x;
@@ -207,7 +227,17 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
     const dz = target.pos.z - ship.pos.z;
     const distSq = dx * dx + dy * dy + dz * dz;
     const range = turretConfig.range;
-    if (distSq > range * range) continue;
+    if (DEBUG_AI)
+      console.error(
+        `DEBUG_AI: fireTurrets ship=${ship.id} turret=${t.id} dist=${Math.sqrt(distSq).toFixed(2)} range=${range}`,
+      );
+    if (distSq > range * range) {
+      if (DEBUG_AI)
+        console.error(
+          `DEBUG_AI: fireTurrets skipped out-of-range ship=${ship.id} turret=${t.id} target=${target.id}`,
+        );
+      continue;
+    }
 
     // Create bullets. Support area_suppression behavior which emits multiple
     // projectiles in a small angular spread. For backward compatibility tests
@@ -346,7 +376,8 @@ export function spawnShip(
     ship.aiState = {
       currentIntent: 'idle',
       intentEndTime: 0,
-      lastIntentReevaluation: 0,
+      // Ensure initial reevaluation runs immediately on first AI tick
+      lastIntentReevaluation: -1e9,
       preferredRange: calculatePreferredRange(state, ship),
       recentDamage: 0,
       lastDamageTime: 0,

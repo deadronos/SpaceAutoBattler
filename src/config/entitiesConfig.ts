@@ -8,7 +8,7 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     cooldown: 0.6,
     bulletSpeed: 400,
     damage: 6,
-    range: 300,
+    range: 600,
     // High mobility small weapon: slightly less accurate by default
     accuracy: 0.9,
     maxSpreadRadians: (2 * Math.PI) / 180, // ~2 degrees

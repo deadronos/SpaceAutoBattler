@@ -172,6 +172,49 @@ export default defineConfig([
       },
     },
   },
+
+  // ----- START test files override -----
+  // Tests often use globals provided by the test runner (describe, test, expect,
+  // beforeEach, vi, etc.) and intentionally use flexible `any` or leave
+  // variables unused in fixtures. Relax a few rules for files under `test/`
+  // to reduce noise while keeping most checks active.
+  {
+    files: ['test/**', 'test/vitest/**'],
+    plugins: { '@typescript-eslint': tsPlugin as any },
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        test: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        // Node-like globals used in some tests
+        process: 'readonly',
+        __dirname: 'readonly',
+        global: 'readonly',
+        globalThis: 'readonly',
+      },
+    },
+    rules: {
+      // Do not fail the commit for unused test fixtures; emit warnings instead.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      // Tests commonly use looser typing; allow any in tests to avoid churn.
+      '@typescript-eslint/no-explicit-any': 'off',
+      // Tests sometimes redeclare globals via file-level comments; allow it here.
+      '@typescript-eslint/no-redeclare': 'off',
+      // Some tests intentionally use case declarations or empty blocks for fixtures.
+      'no-case-declarations': 'off',
+      'no-empty': 'off',
+    },
+  },
+  // ----- END test files override -----
   // Core files contain many pragmatic patterns (try/catch wrappers, declaration
   // reuse, small empty-catch fallbacks). Provide a conservative rule relaxation
   // so lint focuses on real issues rather than idiomatic defensive guards.

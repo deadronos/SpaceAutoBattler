@@ -16,6 +16,7 @@ export type AIBehaviorMode =
 export type AIIntent =
   | 'idle' // No specific action
   | 'pursue' // Move towards target
+  | 'approachToRange' // Move to close distance until target is within turret range
   | 'evade' // Move away from threat
   | 'strafe' // Circle around target
   | 'group' // Move towards friendly ships
@@ -261,6 +262,8 @@ export interface BehaviorConfig {
     explorationZoneDuration: number;
     /** Feature flag: allow decisionEngine to influence intent selection (incremental rollout) */
     useDecisionEngineEvadeGate?: boolean;
+    /** Multiplier applied to preferredRange to compute approach radius when target is just out of range */
+    approachRangeMultiplier?: number;
     /** Feature flag: use extracted turret targeting helper instead of legacy inline logic */
     useTurretTargetingHelper?: boolean;
     /**
@@ -494,6 +497,8 @@ export const DEFAULT_BEHAVIOR_CONFIG: BehaviorConfig = {
      * or pathological geometry. Can be tuned globally by designers.
      */
     maxInterceptLookahead: 5.0,
+    /** Default approach multiplier: when targets just outside turret range should be approached */
+    approachRangeMultiplier: 1.2,
   },
 };
 

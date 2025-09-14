@@ -18,6 +18,7 @@ import { SpatialHelpers } from './spatial.js';
 import { DEBUG_AI } from '../../utils/env';
 import logger from '../../utils/logger';
 import { calculatePreferredRange, reevaluateIntent, chooseAggressiveIntent } from './intent.js';
+import { getShipClassConfig } from '../../config/entitiesConfig.js';
 import { PhysicsConfig } from '../../config/physicsConfig.js';
 import { calculateEscapeScore as calcEscape, moveTowards } from './steering.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
@@ -191,11 +192,38 @@ export class AIController {
       ship.team === 'red' ? 'blue' : 'red',
       ship.id,
     );
-    const nearestEnemyEntity =
+    let nearestEnemyEntity =
       batchedNearest || (fallbackCandidates.length > 0 ? fallbackCandidates[0] : undefined);
-    const nearestEnemy = nearestEnemyEntity
+    let nearestEnemy = nearestEnemyEntity
       ? (this.state.shipIndex?.get(nearestEnemyEntity.id) ?? null)
       : null;
+    // If both batched query and k-nearest fallback returned nothing (optimizer
+    // approximation may skip distant entities in unit tests), perform a
+    // deterministic linear scan to find the closest valid enemy. This mirrors
+    // the conservative fallback used by reevaluateIntent and ensures the
+    // controller can act on the same nearest enemy used by intent selection.
+    if (!nearestEnemy) {
+      try {
+        let best: Ship | null = null;
+        let bestDistSq = Infinity;
+        for (const s of this.state.ships) {
+          if (s.team === ship.team || s.health <= 0) continue;
+          const dx = s.pos.x - ship.pos.x;
+          const dy = s.pos.y - ship.pos.y;
+          const dz = s.pos.z - ship.pos.z;
+          const dSq = dx * dx + dy * dy + dz * dz;
+          if (dSq < bestDistSq) {
+            bestDistSq = dSq;
+            best = s;
+          }
+        }
+        if (best) {
+          nearestEnemy = best;
+        }
+      } catch {
+        // best-effort fallback only
+      }
+    }
     logger.debugIf(DEBUG_AI, () => {
       const batchedStr = batchedNearest ? String(batchedNearest.id) : 'null';
       const fbIds = fallbackCandidates.map((c) => c.id).join(',') || '[]';
@@ -216,7 +244,19 @@ export class AIController {
         const distSq = dx * dx + dy * dy + dz * dz;
         const tc = this.state.behaviorConfig?.turretConfig;
         const minR = tc?.minimumFireRange ?? 0;
-        const maxR = tc?.maximumFireRange ?? Infinity;
+        // Prefer per-ship turret range (from ship class) to avoid mismatches
+        // between approach heuristics and actual weapon ranges used by turrets.
+        let maxR = tc?.maximumFireRange ?? Infinity;
+        try {
+          const shipCfg = getShipClassConfig(ship.class);
+          const shipMax = shipCfg.turrets.reduce(
+            (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+            0,
+          );
+          if (shipMax > 0) maxR = shipMax;
+        } catch {
+          /* best-effort */
+        }
         const minRSq = minR * minR;
         const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
         const withinRange = !(tc && (distSq < minRSq || distSq > maxRSq));
@@ -294,7 +334,18 @@ export class AIController {
       const dz = targetShip.pos.z - ship.pos.z;
       const tc = this.state.behaviorConfig?.turretConfig;
       const minR = tc?.minimumFireRange ?? 0;
-      const maxR = tc?.maximumFireRange ?? Infinity;
+      // Prefer per-ship turret max range when possible to avoid approach/firing mismatches
+      let maxR = tc?.maximumFireRange ?? Infinity;
+      try {
+        const shipCfg = getShipClassConfig(ship.class);
+        const shipMax = shipCfg.turrets.reduce(
+          (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+          0,
+        );
+        if (shipMax > 0) maxR = shipMax;
+      } catch {
+        /* best-effort */
+      }
 
       // Use squared distance for range checking to avoid Math.hypot allocation
       let withinRange = true;
@@ -382,7 +433,18 @@ export class AIController {
           const dz = target.pos.z - ship.pos.z;
           const distSq = dx * dx + dy * dy + dz * dz;
           const minR = tc?.minimumFireRange ?? 0;
-          const maxR = tc?.maximumFireRange ?? Infinity;
+          // Prefer per-ship turret max range when available
+          let maxR = tc?.maximumFireRange ?? Infinity;
+          try {
+            const shipCfg = getShipClassConfig(ship.class);
+            const shipMax = shipCfg.turrets.reduce(
+              (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+              0,
+            );
+            if (shipMax > 0) maxR = shipMax;
+          } catch {
+            /* best-effort */
+          }
           const minRSq = minR * minR;
           const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
           const inRange = !(tc && (distSq < minRSq || distSq > maxRSq));
@@ -439,7 +501,18 @@ export class AIController {
           if (tc) {
             const distSq = dx * dx + dy * dy + dz * dz;
             const minR = tc.minimumFireRange ?? 0;
-            const maxR = tc.maximumFireRange ?? Infinity;
+            // Prefer per-ship turret max range when available
+            let maxR = tc.maximumFireRange ?? Infinity;
+            try {
+              const shipCfg = getShipClassConfig(ship.class);
+              const shipMax = shipCfg.turrets.reduce(
+                (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+                0,
+              );
+              if (shipMax > 0) maxR = shipMax;
+            } catch {
+              /* best-effort */
+            }
             const minRSq = minR * minR;
             const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
             withinRange = !(distSq < minRSq || (maxRSq !== Infinity && distSq > maxRSq));
@@ -605,6 +678,59 @@ export class AIController {
               `AI-DEBUG evade postVel ship=${ship.id} ${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`,
           );
           integrated = true;
+        }
+      } else if (intent === 'approachToRange') {
+        // Move to a point that brings the target within turret max range.
+        // Prefer ship.targetId if set, otherwise use nearestEnemy.
+        const tgt = ship.targetId ? this.state.shipIndex?.get(ship.targetId) : nearestEnemy;
+        if (tgt) {
+          // Ensure turrets have a ship-level target so they can begin targeting
+          // and fire as soon as the ship comes within firing range.
+          ship.targetId = tgt.id;
+          // Record assignment so simulateStep final-restore preserves this target
+          (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget =
+            ship.targetId as number;
+          // Throttle record to avoid immediate re-clear by target switching logic
+          try {
+            if (ship.aiState) ship.aiState.lastTargetSwitchTime = this.state.time;
+          } catch {
+            /* best-effort */
+          }
+          try {
+            // Use the actual turret range from the ship's class turret config
+            // to compute a stopping distance that guarantees the ship is
+            // within the firing range used by fireTurrets (which uses
+            // turretConfig.range). If multiple turrets exist, pick the max
+            // turret range among them so the approach is conservative.
+            const shipCfg = getShipClassConfig(ship.class);
+            let maxTurretRange = 0;
+            for (const tcfg of shipCfg.turrets) {
+              if (typeof tcfg.range === 'number' && tcfg.range > maxTurretRange) {
+                maxTurretRange = tcfg.range;
+              }
+            }
+            // Fallback to behavior-config maximumFireRange if ship class has no turrets
+            if (!maxTurretRange) {
+              const bc = this.state.behaviorConfig?.turretConfig;
+              maxTurretRange = bc?.maximumFireRange ?? 0;
+            }
+            const dx = tgt.pos.x - ship.pos.x;
+            const dy = tgt.pos.y - ship.pos.y;
+            const dz = tgt.pos.z - ship.pos.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+            // Stop slightly within range to account for prediction and movement
+            const desiredDist = maxTurretRange > 0 ? maxTurretRange * 0.95 : dist * 0.9;
+            const scale = desiredDist / dist;
+            const approachPos = {
+              x: ship.pos.x + dx * scale,
+              y: ship.pos.y + dy * scale,
+              z: ship.pos.z + dz * scale,
+            };
+            this.moveTowards(ship, approachPos, dt, true);
+            integrated = true;
+          } catch {
+            // best-effort
+          }
         }
       } else if (intent === 'group') {
         // Ensure formation assignment occurs for formation-mode ships or group intent
