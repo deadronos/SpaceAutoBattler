@@ -13,10 +13,6 @@
  */
 
 export const billboardExplosionVertexShader = `
-  // Standard vertex attributes
-  attribute vec3 position;
-  attribute vec2 uv;
-  
   // Per-instance attributes (for instanced rendering)
   attribute vec3 instancePosition;
   attribute float instanceSize;
@@ -24,11 +20,10 @@ export const billboardExplosionVertexShader = `
   attribute float instanceAge;
   attribute float instanceLifetime;
   
-  // Standard uniforms
-  uniform mat4 modelViewMatrix;
-  uniform mat4 projectionMatrix;
-  uniform mat4 viewMatrix;
-  uniform vec3 cameraPosition;
+  // Note: standard attributes/uniforms like 'position', 'uv', 'modelViewMatrix',
+  // 'projectionMatrix', 'viewMatrix', and 'cameraPosition' are provided by
+  // Three.js when using ShaderMaterial and must NOT be redeclared to avoid
+  // multiple-definition compilation errors across platforms.
   
   // Shader parameters
   uniform float billboardScale;
@@ -188,7 +183,7 @@ export interface BillboardExplosionShaderParams {
  */
 export const DefaultBillboardExplosionParams: Required<BillboardExplosionShaderParams> = {
   // Texture will be set by renderer
-  explosionTexture: null as any,
+  explosionTexture: null as unknown as WebGLTexture,
 
   // Timing - quick fade-in, long visibility, gradual fade-out
   fadeInDuration: 0.1,

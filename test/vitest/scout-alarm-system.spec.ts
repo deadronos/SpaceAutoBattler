@@ -34,16 +34,14 @@ describe('Scout and Alarm System Tests', () => {
     // Initialize AI states for all ships like the main game does
     const allShips = [...redShips, ...blueShips];
     for (const ship of allShips) {
-      if (!ship.aiState) {
-        ship.aiState = {
-          currentIntent: 'pursue',
-          intentEndTime: state.time + 1.0,
-          lastIntentReevaluation: 0,
-          preferredRange: 100,
-          recentDamage: 0,
-          lastDamageTime: 0,
-        };
-      }
+      ship.aiState = {
+        currentIntent: 'pursue',
+        intentEndTime: state.time + 1.0,
+        lastIntentReevaluation: 0,
+        preferredRange: 100,
+        recentDamage: 0,
+        lastDamageTime: 0,
+      };
     }
 
     const _aiController = state.aiController!;
@@ -85,16 +83,14 @@ describe('Scout and Alarm System Tests', () => {
     // Initialize AI states for all ships first
     const allShips = state.ships.filter((s) => s.health > 0);
     for (const ship of allShips) {
-      if (!ship.aiState) {
-        ship.aiState = {
-          currentIntent: 'pursue',
-          intentEndTime: state.time + 1.0,
-          lastIntentReevaluation: 0,
-          preferredRange: 100,
-          recentDamage: 0,
-          lastDamageTime: 0,
-        };
-      }
+      ship.aiState = {
+        currentIntent: 'pursue',
+        intentEndTime: state.time + 1.0,
+        lastIntentReevaluation: 0,
+        preferredRange: 100,
+        recentDamage: 0,
+        lastDamageTime: 0,
+      };
     }
 
     // Manually damage a ship to trigger alarm
@@ -140,16 +136,14 @@ describe('Scout and Alarm System Tests', () => {
     // Initialize AI states for all ships first
     const allShips = state.ships.filter((s) => s.health > 0);
     for (const ship of allShips) {
-      if (!ship.aiState) {
-        ship.aiState = {
-          currentIntent: 'pursue',
-          intentEndTime: state.time + 1.0,
-          lastIntentReevaluation: 0,
-          preferredRange: 100,
-          recentDamage: 0,
-          lastDamageTime: 0,
-        };
-      }
+      ship.aiState = {
+        currentIntent: 'pursue',
+        intentEndTime: state.time + 1.0,
+        lastIntentReevaluation: 0,
+        preferredRange: 100,
+        recentDamage: 0,
+        lastDamageTime: 0,
+      };
     }
 
     // Force ships to spawn very far apart by modifying positions

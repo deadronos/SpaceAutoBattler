@@ -7,6 +7,17 @@
 
 import * as logger from '../utils/logger.js';
 
+// Minimal typed view of the worker global to avoid `any` casts throughout the file.
+type WorkerGlobalLike = {
+  postMessage(message: unknown): void;
+  performance?: { now?: () => number };
+  location?: { href?: string };
+  createImageBitmap?: unknown;
+  OffscreenCanvas?: unknown;
+} & typeof self;
+
+const WG = self as unknown as WorkerGlobalLike;
+
 // Simple LRU cache for rasterized SVGs
 class RasterCache {
   private cache = new Map<string, { bitmap: ImageBitmap; timestamp: number; modTime?: number }>();
@@ -175,11 +186,11 @@ type GetCanvasResponse = {
 self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
   const request = e.data;
   // Feature guard: ensure required APIs exist in the worker context
-  const hasOffscreen = typeof (self as any).OffscreenCanvas !== 'undefined';
-  const hasCIB = typeof (self as any).createImageBitmap === 'function';
+  const hasOffscreen = typeof WG.OffscreenCanvas !== 'undefined';
+  const hasCIB = typeof WG.createImageBitmap === 'function';
   if (!hasOffscreen || !hasCIB) {
     try {
-      (self as unknown as { postMessage(m: unknown): void }).postMessage({
+      WG.postMessage({
         type: 'worker-error',
         message: 'OffscreenCanvas/createImageBitmap required for rasterization',
         stack: '',
@@ -195,7 +206,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
         const { svgText, width, height, assetKey, teamColor, filePath: _fp, fileModTime } = request;
         const cached = rasterCache.get(assetKey, fileModTime || undefined);
         if (cached) {
-          (self as unknown as { postMessage(m: unknown): void }).postMessage({
+          WG.postMessage({
             type: 'rasterized',
             assetKey,
             imageBitmap: cached,
@@ -204,16 +215,15 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
           } as RasterizeResponse);
           return;
         }
-        const t0 = (self as any).performance ? (self as any).performance.now() : Date.now();
+        const t0 = WG.performance && typeof WG.performance.now === 'function' ? WG.performance.now() : Date.now();
         const imageBitmap = await rasterizeSvgToImageBitmap(svgText, width, height, teamColor);
-        const t1 = (self as any).performance ? (self as any).performance.now() : Date.now();
+        const t1 = WG.performance && typeof WG.performance.now === 'function' ? WG.performance.now() : Date.now();
         rasterCache.set(assetKey, imageBitmap, fileModTime);
         const rasterMs = t1 - t0;
         try {
-          if ((self as any).location?.href?.includes('debugPerf=1'))
-            (self as any).postMessage({ type: 'perf', name: 'raster.render', ms: rasterMs });
+          if (WG.location?.href?.includes('debugPerf=1')) WG.postMessage({ type: 'perf', name: 'raster.render', ms: rasterMs });
         } catch {}
-        (self as unknown as { postMessage(m: unknown): void }).postMessage({
+        WG.postMessage({
           type: 'rasterized',
           assetKey,
           imageBitmap,
@@ -230,7 +240,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(cached, 0, 0, outW, outH);
         }
-        (self as unknown as { postMessage(m: unknown): void }).postMessage({
+        WG.postMessage({
           type: 'canvas-result',
           assetKey,
           canvas,
@@ -240,7 +250,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
       }
       case 'clear-cache': {
         rasterCache.clear();
-        (self as unknown as { postMessage(m: unknown): void }).postMessage({
+        WG.postMessage({
           type: 'cache-cleared',
         } as CacheResponse);
         break;
@@ -248,7 +258,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
       case 'set-cache-max-entries': {
         if (request.value !== undefined) {
           rasterCache.setMaxEntries(request.value);
-          (self as unknown as { postMessage(m: unknown): void }).postMessage({
+          WG.postMessage({
             type: 'cache-config-updated',
           } as CacheResponse);
         }
@@ -257,7 +267,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
       case 'set-cache-max-age': {
         if (request.value !== undefined) {
           rasterCache.setMaxAge(request.value);
-          (self as unknown as { postMessage(m: unknown): void }).postMessage({
+          WG.postMessage({
             type: 'cache-config-updated',
           } as CacheResponse);
         }
@@ -269,11 +279,8 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRequest>) => {
     logger.error('[svgRasterWorker.impl] Error processing request:', err);
     try {
       const msg = err instanceof Error ? err.message : String(err);
-      const stack =
-        err && (err as unknown as { stack?: string }).stack
-          ? (err as unknown as { stack?: string }).stack
-          : undefined;
-      (self as unknown as { postMessage(m: unknown): void }).postMessage({
+      const stack = err && (err as unknown as { stack?: string }).stack ? (err as unknown as { stack?: string }).stack : undefined;
+      WG.postMessage({
         type: 'worker-error',
         message: msg,
         stack,

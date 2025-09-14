@@ -1,4 +1,11 @@
 import * as THREE from 'three';
+// OrbitControls lives in three/examples - import lazily to avoid bundling issues in tests
+let OrbitControls: unknown = null;
+try {
+  OrbitControls = require('three/examples/jsm/controls/OrbitControls').OrbitControls;
+} catch {
+  OrbitControls = null;
+}
 import type { GameState } from '../types/index.js';
 import { RendererConfig } from '../config/rendererConfig.js';
 
@@ -21,6 +28,12 @@ export interface CameraManager {
   setCameraDistance(cameraState: CameraState, distance: number): void;
   getCameraDistance(cameraState: CameraState): number;
   disposeCamera(cameraState: CameraState): void;
+  // Optional orbit controls helper
+  attachOrbitControls?: (
+    cameraState: CameraState,
+    domElement: HTMLElement,
+    opts?: { enableRotate?: boolean; enablePan?: boolean; enableZoom?: boolean },
+  ) => { dispose: () => void } | null;
 }
 
 /**
@@ -73,6 +86,128 @@ export function updateCameraPosition(cameraState: CameraState): void {
 
   camera.position.set(x, y, z);
   camera.lookAt(target.x, target.y, target.z);
+}
+
+/**
+ * Attach OrbitControls to a CameraState and DOM element.
+ * This will synchronize OrbitControls' target/distance with CameraState so other
+ * systems reading CameraState remain compatible.
+ */
+export function attachOrbitControls(
+  cameraState: CameraState,
+  domElement: HTMLElement,
+  opts?: { enableRotate?: boolean; enablePan?: boolean; enableZoom?: boolean },
+): { dispose: () => void } | null {
+  if (!OrbitControls) return null;
+  const ControlsCtor = OrbitControls as unknown as {
+    new (camera: THREE.Camera, domElement: HTMLElement): {
+      enableDamping: boolean;
+      enableRotate: boolean;
+      enablePan: boolean;
+      enableZoom: boolean;
+      target: THREE.Vector3;
+      update: () => void;
+      addEventListener: (name: string, fn: () => void) => void;
+      removeEventListener: (name: string, fn: () => void) => void;
+      dispose: () => void;
+    };
+  };
+  const controls = new ControlsCtor(cameraState.camera, domElement);
+  controls.enableDamping = true;
+  controls.enableRotate = opts?.enableRotate ?? true;
+  controls.enablePan = opts?.enablePan ?? true;
+  controls.enableZoom = opts?.enableZoom ?? true;
+  // Initialize controls to cameraState
+  controls.target.set(cameraState.target.x, cameraState.target.y, cameraState.target.z);
+  // Map distance to controls' position by placing camera on negative Z in local space
+  controls.update();
+
+  // On change, sync back to cameraState
+  const onChange = () => {
+    // Update target
+    cameraState.target.x = controls.target.x;
+    cameraState.target.y = controls.target.y;
+    cameraState.target.z = controls.target.z;
+    // Recompute distance from camera to target
+    cameraState.distance = cameraState.camera.position.distanceTo(controls.target);
+  };
+
+  controls.addEventListener('change', onChange);
+
+  return {
+    dispose() {
+      try {
+        controls.removeEventListener('change', onChange);
+        controls.dispose();
+      } catch {
+        // ignore
+      }
+    },
+  };
+}
+
+/**
+ * Attach OrbitControls to a raw camera and simple mutable state objects used by
+ * legacy renderer code. This avoids the need to refactor large renderer files.
+ */
+export function attachOrbitControlsToRaw(
+  camera: THREE.Camera,
+  cameraTarget: { x: number; y: number; z: number },
+  cameraRotation: { x: number; y: number; z: number },
+  getDistance: () => number,
+  setDistance: (v: number) => void,
+  domElement: HTMLElement,
+  opts?: { enableRotate?: boolean; enablePan?: boolean; enableZoom?: boolean },
+): { dispose: () => void } | null {
+  if (!OrbitControls) return null;
+  const ControlsCtor = OrbitControls as unknown as {
+    new (camera: THREE.Camera, domElement: HTMLElement): {
+      enableDamping: boolean;
+      enableRotate: boolean;
+      enablePan: boolean;
+      enableZoom: boolean;
+      target: THREE.Vector3;
+      update: () => void;
+      addEventListener: (name: string, fn: () => void) => void;
+      removeEventListener: (name: string, fn: () => void) => void;
+      dispose: () => void;
+    };
+  };
+  const controls = new ControlsCtor(camera as unknown as THREE.PerspectiveCamera, domElement);
+  controls.enableDamping = true;
+  controls.enableRotate = opts?.enableRotate ?? true;
+  controls.enablePan = opts?.enablePan ?? true;
+  controls.enableZoom = opts?.enableZoom ?? true;
+  controls.target.set(cameraTarget.x, cameraTarget.y, cameraTarget.z);
+  controls.update();
+
+  const onChange = () => {
+    cameraTarget.x = controls.target.x;
+    cameraTarget.y = controls.target.y;
+    cameraTarget.z = controls.target.z;
+    // update rotation from camera position relative to target
+    const camPos = (camera as unknown as THREE.PerspectiveCamera).position;
+    const dx = camPos.x - controls.target.x;
+    const dy = camPos.y - controls.target.y;
+    const dz = camPos.z - controls.target.z;
+    // approximate spherical angles
+    cameraRotation.x = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
+    cameraRotation.y = Math.atan2(dz, dx);
+    setDistance(camPos.distanceTo(controls.target));
+  };
+
+  controls.addEventListener('change', onChange);
+
+  return {
+    dispose() {
+      try {
+        controls.removeEventListener('change', onChange);
+        controls.dispose();
+      } catch {
+        // ignore
+      }
+    },
+  };
 }
 
 /**
@@ -197,6 +332,12 @@ export const cameraManager: CameraManager = {
   setCameraDistance,
   getCameraDistance,
   disposeCamera,
+  attachOrbitControls,
+};
+
+// Also export the raw attach helper for legacy code
+export const CameraManagerExtras = {
+  attachOrbitControlsToRaw,
 };
 
 /**

@@ -1,4 +1,5 @@
 import type { GameState } from '../types/index.js';
+// Use renderer handle helpers (get/set) instead of accessing transitional `_cameraState`
 import { RendererConfig } from '../config/rendererConfig.js';
 import { CameraConfig } from '../config/cameraConfig.js';
 
@@ -47,21 +48,26 @@ export function resetToCinematicView(state: GameState): void {
   const spreadZ = maxZ - minZ;
   const maxSpread = Math.max(spreadX, spreadY, spreadZ);
 
-  state.renderer.cameraTarget.x = centerX;
-  state.renderer.cameraTarget.y = centerY;
-  state.renderer.cameraTarget.z = centerZ;
+  // Prefer renderer handle helpers when available for staged migration.
+  const rh = state.renderer as unknown as {
+    getCameraTarget?: () => { x: number; y: number; z: number };
+    setCameraTarget?: (t: { x?: number; y?: number; z?: number }) => void;
+    getCameraDistance?: () => number;
+    setCameraDistance?: (d: number) => void;
+    setCameraRotation?: (r: { x?: number; y?: number; z?: number }) => void;
+  } | undefined;
 
-  const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
-  const optimalDistance =
-    (maxSpread / 2 / Math.tan(_fovRadians / 2)) * CameraConfig.resetToCinematic.fovMultiplier;
-  state.renderer.cameraDistance = Math.max(
-    CameraConfig.cinematic.minDistance,
-    Math.min(CameraConfig.cinematic.maxDistance, optimalDistance),
-  );
+  const setTarget = rh?.setCameraTarget?.bind(rh);
+  const setDistance = rh?.setCameraDistance?.bind(rh);
+  const setRotation = rh?.setCameraRotation?.bind(rh);
 
-  state.renderer.cameraRotation.x = CameraConfig.resetToCinematic.cameraRotation.x;
-  state.renderer.cameraRotation.y = CameraConfig.resetToCinematic.cameraRotation.y;
-  state.renderer.cameraRotation.z = CameraConfig.resetToCinematic.cameraRotation.z;
+  if (setTarget && setDistance) {
+    setTarget({ x: centerX, y: centerY, z: centerZ });
+    const _fovRadians = (RendererConfig.camera.fov * Math.PI) / 180;
+    const optimalDistance = (maxSpread / 2 / Math.tan(_fovRadians / 2)) * CameraConfig.resetToCinematic.fovMultiplier;
+    setDistance(Math.max(CameraConfig.cinematic.minDistance, Math.min(CameraConfig.cinematic.maxDistance, optimalDistance)));
+    if (setRotation) setRotation(CameraConfig.resetToCinematic.cameraRotation);
+  }
 }
 
 export function updateCinematicCamera(state: GameState, dt: number): void {
@@ -112,15 +118,29 @@ export function updateCinematicCamera(state: GameState, dt: number): void {
   );
 
   const lerpFactor = Math.min(dt * CameraConfig.cinematic.lerpFactor, 1);
-  state.renderer.cameraTarget.x += (centerX - state.renderer.cameraTarget.x) * lerpFactor;
-  state.renderer.cameraTarget.y += (centerY - state.renderer.cameraTarget.y) * lerpFactor;
-  state.renderer.cameraTarget.z += (centerZ - state.renderer.cameraTarget.z) * lerpFactor;
+  // Update camera target and distance via renderer helper methods when available
+  const rh2 = state.renderer as unknown as {
+    getCameraTarget?: () => { x: number; y: number; z: number };
+    setCameraTarget?: (t: { x?: number; y?: number; z?: number }) => void;
+    getCameraDistance?: () => number;
+    setCameraDistance?: (d: number) => void;
+  } | undefined;
 
-  const distanceLerpFactor = Math.min(dt * CameraConfig.cinematic.distanceLerpFactor, 1);
-  state.renderer.cameraDistance +=
-    (optimalDistance - state.renderer.cameraDistance) * distanceLerpFactor;
-  state.renderer.cameraDistance = Math.max(
-    CameraConfig.cinematic.minDistance,
-    Math.min(CameraConfig.cinematic.maxDistance, state.renderer.cameraDistance),
-  );
+  const getTarget = rh2?.getCameraTarget?.bind(rh2);
+  const setTarget2 = rh2?.setCameraTarget?.bind(rh2);
+  const getDistance = rh2?.getCameraDistance?.bind(rh2);
+  const setDistance2 = rh2?.setCameraDistance?.bind(rh2);
+
+  if (getTarget && setTarget2 && getDistance && setDistance2) {
+    const cur = getTarget();
+    const newX = cur.x + (centerX - cur.x) * lerpFactor;
+    const newY = cur.y + (centerY - cur.y) * lerpFactor;
+    const newZ = cur.z + (centerZ - cur.z) * lerpFactor;
+    setTarget2({ x: newX, y: newY, z: newZ });
+
+    const distanceLerpFactor = Math.min(dt * CameraConfig.cinematic.distanceLerpFactor, 1);
+    const curDist = getDistance();
+    const newDist = curDist + (optimalDistance - curDist) * distanceLerpFactor;
+    setDistance2(Math.max(CameraConfig.cinematic.minDistance, Math.min(CameraConfig.cinematic.maxDistance, newDist)));
+  }
 }

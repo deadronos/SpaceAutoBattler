@@ -5,7 +5,7 @@ import {
   simulateStep,
   resetState,
 } from '../../src/core/gameState.js';
-import { GameState } from '../../src/types/index.js';
+import { GameState, Ship } from '../../src/types/index.js';
 
 describe('Scout Exploration System', () => {
   let state: GameState;
@@ -35,14 +35,13 @@ describe('Scout Exploration System', () => {
 
     // Initialize AI states
     for (const ship of state.ships) {
-      if (!ship.aiState) {
-        ship.aiState = {
-          currentIntent: 'pursue',
-          intentEndTime: state.time + 1.0,
-          lastIntentReevaluation: state.time,
-          preferredRange: 200,
-        };
-      }
+      // Assign a minimal aiState shape for tests using the proper Ship.aiState type
+      ship.aiState = {
+        currentIntent: 'pursue',
+        intentEndTime: state.time + 1.0,
+        lastIntentReevaluation: state.time,
+        preferredRange: 200,
+      } as unknown as Ship['aiState'];
     }
 
     // Run simulation step to assign scouts

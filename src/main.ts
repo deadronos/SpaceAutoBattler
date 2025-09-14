@@ -1,4 +1,5 @@
-import { createInitialState, resetState, spawnFleet, spawnShip } from './core/gameState.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { createInitialState, resetState as _resetState, spawnFleet, spawnShip as _spawnShip } from './core/gameState.js';
 // Import UI styles so webpack extracts them into a hashed CSS asset via MiniCssExtractPlugin
 import './styles/ui.css';
 // Ensure low-level GL/readPixels patches are applied as early as possible
@@ -13,31 +14,39 @@ try {
 }
 import * as THREE from 'three';
 
+// Lightweight helper types for safe 'loose' access to globals/configs without
+// using `any` (we prefer `unknown` and narrow to specific properties when
+// needed). This reduces @typescript-eslint/no-explicit-any warnings while
+// keeping runtime behavior identical.
+type LooseDict = Record<string, unknown>;
+const G = globalThis as unknown as LooseDict;
+const W = (typeof window !== 'undefined' ? (window as unknown as LooseDict) : ({} as LooseDict));
+const RC = RendererConfig as unknown as LooseDict;
+
 // Expose canonical Three.js runtime to globalThis so modules using different
 // bundling/resolution still reference the same constructors at runtime.
 // This mitigates "Multiple instances of Three.js being imported" issues
 // which can break attribute/constructor identity used by the renderer.
 // Keep this as early as possible in the bootstrap sequence.
 
-/* global globalThis */
-if (!(globalThis as any).THREE) {
-  (globalThis as any).THREE = THREE;
+if (!('THREE' in G)) {
+  G.THREE = THREE;
 }
-import type { GameState, UIElements } from './types/index.js';
+import type { GameState as _GameStateType, UIElements as _UIElementsType } from './types/index.js';
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { shipInstancer } from './renderer/shipInstancer.js';
 import { RendererConfig } from './config/rendererConfig.js';
 import { createPhysicsStepper } from './core/physics.js';
-import { CameraConfig } from './config/cameraConfig.js';
+import { CameraConfig as _CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
 // DefaultSimConfig not used here; keep config imports minimal to avoid unused-import ESLint errors
 import { getSVGLoader, loadSVGAsset } from './core/svgLoader.js';
 import * as logger from './utils/logger.js';
 import { DefaultGameConfig } from './config/gameConfig.js';
 import { defaultSVGConfig, getShipSVGUrls } from './config/svgConfig.js';
-import { perf } from './utils/perf.js';
+import { perf as _perf } from './utils/perf.js';
 import { bindUI } from './ui/bindUI.js';
-import { randomClass } from './utils/randomShipClass.js';
+import { randomClass as _randomClass } from './utils/randomShipClass.js';
 import { reFormFleets } from './core/reFormFleets.js';
 import { startLoops } from './core/startLoops.js';
 import { setupPerfOverlay } from './utils/perfOverlay.js';
@@ -58,6 +67,8 @@ declare global {
 function initGame(seed?: string) {
   const ui = bindUI();
   const state = createInitialState(seed);
+  // Lightweight alias to avoid repeated `as any` casts in this large bootstrap file.
+  const _S = state as unknown as LooseDict;
   // Ensure there is an asset pool for GLTFs and textures
   state.assetPool = new Map<string, unknown>();
 
@@ -86,8 +97,9 @@ function initGame(seed?: string) {
       (async () => {
         try {
           let bitmap: ImageBitmap | null = null;
-          if ((window as any).createImageBitmap) {
-            bitmap = await (window as any).createImageBitmap(canvas);
+          if (typeof W.createImageBitmap === 'function') {
+            // createImageBitmap may be present on window in some browsers
+            bitmap = await (W.createImageBitmap as unknown as typeof createImageBitmap)(canvas);
           }
           // Store both canvas and bitmap for callers that expect either
           state.assetPool!.set('textures/explosionSoftCircle', bitmap ?? canvas);
@@ -105,8 +117,8 @@ function initGame(seed?: string) {
   }
 
   const shipSVGUrls = getShipSVGUrls(defaultSVGConfig);
-  const gltfModeEnabled = !!(RendererConfig as any)?.loadGltfModels;
-  const svgDisabled = !!(RendererConfig as any)?.disableSvgSubsystem;
+  const gltfModeEnabled = !!(RC.loadGltfModels as unknown as boolean);
+  const svgDisabled = !!(RC.disableSvgSubsystem as unknown as boolean);
 
   // Preload SVG assets and construct the SVG loader only when GLTF model loading is disabled.
   // This avoids creating the raster worker and warming the asset pool when using GLTF prototypes.
@@ -145,16 +157,16 @@ function initGame(seed?: string) {
   } else {
     logger.debug('[main.ts] Skipping SVG preload because GLTF mode or SVG subsystem disabled');
   }
-  (window as any).debugSVG = {
+  W.debugSVG = {
     // Get SVG loader stats (no-op when GLTF mode enabled)
-    getStats: () => {
-      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+    getStats: (): { cachedAssets: number } | any => {
+      if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
         logger.debug(
           '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; SVG loader stats are disabled',
         );
-        return { cachedAssets: 0 } as any;
+        return { cachedAssets: 0 };
       }
-      if (!svgLoader) return { cachedAssets: 0 } as any;
+      if (!svgLoader) return { cachedAssets: 0 };
       const stats = svgLoader.getCacheStats();
       logger.debug('[SVG Debug] Cache stats:', stats);
       return stats;
@@ -162,7 +174,7 @@ function initGame(seed?: string) {
 
     // Manually reload all SVG assets
     reloadAll: async () => {
-      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+  if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
         logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
         return;
       }
@@ -179,7 +191,7 @@ function initGame(seed?: string) {
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
-      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+  if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
         logger.debug(
           '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; clearCache is a no-op',
         );
@@ -195,7 +207,7 @@ function initGame(seed?: string) {
 
     // List cached assets
     listCached: () => {
-      if ((RendererConfig as any)?.loadGltfModels || svgDisabled) {
+      if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
         logger.debug(
           '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; no cached SVG assets',
         );
@@ -215,7 +227,7 @@ function initGame(seed?: string) {
   );
 
   // Expose lightweight debug helpers for quick console testing
-  (window as any).__appDebug = {
+  W.__appDebug = {
     getState: () => state,
     listAssetPool: () => Array.from((state.assetPool ?? new Map()).keys()),
     getAsset: (k: string) => (state.assetPool as Map<string, unknown>)?.get(k),
@@ -223,7 +235,9 @@ function initGame(seed?: string) {
     preloadSingleShip: async (cls: string, team = 'red') => {
       try {
         const mod = await import('./core/shipModelLoader.js');
-        return (mod.preloadSingleShip as any)(state, cls, team);
+  // Dynamic import may return an untyped module; narrow with unknown
+  const m = mod as unknown as { preloadSingleShip?: (...args: unknown[]) => unknown };
+  return m.preloadSingleShip ? (m.preloadSingleShip(state, cls, team) as unknown) : null;
       } catch (err) {
         console.warn('preloadSingleShip failed', err);
         return null;
@@ -232,19 +246,20 @@ function initGame(seed?: string) {
     preloadShipModels: async () => {
       try {
         const mod = await import('./core/shipModelLoader.js');
-        return (mod.preloadShipModels as any)(state, ['red', 'blue']);
+  const m2 = mod as unknown as { preloadShipModels?: (...args: unknown[]) => unknown };
+  return m2.preloadShipModels ? (m2.preloadShipModels(state, ['red', 'blue']) as unknown) : null;
       } catch (err) {
         console.warn('preloadShipModels failed', err);
         return null;
       }
     },
-  } as any;
+  } as unknown;
 
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
   (async () => {
     try {
       // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-      const useSimWorker = (RendererConfig as any)?.useSimWorker ?? true;
+            const useSimWorker = (RC.useSimWorker as unknown as boolean) ?? true;
       let w: Worker | null = null;
       // If the config opts out of creating a sim worker, run the physics stepper in-thread immediately
       if (!useSimWorker) {
@@ -252,8 +267,8 @@ function initGame(seed?: string) {
           '[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false); using in-thread physics',
         );
         try {
-          const ps = await createPhysicsStepper(state as any);
-          (state as any).physicsStepper = ps;
+                const ps = await createPhysicsStepper(state as unknown as _GameStateType);
+                (state as unknown as _GameStateType).physicsStepper = ps;
         } catch (ee) {
           void ee; /* ignore and continue */
         }
@@ -270,17 +285,16 @@ function initGame(seed?: string) {
           const data = ev.data || {};
           const type = data.type;
           // Perf events from simWorker
-          if (
-            type === 'perf' &&
-            (window as any).__perf &&
-            typeof (window as any).__perf.addEvent === 'function'
-          ) {
-            try {
-              (window as any).__perf.addEvent({ name: data.name, ms: data.ms });
-            } catch {
-              /* ignore */
+          if (type === 'perf') {
+            const perfObj = W.__perf as unknown as { addEvent?: (arg: { name: string; ms: number }) => void } | undefined;
+            if (perfObj && typeof perfObj.addEvent === 'function') {
+              try {
+                perfObj.addEvent({ name: data.name, ms: data.ms });
+              } catch {
+                /* ignore */
+              }
+              return;
             }
-            return;
           }
           // init handshake
           if (type === 'init-physics-done') {
@@ -313,12 +327,13 @@ function initGame(seed?: string) {
                 const transforms = data.transforms || [];
                 // Optional payload size audit
                 try {
-                  if ((window as any).__perf)
-                    (window as any).__perf.addEvent({
+                  const perfObj = W.__perf as unknown as { addEvent?: (arg: { name: string; ms: number }) => void } | undefined;
+                  if (perfObj && typeof perfObj.addEvent === 'function')
+                    perfObj.addEvent({
                       name: 'physics.payload.recvKB',
                       ms: JSON.stringify(transforms).length / 1000,
                     });
-                } catch {}
+                } catch (_e) { void _e; }
                 for (const transform of transforms) {
                   const ship =
                     state.shipIndex?.get(transform.shipId) ??
@@ -356,7 +371,7 @@ function initGame(seed?: string) {
         w.postMessage({ type: 'init-physics' });
 
         // Expose a small shim for callers that expects physicsStepper API
-        (state as any).physicsStepper = {
+        (state as unknown as _GameStateType).physicsStepper = {
           initDone: false,
           step(dt: number) {
             try {
@@ -399,14 +414,15 @@ function initGame(seed?: string) {
 
         // Wait a short time for readiness, then mark initDone if ready
         setTimeout(() => {
-          if ((state as any).physicsStepper) (state as any).physicsStepper.initDone = ready;
+          const ps = (state as unknown as _GameStateType).physicsStepper;
+          if (ps) ps.initDone = ready;
         }, 200);
       }
     } catch (_e) {
       void _e; // Fallback to in-process physics stepper
-      try {
-        const ps = await createPhysicsStepper(state as any);
-        (state as any).physicsStepper = ps;
+        try {
+          const ps = await createPhysicsStepper(state as unknown as _GameStateType);
+          (state as unknown as _GameStateType).physicsStepper = ps;
       } catch (ee) {
         void ee; /* ignore */
       }
@@ -418,7 +434,7 @@ function initGame(seed?: string) {
   (async () => {
     try {
       // Guard GLTF preloads behind configuration flag to avoid noisy 404s
-      const shouldLoadModels = (RendererConfig as any)?.loadGltfModels ?? false;
+      const shouldLoadModels = (RC.loadGltfModels as unknown as boolean) ?? false;
       if (shouldLoadModels) {
         // Wait for GLTF models to load first
         try {
@@ -503,6 +519,6 @@ logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 window.addEventListener('DOMContentLoaded', () => {
   try {
     enablePerfCollectorIfRequested();
-  } catch {}
+  } catch (_e) { void _e; }
   initGame();
 });

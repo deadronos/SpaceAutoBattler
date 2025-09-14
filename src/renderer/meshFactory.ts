@@ -183,7 +183,9 @@ export function createShipMesh(
     try {
       // If GLTF models are enabled and a glTF prototype exists in the asset pool, skip SVG rasterization.
       try {
-        const shouldUseGltf = (RendererConfig as any)?.loadGltfModels ?? false;
+        const shouldUseGltf = (RendererConfig as unknown as Record<string, unknown>).loadGltfModels
+          ? Boolean((RendererConfig as unknown as Record<string, unknown>).loadGltfModels)
+          : false;
         if (shouldUseGltf && state && state.assetPool) {
           const gltfKeyTeam = `ship-${ship.class}-${ship.team}`;
           const gltfKey = `ship-${ship.class}`;
@@ -202,7 +204,11 @@ export function createShipMesh(
         void _e;
       }
       // If SVG subsystem is disabled, skip rasterization and keep placeholder
-      if ((RendererConfig as any)?.disableSvgSubsystem) {
+      const disableSvgSubsystem = (RendererConfig as unknown as Record<string, unknown>)
+        .disableSvgSubsystem
+        ? Boolean((RendererConfig as unknown as Record<string, unknown>).disableSvgSubsystem)
+        : false;
+      if (disableSvgSubsystem) {
         logger.debug('[meshFactory] SVG subsystem disabled; skipping rasterization for', svgUrl);
         return; // keep placeholder
       }
@@ -214,8 +220,14 @@ export function createShipMesh(
         height: defaultSVGConfig.defaultRasterSize.height,
         teamColor: teamColor,
       });
-      if (pool) pool.set(svgUrl, asset);
-      if (asset?.imageBitmap && placeholder.parent) {
+      if (pool) pool.set(svgUrl, asset as { imageBitmap?: ImageBitmap });
+          if (
+            asset &&
+            typeof asset === 'object' &&
+            (asset as { imageBitmap?: ImageBitmap }).imageBitmap instanceof ImageBitmap &&
+            placeholder.parent
+          ) {
+            const img = (asset as { imageBitmap?: ImageBitmap }).imageBitmap as ImageBitmap;
         // Build a representative list of geometries and materials matching the textured ship parts.
         try {
           const teamColor = ship.team === 'red' ? 0xff4444 : 0x4444ff;
@@ -277,11 +289,14 @@ export function createShipMesh(
               if (allocated) {
                 // Immediately set transform so the instance appears in the correct place
                 const q = new THREE.Quaternion();
+                const orientation = (ship as unknown as { orientation?: unknown }).orientation as
+                  | { pitch?: number; yaw?: number; roll?: number }
+                  | undefined;
                 q.setFromEuler(
                   new THREE.Euler(
-                    ship.orientation.pitch,
-                    ship.orientation.yaw,
-                    ship.orientation.roll,
+                    orientation?.pitch ?? 0,
+                    orientation?.yaw ?? 0,
+                    orientation?.roll ?? 0,
                   ),
                 );
                 const scale =
@@ -304,7 +319,7 @@ export function createShipMesh(
           }
 
           // Fallback: create full textured mesh and replace placeholder
-          const ship3D = createTextured3DShip(asset.imageBitmap);
+          const ship3D = createTextured3DShip(img);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);
@@ -313,7 +328,7 @@ export function createShipMesh(
           void e;
           logger.warn('shipInstancer.allocate during migration failed', e as unknown);
           logger.warn('shipInstancer.registerPrototype or migration failed', e as unknown);
-          const ship3D = createTextured3DShip(asset.imageBitmap);
+          const ship3D = createTextured3DShip(img);
           ship3D.position.copy(placeholder.position);
           shipsGroup.add(ship3D);
           shipsGroup.remove(placeholder);

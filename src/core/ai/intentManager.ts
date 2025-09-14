@@ -39,10 +39,16 @@ export class IntentManager {
     opts?: ComputeOptions,
   ): number {
     const duration = this.computeDuration(personality, rng, opts);
-    if (!ship.aiState) ship.aiState = {} as any;
-    const aiState = ship.aiState!;
-    aiState.currentIntent = intent;
-    aiState.intentEndTime = now + duration;
+  // Ensure aiState exists; use a local variable and assign back to ship to help
+  // the TypeScript control-flow analysis narrow the value safely.
+  // Ensure aiState exists and set the two fields in a single assignment.
+  // Use Object.assign to avoid narrow-control-flow issues with optional properties.
+  const baseState = (ship.aiState ?? ({} as unknown)) as Record<string, unknown>;
+  const merged = Object.assign(baseState, {
+    currentIntent: intent,
+    intentEndTime: now + duration,
+  });
+  ship.aiState = merged as typeof ship.aiState;
     return duration;
   }
 }

@@ -187,9 +187,22 @@ export interface RendererHandles {
   render: (dt: number) => void;
   dispose: () => void;
   // Camera controls
-  cameraRotation: Vector3; // x: pitch, y: yaw, z: roll
-  cameraDistance: number;
-  cameraTarget: Vector3;
+  // Camera helper methods - use these (get/set distance, rotation, target,
+  // attachOrbitControls) instead of attempting to access internal renderer
+  // state. These are thin, typed wrappers around `src/renderer/cameraManager.ts`.
+  getCameraDistance?: () => number;
+  setCameraDistance?: (v: number) => void;
+  setCameraRotation?: (r: { x?: number; y?: number; z?: number }) => void;
+  // Get/Set camera target in world space
+  getCameraTarget?: () => { x: number; y: number; z: number };
+  setCameraTarget?: (t: { x?: number; y?: number; z?: number }) => void;
+  // Read the canonical camera rotation (Euler angles)
+  getCameraRotation?: () => { x: number; y: number; z: number };
+  getCameraMatrix?: () => unknown;
+  attachOrbitControls?: (
+    domElement: HTMLElement,
+    opts?: { enableRotate?: boolean; enablePan?: boolean; enableZoom?: boolean },
+  ) => { dispose: () => void } | null;
   // Optional adapter hooks for renderer-level caching and introspection.
   // These are best-effort and may be absent in some renderer implementations.
   getParameters?: (programLike?: object | null) => unknown;

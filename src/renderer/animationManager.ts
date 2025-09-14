@@ -2,6 +2,7 @@ import { gsap } from 'gsap';
 import type { GameState, RendererHandles } from '../types/index.js';
 import type { Ship } from '../types/index.js';
 import { createRNG } from '../utils/rng.js';
+// Use renderer helpers instead of reading transitional `_cameraState`
 
 // Local lightweight types to avoid broad `any` in this adapter
 type Vec3 = { x: number; y: number; z: number };
@@ -19,6 +20,12 @@ type EffectsManagerLike = { addExplosionEffect?: (position: Vec3, intensity: num
 type RendererHandlesLike = RendererHandles & {
   shipMeshes?: ShipMeshMap;
   effectsManager?: EffectsManagerLike;
+  getCameraTarget?: () => { x: number; y: number; z: number };
+  setCameraTarget?: (t: { x?: number; y?: number; z?: number }) => void;
+  getCameraDistance?: () => number;
+  setCameraDistance?: (d: number) => void;
+  getCameraRotation?: () => { x: number; y: number; z: number };
+  setCameraRotation?: (r: { x?: number; y?: number; z?: number }) => void;
 };
 
 export interface AnimationManager {
@@ -57,11 +64,12 @@ export function createAnimationManager(state: GameState): AnimationManager {
 
       cameraAnimationInProgress = true;
 
-      const startPosition = {
-        x: state.renderer.cameraTarget.x,
-        y: state.renderer.cameraTarget.y,
-        z: state.renderer.cameraTarget.z,
-      };
+      // Prefer renderer helper APIs when available
+      const rh = state.renderer as unknown as RendererHandlesLike | undefined;
+      const getTarget = rh?.getCameraTarget?.bind(rh);
+      const setTarget = rh?.setCameraTarget?.bind(rh);
+
+      const startPosition = getTarget ? getTarget() : { x: 0, y: 0, z: 0 };
 
       gsap.to(startPosition, {
         x: targetPosition.x,
@@ -70,9 +78,9 @@ export function createAnimationManager(state: GameState): AnimationManager {
         duration,
         ease: 'power2.inOut',
         onUpdate: () => {
-          state.renderer!.cameraTarget.x = startPosition.x;
-          state.renderer!.cameraTarget.y = startPosition.y;
-          state.renderer!.cameraTarget.z = startPosition.z;
+          if (setTarget) {
+            setTarget({ x: startPosition.x, y: startPosition.y, z: startPosition.z });
+          }
         },
         onComplete: () => {
           cameraAnimationInProgress = false;
@@ -212,18 +220,14 @@ export function createAnimationManager(state: GameState): AnimationManager {
         // radius derived from intensity for now
         const radius = Math.max(8, intensity * 12);
         try {
-          addParticleExplosion(state, {
+            void addParticleExplosion(state, {
             pos: position,
             radius,
             entityId: 0,
             count: Math.round(intensity * 40),
           });
-        } catch (_) {
-          /* ignore */
-        }
-      } catch {
-        /* ignore if particle system not available in test env */
-      }
+    } catch (_e) { void _e; }
+        } catch (_e) { void _e; }
 
       // Camera shake
       shakeCamera(intensity * 0.5, 0.3);
@@ -236,11 +240,12 @@ export function createAnimationManager(state: GameState): AnimationManager {
   function shakeCamera(intensity: number, duration = 0.5) {
     if (!state.renderer) return;
 
-    const originalPosition = {
-      x: state.renderer.cameraTarget.x,
-      y: state.renderer.cameraTarget.y,
-      z: state.renderer.cameraTarget.z,
-    };
+    // Prefer renderer helper target when available
+    const rh = state.renderer as unknown as RendererHandlesLike | undefined;
+    const getTarget = rh?.getCameraTarget?.bind(rh);
+    const setTarget = rh?.setCameraTarget?.bind(rh);
+
+    const originalPosition = getTarget ? getTarget() : { x: 0, y: 0, z: 0 };
 
     const rng = state.rng ?? createRNG(String(Date.now()));
     gsap.to(
@@ -252,14 +257,17 @@ export function createAnimationManager(state: GameState): AnimationManager {
           const progress = this.progress();
           const shake = (1 - progress) * intensity;
 
-          state.renderer!.cameraTarget.x = originalPosition.x + (rng.next() - 0.5) * shake;
-          state.renderer!.cameraTarget.y = originalPosition.y + (rng.next() - 0.5) * shake;
-          state.renderer!.cameraTarget.z = originalPosition.z + (rng.next() - 0.5) * shake;
+          const nx = originalPosition.x + (rng.next() - 0.5) * shake;
+          const ny = originalPosition.y + (rng.next() - 0.5) * shake;
+          const nz = originalPosition.z + (rng.next() - 0.5) * shake;
+          if (setTarget) {
+            setTarget({ x: nx, y: ny, z: nz });
+          }
         },
         onComplete: () => {
-          state.renderer!.cameraTarget.x = originalPosition.x;
-          state.renderer!.cameraTarget.y = originalPosition.y;
-          state.renderer!.cameraTarget.z = originalPosition.z;
+          if (setTarget) {
+            setTarget({ x: originalPosition.x, y: originalPosition.y, z: originalPosition.z });
+          }
         },
       },
     );

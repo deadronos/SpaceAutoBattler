@@ -34,7 +34,7 @@ export function findBestTurretTarget(
   const sqrt = Math.sqrt;
   if (cfg.globalSettings.useTurretTargetingHelper) {
     // Check per-frame cache first
-    const frame = (state as any).frame ?? state.tick;
+    const frame = (state.frame ?? state.tick) as number;
     const key = cacheKey(frame, ship.id, turret.id);
     const cached = turretTargetCache.get(key);
     if (cached && cached.frame === frame) return cached.targetId ?? null;
@@ -84,12 +84,13 @@ export function findBestTurretTarget(
 
 export function updateTurretLeads(state: GameState, ship: Ship) {
   const cfg = state.behaviorConfig!;
+  // use cfg.turretConfig directly to avoid unused-variable lint errors
   for (const turretState of ship.turrets) {
     if (!turretState.aiState)
-      turretState.aiState = {
+      turretState.aiState = ({
         targetId: null,
         lastTargetUpdate: state.time,
-      } as TurretState['aiState'];
+      } as unknown) as TurretState['aiState'];
     const rate = state.simConfig?.targetUpdateRate ?? 0.5;
     const now = state.time;
     if (now - (turretState.aiState!.lastTargetUpdate ?? -1e9) < rate) {
@@ -102,10 +103,21 @@ export function updateTurretLeads(state: GameState, ship: Ship) {
     if (targetId != null) {
       const targetShip = state.ships.find((s) => s.id === targetId && s.health > 0);
       if (targetShip) {
-        const projectileSpeed =
-          (ship as any).projectileSpeed ?? (cfg.turretConfig as any).projectileSpeed ?? 0;
+        // Safely read optional projectileSpeed without using `any` casts
+        const shipProjectile = (ship as unknown as { projectileSpeed?: number }).projectileSpeed;
+        const cfgProjectile = (cfg.turretConfig as unknown as { projectileSpeed?: number }).projectileSpeed;
+        const projectileSpeed: number =
+          typeof shipProjectile === 'number'
+            ? shipProjectile
+            : typeof cfgProjectile === 'number'
+            ? cfgProjectile
+            : 0;
         const lookahead =
-          cfg.globalSettings.maxInterceptLookahead ?? cfg.turretConfig.leadPredictionTime ?? 0.5;
+          typeof cfg.globalSettings.maxInterceptLookahead === 'number'
+            ? cfg.globalSettings.maxInterceptLookahead
+            : typeof cfg.turretConfig.leadPredictionTime === 'number'
+            ? cfg.turretConfig.leadPredictionTime
+            : 0.5;
         const intercept =
           projectileSpeed > 0
             ? computeInterceptPoint(

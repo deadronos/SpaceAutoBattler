@@ -30,7 +30,9 @@ export class SVGLoader {
   constructor() {
     // If the application explicitly disables SVG subsystem, avoid initializing anything here.
     try {
-      if ((RendererConfig as any)?.disableSvgSubsystem) {
+      // Access RendererConfig.disableSvgSubsystem defensively without using `any`.
+      const cfg = RendererConfig as unknown as { disableSvgSubsystem?: boolean } | undefined;
+      if (cfg && cfg.disableSvgSubsystem) {
         logger.debug('[SVGLoader] SVG subsystem disabled via RendererConfig.disableSvgSubsystem');
         return;
       }
@@ -39,8 +41,10 @@ export class SVGLoader {
     }
     // Feature guard: require OffscreenCanvas and createImageBitmap for performant rasterization
     try {
-      const hasOffscreen = typeof (globalThis as any).OffscreenCanvas !== 'undefined';
-      const hasCIB = typeof (globalThis as any).createImageBitmap === 'function';
+  // Avoid `any` by narrowing globals access
+  const g = globalThis as unknown as Record<string, unknown>;
+  const hasOffscreen = typeof g.OffscreenCanvas !== 'undefined';
+  const hasCIB = typeof g.createImageBitmap === 'function';
       if (!hasOffscreen || !hasCIB) {
         throw new Error(
           'SVG rasterization requires OffscreenCanvas and createImageBitmap. Please use an up-to-date Chrome.',
@@ -67,7 +71,8 @@ export class SVGLoader {
   private ensureWorkerInitialized() {
     // If the SVG subsystem is disabled, never initialize the worker
     try {
-      if ((RendererConfig as any)?.disableSvgSubsystem) return;
+      const cfg = RendererConfig as unknown as { disableSvgSubsystem?: boolean } | undefined;
+      if (cfg && cfg.disableSvgSubsystem) return;
     } catch {
       /* ignore */
     }
@@ -75,7 +80,7 @@ export class SVGLoader {
     try {
       this.initWorker();
     } catch (_e) {
-      /* ignore - initWorker handles its own errors */
+      void _e; /* ignore - initWorker handles its own errors */
     }
   }
 
@@ -83,24 +88,23 @@ export class SVGLoader {
     try {
       // Defensive guard: never create a Worker if the SVG subsystem is disabled.
       try {
-        if ((RendererConfig as any)?.disableSvgSubsystem) {
+        const cfg = RendererConfig as unknown as { disableSvgSubsystem?: boolean } | undefined;
+        if (cfg && cfg.disableSvgSubsystem) {
           logger.debug(
             '[SVGLoader] initWorker aborting because RendererConfig.disableSvgSubsystem is true',
           );
           this.worker = null;
           return;
         }
-      } catch (_e) {
-        /* ignore */
-      }
+      } catch (_e) { void _e; }
       // Enable worker-based SVG rasterization for better performance
       // Resolve worker URL robustly so the app works whether the server
       // serves the repo root (assets under /dist) or serves the dist
       // directory as the site root. Consumers can override with a
       // runtime `window.__ASSET_BASE__` string (e.g. '/dist' or '/').
       try {
-        const assetBase =
-          (globalThis as unknown as { __ASSET_BASE__?: string }).__ASSET_BASE__ ?? null;
+        const g = globalThis as unknown as Record<string, unknown>;
+        const assetBase = (g.__ASSET_BASE__ as string | undefined) ?? null;
         if (assetBase) {
           // Ensure no trailing slash issues
           const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
@@ -124,44 +128,51 @@ export class SVGLoader {
         this.worker = null;
       }
       // Single consolidated message handler for both rasterized responses and structured errors
-      if (this.worker) {
-        try {
-          logger.info('[SVGLoader] Worker instance created (lazy init)');
-        } catch {
-          /* ignore */
-        }
-        this.worker.addEventListener('message', (ev) => {
+        if (this.worker) {
           try {
-            const data = ev.data;
-            // Structured worker-side error reporting
-            if (data && data.type === 'worker-error') {
-              logger.error('[SVGLoader] Worker reported error:', data.message, data.stack);
-              this.worker?.terminate();
-              this.worker = null;
-              return;
-            }
-
-            if (data && data.type === 'worker-messageerror') {
-              logger.error('[SVGLoader] Worker messageerror:', data.detail);
-              return;
-            }
-
-            // Developer checkpoints from worker module evaluation
-            if (data && data.type === 'worker-checkpoint') {
-              try {
-                logger.debug('[SVGLoader] Worker checkpoint:', (data as any).name);
-              } catch {
-                /* ignore */
-              }
-              return;
-            }
-
-            // Rasterized responses and other messages
-            this.handleWorkerMessage(data);
-          } catch (_err) {
-            void _err;
+            logger.info('[SVGLoader] Worker instance created (lazy init)');
+          } catch {
+            /* ignore */
           }
-        });
+
+          // Use a typed handler for messages; avoid `any` by narrowing `data`.
+          const onMessage = (ev: MessageEvent) => {
+            try {
+              const data = ev.data as unknown;
+              if (!data || typeof data !== 'object') return;
+              const d = data as { type?: string; message?: string; stack?: string; detail?: unknown } &
+                Record<string, unknown>;
+
+              if (d.type === 'worker-error') {
+                logger.error('[SVGLoader] Worker reported error:', d.message, d.stack);
+                this.worker?.terminate();
+                this.worker = null;
+                return;
+              }
+
+              if (d.type === 'worker-messageerror') {
+                logger.error('[SVGLoader] Worker messageerror:', d.detail);
+                return;
+              }
+
+              if (d.type === 'worker-checkpoint') {
+                try {
+                  // name may be string
+                  const name = d['name'] as string | undefined;
+                  logger.debug('[SVGLoader] Worker checkpoint:', name);
+                } catch {
+                  /* ignore */
+                }
+                return;
+              }
+
+              this.handleWorkerMessage(d);
+            } catch (_err) {
+              void _err;
+            }
+          };
+
+          this.worker.addEventListener('message', onMessage);
 
         this.worker.addEventListener('error', (e) => {
           try {
@@ -337,7 +348,8 @@ export class SVGLoader {
   private async rasterizeSVG(asset: SVGAsset, options: SVGLoadOptions): Promise<ImageBitmap> {
     // If the SVG subsystem is disabled, fail-fast to avoid creating workers or rasterizing.
     try {
-      if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled');
+      const cfg = RendererConfig as unknown as { disableSvgSubsystem?: boolean } | undefined;
+      if (cfg && cfg.disableSvgSubsystem) throw new Error('SVG subsystem disabled');
     } catch (_e) {
       throw _e;
     }
@@ -369,7 +381,8 @@ export class SVGLoader {
   ): Promise<ImageBitmap> {
     // Respect disableSvgSubsystem flag
     try {
-      if ((RendererConfig as any)?.disableSvgSubsystem) throw new Error('SVG subsystem disabled');
+      const cfg = RendererConfig as unknown as { disableSvgSubsystem?: boolean } | undefined;
+      if (cfg && cfg.disableSvgSubsystem) throw new Error('SVG subsystem disabled');
     } catch (_e) {
       throw _e;
     }
@@ -377,30 +390,39 @@ export class SVGLoader {
     // rasterization is actually needed.
     this.ensureWorkerInitialized();
 
-    return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
       if (!this.worker) {
         reject(new Error('Worker not available'));
         return;
       }
 
       const messageHandler = (e: MessageEvent) => {
-        const data = e.data;
+        const raw = e.data as unknown;
+        if (!raw || typeof raw !== 'object') return;
+        const data = raw as Record<string, unknown>;
+
         // Perf events bubbled from worker
-        if (
-          data &&
-          data.type === 'perf' &&
-          (globalThis as any).__perf &&
-          typeof (globalThis as any).__perf.addEvent === 'function'
-        ) {
-          try {
-            (globalThis as any).__perf.addEvent({ name: data.name, ms: data.ms });
-          } catch {
-            /* ignore */
+        try {
+          const g = globalThis as unknown as Record<string, unknown>;
+          const perf = g['__perf'] as { addEvent?: (arg: { name: string; ms: number }) => void } | undefined;
+          if (data['type'] === 'perf' && perf && typeof perf.addEvent === 'function') {
+            try {
+              const name = String(data['name'] ?? '');
+              const ms = Number(data['ms'] ?? 0);
+              perf.addEvent({ name, ms });
+            } catch {
+              /* ignore */
+            }
           }
+        } catch {
+          /* ignore */
         }
-        if (data.type === 'rasterized' && data.assetKey === asset.url) {
-          this.worker!.removeEventListener('message', messageHandler);
-          resolve(data.imageBitmap);
+
+        if (data['type'] === 'rasterized' && data['assetKey'] === asset.url) {
+          this.worker!.removeEventListener('message', messageHandler as EventListener);
+          // imageBitmap is transferable from worker; narrow safely
+          const ib = data['imageBitmap'] as ImageBitmap | undefined;
+          if (ib) resolve(ib);
         }
       };
 
@@ -419,12 +441,15 @@ export class SVGLoader {
       } as const;
       try {
         // Message-size audit for raster requests (approximate, JSON-based)
-        if (
-          (globalThis as any).__perf &&
-          typeof (globalThis as any).__perf.addEvent === 'function'
-        ) {
-          const approxKB = JSON.stringify(msg).length / 1000;
-          (globalThis as any).__perf.addEvent({ name: 'raster.request.sendKB', ms: approxKB });
+        try {
+          const g = globalThis as unknown as Record<string, unknown>;
+          const perf = g['__perf'] as { addEvent?: (arg: { name: string; ms: number }) => void } | undefined;
+          if (perf && typeof perf.addEvent === 'function') {
+            const approxKB = JSON.stringify(msg).length / 1000;
+            perf.addEvent({ name: 'raster.request.sendKB', ms: approxKB });
+          }
+        } catch {
+          /* ignore */
         }
       } catch {
         /* ignore */

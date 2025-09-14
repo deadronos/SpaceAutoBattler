@@ -12,6 +12,16 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 const levelOrder: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3, silent: 4 };
 let currentLevel: LogLevel = 'info';
 
+// Dynamic console wrapper that forwards to the current global console methods.
+// This avoids capturing the console functions at module initialization so
+// test-spies (which replace console.*) will still be observed.
+const consoleLogger = {
+  log: (...args: unknown[]) => console.log(...args),
+  info: (...args: unknown[]) => console.info(...args),
+  warn: (...args: unknown[]) => console.warn(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
+
 export function setDebug(v: boolean) {
   DEBUG_ENABLED = !!v;
   if (typeof window !== 'undefined') (window as unknown as { __DEBUG__?: boolean }).__DEBUG__ = !!v;
@@ -28,8 +38,7 @@ function shouldLog(level: LogLevel): boolean {
 export function debug(...args: unknown[]) {
   if (!DEBUG_ENABLED || !shouldLog('debug')) return;
   // Keep debug prints identifiable in log output
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- safe call to console with unknown args
-  console.log(...(args as any));
+  consoleLogger.log(...args);
 }
 
 // Accept a thunk so callers can avoid any formatting/allocations when debug is disabled.
@@ -40,16 +49,13 @@ export function debugLazy(fn: () => unknown | unknown[]) {
     res = fn();
   } catch (e) {
     // If the thunk throws, surface the error as a warn but avoid crashing.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    console.warn('[logger] debugLazy thunk threw', e as any);
+    consoleLogger.warn('[logger] debugLazy thunk threw', e);
     return;
   }
   if (Array.isArray(res)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    console.log(...(res as any));
+    consoleLogger.log(...(res as unknown[]));
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    console.log(res as any);
+    consoleLogger.log(res);
   }
 }
 
@@ -61,20 +67,17 @@ export function debugIf(cond: boolean, fn: () => unknown | unknown[]) {
 
 export function info(...args: unknown[]) {
   if (!shouldLog('info')) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- safe call to console
-  console.info(...(args as any));
+  consoleLogger.info(...args);
 }
 
 export function warn(...args: unknown[]) {
   if (!shouldLog('warn')) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- safe call to console
-  console.warn(...(args as any));
+  consoleLogger.warn(...args);
 }
 
 export function error(...args: unknown[]) {
   if (!shouldLog('error')) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- safe call to console
-  console.error(...(args as any));
+  consoleLogger.error(...args);
 }
 
 export default { debug, debugLazy, debugIf, info, warn, error, setDebug, setLevel };

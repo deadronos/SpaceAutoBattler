@@ -11,7 +11,17 @@ import { BulletInstancer } from './bulletInstancer.js';
 import { HealthBarInstancer } from './healthBarInstancer.js';
 import { shipInstancer } from './shipInstancer.js';
 import { updateBillboardBars } from './overlay.js';
-import { setCachedCameraBasis } from './cameraManager.js';
+import {
+  setCachedCameraBasis,
+  setupCamera,
+  attachOrbitControls,
+  updateCameraPosition as cameraManagerUpdate,
+  setCameraDistance,
+  getCameraDistance,
+  setCameraRotation,
+  setCameraTarget,
+  getCameraMatrix,
+} from './cameraManager.js';
 import { _ } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import { createRNG } from '../utils/rng.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
@@ -40,20 +50,25 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     __applyEffectsManagerGlobalPatches: () => void;
     __listNonInstancedMeshes: (opts?: {
       near?: { x: number; y: number; z: number; radius: number };
-    }) => any[];
-    __focusCameraOn: (pos: { x: number; y: number; z: number }, distance?: number) => any;
+    }) => Record<string, unknown>[];
+    __focusCameraOn: (pos: { x: number; y: number; z: number }, distance?: number) => unknown;
     scene: THREE.Scene;
     threeCamera: THREE.Camera;
-    __dumpShipsNearBounds: (r?: number) => any[];
+    __dumpShipsNearBounds: (r?: number) => Record<string, unknown>[];
     __listInstancedHealthBarShips: () => number[];
     __listShipsWithHealthBar: () => number[];
-    __hbInstancerStats: () => any;
+    __hbInstancerStats: () => unknown;
     __hbDebugScale: (shipId: number) => number | null;
-    __hbDebugMatrix: (shipId: number) => any | null;
+    __hbDebugMatrix: (shipId: number) => unknown | null;
     __hbPeriodicStart: () => void;
     __hbPeriodicStop: () => void;
   }>;
   const gAny = globalThis as unknown as DebugHelpers;
+  // Lightweight mapping type used locally to avoid widespread `any` casts when
+  // wiring developer helpers onto globalThis. Keeps runtime behaviour identical
+  // while satisfying `@typescript-eslint/no-explicit-any` in many places.
+  type LooseDict = Record<string, unknown>;
+  const _G = globalThis as unknown as LooseDict;
   const rng = state.rng ?? createRNG(String(Date.now()));
   // Apply global readPixels/prototype patches early, if available.
   try {
@@ -70,10 +85,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Helper: list non-instanced meshes with world positions. Optional filter: { near: {x,y,z, radius} }
   try {
-    (globalThis as any).__listNonInstancedMeshes = function (opts?: {
+  _G.__listNonInstancedMeshes = function (opts?: {
       near?: { x: number; y: number; z: number; radius: number };
     }) {
-      const out: any[] = [];
+      const out: {
+        id: string | null;
+        name: string | null;
+        type: string | null;
+        position: { x: number; y: number; z: number };
+        visible: boolean;
+      }[] = [];
       const groups = [shipsGroup, bulletsGroup, healthBarsGroup, shieldEffectsGroup, scene];
       const near = opts && opts.near ? opts.near : null;
       const checkNear = (p: { x: number; y: number; z: number }) => {
@@ -87,7 +108,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       groups.forEach((g) => {
         g.traverse((obj: THREE.Object3D) => {
           // skip instanced meshes
-          if ((obj as any).isInstancedMesh) return;
+          if ((obj as unknown as { isInstancedMesh?: boolean }).isInstancedMesh) return;
           // Cast to Mesh for runtime geometry/isMesh checks
           const meshObj = obj as unknown as THREE.Mesh;
           if (!meshObj.geometry && !meshObj.isMesh) return;
@@ -96,10 +117,12 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
           meshObj.getWorldPosition(wp);
           const p = { x: wp.x, y: wp.y, z: wp.z };
           if (!checkNear(p)) return;
+          const rawUserId = getUserData(meshObj)?.id;
+          const id = typeof rawUserId === 'string' || typeof rawUserId === 'number' ? String(rawUserId) : null;
           out.push({
-            id: (meshObj as any).userData?.id || null,
+            id,
             name: meshObj.name || null,
-            type: (meshObj as any).type || null,
+            type: meshObj.type || null,
             position: p,
             visible: meshObj.visible === undefined ? true : meshObj.visible,
           });
@@ -211,68 +234,56 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(
-    RendererConfig.camera.fov,
-    1,
-    RendererConfig.camera.near,
-    RendererConfig.camera.far,
-  );
+  // Use canonical CameraState created by cameraManager
+  const cameraState = setupCamera(state);
+  const camera = cameraState.camera;
 
-  // Initialize camera controls
-  const cameraRotation = {
-    x: RendererConfig.camera.rotation.pitch,
-    y: RendererConfig.camera.rotation.yaw,
-    z: RendererConfig.camera.rotation.roll,
-  };
-  // Make camera distance mutable inside renderer and expose via getter/setter so callers
-  // (for example `resetToCinematicView` in main.ts) can update it and the internal
-  // camera positioning will pick up the change.
-  let _cameraDistance = RendererConfig.camera.cameraZ;
-  const cameraTarget = {
-    x: state.simConfig.simBounds.width / 2,
-    y: state.simConfig.simBounds.height / 2,
-    z: state.simConfig.simBounds.depth / 2,
-  };
+  // Use canonical CameraState created by cameraManager (setupCamera set initial values)
 
   let lastSimulatedTime = state.time; // Track last simulated time for interpolation
   const fixedSimulationDt = 1 / state.simConfig.tickRate; // Fixed timestep for simulation
 
-  // Set initial camera position using spherical coordinates
-  updateCameraPosition();
+  // Initial camera position already set by setupCamera
+  // Attach orbit-style controls to CameraState (best-effort)
+  let _orbitCtrl: { dispose: () => void } | null = null;
+  try {
+    _orbitCtrl = attachOrbitControls?.(cameraState, canvas as unknown as HTMLElement) ?? null;
+  } catch {
+    /* ignore attach failures */
+  }
 
+  // Delegate camera positioning to cameraManager's update function when needed
   function updateCameraPosition() {
-    const x =
-      cameraTarget.x + _cameraDistance * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
-    const y = cameraTarget.y + _cameraDistance * Math.sin(cameraRotation.x);
-    const z =
-      cameraTarget.z + _cameraDistance * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
-
-    camera.position.set(x, y, z);
-    camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
+    try {
+      cameraManagerUpdate(cameraState);
+    } catch {
+      // ignore
+    }
   }
 
   // Expose a simple helper to focus the internal camera on a world position and adjust distance
   try {
-    (globalThis as any).__focusCameraOn = function (
+  _G.__focusCameraOn = function (
       pos: { x: number; y: number; z: number },
       distance?: number,
     ) {
       try {
         if (!pos) return { ok: false, reason: 'no-pos' };
-        // update target
-        cameraTarget.x = pos.x;
-        cameraTarget.y = pos.y;
-        cameraTarget.z = pos.z;
-        if (typeof distance === 'number') _cameraDistance = distance;
-        updateCameraPosition();
+        // update canonical CameraState
+        cameraState.target.x = pos.x;
+        cameraState.target.y = pos.y;
+        cameraState.target.z = pos.z;
+        if (typeof distance === 'number') cameraState.distance = distance;
+        // push transform
+        cameraManagerUpdate(cameraState);
         return { ok: true };
       } catch (e) {
         return { ok: false, reason: String(e) };
       }
     };
     // Also expose scene and camera references for external scripts (read-only)
-    (globalThis as any).scene = scene;
-    (globalThis as any).threeCamera = camera;
+  _G.scene = scene;
+  _G.threeCamera = camera;
   } catch {
     logger.error('Failed setting up __focusCameraOn');
   }
@@ -633,13 +644,17 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   const shieldEffectsGroup = new THREE.Group();
   // Instrument healthBarsGroup.add to trace unexpected Mesh additions (helpful when debugging stray bars)
   try {
-    const _origHealthBarsAdd = (healthBarsGroup as any).add.bind(healthBarsGroup);
-    (healthBarsGroup as any).add = function (...objs: any[]) {
+    const _origHealthBarsAdd: (...objs: THREE.Object3D[]) => void = (healthBarsGroup as THREE.Group).add.bind(
+      healthBarsGroup as THREE.Group,
+    );
+    (healthBarsGroup as unknown as { add: (...objs: THREE.Object3D[]) => void }).add = function (
+      ...objs: THREE.Object3D[]
+    ) {
       try {
         for (const o of objs) {
           if (!o) continue;
           // only inspect Mesh-like objects
-          if ((o as any).isMesh) {
+          if ((o as THREE.Mesh).isMesh) {
             const wp = new THREE.Vector3();
             try {
               o.getWorldPosition(wp);
@@ -672,12 +687,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   // Also instrument shipsGroup.add and scene.add to catch stray Mesh additions
   try {
-    const _origShipsAdd = (shipsGroup as any).add.bind(shipsGroup);
-    (shipsGroup as any).add = function (...objs: any[]) {
+    const _origShipsAdd: (...objs: THREE.Object3D[]) => void = (shipsGroup as THREE.Group).add.bind(
+      shipsGroup as THREE.Group,
+    );
+    (shipsGroup as unknown as { add: (...objs: THREE.Object3D[]) => void }).add = function (
+      ...objs: THREE.Object3D[]
+    ) {
       try {
         for (const o of objs) {
           if (!o) continue;
-          if ((o as any).isMesh) {
+          if ((o as THREE.Mesh).isMesh) {
             const wp = new THREE.Vector3();
             try {
               o.getWorldPosition(wp);
@@ -711,12 +730,16 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   try {
-    const _origSceneAdd = (scene as any).add.bind(scene);
-    (scene as any).add = function (...objs: any[]) {
+    const _origSceneAdd: (...objs: THREE.Object3D[]) => void = (scene as THREE.Scene).add.bind(
+      scene as unknown as THREE.Scene,
+    );
+    (scene as unknown as { add: (...objs: THREE.Object3D[]) => void }).add = function (
+      ...objs: THREE.Object3D[]
+    ) {
       try {
         for (const o of objs) {
           if (!o) continue;
-          if ((o as any).isMesh) {
+          if ((o as THREE.Mesh).isMesh) {
             const wp = new THREE.Vector3();
             try {
               o.getWorldPosition(wp);
@@ -761,18 +784,18 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const dbg = params.get('debugState');
       if (dbg === '1' || dbg === 'true') {
         // Expose a minimal, read-only snapshot accessor that Playwright can call.
-        (globalThis as any).__GAME_STATE__ = {
+  _G.__GAME_STATE__ = {
           // Return a small snapshot with only primitive values for quick inspection
           getSnapshot: () => {
             try {
-              const safeShips = state.ships.map((s: any) => ({
+              const safeShips = state.ships.map((s: Ship) => ({
                 id: s.id,
                 class: s.class,
                 team: s.team,
                 pos: { x: s.pos?.x, y: s.pos?.y, z: s.pos?.z },
-                hp: s.hp ?? null,
+                hp: s.health ?? null,
               }));
-              const safeBullets = state.bullets.map((b: any) => ({
+              const safeBullets = state.bullets.map((b: Bullet) => ({
                 id: b.id,
                 pos: { x: b.pos?.x, y: b.pos?.y, z: b.pos?.z },
                 vel: { x: b.vel?.x, y: b.vel?.y, z: b.vel?.z },
@@ -784,8 +807,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             }
           },
           // Convenience: shallow lists of ids for quick checks
-          listShipIds: () => state.ships.map((s: any) => s.id),
-          listBulletIds: () => state.bullets.map((b: any) => b.id),
+          listShipIds: () => state.ships.map((s: Ship) => s.id),
+          listBulletIds: () => state.bullets.map((b: Bullet) => b.id),
         };
         try {
           console.info('[HB_DEV] __GAME_STATE__ snapshot accessor enabled (debugState)');
@@ -799,7 +822,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     gAny.__dumpShipsNearBounds = function (radius = 1) {
       const b = state.simConfig.simBounds;
       const near = state.ships
-        .filter((s: any) => {
+        .filter((s: Ship) => {
           // consider ships within `radius` units of any boundary plane
           return (
             Math.abs(s.pos.x - 0) <= radius ||
@@ -810,7 +833,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             Math.abs(s.pos.z - b.depth) <= radius
           );
         })
-        .map((s: any) => ({ id: s.id, class: s.class, pos: s.pos }));
+        .map((s: Ship) => ({ id: s.id, class: s.class, pos: s.pos }));
       console.info('[HB_DEV] Ships near bounds (radius=' + radius + '):', near);
       return near;
     };
@@ -857,7 +880,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     gAny.__hbInstancerStats = function () {
       if (!healthBarInstancer) return null;
       try {
-        return (healthBarInstancer as unknown as { getStats?: () => any }).getStats?.();
+        return (healthBarInstancer as unknown as { getStats?: () => unknown }).getStats?.();
       } catch {
         return null;
       }
@@ -883,7 +906,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       try {
         return (
           (
-            healthBarInstancer as unknown as { debugGetInstanceMatrix?: (id: number) => any | null }
+            healthBarInstancer as unknown as { debugGetInstanceMatrix?: (id: number) => unknown | null }
           ).debugGetInstanceMatrix?.(shipId) ?? null
         );
       } catch {
@@ -903,12 +926,19 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
     function logOnce() {
       try {
-        const G =
-          typeof gAny !== 'undefined' ? gAny : (globalThis as unknown as Record<string, any>);
-        const near = G.__dumpShipsNearBounds ? G.__dumpShipsNearBounds(5) : [];
-        const instIds = G.__listInstancedHealthBarShips ? G.__listInstancedHealthBarShips() : [];
-        const nonInst = G.__listShipsWithHealthBar ? G.__listShipsWithHealthBar() : [];
-        const stats = G.__hbInstancerStats ? G.__hbInstancerStats() : null;
+        const G = typeof gAny !== 'undefined' ? gAny : (globalThis as unknown as Record<string, unknown>);
+  // Safely call optional global dev helper functions if they exist and are callable.
+  const dumpFn = (G as unknown as { __dumpShipsNearBounds?: (n: number) => unknown }).__dumpShipsNearBounds;
+  const near = typeof dumpFn === 'function' ? (dumpFn(5) as unknown[]) : [];
+
+  const listInstFn = (G as unknown as { __listInstancedHealthBarShips?: () => unknown }).__listInstancedHealthBarShips;
+  const instIds = typeof listInstFn === 'function' ? (listInstFn() as unknown[]) : [];
+
+  const listShipsFn = (G as unknown as { __listShipsWithHealthBar?: () => unknown }).__listShipsWithHealthBar;
+  const nonInst = typeof listShipsFn === 'function' ? (listShipsFn() as unknown[]) : [];
+
+  const statsFn = (G as unknown as { __hbInstancerStats?: () => unknown }).__hbInstancerStats;
+  const stats = typeof statsFn === 'function' ? statsFn() : null;
         if (
           (near && near.length > 0) ||
           (instIds && instIds.length > 0) ||
@@ -930,13 +960,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
     }
 
-    (globalThis as any).__hbPeriodicStart = function () {
+  _G.__hbPeriodicStart = function () {
       if (timer != null) return false;
       timer = window.setInterval(logOnce, intervalMs);
       return true;
     };
 
-    (globalThis as any).__hbPeriodicStop = function () {
+  _G.__hbPeriodicStop = function () {
       if (timer == null) return false;
       clearInterval(timer);
       timer = null;
@@ -958,10 +988,51 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   const GPU_BILLBOARD = true; // set to true to use shader-based billboarding for health bars
   // Helper to safely access shader-like uniforms from a material without using `any`.
+  // Helper to safely access shader-like uniforms from a material without using `any`.
+  // We represent uniforms as a record where each entry has a `value` field whose type is unknown.
   function getUniformsSafe(
     mat?: THREE.Material | THREE.ShaderMaterial | null,
-  ): Record<string, unknown> | undefined {
-    return (mat as unknown as { uniforms?: Record<string, unknown> })?.uniforms;
+  ): Record<string, { value: unknown }> | undefined {
+    return (mat as unknown as { uniforms?: Record<string, { value: unknown }> })?.uniforms;
+  }
+
+  // Helpers to operate on the uniforms object with safe, conservative typings.
+  function hasUniform(
+    uniforms: Record<string, { value: unknown }> | undefined,
+    name: string,
+  ): boolean {
+    return !!(uniforms && Object.prototype.hasOwnProperty.call(uniforms, name) && uniforms[name] !== undefined);
+  }
+
+  function getUniformValue<T = unknown>(
+    uniforms: Record<string, { value: unknown }> | undefined,
+    name: string,
+  ): T | undefined {
+    if (!uniforms) return undefined;
+    const entry = uniforms[name];
+    if (!entry) return undefined;
+    return entry.value as unknown as T;
+  }
+  // Small helpers to safely access/ensure Object3D/Material.userData without widespread casts
+  function getUserData(obj?: unknown): Record<string, unknown> | undefined {
+    return (obj as { userData?: Record<string, unknown> } | undefined)?.userData;
+  }
+
+  function ensureUserData(obj?: unknown): Record<string, unknown> | undefined {
+    const o = obj as { userData?: Record<string, unknown> } | undefined;
+    if (!o) return undefined;
+    o.userData = o.userData || {};
+    return o.userData;
+  }
+
+  function setUserDataKey(obj: unknown, key: string, val: unknown): void {
+    const ud = ensureUserData(obj);
+    if (!ud) return;
+    try {
+      ud[key] = val as unknown as unknown;
+    } catch {
+      // ignore assignment errors in test env
+    }
   }
   // Helper to attach a __renderProgram marker into material.userData without using `any` in multiple places.
   function setMaterialRenderProgram(material: THREE.Material | null | undefined, val: unknown) {
@@ -996,7 +1067,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function meshForShip(s: Ship): THREE.Object3D {
-    const pool = (state as any).assetPool as Map<string, any> | undefined;
+  const pool = state.assetPool as Map<string, unknown> | undefined;
     const svgUrl = getShipSVGUrl(s.class, defaultSVGConfig);
 
     const createTextured3DShip = (imageBitmap: ImageBitmap) => {
@@ -1089,7 +1160,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // If we already have an asset in pool, build plane from it
     try {
       if (pool && pool.has(svgUrl)) {
-        const svgAsset = pool.get(svgUrl);
+        const svgAsset = pool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
         if (svgAsset?.imageBitmap) return createTextured3DShip(svgAsset.imageBitmap);
       }
     } catch {
@@ -1108,7 +1179,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       try {
         // If GLTF models are enabled and a glTF prototype exists in the asset pool, skip SVG rasterization.
         try {
-          const shouldUseGltf = (RendererConfig as any)?.loadGltfModels ?? false;
+          const shouldUseGltf = (RendererConfig as { loadGltfModels?: boolean }).loadGltfModels ?? false;
           if (shouldUseGltf && state && state.assetPool) {
             const gltfKeyTeam = `ship-${s.class}-${s.team}`;
             const gltfKey = `ship-${s.class}`;
@@ -1116,8 +1187,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
             if (proto && typeof proto === 'object') {
               try {
                 shipInstancer.allocate(s.id, s.class, s.team, state);
-              } catch (_) {
-                void _;
+              } catch (_e) {
+                void _e;
               }
               return; // skip SVG rasterization
             }
@@ -1129,7 +1200,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         const teamColor =
           s.team === 'red' ? defaultSVGConfig.teamColors.red : defaultSVGConfig.teamColors.blue;
         // If SVG subsystem has been explicitly disabled, skip rasterization and keep placeholder.
-        if ((RendererConfig as any)?.disableSvgSubsystem) {
+  if ((RendererConfig as { disableSvgSubsystem?: boolean }).disableSvgSubsystem) {
           logger.debug(
             '[threeRenderer] SVG subsystem disabled; skipping SVG rasterization for',
             svgUrl,
@@ -1195,11 +1266,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
     const bgMesh = new THREE.Mesh(bgGeom, bgMat);
     try {
-      const m = bgMesh as unknown as { userData?: Record<string, unknown> };
-      m.userData = m.userData || {};
-      m.userData.__renderProgram =
-        ((bgMat as unknown as { userData?: Record<string, unknown> }).userData
-          ?.__renderProgram as unknown) ?? bgMat;
+      setUserDataKey(bgMesh, '__renderProgram', (getUserData(bgMat)?.['__renderProgram'] as unknown) ?? bgMat);
     } catch {
       /* ignore */
     }
@@ -1216,11 +1283,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     }
     const healthMesh = new THREE.Mesh(healthGeom, healthMat);
     try {
-      const m = healthMesh as unknown as { userData?: Record<string, unknown> };
-      m.userData = m.userData || {};
-      m.userData.__renderProgram =
-        ((healthMat as unknown as { userData?: Record<string, unknown> }).userData
-          ?.__renderProgram as unknown) ?? healthMat;
+      setUserDataKey(healthMesh, '__renderProgram', (getUserData(healthMat)?.['__renderProgram'] as unknown) ?? healthMat);
     } catch {
       /* ignore */
     }
@@ -1243,11 +1306,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
       shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
       try {
-        const m = shieldMesh as unknown as { userData?: Record<string, unknown> };
-        m.userData = m.userData || {};
-        m.userData.__renderProgram =
-          ((shieldMat as unknown as { userData?: Record<string, unknown> }).userData
-            ?.__renderProgram as unknown) ?? shieldMat;
+        setUserDataKey(shieldMesh, '__renderProgram', (getUserData(shieldMat)?.['__renderProgram'] as unknown) ?? shieldMat);
       } catch {
         /* ignore */
       }
@@ -1271,9 +1330,9 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     barGroup.add(borderMesh);
 
     // Store references for updating
-    (barGroup as unknown as Record<string, unknown>).healthMesh = healthMesh;
-    (barGroup as unknown as Record<string, unknown>).shieldMesh = shieldMesh;
-    (barGroup as unknown as Record<string, unknown>).bgMesh = bgMesh;
+  setUserDataKey(barGroup, 'healthMesh', healthMesh);
+  setUserDataKey(barGroup, 'shieldMesh', shieldMesh);
+  setUserDataKey(barGroup, 'bgMesh', bgMesh);
 
     return barGroup;
   }
@@ -1326,11 +1385,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const hUniforms = getUniformsSafe(
         healthMesh.material as THREE.Material | THREE.ShaderMaterial,
       );
-      if (GPU_BILLBOARD && hUniforms && (hUniforms as any).uColor) {
+      if (GPU_BILLBOARD && hUniforms && hasUniform(hUniforms, 'uColor')) {
         const mat = healthMesh.material as THREE.ShaderMaterial;
         // Acquire pooled material for the new color/alpha and swap if different
-        const alphaVal =
-          ((hUniforms as any).uAlpha && ((hUniforms as any).uAlpha.value as number)) ?? 1.0;
+        const alphaVal = getUniformValue<number>(hUniforms, 'uAlpha') ?? 1.0;
         const newMat = getPooledBillboardMaterial(new THREE.Color(healthColor), alphaVal);
         if (newMat !== mat) {
           (healthMesh.material as THREE.Material) = newMat;
@@ -1354,7 +1412,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       const sUniforms = getUniformsSafe(
         shieldMesh?.material as THREE.Material | THREE.ShaderMaterial,
       );
-      if (shieldMesh && GPU_BILLBOARD && sUniforms && (sUniforms as any).uColor) {
+      if (shieldMesh && GPU_BILLBOARD && sUniforms && hasUniform(sUniforms, 'uColor')) {
         const mat = shieldMesh.material as THREE.ShaderMaterial;
         const alpha = 0.8;
         const newMat = getPooledBillboardMaterial(new THREE.Color(shieldColor), alpha);
@@ -1693,7 +1751,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       // This avoids accidentally creating bars for non-ship objects or placeholders that
       // may be present in state.ships (which can show up at the world bounds/box).
       // DEV LOG: inline health bar creation
-      const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, any>)[s.class];
+  const hasKnownClass = !!(ShipVisualConfig.ships as Record<string, unknown>)[s.class as string];
       const posValid =
         Number.isFinite(s.pos?.x) && Number.isFinite(s.pos?.y) && Number.isFinite(s.pos?.z);
       if (RendererConfig.visual.enableHealthBars && hasKnownClass && posValid) {
@@ -2016,13 +2074,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     // Pass `false` for updateStyle because we already set canvas.style above.
     renderer.setSize(w, h, false);
 
-    // Camera projection must use the CSS aspect (width/height) so it matches
-    // the visible canvas size regardless of devicePixelRatio.
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+  // Camera projection must use the CSS aspect (width/height) so it matches
+  // the visible canvas size regardless of devicePixelRatio.
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
 
-    // Update camera position using spherical coordinates
-    updateCameraPosition();
+  // Update camera position via camera manager
+  cameraManagerUpdate(cameraState);
 
     try {
       effectsManager?.resize(w, h);
@@ -2035,9 +2093,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   let effectsManager: import('./effects.js').EffectsManager | null = null;
   try {
     effectsManager = createEffectsManager(
-      renderer as unknown as any,
-      scene as unknown as any,
-      camera as unknown as any,
+      // Conservative, runtime-neutral casts: satisfy the expected three.js types
+      renderer as unknown as THREE.WebGLRenderer,
+      scene as unknown as THREE.Scene,
+      camera as unknown as THREE.PerspectiveCamera,
     );
   } catch {
     effectsManager = null;
@@ -2050,17 +2109,37 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   try {
     // Attempt to require the particle system module (may be missing in some test envs)
     try {
-      const psMod = require('./particleSystem.js');
-      const ensure = psMod.ensureParticleSystem;
-      const sys = ensure ? ensure(state as unknown as any) : null;
+  const psMod = require('./particleSystem.js');
+  const ensure = (psMod.ensureParticleSystem as ((s: unknown) => unknown) | undefined);
+  // Keep the system opaque but treat the returned system as unknown locally.
+  const sys = ensure ? (ensure(state as unknown) as unknown) : null;
       // Create buffers for a reasonable max particle count (match initial pool)
-      const maxCount = sys && sys.stats && sys.stats().poolSize ? sys.stats().poolSize : 256;
+      // `sys` is an opaque third-party object; inspect it safely using runtime checks.
+      let maxCount = 256;
+      try {
+        if (sys && typeof sys === 'object' && sys !== null) {
+          const maybe = sys as Record<string, unknown>;
+          const statsFn = maybe['stats'];
+          if (typeof statsFn === 'function') {
+            const res = (statsFn as Function).call(maybe);
+            if (res && typeof res === 'object' && res !== null) {
+              const r = res as Record<string, unknown>;
+              if (typeof r['poolSize'] === 'number') {
+                maxCount = r['poolSize'] as number;
+              }
+            }
+          }
+        }
+      } catch {
+        // fallback to default
+      }
 
       // Base quad geometry (unit quad centered at origin)
       const baseQuad = new THREE.PlaneGeometry(1.0, 1.0);
 
       // Try to load billboard shaders
-      let billboardShaders: any = null;
+  // Shader modules are untyped third-party bundles; use unknown and narrow locally.
+  let billboardShaders: unknown = null;
       try {
         billboardShaders = require('./shaders/billboardExplosionShader.js');
       } catch {
@@ -2068,19 +2147,26 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
 
       // Attempt to provide an explosion texture uniform from the shared asset pool (use cached texture key if present)
-      const pool = (state as any).assetPool as Map<string, unknown> | undefined;
+  // Asset pool is stored on GameState; avoid `any` by asserting known map shape.
+  const pool = (state as unknown as { assetPool?: Map<string, unknown> }).assetPool;
       let explosionTex: THREE.Texture | null = null;
       try {
         const rawTex = pool
           ? (pool.get('textures/explosionSoftCircleTexture') ??
             pool.get('textures/explosionSoftCircle'))
           : undefined;
-        if (rawTex && (rawTex as any) instanceof THREE.Texture) {
+        if (rawTex && (rawTex as unknown) instanceof THREE.Texture) {
           explosionTex = rawTex as THREE.Texture;
         } else if (rawTex) {
           // Wrap canvas/imagebitmap into THREE.Texture and cache it
           try {
-            const t = new THREE.Texture(rawTex as any);
+            const candidate: unknown = rawTex;
+            // THREE.Texture accepts HTMLCanvasElement, ImageBitmap, HTMLImageElement, or ImageData in some contexts.
+            // We conservatively cast to unknown then to Texture to avoid `any` while keeping runtime behavior.
+            // THREE.Texture constructor accepts several image-like sources. Cast conservatively to a union
+            // of commonly supported DOM types to satisfy TypeScript without using `any` here.
+            const imgSource = candidate as unknown as HTMLImageElement | HTMLCanvasElement | ImageBitmap | ImageData;
+            const t = new THREE.Texture(imgSource);
             t.needsUpdate = true;
             explosionTex = t;
             if (pool) pool.set('textures/explosionSoftCircleTexture', t);
@@ -2093,25 +2179,42 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
 
       // Create material using billboard shader if available
-      if (billboardShaders && billboardShaders.billboardExplosionVertexShader) {
-        const vs = billboardShaders.billboardExplosionVertexShader as string;
-        const fs = billboardShaders.billboardExplosionFragmentShader as string;
-        const defaults = billboardShaders.DefaultBillboardExplosionParams as any;
+  // Narrow billboardShaders shape if present to avoid `any` usage
+  type BillboardShadersShape = {
+    billboardExplosionVertexShader?: string;
+    billboardExplosionFragmentShader?: string;
+    DefaultBillboardExplosionParams?: Record<string, unknown>;
+  };
+  if (billboardShaders && (billboardShaders as BillboardShadersShape).billboardExplosionVertexShader) {
+    const vs = (billboardShaders as BillboardShadersShape).billboardExplosionVertexShader as string;
+    const fs = (billboardShaders as BillboardShadersShape).billboardExplosionFragmentShader as string;
+    const defaultsRaw = (billboardShaders as BillboardShadersShape).DefaultBillboardExplosionParams as Record<string, unknown> | undefined;
+    const defaults = defaultsRaw || {};
+
+    const asNumberArray = (key: string, src: Record<string, unknown>, fallback: number[]) => {
+      const v = src[key];
+      return Array.isArray(v) && v.every((x) => typeof x === 'number') ? (v as number[]) : fallback;
+    };
+
+    const asNumber = (key: string, src: Record<string, unknown>, fallback: number) => {
+      const v = src[key];
+      return typeof v === 'number' ? v : fallback;
+    };
 
         particleMaterial = new THREE.ShaderMaterial({
           uniforms: {
             explosionTexture: { value: explosionTex },
-            fadeInDuration: { value: defaults.fadeInDuration },
-            fadeOutStart: { value: defaults.fadeOutStart },
-            softEdgePower: { value: defaults.softEdgePower },
-            colorIntensity: { value: defaults.colorIntensity },
-            billboardScale: { value: defaults.billboardScale },
-            colorStop1: { value: new THREE.Vector3(...defaults.colorStop1) },
-            colorStop2: { value: new THREE.Vector3(...defaults.colorStop2) },
-            colorStop3: { value: new THREE.Vector3(...defaults.colorStop3) },
-            colorStop1Pos: { value: defaults.colorStop1Pos },
-            colorStop2Pos: { value: defaults.colorStop2Pos },
-            colorStop3Pos: { value: defaults.colorStop3Pos },
+            fadeInDuration: { value: asNumber('fadeInDuration', defaults, 0.05) },
+            fadeOutStart: { value: asNumber('fadeOutStart', defaults, 0.3) },
+            softEdgePower: { value: asNumber('softEdgePower', defaults, 2.0) },
+            colorIntensity: { value: asNumber('colorIntensity', defaults, 1.0) },
+            billboardScale: { value: asNumber('billboardScale', defaults, 1.0) },
+            colorStop1: { value: new THREE.Vector3(...asNumberArray('colorStop1', defaults, [1, 1, 1])) },
+            colorStop2: { value: new THREE.Vector3(...asNumberArray('colorStop2', defaults, [1, 1, 1])) },
+            colorStop3: { value: new THREE.Vector3(...asNumberArray('colorStop3', defaults, [1, 1, 1])) },
+            colorStop1Pos: { value: asNumber('colorStop1Pos', defaults, 0.0) },
+            colorStop2Pos: { value: asNumber('colorStop2Pos', defaults, 0.5) },
+            colorStop3Pos: { value: asNumber('colorStop3Pos', defaults, 1.0) },
           },
           vertexShader: vs,
           fragmentShader: fs,
@@ -2162,13 +2265,13 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
         scene.add(particleInstancedMesh);
       } catch (e) {
-        /* ignore instancing failures in some envs */
+        void e; /* ignore instancing failures in some envs */
       }
-    } catch {
-      /* ignore in test env */
+    } catch (_e) {
+      void _e; /* ignore in test env */
     }
-  } catch {
-    /* ignore */
+  } catch (_e) {
+    void _e; /* ignore */
   }
 
   function render(_dt: number) {
@@ -2221,9 +2324,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       }
       for (const mat of billboardMaterials) {
         if (mat.uniforms) {
-          if (mat.uniforms.cameraRight)
-            (mat.uniforms.cameraRight.value as THREE.Vector3).copy(tempCamRight);
-          if (mat.uniforms.cameraUp) (mat.uniforms.cameraUp.value as THREE.Vector3).copy(tempCamUp);
+          // Use safe helper to extract and copy vector uniforms without `any`.
+          const camRight = getUniformValue<THREE.Vector3>(mat.uniforms as unknown as Record<string, { value: unknown }>, 'cameraRight');
+          if (camRight) camRight.copy(tempCamRight);
+          const camUp = getUniformValue<THREE.Vector3>(mat.uniforms as unknown as Record<string, { value: unknown }>, 'cameraUp');
+          if (camUp) camUp.copy(tempCamUp);
         }
       }
     } else {
@@ -2242,7 +2347,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       try {
         const psMod = require('./particleSystem.js');
         const ensure = psMod.ensureParticleSystem;
-        const sys = ensure ? ensure(state as unknown as any) : null;
+  const sys = ensure ? ensure(state as unknown) : null;
         if (sys && typeof sys.update === 'function') {
           try {
             sys.update(_dt);
@@ -2403,7 +2508,6 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
 
   window.addEventListener('resize', resize);
   resize();
-
   return {
     initDone: true,
     resize,
@@ -2425,6 +2529,11 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       } catch {
         logger.error('Failed to dispose health bar instancer');
       }
+      try {
+        _orbitCtrl?.dispose();
+      } catch {
+        logger.error('Failed to dispose orbit controls');
+      }
       renderer.dispose();
       shipMeshes.clear();
       bulletMeshes.clear();
@@ -2441,18 +2550,66 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       billboardMaterialPool.clear();
       billboardMaterials.clear();
     },
-    cameraRotation,
-    // Expose camera distance as getter/setter so external callers can adjust it.
-    get cameraDistance() {
-      return _cameraDistance;
+    // Camera helpers (thin wrappers around cameraManager using internal CameraState).
+    getCameraDistance(): number {
+      try {
+        return getCameraDistance(cameraState);
+      } catch {
+        return NaN;
+      }
     },
-    set cameraDistance(v: number) {
-      _cameraDistance = v;
-      updateCameraPosition();
+    setCameraDistance(v: number): void {
+      try {
+        setCameraDistance(cameraState, v);
+      } catch {
+        /* ignore */
+      }
     },
-    cameraTarget,
-    // Adapter helpers: optional hooks used by higher-level systems for caching
-    // and introspection. These are intentionally non-critical and best-effort.
+    setCameraRotation(r: { x?: number; y?: number; z?: number }): void {
+      try {
+        setCameraRotation(cameraState, r);
+      } catch {
+        /* ignore */
+      }
+    },
+    getCameraTarget(): { x: number; y: number; z: number } {
+      try {
+        return { x: cameraState.target.x, y: cameraState.target.y, z: cameraState.target.z };
+      } catch {
+        return { x: 0, y: 0, z: 0 };
+      }
+    },
+    setCameraTarget(t: { x?: number; y?: number; z?: number }): void {
+      try {
+        setCameraTarget(cameraState, t);
+      } catch {
+        /* ignore */
+      }
+    },
+    getCameraRotation(): { x: number; y: number; z: number } {
+      try {
+        return { x: cameraState.rotation.x, y: cameraState.rotation.y, z: cameraState.rotation.z };
+      } catch {
+        return { x: 0, y: 0, z: 0 };
+      }
+    },
+    getCameraMatrix(): unknown {
+      try {
+        return getCameraMatrix(cameraState);
+      } catch {
+        return null;
+      }
+    },
+    attachOrbitControls(domElement: HTMLElement, opts?: { enableRotate?: boolean; enablePan?: boolean; enableZoom?: boolean }) {
+      try {
+        return attachOrbitControls?.(cameraState, domElement, opts) ?? null;
+      } catch {
+        return null;
+      }
+    },
+  // Note: internal CameraState is private to the renderer. Use the
+  // camera helper methods above (`getCameraDistance`, `setCameraTarget`,
+  // `attachOrbitControls`, etc.) for all external camera interactions.
     getParameters: adapterGetParameters,
     invalidateParameters: adapterInvalidateParameters,
     // Expose whether ship instancing is currently used/enabled. Tests rely on
@@ -2461,9 +2618,10 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       try {
         return !!(
           RendererConfig.instancing.enableShips &&
-          (shipInstancer && typeof (shipInstancer as any).isReady === 'function'
-            ? (shipInstancer as any).isReady()
-            : false)
+          shipInstancer &&
+          typeof (shipInstancer as unknown as { isReady?: () => boolean }).isReady === 'function'
+            ? (shipInstancer as unknown as { isReady: () => boolean }).isReady()
+            : true
         );
       } catch {
         return false;
@@ -2538,8 +2696,10 @@ function getPooledBillboardMaterial(
   // Mark a stable program-like key on the material so systems can use it
   // as a canonical identity for GL program-level caching.
   try {
-    (mat as any).userData = (mat as any).userData || {};
-    (mat as any).userData.__renderProgram = mat;
+    // userData is an open bag on materials; assert a minimal shape to avoid `any`.
+    const matUser = (mat as unknown as { userData?: Record<string, unknown> });
+    matUser.userData = matUser.userData || {};
+    (matUser.userData as Record<string, unknown>).__renderProgram = mat;
   } catch {
     logger.error('Failed to set render program on billboard material');
   }

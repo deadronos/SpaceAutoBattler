@@ -1,4 +1,4 @@
-import type { GameState, Ship, Team } from '../../types/index.js';
+import type { GameState, Team } from '../../types/index.js';
 import { makeCellNearestResolver, pickKNearestFromCandidates } from '../searchUtils.js';
 
 // Use WeakMap to attach per-state registries without mutating GameState type
@@ -44,7 +44,7 @@ export class TeamSystems {
 
 export function updateTeamAlarms(state: GameState) {
   const config = state.behaviorConfig!;
-  if (!(config as any).globalSettings?.enableAlarmSystem) return;
+  if (!config.globalSettings.enableAlarmSystem) return;
   const alarmTimes = getAlarmTimes(state);
   for (const ship of state.ships) {
     if (ship.health <= 0 || !ship.aiState) continue;
@@ -52,7 +52,7 @@ export function updateTeamAlarms(state: GameState) {
     if (
       ship.aiState.recentDamage &&
       ship.aiState.recentDamage > 0 &&
-      timeSinceLastDamage <= (config as any).globalSettings.alarmSystemWindowSeconds
+  timeSinceLastDamage <= config.globalSettings.alarmSystemWindowSeconds
     ) {
       alarmTimes.set(ship.team, state.time);
     }
@@ -61,7 +61,7 @@ export function updateTeamAlarms(state: GameState) {
 
 export function updateScoutAssignments(state: GameState) {
   const config = state.behaviorConfig!;
-  if (!(config as any).globalSettings?.enableScoutBehavior) return;
+  if (!config.globalSettings.enableScoutBehavior) return;
   const scouts = getScouts(state);
   for (const team of ['red', 'blue'] as Team[]) {
     const teamShips = state.ships.filter((s) => s.team === team && s.health > 0);
@@ -103,8 +103,8 @@ export function isTeamUnderAlarm(state: GameState, team: Team): boolean {
   const t = getAlarmTimes(state).get(team) || 0;
   const since = state.time - t;
   return !!(
-    (config as any).globalSettings?.enableAlarmSystem &&
-    since <= (config as any).globalSettings.alarmSystemWindowSeconds
+  config.globalSettings.enableAlarmSystem &&
+  since <= config.globalSettings.alarmSystemWindowSeconds
   );
 }
 
