@@ -4,6 +4,7 @@ import type { RendererAdapter } from '../adapters/rendererAdapter.js';
 import type { SpatialIndex } from '../spatialIndex.js';
 import type { TimeAdapter } from '../adapters/timeAdapter.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
+import { recordDamage } from '../gameState.js';
 import { applyBoundaryPhysicsBullet } from '../boundaryUtils.js';
 import * as logger from '../../utils/logger.js';
 import { createRNG } from '../../utils/rng.js';
@@ -450,9 +451,8 @@ export class ProjectileSystem {
       // Mark health as dirty for UI optimization
       ship._healthDirty = true;
 
-      // Track damage source for kill crediting
-      ship.lastDamageBy = bullet.ownerShipId;
-      ship.lastDamageTime = this.state.time;
+      // Centralize XP/ai bookkeeping and last-damage tracking
+      recordDamage(this.state, ship, effectiveDamage, bullet.ownerShipId);
     }
 
     // Create hit result

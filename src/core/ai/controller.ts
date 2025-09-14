@@ -532,6 +532,16 @@ export class AIController {
         sepWeight *= (gs.separationMildWeight ?? 1.2) * 1.2;
       }
     }
+    // If the ship already has an assigned formation position, reduce separation
+    // influence so ships can converge to formation slots without being pushed
+    // away by the separation forces. This helps tests that pre-assign
+    // formationPosition and expect ships to move into formation slots.
+    if (ship.aiState?.formationPosition) {
+      // Strongly reduce separation influence for ships with assigned formation
+      // positions so they can converge to their slots. Preserve a small
+      // separation contribution to avoid perfect overlap.
+      sepWeight *= 0.08;
+    }
     ship.vel.x += sepRes.force.x * dt * ship.speed * sepWeight;
     ship.vel.y += sepRes.force.y * dt * ship.speed * sepWeight;
     ship.vel.z += sepRes.force.z * dt * ship.speed * sepWeight;
@@ -621,25 +631,37 @@ export class AIController {
           integrated = true;
         }
       } else if (intent === 'idle' || !intent) {
-        // idle already had separation nudges applied above; integrate velocity so
-        // separation has effect even when not actively moving via moveTowards.
-        // Apply damping and clamp to max speed similar to moveTowards.
+        // If a formation position is already assigned, move towards it even
+        // while current intent is 'idle'. Tests and some higher-level logic
+        // pre-assign formationPosition (e.g., during setup) and expect the
+        // ship to converge to that slot without requiring an immediate intent
+        // reevaluation. Move towards formationPosition first, otherwise fall
+        // back to idle damping/integration so separation still applies.
         try {
-          ship.vel.x *= PhysicsConfig.speed.dampingFactor;
-          ship.vel.y *= PhysicsConfig.speed.dampingFactor;
-          ship.vel.z *= PhysicsConfig.speed.dampingFactor;
-          const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
-          const vSq = ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z;
-          if (vSq > maxV * maxV && vSq > 0) {
-            const v = Math.sqrt(vSq);
-            ship.vel.x = (ship.vel.x / v) * maxV;
-            ship.vel.y = (ship.vel.y / v) * maxV;
-            ship.vel.z = (ship.vel.z / v) * maxV;
+          if (ship.aiState?.formationPosition) {
+            // Force immediate orientation/acceleration towards formation slot
+            this.moveTowards(ship, ship.aiState.formationPosition, dt, true);
+            integrated = true;
+          } else {
+            // idle already had separation nudges applied above; integrate velocity so
+            // separation has effect even when not actively moving via moveTowards.
+            // Apply damping and clamp to max speed similar to moveTowards.
+            ship.vel.x *= PhysicsConfig.speed.dampingFactor;
+            ship.vel.y *= PhysicsConfig.speed.dampingFactor;
+            ship.vel.z *= PhysicsConfig.speed.dampingFactor;
+            const maxV = ship.speed * PhysicsConfig.speed.maxSpeedMultiplier;
+            const vSq = ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z;
+            if (vSq > maxV * maxV && vSq > 0) {
+              const v = Math.sqrt(vSq);
+              ship.vel.x = (ship.vel.x / v) * maxV;
+              ship.vel.y = (ship.vel.y / v) * maxV;
+              ship.vel.z = (ship.vel.z / v) * maxV;
+            }
+            ship.pos.x += ship.vel.x * dt;
+            ship.pos.y += ship.vel.y * dt;
+            ship.pos.z += ship.vel.z * dt;
+            integrated = true;
           }
-          ship.pos.x += ship.vel.x * dt;
-          ship.pos.y += ship.vel.y * dt;
-          ship.pos.z += ship.vel.z * dt;
-          integrated = true;
         } catch {
           // keep safe for tests
         }

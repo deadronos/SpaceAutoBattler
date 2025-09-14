@@ -4,6 +4,10 @@
 // `/dist/workers/rapier.*.js` instead of `/dist/workers/workers/...` (double path).
 // We set the public path to the parent directory of this worker script at runtime.
 
+// Minimal typed view of the global `self` for early bootstrap checks
+type SelfLikeForBootstrap = { location?: { href?: string } } & typeof self;
+const S = (typeof self !== 'undefined' ? (self as unknown as SelfLikeForBootstrap) : ({} as SelfLikeForBootstrap));
+
 // @ts-ignore - webpack global variable
 if (typeof __webpack_public_path__ !== 'undefined') {
   try {
@@ -11,12 +15,8 @@ if (typeof __webpack_public_path__ !== 'undefined') {
     // referencing `import.meta` (which can confuse some parsers) and is reliable
     // in dedicated worker contexts where `self.location.href` points at the
     // worker script URL (e.g. /dist/workers/917.x.js).
-    if (
-      typeof self !== 'undefined' &&
-      (self as any).location &&
-      typeof (self as any).location.href === 'string'
-    ) {
-      const metaUrl = ((self as any).location.href as string).replace(/\\/g, '/');
+    if (typeof self !== 'undefined' && S.location && typeof S.location.href === 'string') {
+      const metaUrl = (S.location.href as string).replace(/\\/g, '/');
       const workersIndex = metaUrl.lastIndexOf('/workers/');
       const parent =
         workersIndex !== -1
@@ -26,7 +26,7 @@ if (typeof __webpack_public_path__ !== 'undefined') {
       __webpack_public_path__ = parent;
     }
   } catch (_e) {
-    /* ignore */
+    void _e;
   }
 }
 
@@ -58,6 +58,12 @@ type RapierModuleLike = {
 let world: WorldLike | null = null;
 let Rapier: RapierModuleLike | null = null;
 const bodies = new Map<number, RigidBodyLike | null>(); // shipId -> rigidBody
+
+// Worker global typed view for message/postMessage usage
+type WorkerGlobalLike = { postMessage(m: unknown): void; location?: { href?: string } } & typeof self;
+const WG = (self as unknown) as WorkerGlobalLike;
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 async function initRapier() {
   if (Rapier) return;
@@ -181,19 +187,28 @@ function collectTransforms() {
   return transforms;
 }
 
-self.addEventListener('message', async (e) => {
-  const { type, payload } = e.data || {};
+self.addEventListener('message', async (e: MessageEvent) => {
+  // Guard and narrow incoming message shape to avoid `any`
+  const raw = e.data as unknown;
+  if (typeof raw !== 'object' || raw === null) {
+    WG.postMessage({ type: 'unknown', payload: raw });
+    return;
+  }
+  const { type, payload } = raw as { type?: string; payload?: unknown };
 
   if (type === 'init-physics') {
     await initRapier();
-    const workerPost = (self as unknown as { postMessage: (m: unknown) => void }).postMessage;
-    workerPost({ type: 'init-physics-done', ok: !!world });
+    WG.postMessage({ type: 'init-physics-done', ok: !!world });
     return;
   }
 
   if (type === 'update-ships') {
     // Update/create bodies for ships
-    const shipDataArray = payload?.ships as Float32Array;
+    if (!isObject(payload) || !('ships' in payload)) {
+      WG.postMessage({ type: 'update-ships-done' });
+      return;
+    }
+    const shipDataArray = payload['ships'] as unknown as Float32Array;
     const currentShipIds = new Set<number>();
 
     for (let i = 0; i < shipDataArray.length; i += 7) {
@@ -231,14 +246,14 @@ self.addEventListener('message', async (e) => {
       }
     }
 
-    (self as unknown as { postMessage: (m: unknown) => void }).postMessage({
+    WG.postMessage({
       type: 'update-ships-done',
     });
     return;
   }
 
   if (type === 'step-physics') {
-    const dt = payload?.dt ?? 0.016;
+  const dt = isObject(payload) && 'dt' in payload ? Number(payload['dt']) || 0.016 : 0.016;
     try {
       if (world) {
         world.timestep = dt;
@@ -252,7 +267,7 @@ self.addEventListener('message', async (e) => {
         const collectMs = isDebugPerfEnabled() ? performance.now() - t1 : 0;
 
         const t2 = isDebugPerfEnabled() ? performance.now() : 0;
-        (self as unknown as { postMessage: (m: unknown) => void }).postMessage({
+        WG.postMessage({
           type: 'step-physics-done',
           dt,
           transforms,
@@ -266,21 +281,15 @@ self.addEventListener('message', async (e) => {
           try {
             const approxBytes = JSON.stringify(transforms).length;
             postPerf('physics.payload.approxBytes', approxBytes / 1000);
-          } catch {}
+          } catch (_e) { void _e; }
         }
       } else {
-        (self as unknown as { postMessage: (m: unknown) => void }).postMessage({
-          type: 'step-physics-done',
-          dt,
-        });
+        WG.postMessage({ type: 'step-physics-done', dt });
       }
     } catch (_err) {
       void _err;
       logger.error('Sim worker step error:', _err);
-      (self as unknown as { postMessage: (m: unknown) => void }).postMessage({
-        type: 'step-physics-error',
-        error: String(_err),
-      });
+      WG.postMessage({ type: 'step-physics-error', error: String(_err) });
     }
     return;
   }
@@ -294,17 +303,12 @@ self.addEventListener('message', async (e) => {
     }
     world = null;
     Rapier = null;
-    (self as unknown as { postMessage: (m: unknown) => void }).postMessage({
-      type: 'dispose-physics-done',
-    });
+    WG.postMessage({ type: 'dispose-physics-done' });
     return;
   }
 
   // echo for unknown messages
-  (self as unknown as { postMessage: (m: unknown) => void }).postMessage({
-    type: 'unknown',
-    payload,
-  });
+  WG.postMessage({ type: 'unknown', payload });
 });
 
 export {};
@@ -312,7 +316,7 @@ export {};
 // Perf toggle via URL param on worker script (debugPerf=1)
 function isDebugPerfEnabled(): boolean {
   try {
-    const href = (self as any)?.location?.href as string | undefined;
+    const href = S.location?.href as string | undefined;
     if (!href) return false;
     return href.includes('debugPerf=1');
   } catch {
@@ -320,7 +324,7 @@ function isDebugPerfEnabled(): boolean {
   }
 }
 
-function stepWorldOnce() {
+function _stepWorldOnce() {
   if (!world || typeof world.step !== 'function') return;
   const t0 = isDebugPerfEnabled() ? performance.now() : 0;
   world.step?.();
@@ -330,7 +334,7 @@ function stepWorldOnce() {
 function postPerf(name: string, valueMs: number) {
   if (!isDebugPerfEnabled()) return;
   try {
-    (self as unknown as { postMessage(m: unknown): void }).postMessage({
+    WG.postMessage({
       type: 'perf',
       name,
       ms: valueMs,

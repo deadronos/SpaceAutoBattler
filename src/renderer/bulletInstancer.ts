@@ -157,26 +157,26 @@ export class BulletInstancer {
     // Defensive: derive an interpolated position if not provided. Many tests
     // construct bullets with only `pos` and omit `prevPos`; default to `pos`
     // to avoid runtime errors during rendering tests.
-    const pAny: any =
-      interpolatedPos ?? new THREE.Vector3(bullet.pos.x, bullet.pos.y, bullet.pos.z);
+    type VecLike = { x: number; y: number; z: number };
+    const fallback: VecLike = { x: bullet.pos.x, y: bullet.pos.y, z: bullet.pos.z };
+    const pVec: VecLike = (interpolatedPos as unknown as VecLike) ?? fallback;
     // Ensure numeric x/y/z are present — test mocks for THREE.Vector3 may not set them.
-    if (!Number.isFinite(pAny.x) || !Number.isFinite(pAny.y) || !Number.isFinite(pAny.z)) {
+    let safeVec = pVec;
+    if (!Number.isFinite(safeVec.x) || !Number.isFinite(safeVec.y) || !Number.isFinite(safeVec.z)) {
       if (
         bullet.pos &&
         Number.isFinite(bullet.pos.x) &&
         Number.isFinite(bullet.pos.y) &&
         Number.isFinite(bullet.pos.z)
       ) {
-        pAny.x = bullet.pos.x;
-        pAny.y = bullet.pos.y;
-        pAny.z = bullet.pos.z;
+        safeVec = { x: bullet.pos.x, y: bullet.pos.y, z: bullet.pos.z };
       }
     }
-    if (!pAny || !Number.isFinite(pAny.x) || !Number.isFinite(pAny.y) || !Number.isFinite(pAny.z)) {
+    if (!safeVec || !Number.isFinite(safeVec.x) || !Number.isFinite(safeVec.y) || !Number.isFinite(safeVec.z)) {
       try {
         logger.error('[INSTANCER_ERROR][BulletInstancer] non-finite bullet pos', {
           bulletId: bullet.id,
-          pos: pAny,
+          pos: pVec,
         });
       } catch (_e) {
         void _e;
@@ -186,7 +186,8 @@ export class BulletInstancer {
 
     // Set position and identity rotation/scale
     // tempPosition.copy expects a THREE.Vector3-like object; our pAny may be a plain object, but copy mock accepts it in tests.
-    this.tempPosition.copy(pAny as any);
+    // Convert safeVec to a THREE.Vector3 for the copy operation. This is a narrow, intentional cast.
+    this.tempPosition.copy(safeVec as unknown as THREE.Vector3);
     this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
     this.instancedMesh.setMatrixAt(instanceIndex, this.tempMatrix);
 

@@ -116,6 +116,51 @@ export function resetState(state: GameState, seed?: string) {
   }
 }
 
+/**
+ * Ensure a minimal aiState exists on a ship so damage bookkeeping and
+ * target/alarm logic can safely update recentDamage/lastDamageTime without
+ * requiring callers to initialize aiState elsewhere.
+ */
+function ensureAIState(s: Ship) {
+  if (!s.aiState) {
+    s.aiState = {
+      currentIntent: 'idle',
+      intentEndTime: 0,
+      lastIntentReevaluation: 0,
+      preferredRange: 0,
+      recentDamage: 0,
+      lastDamageTime: 0,
+    } as Ship['aiState'];
+  }
+  return s.aiState as Ship['aiState'];
+}
+/**
+ * Centralized damage bookkeeping helper.
+ * - Awards XP to the owner when present
+ * - Records lastDamageBy/lastDamageTime on the victim
+ * - Ensures aiState exists and updates recentDamage/lastDamageTime
+ */
+export function recordDamage(state: GameState, s: Ship, damage: number, ownerShipId?: EntityId) {
+  // Award XP to owner and set lastDamageBy if owner exists
+  if (ownerShipId !== undefined && ownerShipId !== null) {
+    const owner = state.shipIndex?.get(ownerShipId) ?? state.ships.find((sh) => sh.id === ownerShipId);
+    if (owner) {
+      owner.level.xp += damage * XP_PER_DAMAGE;
+      s.lastDamageBy = owner.id;
+    } else {
+      // Still record id if owner not present in state.shipIndex
+      s.lastDamageBy = ownerShipId;
+    }
+  }
+
+  s.lastDamageTime = state.time;
+
+  // Ensure aiState exists and record damage for AI systems
+  ensureAIState(s);
+  s.aiState!.recentDamage = (s.aiState!.recentDamage ?? 0) + damage;
+  s.aiState!.lastDamageTime = state.time;
+}
+
 function allocateId(state: GameState): EntityId {
   return state.nextId++;
 }
@@ -294,32 +339,29 @@ export function spawnShip(
     _shieldDirty: true,
   };
 
-  // Eagerly create aiState so early damage (before first AI tick) is recorded
-  // by alarm and damage bookkeeping logic. We avoid doing this during unit
-  // tests (Vitest sets NODE_ENV='test') so tests that explicitly set
-  // aiState during setup continue to work as before.
-  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'test') {
-    try {
-      ship.aiState = {
-        currentIntent: 'idle',
-        intentEndTime: 0,
-        lastIntentReevaluation: 0,
-        preferredRange: calculatePreferredRange(state, ship),
-        recentDamage: 0,
-        lastDamageTime: 0,
-      } as Ship['aiState'];
-    } catch {
-      // Best-effort: if preferred range calculation fails, still create a
-      // minimal aiState to enable damage bookkeeping in runtime.
-      ship.aiState = {
-        currentIntent: 'idle',
-        intentEndTime: 0,
-        lastIntentReevaluation: 0,
-        preferredRange: 0,
-        recentDamage: 0,
-        lastDamageTime: 0,
-      } as Ship['aiState'];
-    }
+  // Always create aiState so the AI bookkeeping invariant holds. This makes
+  // reasoning about damage/alarms simpler and avoids missing updates when
+  // ships are damaged before their first AI tick.
+  try {
+    ship.aiState = {
+      currentIntent: 'idle',
+      intentEndTime: 0,
+      lastIntentReevaluation: 0,
+      preferredRange: calculatePreferredRange(state, ship),
+      recentDamage: 0,
+      lastDamageTime: 0,
+    } as Ship['aiState'];
+  } catch {
+    // Best-effort: if preferred range calculation fails, still create a
+    // minimal aiState to enable damage bookkeeping in runtime.
+    ship.aiState = {
+      currentIntent: 'idle',
+      intentEndTime: 0,
+      lastIntentReevaluation: 0,
+      preferredRange: 0,
+      recentDamage: 0,
+      lastDamageTime: 0,
+    } as Ship['aiState'];
   }
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
   // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
@@ -397,19 +439,11 @@ function updateBullets(state: GameState, dt: number) {
           const effective = Math.max(1, dmgLeft - s.armor * 0.3);
           s.health -= effective;
           totalDamage += effective;
-          const owner =
-            state.shipIndex?.get(b.ownerShipId) ??
-            state.ships.find((sh) => sh.id === b.ownerShipId);
-          if (owner) {
-            owner.level.xp += effective * XP_PER_DAMAGE;
-            s.lastDamageBy = owner.id;
-            s.lastDamageTime = state.time;
-          }
         }
 
-        if (s.aiState && totalDamage > 0) {
-          s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
-          s.aiState.lastDamageTime = state.time;
+        // Centralize XP/ai bookkeeping for both shield and health damage
+        if (totalDamage > 0) {
+          recordDamage(state, s, totalDamage, b.ownerShipId);
         }
 
         // Consume bullet
@@ -446,19 +480,11 @@ function updateBullets(state: GameState, dt: number) {
             const effective = Math.max(1, dmgLeft - s.armor * 0.3);
             s.health -= effective;
             totalDamage += effective;
-            const owner =
-              state.shipIndex?.get(b.ownerShipId) ??
-              state.ships.find((sh) => sh.id === b.ownerShipId);
-            if (owner) {
-              owner.level.xp += effective * XP_PER_DAMAGE;
-              s.lastDamageBy = owner.id;
-              s.lastDamageTime = state.time;
-            }
           }
 
-          if (s.aiState && totalDamage > 0) {
-            s.aiState.recentDamage = (s.aiState.recentDamage || 0) + totalDamage;
-            s.aiState.lastDamageTime = state.time;
+          if (totalDamage > 0) {
+            // Centralize XP, lastDamage and aiState bookkeeping
+            recordDamage(state, s, totalDamage, b.ownerShipId);
           }
 
           b.ttl = 0;

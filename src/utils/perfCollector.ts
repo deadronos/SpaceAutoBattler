@@ -7,7 +7,9 @@ export function enablePerfCollectorIfRequested(): void {
     if ((window as any).__perf && typeof (window as any).__perf.addEvent === 'function') {
       try {
         console.debug('[perf] collector already active (init)');
-      } catch {}
+      } catch (_e) {
+        void _e;
+      }
       return;
     }
     const perf = {
@@ -45,8 +47,10 @@ export function enablePerfCollectorIfRequested(): void {
     perf.startFpsSampling();
     try {
       console.debug('[perf] collector enabled (init)');
-    } catch {}
-  } catch {
-    /* ignore */
+    } catch (_e) {
+      void _e;
+    }
+  } catch (_e) {
+    void _e;
   }
 }
