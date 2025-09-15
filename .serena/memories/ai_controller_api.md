@@ -1,6 +1,6 @@
 ## AIController
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 The `AIController` class is the central component for managing ship AI in the simulation. It is responsible for orchestrating ship behaviors, intents, and actions based on the game state and configurable AI personalities.
 
@@ -34,3 +34,8 @@ The `AIController` class is the central component for managing ship AI in the si
   - **Purpose:** A public helper to calculate the separation force needed to prevent a ship from clumping with nearby friendly ships.
   - **Inputs:** `ship` (the `Ship` object).
   - **Outputs:** An object containing the calculated separation `force` as a `Vector3` and the `neighborCount` that was considered.
+
+Notes from this session (2025-09-15):
+
+- Reviewed via Serena and annotated for today's sweep. No behavioral changes made — only documentation annotation.
+- Batch 6: core verification performed on 2025-09-15.

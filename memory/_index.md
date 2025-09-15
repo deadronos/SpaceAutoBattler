@@ -23,10 +23,17 @@ This index lists the short searchable memory summaries generated for the `src/` 
 - [agent-lockUtils.md](./agent-lockUtils.md) — `src/agent/lockUtils.ts` (file-based lock utilities).
 - [core-assetPool.md](./core-assetPool.md) — `src/core/assetPool.ts` (LRU asset pool implementation).
 
+- [projectbrief.md](./projectbrief.md) — Project brief describing goals, constraints, and success criteria.
+- [productContext.md](./productContext.md) — Users, stakeholders, and high-level assumptions.
+- [systemPatterns.md](./systemPatterns.md) — Architecture patterns and guidance.
+- [techContext.md](./techContext.md) — Tooling, stack, and development workflow notes.
+- [activeContext.md](./activeContext.md) — Current active work and next steps.
+- [progress.md](./progress.md) — High-level progress notes and known issues.
+
 ## Maintenance guidelines
 
 - Keep each memory short (200-800 words) and focused on the file's responsibilities.
 - Link to relevant config files and note key tunables where appropriate.
 - Prefer short examples and references to where the file is used (e.g., `main.ts` or `simWorker.ts`).
 
-Generated on 2025-09-01 by Serena.
+Generated on 2025-09-15 by Copilot agent.

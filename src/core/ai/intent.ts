@@ -12,6 +12,7 @@ import {
 } from './targeting.js';
 import { computeInterceptPoint } from '../math/ballisticIntercept.js';
 import { getTeamScoutId, isTeamUnderAlarm } from './teamSystems.js';
+import { getShipClassConfig } from '../../config/entitiesConfig.js';
 
 export function calculatePreferredRange(
   state: GameState,
@@ -37,7 +38,36 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
     recentDamage >= cfg.globalSettings.damageEvadeThreshold && withinDamageWindow;
   // Allow immediate reevaluation on first update, or when clear threat present,
   // even if intentEndTime is in the future. This avoids sticking on 'idle' in tests.
-  const nearestEnemy = findNearestEnemy(state, ship);
+  let nearestEnemy = findNearestEnemy(state, ship);
+  // Fallback: if spatial search helpers return null (e.g., optimizer search radius
+  // too small for unit-test placements), perform a conservative linear scan to
+  // find the nearest enemy. This ensures intent heuristics (approachToRange)
+  // can operate in sparse test setups where the spatial optimizer may skip far
+  // away entities.
+  if (!nearestEnemy) {
+    try {
+      let best: Ship | null = null;
+      let bestDistSq = Infinity;
+      for (const s of state.ships) {
+        if (s.team === ship.team || s.health <= 0) continue;
+        const dx = s.pos.x - ship.pos.x;
+        const dy = s.pos.y - ship.pos.y;
+        const dz = s.pos.z - ship.pos.z;
+        const dSq = dx * dx + dy * dy + dz * dz;
+        if (dSq < bestDistSq) {
+          bestDistSq = dSq;
+          best = s;
+        }
+      }
+      if (best) nearestEnemy = best;
+    } catch {
+      // swallow — best-effort fallback only
+    }
+    if (DEBUG_AI)
+      console.error(
+        `AI-DEBUG nearestEnemy fallback => ${nearestEnemy ? `id=${nearestEnemy.id}` : 'null'}`,
+      );
+  }
   // Consider an enemy an "immediate threat" only when it's within a reasonable
   // detection/engagement range. This prevents far-away enemies from blocking
   // scout exploration behavior in unit tests where ships spawn far apart.
@@ -47,9 +77,21 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
       const tc = state.behaviorConfig?.turretConfig;
       const preferredRange =
         ship.aiState?.preferredRange ?? state.behaviorConfig!.globalSettings.separationDistance;
-      const detectionRange =
-        (tc?.maximumFireRange ??
-          preferredRange * state.behaviorConfig!.globalSettings.mediumRangeMultiplier) * 1.0;
+      // Prefer per-ship turret max range when available for detection range
+      let detectionMax =
+        tc?.maximumFireRange ??
+        preferredRange * state.behaviorConfig!.globalSettings.mediumRangeMultiplier;
+      try {
+        const shipCfg = getShipClassConfig(ship.class);
+        const shipMax = shipCfg.turrets.reduce(
+          (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+          0,
+        );
+        if (shipMax > 0) detectionMax = shipMax;
+      } catch {
+        /* best-effort */
+      }
+      const detectionRange = detectionMax * 1.0;
       const dx = nearestEnemy.pos.x - ship.pos.x;
       const dy = nearestEnemy.pos.y - ship.pos.y;
       const dz = nearestEnemy.pos.z - ship.pos.z;
@@ -123,7 +165,18 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
             const dz = turretCandidateLeadPos.z - ship.pos.z;
             const distSq = dx * dx + dy * dy + dz * dz;
             const minR = cfg.turretConfig.minimumFireRange;
-            const maxR = cfg.turretConfig.maximumFireRange;
+            // Prefer per-ship turret max range when available for probe in-range
+            let maxR = cfg.turretConfig.maximumFireRange;
+            try {
+              const shipCfg = getShipClassConfig(ship.class);
+              const shipMax = shipCfg.turrets.reduce(
+                (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+                0,
+              );
+              if (shipMax > 0) maxR = shipMax;
+            } catch {
+              /* best-effort */
+            }
             const minRSq = minR * minR;
             const maxRSq = maxR * maxR;
             const inRange = distSq >= minRSq && distSq <= maxRSq;
@@ -329,14 +382,85 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
           preferredRange *
           cfg.globalSettings.mediumRangeMultiplier *
           (preferredRange * cfg.globalSettings.mediumRangeMultiplier);
+        // If turret candidate is in range and score is high, pursue (combat)
         if (
-          (turretCandidateInRange &&
-            turretCandidateId === threatShip.id &&
-            (turretCandidateScore ?? 0) >= TURRET_PURSUE_SCORE_THRESHOLD) ||
-          dSq < mediumRangeSq
+          turretCandidateInRange &&
+          turretCandidateId === threatShip.id &&
+          (turretCandidateScore ?? 0) >= TURRET_PURSUE_SCORE_THRESHOLD
         ) {
           if (newIntent !== 'evade') newIntent = 'pursue';
+        } else if (!turretCandidateInRange && turretCandidateId === threatShip.id) {
+          // Candidate exists but is out of range; check whether it's within an "approach"
+          // radius (approachRangeMultiplier * turret maximum range). If so, set
+          // intent to 'approachToRange' so the ship will move to bring the target
+          // into its firing range before switching to combat pursue.
+          try {
+            const approachMult = cfg.globalSettings.approachRangeMultiplier ?? 1.2;
+            // Prefer per-ship turret max range when available
+            let turretMaxR = cfg.turretConfig.maximumFireRange;
+            try {
+              const shipCfg = getShipClassConfig(ship.class);
+              const shipMax = shipCfg.turrets.reduce(
+                (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+                0,
+              );
+              if (shipMax > 0) turretMaxR = shipMax;
+            } catch {
+              /* best-effort */
+            }
+            const approachR = turretMaxR * approachMult;
+            if (dSq <= approachR * approachR) {
+              if (newIntent !== 'evade') newIntent = 'approachToRange';
+            } else if (dSq < mediumRangeSq) {
+              // If within medium range but not within predicted intercept, still pursue
+              if (newIntent !== 'evade') newIntent = 'pursue';
+            }
+          } catch {
+            // conservative fallback: pursue if calculations fail
+            if (newIntent !== 'evade') newIntent = 'pursue';
+          }
+        } else if (dSq < mediumRangeSq) {
+          if (newIntent !== 'evade') newIntent = 'pursue';
         }
+      }
+    }
+    // If no turret candidate was found (likely because target is just outside
+    // turret max range), still allow 'approachToRange' when the nearest enemy
+    // is within the approach multiplier distance. This covers the common case
+    // where turret helper filters out out-of-range targets but we still want
+    // the ship to move closer to get into firing range.
+    if (!turretHasTarget && nearestEnemy) {
+      try {
+        const approachMult = cfg.globalSettings.approachRangeMultiplier ?? 1.2;
+        // Prefer per-ship turret max range when available
+        let turretMaxR = cfg.turretConfig.maximumFireRange;
+        try {
+          const shipCfg = getShipClassConfig(ship.class);
+          const shipMax = shipCfg.turrets.reduce(
+            (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
+            0,
+          );
+          if (shipMax > 0) turretMaxR = shipMax;
+        } catch {
+          /* best-effort */
+        }
+        const approachR = turretMaxR * approachMult;
+        const dx3 = nearestEnemy.pos.x - ship.pos.x;
+        const dy3 = nearestEnemy.pos.y - ship.pos.y;
+        const dz3 = nearestEnemy.pos.z - ship.pos.z;
+        const dSq3 = dx3 * dx3 + dy3 * dy3 + dz3 * dz3;
+        if (DEBUG_AI) {
+          const dist3 = Math.sqrt(dSq3) || 0;
+          console.error(
+            `AI-DEBUG approach-check (no turretCandidate) ship=${ship.id} nearest=${nearestEnemy.id} dist=${dist3.toFixed(2)} turretMaxR=${turretMaxR} approachR=${approachR}`,
+          );
+        }
+        // If within approach radius but outside max turret range, approach
+        if (dSq3 <= approachR * approachR && dSq3 > turretMaxR * turretMaxR) {
+          if (newIntent !== 'evade') newIntent = 'approachToRange';
+        }
+      } catch {
+        /* ignore */
       }
     }
     // If the feature flag to only allow evade on recent damage is enabled,
@@ -384,6 +508,16 @@ export function reevaluateIntent(state: GameState, ship: Ship, personality: AIPe
   ai.currentIntent = newIntent;
   if (DEBUG_AI) {
     console.error(`AI-DEBUG intent changed from ${oldIntent} to ${newIntent}`);
+    try {
+      // Extra summary of turret probe values to aid tests
+      console.error(
+        `AI-DEBUG intent-summary ship=${ship.id} turretCandidateId=${turretCandidateId} turretInRange=${String(
+          turretCandidateInRange,
+        )} turretScore=${turretCandidateScore ?? 'null'}`,
+      );
+    } catch (e) {
+      console.error('AI-DEBUG intent-summary failed', e);
+    }
   }
   ai.lastIntentReevaluation = state.time; // updated when reevaluation actually occurs
 }

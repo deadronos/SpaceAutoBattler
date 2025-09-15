@@ -1,6 +1,6 @@
 ## Contributor Notes
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 Quick onboarding tips:
 
@@ -10,3 +10,5 @@ Quick onboarding tips:
 - For rendering changes, prefer instancing via `shipInstancer` rather than per-mesh allocations.
 
 Contact maintainers listed in AGENTS.md for PR reviews and architecture questions.
+
+Session note: Reviewed and updated 2025-09-15.

@@ -1,6 +1,6 @@
 processDeathsAndXP(state: GameState)
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 - Purpose: Identify ships that reached 0 health, credit kills to recent damage sources, update scores and killer XP, handle fighter/carrier bookkeeping, and remove dead ships from the state.
 - Inputs: `state` (GameState mutable)
@@ -15,3 +15,5 @@ Last-Reviewed: 2025-09-07
   - Race conditions: if called concurrently (not expected), modifications to `state.ships` could be unsafe.
 - Determinism: Deterministic given same state; depends on timestamps in `state.time` for recency checks.
 - Performance: Single pass over ships; complexity O(#ships).
+
+Session note: Reviewed and updated 2025-09-15.

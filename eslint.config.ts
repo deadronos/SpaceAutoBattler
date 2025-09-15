@@ -1,13 +1,15 @@
-import js from '@eslint/js';
-import globals from 'globals';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
+import * as js from '@eslint/js';
+import * as globals from 'globals';
+import * as tsPlugin from '@typescript-eslint/eslint-plugin';
+// Import the parser object so flat config languageOptions.parser is a parser
+// implementation (ESLint expects an object with parse()/parseForESLint()).
+import parser from '@typescript-eslint/parser';
 // @ts-ignore - import internal flat recommended helper from the plugin (safe at runtime)
 import json from '@eslint/json';
 import markdown from '@eslint/markdown';
 import css from '@eslint/css';
 import { defineConfig } from 'eslint/config';
-import path from 'path';
+import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 // Resolve __dirname in ESM so typescript-eslint can infer the project root
@@ -23,14 +25,17 @@ export default defineConfig([
   // Provide TypeScript parser and a small set of conservative rules for files
   {
     files: ['**/*.{ts,mts,cts}'],
-    languageOptions: {
-      parser: tsParser,
+      languageOptions: {
+      // Provide the actual parser implementation object. Using the imported
+      // parser avoids ESLint complaining that languageOptions.parser is not
+      // a parser with parse()/parseForESLint().
+      parser: parser as any,
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ['./tsconfig.json'],
       },
     },
-    plugins: { '@typescript-eslint': tsPlugin as any },
+    plugins: { '@typescript-eslint': tsPlugin as unknown as any },
     rules: {
       // Turn off the core ESLint rule in favor of the TypeScript-aware one
       'no-unused-vars': 'off',
@@ -51,7 +56,8 @@ export default defineConfig([
   {
     files: ['**/*.{ts,mts,cts}'],
     languageOptions: {
-      parser: tsParser,
+      // Use the actual parser implementation object for ESLint flat config
+      parser: parser as any,
       parserOptions: {
         // Point to the workspace tsconfig; this resolved dir avoids a typescript-eslint bug
         tsconfigRootDir: __dirname,
@@ -172,6 +178,49 @@ export default defineConfig([
       },
     },
   },
+
+  // ----- START test files override -----
+  // Tests often use globals provided by the test runner (describe, test, expect,
+  // beforeEach, vi, etc.) and intentionally use flexible `any` or leave
+  // variables unused in fixtures. Relax a few rules for files under `test/`
+  // to reduce noise while keeping most checks active.
+  {
+    files: ['test/**', 'test/vitest/**'],
+  plugins: { '@typescript-eslint': tsPlugin as unknown as any },
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        test: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        // Node-like globals used in some tests
+        process: 'readonly',
+        __dirname: 'readonly',
+        global: 'readonly',
+        globalThis: 'readonly',
+      },
+    },
+    rules: {
+      // Do not fail the commit for unused test fixtures; emit warnings instead.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      // Tests commonly use looser typing; allow any in tests to avoid churn.
+      '@typescript-eslint/no-explicit-any': 'off',
+      // Tests sometimes redeclare globals via file-level comments; allow it here.
+      '@typescript-eslint/no-redeclare': 'off',
+      // Some tests intentionally use case declarations or empty blocks for fixtures.
+      'no-case-declarations': 'off',
+      'no-empty': 'off',
+    },
+  },
+  // ----- END test files override -----
   // Core files contain many pragmatic patterns (try/catch wrappers, declaration
   // reuse, small empty-catch fallbacks). Provide a conservative rule relaxation
   // so lint focuses on real issues rather than idiomatic defensive guards.

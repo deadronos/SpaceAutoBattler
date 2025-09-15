@@ -1,6 +1,6 @@
 ## IntentManager
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 The `IntentManager` class is a small helper module responsible for computing and applying AI intent lifetimes to ships. It ensures that intents have a duration based on the ship's personality and other factors, which is crucial for controlling the pacing of AI decision-making.
 
@@ -26,3 +26,7 @@ The `IntentManager` class is a small helper module responsible for computing and
     - `rng`: The `RNG` instance.
     - `opts`: Optional `ComputeOptions` passed to `computeDuration`.
   - **Outputs:** The calculated `duration` of the intent.
+
+Notes from this session (2025-09-15):
+
+- Reviewed and annotated as part of the memory sweep. Intentionally small annotation only.

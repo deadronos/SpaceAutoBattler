@@ -16,6 +16,6 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 - Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress)
 
-- [TASK100] Memory-bank summary entry - Create/update memory-bank summary node and task file
+- TASK100 Memory-bank summary entry - Create/update memory-bank summary node and task file
 
-Generated/updated: 2025-09-02 by Serena agent.
+Generated/updated: 2025-09-15 by Copilot agent.

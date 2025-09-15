@@ -460,7 +460,7 @@ Open the app with telemetry:
 http://localhost:8080/spaceautobattler.html?debugPerf=1
 In DevTools:
 window.**perf.getFpsStats() → FPS stats
-window.**perf.getEvents() → recent perf events, including physics._ and raster._ plus raster.request.sendKB and physics.payload.recvKB where applicable.
+window.**perf.getEvents() → recent perf events, including physics._and raster._ plus raster.request.sendKB and physics.payload.recvKB where applicable.
 Run the bench:
 E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium
 Compare the “no-telemetry” vs “telemetry” runs to observe overhead.

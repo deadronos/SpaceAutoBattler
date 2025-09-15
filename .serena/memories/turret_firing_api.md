@@ -1,6 +1,6 @@
 ## Turret Firing
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 This memory documents the turret firing logic used by ships.
 
@@ -19,3 +19,5 @@ This memory documents the turret firing logic used by ships.
 ### Notes
 
 - Turret firing is deterministic; uses seeded RNG for spread.
+
+Session note: Reviewed and annotated 2025-09-15.

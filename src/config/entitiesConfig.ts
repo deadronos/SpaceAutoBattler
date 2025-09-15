@@ -8,6 +8,7 @@ export const TURRET_CONFIGS: Record<string, TurretConfig> = {
     cooldown: 0.6,
     bulletSpeed: 400,
     damage: 6,
+    // Reduced range so turret ranges progress by ship class (fighter < corvette < frigate <= destroyer == carrier)
     range: 300,
     // High mobility small weapon: slightly less accurate by default
     accuracy: 0.9,

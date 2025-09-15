@@ -1,6 +1,6 @@
 # GameState (overview)
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 This memory provides a high-level overview of the `GameState` structure — the canonical runtime state object used across core, sim, and renderer.
 
@@ -20,3 +20,8 @@ This memory provides a high-level overview of the `GameState` structure — the 
 ## Notes
 
 - See `src/types/index.ts` for full TypeScript types.
+
+Notes from this session (2025-09-15):
+
+- Reviewed and annotated as part of the 2025-09-15 memory sweep.
+- Batch 6: core verification performed on 2025-09-15.

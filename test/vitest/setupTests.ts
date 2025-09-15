@@ -1,4 +1,17 @@
-import { beforeAll, vi } from 'vitest';
+/* eslint-env node, browser, vitest */
+ 
+// Provide a minimal `process.env` declaration for the test runtime so TypeScript
+// does not error on `process` usage in tests. We keep it narrow to avoid
+// introducing broad `any` usage.
+declare var process: { env: { [key: string]: string | undefined } };
+// Enable debug logging for AI tests by default so test instrumentation and
+// intent-selection debug messages are available during CI/local runs.
+// This must be set before any test-time code relies on DEBUG_AI.
+process.env.DEBUG_AI = process.env.DEBUG_AI || '1';
+// intent-selection debug messages are available during CI/local runs.
+// This must be set before any test-time code relies on DEBUG_AI.
+import { beforeAll, vi, expect } from 'vitest';
+import { createRNG } from '../../src/utils/rng.js';
 import type { GameState, Ship, Bullet } from '../../src/types/index.js';
 import { SpatialGrid } from '../../src/utils/spatialGrid.js';
 import { AIController } from '../../src/core/ai/controller.js';
@@ -131,7 +144,8 @@ export const mockThree = {
   BufferGeometry: class BufferGeometry {},
   Material: class Material {},
   Mesh: class Mesh {
-    constructor(geometry?: any, material?: any) {}
+    // Prefix unused args with underscore to satisfy no-unused-vars rule in tests
+    constructor(_geometry?: any, _material?: any) {}
   },
   Scene: class Scene {},
   Camera: class Camera {},
@@ -152,8 +166,8 @@ export const mockPerformance = {
 // Setup global mocks
 beforeAll(() => {
   // Mock WebGL context
-  global.WebGLRenderingContext = glStub as any;
-  global.WebGL2RenderingContext = glStub as any;
+  globalThis.WebGLRenderingContext = glStub as any;
+  globalThis.WebGL2RenderingContext = glStub as any;
 
   // Mock canvas getContext
   HTMLCanvasElement.prototype.getContext = vi.fn((contextType: string) => {
@@ -164,21 +178,24 @@ beforeAll(() => {
   }) as any;
 
   // Preserve real performance.now if available to allow timing-based tests
-  if (!(global as any).performance || typeof (global as any).performance.now !== 'function') {
-    (global as any).performance = mockPerformance as any;
+  if (
+    !(globalThis as any).performance ||
+    typeof (globalThis as any).performance.now !== 'function'
+  ) {
+    (globalThis as any).performance = mockPerformance as any;
   }
 
   // Mock requestAnimationFrame
   // Cast to any to avoid NodeJS Timeout vs number return-type mismatch in tests
-  global.requestAnimationFrame = vi.fn(
+  globalThis.requestAnimationFrame = vi.fn(
     (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number,
   ) as any;
-  global.cancelAnimationFrame = vi.fn() as any;
+  globalThis.cancelAnimationFrame = vi.fn() as any;
 
   // Mock console methods to reduce noise in tests
   // Allow enabling debug logs during test runs by setting DEBUG_AI
   if (!process.env.DEBUG_AI) {
-    global.console = {
+    globalThis.console = {
       ...console,
       log: vi.fn(),
       warn: vi.fn(),
@@ -203,13 +220,13 @@ beforeAll(() => {
     },
   };
 
-  (global as any).fetch = vi.fn(async (url: any, opts?: any) => {
+  (globalThis as any).fetch = vi.fn(async (url: any, opts?: any) => {
     try {
       // Quick heuristic: if tests explicitly stub a given URL, allow them to
       // override fetch by checking for a user-provided mock on `global.__fetchMock`.
-      const fm = (global as any).__fetchMock;
+      const fm = (globalThis as any).__fetchMock;
       if (fm && typeof fm === 'function') return fm(url, opts);
-    } catch (e) {
+    } catch {
       // ignore and fall back to default
     }
     return defaultFetchResponse;
@@ -377,7 +394,6 @@ export function poolAssert(
 
 // RNG testing utilities
 export function createSeededRNG(seed: string) {
-  const { createRNG } = require('../../src/utils/rng.js');
   return createRNG(seed);
 }
 
@@ -409,7 +425,7 @@ export function simulateDamage(ship: ShipLike, damage: number): number {
   // Apply to shield first
   if ((ship.shield ?? 0) > 0) {
     const absorb = Math.min((ship.shield as number) ?? 0, dmgLeft);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (ship as any).shield -= absorb;
     dmgLeft -= absorb;
   }
@@ -417,7 +433,7 @@ export function simulateDamage(ship: ShipLike, damage: number): number {
   // Apply remaining to health (after armor)
   if (dmgLeft > 0) {
     const effective = Math.max(1, dmgLeft - ((ship.armor as number) ?? 0) * 0.3);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (ship as any).health -= effective;
     return effective; // Return actual damage dealt
   }
@@ -466,8 +482,6 @@ export function expectShipTurretCountFromConfig(ship: { turrets?: unknown[] }, s
   // @ts-expect-error - tests pass plain strings; avoid importing internal ShipClass type here
   const cfg = getShipClassConfig(shipClass as unknown as string);
   const expected = Array.isArray(cfg.turrets) ? cfg.turrets.length : 0;
-  // Use Vitest expect from global context
-  const { expect } = require('vitest');
   expect(ship.turrets).toHaveLength(expected);
 }
 
@@ -492,13 +506,13 @@ export const TEST_DEFAULTS = {
   // AI / behavior defaults (fall back to DEFAULT_BEHAVIOR_CONFIG)
   // Test-only: access behavior config with a minimal lint suppression so tests can
   // follow changes to DEFAULT_BEHAVIOR_CONFIG without importing deep types.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   preferredRange: (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.preferredRange ?? 300,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   closeRangeMultiplier: (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.closeRangeMultiplier ?? 0.6,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   mediumRangeMultiplier: (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.mediumRangeMultiplier ?? 1.0,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   boundarySafetyMargin:
     (DEFAULT_BEHAVIOR_CONFIG as unknown as any)?.globalSettings?.boundarySafetyMargin ?? 50,
 

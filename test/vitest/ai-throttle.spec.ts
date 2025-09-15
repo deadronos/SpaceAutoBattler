@@ -31,7 +31,7 @@ function makeState(): GameState {
   // Initialize minimal spatial grid so AIController can build spatial optimizer
   // and perform neighbor/nearest queries deterministically in tests.
   // Use sim.spatialGrid.cellSize and sim.simBounds from DefaultSimConfig.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   (state as any).spatialGrid = new SpatialGrid(sim.spatialGrid.cellSize, sim.simBounds);
   state.shipIndex = new Map();
   return state;

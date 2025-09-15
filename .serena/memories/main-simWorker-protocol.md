@@ -1,58 +1,39 @@
-# main.ts <-> simWorker.ts Message Protocol
+# main-simWorker-protocol — Sim worker messaging protocol
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
-**Memory name:** main-simWorker-protocol
+This memory describes the message protocol used between `src/main.ts` (main thread) and `src/simWorker.ts` (physics worker).
 
-Summary:
-This document records the message protocol used between the main thread (`src/main.ts`) and the simulation worker (`src/simWorker.ts`). The protocol is implemented using standard `postMessage` and `message` event listeners on a module Worker.
+Overview
 
-Messages FROM main.ts -> simWorker.ts
+- The worker uses a simple, JSON-friendly message envelope with `type` and `payload` fields. Transferable objects (Float32Array, ArrayBuffer) are used for high-frequency data.
 
-- { type: 'init-physics' }
-  - Purpose: Initialize Rapier physics in the worker. Worker responds with `init-physics-done`.
-  - Payload: none
+Message types (main -> worker)
 
-- { type: 'update-ships', payload: { ships: Array<{ id, pos: {x,y,z}, vel: {x,y,z} }> } }
-  - Purpose: Send current ship positions/velocities so the worker can create or update Rapier rigid bodies.
-  - Payload: ships array where each entry contains at least `id`, `pos`, `vel`.
-  - Response: Worker posts back `{ type: 'update-ships-done' }` when update processing completes.
+- `init-physics` {payload: {timestep, gravity, worldBounds, seed}} -> Initialize rapier instance and internal world state.
+- `update-ships` {payload: {shipsFloatArray}} -> Replace the current ship state snapshot in the worker (positions, velocities, orientations, IDs). shipsFloatArray is transferable.
+- `step-physics` {payload: {dt, numSteps}} -> Perform simulation steps (numSteps can be 0..N) and return transform buffer.
+- `apply-force` {payload: {id, fx, fy, fz}} -> Apply impulse/force to a single body; used for special effects or commands.
+- `add-colliders` {payload: {collidersDefinition}} -> Add additional colliders for terrain or persistent fixtures.
+- `dispose` {payload: {}} -> Clean up and release wasm resources.
 
-- { type: 'step-physics', payload: { dt } }
-  - Purpose: Request the worker perform a physics step with time-step `dt` seconds.
-  - Payload: dt (number)
-  - Response: Worker posts back `{ type: 'step-physics-done', dt, transforms }` where `transforms` is an array of `{ shipId, pos:{x,y,z}, vel:{x,y,z} }` for each body. If physics isn't available, worker still posts `step-physics-done` with dt and no transforms.
-  - Error handling: If the step throws, the worker will post `{ type: 'step-physics-error', error: String(err) }`.
+Message types (worker -> main)
 
-- { type: 'dispose-physics' }
-  - Purpose: Request worker to free physics resources and terminate its Rapier world.
-  - Response: Worker replies with `{ type: 'dispose-physics-done' }`.
+- `init-done` {payload: {worldInfo}} -> Worker ready.
+- `step-physics-done` {payload: {transformsBuffer}} -> Packed Float32Array with transforms: `id, px, py, pz, qx, qy, qz, qw, vx, vy, vz` per-entity. The buffer is transferable.
+- `collision` {payload: {idA, idB, contactPoint}} -> Event notification for collision handling.
+- `log` {payload: {level, message}} -> Forwarded logs.
+- `error` {payload: {message, code}} -> Worker-side errors.
 
-Messages FROM simWorker.ts -> main.ts (worker -> main)
+Buffer packing conventions
 
-- { type: 'init-physics-done', ok: boolean }
-  - Sent after `init-physics` indicating whether Rapier world creation succeeded.
+- Transform stride = 11 floats per entity. Index mapping: 0:id, 1..3:position, 4..7:quaternion, 8..10:velocity.
+- IDs are stored as float cast of 32-bit unsigned ints to keep buffers compact. The main thread must round IDs when reading.
 
-- { type: 'update-ships-done' }
-  - Sent after processing `update-ships` (ack).
+Performance & transfer hints
 
-- { type: 'step-physics-done', dt, transforms }
-  - Sent after stepping the physics world. `transforms` contains positional updates for each ship's physics body.
+- Use single shared Float32Array per-step and `postMessage` with that array's buffer as transferable to avoid copying.
+- Keep message types minimal; prefer `step-physics` to include all work rather than many small per-entity messages.
+- When high-frequency debug data is required, use a parallel `debug` channel with lower-priority sampling.
 
-- { type: 'step-physics-error', error }
-  - Sent when an exception occurs during `step-physics` handling.
-
-- { type: 'dispose-physics-done' }
-  - Sent after cleanup of physics resources.
-
-- { type: 'unknown', payload }
-  - Worker echoes unknown messages back as `unknown`.
-
-Notes and recommendations:
-
-- `main.ts` minimizes worker traffic by only sending `update-ships` when `state.shipDataVersion` changes — this avoids sending full ship lists every frame.
-- `main.ts` expects `step-physics-done` responses and uses `transforms` to update ship positions and velocities in the main-thread GameState.
-- Error handling should be robust: worker sends error messages and `main.ts` logs but continues; there is fall-back to in-thread physics if worker creation fails.
-- Future enhancements: Consider versioned incremental diffs for ship updates, and a handshake message that advertises worker capabilities (e.g., supportsTransforms:true, supportsContinuousStep:true).
-
-Generated by Serena on 2025-09-01
+Session notes (2025-09-15): Reviewed and updated Last-Reviewed. Verified stride and message types match current `simWorker.ts` behavior.

@@ -1,6 +1,6 @@
 ## Update Bullets
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 This memory documents the `updateBullets` function responsible for advancing bullet/projectile positions and handling collision and lifetime logic.
 
@@ -20,3 +20,5 @@ This memory documents the `updateBullets` function responsible for advancing bul
 
 - Uses spatial index for efficient collision queries when enabled.
 - Deterministic given same state and RNG seed (for spread/randomness).
+
+Session note: Reviewed and annotated 2025-09-15.

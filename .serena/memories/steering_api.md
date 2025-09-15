@@ -1,6 +1,6 @@
 ## Steering API
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 This memory documents steering helpers used by AI and movement systems.
 
@@ -13,3 +13,5 @@ This memory documents steering helpers used by AI and movement systems.
 
 - Provide deterministic steering calculations used by AI intents (pursue, evade, roam).
 - Offer utility methods for arrival, pursuit, and obstacle avoidance.
+
+Session note: Reviewed and updated 2025-09-15.

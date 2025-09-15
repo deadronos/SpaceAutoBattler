@@ -1,5 +1,7 @@
 ## SpawnSystem
 
+Last-Reviewed: 2025-09-15
+
 The `SpawnSystem` class centralizes the creation and removal of entities, particularly ships, within the simulation. It ensures that entities are properly initialized, registered with all relevant adapters (physics, rendering, spatial index), and cleaned up upon removal.
 
 ### Public Methods
@@ -32,3 +34,5 @@ The `SpawnSystem` class centralizes the creation and removal of entities, partic
 - **`getStats(): { ... }`**
   - **Purpose:** Returns statistics about the spawned ships.
   - **Outputs:** An object containing statistics like the total number of ships, ships per team, and ships by class.
+
+Session note: Reviewed and updated 2025-09-15.
