@@ -15,8 +15,9 @@ import {
 } from '../config/entitiesConfig.js';
 import { createRNG } from '../utils/rng.js';
 import { nextLevelXp, XP_PER_DAMAGE, XP_PER_KILL, applyLevelUps } from '../config/progression.js';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../config/behaviorConfig.js';
+import { DEFAULT_BEHAVIOR_CONFIG, getEffectivePersonality } from '../config/behaviorConfig.js';
 import { AIController } from './aiController.js';
+import { assignRoamingAnchor } from './ai/roaming.js';
 import { calculatePreferredRange } from './ai/intent.js';
 // Note: AggressiveSpatialOptimizer import removed (unused in this module)
 import { FleetConfig } from '../config/fleetConfig.js';
@@ -26,6 +27,7 @@ import { SpatialGrid } from '../utils/spatialGrid.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 import { DEBUG_AI } from '../utils/env.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
+import { writeTestLogLine } from '../utils/testDebug.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -394,6 +396,76 @@ export function spawnShip(
       lastDamageTime: 0,
     } as Ship['aiState'];
   }
+  // Assign a roaming anchor for ships whose personality implies roaming or
+  // when global scout exploration is enabled for mixed-mode personalities.
+  // This is a minimal, low-risk behavior change that causes newly spawned
+  // ships in 'explore' mode to have a movement target so they visibly move
+  // in both headless tests and runtime. Fall back to a very small deterministic
+  // spawn jitter when roaming anchors are not assigned but spawn jitter is enabled.
+  try {
+  const personality = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
+    const gs = state.behaviorConfig?.globalSettings;
+    const shouldAssignAnchor = personality && personality.mode === 'roaming'
+      ? true
+      : Boolean(gs && gs.enableScoutExploration && personality && personality.mode === 'mixed');
+    if (shouldAssignAnchor) {
+      try {
+        assignRoamingAnchor(state, ship);
+        // If assignRoamingAnchor fell back to ship.pos (possible with deterministic RNG),
+        // nudge the anchor away from exact spawn position so moveTowards will run.
+        try {
+          const anchor = ship.aiState?.roamingAnchor;
+          if (anchor) {
+            const dx = Math.abs(anchor.x - ship.pos.x);
+            const dy = Math.abs(anchor.y - ship.pos.y);
+            const dz = Math.abs(anchor.z - ship.pos.z);
+            const EPS = 1e-6;
+            if (dx < EPS && dy < EPS && dz < EPS) {
+              const minSep = state.behaviorConfig?.globalSettings.roamingAnchorMinSeparation ?? 150;
+              const nudge = Math.max(10, Math.floor(minSep * 0.25));
+              // deterministic sign from RNG
+              const sign = state.rng.next() > 0.5 ? 1 : -1;
+              anchor.x = Math.min(Math.max(anchor.x + sign * nudge, 0), state.simConfig.simBounds.width);
+              anchor.y = Math.min(Math.max(anchor.y + sign * nudge, 0), state.simConfig.simBounds.height);
+              anchor.z = Math.min(Math.max(anchor.z + sign * nudge, 0), state.simConfig.simBounds.depth);
+              ship.aiState!.roamingAnchor = anchor;
+            }
+          }
+        } catch {
+          /* best-effort */
+        }
+        // Test-only: record spawn-time anchor assignment for CI/test harness
+        try {
+          const a = ship.aiState?.roamingAnchor;
+          if (a) {
+            writeTestLogLine(
+              'tmp/ai-debug.log',
+              `SPAWN_ANCHOR ship=${ship.id} team=${ship.team} anchor=${a.x.toFixed(2)},${a.y.toFixed(2)},${a.z.toFixed(2)}\n`,
+            );
+          } else {
+            writeTestLogLine(
+              'tmp/ai-debug.log',
+              `SPAWN_ANCHOR_MISSING ship=${ship.id} team=${ship.team}\n`,
+            );
+          }
+        } catch {}
+      } catch {
+        // best-effort
+      }
+    } else if (state.behaviorConfig?.globalSettings.enableSpawnJitter) {
+      // Tiny deterministic velocity jitter proportional to ship speed
+      try {
+        const mag = Math.max(0.001, ship.speed * 0.01);
+        ship.vel.x += (state.rng.next() - 0.5) * mag;
+        ship.vel.y += (state.rng.next() - 0.5) * mag;
+        ship.vel.z += (state.rng.next() - 0.5) * mag;
+      } catch {
+        // best-effort
+      }
+    }
+  } catch {
+    // keep spawn resilient
+  }
   // Optionally apply a tiny randomized velocity jitter at spawn to break perfect
   // symmetry in deterministic tests and initial cluster spawns. The magnitudes are
   // intentionally very small (fractional) and scale with ship speed so larger ships
@@ -656,7 +728,17 @@ export function simulateStep(state: GameState, dt: number) {
   for (const s of state.ships) {
     const assigned = (s as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget;
     if (assigned !== undefined && (s.targetId === null || s.targetId === undefined)) {
-      s.targetId = assigned;
+      // Prefer controller-mediated assignment when available so throttle
+      // semantics are preserved for any external writes as well.
+      if (aiController) {
+        try {
+          aiController.setShipTargetWithThrottle(s, assigned as number);
+        } catch {
+          s.targetId = assigned as number;
+        }
+      } else {
+        s.targetId = assigned as number;
+      }
       if (DEBUG_AI)
         console.error(`DEBUG_AI: simulateStep restored ship=${s.id} target=${s.targetId}`);
     }
@@ -725,11 +807,29 @@ export function simulateStep(state: GameState, dt: number) {
   for (const s of state.ships) {
     const assigned = (s as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget;
     if (assigned !== undefined && (s.targetId === null || s.targetId === undefined)) {
-      s.targetId = assigned;
+      // Prefer controller-mediated assignment when available so throttle
+      // semantics are preserved for any external writes as well.
+      if (aiController) {
+        try {
+          aiController.setShipTargetWithThrottle(s, assigned as number);
+        } catch {
+          s.targetId = assigned as number;
+        }
+      } else {
+        s.targetId = assigned as number;
+      }
       if (DEBUG_AI)
         console.error(`DEBUG_AI: simulateStep final-restore ship=${s.id} target=${s.targetId}`);
     }
   }
+
+  // Advance simulation clocks here so callers that drive the simulation by
+  // invoking simulateStep (e.g., unit tests) observe time/tick progression
+  // consistent with fixed-step runtime. The render loop no longer updates
+  // time/tick; it relies on simulateStep as the single source of truth.
+  state.time += dt;
+  state.tick++;
+  state.frame = (state.frame ?? 0) + 1;
 }
 
 /**
@@ -845,8 +945,18 @@ function runBoundaryCleanup(state: GameState) {
     s.vel.x = 0;
     s.vel.y = 0;
     s.vel.z = 0;
-    // Clear target to avoid immediate re-targeting of far-away entities
-    s.targetId = null;
+    // Clear target to avoid immediate re-targeting of far-away entities.
+    // Use controller wrapper when available so clearing observes throttle
+    // semantics and centralizes targetId mutation.
+    if (state.aiController) {
+      try {
+        state.aiController.setShipTargetWithThrottle(s, null);
+      } catch {
+        s.targetId = null;
+      }
+    } else {
+      s.targetId = null;
+    }
   }
 
   // Prune bullets out of bounds (set ttl=0)

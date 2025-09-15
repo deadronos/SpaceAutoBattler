@@ -19,10 +19,10 @@ describe('Projectile spawn integration', () => {
     if (state.bullets.length === 0) {
       // Log turret states for debugging
       for (const ship of state.ships) {
-        // eslint-disable-next-line no-console
+         
         console.log(`Ship ${ship.id} team=${ship.team}`);
         for (const t of ship.turrets) {
-          // eslint-disable-next-line no-console
+           
           console.log(
             `  turret ${t.id} cooldownLeft=${t.cooldownLeft} aiTarget=${t.aiState?.targetId}`,
           );

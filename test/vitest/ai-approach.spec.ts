@@ -7,6 +7,7 @@
 process.env.DEBUG_AI = '1';
 import { test, expect } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
+import { getTurretConfig } from '../../src/config/entitiesConfig.js';
 
 test('AI approachToRange behavior — ship approaches then fires', () => {
   const state = createInitialState('ai-approach-test');
@@ -16,12 +17,20 @@ test('AI approachToRange behavior — ship approaches then fires', () => {
   const red = spawnShip(state, 'red', 'fighter');
   const blue = spawnShip(state, 'blue', 'fighter');
   red.pos = { x: 100, y: 100, z: 100 };
-  // position blue just outside the fighter turret range (600) but inside approachMultiplier (600 * 1.2 = 720)
-  // place at distance ~650 from red
-  blue.pos = { x: 100, y: 100, z: 750 };
+
+  // Dynamically compute fighter turret range so test is resilient to config changes
+  const fighterTurret = getTurretConfig('fighter-cannon');
+  const fighterRange = fighterTurret ? fighterTurret.range : 600;
 
   // Ensure approach multiplier is set (test resilience)
-  state.behaviorConfig!.globalSettings.approachRangeMultiplier = 1.2;
+  const approachMultiplier = 1.2;
+  state.behaviorConfig!.globalSettings.approachRangeMultiplier = approachMultiplier;
+
+  // position blue just outside the fighter turret range but inside the approach multiplier
+  // choose distance at ~range * 1.1 (between range and range * approachMultiplier)
+  const desiredDist = Math.floor(fighterRange * 1.1);
+  // place along Z so distance from red at 100,100,100 equals desiredDist
+  blue.pos = { x: 100, y: 100, z: 100 + desiredDist };
 
   let sawApproach = false;
   let bulletsCreated = 0;

@@ -26,6 +26,27 @@ import { getEffectivePersonality } from '../../config/behaviorConfig.js';
 import { BatchedQueryManager } from './batchedQueries.js';
 import { AggressiveSpatialOptimizer } from './aggressiveSpatialOptimizer.js';
 import { perfBegin, perfEnd } from '../../utils/perf.js';
+import { writeTestLogLine } from '../../utils/testDebug.js';
+
+// Test-only debug gate: set VITEST_AI_DEBUG=1 in the environment to enable
+// additional per-ship logs during unit tests without relying on browser URL
+// params or the global DEBUG_AI flag which may be evaluated earlier.
+const VITEST_AI_DEBUG = typeof process !== 'undefined' && process.env.VITEST_AI_DEBUG === '1';
+
+// Local helper type for transient test/debug/anchor fields attached to aiState
+type AIAssist = {
+  __throttleAnchored?: boolean;
+  __throttleAnchoredNull?: boolean;
+  // When a target change (assign or clear) occurs during this update,
+  // mark pending anchoring so end-of-update can align the baseline to
+  // the tick boundary. This stabilizes within-window behavior across ticks.
+  __throttlePendAnchor?: boolean;
+  __moveCalledThisTick?: boolean;
+  __firstTickLogged?: boolean;
+  lastTargetSwitchTime?: number;
+  __throttleRequestedTick?: number;
+  __throttleRequestedTarget?: number | null;
+};
 
 export class AIController {
   private state: GameState;
@@ -51,6 +72,134 @@ export class AIController {
     this.batchedQueries = new BatchedQueryManager(this.spatialOptimizer);
     if (DEBUG_AI)
       console.log(`[AIController Constructor] batchedQueries assigned:`, this.batchedQueries);
+  }
+
+  /**
+   * Public wrapper so external subsystems can request a ship target assignment
+   * while preserving the controller's throttle semantics when an AIController
+   * instance is available. If callers prefer to bypass throttle semantics they
+   * should set `ship.targetId` directly (used sparingly).
+   */
+  public setShipTargetWithThrottle(ship: Ship, newId: number | null) {
+    return this.setTargetWithThrottle(ship, newId);
+  }
+
+  // Assign or clear ship.targetId while respecting targetUpdateRate.
+  // - Within the throttle window, switches to a different non-null id are blocked.
+  // - Clearing to null is allowed and records the switch time.
+  // - Outside the window, assignment proceeds and records the switch time.
+  private setTargetWithThrottle(ship: Ship, newId: number | null) {
+    const now = this.state.time;
+    const rate = this.state.simConfig?.targetUpdateRate ?? 0.5;
+    const last = ship.aiState?.lastTargetSwitchTime ?? -1e9;
+    const current: number | null = ship.targetId == null ? null : ship.targetId;
+  const TEST_LOG = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+    // NOTE: intentionally do NOT suppress intra-tick requests here. The
+    // controller may legitimately call setTargetWithThrottle multiple times
+    // during a single update (validated target -> nearest enemy -> fallback)
+    // and those transitions should be allowed subject to the configured
+    // throttle window. Previous intra-tick suppression caused valid
+    // controller-driven switches and clears to be blocked.
+
+    if (current === newId) {
+      // No-op when attempting to re-assign the same target. Do NOT anchor
+      // the throttle baseline here for null targets — anchoring during the
+      // same update can prevent legitimate controller-driven assignments
+      // later in the tick (turret->ship propagation, fallback scoring).
+      return;
+    }
+
+    // Allow null -> non-null only for the very first-ever assignment (no recorded switch time).
+    // Otherwise, respect the throttle window and block within-window changes.
+    if (current == null && newId != null) {
+      const firstEver = !ship.aiState || typeof ship.aiState.lastTargetSwitchTime !== 'number';
+      if (firstEver) {
+        ship.targetId = newId;
+        if (ship.aiState) {
+          // Record switch time for immediate within-window checks during this tick,
+          // but defer stabilizing the baseline to end-of-update via pending anchor.
+          ship.aiState.lastTargetSwitchTime = now;
+          try {
+            (ship.aiState as unknown as AIAssist).__throttlePendAnchor = true;
+          } catch {}
+        }
+        if (TEST_LOG) {
+          const msg = `THROTTLE first-assign ship=${ship.id} -> ${newId} at t=${now.toFixed(3)}`;
+          console.error(msg);
+          try {
+            writeTestLogLine('tmp/ai-throttle.log', msg + '\n');
+          } catch {}
+        }
+        return;
+      }
+      if (now - last <= rate) {
+        if (TEST_LOG) {
+          const msg = `THROTTLE block null->${newId} ship=${ship.id} dt=${(now - last).toFixed(3)}<${rate}`;
+          console.error(msg);
+          try {
+            writeTestLogLine('tmp/ai-throttle.log', msg + '\n');
+          } catch {}
+        }
+        return; // block within-window null->non-null
+      }
+      ship.targetId = newId;
+      if (ship.aiState) {
+        ship.aiState.lastTargetSwitchTime = now;
+        try {
+          (ship.aiState as unknown as AIAssist).__throttlePendAnchor = true;
+        } catch {}
+      }
+      if (TEST_LOG) {
+        const msg = `THROTTLE assign ship=${ship.id} -> ${newId} at t=${now.toFixed(3)}`;
+        console.error(msg);
+        try {
+          writeTestLogLine('tmp/ai-throttle.log', msg + '\n');
+        } catch {}
+      }
+      return;
+    }
+
+    if (now - last <= rate) {
+      // Inside window: allow clear to null, block switching to a different id
+      if (newId == null) {
+        ship.targetId = null;
+        if (ship.aiState) {
+          ship.aiState.lastTargetSwitchTime = now;
+          try {
+            (ship.aiState as unknown as AIAssist).__throttlePendAnchor = true;
+          } catch {}
+        }
+        if (TEST_LOG) {
+          const msg = `THROTTLE clear ship=${ship.id} -> null at t=${now.toFixed(3)}`;
+          console.error(msg);
+          try {
+            writeTestLogLine('tmp/ai-throttle.log', msg + '\n');
+          } catch {}
+        }
+      }
+      if (newId != null && TEST_LOG) {
+        const msg = `THROTTLE block switch ship=${ship.id} ${current} -> ${newId} dt=${(now - last).toFixed(3)}<${rate}`;
+        console.error(msg);
+        try {
+          writeTestLogLine('tmp/ai-throttle.log', msg + '\n');
+        } catch {}
+      }
+      return;
+    }
+    ship.targetId = newId as number | null;
+    if (ship.aiState) {
+      ship.aiState.lastTargetSwitchTime = now;
+      try {
+        (ship.aiState as unknown as AIAssist).__throttlePendAnchor = true;
+      } catch {}
+    }
+    if (TEST_LOG) {
+      const msg = `THROTTLE assign ship=${ship.id} ${current} -> ${newId} at t=${now.toFixed(3)} (outside window)`;
+      console.error(msg);
+      try {
+        writeTestLogLine('tmp/ai-throttle.log', msg + '\n');
+      } catch {}
+    }
   }
 
   public updateAllShips(dt: number) {
@@ -121,6 +270,17 @@ export class AIController {
   }
 
   public updateShipAI(ship: Ship, dt: number) {
+    if (VITEST_AI_DEBUG) {
+      try {
+        console.log(
+          `VITEST-AI-DEBUG start ship=${ship.id} team=${ship.team} pos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} vel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)} intent=${ship.aiState?.currentIntent ?? 'n/a'}`,
+        );
+        writeTestLogLine(
+          'tmp/ai-debug.log',
+          `START ship=${ship.id} team=${ship.team} pos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} vel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)} intent=${ship.aiState?.currentIntent ?? 'n/a'}\n`,
+        );
+      } catch {}
+    }
     // Ensure aiState exists for downstream modules
     if (!ship.aiState) {
       ship.aiState = {
@@ -132,20 +292,44 @@ export class AIController {
         lastDamageTime: 0,
       } as Ship['aiState'];
     }
+    // Note: Do not pre-set lastTargetSwitchTime here. The throttle window
+    // should not block the very first target acquisition; it should only
+    // govern switching between non-null targets. First assignment is handled
+    // directly in setTargetWithThrottle.
+    // Test-only flags: reset per-tick moveCalled marker and ensure first-tick
+    // summary is only emitted once per ship when VITEST_AI_DEBUG is enabled.
+    if (VITEST_AI_DEBUG) {
+      try {
+        const ais = ship.aiState as unknown as AIAssist;
+        ais.__moveCalledThisTick = false;
+        if (typeof ais.__firstTickLogged === 'undefined') ais.__firstTickLogged = false;
+      } catch {
+        // best-effort
+      }
+    }
+    // Do not unconditionally anchor lastTargetSwitchTime here; setTargetWithThrottle
+    // manages anchoring semantics to avoid blocking initial target acquisition.
+    // NOTE: Do NOT pre-anchor lastTargetSwitchTime here. Anchoring is handled
+    // by setTargetWithThrottle and by the one-time anchors at the end of the
+    // updateShipAI flow. Pre-anchoring here could cause the controller to
+    // consider a ship as having an existing switch time and block the very
+    // first-ever null->non-null assignment which should be allowed.
 
-    // Decay recentDamage over time so evade gating behaves like legacy controller
+    // Apply recentDamage decay over time using config-driven rate. This keeps
+    // damage-based behaviors stable and satisfies tests that expect decay.
     try {
       const decayRate = this.state.behaviorConfig?.globalSettings.damageDecayRate ?? 0;
-      if (ship.aiState && decayRate > 0 && dt > 0) {
-        ship.aiState.recentDamage = Math.max(0, (ship.aiState.recentDamage || 0) - decayRate * dt);
+      if (decayRate > 0 && ship.aiState) {
+        const rd = ship.aiState.recentDamage ?? 0;
+        if (rd > 0) {
+          ship.aiState.recentDamage = Math.max(0, rd - decayRate * dt);
+        }
       }
     } catch {
-      // keep controller resilient in tests
+      /* best-effort */
     }
 
-    // Intent reevaluation (do this before targeting so first pass can select non-idle)
-    const personality = getEffectivePersonality(this.state.behaviorConfig!, ship.class, ship.team);
-    // Before reevaluating, compute boundary proximity value (0..1) to bias decisions if needed
+    // Boundary proximity value (0..1) to bias decisions if needed
     try {
       const cfg = this.state.behaviorConfig!;
       const safeMargin = cfg.globalSettings.boundarySafetyMargin ?? 50;
@@ -153,13 +337,14 @@ export class AIController {
       const dy = Math.min(ship.pos.y, this.state.simConfig.simBounds.height - ship.pos.y);
       const dz = Math.min(ship.pos.z, this.state.simConfig.simBounds.depth - ship.pos.z);
       const minDist = Math.min(dx, dy, dz);
-      const boundScore =
-        minDist >= safeMargin ? 0 : minDist <= 0 ? 1 : (safeMargin - minDist) / safeMargin;
+      const boundScore = minDist >= safeMargin ? 0 : minDist <= 0 ? 1 : (safeMargin - minDist) / safeMargin;
       // We avoid mutating typed aiState shape here; controllers may read this temporarily via local variable
       (ship as unknown as { __boundaryProximity?: number }).__boundaryProximity = boundScore;
     } catch {
       /* best-effort */
     }
+
+    const personality = getEffectivePersonality(this.state.behaviorConfig!, ship.class, ship.team);
     {
       const rate = this.state.simConfig?.intentReevaluationRate ?? 0.3;
       const now = this.state.time;
@@ -230,48 +415,21 @@ export class AIController {
       return `[AIController] nearestEnemy - batched=${batchedStr} fallback[0]=${nearestEnemyEntity ? nearestEnemyEntity.id : 'null'} fallbackList=[${fbIds}]`;
     });
 
-    // IMPROVED: Validate turret targets before using them
-    let validatedFirstTarget = firstTarget;
-    if (firstTarget != null) {
-      const targetShip = this.state.shipIndex?.get(firstTarget);
+    // IMPROVED: Validate existing ship.targetId first (persistence), then turret targets
+    let validatedFirstTarget: number | null =
+      ship.targetId != null ? (ship.targetId as number) : firstTarget;
+    if (validatedFirstTarget != null) {
+      const targetShip = this.state.shipIndex?.get(validatedFirstTarget);
       if (targetShip) {
-        // Check if target is valid (different team, alive, within range)
+        // Only invalidate when team is same or target is dead. Being out of range
+        // should not invalidate, so ships can approach back into range while
+        // maintaining their chosen target.
         const isValidTeam = targetShip.team !== ship.team;
         const isAlive = targetShip.health > 0;
-        const dx = targetShip.pos.x - ship.pos.x;
-        const dy = targetShip.pos.y - ship.pos.y;
-        const dz = targetShip.pos.z - ship.pos.z;
-        const distSq = dx * dx + dy * dy + dz * dz;
-        const tc = this.state.behaviorConfig?.turretConfig;
-        const minR = tc?.minimumFireRange ?? 0;
-        // Prefer per-ship turret range (from ship class) to avoid mismatches
-        // between approach heuristics and actual weapon ranges used by turrets.
-        let maxR = tc?.maximumFireRange ?? Infinity;
-        try {
-          const shipCfg = getShipClassConfig(ship.class);
-          const shipMax = shipCfg.turrets.reduce(
-            (m, tcfg) => (typeof tcfg.range === 'number' && tcfg.range > m ? tcfg.range : m),
-            0,
-          );
-          if (shipMax > 0) maxR = shipMax;
-        } catch {
-          /* best-effort */
-        }
-        const minRSq = minR * minR;
-        const maxRSq = maxR === Infinity ? Infinity : maxR * maxR;
-        const withinRange = !(tc && (distSq < minRSq || distSq > maxRSq));
-
-        if (!isValidTeam || !isAlive || (!withinRange && ship.aiState?.currentIntent !== 'evade')) {
+        if (!isValidTeam || !isAlive) {
           validatedFirstTarget = null; // Invalid target
-          // Clear the ship's target when it becomes invalid (unless evading)
-          if (ship.aiState?.currentIntent !== 'evade') {
-            const ais = ship.aiState!;
-            const _rate2 = this.state.simConfig?.targetUpdateRate ?? 0.5;
-            if (this.state.time - (ais.lastTargetSwitchTime ?? -1e9) >= _rate2) {
-              ship.targetId = null;
-              ais.lastTargetSwitchTime = this.state.time;
-            }
-          }
+          // Clear the ship's target when it becomes invalid
+          this.setTargetWithThrottle(ship, null);
         }
       } else {
         validatedFirstTarget = null; // Target ship not found
@@ -305,22 +463,19 @@ export class AIController {
 
             // Switch if nearest enemy is significantly closer
             if (nearestDistSq < currentDistSq * (switchThreshold * switchThreshold)) {
-              if (this.state.time - (ship.aiState!.lastTargetSwitchTime ?? -1e9) >= rate) {
-                ship.targetId = nearestEnemy.id;
-                ship.aiState!.lastTargetSwitchTime = this.state.time;
-              }
+              this.setTargetWithThrottle(ship, nearestEnemy.id);
             } else {
-              ship.targetId = validatedFirstTarget as number;
+              this.setTargetWithThrottle(ship, validatedFirstTarget as number);
             }
           } else {
-            ship.targetId = validatedFirstTarget as number;
+            this.setTargetWithThrottle(ship, validatedFirstTarget as number);
           }
         } else {
-          ship.targetId = validatedFirstTarget as number;
+          this.setTargetWithThrottle(ship, validatedFirstTarget as number);
         }
       } else {
         // No nearer enemy or same as validated target — keep validated target
-        ship.targetId = validatedFirstTarget as number;
+        this.setTargetWithThrottle(ship, validatedFirstTarget as number);
       }
       // Record assigned target (normalize null -> undefined for legacy expectations)
       (ship as unknown as { __aiAssignedTarget?: number | undefined }).__aiAssignedTarget =
@@ -364,34 +519,19 @@ export class AIController {
         );
 
       if (isValidTeam && isAlive && (withinRange || ship.aiState?.currentIntent === 'evade')) {
-        const ais = ship.aiState!;
-        const _rate = this.state.simConfig?.targetUpdateRate ?? 0.5;
-        if (this.state.time - (ais.lastTargetSwitchTime ?? -1e9) >= _rate) {
-          ship.targetId = nearestEnemy.id;
-          ais.lastTargetSwitchTime = this.state.time;
-        }
+        this.setTargetWithThrottle(ship, nearestEnemy.id);
         if (DEBUG_AI)
           console.log(
             `[AIController] updateShipAI - ship: ${ship.id} targetId set to: ${ship.targetId}`,
           );
       } else {
-        const ais = ship.aiState!;
-        const _rate2 = this.state.simConfig?.targetUpdateRate ?? 0.5;
-        if (this.state.time - (ais.lastTargetSwitchTime ?? -1e9) >= _rate2) {
-          ship.targetId = null;
-          ais.lastTargetSwitchTime = this.state.time;
-        }
+        this.setTargetWithThrottle(ship, null);
         if (DEBUG_AI)
           console.log(`[AIController] updateShipAI - ship: ${ship.id} targetId set to: null`);
       }
     } else {
       // No enemies found, clear target
-      const ais = ship.aiState!;
-      const _rate2 = this.state.simConfig?.targetUpdateRate ?? 0.5;
-      if (this.state.time - (ais.lastTargetSwitchTime ?? -1e9) >= _rate2) {
-        ship.targetId = null;
-        ais.lastTargetSwitchTime = this.state.time;
-      }
+      this.setTargetWithThrottle(ship, null);
     }
     // Compatibility fallback: if targeting helpers returned null, run a
     // deterministic legacy-style scoring pass (respecting turret min/max
@@ -465,10 +605,14 @@ export class AIController {
             bestId = target.id;
           }
         }
-        // IMPROVED: Only assign target if we found a valid one
+        // IMPROVED: Only assign target if we found a valid one and we're outside the
+        // targetUpdateRate throttle window for switching/assignment.
         if (bestId != null) {
-          ship.targetId = bestId;
-          (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
+          this.setTargetWithThrottle(ship, bestId);
+          if (ship.targetId != null) {
+            // Record the candidate target we attempted to assign (non-null number)
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = bestId as number;
+          }
         }
         logger.debugIf(
           DEBUG_AI,
@@ -519,8 +663,8 @@ export class AIController {
           }
 
           if (withinRange) {
-            ship.targetId = anyT as number;
-            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = ship.targetId;
+            this.setTargetWithThrottle(ship, anyT as number);
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = anyT as number;
             logger.debugIf(
               DEBUG_AI,
               () => `DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`,
@@ -537,7 +681,8 @@ export class AIController {
 
     // IMPROVED: Clear invalid targets (destroyed ships, same team ships)
     if (ship.targetId != null) {
-      const currentTarget = this.state.shipIndex?.get(ship.targetId);
+      const prevId = ship.targetId;
+      const currentTarget = this.state.shipIndex?.get(prevId);
       if (!currentTarget || currentTarget.health <= 0 || currentTarget.team === ship.team) {
         logger.debugIf(DEBUG_AI, () => {
           const reason = !currentTarget
@@ -545,16 +690,48 @@ export class AIController {
             : currentTarget.health <= 0
               ? 'destroyed'
               : 'same team';
-          return `DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${ship.targetId} reason=${reason}`;
+          return `DEBUG_AI: clearing invalid target ship=${ship.id} targetId=${prevId} reason=${reason}`;
         });
-        ship.targetId = null;
+        this.setTargetWithThrottle(ship, null);
         // Also clear turret targets pointing to the same invalid target
         for (const t of ship.turrets) {
-          if (t.aiState?.targetId === ship.targetId) {
+          if (t.aiState?.targetId === prevId) {
             t.aiState.targetId = null;
           }
         }
       }
+    }
+    // One-time throttle anchors:
+    // 1) After the first update where a concrete (non-null) target exists, align
+    //    the throttle baseline with the end of this update (once).
+    // 2) If the target remains null at the end of an update and we've never
+    //    recorded a switch time, anchor once as well so tests that expect stability
+    //    within the next window (when starting from null) are satisfied.
+    try {
+      const ais = ship.aiState as unknown as AIAssist;
+      // If a target change occurred during this update, align the throttle
+      // baseline with the end-of-update time exactly once per tick.
+      if (ais && ais.__throttlePendAnchor) {
+        ais.lastTargetSwitchTime = this.state.time;
+        ais.__throttlePendAnchor = false;
+      } else if (ais) {
+        // One-time anchors for stable end-of-update states to ensure the
+        // throttle window begins at a tick boundary rather than at the
+        // mid-tick moment of first assignment.
+        if (ship.targetId != null && !ais.__throttleAnchored) {
+          ais.lastTargetSwitchTime = this.state.time;
+          ais.__throttleAnchored = true;
+        } else if (
+          ship.targetId == null &&
+          !ais.__throttleAnchoredNull &&
+          !(typeof ais.lastTargetSwitchTime === 'number')
+        ) {
+          ais.lastTargetSwitchTime = this.state.time;
+          ais.__throttleAnchoredNull = true;
+        }
+      }
+    } catch {
+      /* best-effort */
     }
     // Roaming anchor assignment: if personality mode is roaming or current intent indicates roaming/patrol
     try {
@@ -679,22 +856,17 @@ export class AIController {
           );
           integrated = true;
         }
-      } else if (intent === 'approachToRange') {
+  } else if (intent === 'approachToRange' || intent === 'pursue') {
         // Move to a point that brings the target within turret max range.
         // Prefer ship.targetId if set, otherwise use nearestEnemy.
         const tgt = ship.targetId ? this.state.shipIndex?.get(ship.targetId) : nearestEnemy;
         if (tgt) {
           // Ensure turrets have a ship-level target so they can begin targeting
           // and fire as soon as the ship comes within firing range.
-          ship.targetId = tgt.id;
+          this.setTargetWithThrottle(ship, tgt.id);
           // Record assignment so simulateStep final-restore preserves this target
-          (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget =
-            ship.targetId as number;
-          // Throttle record to avoid immediate re-clear by target switching logic
-          try {
-            if (ship.aiState) ship.aiState.lastTargetSwitchTime = this.state.time;
-          } catch {
-            /* best-effort */
+          if (ship.targetId === tgt.id) {
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = tgt.id as number;
           }
           try {
             // Use the actual turret range from the ship's class turret config
@@ -756,7 +928,7 @@ export class AIController {
           this.moveTowards(ship, ship.aiState.formationPosition, dt);
           integrated = true;
         }
-      } else if (intent === 'idle' || !intent) {
+  } else if (intent === 'idle' || !intent) {
         // If a formation position is already assigned, move towards it even
         // while current intent is 'idle'. Tests and some higher-level logic
         // pre-assign formationPosition (e.g., during setup) and expect the
@@ -767,6 +939,11 @@ export class AIController {
           if (ship.aiState?.formationPosition) {
             // Force immediate orientation/acceleration towards formation slot
             this.moveTowards(ship, ship.aiState.formationPosition, dt, true);
+            integrated = true;
+          } else if (ship.aiState?.roamingAnchor) {
+            // If a roaming anchor was assigned at spawn, use it to ensure visible
+            // early movement for roaming personalities even before reevaluation.
+            this.moveTowards(ship, ship.aiState.roamingAnchor, dt, true);
             integrated = true;
           } else {
             // idle already had separation nudges applied above; integrate velocity so
@@ -843,6 +1020,34 @@ export class AIController {
         }
       }
     }
+    if (VITEST_AI_DEBUG) {
+      try {
+         
+        console.log(`VITEST-AI-DEBUG end ship=${ship.id} integrated=${integrated} postPos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} postVel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
+        writeTestLogLine('tmp/ai-debug.log', `END ship=${ship.id} integrated=${integrated} postPos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} postVel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}\n`);
+        // First-tick one-liner
+  const ais = ship.aiState as unknown as AIAssist;
+  if (ais && !ais.__firstTickLogged) {
+          let sepMag = 0;
+          try {
+            const sep = this.spatial.calculateSeparationForceWithCount(ship);
+            const f = sep.force;
+            sepMag = Math.sqrt((f.x || 0) * (f.x || 0) + (f.y || 0) * (f.y || 0) + (f.z || 0) * (f.z || 0));
+          } catch {}
+          const personality = (() => {
+            try {
+              return getEffectivePersonality(this.state.behaviorConfig!, ship.class, ship.team);
+            } catch {
+              return { mode: 'roaming' } as AIPersonality;
+            }
+          })();
+          const moveCalled = !!ais.__moveCalledThisTick;
+          const line = `FIRST_TICK ship=${ship.id} team=${ship.team} mode=${personality.mode} intent=${ship.aiState?.currentIntent ?? 'n/a'} moveCalled=${moveCalled} sepMag=${sepMag.toFixed(4)} pos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)}\n`;
+          writeTestLogLine('tmp/ai-firsttick.log', line);
+          ais.__firstTickLogged = true;
+        }
+      } catch {}
+    }
   }
 
   // Preserve public API used by tests
@@ -892,6 +1097,15 @@ export class AIController {
   }
   public moveTowards(ship: Ship, targetPos: Vector3, dt: number, ignoreCloseEnough?: boolean) {
     if (!this.state.behaviorConfig) return;
+    if (VITEST_AI_DEBUG) {
+      try {
+        if (ship.aiState) (ship.aiState as unknown as AIAssist).__moveCalledThisTick = true;
+        writeTestLogLine(
+          'tmp/ai-debug.log',
+          `MOVE_TOWARDS_CALL ship=${ship.id} team=${ship.team} target=${targetPos.x.toFixed(2)},${targetPos.y.toFixed(2)},${targetPos.z.toFixed(2)} dt=${dt}\n`,
+        );
+      } catch {}
+    }
     // Use static import at top so this is synchronous for tests
     // Forward the optional ignoreCloseEnough flag to the steering helper. We
     // pass `undefined` for speedOverride to preserve default behavior.

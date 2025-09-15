@@ -1,6 +1,6 @@
 ---
 description: 'ReactJS development standards and best practices'
-applyTo: '**/*.jsx, **/*.tsx, **/*.js, **/*.ts, **/*.css, **/*.scss'
+applyTo: '**/*.jsx, **/*.tsx,**/*.js, **/*.ts, **/*.css, **/*.scss'
 ---
 
 type Props = { title: string; onClick?: () => void };

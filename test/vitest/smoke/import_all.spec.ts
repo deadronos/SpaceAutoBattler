@@ -101,7 +101,7 @@ describe('smoke imports', () => {
         expect(mod).toBeTruthy();
       } catch (err) {
         ok = false;
-        // eslint-disable-next-line no-console
+         
         console.warn('smoke import failed', m, (err && (err as any).message) || err);
       }
       // Do not fail the test if an import cannot be satisfied in this environment.

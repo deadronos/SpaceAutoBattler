@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, it, expect, afterEach } from 'vitest';
 import { getFileWatcher } from '../../../src/utils/fileWatcher';
 

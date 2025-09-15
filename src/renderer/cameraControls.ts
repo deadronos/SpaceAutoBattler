@@ -83,32 +83,37 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
     const setTarget = rh?.setCameraTarget?.bind(rh);
     if (!getTarget || !setTarget) return;
     switch (e.key) {
+      // WASD: forward/left/back/right mapped to X/Z axes used by renderer
       case 'w':
       case 'ArrowUp':
         {
           const t = getTarget();
-          setTarget({ x: t.x, y: t.y, z: t.z - moveSpeed });
+          // move forward along -X
+          setTarget({ x: t.x - moveSpeed, y: t.y, z: t.z });
         }
         break;
       case 's':
       case 'ArrowDown':
         {
           const t = getTarget();
-          setTarget({ x: t.x, y: t.y, z: t.z + moveSpeed });
+          // move back along +X
+          setTarget({ x: t.x + moveSpeed, y: t.y, z: t.z });
         }
         break;
       case 'a':
       case 'ArrowLeft':
         {
           const t = getTarget();
-          setTarget({ x: t.x - moveSpeed, y: t.y, z: t.z });
+          // move left: renderer uses inverted Z, so add to move left
+          setTarget({ x: t.x, y: t.y, z: t.z + moveSpeed });
         }
         break;
       case 'd':
       case 'ArrowRight':
         {
           const t = getTarget();
-          setTarget({ x: t.x + moveSpeed, y: t.y, z: t.z });
+          // move right: renderer uses inverted Z, so subtract to move right
+          setTarget({ x: t.x, y: t.y, z: t.z - moveSpeed });
         }
         break;
     }
@@ -128,7 +133,13 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
       const dt = 1 / 60;
       updateCinematicCamera(state, dt);
     }
-    requestAnimationFrame(cameraLoop);
+    // In Node/Vitest, requestAnimationFrame may be undefined. Avoid scheduling
+    // the loop in that environment to prevent unhandled exceptions after tests.
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(cameraLoop);
+    }
   }
-  requestAnimationFrame(cameraLoop);
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(cameraLoop);
+  }
 }

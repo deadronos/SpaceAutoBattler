@@ -1,13 +1,15 @@
-import js from '@eslint/js';
-import globals from 'globals';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
+import * as js from '@eslint/js';
+import * as globals from 'globals';
+import * as tsPlugin from '@typescript-eslint/eslint-plugin';
+// Import the parser object so flat config languageOptions.parser is a parser
+// implementation (ESLint expects an object with parse()/parseForESLint()).
+import parser from '@typescript-eslint/parser';
 // @ts-ignore - import internal flat recommended helper from the plugin (safe at runtime)
 import json from '@eslint/json';
 import markdown from '@eslint/markdown';
 import css from '@eslint/css';
 import { defineConfig } from 'eslint/config';
-import path from 'path';
+import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 // Resolve __dirname in ESM so typescript-eslint can infer the project root
@@ -23,14 +25,17 @@ export default defineConfig([
   // Provide TypeScript parser and a small set of conservative rules for files
   {
     files: ['**/*.{ts,mts,cts}'],
-    languageOptions: {
-      parser: tsParser,
+      languageOptions: {
+      // Provide the actual parser implementation object. Using the imported
+      // parser avoids ESLint complaining that languageOptions.parser is not
+      // a parser with parse()/parseForESLint().
+      parser: parser as any,
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ['./tsconfig.json'],
       },
     },
-    plugins: { '@typescript-eslint': tsPlugin as any },
+    plugins: { '@typescript-eslint': tsPlugin as unknown as any },
     rules: {
       // Turn off the core ESLint rule in favor of the TypeScript-aware one
       'no-unused-vars': 'off',
@@ -51,7 +56,8 @@ export default defineConfig([
   {
     files: ['**/*.{ts,mts,cts}'],
     languageOptions: {
-      parser: tsParser,
+      // Use the actual parser implementation object for ESLint flat config
+      parser: parser as any,
       parserOptions: {
         // Point to the workspace tsconfig; this resolved dir avoids a typescript-eslint bug
         tsconfigRootDir: __dirname,
@@ -180,7 +186,7 @@ export default defineConfig([
   // to reduce noise while keeping most checks active.
   {
     files: ['test/**', 'test/vitest/**'],
-    plugins: { '@typescript-eslint': tsPlugin as any },
+  plugins: { '@typescript-eslint': tsPlugin as unknown as any },
     languageOptions: {
       globals: {
         describe: 'readonly',

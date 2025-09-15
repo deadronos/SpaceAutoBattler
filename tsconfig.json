@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "Node",
+  "module": "esnext",
+  "moduleResolution": "Node",
     "strict": true,
     "outDir": "dist/config",
     "downlevelIteration": true,
@@ -16,13 +16,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": [
+    "include": [
     "src/**/*.ts",
     "src/**/*.js",
     "src/**/*.d.ts",
     "test/**/*.ts",
-    "test/**/*.js",
-    "eslint.config.ts"
+    "test/**/*.js"
   ],
   "exclude": ["node_modules", "dist"]
 }

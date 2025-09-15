@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createMockGameState, TEST_DEFAULTS } from './setupTests.js';
 import { AIController } from '../../src/core/aiController.js';

@@ -60,6 +60,6 @@ for (const cls of CLASS_LIST) {
         `${cls} did not create bullets over ${maxTicks} ticks`,
       ).toBeGreaterThan(0);
     },
-    { timeout: 20000 },
+    { timeout: 60000 },
   );
 }

@@ -44,7 +44,7 @@ describe('Build System Tests', () => {
           stdio: 'pipe',
           encoding: 'utf8',
         });
-        // eslint-disable-next-line no-console
+         
         console.debug && console.debug('build output:', out);
       } catch (err: any) {
         // If the build fails, include captured stdout/stderr when available

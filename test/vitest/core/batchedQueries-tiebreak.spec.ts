@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { describe, it, expect } from 'vitest';
 import { BatchedQueryManager } from '../../../src/core/ai/batchedQueries';
 

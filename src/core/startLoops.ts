@@ -30,9 +30,6 @@ export function startLoops(state: GameState, ui: UIElements): void {
         } catch (_e) {
           void _e;
         }
-        state.time += fixedDt * state.speedMultiplier;
-        state.tick++;
-        state.frame = (state.frame ?? 0) + 1;
         acc -= fixedDt;
         steps++;
       }
