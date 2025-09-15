@@ -1,6 +1,6 @@
 ## Spawn System
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 The Spawn System handles carrier-produced fighter spawning, fleet spawns, and timed reinforcements. It's responsible for creating new `Ship` entities, assigning them ids, and updating parent/child relationships when a carrier spawns fighters.
 
@@ -19,3 +19,5 @@ The Spawn System handles carrier-produced fighter spawning, fleet spawns, and ti
 ### Edge cases
 
 - Ensures that spawn doesn't exceed configured caps. If a carrier is destroyed during spawn processing, spawned fighters are still created but may be immediately re-parented or left without parent depending on game logic.
+
+Session note: Reviewed and confirmed on 2025-09-15 during Batch 5 sweep.

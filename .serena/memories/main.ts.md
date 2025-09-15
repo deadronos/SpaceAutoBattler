@@ -1,8 +1,8 @@
 # main.ts — Application entry and glue logic
 
-This memory documents the role and key behaviors of `src/main.ts`.
+Last-Reviewed: 2025-09-15
 
-Last-Reviewed: 2025-09-07
+This memory documents the role and key behaviors of `src/main.ts`.
 
 Purpose
 
@@ -47,4 +47,4 @@ When to update
 
 - Update this memory when `src/main.ts` changes bootstrap sequence, worker messaging contract, or public debug utilities.
 
-Generated on 2025-09-07 by GitHub Copilot agent.
+Notes from this session (2025-09-15): Reviewed and updated last-reviewed date.

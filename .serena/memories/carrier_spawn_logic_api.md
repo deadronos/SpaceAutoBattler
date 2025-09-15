@@ -1,6 +1,6 @@
 ## Carrier Spawn Logic
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 This memory describes the logic carriers use to spawn fighters and manage their spawn queues.
 
@@ -13,3 +13,5 @@ This memory describes the logic carriers use to spawn fighters and manage their 
 ### Notes
 
 - Spawning is deterministic and tied to `state.time` and carrier timers.
+
+Session note: Reviewed and updated 2025-09-15 during a documentation sweep.

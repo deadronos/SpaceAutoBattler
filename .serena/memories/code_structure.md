@@ -1,6 +1,6 @@
 ## Code Structure
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 High-level layout:
 
@@ -12,3 +12,7 @@ High-level layout:
 - `test/vitest/` - unit tests
 
 Notes: Follow repository's `spec/src-structure.md` for detailed component relationships.
+
+Notes from this session (2025-09-15):
+
+- Reviewed and annotated as part of memory sweep.

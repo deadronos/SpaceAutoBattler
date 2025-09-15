@@ -1,6 +1,6 @@
 ## Entrypoints
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 Lists the application's entrypoints and how they are used.
 
@@ -9,3 +9,5 @@ Lists the application's entrypoints and how they are used.
 - `scripts/build.mjs` and `scripts/build-standalone.mjs` - build helpers for dist and standalone HTML
 
 Notes: Use `npm run serve` or `npm run serve:dist` after building for manual testing.
+
+Session note: Reviewed and updated 2025-09-15.

@@ -1,6 +1,6 @@
 handleLevelUps(state: GameState)
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 - Purpose: Apply level-up progression for ships whose XP exceeds their nextLevelXp, increasing stats and resetting/subtracting XP accordingly.
 - Inputs: `state` (GameState mutable)
@@ -14,3 +14,5 @@ Last-Reviewed: 2025-09-07
   - If `level.nextLevelXp` equals zero inadvertently, the loop could become infinite — configs must ensure positive xp thresholds.
 - Determinism: Pure function of ship.level.xp and config, deterministic.
 - Performance: Typically cheap (few ships level per tick), but pathological cases with huge XP might loop multiple times per ship in single tick.
+
+Session note: Reviewed and annotated 2025-09-15.

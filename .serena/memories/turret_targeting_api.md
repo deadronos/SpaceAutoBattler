@@ -1,6 +1,6 @@
 ## Turret Targeting
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 This memory documents how turrets pick and track targets.
 
@@ -17,3 +17,5 @@ This memory documents how turrets pick and track targets.
 ### Notes
 
 - Uses spatial queries and team checks to avoid friendly fire; configurable via `behaviorConfig`.
+
+Session note: Reviewed and updated last-reviewed date: 2025-09-15.

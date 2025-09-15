@@ -1,6 +1,6 @@
 ## Asset Pool
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 The `assetPool` is the canonical cache and factory for runtime assets (ImageBitmaps, geometries, materials, particle textures). It's stored on `GameState.assetPool` and used by renderer and loader subsystems.
 
@@ -21,3 +21,5 @@ The `assetPool` is the canonical cache and factory for runtime assets (ImageBitm
 ### Determinism & Constraints
 
 - Caching is content-addressed; deterministic given same input assets. Must be used via `GameState.assetPool` per repository conventions.
+
+Session note: Reviewed and annotated 2025-09-15.

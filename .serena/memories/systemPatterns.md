@@ -1,6 +1,6 @@
 ## System Patterns
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 Key architectural patterns used in the repo:
 
@@ -13,3 +13,7 @@ Design rationale:
 
 - Determinism simplifies replay and testing.
 - Asset pooling reduces GPU overhead and garbage collection pressure.
+
+Notes from this session (2025-09-15):
+
+- Reviewed and annotated as part of the memory sweep.

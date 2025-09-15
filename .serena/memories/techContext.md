@@ -1,6 +1,6 @@
 ## Tech Context
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 Technologies used:
 
@@ -13,3 +13,7 @@ Constraints:
 
 - Keep deterministic RNG usage via `src/utils/rng.ts`.
 - Avoid module-level mutable state; use `GameState`.
+
+Notes from this session (2025-09-15):
+
+- Reviewed and annotated as part of the memory sweep.

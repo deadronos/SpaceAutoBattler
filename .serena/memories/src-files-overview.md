@@ -1,6 +1,6 @@
 ## Source Files Overview
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 Top-level source files of interest:
 
@@ -11,3 +11,7 @@ Top-level source files of interest:
 - `src/renderer/meshFactory.ts` — mesh/prototype creation
 
 Note: For details, read the per-file memory nodes created during the sweep.
+
+Notes from this session (2025-09-15):
+
+- Reviewed and annotated during batch memory update.

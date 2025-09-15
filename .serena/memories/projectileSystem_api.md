@@ -1,6 +1,6 @@
 ## Projectile System
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-15
 
 The Projectile System is responsible for updating bullets/projectiles each simulation tick. It handles movement, collision queries, lifespan, and applying damage to hit ships.
 
@@ -19,3 +19,5 @@ The Projectile System is responsible for updating bullets/projectiles each simul
 ### Determinism & Performance
 
 - Deterministic given same initial state and RNG seed for any randomness (e.g., spread). Typically O(#projectiles + collision checks) per tick; spatial partitioning is used to reduce checks.
+
+Session note: Reviewed and confirmed 2025-09-15.
