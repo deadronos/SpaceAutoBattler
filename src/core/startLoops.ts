@@ -48,7 +48,12 @@ export function startLoops(state: GameState, ui: UIElements): void {
 
     // Render
     perfBegin('renderer.total');
-    state.renderer?.render(dt);
+    // Only call render if renderer.render is a function. In some test
+    // environments a stubbed renderer may be present but not implement
+    // a render method; guard to avoid unhandled TypeErrors.
+    if (typeof state.renderer?.render === 'function') {
+      state.renderer!.render(dt);
+    }
     // Also update unified effects manager if present on state. This advances
     // animations and postprocessing in sync with rendering.
     state.unifiedFX?.update?.(dt);
@@ -72,7 +77,19 @@ export function startLoops(state: GameState, ui: UIElements): void {
     perfEnd('ui.stats');
 
     perfEnd('frame.total');
-    requestAnimationFrame(frame);
+    // Schedule next frame. In some test environments (Node/JSDOM) there is no
+    // requestAnimationFrame - detect and fall back to setTimeout so loops
+    // don't throw ReferenceError after tests tear down.
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(frame);
+    } else {
+      // Approximate 60fps
+      setTimeout(() => frame(performance.now()), 16);
+    }
   }
-  requestAnimationFrame(frame);
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(frame);
+  } else {
+    setTimeout(() => frame(performance.now()), 16);
+  }
 }

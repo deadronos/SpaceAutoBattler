@@ -4,7 +4,8 @@ import { resetToCinematicView, updateCinematicCamera } from './cinematicCamera.j
 // CameraManager helpers are accessed via the renderer handles (get/set methods)
 
 export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement): void {
-  if (!state.renderer) return;
+  // If renderer or canvas are not available (tests / headless), skip wiring
+  if (!state.renderer || !canvas) return;
 
   let isMouseDown = false;
   let lastMouseX = 0;
@@ -24,10 +25,12 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
   canvas.addEventListener('mousemove', (e) => {
     if (!isMouseDown || !state.renderer) return;
 
-    const rh = state.renderer as unknown as {
-      getCameraRotation?: () => { x: number; y: number; z: number };
-      setCameraRotation?: (r: { x?: number; y?: number; z?: number }) => void;
-    } | undefined;
+    const rh = state.renderer as unknown as
+      | {
+          getCameraRotation?: () => { x: number; y: number; z: number };
+          setCameraRotation?: (r: { x?: number; y?: number; z?: number }) => void;
+        }
+      | undefined;
     const getRotation = rh?.getCameraRotation?.bind(rh);
     const setRotation = rh?.setCameraRotation?.bind(rh);
 
@@ -59,7 +62,9 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
     const zoomSpeed = CameraConfig.controls.zoomSpeed;
     const zoomDirection = e.deltaY > 0 ? 1 : -1;
     // Compute camState per-handler to avoid referencing out-of-scope variable
-    const rhWheel = state.renderer as unknown as { getCameraDistance?: () => number; setCameraDistance?: (d: number) => void } | undefined;
+    const rhWheel = state.renderer as unknown as
+      | { getCameraDistance?: () => number; setCameraDistance?: (d: number) => void }
+      | undefined;
     const getDistance = rhWheel?.getCameraDistance?.bind(rhWheel);
     const setDistance = rhWheel?.setCameraDistance?.bind(rhWheel);
     if (getDistance && setDistance) {
@@ -75,10 +80,12 @@ export function setupCameraControls(state: GameState, canvas: HTMLCanvasElement)
   window.addEventListener('keydown', (e) => {
     if (!state.renderer) return;
     const moveSpeed = CameraConfig.controls.moveSpeed;
-    const rh = state.renderer as unknown as {
-      getCameraTarget?: () => { x: number; y: number; z: number };
-      setCameraTarget?: (t: { x?: number; y?: number; z?: number }) => void;
-    } | undefined;
+    const rh = state.renderer as unknown as
+      | {
+          getCameraTarget?: () => { x: number; y: number; z: number };
+          setCameraTarget?: (t: { x?: number; y?: number; z?: number }) => void;
+        }
+      | undefined;
     const getTarget = rh?.getCameraTarget?.bind(rh);
     const setTarget = rh?.setCameraTarget?.bind(rh);
     if (!getTarget || !setTarget) return;

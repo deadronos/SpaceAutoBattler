@@ -6,6 +6,12 @@ import { RendererConfig } from '../config/rendererConfig.js';
 import { FleetConfig } from '../config/fleetConfig.js';
 
 export function wireControls(state: GameState, ui: UIElements): void {
+  // Defensive guard: in test environments the UI may not be present.
+  // If key elements are missing, skip attaching DOM handlers to avoid
+  // unhandled exceptions (tests run in JSDOM or headless environments).
+  if (!ui || !ui.startPause) {
+    return;
+  }
   function updateSpeedLabel() {
     ui.speed.textContent = `Speed: ${state.speedMultiplier}×`;
   }
@@ -40,7 +46,8 @@ export function wireControls(state: GameState, ui: UIElements): void {
   };
   ui.speed.onclick = () => {
     const seq = [0.5, 1, 2, 4] as const;
-    const i = seq.indexOf(state.speedMultiplier as any);
+    // Use findIndex to avoid casting to `any` and satisfy strict typing rules.
+    const i = seq.findIndex((v) => v === state.speedMultiplier);
     const next = seq[(i + 1) % seq.length];
     state.speedMultiplier = next;
     updateSpeedLabel();
