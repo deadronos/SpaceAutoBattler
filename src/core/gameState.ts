@@ -28,6 +28,7 @@ import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundary
 import { DEBUG_AI } from '../utils/env.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
 import { writeTestLogLine } from '../utils/testDebug.js';
+import * as _logger from '../utils/logger.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };

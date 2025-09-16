@@ -505,6 +505,15 @@ export function initGame(seed?: string) {
             try {
               if (evt && evt.type === 'hit' && evt.hitResult && evt.hitResult.hitPosition) {
                 const intensity = Math.min(2, 1 + (evt.hitResult.damage ?? 1) * 0.1);
+                try {
+                  logger.info('[Explosions] Projectile hit explosion', {
+                    position: evt.hitResult.hitPosition,
+                    intensity,
+                    damage: evt.hitResult.damage ?? null,
+                  });
+                } catch {
+                  /* ignore logging failure */
+                }
                 void unifiedFX.handleExplosion(evt.hitResult.hitPosition, intensity);
               }
             } catch (_e) {

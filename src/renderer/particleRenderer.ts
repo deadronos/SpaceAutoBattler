@@ -147,6 +147,7 @@ function createMaterial(texture: THREE.Texture): THREE.ShaderMaterial {
       colorStop1Pos: { value: DefaultBillboardExplosionParams.colorStop1Pos },
       colorStop2Pos: { value: DefaultBillboardExplosionParams.colorStop2Pos },
       colorStop3Pos: { value: DefaultBillboardExplosionParams.colorStop3Pos },
+      minAlpha: { value: DefaultBillboardExplosionParams.minAlpha },
       explosionTexture: { value: texture },
     },
     vertexShader: billboardExplosionVertexShader,

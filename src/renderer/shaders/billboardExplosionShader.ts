@@ -36,7 +36,6 @@ export const billboardExplosionVertexShader = `
     
     // Calculate normalized lifetime (0.0 = birth, 1.0 = death)
     vLifeRatio = clamp(instanceAge / max(instanceLifetime, 0.001), 0.0, 1.0);
-    
     // Billboard calculation - always face the camera
     vec3 worldPosition = instancePosition;
     
@@ -76,6 +75,7 @@ export const billboardExplosionFragmentShader = `
   uniform float pulseAmplitude;
   uniform float sparkleIntensity;
   uniform float alphaMultiplier;
+  uniform float minAlpha;
   
   // Color stops for lifetime interpolation
   uniform vec3 colorStop1;    // Birth color (t=0.0)
@@ -129,8 +129,8 @@ export const billboardExplosionFragmentShader = `
     
     float flickerPhase = vLifeRatio * pulseFrequency + vSeed * 6.2831853;
     float flicker = 1.0 + sin(flickerPhase) * pulseAmplitude;
-    float sparkle = 1.0 + sin((radial + vSeed) * 24.0) * sparkleIntensity;
-    float brightness = max(0.08, (coreGlow + rim + heat) * flicker * sparkle);
+        float sparkle = 1.0 + (sin((radial + vSeed) * 24.0) * 0.5 + 0.5) * sparkleIntensity;
+        float brightness = (coreGlow + rim + heat) * flicker * sparkle;
     
     vec3 finalColor = baseColor * colorIntensity * brightness;
     
@@ -140,9 +140,15 @@ export const billboardExplosionFragmentShader = `
     
     float radialFade = 1.0 - smoothstep(0.85, 1.05, radial);
     float brightnessAlpha = clamp(coreGlow * 0.6 + heat, 0.0, 1.5);
-    
-        float finalAlpha = textureAlpha * instanceAlpha * lifetimeFade * radialFade;\n    finalAlpha *= mix(1.0, brightnessAlpha, 0.65);\n    finalAlpha *= alphaMultiplier;\n\n    float minAlphaValue = minAlpha * lifetimeFade * radialFade;\n    finalAlpha = max(finalAlpha, minAlphaValue);\n    finalAlpha = clamp(finalAlpha, 0.0, 1.0);
-    
+
+    float finalAlpha = textureAlpha * instanceAlpha * lifetimeFade * radialFade;
+    finalAlpha *= mix(1.0, brightnessAlpha, 0.6);
+    finalAlpha *= alphaMultiplier;
+
+    float minAlphaValue = minAlpha * lifetimeFade * radialFade;
+    finalAlpha = max(finalAlpha, minAlphaValue);
+    finalAlpha = clamp(finalAlpha, 0.0, 1.0);
+
     gl_FragColor = vec4(finalColor, finalAlpha);
   }
 `;
@@ -186,9 +192,9 @@ export const DefaultBillboardExplosionParams: Required<BillboardExplosionShaderP
   heatExponent: 2.4,
   pulseFrequency: 10.0,
   pulseAmplitude: 0.25,
-  sparkleIntensity: 0.12,
-  alphaMultiplier: 1.45,
-  minAlpha: 0.18,
+  sparkleIntensity: 0.08,
+  alphaMultiplier: 1.35,
+  minAlpha: 0.14,
   colorStop1: [1.0, 0.98, 0.85],
   colorStop2: [1.0, 0.48, 0.02],
   colorStop3: [0.24, 0.02, 0.0],
