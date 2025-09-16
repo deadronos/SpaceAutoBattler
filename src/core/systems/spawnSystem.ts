@@ -28,7 +28,9 @@ export interface SpawnIntent {
   // Additional spawn properties
   initialVelocity?: Vector3;
   initialOrientation?: { pitch: number; yaw: number; roll: number };
-  customConfig?: Record<string, any>;
+  // customConfig is intentionally unstructured; use unknown to avoid `any`
+  // while forcing callers to refine the shape when accessing it.
+  customConfig?: Record<string, unknown>;
 }
 
 /**

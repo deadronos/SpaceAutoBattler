@@ -11,8 +11,6 @@ import css from '@eslint/css';
 import { defineConfig } from 'eslint/config';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-
-// Resolve __dirname in ESM so typescript-eslint can infer the project root
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig([
@@ -22,10 +20,29 @@ export default defineConfig([
     extends: ['js/recommended'],
     languageOptions: { globals: globals.browser },
   },
+  // Ensure the ESLint config file itself is linted without "typed" parsing.
+  // The TypeScript parser is configured with `project` for typed linting which
+  // expects this file to be included in a tsconfig. Linting the config file
+  // with typed parsing commonly causes a parser error during pre-commit. Run
+  // untyped linting for the config file to avoid that while keeping typed
+  // rules enabled for the rest of the repo.
+  {
+    files: ['eslint.config.ts'],
+    languageOptions: {
+      parser: parser as any,
+      parserOptions: {
+        // Intentionally omit `project` here so the parser does not attempt
+        // to load a tsconfig for this file. This makes linting of the config
+        // file untyped and avoids the parsing error during pre-commit.
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {},
+  },
   // Provide TypeScript parser and a small set of conservative rules for files
   {
-    files: ['**/*.{ts,mts,cts}'],
-      languageOptions: {
+    files: ['**/*.{ts,mts,cts}', '!eslint.config.ts'],
+    languageOptions: {
       // Provide the actual parser implementation object. Using the imported
       // parser avoids ESLint complaining that languageOptions.parser is not
       // a parser with parse()/parseForESLint().
@@ -54,7 +71,7 @@ export default defineConfig([
   },
   // Ensure parserOptions has a resolved tsconfigRootDir for the TypeScript parser
   {
-    files: ['**/*.{ts,mts,cts}'],
+    files: ['**/*.{ts,mts,cts}', '!eslint.config.ts'],
     languageOptions: {
       // Use the actual parser implementation object for ESLint flat config
       parser: parser as any,
@@ -186,7 +203,7 @@ export default defineConfig([
   // to reduce noise while keeping most checks active.
   {
     files: ['test/**', 'test/vitest/**'],
-  plugins: { '@typescript-eslint': tsPlugin as unknown as any },
+    plugins: { '@typescript-eslint': tsPlugin as unknown as any },
     languageOptions: {
       globals: {
         describe: 'readonly',
@@ -271,6 +288,17 @@ export default defineConfig([
     plugins: { json },
     language: 'json/jsonc',
     extends: ['json/recommended'],
+  },
+  // Disable the `json/no-empty-keys` rule for the generated package-lock.json
+  // because lockfiles are machine-generated and may contain constructs that
+  // trip strict JSON rules. We still lint all developer-authored JSON files.
+  {
+    files: ['package-lock.json'],
+    plugins: { json },
+    language: 'json/json',
+    rules: {
+      'json/no-empty-keys': 'off',
+    },
   },
   {
     files: ['**/*.json5'],
