@@ -1,94 +1,140 @@
-Starting (1/2) Draft particle renderer plan
+# Handover — Miniplex spatial-index prototype (for next agent)
 
-Completed (1/2) Draft particle renderer plan
+This document is a compact, actionable handover for the next agentic session. It summarizes what was implemented, where to find the code, what to run to validate, and the next high-value steps to complete the migration from the legacy spatial index to the new Miniplex + UniformGrid prototype.
 
-I'll lay out a concise, actionable plan you can follow (or I can implement) to convert the existing particle-system skeleton into a renderer-backed particle explosion effect with instancing, shader, asset-pool usage, and a smoke visual test.
+Date: 2025-09-16
+Branch: explosionparticles (feature branch)
 
-High-level contract
-Input: GameState and ParticleExplosionOptions (pos, radius, optional seed, colorOverride, count, lifetime, entityId)
-Output: Visual explosion effect rendered via Three.js (instanced mesh) that fades and moves over lifetime; no return value required.
-Error modes: If renderer is unavailable or resources missing, fail gracefully (no crash) and optionally fall back to post-processing bloom flash.
-Success criteria:
-Visual matches spec (radial burst, color gradient, fade).
-Deterministic particle generation remains unchanged.
-Pooling and lifecycle use existing skeleton pool.
-Smoke test can trigger 1 small, 1 medium, 1 large explosion visually.
-Implementation plan (steps)
-Add renderer-side module and exports
+## High-level summary
 
-Create src/renderer/particleRenderer.ts (or extend particleSystem.ts carefully) to own Three.js resources: instanced mesh, shader material, per-instance buffers, and lifecycle hooks.
-Export initParticleRenderer(rendererHandles, assetPool) and disposeParticleRenderer() and a bridge function renderParticleSystem(delta) to be called by renderer tick.
-Shader & asset
+- Goal: introduce a deterministic, fast entity index using Miniplex for attribute indexing and a small UniformGrid (3D) for spatial candidate reduction. Make it optional on `GameState` and wire lifecycle hooks so it can replace legacy spatial scans incrementally.
+- Status: Prototype implemented and wired into spawn/move/destroy callsites. Basic unit tests for spawn and spatial functionality passed locally. The full typecheck and test suite passed earlier in this workstream.
 
-Add a soft-circle texture in assets/textures/explosion-soft.png (or use an existing texture). If not available, create a data-URL fallback or small placeholder.
-Create a minimal vertex+fragment shader (in assets/shaders/particleBillboard.glsl or as inline strings) implementing:
-Per-instance attributes: position (vec3), size (float), ageNorm (float), lifetime (float), color (vec3 or vec4).
-Billboarding: compute screen-facing quad or use Three.js plane geometry with InstancedBufferAttribute.
-Fragment: sample soft-circle texture and multiply by color and alpha; use additive blending.
-Instanced mesh & buffer attributes
+## Where the work lives
 
-In particleRenderer.ts, create an InstancedMesh (e.g., plane geometry) sized for max pool size.
-Create per-instance InstancedBufferAttributes for position, size, color (vec3), age (float), lifetime (float) — update attributes each frame or on spawn.
-Set material to additive blending, depthWrite=false, transparent=true.
-Hook up the existing data-only ParticleSystem
+- Prototype index implementation:
+  - `src/core/entityIndex.ts` — exports `initEntityIndex(bucketSize)` and `EntityIndexAPI` (contains `world` (Miniplex World), `grid` (UniformGrid), and methods: `add`, `update`, `remove`, `queryNeighbors`).
 
-Keep the deterministic data generation in particleSystem.ts.
-Expose a way for renderer to fetch active instances via ParticleSystem.getActiveInstances() (already present).
-In renderer tick: call ensureParticleSystem(state) to get the system, call sys.update(dt), then pull sys.getActiveInstances() and copy values into instanced attributes (or maintain a mapping from instance.id -> instanceIndex to reuse slots).
-Implement slot mapping & reuse:
-On spawn: allocate rendering slot index (reuse freed indices).
-On despawn: mark slot free, optionally hide instance (set scale 0).
-Option: keep rendering slots identical to pool order to simplify copying (but mapping is better for stable instance indices).
-Asset Pool & Material reuse
+- Game state / lifecycle wiring:
+  - `src/core/gameState.ts` — spawn helper and simulation loop were updated to:
+    - register newly spawned ships in `state.entityIndex` (if present),
+    - update `state.entityIndex` positions inside `updateSpatialGrid`,
+    - update `state.entityIndex` after boundary cleanup teleports,
+    - remove entries from `state.entityIndex` when ships die (best-effort cleanup).
 
-Load/obtain explosion texture from GameState.assetPool (via state.assetPool.getTexture('explosion-soft') or similar).
-Create a shared ShaderMaterial once and reuse across explosions (store on particleRenderer).
-Dispose and return assets only on renderer shutdown if necessary.
-LOD and performance
+  - `src/core/systems/spawnSystem.ts` — spawn registration now calls `state.entityIndex.add(...)` and `removeShip` calls `state.entityIndex.remove(...)` (best-effort, try/catch guarded).
 
-Respect RendererConfig.particles.explosion.lod settings — downscale count or size with distance threshold.
-Use pooling.initial and pooling.growTo as InstancedMesh capacity; if renderer cannot grow instanced mesh, allocate a new one when needed (or cap spawn).
-Wiring & lifecycle
+- Tests and dependencies:
+  - `test/vitest/*` — spatial and spawn tests were executed (focused runs passed). Full test suite passed earlier during prototyping.
+  - `package.json` had `miniplex` added as a dependency for the prototype.
 
-Init: when renderer starts, call initParticleRenderer(rendererHandles, state.assetPool).
-Tick: particleRenderer.renderParticleSystem(dt) called by renderer's per-frame loop.
-Dispose: on renderer shutdown, dispose InstancedMesh, material, and attributes.
-Tests & smoke visual test
+## Key design & integration notes
 
-Add a small dev UI page or a debug function window.testExplosionPreset('small'|'medium'|'large') in explosionTester.ts (already exists and calls addParticleExplosion) — wire this to call animation + renderer so explosion shows.
-Add tests:
-Unit: ensure getActiveInstances() shape and deterministic output (existing tests already cover many items).
-Integration (smoke): a visual smoke test that runs in the dev page — spawn three explosions and show a screenshot / manual check.
-Files to add / modify
-Add: src/renderer/particleRenderer.ts — main renderer integration (instanced mesh + shader + lifecycle)
-Add: assets/shaders/particleBillboard.glsl (or inline shader in TS)
-Add/ensure texture: assets/textures/explosion-soft.png (or use assets/textures/circle.png if present)
-Modify: particleSystem.ts — keep as data-only generator; no heavy changes required. Optionally add small hooks:
-optional event/callback on spawn: onSpawn(instance, renderSlot?) (not required; renderer just reads getActiveInstances()).
-Modify: renderer main loop (likely threeRenderer.ts or equivalent) to call particle renderer renderParticleSystem(dt) each frame. If a unified effects manager exists, wire into it (e.g., unifiedEffectsManager.handleExplosion already triggers animation).
-Add tests: test/vitest/renderer-particle-rendering.spec.ts — small unit tests that validate attribute update logic (mock renderer context).
-Minimal MVP implementation details (low-risk)
-First pass: simple CPU->GPU copy each frame:
-For every frame, read sys.getActiveInstances() and loop over them to set InstancedBufferAttribute arrays (position, size, color, age/lifetime).
-Mark attributes needsUpdate = true.
-This is simple, easy to verify; if perf issues arise, optimize by writing into typed arrays directly and using partial updates.
-Use small initial pool (e.g., 256) and growable instancing as needed.
-Provide fallback: if Three.js renderer unavailable, just rely on data-only particleSystem (so tests still pass).
-Edge cases & robustness
-If state.renderer or state.assetPool missing: skip rendering but keep data generator running.
-If InstancedMesh capacity exhausted and cannot grow: stop spawning extra particles gracefully.
-If texture missing: use solid white circle shader fallback.
-Development & verification commands
-Typecheck and tests:
-npm run typecheck (or npx tsc --noEmit)
-npm test (runs Vitest)
-Manual smoke run (dev server / build):
-npm run build
-npm run serve (or serve:dist) and open dev page with explosionTester UI; call presets.
-Example commands (PowerShell):
+- Canonical state: All runtime state remains on `GameState`. The index is optional and attached as `state.entityIndex?: EntityIndexAPI` to avoid invasive changes.
+- Determinism: The index returns deterministic candidate order (IDs are sorted) so existing tests relying on deterministic behavior remain valid.
+- Best-effort safety: All calls to `state.entityIndex` are wrapped in try/catch so the simulation works even if the index is missing or errors.
+- Adapter approach: Miniplex entities are bridged to numeric game entity ids via a local `byId` map in the prototype so we don't force Miniplex internal ids on the rest of the codebase.
 
-Next steps I can take for you
-Implement the MVP renderer in src/renderer/particleRenderer.ts, wire it into the render loop, and add a minimal shader + texture fallback.
-Run the tests and a local smoke test to confirm visuals and no regressions.
-Or produce the actual shader code and InstancedMesh wiring as a patch for review.
-Which next step would you like me to do: implement the MVP and run tests, or produce just the PR-ready patch files (shader + TS)?
+## Validation & how to run locally
+
+1. Install deps (if needed):
+
+   ```pwsh
+   npm install
+   ```
+
+2. Run typecheck:
+
+   ```pwsh
+   npm run typecheck
+   ```
+
+3. Run tests (full suite):
+
+   ```pwsh
+   npm test
+   ```
+
+4. Quick targeted tests we used in this session:
+
+   ```pwsh
+   npx vitest test/vitest/systems-spawn.spec.ts
+   npx vitest test/vitest/spatial-functional.spec.ts
+   ```
+
+## What to watch for (logs / warnings)
+
+- Headless test runs emit renderer fallbacks/warnings (e.g., 2D canvas fallback). These messages are expected and informational for CI.
+- If `miniplex` is missing in package.json or node_modules, TypeScript will fail to resolve imports — install with `npm install`.
+
+## Next immediate tasks (priority order)
+
+1. Initialize the entity index on state creation
+   - Decide when to create `state.entityIndex` (e.g., in `createInitialState` when `enableSpatialIndex` is true). If desired, call `state.entityIndex = initEntityIndex(bucketSize)`.
+
+2. Migrate one heavy consumer end-to-end
+   - Candidate: projectile collision in `updateBullets` inside `src/core/gameState.ts` or turret targeting in `fireTurrets`.
+   - Replace the existing grid/full-scan lookup with `state.entityIndex.queryNeighbors(x,y,z,radius,{team:..., filter:...})` and assert parity with legacy behavior via tests.
+
+3. Add configuration and tuning
+   - Add `entityIndex.bucketSize` or extend `simConfig.spatialGrid` to expose `bucketSize` so we can tune grid resolution.
+   - Add microbenchmarks to `test/vitest/` to sweep bucket sizes and entity densities.
+
+4. Tests & benchmarks
+   - Add tests that assert exact parity (same entities returned) vs legacy `spatialGrid.forEachInRadius` for several densities and radii.
+   - Add performance benchmarks (small, deterministic) to measure index vs linear scan.
+
+5. Integrate Zustand for UI (separate task)
+   - Keep simulation state solely on `GameState`. Create a small Zustand store for UI/inspector state and wire the renderer to read from it.
+
+## Developer tips & gotchas
+
+- Keep the `state.entityIndex` mutation localized to lifecycle points (spawn, authoritative movement updates, removal). Avoid calling `entityIndex.update` from many ad-hoc places — prefer authoritative single-point updates for position (e.g., after physics sync or AI movement step).
+- Preserve deterministic RNG usage: do not introduce non-deterministic operations (Date.now, Math.random) in any simulation path; use `state.rng` for seeded randomness.
+- When removing entities, prefer marking and sweeping (the current code marks via sentinel `maxHealth=0` and later filters). The entityIndex cleanup runs as best-effort to avoid tight coupling.
+
+## Files to inspect first (for next agent)
+
+- `src/core/entityIndex.ts` — understand the API and adapters (`world`, `grid`, `add/update/remove/queryNeighbors`).
+- `src/core/gameState.ts` — look at `spawnShip`, `updateSpatialGrid`, `processDeathsAndXP`, and `runBoundaryCleanup` to see where the index is used.
+- `src/core/systems/spawnSystem.ts` — spawn and remove flows.
+- `test/vitest/` — spatial and spawn tests to extend for parity and benchmarks.
+
+## Acceptance criteria for finishing Phase 1→2 migration
+
+1. `state.entityIndex` is created in `createInitialState` when spatial indexing is enabled.
+2. Spawning, authoritative movement updates, teleports, and removals consistently maintain the index (tests cover these paths).
+3. One major consumer (projectiles or turrets) is migrated to use `entityIndex.queryNeighbors` with tests demonstrating parity.
+4. Full typecheck and test suite pass on CI.
+
+## Contact points / decisions made during this session
+
+- Prototype: Miniplex `World` + UniformGrid (deterministic numeric bucket keys) with a local `byId` mapping.
+- Non-invasive: index attached as `state.entityIndex?: EntityIndexAPI`.
+- Sorting of candidate ids is used to keep deterministic ordering.
+
+## Recent commands & test results (snapshot)
+
+- Focused tests run: `npx vitest test/vitest/systems-spawn.spec.ts` and `npx vitest test/vitest/spatial-functional.spec.ts` — both passed (27 tests total in those focused runs).
+- Earlier in this work session a full test run passed (651/651). If you see failures on your machine, run `npm install` then rerun `npm test` and report failures.
+
+## Handoff — immediate next action for the new agent
+
+1. (Small) Add initialization of `state.entityIndex` inside `createInitialState` guarded by the same `enableSpatialIndex` flag, e.g.:
+
+   ```ts
+   import { initEntityIndex } from '../core/entityIndex.js';
+
+   if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+     state.entityIndex = initEntityIndex(state.simConfig.spatialGrid.bucketSize || 50);
+   }
+   ```
+
+2. Run full test suite (`npm run typecheck && npm test`).
+3. Pick one consumer to migrate (projectiles recommended) and create a small PR migrating that code path and adding parity tests.
+
+If you want, I can continue and do steps 1–3 now and open a draft PR. Tell me which consumer to migrate first (projectiles or turrets) and whether you prefer the `entityIndex` created by default when `enableSpatialIndex` is true.
+
+---
+
+End of handover.

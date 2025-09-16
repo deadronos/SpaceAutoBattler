@@ -241,6 +241,12 @@ export class SpawnSystem {
     this.rendererAdapter?.removeShip(shipId);
     this.physicsAdapter?.removeBody(shipId);
     this.spatialIndex?.remove(shipId);
+    // Also remove from entityIndex if present
+    try {
+      if (this.state.entityIndex) this.state.entityIndex.remove(shipId);
+    } catch {
+      /* best-effort */
+    }
 
     // Remove from state
     this.state.ships.splice(shipIndex, 1);
@@ -469,6 +475,26 @@ export class SpawnSystem {
     } catch (_error) {
       void _error;
       logger.warn('Failed to register ship with spatial index:', _error);
+    }
+    // Register with entityIndex (miniplex + uniform grid) if available on GameState
+    try {
+      if (this.state.entityIndex) {
+        try {
+          this.state.entityIndex.add({
+            id: ship.id,
+            x: ship.pos.x,
+            y: ship.pos.y,
+            z: ship.pos.z,
+            team: ship.team,
+            type: 'ship',
+            radius: 20,
+          });
+        } catch (e) {
+          void e;
+        }
+      }
+    } catch (_e) {
+      void _e; // best-effort
     }
   }
 

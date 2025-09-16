@@ -1,4 +1,5 @@
 import type { AggressiveSpatialOptimizer } from '../core/ai/aggressiveSpatialOptimizer.js';
+import type { EntityIndexAPI } from '../core/entityIndex.js';
 
 export type EntityId = number;
 
@@ -272,6 +273,8 @@ export interface GameState {
   // layers to trigger explosion/postprocessing effects. Optional because some
   // headless/test setups don't create a renderer or unifiedFX instance.
   unifiedFX?: import('../renderer/unifiedEffectsManager.js').UnifiedEffectsManager;
+  // Optional in-memory entity index (miniplex + spatial grid) for fast queries
+  entityIndex?: EntityIndexAPI;
 }
 
 export type UIElements = {

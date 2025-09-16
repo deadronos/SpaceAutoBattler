@@ -494,6 +494,24 @@ export function spawnShip(
       ShipVisualConfig.ships[cls]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius,
       team,
     );
+    // Also register in entityIndex if present
+    try {
+      if (state.entityIndex) {
+        state.entityIndex.add({
+          id,
+          x: ship.pos.x,
+          y: ship.pos.y,
+          z: ship.pos.z,
+          team,
+          type: 'ship',
+          radius:
+            ShipVisualConfig.ships[cls]?.collisionRadius ??
+            ShipVisualConfig.defaults.collisionRadius,
+        });
+      }
+    } catch {
+      /* best-effort */
+    }
   }
   return ship;
 }
@@ -663,6 +681,24 @@ function processDeathsAndXP(state: GameState) {
   if (state.shipIndex) {
     state.shipIndex.clear();
     for (const s of state.ships) state.shipIndex.set(s.id, s);
+  }
+  // Ensure entityIndex removes any ids no longer present
+  try {
+    if (state.entityIndex) {
+      const alive = new Set(state.ships.map((s) => s.id));
+      // world.entities is an array of registered entity objects
+      for (const e of state.entityIndex.world.entities.slice()) {
+        if (!alive.has(e.id)) {
+          try {
+            state.entityIndex.remove(e.id);
+          } catch {
+            /* best-effort */
+          }
+        }
+      }
+    }
+  } catch {
+    /* best-effort */
   }
   // Increment version when ships are removed
   state.shipDataVersion++;
@@ -982,6 +1018,21 @@ function runBoundaryCleanup(state: GameState) {
     } else {
       s.targetId = null;
     }
+    // Update entityIndex with teleported position
+    try {
+      if (state.entityIndex) {
+        state.entityIndex.update({
+          id: s.id,
+          x: s.pos.x,
+          y: s.pos.y,
+          z: s.pos.z,
+          team: s.team,
+          type: 'ship',
+        });
+      }
+    } catch {
+      /* best-effort */
+    }
   }
 
   // Prune bullets out of bounds (set ttl=0)
@@ -1015,6 +1066,21 @@ function updateSpatialGrid(state: GameState) {
     if (ship.health > 0) {
       activeIds.add(ship.id);
       state.spatialGrid.update(ship.id, ship.pos, 16, ship.team);
+      // Also update entityIndex position if present
+      try {
+        if (state.entityIndex) {
+          state.entityIndex.update({
+            id: ship.id,
+            x: ship.pos.x,
+            y: ship.pos.y,
+            z: ship.pos.z,
+            team: ship.team,
+            type: 'ship',
+          });
+        }
+      } catch {
+        /* best-effort */
+      }
     }
   }
   // Remove any entities no longer present/active
