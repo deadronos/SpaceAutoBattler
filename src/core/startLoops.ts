@@ -49,6 +49,9 @@ export function startLoops(state: GameState, ui: UIElements): void {
     // Render
     perfBegin('renderer.total');
     state.renderer?.render(dt);
+    // Also update unified effects manager if present on state. This advances
+    // animations and postprocessing in sync with rendering.
+    state.unifiedFX?.update?.(dt);
     perfEnd('renderer.total');
 
     // Stats
