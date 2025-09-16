@@ -164,6 +164,10 @@ export interface EffectsManager {
   enableMotionBlur: (enabled: boolean) => void;
   enableDepthOfField: (enabled: boolean) => void;
   addExplosionEffect: (position: { x: number; y: number; z: number }, intensity: number) => void;
+  addHitSpark: (
+    position: { x: number; y: number; z: number },
+    opts?: { intensity?: number },
+  ) => void;
 }
 
 export function createEffectsManager(
@@ -198,6 +202,7 @@ export function createEffectsManager(
       enableMotionBlur: () => {},
       enableDepthOfField: () => {},
       addExplosionEffect: () => {},
+      addHitSpark: () => {},
     };
   }
 
@@ -858,6 +863,66 @@ export function createEffectsManager(
         setTimeout(() => {
           bloomEffect.intensity = originalIntensity;
         }, 500);
+      }
+    },
+    addHitSpark(position: { x: number; y: number; z: number }, opts?: { intensity?: number }) {
+      // Small, cheap visual: spawn a temporary additive sprite at the hit position
+      try {
+        const intensity = opts?.intensity ?? 1;
+        const size = Math.max(0.2, Math.min(1.5, 0.3 * intensity));
+
+        // Create simple sprite-like quad using MeshBasicMaterial with additive blending
+        const geom = new three.PlaneGeometry(size, size);
+        const mat = new three.MeshBasicMaterial({
+          color: new three.Color(1, 0.85, 0.5),
+          transparent: true,
+          opacity: 0.9 * Math.min(1, intensity * 0.5),
+          blending: three.AdditiveBlending,
+          depthWrite: false,
+        });
+        const mesh = new three.Mesh(geom, mat);
+        try {
+          mesh.position.set(position.x, position.y, position.z);
+        } catch (_e) {
+          void _e;
+        }
+
+        // Add briefly to the scene so composer will pick it up
+        try {
+          scene.add(mesh);
+        } catch (_e) {
+          void _e;
+        }
+
+        // Simple fade-out animation using setTimeout (keep dependency-free)
+        const lifetime = 120; // ms
+        const fadeSteps = 6;
+        let step = 0;
+        const interval = Math.max(8, Math.floor(lifetime / fadeSteps));
+        const t = setInterval(() => {
+          step += 1;
+          try {
+            mat.opacity = Math.max(0, mat.opacity - 0.9 / fadeSteps);
+          } catch (_e) {
+            void _e;
+          }
+          if (step >= fadeSteps) {
+            clearInterval(t);
+            try {
+              scene.remove(mesh);
+            } catch (_e) {
+              void _e;
+            }
+            try {
+              geom.dispose();
+              mat.dispose();
+            } catch (_e) {
+              void _e;
+            }
+          }
+        }, interval);
+      } catch (_e) {
+        void _e;
       }
     },
   };

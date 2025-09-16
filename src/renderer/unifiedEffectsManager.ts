@@ -47,6 +47,7 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
         enableMotionBlur: () => {},
         enableDepthOfField: () => {},
         addExplosionEffect: () => {},
+        addHitSpark: () => {},
       };
     }
   }
@@ -80,9 +81,21 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
   function handleHitEffect(position: { x: number; y: number; z: number }, intensity = 1): void {
     const clamped = Math.max(0.1, Math.min(2, intensity));
     try {
-      // Prefer an effects manager call if available (use small intensity)
-      if (effects && typeof effects.addExplosionEffect === 'function') {
-        // Reuse postprocessing hook for a cheap visual by dialing intensity down
+      // Prefer a dedicated hit-spark if the effects manager exposes it.
+      // This is cheaper and visually tuned for frequent hits.
+      if (effects && typeof effects.addHitSpark === 'function') {
+        try {
+          effects.addHitSpark(position, { intensity: clamped * 0.8 });
+          console.debug(
+            '[UnifiedEffectsManager] handleHitEffect -> effects.addHitSpark',
+            position,
+            clamped,
+          );
+        } catch (_e) {
+          void _e;
+        }
+      } else if (effects && typeof effects.addExplosionEffect === 'function') {
+        // Fallback: reuse small explosion effect if hit-spark isn't available
         try {
           effects.addExplosionEffect(position, clamped * 0.25);
           console.debug(
@@ -185,6 +198,7 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     enableMotionBlur: () => {},
     enableDepthOfField: () => {},
     addExplosionEffect: () => {},
+    addHitSpark: () => {},
   };
 
   return {
