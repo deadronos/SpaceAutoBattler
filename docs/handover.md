@@ -1,100 +1,94 @@
-# AI Controller Throttle & Debug — Handover
+Starting (1/2) Draft particle renderer plan
 
-## Context at a glance
+Completed (1/2) Draft particle renderer plan
 
-- Repo: SpaceAutoBattler
-- Branch: ai-passive-fix (base: main)
-- Date: 2025-09-15
-- Goal: Centralize all writes to `ship.targetId` behind an AIController throttling mechanism respecting `simConfig.targetUpdateRate`, add deterministic test-time logging, and ensure damage-decay behavior for evade logic.
+I'll lay out a concise, actionable plan you can follow (or I can implement) to convert the existing particle-system skeleton into a renderer-backed particle explosion effect with instancing, shader, asset-pool usage, and a smoke visual test.
 
-## What changed (high level)
+High-level contract
+Input: GameState and ParticleExplosionOptions (pos, radius, optional seed, colorOverride, count, lifetime, entityId)
+Output: Visual explosion effect rendered via Three.js (instanced mesh) that fades and moves over lifetime; no return value required.
+Error modes: If renderer is unavailable or resources missing, fail gracefully (no crash) and optionally fall back to post-processing bloom flash.
+Success criteria:
+Visual matches spec (radial burst, color gradient, fade).
+Deterministic particle generation remains unchanged.
+Pooling and lifecycle use existing skeleton pool.
+Smoke test can trigger 1 small, 1 medium, 1 large explosion visually.
+Implementation plan (steps)
+Add renderer-side module and exports
 
-- Central throttling added around target assignments:
-  - Core setter `setTargetWithThrottle(ship, newId)` in `src/core/ai/controller.ts`.
-  - Public wrapper `setShipTargetWithThrottle()` for external callers (e.g., `gameState` restoration paths).
-  - Semantics: block non-null target switches inside `targetUpdateRate`; allow clear-to-null; first-ever null→non-null allowed; outside-window switches allowed.
-- Deterministic test logging:
-  - `src/utils/testDebug.ts` provides `writeTestLogLine()`; enabled under `NODE_ENV=test` or `VITEST_AI_DEBUG=1`.
-  - Logs written to `tmp/ai-debug.log`, `tmp/ai-throttle.log`, and a first-tick summary `tmp/ai-firsttick.log`.
-- Recent damage decay:
-  - Implemented per-tick decay of `ship.aiState.recentDamage` using `behaviorConfig.globalSettings.damageDecayRate` in `AIController.updateShipAI()`.
-- Throttle anchoring:
-  - One-time end-of-update anchors for both non-null and null targets to stabilize within-window behavior at tick boundaries.
+Create src/renderer/particleRenderer.ts (or extend particleSystem.ts carefully) to own Three.js resources: instanced mesh, shader material, per-instance buffers, and lifecycle hooks.
+Export initParticleRenderer(rendererHandles, assetPool) and disposeParticleRenderer() and a bridge function renderParticleSystem(delta) to be called by renderer tick.
+Shader & asset
 
-## Key files touched
+Add a soft-circle texture in assets/textures/explosion-soft.png (or use an existing texture). If not available, create a data-URL fallback or small placeholder.
+Create a minimal vertex+fragment shader (in assets/shaders/particleBillboard.glsl or as inline strings) implementing:
+Per-instance attributes: position (vec3), size (float), ageNorm (float), lifetime (float), color (vec3 or vec4).
+Billboarding: compute screen-facing quad or use Three.js plane geometry with InstancedBufferAttribute.
+Fragment: sample soft-circle texture and multiply by color and alpha; use additive blending.
+Instanced mesh & buffer attributes
 
-- `src/core/ai/controller.ts` — throttle setter, AI update flow, damage decay, anchors, deterministic logs.
-- `src/core/gameState.ts` — uses controller wrapper to restore AI-assigned targets; preserves throttle semantics.
-- `src/utils/testDebug.ts` — buffered test-time logging without blocking, auto-flush on `beforeExit`.
-- Tests referenced: `test/vitest/ai-throttle.spec.ts`, `test/vitest/ai-evade.spec.ts`.
+In particleRenderer.ts, create an InstancedMesh (e.g., plane geometry) sized for max pool size.
+Create per-instance InstancedBufferAttributes for position, size, color (vec3), age (float), lifetime (float) — update attributes each frame or on spawn.
+Set material to additive blending, depthWrite=false, transparent=true.
+Hook up the existing data-only ParticleSystem
 
-## Current status
+Keep the deterministic data generation in particleSystem.ts.
+Expose a way for renderer to fetch active instances via ParticleSystem.getActiveInstances() (already present).
+In renderer tick: call ensureParticleSystem(state) to get the system, call sys.update(dt), then pull sys.getActiveInstances() and copy values into instanced attributes (or maintain a mapping from instance.id -> instanceIndex to reuse slots).
+Implement slot mapping & reuse:
+On spawn: allocate rendering slot index (reuse freed indices).
+On despawn: mark slot free, optionally hide instance (set scale 0).
+Option: keep rendering slots identical to pool order to simplify copying (but mapping is better for stable instance indices).
+Asset Pool & Material reuse
 
-- ai-evade: PASS (decay behavior verified by tests).
-- ai-throttle: 1 failing assertion remains in "ship target switching obeys targetUpdateRate" (inside-window stability). The check expects `red.targetId` to remain `initialTarget` or `null` within the window after introducing a closer enemy.
+Load/obtain explosion texture from GameState.assetPool (via state.assetPool.getTexture('explosion-soft') or similar).
+Create a shared ShaderMaterial once and reuse across explosions (store on particleRenderer).
+Dispose and return assets only on renderer shutdown if necessary.
+LOD and performance
 
-## How to reproduce and validate
+Respect RendererConfig.particles.explosion.lod settings — downscale count or size with distance threshold.
+Use pooling.initial and pooling.growTo as InstancedMesh capacity; if renderer cannot grow instanced mesh, allocate a new one when needed (or cap spawn).
+Wiring & lifecycle
 
-- Type check and run targeted tests (PowerShell):
+Init: when renderer starts, call initParticleRenderer(rendererHandles, state.assetPool).
+Tick: particleRenderer.renderParticleSystem(dt) called by renderer's per-frame loop.
+Dispose: on renderer shutdown, dispose InstancedMesh, material, and attributes.
+Tests & smoke visual test
 
-```powershell
-npm run typecheck
-$env:NODE_ENV='test'; $env:VITEST_AI_DEBUG='1'; npx vitest test/vitest/ai-throttle.spec.ts test/vitest/ai-evade.spec.ts --run
-```
+Add a small dev UI page or a debug function window.testExplosionPreset('small'|'medium'|'large') in explosionTester.ts (already exists and calls addParticleExplosion) — wire this to call animation + renderer so explosion shows.
+Add tests:
+Unit: ensure getActiveInstances() shape and deterministic output (existing tests already cover many items).
+Integration (smoke): a visual smoke test that runs in the dev page — spawn three explosions and show a screenshot / manual check.
+Files to add / modify
+Add: src/renderer/particleRenderer.ts — main renderer integration (instanced mesh + shader + lifecycle)
+Add: assets/shaders/particleBillboard.glsl (or inline shader in TS)
+Add/ensure texture: assets/textures/explosion-soft.png (or use assets/textures/circle.png if present)
+Modify: particleSystem.ts — keep as data-only generator; no heavy changes required. Optionally add small hooks:
+optional event/callback on spawn: onSpawn(instance, renderSlot?) (not required; renderer just reads getActiveInstances()).
+Modify: renderer main loop (likely threeRenderer.ts or equivalent) to call particle renderer renderParticleSystem(dt) each frame. If a unified effects manager exists, wire into it (e.g., unifiedEffectsManager.handleExplosion already triggers animation).
+Add tests: test/vitest/renderer-particle-rendering.spec.ts — small unit tests that validate attribute update logic (mock renderer context).
+Minimal MVP implementation details (low-risk)
+First pass: simple CPU->GPU copy each frame:
+For every frame, read sys.getActiveInstances() and loop over them to set InstancedBufferAttribute arrays (position, size, color, age/lifetime).
+Mark attributes needsUpdate = true.
+This is simple, easy to verify; if perf issues arise, optimize by writing into typed arrays directly and using partial updates.
+Use small initial pool (e.g., 256) and growable instancing as needed.
+Provide fallback: if Three.js renderer unavailable, just rely on data-only particleSystem (so tests still pass).
+Edge cases & robustness
+If state.renderer or state.assetPool missing: skip rendering but keep data generator running.
+If InstancedMesh capacity exhausted and cannot grow: stop spawning extra particles gracefully.
+If texture missing: use solid white circle shader fallback.
+Development & verification commands
+Typecheck and tests:
+npm run typecheck (or npx tsc --noEmit)
+npm test (runs Vitest)
+Manual smoke run (dev server / build):
+npm run build
+npm run serve (or serve:dist) and open dev page with explosionTester UI; call presets.
+Example commands (PowerShell):
 
-- Inspect deterministic logs (created during tests):
-  - `tmp/ai-debug.log` — per-ship start/end lines, movement calls, spawn anchors.
-  - `tmp/ai-throttle.log` — throttle decisions: first-assign, block, clear, assign outside window.
-  - `tmp/ai-firsttick.log` — one-line summaries of first update per ship.
-
-## Behavioral contracts to preserve
-
-- Canonical state: All runtime state lives on `GameState` (`src/types/index.ts`).
-- Determinism: All simulation logic must use seeded RNG (`src/utils/rng.ts`).
-- Throttle semantics:
-  - Inside `targetUpdateRate`: disallow non-null switches; allow clearing to `null`.
-  - First-ever assignment (no recorded switch time) from `null` is allowed.
-  - One-time end-of-update anchors for both `null` and non-`null` target states.
-- Do not introduce module-level mutable state outside `GameState`.
-
-## Open issue (focus for next agent)
-
-- Symptom: In `ai-throttle.spec.ts` → "ship target switching obeys targetUpdateRate", the inside-window stability assertion fails after adding a closer enemy and stepping < `targetUpdateRate`.
-- Likely cause: A code path still assigns a non-`null` target within a window that began with an anchored `null` state (e.g., via nearest-enemy or safety/turret-propagation fallback) before the window elapses.
-- Minimal fix direction:
-  - In `setTargetWithThrottle`, strengthen the gate for `current == null && newId != null` when the last switch time was explicitly anchored from a `null` end-of-update: block until the window elapses (except for true first-ever assignment, where `lastTargetSwitchTime` is not set).
-  - Audit secondary assignment paths that call `setTargetWithThrottle` when `ship.targetId` is currently `null` (nearest enemy, safety from turret consensus, fallback scoring) to ensure they rely solely on the central throttle (no direct writes).
-
-## Next actions (ordered)
-
-1. Re-run the failing spec with logs enabled and confirm an attempted `null -> non-null` inside the window in `tmp/ai-throttle.log`.
-2. Update `setTargetWithThrottle` to treat a recently anchored `null` baseline as a real window start (block `null -> non-null` until `rate` has elapsed, unless it's the true first-ever assignment).
-3. Re-run `ai-throttle.spec.ts` to confirm green; keep `ai-evade.spec.ts` passing.
-4. Quick grep to verify no stray `ship.targetId =` writes bypass the wrapper (gameState restoration already uses the wrapper).
-5. Run `npm test` for broader regression.
-
-## Acceptance criteria (definition of done)
-
-- All ai-throttle and ai-evade tests pass deterministically without flakes.
-- No direct writes to `ship.targetId` remain outside `AIController` except unavoidable legacy cases, which must be justified and documented.
-- Throttle semantics remain consistent with spec and comments above.
-
-## Risks and notes
-
-- Over-anchoring can suppress legitimate first acquisitions; the code already allows a true first-ever `null -> non-null`. Keep that intact.
-- Ordering-sensitive behavior (turret target vs ship-level target) is tolerated by tests with permissive assertions; avoid tightening behavior in ways that remove that tolerance.
-- Maintain deterministic logging and avoid introducing async nondeterminism in the simulation path.
-
-## Reference snippets and locations
-
-- Throttle setter: `src/core/ai/controller.ts` → `setTargetWithThrottle()`.
-- Public wrapper: `AIController.setShipTargetWithThrottle()`.
-- Anchors (end-of-update): same file, at the end of `updateShipAI()`.
-- Logging helper: `src/utils/testDebug.ts`.
-- Test specs: `test/vitest/ai-throttle.spec.ts`, `test/vitest/ai-evade.spec.ts`.
-
-## Optional follow-ups (post-green)
-
-- Add a small unit test specifically for the anchored-null window behavior to prevent regressions.
-- Expand debug logging guard to include a per-test-session UUID in filenames if parallelizing tests in future.
-- Consider consolidating throttle-related logs under a single structured file for easier CI artifact analysis.
+Next steps I can take for you
+Implement the MVP renderer in src/renderer/particleRenderer.ts, wire it into the render loop, and add a minimal shader + texture fallback.
+Run the tests and a local smoke test to confirm visuals and no regressions.
+Or produce the actual shader code and InstancedMesh wiring as a patch for review.
+Which next step would you like me to do: implement the MVP and run tests, or produce just the PR-ready patch files (shader + TS)?
