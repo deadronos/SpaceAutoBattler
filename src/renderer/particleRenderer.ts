@@ -29,6 +29,7 @@ interface ParticleAttributes {
   color: THREE.InstancedBufferAttribute;
   age: THREE.InstancedBufferAttribute;
   lifetime: THREE.InstancedBufferAttribute;
+  seed: THREE.InstancedBufferAttribute;
 }
 
 interface ParticleRendererResources {
@@ -131,6 +132,15 @@ function createMaterial(texture: THREE.Texture): THREE.ShaderMaterial {
       fadeOutStart: { value: DefaultBillboardExplosionParams.fadeOutStart },
       softEdgePower: { value: DefaultBillboardExplosionParams.softEdgePower },
       colorIntensity: { value: DefaultBillboardExplosionParams.colorIntensity },
+      glowIntensity: { value: DefaultBillboardExplosionParams.glowIntensity },
+      glowFalloff: { value: DefaultBillboardExplosionParams.glowFalloff },
+      rimLocation: { value: DefaultBillboardExplosionParams.rimLocation },
+      rimSharpness: { value: DefaultBillboardExplosionParams.rimSharpness },
+      heatExponent: { value: DefaultBillboardExplosionParams.heatExponent },
+      pulseFrequency: { value: DefaultBillboardExplosionParams.pulseFrequency },
+      pulseAmplitude: { value: DefaultBillboardExplosionParams.pulseAmplitude },
+      sparkleIntensity: { value: DefaultBillboardExplosionParams.sparkleIntensity },
+      alphaMultiplier: { value: DefaultBillboardExplosionParams.alphaMultiplier },
       colorStop1: { value: new THREE.Vector3(...color1) },
       colorStop2: { value: new THREE.Vector3(...color2) },
       colorStop3: { value: new THREE.Vector3(...color3) },
@@ -163,24 +173,27 @@ function createGeometry(capacity: number): {
   const color = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
   const age = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
   const lifetime = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+  const seed = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
 
   position.setUsage(THREE.DynamicDrawUsage);
   size.setUsage(THREE.DynamicDrawUsage);
   color.setUsage(THREE.DynamicDrawUsage);
   age.setUsage(THREE.DynamicDrawUsage);
   lifetime.setUsage(THREE.DynamicDrawUsage);
+  seed.setUsage(THREE.DynamicDrawUsage);
 
   geometry.setAttribute('instancePosition', position);
   geometry.setAttribute('instanceSize', size);
   geometry.setAttribute('instanceColor', color);
   geometry.setAttribute('instanceAge', age);
   geometry.setAttribute('instanceLifetime', lifetime);
+  geometry.setAttribute('instanceSeed', seed);
 
   baseGeometry.dispose();
 
   return {
     geometry,
-    attributes: { position, size, color, age, lifetime },
+    attributes: { position, size, color, age, lifetime, seed },
   };
 }
 
@@ -235,6 +248,7 @@ function writeInstanceData(instances: ReadonlyArray<ParticleRenderInstance>) {
   const colorArray = attributes.color.array as Float32Array;
   const ageArray = attributes.age.array as Float32Array;
   const lifetimeArray = attributes.lifetime.array as Float32Array;
+  const seedArray = attributes.seed.array as Float32Array;
 
   for (let i = 0; i < count; i++) {
     const instance = instances[i];
@@ -254,6 +268,10 @@ function writeInstanceData(instances: ReadonlyArray<ParticleRenderInstance>) {
 
     ageArray[i] = instance.age ?? 0;
     lifetimeArray[i] = instance.lifetime ?? 1;
+
+    const rawSeed = Math.sin(instance.id * 12.9898) * 43758.5453;
+    const normalizedSeed = rawSeed - Math.floor(rawSeed);
+    seedArray[i] = normalizedSeed;
   }
 
   attributes.position.needsUpdate = true;
@@ -261,6 +279,7 @@ function writeInstanceData(instances: ReadonlyArray<ParticleRenderInstance>) {
   attributes.color.needsUpdate = true;
   attributes.age.needsUpdate = true;
   attributes.lifetime.needsUpdate = true;
+  attributes.seed.needsUpdate = true;
 
   resources.mesh.count = count;
   resources.mesh.visible = count > 0;

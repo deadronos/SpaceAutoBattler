@@ -62,8 +62,11 @@ describe('ParticleRenderer integration', () => {
     expect(instancedMesh.count).toBe(0);
     expect(instancedMesh.visible).toBe(false);
     const positionAttr = instancedMesh.geometry.getAttribute('instancePosition');
+    const seedAttr = instancedMesh.geometry.getAttribute('instanceSeed');
     expect(positionAttr).toBeDefined();
+    expect(seedAttr).toBeDefined();
     expect(positionAttr?.count).toBe(RendererConfig.particles.explosion.pooling.initial);
+    expect(seedAttr?.count).toBe(RendererConfig.particles.explosion.pooling.initial);
   });
 
   test('uploads particle data into instanced attributes', () => {
@@ -93,6 +96,9 @@ describe('ParticleRenderer integration', () => {
     const ageAttr = instancedMesh.geometry.getAttribute(
       'instanceAge',
     ) as THREE.InstancedBufferAttribute;
+    const seedAttr = instancedMesh.geometry.getAttribute(
+      'instanceSeed',
+    ) as THREE.InstancedBufferAttribute;
 
     expect(
       positionAttr.array.find(
@@ -102,6 +108,8 @@ describe('ParticleRenderer integration', () => {
     expect(sizeAttr.array[0]).toBeGreaterThanOrEqual(RendererConfig.particles.explosion.size.min);
     expect(sizeAttr.array[0]).toBeLessThanOrEqual(RendererConfig.particles.explosion.size.max);
     expect(ageAttr.array[0]).toBeGreaterThan(0);
+    expect(seedAttr.array[0]).toBeGreaterThanOrEqual(0);
+    expect(seedAttr.array[0]).toBeLessThanOrEqual(1);
 
     renderParticleSystem(2.0);
     expect(instancedMesh.count).toBe(0);

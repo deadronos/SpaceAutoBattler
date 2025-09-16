@@ -403,11 +403,12 @@ export function spawnShip(
   // in both headless tests and runtime. Fall back to a very small deterministic
   // spawn jitter when roaming anchors are not assigned but spawn jitter is enabled.
   try {
-  const personality = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
+    const personality = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
     const gs = state.behaviorConfig?.globalSettings;
-    const shouldAssignAnchor = personality && personality.mode === 'roaming'
-      ? true
-      : Boolean(gs && gs.enableScoutExploration && personality && personality.mode === 'mixed');
+    const shouldAssignAnchor =
+      personality && personality.mode === 'roaming'
+        ? true
+        : Boolean(gs && gs.enableScoutExploration && personality && personality.mode === 'mixed');
     if (shouldAssignAnchor) {
       try {
         assignRoamingAnchor(state, ship);
@@ -425,9 +426,18 @@ export function spawnShip(
               const nudge = Math.max(10, Math.floor(minSep * 0.25));
               // deterministic sign from RNG
               const sign = state.rng.next() > 0.5 ? 1 : -1;
-              anchor.x = Math.min(Math.max(anchor.x + sign * nudge, 0), state.simConfig.simBounds.width);
-              anchor.y = Math.min(Math.max(anchor.y + sign * nudge, 0), state.simConfig.simBounds.height);
-              anchor.z = Math.min(Math.max(anchor.z + sign * nudge, 0), state.simConfig.simBounds.depth);
+              anchor.x = Math.min(
+                Math.max(anchor.x + sign * nudge, 0),
+                state.simConfig.simBounds.width,
+              );
+              anchor.y = Math.min(
+                Math.max(anchor.y + sign * nudge, 0),
+                state.simConfig.simBounds.height,
+              );
+              anchor.z = Math.min(
+                Math.max(anchor.z + sign * nudge, 0),
+                state.simConfig.simBounds.depth,
+              );
               ship.aiState!.roamingAnchor = anchor;
             }
           }
@@ -621,6 +631,20 @@ function processDeathsAndXP(state: GameState) {
         killer.kills += 1;
         killer.level.xp += XP_PER_KILL;
         state.score[killer.team] += 1;
+      }
+
+      // Trigger visual explosion via unified effects manager when available.
+      try {
+        const fx = state.unifiedFX;
+        if (fx && typeof fx.handleExplosion === 'function') {
+          const collisionRadius =
+            ShipVisualConfig.ships[s.class]?.collisionRadius ??
+            ShipVisualConfig.defaults.collisionRadius;
+          const intensity = Math.max(0.8, collisionRadius / 10);
+          void fx.handleExplosion({ x: s.pos.x, y: s.pos.y, z: s.pos.z }, intensity);
+        }
+      } catch (_e) {
+        void _e;
       }
       // If this was a fighter spawned by a carrier, decrement the carrier's alive counter
       if (s.parentCarrierId) {

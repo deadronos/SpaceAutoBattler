@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 import type { GameState } from '../../src/types/index.js';
+import { ShipVisualConfig } from '../../src/config/shipVisualConfig.js';
 
 // Small helper to simulate a bullet hit by directly mutating ship health and setting lastDamageBy/time
 function simulateDamage(
@@ -79,5 +80,43 @@ describe('kill crediting', () => {
 
     const attacker = state.shipIndex?.get(s1.id) ?? state.ships.find((s) => s.id === s1.id);
     expect(attacker?.kills).toBe(0);
+  });
+
+  it('triggers explosion effects when a ship dies', async () => {
+    const state = createInitialState('death-explosion');
+    const attacker = spawnShip(state, 'red', 'fighter');
+    const victim = spawnShip(state, 'blue', 'fighter');
+
+    const handleExplosion = vi.fn(async () => {});
+    (state as any).unifiedFX = {
+      initDone: true,
+      effects: null,
+      animation: null,
+      bvh: null,
+      update: () => {},
+      handleShipSpawn: async () => {},
+      handleShipDestruction: async () => {},
+      handleExplosion,
+      setQuality: () => {},
+      dispose: () => {},
+    };
+
+    // Ensure the victim dies this step
+    victim.health = -1;
+    victim.lastDamageBy = attacker.id;
+    victim.lastDamageTime = state.time;
+
+    const dt = 1 / state.simConfig.tickRate;
+    simulateStep(state, dt);
+
+    expect(handleExplosion).toHaveBeenCalledTimes(1);
+    const expectedIntensity = Math.max(
+      0.8,
+      ShipVisualConfig.ships[victim.class].collisionRadius / 10,
+    );
+    expect(handleExplosion).toHaveBeenCalledWith(
+      { x: victim.pos.x, y: victim.pos.y, z: victim.pos.z },
+      expectedIntensity,
+    );
   });
 });
