@@ -50,6 +50,13 @@ describe('Projectile -> unifiedFX wiring', () => {
       },
     } as any;
 
+    // Ensure a target ship exists in state and is dead (health <= 0) so
+    // unifiedFX.handleExplosion is called per the new behavior.
+    const deadShip = { id: 2, health: 0 } as any;
+    state.ships.push(deadShip);
+    if (!state.shipIndex) state.shipIndex = new Map();
+    state.shipIndex.set(2, deadShip);
+
     // Call the private emitEvent method
     (ps as any).emitEvent(fakeEvent);
 

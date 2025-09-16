@@ -19,6 +19,7 @@ export interface UnifiedEffectsManager {
     position: { x: number; y: number; z: number },
     intensity?: number,
   ) => Promise<void>;
+  handleHitEffect: (position: { x: number; y: number; z: number }, intensity?: number) => void;
   setQuality: (quality: 'low' | 'medium' | 'high') => void;
   dispose: () => void;
 }
@@ -74,10 +75,59 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     }
   }
 
+  // Lightweight visual effect for non-lethal hits (sparks, brief particle burst).
+  // This should be cheap and return quickly so it can be used for frequent hits.
+  function handleHitEffect(position: { x: number; y: number; z: number }, intensity = 1): void {
+    const clamped = Math.max(0.1, Math.min(2, intensity));
+    try {
+      // Prefer an effects manager call if available (use small intensity)
+      if (effects && typeof effects.addExplosionEffect === 'function') {
+        // Reuse postprocessing hook for a cheap visual by dialing intensity down
+        try {
+          effects.addExplosionEffect(position, clamped * 0.25);
+          console.debug(
+            '[UnifiedEffectsManager] handleHitEffect -> effects.addExplosionEffect (small)',
+            position,
+            clamped,
+          );
+        } catch (_e) {
+          void _e;
+        }
+      }
+
+      // Small camera nudge for hit feedback
+      try {
+        if (animation && typeof animation.shakeCamera === 'function') {
+          animation.shakeCamera(Math.min(0.2, clamped * 0.15), 0.12);
+        }
+      } catch (_e) {
+        void _e;
+      }
+
+      // Emit a debug trace so tests or devs can confirm it ran
+      console.debug('[UnifiedEffectsManager] handleHitEffect', position, clamped);
+    } catch (err) {
+      console.warn('[UnifiedEffectsManager] handleHitEffect failed', err);
+    }
+  }
+
   async function handleExplosion(
     position: { x: number; y: number; z: number },
     intensity = 1.0,
   ): Promise<void> {
+    try {
+      // Log entry to help trace whether this function is actually invoked at runtime
+      // Avoid importing logger at module top to keep dependency surface unchanged;
+      // use console.info as a safe fallback in the renderer context.
+      if (typeof console !== 'undefined' && console.info) {
+        console.info('[UnifiedEffectsManager] handleExplosion invoked', position, intensity, {
+          animationInit: animation.initDone,
+          effectsInit: effects ? effects.initDone : false,
+        });
+      }
+    } catch {
+      /* ignore logging failures */
+    }
     // Combine multiple effects for explosions
     const promises: Promise<void>[] = [];
 
@@ -146,6 +196,7 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     handleShipSpawn,
     handleShipDestruction,
     handleExplosion,
+    handleHitEffect,
     setQuality,
     dispose: () => {
       finalEffects.dispose();

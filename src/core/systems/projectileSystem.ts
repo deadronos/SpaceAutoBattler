@@ -85,6 +85,17 @@ export class ProjectileSystem {
   }
 
   private emitEvent(event: ProjectileEvent): void {
+    // Log emitted events at info level so wiring can be traced in runtime
+    try {
+      logger.info('[ProjectileSystem] emitEvent', event.type, {
+        bulletId: event.bulletId,
+        sourceShipId: event.sourceShipId ?? null,
+        targetId: event.targetId ?? null,
+      });
+    } catch {
+      /* ignore logging failures */
+    }
+
     for (const handler of this.eventHandlers) {
       try {
         handler(event);

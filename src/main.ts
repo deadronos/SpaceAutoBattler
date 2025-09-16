@@ -262,6 +262,53 @@ export function initGame(seed?: string) {
         return null;
       }
     },
+    // Helpers to manually trigger FX for debugging
+    triggerExplosion: (pos?: { x: number; y: number; z: number }, intensity = 1.0) => {
+      try {
+        const p = pos ?? { x: 0, y: 0, z: 0 };
+        const fx = (state as unknown as _GameStateType).unifiedFX;
+        if (fx && typeof fx.handleExplosion === 'function') {
+          void fx.handleExplosion(p as any, intensity);
+          logger.info('[__appDebug] triggerExplosion called', p, intensity);
+          return true;
+        }
+        logger.warn('[__appDebug] triggerExplosion failed: unifiedFX not available');
+      } catch (e) {
+        logger.warn('[__appDebug] triggerExplosion error', e);
+      }
+      return false;
+    },
+    triggerProjectileHit: (hit?: any) => {
+      try {
+        const ps = (state as unknown as _GameStateType).projectileSystem;
+        if (!ps) {
+          logger.warn('[__appDebug] triggerProjectileHit failed: projectileSystem not available');
+          return false;
+        }
+        const h =
+          hit ||
+          ({
+            type: 'hit',
+            bulletId: 9999,
+            timestamp: state.time,
+            sourceShipId: state.ships[0]?.id ?? 1,
+            targetId: state.ships[1]?.id ?? 2,
+            hitResult: {
+              bulletId: 9999,
+              targetId: state.ships[1]?.id ?? 2,
+              damage: 2,
+              hitPosition: { x: 0, y: 0, z: 0 },
+              penetrated: true,
+            },
+          } as any);
+        (ps as any).emitEvent(h);
+        logger.info('[__appDebug] triggerProjectileHit emitted', h);
+        return true;
+      } catch (e) {
+        logger.warn('[__appDebug] triggerProjectileHit error', e);
+        return false;
+      }
+    },
   } as unknown;
 
   // Try to run Rapier in a worker (simWorker). If that fails, fall back to in-thread physics stepper.
@@ -501,20 +548,76 @@ export function initGame(seed?: string) {
       try {
         const ps = (state as unknown as _GameStateType).projectileSystem;
         if (ps) {
+          logger.info('[main] wiring projectile event handler');
           ps.onProjectileEvent((evt) => {
             try {
-              if (evt && evt.type === 'hit' && evt.hitResult && evt.hitResult.hitPosition) {
-                const intensity = Math.min(2, 1 + (evt.hitResult.damage ?? 1) * 0.1);
+              try {
+                logger.info('[main] received projectile event', evt.type, evt.bulletId);
+              } catch {
+                /* ignore logging failure */
+              }
+
+              // Only trigger explosion visuals when the hit results in the
+              // target ship being destroyed (health <= 0). The ProjectileSystem
+              // applies damage before emitting the 'hit' event, so we can check
+              // the current ship health here.
+              if (
+                evt &&
+                evt.type === 'hit' &&
+                evt.hitResult &&
+                evt.hitResult.hitPosition &&
+                typeof evt.targetId !== 'undefined'
+              ) {
+                const targetId = evt.targetId as number;
+                const targetShip =
+                  (state as unknown as _GameStateType).shipIndex?.get(targetId) ??
+                  (state as unknown as _GameStateType).ships.find((s: any) => s.id === targetId);
+
+                const isDead = targetShip ? (targetShip.health ?? 0) <= 0 : false;
+
+                // Log target health for debugging/testing visibility
                 try {
-                  logger.info('[Explosions] Projectile hit explosion', {
-                    position: evt.hitResult.hitPosition,
-                    intensity,
-                    damage: evt.hitResult.damage ?? null,
-                  });
+                  logger.info('[main] hit target check', { targetId, health: targetShip?.health });
                 } catch {
-                  /* ignore logging failure */
+                  /* ignore */
                 }
-                void unifiedFX.handleExplosion(evt.hitResult.hitPosition, intensity);
+
+                if (isDead) {
+                  const intensity = Math.min(2, 1 + (evt.hitResult.damage ?? 1) * 0.1);
+                  try {
+                    logger.info('[Explosions] Projectile hit explosion (kill)', {
+                      position: evt.hitResult.hitPosition,
+                      intensity,
+                      damage: evt.hitResult.damage ?? null,
+                      targetId,
+                    });
+                  } catch {
+                    /* ignore logging failure */
+                  }
+                  void unifiedFX.handleExplosion(evt.hitResult.hitPosition, intensity);
+                } else {
+                  // Non-lethal hit: do not spawn full explosion FX. Keep a debug
+                  // trace for developers.
+                  try {
+                    logger.debug('[Explosions] non-lethal hit, skipping explosion FX', {
+                      targetId,
+                      remainingHealth: targetShip?.health ?? null,
+                    });
+                  } catch {
+                    /* ignore logging failure */
+                  }
+                  try {
+                    // Trigger a cheap hit micro-FX (sparks / small camera nudge)
+                    if (unifiedFX && typeof unifiedFX.handleHitEffect === 'function') {
+                      unifiedFX.handleHitEffect(
+                        evt.hitResult.hitPosition,
+                        evt.hitResult.damage ?? 1,
+                      );
+                    }
+                  } catch (_e) {
+                    void _e;
+                  }
+                }
               }
             } catch (_e) {
               void _e;
