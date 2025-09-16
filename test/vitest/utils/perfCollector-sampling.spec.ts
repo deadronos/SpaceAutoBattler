@@ -1,7 +1,6 @@
- 
 import { describe, it, expect } from 'vitest';
 
-import { enablePerfCollectorIfRequested } from '../../../src/utils/perfCollector';
+import { enablePerfCollectorIfRequested } from '../../../src/utils/perfCollector.js';
 
 describe('perfCollector sampling', () => {
   it('populates frame times and returns fps stats when RAF drives sampling', () => {

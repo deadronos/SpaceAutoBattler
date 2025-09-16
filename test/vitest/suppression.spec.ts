@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState';
-import type { TurretState } from '../../src/types/index';
+import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
+import type { TurretState } from '../../src/types/index.js';
 
 describe('area suppression behavior', () => {
   it('fires multiple bullets when turret behavior is area_suppression', () => {

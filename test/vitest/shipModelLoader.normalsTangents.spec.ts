@@ -3,10 +3,10 @@ import * as THREE from 'three';
 
 vi.mock('../../src/core/assetLoader', () => ({ loadGLTF: vi.fn() }));
 
-import { preloadShipModels } from '../../src/core/shipModelLoader';
-import { loadGLTF } from '../../src/core/assetLoader';
-import type { GameState } from '../../src/types/index';
-import SHIP_MODEL_MAP from '../../src/config/shipModelMap';
+import { preloadShipModels } from '../../src/core/shipModelLoader.js';
+import { loadGLTF } from '../../src/core/assetLoader.js';
+import type { GameState } from '../../src/types/index.js';
+import SHIP_MODEL_MAP from '../../src/config/shipModelMap.js';
 
 describe('shipModelLoader normals/tangents baking', () => {
   beforeEach(() => {

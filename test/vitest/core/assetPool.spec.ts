@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import LRUAssetPool from '../../../src/core/assetPool';
+import LRUAssetPool from '../../../src/core/assetPool.js';
 
 describe('LRUAssetPool', () => {
   beforeEach(() => {

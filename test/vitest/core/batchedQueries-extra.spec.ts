@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 describe('BatchedQueryManager extra precompute tests', () => {
   it('handles optimizer returning fewer neighbors and tie-breaks correctly', async () => {
-    const mod = await import('../../../src/core/ai/batchedQueries');
+    const mod = await import('../../../src/core/ai/batchedQueries.js');
     const { BatchedQueryManager } = mod as any;
 
     // Fake spatial optimizer that returns only one neighbor for queries

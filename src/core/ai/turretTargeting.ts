@@ -1,6 +1,6 @@
 import type { GameState, Ship, TurretState } from '../../types/index.js';
-import { DEBUG_AI } from '../../utils/env';
-import logger from '../../utils/logger';
+import { DEBUG_AI } from '../../utils/env.js';
+import logger from '../../utils/logger.js';
 import type { BehaviorConfig } from '../../config/behaviorConfig.js';
 
 // Compute legacy turret score exactly as in AIController.findBestTurretTarget

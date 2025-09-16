@@ -5,7 +5,7 @@ import {
   getFormationCenter,
   assignFormationSlot,
   clearFormationSlot,
-} from '../../../src/core/ai/formation';
+} from '../../../src/core/ai/formation.js';
 
 describe('formation module', () => {
   it('returns escort formation when carrier nearby', () => {

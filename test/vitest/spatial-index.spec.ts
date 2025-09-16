@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { initEntityIndex } from '../../src/core/entityIndex';
+import { initEntityIndex } from '../../src/core/entityIndex.js';
 
 describe('UniformGrid + Miniplex entity index', () => {
   it('finds neighbors inside radius and excludes outside', () => {

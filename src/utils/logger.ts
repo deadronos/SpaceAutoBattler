@@ -1,7 +1,7 @@
 // Lightweight logger utility with configurable levels.
 // Debug messages require both DEBUG flag and appropriate log level.
 
-import { hasProcess, envVar } from './env';
+import { hasProcess, envVar } from './env.js';
 
 export let DEBUG_ENABLED =
   (typeof window !== 'undefined' &&

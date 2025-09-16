@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { reFormFleets } from '../../../src/core/reFormFleets';
+import { reFormFleets } from '../../../src/core/reFormFleets.js';
 
 describe('reFormFleets', () => {
   it('positions ships within expected bounds and zeros velocity', () => {

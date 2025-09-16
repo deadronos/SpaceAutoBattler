@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialState, spawnShip } from '../../src/core/gameState';
-import { TURRET_CONFIGS } from '../../src/config/entitiesConfig';
-import type { TurretConfig } from '../../src/types/index';
+import { createInitialState, spawnShip } from '../../src/core/gameState.js';
+import { TURRET_CONFIGS } from '../../src/config/entitiesConfig.js';
+import type { TurretConfig } from '../../src/types/index.js';
 
 describe('designer turret preferredBehavior', () => {
   it('initializes turret.aiState.behavior from preferredBehavior when set', () => {

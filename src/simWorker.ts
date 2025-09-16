@@ -6,7 +6,10 @@
 
 // Minimal typed view of the global `self` for early bootstrap checks
 type SelfLikeForBootstrap = { location?: { href?: string } } & typeof self;
-const S = (typeof self !== 'undefined' ? (self as unknown as SelfLikeForBootstrap) : ({} as SelfLikeForBootstrap));
+const S =
+  typeof self !== 'undefined'
+    ? (self as unknown as SelfLikeForBootstrap)
+    : ({} as SelfLikeForBootstrap);
 
 // @ts-ignore - webpack global variable
 if (typeof __webpack_public_path__ !== 'undefined') {
@@ -58,10 +61,24 @@ type RapierModuleLike = {
 let world: WorldLike | null = null;
 let Rapier: RapierModuleLike | null = null;
 const bodies = new Map<number, RigidBodyLike | null>(); // shipId -> rigidBody
+// Optional entity index (miniplex + UniformGrid) replicated inside worker for
+// worker-local spatial queries or bookkeeping when desired. This is best-effort
+// and never required for the worker to function; initialization is explicit
+// via a message from the main thread.
+// Type-only import to avoid pulling runtime entityIndex code into the worker's
+// top-level module scope. We'll import the runtime module dynamically when
+// requested, but keep the compile-time type to make TypeScript happy.
+import type { EntityIndexAPI } from './core/entityIndex.js';
+
+let entityIndex: EntityIndexAPI | null = null;
+const entityIndexKnownIds = new Set<number>();
 
 // Worker global typed view for message/postMessage usage
-type WorkerGlobalLike = { postMessage(m: unknown): void; location?: { href?: string } } & typeof self;
-const WG = (self as unknown) as WorkerGlobalLike;
+type WorkerGlobalLike = {
+  postMessage(m: unknown): void;
+  location?: { href?: string };
+} & typeof self;
+const WG = self as unknown as WorkerGlobalLike;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
@@ -197,8 +214,113 @@ self.addEventListener('message', async (e: MessageEvent) => {
   const { type, payload } = raw as { type?: string; payload?: unknown };
 
   if (type === 'init-physics') {
+    // payload may include { bucketSize?: number } to control the entity index
+    const bs =
+      isObject(payload) && 'bucketSize' in payload ? Number(payload['bucketSize']) : undefined;
     await initRapier();
+
+    // Best-effort: if entityIndex module is available, initialize a worker-local index
+    try {
+      let postedEntityInit = false;
+      try {
+        const mod = await import('./core/entityIndex.js');
+        const maybeInit = (mod as { initEntityIndex?: unknown })['initEntityIndex'];
+        if (typeof maybeInit === 'function') {
+          try {
+            entityIndex = (maybeInit as (bs?: number) => EntityIndexAPI)(bs ?? 50);
+            entityIndexKnownIds.clear();
+            WG.postMessage({ type: 'init-entity-index-done', ok: true });
+            postedEntityInit = true;
+          } catch (e) {
+            void e;
+            entityIndex = null;
+            WG.postMessage({ type: 'init-entity-index-done', ok: false });
+            postedEntityInit = true;
+          }
+        }
+      } catch {
+        // ignore dynamic import errors — entity index initialization is optional
+      }
+      if (!postedEntityInit) {
+        // Notify caller the worker attempted (or skipped) auto-init but did not
+        // produce a positive init. Keeps the API deterministic for tests.
+        WG.postMessage({ type: 'init-entity-index-done', ok: false });
+      }
+    } catch {
+      /* ignore */
+    }
+
     WG.postMessage({ type: 'init-physics-done', ok: !!world });
+    return;
+  }
+
+  if (type === 'init-entity-index') {
+    // payload: { bucketSize?: number }
+    try {
+      const bs =
+        isObject(payload) && 'bucketSize' in payload ? Number(payload['bucketSize']) : undefined;
+      // Dynamic import to avoid bundling issues in worker build
+      const mod = await import('./core/entityIndex.js');
+      const maybeInit = (mod as { initEntityIndex?: unknown })['initEntityIndex'];
+      if (typeof maybeInit === 'function') {
+        try {
+          // runtime call; TypeScript type is EntityIndexAPI
+          entityIndex = (maybeInit as (bs?: number) => EntityIndexAPI)(bs ?? 50);
+          entityIndexKnownIds.clear();
+          WG.postMessage({ type: 'init-entity-index-done', ok: true });
+        } catch (e) {
+          void e;
+          entityIndex = null;
+          WG.postMessage({ type: 'init-entity-index-done', ok: false });
+        }
+      } else {
+        WG.postMessage({ type: 'init-entity-index-done', ok: false });
+      }
+    } catch (e) {
+      void e;
+      entityIndex = null;
+      WG.postMessage({ type: 'init-entity-index-done', ok: false });
+    }
+    return;
+  }
+
+  if (type === 'dispose-entity-index') {
+    try {
+      if (entityIndex) {
+        try {
+          // Attempt to clear world.entities if available
+          const worldObj = (entityIndex as EntityIndexAPI).world as unknown;
+          if (isObject(worldObj) && Array.isArray((worldObj as { entities?: unknown }).entities)) {
+            (worldObj as { entities?: unknown[] }).entities!.length = 0;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    entityIndex = null;
+    entityIndexKnownIds.clear();
+    WG.postMessage({ type: 'dispose-entity-index-done' });
+    return;
+  }
+
+  if (type === 'debug-entity-index-count') {
+    try {
+      if (entityIndex) {
+        const worldObj = (entityIndex as EntityIndexAPI).world as unknown;
+        let count = 0;
+        if (isObject(worldObj) && Array.isArray((worldObj as { entities?: unknown }).entities)) {
+          count = ((worldObj as { entities?: unknown[] }).entities || []).length;
+        }
+        WG.postMessage({ type: 'debug-entity-index-count-done', ok: true, count });
+      } else {
+        WG.postMessage({ type: 'debug-entity-index-count-done', ok: false, count: 0 });
+      }
+    } catch {
+      WG.postMessage({ type: 'debug-entity-index-count-done', ok: false, count: 0 });
+    }
     return;
   }
 
@@ -231,6 +353,33 @@ self.addEventListener('message', async (e: MessageEvent) => {
         // Update existing body
         updateBodyFromShip(body, ship);
       }
+      // Also update/add entityIndex registration if present (best-effort)
+      if (entityIndex) {
+        try {
+          if (entityIndexKnownIds.has(id)) {
+            try {
+              entityIndex.update({ id, x: pos.x, y: pos.y, z: pos.z });
+            } catch {
+              try {
+                // Fallback to add if update fails
+                entityIndex.add({ id, x: pos.x, y: pos.y, z: pos.z });
+                entityIndexKnownIds.add(id);
+              } catch {
+                /* ignore */
+              }
+            }
+          } else {
+            try {
+              entityIndex.add({ id, x: pos.x, y: pos.y, z: pos.z });
+              entityIndexKnownIds.add(id);
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
     }
 
     // Remove bodies for ships that no longer exist
@@ -246,6 +395,24 @@ self.addEventListener('message', async (e: MessageEvent) => {
       }
     }
 
+    // Also remove any entityIndex entries for ids no longer present
+    try {
+      if (entityIndex) {
+        for (const knownId of Array.from(entityIndexKnownIds)) {
+          if (!currentShipIds.has(knownId)) {
+            try {
+              entityIndex!.remove(knownId);
+            } catch {
+              /* ignore */
+            }
+            entityIndexKnownIds.delete(knownId);
+          }
+        }
+      }
+    } catch {
+      /* best-effort */
+    }
+
     WG.postMessage({
       type: 'update-ships-done',
     });
@@ -253,7 +420,7 @@ self.addEventListener('message', async (e: MessageEvent) => {
   }
 
   if (type === 'step-physics') {
-  const dt = isObject(payload) && 'dt' in payload ? Number(payload['dt']) || 0.016 : 0.016;
+    const dt = isObject(payload) && 'dt' in payload ? Number(payload['dt']) || 0.016 : 0.016;
     try {
       if (world) {
         world.timestep = dt;
@@ -281,7 +448,9 @@ self.addEventListener('message', async (e: MessageEvent) => {
           try {
             const approxBytes = JSON.stringify(transforms).length;
             postPerf('physics.payload.approxBytes', approxBytes / 1000);
-          } catch (_e) { void _e; }
+          } catch (_e) {
+            void _e;
+          }
         }
       } else {
         WG.postMessage({ type: 'step-physics-done', dt });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
+import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 describe('Projectile spawn integration', () => {
   it('should produce bullets when attacker has a target', () => {
@@ -19,10 +19,8 @@ describe('Projectile spawn integration', () => {
     if (state.bullets.length === 0) {
       // Log turret states for debugging
       for (const ship of state.ships) {
-         
         console.log(`Ship ${ship.id} team=${ship.team}`);
         for (const t of ship.turrets) {
-           
           console.log(
             `  turret ${t.id} cooldownLeft=${t.cooldownLeft} aiTarget=${t.aiState?.targetId}`,
           );

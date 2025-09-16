@@ -1,8 +1,8 @@
 import { expect, test, vi, beforeEach, afterEach } from 'vitest';
 
-import * as env from '../../../src/utils/env';
-import * as logger from '../../../src/utils/logger';
-import { perf, perfBegin, perfEnd } from '../../../src/utils/perf';
+import * as env from '../../../src/utils/env.js';
+import * as logger from '../../../src/utils/logger.js';
+import { perf, perfBegin, perfEnd } from '../../../src/utils/perf.js';
 
 beforeEach(() => {
   // reset logger state

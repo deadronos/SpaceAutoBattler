@@ -1,4 +1,4 @@
-import { DEBUG_AI } from '../../utils/env';
+import { DEBUG_AI } from '../../utils/env.js';
 import type { Vector3, EntityId, Team } from '../../types/index.js';
 import type { SpatialEntity } from '../../utils/spatialGrid.js';
 

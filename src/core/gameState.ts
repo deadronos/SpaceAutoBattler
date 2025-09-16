@@ -24,6 +24,7 @@ import { FleetConfig } from '../config/fleetConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
+import { initEntityIndex } from './entityIndex.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 import { DEBUG_AI } from '../utils/env.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
@@ -82,6 +83,17 @@ export function createInitialState(seed?: string): GameState {
       depth: config.simBounds.depth,
     };
     state.spatialGrid = new SpatialGrid(config.spatialGrid.cellSize, bounds);
+    // Initialize optional entity index (miniplex + uniform grid) for fast queries
+    try {
+      const sg = state.simConfig.spatialGrid as unknown as {
+        bucketSize?: number;
+        cellSize?: number;
+      };
+      const bucketSize = sg.bucketSize ?? sg.cellSize ?? 50;
+      state.entityIndex = initEntityIndex(bucketSize);
+    } catch {
+      // best-effort: don't fail initialization if entity index cannot be created
+    }
   }
 
   return state;
@@ -114,8 +126,19 @@ export function resetState(state: GameState, seed?: string) {
       depth: state.simConfig.simBounds.depth,
     };
     state.spatialGrid = new SpatialGrid(state.simConfig.spatialGrid.cellSize, bounds);
+    try {
+      const sg = state.simConfig.spatialGrid as unknown as {
+        bucketSize?: number;
+        cellSize?: number;
+      };
+      const bucketSize = sg.bucketSize ?? sg.cellSize ?? 50;
+      state.entityIndex = initEntityIndex(bucketSize);
+    } catch {
+      state.entityIndex = undefined;
+    }
   } else {
     state.spatialGrid = undefined;
+    state.entityIndex = undefined;
   }
 }
 
@@ -538,49 +561,127 @@ function updateBullets(state: GameState, dt: number) {
     const useGrid =
       !!state.spatialGrid && !!state.behaviorConfig?.globalSettings.enableSpatialIndex;
     if (useGrid) {
-      // Narrow spatial grid for TypeScript and avoid re-checking optional each callback
-      const grid = state.spatialGrid!;
       const maxHitR = ShipVisualConfig.defaults.collisionRadius;
-      grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
-        if (b.ttl <= 0) return; // already consumed by another hit
-        const s = state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
-        if (!s) return;
-        if (s.team === b.ownerTeam || s.health <= 0) return;
-        const hitR =
-          ShipVisualConfig.ships[s.class]?.collisionRadius ??
-          ShipVisualConfig.defaults.collisionRadius;
-        if (distSq > hitR * hitR) return;
+      // Prefer the optional entityIndex when available for faster neighbor queries
+      if (state.entityIndex) {
+        try {
+          const near = state.entityIndex.queryNeighbors(b.pos.x, b.pos.y, b.pos.z, maxHitR, {
+            filter: (e) => e.type === 'ship' && e.team !== b.ownerTeam,
+          });
+          for (const e of near) {
+            if (b.ttl <= 0) break; // already consumed
+            const s = state.shipIndex?.get(e.id) ?? state.ships.find((sh) => sh.id === e.id);
+            if (!s) continue;
+            if (s.team === b.ownerTeam || s.health <= 0) continue;
+            const dx = s.pos.x - b.pos.x;
+            const dy = s.pos.y - b.pos.y;
+            const dz = s.pos.z - b.pos.z;
+            const distSq = dx * dx + dy * dy + dz * dz;
+            const hitR =
+              ShipVisualConfig.ships[s.class]?.collisionRadius ??
+              ShipVisualConfig.defaults.collisionRadius;
+            if (distSq > hitR * hitR) continue;
 
-        const d = Math.sqrt(distSq);
-        // Apply damage to shield first
-        let dmgLeft = b.damage;
-        let totalDamage = 0;
+            const d = Math.sqrt(distSq);
+            let dmgLeft = b.damage;
+            let totalDamage = 0;
+            if (s.shield > 0) {
+              const absorb = Math.min(s.shield, dmgLeft);
+              s.shield -= absorb;
+              dmgLeft -= absorb;
+              totalDamage += absorb;
+              s.lastShieldHitTime = state.time;
+              const len = Math.max(1e-6, d);
+              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+              s.lastShieldHitStrength = absorb;
+            }
+            if (dmgLeft > 0) {
+              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+              s.health -= effective;
+              totalDamage += effective;
+            }
+            if (totalDamage > 0) {
+              recordDamage(state, s, totalDamage, b.ownerShipId);
+            }
+            b.ttl = 0;
+          }
+        } catch {
+          // best-effort fallback to spatialGrid iteration if entityIndex fails
+          const grid = state.spatialGrid!;
+          grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
+            if (b.ttl <= 0) return; // already consumed by another hit
+            const s =
+              state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
+            if (!s) return;
+            if (s.team === b.ownerTeam || s.health <= 0) return;
+            const hitR =
+              ShipVisualConfig.ships[s.class]?.collisionRadius ??
+              ShipVisualConfig.defaults.collisionRadius;
+            if (distSq > hitR * hitR) return;
 
-        if (s.shield > 0) {
-          const absorb = Math.min(s.shield, dmgLeft);
-          s.shield -= absorb;
-          dmgLeft -= absorb;
-          totalDamage += absorb;
-          s.lastShieldHitTime = state.time;
-          const len = Math.max(1e-6, d);
-          s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
-          s.lastShieldHitStrength = absorb;
+            const d = Math.sqrt(distSq);
+            let dmgLeft = b.damage;
+            let totalDamage = 0;
+            if (s.shield > 0) {
+              const absorb = Math.min(s.shield, dmgLeft);
+              s.shield -= absorb;
+              dmgLeft -= absorb;
+              totalDamage += absorb;
+              s.lastShieldHitTime = state.time;
+              const len = Math.max(1e-6, d);
+              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+              s.lastShieldHitStrength = absorb;
+            }
+            if (dmgLeft > 0) {
+              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+              s.health -= effective;
+              totalDamage += effective;
+            }
+            if (totalDamage > 0) {
+              recordDamage(state, s, totalDamage, b.ownerShipId);
+            }
+            b.ttl = 0;
+          });
         }
+      } else {
+        // Use spatialGrid when entityIndex not present
+        const grid = state.spatialGrid!;
+        const maxHitR = ShipVisualConfig.defaults.collisionRadius;
+        grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
+          if (b.ttl <= 0) return; // already consumed by another hit
+          const s =
+            state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
+          if (!s) return;
+          if (s.team === b.ownerTeam || s.health <= 0) return;
+          const hitR =
+            ShipVisualConfig.ships[s.class]?.collisionRadius ??
+            ShipVisualConfig.defaults.collisionRadius;
+          if (distSq > hitR * hitR) return;
 
-        if (dmgLeft > 0) {
-          const effective = Math.max(1, dmgLeft - s.armor * 0.3);
-          s.health -= effective;
-          totalDamage += effective;
-        }
-
-        // Centralize XP/ai bookkeeping for both shield and health damage
-        if (totalDamage > 0) {
-          recordDamage(state, s, totalDamage, b.ownerShipId);
-        }
-
-        // Consume bullet
-        b.ttl = 0;
-      });
+          const d = Math.sqrt(distSq);
+          let dmgLeft = b.damage;
+          let totalDamage = 0;
+          if (s.shield > 0) {
+            const absorb = Math.min(s.shield, dmgLeft);
+            s.shield -= absorb;
+            dmgLeft -= absorb;
+            totalDamage += absorb;
+            s.lastShieldHitTime = state.time;
+            const len = Math.max(1e-6, d);
+            s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+            s.lastShieldHitStrength = absorb;
+          }
+          if (dmgLeft > 0) {
+            const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+            s.health -= effective;
+            totalDamage += effective;
+          }
+          if (totalDamage > 0) {
+            recordDamage(state, s, totalDamage, b.ownerShipId);
+          }
+          b.ttl = 0;
+        });
+      }
     } else {
       // Fallback: full scan
       for (const s of state.ships) {

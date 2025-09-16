@@ -24,6 +24,9 @@ export interface SimConfig {
   // Spatial grid settings for performance optimization
   spatialGrid: {
     cellSize: number; // size of each spatial grid cell in world units
+    // Optional bucket size used by entityIndex (UniformGrid). If omitted,
+    // consumers may fall back to cellSize.
+    bucketSize?: number;
   };
   // RNG settings
   seed: string;
@@ -45,6 +48,7 @@ export const DefaultSimConfig: SimConfig = {
   },
   spatialGrid: {
     cellSize: 64, // optimal cell size for AI neighbor searches
+    bucketSize: 64,
   },
   seed: 'SPACE-001',
   useTimeBasedSeed: false,

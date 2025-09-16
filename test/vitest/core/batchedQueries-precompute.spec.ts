@@ -1,4 +1,4 @@
-import { BatchedQueryManager } from '../../../src/core/ai/batchedQueries';
+import { BatchedQueryManager } from '../../../src/core/ai/batchedQueries.js';
 
 // Minimal types to satisfy the test imports
 type Vec3 = { x: number; y: number; z: number };

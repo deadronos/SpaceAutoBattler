@@ -1,7 +1,6 @@
- 
 import { describe, it, expect } from 'vitest';
 
-import { enablePerfCollectorIfRequested } from '../../../src/utils/perfCollector';
+import { enablePerfCollectorIfRequested } from '../../../src/utils/perfCollector.js';
 
 describe('perfCollector enable', () => {
   it('creates window.__perf when debugPerf=1 in location.search', () => {

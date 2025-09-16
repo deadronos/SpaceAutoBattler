@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { ProjectileSystem } from '../../src/core/systems/projectileSystem';
-import { getShipClassConfig } from '../../src/config/entitiesConfig';
-import { createMockShip } from './setupTests';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
+import { ProjectileSystem } from '../../src/core/systems/projectileSystem.js';
+import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
+import { createMockShip } from './setupTests.js';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 // Simple deterministic LCG RNG for tests
 class TestRNG {

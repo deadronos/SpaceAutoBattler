@@ -14,8 +14,14 @@ describe('FileWatcher content-length fallback', () => {
     const origFetch = globalWithFetch.fetch;
     globalWithFetch.fetch = vi.fn().mockResolvedValue(response) as unknown as typeof fetch;
 
-    const mod = await import('../../../src/utils/fileWatcher');
-    const module = mod as unknown as { getFileWatcher: () => { watch: (u: string, cb: (p: string, change: string) => void) => void; unwatchAll: () => void; checkAllFiles: () => Promise<void>; } };
+    const mod = await import('../../../src/utils/fileWatcher.js');
+    const module = mod as unknown as {
+      getFileWatcher: () => {
+        watch: (u: string, cb: (p: string, change: string) => void) => void;
+        unwatchAll: () => void;
+        checkAllFiles: () => Promise<void>;
+      };
+    };
     const { getFileWatcher } = module;
     const watcher = getFileWatcher();
 
@@ -32,8 +38,8 @@ describe('FileWatcher content-length fallback', () => {
     const change = (event as unknown as { change?: string })?.change;
     expect(['created', 'modified']).toContain(change);
 
-  // cleanup
-  watcher.unwatchAll();
-  globalWithFetch.fetch = origFetch;
+    // cleanup
+    watcher.unwatchAll();
+    globalWithFetch.fetch = origFetch;
   });
 });

@@ -15,8 +15,8 @@ import { updateTeamAlarms, updateScoutAssignments, TeamSystems } from './teamSys
 import { updateShieldRegeneration } from './defense.js';
 import { findNearestEnemy, updateTurretLeads } from './targeting.js';
 import { SpatialHelpers } from './spatial.js';
-import { DEBUG_AI } from '../../utils/env';
-import logger from '../../utils/logger';
+import { DEBUG_AI } from '../../utils/env.js';
+import logger from '../../utils/logger.js';
 import { calculatePreferredRange, reevaluateIntent, chooseAggressiveIntent } from './intent.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
 import { PhysicsConfig } from '../../config/physicsConfig.js';
@@ -93,7 +93,7 @@ export class AIController {
     const rate = this.state.simConfig?.targetUpdateRate ?? 0.5;
     const last = ship.aiState?.lastTargetSwitchTime ?? -1e9;
     const current: number | null = ship.targetId == null ? null : ship.targetId;
-  const TEST_LOG = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+    const TEST_LOG = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
     // NOTE: intentionally do NOT suppress intra-tick requests here. The
     // controller may legitimately call setTargetWithThrottle multiple times
     // during a single update (validated target -> nearest enemy -> fallback)
@@ -337,7 +337,8 @@ export class AIController {
       const dy = Math.min(ship.pos.y, this.state.simConfig.simBounds.height - ship.pos.y);
       const dz = Math.min(ship.pos.z, this.state.simConfig.simBounds.depth - ship.pos.z);
       const minDist = Math.min(dx, dy, dz);
-      const boundScore = minDist >= safeMargin ? 0 : minDist <= 0 ? 1 : (safeMargin - minDist) / safeMargin;
+      const boundScore =
+        minDist >= safeMargin ? 0 : minDist <= 0 ? 1 : (safeMargin - minDist) / safeMargin;
       // We avoid mutating typed aiState shape here; controllers may read this temporarily via local variable
       (ship as unknown as { __boundaryProximity?: number }).__boundaryProximity = boundScore;
     } catch {
@@ -611,7 +612,8 @@ export class AIController {
           this.setTargetWithThrottle(ship, bestId);
           if (ship.targetId != null) {
             // Record the candidate target we attempted to assign (non-null number)
-            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = bestId as number;
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget =
+              bestId as number;
           }
         }
         logger.debugIf(
@@ -664,7 +666,8 @@ export class AIController {
 
           if (withinRange) {
             this.setTargetWithThrottle(ship, anyT as number);
-            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = anyT as number;
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget =
+              anyT as number;
             logger.debugIf(
               DEBUG_AI,
               () => `DEBUG_AI: controller safety assigned ship=${ship.id} => ${ship.targetId}`,
@@ -856,7 +859,7 @@ export class AIController {
           );
           integrated = true;
         }
-  } else if (intent === 'approachToRange' || intent === 'pursue') {
+      } else if (intent === 'approachToRange' || intent === 'pursue') {
         // Move to a point that brings the target within turret max range.
         // Prefer ship.targetId if set, otherwise use nearestEnemy.
         const tgt = ship.targetId ? this.state.shipIndex?.get(ship.targetId) : nearestEnemy;
@@ -866,7 +869,8 @@ export class AIController {
           this.setTargetWithThrottle(ship, tgt.id);
           // Record assignment so simulateStep final-restore preserves this target
           if (ship.targetId === tgt.id) {
-            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget = tgt.id as number;
+            (ship as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget =
+              tgt.id as number;
           }
           try {
             // Use the actual turret range from the ship's class turret config
@@ -928,7 +932,7 @@ export class AIController {
           this.moveTowards(ship, ship.aiState.formationPosition, dt);
           integrated = true;
         }
-  } else if (intent === 'idle' || !intent) {
+      } else if (intent === 'idle' || !intent) {
         // If a formation position is already assigned, move towards it even
         // while current intent is 'idle'. Tests and some higher-level logic
         // pre-assign formationPosition (e.g., during setup) and expect the
@@ -1022,17 +1026,23 @@ export class AIController {
     }
     if (VITEST_AI_DEBUG) {
       try {
-         
-        console.log(`VITEST-AI-DEBUG end ship=${ship.id} integrated=${integrated} postPos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} postVel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`);
-        writeTestLogLine('tmp/ai-debug.log', `END ship=${ship.id} integrated=${integrated} postPos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} postVel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}\n`);
+        console.log(
+          `VITEST-AI-DEBUG end ship=${ship.id} integrated=${integrated} postPos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} postVel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}`,
+        );
+        writeTestLogLine(
+          'tmp/ai-debug.log',
+          `END ship=${ship.id} integrated=${integrated} postPos=${ship.pos.x.toFixed(2)},${ship.pos.y.toFixed(2)},${ship.pos.z.toFixed(2)} postVel=${ship.vel.x.toFixed(6)},${ship.vel.y.toFixed(6)},${ship.vel.z.toFixed(6)}\n`,
+        );
         // First-tick one-liner
-  const ais = ship.aiState as unknown as AIAssist;
-  if (ais && !ais.__firstTickLogged) {
+        const ais = ship.aiState as unknown as AIAssist;
+        if (ais && !ais.__firstTickLogged) {
           let sepMag = 0;
           try {
             const sep = this.spatial.calculateSeparationForceWithCount(ship);
             const f = sep.force;
-            sepMag = Math.sqrt((f.x || 0) * (f.x || 0) + (f.y || 0) * (f.y || 0) + (f.z || 0) * (f.z || 0));
+            sepMag = Math.sqrt(
+              (f.x || 0) * (f.x || 0) + (f.y || 0) * (f.y || 0) + (f.z || 0) * (f.z || 0),
+            );
           } catch {}
           const personality = (() => {
             try {

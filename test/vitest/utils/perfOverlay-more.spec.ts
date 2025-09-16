@@ -1,4 +1,3 @@
- 
 import { describe, it, expect, afterEach } from 'vitest';
 
 describe('perfOverlay (more)', () => {
@@ -57,7 +56,7 @@ describe('perfOverlay (more)', () => {
 
     // ensure location.search has showPerf (overlay uses showPerf=1) and enable perf
     (global as any).location = { search: '?showPerf=1' } as any;
-    const perfMod = await import('../../../src/utils/perf');
+    const perfMod = await import('../../../src/utils/perf.js');
     // enable the global perf meter for the overlay to show
     try {
       (perfMod as any).perf.enable();
@@ -65,7 +64,7 @@ describe('perfOverlay (more)', () => {
       /* ignore */
     }
 
-    const mod = await import('../../../src/utils/perfOverlay');
+    const mod = await import('../../../src/utils/perfOverlay.js');
     const res = await (mod as any).setupPerfOverlay?.();
 
     // overlay should have been created

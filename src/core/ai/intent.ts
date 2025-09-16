@@ -1,7 +1,7 @@
 import type { GameState, Ship } from '../../types/index.js';
 import type { AIPersonality, AIIntent } from '../../config/behaviorConfig.js';
 import { getEffectivePersonality } from '../../config/behaviorConfig.js';
-import { DEBUG_AI } from '../../utils/env';
+import { DEBUG_AI } from '../../utils/env.js';
 import { scoreEvade as deScoreEvade } from './decisionEngine.js';
 import { scoreBoundaryAvoidance } from './decisionEngine.js';
 import {
