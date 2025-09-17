@@ -1,4 +1,25 @@
 // Renderer configuration for visual effects and display settings
+export type EffectsQualityLevel = 'low' | 'medium' | 'high';
+
+export interface EffectsQualityGovernorConfig {
+  enabled: boolean;
+  frameTimeBudgetMs: number;
+  sampleWindow: number;
+  triggerThreshold: number;
+  recoverThreshold: number;
+  resumeBelowMs?: number;
+  disableParticles: boolean;
+  disablePostprocessing: boolean;
+  degradeQuality: EffectsQualityLevel;
+  recoverQuality?: EffectsQualityLevel;
+  logTransitions?: boolean;
+}
+
+export interface EffectsQualityConfig {
+  defaultQuality: EffectsQualityLevel;
+  governor: EffectsQualityGovernorConfig;
+}
+
 export interface RendererConfig {
   // Camera settings
   camera: {
@@ -219,6 +240,9 @@ export interface RendererConfig {
 
   // Enable/disable visual interpolation between sim steps
   enableInterpolation?: boolean;
+
+  // Quality settings for visual effects with adaptive governor
+  effectsQuality: EffectsQualityConfig;
 }
 
 export const DefaultRendererConfig: RendererConfig = {
@@ -401,6 +425,23 @@ export const DefaultRendererConfig: RendererConfig = {
   },
 
   enableInterpolation: true, // Default to enabled for smooth rendering
+
+  effectsQuality: {
+    defaultQuality: 'high',
+    governor: {
+      enabled: true,
+      frameTimeBudgetMs: 20,
+      sampleWindow: 30,
+      triggerThreshold: 20,
+      recoverThreshold: 120,
+      resumeBelowMs: 16,
+      disableParticles: true,
+      disablePostprocessing: true,
+      degradeQuality: 'low',
+      recoverQuality: 'high',
+      logTransitions: false,
+    },
+  },
 };
 
 // Export the default config as RendererConfig for backward compatibility
