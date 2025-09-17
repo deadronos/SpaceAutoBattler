@@ -1,6 +1,5 @@
- 
 import { describe, it, expect } from 'vitest';
-import { BatchedQueryManager } from '../../../src/core/ai/batchedQueries';
+import { BatchedQueryManager } from '../../../src/core/ai/batchedQueries.js';
 
 describe('BatchedQueryManager edge cases', () => {
   it('handles empty input without throwing', () => {

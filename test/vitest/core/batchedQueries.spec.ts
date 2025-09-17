@@ -7,7 +7,7 @@ describe('BatchedQueryManager', () => {
   });
 
   it('skips precomputeNearestEnemies when no optimizer or index disabled', async () => {
-    const mod = await import('../../../src/core/ai/batchedQueries');
+    const mod = await import('../../../src/core/ai/batchedQueries.js');
     const { BatchedQueryManager } = mod as any;
     const mgr = new BatchedQueryManager();
 
@@ -19,7 +19,7 @@ describe('BatchedQueryManager', () => {
   });
 
   it('selects nearest enemy and applies tiebreak rules', async () => {
-    const mod = await import('../../../src/core/ai/batchedQueries');
+    const mod = await import('../../../src/core/ai/batchedQueries.js');
     const { BatchedQueryManager } = mod as any;
     // mock spatial optimizer
     const spatialOptimizer: any = {
@@ -68,7 +68,7 @@ describe('BatchedQueryManager', () => {
   });
 
   it('precomputes separation neighbors and reuses arrays', async () => {
-    const mod = await import('../../../src/core/ai/batchedQueries');
+    const mod = await import('../../../src/core/ai/batchedQueries.js');
     const { BatchedQueryManager } = mod as any;
     const spatialOptimizer: any = {
       queryRadiusOptimized: (pos: any, range: number, team: string, id: number) => {

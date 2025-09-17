@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
-import { shipInstancer } from '../../src/renderer/shipInstancer';
+import { shipInstancer } from '../../src/renderer/shipInstancer.js';
 
 // Integration-style tests for prototype registration and sync
 

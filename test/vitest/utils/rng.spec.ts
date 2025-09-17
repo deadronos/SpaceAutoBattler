@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { createRNG } from '../../../src/utils/rng';
+import { createRNG } from '../../../src/utils/rng.js';
 
 test('createRNG deterministic sequence and int/pick', () => {
   const a = createRNG('seed1');

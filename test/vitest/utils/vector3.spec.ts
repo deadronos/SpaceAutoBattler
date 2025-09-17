@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import * as v from '../../../src/utils/vector3';
+import * as v from '../../../src/utils/vector3.js';
 
 test('forward/right/up vector orthonormal basis', () => {
   const pitch = 0.3;

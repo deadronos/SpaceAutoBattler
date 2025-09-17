@@ -1,4 +1,4 @@
-import { getFileWatcher } from '../../../src/utils/fileWatcher';
+import { getFileWatcher } from '../../../src/utils/fileWatcher.js';
 
 describe('FileWatcher header precedence', () => {
   let originalFetch: any;

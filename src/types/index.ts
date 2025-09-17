@@ -1,4 +1,5 @@
 import type { AggressiveSpatialOptimizer } from '../core/ai/aggressiveSpatialOptimizer.js';
+import type { EntityIndexAPI } from '../core/entityIndex.js';
 
 export type EntityId = number;
 
@@ -209,6 +210,9 @@ export interface RendererHandles {
   invalidateParameters?: (programLike?: object | null) => void;
   // Test/runtime accessor to expose whether ship instancing is enabled/ready
   getUseShipInstancing?: () => boolean;
+  // Optional access to internal renderer effects manager for advanced visual control
+  // Some renderer implementations may not expose an effects manager; keep optional.
+  effectsManager?: import('../renderer/effects.js').EffectsManager | null;
 }
 
 export interface GameState {
@@ -261,6 +265,16 @@ export interface GameState {
   // Reused AI controller instance to avoid per-tick allocations
   aiController?: import('../core/aiController.js').AIController;
   aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer;
+  // Optional runtime reference to the optional ProjectileSystem instance
+  // Some app setups create and attach a ProjectileSystem to GameState; keep
+  // this optional to avoid forcing a dependency on the system in all modules.
+  projectileSystem?: import('../core/systems/projectileSystem.js').ProjectileSystem;
+  // Exposed unified effects manager (facade) used by UI/renderer/animation
+  // layers to trigger explosion/postprocessing effects. Optional because some
+  // headless/test setups don't create a renderer or unifiedFX instance.
+  unifiedFX?: import('../renderer/unifiedEffectsManager.js').UnifiedEffectsManager;
+  // Optional in-memory entity index (miniplex + spatial grid) for fast queries
+  entityIndex?: EntityIndexAPI;
 }
 
 export type UIElements = {

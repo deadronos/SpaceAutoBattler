@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setupCameraControls } from '../../src/renderer/cameraControls';
-import { CameraConfig } from '../../src/config/cameraConfig';
-import type { GameState } from '../../src/types/index';
+import { setupCameraControls } from '../../src/renderer/cameraControls.js';
+import { CameraConfig } from '../../src/config/cameraConfig.js';
+import type { GameState } from '../../src/types/index.js';
 
 // Lightweight fake renderer implementing only the get/set camera target API used by controls
 class FakeRenderer {

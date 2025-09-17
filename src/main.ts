@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createInitialState, resetState as _resetState, spawnFleet, spawnShip as _spawnShip } from './core/gameState.js';
+import {
+  createInitialState,
+  resetState as _resetState,
+  spawnFleet,
+  spawnShip as _spawnShip,
+} from './core/gameState.js';
 // Import UI styles so webpack extracts them into a hashed CSS asset via MiniCssExtractPlugin
 import './styles/ui.css';
 // Ensure low-level GL/readPixels patches are applied as early as possible
@@ -20,7 +25,7 @@ import * as THREE from 'three';
 // keeping runtime behavior identical.
 type LooseDict = Record<string, unknown>;
 const G = globalThis as unknown as LooseDict;
-const W = (typeof window !== 'undefined' ? (window as unknown as LooseDict) : ({} as LooseDict));
+const W = typeof window !== 'undefined' ? (window as unknown as LooseDict) : ({} as LooseDict);
 const RC = RendererConfig as unknown as LooseDict;
 
 // Expose canonical Three.js runtime to globalThis so modules using different
@@ -49,6 +54,8 @@ import { bindUI } from './ui/bindUI.js';
 import { randomClass as _randomClass } from './utils/randomShipClass.js';
 import { reFormFleets } from './core/reFormFleets.js';
 import { startLoops } from './core/startLoops.js';
+import { createUnifiedEffectsManager } from './renderer/unifiedEffectsManager.js';
+import { ProjectileSystem } from './core/systems/projectileSystem.js';
 import { setupPerfOverlay } from './utils/perfOverlay.js';
 import { enablePerfCollectorIfRequested } from './utils/perfCollector.js';
 import { wireControls } from './ui/wireControls.js';
@@ -64,7 +71,7 @@ declare global {
   interface GlobalEventHandlers {}
 }
 
-function initGame(seed?: string) {
+export function initGame(seed?: string) {
   const ui = bindUI();
   const state = createInitialState(seed);
   // Lightweight alias to avoid repeated `as any` casts in this large bootstrap file.
@@ -174,7 +181,7 @@ function initGame(seed?: string) {
 
     // Manually reload all SVG assets
     reloadAll: async () => {
-  if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
+      if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
         logger.debug('[SVG Debug] GLTF mode enabled; reloadAll is a no-op');
         return;
       }
@@ -191,7 +198,7 @@ function initGame(seed?: string) {
 
     // Clear SVG cache
     clearCache: (assetUrl?: string) => {
-  if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
+      if ((RC.loadGltfModels as unknown as boolean) || svgDisabled) {
         logger.debug(
           '[SVG Debug] GLTF mode enabled or SVG subsystem disabled; clearCache is a no-op',
         );
@@ -235,9 +242,9 @@ function initGame(seed?: string) {
     preloadSingleShip: async (cls: string, team = 'red') => {
       try {
         const mod = await import('./core/shipModelLoader.js');
-  // Dynamic import may return an untyped module; narrow with unknown
-  const m = mod as unknown as { preloadSingleShip?: (...args: unknown[]) => unknown };
-  return m.preloadSingleShip ? (m.preloadSingleShip(state, cls, team) as unknown) : null;
+        // Dynamic import may return an untyped module; narrow with unknown
+        const m = mod as unknown as { preloadSingleShip?: (...args: unknown[]) => unknown };
+        return m.preloadSingleShip ? (m.preloadSingleShip(state, cls, team) as unknown) : null;
       } catch (err) {
         console.warn('preloadSingleShip failed', err);
         return null;
@@ -246,11 +253,60 @@ function initGame(seed?: string) {
     preloadShipModels: async () => {
       try {
         const mod = await import('./core/shipModelLoader.js');
-  const m2 = mod as unknown as { preloadShipModels?: (...args: unknown[]) => unknown };
-  return m2.preloadShipModels ? (m2.preloadShipModels(state, ['red', 'blue']) as unknown) : null;
+        const m2 = mod as unknown as { preloadShipModels?: (...args: unknown[]) => unknown };
+        return m2.preloadShipModels
+          ? (m2.preloadShipModels(state, ['red', 'blue']) as unknown)
+          : null;
       } catch (err) {
         console.warn('preloadShipModels failed', err);
         return null;
+      }
+    },
+    // Helpers to manually trigger FX for debugging
+    triggerExplosion: (pos?: { x: number; y: number; z: number }, intensity = 1.0) => {
+      try {
+        const p = pos ?? { x: 0, y: 0, z: 0 };
+        const fx = (state as unknown as _GameStateType).unifiedFX;
+        if (fx && typeof fx.handleExplosion === 'function') {
+          void fx.handleExplosion(p as any, intensity);
+          logger.info('[__appDebug] triggerExplosion called', p, intensity);
+          return true;
+        }
+        logger.warn('[__appDebug] triggerExplosion failed: unifiedFX not available');
+      } catch (e) {
+        logger.warn('[__appDebug] triggerExplosion error', e);
+      }
+      return false;
+    },
+    triggerProjectileHit: (hit?: any) => {
+      try {
+        const ps = (state as unknown as _GameStateType).projectileSystem;
+        if (!ps) {
+          logger.warn('[__appDebug] triggerProjectileHit failed: projectileSystem not available');
+          return false;
+        }
+        const h =
+          hit ||
+          ({
+            type: 'hit',
+            bulletId: 9999,
+            timestamp: state.time,
+            sourceShipId: state.ships[0]?.id ?? 1,
+            targetId: state.ships[1]?.id ?? 2,
+            hitResult: {
+              bulletId: 9999,
+              targetId: state.ships[1]?.id ?? 2,
+              damage: 2,
+              hitPosition: { x: 0, y: 0, z: 0 },
+              penetrated: true,
+            },
+          } as any);
+        (ps as any).emitEvent(h);
+        logger.info('[__appDebug] triggerProjectileHit emitted', h);
+        return true;
+      } catch (e) {
+        logger.warn('[__appDebug] triggerProjectileHit error', e);
+        return false;
       }
     },
   } as unknown;
@@ -259,7 +315,7 @@ function initGame(seed?: string) {
   (async () => {
     try {
       // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-            const useSimWorker = (RC.useSimWorker as unknown as boolean) ?? true;
+      const useSimWorker = (RC.useSimWorker as unknown as boolean) ?? true;
       let w: Worker | null = null;
       // If the config opts out of creating a sim worker, run the physics stepper in-thread immediately
       if (!useSimWorker) {
@@ -267,8 +323,8 @@ function initGame(seed?: string) {
           '[main.ts] Skipping simWorker creation (RendererConfig.useSimWorker=false); using in-thread physics',
         );
         try {
-                const ps = await createPhysicsStepper(state as unknown as _GameStateType);
-                (state as unknown as _GameStateType).physicsStepper = ps;
+          const ps = await createPhysicsStepper(state as unknown as _GameStateType);
+          (state as unknown as _GameStateType).physicsStepper = ps;
         } catch (ee) {
           void ee; /* ignore and continue */
         }
@@ -286,7 +342,9 @@ function initGame(seed?: string) {
           const type = data.type;
           // Perf events from simWorker
           if (type === 'perf') {
-            const perfObj = W.__perf as unknown as { addEvent?: (arg: { name: string; ms: number }) => void } | undefined;
+            const perfObj = W.__perf as unknown as
+              | { addEvent?: (arg: { name: string; ms: number }) => void }
+              | undefined;
             if (perfObj && typeof perfObj.addEvent === 'function') {
               try {
                 perfObj.addEvent({ name: data.name, ms: data.ms });
@@ -327,13 +385,17 @@ function initGame(seed?: string) {
                 const transforms = data.transforms || [];
                 // Optional payload size audit
                 try {
-                  const perfObj = W.__perf as unknown as { addEvent?: (arg: { name: string; ms: number }) => void } | undefined;
+                  const perfObj = W.__perf as unknown as
+                    | { addEvent?: (arg: { name: string; ms: number }) => void }
+                    | undefined;
                   if (perfObj && typeof perfObj.addEvent === 'function')
                     perfObj.addEvent({
                       name: 'physics.payload.recvKB',
                       ms: JSON.stringify(transforms).length / 1000,
                     });
-                } catch (_e) { void _e; }
+                } catch (_e) {
+                  void _e;
+                }
                 for (const transform of transforms) {
                   const ship =
                     state.shipIndex?.get(transform.shipId) ??
@@ -420,9 +482,9 @@ function initGame(seed?: string) {
       }
     } catch (_e) {
       void _e; // Fallback to in-process physics stepper
-        try {
-          const ps = await createPhysicsStepper(state as unknown as _GameStateType);
-          (state as unknown as _GameStateType).physicsStepper = ps;
+      try {
+        const ps = await createPhysicsStepper(state as unknown as _GameStateType);
+        (state as unknown as _GameStateType).physicsStepper = ps;
       } catch (ee) {
         void ee; /* ignore */
       }
@@ -464,6 +526,110 @@ function initGame(seed?: string) {
     reFormFleets(state);
     const renderer = createThreeRenderer(state, ui.canvas);
     state.renderer = renderer;
+    // Create a central ProjectileSystem instance for this app runtime and
+    // attach it to state so other modules can reuse it. Tests may still
+    // create local instances; this global instance is intended for the
+    // browser runtime wiring.
+    try {
+      const projectileSystem = new ProjectileSystem(state as unknown as _GameStateType);
+      (state as unknown as _GameStateType).projectileSystem = projectileSystem;
+    } catch (_e) {
+      void _e;
+    }
+
+    // Create unified effects manager and expose on state for wiring
+    try {
+      const unifiedFX = createUnifiedEffectsManager(state as unknown as _GameStateType);
+      // store on state with proper typing
+      (state as unknown as _GameStateType).unifiedFX = unifiedFX;
+
+      // Wire projectile events from the authoritative ProjectileSystem we
+      // created above so hits trigger unified visual effects.
+      try {
+        const ps = (state as unknown as _GameStateType).projectileSystem;
+        if (ps) {
+          logger.info('[main] wiring projectile event handler');
+          ps.onProjectileEvent((evt) => {
+            try {
+              try {
+                logger.info('[main] received projectile event', evt.type, evt.bulletId);
+              } catch {
+                /* ignore logging failure */
+              }
+
+              // Only trigger explosion visuals when the hit results in the
+              // target ship being destroyed (health <= 0). The ProjectileSystem
+              // applies damage before emitting the 'hit' event, so we can check
+              // the current ship health here.
+              if (
+                evt &&
+                evt.type === 'hit' &&
+                evt.hitResult &&
+                evt.hitResult.hitPosition &&
+                typeof evt.targetId !== 'undefined'
+              ) {
+                const targetId = evt.targetId as number;
+                const targetShip =
+                  (state as unknown as _GameStateType).shipIndex?.get(targetId) ??
+                  (state as unknown as _GameStateType).ships.find((s: any) => s.id === targetId);
+
+                const isDead = targetShip ? (targetShip.health ?? 0) <= 0 : false;
+
+                // Log target health for debugging/testing visibility
+                try {
+                  logger.info('[main] hit target check', { targetId, health: targetShip?.health });
+                } catch {
+                  /* ignore */
+                }
+
+                if (isDead) {
+                  const intensity = Math.min(2, 1 + (evt.hitResult.damage ?? 1) * 0.1);
+                  try {
+                    logger.info('[Explosions] Projectile hit explosion (kill)', {
+                      position: evt.hitResult.hitPosition,
+                      intensity,
+                      damage: evt.hitResult.damage ?? null,
+                      targetId,
+                    });
+                  } catch {
+                    /* ignore logging failure */
+                  }
+                  void unifiedFX.handleExplosion(evt.hitResult.hitPosition, intensity);
+                } else {
+                  // Non-lethal hit: do not spawn full explosion FX. Keep a debug
+                  // trace for developers.
+                  try {
+                    logger.debug('[Explosions] non-lethal hit, skipping explosion FX', {
+                      targetId,
+                      remainingHealth: targetShip?.health ?? null,
+                    });
+                  } catch {
+                    /* ignore logging failure */
+                  }
+                  try {
+                    // Trigger a cheap hit micro-FX (sparks / small camera nudge)
+                    if (unifiedFX && typeof unifiedFX.handleHitEffect === 'function') {
+                      unifiedFX.handleHitEffect(
+                        evt.hitResult.hitPosition,
+                        evt.hitResult.damage ?? 1,
+                      );
+                    }
+                  } catch (_e) {
+                    void _e;
+                  }
+                }
+              }
+            } catch (_e) {
+              void _e;
+            }
+          });
+        }
+      } catch (_e) {
+        void _e;
+      }
+    } catch (_e) {
+      void _e;
+    }
     wireControls(state, ui);
     setupCameraControls(state, ui.canvas);
     setupPerfOverlay();
@@ -509,6 +675,8 @@ function initGame(seed?: string) {
       void _e;
     }
   })();
+
+  return state;
 }
 
 // Boot
@@ -519,6 +687,8 @@ logger.setDebug(!!DefaultGameConfig.ui.showDebugInfo);
 window.addEventListener('DOMContentLoaded', () => {
   try {
     enablePerfCollectorIfRequested();
-  } catch (_e) { void _e; }
+  } catch (_e) {
+    void _e;
+  }
   initGame();
 });

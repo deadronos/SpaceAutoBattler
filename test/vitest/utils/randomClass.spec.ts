@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
-import { createRNG } from '../../../src/utils/rng';
-import { randomClass } from '../../../src/utils/randomShipClass';
+import { createRNG } from '../../../src/utils/rng.js';
+import { randomClass } from '../../../src/utils/randomShipClass.js';
 
 test('randomClass deterministic', () => {
   const rng = createRNG('abc');

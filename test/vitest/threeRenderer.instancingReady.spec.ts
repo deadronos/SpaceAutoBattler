@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RendererConfig } from '../../src/config/rendererConfig';
-import type { GameState } from '../../src/types/index';
+import { RendererConfig } from '../../src/config/rendererConfig.js';
+import type { GameState } from '../../src/types/index.js';
 
 // Narrow test-side types to avoid `any` in tests and prevent linter errors
 type ReadyCallback = () => void;
@@ -36,7 +36,7 @@ vi.mock('three', async () => {
 
 // We'll mock the shipInstancer module to control readiness and then import createThreeRenderer
 // To avoid TDZ/hoisting issues with vi.mock factories, attach the mock and its callbacks to globalThis
-vi.mock('../../src/renderer/shipInstancer', () => {
+vi.mock('../../src/renderer/shipInstancer.js', () => {
   // named export: shipInstancer
   const readyCallbacks: ReadyCallback[] = [];
   const obj: ShipInstancerMock = {
@@ -64,7 +64,7 @@ vi.mock('../../src/renderer/shipInstancer', () => {
   return { shipInstancer: obj };
 });
 
-import { createThreeRenderer } from '../../src/renderer/threeRenderer';
+import { createThreeRenderer } from '../../src/renderer/threeRenderer.js';
 
 describe('threeRenderer instancing readiness', () => {
   beforeEach(() => {

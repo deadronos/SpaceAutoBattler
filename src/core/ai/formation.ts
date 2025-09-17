@@ -1,7 +1,7 @@
 import type { GameState, Ship, Vector3 } from '../../types/index.js';
 import type { FormationConfig } from '../../config/behaviorConfig.js';
 import { getFormationConfig } from '../../config/behaviorConfig.js';
-import { DEBUG_AI } from '../../utils/env';
+import { DEBUG_AI } from '../../utils/env.js';
 import { findNearbyFriends } from './spatial.js';
 
 export function findBestFormation(

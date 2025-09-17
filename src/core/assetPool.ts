@@ -3,7 +3,7 @@
 // Map preserves insertion order; to mark an entry as recently used we delete and re-set it.
 // Eviction is then O(1) by reading the first key from map.keys().next().value.
 import * as logger from '../utils/logger.js';
-import { envVar } from '../utils/env';
+import { envVar } from '../utils/env.js';
 
 export class LRUAssetPool<T = unknown> {
   private capacity: number;

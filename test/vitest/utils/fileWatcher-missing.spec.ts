@@ -1,6 +1,5 @@
- 
 import { describe, it, expect, afterEach } from 'vitest';
-import { getFileWatcher } from '../../../src/utils/fileWatcher';
+import { getFileWatcher } from '../../../src/utils/fileWatcher.js';
 
 describe('FileWatcher missing/HEAD not ok', () => {
   type FetchType = (...args: any[]) => Promise<any>;

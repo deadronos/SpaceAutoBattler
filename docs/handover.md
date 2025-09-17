@@ -1,100 +1,140 @@
-# AI Controller Throttle & Debug — Handover
+# Handover — Miniplex spatial-index prototype (for next agent)
 
-## Context at a glance
+This document is a compact, actionable handover for the next agentic session. It summarizes what was implemented, where to find the code, what to run to validate, and the next high-value steps to complete the migration from the legacy spatial index to the new Miniplex + UniformGrid prototype.
 
-- Repo: SpaceAutoBattler
-- Branch: ai-passive-fix (base: main)
-- Date: 2025-09-15
-- Goal: Centralize all writes to `ship.targetId` behind an AIController throttling mechanism respecting `simConfig.targetUpdateRate`, add deterministic test-time logging, and ensure damage-decay behavior for evade logic.
+Date: 2025-09-16
+Branch: explosionparticles (feature branch)
 
-## What changed (high level)
+## High-level summary
 
-- Central throttling added around target assignments:
-  - Core setter `setTargetWithThrottle(ship, newId)` in `src/core/ai/controller.ts`.
-  - Public wrapper `setShipTargetWithThrottle()` for external callers (e.g., `gameState` restoration paths).
-  - Semantics: block non-null target switches inside `targetUpdateRate`; allow clear-to-null; first-ever null→non-null allowed; outside-window switches allowed.
-- Deterministic test logging:
-  - `src/utils/testDebug.ts` provides `writeTestLogLine()`; enabled under `NODE_ENV=test` or `VITEST_AI_DEBUG=1`.
-  - Logs written to `tmp/ai-debug.log`, `tmp/ai-throttle.log`, and a first-tick summary `tmp/ai-firsttick.log`.
-- Recent damage decay:
-  - Implemented per-tick decay of `ship.aiState.recentDamage` using `behaviorConfig.globalSettings.damageDecayRate` in `AIController.updateShipAI()`.
-- Throttle anchoring:
-  - One-time end-of-update anchors for both non-null and null targets to stabilize within-window behavior at tick boundaries.
+- Goal: introduce a deterministic, fast entity index using Miniplex for attribute indexing and a small UniformGrid (3D) for spatial candidate reduction. Make it optional on `GameState` and wire lifecycle hooks so it can replace legacy spatial scans incrementally.
+- Status: Prototype implemented and wired into spawn/move/destroy callsites. Basic unit tests for spawn and spatial functionality passed locally. The full typecheck and test suite passed earlier in this workstream.
 
-## Key files touched
+## Where the work lives
 
-- `src/core/ai/controller.ts` — throttle setter, AI update flow, damage decay, anchors, deterministic logs.
-- `src/core/gameState.ts` — uses controller wrapper to restore AI-assigned targets; preserves throttle semantics.
-- `src/utils/testDebug.ts` — buffered test-time logging without blocking, auto-flush on `beforeExit`.
-- Tests referenced: `test/vitest/ai-throttle.spec.ts`, `test/vitest/ai-evade.spec.ts`.
+- Prototype index implementation:
+  - `src/core/entityIndex.ts` — exports `initEntityIndex(bucketSize)` and `EntityIndexAPI` (contains `world` (Miniplex World), `grid` (UniformGrid), and methods: `add`, `update`, `remove`, `queryNeighbors`).
 
-## Current status
+- Game state / lifecycle wiring:
+  - `src/core/gameState.ts` — spawn helper and simulation loop were updated to:
+    - register newly spawned ships in `state.entityIndex` (if present),
+    - update `state.entityIndex` positions inside `updateSpatialGrid`,
+    - update `state.entityIndex` after boundary cleanup teleports,
+    - remove entries from `state.entityIndex` when ships die (best-effort cleanup).
 
-- ai-evade: PASS (decay behavior verified by tests).
-- ai-throttle: 1 failing assertion remains in "ship target switching obeys targetUpdateRate" (inside-window stability). The check expects `red.targetId` to remain `initialTarget` or `null` within the window after introducing a closer enemy.
+  - `src/core/systems/spawnSystem.ts` — spawn registration now calls `state.entityIndex.add(...)` and `removeShip` calls `state.entityIndex.remove(...)` (best-effort, try/catch guarded).
 
-## How to reproduce and validate
+- Tests and dependencies:
+  - `test/vitest/*` — spatial and spawn tests were executed (focused runs passed). Full test suite passed earlier during prototyping.
+  - `package.json` had `miniplex` added as a dependency for the prototype.
 
-- Type check and run targeted tests (PowerShell):
+## Key design & integration notes
 
-```powershell
-npm run typecheck
-$env:NODE_ENV='test'; $env:VITEST_AI_DEBUG='1'; npx vitest test/vitest/ai-throttle.spec.ts test/vitest/ai-evade.spec.ts --run
-```
+- Canonical state: All runtime state remains on `GameState`. The index is optional and attached as `state.entityIndex?: EntityIndexAPI` to avoid invasive changes.
+- Determinism: The index returns deterministic candidate order (IDs are sorted) so existing tests relying on deterministic behavior remain valid.
+- Best-effort safety: All calls to `state.entityIndex` are wrapped in try/catch so the simulation works even if the index is missing or errors.
+- Adapter approach: Miniplex entities are bridged to numeric game entity ids via a local `byId` map in the prototype so we don't force Miniplex internal ids on the rest of the codebase.
 
-- Inspect deterministic logs (created during tests):
-  - `tmp/ai-debug.log` — per-ship start/end lines, movement calls, spawn anchors.
-  - `tmp/ai-throttle.log` — throttle decisions: first-assign, block, clear, assign outside window.
-  - `tmp/ai-firsttick.log` — one-line summaries of first update per ship.
+## Validation & how to run locally
 
-## Behavioral contracts to preserve
+1. Install deps (if needed):
 
-- Canonical state: All runtime state lives on `GameState` (`src/types/index.ts`).
-- Determinism: All simulation logic must use seeded RNG (`src/utils/rng.ts`).
-- Throttle semantics:
-  - Inside `targetUpdateRate`: disallow non-null switches; allow clearing to `null`.
-  - First-ever assignment (no recorded switch time) from `null` is allowed.
-  - One-time end-of-update anchors for both `null` and non-`null` target states.
-- Do not introduce module-level mutable state outside `GameState`.
+   ```pwsh
+   npm install
+   ```
 
-## Open issue (focus for next agent)
+2. Run typecheck:
 
-- Symptom: In `ai-throttle.spec.ts` → "ship target switching obeys targetUpdateRate", the inside-window stability assertion fails after adding a closer enemy and stepping < `targetUpdateRate`.
-- Likely cause: A code path still assigns a non-`null` target within a window that began with an anchored `null` state (e.g., via nearest-enemy or safety/turret-propagation fallback) before the window elapses.
-- Minimal fix direction:
-  - In `setTargetWithThrottle`, strengthen the gate for `current == null && newId != null` when the last switch time was explicitly anchored from a `null` end-of-update: block until the window elapses (except for true first-ever assignment, where `lastTargetSwitchTime` is not set).
-  - Audit secondary assignment paths that call `setTargetWithThrottle` when `ship.targetId` is currently `null` (nearest enemy, safety from turret consensus, fallback scoring) to ensure they rely solely on the central throttle (no direct writes).
+   ```pwsh
+   npm run typecheck
+   ```
 
-## Next actions (ordered)
+3. Run tests (full suite):
 
-1. Re-run the failing spec with logs enabled and confirm an attempted `null -> non-null` inside the window in `tmp/ai-throttle.log`.
-2. Update `setTargetWithThrottle` to treat a recently anchored `null` baseline as a real window start (block `null -> non-null` until `rate` has elapsed, unless it's the true first-ever assignment).
-3. Re-run `ai-throttle.spec.ts` to confirm green; keep `ai-evade.spec.ts` passing.
-4. Quick grep to verify no stray `ship.targetId =` writes bypass the wrapper (gameState restoration already uses the wrapper).
-5. Run `npm test` for broader regression.
+   ```pwsh
+   npm test
+   ```
 
-## Acceptance criteria (definition of done)
+4. Quick targeted tests we used in this session:
 
-- All ai-throttle and ai-evade tests pass deterministically without flakes.
-- No direct writes to `ship.targetId` remain outside `AIController` except unavoidable legacy cases, which must be justified and documented.
-- Throttle semantics remain consistent with spec and comments above.
+   ```pwsh
+   npx vitest test/vitest/systems-spawn.spec.ts
+   npx vitest test/vitest/spatial-functional.spec.ts
+   ```
 
-## Risks and notes
+## What to watch for (logs / warnings)
 
-- Over-anchoring can suppress legitimate first acquisitions; the code already allows a true first-ever `null -> non-null`. Keep that intact.
-- Ordering-sensitive behavior (turret target vs ship-level target) is tolerated by tests with permissive assertions; avoid tightening behavior in ways that remove that tolerance.
-- Maintain deterministic logging and avoid introducing async nondeterminism in the simulation path.
+- Headless test runs emit renderer fallbacks/warnings (e.g., 2D canvas fallback). These messages are expected and informational for CI.
+- If `miniplex` is missing in package.json or node_modules, TypeScript will fail to resolve imports — install with `npm install`.
 
-## Reference snippets and locations
+## Next immediate tasks (priority order)
 
-- Throttle setter: `src/core/ai/controller.ts` → `setTargetWithThrottle()`.
-- Public wrapper: `AIController.setShipTargetWithThrottle()`.
-- Anchors (end-of-update): same file, at the end of `updateShipAI()`.
-- Logging helper: `src/utils/testDebug.ts`.
-- Test specs: `test/vitest/ai-throttle.spec.ts`, `test/vitest/ai-evade.spec.ts`.
+1. Initialize the entity index on state creation
+   - Decide when to create `state.entityIndex` (e.g., in `createInitialState` when `enableSpatialIndex` is true). If desired, call `state.entityIndex = initEntityIndex(bucketSize)`.
 
-## Optional follow-ups (post-green)
+2. Migrate one heavy consumer end-to-end
+   - Candidate: projectile collision in `updateBullets` inside `src/core/gameState.ts` or turret targeting in `fireTurrets`.
+   - Replace the existing grid/full-scan lookup with `state.entityIndex.queryNeighbors(x,y,z,radius,{team:..., filter:...})` and assert parity with legacy behavior via tests.
 
-- Add a small unit test specifically for the anchored-null window behavior to prevent regressions.
-- Expand debug logging guard to include a per-test-session UUID in filenames if parallelizing tests in future.
-- Consider consolidating throttle-related logs under a single structured file for easier CI artifact analysis.
+3. Add configuration and tuning
+   - Add `entityIndex.bucketSize` or extend `simConfig.spatialGrid` to expose `bucketSize` so we can tune grid resolution.
+   - Add microbenchmarks to `test/vitest/` to sweep bucket sizes and entity densities.
+
+4. Tests & benchmarks
+   - Add tests that assert exact parity (same entities returned) vs legacy `spatialGrid.forEachInRadius` for several densities and radii.
+   - Add performance benchmarks (small, deterministic) to measure index vs linear scan.
+
+5. Integrate Zustand for UI (separate task)
+   - Keep simulation state solely on `GameState`. Create a small Zustand store for UI/inspector state and wire the renderer to read from it.
+
+## Developer tips & gotchas
+
+- Keep the `state.entityIndex` mutation localized to lifecycle points (spawn, authoritative movement updates, removal). Avoid calling `entityIndex.update` from many ad-hoc places — prefer authoritative single-point updates for position (e.g., after physics sync or AI movement step).
+- Preserve deterministic RNG usage: do not introduce non-deterministic operations (Date.now, Math.random) in any simulation path; use `state.rng` for seeded randomness.
+- When removing entities, prefer marking and sweeping (the current code marks via sentinel `maxHealth=0` and later filters). The entityIndex cleanup runs as best-effort to avoid tight coupling.
+
+## Files to inspect first (for next agent)
+
+- `src/core/entityIndex.ts` — understand the API and adapters (`world`, `grid`, `add/update/remove/queryNeighbors`).
+- `src/core/gameState.ts` — look at `spawnShip`, `updateSpatialGrid`, `processDeathsAndXP`, and `runBoundaryCleanup` to see where the index is used.
+- `src/core/systems/spawnSystem.ts` — spawn and remove flows.
+- `test/vitest/` — spatial and spawn tests to extend for parity and benchmarks.
+
+## Acceptance criteria for finishing Phase 1→2 migration
+
+1. `state.entityIndex` is created in `createInitialState` when spatial indexing is enabled.
+2. Spawning, authoritative movement updates, teleports, and removals consistently maintain the index (tests cover these paths).
+3. One major consumer (projectiles or turrets) is migrated to use `entityIndex.queryNeighbors` with tests demonstrating parity.
+4. Full typecheck and test suite pass on CI.
+
+## Contact points / decisions made during this session
+
+- Prototype: Miniplex `World` + UniformGrid (deterministic numeric bucket keys) with a local `byId` mapping.
+- Non-invasive: index attached as `state.entityIndex?: EntityIndexAPI`.
+- Sorting of candidate ids is used to keep deterministic ordering.
+
+## Recent commands & test results (snapshot)
+
+- Focused tests run: `npx vitest test/vitest/systems-spawn.spec.ts` and `npx vitest test/vitest/spatial-functional.spec.ts` — both passed (27 tests total in those focused runs).
+- Earlier in this work session a full test run passed (651/651). If you see failures on your machine, run `npm install` then rerun `npm test` and report failures.
+
+## Handoff — immediate next action for the new agent
+
+1. (Small) Add initialization of `state.entityIndex` inside `createInitialState` guarded by the same `enableSpatialIndex` flag, e.g.:
+
+   ```ts
+   import { initEntityIndex } from '../core/entityIndex.js';
+
+   if (state.behaviorConfig?.globalSettings.enableSpatialIndex) {
+     state.entityIndex = initEntityIndex(state.simConfig.spatialGrid.bucketSize || 50);
+   }
+   ```
+
+2. Run full test suite (`npm run typecheck && npm test`).
+3. Pick one consumer to migrate (projectiles recommended) and create a small PR migrating that code path and adding parity tests.
+
+If you want, I can continue and do steps 1–3 now and open a draft PR. Tell me which consumer to migrate first (projectiles or turrets) and whether you prefer the `entityIndex` created by default when `enableSpatialIndex` is true.
+
+---
+
+End of handover.

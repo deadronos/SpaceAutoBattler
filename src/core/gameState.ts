@@ -24,10 +24,12 @@ import { FleetConfig } from '../config/fleetConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { CarrierSpawnConfig } from '../config/carrierSpawnConfig.js';
 import { SpatialGrid } from '../utils/spatialGrid.js';
+import { initEntityIndex } from './entityIndex.js';
 import { applyBoundaryPhysicsShip, applyBoundaryPhysicsBullet } from './boundaryUtils.js';
 import { DEBUG_AI } from '../utils/env.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
 import { writeTestLogLine } from '../utils/testDebug.js';
+import * as _logger from '../utils/logger.js';
 
 export function createInitialState(seed?: string): GameState {
   const config = { ...DefaultSimConfig };
@@ -81,6 +83,17 @@ export function createInitialState(seed?: string): GameState {
       depth: config.simBounds.depth,
     };
     state.spatialGrid = new SpatialGrid(config.spatialGrid.cellSize, bounds);
+    // Initialize optional entity index (miniplex + uniform grid) for fast queries
+    try {
+      const sg = state.simConfig.spatialGrid as unknown as {
+        bucketSize?: number;
+        cellSize?: number;
+      };
+      const bucketSize = sg.bucketSize ?? sg.cellSize ?? 50;
+      state.entityIndex = initEntityIndex(bucketSize);
+    } catch {
+      // best-effort: don't fail initialization if entity index cannot be created
+    }
   }
 
   return state;
@@ -113,8 +126,19 @@ export function resetState(state: GameState, seed?: string) {
       depth: state.simConfig.simBounds.depth,
     };
     state.spatialGrid = new SpatialGrid(state.simConfig.spatialGrid.cellSize, bounds);
+    try {
+      const sg = state.simConfig.spatialGrid as unknown as {
+        bucketSize?: number;
+        cellSize?: number;
+      };
+      const bucketSize = sg.bucketSize ?? sg.cellSize ?? 50;
+      state.entityIndex = initEntityIndex(bucketSize);
+    } catch {
+      state.entityIndex = undefined;
+    }
   } else {
     state.spatialGrid = undefined;
+    state.entityIndex = undefined;
   }
 }
 
@@ -403,11 +427,12 @@ export function spawnShip(
   // in both headless tests and runtime. Fall back to a very small deterministic
   // spawn jitter when roaming anchors are not assigned but spawn jitter is enabled.
   try {
-  const personality = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
+    const personality = getEffectivePersonality(state.behaviorConfig!, ship.class, ship.team);
     const gs = state.behaviorConfig?.globalSettings;
-    const shouldAssignAnchor = personality && personality.mode === 'roaming'
-      ? true
-      : Boolean(gs && gs.enableScoutExploration && personality && personality.mode === 'mixed');
+    const shouldAssignAnchor =
+      personality && personality.mode === 'roaming'
+        ? true
+        : Boolean(gs && gs.enableScoutExploration && personality && personality.mode === 'mixed');
     if (shouldAssignAnchor) {
       try {
         assignRoamingAnchor(state, ship);
@@ -425,9 +450,18 @@ export function spawnShip(
               const nudge = Math.max(10, Math.floor(minSep * 0.25));
               // deterministic sign from RNG
               const sign = state.rng.next() > 0.5 ? 1 : -1;
-              anchor.x = Math.min(Math.max(anchor.x + sign * nudge, 0), state.simConfig.simBounds.width);
-              anchor.y = Math.min(Math.max(anchor.y + sign * nudge, 0), state.simConfig.simBounds.height);
-              anchor.z = Math.min(Math.max(anchor.z + sign * nudge, 0), state.simConfig.simBounds.depth);
+              anchor.x = Math.min(
+                Math.max(anchor.x + sign * nudge, 0),
+                state.simConfig.simBounds.width,
+              );
+              anchor.y = Math.min(
+                Math.max(anchor.y + sign * nudge, 0),
+                state.simConfig.simBounds.height,
+              );
+              anchor.z = Math.min(
+                Math.max(anchor.z + sign * nudge, 0),
+                state.simConfig.simBounds.depth,
+              );
               ship.aiState!.roamingAnchor = anchor;
             }
           }
@@ -483,6 +517,24 @@ export function spawnShip(
       ShipVisualConfig.ships[cls]?.collisionRadius ?? ShipVisualConfig.defaults.collisionRadius,
       team,
     );
+    // Also register in entityIndex if present
+    try {
+      if (state.entityIndex) {
+        state.entityIndex.add({
+          id,
+          x: ship.pos.x,
+          y: ship.pos.y,
+          z: ship.pos.z,
+          team,
+          type: 'ship',
+          radius:
+            ShipVisualConfig.ships[cls]?.collisionRadius ??
+            ShipVisualConfig.defaults.collisionRadius,
+        });
+      }
+    } catch {
+      /* best-effort */
+    }
   }
   return ship;
 }
@@ -509,49 +561,127 @@ function updateBullets(state: GameState, dt: number) {
     const useGrid =
       !!state.spatialGrid && !!state.behaviorConfig?.globalSettings.enableSpatialIndex;
     if (useGrid) {
-      // Narrow spatial grid for TypeScript and avoid re-checking optional each callback
-      const grid = state.spatialGrid!;
       const maxHitR = ShipVisualConfig.defaults.collisionRadius;
-      grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
-        if (b.ttl <= 0) return; // already consumed by another hit
-        const s = state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
-        if (!s) return;
-        if (s.team === b.ownerTeam || s.health <= 0) return;
-        const hitR =
-          ShipVisualConfig.ships[s.class]?.collisionRadius ??
-          ShipVisualConfig.defaults.collisionRadius;
-        if (distSq > hitR * hitR) return;
+      // Prefer the optional entityIndex when available for faster neighbor queries
+      if (state.entityIndex) {
+        try {
+          const near = state.entityIndex.queryNeighbors(b.pos.x, b.pos.y, b.pos.z, maxHitR, {
+            filter: (e) => e.type === 'ship' && e.team !== b.ownerTeam,
+          });
+          for (const e of near) {
+            if (b.ttl <= 0) break; // already consumed
+            const s = state.shipIndex?.get(e.id) ?? state.ships.find((sh) => sh.id === e.id);
+            if (!s) continue;
+            if (s.team === b.ownerTeam || s.health <= 0) continue;
+            const dx = s.pos.x - b.pos.x;
+            const dy = s.pos.y - b.pos.y;
+            const dz = s.pos.z - b.pos.z;
+            const distSq = dx * dx + dy * dy + dz * dz;
+            const hitR =
+              ShipVisualConfig.ships[s.class]?.collisionRadius ??
+              ShipVisualConfig.defaults.collisionRadius;
+            if (distSq > hitR * hitR) continue;
 
-        const d = Math.sqrt(distSq);
-        // Apply damage to shield first
-        let dmgLeft = b.damage;
-        let totalDamage = 0;
+            const d = Math.sqrt(distSq);
+            let dmgLeft = b.damage;
+            let totalDamage = 0;
+            if (s.shield > 0) {
+              const absorb = Math.min(s.shield, dmgLeft);
+              s.shield -= absorb;
+              dmgLeft -= absorb;
+              totalDamage += absorb;
+              s.lastShieldHitTime = state.time;
+              const len = Math.max(1e-6, d);
+              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+              s.lastShieldHitStrength = absorb;
+            }
+            if (dmgLeft > 0) {
+              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+              s.health -= effective;
+              totalDamage += effective;
+            }
+            if (totalDamage > 0) {
+              recordDamage(state, s, totalDamage, b.ownerShipId);
+            }
+            b.ttl = 0;
+          }
+        } catch {
+          // best-effort fallback to spatialGrid iteration if entityIndex fails
+          const grid = state.spatialGrid!;
+          grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
+            if (b.ttl <= 0) return; // already consumed by another hit
+            const s =
+              state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
+            if (!s) return;
+            if (s.team === b.ownerTeam || s.health <= 0) return;
+            const hitR =
+              ShipVisualConfig.ships[s.class]?.collisionRadius ??
+              ShipVisualConfig.defaults.collisionRadius;
+            if (distSq > hitR * hitR) return;
 
-        if (s.shield > 0) {
-          const absorb = Math.min(s.shield, dmgLeft);
-          s.shield -= absorb;
-          dmgLeft -= absorb;
-          totalDamage += absorb;
-          s.lastShieldHitTime = state.time;
-          const len = Math.max(1e-6, d);
-          s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
-          s.lastShieldHitStrength = absorb;
+            const d = Math.sqrt(distSq);
+            let dmgLeft = b.damage;
+            let totalDamage = 0;
+            if (s.shield > 0) {
+              const absorb = Math.min(s.shield, dmgLeft);
+              s.shield -= absorb;
+              dmgLeft -= absorb;
+              totalDamage += absorb;
+              s.lastShieldHitTime = state.time;
+              const len = Math.max(1e-6, d);
+              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+              s.lastShieldHitStrength = absorb;
+            }
+            if (dmgLeft > 0) {
+              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+              s.health -= effective;
+              totalDamage += effective;
+            }
+            if (totalDamage > 0) {
+              recordDamage(state, s, totalDamage, b.ownerShipId);
+            }
+            b.ttl = 0;
+          });
         }
+      } else {
+        // Use spatialGrid when entityIndex not present
+        const grid = state.spatialGrid!;
+        const maxHitR = ShipVisualConfig.defaults.collisionRadius;
+        grid.forEachInRadius(b.pos, maxHitR, (dx, dy, dz, distSq, entity) => {
+          if (b.ttl <= 0) return; // already consumed by another hit
+          const s =
+            state.shipIndex?.get(entity.id) ?? state.ships.find((sh) => sh.id === entity.id);
+          if (!s) return;
+          if (s.team === b.ownerTeam || s.health <= 0) return;
+          const hitR =
+            ShipVisualConfig.ships[s.class]?.collisionRadius ??
+            ShipVisualConfig.defaults.collisionRadius;
+          if (distSq > hitR * hitR) return;
 
-        if (dmgLeft > 0) {
-          const effective = Math.max(1, dmgLeft - s.armor * 0.3);
-          s.health -= effective;
-          totalDamage += effective;
-        }
-
-        // Centralize XP/ai bookkeeping for both shield and health damage
-        if (totalDamage > 0) {
-          recordDamage(state, s, totalDamage, b.ownerShipId);
-        }
-
-        // Consume bullet
-        b.ttl = 0;
-      });
+          const d = Math.sqrt(distSq);
+          let dmgLeft = b.damage;
+          let totalDamage = 0;
+          if (s.shield > 0) {
+            const absorb = Math.min(s.shield, dmgLeft);
+            s.shield -= absorb;
+            dmgLeft -= absorb;
+            totalDamage += absorb;
+            s.lastShieldHitTime = state.time;
+            const len = Math.max(1e-6, d);
+            s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+            s.lastShieldHitStrength = absorb;
+          }
+          if (dmgLeft > 0) {
+            const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+            s.health -= effective;
+            totalDamage += effective;
+          }
+          if (totalDamage > 0) {
+            recordDamage(state, s, totalDamage, b.ownerShipId);
+          }
+          b.ttl = 0;
+        });
+      }
     } else {
       // Fallback: full scan
       for (const s of state.ships) {
@@ -622,6 +752,20 @@ function processDeathsAndXP(state: GameState) {
         killer.level.xp += XP_PER_KILL;
         state.score[killer.team] += 1;
       }
+
+      // Trigger visual explosion via unified effects manager when available.
+      try {
+        const fx = state.unifiedFX;
+        if (fx && typeof fx.handleExplosion === 'function') {
+          const collisionRadius =
+            ShipVisualConfig.ships[s.class]?.collisionRadius ??
+            ShipVisualConfig.defaults.collisionRadius;
+          const intensity = Math.max(0.8, collisionRadius / 10);
+          void fx.handleExplosion({ x: s.pos.x, y: s.pos.y, z: s.pos.z }, intensity);
+        }
+      } catch (_e) {
+        void _e;
+      }
       // If this was a fighter spawned by a carrier, decrement the carrier's alive counter
       if (s.parentCarrierId) {
         const carrier = state.ships.find((sh) => sh.id === s.parentCarrierId);
@@ -638,6 +782,24 @@ function processDeathsAndXP(state: GameState) {
   if (state.shipIndex) {
     state.shipIndex.clear();
     for (const s of state.ships) state.shipIndex.set(s.id, s);
+  }
+  // Ensure entityIndex removes any ids no longer present
+  try {
+    if (state.entityIndex) {
+      const alive = new Set(state.ships.map((s) => s.id));
+      // world.entities is an array of registered entity objects
+      for (const e of state.entityIndex.world.entities.slice()) {
+        if (!alive.has(e.id)) {
+          try {
+            state.entityIndex.remove(e.id);
+          } catch {
+            /* best-effort */
+          }
+        }
+      }
+    }
+  } catch {
+    /* best-effort */
   }
   // Increment version when ships are removed
   state.shipDataVersion++;
@@ -957,6 +1119,21 @@ function runBoundaryCleanup(state: GameState) {
     } else {
       s.targetId = null;
     }
+    // Update entityIndex with teleported position
+    try {
+      if (state.entityIndex) {
+        state.entityIndex.update({
+          id: s.id,
+          x: s.pos.x,
+          y: s.pos.y,
+          z: s.pos.z,
+          team: s.team,
+          type: 'ship',
+        });
+      }
+    } catch {
+      /* best-effort */
+    }
   }
 
   // Prune bullets out of bounds (set ttl=0)
@@ -990,6 +1167,21 @@ function updateSpatialGrid(state: GameState) {
     if (ship.health > 0) {
       activeIds.add(ship.id);
       state.spatialGrid.update(ship.id, ship.pos, 16, ship.team);
+      // Also update entityIndex position if present
+      try {
+        if (state.entityIndex) {
+          state.entityIndex.update({
+            id: ship.id,
+            x: ship.pos.x,
+            y: ship.pos.y,
+            z: ship.pos.z,
+            team: ship.team,
+            type: 'ship',
+          });
+        }
+      } catch {
+        /* best-effort */
+      }
     }
   }
   // Remove any entities no longer present/active

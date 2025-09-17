@@ -4,11 +4,11 @@ import * as THREE from 'three';
 // We'll import the module under test after mocking
 vi.mock('../../src/core/assetLoader', () => ({ loadGLTF: vi.fn() }));
 
-import { preloadShipModels } from '../../src/core/shipModelLoader';
-import type { GameState } from '../../src/types/index';
-import { loadGLTF } from '../../src/core/assetLoader';
-import SHIP_MODEL_MAP from '../../src/config/shipModelMap';
-import { shipInstancer } from '../../src/renderer/shipInstancer';
+import { preloadShipModels } from '../../src/core/shipModelLoader.js';
+import type { GameState } from '../../src/types/index.js';
+import { loadGLTF } from '../../src/core/assetLoader.js';
+import SHIP_MODEL_MAP from '../../src/config/shipModelMap.js';
+import { shipInstancer } from '../../src/renderer/shipInstancer.js';
 
 describe('shipModelLoader threePrototypes extraction', () => {
   beforeEach(() => {

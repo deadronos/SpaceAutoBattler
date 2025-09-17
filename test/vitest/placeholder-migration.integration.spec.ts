@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
-import { shipInstancer } from '../../src/renderer/shipInstancer';
-import { createMeshFactoryState, createShipMesh } from '../../src/renderer/meshFactory';
-import { RendererConfig } from '../../src/config/rendererConfig';
-import { createMockShip } from './setupTests';
+import { shipInstancer } from '../../src/renderer/shipInstancer.js';
+import { createMeshFactoryState, createShipMesh } from '../../src/renderer/meshFactory.js';
+import { RendererConfig } from '../../src/config/rendererConfig.js';
+import { createMockShip } from './setupTests.js';
 
 describe('Placeholder migration to instancer', () => {
   let scene: THREE.Scene;

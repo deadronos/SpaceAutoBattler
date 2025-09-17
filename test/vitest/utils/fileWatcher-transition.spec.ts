@@ -21,7 +21,7 @@ describe('FileWatcher transitions', () => {
       .mockResolvedValueOnce(third);
     (globalThis as any).fetch = mockFetch;
 
-    const mod = await import('../../../src/utils/fileWatcher');
+    const mod = await import('../../../src/utils/fileWatcher.js');
     const { getFileWatcher } = mod as any;
     const watcher = getFileWatcher();
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { HealthBarInstancer } from '../../src/renderer/healthBarInstancer';
+import { HealthBarInstancer } from '../../src/renderer/healthBarInstancer.js';
 import { createMockShip } from './setupTests.js';
 import { getShipClassConfig } from '../../src/config/entitiesConfig.js';
 

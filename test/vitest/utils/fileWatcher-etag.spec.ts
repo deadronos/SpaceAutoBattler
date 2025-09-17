@@ -1,6 +1,5 @@
- 
 import { describe, it, expect, afterEach } from 'vitest';
-import { getFileWatcher } from '../../../src/utils/fileWatcher';
+import { getFileWatcher } from '../../../src/utils/fileWatcher.js';
 
 describe('FileWatcher etag/content-length fallback', () => {
   type FetchType = (...args: any[]) => Promise<any>;

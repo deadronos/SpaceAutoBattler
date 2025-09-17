@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeInterceptPoint, type Vector3 } from '../../src/core/math/ballisticIntercept';
+import { computeInterceptPoint, type Vector3 } from '../../src/core/math/ballisticIntercept.js';
 
 describe('computeInterceptPoint', () => {
   it('returns null for zero projectile speed', () => {

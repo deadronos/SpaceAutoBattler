@@ -1,7 +1,6 @@
- 
 import { describe, it, expect } from 'vitest';
 
-import { enablePerfCollectorIfRequested } from '../../../src/utils/perfCollector';
+import { enablePerfCollectorIfRequested } from '../../../src/utils/perfCollector.js';
 
 describe('perfCollector duplicate', () => {
   it('does not overwrite existing window.__perf', () => {

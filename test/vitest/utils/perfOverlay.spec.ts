@@ -1,7 +1,6 @@
- 
 import { describe, it, expect } from 'vitest';
 
-import { setupPerfOverlay } from '../../../src/utils/perfOverlay';
+import { setupPerfOverlay } from '../../../src/utils/perfOverlay.js';
 
 describe('perfOverlay', () => {
   it('does nothing when perf is disabled', () => {

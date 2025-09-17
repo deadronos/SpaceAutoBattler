@@ -1,6 +1,5 @@
- 
 import { describe, it, expect, afterEach } from 'vitest';
-import { getFileWatcher } from '../../../src/utils/fileWatcher';
+import { getFileWatcher } from '../../../src/utils/fileWatcher.js';
 
 describe('FileWatcher HEAD ok', () => {
   // store original fetch reference (may be undefined in test env)

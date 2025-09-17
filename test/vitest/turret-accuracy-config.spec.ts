@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig';
+import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 
 function computeFinalInaccuracy(
   turretAccuracy: number | undefined,

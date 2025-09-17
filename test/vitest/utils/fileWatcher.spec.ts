@@ -6,7 +6,7 @@ describe('FileWatcher', () => {
     (globalThis as any).__STANDALONE = true;
     (globalThis as any).__INLINE_SVG_ASSETS = { foo: '<svg/>' };
 
-    const mod = await import('../../../src/utils/fileWatcher');
+    const mod = await import('../../../src/utils/fileWatcher.js');
     const { getFileWatcher } = mod as any;
     const watcher = getFileWatcher();
 
@@ -36,7 +36,7 @@ describe('FileWatcher', () => {
       .fn()
       .mockResolvedValue({ ok: false, headers: { get: () => null } });
 
-    const mod = await import('../../../src/utils/fileWatcher');
+    const mod = await import('../../../src/utils/fileWatcher.js');
     const { getFileWatcher } = mod as any;
     const watcher = getFileWatcher();
 

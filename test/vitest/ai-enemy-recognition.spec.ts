@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createMockGameState, createMockShip, getTestDtFromState } from './setupTests.js';
-import { AIController } from '../../src/core/aiController';
-import type { GameState, Ship } from '../../src/types';
+import { AIController } from '../../src/core/aiController.js';
+import type { GameState, Ship } from '../../src/types/index.js';
 import { DEFAULT_BEHAVIOR_CONFIG } from '../../src/config/behaviorConfig.js';
 import { SHIP_CLASS_CONFIGS } from '../../src/config/entitiesConfig.js';
 

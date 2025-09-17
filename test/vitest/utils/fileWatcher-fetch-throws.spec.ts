@@ -1,4 +1,4 @@
-import { getFileWatcher } from '../../../src/utils/fileWatcher';
+import { getFileWatcher } from '../../../src/utils/fileWatcher.js';
 
 describe('FileWatcher fetch throwing', () => {
   let originalFetch: unknown;

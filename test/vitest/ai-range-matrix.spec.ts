@@ -1,6 +1,6 @@
 /* global process */
 import { test } from 'vitest';
-import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState';
+import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 
 test('AI engagement vs distance matrix', () => {
   process.env.DEBUG_AI = '1';

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getTargetUpdateRate, getIntentReevaluationRate } from './setupTests';
+import { getTargetUpdateRate, getIntentReevaluationRate } from './setupTests.js';
 import { DefaultSimConfig } from '../../src/config/simConfig.js';
 import { SpatialGrid } from '../../src/utils/spatialGrid.js';
 import type { GameState, Ship } from '../../src/types/index.js';
@@ -31,7 +31,7 @@ function makeState(): GameState {
   // Initialize minimal spatial grid so AIController can build spatial optimizer
   // and perform neighbor/nearest queries deterministically in tests.
   // Use sim.spatialGrid.cellSize and sim.simBounds from DefaultSimConfig.
-   
+
   (state as any).spatialGrid = new SpatialGrid(sim.spatialGrid.cellSize, sim.simBounds);
   state.shipIndex = new Map();
   return state;
