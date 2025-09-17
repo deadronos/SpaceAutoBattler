@@ -1,0 +1,524 @@
+{
+  "version": 1,
+  "generatedAt": "2025-09-17T17:12:17.913Z",
+  "minFrames": 240,
+  "settleMs": 1000,
+  "scenarios": [
+    {
+      "shipCount": 20,
+      "summary": {
+        "frameCount": 56,
+        "totalFrameMs": 11177.2,
+        "avgFrameMs": 199.59,
+        "p95FrameMs": 520.8,
+        "subsystems": [
+          {
+            "name": "frame.total",
+            "totalMs": 2902.2000000178814,
+            "count": 35,
+            "avgMs": 82.92,
+            "p95Ms": 172
+          },
+          {
+            "name": "simulation.step",
+            "totalMs": 1913.5,
+            "count": 35,
+            "avgMs": 54.67,
+            "p95Ms": 105.4
+          },
+          {
+            "name": "ai.total",
+            "totalMs": 1886.4000000357628,
+            "count": 56,
+            "avgMs": 33.69,
+            "p95Ms": 41.4
+          },
+          {
+            "name": "ai.individual",
+            "totalMs": 1179.3999999761581,
+            "count": 56,
+            "avgMs": 21.06,
+            "p95Ms": 28
+          },
+          {
+            "name": "renderer.total",
+            "totalMs": 986.2000000476837,
+            "count": 35,
+            "avgMs": 28.18,
+            "p95Ms": 74
+          },
+          {
+            "name": "renderer.effects",
+            "totalMs": 837.700000077486,
+            "count": 35,
+            "avgMs": 23.93,
+            "p95Ms": 67.2
+          },
+          {
+            "name": "ai.spatial",
+            "totalMs": 703.3999999463558,
+            "count": 56,
+            "avgMs": 12.56,
+            "p95Ms": 14.1
+          },
+          {
+            "name": "ai.batched",
+            "totalMs": 684.7999999821186,
+            "count": 55,
+            "avgMs": 12.45,
+            "p95Ms": 13.8
+          },
+          {
+            "name": "renderer.skybox",
+            "totalMs": 28.39999994635582,
+            "count": 35,
+            "avgMs": 0.81,
+            "p95Ms": 2.5
+          },
+          {
+            "name": "renderer.sync",
+            "totalMs": 26.5,
+            "count": 35,
+            "avgMs": 0.76,
+            "p95Ms": 1
+          },
+          {
+            "name": "projectiles.update",
+            "totalMs": 8.300000101327896,
+            "count": 56,
+            "avgMs": 0.15,
+            "p95Ms": 0.3
+          },
+          {
+            "name": "spatial.update",
+            "totalMs": 5.89999994635582,
+            "count": 56,
+            "avgMs": 0.11,
+            "p95Ms": 0.3
+          },
+          {
+            "name": "renderer.healthbars",
+            "totalMs": 3.3000000417232513,
+            "count": 35,
+            "avgMs": 0.09,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "ai.teams",
+            "totalMs": 3.1000000536441803,
+            "count": 56,
+            "avgMs": 0.06,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.camera",
+            "totalMs": 2.5000000596046448,
+            "count": 35,
+            "avgMs": 0.07,
+            "p95Ms": 0.2
+          },
+          {
+            "name": "game.deaths",
+            "totalMs": 2.5,
+            "count": 56,
+            "avgMs": 0.04,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "ui.stats",
+            "totalMs": 1.0999999642372131,
+            "count": 35,
+            "avgMs": 0.03,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "turrets.fire",
+            "totalMs": 0.8999999761581421,
+            "count": 56,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.particles",
+            "totalMs": 0.5999999940395355,
+            "count": 35,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "game.carriers",
+            "totalMs": 0.29999998211860657,
+            "count": 56,
+            "avgMs": 0.01,
+            "p95Ms": 0
+          },
+          {
+            "name": "game.respawn",
+            "totalMs": 0.20000001788139343,
+            "count": 35,
+            "avgMs": 0.01,
+            "p95Ms": 0
+          },
+          {
+            "name": "game.cleanup",
+            "totalMs": 0,
+            "count": 56,
+            "avgMs": 0,
+            "p95Ms": 0
+          }
+        ]
+      },
+      "counts": {
+        "totalShips": 20,
+        "redShips": 10,
+        "blueShips": 10
+      },
+      "settleMs": 1000,
+      "minFrames": 240
+    },
+    {
+      "shipCount": 40,
+      "summary": {
+        "frameCount": 53,
+        "totalFrameMs": 11656.5,
+        "avgFrameMs": 219.93,
+        "p95FrameMs": 516.8,
+        "subsystems": [
+          {
+            "name": "frame.total",
+            "totalMs": 3057.0999998748302,
+            "count": 38,
+            "avgMs": 80.45,
+            "p95Ms": 152
+          },
+          {
+            "name": "simulation.step",
+            "totalMs": 2060.900000035763,
+            "count": 38,
+            "avgMs": 54.23,
+            "p95Ms": 106.4
+          },
+          {
+            "name": "ai.total",
+            "totalMs": 1962.5000000596046,
+            "count": 53,
+            "avgMs": 37.03,
+            "p95Ms": 47.4
+          },
+          {
+            "name": "ai.individual",
+            "totalMs": 1265.8000000715256,
+            "count": 53,
+            "avgMs": 23.88,
+            "p95Ms": 33
+          },
+          {
+            "name": "renderer.total",
+            "totalMs": 993.8999998867512,
+            "count": 38,
+            "avgMs": 26.16,
+            "p95Ms": 74.1
+          },
+          {
+            "name": "renderer.effects",
+            "totalMs": 852.1999999582767,
+            "count": 38,
+            "avgMs": 22.43,
+            "p95Ms": 68
+          },
+          {
+            "name": "ai.spatial",
+            "totalMs": 691.9999999403954,
+            "count": 53,
+            "avgMs": 13.06,
+            "p95Ms": 14.6
+          },
+          {
+            "name": "ai.batched",
+            "totalMs": 672.9999999701977,
+            "count": 52,
+            "avgMs": 12.94,
+            "p95Ms": 14.3
+          },
+          {
+            "name": "renderer.sync",
+            "totalMs": 42.199999898672104,
+            "count": 38,
+            "avgMs": 1.11,
+            "p95Ms": 3.3
+          },
+          {
+            "name": "renderer.skybox",
+            "totalMs": 28.900000035762787,
+            "count": 38,
+            "avgMs": 0.76,
+            "p95Ms": 2.3
+          },
+          {
+            "name": "projectiles.update",
+            "totalMs": 9.799999952316284,
+            "count": 53,
+            "avgMs": 0.18,
+            "p95Ms": 0.3
+          },
+          {
+            "name": "spatial.update",
+            "totalMs": 5.800000011920929,
+            "count": 53,
+            "avgMs": 0.11,
+            "p95Ms": 0.2
+          },
+          {
+            "name": "ai.teams",
+            "totalMs": 3.3000000715255737,
+            "count": 53,
+            "avgMs": 0.06,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "game.deaths",
+            "totalMs": 3.0000000298023224,
+            "count": 53,
+            "avgMs": 0.06,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.particles",
+            "totalMs": 1.100000113248825,
+            "count": 38,
+            "avgMs": 0.03,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.camera",
+            "totalMs": 1.0999999940395355,
+            "count": 38,
+            "avgMs": 0.03,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "game.carriers",
+            "totalMs": 0.8999999761581421,
+            "count": 53,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.healthbars",
+            "totalMs": 0.8999999761581421,
+            "count": 38,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "ui.stats",
+            "totalMs": 0.8999999761581421,
+            "count": 38,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "turrets.fire",
+            "totalMs": 0.8999999463558197,
+            "count": 53,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "game.respawn",
+            "totalMs": 0.30000001192092896,
+            "count": 38,
+            "avgMs": 0.01,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "game.cleanup",
+            "totalMs": 0,
+            "count": 53,
+            "avgMs": 0,
+            "p95Ms": 0
+          }
+        ]
+      },
+      "counts": {
+        "totalShips": 40,
+        "redShips": 20,
+        "blueShips": 20
+      },
+      "settleMs": 1000,
+      "minFrames": 240
+    },
+    {
+      "shipCount": 80,
+      "summary": {
+        "frameCount": 75,
+        "totalFrameMs": 27629.9,
+        "avgFrameMs": 368.4,
+        "p95FrameMs": 1352.4,
+        "subsystems": [
+          {
+            "name": "frame.total",
+            "totalMs": 6718.700000077486,
+            "count": 16,
+            "avgMs": 419.92,
+            "p95Ms": 508.7
+          },
+          {
+            "name": "simulation.step",
+            "totalMs": 6157.100000113249,
+            "count": 16,
+            "avgMs": 384.82,
+            "p95Ms": 429.8
+          },
+          {
+            "name": "ai.total",
+            "totalMs": 5868.499999910593,
+            "count": 75,
+            "avgMs": 78.25,
+            "p95Ms": 109.3
+          },
+          {
+            "name": "ai.individual",
+            "totalMs": 3917.3000001609325,
+            "count": 75,
+            "avgMs": 52.23,
+            "p95Ms": 82.5
+          },
+          {
+            "name": "ai.spatial",
+            "totalMs": 1945.3999997973442,
+            "count": 75,
+            "avgMs": 25.94,
+            "p95Ms": 28.8
+          },
+          {
+            "name": "ai.batched",
+            "totalMs": 1905.7999999523163,
+            "count": 74,
+            "avgMs": 25.75,
+            "p95Ms": 28.4
+          },
+          {
+            "name": "renderer.total",
+            "totalMs": 560.0999999344349,
+            "count": 16,
+            "avgMs": 35.01,
+            "p95Ms": 81.1
+          },
+          {
+            "name": "renderer.effects",
+            "totalMs": 444.7999999523163,
+            "count": 16,
+            "avgMs": 27.8,
+            "p95Ms": 73.1
+          },
+          {
+            "name": "renderer.sync",
+            "totalMs": 35.499999940395355,
+            "count": 16,
+            "avgMs": 2.22,
+            "p95Ms": 3.2
+          },
+          {
+            "name": "renderer.skybox",
+            "totalMs": 21.799999982118607,
+            "count": 16,
+            "avgMs": 1.36,
+            "p95Ms": 4.3
+          },
+          {
+            "name": "game.deaths",
+            "totalMs": 16.300000071525574,
+            "count": 75,
+            "avgMs": 0.22,
+            "p95Ms": 1.3
+          },
+          {
+            "name": "projectiles.update",
+            "totalMs": 12.899999886751175,
+            "count": 75,
+            "avgMs": 0.17,
+            "p95Ms": 0.5
+          },
+          {
+            "name": "spatial.update",
+            "totalMs": 11.59999993443489,
+            "count": 75,
+            "avgMs": 0.15,
+            "p95Ms": 0.3
+          },
+          {
+            "name": "ai.teams",
+            "totalMs": 4.600000023841858,
+            "count": 75,
+            "avgMs": 0.06,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "turrets.fire",
+            "totalMs": 3.0999999940395355,
+            "count": 75,
+            "avgMs": 0.04,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.particles",
+            "totalMs": 2.800000011920929,
+            "count": 16,
+            "avgMs": 0.18,
+            "p95Ms": 0.4
+          },
+          {
+            "name": "game.carriers",
+            "totalMs": 1.199999988079071,
+            "count": 75,
+            "avgMs": 0.02,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "ui.stats",
+            "totalMs": 1.1000000536441803,
+            "count": 16,
+            "avgMs": 0.07,
+            "p95Ms": 0.2
+          },
+          {
+            "name": "renderer.camera",
+            "totalMs": 0.8999999761581421,
+            "count": 16,
+            "avgMs": 0.06,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "renderer.healthbars",
+            "totalMs": 0.4000000059604645,
+            "count": 16,
+            "avgMs": 0.03,
+            "p95Ms": 0.1
+          },
+          {
+            "name": "game.cleanup",
+            "totalMs": 0,
+            "count": 75,
+            "avgMs": 0,
+            "p95Ms": 0
+          },
+          {
+            "name": "game.respawn",
+            "totalMs": 0,
+            "count": 16,
+            "avgMs": 0,
+            "p95Ms": 0
+          }
+        ]
+      },
+      "counts": {
+        "totalShips": 80,
+        "redShips": 40,
+        "blueShips": 40
+      },
+      "settleMs": 1000,
+      "minFrames": 240
+    }
+  ]
+}

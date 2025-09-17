@@ -262,6 +262,48 @@ export function initGame(seed?: string) {
         return null;
       }
     },
+    configurePerfScenario: (options?: {
+      totalShips?: number;
+      redShips?: number;
+      blueShips?: number;
+      seed?: string;
+      running?: boolean;
+    }) => {
+      try {
+        const opts = options ?? {};
+        const toCount = (value: unknown): number | undefined => {
+          if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return undefined;
+          }
+          return Math.max(0, Math.floor(value));
+        };
+        const requestedTotal = toCount(opts.totalShips);
+        const redCount = toCount(opts.redShips) ?? (requestedTotal !== undefined
+          ? Math.floor(requestedTotal / 2)
+          : FleetConfig.spawning.defaultFleetSize);
+        const blueCount = toCount(opts.blueShips) ?? (requestedTotal !== undefined
+          ? Math.max(0, requestedTotal - redCount)
+          : FleetConfig.spawning.defaultFleetSize);
+        const totalShips = requestedTotal ?? redCount + blueCount;
+
+        _resetState(state as unknown as _GameStateType, opts.seed);
+        spawnFleet(state, 'red', redCount);
+        spawnFleet(state, 'blue', blueCount);
+        reFormFleets(state);
+
+        state.running = opts.running ?? true;
+        state.speedMultiplier = 1;
+
+        return {
+          totalShips,
+          redShips: redCount,
+          blueShips: blueCount,
+        };
+      } catch (err) {
+        console.warn('[__appDebug] configurePerfScenario failed', err);
+        return null;
+      }
+    },
     // Helpers to manually trigger FX for debugging
     triggerExplosion: (pos?: { x: number; y: number; z: number }, intensity = 1.0) => {
       try {
@@ -692,3 +734,5 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   initGame();
 });
+
+
