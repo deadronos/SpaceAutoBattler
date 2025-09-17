@@ -295,13 +295,13 @@ export const DefaultRendererConfig: RendererConfig = {
     },
     explosion: {
       enabled: true,
-      countPerRadius: 18, // base particles per world-unit radius
-      minCount: 8,
+      countPerRadius: 30, // base particles per world-unit radius
+      minCount: 25,
       maxCount: 200,
       lifetime: 1.2,
       size: {
-        min: 0.02,
-        max: 0.25,
+        min: 0.25,
+        max: 0.5,
       },
       velocity: {
         radial: { min: 40, max: 240 },
@@ -310,7 +310,7 @@ export const DefaultRendererConfig: RendererConfig = {
       colors: ['#fffbda', '#ff8c00', '#440000'],
       pooling: { initial: 256, growTo: 2048 },
       lod: {
-        enabled: false, // disabled by default for compatibility
+        enabled: true, // disabled by default for compatibility
         distanceThresholds: [500, 1500, 3000], // distances for LOD0, LOD1, LOD2
         particleScaling: [1.0, 0.6, 0.3], // particle count multipliers at each LOD
       },

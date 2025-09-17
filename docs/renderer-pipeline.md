@@ -121,6 +121,8 @@ The renderer supports smooth visual interpolation between simulation steps to re
 
 - **Toggle**: Set rendererConfig.enableInterpolation = false to disable and render at exact sim positions (useful for debugging or low-FPS targets).
 
+- **Toggle**: Set `rendererConfig.enableInterpolation = false` (see `src/config/rendererConfig.ts`) to disable and render at exact sim positions (useful for debugging or low-FPS targets).
+
 - **Plan details**: See plan/feature-interpolation-renderer-1.md for implementation phases, types, and validation.
 
 - **Performance**: Minimal overhead; reuses existing transforms. Tested with determinism preserved (unit tests green).

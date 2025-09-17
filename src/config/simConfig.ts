@@ -37,10 +37,10 @@ export const DefaultSimConfig: SimConfig = {
   simBounds: { width: 1920, height: 1920, depth: 1920 },
   tickRate: 10,
   maxEntities: 50000,
-  bulletLifetime: 5.0, // bullets live for 3 seconds
+  bulletLifetime: 5.0, // bullets live for 5 seconds
   maxSimulationSteps: 5, // max steps per frame to prevent spiral of death
   useBVH: true, // use Bounding Volume Hierarchy for collision detection
-  targetUpdateRate: 0.3, // AI updates targets every 0.5 seconds
+  targetUpdateRate: 0.3, // AI updates targets every 0.3 seconds
   intentReevaluationRate: 0.3, // AI reevaluates intent every 0.3 seconds
   boundaryBehavior: {
     ships: 'bounce', // ships bounce off boundaries
