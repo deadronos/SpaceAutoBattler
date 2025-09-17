@@ -22,15 +22,35 @@ export interface UnifiedEffectsManager {
   handleHitEffect: (position: { x: number; y: number; z: number }, intensity?: number) => void;
   setQuality: (quality: 'low' | 'medium' | 'high') => void;
   dispose: () => void;
+  // Optional debug for tests
+  getDebug?: () => { queuedExplosions: number; queuedHitSparks: number };
+}
+export interface UnifiedEffectsDeps {
+  effects?: EffectsManager;
+  animation?: AnimationManager;
+  bvh?: BVHManager;
 }
 
-export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsManager {
+export function createUnifiedEffectsManager(
+  state: GameState,
+  deps?: UnifiedEffectsDeps,
+): UnifiedEffectsManager {
   // Create individual managers
   // Note: Effects manager will be created lazily when renderer is available
-  let effects: EffectsManager | null = null;
+  let effects: EffectsManager | null = deps?.effects ?? null;
 
-  const animation = createAnimationManager(state);
-  const bvh = createBVHManager(state);
+  const animation = deps?.animation ?? createAnimationManager(state);
+  const bvh = deps?.bvh ?? createBVHManager(state);
+  // Queue for explosion effects when effects manager isn't ready yet
+  const queuedExplosions: Array<{
+    position: { x: number; y: number; z: number };
+    intensity: number;
+  }> = [];
+  // Queue for hit sparks when effects manager isn't ready
+  const queuedHitSparks: Array<{
+    position: { x: number; y: number; z: number };
+    opts?: { intensity?: number };
+  }> = [];
 
   // Initialize effects manager when renderer becomes available
   function ensureEffectsManager() {
@@ -62,6 +82,40 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     if (effects && effects.initDone) {
       effects.render(dt);
     }
+
+    // Flush any queued explosion visual effects once effects are ready
+    try {
+      if (effects && effects.initDone && queuedExplosions.length > 0) {
+        // Drain the queue
+        const toFlush = queuedExplosions.splice(0, queuedExplosions.length);
+        for (const item of toFlush) {
+          try {
+            effects.addExplosionEffect(item.position, item.intensity);
+            console.info(
+              '[UnifiedEffectsManager] flushed queued explosion',
+              item.position,
+              item.intensity,
+            );
+          } catch (err) {
+            console.warn('[UnifiedEffectsManager] failed to flush queued explosion', err);
+          }
+        }
+      }
+      // Flush queued hit sparks as well
+      if (effects && effects.initDone && queuedHitSparks.length > 0) {
+        const toFlushHits = queuedHitSparks.splice(0, queuedHitSparks.length);
+        for (const h of toFlushHits) {
+          try {
+            effects.addHitSpark(h.position, h.opts);
+            console.info('[UnifiedEffectsManager] flushed queued hitSpark', h.position, h.opts);
+          } catch (err) {
+            console.warn('[UnifiedEffectsManager] failed to flush queued hitSpark', err);
+          }
+        }
+      }
+    } catch (_e) {
+      void _e;
+    }
   }
 
   async function handleShipSpawn(ship: Ship) {
@@ -83,7 +137,7 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
     try {
       // Prefer a dedicated hit-spark if the effects manager exposes it.
       // This is cheaper and visually tuned for frequent hits.
-      if (effects && typeof effects.addHitSpark === 'function') {
+      if (effects && effects.initDone && typeof effects.addHitSpark === 'function') {
         try {
           effects.addHitSpark(position, { intensity: clamped * 0.8 });
           console.debug(
@@ -94,12 +148,24 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
         } catch (_e) {
           void _e;
         }
-      } else if (effects && typeof effects.addExplosionEffect === 'function') {
+      } else if (effects && effects.initDone && typeof effects.addExplosionEffect === 'function') {
         // Fallback: reuse small explosion effect if hit-spark isn't available
         try {
           effects.addExplosionEffect(position, clamped * 0.25);
           console.debug(
             '[UnifiedEffectsManager] handleHitEffect -> effects.addExplosionEffect (small)',
+            position,
+            clamped,
+          );
+        } catch (_e) {
+          void _e;
+        }
+      } else {
+        // Effects not ready yet: queue hit spark for later flush
+        try {
+          queuedHitSparks.push({ position, opts: { intensity: clamped * 0.8 } });
+          console.debug(
+            '[UnifiedEffectsManager] queued hitSpark (effects not ready)',
             position,
             clamped,
           );
@@ -149,9 +215,17 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
       promises.push(animation.animateExplosion(position, intensity));
     }
 
-    // Postprocessing effects
+    // Postprocessing effects: if effects manager isn't ready, queue the visual
     if (effects && effects.initDone) {
       effects.addExplosionEffect(position, intensity);
+    } else {
+      // Queue the effect and continue (animation/camera still run)
+      queuedExplosions.push({ position, intensity });
+      console.debug(
+        '[UnifiedEffectsManager] queued explosion (effects not ready)',
+        position,
+        intensity,
+      );
     }
 
     // Camera shake
@@ -217,5 +291,9 @@ export function createUnifiedEffectsManager(state: GameState): UnifiedEffectsMan
       animation.dispose();
       bvh.dispose();
     },
+    getDebug: () => ({
+      queuedExplosions: queuedExplosions.length,
+      queuedHitSparks: queuedHitSparks.length,
+    }),
   };
 }
