@@ -54,10 +54,19 @@ export function createUnifiedEffectsManager(
 
   // Initialize effects manager when renderer becomes available
   function ensureEffectsManager() {
-    if (!effects && state.renderer) {
-      // We need to access the internal Three.js objects
-      // This requires extending the renderer or accessing through a different method
-      // For now, create a basic effects manager that can be enhanced later
+    if (effects) return; // already wired (injected or previously resolved)
+    // Prefer the renderer's internal effects manager when exposed
+    if (!effects && state.renderer && state.renderer.effectsManager) {
+      try {
+        effects = state.renderer.effectsManager ?? null;
+      } catch {
+        effects = null;
+      }
+    }
+
+    // If still not available, provide a safe no-op implementation until the
+    // renderer is ready. This prevents calls from throwing in headless/tests.
+    if (!effects) {
       effects = {
         initDone: false,
         render: () => {},
@@ -68,7 +77,7 @@ export function createUnifiedEffectsManager(
         enableDepthOfField: () => {},
         addExplosionEffect: () => {},
         addHitSpark: () => {},
-      };
+      } as EffectsManager;
     }
   }
 
