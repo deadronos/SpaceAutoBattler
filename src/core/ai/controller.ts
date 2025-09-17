@@ -71,7 +71,7 @@ export class AIController {
   
   // Adaptive scheduling state
   private shipScheduling = new Map<EntityId, SchedulingInfo>();
-  private enableAdaptiveScheduling = true; // Can be toggled for testing
+  private enableAdaptiveScheduling = false; // Disabled by default to preserve test determinism; can be toggled for testing
 
   constructor(state: GameState, aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer) {
     this.state = state;
@@ -463,6 +463,12 @@ export class AIController {
     });
 
     // IMPROVED: Validate existing ship.targetId first (persistence), then turret targets
+    if (VITEST_AI_DEBUG) {
+      try {
+        const has = this.state.shipIndex ? this.state.shipIndex.has(ship.targetId as any) : false;
+        console.error(`[AIController] start-validate ship=${ship.id} targetId=${String(ship.targetId)} shipIndexHasTarget=${has}`);
+      } catch {}
+    }
     let validatedFirstTarget: number | null =
       ship.targetId != null ? (ship.targetId as number) : firstTarget;
     if (validatedFirstTarget != null) {

@@ -22,17 +22,25 @@ export function getDistance(a: Vector3, b: Vector3): number {
 // Enhanced per-tick target cache with more comprehensive caching.
 // Cache nearest enemies, nearby results, and spatial queries to avoid redundant work.
 const searchCache = {
-  nearest: new Map<number, { frame: number; targetId: number | null }>(),
+  // Use a composite epoch key (tick:frame) so tests or loops that advance
+  // either `tick` or legacy `frame` will correctly invalidate cached results.
+  nearest: new Map<number, { epoch: string; targetId: number | null }>(),
   nearby: new Map<string, { frame: number; results: Ship[] }>(),
   separation: new Map<number, { frame: number; pos: Vector3; neighbors: Ship[] }>(),
 };
 
 export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
+  const DEBUG = typeof process !== 'undefined' && process.env.VITEST_AI_DEBUG === '1';
   // Enhanced per-frame cache: if we've already resolved a nearest enemy for this ship
   // during the current frame, reuse it to avoid multiple queryKNearest calls.
-  const frame = (state as { frame?: number }).frame ?? 0;
+  // Use state's tick if available (AIController uses tick), otherwise fall
+  // back to state.frame for tests that set a `frame` property directly.
+  const tick = (state as { tick?: number; frame?: number }).tick ?? 0;
+  const frame = (state as { tick?: number; frame?: number }).frame ?? 0;
+  const epoch = `${tick}:${frame}`;
   const cached = searchCache.nearest.get(ship.id);
-  if (cached && cached.frame === frame) {
+  if (cached && cached.epoch === epoch) {
+    if (DEBUG) console.error(`[searchUtils] cache-hit ship=${ship.id} epoch=${epoch} target=${String(cached.targetId)}`);
     return cached.targetId != null ? state.shipIndex?.get(cached.targetId) || null : null;
   }
   if (state.spatialGrid && state.behaviorConfig?.globalSettings.enableSpatialIndex) {
@@ -57,22 +65,30 @@ export function findNearestEnemy(state: GameState, ship: Ship): Ship | null {
       }
     }
     const res = state.shipIndex?.get(best.id) || null;
-    searchCache.nearest.set(ship.id, { frame, targetId: res?.id ?? null });
+    if (DEBUG) console.error(`[searchUtils] spatial-path ship=${ship.id} best=${res?.id ?? 'null'} epoch=${epoch}`);
+    searchCache.nearest.set(ship.id, { epoch, targetId: res?.id ?? null });
     return res;
   }
 
   // Linear fallback
+  // Keep squared distance to avoid Math.sqrt per iteration
   let best: Ship | null = null;
-  let bestD = Infinity;
+  let bestD2 = Infinity;
   for (const s of state.ships) {
     if (s.team === ship.team || s.health <= 0) continue;
     const d2 = distanceSq(ship.pos, s.pos);
-    if (d2 < bestD * bestD) {
-      bestD = Math.sqrt(d2);
+    // Deterministic tie-breaker: prefer lower id when distances are equal
+    if (
+      d2 < bestD2 ||
+      (d2 === bestD2 && best != null && s.id < best.id) ||
+      (d2 === bestD2 && best == null)
+    ) {
+      bestD2 = d2;
       best = s;
     }
   }
-  searchCache.nearest.set(ship.id, { frame, targetId: best?.id ?? null });
+  if (DEBUG) console.error(`[searchUtils] linear-path ship=${ship.id} best=${best?.id ?? 'null'} epoch=${epoch}`);
+  searchCache.nearest.set(ship.id, { epoch, targetId: best?.id ?? null });
   return best;
 }
 
