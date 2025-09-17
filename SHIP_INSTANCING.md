@@ -16,6 +16,8 @@ The ship instancing system replaces individual ship meshes with InstancedMesh re
 - **Async Asset Loading**: Ships start as placeholders and upgrade to textured when SVG assets load
 - **Dynamic Capacity**: Automatic capacity growth when instance limits are reached
 - **Proper Cleanup**: Handles ship removal and resource disposal correctly
+- **Group Frustum Culling**: Bounding-sphere culling disables entire groups outside the active camera frustum
+- **Transform Coalescing**: Per-instance transform state skips GPU uploads when the change is below epsilon thresholds
 
 ### 🏗️ Architecture
 
@@ -102,7 +104,7 @@ console.log('Group Stats:', stats.groups);
 
 1. **Simplified Submeshes**: Current implementation uses basic ship parts
 2. **Static Materials**: Materials are not yet dynamically updated per ship
-3. **Culling**: InstancedMeshes are culled as a group (may need subdivision)
+3. **Culling Granularity**: Groups use a single bounding sphere (no spatial subdivision yet)
 4. **Asset Dependencies**: Requires proper SVG asset loading infrastructure
 
 ## Future Enhancements
@@ -110,7 +112,7 @@ console.log('Group Stats:', stats.groups);
 - [ ] More detailed ship submesh decomposition
 - [ ] Per-instance material variations (damage, upgrades)
 - [ ] Spatial subdivision for better culling
-- [ ] Performance metrics and benchmarking
+- [x] Performance metrics and benchmarking (`npm run perf:instancer`)
 - [ ] Level-of-detail (LOD) integration
 - [ ] Support for animated ship parts
 
@@ -143,6 +145,23 @@ state.ships.forEach((s) => console.log(`${s.class}_${s.team}`));
 - `src/renderer/threeRenderer.ts` - Integration point
 - `src/config/rendererConfig.ts` - Configuration
 - `test/vitest/ship-instancer.spec.ts` - Unit tests
+- `scripts/perf/ship-instancer-harness.mjs` - Automated performance harness
+
+### Performance Harness
+
+Run `npm run perf:instancer` to launch a headless Playwright session that:
+
+1. Builds the production bundle (unless `PERF_SKIP_BUILD=1`)
+2. Spawns a static server for `dist/`
+3. Loads the game with `debugPerf` enabled and spawns the configured number of ships (default 400)
+4. Captures renderer subsystem timings plus ship-instancer stats
+5. Writes a JSON report to `perf/runs/ship-instancer-<timestamp>.json`
+
+Tune the harness via environment variables:
+
+```bash
+INSTANCER_SHIP_COUNT=600 INSTANCER_MIN_FRAMES=360 npm run perf:instancer
+```
 
 ### Integration Points
 

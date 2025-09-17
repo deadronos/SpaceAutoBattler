@@ -6,6 +6,12 @@ import type { GameState } from '../types/index.js';
 
 type Float3 = { x: number; y: number; z: number };
 
+type InstanceTransformState = {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  scale: number;
+};
+
 type GroupData = {
   className: string;
   team?: string;
@@ -23,6 +29,8 @@ type GroupData = {
   boundsCenter: THREE.Vector3;
   boundsRadius: number;
   boundsDirty: boolean;
+  lastTransforms: Map<number, InstanceTransformState>;
+  dirtyRange: { min: number; max: number } | null;
 };
 
 class ShipInstancerImpl {
@@ -126,6 +134,24 @@ class ShipInstancerImpl {
   // Reusable temporaries to avoid per-frame allocations
   private tmpMatrix = new THREE.Matrix4();
   private tmpQuat = new THREE.Quaternion();
+  private readonly positionEpsilonSq = 1e-6;
+  private readonly quaternionEpsilon = 1e-5;
+  private readonly scaleEpsilon = 1e-4;
+
+  private markDirtyRange(group: GroupData, index: number) {
+    if (!group.dirtyRange) {
+      group.dirtyRange = { min: index, max: index };
+    } else {
+      if (index < group.dirtyRange.min) group.dirtyRange.min = index;
+      if (index > group.dirtyRange.max) group.dirtyRange.max = index;
+    }
+    group.matricesNeedUpdate = true;
+  }
+
+  private markFullRangeDirty(group: GroupData) {
+    group.dirtyRange = { min: 0, max: Math.max(0, group.capacity - 1) };
+    group.matricesNeedUpdate = true;
+  }
 
   init(scene: THREE.Scene, parent: THREE.Group) {
     console.log(`ShipInstancer.init called with scene: ${!!scene}, parent: ${!!parent}`);
@@ -460,10 +486,15 @@ class ShipInstancerImpl {
     // Reuse a shared identity matrix to avoid allocations
     this.tmpMatrix.identity();
     for (const m of group.meshes) m.setMatrixAt(idx, this.tmpMatrix);
+    this.markDirtyRange(group, idx);
     // initialize tracked position
     group.positions.set(shipId, new THREE.Vector3());
+    group.lastTransforms.set(shipId, {
+      position: new THREE.Vector3(),
+      quaternion: new THREE.Quaternion(),
+      scale: 1,
+    });
     group.boundsDirty = true;
-    group.matricesNeedUpdate = true;
     // Write per-instance team color into instanceColor attribute if available
     try {
       const hex =
@@ -498,11 +529,12 @@ class ShipInstancerImpl {
         group.freeIndices.push(idx);
         // remove tracked position and mark bounds dirty
         group.positions.delete(shipId);
+        group.lastTransforms.delete(shipId);
         group.boundsDirty = true;
         // Reuse tmpMatrix for clearing the instance (scale to zero)
         this.tmpMatrix.makeScale(0, 0, 0);
         for (const m of group.meshes) m.setMatrixAt(idx, this.tmpMatrix);
-        group.matricesNeedUpdate = true;
+        this.markDirtyRange(group, idx);
         return true;
       }
     }
@@ -546,14 +578,39 @@ class ShipInstancerImpl {
 
       this.tmpVec.set(pos.x, pos.y, pos.z);
       this.tmpScale.set(scale, scale, scale);
+      let state = g.lastTransforms.get(shipId);
+      if (!state) {
+        state = {
+          position: new THREE.Vector3(),
+          quaternion: new THREE.Quaternion(),
+          scale: Number.NaN,
+        };
+        g.lastTransforms.set(shipId, state);
+      }
+      const posChanged = state.position.distanceToSquared(this.tmpVec) > this.positionEpsilonSq;
+      const dot = Math.min(1, Math.max(-1, state.quaternion.dot(quat)));
+      const quatChanged = 1 - Math.abs(dot) > this.quaternionEpsilon;
+      const scaleChanged = !Number.isFinite(state.scale)
+        ? true
+        : Math.abs(state.scale - scale) > this.scaleEpsilon;
+
+      if (!posChanged && !quatChanged && !scaleChanged) return true;
+
       this.tmpMatrix.compose(this.tmpVec, quat, this.tmpScale);
       for (const mesh of g.meshes) mesh.setMatrixAt(idx, this.tmpMatrix);
-      g.matricesNeedUpdate = true;
-      // update coarse position and mark bounds dirty
-      const tr = g.positions.get(shipId);
-      if (tr) {
-        tr.copy(this.tmpVec);
-        g.boundsDirty = true;
+      this.markDirtyRange(g, idx);
+
+      state.position.copy(this.tmpVec);
+      state.quaternion.copy(quat);
+      state.scale = scale;
+
+      // update coarse position and mark bounds dirty when position changed
+      if (posChanged) {
+        const tr = g.positions.get(shipId);
+        if (tr) {
+          tr.copy(this.tmpVec);
+          g.boundsDirty = true;
+        }
       }
       return true;
     }
@@ -586,6 +643,17 @@ class ShipInstancerImpl {
 
   // Cull groups against camera frustum; toggles group.parentGroup.visible
   cull(camera: THREE.Camera) {
+    const hasMatrices =
+      camera &&
+      camera.projectionMatrix &&
+      camera.matrixWorldInverse &&
+      typeof (this.projScreenMatrix as unknown as { multiplyMatrices?: unknown }).multiplyMatrices === 'function';
+
+    if (!hasMatrices) {
+      for (const group of this.groups.values()) group.parentGroup.visible = group.positions.size > 0;
+      return;
+    }
+
     this.projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
 
@@ -598,28 +666,40 @@ class ShipInstancerImpl {
         continue;
       }
 
-      // If group has ships, we need to make it visible
-      // The original logic was too aggressive with frustum culling
-      // For now, make all groups with ships visible to fix the visibility issue
-      // TODO: Implement proper frustum culling that doesn't hide ships in view
-      group.parentGroup.visible = true;
-
-      // Original frustum culling code (temporarily disabled):
-      // this.tmpSphere.center.copy(group.boundsCenter);
-      // this.tmpSphere.radius = group.boundsRadius;
-      // group.parentGroup.visible = this.frustum.intersectsSphere(this.tmpSphere);
+      const center = group.boundsCenter;
+      const radius = Math.max(group.boundsRadius, 0);
+      if (!Number.isFinite(center.x) || !Number.isFinite(center.y) || !Number.isFinite(center.z)) {
+        group.parentGroup.visible = true;
+        continue;
+      }
+      this.tmpSphere.center.copy(center);
+      this.tmpSphere.radius = radius <= 0 ? 0.1 : radius;
+      const inView = this.frustum.intersectsSphere(this.tmpSphere);
+      group.parentGroup.visible = inView;
     }
   }
 
   markMatricesNeedUpdate() {
-    for (const g of this.groups.values()) g.matricesNeedUpdate = true;
+    for (const g of this.groups.values()) this.markFullRangeDirty(g);
   }
 
   sync() {
     for (const g of this.groups.values()) {
       if (!g.matricesNeedUpdate) continue;
-      for (const m of g.meshes) m.instanceMatrix.needsUpdate = true;
+      for (const m of g.meshes) {
+        const attr = m.instanceMatrix;
+        const updateRange = (attr as unknown as { updateRange?: { offset: number; count: number } }).updateRange;
+        if (g.dirtyRange && updateRange) {
+          updateRange.offset = g.dirtyRange.min * 16;
+          updateRange.count = (g.dirtyRange.max - g.dirtyRange.min + 1) * 16;
+        } else if (updateRange) {
+          updateRange.offset = 0;
+          updateRange.count = -1;
+        }
+        attr.needsUpdate = true;
+      }
       g.matricesNeedUpdate = false;
+      g.dirtyRange = null;
     }
   }
 
@@ -780,6 +860,8 @@ class ShipInstancerImpl {
       boundsCenter: new THREE.Vector3(),
       boundsRadius: 0,
       boundsDirty: false,
+      lastTransforms: new Map(),
+      dirtyRange: null,
     };
     // If this is the first created group and the instancer hasn't signaled ready,
     // mark it ready now so consumers relying on createGroup can begin using instanced paths.
@@ -879,7 +961,7 @@ class ShipInstancerImpl {
       }
       newMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       newMesh.name = `${group.className}_grown_submesh_${i}`;
-      newMesh.frustumCulled = true;
+      newMesh.frustumCulled = false;
       const tmp = new THREE.Matrix4();
       for (let idx = 0; idx < oldCap; idx++) {
         oldMesh.getMatrixAt(idx, tmp);
@@ -898,7 +980,7 @@ class ShipInstancerImpl {
     group.meshes = newMeshes;
     for (let i = newCap - 1; i >= oldCap; i--) group.freeIndices.push(i);
     group.capacity = newCap;
-    group.matricesNeedUpdate = true;
+    this.markFullRangeDirty(group);
   }
 }
 
