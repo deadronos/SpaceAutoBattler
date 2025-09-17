@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "lint-staged": "lint-staged",
     "test": "vitest --environment happy-dom",
     "serve": "http-server ./dist -c-1 -p 8080",
     "serve:root": "http-server . -c-1 -p 8080",
