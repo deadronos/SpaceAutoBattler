@@ -1,6 +1,7 @@
 // SVG Loader with change detection and caching
 // Handles loading SVG files, detecting changes, and rasterizing to ImageBitmap
 
+import * as THREE from 'three';
 import type { GameState as _GameState } from '../types/index.js';
 import { getFileWatcher } from '../utils/fileWatcher.js';
 import * as logger from '../utils/logger.js';
@@ -764,4 +765,53 @@ export async function loadSVGBitmap(
     throw new Error(`Failed to rasterize SVG: ${url}`);
   }
   return asset.imageBitmap;
+}
+
+/**
+ * Gets or creates a cached THREE.Texture for an SVG URL.
+ * Caches textures in state.assetPool to avoid repeated THREE.Texture creation.
+ * 
+ * @param url SVG file URL
+ * @param state GameState containing assetPool for caching
+ * @param options Optional SVG loading options (width, height, teamColor)
+ * @returns Cached or newly created THREE.Texture
+ */
+export async function getOrCreateTextureForSVG(
+  url: string,
+  state: _GameState,
+  options: SVGLoadOptions = {}
+): Promise<THREE.Texture> {
+  if (!state.assetPool) {
+    throw new Error('GameState.assetPool is required for texture caching');
+  }
+
+  // Create a cache key for the texture (distinct from ImageBitmap cache)
+  const cacheKey = `texture:${url}:${options.width || 'auto'}x${options.height || 'auto'}:${options.teamColor || 'default'}`;
+  
+  // Check if texture is already cached
+  const cached = state.assetPool.get(cacheKey) as THREE.Texture | undefined;
+  if (cached && cached instanceof THREE.Texture) {
+    logger.debug(`[SVGLoader] Using cached texture for ${url}`);
+    return cached;
+  }
+
+  // Load the SVG asset (this may use ImageBitmap cache internally)
+  logger.debug(`[SVGLoader] Creating new texture for ${url}`);
+  const asset = await loadSVGAsset(url, options);
+  
+  if (!asset.imageBitmap) {
+    throw new Error(`Failed to rasterize SVG for texture: ${url}`);
+  }
+
+  // Create the THREE.Texture
+  const texture = new THREE.Texture(asset.imageBitmap);
+  texture.needsUpdate = true;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+
+  // Cache the texture in assetPool
+  state.assetPool.set(cacheKey, texture);
+
+  return texture;
 }
