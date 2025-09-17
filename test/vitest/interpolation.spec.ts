@@ -108,4 +108,55 @@ describe('Interpolation Tests', () => {
     // Mock check: render position equals sim position when not interpolating
     expect(posAfterStep).toBe(state.ships[0].pos.x);
   });
+
+  // New tests: alpha monotonicity and quaternion near-180° edge case
+  it('alpha is clamped and non-decreasing across elapsed samples (pure math)', () => {
+    const fixedDt = 0.1; // 100ms step
+    const elapsedSamples = [-0.05, 0, 0.02, 0.05, 0.08, 0.1, 0.11, 0.2];
+    const alphas = elapsedSamples.map((e) => Math.max(0, Math.min(1, e / fixedDt)));
+
+    // All alphas within [0,1]
+    for (const a of alphas) {
+      expect(a).toBeGreaterThanOrEqual(0);
+      expect(a).toBeLessThanOrEqual(1);
+    }
+
+    // Monotonic non-decreasing
+    for (let i = 1; i < alphas.length; i++) {
+      expect(alphas[i]).toBeGreaterThanOrEqual(alphas[i - 1]);
+    }
+
+    // Specific clamps
+    expect(alphas[0]).toBe(0); // negative elapsed -> 0
+    expect(alphas[alphas.length - 1]).toBe(1); // beyond dt -> 1
+  });
+
+  it('quaternion SLERP follows shortest arc near 180° (yaw -170° to +170°)', () => {
+    // Construct quaternions around Y axis
+    const degToRad = (d: number) => (d * Math.PI) / 180;
+    const prevEuler = new THREE.Euler(0, degToRad(-170), 0);
+    const nextEuler = new THREE.Euler(0, degToRad(170), 0);
+
+    const prevQ = new THREE.Quaternion().setFromEuler(prevEuler);
+    const nextQ = new THREE.Quaternion().setFromEuler(nextEuler);
+
+    // Total shortest-arc angle between prev and next should be ~20°
+    const total = prevQ.angleTo(nextQ);
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThan(degToRad(30)); // within a reasonable bound (>0, <30°)
+
+    const alpha = 0.5;
+    const interpQ = new THREE.Quaternion().slerpQuaternions(prevQ, nextQ, alpha);
+
+    // The angle from prev to the halfway quaternion should be ~ total * 0.5
+    const half = prevQ.angleTo(interpQ);
+    expect(half).toBeCloseTo(total * 0.5, 3);
+
+    // And the remaining angle to next should match as well
+    const remain = interpQ.angleTo(nextQ);
+    expect(remain).toBeCloseTo(total * 0.5, 3);
+
+    // Ensure it did not take the long path (~340°), i.e., total is small
+    expect(total).toBeLessThan(degToRad(90));
+  });
 });

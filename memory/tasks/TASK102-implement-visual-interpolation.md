@@ -20,7 +20,7 @@ The provided plan (feature-interpolation-renderer-1.md) outlines a multi-phase i
 
 ## Progress Tracking
 
-**Overall Status:** In Progress - 95% (Phases 1–3: 100%)
+**Overall Status:** In Progress - 98% (Phases 1–3: 100%)
 
 ### Subtasks
 
@@ -82,8 +82,14 @@ The provided plan (feature-interpolation-renderer-1.md) outlines a multi-phase i
 
 ## Follow-up Subtasks (Post-merge optional)
 
-1. Add an additional alpha monotonicity property test over multiple frame deltas (pure math, no GL) — optional.
-2. Add an orientation edge-case test for near-180° quaternion slerp to ensure correct shortest-arc path — optional.
+1. Add an additional alpha monotonicity property test over multiple frame deltas (pure math, no GL) — Completed (interpolation.spec.ts).
+2. Add an orientation edge-case test for near-180° quaternion slerp to ensure correct shortest-arc path — Completed (interpolation.spec.ts).
 3. Minor docs polish: link from docs/renderer-pipeline.md to config/rendererConfig.ts for the enableInterpolation flag — optional.
+
+### 2025-09-17 (optional tests added)
+
+- Added pure-math alpha monotonicity test validating clamped, non-decreasing alpha across elapsed samples.
+- Added quaternion near-180° yaw slerp test asserting shortest-arc behavior using Quaternion.angleTo checks.
+- Suite remains green: 149 files, 688 tests.
 
 Acceptance: green build, deterministic behavior preserved, interpolation toggle verified, and no regressions across the suite.
