@@ -44,8 +44,11 @@ function addShip(state: GameState, team: 'red' | 'blue', pos = { x: 0, y: 0, z: 
     team,
     class: 'fighter',
     pos: { ...pos },
+    prevPos: { ...pos }, // Initialize for interpolation
     vel: { x: 0, y: 0, z: 0 },
     orientation: { pitch: 0, yaw: 0, roll: 0 },
+    prevOrientation: { pitch: 0, yaw: 0, roll: 0 }, // Initialize for interpolation
+    dir: 0,
     targetId: null,
     health: 100,
     maxHealth: 100,

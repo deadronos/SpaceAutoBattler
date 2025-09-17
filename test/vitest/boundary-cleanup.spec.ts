@@ -45,10 +45,11 @@ describe('Boundary cleanup', () => {
     // Add an out-of-bounds bullet object to state.bullets
     state.bullets.push({
       id: 9999,
-      ownerShipId: 0,
+      ownerShipId: 1,
       ownerTeam: 'red',
-      pos: { x: -9999, y: 0, z: 0 },
-      vel: { x: 0, y: 0, z: 0 },
+      pos: { x: 0, y: 0, z: 0 },
+      prevPos: { x: 0, y: 0, z: 0 }, // Initialize for interpolation
+      vel: { x: 100, y: 0, z: 0 },
       ttl: 10,
       damage: 1,
     });

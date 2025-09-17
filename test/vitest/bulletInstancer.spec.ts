@@ -130,6 +130,7 @@ describe('BulletInstancer', () => {
       id: bulletId,
       ownerShipId: 0,
       pos: { x: 10, y: 20, z: 30 },
+      prevPos: { x: 10, y: 20, z: 30 }, // Initialize for interpolation
       vel: { x: 1, y: 0, z: 0 },
       ttl: 5,
       damage: 1,
@@ -148,6 +149,7 @@ describe('BulletInstancer', () => {
       id: 999,
       ownerShipId: 0,
       pos: { x: 10, y: 20, z: 30 },
+      prevPos: { x: 10, y: 20, z: 30 }, // Initialize for interpolation
       vel: { x: 1, y: 0, z: 0 },
       ttl: 5,
       damage: 1,

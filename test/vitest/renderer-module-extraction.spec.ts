@@ -104,11 +104,8 @@ describe('Extracted Renderer Modules', () => {
         id: 1,
         ownerShipId: 1,
         ownerTeam: 'red' as const,
-        pos: {
-          x: TEST_DEFAULTS.simBounds.width * 0.02,
-          y: TEST_DEFAULTS.simBounds.height * 0.02,
-          z: TEST_DEFAULTS.simBounds.depth * 0.02,
-        },
+        pos: { x: 10, y: 10, z: 10 },
+        prevPos: { x: 10, y: 10, z: 10 }, // Initialize for interpolation
         vel: { x: 100, y: 0, z: 0 },
         ttl: 3,
         damage: defaultDamage,

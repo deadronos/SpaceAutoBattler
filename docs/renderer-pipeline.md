@@ -113,6 +113,18 @@ finally into the Three.js renderer’s per‑frame update loop.
 - Shader patching: ship instancer adds an `instanceColor` attribute and varies
   it into the fragment shader without clobbering existing `onBeforeCompile`.
 
+## Visual Interpolation
+
+The renderer supports smooth visual interpolation between simulation steps to reduce stutter when render FPS > sim TPS (default 60 FPS render vs 10 TPS sim).
+
+- **How it works**: At the start of each sim step (in core/gameState.ts simulateStep), entity prevPos/prevOrientation are captured from current state. In the renderer (threeRenderer.ts updateTransforms), positions are LERPed and orientations SLERPed using alpha = min(1, (state.time - lastSimTime) / fixedDt).
+
+- **Toggle**: Set rendererConfig.enableInterpolation = false to disable and render at exact sim positions (useful for debugging or low-FPS targets).
+
+- **Plan details**: See plan/feature-interpolation-renderer-1.md for implementation phases, types, and validation.
+
+- **Performance**: Minimal overhead; reuses existing transforms. Tested with determinism preserved (unit tests green).
+
 ## Key Files
 
 - Loader & Pool

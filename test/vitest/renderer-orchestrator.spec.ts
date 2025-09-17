@@ -116,6 +116,7 @@ describe('New Orchestrator Renderer Components', () => {
         ownerShipId: 1,
         ownerTeam: 'red',
         pos: { x: 10, y: 10, z: 10 },
+        prevPos: { x: 10, y: 10, z: 10 }, // Initialize for interpolation
         vel: { x: 100, y: 0, z: 0 },
         ttl: 3,
         damage: defaultDamage,

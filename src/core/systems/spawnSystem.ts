@@ -307,12 +307,18 @@ export class SpawnSystem {
       team: intent.team,
       class: intent.class!,
       pos: { x: pos.x, y: pos.y, z: pos.z },
+      prevPos: { x: pos.x, y: pos.y, z: pos.z }, // Initialize for interpolation
       vel: intent.initialVelocity ?? { x: 0, y: 0, z: 0 },
       orientation: intent.initialOrientation ?? {
         pitch: 0,
         yaw: randomYaw,
         roll: 0,
       },
+      prevOrientation: intent.initialOrientation ?? {
+        pitch: 0,
+        yaw: randomYaw,
+        roll: 0,
+      }, // Initialize for interpolation
       dir: randomYaw, // Legacy compatibility
       targetId: null,
       health: maxHealth,

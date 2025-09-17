@@ -300,8 +300,12 @@ export function createMockShip(overrides = {}) {
       yaw: 0,
       roll: 0,
     },
-    // prevOrientation used by renderer interpolation
-    prevOrientation: { pitch: 0, yaw: 0, roll: 0 },
+    // prevOrientation used by renderer interpolation; initialize to same as orientation
+    prevOrientation: {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+    },
     dir: 0,
     targetId: null,
     health: fighterCfg.baseHealth,

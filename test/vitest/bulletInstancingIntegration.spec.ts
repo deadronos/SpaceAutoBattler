@@ -197,6 +197,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'red',
         weaponId: 'test',
+        prevPos: { x: 10, y: 20, z: 30 }, // Initialize for interpolation
       },
       {
         id: 2,
@@ -207,6 +208,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'blue',
         weaponId: 'test',
+        prevPos: { x: 40, y: 50, z: 60 }, // Initialize for interpolation
       },
       {
         id: 3,
@@ -217,6 +219,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'red',
         weaponId: 'test',
+        prevPos: { x: 70, y: 80, z: 90 }, // Initialize for interpolation
       },
     ];
 
@@ -246,6 +249,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'red',
         weaponId: 'test',
+        prevPos: { x: 10, y: 20, z: 30 }, // Initialize for interpolation
       },
       {
         id: 2,
@@ -256,6 +260,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'blue',
         weaponId: 'test',
+        prevPos: { x: 40, y: 50, z: 60 }, // Initialize for interpolation
       },
     ];
 
@@ -290,6 +295,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'red',
         weaponId: 'test',
+        prevPos: { x: 10, y: 20, z: 30 }, // Initialize for interpolation
       },
       {
         id: 2,
@@ -300,6 +306,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'blue',
         weaponId: 'test',
+        prevPos: { x: 40, y: 50, z: 60 }, // Initialize for interpolation
       },
     ];
     renderer.render(dt);
@@ -315,6 +322,7 @@ describe('Bullet Instancing Integration', () => {
         damage: 1,
         ownerTeam: 'blue',
         weaponId: 'test',
+        prevPos: { x: 45, y: 55, z: 65 }, // Initialize for interpolation
       },
     ];
     renderer.render(dt);
