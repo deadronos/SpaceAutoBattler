@@ -8,6 +8,7 @@ import {
   disposeParticleRenderer,
 } from './particleRenderer.js';
 import { RendererConfig } from '../config/rendererConfig.js';
+import { createEffectsGovernor } from './effectsGovernor.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
@@ -75,6 +76,47 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   type LooseDict = Record<string, unknown>;
   const _G = globalThis as unknown as LooseDict;
   const rng = state.rng ?? createRNG(String(Date.now()));
+  const baselineParticlesVisual = !!RendererConfig.visual.enableParticles;
+  const baselineParticlesExplosion = !!RendererConfig.particles.explosion.enabled;
+  let allowPostprocessing = true;
+  const getTimestampMs = () =>
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+
+  const effectsGovernor = createEffectsGovernor({
+    config: RendererConfig.effectsQuality,
+    initialParticlesEnabled: baselineParticlesVisual && baselineParticlesExplosion,
+    initialPostprocessingEnabled: true,
+    hooks: {
+      applyQuality: (quality) => {
+        try {
+          state.unifiedFX?.setQuality?.(quality);
+        } catch (_err) {
+          void _err;
+        }
+      },
+      setParticlesEnabled: (enabled) => {
+        if (enabled) {
+          RendererConfig.visual.enableParticles = baselineParticlesVisual;
+          RendererConfig.particles.explosion.enabled = baselineParticlesExplosion;
+        } else {
+          RendererConfig.visual.enableParticles = false;
+          RendererConfig.particles.explosion.enabled = false;
+        }
+      },
+      setPostprocessingEnabled: (enabled) => {
+        allowPostprocessing = enabled;
+      },
+      log: (message, details) => {
+        try {
+          console.info('[RendererEffectsGovernor]', message, details);
+        } catch (_err) {
+          void _err;
+        }
+      },
+    },
+  });
   // Apply global readPixels/prototype patches early, if available.
   try {
     if (typeof gAny.__applyEffectsManagerGlobalPatches === 'function') {
@@ -2160,6 +2202,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
   }
 
   function render(_dt: number) {
+    const frameStartMs = getTimestampMs();
     // Calculate interpolation factor
     const interpolationFactor = Math.min(1, (state.time - lastSimulatedTime) / fixedSimulationDt);
 
@@ -2242,41 +2285,46 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     perfEnd('renderer.particles');
 
     perfBegin('renderer.effects');
-    // Prefer postprocessing composer when available
-    if (effectsManager && effectsManager.initDone) {
+    let usedPostprocessing = false;
+    if (allowPostprocessing && effectsManager && effectsManager.initDone) {
       try {
         effectsManager.render(_dt);
-        perfEnd('renderer.effects');
-        return;
+        usedPostprocessing = true;
       } catch (e) {
         logger.warn('Effects manager render failed, falling back to default renderer', e);
+        usedPostprocessing = false;
       }
     }
     perfEnd('renderer.effects');
 
-    perfBegin('renderer.culling');
-    // Render the scene
-    // Ensure instanced meshes have their instanceMatrix flags updated before rendering
-    console.log('About to call shipInstancer.cull()');
-    try {
-      shipInstancer.cull(camera);
-    } catch (e) {
-      logger.error('Failed to cull ship instancer', e);
-    }
-    console.log('About to call shipInstancer.sync()');
-    try {
-      shipInstancer.sync();
-    } catch (e) {
-      logger.error('Failed to sync ship instancer', e);
-    }
-    perfEnd('renderer.culling');
-    perfEnd('renderer.culling');
+    if (!usedPostprocessing) {
+      perfBegin('renderer.culling');
+      try {
+        shipInstancer.cull(camera);
+      } catch (e) {
+        logger.error('Failed to cull ship instancer', e);
+      }
+      try {
+        shipInstancer.sync();
+      } catch (e) {
+        logger.error('Failed to sync ship instancer', e);
+      }
+      perfEnd('renderer.culling');
 
-    perfBegin('renderer.webgl');
-    renderer.render(scene, camera);
-    perfEnd('renderer.webgl');
+      perfBegin('renderer.webgl');
+      renderer.render(scene, camera);
+      perfEnd('renderer.webgl');
+    }
 
     lastSimulatedTime = state.time; // Update last simulated time for next frame's interpolation
+
+    const frameEndMs = getTimestampMs();
+    const frameDurationMs = Math.max(0, frameEndMs - frameStartMs);
+    try {
+      effectsGovernor.update(frameDurationMs);
+    } catch (_err) {
+      void _err;
+    }
   }
 
   window.addEventListener('resize', resize);
