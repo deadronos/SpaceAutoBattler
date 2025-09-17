@@ -47,8 +47,9 @@ describe('Boundary cleanup', () => {
       id: 9999,
       ownerShipId: 1,
       ownerTeam: 'red',
-      pos: { x: 0, y: 0, z: 0 },
-      prevPos: { x: 0, y: 0, z: 0 }, // Initialize for interpolation
+      // Place bullet outside bounds so cleanup prunes it
+      pos: { x: -10, y: -10, z: -10 },
+      prevPos: { x: -10, y: -10, z: -10 }, // Initialize for interpolation
       vel: { x: 100, y: 0, z: 0 },
       ttl: 10,
       damage: 1,

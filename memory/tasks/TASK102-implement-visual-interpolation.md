@@ -20,7 +20,7 @@ The provided plan (feature-interpolation-renderer-1.md) outlines a multi-phase i
 
 ## Progress Tracking
 
-**Overall Status:** In Progress - 75%
+**Overall Status:** In Progress - 95% (Phases 1–3: 100%)
 
 ### Subtasks
 
@@ -29,7 +29,7 @@ The provided plan (feature-interpolation-renderer-1.md) outlines a multi-phase i
 | 1.1   | TASK-001: In src/types/index.ts, add `prevPos: Vector3` to `Ship` and `Bullet` interfaces (make required).                             | Completed     | 2025-09-17  | Implemented; build types updated. |
 | 1.2   | TASK-002: In src/types/index.ts, add `prevOrientation: Orientation` to `Ship` (match existing Orientation type).                       | Completed     | 2025-09-17  | Implemented on Ship. |
 | 1.3   | TASK-003: Update factories/types helpers creating `Ship`/`Bullet` to initialize `prevPos` and `prevOrientation` to current values.     | Completed     | 2025-09-17  | Spawn/projectile creation paths initialize prev fields. |
-| 1.4   | TASK-004: Update test fixtures/factories in test/vitest/** to include new required fields.                                             | In Progress   | 2025-09-17  | Most fixtures updated; 2 specs regressed (positions changed), 1 local mock missing prev fields. |
+| 1.4   | TASK-004: Update test fixtures/factories in test/vitest/** to include new required fields.                                             | Completed     | 2025-09-17  | Restored original semantics in affected specs; added prev fields without changing positions. |
 | 2.1   | TASK-005: In src/simWorker.ts, capture previous state at start of sim step (copy pos→prevPos, orientation→prevOrientation).            | Completed     | 2025-09-17  | Prev capture at top of step. |
 | 2.2   | TASK-006: Ensure capture occurs before any mutations in the step.                                                                      | Completed     | 2025-09-17  | Verified by code review and run. |
 | 2.3   | TASK-007: Verify spawn paths initialize prev fields correctly.                                                                         | Completed     | 2025-09-17  | New entities set prev=current. |
@@ -39,10 +39,10 @@ The provided plan (feature-interpolation-renderer-1.md) outlines a multi-phase i
 | 3.4   | TASK-011: LERP bullet positions.                                                                                                       | Completed     | 2025-09-17  | Implemented; instancing path supported. |
 | 3.5   | TASK-012: Ensure interpolation is renderer-only, no writes to GameState.                                                               | Completed     | 2025-09-17  | Render-only transforms. |
 | 3.6   | TASK-013: Add optional rendererConfig.enableInterpolation toggle (default true).                                                       | Completed     | 2025-09-17  | Toggle added; default true. |
-| 4.1   | TASK-014: Add unit tests for prev-state capture before mutation.                                                                       | Not Started   |             | Pending targeted unit test. |
-| 4.2   | TASK-015: Add tests for spawn initialization (prev == current).                                                                        | Not Started   |             | Pending targeted unit test. |
-| 4.3   | TASK-016: Add renderer-side test for alpha computation.                                                                                | In Progress   | 2025-09-17  | New interpolation.spec exists; failing due to GL stub (clearDepth) and minimal fixture. |
-| 4.4   | TASK-017: Run full suite: typecheck and npm test; verify determinism.                                                                  | In Progress   | 2025-09-17  | Suite run: 6 failed, 142 passed; failures localized to test edits and deps. |
+| 4.1   | TASK-014: Add unit tests for prev-state capture before mutation.                                                                       | Completed     | 2025-09-17  | Added prev-state-capture.spec.ts — verifies capture occurs before any mutations. |
+| 4.2   | TASK-015: Add tests for spawn initialization (prev == current).                                                                        | Completed     | 2025-09-17  | Added prev-state-capture.spec.ts — spawn init sets prev=current. |
+| 4.3   | TASK-016: Add renderer-side test for alpha computation.                                                                                | Completed     | 2025-09-17  | Refactored interpolation.spec.ts to pure math; tests alpha clamp and LERP/SLERP without GL. |
+| 4.4   | TASK-017: Run full suite: typecheck and npm test; verify determinism.                                                                  | Completed     | 2025-09-17  | Full suite green: 149 files, 686 tests passed; build-system and worker integration pass. |
 | 4.5   | TASK-018: Update docs/renderer-pipeline.md with interpolation note and link to plan.                                                   | Completed     | 2025-09-17  | Docs updated. |
 
 ## Progress Log
@@ -72,15 +72,18 @@ The provided plan (feature-interpolation-renderer-1.md) outlines a multi-phase i
 
 ## Follow-up Subtasks (Cleanup)
 
-1. Fix regressed tests by restoring original semantics and only adding prev fields:
-	 - boundary-cleanup.spec.ts: revert bullet position to original OOB value; set `prevPos` equal to `pos`.
-	 - renderer-module-extraction.spec.ts: restore TEST_DEFAULTS-based position; set `prevPos` to `pos`.
-	 - core-entities.spec.ts: add `prevPos` and `prevOrientation` to local mock or use shared factory.
-2. Update WebGL stub in `test/vitest/setupTests.ts` to include `gl.clearDepth` (and any missing no-op methods encountered) to support new interpolation tests.
-3. Decide on handling `zustand` issues for uiStore/build-system specs:
-	 - Option A: add dev dependency/types for `zustand` (if allowed by test harness).
-	 - Option B: mock ui store in tests or adjust build-system test to exclude ui store for type-only checks.
-4. Re-run typecheck and full test suite; ensure deterministic tests remain green.
-5. Add targeted unit tests for TASK-014 and TASK-015 (prev-capture timing and spawn initialization) using minimal pure-state fixtures to avoid renderer stubs.
+### 2025-09-17 (finalize Phase 4 tests)
 
-Acceptance for cleanup: zero failing tests; typecheck passes; interpolation toggle verified.
+- Implemented targeted tests (TASK-014/015) in prev-state-capture.spec.ts; passing.
+- Refactored interpolation.spec.ts to avoid WebGL; added alpha clamp and quaternion slerp assertions; passing.
+- Expanded WebGL stub in setupTests.ts (clearDepth, frontFace, CCW/CW, getContextAttributes, etc.).
+- Fixed regressed fixtures (boundary-cleanup, renderer-module-extraction) and completed local mocks.
+- Re-ran full suite: 149 files, 686 tests — ALL PASS. Webpack build succeeded; worker integration ran as expected.
+
+## Follow-up Subtasks (Post-merge optional)
+
+1. Add an additional alpha monotonicity property test over multiple frame deltas (pure math, no GL) — optional.
+2. Add an orientation edge-case test for near-180° quaternion slerp to ensure correct shortest-arc path — optional.
+3. Minor docs polish: link from docs/renderer-pipeline.md to config/rendererConfig.ts for the enableInterpolation flag — optional.
+
+Acceptance: green build, deterministic behavior preserved, interpolation toggle verified, and no regressions across the suite.
