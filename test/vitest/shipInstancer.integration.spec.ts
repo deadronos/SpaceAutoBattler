@@ -9,6 +9,7 @@ describe('ShipInstancer integration: prototype registration and sync', () => {
   let parent: THREE.Group;
 
   beforeEach(() => {
+    shipInstancer.dispose();
     scene = new THREE.Scene();
     parent = new THREE.Group();
   });

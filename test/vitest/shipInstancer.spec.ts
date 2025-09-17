@@ -7,6 +7,7 @@ describe('ShipInstancer basic allocation and growth', () => {
   let parent: THREE.Group;
 
   beforeEach(() => {
+    shipInstancer.dispose();
     scene = new THREE.Scene();
     parent = new THREE.Group();
   });
@@ -55,5 +56,95 @@ describe('ShipInstancer basic allocation and growth', () => {
     for (const id of allocated) shipInstancer.free(id);
 
     expect(allocated.every((id) => !shipInstancer.hasShip(id))).toBe(true);
+  });
+
+  it('skips matrix updates when transform changes are under epsilon thresholds', () => {
+    shipInstancer.init(scene, parent as any);
+    const shipId = 7;
+    const className = 'epsilon-ship';
+    const team = 'red';
+    const group = shipInstancer.ensureGroup(className, team) as unknown as {
+      meshes: THREE.InstancedMesh[];
+      matricesNeedUpdate: boolean;
+    };
+
+    expect(shipInstancer.allocate(shipId, className, team)).toBe(true);
+
+    const mesh = group.meshes[0];
+    const quat = new THREE.Quaternion();
+
+    expect(
+      shipInstancer.updateTransform(shipId, { x: 5, y: 0, z: 0 }, quat, 1),
+    ).toBe(true);
+    shipInstancer.sync();
+    expect(mesh.instanceMatrix.version).toBeGreaterThan(0);
+    const initialRange = (
+      mesh.instanceMatrix as unknown as { updateRange?: { offset: number; count: number } }
+    ).updateRange;
+    if (initialRange) {
+      expect(initialRange.offset).toBe(0);
+      expect(initialRange.count).toBe(16);
+    }
+    mesh.instanceMatrix.needsUpdate = false;
+    group.matricesNeedUpdate = false;
+
+    // tiny movement below epsilon should not trigger GPU writes
+    expect(
+      shipInstancer.updateTransform(shipId, { x: 5 + 1e-4, y: 1e-4, z: 0 }, quat, 1),
+    ).toBe(true);
+    expect(group.matricesNeedUpdate).toBe(false);
+    shipInstancer.sync();
+    const versionAfterNoop = mesh.instanceMatrix.version;
+    expect(versionAfterNoop).toBeGreaterThan(0);
+
+    // rotation slightly above epsilon should flag updates
+    const rotated = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.01);
+    expect(
+      shipInstancer.updateTransform(shipId, { x: 5.05, y: 0, z: 0 }, rotated, 1.002),
+    ).toBe(true);
+    expect(group.matricesNeedUpdate).toBe(true);
+    shipInstancer.sync();
+    expect(mesh.instanceMatrix.version).toBeGreaterThan(versionAfterNoop);
+    const rotatedRange = (
+      mesh.instanceMatrix as unknown as { updateRange?: { offset: number; count: number } }
+    ).updateRange;
+    if (rotatedRange) {
+      expect(rotatedRange.count).toBe(16);
+    }
+  });
+
+  it('toggles visibility based on frustum culling results', () => {
+    shipInstancer.init(scene, parent as any);
+    const shipId = 11;
+    const className = 'cull-ship';
+    const team = 'blue';
+
+    expect(shipInstancer.allocate(shipId, className, team)).toBe(true);
+    const group = shipInstancer.ensureGroup(className, team);
+    const quat = new THREE.Quaternion();
+
+    shipInstancer.updateTransform(shipId, { x: 0, y: 0, z: 0 }, quat, 1);
+    shipInstancer.sync();
+
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld(true);
+    camera.updateProjectionMatrix();
+
+    shipInstancer.cull(camera);
+    expect(group.parentGroup.visible).toBe(true);
+
+    shipInstancer.updateTransform(shipId, { x: 1500, y: 1500, z: 1500 }, quat, 1);
+    shipInstancer.sync();
+    camera.updateMatrixWorld(true);
+    shipInstancer.cull(camera);
+    expect(group.parentGroup.visible).toBe(false);
+
+    shipInstancer.updateTransform(shipId, { x: 0, y: 0, z: -10 }, quat, 1);
+    shipInstancer.sync();
+    camera.updateMatrixWorld(true);
+    shipInstancer.cull(camera);
+    expect(group.parentGroup.visible).toBe(true);
   });
 });

@@ -28,7 +28,8 @@
     "add-memory-node": "node ./scripts/add_memory_node.mjs",
     "generate-memories": "node ./scripts/generate_memories.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
-    "perf:baseline": "node ./scripts/perf/collect-baseline.mjs"
+    "perf:baseline": "node ./scripts/perf/collect-baseline.mjs",
+    "perf:instancer": "node ./scripts/perf/ship-instancer-harness.mjs"
   },
   "devDependencies": {
     "@babel/preset-env": "latest",
