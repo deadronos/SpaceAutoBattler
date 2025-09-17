@@ -216,6 +216,9 @@ export interface RendererConfig {
     showOverlay: boolean; // show performance overlay on screen
     overlayUpdateMs: number; // how often to update overlay (ms)
   };
+
+  // Enable/disable visual interpolation between sim steps
+  enableInterpolation?: boolean;
 }
 
 export const DefaultRendererConfig: RendererConfig = {
@@ -396,6 +399,8 @@ export const DefaultRendererConfig: RendererConfig = {
     showOverlay: false, // disabled by default
     overlayUpdateMs: 250, // update overlay 4 times per second
   },
+
+  enableInterpolation: true, // Default to enabled for smooth rendering
 };
 
 // Export the default config as RendererConfig for backward compatibility

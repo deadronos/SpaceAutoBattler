@@ -235,6 +235,7 @@ export class ProjectileSystem {
       ownerShipId: sourceShip.id,
       ownerTeam: sourceShip.team,
       pos: { ...sourceShip.pos },
+      prevPos: { ...sourceShip.pos }, // Initialize for interpolation
       vel: {
         x: direction.x * turretConfig.bulletSpeed,
         y: direction.y * turretConfig.bulletSpeed,

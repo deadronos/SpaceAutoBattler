@@ -48,6 +48,7 @@ describe('HealthBarInstancer Integration', () => {
         const ship: Ship = {
           id: i,
           pos: { x: Math.random() * 100, y: Math.random() * 100, z: 0 },
+          prevPos: { x: Math.random() * 100, y: Math.random() * 100, z: 0 }, // Initialize for interpolation
           vel: { x: 0, y: 0, z: 0 },
           team: i % 2 === 0 ? 'red' : 'blue',
           class: 'fighter',
@@ -56,6 +57,7 @@ describe('HealthBarInstancer Integration', () => {
           shield: 60 + Math.random() * 40,
           maxShield: 100,
           orientation: { pitch: 0, yaw: 0, roll: 0 },
+          prevOrientation: { pitch: 0, yaw: 0, roll: 0 }, // Initialize for interpolation
           level: { level: 1, xp: 0, nextLevelXp: 100 },
         } as Ship;
         ships.push(ship);
@@ -153,6 +155,7 @@ describe('HealthBarInstancer Integration', () => {
         const ship: Ship = {
           id: testCase.id,
           pos: { x: testCase.id * 10, y: 0, z: 0 },
+          prevPos: { x: testCase.id * 10, y: 0, z: 0 }, // Initialize for interpolation
           vel: { x: 0, y: 0, z: 0 },
           team: 'red',
           class: 'fighter',
@@ -161,6 +164,7 @@ describe('HealthBarInstancer Integration', () => {
           shield: testCase.shield,
           maxShield: testCase.maxShield,
           orientation: { pitch: 0, yaw: 0, roll: 0 },
+          prevOrientation: { pitch: 0, yaw: 0, roll: 0 }, // Initialize for interpolation
           level: { level: 1, xp: 0, nextLevelXp: 100 },
         } as Ship;
 
