@@ -2,6 +2,7 @@
 // Handles loading SVG files, detecting changes, and rasterizing to ImageBitmap
 
 import * as THREE from 'three';
+import { setTextureNeedsUpdateThrottled } from '../renderer/textureThrottle.js';
 import type { GameState as _GameState } from '../types/index.js';
 import { getFileWatcher } from '../utils/fileWatcher.js';
 import * as logger from '../utils/logger.js';
@@ -805,7 +806,7 @@ export async function getOrCreateTextureForSVG(
 
   // Create the THREE.Texture
   const texture = new THREE.Texture(asset.imageBitmap);
-  texture.needsUpdate = true;
+  setTextureNeedsUpdateThrottled(texture);
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;

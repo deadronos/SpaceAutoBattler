@@ -3,6 +3,7 @@
 // Avoids external assets by generating a soft-circle sprite at runtime.
 
 import * as THREE from 'three';
+import { setTextureNeedsUpdateThrottled } from '../textureThrottle.js';
 import { RendererConfig } from '../../config/rendererConfig.js';
 import { ShipVisualConfig } from '../../config/shipVisualConfig.js';
 import type { Ship } from '../../types/index.js';
@@ -30,7 +31,7 @@ function makeSoftCircleTexture(size = 64): THREE.Texture {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
+  setTextureNeedsUpdateThrottled(tex);
   _softCircleTextureCache = tex;
   _softCircleTextureCacheSize = size;
   return tex;

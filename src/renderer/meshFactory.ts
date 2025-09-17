@@ -457,8 +457,8 @@ export function registerPrototypesFromPool(state: GameState) {
         const asset = pool.get(svgUrl) as { imageBitmap?: ImageBitmap } | undefined;
         if (!asset?.imageBitmap) continue;
 
-        const tex = new THREE.Texture(asset.imageBitmap);
-        tex.needsUpdate = true;
+  const tex = new THREE.Texture(asset.imageBitmap);
+  setTextureNeedsUpdateThrottled(tex);
         tex.generateMipmaps = false;
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;

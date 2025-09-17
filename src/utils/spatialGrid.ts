@@ -31,6 +31,11 @@ export class SpatialGrid {
   } | null = null;
   // Reusable scratch array to reduce allocations when building occupied cell lists
   private _occupiedKeysScratch: number[] = [];
+  // Versioned visited map to avoid allocating a new Set on every query.
+  // Maps entity id -> lastSeenQuerySeq. We increment _querySeq for each
+  // query and compare to detect duplicates without per-query allocations.
+  private _visitedVersion: Map<number, number> = new Map();
+  private _querySeq = 1;
   // Simple pool for result arrays to avoid allocating on every queryRadius call.
   // Callers can either provide their own `out` array to `queryRadius`, or
   // explicitly request a pooled array via `getPooledResults()` and return it
@@ -256,21 +261,22 @@ export class SpatialGrid {
     }
 
     // Iterate only occupied cells (use locals for speed)
-    // Use a seen set to avoid duplicates in case an entity accidentally appears
-    // in multiple buckets (defensive - keeps results stable across edge cases).
-    const seen = new Set<number>();
+    // Use a versioned visited map to avoid allocating a Set on every call.
+    const visited = this._visitedVersion;
+    const seq = (this._querySeq = (this._querySeq + 1) | 0) || 1; // avoid zero
     for (let i = 0; i < occupiedKeys.length; i++) {
       const bucket = grid.get(occupiedKeys[i]);
       if (!bucket) continue; // may have been emptied since cache creation
       for (let j = 0; j < bucket.length; j++) {
         const entity = bucket[j];
-        if (seen.has(entity.id)) continue;
+        const id = entity.id as number;
+        if (visited.get(id) === seq) continue;
         const dxp = entity.pos.x - center.x;
         const dyp = entity.pos.y - center.y;
         const dzp = entity.pos.z - center.z;
         const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
         if (distSq <= radiusSq) {
-          seen.add(entity.id);
+          visited.set(id, seq);
           results.push(entity);
         }
       }
@@ -354,20 +360,23 @@ export class SpatialGrid {
       occupiedKeys = keysCopy;
     }
 
-    // Guard against duplicate invocations for the same entity id
-    const seenFn = new Set<number>();
+    // Guard against duplicate invocations for the same entity id using
+    // the versioned visited map to avoid Set allocation.
+    const visitedFn = this._visitedVersion;
+    const seqFn = (this._querySeq = (this._querySeq + 1) | 0) || 1;
     for (let i = 0; i < occupiedKeys.length; i++) {
       const bucket = grid.get(occupiedKeys[i]);
       if (!bucket) continue;
       for (let j = 0; j < bucket.length; j++) {
         const entity = bucket[j];
-        if (seenFn.has(entity.id)) continue;
+        const id = entity.id as number;
+        if (visitedFn.get(id) === seqFn) continue;
         const dxp = entity.pos.x - center.x;
         const dyp = entity.pos.y - center.y;
         const dzp = entity.pos.z - center.z;
         const distSq = dxp * dxp + dyp * dyp + dzp * dzp;
         if (distSq <= radiusSq) {
-          seenFn.add(entity.id);
+          visitedFn.set(id, seqFn);
           fn(dxp, dyp, dzp, distSq, entity);
         }
       }

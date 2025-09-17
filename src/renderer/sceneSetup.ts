@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
 import type { GameState } from '../types/index.js';
 import { RendererEffectsConfig } from '../config/rendererEffectsConfig.js';
 import { skyboxVertexShader, skyboxFragmentShader } from './shaders/skyboxShader.js';
@@ -57,7 +58,7 @@ export function setupScene(state: GameState): SceneElements {
   }
   const canvases = skyboxCanvases as unknown as HTMLCanvasElement[];
   const animatedCube = new THREE.CubeTexture(canvases);
-  animatedCube.needsUpdate = true;
+  setTextureNeedsUpdateThrottled(animatedCube);
 
   // Add lighting
   const ambientLight = new THREE.AmbientLight(
