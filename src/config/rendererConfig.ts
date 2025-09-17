@@ -320,7 +320,7 @@ export const DefaultRendererConfig: RendererConfig = {
     explosion: {
       enabled: true,
       countPerRadius: 30, // base particles per world-unit radius
-      minCount: 25,
+  minCount: 8,
       maxCount: 200,
       lifetime: 1.2,
       size: {

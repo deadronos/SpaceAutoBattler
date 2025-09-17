@@ -32,6 +32,7 @@ import { _ } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import { createRNG } from '../utils/rng.js';
 import { perfBegin, perfEnd } from '../utils/perf.js';
 export { updateBillboardBars };
+import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
 
 // Pool of billboard ShaderMaterials keyed by color+alpha to reduce GL state changes
 const billboardMaterials = new Set<THREE.ShaderMaterial>();
@@ -473,8 +474,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       skyboxTextures.push(texture);
     });
 
-    const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
-    cubeTexture.needsUpdate = true;
+  const cubeTexture = new THREE.CubeTexture(skyboxCanvases);
+  setTextureNeedsUpdateThrottled(cubeTexture);
 
     return cubeTexture;
   }
@@ -591,7 +592,7 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
         }
       }
       ctx.globalAlpha = 1.0;
-      texture.needsUpdate = true;
+  setTextureNeedsUpdateThrottled(texture);
     });
 
     // Update sphere skybox texture
@@ -600,8 +601,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       sphereSkybox.material instanceof THREE.MeshBasicMaterial &&
       skyboxTextures.length > 0
     ) {
-      (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
-      sphereSkybox.material.needsUpdate = true;
+  (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0]; // Use first face for sphere
+  setTextureNeedsUpdateThrottled((sphereSkybox.material as THREE.MeshBasicMaterial).map);
     }
   }
 
@@ -632,8 +633,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
       sphereSkybox = createSphereSkybox();
       // Ensure the sphere uses the generated canvas texture
       if (sphereSkybox.material instanceof THREE.MeshBasicMaterial && skyboxTextures.length > 0) {
-        (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0];
-        sphereSkybox.material.needsUpdate = true;
+  (sphereSkybox.material as THREE.MeshBasicMaterial).map = skyboxTextures[0];
+  setTextureNeedsUpdateThrottled((sphereSkybox.material as THREE.MeshBasicMaterial).map);
       }
       scene.add(sphereSkybox);
     }
@@ -1134,8 +1135,8 @@ export function createThreeRenderer(state: GameState, canvas: HTMLCanvasElement)
     const svgUrl = getShipSVGUrl(s.class, defaultSVGConfig);
 
     const createTextured3DShip = (imageBitmap: ImageBitmap) => {
-      const texture = new THREE.Texture(imageBitmap);
-      texture.needsUpdate = true;
+  const texture = new THREE.Texture(imageBitmap);
+  setTextureNeedsUpdateThrottled(texture);
       texture.generateMipmaps = false;
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;

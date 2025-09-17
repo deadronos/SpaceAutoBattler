@@ -8,6 +8,7 @@ import {
   DefaultBillboardExplosionParams,
   hexToVec3,
 } from './shaders/billboardExplosionShader.js';
+import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
 
 export interface ParticleRendererInitOptions {
   state: GameState;
@@ -51,7 +52,7 @@ let resources: ParticleRendererResources | null = null;
 function createFallbackTexture(): THREE.Texture {
   const data = new Uint8Array([255, 255, 255, 255]);
   const texture = new THREE.DataTexture(data, 1, 1);
-  texture.needsUpdate = true;
+  setTextureNeedsUpdateThrottled(texture);
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -63,8 +64,8 @@ function ensureThreeTexture(source: unknown): THREE.Texture | null {
   if (source instanceof THREE.Texture) return source;
 
   if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) {
-    const tex = new THREE.Texture(source);
-    tex.needsUpdate = true;
+  const tex = new THREE.Texture(source);
+  setTextureNeedsUpdateThrottled(tex);
     tex.magFilter = THREE.LinearFilter;
     tex.minFilter = THREE.LinearFilter;
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -73,8 +74,8 @@ function ensureThreeTexture(source: unknown): THREE.Texture | null {
   }
 
   if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) {
-    const tex = new THREE.Texture(source);
-    tex.needsUpdate = true;
+  const tex = new THREE.Texture(source);
+  setTextureNeedsUpdateThrottled(tex);
     tex.magFilter = THREE.LinearFilter;
     tex.minFilter = THREE.LinearFilter;
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -83,8 +84,8 @@ function ensureThreeTexture(source: unknown): THREE.Texture | null {
   }
 
   if (typeof ImageData !== 'undefined' && source instanceof ImageData) {
-    const tex = new THREE.DataTexture(source.data, source.width, source.height);
-    tex.needsUpdate = true;
+  const tex = new THREE.DataTexture(source.data, source.width, source.height);
+  setTextureNeedsUpdateThrottled(tex);
     tex.magFilter = THREE.LinearFilter;
     tex.minFilter = THREE.LinearFilter;
     tex.wrapS = THREE.ClampToEdgeWrapping;

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import * as logger from '../utils/logger.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
-import { getOrCreateTextureForSVG } from '../core/svgLoader.js';
 import type { GameState } from '../types/index.js';
 
 type Float3 = { x: number; y: number; z: number };
@@ -33,6 +32,8 @@ type GroupData = {
   lastTransforms: Map<number, InstanceTransformState>;
   dirtyRange: { min: number; max: number } | null;
 };
+
+import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
 
 class ShipInstancerImpl {
   private scene?: THREE.Scene;
@@ -121,11 +122,13 @@ class ShipInstancerImpl {
       // the built-in instancing color path (USE_INSTANCING_COLOR) is active.
       const m = mat as unknown as { vertexColors?: boolean; needsUpdate?: boolean };
       if (typeof m.vertexColors === 'undefined' || m.vertexColors === false) m.vertexColors = true;
-      m.needsUpdate = true;
+      // Use throttled update to avoid spamming texSubImage2D on the main thread
+      setTextureNeedsUpdateThrottled(m as THREE.Texture | THREE.Material | null | undefined);
     } catch (_e) {
       void _e;
     }
   }
+  
   // Temporary objects for culling/bounds computation to avoid per-frame allocations
   private frustum = new THREE.Frustum();
   private projScreenMatrix = new THREE.Matrix4();
@@ -261,7 +264,7 @@ class ShipInstancerImpl {
         const mat = (padded[i] || padded[0]).clone();
         this.applyInstanceColorPatch(mat);
         try {
-          (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+          setTextureNeedsUpdateThrottled(mat as THREE.Material);
         } catch (_e) {
           void _e;
         }
@@ -475,7 +478,8 @@ class ShipInstancerImpl {
                       className
                     ]?.collisionRadius ?? 16;
                   const tex = new THREE.Texture(asset.imageBitmap);
-                  tex.needsUpdate = true;
+                  // rasterized ImageBitmap texture - mark for update (throttled)
+                  setTextureNeedsUpdateThrottled(tex);
                   tex.generateMipmaps = false;
                   tex.minFilter = THREE.LinearFilter;
                   tex.magFilter = THREE.LinearFilter;

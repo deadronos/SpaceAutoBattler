@@ -6,6 +6,7 @@ import { loadSVGAsset } from '../core/svgLoader.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import * as logger from '../utils/logger.js';
 import { shipInstancer } from './shipInstancer.js';
+import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
 
 /**
  * Mesh factory and pooling for ships, bullets, and UI elements
@@ -74,8 +75,8 @@ export function createShipMesh(
   const svgUrl = getShipSVGUrl(ship.class, defaultSVGConfig);
 
   const createTextured3DShip = (imageBitmap: ImageBitmap) => {
-    const texture = new THREE.Texture(imageBitmap);
-    texture.needsUpdate = true;
+  const texture = new THREE.Texture(imageBitmap);
+  setTextureNeedsUpdateThrottled(texture);
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
@@ -237,7 +238,7 @@ export function createShipMesh(
             alphaTest: 0.05,
             side: THREE.DoubleSide,
           });
-          texturedMaterial.map!.needsUpdate = true;
+          setTextureNeedsUpdateThrottled(texturedMaterial.map);
           const teamMaterial = new THREE.MeshBasicMaterial({
             color: teamColor,
             transparent: true,
