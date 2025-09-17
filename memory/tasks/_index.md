@@ -2,9 +2,9 @@
 
 This index tracks active tasks and their memory files. Use the `tasks/` folder for task-specific planning.
 
-## In Progress
+## Completed
 
-- None
+- [TASK101] Implement Miniplex + Zustand Integration - Completed comprehensive implementation with lifecycle hooks, consumer replacement, and UI store
 
 ## Pending
 
