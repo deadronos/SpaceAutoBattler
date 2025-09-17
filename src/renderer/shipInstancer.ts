@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as logger from '../utils/logger.js';
 import { defaultSVGConfig, getShipSVGUrl } from '../config/svgConfig.js';
 import { ShipVisualConfig } from '../config/shipVisualConfig.js';
+import { getOrCreateTextureForSVG } from '../core/svgLoader.js';
 import type { GameState } from '../types/index.js';
 
 type Float3 = { x: number; y: number; z: number };
@@ -405,22 +406,19 @@ class ShipInstancerImpl {
             } else {
               // No glTF proto; fallback to existing SVG rasterization path if available
               const svgUrl = getShipSVGUrl(className, defaultSVGConfig);
-              const asset = state.assetPool.get(svgUrl) as
-                | { imageBitmap?: ImageBitmap }
-                | undefined;
-              if (asset && asset.imageBitmap) {
-                // Build lightweight geometries/materials similar to meshFactory
+              
+              // Check for cached texture first (performance optimization)
+              const textureKey = `texture:${svgUrl}:autoxauto:default`;
+              const cachedTexture = state.assetPool.get(textureKey) as THREE.Texture | undefined;
+              
+              if (cachedTexture && cachedTexture instanceof THREE.Texture) {
+                // Use cached texture to create material
                 const size =
                   (ShipVisualConfig.ships as Partial<Record<string, { collisionRadius: number }>>)[
                     className
                   ]?.collisionRadius ?? 16;
-                const tex = new THREE.Texture(asset.imageBitmap);
-                tex.needsUpdate = true;
-                tex.generateMipmaps = false;
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
                 const texturedMaterial = new THREE.MeshBasicMaterial({
-                  map: tex,
+                  map: cachedTexture,
                   transparent: true,
                   alphaTest: 0.05,
                   side: THREE.DoubleSide,
@@ -465,6 +463,73 @@ class ShipInstancerImpl {
                   texturedMaterial,
                 ];
                 this.registerPrototype(className, geoms, mats);
+              } else {
+                // Fallback to ImageBitmap-based texture creation (original path)
+                const asset = state.assetPool.get(svgUrl) as
+                  | { imageBitmap?: ImageBitmap }
+                  | undefined;
+                if (asset && asset.imageBitmap) {
+                  // Build lightweight geometries/materials similar to meshFactory
+                  const size =
+                    (ShipVisualConfig.ships as Partial<Record<string, { collisionRadius: number }>>)[
+                      className
+                    ]?.collisionRadius ?? 16;
+                  const tex = new THREE.Texture(asset.imageBitmap);
+                  tex.needsUpdate = true;
+                  tex.generateMipmaps = false;
+                  tex.minFilter = THREE.LinearFilter;
+                  tex.magFilter = THREE.LinearFilter;
+                  
+                  // Cache the texture for future use
+                  state.assetPool.set(textureKey, tex);
+                  
+                  const texturedMaterial = new THREE.MeshBasicMaterial({
+                    map: tex,
+                    transparent: true,
+                    alphaTest: 0.05,
+                    side: THREE.DoubleSide,
+                  });
+                  const teamMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 1.0,
+                    side: THREE.DoubleSide,
+                  });
+                  const bodyGeometry = new THREE.CylinderGeometry(
+                    size * 0.3,
+                    size * 0.4,
+                    size * 0.8,
+                    8,
+                  );
+                  const noseGeometry = new THREE.ConeGeometry(size * 0.3, size * 0.5, 8);
+                  const wingGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.4);
+                  const sidePanelGeometry = new THREE.PlaneGeometry(size * 0.8, size * 0.3);
+                  const rearPanelGeometry = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+                  const rearFinGeometry = new THREE.PlaneGeometry(size * 0.3, size * 0.2);
+                  const geoms = [
+                    bodyGeometry,
+                    noseGeometry,
+                    wingGeometry,
+                    wingGeometry,
+                    sidePanelGeometry,
+                    sidePanelGeometry,
+                    rearPanelGeometry,
+                    rearFinGeometry,
+                    rearFinGeometry,
+                  ];
+                  const mats = [
+                    texturedMaterial,
+                    teamMaterial,
+                    texturedMaterial,
+                    texturedMaterial,
+                    texturedMaterial,
+                    texturedMaterial,
+                    texturedMaterial,
+                    texturedMaterial,
+                    texturedMaterial,
+                  ];
+                  this.registerPrototype(className, geoms, mats);
+                }
               }
             }
           } catch (_e) {
