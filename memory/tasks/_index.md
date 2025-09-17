@@ -4,7 +4,12 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress)
+
+- [TASK100] Memory-bank summary entry - Create/update memory-bank summary node and task file
+
 - [TASK101] Implement Miniplex + Zustand Integration - Completed comprehensive implementation with lifecycle hooks, consumer replacement, and UI store
+
 
 ## Pending
 
@@ -12,10 +17,5 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 - Expand `docs/_index.md` from `llms.txt`
 
-## Completed
 
-- Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress)
-
-- TASK100 Memory-bank summary entry - Create/update memory-bank summary node and task file
-
-Generated/updated: 2025-09-15 by Copilot agent.
+## Abandoned
