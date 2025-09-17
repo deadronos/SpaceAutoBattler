@@ -4,6 +4,7 @@ import { createBVHManager } from './bvhManager.js';
 import type { EffectsManager } from './effects.js';
 import type { AnimationManager } from './animationManager.js';
 import type { BVHManager } from './bvhManager.js';
+import { RendererConfig } from '../config/rendererConfig.js';
 
 export interface UnifiedEffectsManager {
   initDone: boolean;
@@ -283,6 +284,13 @@ export function createUnifiedEffectsManager(
     addExplosionEffect: () => {},
     addHitSpark: () => {},
   };
+
+  try {
+    const defaultQuality = RendererConfig.effectsQuality?.defaultQuality ?? 'high';
+    setQuality(defaultQuality);
+  } catch (_err) {
+    void _err;
+  }
 
   return {
     initDone: finalEffects.initDone && animation.initDone && bvh.initDone,
