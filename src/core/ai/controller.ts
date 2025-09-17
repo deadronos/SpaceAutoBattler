@@ -48,6 +48,19 @@ type AIAssist = {
   __throttleRequestedTarget?: number | null;
 };
 
+// AI update scheduling levels for LOD (Level of Detail)
+enum UpdateFrequency {
+  EVERY_TICK = 1,     // High priority: engaged ships, carriers
+  EVERY_2_TICKS = 2,  // Medium priority: ships near enemies
+  EVERY_4_TICKS = 4,  // Low priority: distant ships, idle ships
+}
+
+interface SchedulingInfo {
+  updateFrequency: UpdateFrequency;
+  lastUpdateTick: number;
+  distanceToNearestEnemy: number;
+}
+
 export class AIController {
   private state: GameState;
   private intentManager: IntentManager;
@@ -55,6 +68,10 @@ export class AIController {
   private teams: TeamSystems;
   private batchedQueries: BatchedQueryManager;
   private spatialOptimizer: AggressiveSpatialOptimizer | undefined = undefined;
+  
+  // Adaptive scheduling state
+  private shipScheduling = new Map<EntityId, SchedulingInfo>();
+  private enableAdaptiveScheduling = true; // Can be toggled for testing
 
   constructor(state: GameState, aggressiveSpatialOptimizer?: AggressiveSpatialOptimizer) {
     this.state = state;
@@ -240,9 +257,31 @@ export class AIController {
         );
     }
 
-    // Batch compute nearest enemies and separation neighbors for alive ships
-    this.batchedQueries.precomputeNearestEnemies(this.state, aliveShips);
-    this.batchedQueries.precomputeSeparationNeighbors(this.state, aliveShips);
+    // NEW: Adaptive scheduling optimization
+    perfBegin('ai.scheduling');
+    
+    // Clean up scheduling data for dead ships
+    this.cleanupSchedulingData(aliveShips);
+    
+    // Gather distance data using bulk queries for scheduling decisions
+    const distanceMap = this.gatherSchedulingData(aliveShips);
+    
+    // Filter ships that need updates this tick
+    const currentTick = this.state.tick ?? 0;
+    const shipsToUpdate = aliveShips.filter(ship => {
+      const shouldUpdate = this.shouldUpdateShip(ship, currentTick);
+      if (shouldUpdate) {
+        const distance = distanceMap.get(ship.id) ?? Infinity;
+        this.updateSchedulingInfo(ship, currentTick, distance);
+      }
+      return shouldUpdate;
+    });
+    
+    perfEnd('ai.scheduling');
+
+    // Batch compute nearest enemies and separation neighbors for ships updating this frame
+    this.batchedQueries.precomputeNearestEnemies(this.state, shipsToUpdate);
+    this.batchedQueries.precomputeSeparationNeighbors(this.state, shipsToUpdate);
     perfEnd('ai.batched');
     perfEnd('ai.spatial');
 
@@ -253,12 +292,19 @@ export class AIController {
     perfEnd('ai.teams');
 
     perfBegin('ai.individual');
-    // Process individual ships with optimized queries
-    for (const ship of this.state.ships) {
+    // Process only ships that need updates this tick
+    for (const ship of shipsToUpdate) {
       if (ship.health <= 0) continue;
       this.updateShipAI(ship, dt);
     }
     perfEnd('ai.individual');
+    
+    if (DEBUG_AI && this.enableAdaptiveScheduling) {
+      const stats = this.getSchedulingStats();
+      const totalShips = aliveShips.length;
+      const updatedShips = shipsToUpdate.length;
+      console.log(`[AIController] Adaptive scheduling: ${updatedShips}/${totalShips} ships updated. Frequencies: ${JSON.stringify(stats)}`);
+    }
   }
 
   // Test visibility for team systems (back-compat expectations)
@@ -1259,6 +1305,183 @@ export class AIController {
    */
   public getSpatialMetrics() {
     return this.spatialOptimizer?.getMetrics() || null;
+  }
+
+  /**
+   * Determine appropriate update frequency for a ship based on tactical situation
+   */
+  private calculateUpdateFrequency(ship: Ship, distanceToNearestEnemy: number): UpdateFrequency {
+    // Always update carriers frequently due to their strategic importance
+    if (ship.class === 'carrier') {
+      return UpdateFrequency.EVERY_TICK;
+    }
+
+    // Ships currently engaged in combat
+    if (ship.targetId && distanceToNearestEnemy < 200) {
+      return UpdateFrequency.EVERY_TICK;
+    }
+
+    // Ships with recent damage (under attack)
+    if (ship.aiState?.recentDamage && ship.aiState.recentDamage > 0) {
+      return UpdateFrequency.EVERY_TICK;
+    }
+
+    // Ships near enemies but not engaged
+    if (distanceToNearestEnemy < 400) {
+      return UpdateFrequency.EVERY_2_TICKS;
+    }
+
+    // Distant or idle ships
+    return UpdateFrequency.EVERY_4_TICKS;
+  }
+
+  /**
+   * Check if a ship should be updated this tick based on its schedule
+   */
+  private shouldUpdateShip(ship: Ship, currentTick: number): boolean {
+    if (!this.enableAdaptiveScheduling) {
+      return true; // Update all ships if adaptive scheduling is disabled
+    }
+
+    const scheduling = this.shipScheduling.get(ship.id);
+    if (!scheduling) {
+      return true; // First time seeing this ship, update it
+    }
+
+    const ticksSinceLastUpdate = currentTick - scheduling.lastUpdateTick;
+    return ticksSinceLastUpdate >= scheduling.updateFrequency;
+  }
+
+  /**
+   * Update the scheduling info for a ship
+   */
+  private updateSchedulingInfo(ship: Ship, currentTick: number, distanceToNearestEnemy: number): void {
+    const frequency = this.calculateUpdateFrequency(ship, distanceToNearestEnemy);
+    
+    this.shipScheduling.set(ship.id, {
+      updateFrequency: frequency,
+      lastUpdateTick: currentTick,
+      distanceToNearestEnemy,
+    });
+  }
+
+  /**
+   * Use bulk queries to efficiently gather distance information for scheduling
+   */
+  private gatherSchedulingData(aliveShips: Ship[]): Map<EntityId, number> {
+    const distanceMap = new Map<EntityId, number>();
+    
+    if (aliveShips.length === 0) return distanceMap;
+
+    // Use bulk query if spatial index supports it
+    const spatialIndex = this.state.spatialGrid;
+    if (spatialIndex && typeof (spatialIndex as any).queryBulkNearest === 'function') {
+      // Pack ship positions into Float32Array
+      const positions = new Float32Array(aliveShips.length * 3);
+      for (let i = 0; i < aliveShips.length; i++) {
+        const ship = aliveShips[i];
+        positions[i * 3] = ship.pos.x;
+        positions[i * 3 + 1] = ship.pos.y;
+        positions[i * 3 + 2] = ship.pos.z;
+      }
+
+      try {
+        // Get nearest enemy for each ship
+        for (let i = 0; i < aliveShips.length; i++) {
+          const ship = aliveShips[i];
+          const enemyTeam = ship.team === 'red' ? 'blue' : 'red';
+          
+          // Create excludeIds set containing this ship
+          const excludeIds = new Set<EntityId>([ship.id]);
+          
+          // Query nearest enemy
+          const nearestIds = (spatialIndex as any).queryBulkNearest(
+            positions.subarray(i * 3, (i + 1) * 3),
+            1,
+            enemyTeam,
+            excludeIds
+          );
+
+          if (nearestIds.length > 0 && nearestIds[0] !== 0) {
+            const nearestShip = this.state.shipIndex?.get(nearestIds[0]);
+            if (nearestShip) {
+              const dx = nearestShip.pos.x - ship.pos.x;
+              const dy = nearestShip.pos.y - ship.pos.y;
+              const dz = nearestShip.pos.z - ship.pos.z;
+              const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+              distanceMap.set(ship.id, distance);
+            } else {
+              distanceMap.set(ship.id, Infinity);
+            }
+          } else {
+            distanceMap.set(ship.id, Infinity);
+          }
+        }
+      } catch (error) {
+        // Fallback to individual queries if bulk query fails
+        if (DEBUG_AI) console.warn('[AIController] Bulk query failed, falling back to individual queries:', error);
+        this.gatherSchedulingDataFallback(aliveShips, distanceMap);
+      }
+    } else {
+      // Fallback to existing batched query system
+      this.gatherSchedulingDataFallback(aliveShips, distanceMap);
+    }
+
+    return distanceMap;
+  }
+
+  /**
+   * Fallback method using existing batched queries
+   */
+  private gatherSchedulingDataFallback(aliveShips: Ship[], distanceMap: Map<EntityId, number>): void {
+    for (const ship of aliveShips) {
+      const nearestEnemy = this.batchedQueries.getNearestEnemy(ship);
+      if (nearestEnemy) {
+        const dx = nearestEnemy.pos.x - ship.pos.x;
+        const dy = nearestEnemy.pos.y - ship.pos.y;
+        const dz = nearestEnemy.pos.z - ship.pos.z;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        distanceMap.set(ship.id, distance);
+      } else {
+        distanceMap.set(ship.id, Infinity);
+      }
+    }
+  }
+
+  /**
+   * Clean up scheduling data for dead ships
+   */
+  private cleanupSchedulingData(aliveShips: Ship[]): void {
+    const aliveIds = new Set(aliveShips.map(s => s.id));
+    for (const [shipId] of this.shipScheduling) {
+      if (!aliveIds.has(shipId)) {
+        this.shipScheduling.delete(shipId);
+      }
+    }
+  }
+
+  /**
+   * Enable or disable adaptive scheduling (for testing)
+   */
+  public setAdaptiveScheduling(enabled: boolean): void {
+    this.enableAdaptiveScheduling = enabled;
+  }
+
+  /**
+   * Get scheduling statistics for debugging
+   */
+  public getSchedulingStats(): { [key in UpdateFrequency]: number } {
+    const stats = {
+      [UpdateFrequency.EVERY_TICK]: 0,
+      [UpdateFrequency.EVERY_2_TICKS]: 0,
+      [UpdateFrequency.EVERY_4_TICKS]: 0,
+    };
+
+    for (const [, scheduling] of this.shipScheduling) {
+      stats[scheduling.updateFrequency]++;
+    }
+
+    return stats;
   }
 }
 

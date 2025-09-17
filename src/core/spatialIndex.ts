@@ -103,6 +103,23 @@ export interface SpatialIndex {
   // Performance optimization
   enableBatching?(enable: boolean): void;
   flushBatch?(): void;
+
+  // Bulk query operations for performance optimization
+  queryBulkNearest?(
+    positions: Float32Array, // [x0, y0, z0, x1, y1, z1, ...]
+    k: number,
+    team?: Team,
+    excludeIds?: Set<EntityId>,
+    out?: Uint32Array
+  ): Uint32Array;
+
+  queryBulkRadius?(
+    positions: Float32Array, // [x0, y0, z0, x1, y1, z1, ...]
+    radius: number,
+    team?: Team,
+    excludeIds?: Set<EntityId>,
+    out?: Uint32Array
+  ): Uint32Array;
 }
 
 /**
@@ -411,6 +428,118 @@ export class SpatialGridAdapter implements SpatialIndex {
       });
     } finally {
       this.grid.releasePooledResults(buf4);
+    }
+  }
+
+  // Bulk query operations for performance optimization
+  queryBulkNearest(
+    positions: Float32Array,
+    k: number,
+    team?: Team,
+    excludeIds?: Set<EntityId>,
+    out?: Uint32Array
+  ): Uint32Array {
+    this.trackQuery();
+    
+    const positionCount = Math.floor(positions.length / 3);
+    if (positionCount === 0) {
+      return out || new Uint32Array(0);
+    }
+
+    // Allocate output array if not provided
+    const maxResults = positionCount * k;
+    const result = out && out.length >= maxResults ? out : new Uint32Array(maxResults);
+    let writeIndex = 0;
+
+    const buf = this.grid.getPooledResults();
+    try {
+      for (let i = 0; i < positionCount; i++) {
+        const baseIdx = i * 3;
+        const center = {
+          x: positions[baseIdx],
+          y: positions[baseIdx + 1],
+          z: positions[baseIdx + 2],
+        };
+
+        // Query k nearest for this position
+        const entities = this.grid.queryKNearest(center, k, team);
+        
+        // Filter out excluded entities and pack results
+        let addedCount = 0;
+        for (const entity of entities) {
+          if (excludeIds && excludeIds.has(entity.id)) continue;
+          if (writeIndex < result.length) {
+            result[writeIndex++] = entity.id;
+            addedCount++;
+          }
+          if (addedCount >= k) break;
+        }
+        
+        // Pad with 0s if we didn't find k entities for this position
+        while (addedCount < k && writeIndex < result.length) {
+          result[writeIndex++] = 0;
+          addedCount++;
+        }
+      }
+
+      // If using a provided buffer, it might be larger than needed
+      return writeIndex === result.length ? result : result.subarray(0, writeIndex);
+    } finally {
+      this.grid.releasePooledResults(buf);
+    }
+  }
+
+  queryBulkRadius(
+    positions: Float32Array,
+    radius: number,
+    team?: Team,
+    excludeIds?: Set<EntityId>,
+    out?: Uint32Array
+  ): Uint32Array {
+    this.trackQuery();
+    
+    const positionCount = Math.floor(positions.length / 3);
+    if (positionCount === 0) {
+      return out || new Uint32Array(0);
+    }
+
+    // We don't know ahead of time how many results we'll get, so use a reasonable buffer
+    const tempResults: EntityId[] = [];
+
+    const buf = this.grid.getPooledResults();
+    try {
+      for (let i = 0; i < positionCount; i++) {
+        const baseIdx = i * 3;
+        const center = {
+          x: positions[baseIdx],
+          y: positions[baseIdx + 1],
+          z: positions[baseIdx + 2],
+        };
+
+        // Clear and reuse the pooled buffer
+        buf.length = 0;
+        this.grid.queryRadius(center, radius, buf);
+        
+        // Filter and collect results
+        for (const entity of buf) {
+          if (team && entity.team !== team) continue;
+          if (excludeIds && excludeIds.has(entity.id)) continue;
+          tempResults.push(entity.id);
+        }
+      }
+
+      // Convert to Uint32Array
+      const result = out && out.length >= tempResults.length 
+        ? out 
+        : new Uint32Array(tempResults.length);
+      
+      for (let i = 0; i < tempResults.length; i++) {
+        result[i] = tempResults[i];
+      }
+
+      return tempResults.length === result.length ? result : result.subarray(0, tempResults.length);
+    } finally {
+      this.grid.releasePooledResults(buf);
     }
   }
 
