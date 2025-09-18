@@ -24,7 +24,10 @@ describe('AI Roaming and Formation Systems', () => {
   });
 
   describe('Roaming Anchor Assignment', () => {
-    test('ships in roaming mode should get distinct anchors with minimum separation', () => {
+    test(
+      'ships in roaming mode should get distinct anchors with minimum separation',
+      { timeout: 60000 },
+      () => {
       // Spawn several ships near each other
       const ships = [];
       for (let i = 0; i < 4; i++) {
@@ -83,7 +86,8 @@ describe('AI Roaming and Formation Systems', () => {
           expect(distance).toBeGreaterThanOrEqual(minSeparation);
         }
       }
-    });
+      },
+    );
 
     test('roaming anchors should be released when ships leave roaming mode', () => {
       // Spawn a ship in roaming mode

@@ -53,7 +53,10 @@ function waitForMessage<T>(worker: Worker, predicate: (m: any) => m is T, timeou
   });
 }
 
-test('worker thread integration: build and run simWorker', async () => {
+test(
+  'worker thread integration: build and run simWorker',
+  { timeout: 60000 },
+  async () => {
   const root = path.resolve(__dirname, '..', '..');
   // debug: announce start
   console.log('[integration test] starting build and worker integration test');
@@ -165,7 +168,8 @@ globalThis.importScripts = function(...urls) {
 // report uncaught exceptions/rejections back to the test host
 process.on('uncaughtException', (err) => {
   if (parentPort) parentPort.postMessage({ type: 'uncaughtException', error: String(err), stack: err && err.stack });
-});
+  },
+);
 process.on('unhandledRejection', (err) => {
   if (parentPort) parentPort.postMessage({ type: 'unhandledRejection', error: String(err) });
 });

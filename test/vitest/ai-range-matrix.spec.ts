@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 
 test('AI engagement vs distance matrix', () => {
-  process.env.DEBUG_AI = '1';
+  if (!process.env.DEBUG_AI) process.env.DEBUG_AI = process.env.VITEST_AI_DEBUG === '1' ? '1' : '0';
   const distances = [100, 200, 300, 350, 500];
   for (const d of distances) {
     const state = createInitialState(`debug-seed-${d}`);

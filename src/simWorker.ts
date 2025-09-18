@@ -701,6 +701,35 @@ self.addEventListener('message', async (e: MessageEvent) => {
     return;
   }
 
+  if (type === 'update-velocities') {
+    // payload: { velocities: Float32Array } packed as [id, vx, vy, vz] per ship
+    try {
+      if (!isObject(payload) || !('velocities' in payload)) {
+        WG.postMessage({ type: 'update-velocities-done', ok: false });
+        return;
+      }
+      const arr = payload['velocities'] as unknown as Float32Array;
+      for (let i = 0; i < arr.length; i += 4) {
+        const id = arr[i];
+        const vx = arr[i + 1];
+        const vy = arr[i + 2];
+        const vz = arr[i + 3];
+        const body = bodies.get(id);
+        if (body) {
+          try {
+            body.setLinvel({ x: vx, y: vy, z: vz }, true);
+          } catch (e) {
+            void e;
+          }
+        }
+      }
+      WG.postMessage({ type: 'update-velocities-done', ok: true });
+    } catch (e) {
+      WG.postMessage({ type: 'update-velocities-done', ok: false, error: String(e) });
+    }
+    return;
+  }
+
   if (type === 'fire-bullet') {
     // payload: { id, ownerShipId, ownerTeam, pos, vel, ttl, damage }
     if (!isObject(payload)) {

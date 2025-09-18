@@ -1,7 +1,7 @@
 /* eslint-env node */
 /* global process */
 // Enable AI debug logs for visibility during test runs
-process.env.DEBUG_AI = '1';
+if (!process.env.DEBUG_AI) process.env.DEBUG_AI = process.env.VITEST_AI_DEBUG === '1' ? '1' : '0';
 import { test, expect } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 import { getShipClassConfig } from '../../src/config/entitiesConfig.js';

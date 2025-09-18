@@ -16,8 +16,10 @@ describe('BatchedQueryManager', () => {
     asAny.frameId = 123;
     bq.resetForFrame(999);
 
-    // Expect caches cleared but objects still present as Maps (we clear the maps)
-    expect(asAny.results.nearestEnemyCache.size).toBe(0);
+  // Expect per-frame caches cleared but objects still present as Maps (we clear the maps)
+  // nearestEnemyCache is intentionally preserved across frames for performance;
+  // it will be lazily updated when ships require it.
+  expect(asAny.results.nearestEnemyCache.size).toBeGreaterThanOrEqual(1);
     expect(asAny.results.nearbyEnemiesCache.size).toBe(0);
     expect(asAny.results.nearbyFriendsCache.size).toBe(0);
     expect(asAny.results.separationNeighborsCache.size).toBe(0);

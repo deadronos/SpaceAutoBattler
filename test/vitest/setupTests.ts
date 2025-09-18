@@ -4,10 +4,14 @@
 // does not error on `process` usage in tests. We keep it narrow to avoid
 // introducing broad `any` usage.
 declare var process: { env: { [key: string]: string | undefined } };
-// Enable debug logging for AI tests by default so test instrumentation and
-// intent-selection debug messages are available during CI/local runs.
-// This must be set before any test-time code relies on DEBUG_AI.
-process.env.DEBUG_AI = process.env.DEBUG_AI || '1';
+// Test logging policy:
+// Do NOT enable verbose DEBUG_AI logs by default, as excessive console I/O
+// significantly slows down performance-oriented tests and can cause timeouts.
+// Developers can opt-in to verbose AI logs by setting VITEST_AI_DEBUG=1.
+// Honor an explicitly provided DEBUG_AI from the environment if present.
+if (typeof process.env.DEBUG_AI === 'undefined') {
+  process.env.DEBUG_AI = process.env.VITEST_AI_DEBUG === '1' ? '1' : '0';
+}
 // intent-selection debug messages are available during CI/local runs.
 // This must be set before any test-time code relies on DEBUG_AI.
 import { beforeAll, vi, expect } from 'vitest';
@@ -373,16 +377,32 @@ beforeAll(() => {
   ) as any;
   globalThis.cancelAnimationFrame = vi.fn() as any;
 
+  // Ensure window alias and stub globals for libraries that reference bare identifiers
+  // like cancelAnimationFrame/requestAnimationFrame (e.g., GSAP ticker in Node env)
+  (globalThis as any).window = globalThis as any;
+  // Also define as stubbed globals via Vitest to increase compatibility
+  try {
+    vi.stubGlobal('requestAnimationFrame', globalThis.requestAnimationFrame as any);
+    vi.stubGlobal('cancelAnimationFrame', globalThis.cancelAnimationFrame as any);
+  } catch {
+    // ignore if stubbing not available in this context
+  }
+
   // Mock console methods to reduce noise in tests
   // Allow enabling debug logs during test runs by setting DEBUG_AI
-  if (!process.env.DEBUG_AI) {
+  // IMPORTANT: Use no-op functions instead of vi.fn to avoid recording millions
+  // of calls which consumes memory and slows down the entire suite.
+  if (process.env.DEBUG_AI !== '1') {
+    const noop = () => {};
     globalThis.console = {
       ...console,
-      log: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    };
+      log: noop,
+      warn: noop,
+      error: noop,
+      debug: noop,
+      info: noop,
+      trace: noop,
+    } as unknown as Console;
   }
 
   // Stub global.fetch so tests do not perform real network requests

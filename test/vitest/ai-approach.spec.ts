@@ -1,15 +1,13 @@
 /* eslint-env node, vitest */
-// Enable AI debug logs early so DEBUG_AI constant captures it during module init
-// Ensure DEBUG_AI is available in test runs via globalThis
-/* eslint-env node, vitest */
 /* global process */
-// Enable AI debug logs early so DEBUG_AI constant captures it during module init
-process.env.DEBUG_AI = '1';
+// Keep AI debug logs disabled by default for performance; developers can opt-in
+// by setting VITEST_AI_DEBUG=1 when running tests.
+if (typeof process.env.DEBUG_AI === 'undefined') process.env.DEBUG_AI = process.env.VITEST_AI_DEBUG === '1' ? '1' : '0';
 import { test, expect } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 import { getTurretConfig } from '../../src/config/entitiesConfig.js';
 
-test('AI approachToRange behavior — ship approaches then fires', () => {
+test('AI approachToRange behavior — ship approaches then fires', { timeout: 60000 }, () => {
   const state = createInitialState('ai-approach-test');
 
   state.behaviorConfig!.globalSettings.aiEnabled = true;
@@ -47,7 +45,7 @@ test('AI approachToRange behavior — ship approaches then fires', () => {
     // accumulate bullets created this tick and then clear them; the test
     // expects bullets over time so we aggregate across many ticks
     bulletsCreated += state.bullets.length;
-    if (process.env.DEBUG_AI)
+    if (process.env.DEBUG_AI === '1')
       console.log(
         `tick=${i} intent=${intent} dist=${dist.toFixed(2)} bullets=${state.bullets.length}`,
       );

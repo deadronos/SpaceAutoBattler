@@ -925,8 +925,8 @@ export function simulateStep(state: GameState, dt: number) {
     const aiController =
       state.aiController ??
       (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
-    if (DEBUG_AI) console.log(`[gameState] aiController:`, aiController);
-    if (DEBUG_AI) console.log(`[gameState] state.aiController:`, state.aiController);
+  _logger.debugIf(DEBUG_AI, () => [`[gameState] aiController:`, aiController]);
+  _logger.debugIf(DEBUG_AI, () => [`[gameState] state.aiController:`, state.aiController]);
     aiController.updateAllShips(dt);
   }
   
@@ -1043,6 +1043,12 @@ export function simulateStep(state: GameState, dt: number) {
         console.error(`DEBUG_AI: simulateStep final-restore ship=${s.id} target=${s.targetId}`);
     }
   }
+
+  // Note: Do NOT bump shipDataVersion every tick. This counter is used to
+  // trigger sending full ship arrays to the simWorker. We only want to send
+  // when topology changes (spawn/despawn) or when we explicitly teleport
+  // ships. Per-tick bumps cause the main thread to stream all ships every
+  // frame, which severely hurts performance and defeats worker-side physics.
 
   // Advance simulation clocks here so callers that drive the simulation by
   // invoking simulateStep (e.g., unit tests) observe time/tick progression

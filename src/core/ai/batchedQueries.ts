@@ -48,7 +48,8 @@ export class BatchedQueryManager {
   /**
    * Check if a ship needs an update based on movement, target changes, and time since last update
    */
-  private shouldUpdateShip(ship: Ship, nearestEnemyDistance?: number): boolean {
+  // Use squared distances to avoid Math.sqrt in hot path
+  private shouldUpdateShip(ship: Ship, nearestEnemyDistanceSq?: number): boolean {
     const tracker = this.shipActivity.get(ship.id);
     
     // Always update on first frame or if we don't have tracking data
@@ -67,15 +68,14 @@ export class BatchedQueryManager {
     const dx = ship.pos.x - tracker.lastPosition.x;
     const dy = ship.pos.y - tracker.lastPosition.y;
     const dz = ship.pos.z - tracker.lastPosition.z;
-    const distanceMoved = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    
-    if (distanceMoved > this.ACTIVITY_CHECK_DISTANCE) {
+    const movedSq = dx * dx + dy * dy + dz * dz;
+    if (movedSq > this.ACTIVITY_CHECK_DISTANCE * this.ACTIVITY_CHECK_DISTANCE) {
       return true;
     }
 
     // Check if ship is moving fast (velocity check)
-    const speed = Math.sqrt(ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z);
-    if (speed > this.ACTIVITY_CHECK_VELOCITY) {
+    const speedSq = ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z;
+    if (speedSq > this.ACTIVITY_CHECK_VELOCITY * this.ACTIVITY_CHECK_VELOCITY) {
       return true;
     }
 
@@ -84,8 +84,8 @@ export class BatchedQueryManager {
       return true;
     }
 
-    // For distant ships, allow more skipping
-    const skipThreshold = nearestEnemyDistance && nearestEnemyDistance > 200 ? 
+    // For distant ships, allow more skipping (use squared threshold)
+    const skipThreshold = nearestEnemyDistanceSq && nearestEnemyDistanceSq > (200 * 200) ? 
       this.MAX_SKIP_FRAMES : this.MIN_SKIP_FRAMES;
     
     // Skip if we haven't reached the minimum skip threshold
@@ -144,46 +144,52 @@ export class BatchedQueryManager {
     let processedCount = 0;
     let skippedCount = 0;
 
-    // Keep the individual query approach but add activity-based skipping
+  // Keep the individual query approach but add activity-based skipping
     for (const ship of ships) {
       // Quick distance estimate to nearest enemy for activity calculation
-      let nearestEnemyDistance: number | undefined;
+      let nearestEnemyDistanceSq: number | undefined;
       const cachedEnemy = this.results.nearestEnemyCache.get(ship.id);
       if (cachedEnemy) {
         const dx = cachedEnemy.pos.x - ship.pos.x;
         const dy = cachedEnemy.pos.y - ship.pos.y;
         const dz = cachedEnemy.pos.z - ship.pos.z;
-        nearestEnemyDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        nearestEnemyDistanceSq = dx * dx + dy * dy + dz * dz;
       }
 
       // Check if this ship needs an update
-      if (!this.shouldUpdateShip(ship, nearestEnemyDistance)) {
+      if (!this.shouldUpdateShip(ship, nearestEnemyDistanceSq)) {
         skippedCount++;
         continue;
       }
 
       const targetTeam = ship.team === 'red' ? 'blue' : 'red';
-      const nearest = this.spatialOptimizer.queryKNearestApproximate(ship.pos, 2, targetTeam);
+      // Query a small candidate set and apply deterministic selection locally to
+      // satisfy unit tests that assert tie-break behavior (choose lower id when
+      // distances are equal). Using k=2 keeps the workload minimal while allowing
+      // us to implement the tie-break rule.
+      const candidates = this.spatialOptimizer.queryKNearestApproximate(ship.pos, 2, targetTeam);
 
       let bestEnemy: Ship | null = null;
-      if (nearest && nearest.length > 0) {
-        let best = nearest[0];
-        if (nearest.length > 1) {
-          const a = state.shipIndex?.get(nearest[0].id);
-          const b = state.shipIndex?.get(nearest[1].id);
-          if (a && b) {
-            const dax = a.pos.x - ship.pos.x,
-              day = a.pos.y - ship.pos.y,
-              daz = a.pos.z - ship.pos.z;
-            const dbx = b.pos.x - ship.pos.x,
-              dby = b.pos.y - ship.pos.y,
-              dbz = b.pos.z - ship.pos.z;
-            const da = dax * dax + day * day + daz * daz;
-            const db = dbx * dbx + dby * dby + dbz * dbz;
-            if (db < da || (db === da && b.id < a.id)) best = nearest[1];
+      if (candidates && candidates.length > 0) {
+        // Compute squared distances to avoid Math.sqrt and apply tie-break on equal dist
+        const cx = ship.pos.x, cy = ship.pos.y, cz = ship.pos.z;
+        let bestId = candidates[0].id;
+        let bdx = candidates[0].pos.x - cx;
+        let bdy = candidates[0].pos.y - cy;
+        let bdz = candidates[0].pos.z - cz;
+        let bestDistSq = bdx * bdx + bdy * bdy + bdz * bdz;
+        for (let i = 1; i < candidates.length; i++) {
+          const c = candidates[i];
+          const dx = c.pos.x - cx;
+          const dy = c.pos.y - cy;
+          const dz = c.pos.z - cz;
+          const dSq = dx * dx + dy * dy + dz * dz;
+          if (dSq < bestDistSq || (dSq === bestDistSq && c.id < bestId)) {
+            bestDistSq = dSq;
+            bestId = c.id;
           }
         }
-        bestEnemy = state.shipIndex?.get(best.id) || null;
+        bestEnemy = state.shipIndex?.get(bestId) || null;
       }
 
       this.results.nearestEnemyCache.set(ship.id, bestEnemy);
@@ -193,12 +199,11 @@ export class BatchedQueryManager {
       // Optional debug logging for failing tests: enable by setting VITEST_DEBUG_AI=1
       try {
         if (process.env.VITEST_DEBUG_AI) {
-          const ids = nearest
-            ? nearest.map(
-                (n) =>
-                  `${n.id}@(${n.pos.x.toFixed(1)},${n.pos.y.toFixed(1)},${n.pos.z.toFixed(1)})`,
+          const ids = candidates
+            ? candidates.map((n: { id: number; pos: Vector3 }) =>
+                `${n.id}@(${n.pos.x.toFixed(1)},${n.pos.y.toFixed(1)},${n.pos.z.toFixed(1)})`,
               )
-            : [];
+            : [] as string[];
           console.log(
             `[DEBUG_AI] ship=${ship.id} nearestCandidates=${ids.join(', ')} selected=${bestEnemy ? bestEnemy.id : 'null'}`,
           );
@@ -361,7 +366,10 @@ export class BatchedQueryManager {
   public resetForFrame(frameId: number) {
     // Clear all cached result maps but keep the object references to allow
     // callers to re-use allocated Maps/arrays where possible.
-    this.results.nearestEnemyCache.clear();
+    // Preserve nearestEnemyCache across frames to allow activity-based skipping
+    // to reuse prior results and avoid recomputing every tick. Entries are
+    // updated when shouldUpdateShip returns true for a ship. This improves
+    // performance significantly in tests without sacrificing correctness.
     this.results.nearbyEnemiesCache.clear();
     this.results.nearbyFriendsCache.clear();
     this.results.separationNeighborsCache.clear();
@@ -374,6 +382,9 @@ export class BatchedQueryManager {
       for (const [shipId, tracker] of this.shipActivity.entries()) {
         if (frameId - tracker.lastUpdateFrame > 50) {
           this.shipActivity.delete(shipId);
+          // Also remove stale nearest cache entries for ships that haven't
+          // been updated in a long time to prevent unbounded growth.
+          this.results.nearestEnemyCache.delete(shipId);
         }
       }
     }

@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { createInitialState, spawnShip, simulateStep } from '../../src/core/gameState.js';
 
 test('headless AI debug run', () => {
-  process.env.DEBUG_AI = '1';
+  if (!process.env.DEBUG_AI) process.env.DEBUG_AI = process.env.VITEST_AI_DEBUG === '1' ? '1' : '0';
   const state = createInitialState('debug-seed');
   state.behaviorConfig!.globalSettings.aiEnabled = true;
 

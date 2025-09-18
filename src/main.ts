@@ -752,6 +752,25 @@ export function initGame(seed?: string) {
                 lastShipDataVersion = currentVersion;
               }
 
+              // Always send current linear velocities so worker bodies follow AI motion
+              try {
+                const floatsPer = 4; // id, vx, vy, vz
+                const velArray = new Float32Array(state.ships.length * floatsPer);
+                let o = 0;
+                for (const ship of state.ships) {
+                  velArray[o++] = ship.id;
+                  velArray[o++] = ship.vel.x;
+                  velArray[o++] = ship.vel.y;
+                  velArray[o++] = ship.vel.z;
+                }
+                w.postMessage(
+                  { type: 'update-velocities', payload: { velocities: velArray } },
+                  [velArray.buffer]
+                );
+              } catch (_ee) {
+                void _ee;
+              }
+
               // Step physics
               w.postMessage({ type: 'step-physics', payload: { dt } });
             } catch (_e) {
