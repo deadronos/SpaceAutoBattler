@@ -290,7 +290,7 @@ export const DefaultRendererConfig: RendererConfig = {
       scaleMultiplier: 1.2,
     },
     hexGrid: {
-      density: 30,
+      density: 40,
       edgeWidth: 0.015,
       splashRadius: 1.0,
       hitWindow: 0.6,
@@ -328,7 +328,7 @@ export const DefaultRendererConfig: RendererConfig = {
     explosion: {
       enabled: true,
       countPerRadius: 30, // base particles per world-unit radius
-  minCount: 8,
+      minCount: 8,
       maxCount: 200,
       lifetime: 1.2,
       size: {
@@ -340,7 +340,7 @@ export const DefaultRendererConfig: RendererConfig = {
         randomSpread: 0.6,
       },
       colors: ['#fffbda', '#ff8c00', '#440000'],
-      pooling: { initial: 256, growTo: 2048 },
+      pooling: { initial: 1024, growTo: 8192 },
       lod: {
         enabled: true, // disabled by default for compatibility
         distanceThresholds: [500, 1500, 3000], // distances for LOD0, LOD1, LOD2
@@ -356,7 +356,7 @@ export const DefaultRendererConfig: RendererConfig = {
     },
     length: 25,
     fadeSpeed: 3.0,
-    width: 2,
+    width: 10,
     opacity: {
       start: 0.8,
       end: 0.1,

@@ -45,11 +45,11 @@ export const DefaultShipVisualConfig: ShipVisualConfig = {
   },
   shield: {
     scaleMultipliers: {
-      fighter: 1.0,
-      corvette: 1.0,
-      frigate: 1.0,
-      destroyer: 1.0,
-      carrier: 1.0,
+      fighter: 1.2,
+      corvette: 1.2,
+      frigate: 1.2,
+      destroyer: 1.2,
+      carrier: 1.2,
     },
   },
 };
