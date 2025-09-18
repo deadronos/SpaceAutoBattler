@@ -198,6 +198,24 @@ async function initRapier() {
     };
 
     Rapier = normalizeRapierModule(rapierMod);
+    // Some Rapier builds expose an async `init` function that must be awaited
+    // (e.g. when WASM needs explicit initialization). Await it when present so
+    // the module is fully initialized before we attempt to construct a World.
+    try {
+      const maybeInit = (Rapier as unknown as { init?: unknown })?.init;
+      if (typeof maybeInit === 'function') {
+        try {
+          // `init` may return a Promise
+          await (maybeInit as () => Promise<unknown>)();
+          WG.postMessage({ type: 'init-rapier-diagnostics', rapierInit: true });
+        } catch (ie) {
+          // Continue and surface a diagnostic; world construction may still fail
+          WG.postMessage({ type: 'init-rapier-diagnostics', rapierInit: false, initError: String(ie) });
+        }
+      }
+    } catch {
+      /* best-effort */
+    }
     // Rapier.World may be a constructor or factory depending on the build; guard accordingly
     const W = (Rapier as Record<string, unknown>).World ?? Rapier;
     // Attempt to construct or call the World factory; allow different shapes across builds

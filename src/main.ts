@@ -374,11 +374,55 @@ export function initGame(seed?: string) {
       }
 
       // Create a module worker for simWorker.ts (Webpack will emit a JS chunk)
-      w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+      try {
+        w = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
+      } catch (err) {
+        // If worker creation fails (CSP, wrong path, unsupported env), surface an explicit console error
+        try {
+          const _u = new URL(window.location.href);
+          if (_u.searchParams.get('simDebug') === '1') {
+            console.error('[main.ts] simWorker creation threw:', err);
+          }
+        } catch {
+          /* ignore URL parse */
+        }
+        w = null;
+      }
       let ready = false;
       let lastShipDataVersion = -1;
 
-      if (w) {
+  if (w) {
+        // Optional debug hook: expose the worker to window and mirror messages
+        // when URL includes ?simDebug=1. This is intentionally gated so
+        // production runs are unaffected and we avoid noisy logs.
+        try {
+          const _url = new URL(window.location.href);
+          const dbg = _url.searchParams.get('simDebug');
+          if (dbg === '1') {
+            try {
+              (window as any).__simWorker = w;
+            } catch {
+              /* ignore */
+            }
+            try {
+              w.addEventListener('message', (ev) => {
+                try {
+                  // Keep this as info-level so it's visible in console when enabled
+                  // but avoid throwing if console I/O fails in restricted envs.
+                  console.info('[simDebug] worker -> main', ev.data);
+                } catch {
+                  /* ignore */
+                }
+              });
+            } catch {
+              /* ignore */
+            }
+            console.info('[main.ts] simDebug active: worker exposed at window.__simWorker');
+          }
+        } catch {
+          /* ignore URL parsing failures */
+        }
+
         w.addEventListener('message', (ev) => {
           const data = ev.data || {};
           const type = data.type;
@@ -618,7 +662,7 @@ export function initGame(seed?: string) {
           }
         });
 
-        w.postMessage({ type: 'init-physics' });
+  w.postMessage({ type: 'init-physics' });
 
         // Initialize AI in the same worker
         let aiReady = false;
@@ -751,6 +795,15 @@ export function initGame(seed?: string) {
         }, 200);
       }
     } catch (_e) {
+      // If any top-level worker bootstrap error happened, surface a console warning when simDebug=1
+      try {
+        const _u2 = new URL(window.location.href);
+        if (_u2.searchParams.get('simDebug') === '1') {
+          console.warn('[main.ts] Worker bootstrap failed, falling back to in-thread physics:', _e);
+        }
+      } catch {
+        /* ignore */
+      }
       void _e; // Fallback to in-process physics stepper
       try {
         const ps = await createPhysicsStepper(state as unknown as _GameStateType);
