@@ -33,7 +33,7 @@ type GroupData = {
   dirtyRange: { min: number; max: number } | null;
 };
 
-import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
+import { setTextureNeedsUpdateThrottled, cloneMaterialReuseTextures, batchUpdateMaterialTextures } from './textureThrottle.js';
 
 class ShipInstancerImpl {
   private scene?: THREE.Scene;
@@ -206,11 +206,15 @@ class ShipInstancerImpl {
       ? Array.isArray(materials)
         ? materials
         : [materials]
-      : geoms.map(() => this.fallbackMaterial!.clone());
+      : geoms.map(() => cloneMaterialReuseTextures(this.fallbackMaterial!));
     const padded =
       mats.length < geoms.length
-        ? [...mats, ...Array(geoms.length - mats.length).fill(mats[mats.length - 1].clone())]
+        ? [...mats, ...Array(geoms.length - mats.length).fill(cloneMaterialReuseTextures(mats[mats.length - 1]))]
         : mats.slice(0, geoms.length);
+    
+    // Batch update textures for all materials at once instead of individual calls
+    batchUpdateMaterialTextures(padded);
+    
     this.prototypeRegistry.set(className, { geometries: geoms, materials: padded });
     // If init() has already been called and this is the first prototype,
     // mark the instancer as ready so consumers can switch to instanced paths.
@@ -241,11 +245,15 @@ class ShipInstancerImpl {
       ? Array.isArray(materials)
         ? materials
         : [materials]
-      : geoms.map(() => this.fallbackMaterial!.clone());
+      : geoms.map(() => cloneMaterialReuseTextures(this.fallbackMaterial!));
     const padded =
       mats.length < geoms.length
-        ? [...mats, ...Array(geoms.length - mats.length).fill(mats[mats.length - 1].clone())]
+        ? [...mats, ...Array(geoms.length - mats.length).fill(cloneMaterialReuseTextures(mats[mats.length - 1]))]
         : mats.slice(0, geoms.length);
+        
+    // Batch update textures for all materials at once instead of individual calls
+    batchUpdateMaterialTextures(padded);
+    
     this.prototypeRegistry.set(className, { geometries: geoms, materials: padded });
     // If groups exist for this class (possibly per-team), replace their meshes
     // so future instance allocations and existing instances use the new geometry/material.
@@ -253,21 +261,21 @@ class ShipInstancerImpl {
       (g) => g.className === className,
     );
     if (groupsToUpdate.length === 0) return;
+    
     for (const group of groupsToUpdate) {
       // Capture old usages
       const oldMeshes = group.meshes.slice();
       const oldCapacity = group.capacity;
       // Build new instanced meshes with the same capacity and copy existing matrices
       const newMeshes: THREE.InstancedMesh[] = [];
+      const newMaterials: THREE.Material[] = [];
+      
       for (let i = 0; i < geoms.length; i++) {
         const geom = geoms[i];
-        const mat = (padded[i] || padded[0]).clone();
+        const mat = cloneMaterialReuseTextures(padded[i] || padded[0]);
         this.applyInstanceColorPatch(mat);
-        try {
-          setTextureNeedsUpdateThrottled(mat as THREE.Material);
-        } catch (_e) {
-          void _e;
-        }
+        newMaterials.push(mat);
+        
         const im = new THREE.InstancedMesh(geom, mat, oldCapacity);
         im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         im.name = `Instanced_${group.className}_${group.team ?? 'neutral'}_submesh_updated_${i}`;
@@ -317,6 +325,10 @@ class ShipInstancerImpl {
         group.parentGroup.add(im);
         newMeshes.push(im);
       }
+      
+      // Batch update textures for all new materials at once
+      batchUpdateMaterialTextures(newMaterials);
+      
       // Remove old meshes from scene
       for (const om of oldMeshes) {
         try {
@@ -864,7 +876,7 @@ class ShipInstancerImpl {
   private createGroup(className: string, team?: string): GroupData {
     const proto = this.prototypeRegistry.get(className);
     const geoms = proto ? proto.geometries : [this.fallbackGeometry!.clone()];
-    const mats = proto ? proto.materials : [this.fallbackMaterial!.clone()];
+    const mats = proto ? proto.materials : [cloneMaterialReuseTextures(this.fallbackMaterial!)];
     const capacity = this.defaultCapacity;
     const parentGroup = new THREE.Group();
     parentGroup.name = `ShipInstancer_${className}_${team ?? 'neutral'}_group`;
@@ -876,15 +888,13 @@ class ShipInstancerImpl {
     parentGroup.visible = false;
     // Note: removed diagnostic probe tags from prototype parent group
     if (this.rootParent) this.rootParent.add(parentGroup);
-      const meshes = geoms.map((g, i) => {
-      const mat = (mats[i] || mats[0]).clone();
+    
+    const clonedMaterials: THREE.Material[] = [];
+    const meshes = geoms.map((g, i) => {
+      const mat = cloneMaterialReuseTextures(mats[i] || mats[0]);
       this.applyInstanceColorPatch(mat);
-      try {
-        // Use throttled helper to avoid spamming texture uploads for material maps
-        setTextureNeedsUpdateThrottled(mat as THREE.Material);
-      } catch (_e) {
-        void _e;
-      }
+      clonedMaterials.push(mat);
+      
       const im = new THREE.InstancedMesh(g, mat, capacity);
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       im.name = `Instanced_${className}_${team ?? 'neutral'}_submesh_${i}`;
@@ -912,6 +922,9 @@ class ShipInstancerImpl {
       parentGroup.add(im);
       return im;
     });
+    
+    // Batch update textures for all created materials at once
+    batchUpdateMaterialTextures(clonedMaterials);
     const free: number[] = [];
     for (let i = capacity - 1; i >= 0; i--) free.push(i);
     const group: GroupData = {
@@ -975,16 +988,14 @@ class ShipInstancerImpl {
     const oldCap = group.capacity;
     const newCap = Math.max(Math.ceil(oldCap * this.growthFactor), oldCap + 1);
     const newMeshes: THREE.InstancedMesh[] = [];
+    const newMaterials: THREE.Material[] = [];
+    
     for (let i = 0; i < group.prototypeGeometries.length; i++) {
       const geom = group.prototypeGeometries[i];
-      const mat = (group.prototypeMaterials[i] || group.prototypeMaterials[0]).clone();
+      const mat = cloneMaterialReuseTextures(group.prototypeMaterials[i] || group.prototypeMaterials[0]);
       this.applyInstanceColorPatch(mat);
-      try {
-        // Apply throttled update for material's texture map when growing groups
-        setTextureNeedsUpdateThrottled(mat as THREE.Material);
-      } catch (_e) {
-        void _e;
-      }
+      newMaterials.push(mat);
+      
       const newMesh = new THREE.InstancedMesh(geom, mat, newCap);
       // Preserve or initialize instanceColor attribute
       const oldMesh = group.meshes[i];
@@ -1041,6 +1052,9 @@ class ShipInstancerImpl {
       group.parentGroup.add(newMesh);
       newMeshes.push(newMesh);
     }
+    
+    // Batch update textures for all new materials at once
+    batchUpdateMaterialTextures(newMaterials);
     for (const old of group.meshes) {
       try {
         if (old.parent) old.parent.remove(old);
