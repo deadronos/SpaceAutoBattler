@@ -41,7 +41,7 @@ import type { GameState as _GameStateType, UIElements as _UIElementsType } from 
 import { createThreeRenderer } from './renderer/threeRenderer.js';
 import { shipInstancer } from './renderer/shipInstancer.js';
 import { RendererConfig } from './config/rendererConfig.js';
-import { createPhysicsStepper } from './core/physics.js';
+import { createPhysicsStepper, PhysicsStepper } from './core/physics.js';
 import { CameraConfig as _CameraConfig } from './config/cameraConfig.js';
 import { FleetConfig } from './config/fleetConfig.js';
 // DefaultSimConfig not used here; keep config imports minimal to avoid unused-import ESLint errors
@@ -402,6 +402,51 @@ export function initGame(seed?: string) {
             return;
           }
 
+          // AI init handshake
+          if (type === 'init-ai-done') {
+            aiReady = !!data.ok;
+            if (!aiReady && data.error) {
+              logger.warn('[main.ts] AI worker initialization failed:', data.error);
+            }
+            return;
+          }
+
+          // AI step results
+          if (type === 'step-ai-done') {
+            if (data.error) {
+              logger.warn('[main.ts] AI step error:', data.error);
+              return;
+            }
+            
+            // Process AI results - update ship targets
+            if (data.aiResultsBuffer && data.shipCount) {
+              try {
+                const aiResults = new Float32Array(data.aiResultsBuffer);
+                const resultsPerShip = 3; // id, targetId, aiStateFlag
+                
+                for (let i = 0; i < data.shipCount; i++) {
+                  const offset = i * resultsPerShip;
+                  const shipId = aiResults[offset];
+                  const targetId = aiResults[offset + 1] === -1 ? null : aiResults[offset + 1];
+                  
+                  // Find ship and update its target
+                  const ship = state.shipIndex?.get(shipId) ?? state.ships.find(s => s.id === shipId);
+                  if (ship) {
+                    ship.targetId = targetId;
+                  }
+                }
+              } catch (e) {
+                logger.warn('[main.ts] Error processing AI results:', e);
+              }
+            }
+            return;
+          }
+
+          if (type === 'step-ai-error') {
+            logger.warn('[main.ts] AI step error:', data.error);
+            return;
+          }
+
           // Bullet operation results
           if (type === 'fire-bullet-done') {
             // Bullet creation handled by worker, main thread just tracks success
@@ -575,9 +620,20 @@ export function initGame(seed?: string) {
 
         w.postMessage({ type: 'init-physics' });
 
+        // Initialize AI in the same worker
+        let aiReady = false;
+        w.postMessage({ 
+          type: 'init-ai', 
+          payload: {
+            simConfig: state.simConfig,
+            behaviorConfig: state.behaviorConfig
+          }
+        });
+
         // Expose a small shim for callers that expects physicsStepper API
-        (state as unknown as _GameStateType).physicsStepper = {
+        (state as unknown as _GameStateType).physicsStepper = ({
           initDone: false,
+          world: undefined, // Worker mode doesn't expose world directly
           step(dt: number) {
             try {
               // Send current ship data to worker only if it has changed
@@ -608,14 +664,81 @@ export function initGame(seed?: string) {
               void _e; /* ignore */
             }
           },
+          stepAI(dt: number) {
+            if (!aiReady) return; // AI not ready yet
+            
+            try {
+              // Pack ship data for AI (more fields than physics)
+              const floatsPerShip = 11; // id, px, py, pz, vx, vy, vz, health, targetId, team, class
+              const shipsBuffer = new Float32Array(state.ships.length * floatsPerShip);
+              
+              for (let i = 0; i < state.ships.length; i++) {
+                const ship = state.ships[i];
+                const offset = i * floatsPerShip;
+                shipsBuffer[offset + 0] = ship.id;
+                shipsBuffer[offset + 1] = ship.pos.x;
+                shipsBuffer[offset + 2] = ship.pos.y;
+                shipsBuffer[offset + 3] = ship.pos.z;
+                shipsBuffer[offset + 4] = ship.vel.x;
+                shipsBuffer[offset + 5] = ship.vel.y;
+                shipsBuffer[offset + 6] = ship.vel.z;
+                shipsBuffer[offset + 7] = ship.health;
+                shipsBuffer[offset + 8] = ship.targetId || -1;
+                shipsBuffer[offset + 9] = ship.team === 'red' ? 0 : 1;
+                shipsBuffer[offset + 10] = 0; // ship class placeholder
+              }
+              
+              // Pack bullet data if needed
+              const floatsPerBullet = 11; // id, px, py, pz, vx, vy, vz, ttl, damage, ownerShipId, ownerTeam
+              const bulletsBuffer = new Float32Array(state.bullets.length * floatsPerBullet);
+              
+              for (let i = 0; i < state.bullets.length; i++) {
+                const bullet = state.bullets[i];
+                const offset = i * floatsPerBullet;
+                bulletsBuffer[offset + 0] = bullet.id;
+                bulletsBuffer[offset + 1] = bullet.pos.x;
+                bulletsBuffer[offset + 2] = bullet.pos.y;
+                bulletsBuffer[offset + 3] = bullet.pos.z;
+                bulletsBuffer[offset + 4] = bullet.vel.x;
+                bulletsBuffer[offset + 5] = bullet.vel.y;
+                bulletsBuffer[offset + 6] = bullet.vel.z;
+                bulletsBuffer[offset + 7] = bullet.ttl;
+                bulletsBuffer[offset + 8] = bullet.damage;
+                bulletsBuffer[offset + 9] = bullet.ownerShipId;
+                bulletsBuffer[offset + 10] = bullet.ownerTeam === 'red' ? 0 : 1;
+              }
+              
+              // Send AI step message
+              w.postMessage({
+                type: 'step-ai',
+                payload: {
+                  dt,
+                  shipsBuffer: shipsBuffer.buffer,
+                  bulletsBuffer: bulletsBuffer.buffer,
+                  behaviorConfig: state.behaviorConfig,
+                  tick: state.tick
+                }
+              }, [shipsBuffer.buffer, bulletsBuffer.buffer]);
+            } catch (e) {
+              logger.warn('[main.ts] Error sending AI step:', e);
+            }
+          },
           dispose() {
             try {
               w.postMessage({ type: 'dispose-physics' });
+              w.postMessage({ type: 'dispose-ai' });
             } catch (_e) {
               void _e; /* ignore */
             }
           },
-        };
+          // Stub implementations for worker mode (these would need proper implementation)
+          addShip: () => null,
+          removeShip: () => {},
+          raycast: () => null,
+          sphereCast: () => [],
+          applyForce: () => {},
+          setGravity: () => {},
+        }) as PhysicsStepper;
 
         // Wait a short time for readiness, then mark initDone if ready
         setTimeout(() => {

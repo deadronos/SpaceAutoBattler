@@ -84,6 +84,16 @@ import type { EntityIndexAPI } from './core/entityIndex.js';
 let entityIndex: EntityIndexAPI | null = null;
 const entityIndexKnownIds = new Set<number>();
 
+// AI system imports and state - initialized dynamically
+import type { AIController } from './core/ai/controller.js';
+import type { AggressiveSpatialOptimizer } from './core/ai/aggressiveSpatialOptimizer.js';
+import type { SpatialGrid } from './utils/spatialGrid.js';
+import type { GameState } from './types/index.js';
+
+let aiController: AIController | null = null;
+let spatialGrid: SpatialGrid | null = null;
+let aggressiveSpatialOptimizer: AggressiveSpatialOptimizer | null = null;
+
 // Worker global typed view for message/postMessage usage
 type WorkerGlobalLike = {
   postMessage(m: unknown): void;
@@ -92,6 +102,41 @@ type WorkerGlobalLike = {
 const WG = self as unknown as WorkerGlobalLike;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
+async function initAI(gameStateData: unknown) {
+  if (aiController) return; // Already initialized
+  
+  try {
+    // Dynamically import AI modules
+    const [aiModule, spatialModule, optimizerModule] = await Promise.all([
+      import('./core/ai/controller.js'),
+      import('./utils/spatialGrid.js'),
+      import('./core/ai/aggressiveSpatialOptimizer.js')
+    ]);
+    
+    // Create a minimal GameState object for AI initialization
+    const gameState = gameStateData as GameState;
+    
+    // Initialize spatial systems
+    spatialGrid = new spatialModule.SpatialGrid(
+      gameState.simConfig.spatialGrid.cellSize,
+      gameState.simConfig.simBounds
+    );
+    
+    aggressiveSpatialOptimizer = new optimizerModule.AggressiveSpatialOptimizer(
+      spatialGrid,
+      gameState.simConfig.spatialGrid.cellSize
+    );
+    
+    // Initialize AI controller
+    aiController = new aiModule.AIController(gameState, aggressiveSpatialOptimizer);
+    
+    logger.debug('[simWorker] AI systems initialized successfully');
+  } catch (e) {
+    logger.error('[simWorker] Failed to initialize AI systems:', e);
+    throw e;
+  }
+}
 
 async function initRapier() {
   if (Rapier) return;
@@ -785,6 +830,121 @@ self.addEventListener('message', async (e: MessageEvent) => {
     world = null;
     Rapier = null;
     WG.postMessage({ type: 'dispose-physics-done' });
+    return;
+  }
+
+  // AI Message Handlers
+  if (type === 'init-ai') {
+    try {
+      await initAI(payload);
+      WG.postMessage({ type: 'init-ai-done', ok: !!aiController });
+    } catch (e) {
+      WG.postMessage({ type: 'init-ai-done', ok: false, error: String(e) });
+    }
+    return;
+  }
+
+  if (type === 'step-ai') {
+    if (!aiController) {
+      WG.postMessage({ type: 'step-ai-done', error: 'AI not initialized' });
+      return;
+    }
+    
+    try {
+      const aiPayload = payload as { 
+        dt: number; 
+        shipsBuffer?: ArrayBuffer;
+        bulletsBuffer?: ArrayBuffer;
+        behaviorConfig?: unknown;
+        tick?: number;
+      };
+      
+      const dt = aiPayload.dt || 0.016;
+      
+      // Reconstruct ships from packed Float32Array buffer
+      const ships: any[] = [];
+      if (aiPayload.shipsBuffer) {
+        const shipsData = new Float32Array(aiPayload.shipsBuffer);
+        // Expected format: [id, px, py, pz, vx, vy, vz, health, targetId, team, class] per ship
+        const floatsPerShip = 11;
+        for (let i = 0; i < shipsData.length; i += floatsPerShip) {
+          ships.push({
+            id: shipsData[i],
+            pos: { x: shipsData[i + 1], y: shipsData[i + 2], z: shipsData[i + 3] },
+            vel: { x: shipsData[i + 4], y: shipsData[i + 5], z: shipsData[i + 6] },
+            health: shipsData[i + 7],
+            targetId: shipsData[i + 8] === -1 ? null : shipsData[i + 8],
+            team: shipsData[i + 9] === 0 ? 'red' : 'blue',
+            class: Math.floor(shipsData[i + 10]), // ship class as integer
+            aiState: {} // Initialize basic AI state
+          });
+        }
+      }
+      
+      // Reconstruct bullets from packed buffer if provided
+      const bullets: any[] = [];
+      if (aiPayload.bulletsBuffer) {
+        const bulletsData = new Float32Array(aiPayload.bulletsBuffer);
+        // Expected format: [id, px, py, pz, vx, vy, vz, ttl, damage, ownerShipId, ownerTeam] per bullet
+        const floatsPerBullet = 11;
+        for (let i = 0; i < bulletsData.length; i += floatsPerBullet) {
+          bullets.push({
+            id: bulletsData[i],
+            pos: { x: bulletsData[i + 1], y: bulletsData[i + 2], z: bulletsData[i + 3] },
+            vel: { x: bulletsData[i + 4], y: bulletsData[i + 5], z: bulletsData[i + 6] },
+            ttl: bulletsData[i + 7],
+            damage: bulletsData[i + 8],
+            ownerShipId: bulletsData[i + 9],
+            ownerTeam: bulletsData[i + 10] === 0 ? 'red' : 'blue'
+          });
+        }
+      }
+      
+      // Update AI controller's state with minimal data
+      const currentState = (aiController as any).state;
+      if (currentState) {
+        currentState.ships = ships;
+        currentState.bullets = bullets;
+        currentState.tick = aiPayload.tick || 0;
+        if (aiPayload.behaviorConfig) {
+          currentState.behaviorConfig = aiPayload.behaviorConfig;
+        }
+      }
+      
+      // Run AI update
+      aiController.updateAllShips(dt);
+      
+      // Pack AI results into Float32Array for efficient transfer
+      const resultSize = ships.length * 3; // id, targetId, aiStateFlag per ship
+      const aiResultsBuffer = new Float32Array(resultSize);
+      let resultIndex = 0;
+      
+      for (const ship of ships) {
+        aiResultsBuffer[resultIndex++] = ship.id;
+        aiResultsBuffer[resultIndex++] = ship.targetId || -1; // -1 for null
+        aiResultsBuffer[resultIndex++] = 0; // placeholder for AI state flags
+      }
+      
+      // Transfer the buffer to avoid structured clone
+      postMessageTransferable(
+        { 
+          type: 'step-ai-done', 
+          aiResultsBuffer: aiResultsBuffer.buffer,
+          shipCount: ships.length 
+        },
+        [aiResultsBuffer.buffer]
+      );
+    } catch (e) {
+      WG.postMessage({ type: 'step-ai-error', error: String(e) });
+    }
+    return;
+  }
+
+  if (type === 'dispose-ai') {
+    aiController = null;
+    spatialGrid = null;
+    aggressiveSpatialOptimizer = null;
+    WG.postMessage({ type: 'dispose-ai-done' });
     return;
   }
 
