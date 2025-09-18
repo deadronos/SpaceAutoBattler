@@ -202,6 +202,14 @@ export interface RendererConfig {
    */
   useSimWorker?: boolean;
 
+  /**
+   * Whether to run AI processing in the same simWorker (when useSimWorker is true).
+   * When true, AI calculations (targeting, movement, spatial queries) are performed in the worker thread
+   * for improved performance and deterministic execution. When false, AI runs in the main thread.
+   * Has no effect if useSimWorker is false.
+   */
+  useAIWorker?: boolean;
+
   // Instancing settings for performance optimization
   instancing: {
     enableBullets: boolean; // feature flag for bullet instancing
@@ -415,6 +423,7 @@ export const DefaultRendererConfig: RendererConfig = {
   // Set to true to avoid creating Workers/OffscreenCanvas in typical runtime.
   disableSvgSubsystem: true,
   useSimWorker: true,
+  useAIWorker: true, // Default to using AI worker when simWorker is available
 
   // Performance instrumentation settings — preserved from incoming PR to keep
   // hotpath frame-time attribution available while remaining disabled by default.

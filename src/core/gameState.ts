@@ -9,6 +9,7 @@ import type {
   TurretState,
 } from '../types/index.js';
 import { DefaultSimConfig } from '../config/simConfig.js';
+import { RendererConfig } from '../config/rendererConfig.js';
 import {
   SHIP_CLASS_CONFIGS as _SHIP_CLASS_CONFIGS,
   getShipClassConfig,
@@ -894,15 +895,41 @@ export function simulateStep(state: GameState, dt: number) {
   }
   // --- END NEW ---
 
-  // Ship AI logic - Always use AIController for unified behavior
+  // Ship AI logic - Conditionally use AI worker vs direct AIController
   perfBegin('ai.total');
-  // Lazily create and reuse AIController instance
-  const aiController =
-    state.aiController ??
-    (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
-  if (DEBUG_AI) console.log(`[gameState] aiController:`, aiController);
-  if (DEBUG_AI) console.log(`[gameState] state.aiController:`, state.aiController);
-  aiController.updateAllShips(dt);
+  
+  // Check if we should use AI worker mode
+  const useSimWorker = (RendererConfig.useSimWorker as unknown as boolean) ?? true;
+  const useAIWorker = (RendererConfig.useAIWorker as unknown as boolean) ?? true;
+  const shouldUseAIWorker = useSimWorker && useAIWorker && state.physicsStepper?.stepAI;
+  
+  if (shouldUseAIWorker) {
+    // Use AI worker - call stepAI which handles data packing and worker communication
+    try {
+      state.physicsStepper!.stepAI!(dt);
+      if (DEBUG_AI) {
+        console.log(`[gameState] Using AI worker mode`);
+      }
+    } catch (e) {
+      if (DEBUG_AI) {
+        console.warn(`[gameState] AI worker step failed, falling back to direct AI:`, e);
+      }
+      // Fall back to direct AI if worker fails
+      const aiController =
+        state.aiController ??
+        (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
+      aiController.updateAllShips(dt);
+    }
+  } else {
+    // Use direct AI controller - existing behavior
+    const aiController =
+      state.aiController ??
+      (state.aiController = new AIController(state, state.aggressiveSpatialOptimizer));
+    if (DEBUG_AI) console.log(`[gameState] aiController:`, aiController);
+    if (DEBUG_AI) console.log(`[gameState] state.aiController:`, state.aiController);
+    aiController.updateAllShips(dt);
+  }
+  
   if (DEBUG_AI) {
     try {
       const map = state.ships.map((s) => `ship=${s.id}->target=${String(s.targetId)}`).join(', ');
@@ -915,12 +942,14 @@ export function simulateStep(state: GameState, dt: number) {
   // downstream operations that may temporarily clear targetId (e.g., pruning
   // out-of-bounds or rebuilds). This preserves test expectations that target
   // assignment from AIController is visible after simulateStep returns.
+  // Note: This only works for direct AI mode, worker mode handles targets directly
   for (const s of state.ships) {
     const assigned = (s as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget;
     if (assigned !== undefined && (s.targetId === null || s.targetId === undefined)) {
       // Prefer controller-mediated assignment when available so throttle
       // semantics are preserved for any external writes as well.
-      if (aiController) {
+      const aiController = state.aiController;
+      if (aiController && typeof aiController.setShipTargetWithThrottle === 'function') {
         try {
           aiController.setShipTargetWithThrottle(s, assigned as number);
         } catch {
@@ -994,12 +1023,14 @@ export function simulateStep(state: GameState, dt: number) {
   // have run. Some subsystems (e.g., boundary cleanup) may clear targets; to
   // preserve the contract that AIController assignments are visible after
   // simulateStep returns (used by characterization tests), restore them here.
+  // Note: This only works for direct AI mode, worker mode handles targets directly
   for (const s of state.ships) {
     const assigned = (s as unknown as { __aiAssignedTarget?: number }).__aiAssignedTarget;
     if (assigned !== undefined && (s.targetId === null || s.targetId === undefined)) {
       // Prefer controller-mediated assignment when available so throttle
       // semantics are preserved for any external writes as well.
-      if (aiController) {
+      const aiController = state.aiController;
+      if (aiController && typeof aiController.setShipTargetWithThrottle === 'function') {
         try {
           aiController.setShipTargetWithThrottle(s, assigned as number);
         } catch {
