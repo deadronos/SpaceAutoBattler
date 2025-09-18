@@ -876,11 +876,12 @@ class ShipInstancerImpl {
     parentGroup.visible = false;
     // Note: removed diagnostic probe tags from prototype parent group
     if (this.rootParent) this.rootParent.add(parentGroup);
-    const meshes = geoms.map((g, i) => {
+      const meshes = geoms.map((g, i) => {
       const mat = (mats[i] || mats[0]).clone();
       this.applyInstanceColorPatch(mat);
       try {
-        (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+        // Use throttled helper to avoid spamming texture uploads for material maps
+        setTextureNeedsUpdateThrottled(mat as THREE.Material);
       } catch (_e) {
         void _e;
       }
@@ -979,7 +980,8 @@ class ShipInstancerImpl {
       const mat = (group.prototypeMaterials[i] || group.prototypeMaterials[0]).clone();
       this.applyInstanceColorPatch(mat);
       try {
-        (mat as unknown as { needsUpdate?: boolean }).needsUpdate = true;
+        // Apply throttled update for material's texture map when growing groups
+        setTextureNeedsUpdateThrottled(mat as THREE.Material);
       } catch (_e) {
         void _e;
       }
