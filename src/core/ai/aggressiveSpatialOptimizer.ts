@@ -216,14 +216,36 @@ export class AggressiveSpatialOptimizer {
       }
 
       if (candidates.length >= k) {
-        // Sort by distance and take k nearest
-        candidates.sort((a, b) => {
-          const distA = this.getDistanceSqFast(center, a.pos);
-          const distB = this.getDistanceSqFast(center, b.pos);
-          return distA - distB;
-        });
-
-        const results = candidates.slice(0, k);
+        // Use quickselect for large candidate sets to avoid full O(n log n) sort
+        // Threshold based on ratio: when candidates >> k, quickselect is much faster
+        const QUICKSELECT_THRESHOLD = 4;
+        let results: SpatialEntity[];
+        
+        if (candidates.length > k * QUICKSELECT_THRESHOLD) {
+          // Use quickselect to find k nearest - O(n) average case instead of O(n log n)
+          this.quickSelect(candidates, k, (a, b) => {
+            const distA = this.getDistanceSqFast(center, a.pos);
+            const distB = this.getDistanceSqFast(center, b.pos);
+            return distA - distB;
+          });
+          
+          // quickSelect partitions but doesn't fully sort, so we need to sort the first k elements
+          const firstK = candidates.slice(0, k);
+          firstK.sort((a, b) => {
+            const distA = this.getDistanceSqFast(center, a.pos);
+            const distB = this.getDistanceSqFast(center, b.pos);
+            return distA - distB;
+          });
+          results = firstK;
+        } else {
+          // For smaller candidate sets, regular sort is still efficient
+          candidates.sort((a, b) => {
+            const distA = this.getDistanceSqFast(center, a.pos);
+            const distB = this.getDistanceSqFast(center, b.pos);
+            return distA - distB;
+          });
+          results = candidates.slice(0, k);
+        }
 
         // Cache for next frame
         this.commonNeighborCache.set(cacheKey, {
@@ -245,13 +267,33 @@ export class AggressiveSpatialOptimizer {
         `[AggressiveSpatialOptimizer] queryKNearestApproximate - maxSearchRadius: ${maxSearchRadius}, allCandidates.length: ${allCandidates.length}`,
       );
 
-    allCandidates.sort((a, b) => {
-      const distA = this.getDistanceSqFast(center, a.pos);
-      const distB = this.getDistanceSqFast(center, b.pos);
-      return distA - distB;
-    });
+    // Apply the same quickselect optimization here
+    let results: SpatialEntity[];
+    if (allCandidates.length > k * 4) {
+      this.quickSelect(allCandidates, k, (a, b) => {
+        const distA = this.getDistanceSqFast(center, a.pos);
+        const distB = this.getDistanceSqFast(center, b.pos);
+        return distA - distB;
+      });
+      
+      // Sort the first k elements for consistent results
+      const firstK = allCandidates.slice(0, k);
+      firstK.sort((a, b) => {
+        const distA = this.getDistanceSqFast(center, a.pos);
+        const distB = this.getDistanceSqFast(center, b.pos);
+        return distA - distB;
+      });
+      results = firstK;
+    } else {
+      allCandidates.sort((a, b) => {
+        const distA = this.getDistanceSqFast(center, a.pos);
+        const distB = this.getDistanceSqFast(center, b.pos);
+        return distA - distB;
+      });
+      results = allCandidates.slice(0, k);
+    }
 
-    return allCandidates.slice(0, k);
+    return results;
   }
 
   /**
@@ -413,6 +455,76 @@ export class AggressiveSpatialOptimizer {
     const dy = p1.y - p2.y;
     const dz = p1.z - p2.z;
     return dx * dx + dy * dy + dz * dz;
+  }
+
+  /**
+   * QuickSelect algorithm for partial selection - O(n) average case
+   * Finds the k-th smallest element and partitions the array so that
+   * the first k elements are the k smallest (not necessarily sorted)
+   */
+  private quickSelect<T>(
+    arr: T[], 
+    k: number, 
+    compareFn: (a: T, b: T) => number,
+    left = 0, 
+    right = arr.length - 1
+  ): void {
+    if (left >= right || k <= 0) return;
+    
+    while (left < right) {
+      // Partition around a pivot
+      const pivotIndex = this.partition(arr, left, right, compareFn);
+      
+      if (pivotIndex === k - 1) {
+        // Found the k-th element, we're done
+        return;
+      } else if (pivotIndex < k - 1) {
+        // k-th element is in the right partition
+        left = pivotIndex + 1;
+      } else {
+        // k-th element is in the left partition
+        right = pivotIndex - 1;
+      }
+    }
+  }
+
+  /**
+   * Partition function for quickselect
+   */
+  private partition<T>(
+    arr: T[], 
+    left: number, 
+    right: number, 
+    compareFn: (a: T, b: T) => number
+  ): number {
+    // Use median-of-three pivot selection for better performance
+    const mid = Math.floor((left + right) / 2);
+    if (compareFn(arr[mid], arr[left]) < 0) {
+      [arr[left], arr[mid]] = [arr[mid], arr[left]];
+    }
+    if (compareFn(arr[right], arr[left]) < 0) {
+      [arr[left], arr[right]] = [arr[right], arr[left]];
+    }
+    if (compareFn(arr[right], arr[mid]) < 0) {
+      [arr[mid], arr[right]] = [arr[right], arr[mid]];
+    }
+    
+    const pivot = arr[mid];
+    [arr[mid], arr[right - 1]] = [arr[right - 1], arr[mid]];
+    
+    let i = left;
+    let j = right - 1;
+    
+    while (true) {
+      while (++i < right - 1 && compareFn(arr[i], pivot) < 0) {}
+      while (--j > left && compareFn(arr[j], pivot) > 0) {}
+      
+      if (i >= j) break;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    
+    [arr[i], arr[right - 1]] = [arr[right - 1], arr[i]];
+    return i;
   }
 
   /**

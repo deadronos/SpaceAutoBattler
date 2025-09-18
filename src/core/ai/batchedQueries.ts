@@ -15,6 +15,13 @@ interface BatchedResults {
   separationNeighborsCache: Map<number, Vector3[]>;
 }
 
+interface ShipActivityTracker {
+  lastUpdateFrame: number;
+  lastPosition: Vector3;
+  lastTargetId: number | null;
+  skipCount: number; // How many frames we've skipped
+}
+
 export class BatchedQueryManager {
   private results: BatchedResults = {
     nearestEnemyCache: new Map(),
@@ -27,8 +34,74 @@ export class BatchedQueryManager {
   private static BENCH = !!process.env.VITEST_DEBUG_BENCH;
   private spatialOptimizer: AggressiveSpatialOptimizer | undefined;
 
+  // Activity tracking for reduced frequency updates
+  private shipActivity = new Map<number, ShipActivityTracker>();
+  private readonly ACTIVITY_CHECK_DISTANCE = 25; // Units - if ship moved this much, consider it active
+  private readonly ACTIVITY_CHECK_VELOCITY = 10; // Units/sec - if ship is moving this fast, consider it active
+  private readonly MAX_SKIP_FRAMES = 4; // Maximum frames to skip for inactive distant ships
+  private readonly MIN_SKIP_FRAMES = 2; // Minimum frames to skip for any inactive ship
+
   constructor(spatialOptimizer?: AggressiveSpatialOptimizer) {
     this.spatialOptimizer = spatialOptimizer;
+  }
+
+  /**
+   * Check if a ship needs an update based on movement, target changes, and time since last update
+   */
+  private shouldUpdateShip(ship: Ship, nearestEnemyDistance?: number): boolean {
+    const tracker = this.shipActivity.get(ship.id);
+    
+    // Always update on first frame or if we don't have tracking data
+    if (!tracker || tracker.lastUpdateFrame === 0) {
+      return true;
+    }
+
+    const framesSinceUpdate = this.frameId - tracker.lastUpdateFrame;
+    
+    // Force update if we've skipped too many frames
+    if (framesSinceUpdate >= this.MAX_SKIP_FRAMES) {
+      return true;
+    }
+
+    // Check if ship has moved significantly
+    const dx = ship.pos.x - tracker.lastPosition.x;
+    const dy = ship.pos.y - tracker.lastPosition.y;
+    const dz = ship.pos.z - tracker.lastPosition.z;
+    const distanceMoved = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    if (distanceMoved > this.ACTIVITY_CHECK_DISTANCE) {
+      return true;
+    }
+
+    // Check if ship is moving fast (velocity check)
+    const speed = Math.sqrt(ship.vel.x * ship.vel.x + ship.vel.y * ship.vel.y + ship.vel.z * ship.vel.z);
+    if (speed > this.ACTIVITY_CHECK_VELOCITY) {
+      return true;
+    }
+
+    // Check if target changed
+    if (ship.targetId !== tracker.lastTargetId) {
+      return true;
+    }
+
+    // For distant ships, allow more skipping
+    const skipThreshold = nearestEnemyDistance && nearestEnemyDistance > 200 ? 
+      this.MAX_SKIP_FRAMES : this.MIN_SKIP_FRAMES;
+    
+    // Skip if we haven't reached the minimum skip threshold
+    return framesSinceUpdate >= skipThreshold;
+  }
+
+  /**
+   * Update activity tracking for a ship
+   */
+  private updateShipActivity(ship: Ship): void {
+    this.shipActivity.set(ship.id, {
+      lastUpdateFrame: this.frameId,
+      lastPosition: { x: ship.pos.x, y: ship.pos.y, z: ship.pos.z },
+      lastTargetId: ship.targetId,
+      skipCount: 0
+    });
   }
 
   /**
@@ -44,8 +117,27 @@ export class BatchedQueryManager {
       return;
     }
 
-    // Batch query nearest enemies for all ships
+    let processedCount = 0;
+    let skippedCount = 0;
+
+    // Batch query nearest enemies for all ships, with frequency reduction
     for (const ship of ships) {
+      // Quick distance estimate to nearest enemy for activity calculation
+      let nearestEnemyDistance: number | undefined;
+      const cachedEnemy = this.results.nearestEnemyCache.get(ship.id);
+      if (cachedEnemy) {
+        const dx = cachedEnemy.pos.x - ship.pos.x;
+        const dy = cachedEnemy.pos.y - ship.pos.y;
+        const dz = cachedEnemy.pos.z - ship.pos.z;
+        nearestEnemyDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+
+      // Check if this ship needs an update
+      if (!this.shouldUpdateShip(ship, nearestEnemyDistance)) {
+        skippedCount++;
+        continue;
+      }
+
       const targetTeam = ship.team === 'red' ? 'blue' : 'red';
       const nearest = this.spatialOptimizer.queryKNearestApproximate(ship.pos, 2, targetTeam);
 
@@ -71,6 +163,9 @@ export class BatchedQueryManager {
       }
 
       this.results.nearestEnemyCache.set(ship.id, bestEnemy);
+      this.updateShipActivity(ship);
+      processedCount++;
+
       // Optional debug logging for failing tests: enable by setting VITEST_DEBUG_AI=1
       try {
         if (process.env.VITEST_DEBUG_AI) {
@@ -91,7 +186,7 @@ export class BatchedQueryManager {
     if (bench) {
       const t1 = performance.now();
       console.log(
-        `[BENCH] precomputeNearestEnemies for ${ships.length} ships: ${(t1 - t0).toFixed(3)}ms`,
+        `[BENCH] precomputeNearestEnemies for ${ships.length} ships (processed: ${processedCount}, skipped: ${skippedCount}): ${(t1 - t0).toFixed(3)}ms`,
       );
     }
   }
@@ -117,8 +212,18 @@ export class BatchedQueryManager {
       return;
     }
 
+    let processedCount = 0;
+    let skippedCount = 0;
+
     // Reuse cached arrays when available to avoid allocations
     for (const ship of ships) {
+      // For separation neighbors, we use a more lenient activity check since nearby neighbors change frequently
+      // Check if this ship needs an update (more frequent for separation since neighbors change quickly)
+      if (!this.shouldUpdateShip(ship)) {
+        skippedCount++;
+        continue;
+      }
+
       // Reuse existing array if present to avoid allocating a fresh array
       let neighbors = this.results.separationNeighborsCache.get(ship.id);
       if (!neighbors) {
@@ -143,11 +248,12 @@ export class BatchedQueryManager {
           neighbors.push(entity.pos);
         }
       }
+      processedCount++;
     }
     if (bench) {
       const t1 = performance.now();
       console.log(
-        `[BENCH] precomputeSeparationNeighbors for ${ships.length} ships: ${(t1 - t0).toFixed(3)}ms`,
+        `[BENCH] precomputeSeparationNeighbors for ${ships.length} ships (processed: ${processedCount}, skipped: ${skippedCount}): ${(t1 - t0).toFixed(3)}ms`,
       );
     }
   }
@@ -250,6 +356,18 @@ export class BatchedQueryManager {
     this.results.nearbyFriendsCache.clear();
     this.results.separationNeighborsCache.clear();
     this.frameId = frameId;
+    
+    // Clean up old activity tracking data for ships that no longer exist
+    // We do this periodically to prevent memory leaks
+    if (frameId % 100 === 0) {
+      // Keep only recent entries (ships that were updated in the last 50 frames)
+      for (const [shipId, tracker] of this.shipActivity.entries()) {
+        if (frameId - tracker.lastUpdateFrame > 50) {
+          this.shipActivity.delete(shipId);
+        }
+      }
+    }
+    
     if (BatchedQueryManager.BENCH) console.log(`[BENCH] resetForFrame: ${frameId}`);
   }
 }
