@@ -84,6 +84,16 @@ import type { EntityIndexAPI } from './core/entityIndex.js';
 let entityIndex: EntityIndexAPI | null = null;
 const entityIndexKnownIds = new Set<number>();
 
+// AI system imports and state - initialized dynamically
+import type { AIController } from './core/ai/controller.js';
+import type { AggressiveSpatialOptimizer } from './core/ai/aggressiveSpatialOptimizer.js';
+import type { SpatialGrid } from './utils/spatialGrid.js';
+import type { GameState } from './types/index.js';
+
+let aiController: AIController | null = null;
+let spatialGrid: SpatialGrid | null = null;
+let aggressiveSpatialOptimizer: AggressiveSpatialOptimizer | null = null;
+
 // Worker global typed view for message/postMessage usage
 type WorkerGlobalLike = {
   postMessage(m: unknown): void;
@@ -92,6 +102,41 @@ type WorkerGlobalLike = {
 const WG = self as unknown as WorkerGlobalLike;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
+async function initAI(gameStateData: unknown) {
+  if (aiController) return; // Already initialized
+  
+  try {
+    // Dynamically import AI modules
+    const [aiModule, spatialModule, optimizerModule] = await Promise.all([
+      import('./core/ai/controller.js'),
+      import('./utils/spatialGrid.js'),
+      import('./core/ai/aggressiveSpatialOptimizer.js')
+    ]);
+    
+    // Create a minimal GameState object for AI initialization
+    const gameState = gameStateData as GameState;
+    
+    // Initialize spatial systems
+    spatialGrid = new spatialModule.SpatialGrid(
+      gameState.simConfig.spatialGrid.cellSize,
+      gameState.simConfig.simBounds
+    );
+    
+    aggressiveSpatialOptimizer = new optimizerModule.AggressiveSpatialOptimizer(
+      spatialGrid,
+      gameState.simConfig.spatialGrid.cellSize
+    );
+    
+    // Initialize AI controller
+    aiController = new aiModule.AIController(gameState, aggressiveSpatialOptimizer);
+    
+    logger.debug('[simWorker] AI systems initialized successfully');
+  } catch (e) {
+    logger.error('[simWorker] Failed to initialize AI systems:', e);
+    throw e;
+  }
+}
 
 async function initRapier() {
   if (Rapier) return;
@@ -785,6 +830,59 @@ self.addEventListener('message', async (e: MessageEvent) => {
     world = null;
     Rapier = null;
     WG.postMessage({ type: 'dispose-physics-done' });
+    return;
+  }
+
+  // AI Message Handlers
+  if (type === 'init-ai') {
+    try {
+      await initAI(payload);
+      WG.postMessage({ type: 'init-ai-done', ok: !!aiController });
+    } catch (e) {
+      WG.postMessage({ type: 'init-ai-done', ok: false, error: String(e) });
+    }
+    return;
+  }
+
+  if (type === 'step-ai') {
+    if (!aiController) {
+      WG.postMessage({ type: 'step-ai-done', error: 'AI not initialized' });
+      return;
+    }
+    
+    try {
+      const aiPayload = payload as { dt: number; gameState: unknown };
+      const dt = aiPayload.dt || 0.016;
+      const gameState = aiPayload.gameState as GameState;
+      
+      // Update AI controller with new game state data
+      // This is a simplified approach - in practice we'd need more sophisticated state synchronization
+      (aiController as any).state = gameState;
+      
+      // Run AI update
+      aiController.updateAllShips(dt);
+      
+      // Collect AI results (target assignments, ship AI states, etc.)
+      const aiResults = {
+        ships: gameState.ships.map(ship => ({
+          id: ship.id,
+          targetId: ship.targetId,
+          aiState: ship.aiState
+        }))
+      };
+      
+      WG.postMessage({ type: 'step-ai-done', aiResults });
+    } catch (e) {
+      WG.postMessage({ type: 'step-ai-error', error: String(e) });
+    }
+    return;
+  }
+
+  if (type === 'dispose-ai') {
+    aiController = null;
+    spatialGrid = null;
+    aggressiveSpatialOptimizer = null;
+    WG.postMessage({ type: 'dispose-ai-done' });
     return;
   }
 
