@@ -622,12 +622,16 @@ export function initGame(seed?: string) {
 
         // Initialize AI in the same worker
         let aiReady = false;
-        w.postMessage({ 
-          type: 'init-ai', 
+        // Initialize AI in the worker and provide the canonical RNG seed so
+        // AI inside the worker uses the same deterministic RNG as the main thread.
+        w.postMessage({
+          type: 'init-ai',
           payload: {
             simConfig: state.simConfig,
-            behaviorConfig: state.behaviorConfig
-          }
+            behaviorConfig: state.behaviorConfig,
+            // Prefer the canonical seed stored on GameState.rng
+            rngSeed: state.rng?.seed ?? String(0),
+          },
         });
 
         // Expose a small shim for callers that expects physicsStepper API

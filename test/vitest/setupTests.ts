@@ -176,6 +176,176 @@ export const mockPerformance = {
 
 // Setup global mocks
 beforeAll(() => {
+  // Expose a helper so WorkerMock can create the canonical RNG without
+  // importing modules in the mock's constructor (keeps the mock simple).
+  (globalThis as any).__createRNG = createRNG;
+  // Provide a lightweight Worker mock for Node/Vitest environments where
+  // the browser Worker global is not present. The simWorker integration
+  // tests create a Worker and expect message-based RPC for basic bullet
+  // operations. Rather than running the real built worker inside Node, we
+  // emulate the minimal behavior required by the tests (init, fire, step,
+  // remove) so tests are deterministic and fast.
+  if (typeof (globalThis as any).Worker === 'undefined') {
+    class WorkerMock {
+      private handlers: { message: Array<(e: { data: any }) => void>; error: Array<(e: any) => void> };
+  private bullets: Map<number, any>;
+  private rng: any | null;
+      private terminated = false;
+
+      constructor(_path: string, _opts?: any) {
+        this.handlers = { message: [], error: [] };
+        this.bullets = new Map();
+        this.terminated = false;
+        this.rng = null;
+      }
+
+      addEventListener(type: 'message' | 'error', handler: (e: { data: any }) => void) {
+        if (type === 'message') this.handlers.message.push(handler as any);
+        if (type === 'error') this.handlers.error.push(handler as any);
+      }
+
+      removeEventListener(type: 'message' | 'error', handler: (e: { data: any }) => void) {
+        if (type === 'message') this.handlers.message = this.handlers.message.filter((h) => h !== handler as any);
+        if (type === 'error') this.handlers.error = this.handlers.error.filter((h) => h !== handler as any);
+      }
+
+      postMessage(msg: any, _transfer?: any) {
+        if (this.terminated) return;
+        // Handle messages asynchronously like a real worker
+        setTimeout(() => {
+          try {
+            this.handleMessage(msg);
+          } catch (err) {
+            for (const h of this.handlers.error) h(err as any);
+          }
+        }, 0);
+      }
+
+      terminate() {
+        this.terminated = true;
+      }
+
+      private send(data: any) {
+        for (const h of this.handlers.message) {
+          try {
+            h({ data });
+          } catch {
+            /* ignore handler errors */
+          }
+        }
+      }
+
+      private handleMessage(msg: any) {
+        const type = msg && msg.type;
+        // Support a small RNG handshake used by tests: init-ai with rngSeed
+        // and 'get-rng-next' to sample the worker's RNG. This allows tests to
+        // assert the worker used the provided seed deterministically.
+        if (type === 'init-ai') {
+          try {
+            const seed = msg && msg.payload && msg.payload.rngSeed;
+            if (typeof seed === 'string' && typeof (globalThis as any).createRNG === 'function') {
+              // Prefer module-level createRNG previously imported in setupTests.ts
+              this.rng = (globalThis as any).__createRNG ? (globalThis as any).__createRNG(seed) : (createRNG(seed) as any);
+            } else if (typeof seed === 'string') {
+              // fallback to local createRNG import in this module
+              this.rng = createRNG(seed);
+            }
+          } catch {
+            this.rng = null;
+          }
+          this.send({ type: 'init-ai-done', ok: true });
+          return;
+        }
+
+        if (type === 'get-rng-next' || type === 'sample-rng') {
+          const v = this.rng && typeof this.rng.next === 'function' ? this.rng.next() : null;
+          this.send({ type: 'rng-sample', value: v });
+          return;
+        }
+        if (type === 'init-physics') {
+          // Initialize minimal physics state
+          this.bullets.clear();
+          this.send({ type: 'init-physics-done', ok: true });
+          return;
+        }
+
+        if (type === 'fire-bullet') {
+          const b = msg.payload;
+          if (!b || typeof b.id !== 'number') {
+            this.send({ type: 'fire-bullet-done', success: false });
+            return;
+          }
+          // store a shallow copy
+          this.bullets.set(b.id, {
+            id: b.id,
+            pos: { x: b.pos.x, y: b.pos.y, z: b.pos.z },
+            vel: { x: b.vel.x, y: b.vel.y, z: b.vel.z },
+            ttl: typeof b.ttl === 'number' ? b.ttl : 1.0,
+            damage: b.damage ?? 0,
+          });
+          this.send({ type: 'fire-bullet-done', success: true, bulletId: b.id });
+          return;
+        }
+
+        if (type === 'remove-bullet') {
+          const bid = msg.payload && msg.payload.bulletId;
+          const existed = this.bullets.delete(bid);
+          this.send({ type: 'remove-bullet-done', success: !!existed, bulletId: bid });
+          return;
+        }
+
+        if (type === 'step-physics') {
+          const dt = (msg.payload && typeof msg.payload.dt === 'number') ? msg.payload.dt : 0.016;
+          const transforms: number[] = [];
+          // shipCount = 0 for these tests
+          transforms.push(0);
+
+          // Collect bullets after stepping
+          // Step and gather active bullets
+          const activeBullets: any[] = [];
+          const expiredEvents: any[] = [];
+          for (const [_id, bullet] of Array.from(this.bullets.entries())) {
+            // advance
+            bullet.pos.x += bullet.vel.x * dt;
+            bullet.pos.y += bullet.vel.y * dt;
+            bullet.pos.z += bullet.vel.z * dt;
+            bullet.ttl -= dt;
+            if (bullet.ttl <= 0) {
+              // expired
+              expiredEvents.push({ type: 'bullet-expired', bulletId: bullet.id });
+              this.bullets.delete(bullet.id);
+            } else {
+              activeBullets.push(bullet);
+            }
+          }
+
+          // bulletCount
+          transforms.push(activeBullets.length);
+          for (const b of activeBullets) {
+            // [id, px, py, pz, vx, vy, vz, ttl]
+            transforms.push(b.id);
+            transforms.push(b.pos.x);
+            transforms.push(b.pos.y);
+            transforms.push(b.pos.z);
+            transforms.push(b.vel.x);
+            transforms.push(b.vel.y);
+            transforms.push(b.vel.z);
+            transforms.push(b.ttl);
+          }
+
+          const f32 = new Float32Array(transforms);
+          // Return bulletEvents and transformsBuffer like the real worker
+          this.send({ type: 'step-physics-done', transformsBuffer: f32.buffer, bulletEvents: expiredEvents });
+          return;
+        }
+
+        // Unknown message: echo back for debugging
+        this.send({ type: 'unknown', original: msg });
+      }
+    }
+
+    (globalThis as any).Worker = WorkerMock as any;
+  }
   // Mock WebGL context
   globalThis.WebGLRenderingContext = glStub as any;
   globalThis.WebGL2RenderingContext = glStub as any;

@@ -116,6 +116,52 @@ async function initAI(gameStateData: unknown) {
     
     // Create a minimal GameState object for AI initialization
     const gameState = gameStateData as GameState;
+    // Ensure a seeded RNG exists on the gameState; AI code expects state.rng.next()
+      try {
+      // Prefer an explicit seed provided in the init payload (rngSeed). This
+      // preserves determinism when the main thread supplies the canonical seed.
+      const payloadSeed = isObject(gameStateData) && 'rngSeed' in (gameStateData as Record<string, unknown>)
+        ? String((gameStateData as Record<string, unknown>)['rngSeed'])
+        : undefined;
+
+      if (!(gameState as unknown as { rng?: unknown }).rng) {
+        // Attempt to import the project's RNG helper and construct a fallback RNG
+        try {
+          const rngMod = await import('./utils/rng.js');
+          const maybe = rngMod as unknown as { createRNG?: (s: string) => unknown };
+          const createRNG = maybe.createRNG;
+
+          // Determine a seed value from provided payload.rngSeed, gameStateData.seed, or simConfig; fall back to '0'
+          let seedVal = '0';
+          try {
+            if (typeof payloadSeed !== 'undefined') {
+              seedVal = String(payloadSeed);
+            } else if (isObject(gameStateData) && 'seed' in (gameStateData as Record<string, unknown>)) {
+              seedVal = String((gameStateData as Record<string, unknown>)['seed']);
+            } else {
+              const sc = (gameState.simConfig as unknown) as { seed?: unknown } | undefined;
+              if (sc && typeof sc.seed !== 'undefined') seedVal = String(sc.seed);
+            }
+          } catch {
+            seedVal = '0';
+          }
+
+          if (typeof createRNG === 'function') {
+            try {
+              // assign fallback rng on the gameState object using the chosen seed
+              (gameState as unknown as { rng?: unknown }).rng = createRNG(String(seedVal));
+              logger.debug('[simWorker] created fallback RNG for AI with seed', seedVal);
+            } catch (e) {
+              void e;
+            }
+          }
+        } catch (e) {
+          void e; // best-effort
+        }
+      }
+    } catch {
+      /* ignore fallback RNG creation failures */
+    }
     
     // Initialize spatial systems
     spatialGrid = new spatialModule.SpatialGrid(
