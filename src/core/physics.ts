@@ -10,6 +10,7 @@ export interface PhysicsStepper {
   initDone: boolean;
   world: unknown;
   step: (dt: number) => void;
+  stepAI?: (dt: number) => void; // Optional AI step function (worker mode only)
   dispose: () => void;
   // Enhanced methods
   addShip: (ship: unknown) => unknown;
