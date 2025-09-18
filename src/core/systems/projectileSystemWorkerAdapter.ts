@@ -5,9 +5,9 @@ import type { SpatialIndex } from '../spatialIndex.js';
 import type { TimeAdapter } from '../adapters/timeAdapter.js';
 import { getShipClassConfig } from '../../config/entitiesConfig.js';
 import { recordDamage } from '../gameState.js';
-import { applyBoundaryPhysicsBullet } from '../boundaryUtils.js';
-import * as logger from '../../utils/logger.js';
 import { createRNG } from '../../utils/rng.js';
+import * as logger from '../../utils/logger.js';
+import type { FireIntent, ProjectileEvent, HitResult } from './projectileSystem.js';
 
 // Performance measurement helpers
 function isDebugPerfEnabled(): boolean {
@@ -34,50 +34,16 @@ function recordPerf(name: string, ms: number): void {
 }
 
 /**
- * Fire intent describes a request to create a projectile
+ * ProjectileSystemWorkerAdapter manages bullet lifecycle by delegating
+ * physics computation to simWorker while handling events and visuals on main thread.
  */
-export interface FireIntent {
-  sourceShipId: EntityId;
-  turretId: string;
-  targetPosition: Vector3;
-  leadTargetPos?: Vector3; // Predicted target position for lead shooting
-}
-
-/**
- * Hit result from projectile collision
- */
-export interface HitResult {
-  bulletId: EntityId;
-  targetId: EntityId;
-  damage: number;
-  hitPosition: Vector3;
-  hitNormal?: Vector3;
-  penetrated: boolean; // Did it go through shields/armor?
-}
-
-/**
- * Projectile event for notifications
- */
-export interface ProjectileEvent {
-  type: 'fired' | 'hit' | 'expired' | 'destroyed';
-  bulletId: EntityId;
-  timestamp: number;
-  sourceShipId?: EntityId;
-  targetId?: EntityId;
-  hitResult?: HitResult;
-}
-
-/**
- * ProjectileSystem manages bullet lifecycle including creation, physics
- * integration, collision detection, and destruction.
- */
-export class ProjectileSystem {
+export class ProjectileSystemWorkerAdapter {
   private state: GameState;
-  private physicsAdapter?: PhysicsAdapter;
   private rendererAdapter?: RendererAdapter;
   private spatialIndex?: SpatialIndex;
   private timeAdapter?: TimeAdapter;
   private eventHandlers: ((event: ProjectileEvent) => void)[] = [];
+  private worker: Worker | null = null;
 
   constructor(
     state: GameState,
@@ -87,12 +53,14 @@ export class ProjectileSystem {
       spatial?: SpatialIndex;
       time?: TimeAdapter;
     },
+    worker?: Worker | null
   ) {
     this.state = state;
-    this.physicsAdapter = adapters?.physics;
+    // Note: physics adapter not used since physics is handled by worker
     this.rendererAdapter = adapters?.renderer;
     this.spatialIndex = adapters?.spatial;
     this.timeAdapter = adapters?.time;
+    this.worker = worker || null;
   }
 
   /**
@@ -108,10 +76,10 @@ export class ProjectileSystem {
     };
   }
 
-  private emitEvent(event: ProjectileEvent): void {
+  emitEvent(event: ProjectileEvent): void {
     // Log emitted events at info level so wiring can be traced in runtime
     try {
-      logger.info('[ProjectileSystem] emitEvent', event.type, {
+      logger.info('[ProjectileSystemWorkerAdapter] emitEvent', event.type, {
         bulletId: event.bulletId,
         sourceShipId: event.sourceShipId ?? null,
         targetId: event.targetId ?? null,
@@ -131,7 +99,7 @@ export class ProjectileSystem {
   }
 
   /**
-   * Fire a projectile from a ship's turret
+   * Fire a projectile from a ship's turret - delegates bullet creation to worker
    */
   fire(intent: FireIntent): EntityId | null {
     const t0 = isDebugPerfEnabled() ? performance.now() : 0;
@@ -164,13 +132,12 @@ export class ProjectileSystem {
       return null;
     }
 
-    // Create bullet
+    // Create bullet ID and direction (same logic as original system)
     const bulletId = this.allocateId();
-    // Base aim direction (unit) — compute sqrt only when needed for normalization
     let direction = { x: 1, y: 0, z: 0 };
     if (distSq > 0) {
       const sqrt = Math.sqrt;
-      const distance = sqrt(distSq); // single sqrt for initial direction
+      const distance = sqrt(distSq);
       direction = { x: dx / distance, y: dy / distance, z: dz / distance };
     }
 
@@ -181,9 +148,8 @@ export class ProjectileSystem {
       const maxSpread =
         typeof turretConfig.maxSpreadRadians === 'number'
           ? turretConfig.maxSpreadRadians
-          : (2 * Math.PI) / 180; // default 2 deg
+          : (2 * Math.PI) / 180;
 
-      // Ship level reduction factor: configurable via behaviorConfig.globalSettings
       const shipLevel = sourceShip.level?.level ?? 1;
       const globalSettings = this.state.behaviorConfig
         ? this.state.behaviorConfig.globalSettings
@@ -202,66 +168,46 @@ export class ProjectileSystem {
       const finalInaccuracy = baseInaccuracy * (1 - levelReduction);
 
       if (finalInaccuracy > 1e-6) {
-        const coneAngle = finalInaccuracy * maxSpread; // actual cone half-angle to sample within
-
-        // deterministic RNG from game state (falls back to a time-seeded RNG if absent)
+        const coneAngle = finalInaccuracy * maxSpread;
         const rng = this.state?.rng ?? createRNG(String(Date.now()));
         const rngNext = () => rng.next();
 
-        // Sample a direction uniformly inside cone around 'direction'
-        // Method: pick z = cos(theta) uniformly between cos(coneAngle) and 1, pick phi uniform 0..2pi
         const cosTheta = 1 - (1 - Math.cos(coneAngle)) * rngNext();
         const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
         const phi = 2 * Math.PI * rngNext();
 
-        // Build orthonormal basis around original direction
-        const ux = direction.x,
-          uy = direction.y,
-          uz = direction.z;
-        // Find a vector not parallel to u
+        const ux = direction.x, uy = direction.y, uz = direction.z;
         let vx: number, vy: number, vz: number;
         if (Math.abs(ux) < 0.9) {
-          // cross with x-axis
-          vx = 0;
-          vy = -uz;
-          vz = uy;
+          vx = 0; vy = -uz; vz = uy;
         } else {
-          // cross with y-axis
-          vx = uz;
-          vy = 0;
-          vz = -ux;
+          vx = uz; vy = 0; vz = -ux;
         }
-        // normalize v (use single sqrt and guard against tiny length)
         const vlenSq = vx * vx + vy * vy + vz * vz;
         const vlen = vlenSq > 0 ? Math.sqrt(vlenSq) : 1;
-        vx /= vlen;
-        vy /= vlen;
-        vz /= vlen;
-        // w = u x v
+        vx /= vlen; vy /= vlen; vz /= vlen;
         const wx = uy * vz - uz * vy;
         const wy = uz * vx - ux * vz;
         const wz = ux * vy - uy * vx;
 
-        // Spherical sample in basis: sampled = cosTheta * u + sinTheta * (cos(phi)*v + sin(phi)*w)
         const sampledX = cosTheta * ux + sinTheta * (Math.cos(phi) * vx + Math.sin(phi) * wx);
         const sampledY = cosTheta * uy + sinTheta * (Math.cos(phi) * vy + Math.sin(phi) * wy);
         const sampledZ = cosTheta * uz + sinTheta * (Math.cos(phi) * vz + Math.sin(phi) * wz);
-        // normalize just in case
         const sLenSq = sampledX * sampledX + sampledY * sampledY + sampledZ * sampledZ;
         const sLen = sLenSq > 0 ? Math.sqrt(sLenSq) : 1;
         direction = { x: sampledX / sLen, y: sampledY / sLen, z: sampledZ / sLen };
       }
     } catch (e) {
-      // If anything goes wrong, fall back to perfect aim but log the error
-      logger.warn('[ProjectileSystem] spread calculation failed', e);
+      logger.warn('[ProjectileSystemWorkerAdapter] spread calculation failed', e);
     }
 
+    // Create bullet locally for tracking and visuals
     const bullet: Bullet = {
       id: bulletId,
       ownerShipId: sourceShip.id,
       ownerTeam: sourceShip.team,
       pos: { ...sourceShip.pos },
-      prevPos: { ...sourceShip.pos }, // Initialize for interpolation
+      prevPos: { ...sourceShip.pos },
       vel: {
         x: direction.x * turretConfig.bulletSpeed,
         y: direction.y * turretConfig.bulletSpeed,
@@ -271,11 +217,33 @@ export class ProjectileSystem {
       damage: turretConfig.damage,
     };
 
-    // Add to state
+    // Add to local state
     this.state.bullets.push(bullet);
 
-    // Register with adapters
-    this.registerBulletWithAdapters(bullet);
+    // Send bullet to worker for physics simulation
+    if (this.worker) {
+      try {
+        this.worker.postMessage({
+          type: 'fire-bullet',
+          payload: {
+            id: bulletId,
+            ownerShipId: sourceShip.id,
+            ownerTeam: sourceShip.team,
+            pos: bullet.pos,
+            vel: bullet.vel,
+            ttl: bullet.ttl,
+            damage: bullet.damage,
+          },
+        });
+      } catch (e) {
+        logger.warn('[ProjectileSystemWorkerAdapter] Failed to send bullet to worker:', e);
+      }
+    }
+
+    // Register with renderer
+    if (this.rendererAdapter) {
+      this.rendererAdapter.ensureMeshForBullet(bullet);
+    }
 
     // Set turret cooldown
     turret.cooldownLeft = turretConfig.cooldown;
@@ -291,75 +259,34 @@ export class ProjectileSystem {
     // Record performance metrics for bullet firing
     if (isDebugPerfEnabled()) {
       const fireTime = performance.now() - t0;
-      recordPerf('projectile.fire', fireTime);
+      recordPerf('projectile.fire.worker', fireTime);
     }
 
     return bulletId;
   }
 
   /**
-   * Update all projectiles (movement, TTL, collisions)
+   * Update projectiles - mainly handles visual updates since physics is in worker
    */
   update(dt: number): void {
     const t0 = isDebugPerfEnabled() ? performance.now() : 0;
-    const bulletsToRemove: number[] = [];
 
-    for (let i = 0; i < this.state.bullets.length; i++) {
-      const bullet = this.state.bullets[i];
-
-      // Update position
-      bullet.pos.x += bullet.vel.x * dt;
-      bullet.pos.y += bullet.vel.y * dt;
-      bullet.pos.z += bullet.vel.z * dt;
-
-      // Update TTL
-      bullet.ttl -= dt;
-      if (bullet.ttl <= 0) {
-        this.emitEvent({
-          type: 'expired',
-          bulletId: bullet.id,
-          timestamp: this.state.time,
-        });
-        bulletsToRemove.push(i);
-        continue;
+    // Update renderer for all bullets
+    if (this.rendererAdapter) {
+      for (const bullet of this.state.bullets) {
+        this.rendererAdapter.updateMeshFromBullet(bullet);
       }
-
-      // Apply boundary physics
-      const wasRemoved = this.applyBoundaryPhysics(bullet);
-      if (wasRemoved) {
-        this.emitEvent({
-          type: 'destroyed',
-          bulletId: bullet.id,
-          timestamp: this.state.time,
-        });
-        bulletsToRemove.push(i);
-        continue;
-      }
-
-      // Check collisions
-      const hitTarget = this.checkCollisions(bullet);
-      if (hitTarget) {
-        bulletsToRemove.push(i);
-        continue;
-      }
-
-      // Update adapters
-      this.updateBulletInAdapters(bullet);
     }
 
-    // Remove expired/destroyed bullets
-    for (let i = bulletsToRemove.length - 1; i >= 0; i--) {
-      const index = bulletsToRemove[i];
-      const bullet = this.state.bullets[index];
-      this.removeBulletFromAdapters(bullet);
-      this.state.bullets.splice(index, 1);
-    }
+    // Check for collisions that may have been missed by worker
+    // This provides a backup collision detection for edge cases
+    this.checkMainThreadCollisions();
 
     // Record performance metrics
     if (isDebugPerfEnabled()) {
       const processingTime = performance.now() - t0;
-      recordPerf('projectile.update', processingTime);
-      recordPerf('projectile.count', this.state.bullets.length);
+      recordPerf('projectile.update.worker', processingTime);
+      recordPerf('projectile.count.worker', this.state.bullets.length);
     }
   }
 
@@ -373,8 +300,26 @@ export class ProjectileSystem {
     }
 
     const bullet = this.state.bullets[index];
-    this.removeBulletFromAdapters(bullet);
+    
+    // Remove from renderer
+    if (this.rendererAdapter) {
+      this.rendererAdapter.removeBullet(bulletId);
+    }
+    
+    // Remove from local state
     this.state.bullets.splice(index, 1);
+
+    // Notify worker to remove bullet
+    if (this.worker) {
+      try {
+        this.worker.postMessage({
+          type: 'remove-bullet',
+          payload: { bulletId },
+        });
+      } catch (e) {
+        logger.warn('[ProjectileSystemWorkerAdapter] Failed to remove bullet from worker:', e);
+      }
+    }
 
     this.emitEvent({
       type: 'destroyed',
@@ -414,31 +359,34 @@ export class ProjectileSystem {
     };
   }
 
-  private checkCollisions(bullet: Bullet): Ship | null {
+  private checkMainThreadCollisions(): void {
+    // Simplified collision detection as backup to worker physics
+    // This helps ensure hits are registered even if worker misses them
     const t0 = isDebugPerfEnabled() ? performance.now() : 0;
-    let result: Ship | null = null;
 
-    if (!this.spatialIndex) {
-      // Fallback to linear search
-      result = this.checkCollisionsLinear(bullet);
-    } else {
-      // Use spatial index for efficient collision detection
-      const candidates = this.spatialIndex.queryBulletCollisions(
-        bullet.pos,
-        2, // bullet radius
-        25, // max ship radius
-      );
+    for (const bullet of this.state.bullets) {
+      if (!this.spatialIndex) {
+        // Fallback to linear search
+        this.checkCollisionsLinear(bullet);
+      } else {
+        // Use spatial index for efficient collision detection
+        const candidates = this.spatialIndex.queryBulletCollisions(
+          bullet.pos,
+          2, // bullet radius
+          25, // max ship radius
+        );
 
-      for (const candidate of candidates) {
-        const ship = this.state.ships.find((s) => s.id === candidate.id);
-        if (!ship || ship.team === bullet.ownerTeam) {
-          continue;
-        }
+        for (const candidate of candidates) {
+          const ship = this.state.ships.find((s) => s.id === candidate.id);
+          if (!ship || ship.team === bullet.ownerTeam) {
+            continue;
+          }
 
-        if (this.testBulletShipCollision(bullet, ship)) {
-          this.processBulletHit(bullet, ship);
-          result = ship;
-          break;
+          if (this.testBulletShipCollision(bullet, ship)) {
+            this.processBulletHit(bullet, ship);
+            this.removeBullet(bullet.id);
+            break;
+          }
         }
       }
     }
@@ -446,13 +394,11 @@ export class ProjectileSystem {
     // Record performance metrics for collision detection
     if (isDebugPerfEnabled()) {
       const collisionTime = performance.now() - t0;
-      recordPerf('projectile.collision', collisionTime);
+      recordPerf('projectile.collision.worker', collisionTime);
     }
-
-    return result;
   }
 
-  private checkCollisionsLinear(bullet: Bullet): Ship | null {
+  private checkCollisionsLinear(bullet: Bullet): void {
     for (const ship of this.state.ships) {
       if (ship.team === bullet.ownerTeam) {
         continue;
@@ -460,11 +406,10 @@ export class ProjectileSystem {
 
       if (this.testBulletShipCollision(bullet, ship)) {
         this.processBulletHit(bullet, ship);
-        return ship;
+        this.removeBullet(bullet.id);
+        break;
       }
     }
-
-    return null;
   }
 
   private testBulletShipCollision(bullet: Bullet, ship: Ship): boolean {
@@ -534,55 +479,6 @@ export class ProjectileSystem {
       targetId: ship.id,
       hitResult,
     });
-  }
-
-  private applyBoundaryPhysics(bullet: Bullet): boolean {
-    const initialTTL = bullet.ttl;
-    applyBoundaryPhysicsBullet(bullet, this.state);
-    // If TTL was set to 0, the bullet was marked for removal
-    return bullet.ttl <= 0 && initialTTL > 0;
-  }
-
-  private registerBulletWithAdapters(bullet: Bullet): void {
-    // Register with physics
-    if (this.physicsAdapter) {
-      this.physicsAdapter.addBody(bullet.id, {
-        position: bullet.pos,
-        velocity: bullet.vel,
-        mass: 0.1, // Light bullet mass
-        radius: 2, // Small bullet radius
-        collisionMask: bullet.ownerTeam === 'red' ? 0x02 : 0x01, // Hit opposite team
-      });
-    }
-
-    // Register with renderer
-    if (this.rendererAdapter) {
-      this.rendererAdapter.ensureMeshForBullet(bullet);
-    }
-
-    // Spatial index registration handled in update loop
-  }
-
-  private updateBulletInAdapters(bullet: Bullet): void {
-    // Update physics
-    if (this.physicsAdapter) {
-      this.physicsAdapter.setBodyState(bullet.id, {
-        position: bullet.pos,
-        velocity: bullet.vel,
-        mass: 0.1,
-        radius: 2,
-      });
-    }
-
-    // Update renderer
-    if (this.rendererAdapter) {
-      this.rendererAdapter.updateMeshFromBullet(bullet);
-    }
-  }
-
-  private removeBulletFromAdapters(bullet: Bullet): void {
-    this.rendererAdapter?.removeBullet(bullet.id);
-    this.physicsAdapter?.removeBody(bullet.id);
   }
 
   private allocateId(): EntityId {

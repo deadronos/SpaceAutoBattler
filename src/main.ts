@@ -402,29 +402,96 @@ export function initGame(seed?: string) {
             return;
           }
 
+          // Bullet operation results
+          if (type === 'fire-bullet-done') {
+            // Bullet creation handled by worker, main thread just tracks success
+            return;
+          }
+
+          if (type === 'remove-bullet-done') {
+            // Bullet removal handled by worker
+            return;
+          }
+
           // step result: supports packed Float32Array buffer (transformsBuffer)
           if (type === 'step-physics-done') {
-            // Prefer transferable typed-array buffer payload for low-overhead transfer
+            // Handle bullet events first
+            if (data.bulletEvents && Array.isArray(data.bulletEvents)) {
+              for (const event of data.bulletEvents) {
+                if (event.type === 'bullet-expired' && typeof event.bulletId === 'number') {
+                  // Remove bullet from game state
+                  const bulletIndex = state.bullets.findIndex((b) => b.id === event.bulletId);
+                  if (bulletIndex >= 0) {
+                    state.bullets.splice(bulletIndex, 1);
+                  }
+                  // Emit projectile expired event
+                  try {
+                    const projectileSystem = (state as any).projectileSystem;
+                    if (projectileSystem && typeof projectileSystem.emitEvent === 'function') {
+                      projectileSystem.emitEvent({
+                        type: 'expired',
+                        bulletId: event.bulletId,
+                        timestamp: state.time,
+                      });
+                    }
+                  } catch (_e) {
+                    void _e;
+                  }
+                }
+              }
+            }
+
+            // Handle transform buffer (ships and bullets)
             const buf =
               data.transformsBuffer || (data.transforms && data.transforms.buffer) || null;
             if (buf) {
               try {
                 const arr = new Float32Array(buf);
-                // Each entry is [id, px, py, pz, vx, vy, vz]
-                for (let i = 0; i < arr.length; i += 7) {
-                  const id = Math.floor(arr[i]);
+                let offset = 0;
+                
+                // Read ship count and ship data
+                const shipCount = Math.floor(arr[offset++]);
+                for (let i = 0; i < shipCount; i++) {
+                  const id = Math.floor(arr[offset++]);
                   const ship = state.shipIndex?.get(id) ?? state.ships.find((s) => s.id === id);
-                  if (!ship) continue;
-                  ship.pos.x = arr[i + 1];
-                  ship.pos.y = arr[i + 2];
-                  ship.pos.z = arr[i + 3];
-                  ship.vel.x = arr[i + 4];
-                  ship.vel.y = arr[i + 5];
-                  ship.vel.z = arr[i + 6];
+                  if (ship) {
+                    ship.pos.x = arr[offset++];
+                    ship.pos.y = arr[offset++];
+                    ship.pos.z = arr[offset++];
+                    ship.vel.x = arr[offset++];
+                    ship.vel.y = arr[offset++];
+                    ship.vel.z = arr[offset++];
+                  } else {
+                    offset += 6; // Skip position and velocity data
+                  }
+                }
+
+                // Read bullet count and bullet data
+                if (offset < arr.length) {
+                  const bulletCount = Math.floor(arr[offset++]);
+                  for (let i = 0; i < bulletCount; i++) {
+                    const bulletId = Math.floor(arr[offset++]);
+                    const bullet = state.bullets.find((b) => b.id === bulletId);
+                    if (bullet) {
+                      // Store previous position for interpolation
+                      bullet.prevPos = { ...bullet.pos };
+                      bullet.pos.x = arr[offset++];
+                      bullet.pos.y = arr[offset++];
+                      bullet.pos.z = arr[offset++];
+                      bullet.vel.x = arr[offset++];
+                      bullet.vel.y = arr[offset++];
+                      bullet.vel.z = arr[offset++];
+                      bullet.ttl = arr[offset++];
+                    } else {
+                      offset += 7; // Skip position, velocity, and ttl data
+                    }
+                  }
                 }
               } catch (_e) {
                 void _e; // Fallback to older object-based transforms if parsing fails
                 const transforms = data.transforms || [];
+                const bulletTransforms = data.bulletTransforms || [];
+                
                 // Optional payload size audit
                 try {
                   const perfObj = W.__perf as unknown as
@@ -433,11 +500,13 @@ export function initGame(seed?: string) {
                   if (perfObj && typeof perfObj.addEvent === 'function')
                     perfObj.addEvent({
                       name: 'physics.payload.recvKB',
-                      ms: JSON.stringify(transforms).length / 1000,
+                      ms: (JSON.stringify(transforms).length + JSON.stringify(bulletTransforms).length) / 1000,
                     });
                 } catch (_e) {
                   void _e;
                 }
+
+                // Handle ships
                 for (const transform of transforms) {
                   const ship =
                     state.shipIndex?.get(transform.shipId) ??
@@ -451,10 +520,28 @@ export function initGame(seed?: string) {
                     ship.vel.z = transform.vel.z;
                   }
                 }
+
+                // Handle bullets
+                for (const bulletTransform of bulletTransforms) {
+                  const bullet = state.bullets.find((b) => b.id === bulletTransform.bulletId);
+                  if (bullet) {
+                    bullet.prevPos = { ...bullet.pos };
+                    bullet.pos.x = bulletTransform.pos.x;
+                    bullet.pos.y = bulletTransform.pos.y;
+                    bullet.pos.z = bulletTransform.pos.z;
+                    bullet.vel.x = bulletTransform.vel.x;
+                    bullet.vel.y = bulletTransform.vel.y;
+                    bullet.vel.z = bulletTransform.vel.z;
+                    bullet.ttl = bulletTransform.ttl;
+                  }
+                }
               }
-            } else if (data.transforms) {
+            } else if (data.transforms || data.bulletTransforms) {
               // Legacy: array of objects
-              for (const transform of data.transforms) {
+              const transforms = data.transforms || [];
+              const bulletTransforms = data.bulletTransforms || [];
+              
+              for (const transform of transforms) {
                 const ship =
                   state.shipIndex?.get(transform.shipId) ??
                   state.ships.find((s) => s.id === transform.shipId);
@@ -465,6 +552,20 @@ export function initGame(seed?: string) {
                   ship.vel.x = transform.vel.x;
                   ship.vel.y = transform.vel.y;
                   ship.vel.z = transform.vel.z;
+                }
+              }
+
+              for (const bulletTransform of bulletTransforms) {
+                const bullet = state.bullets.find((b) => b.id === bulletTransform.bulletId);
+                if (bullet) {
+                  bullet.prevPos = { ...bullet.pos };
+                  bullet.pos.x = bulletTransform.pos.x;
+                  bullet.pos.y = bulletTransform.pos.y;
+                  bullet.pos.z = bulletTransform.pos.z;
+                  bullet.vel.x = bulletTransform.vel.x;
+                  bullet.vel.y = bulletTransform.vel.y;
+                  bullet.vel.z = bulletTransform.vel.z;
+                  bullet.ttl = bulletTransform.ttl;
                 }
               }
             }

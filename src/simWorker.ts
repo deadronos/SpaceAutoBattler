@@ -38,6 +38,15 @@ import * as logger from './utils/logger.js';
 // Small local types to avoid broad `any` while keeping runtime semantics
 type Vec3 = { x: number; y: number; z: number };
 type ShipLike = { id: number; pos: Vec3; vel: Vec3 } & Record<string, unknown>;
+type BulletLike = { 
+  id: number; 
+  pos: Vec3; 
+  vel: Vec3; 
+  ttl: number; 
+  damage: number; 
+  ownerShipId: number; 
+  ownerTeam: 'red' | 'blue';
+} & Record<string, unknown>;
 type RigidBodyLike = {
   setTranslation: (t: Vec3, wake?: boolean) => void;
   setLinvel: (v: Vec3, wake?: boolean) => void;
@@ -61,6 +70,8 @@ type RapierModuleLike = {
 let world: WorldLike | null = null;
 let Rapier: RapierModuleLike | null = null;
 const bodies = new Map<number, RigidBodyLike | null>(); // shipId -> rigidBody
+const bulletBodies = new Map<number, RigidBodyLike | null>(); // bulletId -> rigidBody
+const bullets = new Map<number, BulletLike>(); // bulletId -> bullet
 // Optional entity index (miniplex + UniformGrid) replicated inside worker for
 // worker-local spatial queries or bookkeeping when desired. This is best-effort
 // and never required for the worker to function; initialization is explicit
@@ -241,6 +252,115 @@ function collectTransforms() {
   }
 
   return transforms;
+}
+
+function createBulletBody(bullet: BulletLike): RigidBodyLike | null {
+  if (!world || !Rapier) return null;
+
+  try {
+    const RDesc = (Rapier as Record<string, unknown>).RigidBodyDesc ?? undefined;
+    const CDesc = (Rapier as Record<string, unknown>).ColliderDesc ?? undefined;
+    type RDescType = { dynamic?: () => unknown };
+    type CDescType = { ball?: (radius: number) => unknown };
+    
+    const dynamicFn = (RDesc as RDescType | undefined)?.dynamic;
+    const rigidBodyDesc = typeof dynamicFn === 'function' ? dynamicFn() : {};
+    const rbdObj = rigidBodyDesc as {
+      setTranslation?: (x: number, y: number, z: number) => void;
+      setLinvel?: (x: number, y: number, z: number) => void;
+    };
+    
+    if (typeof rbdObj.setTranslation === 'function') {
+      rbdObj.setTranslation(bullet.pos.x, bullet.pos.y, bullet.pos.z);
+    }
+    if (typeof rbdObj.setLinvel === 'function') {
+      rbdObj.setLinvel(bullet.vel.x, bullet.vel.y, bullet.vel.z);
+    }
+
+    const rigidBody = world.createRigidBody(rigidBodyDesc as unknown);
+
+    // Add a small sphere collider for bullets
+    const ballFn = (CDesc as CDescType | undefined)?.ball;
+    const colliderDesc = typeof ballFn === 'function' ? ballFn(2) : null; // 2 unit radius
+    if (colliderDesc && world) world.createCollider(colliderDesc, rigidBody as RigidBodyLike);
+
+    return rigidBody as RigidBodyLike;
+  } catch (e) {
+    void e;
+    logger.error('Failed to create physics body for bullet:', e);
+    return null;
+  }
+}
+
+function updateBulletFromPhysics(bulletId: number): void {
+  const bullet = bullets.get(bulletId);
+  const body = bulletBodies.get(bulletId);
+  if (!bullet || !body) return;
+
+  try {
+    const translation = typeof body.translation === 'function' ? body.translation() : bullet.pos;
+    const linvel = typeof body.linvel === 'function' ? body.linvel() : bullet.vel;
+
+    bullet.pos.x = translation.x;
+    bullet.pos.y = translation.y;
+    bullet.pos.z = translation.z;
+    bullet.vel.x = linvel.x;
+    bullet.vel.y = linvel.y;
+    bullet.vel.z = linvel.z;
+  } catch (e) {
+    void e;
+    logger.error('Failed to update bullet from physics:', e);
+  }
+}
+
+function collectBulletTransforms() {
+  const bulletTransforms: Array<{ bulletId: number; pos: Vec3; vel: Vec3; ttl: number }> = [];
+
+  for (const [bulletId, bullet] of bullets) {
+    try {
+      bulletTransforms.push({
+        bulletId,
+        pos: { x: bullet.pos.x, y: bullet.pos.y, z: bullet.pos.z },
+        vel: { x: bullet.vel.x, y: bullet.vel.y, z: bullet.vel.z },
+        ttl: bullet.ttl,
+      });
+    } catch (e) {
+      void e;
+      logger.error('Failed to collect transform for bullet', bulletId, e);
+    }
+  }
+
+  return bulletTransforms;
+}
+
+function updateBulletTimers(dt: number): Array<{ type: 'bullet-expired'; bulletId: number }> {
+  const events: Array<{ type: 'bullet-expired'; bulletId: number }> = [];
+  const expiredBullets: number[] = [];
+
+  for (const [bulletId, bullet] of bullets) {
+    bullet.ttl -= dt;
+    if (bullet.ttl <= 0) {
+      expiredBullets.push(bulletId);
+      events.push({ type: 'bullet-expired', bulletId });
+    }
+  }
+
+  // Remove expired bullets
+  for (const bulletId of expiredBullets) {
+    const body = bulletBodies.get(bulletId);
+    if (body && world) {
+      try {
+        world.removeRigidBody(body);
+      } catch (e) {
+        void e;
+        logger.error('Failed to remove bullet body:', e);
+      }
+    }
+    bullets.delete(bulletId);
+    bulletBodies.delete(bulletId);
+  }
+
+  return events;
 }
 
 self.addEventListener('message', async (e: MessageEvent) => {
@@ -472,6 +592,67 @@ self.addEventListener('message', async (e: MessageEvent) => {
     return;
   }
 
+  if (type === 'fire-bullet') {
+    // payload: { id, ownerShipId, ownerTeam, pos, vel, ttl, damage }
+    if (!isObject(payload)) {
+      WG.postMessage({ type: 'fire-bullet-done', success: false });
+      return;
+    }
+
+    const bulletData = payload as {
+      id: number;
+      ownerShipId: number;
+      ownerTeam: 'red' | 'blue';
+      pos: Vec3;
+      vel: Vec3;
+      ttl: number;
+      damage: number;
+    };
+
+    const bullet: BulletLike = {
+      id: bulletData.id,
+      ownerShipId: bulletData.ownerShipId,
+      ownerTeam: bulletData.ownerTeam,
+      pos: { ...bulletData.pos },
+      vel: { ...bulletData.vel },
+      ttl: bulletData.ttl,
+      damage: bulletData.damage,
+    };
+
+    bullets.set(bullet.id, bullet);
+    const body = createBulletBody(bullet);
+    if (body) {
+      bulletBodies.set(bullet.id, body);
+    }
+
+    WG.postMessage({ type: 'fire-bullet-done', success: true, bulletId: bullet.id });
+    return;
+  }
+
+  if (type === 'remove-bullet') {
+    // payload: { bulletId }
+    if (!isObject(payload) || !('bulletId' in payload)) {
+      WG.postMessage({ type: 'remove-bullet-done', success: false });
+      return;
+    }
+
+    const bulletId = Number(payload['bulletId']);
+    const body = bulletBodies.get(bulletId);
+    if (body && world) {
+      try {
+        world.removeRigidBody(body);
+      } catch (e) {
+        void e;
+        logger.error('Failed to remove bullet body:', e);
+      }
+    }
+
+    bullets.delete(bulletId);
+    bulletBodies.delete(bulletId);
+    WG.postMessage({ type: 'remove-bullet-done', success: true, bulletId });
+    return;
+  }
+
   if (type === 'step-physics') {
     const dt = isObject(payload) && 'dt' in payload ? Number(payload['dt']) || 0.016 : 0.016;
     try {
@@ -481,22 +662,37 @@ self.addEventListener('message', async (e: MessageEvent) => {
         if (typeof world.step === 'function') world.step();
         const stepMs = isDebugPerfEnabled() ? performance.now() - t0 : 0;
 
-        // Collect transforms after physics step
+        // Update bullet physics and handle expiration
         const t1 = isDebugPerfEnabled() ? performance.now() : 0;
-        const transforms = collectTransforms();
-        const collectMs = isDebugPerfEnabled() ? performance.now() - t1 : 0;
+        const bulletEvents = updateBulletTimers(dt);
+        for (const bulletId of bullets.keys()) {
+          updateBulletFromPhysics(bulletId);
+        }
+        const bulletUpdateMs = isDebugPerfEnabled() ? performance.now() - t1 : 0;
 
-        // Pack transforms into a Float32Array for efficient transferable postMessage
-        // Layout per-entry: [id, px, py, pz, vx, vy, vz] (7 floats)
+        // Collect transforms after physics step
+        const t2 = isDebugPerfEnabled() ? performance.now() : 0;
+        const transforms = collectTransforms();
+        const bulletTransforms = collectBulletTransforms();
+        const collectMs = isDebugPerfEnabled() ? performance.now() - t2 : 0;
+
+        // Pack transforms into a single transferable buffer per frame
+        // Layout: [ship count, ship data..., bullet count, bullet data...]
+        // Ship data: [id, px, py, pz, vx, vy, vz] (7 floats per ship)
+        // Bullet data: [id, px, py, pz, vx, vy, vz, ttl] (8 floats per bullet)
         let postMs = 0;
         try {
-          const t2 = isDebugPerfEnabled() ? performance.now() : 0;
-          if (transforms && transforms.length) {
-            const out = new Float32Array(transforms.length * 7);
+          const t3 = isDebugPerfEnabled() ? performance.now() : 0;
+          if (transforms.length || bulletTransforms.length) {
+            const shipDataSize = transforms.length * 7;
+            const bulletDataSize = bulletTransforms.length * 8;
+            const out = new Float32Array(2 + shipDataSize + bulletDataSize); // +2 for counts
             let o = 0;
+            
+            // Write ship count and ship data
+            out[o++] = transforms.length;
             for (let i = 0; i < transforms.length; ++i) {
               const tr = transforms[i];
-              // shipId may be integer; store as float and decode with Math.floor on receiver
               out[o++] = Number(tr.shipId) || 0;
               out[o++] = Number(tr.pos.x) || 0;
               out[o++] = Number(tr.pos.y) || 0;
@@ -506,28 +702,48 @@ self.addEventListener('message', async (e: MessageEvent) => {
               out[o++] = Number(tr.vel.z) || 0;
             }
 
+            // Write bullet count and bullet data
+            out[o++] = bulletTransforms.length;
+            for (let i = 0; i < bulletTransforms.length; ++i) {
+              const bt = bulletTransforms[i];
+              out[o++] = Number(bt.bulletId) || 0;
+              out[o++] = Number(bt.pos.x) || 0;
+              out[o++] = Number(bt.pos.y) || 0;
+              out[o++] = Number(bt.pos.z) || 0;
+              out[o++] = Number(bt.vel.x) || 0;
+              out[o++] = Number(bt.vel.y) || 0;
+              out[o++] = Number(bt.vel.z) || 0;
+              out[o++] = Number(bt.ttl) || 0;
+            }
+
             // Transfer the underlying buffer to avoid structured-clone
-            // Post the packed buffer with transfer list to avoid structured-clone
-            // overhead. Use helper to call postMessage so typings are centralized.
-            postMessageTransferable({ type: 'step-physics-done', dt, transformsBuffer: out.buffer }, [out.buffer]);
-            postMs = isDebugPerfEnabled() ? performance.now() - t2 : 0;
+            postMessageTransferable({ 
+              type: 'step-physics-done', 
+              dt, 
+              transformsBuffer: out.buffer,
+              bulletEvents 
+            }, [out.buffer]);
+            postMs = isDebugPerfEnabled() ? performance.now() - t3 : 0;
 
             if (isDebugPerfEnabled()) {
               postPerf('physics.step', stepMs);
+              postPerf('physics.bulletUpdate', bulletUpdateMs);
               postPerf('physics.collect', collectMs);
               postPerf('physics.postMessage', postMs);
               try {
                 postPerf('physics.payload.approxKB', out.byteLength / 1000);
+                postPerf('physics.bullets.count', bulletTransforms.length);
               } catch (_e) {
                 void _e;
               }
             }
           } else {
             // No transforms to send: keep legacy message shape
-            WG.postMessage({ type: 'step-physics-done', dt });
-            postMs = isDebugPerfEnabled() ? performance.now() - t2 : 0;
+            WG.postMessage({ type: 'step-physics-done', dt, bulletEvents });
+            postMs = isDebugPerfEnabled() ? performance.now() - t3 : 0;
             if (isDebugPerfEnabled()) {
               postPerf('physics.step', stepMs);
+              postPerf('physics.bulletUpdate', bulletUpdateMs);
               postPerf('physics.collect', collectMs);
               postPerf('physics.postMessage', postMs);
             }
@@ -535,13 +751,14 @@ self.addEventListener('message', async (e: MessageEvent) => {
         } catch {
           // Fallback to legacy object-based message if packing/posting fails
           try {
-            WG.postMessage({ type: 'step-physics-done', dt, transforms });
+            WG.postMessage({ type: 'step-physics-done', dt, transforms, bulletTransforms, bulletEvents });
           } catch (_ee) {
             void _ee;
-            WG.postMessage({ type: 'step-physics-done', dt });
+            WG.postMessage({ type: 'step-physics-done', dt, bulletEvents });
           }
           if (isDebugPerfEnabled()) {
             postPerf('physics.step', stepMs);
+            postPerf('physics.bulletUpdate', bulletUpdateMs);
             postPerf('physics.collect', collectMs);
           }
         }
@@ -560,6 +777,8 @@ self.addEventListener('message', async (e: MessageEvent) => {
     try {
       world?.free?.();
       bodies.clear();
+      bulletBodies.clear();
+      bullets.clear();
     } catch {
       /* ignore */
     }
