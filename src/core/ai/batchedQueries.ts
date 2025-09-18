@@ -105,6 +105,30 @@ export class BatchedQueryManager {
   }
 
   /**
+   * Group ships by spatial cell for batch processing
+   */
+  private groupShipsByCell(ships: Ship[], cellSize: number): Map<string, { ships: Ship[]; center: Vector3 }> {
+    const cellQueries = new Map<string, { ships: Ship[]; center: Vector3 }>();
+
+    for (const ship of ships) {
+      const cellX = Math.floor(ship.pos.x / cellSize);
+      const cellY = Math.floor(ship.pos.y / cellSize);
+      const cellZ = Math.floor(ship.pos.z / cellSize);
+      const cellKey = `${cellX}|${cellY}|${cellZ}`;
+
+      if (!cellQueries.has(cellKey)) {
+        cellQueries.set(cellKey, {
+          ships: [],
+          center: { x: cellX * cellSize, y: cellY * cellSize, z: cellZ * cellSize },
+        });
+      }
+      cellQueries.get(cellKey)!.ships.push(ship);
+    }
+
+    return cellQueries;
+  }
+
+  /**
    * Pre-compute nearest enemies for all ships in one batch operation
    */
   public precomputeNearestEnemies(state: GameState, ships: Ship[]) {
@@ -120,7 +144,7 @@ export class BatchedQueryManager {
     let processedCount = 0;
     let skippedCount = 0;
 
-    // Batch query nearest enemies for all ships, with frequency reduction
+    // Keep the individual query approach but add activity-based skipping
     for (const ship of ships) {
       // Quick distance estimate to nearest enemy for activity calculation
       let nearestEnemyDistance: number | undefined;
@@ -183,6 +207,7 @@ export class BatchedQueryManager {
         // ignore debug logging errors in test env
       }
     }
+
     if (bench) {
       const t1 = performance.now();
       console.log(
@@ -215,9 +240,8 @@ export class BatchedQueryManager {
     let processedCount = 0;
     let skippedCount = 0;
 
-    // Reuse cached arrays when available to avoid allocations
+    // Keep the individual query approach but add activity-based skipping  
     for (const ship of ships) {
-      // For separation neighbors, we use a more lenient activity check since nearby neighbors change frequently
       // Check if this ship needs an update (more frequent for separation since neighbors change quickly)
       if (!this.shouldUpdateShip(ship)) {
         skippedCount++;
@@ -250,6 +274,7 @@ export class BatchedQueryManager {
       }
       processedCount++;
     }
+
     if (bench) {
       const t1 = performance.now();
       console.log(
@@ -274,30 +299,15 @@ export class BatchedQueryManager {
     }
 
     // Group ships by spatial cells to reduce redundant queries
-    const cellSize = state.simConfig.spatialGrid.cellSize;
-    const cellQueries = new Map<string, { ships: Ship[]; center: Vector3 }>();
-
-    for (const ship of ships) {
-      const cellX = Math.floor(ship.pos.x / cellSize);
-      const cellY = Math.floor(ship.pos.y / cellSize);
-      const cellZ = Math.floor(ship.pos.z / cellSize);
-      const cellKey = `${cellX}|${cellY}|${cellZ}`;
-
-      if (!cellQueries.has(cellKey)) {
-        cellQueries.set(cellKey, {
-          ships: [],
-          center: { x: cellX * cellSize, y: cellY * cellSize, z: cellZ * cellSize },
-        });
-      }
-      cellQueries.get(cellKey)!.ships.push(ship);
-    }
+    const cellSize = state.simConfig?.spatialGrid?.cellSize ?? 64; // Fallback to default cell size
+    const cellGroups = this.groupShipsByCell(ships, cellSize);
 
     // Execute one query per cell region
-    for (const [_cellKey, { ships, center }] of cellQueries) {
+    for (const [_cellKey, { ships: cellShips, center }] of cellGroups) {
       const enemies: Ship[] = [];
       const entities = this.spatialOptimizer.queryRadiusOptimized(center, range + cellSize);
       for (const entity of entities) {
-        if (ships[0].team !== entity.team) {
+        if (cellShips[0].team !== entity.team) {
           const s = state.shipIndex?.get(entity.id);
           if (s && s.health > 0) enemies.push(s);
         }
@@ -305,7 +315,7 @@ export class BatchedQueryManager {
 
       // Cache results for all ships in this cell. Use squared-distance math
       // to avoid repeated Math.sqrt and extra allocations.
-      for (const ship of ships) {
+      for (const ship of cellShips) {
         const range2 = range * range;
         const nearbyEnemies = enemies
           .filter((enemy) => {

@@ -54,10 +54,32 @@ export class AggressiveSpatialOptimizer {
     hierarchicalQueries: 0,
   };
 
+  // Result array pool to avoid allocations
+  private resultPool: SpatialEntity[][] = [];
+  private readonly MAX_POOL_SIZE = 20;
+
   constructor(
     private baseGrid: { queryRadius: (center: Vector3, radius: number) => SpatialEntity[] },
     private cellSize: number,
   ) {}
+
+  /**
+   * Get a pooled result array to avoid allocations
+   */
+  private getPooledArray(): SpatialEntity[] {
+    const arr = this.resultPool.pop();
+    return arr ?? [];
+  }
+
+  /**
+   * Return a result array to the pool
+   */
+  private releasePooledArray(arr: SpatialEntity[]): void {
+    if (this.resultPool.length < this.MAX_POOL_SIZE) {
+      arr.length = 0; // Clear the array
+      this.resultPool.push(arr);
+    }
+  }
 
   /**
    * Helper to obtain candidates from the wrapped baseGrid while avoiding
@@ -86,15 +108,19 @@ export class AggressiveSpatialOptimizer {
 
     // Prefer streaming API if present - this avoids allocations entirely
     if (typeof bg.forEachInRadius === 'function') {
-      const out: SpatialEntity[] = [];
+      const out = this.getPooledArray();
       try {
         bg.forEachInRadius!(center, radius, (_dx, _dy, _dz, _distSq, entity) => {
           if (team !== undefined && entity.team !== team) return;
           if (excludeId !== undefined && entity.id === excludeId) return;
           out.push(entity);
         });
-        return out;
+        // Return a copy and release the pooled array
+        const result = out.slice();
+        this.releasePooledArray(out);
+        return result;
       } catch {
+        this.releasePooledArray(out);
         // Fall through to pooled attempts on error
       }
     }
@@ -109,13 +135,21 @@ export class AggressiveSpatialOptimizer {
         if (typeof bg.queryRadius === 'function') {
           bg.queryRadius!(center, radius, buf);
         }
-        const res: SpatialEntity[] = [];
-        for (const e of buf) {
-          if (team !== undefined && e.team !== team) continue;
-          if (excludeId !== undefined && e.id === excludeId) continue;
-          res.push(e);
+        const res = this.getPooledArray();
+        try {
+          for (const e of buf) {
+            if (team !== undefined && e.team !== team) continue;
+            if (excludeId !== undefined && e.id === excludeId) continue;
+            res.push(e);
+          }
+          // Return a copy and release the pooled array
+          const result = res.slice();
+          this.releasePooledArray(res);
+          return result;
+        } catch (err) {
+          this.releasePooledArray(res);
+          throw err;
         }
-        return res;
       } finally {
         bg.releasePooledResults!(buf);
       }
