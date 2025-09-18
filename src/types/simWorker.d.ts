@@ -10,10 +10,20 @@ export type SimWorkerStepResult = {
 // AI-related message types
 export type SimWorkerInitAIMessage = { type: 'init-ai'; payload: unknown };
 export type SimWorkerInitAIDone = { type: 'init-ai-done'; ok: boolean; error?: string };
-export type SimWorkerStepAIRequest = { type: 'step-ai'; payload: { dt: number; gameState: unknown } };
+export type SimWorkerStepAIRequest = { 
+  type: 'step-ai'; 
+  payload: { 
+    dt: number; 
+    shipsBuffer?: ArrayBuffer;
+    bulletsBuffer?: ArrayBuffer;
+    behaviorConfig?: unknown;
+    tick?: number;
+  } 
+};
 export type SimWorkerStepAIResult = { 
   type: 'step-ai-done'; 
-  aiResults?: { ships: Array<{ id: number; targetId: number | null; aiState: unknown }> };
+  aiResultsBuffer?: ArrayBuffer;
+  shipCount?: number;
   error?: string;
 };
 export type SimWorkerDisposeAI = { type: 'dispose-ai' };

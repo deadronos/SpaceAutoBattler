@@ -851,27 +851,89 @@ self.addEventListener('message', async (e: MessageEvent) => {
     }
     
     try {
-      const aiPayload = payload as { dt: number; gameState: unknown };
-      const dt = aiPayload.dt || 0.016;
-      const gameState = aiPayload.gameState as GameState;
+      const aiPayload = payload as { 
+        dt: number; 
+        shipsBuffer?: ArrayBuffer;
+        bulletsBuffer?: ArrayBuffer;
+        behaviorConfig?: unknown;
+        tick?: number;
+      };
       
-      // Update AI controller with new game state data
-      // This is a simplified approach - in practice we'd need more sophisticated state synchronization
-      (aiController as any).state = gameState;
+      const dt = aiPayload.dt || 0.016;
+      
+      // Reconstruct ships from packed Float32Array buffer
+      const ships: any[] = [];
+      if (aiPayload.shipsBuffer) {
+        const shipsData = new Float32Array(aiPayload.shipsBuffer);
+        // Expected format: [id, px, py, pz, vx, vy, vz, health, targetId, team, class] per ship
+        const floatsPerShip = 11;
+        for (let i = 0; i < shipsData.length; i += floatsPerShip) {
+          ships.push({
+            id: shipsData[i],
+            pos: { x: shipsData[i + 1], y: shipsData[i + 2], z: shipsData[i + 3] },
+            vel: { x: shipsData[i + 4], y: shipsData[i + 5], z: shipsData[i + 6] },
+            health: shipsData[i + 7],
+            targetId: shipsData[i + 8] === -1 ? null : shipsData[i + 8],
+            team: shipsData[i + 9] === 0 ? 'red' : 'blue',
+            class: Math.floor(shipsData[i + 10]), // ship class as integer
+            aiState: {} // Initialize basic AI state
+          });
+        }
+      }
+      
+      // Reconstruct bullets from packed buffer if provided
+      const bullets: any[] = [];
+      if (aiPayload.bulletsBuffer) {
+        const bulletsData = new Float32Array(aiPayload.bulletsBuffer);
+        // Expected format: [id, px, py, pz, vx, vy, vz, ttl, damage, ownerShipId, ownerTeam] per bullet
+        const floatsPerBullet = 11;
+        for (let i = 0; i < bulletsData.length; i += floatsPerBullet) {
+          bullets.push({
+            id: bulletsData[i],
+            pos: { x: bulletsData[i + 1], y: bulletsData[i + 2], z: bulletsData[i + 3] },
+            vel: { x: bulletsData[i + 4], y: bulletsData[i + 5], z: bulletsData[i + 6] },
+            ttl: bulletsData[i + 7],
+            damage: bulletsData[i + 8],
+            ownerShipId: bulletsData[i + 9],
+            ownerTeam: bulletsData[i + 10] === 0 ? 'red' : 'blue'
+          });
+        }
+      }
+      
+      // Update AI controller's state with minimal data
+      const currentState = (aiController as any).state;
+      if (currentState) {
+        currentState.ships = ships;
+        currentState.bullets = bullets;
+        currentState.tick = aiPayload.tick || 0;
+        if (aiPayload.behaviorConfig) {
+          currentState.behaviorConfig = aiPayload.behaviorConfig;
+        }
+      }
       
       // Run AI update
       aiController.updateAllShips(dt);
       
-      // Collect AI results (target assignments, ship AI states, etc.)
-      const aiResults = {
-        ships: gameState.ships.map(ship => ({
-          id: ship.id,
-          targetId: ship.targetId,
-          aiState: ship.aiState
-        }))
-      };
+      // Pack AI results into Float32Array for efficient transfer
+      const resultSize = ships.length * 3; // id, targetId, aiStateFlag per ship
+      const aiResultsBuffer = new Float32Array(resultSize);
+      let resultIndex = 0;
       
-      WG.postMessage({ type: 'step-ai-done', aiResults });
+      for (const ship of ships) {
+        aiResultsBuffer[resultIndex++] = ship.id;
+        aiResultsBuffer[resultIndex++] = ship.targetId || -1; // -1 for null
+        aiResultsBuffer[resultIndex++] = 0; // placeholder for AI state flags
+      }
+      
+      // Transfer the buffer to avoid structured clone
+      postMessageTransferable(
+        { 
+          type: 'step-ai-done', 
+          aiResultsBuffer: aiResultsBuffer.buffer,
+          shipCount: ships.length 
+        },
+        [aiResultsBuffer.buffer]
+      );
     } catch (e) {
       WG.postMessage({ type: 'step-ai-error', error: String(e) });
     }
