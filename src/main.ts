@@ -536,22 +536,68 @@ export function initGame(seed?: string) {
             if (buf) {
               try {
                 const arr = new Float32Array(buf);
+                // Debug: when ?simDebug=1 is present, dump a preview of the
+                // transforms buffer so we can inspect whether the worker
+                // packed NaN/Inf or unexpected values. Keep this gated to
+                // avoid noisy logs in normal runs.
+                try {
+                  const _u = new URL(window.location.href);
+                  if (_u.searchParams.get('simDebug') === '1') {
+                    const previewLen = Math.min(64, arr.length);
+                    const preview = Array.from(arr.subarray(0, previewLen));
+                    try {
+                      console.info('[main.ts][simDebug] transformsBuffer preview (first %d floats):', previewLen, preview);
+                    } catch {
+                      /* ignore console failures in restricted envs */
+                    }
+                  }
+                } catch {
+                  /* ignore URL parsing failures */
+                }
                 let offset = 0;
                 
                 // Read ship count and ship data
                 const shipCount = Math.floor(arr[offset++]);
+                // Debug: sample parsed ship entries when simDebug=1 is present.
+                let parsedSample: Array<{ id: number; px: number; py: number; pz: number; vx: number; vy: number; vz: number }> | null = null;
+                try {
+                  const _u2 = new URL(window.location.href);
+                  if (_u2.searchParams.get('simDebug') === '1') parsedSample = [];
+                } catch {
+                  /* ignore */
+                }
+
                 for (let i = 0; i < shipCount; i++) {
                   const id = Math.floor(arr[offset++]);
+                  const px = arr[offset++];
+                  const py = arr[offset++];
+                  const pz = arr[offset++];
+                  const vx = arr[offset++];
+                  const vy = arr[offset++];
+                  const vz = arr[offset++];
+
+                  if (parsedSample && parsedSample.length < 6) {
+                    parsedSample.push({ id, px, py, pz, vx, vy, vz });
+                  }
+
                   const ship = state.shipIndex?.get(id) ?? state.ships.find((s) => s.id === id);
                   if (ship) {
-                    ship.pos.x = arr[offset++];
-                    ship.pos.y = arr[offset++];
-                    ship.pos.z = arr[offset++];
-                    ship.vel.x = arr[offset++];
-                    ship.vel.y = arr[offset++];
-                    ship.vel.z = arr[offset++];
+                    ship.pos.x = px;
+                    ship.pos.y = py;
+                    ship.pos.z = pz;
+                    ship.vel.x = vx;
+                    ship.vel.y = vy;
+                    ship.vel.z = vz;
                   } else {
-                    offset += 6; // Skip position and velocity data
+                    // ship not found in state; ignore parsed values
+                  }
+                }
+
+                if (parsedSample) {
+                  try {
+                    console.info('[main.ts][simDebug] parsed ships sample:', parsedSample);
+                  } catch {
+                    /* ignore */
                   }
                 }
 

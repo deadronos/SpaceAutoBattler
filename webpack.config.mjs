@@ -49,6 +49,15 @@ export default (env = {}, argv) => {
             'css-loader'
           ]
         }
+        ,
+        // Emit any imported .wasm files as resources so they end up in dist/wasm/
+        {
+          test: /\.wasm$/,
+          type: 'asset/resource',
+          generator: {
+            filename: 'wasm/[name][ext]'
+          }
+        }
       ]
     },
     plugins: [
@@ -99,11 +108,32 @@ export default (env = {}, argv) => {
       splitChunks: {
         chunks: 'all',
         cacheGroups: {
-          rapier: {
+          // Instead of extracting Rapier into its own shared chunk, prefer
+          // bundling Rapier into the same chunk that imports it (for example
+          // the sim worker chunk). This avoids cross-chunk initialization
+          // ordering issues where Rapier's runtime may not be fully ready
+          // when a different chunk tries to use it.
+          rapierInImporterChunk: {
             test: /[\\/]node_modules[\\/]@dimforge[\\/]rapier3d-compat[\\/]/,
-            name: 'rapier',
+            // Use the importing chunk's name when available so rapier ends up
+            // in the same emitted file as the importer (worker).
+            name(module, chunks, cacheGroupKey) {
+              try {
+                if (Array.isArray(chunks) && chunks.length > 0) {
+                  // Prefer the first chunk's name if present
+                  const first = chunks.find((c) => typeof c.name === 'string' && c.name.length > 0);
+                  if (first && typeof first.name === 'string') return first.name;
+                }
+              } catch (_e) {
+                /* ignore and fall back */
+              }
+              // Fallback name: keep rapier as a dedicated chunk if necessary
+              return cacheGroupKey;
+            },
             chunks: 'all',
-            priority: 40
+            priority: 60,
+            enforce: true,
+            reuseExistingChunk: true
           },
           three: {
             test: /[\\/]node_modules[\\/]three[\\/]/,
@@ -125,6 +155,11 @@ export default (env = {}, argv) => {
           }
         }
       }
+    },
+    // Enable async WebAssembly so dynamic WASM imports (used by Rapier builds)
+    // are supported and properly emitted by webpack 5.
+    experiments: {
+      asyncWebAssembly: true
     },
     devtool: isProd ? false : 'source-map',
     devServer: {
