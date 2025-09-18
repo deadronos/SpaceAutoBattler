@@ -100,20 +100,59 @@ async function initRapier() {
     const W = (Rapier as Record<string, unknown>).World ?? Rapier;
     // Attempt to construct or call the World factory; allow different shapes across builds
     type WorldConstructor = new (opts?: unknown) => WorldLike;
+    let constructorError: unknown = null;
+    let factoryError: unknown = null;
     try {
       // If W is a constructor
       world = new (W as unknown as WorldConstructor)({ x: 0, y: 0, z: 0 });
-    } catch {
+    } catch (e) {
+      constructorError = e;
       try {
         // If W is a factory function
         world = (W as unknown as (opts?: unknown) => WorldLike)({ x: 0, y: 0, z: 0 });
-      } catch {
+      } catch (ee) {
+        factoryError = ee;
         world = null;
       }
     }
-  } catch {
+    // If world is still null but Rapier loaded, surface captured inner errors
+    if (!world) {
+      try {
+        const rapierKeys: string[] = [];
+        try {
+          const k = Object.keys(Rapier as Record<string, unknown>);
+          for (const kk of k) rapierKeys.push(String(kk));
+        } catch {
+          // ignore
+        }
+        WG.postMessage({
+          type: 'init-rapier-diagnostics',
+          rapierLoaded: !!Rapier,
+          rapierKeys: rapierKeys.slice(0, 50),
+          constructorError: constructorError ? String(constructorError) : undefined,
+          constructorStack: constructorError && (constructorError as Error).stack ? (constructorError as Error).stack : undefined,
+          factoryError: factoryError ? String(factoryError) : undefined,
+          factoryStack: factoryError && (factoryError as Error).stack ? (factoryError as Error).stack : undefined,
+        });
+      } catch {
+        /* best-effort diag */
+      }
+    }
+  } catch (err) {
     Rapier = null;
     world = null;
+    // Diagnostic: post init error details so tests and bootstrap logs can show
+    // why Rapier/world failed to initialize inside the worker VM.
+    try {
+      WG.postMessage({
+        type: 'init-physics-error',
+        error: String(err),
+        // include stack when available for easier debugging
+        stack: (err && (err as Error).stack) || undefined,
+      });
+    } catch {
+      /* ignore - best-effort diagnostic */
+    }
   }
 }
 
@@ -218,6 +257,20 @@ self.addEventListener('message', async (e: MessageEvent) => {
     const bs =
       isObject(payload) && 'bucketSize' in payload ? Number(payload['bucketSize']) : undefined;
     await initRapier();
+
+    // If Rapier imported but world wasn't constructed (no exception thrown),
+    // surface a diagnostic so test harness can see why initialization reported ok:false.
+    if (!world) {
+      try {
+        WG.postMessage({
+          type: 'init-physics-error',
+          error: 'Rapier world not constructed',
+          rapierLoaded: !!Rapier,
+        });
+      } catch {
+        /* best-effort */
+      }
+    }
 
     // Best-effort: if entityIndex module is available, initialize a worker-local index
     try {
@@ -433,23 +486,63 @@ self.addEventListener('message', async (e: MessageEvent) => {
         const transforms = collectTransforms();
         const collectMs = isDebugPerfEnabled() ? performance.now() - t1 : 0;
 
-        const t2 = isDebugPerfEnabled() ? performance.now() : 0;
-        WG.postMessage({
-          type: 'step-physics-done',
-          dt,
-          transforms,
-        });
-        const postMs = isDebugPerfEnabled() ? performance.now() - t2 : 0;
-        if (isDebugPerfEnabled()) {
-          postPerf('physics.step', stepMs);
-          postPerf('physics.collect', collectMs);
-          postPerf('physics.postMessage', postMs);
-          // Rough payload size measurement
+        // Pack transforms into a Float32Array for efficient transferable postMessage
+        // Layout per-entry: [id, px, py, pz, vx, vy, vz] (7 floats)
+        let postMs = 0;
+        try {
+          const t2 = isDebugPerfEnabled() ? performance.now() : 0;
+          if (transforms && transforms.length) {
+            const out = new Float32Array(transforms.length * 7);
+            let o = 0;
+            for (let i = 0; i < transforms.length; ++i) {
+              const tr = transforms[i];
+              // shipId may be integer; store as float and decode with Math.floor on receiver
+              out[o++] = Number(tr.shipId) || 0;
+              out[o++] = Number(tr.pos.x) || 0;
+              out[o++] = Number(tr.pos.y) || 0;
+              out[o++] = Number(tr.pos.z) || 0;
+              out[o++] = Number(tr.vel.x) || 0;
+              out[o++] = Number(tr.vel.y) || 0;
+              out[o++] = Number(tr.vel.z) || 0;
+            }
+
+            // Transfer the underlying buffer to avoid structured-clone
+            // Post the packed buffer with transfer list to avoid structured-clone
+            // overhead. Use helper to call postMessage so typings are centralized.
+            postMessageTransferable({ type: 'step-physics-done', dt, transformsBuffer: out.buffer }, [out.buffer]);
+            postMs = isDebugPerfEnabled() ? performance.now() - t2 : 0;
+
+            if (isDebugPerfEnabled()) {
+              postPerf('physics.step', stepMs);
+              postPerf('physics.collect', collectMs);
+              postPerf('physics.postMessage', postMs);
+              try {
+                postPerf('physics.payload.approxKB', out.byteLength / 1000);
+              } catch (_e) {
+                void _e;
+              }
+            }
+          } else {
+            // No transforms to send: keep legacy message shape
+            WG.postMessage({ type: 'step-physics-done', dt });
+            postMs = isDebugPerfEnabled() ? performance.now() - t2 : 0;
+            if (isDebugPerfEnabled()) {
+              postPerf('physics.step', stepMs);
+              postPerf('physics.collect', collectMs);
+              postPerf('physics.postMessage', postMs);
+            }
+          }
+        } catch {
+          // Fallback to legacy object-based message if packing/posting fails
           try {
-            const approxBytes = JSON.stringify(transforms).length;
-            postPerf('physics.payload.approxBytes', approxBytes / 1000);
-          } catch (_e) {
-            void _e;
+            WG.postMessage({ type: 'step-physics-done', dt, transforms });
+          } catch (_ee) {
+            void _ee;
+            WG.postMessage({ type: 'step-physics-done', dt });
+          }
+          if (isDebugPerfEnabled()) {
+            postPerf('physics.step', stepMs);
+            postPerf('physics.collect', collectMs);
           }
         }
       } else {
@@ -510,5 +603,21 @@ function postPerf(name: string, valueMs: number) {
     });
   } catch {
     /* ignore */
+  }
+}
+
+// Helper to post a message with transferable buffers from the worker. This
+// wraps the global Worker.postMessage shape and narrows the transfer list
+// typing so TypeScript is satisfied without using `any` in call sites.
+function postMessageTransferable(message: unknown, transfer?: Transferable[]) {
+  try {
+  // WorkerGlobalLike.postMessage overloads are environment-dependent; call
+  // at runtime and pass transfer list. Use a ts-ignore to silence strict
+  // environment typing since this runs in a worker context.
+  // @ts-ignore runtime call - acceptable in worker context
+  WG.postMessage(message, transfer);
+  } catch (_err) {
+    // swallow errors - best-effort messaging
+    void _err;
   }
 }

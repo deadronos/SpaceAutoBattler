@@ -565,46 +565,74 @@ function updateBullets(state: GameState, dt: number) {
       // Prefer the optional entityIndex when available for faster neighbor queries
       if (state.entityIndex) {
         try {
-          const near = state.entityIndex.queryNeighbors(b.pos.x, b.pos.y, b.pos.z, maxHitR, {
-            filter: (e) => e.type === 'ship' && e.team !== b.ownerTeam,
-          });
-          for (const e of near) {
-            if (b.ttl <= 0) break; // already consumed
-            const s = state.shipIndex?.get(e.id) ?? state.ships.find((sh) => sh.id === e.id);
-            if (!s) continue;
-            if (s.team === b.ownerTeam || s.health <= 0) continue;
-            const dx = s.pos.x - b.pos.x;
-            const dy = s.pos.y - b.pos.y;
-            const dz = s.pos.z - b.pos.z;
-            const distSq = dx * dx + dy * dy + dz * dz;
-            const hitR =
-              ShipVisualConfig.ships[s.class]?.collisionRadius ??
-              ShipVisualConfig.defaults.collisionRadius;
-            if (distSq > hitR * hitR) continue;
+          // Batch bullets per frame into positions array for bulk query when possible.
+          // We'll collect bullets that are alive and need collisions, grouped by ownerTeam
+          const bulletsToCheck = state.bullets.filter((bb) => bb.ttl > 0);
+          if (bulletsToCheck.length === 0) break;
 
-            const d = Math.sqrt(distSq);
-            let dmgLeft = b.damage;
-            let totalDamage = 0;
-            if (s.shield > 0) {
-              const absorb = Math.min(s.shield, dmgLeft);
-              s.shield -= absorb;
-              dmgLeft -= absorb;
-              totalDamage += absorb;
-              s.lastShieldHitTime = state.time;
-              const len = Math.max(1e-6, d);
-              s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
-              s.lastShieldHitStrength = absorb;
-            }
-            if (dmgLeft > 0) {
-              const effective = Math.max(1, dmgLeft - s.armor * 0.3);
-              s.health -= effective;
-              totalDamage += effective;
-            }
-            if (totalDamage > 0) {
-              recordDamage(state, s, totalDamage, b.ownerShipId);
-            }
-            b.ttl = 0;
+          // Build positions Float32Array [x,y,z,...]
+          const positions = new Float32Array(bulletsToCheck.length * 3);
+          for (let i = 0; i < bulletsToCheck.length; i++) {
+            const bb = bulletsToCheck[i];
+            positions[i * 3] = bb.pos.x;
+            positions[i * 3 + 1] = bb.pos.y;
+            positions[i * 3 + 2] = bb.pos.z;
           }
+
+          // Use entityIndex.queryBulkRadius which now returns ids + counts per position
+          const res = state.entityIndex.queryBulkRadius
+            ? state.entityIndex.queryBulkRadius(positions, maxHitR)
+            : { ids: new Uint32Array(0), counts: new Uint32Array(0) };
+          const ids = res.ids;
+          const counts = res.counts;
+
+          // Walk results per-bullet
+          let readIndex = 0;
+          for (let bi = 0; bi < bulletsToCheck.length; bi++) {
+            const b2 = bulletsToCheck[bi];
+            const hitCount = counts[bi] || 0;
+            for (let ci = 0; ci < hitCount; ci++) {
+              if (b2.ttl <= 0) break; // bullet consumed
+              const eid = ids[readIndex++];
+              if (!eid) continue;
+              const s = state.shipIndex?.get(eid) ?? state.ships.find((sh) => sh.id === eid);
+              if (!s) continue;
+              if (s.team === b2.ownerTeam || s.health <= 0) continue;
+              const dx = s.pos.x - b2.pos.x;
+              const dy = s.pos.y - b2.pos.y;
+              const dz = s.pos.z - b2.pos.z;
+              const distSq = dx * dx + dy * dy + dz * dz;
+              const hitR =
+                ShipVisualConfig.ships[s.class]?.collisionRadius ??
+                ShipVisualConfig.defaults.collisionRadius;
+              if (distSq > hitR * hitR) continue;
+
+              const d = Math.sqrt(distSq);
+              let dmgLeft = b2.damage;
+              let totalDamage = 0;
+              if (s.shield > 0) {
+                const absorb = Math.min(s.shield, dmgLeft);
+                s.shield -= absorb;
+                dmgLeft -= absorb;
+                totalDamage += absorb;
+                s.lastShieldHitTime = state.time;
+                const len = Math.max(1e-6, d);
+                s.lastShieldHitDir = { x: dx / len, y: dy / len, z: dz / len };
+                s.lastShieldHitStrength = absorb;
+              }
+              if (dmgLeft > 0) {
+                const effective = Math.max(1, dmgLeft - s.armor * 0.3);
+                s.health -= effective;
+                totalDamage += effective;
+              }
+              if (totalDamage > 0) {
+                recordDamage(state, s, totalDamage, b2.ownerShipId);
+              }
+              b2.ttl = 0;
+            }
+          }
+          // Continue to next bullet in outer loop - we've handled collisions for bullets
+          continue;
         } catch {
           // best-effort fallback to spatialGrid iteration if entityIndex fails
           const grid = state.spatialGrid!;

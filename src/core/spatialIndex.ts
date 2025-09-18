@@ -494,17 +494,16 @@ export class SpatialGridAdapter implements SpatialIndex {
     radius: number,
     team?: Team,
     excludeIds?: Set<EntityId>,
-    out?: Uint32Array
+    out?: Uint32Array,
   ): Uint32Array {
     this.trackQuery();
-    
     const positionCount = Math.floor(positions.length / 3);
     if (positionCount === 0) {
       return out || new Uint32Array(0);
     }
 
-    // We don't know ahead of time how many results we'll get, so use a reasonable buffer
-    const tempResults: EntityId[] = [];
+    // Produce a flat ids array concatenating results for each input position.
+    const idsTemp: number[] = [];
 
     const buf = this.grid.getPooledResults();
     try {
@@ -519,25 +518,18 @@ export class SpatialGridAdapter implements SpatialIndex {
         // Clear and reuse the pooled buffer
         buf.length = 0;
         this.grid.queryRadius(center, radius, buf);
-        
-        // Filter and collect results
+
+        // Filter and collect results for this query
         for (const entity of buf) {
           if (team && entity.team !== team) continue;
           if (excludeIds && excludeIds.has(entity.id)) continue;
-          tempResults.push(entity.id);
+          idsTemp.push(entity.id);
         }
       }
 
-      // Convert to Uint32Array
-      const result = out && out.length >= tempResults.length 
-        ? out 
-        : new Uint32Array(tempResults.length);
-      
-      for (let i = 0; i < tempResults.length; i++) {
-        result[i] = tempResults[i];
-      }
-
-      return tempResults.length === result.length ? result : result.subarray(0, tempResults.length);
+      const ids = out && out.length >= idsTemp.length ? out : new Uint32Array(idsTemp.length);
+      for (let i = 0; i < idsTemp.length; i++) ids[i] = idsTemp[i];
+      return idsTemp.length === ids.length ? ids : ids.subarray(0, idsTemp.length);
     } finally {
       this.grid.releasePooledResults(buf);
     }

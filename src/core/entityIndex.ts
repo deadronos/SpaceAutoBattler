@@ -111,6 +111,13 @@ export type EntityIndexAPI = {
     radius: number,
     opts?: { team?: string; maxResults?: number; filter?: (e: EntityRef) => boolean },
   ) => EntityRef[];
+  queryBulkRadius?: (
+    positions: Float32Array,
+    radius: number,
+    team?: string,
+    excludeIds?: Set<number>,
+    out?: Uint32Array,
+  ) => { ids: Uint32Array; counts: Uint32Array };
 };
 
 export function initEntityIndex(bucketSize = 50): EntityIndexAPI {
@@ -173,5 +180,44 @@ export function initEntityIndex(bucketSize = 50): EntityIndexAPI {
     return out;
   }
 
-  return { world, grid, add, update, remove, queryNeighbors };
+  function queryBulkRadius(
+    positions: Float32Array,
+    radius: number,
+    team?: string,
+    excludeIds?: Set<number>,
+    out?: Uint32Array,
+  ) {
+    const positionCount = Math.floor(positions.length / 3);
+    const idsTemp: number[] = [];
+    const counts = new Uint32Array(positionCount);
+
+    for (let i = 0; i < positionCount; i++) {
+      const base = i * 3;
+      const x = positions[base];
+      const y = positions[base + 1];
+      const z = positions[base + 2];
+      const candidates = grid.queryCandidates(x, y, z, radius);
+      let added = 0;
+      for (const id of candidates) {
+        if (excludeIds && excludeIds.has(id)) continue;
+        const e = byId.get(id);
+        if (!e) continue;
+        if (team && e.team !== team) continue;
+        const dx = e.x - x;
+        const dy = e.y - y;
+        const dz = e.z - z;
+        if (dx * dx + dy * dy + dz * dz > radius * radius) continue;
+        idsTemp.push(id);
+        added++;
+      }
+      counts[i] = added;
+    }
+
+    const ids = out && out.length >= idsTemp.length ? out : new Uint32Array(idsTemp.length);
+    for (let i = 0; i < idsTemp.length; i++) ids[i] = idsTemp[i];
+    return { ids: idsTemp.length === ids.length ? ids : ids.subarray(0, idsTemp.length), counts };
+  }
+
+  return { world, grid, add, update, remove, queryNeighbors, queryBulkRadius };
 }
+
