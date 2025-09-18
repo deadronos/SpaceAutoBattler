@@ -1,4 +1,5 @@
 import * as three from 'three';
+import { setTextureNeedsUpdateThrottled } from './textureThrottle.js';
 import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
 import { FloatType, WebGLRenderTarget, NearestFilter, RGBAFormat, UnsignedByteType } from 'three';
 import * as logger from '../utils/logger.js';
@@ -77,17 +78,30 @@ const blitToTemp = (rend: WebGLRenderer, srcRT: unknown, dstRT: WebGLRenderTarge
     if (isDepthSource) {
       try {
         asAny(packMat).uniforms.tInput.value = srcTexture;
-        packMat.needsUpdate = true;
+        // Prefer throttled texture update instead of forcing material recompile
+        try {
+          setTextureNeedsUpdateThrottled(srcTexture as any);
+        } catch (_e) {
+          void _e;
+        }
         asAny(blitMesh).material = asAny(packMat);
       } catch (_e) {
         void _e;
         asAny(blitMat).map = srcTexture;
-        blitMat.needsUpdate = true;
+        try {
+          setTextureNeedsUpdateThrottled(srcTexture as any);
+        } catch (_e2) {
+          void _e2;
+        }
         asAny(blitMesh).material = asAny(blitMat);
       }
     } else {
       asAny(blitMat).map = srcTexture;
-      blitMat.needsUpdate = true;
+      try {
+        setTextureNeedsUpdateThrottled(srcTexture as any);
+      } catch (_e) {
+        void _e;
+      }
       blitMesh.material = blitMat;
     }
     rend.setRenderTarget(dstRT);
