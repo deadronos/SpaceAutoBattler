@@ -256,6 +256,7 @@ export interface GameState {
   physicsStepper?: {
     initDone: boolean;
     step: (dt: number) => void;
+    stepAI?: (dt: number) => void; // Optional AI step for worker mode
     dispose: () => void;
     world?: unknown;
   };
