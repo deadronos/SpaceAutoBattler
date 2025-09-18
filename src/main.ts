@@ -483,6 +483,57 @@ export function initGame(seed?: string) {
                 logger.warn('[main.ts] Error processing AI results:', e);
               }
             }
+
+            // Process AI-computed velocities, when provided. This updates the
+            // canonical GameState velocities so the subsequent physics tick
+            // streams non-zero values via update-velocities.
+            if (data.aiVelBuffer) {
+              try {
+                const vArr = new Float32Array(data.aiVelBuffer);
+                const stride = 4; // id, vx, vy, vz
+                for (let i = 0; i < vArr.length; i += stride) {
+                  const id = vArr[i];
+                  const vx = vArr[i + 1];
+                  const vy = vArr[i + 2];
+                  const vz = vArr[i + 3];
+                  const ship = state.shipIndex?.get(id) ?? state.ships.find(s => s.id === id);
+                  if (ship) {
+                    ship.vel.x = vx;
+                    ship.vel.y = vy;
+                    ship.vel.z = vz;
+                  }
+                }
+              } catch (e) {
+                logger.warn('[main.ts] Error processing AI velocity buffer:', e);
+              }
+            }
+
+            // When AI runs in the worker, immediately stream updated velocities
+            // and step physics with the same dt, ensuring no-frame delay.
+            try {
+              const useAIWorker = (RC.useAIWorker as unknown as boolean) ?? true;
+              const useSimWorker = (RC.useSimWorker as unknown as boolean) ?? true;
+              if (useSimWorker && useAIWorker) {
+                const floatsPer = 4; // id, vx, vy, vz
+                const velArray = new Float32Array(state.ships.length * floatsPer);
+                let o = 0;
+                for (const ship of state.ships) {
+                  velArray[o++] = ship.id;
+                  velArray[o++] = ship.vel.x;
+                  velArray[o++] = ship.vel.y;
+                  velArray[o++] = ship.vel.z;
+                }
+                w.postMessage(
+                  { type: 'update-velocities', payload: { velocities: velArray } },
+                  [velArray.buffer]
+                );
+                const defaultDt = 1 / (state.simConfig.tickRate || 60);
+                const dtForPhysics = typeof lastAIDt === 'number' && lastAIDt > 0 ? lastAIDt : defaultDt;
+                w.postMessage({ type: 'step-physics', payload: { dt: dtForPhysics } });
+              }
+            } catch (_e) {
+              void _e;
+            }
             return;
           }
 
@@ -712,6 +763,7 @@ export function initGame(seed?: string) {
 
         // Initialize AI in the same worker
         let aiReady = false;
+        let lastAIDt = 0; // dt most recently sent to AI worker
         // Initialize AI in the worker and provide the canonical RNG seed so
         // AI inside the worker uses the same deterministic RNG as the main thread.
         w.postMessage({
@@ -751,76 +803,75 @@ export function initGame(seed?: string) {
                 ]);
                 lastShipDataVersion = currentVersion;
               }
-
-              // Always send current linear velocities so worker bodies follow AI motion
-              try {
-                const floatsPer = 4; // id, vx, vy, vz
-                const velArray = new Float32Array(state.ships.length * floatsPer);
-                let o = 0;
-                for (const ship of state.ships) {
-                  velArray[o++] = ship.id;
-                  velArray[o++] = ship.vel.x;
-                  velArray[o++] = ship.vel.y;
-                  velArray[o++] = ship.vel.z;
+              // If AI runs in the worker and is ready, defer velocities + physics
+              // until step-ai-done so we can apply fresh AI velocities first.
+              const useAIWorker = (RC.useAIWorker as unknown as boolean) ?? true;
+              if (!aiReady || !useAIWorker) {
+                // No AI worker: stream velocities and step physics immediately
+                try {
+                  const floatsPer = 4; // id, vx, vy, vz
+                  const velArray = new Float32Array(state.ships.length * floatsPer);
+                  let o = 0;
+                  for (const ship of state.ships) {
+                    velArray[o++] = ship.id;
+                    velArray[o++] = ship.vel.x;
+                    velArray[o++] = ship.vel.y;
+                    velArray[o++] = ship.vel.z;
+                  }
+                  w.postMessage(
+                    { type: 'update-velocities', payload: { velocities: velArray } },
+                    [velArray.buffer]
+                  );
+                } catch (_ee) {
+                  void _ee;
                 }
-                w.postMessage(
-                  { type: 'update-velocities', payload: { velocities: velArray } },
-                  [velArray.buffer]
-                );
-              } catch (_ee) {
-                void _ee;
+                // Step physics now
+                w.postMessage({ type: 'step-physics', payload: { dt } });
               }
-
-              // Step physics
-              w.postMessage({ type: 'step-physics', payload: { dt } });
             } catch (_e) {
               void _e; /* ignore */
             }
           },
           stepAI(dt: number) {
             if (!aiReady) return; // AI not ready yet
-            
             try {
+              lastAIDt = dt;
               // Pack ship data for AI (more fields than physics)
               const floatsPerShip = 11; // id, px, py, pz, vx, vy, vz, health, targetId, team, class
               const shipsBuffer = new Float32Array(state.ships.length * floatsPerShip);
-              
               for (let i = 0; i < state.ships.length; i++) {
                 const ship = state.ships[i];
-                const offset = i * floatsPerShip;
-                shipsBuffer[offset + 0] = ship.id;
-                shipsBuffer[offset + 1] = ship.pos.x;
-                shipsBuffer[offset + 2] = ship.pos.y;
-                shipsBuffer[offset + 3] = ship.pos.z;
-                shipsBuffer[offset + 4] = ship.vel.x;
-                shipsBuffer[offset + 5] = ship.vel.y;
-                shipsBuffer[offset + 6] = ship.vel.z;
-                shipsBuffer[offset + 7] = ship.health;
-                shipsBuffer[offset + 8] = ship.targetId || -1;
-                shipsBuffer[offset + 9] = ship.team === 'red' ? 0 : 1;
-                shipsBuffer[offset + 10] = 0; // ship class placeholder
+                const base = i * floatsPerShip;
+                shipsBuffer[base + 0] = ship.id;
+                shipsBuffer[base + 1] = ship.pos.x;
+                shipsBuffer[base + 2] = ship.pos.y;
+                shipsBuffer[base + 3] = ship.pos.z;
+                shipsBuffer[base + 4] = ship.vel.x;
+                shipsBuffer[base + 5] = ship.vel.y;
+                shipsBuffer[base + 6] = ship.vel.z;
+                shipsBuffer[base + 7] = ship.health;
+                shipsBuffer[base + 8] = ship.targetId || -1;
+                shipsBuffer[base + 9] = ship.team === 'red' ? 0 : 1;
+                shipsBuffer[base + 10] = 0; // ship class placeholder
               }
-              
               // Pack bullet data if needed
               const floatsPerBullet = 11; // id, px, py, pz, vx, vy, vz, ttl, damage, ownerShipId, ownerTeam
               const bulletsBuffer = new Float32Array(state.bullets.length * floatsPerBullet);
-              
               for (let i = 0; i < state.bullets.length; i++) {
                 const bullet = state.bullets[i];
-                const offset = i * floatsPerBullet;
-                bulletsBuffer[offset + 0] = bullet.id;
-                bulletsBuffer[offset + 1] = bullet.pos.x;
-                bulletsBuffer[offset + 2] = bullet.pos.y;
-                bulletsBuffer[offset + 3] = bullet.pos.z;
-                bulletsBuffer[offset + 4] = bullet.vel.x;
-                bulletsBuffer[offset + 5] = bullet.vel.y;
-                bulletsBuffer[offset + 6] = bullet.vel.z;
-                bulletsBuffer[offset + 7] = bullet.ttl;
-                bulletsBuffer[offset + 8] = bullet.damage;
-                bulletsBuffer[offset + 9] = bullet.ownerShipId;
-                bulletsBuffer[offset + 10] = bullet.ownerTeam === 'red' ? 0 : 1;
+                const base = i * floatsPerBullet;
+                bulletsBuffer[base + 0] = bullet.id;
+                bulletsBuffer[base + 1] = bullet.pos.x;
+                bulletsBuffer[base + 2] = bullet.pos.y;
+                bulletsBuffer[base + 3] = bullet.pos.z;
+                bulletsBuffer[base + 4] = bullet.vel.x;
+                bulletsBuffer[base + 5] = bullet.vel.y;
+                bulletsBuffer[base + 6] = bullet.vel.z;
+                bulletsBuffer[base + 7] = bullet.ttl;
+                bulletsBuffer[base + 8] = bullet.damage;
+                bulletsBuffer[base + 9] = bullet.ownerShipId;
+                bulletsBuffer[base + 10] = bullet.ownerTeam === 'red' ? 0 : 1;
               }
-              
               // Send AI step message
               w.postMessage({
                 type: 'step-ai',
@@ -829,8 +880,8 @@ export function initGame(seed?: string) {
                   shipsBuffer: shipsBuffer.buffer,
                   bulletsBuffer: bulletsBuffer.buffer,
                   behaviorConfig: state.behaviorConfig,
-                  tick: state.tick
-                }
+                  tick: state.tick,
+                },
               }, [shipsBuffer.buffer, bulletsBuffer.buffer]);
             } catch (e) {
               logger.warn('[main.ts] Error sending AI step:', e);
@@ -873,39 +924,18 @@ export function initGame(seed?: string) {
       try {
         const ps = await createPhysicsStepper(state as unknown as _GameStateType);
         (state as unknown as _GameStateType).physicsStepper = ps;
-      } catch (ee) {
-        void ee; /* ignore */
-      }
-    }
-  })();
-
-  // Wait for GLTF models to load before spawning ships and creating renderer
-  // This ensures ships use GLTF prototypes instead of placeholder geometry
-  (async () => {
-    try {
-      // Guard GLTF preloads behind configuration flag to avoid noisy 404s
-      const shouldLoadModels = (RC.loadGltfModels as unknown as boolean) ?? false;
-      if (shouldLoadModels) {
-        // Wait for GLTF models to load first
+        // Register GLTF prototypes for instancing (best-effort)
         try {
-          const { preloadShipModels } = await import('./core/shipModelLoader.js');
-          await preloadShipModels(state, ['red', 'blue']);
-          logger.debug('[main.ts] GLTF models loaded, now spawning ships');
-
-          // Register prototypes with the shipInstancer
-          try {
-            const { registerPrototypesFromPool } = await import('./renderer/meshFactory.js');
-            registerPrototypesFromPool(state);
-            logger.debug('[main.ts] Successfully registered GLTF prototypes with shipInstancer');
-          } catch (err) {
-            console.warn('[main.ts] Failed to register GLTF prototypes:', err);
-          }
+          const { registerPrototypesFromPool } = await import('./renderer/meshFactory.js');
+          registerPrototypesFromPool(state);
+          logger.debug('[main.ts] Successfully registered GLTF prototypes with shipInstancer');
         } catch (err) {
-          console.warn('[main.ts] preloadShipModels failed:', err);
+          console.warn('[main.ts] Failed to register GLTF prototypes:', err);
         }
+      } catch (err) {
+        console.warn('[main.ts] Fallback to in-thread physics failed:', err);
       }
-    } catch (_e) {
-      void _e;
+
     }
 
     // Now spawn fleets and create renderer - GLTF models should be available

@@ -1027,15 +1027,31 @@ self.addEventListener('message', async (e: MessageEvent) => {
         aiResultsBuffer[resultIndex++] = typeof targetId === 'number' ? targetId : -1;
         aiResultsBuffer[resultIndex++] = 0; // placeholder for AI state flags
       }
+
+      // Additionally pack AI-computed velocities so the main thread can
+      // apply them to canonical GameState.ships before streaming
+      // update-velocities to the physics worker. This enables visible motion
+      // when using AI worker mode.
+      const velSize = ships.length * 4; // id, vx, vy, vz per ship
+      const aiVelBuffer = new Float32Array(velSize);
+      let vi = 0;
+      for (const ship of ships) {
+        const v = ship.vel || ({ x: 0, y: 0, z: 0 } as Vec3);
+        aiVelBuffer[vi++] = ship.id;
+        aiVelBuffer[vi++] = Number(v.x) || 0;
+        aiVelBuffer[vi++] = Number(v.y) || 0;
+        aiVelBuffer[vi++] = Number(v.z) || 0;
+      }
       
       // Transfer the buffer to avoid structured clone
       postMessageTransferable(
         { 
           type: 'step-ai-done', 
           aiResultsBuffer: aiResultsBuffer.buffer,
+          aiVelBuffer: aiVelBuffer.buffer,
           shipCount: ships.length 
         },
-        [aiResultsBuffer.buffer]
+        [aiResultsBuffer.buffer, aiVelBuffer.buffer]
       );
     } catch (e) {
       WG.postMessage({ type: 'step-ai-error', error: String(e) });
