@@ -861,8 +861,8 @@ self.addEventListener('message', async (e: MessageEvent) => {
       
       const dt = aiPayload.dt || 0.016;
       
-      // Reconstruct ships from packed Float32Array buffer
-      const ships: any[] = [];
+  // Reconstruct ships from packed Float32Array buffer
+  const ships: ShipLike[] = [];
       if (aiPayload.shipsBuffer) {
         const shipsData = new Float32Array(aiPayload.shipsBuffer);
         // Expected format: [id, px, py, pz, vx, vy, vz, health, targetId, team, class] per ship
@@ -876,13 +876,15 @@ self.addEventListener('message', async (e: MessageEvent) => {
             targetId: shipsData[i + 8] === -1 ? null : shipsData[i + 8],
             team: shipsData[i + 9] === 0 ? 'red' : 'blue',
             class: Math.floor(shipsData[i + 10]), // ship class as integer
+            // Ensure turrets exists on reconstructed ships so AIController can iterate safely.
+            turrets: [],
             aiState: {} // Initialize basic AI state
           });
         }
       }
       
-      // Reconstruct bullets from packed buffer if provided
-      const bullets: any[] = [];
+  // Reconstruct bullets from packed buffer if provided
+  const bullets: BulletLike[] = [];
       if (aiPayload.bulletsBuffer) {
         const bulletsData = new Float32Array(aiPayload.bulletsBuffer);
         // Expected format: [id, px, py, pz, vx, vy, vz, ttl, damage, ownerShipId, ownerTeam] per bullet
@@ -900,14 +902,20 @@ self.addEventListener('message', async (e: MessageEvent) => {
         }
       }
       
-      // Update AI controller's state with minimal data
-      const currentState = (aiController as any).state;
+      // Update AI controller's state with minimal data. We cast to `unknown` first
+      // to avoid conflicting with the imported AIController type which marks
+      // `state` as private. At runtime the controller exposes a `state` object
+      // we can populate with minimal fields required by AI updates.
+      const controllerWithState = aiController as unknown as { state?: Partial<GameState> } | null;
+      const currentState = controllerWithState?.state;
       if (currentState) {
-        currentState.ships = ships;
-        currentState.bullets = bullets;
-        currentState.tick = aiPayload.tick || 0;
+        // Assign minimal runtime fields. Use type assertions to satisfy TS
+        // without using `any`.
+        (currentState as Partial<GameState>).ships = ships as unknown as GameState['ships'];
+        (currentState as Partial<GameState>).bullets = bullets as unknown as GameState['bullets'];
+        (currentState as Partial<GameState>).tick = aiPayload.tick || 0;
         if (aiPayload.behaviorConfig) {
-          currentState.behaviorConfig = aiPayload.behaviorConfig;
+          (currentState as Partial<GameState>).behaviorConfig = aiPayload.behaviorConfig as GameState['behaviorConfig'];
         }
       }
       
@@ -921,7 +929,9 @@ self.addEventListener('message', async (e: MessageEvent) => {
       
       for (const ship of ships) {
         aiResultsBuffer[resultIndex++] = ship.id;
-        aiResultsBuffer[resultIndex++] = ship.targetId || -1; // -1 for null
+        // Safely coerce targetId to a numeric value (-1 when null/undefined/non-number)
+        const targetId = (ship as unknown as { targetId?: number | null }).targetId;
+        aiResultsBuffer[resultIndex++] = typeof targetId === 'number' ? targetId : -1;
         aiResultsBuffer[resultIndex++] = 0; // placeholder for AI state flags
       }
       
