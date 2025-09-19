@@ -214,18 +214,18 @@ export function randomSpawnPos(state: GameState, team: Team): Vector3 {
 
 /** Lightweight turret handler kept for compatibility; defers to projectile system in full implementations. */
 export function fireTurrets(state: GameState, ship: Ship, dt: number) {
+  console.log(`DEBUG: fireTurrets called for ship ${ship.id}, targetId=${ship.targetId}, turrets=${ship.turrets.length}`);
   // Progress cooldowns and fire when ready. This mirrors the simplified logic
   // used by the ProjectileSystem to keep unit tests and legacy callers working.
   const shipCfg = getShipClassConfig(ship.class);
   for (let ti = 0; ti < ship.turrets.length; ti++) {
     const t = ship.turrets[ti];
     t.cooldownLeft = Math.max(0, t.cooldownLeft - dt);
-    if (DEBUG_AI) {
-      console.error(
-        `DEBUG_AI: fireTurrets ship=${ship.id} turret=${t.id} cooldownLeft=${t.cooldownLeft.toFixed(3)}`,
-      );
+    console.log(`DEBUG: Checking turret ${t.id}, cooldown=${t.cooldownLeft.toFixed(3)}, targetId=${ship.targetId}`);
+    if (t.cooldownLeft > 0) {
+      console.log(`DEBUG: Turret ${t.id} still cooling down`);
+      continue;
     }
-    if (t.cooldownLeft > 0) continue;
 
     // Find turret config (wrap if turret list shorter than shipCfg turrets)
     const turretConfig = shipCfg.turrets[ti % shipCfg.turrets.length];
@@ -234,13 +234,18 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
     // Resolve targetId, prefer turret.aiState if present
     const turretSource = t.aiState && t.aiState.targetId != null ? 'turret' : 'ship';
     const targetId = t.aiState?.targetId ?? ship.targetId;
+    console.log(`DEBUG: Resolving target for turret ${t.id}: source=${turretSource}, targetId=${targetId}`);
     if (DEBUG_AI)
       console.error(
         `DEBUG_AI: fireTurrets resolving target for ship=${ship.id} turret=${t.id} source=${turretSource} targetId=${targetId}`,
       );
-    if (targetId == null) continue;
+    if (targetId == null) {
+      console.log(`DEBUG: No target for turret ${t.id}`);
+      continue;
+    }
     const target = state.shipIndex?.get(targetId) ?? state.ships.find((s) => s.id === targetId);
     if (!target || target.health <= 0) {
+      console.log(`DEBUG: Invalid target ${targetId} for turret ${t.id}: exists=${!!target}, health=${target?.health}`);
       if (DEBUG_AI)
         console.error(
           `DEBUG_AI: fireTurrets skipping ship=${ship.id} turret=${t.id} - invalid target ${targetId}`,
@@ -254,17 +259,21 @@ export function fireTurrets(state: GameState, ship: Ship, dt: number) {
     const dz = target.pos.z - ship.pos.z;
     const distSq = dx * dx + dy * dy + dz * dz;
     const range = turretConfig.range;
+    console.log(`DEBUG: Range check for turret ${t.id}: dist=${Math.sqrt(distSq).toFixed(2)}, range=${range}`);
     if (DEBUG_AI)
       console.error(
         `DEBUG_AI: fireTurrets ship=${ship.id} turret=${t.id} dist=${Math.sqrt(distSq).toFixed(2)} range=${range}`,
       );
     if (distSq > range * range) {
+      console.log(`DEBUG: Turret ${t.id} out of range`);
       if (DEBUG_AI)
         console.error(
           `DEBUG_AI: fireTurrets skipped out-of-range ship=${ship.id} turret=${t.id} target=${target.id}`,
         );
       continue;
     }
+
+    console.log(`DEBUG: Firing from turret ${t.id}!`);
 
     // Create bullets. Support area_suppression behavior which emits multiple
     // projectiles in a small angular spread. For backward compatibility tests

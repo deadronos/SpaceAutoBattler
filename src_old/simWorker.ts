@@ -938,6 +938,15 @@ self.addEventListener('message', async (e: MessageEvent) => {
   }
 
   if (type === 'step-ai') {
+    try {
+      logger.debug('[simWorker] received step-ai payload summary', {
+        hasAIController: !!aiController,
+        payloadShape: isObject(payload) ? Object.keys(payload) : typeof payload,
+      });
+    } catch {
+      /* ignore logging failures */
+    }
+
     if (!aiController) {
       WG.postMessage({ type: 'step-ai-done', error: 'AI not initialized' });
       return;
@@ -1014,6 +1023,28 @@ self.addEventListener('message', async (e: MessageEvent) => {
       }
       
       // Run AI update
+      try {
+        // Send a lightweight debug sample of reconstructed ships so the
+        // main thread (and any test harness) can observe whether turrets
+        // were present on ships before AI intents are packed.
+        try {
+          const sample = (ships || []).slice(0, 4).map((s) => {
+            const shipObj = s as Record<string, unknown>;
+            const turretsVal = shipObj && Array.isArray(shipObj['turrets']) ? (shipObj['turrets'] as unknown[]) : [];
+            const turretsLen = turretsVal.length;
+            const firstTurret = turretsLen ? (turretsVal[0] as Record<string, unknown>) : null;
+            const aiStateTarget = firstTurret && isObject(firstTurret['aiState']) && typeof (firstTurret['aiState'] as Record<string, unknown>)['targetId'] === 'number'
+              ? ((firstTurret['aiState'] as Record<string, unknown>)['targetId'] as number)
+              : null;
+            return { id: (shipObj['id'] as number) || 0, turrets: turretsLen, turretSample: aiStateTarget };
+          });
+          WG.postMessage({ type: 'step-ai-debug-sample', sample });
+        } catch (_e) {
+          void _e;
+        }
+      } catch (_e) {
+        void _e;
+      }
       aiController.updateAllShips(dt);
       
       // Pack AI results into Float32Array for efficient transfer
@@ -1108,10 +1139,20 @@ self.addEventListener('message', async (e: MessageEvent) => {
           }
         }
 
-  let fireIntentBuffer: Float32Array | null = null;
+        let fireIntentBuffer: Float32Array | null = null;
         if (intents.length) {
           fireIntentBuffer = new Float32Array(intents.length);
           for (let i = 0; i < intents.length; i++) fireIntentBuffer[i] = intents[i];
+        }
+
+        // Debug: report how many intents were packed so the main thread can
+        // surface a human-readable count in simDebug logs. Use logger.debug
+        // which is available in the worker environment.
+        try {
+          const count = Math.floor(intents.length / 9);
+          logger.debug('[simWorker] Packed fire intents count=', count, 'rawFloats=', intents.length);
+        } catch (_e) {
+          void _e;
         }
 
         const transferList: Transferable[] = [aiResultsBuffer.buffer, aiVelBuffer.buffer];
@@ -1121,10 +1162,39 @@ self.addEventListener('message', async (e: MessageEvent) => {
           aiVelBuffer: aiVelBuffer.buffer,
           shipCount: ships.length,
         } as unknown as Record<string, unknown>;
+        // Include a tiny debug summary (non-transferable) so the main thread can
+        // quickly see whether reconstructed ships contained turret metadata
+        // and whether any turret.aiState was present. Keep it small (first 3
+        // ships) to avoid large structured-clone payloads.
+        try {
+          const sample = (sourceShips || ships).slice(0, 3).map((s: unknown) => {
+            const shipObj = (s as Record<string, unknown>) || null;
+            const turrets = shipObj && Array.isArray(shipObj['turrets']) ? (shipObj['turrets'] as unknown[]) : [];
+            let turretSample: null | Record<string, unknown> = null;
+            if (turrets.length) {
+              const firstTurret = (turrets[0] as Record<string, unknown>) || null;
+              const aiState = firstTurret && typeof firstTurret['aiState'] === 'object' && firstTurret['aiState'] !== null
+                ? (firstTurret['aiState'] as Record<string, unknown>)
+                : null;
+              const targetVal = aiState && 'targetId' in aiState && typeof aiState['targetId'] === 'number' ? aiState['targetId'] : null;
+              turretSample = { aiStateTarget: targetVal };
+            }
+            const idVal = shipObj && 'id' in shipObj && typeof shipObj['id'] === 'number' ? (shipObj['id'] as number) : 0;
+            return { id: idVal, turretsCount: turrets.length, turretSample };
+          });
+          (message as Record<string, unknown>).debugSampleShips = JSON.stringify(sample);
+        } catch {
+          /* best-effort debug, ignore failures */
+        }
         if (fireIntentBuffer) {
           // attach as transferable
           (message as Record<string, unknown>).fireIntentBuffer = fireIntentBuffer.buffer;
           transferList.push(fireIntentBuffer.buffer as unknown as Transferable);
+          // Also attach a lightweight count so the main thread's simDebug
+          // view can print an easy-to-read number without inspecting buffers.
+          (message as Record<string, unknown>).fireIntentCount = Math.floor(intents.length / 9);
+        } else {
+          (message as Record<string, unknown>).fireIntentCount = 0;
         }
 
         postMessageTransferable(message, transferList);

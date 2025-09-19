@@ -483,6 +483,15 @@ export function initGame(seed?: string) {
             if (!aiReady && data.error) {
               logger.warn('[main.ts] AI worker initialization failed:', data.error);
             }
+            // simDebug: surface AI readiness state to help tests
+            try {
+              const _u = new URL(window.location.href);
+              if (_u.searchParams.get('simDebug') === '1') {
+                console.info('[main.ts][simDebug] init-ai-done: aiReady=', aiReady);
+              }
+            } catch {
+              /* ignore */
+            }
             return;
           }
 
@@ -491,6 +500,19 @@ export function initGame(seed?: string) {
             if (data.error) {
               logger.warn('[main.ts] AI step error:', data.error);
               return;
+            }
+
+            // Debug: surface the keys present in the payload and simple sizes
+            try {
+              const keys = Object.keys(data || {});
+              const sizes: Record<string, number | undefined> = {};
+              if (data.aiResultsBuffer) sizes.aiResultsBuffer = (data.aiResultsBuffer && data.aiResultsBuffer.byteLength) || undefined;
+              if (data.aiVelBuffer) sizes.aiVelBuffer = (data.aiVelBuffer && data.aiVelBuffer.byteLength) || undefined;
+              if (data.fireIntentBuffer) sizes.fireIntentBuffer = (data.fireIntentBuffer && data.fireIntentBuffer.byteLength) || undefined;
+              if ('fireIntentCount' in (data || {})) sizes.fireIntentCount = Number((data as any).fireIntentCount);
+              console.info('[main.ts][simDebug] step-ai-done payload keys=', keys, 'sizes=', sizes);
+            } catch (_e) {
+              void _e;
             }
             
             // Process AI results - update ship targets
@@ -508,6 +530,7 @@ export function initGame(seed?: string) {
                   const ship = state.shipIndex?.get(shipId) ?? state.ships.find(s => s.id === shipId);
                   if (ship) {
                     ship.targetId = targetId;
+                    console.log(`DEBUG: Applied AI to ship ${ship.id}: targetId=${ship.targetId}`);
                   }
                 }
               } catch (e) {
@@ -555,6 +578,7 @@ export function initGame(seed?: string) {
                   if (data.fireIntentBuffer) {
                     try {
                       const fb = new Float32Array(data.fireIntentBuffer);
+                      console.log(`DEBUG: Processing fireIntentBuffer with ${fb.length} floats`);
                       const STRIDE = 9;
                       for (let off = 0; off + STRIDE <= fb.length; off += STRIDE) {
                         const sourceShipId = fb[off + 0];
@@ -595,6 +619,7 @@ export function initGame(seed?: string) {
                     }
                   } else {
                     // Backwards-compatible fallback: call fireTurrets per ship
+                    console.log(`DEBUG: No fireIntentBuffer, using fallback fireTurrets for ${state.ships.length} ships`);
                     const defaultDt = 1 / (state.simConfig.tickRate || 60);
                     const dtForTurrets = typeof lastAIDt === 'number' && lastAIDt > 0 ? lastAIDt : defaultDt;
                     for (const s of state.ships) {
@@ -927,7 +952,15 @@ export function initGame(seed?: string) {
             }
           },
           stepAI(dt: number) {
-            if (!aiReady) return; // AI not ready yet
+            if (!aiReady) {
+              try {
+                const _u = new URL(window.location.href);
+                if (_u.searchParams.get('simDebug') === '1') {
+                  console.info('[main.ts][simDebug] stepAI skipped: aiReady=false');
+                }
+              } catch { /* ignore */ }
+              return; // AI not ready yet
+            }
             try {
               lastAIDt = dt;
               // Pack ship data for AI (more fields than physics)
@@ -978,6 +1011,14 @@ export function initGame(seed?: string) {
                   tick: state.tick,
                 },
               }, [shipsBuffer.buffer, bulletsBuffer.buffer]);
+              try {
+                const _u = new URL(window.location.href);
+                if (_u.searchParams.get('simDebug') === '1') {
+                  console.info('[main.ts] posted step-ai to worker', { shipCount: state.ships.length, tick: state.tick });
+                }
+              } catch {
+                /* ignore */
+              }
             } catch (e) {
               logger.warn('[main.ts] Error sending AI step:', e);
             }
@@ -1146,6 +1187,20 @@ export function initGame(seed?: string) {
     wireControls(state, ui);
     setupCameraControls(state, ui.canvas);
     setupPerfOverlay();
+    // When running with simDebug=1, auto-start the simulation so worker AI
+    // steps occur without requiring a manual UI interaction. This is gated
+    // behind the debug flag to preserve default behavior for users.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('simDebug') === '1') {
+        state.running = true;
+        // Optionally keep default speed; we avoid changing speedMultiplier to
+        // preserve determinism with the configured tick rate.
+        console.info('[main.ts][simDebug] auto-started simulation (state.running=true)');
+      }
+    } catch {
+      /* ignore URL parse failures */
+    }
     startLoops(state, ui);
     // Gate noisy instancer debug hooks behind a URL parameter so they are
     // disabled by default in production. To enable, append ?instancerDebug=1
