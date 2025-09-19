@@ -837,7 +837,7 @@ export function initGame(seed?: string) {
             try {
               lastAIDt = dt;
               // Pack ship data for AI (more fields than physics)
-              const floatsPerShip = 11; // id, px, py, pz, vx, vy, vz, health, targetId, team, class
+              const floatsPerShip = 12; // id, px, py, pz, vx, vy, vz, health, targetId, team, class, speed
               const shipsBuffer = new Float32Array(state.ships.length * floatsPerShip);
               for (let i = 0; i < state.ships.length; i++) {
                 const ship = state.ships[i];
@@ -853,6 +853,7 @@ export function initGame(seed?: string) {
                 shipsBuffer[base + 8] = ship.targetId || -1;
                 shipsBuffer[base + 9] = ship.team === 'red' ? 0 : 1;
                 shipsBuffer[base + 10] = 0; // ship class placeholder
+                shipsBuffer[base + 11] = ship.speed ?? 0;
               }
               // Pack bullet data if needed
               const floatsPerBullet = 11; // id, px, py, pz, vx, vy, vz, ttl, damage, ownerShipId, ownerTeam
