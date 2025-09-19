@@ -13,7 +13,10 @@ interface TeamSummary {
 
 export function Hud(): JSX.Element {
   const state = useOptionalGameState();
-  const ships = state ? useArchetypeEntities<ShipEntity>(state.queries.ships) : [];
+  // Call the hook unconditionally; it accepts a nullable archetype and will
+  // return an empty array when `state` is null. This avoids conditional hook
+  // usage which can trigger React hook invariant errors.
+  const ships = useArchetypeEntities<ShipEntity>(state ? state.queries.ships : null);
 
   const [blue, red] = useMemo(() => summarize(ships), [ships]);
 
