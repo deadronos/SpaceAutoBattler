@@ -1045,15 +1045,101 @@ self.addEventListener('message', async (e: MessageEvent) => {
       }
       
       // Transfer the buffer to avoid structured clone
-      postMessageTransferable(
-        { 
-          type: 'step-ai-done', 
+      // Additionally collect per-turret fire intents (if AI populated turret aiState)
+      try {
+        // Attempt to read intents from controller state if available (more complete)
+        // Try to read the controller's augmented state.ships if present. Use unknown casts to avoid 'any'.
+        const controllerStateShips =
+          controllerWithState && (controllerWithState.state as unknown) && ((controllerWithState.state as unknown) as { ships?: typeof ships }).ships
+            ? ((controllerWithState.state as unknown) as { ships?: typeof ships }).ships
+            : undefined;
+        const sourceShips = controllerStateShips && Array.isArray(controllerStateShips) && controllerStateShips.length
+          ? controllerStateShips
+          : ships;
+
+        // Each intent: [ sourceShipId, turretIndex, targetX, targetY, targetZ, hasLead(0/1), leadX, leadY, leadZ ] => 9 floats
+        const intents: number[] = [];
+        for (const ship of sourceShips) {
+          if (!ship) continue;
+          // turret list may be present on the controller-augmented ship object
+          const turrets = (ship as unknown as { turrets?: unknown }).turrets;
+          if (!Array.isArray(turrets)) continue;
+          const turretArr = turrets as Array<unknown>;
+          for (let ti = 0; ti < turrets.length; ti++) {
+            const t = turretArr[ti] as unknown as { aiState?: { targetId?: number | null; leadTargetPos?: { x: number; y: number; z: number } } } | undefined;
+            const targetId = t?.aiState && typeof t.aiState.targetId === 'number' ? t.aiState.targetId : null;
+            const lead = t?.aiState && t.aiState.leadTargetPos ? t.aiState.leadTargetPos : null;
+            if (targetId == null && !lead) continue;
+
+            // Resolve target position if possible (prefer lead if present)
+            let tx = 0,
+              ty = 0,
+              tz = 0;
+            let hasLead = 0;
+            if (lead && typeof lead.x === 'number') {
+              tx = lead.x;
+              ty = lead.y;
+              tz = lead.z;
+              hasLead = 1;
+            } else if (typeof targetId === 'number') {
+              // find target ship in current sourceShips list
+              const tgt = sourceShips.find((s) => s && s.id === targetId);
+              if (tgt && tgt.pos) {
+                tx = Number(tgt.pos.x) || 0;
+                ty = Number(tgt.pos.y) || 0;
+                tz = Number(tgt.pos.z) || 0;
+              } else {
+                // Cannot resolve a position; skip intent
+                continue;
+              }
+            } else {
+              continue;
+            }
+
+            intents.push(Number((ship as unknown as { id?: number }).id) || 0);
+            intents.push(ti);
+            intents.push(tx);
+            intents.push(ty);
+            intents.push(tz);
+            intents.push(hasLead);
+            intents.push(hasLead ? Number(lead!.x) || 0 : 0);
+            intents.push(hasLead ? Number(lead!.y) || 0 : 0);
+            intents.push(hasLead ? Number(lead!.z) || 0 : 0);
+          }
+        }
+
+  let fireIntentBuffer: Float32Array | null = null;
+        if (intents.length) {
+          fireIntentBuffer = new Float32Array(intents.length);
+          for (let i = 0; i < intents.length; i++) fireIntentBuffer[i] = intents[i];
+        }
+
+        const transferList: Transferable[] = [aiResultsBuffer.buffer, aiVelBuffer.buffer];
+        const message = {
+          type: 'step-ai-done' as const,
           aiResultsBuffer: aiResultsBuffer.buffer,
           aiVelBuffer: aiVelBuffer.buffer,
-          shipCount: ships.length 
-        },
-        [aiResultsBuffer.buffer, aiVelBuffer.buffer]
-      );
+          shipCount: ships.length,
+        } as unknown as Record<string, unknown>;
+        if (fireIntentBuffer) {
+          // attach as transferable
+          (message as Record<string, unknown>).fireIntentBuffer = fireIntentBuffer.buffer;
+          transferList.push(fireIntentBuffer.buffer as unknown as Transferable);
+        }
+
+        postMessageTransferable(message, transferList);
+      } catch {
+        // Fallback to previous minimal payload if packing intents fails
+        postMessageTransferable(
+          {
+            type: 'step-ai-done',
+            aiResultsBuffer: aiResultsBuffer.buffer,
+            aiVelBuffer: aiVelBuffer.buffer,
+            shipCount: ships.length,
+          },
+          [aiResultsBuffer.buffer, aiVelBuffer.buffer]
+        );
+      }
     } catch (e) {
       WG.postMessage({ type: 'step-ai-error', error: String(e) });
     }

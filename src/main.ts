@@ -4,6 +4,7 @@ import {
   resetState as _resetState,
   spawnFleet,
   spawnShip as _spawnShip,
+  fireTurrets,
 } from './core/gameState.js';
 // Import UI styles so webpack extracts them into a hashed CSS asset via MiniCssExtractPlugin
 import './styles/ui.css';
@@ -543,23 +544,86 @@ export function initGame(seed?: string) {
             try {
               const useAIWorker = (RC.useAIWorker as unknown as boolean) ?? true;
               const useSimWorker = (RC.useSimWorker as unknown as boolean) ?? true;
-              if (useSimWorker && useAIWorker) {
-                const floatsPer = 4; // id, vx, vy, vz
-                const velArray = new Float32Array(state.ships.length * floatsPer);
-                let o = 0;
-                for (const ship of state.ships) {
-                  velArray[o++] = ship.id;
-                  velArray[o++] = ship.vel.x;
-                  velArray[o++] = ship.vel.y;
-                  velArray[o++] = ship.vel.z;
+              // Ensure turrets fire on main thread when AI runs in worker mode.
+              // The AI worker updates targets/velocities but does not create
+              // bullets on the main thread; call fireTurrets here to create
+              // bullets (which the ProjectileSystemWorkerAdapter will forward
+              // to the physics worker).
+              try {
+                if (useSimWorker && useAIWorker) {
+                  // If the AI worker provided explicit fire intents, parse and dispatch
+                  if (data.fireIntentBuffer) {
+                    try {
+                      const fb = new Float32Array(data.fireIntentBuffer);
+                      const STRIDE = 9;
+                      for (let off = 0; off + STRIDE <= fb.length; off += STRIDE) {
+                        const sourceShipId = fb[off + 0];
+                        const turretIndexF = fb[off + 1];
+                        const tx = fb[off + 2];
+                        const ty = fb[off + 3];
+                        const tz = fb[off + 4];
+                        const hasLead = fb[off + 5] === 1;
+                        const lx = fb[off + 6];
+                        const ly = fb[off + 7];
+                        const lz = fb[off + 8];
+
+                        const ship = state.shipIndex?.get(sourceShipId) ?? state.ships.find((s) => s.id === sourceShipId);
+                        if (!ship) continue;
+
+                        const turretIndex = Math.floor(turretIndexF);
+                        if (!Array.isArray(ship.turrets) || turretIndex < 0 || turretIndex >= ship.turrets.length) continue;
+                        const turretId = ship.turrets[turretIndex].id;
+                        if (!turretId) continue;
+
+                        const intent: any = {
+                          sourceShipId: sourceShipId,
+                          turretId,
+                          targetPosition: { x: tx, y: ty, z: tz },
+                        };
+                        if (hasLead) intent.leadTargetPos = { x: lx, y: ly, z: lz };
+
+                        try {
+                          (state as any).projectileSystem?.fire(intent);
+                        } catch (err) {
+                          // ignore per-intent errors to keep AI robust
+                          console.warn('Ignored fire intent error', err);
+                        }
+                      }
+                    } catch (_e) {
+                      // Malformed buffer — fall back to per-ship firing below
+                      void _e;
+                    }
+                  } else {
+                    // Backwards-compatible fallback: call fireTurrets per ship
+                    const defaultDt = 1 / (state.simConfig.tickRate || 60);
+                    const dtForTurrets = typeof lastAIDt === 'number' && lastAIDt > 0 ? lastAIDt : defaultDt;
+                    for (const s of state.ships) {
+                      if (s.health <= 0) continue;
+                      try {
+                        fireTurrets(state, s, dtForTurrets);
+                      } catch (e) {
+                        logger.warn('[main.ts] fireTurrets error for ship ' + s.id + ':', e);
+                      }
+                    }
+                  }
+
+                  // Stream velocities and step physics after firing handling
+                  const floatsPer = 4; // id, vx, vy, vz
+                  const velArray = new Float32Array(state.ships.length * floatsPer);
+                  let o = 0;
+                  for (const ship of state.ships) {
+                    velArray[o++] = ship.id;
+                    velArray[o++] = ship.vel.x;
+                    velArray[o++] = ship.vel.y;
+                    velArray[o++] = ship.vel.z;
+                  }
+                  w.postMessage({ type: 'update-velocities', payload: { velocities: velArray } }, [velArray.buffer]);
+                  const defaultDt2 = 1 / (state.simConfig.tickRate || 60);
+                  const dtForPhysics = typeof lastAIDt === 'number' && lastAIDt > 0 ? lastAIDt : defaultDt2;
+                  w.postMessage({ type: 'step-physics', payload: { dt: dtForPhysics } });
                 }
-                w.postMessage(
-                  { type: 'update-velocities', payload: { velocities: velArray } },
-                  [velArray.buffer]
-                );
-                const defaultDt = 1 / (state.simConfig.tickRate || 60);
-                const dtForPhysics = typeof lastAIDt === 'number' && lastAIDt > 0 ? lastAIDt : defaultDt;
-                w.postMessage({ type: 'step-physics', payload: { dt: dtForPhysics } });
+              } catch (_e) {
+                void _e;
               }
             } catch (_e) {
               void _e;
