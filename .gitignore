@@ -96,6 +96,9 @@ tmp/
 temp/
 .tmp/
 
+# Local GLTF asset cache (sourced from src_old)
+src/assets/gltf/
+
 # Playwright
 /test-results/
 test-output/
