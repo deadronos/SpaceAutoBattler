@@ -958,8 +958,8 @@ self.addEventListener('message', async (e: MessageEvent) => {
   const ships: ShipLike[] = [];
       if (aiPayload.shipsBuffer) {
         const shipsData = new Float32Array(aiPayload.shipsBuffer);
-        // Expected format: [id, px, py, pz, vx, vy, vz, health, targetId, team, class] per ship
-        const floatsPerShip = 11;
+        // Expected format: [id, px, py, pz, vx, vy, vz, health, targetId, team, class, speed] per ship
+        const floatsPerShip = 12;
         for (let i = 0; i < shipsData.length; i += floatsPerShip) {
           ships.push({
             id: shipsData[i],
@@ -969,6 +969,7 @@ self.addEventListener('message', async (e: MessageEvent) => {
             targetId: shipsData[i + 8] === -1 ? null : shipsData[i + 8],
             team: shipsData[i + 9] === 0 ? 'red' : 'blue',
             class: Math.floor(shipsData[i + 10]), // ship class as integer
+            speed: shipsData[i + 11] || 0,
             // Ensure turrets exists on reconstructed ships so AIController can iterate safely.
             turrets: [],
             aiState: {} // Initialize basic AI state
