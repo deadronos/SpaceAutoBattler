@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
@@ -17,7 +18,7 @@ export default (env = {}, argv) => {
   return {
     mode: isProd ? 'production' : 'development',
     entry: {
-      main: path.resolve(__dirname, 'src', 'main.ts')
+      main: path.resolve(__dirname, 'src', 'main.tsx')
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -27,7 +28,7 @@ export default (env = {}, argv) => {
       publicPath: './'
     },
     resolve: {
-      extensions: ['.ts', '.js'],
+      extensions: ['.ts', '.tsx', '.js'],
       // Prefer ESM 'module' entry points so examples/jsm and main imports resolve to the same build
       mainFields: ['module', 'browser', 'main'],
       alias: {
@@ -38,7 +39,7 @@ export default (env = {}, argv) => {
     module: {
       rules: [
         {
-          test: /\.ts$/,
+          test: /\.tsx?$/,
           use: 'ts-loader',
           exclude: /node_modules/
         },
@@ -50,6 +51,13 @@ export default (env = {}, argv) => {
           ]
         }
         ,
+        {
+          test: /\.(glb|gltf)$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'models/[name][contenthash][ext]'
+          }
+        },
         // Emit any imported .wasm files as resources so they end up in dist/wasm/
         {
           test: /\.wasm$/,
@@ -68,12 +76,8 @@ export default (env = {}, argv) => {
         filename: 'spaceautobattler.html',
         inject: 'body'
       }),
-  // Copy only static assets used at runtime by workers or fetchers (SVGs, images)
-  // Preserve both a short `/assets/` path and the original `/src/config/assets/` path
-  // because some runtime code (workers) fetch the original path directly.
-  new CopyWebpackPlugin({ patterns: [
-    { from: path.resolve(__dirname, 'src', 'config', 'assets'), to: path.posix.join('src', 'config', 'assets') }
-  ] }),
+  // Copy optional static assets when present.
+  ...createCopyPlugins(),
   // optional analyzer
   ...(shouldAnalyze ? [new BundleAnalyzerPlugin()] : []),
       // Define compile-time environment flags so browser bundles don't reference `process` at runtime
@@ -97,7 +101,12 @@ export default (env = {}, argv) => {
             issuerDir.startsWith(srcDir) &&
             !req.includes('node_modules')
           ) {
-            resource.request = req.replace(/\.js$/, '.ts');
+            const tsxCandidate = path.resolve(issuerDir, req.replace(/\.js$/, '.tsx'));
+            if (fs.existsSync(tsxCandidate)) {
+              resource.request = req.replace(/\.js$/, '.tsx');
+            } else {
+              resource.request = req.replace(/\.js$/, '.ts');
+            }
           }
         } catch {
           // swallow; keep original request if anything goes wrong
@@ -168,5 +177,24 @@ export default (env = {}, argv) => {
       port: 8080,
       open: false
     }
-  };
 };
+};
+
+function createCopyPlugins() {
+  const patterns = [];
+  const legacyAssets = path.resolve(__dirname, 'src', 'config', 'assets');
+  if (fs.existsSync(legacyAssets)) {
+    patterns.push({ from: legacyAssets, to: path.posix.join('src', 'config', 'assets') });
+  }
+
+  const staticAssets = path.resolve(__dirname, 'src', 'assets', 'static');
+  if (fs.existsSync(staticAssets)) {
+    patterns.push({ from: staticAssets, to: path.posix.join('assets') });
+  }
+
+  if (patterns.length === 0) {
+    return [];
+  }
+
+  return [new CopyWebpackPlugin({ patterns })];
+}
