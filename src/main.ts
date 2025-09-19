@@ -127,6 +127,36 @@ export function initGame(seed?: string) {
   const gltfModeEnabled = !!(RC.loadGltfModels as unknown as boolean);
   const svgDisabled = !!(RC.disableSvgSubsystem as unknown as boolean);
 
+  if (gltfModeEnabled) {
+    (async () => {
+      try {
+        logger.debug('[main.ts] Preloading GLTF ship models...');
+        const mod = await import('./core/shipModelLoader.js');
+        const loader = mod as unknown as {
+          preloadShipModels?: (state: _GameStateType, teams?: string[]) => Promise<unknown>;
+        };
+        if (typeof loader.preloadShipModels === 'function') {
+          await loader.preloadShipModels(state as unknown as _GameStateType, ['red', 'blue']);
+          logger.debug('[main.ts] GLTF ship models preloaded');
+          try {
+            const meshMod = await import('./renderer/meshFactory.js');
+            const register = meshMod as unknown as {
+              registerPrototypesFromPool?: (state: _GameStateType) => void;
+            };
+            register.registerPrototypesFromPool?.(state as unknown as _GameStateType);
+            logger.debug('[main.ts] Registered GLTF ship prototypes with shipInstancer');
+          } catch (err) {
+            logger.warn('[main.ts] Failed to register GLTF prototypes after preload:', err);
+          }
+        } else {
+          logger.warn('[main.ts] preloadShipModels unavailable; skipping GLTF preload');
+        }
+      } catch (err) {
+        logger.warn('[main.ts] Failed to preload GLTF ship models:', err);
+      }
+    })();
+  }
+
   // Preload SVG assets and construct the SVG loader only when GLTF model loading is disabled.
   // This avoids creating the raster worker and warming the asset pool when using GLTF prototypes.
   let svgLoader: ReturnType<typeof getSVGLoader> | undefined;
