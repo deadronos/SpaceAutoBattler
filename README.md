@@ -32,9 +32,9 @@ Open the local server at http://localhost:8080 (or the URL printed by the serve 
 
 Edit TypeScript sources in `src/` only. Key folders:
 
-- `src/main.ts` — application entry and main loop
-- `src/simWorker.ts` — deterministic physics and AI worker (Rapier3D + AIController)
-- `src/core/` — pure game logic, AI, entity management (simulation)
+- `src/main.tsx` — React application entry point
+- `src/game/` — game state management, ECS systems, and physics (Rapier3D)
+- `src/components/` — React Three Fiber components for rendering
 - `src/renderer/` — Three.js renderer, scene and effects
 - `src/config/` — balance and behaviour configuration (entities, AI, sim, renderer)
 - `src/types/` — canonical types including `GameState`
