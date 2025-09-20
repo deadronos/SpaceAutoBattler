@@ -1,11 +1,17 @@
-const GLTF_ROOT = './gltf/';
+// Import GLB assets directly; webpack emits them under dist/models with hashes
+// thanks to the asset/resource rule and returns the final URL string.
+import fighterUrl from '../assets/gltf/fighter.glb';
+import corvetteUrl from '../assets/gltf/corvette.glb';
+import frigateUrl from '../assets/gltf/frigate.glb';
+import destroyerUrl from '../assets/gltf/destroyer.glb';
+import carrierUrl from '../assets/gltf/carrier.glb';
 
 export const SHIP_MODEL_PATHS = {
-  fighter: new URL(`${GLTF_ROOT}fighter.glb`, import.meta.url).href,
-  corvette: new URL(`${GLTF_ROOT}corvette.glb`, import.meta.url).href,
-  frigate: new URL(`${GLTF_ROOT}frigate.glb`, import.meta.url).href,
-  destroyer: new URL(`${GLTF_ROOT}destroyer.glb`, import.meta.url).href,
-  carrier: new URL(`${GLTF_ROOT}carrier.glb`, import.meta.url).href
+  fighter: fighterUrl,
+  corvette: corvetteUrl,
+  frigate: frigateUrl,
+  destroyer: destroyerUrl,
+  carrier: carrierUrl
 } as const;
 
 export type ShipModelKey = keyof typeof SHIP_MODEL_PATHS;

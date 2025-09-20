@@ -16,19 +16,17 @@ finally into the Three.js renderer’s per‑frame update loop.
 
 ## Components & Responsibilities
 
-- Asset Loader (`src/core/assetLoader.ts`)
+-- Asset Loader (`src/utils/patchGltfLoader.ts`) — runtime guard for GLTF loader; renderer bootstrap provides loader wiring.
   - `loadGLTF(state, url)`: dynamically imports Three’s `GLTFLoader`, loads a
     `.glb`, and caches the result in `state.assetPool` keyed by URL.
   - Returns `{ url, data: gltf }`. Reads from the cache on subsequent loads.
 
-- Asset Pool (`src/core/assetPool.ts`, `src/types/index.ts`)
-  - `LRUAssetPool<T>` provides a Map‑based LRU with optional dispose callbacks.
-  - Runtime uses `GameState.assetPool?: Map<string, unknown>` as the canonical
-    cache surface accessed by loaders and the renderer.
+-- Asset Pool (renderer-managed)
+  - Renderer bootstrap typically attaches a `Map` or LRU wrapper to `GameState` (or keeps one locally) to cache parsed GLTFs and textures.
+  - If you add a shared `src/core/assetPool.ts`, link it here; until then treat the pool as a renderer concern.
 
 - Ship Model Preload (`src/core/shipModelLoader.ts`)
-  - `preloadShipModels(state, teams?)` loads each class from
-    `src/config/shipModelMap.ts` via `loadGLTF`.
+  - `preloadShipModels` behavior is implemented by renderer bootstrap using `src/assets/ships.ts` (model mappings) and `patchGltfLoader` for low-level loader compatibility.
   - Stores a prototype under keys: `ship-<class>` and `ship-<class>-<team>`.
   - Prototype fields: `gltf`, `scale`, `pivotOffset`, `boundsRadius`,
     `attribution`, and optional `threePrototypes` extracted by traversing
@@ -77,9 +75,9 @@ finally into the Three.js renderer’s per‑frame update loop.
      key (`ship-<class>`, `ship-<class>-<team>`).
 
 3. Prototype registration
-   - During renderer init, if `threePrototypes` exist in the asset pool for a
-     class, the renderer registers those geometries/materials with the ship
-     instancer. Otherwise, the ship instancer falls back to its internal defaults.
+  - During renderer init, if `threePrototypes` exist in the renderer cache for a
+    class, the renderer registers those geometries/materials with the ship
+    instancer. Otherwise, the ship instancer falls back to its internal defaults.
 
 4. Frame updates
    - Ships: ensure instance allocation for each ship id/class/team, then
@@ -129,10 +127,9 @@ The renderer supports smooth visual interpolation between simulation steps to re
 
 ## Key Files
 
-- Loader & Pool
-  - `src/core/assetLoader.ts`
-  - `src/core/assetPool.ts`
-  - `src/core/shipModelLoader.ts`
+  - `src/utils/patchGltfLoader.ts` (loader guard)
+  - `src/assets/ships.ts` (model URL mapping)
+  - renderer bootstrap (attaches asset pool and invokes preload)
 - Config
   - `src/config/shipModelMap.ts`
   - `src/config/rendererConfig.ts`

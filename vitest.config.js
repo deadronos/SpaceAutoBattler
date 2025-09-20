@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  assetsInclude: ['**/*.glb'],
   test: {
     include: ['test/vitest/*.spec.ts', 'test/vitest/*.test.ts', 'test/vitest/**/*.spec.ts'],
     exclude: ['test/playwright/**'],

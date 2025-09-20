@@ -23,13 +23,13 @@ The pipeline can be broken down into three main phases:
 
 ### Phase 2: Asset Loading & Prototyping
 
-3.  **High-Level Loader (`src/core/shipModelLoader.ts`)**: The `preloadShipModels()` function orchestrates loading.
+3.  **High-Level Loader (renderer/bootloader)**: Historically this was called `src/core/shipModelLoader.ts`. In the current codebase the renderer bootstrap and small helpers in `src/utils/patchGltfLoader.ts` plus `src/assets/ships.ts` perform model mapping and loader guarding. The renderer performs preloading when `RendererConfig.loadGltfModels` is enabled.
     - It iterates through the `SHIP_MODEL_MAP`.
     - It calls a low-level loader (`loadGLTF`) for each model.
     - **Prototype Creation**: After a model is loaded, it creates a `gltfProto` object. This is a crucial step where it **traverses the GLTF scene, extracts the geometries and materials, and clones them**.
     - This prepared `gltfProto` object, containing the ready-to-use Three.js components, is stored in the `state.assetPool`.
 
-4.  **Low-Level Loader (`src/core/assetLoader.ts`)**: The `loadGLTF()` function handles the actual file fetching using Three.js's `GLTFLoader` and caches the raw result in the `assetPool`.
+4.  **Low-Level Loader (`src/utils/patchGltfLoader.ts`)**: The low-level loader behavior is guarded by `patchGltfLoader` which ensures the GLTF loader works across bundlers and environments. Asset URL mappings live in `src/assets/ships.ts`. Parsed asset caching is typically implemented by the renderer as a Map attached to the renderer bootstrap or to `GameState`.
 
 ### Phase 3: Rendering & Instantiation
 
@@ -70,8 +70,7 @@ The pipeline can be broken down into three main phases:
 - **`docs/gltf-rendering-pipeline.md`**: This file.
 - **`src/config/shipModelMap.ts`**: Maps ship classes to `.glb` files. The starting point of the pipeline.
 - **`src/main.ts`**: Initializes the game and kicks off the asset preloading.
-- **`src/core/assetLoader.ts`**: Contains the low-level `loadGLTF` function.
-- **`src/core/shipModelLoader.ts`**: Contains the high-level `preloadShipModels` function that prepares the `gltfProto` objects.
+-- Historically: `src/core/assetLoader.ts` and `src/core/shipModelLoader.ts` were named modules used in older layouts. Current equivalents are described above (`src/utils/patchGltfLoader.ts`, `src/assets/ships.ts`, and renderer bootstrap logic).
 - **`src/renderer/shipInstancer.ts`**: The core of the instancing system. Consumes prototypes and manages `InstancedMesh`es.
 - **`src/renderer/threeRenderer.ts`**: The main renderer that drives the `shipInstancer` every frame.
 - **`state.assetPool`**: A `Map` that serves as the central cache and handoff point between the loading and rendering systems.

@@ -7,8 +7,11 @@ declare module '@react-three/drei' {
   import { GroupProps } from '@react-three/fiber';
 
   // lightweight stub for development typechecks
-  export function useGLTF(path: string): any;
+  export function useGLTF(path: string): unknown;
   export const Html: React.FC<GroupProps & { center?: boolean }>;
+  // Common helpers used in this project
+  export const OrbitControls: React.ComponentType<Record<string, unknown>>;
+  export const Grid: React.ComponentType<Record<string, unknown>>;
   // Add other lightweight stubs here as needed by components.
   const _default: unknown;
   export default _default;

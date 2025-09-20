@@ -1,39 +1,42 @@
-import { createInitialState, spawnShip } from '../src/core/gameState.js';
-import { updateTurretLeads, findBestTurretTarget } from '../src/core/ai/targeting.js';
-import { DEFAULT_BEHAVIOR_CONFIG } from '../src/config/behaviorConfig.js';
+// Migrated debug script: original version imported from `src/core/*` APIs.
+// The codebase now places simulation code under `src/game/*` and ship types are simplified.
+// This script is a small runtime check that spawns a few ships and selects a nearest-enemy target.
 
-function run() {
-  const state = createInitialState('debug-turret');
-  state.behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
-  const ship = spawnShip(state, 'red', 'frigate', { x: 0, y: 0, z: 0 });
-  const weakerFar = spawnShip(state, 'blue', 'destroyer', { x: 600, y: 0, z: 0 });
-  weakerFar.health = weakerFar.maxHealth * 0.2;
-  const strongerNear = spawnShip(state, 'blue', 'fighter', { x: 200, y: 0, z: 0 });
-  strongerNear.health = strongerNear.maxHealth;
-  strongerNear.level.level = 3;
+import { createGameState } from '../src/game/state.js';
+import { spawnShip } from '../src/game/ships.js';
 
-  // Force reevaluation
-  state.time += state.behaviorConfig.turretConfig.targetReevaluationRate + 0.01;
-  for (const t of ship.turrets) {
-    if (t.aiState) t.aiState.lastTargetUpdate = 0;
+function findNearestEnemy(state, originEntity) {
+  const originPos = originEntity.transform.position;
+  let best = null;
+  let bestDist = Infinity;
+  for (const e of state.world.entities) {
+    if (!e.ship) continue;
+    if (e.ship.team === originEntity.ship.team) continue;
+    if (e.ship.hp <= 0) continue;
+    const p = e.transform.position;
+    const dx = p.x - originPos.x;
+    const dz = p.z - originPos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestDist) {
+      bestDist = d2;
+      best = e;
+    }
   }
+  return best;
+}
 
-  console.log('DEBUG_SCRIPT: before updateTurretLeads: turrets', JSON.stringify(ship.turrets.map(t => ({ id: t.id, aiState: t.aiState }))));
-  updateTurretLeads(state, ship);
-  console.log('DEBUG_SCRIPT: after updateTurretLeads: turrets', JSON.stringify(ship.turrets.map(t => ({ id: t.id, aiState: t.aiState }))));
-  console.log('DEBUG_SCRIPT: ship.targetId (before controller fallback):', ship.targetId);
+async function run() {
+  const state = await createGameState();
 
-  // Call controller fallback logic mimic: find nearest enemy if turrets produced none
-  const turretTargets = ship.turrets.map(t => t.aiState?.targetId ?? null);
-  console.log('DEBUG_SCRIPT: turretTargets array', turretTargets);
-  const firstTarget = turretTargets.find(id => id != null) ?? null;
-  if (firstTarget != null) {
-    ship.targetId = firstTarget;
-  } else {
-    // nearest fallback
-    const nearest = state.ships.find(s => s.team !== ship.team && s.health > 0) ?? null;
-    ship.targetId = nearest ? nearest.id : null;
-  }
+  const ship = spawnShip(state, { team: 'red', hull: 'frigate', position: { x: 0, y: 0, z: 0 }, heading: 0 });
+  const weakerFar = spawnShip(state, { team: 'blue', hull: 'destroyer', position: { x: 600, y: 0, z: 0 }, heading: 0 });
+  weakerFar.ship.hp = weakerFar.ship.maxHp * 0.2;
+  const strongerNear = spawnShip(state, { team: 'blue', hull: 'fighter', position: { x: 200, y: 0, z: 0 }, heading: 0 });
+  strongerNear.ship.hp = strongerNear.ship.maxHp;
+
+  const nearest = findNearestEnemy(state, ship);
+  console.log('DEBUG_SCRIPT: nearest enemy id', nearest?.id ?? null, 'team', nearest?.ship?.team ?? null);
+  ship.targetId = nearest ? nearest.id : null;
   console.log('DEBUG_SCRIPT: final ship.targetId', ship.targetId);
 }
 

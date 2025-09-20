@@ -1,50 +1,60 @@
-﻿# SpaceAutoBattler — Source code layout (current)
+﻿# SpaceAutoBattler — Source code layout (rewrite branch)
 
-This document describes the current, practical layout of the repository's `src/` directory as of the working branch. It is intentionally concise and focused on where to find runtime code, UI, game logic, and types.
+This document reflects the actual layout and responsibilities of the current `src/` tree. It’s concise and oriented towards where to edit game logic vs. rendering.
 
-Top-level `src/` (high level):
+Top-level `src/` (overview):
 
-```
+```text
 src/
-├─ App.tsx           # React entry component (app wrapper)
-├─ main.tsx          # App bootstrap and renderer mounting
-├─ ui.html           # Minimal static HTML used by the dev/build
-├─ assets/           # Static assets used by the app (textures, svgs)
-├─ components/       # React / R3F components (Ship, Projectile, HUD, Battlefield)
-├─ game/             # Pure game logic: state, systems, ship definitions
-├─ hooks/            # React hooks used by the UI and game loop
-├─ styles/           # CSS / global styles
-├─ types/            # Canonical TypeScript types (GameState, entities)
-└─ utils/            # Utilities (seeded RNG, helpers)
+├─ App.tsx              # React shell (wraps scene + HUD)
+├─ main.tsx             # App bootstrap; patches GLTF loader at runtime
+├─ ui.html              # Minimal HTML template for builds
+├─ assets/              # GLTF models, SVGs; helper map for ship models
+│  ├─ gltf/             # *.glb ship models
+│  └─ ships.ts          # SHIP_MODEL_PATHS (hull -> emitted URL)
+├─ components/          # R3F scene graph & HUD
+│  ├─ Battlefield.tsx   # Canvas, lights, OrbitControls, Grid, stars
+│  ├─ Ship.tsx          # useGLTF model render + transform sync
+│  ├─ Projectile.tsx    # Simple projectile visuals
+│  └─ Hud.tsx           # On-screen stats
+├─ game/                # Pure game logic & state (deterministic)
+│  ├─ config.ts         # WORLD_SIZE=4000 cube, camera/fog defaults, clampToWorld
+│  ├─ context.tsx       # React context/provider for GameState
+│  ├─ state.ts          # create/dispose state, spawnInitialFleets
+│  ├─ ships.ts          # SHIP_STATS (1:1 scale), spawnShip (Rapier bodies)
+│  └─ systems.ts        # updateGame: AI-lite, movement, projectiles, sync
+├─ hooks/               # Shared hooks (archetype queries etc.)
+├─ styles/              # CSS
+├─ types/               # Canonical types for entities & GameState
+│  └─ react-three-drei.d.ts # Minimal ambient stubs
+└─ utils/               # Utilities (seeded RNG, loader runtime patch)
+	├─ rng.ts            # Seeded RNG for determinism
+	└─ patchGltfLoader.ts# Guards against invalid GLTF URLs
 ```
 
-Why this matters
-- The repository keeps simulation and game state code in `src/game/` (pure logic). UI and rendering live in `src/components/` and `App.tsx`.
-- All runtime types are exported from `src/types/index.ts` and are the canonical contract for stateful code.
-- Deterministic systems (seeded RNG) and any physics-related helpers live in `src/utils/` to keep side-effects explicit.
+Key design points
 
-Files of interest
-- `src/main.tsx` — application bootstrap: mounts React, wires dev helpers and initial state.
-- `src/App.tsx` — top-level React component that composes the UI and game renderer.
-- `src/ui.html` — simple HTML template used by the production/dev builds.
-- `src/game/state.ts` — central game state container and helpers used by systems.
-- `src/game/systems.ts` — game systems (update loop, integration, collision handling, etc.).
-- `src/game/ships.ts` — ship blueprints, stats and simple spawning helpers.
-- `src/components/Ship.tsx` — renderable ship component; `Projectile.tsx` and `Battlefield.tsx` likewise handle visuals.
-- `src/types/index.ts` — canonical types: entities, GameState, queries and helper types.
+- Determinism: all simulation state lives on `GameState` (`src/types/index.ts`). RNG is seeded via `SeededRng` and used only in game logic.
+- World scale: the game runs in a cubic world `WORLD_SIZE^3` (default 4000³) centered at the origin. Movement and projectiles are clamped with `clampToWorld`.
+- Rendering: `Battlefield.tsx` sets up a `Canvas` with drei `OrbitControls` and an infinite `Grid`, plus a stars field for depth. Object transforms mirror Rapier kinematic bodies.
+- Assets: GLBs are imported as URLs (webpack asset/resource). `useGLTF` is used with caching; `patchGltfLoader.ts` adds defensive checks in development.
 
-Conventions and responsibilities
-- Edit TypeScript sources only under `src/`; do not modify `dist/` build artifacts.
-- Keep deterministic logic (seeded RNG) inside `src/game/` or `src/utils/` as appropriate.
-- UI code (React/R3F) belongs in `src/components/` and should prefer props + hooks over module-level state.
-- The `GameState` type in `src/types/index.ts` is the canonical runtime state shape — other modules should import it rather than creating separate global state.
+Frequently edited files
 
-Development workflow (practical)
-1. Make changes in `src/` and add/update unit tests under `test/vitest/`.
-2. Run type checks and tests: `npm run typecheck && npm test`.
-3. Build for production: `npm run build` (output: `dist/`).
+- `src/game/config.ts` — world dimensions, fog/camera defaults, clamp helper.
+- `src/game/systems.ts` — top-level update (movement, shooting, collisions, sync).
+- `src/game/ships.ts` — ship stats (hp, range, speeds) and collider shapes.
+- `src/components/Battlefield.tsx` — scene setup and camera controls.
 
-Follow-ups / docs to align
-- This document is the authoritative quick reference for the `src/` layout. Other longer specs in `spec/`, `docs/`, or `memory/` may reference additional conceptual architecture (rendering pipeline, physics notes) and should be updated as part of any larger refactor. See `AGENTS.md` and `.github/instructions/*.instructions.md` for repository-specific contribution and agent rules.
+Conventions
 
-If you want, I can also open and update other high-level docs (README, docs/renderer-pipeline.md, spec/*) to keep them consistent — I suggest a small sweep to update README and the main spec first.
+- Edit TypeScript in `src/` only; build output is in `dist/`.
+- Import `GameState` types from `src/types/index.ts` (single source of truth).
+- Keep model units 1:1; avoid ad-hoc scale multipliers. Adjust colliders instead.
+
+Workflow
+
+1. `npm run typecheck && npm test`
+2. `npm run build` → open `dist/spaceautobattler.html` (or `npm run serve`)
+
+This document is authoritative for layout. If other long-form specs drift, prefer this file and update the others in the same change.

@@ -10,7 +10,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 28,
     range: 18,
     speed: 14,
-    scale: 0.7
+    scale: 1
   },
   corvette: {
     hull: 'corvette',
@@ -20,7 +20,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 24,
     range: 22,
     speed: 11,
-    scale: 0.9
+    scale: 1
   },
   frigate: {
     hull: 'frigate',
@@ -30,7 +30,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 22,
     range: 26,
     speed: 9,
-    scale: 1.1
+    scale: 1
   },
   destroyer: {
     hull: 'destroyer',
@@ -40,7 +40,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 20,
     range: 30,
     speed: 7,
-    scale: 1.4
+    scale: 1
   },
   carrier: {
     hull: 'carrier',
@@ -50,7 +50,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 18,
     range: 34,
     speed: 5,
-    scale: 1.8
+    scale: 1
   }
 };
 
@@ -64,7 +64,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
   const body = state.physicsWorld.createRigidBody(bodyDesc);
 
-  const colliderDesc = state.rapier.ColliderDesc.capsule(stats.scale * 0.8, stats.scale * 0.6)
+  // Collider tuned for models authored at 1:1 scale; adjust if individual GLBs vary.
+  const colliderDesc = state.rapier.ColliderDesc.capsule(0.8, 0.6)
     .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
     .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
   const collider = state.physicsWorld.createCollider(colliderDesc, body);

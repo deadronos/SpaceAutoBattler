@@ -1,4 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Grid } from '@react-three/drei';
+import { AxesHelper } from 'three';
 import { Suspense } from 'react';
 import type { Archetype } from 'miniplex';
 import type React from 'react';
@@ -10,6 +12,7 @@ import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import { ShipObject } from './Ship.js';
 import { ProjectileObject } from './Projectile.js';
 import { SeededRng } from '../utils/rng.js';
+import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -19,19 +22,36 @@ export function Battlefield(): React.ReactElement {
   }
 
   return (
-    <Canvas shadows camera={{ position: [0, 16, 34], fov: 50 }} dpr={[1, 2]}>
+    <Canvas
+      shadows
+      camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: CAMERA_DEFAULTS.far }}
+      dpr={[1, 2]}
+    >
       <color attach="background" args={[new Color('#02030b')]} />
-      <fog attach="fog" args={['#02030b', 40, 110]} />
+      <fog attach="fog" args={FOG_DEFAULTS} />
       <ambientLight intensity={0.35} />
-      <directionalLight position={[24, 32, 10]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
-      <pointLight position={[-18, 24, -12]} intensity={0.8} color="#88aaff" />
+      <directionalLight position={[240, 320, 100]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
+      <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
       <Suspense fallback={null}>
         <ShipsLayer archetype={state.queries.ships} />
         <ProjectilesLayer archetype={state.queries.projectiles} />
       </Suspense>
       <BattlefieldSystems />
       <StarsField />
-      <gridHelper args={[120, 20, '#203050', '#101725']} position={[0, -2.2, 0]} />
+      {/* Drei helpers for navigation and orientation */}
+      <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
+      {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
+      <Grid
+        args={[WORLD_SIZE, WORLD_SIZE]}
+        cellSize={50}
+        sectionSize={500}
+        cellColor="#203050"
+        sectionColor="#101725"
+        position={[0, -5, 0]}
+        fadeDistance={WORLD_SIZE}
+        infiniteGrid
+      />
+      <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
     </Canvas>
   );
 }
@@ -85,11 +105,11 @@ function StarsField(): React.ReactElement {
 
 const STAR_POSITIONS = (() => {
   const positions: number[] = [];
-  const spread = 180;
+  const spread = WORLD_SIZE * 0.9;
   const rng = new SeededRng(2024);
-  for (let i = 0; i < 800; i += 1) {
+  for (let i = 0; i < 1500; i += 1) {
     const x = (rng.next() - 0.5) * spread;
-    const y = rng.next() * spread * 0.6 + 10;
+    const y = rng.next() * (WORLD_SIZE * 0.4) + 40;
     const z = (rng.next() - 0.5) * spread;
     positions.push(x, y, z);
   }

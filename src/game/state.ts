@@ -4,6 +4,7 @@ import Rapier from '@dimforge/rapier3d-compat';
 import type { GameEntity, GameState, ShipHull } from '../types/index.js';
 import { SeededRng } from '../utils/rng.js';
 import { spawnShip } from './ships.js';
+import { WORLD_HALF } from './config.js';
 
 export async function createGameState(): Promise<GameState> {
   await Rapier.init();
@@ -64,21 +65,21 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
 
 export function spawnInitialFleets(state: GameState): void {
   const formation: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-  const spacing = 6;
+  const spacing = 60;
 
   formation.forEach((hull, index) => {
     const offsetZ = (index - (formation.length - 1) / 2) * spacing;
     spawnShip(state, {
       hull,
       team: 'blue',
-      position: new Vector3(-18 + index * 1.8, 0, offsetZ),
+  position: new Vector3(-WORLD_HALF * 0.06 + index * 18, 0, offsetZ),
       heading: 0
     });
 
     spawnShip(state, {
       hull,
       team: 'red',
-      position: new Vector3(18 - index * 1.8, 0, offsetZ),
+  position: new Vector3(WORLD_HALF * 0.06 - index * 18, 0, offsetZ),
       heading: Math.PI
     });
   });

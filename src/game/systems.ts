@@ -6,6 +6,7 @@ import type {
   ShipEntity
 } from '../types/index.js';
 import { destroyEntity } from './state.js';
+import { clampToWorld } from './config.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -53,8 +54,8 @@ function prepareShips(state: GameState, delta: number): void {
       const moveDistance = Math.min(ship.ship.speed * delta, Math.max(distance - ship.ship.range * 0.55, 0));
       const nextPosition = TEMP_POS
         .copy(ship.transform.position)
-        .addScaledVector(direction, moveDistance)
-        .clampLength(0, 40);
+        .addScaledVector(direction, moveDistance);
+      clampToWorld(nextPosition);
 
       ship.rigidBody.setNextKinematicTranslation({
         x: nextPosition.x,
@@ -83,6 +84,7 @@ function advanceProjectiles(state: GameState, delta: number): void {
     const direction = projectile.direction;
     const current = projectile.transform.position;
     const next = TEMP_POS.copy(current).addScaledVector(direction, move);
+    clampToWorld(next);
 
     projectile.rigidBody.setNextKinematicTranslation({ x: next.x, y: next.y, z: next.z });
   }

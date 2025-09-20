@@ -11,21 +11,17 @@ This index lists the short searchable memory summaries generated for the `src/` 
 
 ## Per-file memories
 
-- [core-gameState.md](./core-gameState.md) — `src/core/gameState.ts` responsibilities and key functions.
-- [core-aiController.md](./core-aiController.md) — `src/core/aiController.ts` (intents, steering, formation, roaming anchors).
-- [renderer-effects.md](./renderer-effects.md) — `src/renderer/effects.ts` (EffectsManager, safe readbacks).
-- [renderer-threeRenderer.md](./renderer-threeRenderer.md) — `src/renderer/threeRenderer.ts` (Three renderer, instancing, skybox, shield shader).
-- [main-simWorker-protocol.md](./main-simWorker-protocol.md) — message protocol between `src/main.ts` and `src/simWorker.ts`.
-- [core-assetLoader.md](./core-assetLoader.md) — `src/core/assetLoader.ts` (dynamic GLTF loader, assetPool caching).
-- [core-physics.md](./core-physics.md) — `src/core/physics.ts` (Rapier physics stepper API).
-- [core-ai-decisionEngine.md](./core-ai-decisionEngine.md) — `src/core/ai/decisionEngine.ts` (scoring helpers).
-- [core-ai-intentManager.md](./core-ai-intentManager.md) — `src/core/ai/intentManager.ts` (intent lifetime helper).
-- [agent-lockUtils.md](./agent-lockUtils.md) — `src/agent/lockUtils.ts` (file-based lock utilities).
-- [core-assetPool.md](./core-assetPool.md) — `src/core/assetPool.ts` (LRU asset pool implementation).
+- [core-gameState.md](./core-gameState.md) — `src/game/state.ts` (GameState factory, Rapier init, entity lifecycle helpers like createGameState, destroyEntity, spawnInitialFleets).
+- [core-systems.md](./core-aiController.md) — `src/game/systems.ts` (simulation step: prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles; lightweight AI: nearest-enemy targeting and firing).
+- [core-ships.md](./core-assetLoader.md) — `src/game/ships.ts` (SHIP_STATS, spawnShip, collider registration).
+- [core-physics.md](./core-physics.md) — `src/game/state.ts` & `src/game/systems.ts` (Rapier initialization, physics stepping, collision/resolve helpers).
+- [core-assetLoader.md](./core-assetLoader.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer).
+- [core-assetPool.md](./core-assetPool.md) — Runtime note: `GameState.assetPool` (optional Map used by renderer bootstrap; assets are cached by the renderer/asset loader).
+- [core-rng.md](./core-rng.md) — `src/utils/rng.ts` (seeded deterministic RNG used by simulation and spawn randomization).
 
 - [projectbrief.md](./projectbrief.md) — Project brief describing goals, constraints, and success criteria.
 - [productContext.md](./productContext.md) — Users, stakeholders, and high-level assumptions.
-- [systemPatterns.md](./systemPatterns.md) — Architecture patterns and guidance.
+- [systemPatterns.md](./systemPatterns.md) — Architecture patterns and guidance (GameState canonicalization, simulation/renderer separation).
 - [techContext.md](./techContext.md) — Tooling, stack, and development workflow notes.
 - [activeContext.md](./activeContext.md) — Current active work and next steps.
 - [progress.md](./progress.md) — High-level progress notes and known issues.
