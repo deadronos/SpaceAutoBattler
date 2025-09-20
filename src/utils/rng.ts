@@ -1,41 +1,30 @@
-import type { RNG } from '../types/index.js';
+export class SeededRng {
+  private state: number;
 
-// xmur3 hash to seed mulberry32
-function xmur3(str: string) {
-  let h = 1779033703 ^ str.length;
-  for (let i = 0; i < str.length; i++) {
-    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
-    h = (h << 13) | (h >>> 19);
+  constructor(seed: number) {
+    this.state = seed >>> 0;
+    if (this.state === 0) {
+      this.state = 1;
+    }
   }
-  return function () {
-    h = Math.imul(h ^ (h >>> 16), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return (h ^= h >>> 16) >>> 0;
-  };
+
+  next(): number {
+    // Lehmer RNG with glibc parameters
+    this.state = (this.state * 48271) % 0x7fffffff;
+    return this.state / 0x7fffffff;
+  }
+
+  range(min: number, max: number): number {
+    return min + (max - min) * this.next();
+  }
+
+  int(min: number, max: number): number {
+    return Math.floor(this.range(min, max + 1));
+  }
+
+  pick<T>(values: readonly T[]): T {
+    const index = Math.floor(this.next() * values.length);
+    return values[index];
+  }
 }
 
-function mulberry32(a: number) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-export function createRNG(seed: string): RNG {
-  const seedFn = xmur3(seed);
-  const s = seedFn();
-  const rand = mulberry32(s);
-  return {
-    seed,
-    next: () => rand(),
-    int: (min, max) => Math.floor(rand() * (max - min + 1)) + min,
-    pick: (arr) => {
-      if (arr.length === 0) {
-        throw new Error('Cannot pick from empty array');
-      }
-      return arr[Math.floor(rand() * arr.length)];
-    },
-  };
-}

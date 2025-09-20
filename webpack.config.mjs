@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
@@ -17,7 +18,7 @@ export default (env = {}, argv) => {
   return {
     mode: isProd ? 'production' : 'development',
     entry: {
-      main: path.resolve(__dirname, 'src', 'main.ts')
+      main: path.resolve(__dirname, 'src', 'main.tsx')
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -27,7 +28,7 @@ export default (env = {}, argv) => {
       publicPath: './'
     },
     resolve: {
-      extensions: ['.ts', '.js'],
+      extensions: ['.ts', '.tsx', '.js'],
       // Prefer ESM 'module' entry points so examples/jsm and main imports resolve to the same build
       mainFields: ['module', 'browser', 'main'],
       alias: {
@@ -38,7 +39,7 @@ export default (env = {}, argv) => {
     module: {
       rules: [
         {
-          test: /\.ts$/,
+          test: /\.tsx?$/,
           use: 'ts-loader',
           exclude: /node_modules/
         },
@@ -48,6 +49,43 @@ export default (env = {}, argv) => {
             MiniCssExtractPlugin.loader,
             'css-loader'
           ]
+        }
+        ,
+        {
+          test: /\.(glb|gltf)$/i,
+          type: 'asset/resource',
+          // Include a separator before the contenthash for readability and
+          // consistency with other emitted assets.
+          generator: {
+            filename: 'models/[name].[contenthash][ext]'
+          }
+        },
+        // Emit common image types as resources so textures referenced by
+        // external .gltf files or other imports are emitted and URL-resolved.
+        {
+          test: /\.(png|jpe?g|webp|gif|svg)$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'assets/images/[name].[contenthash][ext]'
+          }
+        },
+        // Emit .bin sidecar files (used by some .gltf) so they end up next
+        // to other model assets and can be loaded at runtime.
+        {
+          test: /\.bin$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'models/[name].[contenthash][ext]'
+          }
+        },
+        // Emit any imported .wasm files as resources so they end up in dist/wasm/
+        {
+          test: /\.wasm$/,
+          type: 'asset/resource',
+          // Add contenthash to wasm files for cache-busting consistency.
+          generator: {
+            filename: 'wasm/[name].[contenthash][ext]'
+          }
         }
       ]
     },
@@ -59,12 +97,8 @@ export default (env = {}, argv) => {
         filename: 'spaceautobattler.html',
         inject: 'body'
       }),
-  // Copy only static assets used at runtime by workers or fetchers (SVGs, images)
-  // Preserve both a short `/assets/` path and the original `/src/config/assets/` path
-  // because some runtime code (workers) fetch the original path directly.
-  new CopyWebpackPlugin({ patterns: [
-    { from: path.resolve(__dirname, 'src', 'config', 'assets'), to: path.posix.join('src', 'config', 'assets') }
-  ] }),
+  // Copy optional static assets when present.
+  ...createCopyPlugins(),
   // optional analyzer
   ...(shouldAnalyze ? [new BundleAnalyzerPlugin()] : []),
       // Define compile-time environment flags so browser bundles don't reference `process` at runtime
@@ -88,7 +122,12 @@ export default (env = {}, argv) => {
             issuerDir.startsWith(srcDir) &&
             !req.includes('node_modules')
           ) {
-            resource.request = req.replace(/\.js$/, '.ts');
+            const tsxCandidate = path.resolve(issuerDir, req.replace(/\.js$/, '.tsx'));
+            if (fs.existsSync(tsxCandidate)) {
+              resource.request = req.replace(/\.js$/, '.tsx');
+            } else {
+              resource.request = req.replace(/\.js$/, '.ts');
+            }
           }
         } catch {
           // swallow; keep original request if anything goes wrong
@@ -99,11 +138,32 @@ export default (env = {}, argv) => {
       splitChunks: {
         chunks: 'all',
         cacheGroups: {
-          rapier: {
+          // Instead of extracting Rapier into its own shared chunk, prefer
+          // bundling Rapier into the same chunk that imports it (for example
+          // the sim worker chunk). This avoids cross-chunk initialization
+          // ordering issues where Rapier's runtime may not be fully ready
+          // when a different chunk tries to use it.
+          rapierInImporterChunk: {
             test: /[\\/]node_modules[\\/]@dimforge[\\/]rapier3d-compat[\\/]/,
-            name: 'rapier',
+            // Use the importing chunk's name when available so rapier ends up
+            // in the same emitted file as the importer (worker).
+            name(module, chunks, cacheGroupKey) {
+              try {
+                if (Array.isArray(chunks) && chunks.length > 0) {
+                  // Prefer the first chunk's name if present
+                  const first = chunks.find((c) => typeof c.name === 'string' && c.name.length > 0);
+                  if (first && typeof first.name === 'string') return first.name;
+                }
+              } catch (_e) {
+                /* ignore and fall back */
+              }
+              // Fallback name: keep rapier as a dedicated chunk if necessary
+              return cacheGroupKey;
+            },
             chunks: 'all',
-            priority: 40
+            priority: 60,
+            enforce: true,
+            reuseExistingChunk: true
           },
           three: {
             test: /[\\/]node_modules[\\/]three[\\/]/,
@@ -126,6 +186,11 @@ export default (env = {}, argv) => {
         }
       }
     },
+    // Enable async WebAssembly so dynamic WASM imports (used by Rapier builds)
+    // are supported and properly emitted by webpack 5.
+    experiments: {
+      asyncWebAssembly: true
+    },
     devtool: isProd ? false : 'source-map',
     devServer: {
       static: path.resolve(__dirname, 'dist'),
@@ -133,5 +198,24 @@ export default (env = {}, argv) => {
       port: 8080,
       open: false
     }
-  };
 };
+};
+
+function createCopyPlugins() {
+  const patterns = [];
+  const legacyAssets = path.resolve(__dirname, 'src', 'config', 'assets');
+  if (fs.existsSync(legacyAssets)) {
+    patterns.push({ from: legacyAssets, to: path.posix.join('src', 'config', 'assets') });
+  }
+
+  const staticAssets = path.resolve(__dirname, 'src', 'assets', 'static');
+  if (fs.existsSync(staticAssets)) {
+    patterns.push({ from: staticAssets, to: path.posix.join('assets') });
+  }
+
+  if (patterns.length === 0) {
+    return [];
+  }
+
+  return [new CopyWebpackPlugin({ patterns })];
+}

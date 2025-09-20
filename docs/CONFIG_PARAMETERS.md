@@ -1,118 +1,39 @@
-# Configuration Parameters Documentation
+# Configuration Parameters — current implementation
 
-## Magic Numbers Externalization
+The rewrite branch uses a small, explicit configuration surface focused on world scale and rendering defaults. Most gameplay values live in code (with TypeScript types) to keep behavior deterministic and discoverable.
 
-The following magic numbers have been externalized to configuration files to improve tunability without requiring code changes.
+## World configuration (`src/game/config.ts`)
 
-### AI Behavior Configuration (`behaviorConfig.ts`)
+- `WORLD_SIZE` — length of the cubic world edge (default: 4000). The world is centered at the origin.
+- `WORLD_HALF` — `WORLD_SIZE / 2` (±2000 with defaults).
+- `WORLD_BOUNDS_MARGIN` — small inward margin used by clamping.
+- `clampToWorld(v)` — clamps a position `{x,y,z}` to stay within the world cube.
+- `CAMERA_DEFAULTS` — far/near, fov, and default camera position tuned for the large world.
+- `FOG_DEFAULTS` — fog start/end tuned for deep-space look at the chosen scale.
 
-#### Combat Range Settings
+Usage example:
 
-- `closeRangeMultiplier` (default: 0.6) - Multiplier for close range combat decisions relative to preferred range
-- `mediumRangeMultiplier` (default: 1.2) - Multiplier for medium range combat decisions relative to preferred range
-- `movementCloseEnoughThreshold` (default: 10) - Distance threshold for considering movement complete
-- `friendlyAvoidanceDistance` (default: 80) - Distance ships try to maintain from friendly ships
-- `boundarySafetyMargin` (default: 50) - Safety margin from map boundaries in all directions
+```ts
+import { WORLD_SIZE, clampToWorld } from '@/game/config';
 
-#### Separation Behavior Clustering Thresholds
-
-These parameters control how ships respond to clustering based on nearby neighbor counts:
-
-- `separationVeryTightCluster` (default: 8) - Neighbor count threshold for very tight clusters
-- `separationModerateCluster` (default: 5) - Neighbor count threshold for moderate clusters
-- `separationMildCluster` (default: 3) - Neighbor count threshold for mild clusters
-- `separationVeryTightWeight` (default: 5.0) - Weight multiplier applied to very tight clusters
-- `separationModerateWeight` (default: 2.0) - Weight multiplier applied to moderate clusters
-- `separationMildWeight` (default: 1.2) - Weight multiplier applied to mild clusters
-
-#### Evade Behavior Configuration
-
-These parameters control how ships evaluate and choose escape directions:
-
-- `evadeMaxPitch` (default: π\*0.5) - Maximum pitch angle in radians for evade direction sampling (±45°)
-- `evadeBaseScore` (default: 100) - Base score for escape position evaluation
-- `evadeThreatPenaltyWeight` (default: 0.5) - Weight for threat proximity penalty in scoring
-- `evadeBoundaryPenaltyWeight` (default: 2.0) - Weight for boundary proximity penalty in scoring
-- `evadeDistanceImprovementWeight` (default: 0.3) - Weight for distance improvement bonus in scoring
-- `evadeFriendlyPenaltyWeight` (default: 0.2) - Weight for friendly collision penalty in scoring
-
-#### Damage-Based Evade Settings
-
-- `evadeOnlyOnDamage` (default: false) - Only allow evade behavior when ship has recently taken damage
-- `evadeRecentDamageWindowSeconds` (default: 3.0) - Time window during which recent damage allows evade behavior
-- `damageEvadeThreshold` (default: 25) - Damage threshold to trigger evade behavior
-- `damageDecayRate` (default: 2.0) - Rate at which recent damage decays per second
-
-### Physics Configuration (`physicsConfig.ts`)
-
-#### World Settings
-
-- `timestep` (default: 1/60) - Physics simulation timestep in seconds
-- `maxVelocityIterations` (default: 8) - Maximum velocity constraint iterations per physics step
-- `maxPositionIterations` (default: 4) - Maximum position constraint iterations per physics step
-- `defaultRaycastDistance` (default: 1000) - Default maximum distance for raycasting operations
-- `defaultCollider` (default: {width: 5, height: 2, depth: 5}) - Default collider dimensions when ship class not found
-
-## Usage Examples
-
-### Tuning Combat Behavior
-
-```typescript
-// Make ships engage at closer range
-config.globalSettings.closeRangeMultiplier = 0.4;
-
-// Make ships more conservative about medium range combat
-config.globalSettings.mediumRangeMultiplier = 1.5;
+// Move an object then keep it inside bounds
+pos.addScaledVector(dir, speed * dt);
+clampToWorld(pos);
 ```
 
-### Adjusting Separation Behavior
+## Rendering helpers
 
-```typescript
-// Reduce clustering by lowering thresholds
-config.globalSettings.separationModerateCluster = 3;
-config.globalSettings.separationMildCluster = 2;
+`src/components/Battlefield.tsx` integrates `@react-three/drei`:
 
-// Increase separation force for tight clusters
-config.globalSettings.separationVeryTightWeight = 8.0;
-```
+- `OrbitControls` — orbit/pan/zoom around origin with sensible min/max distances.
+- `Grid` — infinite grid sized around `WORLD_SIZE` for spatial context.
 
-### Modifying Evade Sensitivity
+These can be tuned directly in `Battlefield.tsx` if the world size is changed.
 
-```typescript
-// Make evade behavior more sensitive to threats
-config.globalSettings.evadeThreatPenaltyWeight = 1.0;
+## Ship stats/scales
 
-// Reduce boundary avoidance (allow closer to edges)
-config.globalSettings.evadeBoundaryPenaltyWeight = 1.0;
+`src/game/ships.ts` defines `SHIP_STATS`. All models are assumed to be authored at roughly 1:1 units, and each ship uses `scale: 1`. Colliders are adjusted in code (`capsule(0.8, 0.6)`) for consistent gameplay.
 
-// Make evade only trigger when ship has taken recent damage
-config.globalSettings.evadeOnlyOnDamage = true;
+---
 
-// Reduce the damage window for more reactive evade behavior
-config.globalSettings.evadeRecentDamageWindowSeconds = 2.0;
-```
-
-### Physics Tuning
-
-```typescript
-// Higher fidelity physics simulation
-config.world.maxVelocityIterations = 12;
-config.world.maxPositionIterations = 6;
-
-// Faster physics timestep
-config.world.timestep = 1 / 120; // 120 FPS physics
-```
-
-## Testing
-
-Configuration changes can be validated using the test suite in `test/vitest/config-externalization.spec.ts` which verifies that parameter changes produce measurable behavioral differences.
-
-Run specific config tests:
-
-```bash
-npx vitest test/vitest/config-externalization.spec.ts
-```
-
-## Backward Compatibility
-
-All parameters maintain their original default values, ensuring existing gameplay behavior is preserved while allowing for customization.
+Legacy docs that referenced broader configs (AI behavior, separation, etc.) are archived. When reintroducing runtime-tunable parameters, prefer a single config module and add minimal unit tests demonstrating the effect of the parameter on behavior.

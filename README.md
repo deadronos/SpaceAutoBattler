@@ -2,7 +2,7 @@
 
 ![Gameplay preview](VideoCapture.gif)
 
-SpaceAutoBattler is a lightweight, research-oriented 3D space combat simulator. The project separates deterministic simulation logic (`src/core`) from rendering (`src/renderer`) so you can run headless tests and fast experiments.
+SpaceAutoBattler is a lightweight, research-oriented 3D space combat simulator. The project separates deterministic simulation logic (pure game logic under `src/game`) from rendering and UI (`src/components`, `App.tsx`) so you can run headless tests and fast experiments.
 
 ## Quick start
 
@@ -28,18 +28,19 @@ npm run serve:root
 
 Open the local server at http://localhost:8080 (or the URL printed by the serve script).
 
+Developer reference: a short, up-to-date layout of the `src/` directory is available at `spec/src-structure.md` in this repository. It lists the key entry points (`src/main.tsx`, `src/App.tsx`), the `src/game/` pure logic folder, and where to find types and utilities.
+
 ## Project layout
 
 Edit TypeScript sources in `src/` only. Key folders:
 
-- `src/main.ts` — application entry and main loop
-- `src/simWorker.ts` — deterministic physics worker (Rapier3D)
-- `src/core/` — pure game logic, AI, entity management (simulation)
-- `src/renderer/` — Three.js renderer, scene and effects
-- `src/config/` — balance and behaviour configuration (entities, AI, sim, renderer)
-- `src/types/` — canonical types including `GameState`
+- `src/main.tsx` — App bootstrap and renderer mounting
+- `src/App.tsx` — React top-level application component
+- `src/game/` — pure game logic: state container, systems, and ship blueprints
+- `src/components/` — React / R3F components for rendering (Ship, Projectile, HUD)
+- `src/types/` — canonical types including `GameState` (single source of runtime state types)
 - `src/utils/` — seeded RNG and shared helpers
-- `src/styles/` and `src/ui.html` — minimal UI/front-end glue
+- `src/styles/` and `src/ui.html` — minimal UI templates and global styles
 
 Build artifacts and generated files live in `dist/` (do not edit).
 
