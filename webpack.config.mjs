@@ -54,16 +54,37 @@ export default (env = {}, argv) => {
         {
           test: /\.(glb|gltf)$/i,
           type: 'asset/resource',
+          // Include a separator before the contenthash for readability and
+          // consistency with other emitted assets.
           generator: {
-            filename: 'models/[name][contenthash][ext]'
+            filename: 'models/[name].[contenthash][ext]'
+          }
+        },
+        // Emit common image types as resources so textures referenced by
+        // external .gltf files or other imports are emitted and URL-resolved.
+        {
+          test: /\.(png|jpe?g|webp|gif|svg)$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'assets/images/[name].[contenthash][ext]'
+          }
+        },
+        // Emit .bin sidecar files (used by some .gltf) so they end up next
+        // to other model assets and can be loaded at runtime.
+        {
+          test: /\.bin$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'models/[name].[contenthash][ext]'
           }
         },
         // Emit any imported .wasm files as resources so they end up in dist/wasm/
         {
           test: /\.wasm$/,
           type: 'asset/resource',
+          // Add contenthash to wasm files for cache-busting consistency.
           generator: {
-            filename: 'wasm/[name][ext]'
+            filename: 'wasm/[name].[contenthash][ext]'
           }
         }
       ]

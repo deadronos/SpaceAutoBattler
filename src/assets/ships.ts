@@ -1,4 +1,4 @@
-const GLTF_ROOT = '../gltf/';
+const GLTF_ROOT = './gltf/';
 
 export const SHIP_MODEL_PATHS = {
   fighter: new URL(`${GLTF_ROOT}fighter.glb`, import.meta.url).href,
