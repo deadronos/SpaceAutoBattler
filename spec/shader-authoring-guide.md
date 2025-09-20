@@ -40,12 +40,14 @@ assets/
 Follow these naming patterns for consistency:
 
 **Textures:**
+
 - `soft-circle-[size].png` - Soft-edged circular gradients
 - `explosion-[type]-[size].png` - Explosion textures
 - `noise-[type]-[size].png` - Noise textures for variety
 - `palette-[name].png` - Color lookup textures
 
 **Examples:**
+
 - `soft-circle-512.png`
 - `explosion-fire-256.png`
 - `noise-perlin-512.png`
@@ -56,15 +58,18 @@ Follow these naming patterns for consistency:
 ### Recommended Formats & Sizes
 
 **Primary Formats:**
+
 - **PNG**: Best for transparency and gradients (`*.png`)
 - **KTX2**: Optimal for GPU compression when supported (`*.ktx2`)
 
 **Recommended Sizes:**
+
 - **256×256px**: Standard resolution, good performance
 - **512×512px**: High quality, moderate performance impact
 - **1024×1024px**: Maximum quality (use sparingly)
 
 **Performance Guidelines:**
+
 - Use 256px for most particle textures
 - Use 512px for hero explosion effects
 - Avoid 1024px unless absolutely necessary
@@ -75,6 +80,7 @@ Follow these naming patterns for consistency:
 Soft-circle textures are the foundation of explosion effects:
 
 **Technical Requirements:**
+
 - Square aspect ratio (256×256 or 512×512)
 - Radial gradient from center
 - White core (`#FFFFFF`) fading to transparent black (`#00000000`)
@@ -82,6 +88,7 @@ Soft-circle textures are the foundation of explosion effects:
 - No hard edges or banding
 
 **Falloff Curve:**
+
 ```glsl
 // Recommended falloff function
 float softCircle = 1.0 - smoothstep(0.0, 1.0, distance(uv - 0.5, vec2(0.0)) * 2.0);
@@ -93,11 +100,13 @@ softCircle = pow(softCircle, 2.2); // Gamma correction for smooth falloff
 For explosion variety and organic feel:
 
 **Types:**
+
 - **Perlin Noise**: Smooth, cloud-like patterns
 - **Simplex Noise**: Higher frequency detail
 - **Fractal Noise**: Multi-octave complexity
 
 **Guidelines:**
+
 - Use R channel for primary noise
 - G channel for secondary detail
 - B channel for variation/turbulence
@@ -131,17 +140,17 @@ void main() {
   vUv = uv;
   vColor = instanceColor;
   vLifeRatio = clamp(instanceAge / instanceLifetime, 0.0, 1.0);
-  
+
   // Billboard calculation - always face camera
   vec3 worldPosition = instancePosition;
   vec3 toBillboard = normalize(cameraPosition - worldPosition);
   vec3 right = normalize(cross(toBillboard, vec3(0.0, 1.0, 0.0)));
   vec3 up = cross(right, toBillboard);
-  
+
   // Scale by instance size and apply position offset
   vec3 localPosition = right * position.x * instanceSize + up * position.y * instanceSize;
   vec4 worldPos = vec4(worldPosition + localPosition, 1.0);
-  
+
   gl_Position = projectionMatrix * modelViewMatrix * worldPos;
 }
 ```
@@ -174,21 +183,21 @@ vec3 interpolateColor(float t) {
 void main() {
   // Sample the soft-circle texture
   vec4 texColor = texture2D(explosionTexture, vUv);
-  
+
   // Calculate color based on lifetime
   vec3 dynamicColor = interpolateColor(vLifeRatio);
-  
+
   // Apply color override if provided, otherwise use dynamic color
   vec3 finalColor = vColor.rgb * dynamicColor;
-  
+
   // Calculate alpha fade
   float fadeIn = smoothstep(0.0, fadeInDuration, vLifeRatio);
   float fadeOut = 1.0 - smoothstep(fadeOutStart, 1.0, vLifeRatio);
   float alpha = texColor.a * vColor.a * fadeIn * fadeOut;
-  
+
   // Apply soft-edge falloff from texture
   alpha *= texColor.r; // Use red channel as luminance mask
-  
+
   gl_FragColor = vec4(finalColor, alpha);
 }
 ```
@@ -197,21 +206,22 @@ void main() {
 
 **Configurable Parameters:**
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `explosionTexture` | `sampler2D` | Soft-circle or explosion texture | `soft-circle-512.png` |
-| `fadeInDuration` | `float` | How quickly particles fade in (0.0-1.0) | `0.1` |
-| `fadeOutStart` | `float` | When fade-out begins (0.0-1.0) | `0.7` |
-| `colorStops` | `vec3[3]` | RGB color stops for lifetime interpolation | See below |
-| `colorStopPositions` | `float[3]` | Positions of color stops (0.0-1.0) | `[0.0, 0.5, 1.0]` |
+| Parameter            | Type        | Description                                | Default               |
+| -------------------- | ----------- | ------------------------------------------ | --------------------- |
+| `explosionTexture`   | `sampler2D` | Soft-circle or explosion texture           | `soft-circle-512.png` |
+| `fadeInDuration`     | `float`     | How quickly particles fade in (0.0-1.0)    | `0.1`                 |
+| `fadeOutStart`       | `float`     | When fade-out begins (0.0-1.0)             | `0.7`                 |
+| `colorStops`         | `vec3[3]`   | RGB color stops for lifetime interpolation | See below             |
+| `colorStopPositions` | `float[3]`  | Positions of color stops (0.0-1.0)         | `[0.0, 0.5, 1.0]`     |
 
 **Default Color Stops:**
+
 ```javascript
 colorStops: [
   vec3(1.0, 0.98, 0.85), // Bright white-yellow (birth)
-  vec3(1.0, 0.55, 0.0),  // Orange (mid-life) 
-  vec3(0.27, 0.0, 0.0)   // Dark red (death)
-]
+  vec3(1.0, 0.55, 0.0), // Orange (mid-life)
+  vec3(0.27, 0.0, 0.0), // Dark red (death)
+];
 ```
 
 ## Color Override System
@@ -228,45 +238,49 @@ The `colorOverride` parameter allows dynamic color customization without shader 
 ### Usage Examples
 
 **Basic Usage:**
+
 ```typescript
 // Use default colors from config
 addParticleExplosion(state, {
   pos: { x: 100, y: 50, z: 0 },
-  radius: 25
+  radius: 25,
 });
 
 // Override with custom colors
 addParticleExplosion(state, {
   pos: { x: 100, y: 50, z: 0 },
   radius: 25,
-  colorOverride: ['#ffffff', '#00ff00', '#004400'] // White to green explosion
+  colorOverride: ['#ffffff', '#00ff00', '#004400'], // White to green explosion
 });
 ```
 
 **Team-Based Colors:**
+
 ```typescript
 // Red team explosion
 const redExplosion = ['#fffbda', '#ff4444', '#440000'];
 
-// Blue team explosion  
+// Blue team explosion
 const blueExplosion = ['#fffbda', '#4444ff', '#000044'];
 
 addParticleExplosion(state, {
   pos: ship.position,
   radius: ship.radius,
-  colorOverride: ship.team === 'red' ? redExplosion : blueExplosion
+  colorOverride: ship.team === 'red' ? redExplosion : blueExplosion,
 });
 ```
 
 ### Color Format
 
 **Supported Formats:**
+
 - Hex strings: `'#ff0000'`, `'#f00'`
 - RGB strings: `'rgb(255, 0, 0)'`
 - Named colors: `'red'`, `'blue'`, `'white'`
 
 **Conversion to Shader:**
 The system automatically converts color strings to `vec3` uniforms:
+
 ```javascript
 '#ff8c00' → vec3(1.0, 0.549, 0.0)
 ```
@@ -278,6 +292,7 @@ The system automatically converts color strings to `vec3` uniforms:
 The game includes a development scene for immediate asset testing:
 
 1. **Start Development Server:**
+
    ```bash
    npm run build:dev
    npm run serve
@@ -306,9 +321,9 @@ Enable debug visualization:
 
 ```javascript
 // In browser console
-window.debugParticles = true;  // Show particle bounds
-window.debugShaders = true;    // Show shader compilation logs  
-window.debugColors = true;     // Show color interpolation
+window.debugParticles = true; // Show particle bounds
+window.debugShaders = true; // Show shader compilation logs
+window.debugColors = true; // Show color interpolation
 ```
 
 ## Examples
@@ -318,6 +333,7 @@ window.debugColors = true;     // Show color interpolation
 **Texture:** `soft-circle-512.png` with warm gradient
 **Colors:** `['#fffbda', '#ff8c00', '#440000']`
 **Parameters:**
+
 ```javascript
 {
   countPerRadius: 20,
@@ -332,6 +348,7 @@ window.debugColors = true;     // Show color interpolation
 **Texture:** `soft-circle-256.png` with sharp edges
 **Colors:** `['#ffffff', '#00ffff', '#0044ff']`
 **Parameters:**
+
 ```javascript
 {
   countPerRadius: 15,
@@ -346,6 +363,7 @@ window.debugColors = true;     // Show color interpolation
 **Texture:** `noise-perlin-512.png` for organic feel
 **Colors:** `['#888888', '#444444', '#111111']`
 **Parameters:**
+
 ```javascript
 {
   countPerRadius: 30,
@@ -389,7 +407,7 @@ for (let i = 0; i < 10; i++) {
   addParticleExplosion(state, {
     pos: { x: Math.random() * 200 - 100, y: Math.random() * 200 - 100, z: 0 },
     radius: 25,
-    colorOverride: yourCustomColors
+    colorOverride: yourCustomColors,
   });
 }
 ```
@@ -399,16 +417,19 @@ for (let i = 0; i < 10; i++) {
 ### Common Issues
 
 **Textures Not Loading:**
+
 - Check file paths and naming conventions
 - Verify texture dimensions are power-of-2
 - Ensure proper file permissions
 
 **Colors Not Appearing:**
+
 - Verify hex color format (`#rrggbb`)
 - Check alpha channel in texture
 - Confirm additive blending is enabled
 
 **Performance Issues:**
+
 - Reduce particle count or texture resolution
 - Check GPU memory usage
 - Profile with browser dev tools
@@ -417,9 +438,9 @@ for (let i = 0; i < 10; i++) {
 
 ```javascript
 // In browser console
-particleSystem.stats()              // Show pool statistics
-renderer.debugShader('particle')    // Show shader compilation
-texture.checkFormat('explosion')    // Validate texture format
+particleSystem.stats(); // Show pool statistics
+renderer.debugShader('particle'); // Show shader compilation
+texture.checkFormat('explosion'); // Validate texture format
 ```
 
 ## Integration Notes
@@ -427,14 +448,16 @@ texture.checkFormat('explosion')    // Validate texture format
 ### Existing Systems
 
 This shader system integrates with:
+
 - **Particle System**: `src/renderer/particleSystem.ts`
-- **Renderer Config**: `src/config/rendererConfig.ts`  
+- **Renderer Config**: `src/config/rendererConfig.ts`
 - **Asset Pool**: `src/core/assetPool.ts`
 - **Game State**: Canonical state management
 
 ### API Compatibility
 
 The shader system maintains backward compatibility with:
+
 - Existing `addParticleExplosion()` API
 - Configuration in `rendererConfig.particles.explosion`
 - Color override system via `ParticleExplosionOptions`

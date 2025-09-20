@@ -3,7 +3,7 @@ description: Orchestrator and primary development agent. Routes tasks, stages or
 mode: primary
 model: github-copilot/gpt-5-mini
 temperature: 0.0
-prompt: "{file:./prompts/core.txt}"
+prompt: '{file:./prompts/core.txt}'
 tools:
   write: true
   edit: true

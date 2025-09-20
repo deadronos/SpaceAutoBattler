@@ -1,52 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Space AutoBattler UI</title>
-  <!-- stylesheet is extracted and injected by webpack/HtmlWebpackPlugin -->
-  <style>
-    /* Fallback if CSS fails to load */
-    #world { position: fixed; inset: 0; display:block; }
-  </style>
-  <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0b1220">
-</head>
-<body>
-  <div id="flexRoot">
-    <canvas id="world"></canvas>
-  </div>
-  <div id="ui">
-    <button id="startPause" class="btn">▶ Start</button>
-    <button id="reset" class="btn">↺ Reset</button>
-    <button id="addRed" class="btn" title="Add Red ship">+ Red</button>
-    <button id="addBlue" class="btn" title="Add Blue ship">+ Blue</button>
-    <button id="toggleTrails" class="btn">☄ Trails: On</button>
-    <div class="btn" id="speed">Speed: 1×</div>
-    <div class="badge red" id="redScore">Red 0</div>
-    <div class="badge blue" id="blueScore">Blue 0</div>
-    <div id="stats"></div>
-  </div>
-  <div id="bottomRight">
-    <input id="continuousCheckbox" type="checkbox" />
-    <label for="continuousCheckbox" class="continuous-label">Continuous</label>
-    <button id="seedBtn" class="btn" title="Re-seed RNG for reproducible battles">🎲 Seed</button>
-    <button id="formationBtn" class="btn" title="Re-form fleets">🛰️ Form</button>
-    <span class="muted">Space Autobattler</span>
-  </div>
-  <div id="toast"></div>
-  <script>
-    // Bootstrap asset base so worker URLs resolve correctly when the site
-    // is served from repo root (assets under /dist) vs when dist is root.
-    // Heuristic: if the current location contains '/dist/' assume repo-root serving.
-    try {
-      const href = location.href;
-      if (href.includes('/dist/')) {
-        // Ensure no trailing slash
-        window.__ASSET_BASE__ = '/dist';
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Space Auto Battler</title>
+    <style>
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at center, #050a17 0%, #010104 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #f0f6ff;
       }
-    } catch (_e) { /* ignore */ }
-  </script>
-  <!-- production bundle will be injected by HtmlWebpackPlugin; remove dev module import -->
-</body>
+      #root {
+        display: flex;
+        align-items: stretch;
+      }
+      .loading {
+        margin: auto;
+        font-size: 1.5rem;
+        letter-spacing: 0.1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="loading">Initializing battle simulation…</div>
+    </div>
+  </body>
 </html>

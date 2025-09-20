@@ -3,7 +3,7 @@ description: Produce code patches and tests for scoped tasks. Prefer producing p
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.0
-prompt: "{file:./prompts/coder.txt}"
+prompt: '{file:./prompts/coder.txt}'
 tools:
   write: false
   edit: false

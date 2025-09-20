@@ -1,9 +1,11 @@
 # Memory: src/renderer/shipInstancer.ts
 
 Purpose:
+
 - Instanced rendering manager for ships. Provides prototype registration, per-class/team grouping, allocation/freeing of instance slots, transform updates, bounds computation for culling, and prototype metadata inspection for tests.
 
 Key concepts and responsibilities:
+
 - ShipInstancerImpl: core implementation that holds groups keyed by "class_team" and manages per-group instanced meshes (multiple submeshes).
 - Prototype registry: `registerPrototype(className, geometries, materials)` and `updatePrototype(...)` allow dynamic replacement of prototype geometry/materials and in-place updates of groups.
 - GroupData: stores meshes (InstancedMesh[]), capacity, freeIndices, maps id<->index, per-instance positions, prototype metadata, and parentGroup for scene insertion.
@@ -15,6 +17,7 @@ Key concepts and responsibilities:
 - Lifecycle: `init(scene, parent)` attaches existing groups to the provided parent and initializes fallback geometry/materials.
 
 Integration points and notes:
+
 - Uses `state.assetPool` to look for GLTF-derived `threePrototypes` or rasterized SVG ImageBitmap assets to construct prototype geometries/materials when allocating.
 - Exposes `shipInstancer` facade exported for use by renderer/meshFactory/threeRenderer.
 - Defensive, robust handling: many try/catch guards around asset extraction and prototype registration to avoid breaking instancing when assets fail or are missing.
@@ -22,6 +25,7 @@ Integration points and notes:
 - Supports per-instance color via `instanceColor` InstancedBufferAttribute and uses `applyInstanceColorPatch` to enable vertexColors on materials for shader support.
 
 Edge cases and behavior:
+
 - If prototype registration occurs after init(), the instancer marks itself ready and executes ready callbacks.
 - Allocation attempts to use GLTF prototypes first, then rasterized SVG fallbacks, then geometric fallbacks.
 - Growing a group preserves per-instance matrices and color attributes where possible.

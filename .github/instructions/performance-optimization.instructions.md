@@ -15,10 +15,11 @@ Performance isn't just a buzzword—it's the difference between a product people
 ## General Principles
 
 -- **Measure First, Optimize Second:** Prefer profiling and measurement before optimizing. Use benchmarks, profilers, and monitoring tools to identify real bottlenecks. Guessing is the enemy of performance.
-  - *Pro Tip:* Use tools like Chrome DevTools, Lighthouse, New Relic, Datadog, Py-Spy, or your language's built-in profilers.
+
+- _Pro Tip:_ Use tools like Chrome DevTools, Lighthouse, New Relic, Datadog, Py-Spy, or your language's built-in profilers.
 - **Optimize for the Common Case:** Focus on optimizing code paths that are most frequently executed. Don't waste time on rare edge cases unless they're critical.
 - **Avoid Premature Optimization:** Write clear, maintainable code first; optimize only when necessary. Premature optimization can make code harder to read and maintain.
--- **Minimize Resource Usage:** Use memory, CPU, network, and disk resources efficiently. Consider asking: "Can this be done with less?"
+  -- **Minimize Resource Usage:** Use memory, CPU, network, and disk resources efficiently. Consider asking: "Can this be done with less?"
 - **Prefer Simplicity:** Simple algorithms and data structures are often faster and easier to optimize. Don't over-engineer.
 - **Document Performance Assumptions:** Clearly comment on any code that is performance-critical or has non-obvious optimizations. Future maintainers (including you) will thank you.
 - **Understand the Platform:** Know the performance characteristics of your language, framework, and runtime. What's fast in Python may be slow in JavaScript, and vice versa.
@@ -30,16 +31,18 @@ Performance isn't just a buzzword—it's the difference between a product people
 ## Frontend Performance
 
 ### Rendering and DOM
+
 - **Minimize DOM Manipulations:** Batch updates where possible. Frequent DOM changes are expensive.
-  - *Anti-pattern:* Updating the DOM in a loop. Instead, build a document fragment and append it once.
+  - _Anti-pattern:_ Updating the DOM in a loop. Instead, build a document fragment and append it once.
 - **Virtual DOM Frameworks:** Use React, Vue, or similar efficiently—avoid unnecessary re-renders.
-  - *React Example:* Use `React.memo`, `useMemo`, and `useCallback` to prevent unnecessary renders.
--- **Keys in Lists:** Prefer stable keys in lists to help virtual DOM diffing. Avoid using array indices as keys unless the list is static.
+  - _React Example:_ Use `React.memo`, `useMemo`, and `useCallback` to prevent unnecessary renders.
+    -- **Keys in Lists:** Prefer stable keys in lists to help virtual DOM diffing. Avoid using array indices as keys unless the list is static.
 - **Avoid Inline Styles:** Inline styles can trigger layout thrashing. Prefer CSS classes.
 - **CSS Animations:** Use CSS transitions/animations over JavaScript for smoother, GPU-accelerated effects.
 - **Defer Non-Critical Rendering:** Use `requestIdleCallback` or similar to defer work until the browser is idle.
 
 ### Asset Optimization
+
 - **Image Compression:** Use tools like ImageOptim, Squoosh, or TinyPNG. Prefer modern formats (WebP, AVIF) for web delivery.
 - **SVGs for Icons:** SVGs scale well and are often smaller than PNGs for simple graphics.
 - **Minification and Bundling:** Use Webpack, Rollup, or esbuild to bundle and minify JS/CSS. Enable tree-shaking to remove dead code.
@@ -48,6 +51,7 @@ Performance isn't just a buzzword—it's the difference between a product people
 - **Font Optimization:** Use only the character sets you need. Subset fonts and use `font-display: swap`.
 
 ### Network Optimization
+
 - **Reduce HTTP Requests:** Combine files, use image sprites, and inline critical CSS.
 - **HTTP/2 and HTTP/3:** Enable these protocols for multiplexing and lower latency.
 - **Client-Side Caching:** Use Service Workers, IndexedDB, and localStorage for offline and repeat visits.
@@ -56,6 +60,7 @@ Performance isn't just a buzzword—it's the difference between a product people
 - **Preload and Prefetch:** Use `<link rel="preload">` and `<link rel="prefetch">` for critical resources.
 
 ### JavaScript Performance
+
 - **Avoid Blocking the Main Thread:** Offload heavy computation to Web Workers.
 - **Debounce/Throttle Events:** For scroll, resize, and input events, use debounce/throttle to limit handler frequency.
 - **Memory Leaks:** Clean up event listeners, intervals, and DOM references. Use browser dev tools to check for detached nodes.
@@ -64,11 +69,14 @@ Performance isn't just a buzzword—it's the difference between a product people
 - **Avoid Deep Object Cloning:** Use shallow copies or libraries like lodash's `cloneDeep` only when necessary.
 
 ### Accessibility and Performance
+
 - **Accessible Components:** Ensure ARIA updates are not excessive. Use semantic HTML for both accessibility and performance.
 - **Screen Reader Performance:** Avoid rapid DOM updates that can overwhelm assistive tech.
 
 ### Framework-Specific Tips
+
 #### React
+
 - Use `React.memo`, `useMemo`, and `useCallback` to avoid unnecessary renders.
 - Split large components and use code-splitting (`React.lazy`, `Suspense`).
 - Avoid anonymous functions in render; they create new references on every render.
@@ -76,6 +84,7 @@ Performance isn't just a buzzword—it's the difference between a product people
 - Profile with React DevTools Profiler.
 
 #### Angular
+
 - Use OnPush change detection for components that don't need frequent updates.
 - Avoid complex expressions in templates; move logic to the component class.
 - Use `trackBy` in `ngFor` for efficient list rendering.
@@ -83,12 +92,14 @@ Performance isn't just a buzzword—it's the difference between a product people
 - Profile with Angular DevTools.
 
 #### Vue
+
 - Use computed properties over methods in templates for caching.
 - Use `v-show` vs `v-if` appropriately (`v-show` is better for toggling visibility frequently).
 - Lazy load components and routes with Vue Router.
 - Profile with Vue Devtools.
 
 ### Common Frontend Pitfalls
+
 - Loading large JS bundles on initial page load.
 - Not compressing images or using outdated formats.
 - Failing to clean up event listeners, causing memory leaks.
@@ -96,6 +107,7 @@ Performance isn't just a buzzword—it's the difference between a product people
 - Ignoring mobile performance (test on real devices!).
 
 ### Frontend Troubleshooting
+
 - Use Chrome DevTools' Performance tab to record and analyze slow frames.
 - Use Lighthouse to audit performance and get actionable suggestions.
 - Use WebPageTest for real-world load testing.
@@ -106,6 +118,7 @@ Performance isn't just a buzzword—it's the difference between a product people
 ## Backend Performance
 
 ### Algorithm and Data Structure Optimization
+
 - **Choose the Right Data Structure:** Arrays for sequential access, hash maps for fast lookups, trees for hierarchical data, etc.
 - **Efficient Algorithms:** Use binary search, quicksort, or hash-based algorithms where appropriate.
 - **Avoid O(n^2) or Worse:** Profile nested loops and recursive calls. Refactor to reduce complexity.
@@ -113,14 +126,18 @@ Performance isn't just a buzzword—it's the difference between a product people
 - **Streaming:** Use streaming APIs for large data sets to avoid loading everything into memory.
 
 ### Concurrency and Parallelism
+
 - **Asynchronous I/O:** Use async/await, callbacks, or event loops to avoid blocking threads.
 - **Thread/Worker Pools:** Use pools to manage concurrency and avoid resource exhaustion.
 - **Avoid Race Conditions:** Use locks, semaphores, or atomic operations where needed.
 - **Bulk Operations:** Batch network/database calls to reduce round trips.
 - **Backpressure:** Implement backpressure in queues and pipelines to avoid overload.
+
 ---
-applyTo: '*'
+
+applyTo: '\*'
 description: 'Performance optimization — condensed cookbook: short receipt, quick diagnostics, and an actionable checklist.'
+
 ---
 
 # Performance — Quick Guide
@@ -128,38 +145,44 @@ description: 'Performance optimization — condensed cookbook: short receipt, qu
 Receipt: "Identify and fix the top user-facing performance bottleneck — measure → isolate → fix (3 steps)."
 
 Short plan (3 steps):
-1) Measure: collect profiling data (CPU, wall time, memory, network).  
-2) Isolate: reproduce the hotspot in a small test/benchmark.  
-3) Fix + Verify: apply minimal change, add a regression test, and re-run measurements.
+
+1. Measure: collect profiling data (CPU, wall time, memory, network).
+2. Isolate: reproduce the hotspot in a small test/benchmark.
+3. Fix + Verify: apply minimal change, add a regression test, and re-run measurements.
 
 Quick diagnostics (what to run first):
-- Frontend: Lighthouse (LCP/CLS), DevTools performance flame, network waterfall.  
-- Backend: flamegraph, CPU sampling (clinic.js/node --inspect), slow query logs.  
+
+- Frontend: Lighthouse (LCP/CLS), DevTools performance flame, network waterfall.
+- Backend: flamegraph, CPU sampling (clinic.js/node --inspect), slow query logs.
 - Database: EXPLAIN plans, slow query log, index usage.
 
 Top-10 checklist (fast wins):
-- [ ] Measure before changing (profilers, logs).  
-- [ ] Cache expensive results (with TTL & invalidation).  
-- [ ] Avoid blocking I/O in hot paths (use async/streams).  
-- [ ] Reduce payload sizes (select columns, compress responses).  
-- [ ] Lazy-load non-critical assets and code.  
-- [ ] Use CDN and proper cache headers for static assets.  
-- [ ] Fix N+1 queries and add proper indexes.  
-- [ ] Debounce/throttle frequent events (scroll/input).  
-- [ ] Remove excessive logging from hot loops.  
+
+- [ ] Measure before changing (profilers, logs).
+- [ ] Cache expensive results (with TTL & invalidation).
+- [ ] Avoid blocking I/O in hot paths (use async/streams).
+- [ ] Reduce payload sizes (select columns, compress responses).
+- [ ] Lazy-load non-critical assets and code.
+- [ ] Use CDN and proper cache headers for static assets.
+- [ ] Fix N+1 queries and add proper indexes.
+- [ ] Debounce/throttle frequent events (scroll/input).
+- [ ] Remove excessive logging from hot loops.
 - [ ] Add benchmarks and CI regression checks for critical paths.
 
 Quick checks for common stacks:
-- Node.js: avoid sync fs calls, use streams, profile with clinic.  
-- React: memoize heavy children, code-split routes, avoid re-rendering lists.  
-- SQL: prefer parameterized queries, index filters, avoid SELECT *.
+
+- Node.js: avoid sync fs calls, use streams, profile with clinic.
+- React: memoize heavy children, code-split routes, avoid re-rendering lists.
+- SQL: prefer parameterized queries, index filters, avoid SELECT \*.
 
 Small template: "Measure → Patch → Test"
-- PR description: include measurement snapshot (before), change summary, verification (after numbers + tests).  
+
+- PR description: include measurement snapshot (before), change summary, verification (after numbers + tests).
 
 If unsure: run a 60–90s micro-benchmark isolating the suspected hotspot and iterate until the change yields measurable improvement.
 
 References: Chrome DevTools, Lighthouse, clinic.js, EXPLAIN, k6.
 
 End.
+
 - Use `async/await` for I/O-bound operations.

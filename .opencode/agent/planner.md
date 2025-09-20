@@ -3,7 +3,7 @@ description: Decompose high-level work into concrete subtasks with acceptance cr
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.1
-prompt: "{file:./prompts/planner.txt}"
+prompt: '{file:./prompts/planner.txt}'
 tools:
   read: true
   grep: true
@@ -25,7 +25,17 @@ Example output (JSON):
 
 ```json
 [
-  { "id": "T1-spec", "type": "planner:create-spec", "payload": {"feature":"X"}, "meta":{"priority":70, "estimate":30} },
-  { "id": "T1-impl", "type": "coder:implement", "payload": {"feature":"X"}, "meta":{"priority":60, "estimate":120} }
+  {
+    "id": "T1-spec",
+    "type": "planner:create-spec",
+    "payload": { "feature": "X" },
+    "meta": { "priority": 70, "estimate": 30 }
+  },
+  {
+    "id": "T1-impl",
+    "type": "coder:implement",
+    "payload": { "feature": "X" },
+    "meta": { "priority": 60, "estimate": 120 }
+  }
 ]
 ```

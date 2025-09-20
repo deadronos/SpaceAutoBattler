@@ -1,69 +1,72 @@
-# SpaceAutoBattler
+﻿# SpaceAutoBattler
 
-> A 3D deterministic space auto-battler simulation: pure simulation logic separated from rendering and UI. This repository contains the simulation core, renderer, configuration, tests, and build scripts used to run, test, and build the project for local development and CI.
+> Deterministic 3D space auto-battler: simulation logic (deterministic AI & physics) is separated from rendering and UI. This repository contains the simulation core, renderer, configuration, tests, build scripts, and developer guides needed to run, test, and extend the project.
 
-This llms.txt file lists prioritized navigation targets for LLMs and contributors to quickly understand the repository layout, purpose, and where to find authoritative information (design, configuration, tests, and runtime scripts).
+A concise navigation guide optimized for LLMs and contributors. Focus areas: pure simulation core under `src/`, configuration-driven behavior in `src/config/`, deterministic RNG and canonical `GameState` types, and fast unit tests in `test/vitest/`. Use docs/ and spec/ for design and architecture details, and memory/ for ongoing project context.
 
 ## Documentation
 
-- [Main README](README.md): Primary project overview, architecture, quick start, controls, and development guidelines.
-- [IMPLEMENTATION_GUIDE](docs/IMPLEMENTATION_GUIDE.md): Design notes and implementation guidance for core subsystems.
-- [CURRENT_STATUS_NEXT_STEPS](docs/CURRENT_STATUS_NEXT_STEPS.md): Developer-facing status and next tasks.
-- [AI_Review_and_Improvements](docs/AI_Review_and_Improvements.md): Notes about AI improvements and behavior changes.
-- [threejs-libraries](docs/threejs-libraries.md): References and choices for Three.js libraries and helpers.
-- [shipIndex](docs/shipIndex.md): Index of ship-related documentation and references.
-- [RESEARCH_GPT5_COOKBOOK](docs/RESEARCH_GPT5_COOKBOOK.md): Research notes valuable for model-driven changes.
+- [README.md](README.md): Project overview, quickstart, development commands, and high-level architecture.
+- [AGENTS.md](AGENTS.md): Repository contribution and agent guidelines (rules for automated edits).
+- [docs/CURRENT_STATUS_NEXT_STEPS.md](docs/CURRENT_STATUS_NEXT_STEPS.md): Active work, blockers and next tasks.
+- [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md): Implementation notes and subsystem guidance.
+- [docs/game_balance_summary.md](docs/game_balance_summary.md): Balance and configuration notes.
+- [spec/src-structure.md](spec/src-structure.md): Source layout and cross-team orientation.
+- [memory/activeContext.md](memory/activeContext.md): Current short-lived project context and decisions.
 
-SpaceAutoBattler — Quick LLM Navigation Guide
+## Key source locations (core code)
 
-This file gives a concise, up-to-date map for contributors and LLMs to find the most authoritative documentation, high-value source files, and test locations in the repository.
+- [src/](src/): Top-level source folder (TypeScript).
+- [src/core/](src/core/): Simulation core  entity management, AI, pure game logic. Primary area for logic changes.
+- [src/types/](src/types/): Canonical types including `GameState` used across the codebase.
+- [src/config/](src/config/): All balance & runtime configuration (entities, behavior, physics, renderer). Prefer config changes over code when tuning.
+- [src/utils/](src/utils/): Utilities including deterministic RNG (`src/utils/rng.ts`) and vector math.
+- [src/main.ts](src/main.ts): App entry and main loop (wiring between sim/renderer).
+- [src/simWorker.ts](src/simWorker.ts): Physics worker (Rapier3D) and sim  main thread messaging.
 
-Top-level goals
-- Focus on the pure simulation core (deterministic game logic and AI) separated from the renderer.
-- Keep changes safe and test-driven: unit tests in `test/vitest/` validate simulation behavior without rendering.
+## Tests & validation
 
-Documentation (high-value)
-- `README.md` — project overview, quick start, and development commands.
-- `docs/CURRENT_STATUS_NEXT_STEPS.md` — active work, blockers, and next tasks.
-- `docs/AI_Review_and_Improvements.md` — notes on AI behavior, optimization targets, and rationale.
+- [test/](test/): Test harness and fixtures.
+- [test/vitest/](test/vitest/): Unit tests (Vitest). Primary validation for simulation logic.
+- [vitest.config.js](vitest.config.js): Vitest configuration.
+- Typecheck: `npm run typecheck` (npx tsc --noEmit)
+- Tests: `npm test` (run unit test suite)
 
-Key source locations
-- `src/core/` — simulation core (AI, physics, game state). Primary area for logic changes.
-  - `src/core/gameState.ts` — canonical `GameState` type and state transition helpers (single source of truth for runtime state).
-  - `src/core/ai/` — AI modules (controller, steering, intent, targeting, spatial helpers). Hotpaths for perf work.
-  - `src/core/physics.ts` — deterministic physics and movement helpers.
-- `src/types/` — TypeScript types used across the codebase (including `GameState`).
-- `src/config/` — All balance and runtime configuration (entities, behavior, physics, renderer). Prefer changing config over code when tuning behavior.
+## Build, run, and tooling
 
-Testing and verification
-- Unit tests (fast): `npm test` / `test/vitest/` — primary validation for simulation logic.
-- Typecheck: `npm run typecheck` (fast) — prevents type regressions.
-- Build: `npm run build` / `npm run build-standalone` — quick bundle verification.
+- [package.json](package.json): Scripts (build, test, serve) and dependency manifest.
+- [scripts/](scripts/): Helper scripts used during development (generators, validators).
+- [webpack.config.mjs](webpack.config.mjs): Bundler config for builds.
+- [playwright.config.cjs](playwright.config.cjs): Playwright config (no authored E2E tests by default).
+- Build: `npm run build` and `npm run build-standalone`
+- Serve: `npm run serve` / `npm run serve:dist`
 
-Tooling & scripts
-- `package.json` — scripts (serve, build, test, typecheck).
-- `scripts/` — helper scripts (generating memory files, validators, builds).
+## Configuration & assets
 
-Performance hotspots (where LLMs often help)
-- `src/core/ai/controller.ts` — `updateShipAI` hot path; careful, atomic edits required with tests after each change.
-- `src/core/ai/steering.ts`, `src/core/ai/intent.ts`, `src/core/ai/targeting.ts` — priority targets for math/sqrt/hypot reductions.
-- `src/utils/vector3.ts` and `src/core/spatial.*` — geometry helpers and spatial queries.
+- [src/config/rendererConfig.ts](src/config/rendererConfig.ts): Visual and camera settings.
+- [src/config/entitiesConfig.ts](src/config/entitiesConfig.ts): Ship classes, turrets, health, damage parameters.
+- [assets/](assets/): Textures, shaders, and other visual assets.
+- [SHIP_INSTANCING.md](SHIP_INSTANCING.md): Notes about ship instancing strategy.
 
-Conventions & safety
-- Edit only TypeScript under `src/` (do not edit `dist/` or built artifacts).
-- Preserve determinism: use the seeded RNG utilities when needed and avoid non-deterministic operations in simulation code paths.
-- Keep changes atomic and test-driven: run unit tests and typecheck after each change.
+## Design, research & notes
 
-Where to start for common tasks
-- Add/adjust AI behavior: `src/core/ai/*` + tests in `test/vitest/ai-*.spec.ts`.
-- Fix a failing test: run `npx vitest` and open the failing test file under `test/vitest/`.
-- Performance micro-optimizations: search for `Math.hypot`/`Math.sqrt` in `src/core/ai/` and replace with squared-distance gating where safe.
+- [docs/RESEARCH_GPT5_COOKBOOK.md](docs/RESEARCH_GPT5_COOKBOOK.md): Research notes and model-driven ideas.
+- [docs/renderer-pipeline.md](docs/renderer-pipeline.md): Rendering pipeline details.
+- [spec/particle-explosion-spec.md](spec/particle-explosion-spec.md): Particle/explosion design (example spec).
+- [memory/](memory/): Living project context, design notes, and active decisions.
 
-Governance & notes
-- Maintainer: `deadronos` — main branch is `main`, active development on `dev`.
-- Follow the repository's Copilot/agent guidance in `.github/copilot-instructions.md` for automated edits.
+## Optional / Developer convenience
 
-# Repo instructions
-For agent guidance and repository-specific rules, see `.github/instructions/*.instructions.md`.
+- [.github/instructions/](.github/instructions/): Agent and Copilot guidance files used by contributors and automated agents.
+- [CHANGELOG.md](CHANGELOG.md): Release notes and history.
+- [README-GAMEMANAGER.md](README-GAMEMANAGER.md): Game manager notes.
+- [temp-lint-main.json](temp-lint-main.json): Lint report artifacts (example/internal).
 
-If you need a tailored quickstart or a minimal patch (tests + typecheck run), open an issue or ask for an automated change.
+## Quick guidance for LLMs and contributors
+
+- Edit only TypeScript under `src/`  do not modify generated artifacts in `dist/`.
+- All runtime state must live on the canonical `GameState` type from `src/types/`.
+- Preserve determinism: use the seeded RNG in `src/utils/rng.ts` for simulation flows.
+- Prefer configuration changes in `src/config/` for tuning balance or behavior.
+- Tests are fast and deterministic: run `npm test` and `npm run typecheck` before commits.
+- For visual/renderer work, follow asset pooling and Three.js disposal patterns in `src/renderer/` and `memory/renderer-*` docs.

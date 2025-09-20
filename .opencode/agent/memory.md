@@ -3,7 +3,7 @@ description: Short-term and long-term memory store. Provide stable keys, namespa
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.0
-prompt: ""
+prompt: ''
 tools:
   read: true
   write: true

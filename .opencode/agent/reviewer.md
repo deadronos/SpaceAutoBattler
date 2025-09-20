@@ -3,7 +3,7 @@ description: Read-only code reviewer focusing on security, correctness, performa
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.1
-prompt: "{file:./prompts/reviewer.txt}"
+prompt: '{file:./prompts/reviewer.txt}'
 tools:
   read: true
   grep: true

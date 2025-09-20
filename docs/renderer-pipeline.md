@@ -16,19 +16,17 @@ finally into the Three.js renderer’s per‑frame update loop.
 
 ## Components & Responsibilities
 
-- Asset Loader (`src/core/assetLoader.ts`)
+-- Asset Loader (`src/utils/patchGltfLoader.ts`) — runtime guard for GLTF loader; renderer bootstrap provides loader wiring.
   - `loadGLTF(state, url)`: dynamically imports Three’s `GLTFLoader`, loads a
     `.glb`, and caches the result in `state.assetPool` keyed by URL.
   - Returns `{ url, data: gltf }`. Reads from the cache on subsequent loads.
 
-- Asset Pool (`src/core/assetPool.ts`, `src/types/index.ts`)
-  - `LRUAssetPool<T>` provides a Map‑based LRU with optional dispose callbacks.
-  - Runtime uses `GameState.assetPool?: Map<string, unknown>` as the canonical
-    cache surface accessed by loaders and the renderer.
+-- Asset Pool (renderer-managed)
+  - Renderer bootstrap typically attaches a `Map` or LRU wrapper to `GameState` (or keeps one locally) to cache parsed GLTFs and textures.
+  - If you add a shared `src/core/assetPool.ts`, link it here; until then treat the pool as a renderer concern.
 
 - Ship Model Preload (`src/core/shipModelLoader.ts`)
-  - `preloadShipModels(state, teams?)` loads each class from
-    `src/config/shipModelMap.ts` via `loadGLTF`.
+  - `preloadShipModels` behavior is implemented by renderer bootstrap using `src/assets/ships.ts` (model mappings) and `patchGltfLoader` for low-level loader compatibility.
   - Stores a prototype under keys: `ship-<class>` and `ship-<class>-<team>`.
   - Prototype fields: `gltf`, `scale`, `pivotOffset`, `boundsRadius`,
     `attribution`, and optional `threePrototypes` extracted by traversing
@@ -59,29 +57,29 @@ finally into the Three.js renderer’s per‑frame update loop.
       z‑fighting. Supports capacity growth and per‑layer replacement.
   - Ships (`src/renderer/shipInstancer.ts`)
     - Groups keyed by `className` and optional `team`, each holding one
-    `InstancedMesh` per prototype geometry, plus capacity/free‑list and id
-    mappings. Supports `instanceColor` attribute via an `onBeforeCompile`
-    shader patch that multiplies instance color into diffuse output.
+      `InstancedMesh` per prototype geometry, plus capacity/free‑list and id
+      mappings. Supports `instanceColor` attribute via an `onBeforeCompile`
+      shader patch that multiplies instance color into diffuse output.
     - Provides `allocate`, `free`, `updateTransform`, `markMatricesNeedUpdate`,
       `sync`, and `cull(camera)` for coarse bounds pruning.
 
 ## Data Flow
 
-1) Model discovery
+1. Model discovery
    - `src/config/shipModelMap.ts` maps ship classes to `.glb` files and basic
      metadata (`scale`, `boundsRadius`, …).
 
-2) Load and cache
+2. Load and cache
    - `preloadShipModels` calls `loadGLTF`, which caches the loaded glTF in
      `state.assetPool` under the URL key and emits a prototype per class/team
      key (`ship-<class>`, `ship-<class>-<team>`).
 
-3) Prototype registration
-   - During renderer init, if `threePrototypes` exist in the asset pool for a
-     class, the renderer registers those geometries/materials with the ship
-     instancer. Otherwise, the ship instancer falls back to its internal defaults.
+3. Prototype registration
+  - During renderer init, if `threePrototypes` exist in the renderer cache for a
+    class, the renderer registers those geometries/materials with the ship
+    instancer. Otherwise, the ship instancer falls back to its internal defaults.
 
-4) Frame updates
+4. Frame updates
    - Ships: ensure instance allocation for each ship id/class/team, then
      `updateTransform(id, pos, quat, scale)`. End of frame: `shipInstancer.sync()`
      marks buffers for GPU update; optional `cull(camera)` to skip work.
@@ -113,12 +111,25 @@ finally into the Three.js renderer’s per‑frame update loop.
 - Shader patching: ship instancer adds an `instanceColor` attribute and varies
   it into the fragment shader without clobbering existing `onBeforeCompile`.
 
+## Visual Interpolation
+
+The renderer supports smooth visual interpolation between simulation steps to reduce stutter when render FPS > sim TPS (default 60 FPS render vs 10 TPS sim).
+
+- **How it works**: At the start of each sim step (in core/gameState.ts simulateStep), entity prevPos/prevOrientation are captured from current state. In the renderer (threeRenderer.ts updateTransforms), positions are LERPed and orientations SLERPed using alpha = min(1, (state.time - lastSimTime) / fixedDt).
+
+- **Toggle**: Set rendererConfig.enableInterpolation = false to disable and render at exact sim positions (useful for debugging or low-FPS targets).
+
+- **Toggle**: Set `rendererConfig.enableInterpolation = false` (see `src/config/rendererConfig.ts`) to disable and render at exact sim positions (useful for debugging or low-FPS targets).
+
+- **Plan details**: See plan/feature-interpolation-renderer-1.md for implementation phases, types, and validation.
+
+- **Performance**: Minimal overhead; reuses existing transforms. Tested with determinism preserved (unit tests green).
+
 ## Key Files
 
-- Loader & Pool
-  - `src/core/assetLoader.ts`
-  - `src/core/assetPool.ts`
-  - `src/core/shipModelLoader.ts`
+  - `src/utils/patchGltfLoader.ts` (loader guard)
+  - `src/assets/ships.ts` (model URL mapping)
+  - renderer bootstrap (attaches asset pool and invokes preload)
 - Config
   - `src/config/shipModelMap.ts`
   - `src/config/rendererConfig.ts`

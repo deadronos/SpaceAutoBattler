@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Key changes
+
 - Introduced a new renderer configuration flag `RendererConfig.disableSvgSubsystem`.
   - Default: `true` (SVG subsystem disabled by default to prefer GLTF models at runtime).
   - When enabled (set to `true`), the SVG rasterization subsystem will be short-circuited to avoid creating the raster worker, performing rasterization, or watching SVG files.
@@ -28,6 +29,7 @@
   - Fixed a parsing/brace imbalance in `src/main.ts` around the simulation worker (simWorker) initialization IIFE. This resolved TypeScript/webpack build failures seen in CI.
 
 ### Files changed (high-level)
+
 - src/config/rendererConfig.ts — added `disableSvgSubsystem` flag and defaulted to `true`.
 - src/core/svgLoader.ts — lazy worker initialization, guard checks, logging, and fail-fast rasterization paths.
 - src/main.ts — skipped SVG preloads and debug SVG helpers when GLTF or SVG subsystem disabled; fixed parsing/brace issue.
@@ -36,6 +38,7 @@
 - test/vitest/debugSVG.noop.spec.ts — test for debug helper no-op.
 
 ### How to verify
+
 1. Run TypeScript checks:
 
 ```powershell
@@ -49,6 +52,7 @@ npm test
 ```
 
 3. Manual runtime checks:
+
 - Start a local build and inspect the console during rasterization flows:
 
 ```powershell
@@ -61,13 +65,16 @@ npm run serve:dist
 - When `RendererConfig.loadGltfModels` is enabled and SVG is disabled, `window.debugSVG` calls should be no-ops and safe to call from the console.
 
 ### Notes / Rationale
+
 - Many consumers will prefer GLTF ship models for richer visuals and lower runtime raster work. Defaulting the SVG subsystem to disabled avoids unnecessary worker creation and raster memory usage in that common scenario.
 - Lazy worker initialization keeps the worker cost only when the app actually needs rasterization (SVG fallback or explicit debug tasks).
 - Fail-fast guards prevent accidental rasterization in environments where SVG is intentionally disabled.
 
 ### Follow-ups (optional)
+
 - Consider adding a small integration test to assert `DefaultRendererConfig.disableSvgSubsystem === true` for CI safety.
 - Add a short entry to `README.md` explaining the GLTF-first recommendation and how to re-enable the SVG subsystem during local testing.
 
 ---
+
 Generated on: 2025-09-06

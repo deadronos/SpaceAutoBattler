@@ -3,7 +3,7 @@ description: External communicator and integration agent (LLM provider, webfetch
 mode: subagent
 model: github-copilot/gpt-5-mini
 temperature: 0.0
-prompt: ""
+prompt: ''
 tools:
   webfetch: true
   read: true

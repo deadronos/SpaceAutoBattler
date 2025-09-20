@@ -58,7 +58,7 @@ assets/
 addParticleExplosion(gameState, {
   pos: { x: 0, y: 0, z: 0 },
   radius: 25,
-  colorOverride: ['#ffffff', '#ff8c00', '#440000'] // White → Orange → Red
+  colorOverride: ['#ffffff', '#ff8c00', '#440000'], // White → Orange → Red
 });
 ```
 
@@ -70,13 +70,13 @@ window.testExplosion = (preset) => {
   const presets = {
     fire: ['#fffbda', '#ff8c00', '#440000'],
     electric: ['#ffffff', '#00ffff', '#0044ff'],
-    plasma: ['#ff00ff', '#8000ff', '#1a0033']
+    plasma: ['#ff00ff', '#8000ff', '#1a0033'],
   };
-  
+
   addParticleExplosion(gameState, {
     pos: { x: 0, y: 0, z: 0 },
     radius: 25,
-    colorOverride: presets[preset]
+    colorOverride: presets[preset],
   });
 };
 ```
@@ -88,7 +88,7 @@ window.testExplosion = (preset) => {
 These assets integrate with the existing particle system:
 
 - **Particle System**: `src/renderer/particleSystem.ts`
-- **Configuration**: `src/config/rendererConfig.ts` 
+- **Configuration**: `src/config/rendererConfig.ts`
 - **Shader Location**: `src/renderer/shaders/`
 - **Asset Pool**: `src/core/assetPool.ts`
 
@@ -118,7 +118,7 @@ addParticleExplosion(gameState, {
   radius: ship.radius,
   colorOverride: ['#fffbda', '#ff8c00', '#440000'],
   lifetime: 1.2,
-  count: 18
+  count: 18,
 });
 ```
 
@@ -127,14 +127,14 @@ addParticleExplosion(gameState, {
 ```javascript
 const teamColors = {
   red: ['#fffbda', '#ff4444', '#440000'],
-  blue: ['#fffbda', '#4444ff', '#000044']
+  blue: ['#fffbda', '#4444ff', '#000044'],
 };
 
 addParticleExplosion(gameState, {
   pos: ship.position,
   radius: ship.radius,
   colorOverride: teamColors[ship.team],
-  entityId: ship.id  // For deterministic seeding
+  entityId: ship.id, // For deterministic seeding
 });
 ```
 
@@ -159,16 +159,19 @@ addParticleExplosion(gameState, {
 ### Common Issues
 
 **Textures not loading:**
+
 - Check file paths and naming conventions
 - Verify texture dimensions are power-of-2
 - Ensure PNG has alpha channel
 
 **Colors not appearing:**
+
 - Verify hex color format (`#rrggbb`)
 - Check that additive blending is enabled
 - Confirm shader uniform mapping
 
 **Performance issues:**
+
 - Reduce particle count or texture resolution
 - Check GPU memory usage in dev tools
 - Consider LOD system for distant explosions
@@ -177,9 +180,9 @@ addParticleExplosion(gameState, {
 
 ```javascript
 // Browser console utilities
-particleSystem.stats()                    // Show pool statistics
-softCircleUtils.showPresets()            // Generate test textures
-window.ExplosionTester(gameState)        // Create test interface
+particleSystem.stats(); // Show pool statistics
+softCircleUtils.showPresets(); // Generate test textures
+window.ExplosionTester(gameState); // Create test interface
 ```
 
 ## Contributing

@@ -38,6 +38,7 @@ Transform mistakes and lessons into succinct, actionable instructions that will 
 ## Update Triggers
 
 Common scenarios that warrant memory updates:
+
 - Bracket balancing mistakes
 - Namespace/filename convention errors
 - REPL evaluation patterns that don't work

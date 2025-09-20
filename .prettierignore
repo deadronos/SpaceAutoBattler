@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.cache
+test-output
+playwright-report
+tmp
+*.min.js
+*.bundle.js

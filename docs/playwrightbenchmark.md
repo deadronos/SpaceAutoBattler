@@ -1,6 +1,5 @@
 examine @hotpaths_report.md and plan/refine next steps, ask before implementation or clarification needed (confidence <90%)
 
-
 Here’s a concise readout and a proposed plan based on docs/hotpaths_report.md.
 
 What I See
@@ -51,7 +50,6 @@ determinism, we should use the seeded rng provided,, we could relax for visual o
 
 we should maybe add hooks, a microbenchmark to audit current state
 
-
 Great — thanks for the constraints. Here’s a refined, concrete plan aligned to desktop Chrome, 60 FPS, 50–100 ships, seeded determinism, and adding hooks + a microbenchmark. I won’t implement until you confirm the priorities.
 
 Implementation Plan
@@ -65,14 +63,14 @@ Telemetry hooks (minimal, opt-in)
 
 Physics: measure step time inside src/simWorker.ts (step, serialize/transfers). Gate under a DEBUG_PERF flag.
 Raster: measure per-SVG raster timing in src/core/svgLoader.ts and worker-side in src/core/svgRasterWorker.impl.ts.
-Aggregation: expose a lightweight aggregator for dev builds that batches to console and optionally window.__perf with rolling stats (avg, p95, p99).
+Aggregation: expose a lightweight aggregator for dev builds that batches to console and optionally window.\_\_perf with rolling stats (avg, p95, p99).
 Types: add PerfEvent and PerfTiming in src/types/index.ts (kept minimal).
 Microbenchmark (browser E2E)
 
 Add a Playwright spec in test/playwright/bench-ships.spec.js that:
 Builds and serves dist/, navigates to the main page.
 Spawns 50→100 ships using existing debug hooks or a query param.
-Reads frame stats via window.__perf over ~10–20 seconds.
+Reads frame stats via window.\_\_perf over ~10–20 seconds.
 Reports avg FPS and 1% low. Fails if avg < 60 for 50 ships (initial bar); logs for 100 ships.
 Scope: start with Chromium only (config already targets Desktop Chrome).
 Transferables audit
@@ -92,7 +90,7 @@ Relax determinism for purely visual/particle paths.
 Acceptance Criteria
 
 Chrome feature guard: unsupported environments throw a clear error during SVG raster init.
-Telemetry: DEBUG_PERF on shows step timings for physics and raster in console; window.__perf exposes rolling FPS and operation durations.
+Telemetry: DEBUG_PERF on shows step timings for physics and raster in console; window.\_\_perf exposes rolling FPS and operation durations.
 Microbenchmark: Chromium run logs FPS for 50 and 100 ships; 50 ships averages ≥ 60 FPS on a typical desktop dev box.
 Transfers: logging shows transform payloads are transferred (not cloned); image rasters use ImageBitmap transfer where applicable.
 File Touch Points
@@ -106,7 +104,7 @@ Questions/Confirmation
 
 Approve these as the first two tasks to implement?
 Add feature detection + fail-fast for OffscreenCanvas/ImageBitmap.
-Add minimal telemetry hooks and window.__perf exposure, then the Playwright microbenchmark (Chromium only).
+Add minimal telemetry hooks and window.\_\_perf exposure, then the Playwright microbenchmark (Chromium only).
 Any specific ship configurations or scene presets you want the benchmark to load?
 Do you prefer the telemetry flag via process.env.DEBUG_PERF (injected at build) or a ?debugPerf=1 URL param toggle?
 Once you confirm, I’ll implement the feature guards and telemetry hooks first, then the microbenchmark.
@@ -131,7 +129,6 @@ localhost:8080/spaceautobattler.html
 URL param
 is is possible profiling once without debug telemetry and once with, to capture overhead of debug telemetry?
 
-
 Perfect — approved. I’ll implement in this order:
 
 Feature guards: fail-fast when OffscreenCanvas/createImageBitmap unavailable.
@@ -146,7 +143,7 @@ Chromium only by default; not included in default test run.
 Assumptions:
 
 Page exposes UI buttons “Reset”, “Add Red”, “Add Blue” (or similar). If labels differ, I’ll adapt selectors.
-A small window.__perf collector is acceptable for the benchmark to read FPS and timings; it only activates with debugPerf=1.
+A small window.\_\_perf collector is acceptable for the benchmark to read FPS and timings; it only activates with debugPerf=1.
 The spec will be opt-in via npx vitest test/playwright/bench-ships.spec.js or npx playwright test bench-ships depending on how we place it. I’ll make it Playwright-native under test/playwright/ and skip by default unless E2E_BENCH=1.
 Quick confirmations before I start:
 
@@ -166,7 +163,6 @@ Runtime URL: spaceautobattler.html at the root of dist/ is correct.
 Env toggles:
 Enable bench run with E2E_BENCH=1 to avoid running in normal CI.
 Telemetry toggle via URL param ?debugPerf=1 only (no build-time flag).
-
 
 Good call. I explored the built UI to lock selectors and flow. Here’s what I found and how I’ll proceed.
 
@@ -197,7 +193,7 @@ If both server running and dist populated → test directly.
 For each run (no telemetry, with telemetry):
 Navigate to http://localhost:8080/spaceautobattler.html[?debugPerf=1].
 Click #reset.
-Click #addRed 15 times and #addBlue 15 times → 25 per team, run for ~10–20s and record FPS via window.__perf.
+Click #addRed 15 times and #addBlue 15 times → 25 per team, run for ~10–20s and record FPS via window.\_\_perf.
 Click #reset.
 Click #addRed 40 times and #addBlue 40 times → 50 per team, run for ~10–20s and record FPS.
 Log avg FPS and 1% low; assert for the 25/team case that avg ≥ 60 on typical desktop, but do not fail CI by default (only fail when E2E_BENCH_STRICT=1).
@@ -210,7 +206,7 @@ src/core/svgRasterWorker.impl.ts
 Add telemetry hooks gated by ?debugPerf=1:
 Physics timings in src/simWorker.ts (step and postMessage/serialization)
 Raster timings in src/core/svgLoader.ts and worker impl
-Minimal window.__perf collector for FPS and operation durations
+Minimal window.\_\_perf collector for FPS and operation durations
 Add Playwright spec test/playwright/bench-ships.spec.js:
 Gated behind process.env.E2E_BENCH
 Detect server and build state; run build/serve if needed
@@ -228,7 +224,6 @@ optional strict mode toggle as proposed seems ok
 
 duration 12s sounds reasonable
 
-
 Great — locking in those choices.
 
 Plan and next actions
@@ -243,7 +238,7 @@ Add fail-fast checks for OffscreenCanvas and createImageBitmap in src/core/svgLo
 Telemetry (URL param ?debugPerf=1)
 Physics: measure step + postMessage overheads inside src/simWorker.ts.
 SVG raster: measure rasterization time in src/core/svgLoader.ts and in the worker.
-Collector: a tiny window.__perf object, created only when debugPerf=1, that tracks rolling FPS and operation durations. Exposed for Playwright.
+Collector: a tiny window.**perf object, created only when debugPerf=1, that tracks rolling FPS and operation durations. Exposed for Playwright.
 Playwright microbench (manual)
 New spec: test/playwright/bench-ships.spec.js.
 Runs only when E2E_BENCH=1 is set.
@@ -253,7 +248,7 @@ Else run npm run build. If server not running, run npm run serve and wait for po
 Benchmark flow (twice: without and with ?debugPerf=1):
 Navigate to http://localhost:8080/spaceautobattler.html[?debugPerf=1].
 Click #reset.
-Click #addRed 15x and #addBlue 15x → 25/team. Measure 12s FPS via window.__perf.
+Click #addRed 15x and #addBlue 15x → 25/team. Measure 12s FPS via window.**perf.
 Click #reset.
 Click #addRed 40x and #addBlue 40x → 50/team. Measure 12s FPS.
 Log averages and 1% lows; if E2E_BENCH_STRICT=1, assert avg ≥ 60 FPS for 25/team.
@@ -267,7 +262,6 @@ Shall I proceed to implement these changes now?
 
 proceed
 
-
 Implemented the agreed changes. Here’s what I did and how to use it.
 
 Feature Guards
@@ -280,7 +274,7 @@ Telemetry Hooks
 src/simWorker.ts:
 Added a URL-driven toggle: appending ?debugPerf=1 to the worker URL enables perf events.
 Emits simple { type: 'perf', name, ms } messages for physics.step.
-The page-side collector window.__perf is assumed to exist only when ?debugPerf=1 is set; the Playwright bench can still compute FPS via rAF timestamps if it’s absent. If you want, I can add a minimal collector on the main thread in a follow-up.
+The page-side collector window.\_\_perf is assumed to exist only when ?debugPerf=1 is set; the Playwright bench can still compute FPS via rAF timestamps if it’s absent. If you want, I can add a minimal collector on the main thread in a follow-up.
 Playwright Microbenchmark
 
 New: test/playwright/bench-ships.spec.js
@@ -306,10 +300,10 @@ Notes
 
 Runtime URL confirmed: http://localhost:8080/spaceautobattler.html.
 Serve command uses npm run serve as you requested.
-If you want in-page window.__perf with FPS aggregation and operation timings (to be read by Playwright and overlays), I can add a minimal collector guarded by ?debugPerf=1.
+If you want in-page window.\_\_perf with FPS aggregation and operation timings (to be read by Playwright and overlays), I can add a minimal collector guarded by ?debugPerf=1.
 Want me to:
 
-Add the main-thread window.__perf collector for FPS and aggregate timings?
+Add the main-thread window.\_\_perf collector for FPS and aggregate timings?
 Extend worker perf events to include message serialization/transfer timings?
 4 files changed
 +175
@@ -334,9 +328,8 @@ bench-ships.spec.js
 +120
 -0
 
-Add the main-thread window.__perf collector for FPS and aggregate timings? > yes
+Add the main-thread window.\_\_perf collector for FPS and aggregate timings? > yes
 Extend worker perf events to include message serialization/transfer timings? > yes
-
 
 Done. I added a main-thread perf collector and extended worker perf events to include message overheads.
 
@@ -344,7 +337,7 @@ What changed
 
 Main-thread collector
 
-src/main.ts: Adds window.__perf when ?debugPerf=1 is present.
+src/main.ts: Adds window.\_\_perf when ?debugPerf=1 is present.
 Tracks FPS via rAF sampling.
 Provides addEvent({name, ms}), getFpsStats(), getEvents().
 Lightweight and only active when the URL param is set.
@@ -362,8 +355,8 @@ Measures rasterization duration and posts perf event:
 raster.render
 Perf event consumption on main thread
 
-src/core/svgLoader.ts: When worker emits {type:'perf'}, forwards to window.__perf.addEvent(...) if present.
-Existing bench spec already leverages window.__perf.getFpsStats() if available; otherwise it falls back to a rAF-based measurement. Now it will use the collector when running with ?debugPerf=1.
+src/core/svgLoader.ts: When worker emits {type:'perf'}, forwards to window.**perf.addEvent(...) if present.
+Existing bench spec already leverages window.**perf.getFpsStats() if available; otherwise it falls back to a rAF-based measurement. Now it will use the collector when running with ?debugPerf=1.
 
 How to use
 
@@ -393,12 +386,12 @@ Notes
 - The spec will build and/or start the local server if needed, then navigate to `http://localhost:8080/spaceautobattler.html`.
 - It runs two passes (without and with `?debugPerf=1`) to capture telemetry overhead.
 - With `E2E_BENCH_STRICT=1`, it asserts ≥ 60 FPS for the 25-per-team case; otherwise it only logs results.
-E2E_BENCH=1 E2E_BENCH_STRICT=1 ... (enforces ≥60 FPS for 25/team)
-Directly in the browser:
-Open http://localhost:8080/spaceautobattler.html?debugPerf=1
-Call window.__perf.getFpsStats() in DevTools for current averages.
-window.__perf.getEvents() shows recent perf events (physics/raster metrics).
-Notes
+  E2E_BENCH=1 E2E_BENCH_STRICT=1 ... (enforces ≥60 FPS for 25/team)
+  Directly in the browser:
+  Open http://localhost:8080/spaceautobattler.html?debugPerf=1
+  Call window.**perf.getFpsStats() in DevTools for current averages.
+  window.**perf.getEvents() shows recent perf events (physics/raster metrics).
+  Notes
 
 The SVG feature guards remain: both in main loader and worker, fail fast if OffscreenCanvas or createImageBitmap is missing.
 The payload byte estimate uses JSON length for a rough figure; for exact transfer sizes we’d need to track ArrayBuffer lengths before transfer.
@@ -433,7 +426,6 @@ Add main-thread handling of perf events from the simulation worker (if not alrea
 Include message size audit for raster messages as well?
 yes to both
 
-
 Added both enhancements.
 
 What I implemented
@@ -442,17 +434,17 @@ Main-thread handling for sim worker perf:
 
 src/main.ts
 Listens for { type: 'perf' } messages from simWorker.ts.
-Forwards them to window.__perf.addEvent({ name, ms }) when the collector is active (?debugPerf=1).
+Forwards them to window.\_\_perf.addEvent({ name, ms }) when the collector is active (?debugPerf=1).
 Also logs an approximate received payload size for legacy object transforms as physics.payload.recvKB.
 Raster message size audit:
 
 src/core/svgLoader.ts
-Before posting a rasterize request to the raster worker, computes an approximate size via JSON.stringify and records it as raster.request.sendKB using window.__perf.addEvent if present.
-Already consumes worker perf events and forwards them to window.__perf.
+Before posting a rasterize request to the raster worker, computes an approximate size via JSON.stringify and records it as raster.request.sendKB using window.**perf.addEvent if present.
+Already consumes worker perf events and forwards them to window.**perf.
 Main-thread perf collector (previous step, now leveraged):
 
 src/main.ts
-window.__perf is available when using ?debugPerf=1, with addEvent, getFpsStats, getEvents.
+window.\_\_perf is available when using ?debugPerf=1, with addEvent, getFpsStats, getEvents.
 Worker-side perf (previous step, extended):
 
 src/simWorker.ts emits:
@@ -467,8 +459,8 @@ How to verify
 Open the app with telemetry:
 http://localhost:8080/spaceautobattler.html?debugPerf=1
 In DevTools:
-window.__perf.getFpsStats() → FPS stats
-window.__perf.getEvents() → recent perf events, including physics.* and raster.* plus raster.request.sendKB and physics.payload.recvKB where applicable.
+window.**perf.getFpsStats() → FPS stats
+window.**perf.getEvents() → recent perf events, including physics._and raster._ plus raster.request.sendKB and physics.payload.recvKB where applicable.
 Run the bench:
 E2E_BENCH=1 npx playwright test test/playwright/bench-ships.spec.js --project=chromium
 Compare the “no-telemetry” vs “telemetry” runs to observe overhead.

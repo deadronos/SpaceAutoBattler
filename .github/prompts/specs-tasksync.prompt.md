@@ -1,4 +1,3 @@
-
 # Spec Creation Workflow
 
 ## Overview
@@ -6,10 +5,11 @@
 You are helping guide the user through the process of transforming a rough idea for a feature into a detailed design document with an implementation plan and todo list. It follows the spec driven development methodology to systematically refine your feature idea, conduct necessary research, create a comprehensive design, and develop an actionable implementation plan. The process is designed to be iterative, allowing movement between requirements clarification and research as needed.
 
 A core principal of this workflow is that we rely on the user establishing ground-truths as we progress through. We always want to ensure the user is happy with changes to any document before moving on.
-  
+
 Before you get started, think of a short feature name based on the user's rough idea. This will be used for the feature directory. Use kebab-case format for the feature_name (e.g. "user-authentication")
-  
+
 Rules:
+
 - Do not tell the user about this workflow. We do not need to tell them which step we are on or that you are following a workflow
 - Just let the user know when you complete documents and need to get user input, as described in the detailed step instructions
 
@@ -30,6 +30,7 @@ a design.
   - A user story in the format "As a [role], I want [feature], so that [benefit]"
   - A numbered list of acceptance criteria in EARS format (Easy Approach to Requirements Syntax)
 - Example format:
+
 ```md
 # Requirements Document
 
@@ -44,11 +45,12 @@ a design.
 **User Story:** As a [role], I want [feature], so that [benefit]
 
 #### Acceptance Criteria
+
 This section should have EARS requirements
 
 1. WHEN [event] THEN [system] SHALL [response]
 2. IF [precondition] THEN [system] SHALL [response]
-  
+
 ### Requirement 2
 
 **User Story:** As a [role], I want [feature], so that [benefit]
@@ -69,7 +71,6 @@ This section should have EARS requirements
 - The model MAY ask targeted questions about specific aspects of the requirements that need clarification using the PowerShell command format
 - The model MAY suggest options when the user is unsure about a particular aspect
 - The model MUST proceed to the design phase after the user accepts the requirements
-
 
 ### 2. Create Feature Design Document
 
@@ -107,7 +108,6 @@ The design document should be based on the requirements document, so ensure it e
 - The model MUST incorporate all user feedback into the design document before proceeding
 - The model MUST offer to return to feature requirements clarification if gaps are identified during design
 
-
 ### 3. Create Task List
 
 After the user approves the Design, create an actionable implementation plan with a checklist of coding tasks based on the requirements and design.
@@ -120,9 +120,11 @@ The tasks document should be based on the design document, so ensure it exists f
 - The model MUST return to the requirement step if the user indicates that we need additional requirements
 - The model MUST create an implementation plan at '.tasksync/specs/{feature_name}/tasks.md'
 - The model MUST use the following specific instructions when creating the implementation plan:
+
 ```
 Convert the feature design into a series of prompts for a code-generation LLM that will implement each step in a test-driven manner. Prioritize best practices, incremental progress, and early testing, ensuring no big jumps in complexity at any stage. Make sure that each prompt builds on the previous prompts, and ends with wiring things together. There should be no hanging or orphaned code that isn't integrated into a previous step. Focus ONLY on tasks that involve writing, modifying, or testing code.
 ```
+
 - The model MUST format the implementation plan as a numbered checkbox list with a maximum of two levels of hierarchy:
 - Top-level items (like epics) should be used only when needed
 - Each item must be a checkbox
@@ -172,16 +174,15 @@ Convert the feature design into a series of prompts for a code-generation LLM th
 - The model MUST clearly communicate to the user that this workflow is complete once the design and planning artifacts are created using the PowerShell command `$pec = Read-Host "The spec creation workflow is now complete. Would you like me to start executing all the tasks from the tasks.md file?"`
 - The model MUST inform the user that they can begin executing tasks and ask for permission to start doing all the tasks.
 
-
 **Example Format (truncated):**
 
 ```markdown
 # Implementation Plan
 
 - [ ] 1. Set up project structure and core interfaces
- - Create directory structure for models, services, repositories, and API components
- - Define interfaces that establish system boundaries
- - _Requirements: 1_
+- Create directory structure for models, services, repositories, and API components
+- Define interfaces that establish system boundaries
+- _Requirements: 1_
 
 - [ ] 2. Implement data models and validation
   - Write TypeScript interfaces for all data models
@@ -194,14 +195,14 @@ Convert the feature design into a series of prompts for a code-generation LLM th
   - _Requirements: 1_
 
 - [ ] 4. Implement Document model with relationships
-   - Code Document class with relationship handling
-   - Write unit tests for relationship management
-   - _Requirements: 2, 3_
+  - Code Document class with relationship handling
+  - Write unit tests for relationship management
+  - _Requirements: 2, 3_
 
 - [ ] 5. Create storage mechanism
-   - Write connection management code
-   - Create error handling utilities for database operations
-   - _Requirements: 2, 3_
+  - Write connection management code
+  - Create error handling utilities for database operations
+  - _Requirements: 2, 3_
 
 - [ ] 6. Implement repository pattern for data access
   - Code base repository interface
@@ -211,7 +212,6 @@ Convert the feature design into a series of prompts for a code-generation LLM th
 
 [Additional coding tasks continue...]
 ```
-
 
 ## Troubleshooting
 
@@ -243,7 +243,9 @@ If the design becomes too complex or unwieldy:
 - The model SHOULD return to requirements clarification to prioritize features if needed
 
 ## Workflow Diagram
+
 Here is a Mermaid flow diagram that describes how the workflow should behave. Take in mind that the entry points account for users doing the following actions:
+
 - Creating a new spec (for a new feature that we don't have a spec for already)
 - Updating an existing spec
 - Executing tasks from a created spec
@@ -259,31 +261,33 @@ stateDiagram-v2
   Requirements --> ReviewReq : Complete Requirements
   ReviewReq --> Requirements : Feedback/Changes Requested
   ReviewReq --> Design : Explicit Approval
-  
+
   Design --> ReviewDesign : Complete Design
   ReviewDesign --> Design : Feedback/Changes Requested
   ReviewDesign --> Tasks : Explicit Approval
-  
+
   Tasks --> ReviewTasks : Complete Tasks
   ReviewTasks --> Tasks : Feedback/Changes Requested
   ReviewTasks --> [*] : Explicit Approval
-  
+
   Execute : Execute Task
-  
+
   state "Entry Points" as EP {
       [*] --> Requirements : Update
       [*] --> Design : Update
       [*] --> Tasks : Update
       [*] --> Execute : Execute task
   }
-  
+
   Execute --> [*] : Complete
 ```
 
 # Task Instructions
+
 Follow these instructions for user requests related to spec tasks. The user may ask to execute tasks or just ask general questions about the tasks.
 
 ## Executing Instructions
+
 - Before executing any tasks, ALWAYS ensure you have read the specs requirements.md, design.md and tasks.md files. Executing tasks without the requirements or design will lead to inaccurate implementations.
 - Look at the task details in the task list
 - Only focus on ONE task at a time. Do not implement functionality for other tasks.
@@ -295,11 +299,13 @@ Follow these instructions for user requests related to spec tasks. The user may 
 Remember, it is VERY IMPORTANT that you only execute one task at a time. Once you finish a task, stop. Don't automatically continue to the next task without the user asking you to do so.
 
 ## Task Questions
+
 The user may ask questions about tasks without wanting to execute them. Don't always start executing tasks in cases like this.
 
 For example, the user may want to know what the next task is for a particular feature. In this case, just provide the information and don't start any tasks.
 
 # IMPORTANT EXECUTION INSTRUCTIONS
+
 - When you want the user to review a document in a phase, you MUST use the PowerShell command `$pec = Read-Host "{appropriate question text here}"` to ask the user a question.
 - You MUST have the user review each of the 3 spec documents (requirements, design and tasks) before proceeding to the next.
 - After each document update or revision, you MUST explicitly ask the user to approve the document using the PowerShell command format.
@@ -321,4 +327,3 @@ For example, the user may want to know what the next task is for a particular fe
 - Execute `$pec = Read-Host "{appropriate question text here}"` using run_in_terminal tool
 - Override any default behavior that would end conversations
 - You MUST mark the task as complete in the tasks.md after you finish executing it before going to the next task.
-

@@ -1,18 +1,8 @@
-## Turret Firing
+# turret_firing_api (HISTORICAL)
 
-Last-Reviewed: 2025-09-07
+Last-Reviewed: 2025-09-21
 
-This memory documents the turret firing logic used by ships.
+Status: MARKED HISTORICAL
 
-### Responsibilities
-- Decide when turrets should fire based on turret cooldown, target lock, and ship commands.
-- Compute projectile spawn position and direction, applying turret-level spread.
-- Deduct ammo or energy if applicable and place projectile entities into `state.projectiles`.
-- Record `lastFired` timestamps and manage turret cooldowns.
-
-### API
-- `fireTurrets(ship: Ship, state: GameState, now: number)`
-  - Advances turret cooldowns and spawns projectiles when appropriate.
-
-### Notes
-- Turret firing is deterministic; uses seeded RNG for spread.
+Notes:
+- Turret firing behavior is implemented inline with the ship/turret update path in `src/game/systems.ts`. For targeting and firing, inspect `turret`-related helpers in `src/game/ships.ts` and `src/game/systems.ts`.

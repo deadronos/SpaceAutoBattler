@@ -1,4 +1,3 @@
-
 # GameManager Overview
 
 The GameManager coordinates simulation, rendering, and UI for SpaceAutoBattler. All state is centralized in the canonical `GameState` type (`src/types/index.ts`).

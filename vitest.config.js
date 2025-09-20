@@ -2,15 +2,10 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  assetsInclude: ['**/*.glb'],
   test: {
-    include: [
-      'test/vitest/*.spec.ts',
-      'test/vitest/*.test.ts',
-      'test/vitest/**/*.spec.ts',
-    ],
-    exclude: [
-      'test/playwright/**',
-    ],
+    include: ['test/vitest/*.spec.ts', 'test/vitest/*.test.ts', 'test/vitest/**/*.spec.ts'],
+    exclude: ['test/playwright/**'],
     environment: 'happy-dom',
     setupFiles: path.resolve(__dirname, 'test/vitest/setupTests.ts'),
     globals: true,
