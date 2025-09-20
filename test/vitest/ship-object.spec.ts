@@ -2,13 +2,12 @@ import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 // import TestRenderer from 'react-test-renderer';
 
-// Mock useLoader from @react-three/fiber to return a fake GLTF with a scene
-vi.mock('@react-three/fiber', async () => {
-  const actual = await vi.importActual<any>('@react-three/fiber');
+// Mock useGLTF from @react-three/drei to return a fake GLTF with a scene
+vi.mock('@react-three/drei', async () => {
+  const actual = await vi.importActual<any>('@react-three/drei');
   return {
     ...actual,
-    useLoader: () => ({ scene: { clone: () => ({}) } }),
-    useFrame: () => {},
+    useGLTF: () => ({ scene: { clone: () => ({}) } }),
   };
 });
 

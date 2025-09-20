@@ -2,8 +2,9 @@ import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import type { Mesh } from 'three';
 import type { ProjectileEntity } from '../types/index.js';
+import type React from 'react';
 
-export function ProjectileObject({ entity }: { entity: ProjectileEntity }): JSX.Element {
+export function ProjectileObject({ entity }: { entity: ProjectileEntity }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
 
   useFrame(() => {

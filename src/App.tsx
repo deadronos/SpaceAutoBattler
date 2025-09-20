@@ -3,7 +3,9 @@ import { GameProvider } from './game/context.js';
 import { Battlefield } from './components/Battlefield.js';
 import { Hud } from './components/Hud.js';
 
-export function App(): JSX.Element {
+import type React from 'react';
+
+export function App(): React.ReactElement {
   return (
     <GameProvider>
       <div className="app-shell">

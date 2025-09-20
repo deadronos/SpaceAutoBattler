@@ -9,7 +9,7 @@ interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
-export function GameProvider({ children }: { children: ReactNode }): JSX.Element {
+export function GameProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [state, setState] = useState<GameState | null>(null);
 
   useEffect(() => {

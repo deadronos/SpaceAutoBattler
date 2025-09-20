@@ -1,6 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense } from 'react';
 import type { Archetype } from 'miniplex';
+import type React from 'react';
 import { Color } from 'three';
 import type { GameEntity, ProjectileEntity, ShipEntity } from '../types/index.js';
 import { useGameState, useOptionalGameState } from '../game/context.js';
@@ -10,10 +11,10 @@ import { ShipObject } from './Ship.js';
 import { ProjectileObject } from './Projectile.js';
 import { SeededRng } from '../utils/rng.js';
 
-export function Battlefield(): JSX.Element {
+export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
 
-  if (!state) {
+  if (!state) { 
     return <div className="loading-overlay">Preparing simulation…</div>;
   }
 
@@ -35,7 +36,7 @@ export function Battlefield(): JSX.Element {
   );
 }
 
-function BattlefieldSystems(): JSX.Element {
+function BattlefieldSystems(): React.ReactElement {
   const state = useGameState();
   useFrame((_, delta) => {
     const clamped = Math.min(delta, 0.05);
@@ -44,7 +45,7 @@ function BattlefieldSystems(): JSX.Element {
   return <></>;
 }
 
-function ShipsLayer({ archetype }: { archetype: Archetype<GameEntity, ['ship']> }): JSX.Element {
+function ShipsLayer({ archetype }: { archetype: Archetype<GameEntity, ['ship']> }): React.ReactElement {
   const ships = useArchetypeEntities<ShipEntity>(archetype);
   return (
     <>
@@ -55,7 +56,7 @@ function ShipsLayer({ archetype }: { archetype: Archetype<GameEntity, ['ship']> 
   );
 }
 
-function ProjectilesLayer({ archetype }: { archetype: Archetype<GameEntity, ['projectile']> }): JSX.Element {
+function ProjectilesLayer({ archetype }: { archetype: Archetype<GameEntity, ['projectile']> }): React.ReactElement {
   const projectiles = useArchetypeEntities<ProjectileEntity>(archetype);
   return (
     <>
@@ -66,16 +67,14 @@ function ProjectilesLayer({ archetype }: { archetype: Archetype<GameEntity, ['pr
   );
 }
 
-function StarsField(): JSX.Element {
+function StarsField(): React.ReactElement {
   return (
     <group>
       <points position={[0, 0, 0]}>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={STAR_POSITIONS.length / 3}
-            array={STAR_POSITIONS}
-            itemSize={3}
+            args={[STAR_POSITIONS, 3]}
           />
         </bufferGeometry>
         <pointsMaterial color="#ffffff" size={0.3} sizeAttenuation depthWrite={false} />

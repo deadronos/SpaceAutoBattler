@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
+import type React from 'react';
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -11,7 +12,7 @@ interface TeamSummary {
   maxHp: number;
 }
 
-export function Hud(): JSX.Element {
+export function Hud(): React.ReactElement {
   const state = useOptionalGameState();
   // Call the hook unconditionally; it accepts a nullable archetype and will
   // return an empty array when `state` is null. This avoids conditional hook
@@ -51,7 +52,7 @@ function summarize(ships: ShipEntity[]): [TeamSummary, TeamSummary] {
   return [summary.blue, summary.red];
 }
 
-function TeamCard({ summary, accent }: { summary: TeamSummary; accent: string }): JSX.Element {
+function TeamCard({ summary, accent }: { summary: TeamSummary; accent: string }): React.ReactElement {
   const capacity = summary.maxHp > 0 ? summary.hp / summary.maxHp : 0;
   return (
     <div className="team-card" style={{ '--accent': accent } as CSSProperties}>

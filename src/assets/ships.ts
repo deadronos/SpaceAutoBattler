@@ -1,5 +1,3 @@
-// The original art assets live under `src_old/config/assets/gltf/` and are reused by
-// the rebuilt renderer at build time without duplicating the large binary blobs.
 const GLTF_ROOT = './gltf/';
 
 export const SHIP_MODEL_PATHS = {
