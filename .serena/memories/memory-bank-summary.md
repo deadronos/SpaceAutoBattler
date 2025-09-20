@@ -1,15 +1,10 @@
 # Memory Bank Summary
 
-Last-Reviewed: 2025-09-15
+Last-Reviewed: 2025-09-21
 
-This summary captures the recent update across the memory bank: several API and system memories were annotated with "Last-Reviewed: 2025-09-07" to reflect a current sweep. The sweep prioritized core subsystems (AI, physics, renderer, projectile/spawn systems) and updated ~20 memory nodes so far.
+Summary of today's sweep:
 
-Notes from this session (2025-09-15):
-
-- Re-ran memory listing and annotated `activeContext` and `progress` with today's review date.
-- Plan: continue annotation for remaining memory entries in batches and create `memory/review-summary-2025-09-07.md` consolidation when convenient.
-
-Next steps:
-
-- Continue annotation for remaining memory entries in batches.
-- Create `memory/review-summary-2025-09-07.md` consolidating all changes and recommendations.
+- Activated project memory store and updated multiple memory nodes to reflect the current repository layout (replaced many `src/core/*` references with `src/game/*`, `src/utils/*`, and `src/assets/*`).
+- Marked several historical memories as H ISTORICAL (alias/legacy) and added pointers to current source files.
+- Updated authoritative memories: `core-gameState`, `ai_controller_api`, `asset_pool_api`, `src-files-overview`, `threeRenderer`, and `main.ts`.
+- Suggested follow-ups: run a second pass to normalize duplicate memory nodes and consider moving the large AI design into `memory/ai_controller_design_reference` or `design/` as a long-form artifact.

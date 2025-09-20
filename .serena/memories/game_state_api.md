@@ -1,27 +1,10 @@
-# GameState (overview)
+# game_state_api
 
-Last-Reviewed: 2025-09-15
+Last-Reviewed: 2025-09-21
 
-This memory provides a high-level overview of the `GameState` structure — the canonical runtime state object used across core, sim, and renderer.
+Authoritative mapping:
+- Active location: `src/game/state.ts` (createGameState/disposeGameState and entity lifecycle helpers).
+- Purpose: Provide the canonical `GameState` object for the simulation and test harnesses. The module handles Rapier initialization, Miniplex world creation, seeded RNG setup, and helper functions to spawn/destroy entities.
 
-## Key fields
-
-- `time`: Simulation time in seconds.
-- `ships`: Array of `Ship` entities.
-- `projectiles`: Array of projectile entities.
-- `assetPool`: Asset pool instance for ImageBitmaps, geometries.
-- `spawnQueue`: Pending spawns for carriers/fleets.
-- `rngSeed` / `rng`: Deterministic RNG seeded at simulation start.
-
-## Usage
-
-- All runtime mutations must happen on the central `GameState` object to preserve determinism and simplify serialization across worker boundary.
-
-## Notes
-
-- See `src/types/index.ts` for full TypeScript types.
-
-Notes from this session (2025-09-15):
-
-- Reviewed and annotated as part of the 2025-09-15 memory sweep.
-- Batch 6: core verification performed on 2025-09-15.
+Notes:
+- This memory supersedes older `src/core/*` references — prefer to consult `src/game/state.ts` directly for exact signatures.
