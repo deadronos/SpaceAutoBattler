@@ -1,25 +1,30 @@
-## Asset Pool
+# Asset Pool
 
-Last-Reviewed: 2025-09-15
+Last-Reviewed: 2025-09-21
 
-The `assetPool` is the canonical cache and factory for runtime assets (ImageBitmaps, geometries, materials, particle textures). It's stored on `GameState.assetPool` and used by renderer and loader subsystems.
+Summary (authoritative):
 
-### Responsibilities
+- Historical location: `src/core/assetPool.ts` in earlier repo versions.
+- Current practice: The renderer is responsible for caching parsed Three.js objects (geometries, materials, GLTF prototypes). The renderer typically attaches a `Map` or an LRU wrapper to `GameState` during bootstrap (for example `state.assetPool = new Map()`), or it keeps the pool locally in renderer module scope.
 
-- Cache rasterized SVGs as `ImageBitmap` keyed by SVG content hash or path.
-- Provide geometries and shared materials for instanced meshes.
-- Register glTF prototypes for instanced rendering.
-- Provide `release`/`dispose` hooks to free GPU resources when assets are no longer needed.
+Responsibilities (renderer-centered):
 
-### Public API
+- Cache parsed GLTF scenes and prototypes keyed by URL or content hash.
+- Provide factory / prototype registration functions for instancers (e.g., `registerPrototype(name, mesh)`), typically exposed by the renderer bootstrap, not a core module.
+- Provide explicit `dispose(key)` hooks to free GPU resources when assets are no longer used.
 
-- `getImageBitmap(key)`
-- `registerPrototype(name, mesh)`
-- `getPrototype(name)`
-- `release(key)`
+Public API (recommended when authoring a shared pool):
 
-### Determinism & Constraints
+- `get(key)` -> returns cached asset or `undefined`
+- `set(key, value)` -> stores parsed asset
+- `registerPrototype(name, mesh)` -> convenience for instancers
+- `dispose(key)` -> frees resource and removes from pool
 
-- Caching is content-addressed; deterministic given same input assets. Must be used via `GameState.assetPool` per repository conventions.
+Notes & guidance:
 
-Session note: Reviewed and annotated 2025-09-15.
+- Keep asset lifecycle in renderer; do not introduce module-level runtime state in core simulation modules.
+- If you need a canonical shared pool for non-renderer users (tests, headless), add a small `src/utils/assetPool.ts` that implements the minimal Map or LRU interface and attach it to `GameState` at startup.
+
+References:
+- `src/utils/patchGltfLoader.ts` — loader compatibility & runtime guard
+- `src/assets/ships.ts` — canonical mapping of ship classes to model URLs

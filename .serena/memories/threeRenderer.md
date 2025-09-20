@@ -1,27 +1,22 @@
 # threeRenderer — Three.js renderer factory and scene management
 
-Last-Reviewed: 2025-09-15
+Last-Reviewed: 2025-09-21
 
-Purpose
+Purpose (authoritative):
 
-- Provides `createThreeRenderer(canvas, options)` which sets up the Three.js scene, camera, lights, and post-processing pipeline.
-- Manages instancers, mesh factories, and effect pools for bullets, explosions, trails, and health bars.
+- The `threeRenderer` responsibilities are implemented in `src/renderer/` (e.g., `src/renderer/threeRenderer.tsx` or `src/renderer/threeRenderer.ts` depending on the app entry). This memory documents the runtime integration points.
 
-Responsibilities
+Responsibilities:
 
-- Create scene, camera (perspective), and renderer with physically-correct lighting where needed.
-- Configure EffectComposer and default post-processing passes (bloom, FXAA, tone mapping) according to `config/rendererConfig`.
-- Provide high-level API for game loop: `renderer.update(state, dt)`, `renderer.render()`.
-- Manage `assetPool` usage for shared geometries, materials, and textures to avoid redundant allocations.
-- Create and manage instancers:
-  - `shipInstancer` for ship meshes (per-ship transforms & per-instance uniforms)
-  - `bulletInstancer` for projectile visuals
-  - `effectPool` for short-lived particle/explosion meshes
-- Expose debug helpers for toggling wireframe, bounding boxes, and instancer counts.
+- Create and configure the Three.js `Renderer`, `Scene`, `Camera`, and `EffectComposer` according to `src/config/rendererConfig.ts`.
+- Provide `renderer.update(state, dt)` and `renderer.render()` helpers invoked by the main loop in `src/main.tsx`.
+- Manage instancers (ship, bullet, effects) and use the renderer asset cache/prototypes to avoid repeated geometry/material allocations.
+- Wire asset preloading using `src/assets/ships.ts` and `src/utils/patchGltfLoader.ts`.
 
-Integrations
+Integration notes:
 
-- Expects `state.assetPool` to be pre-populated with necessary geometries (from svg rasterizer or glTF loader).
-- Uses `renderer/meshFactory` to create base prototypes which are then instanced.
+- The renderer may attach an `assetPool` to `GameState` or keep its own internal cache; both patterns are supported. Prefer attaching for easier testing and headless runs.
+- Instancer registration expects prototype meshes to be available before first render; the renderer should gracefully fallback to placeholders if assets are missing.
 
-Session notes (2025-09-15): Reviewed and updated last-reviewed date; aligned responsibilities with `main.ts` and `svg_loader_api` memories.
+References:
+- `src/main.tsx`, `src/assets/ships.ts`, `src/utils/patchGltfLoader.ts`, `src/renderer/meshFactory.ts`, `src/renderer/shipInstancer.ts`

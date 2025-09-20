@@ -1,7 +1,7 @@
-## Projectile System (alternate)
+# projectile_system_api (HISTORICAL)
 
-Last-Reviewed: 2025-09-15
+Last-Reviewed: 2025-09-21
 
-Alias/duplicate note: `projectile_system_api` mirrors `projectileSystem_api`. It documents projectile lifecycle, collision detection, damage application, and visual effect spawning. See `projectileSystem_api` for canonical content.
+This memory is a historical alias of `projectileSystem_api`. The repository reorganized earlier in 2025: active projectile logic now lives in `src/game/systems.ts` (search for `advanceProjectiles`, `resolveProjectiles`, or `updateProjectiles`).
 
-Notes from this session (2025-09-15): Reviewed and annotated.
+Status: MARKED HISTORICAL — do not edit for active design. See `projectileSystem_api` and `src/game/systems.ts` for current behavior and API.

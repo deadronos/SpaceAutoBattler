@@ -1,59 +1,37 @@
 # core/gameState
 
-Last-Reviewed: 2025-09-15
+Last-Reviewed: 2025-09-21
 
-**Memory name:** core-gameState
+**Memory name:** core-gameState (authoritative)
 
 Summary:
 
-- Location: `src/core/gameState.ts`
-- Purpose: Core simulation state management and game logic. Exposes functions to create and reset the canonical GameState and simulation mechanics for spawning ships, bullets, handling collisions, XP, level-ups, carrier spawn logic, boundary handling, spatial grid updates, and the main `simulateStep` method.
+- Location: `src/game/state.ts` (note: previously `src/core/gameState.ts` in older versions of the repo)
+- Purpose: Canonical GameState factory and lifecycle helpers used by the simulation and by tests. The module provides deterministic seeded RNG initialization, Rapier physics world setup, Miniplex world for entities, and helper APIs for entity lifecycle.
 
-Key exports and responsibilities:
+Primary exports and responsibilities:
 
-- createInitialState(seed?: string): GameState
+- `createGameState(opts?: { seed?: string }) : Promise<GameState>`
+  - Asynchronously initializes any WASM dependencies (Rapier), constructs the `GameState` object, sets up the physics world, seeded RNG (`SeededRng` via `src/utils/rng.ts`), and returns the ready-to-use state.
 
-builds an initial GameState with default sim config, RNG, and optionally spatial grid.
+- `disposeGameState(state: GameState): void`
+  - Tears down worker resources and disposes physics world + any pooled renderer resources attached to the state.
 
-- resetState(state, seed?): void
+- `destroyEntity(state: GameState, id: string): void`
+  - Safely removes an entity and its runtime resources (physics bodies, colliders, instancer references) from the `GameState`.
 
-resets an existing GameState to initial conditions while preserving structural objects and clearing runtime arrays.
+- `spawnInitialFleets(state: GameState, config?): void`
+  - Convenience for test harnesses and demo pages to populate the world with starter ships for both teams.
 
-- spawnShip(state, team, cls, pos?, parentCarrierId?)
+Key runtime patterns and notes:
 
-creates a new Ship entity with proper initialization of stats, level, turrets, and optional spawn jitter.
+- All runtime state is stored on the `GameState` object (per repo convention). Avoid module-level runtime state.
+- Determinism is provided via `SeededRng` located at `src/utils/rng.ts`; the simulation must use `state.rng` when deterministic randomness is required.
+- `GameState` may hold an optional `assetPool` reference (renderer attaches this during bootstrap). The renderer is responsible for three.js asset caching and prototype registration.
+- Where functionality changed from earlier repo versions, memory retains a short note that the old path was `src/core/gameState.ts`.
 
-- spawnFleet(state, team, count?)
+References:
+- `src/game/state.ts`, `src/types/index.ts`, `src/utils/rng.ts`
 
-convenience to spawn multiple ships.
-
-- applyBoundaryPhysics(ship, state)
-
-delegates ship boundary behaviors to `boundaryUtils` centralized helpers.
-
-- simulateStep(state, dt)
-
-orchestrates AI updates (via `AIController`), spatial grid updates, turret firing, bullets update, deaths and XP processing, level-ups, carrier-spawn logic, and boundary cleanup.
-
-Important internal helpers:
-
-- fireTurrets(state, ship, dt)
-- updateBullets(state, dt)
-- processDeathsAndXP(state)
-- handleLevelUps(state)
-- carrierSpawnLogic(state, dt)
-- runBoundaryCleanup(state)
-- updateSpatialGrid(state)
-
-Patterns & notes:
-
-- Uses a single canonical GameState object passed around and mutated.
-- Uses `state.rng` for deterministic behavior when seeded.
-- Spatial index is optional and toggled by behaviorConfig.
-- Uses versioning (`shipDataVersion`) to signal ship list changes for external systems.
-- Defensive programming: many best-effort try/catches and fallbacks to avoid simulation crashes.
-
-Notes from this session (2025-09-15):
-
-- Reviewed and updated last-reviewed date as part of the sweep. No content changes beyond annotation.
-- Batch 6: core verification performed on 2025-09-15.
+Notes:
+- This memory is authoritative for the canonical `GameState` responsibilities and locations. Use `read_memory` on `src-files-overview` or `threeRenderer` for renderer-specific integration points.
