@@ -355,7 +355,7 @@ export function fireProjectile(
   const speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
   const damage = opts?.override?.damage ?? origin.ship.damage;
   const range = opts?.override?.range ?? origin.ship.range;
-  const lifetime = Math.min(range / speed, 4);
+  const lifetime = Math.min(range / speed, 10);
 
   const projectile = state.world.createEntity({
     id: state.nextEntityId++,

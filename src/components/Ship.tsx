@@ -104,9 +104,9 @@ function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number 
 
   const kind = getShieldVisuals(entity.ship.hull).materialKind;
   const key = `shield:${kind}`;
-  const Mat = getMaterial<{
+  const Mat = (getMaterial<{
     hull: ShipHull; team: any; opacity: number; ripple?: any;
-  }>(key) ?? getMaterial('shield:hex')!;
+  }>(key)) ?? getMaterial('shield:hex')!;
 
   return (
     <mesh ref={meshRef} renderOrder={-1} frustumCulled={false}>

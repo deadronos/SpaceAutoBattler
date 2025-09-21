@@ -99,3 +99,20 @@ export function setGlobalShieldMaterial(kind: ShieldMaterialKind): void {
     SHIELD_VISUALS[h] = { ...(SHIELD_VISUALS[h] ?? {}), materialKind: kind };
   });
 }
+
+// Tunable global shield appearance parameters (not per-hull). These are
+// intended to be safe, small adjustments for visual clarity (e.g., red-team
+// boost) and can be tweaked during development.
+export interface ShieldTuning {
+  enableRedBoost: boolean;
+  redBoostPower: number;
+  redBoostMultiplier: number;
+  redTint: string; // hex color used for red team tint
+}
+
+export const SHIELD_TUNING: ShieldTuning = {
+  enableRedBoost: true,
+  redBoostPower: 1.32,
+  redBoostMultiplier: 1.45,
+  redTint: '#b22222',
+};
