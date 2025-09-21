@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react';
 import type React from 'react';
 import { Box3, Color, ShaderMaterial, Sphere, type Group, Vector3, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { useGLTF } from '@react-three/drei';
+import { MeshTransmissionMaterial, useGLTF } from '@react-three/drei';
 import type { ShieldRipple, ShipEntity, ShipHull } from '../types/index.js';
 import { getShieldVisuals } from '../config/renderer.js';
 import { useFrame as useRenderFrame } from '@react-three/fiber';
@@ -75,6 +75,71 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
 }
 
 function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number }): React.ReactElement {
+  const cfg = getShieldVisuals(entity.ship.hull);
+  if (cfg.materialKind === 'transmission') {
+    return <TransmissionShieldBubble entity={entity} radius={radius} />;
+  }
+  return <HexShieldBubble entity={entity} radius={radius} />;
+}
+
+function TransmissionShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number }): React.ReactElement {
+  const meshRef = useRef<Mesh>(null);
+  const materialRef = useRef<any>(null);
+
+  const cfg = getShieldVisuals(entity.ship.hull);
+
+  useRenderFrame((_, dt) => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    // Anchor to parent ship: local origin with identity rotation.
+    mesh.position.set(0, 0, 0);
+    mesh.quaternion.identity();
+    const fallbackByHull: Record<ShipHull, number> = {
+      fighter: 1.8,
+      corvette: 2.3,
+      frigate: 3.0,
+      destroyer: 3.7,
+      carrier: 4.6,
+    };
+    const r = radius ?? fallbackByHull[entity.ship.hull] ?? 2.0;
+    mesh.scale.setScalar(r);
+
+    // Update opacity each frame based on current shield value
+    const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);
+    const alpha = Math.max(0, Math.min(cfg.maxAlpha, s));
+    if (materialRef.current) {
+      materialRef.current.opacity = alpha;
+    }
+  });
+
+  const tint = useMemo(() => new Color(entity.ship.team === 'blue' ? '#66ccff' : '#ff6699'), [entity.ship.team]);
+
+  return (
+    <mesh ref={meshRef} renderOrder={-1} frustumCulled={false}>
+      <sphereGeometry args={[1, 64, 64]} />
+      <MeshTransmissionMaterial
+        ref={materialRef}
+        transparent
+        depthWrite={false}
+        color={tint}
+        attenuationColor={tint}
+        thickness={cfg.transmission.thickness}
+        chromaticAberration={cfg.transmission.chromaticAberration}
+        anisotropicBlur={cfg.transmission.anisotropicBlur}
+        distortion={cfg.transmission.distortion}
+        distortionScale={cfg.transmission.distortionScale}
+        temporalDistortion={cfg.transmission.temporalDistortion}
+        attenuationDistance={cfg.transmission.attenuationDistance}
+        roughness={cfg.transmission.roughness}
+        clearcoat={cfg.transmission.clearcoat}
+        ior={cfg.transmission.ior}
+        opacity={0.0}
+      />
+    </mesh>
+  );
+}
+
+function HexShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
 
   // Basic hex shield shader, inspired by common techniques:
