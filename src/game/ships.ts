@@ -11,7 +11,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 28,
     range: 18,
     speed: 14,
-    scale: 1
+    scale: 1,
+    bulletType: 'bullet:laser'
   },
   corvette: {
     hull: 'corvette',
@@ -22,7 +23,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 24,
     range: 22,
     speed: 11,
-    scale: 1
+    scale: 1,
+    bulletType: 'bullet:plasma'
   },
   frigate: {
     hull: 'frigate',
@@ -33,7 +35,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 22,
     range: 26,
     speed: 9,
-    scale: 1
+    scale: 1,
+    bulletType: 'bullet:plasma'
   },
   destroyer: {
     hull: 'destroyer',
@@ -44,7 +47,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 20,
     range: 30,
     speed: 7,
-    scale: 1
+    scale: 1,
+    bulletType: 'bullet:heavy'
   },
   carrier: {
     hull: 'carrier',
@@ -55,9 +59,15 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     projectileSpeed: 18,
     range: 34,
     speed: 5,
-    scale: 1
+    scale: 1,
+    bulletType: 'bullet:ion'
   }
 };
+
+// Note: each ShipStats entry may include `bulletType` which is a material/key string
+// used by the renderer to pick a projectile visual (e.g. 'bullet:laser'). When a ship
+// fires, its ShipComponent.bulletType is copied into the ProjectileComponent so the
+// `Projectile` renderer can choose the correct material per-projectile.
 
 export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntity {
   const stats = SHIP_STATS[blueprint.hull];
@@ -96,7 +106,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       damage: stats.damage,
       projectileSpeed: stats.projectileSpeed,
       range: stats.range,
-      speed: stats.speed
+      speed: stats.speed,
+      bulletType: stats.bulletType
     },
     model: blueprint.hull,
     shieldRipples: []

@@ -35,6 +35,8 @@ export interface ShipComponent {
   projectileSpeed: number;
   range: number;
   speed: number;
+  /** Key for the projectile material/type this ship fires (e.g. 'bullet:laser') */
+  bulletType?: string;
 }
 
 export interface ProjectileComponent {
@@ -43,6 +45,8 @@ export interface ProjectileComponent {
   ttl: number;
   maxTtl: number;
   speed: number;
+  /** Material key or type identifier for rendering this projectile (optional) */
+  bulletType?: string;
 }
 
 export interface GameEntity extends TransformComponent {
@@ -101,6 +105,8 @@ export interface ShipStats {
   range: number;
   speed: number;
   scale: number;
+  /** Preferred bullet/material key for this hull (e.g. 'bullet:laser') */
+  bulletType?: string;
 }
 
 /** Parameters for a shield ripple kick emitted on impact. */

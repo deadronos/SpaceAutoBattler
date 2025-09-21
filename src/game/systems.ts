@@ -8,6 +8,7 @@ import type {
 } from '../types/index.js';
 import { destroyEntity } from './state.js';
 import { clampToWorld } from './config.js';
+import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../config/projectiles.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -161,7 +162,7 @@ function orientTowards(ship: ShipEntity, direction: Vector3): void {
   ship.rigidBody.setNextKinematicRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
 }
 
-function fireProjectile(state: GameState, origin: ShipEntity, direction: Vector3): void {
+export function fireProjectile(state: GameState, origin: ShipEntity, direction: Vector3): void {
   const muzzleOffset = origin.transform.scale * 1.6;
   const startPosition = origin.transform.position.clone().addScaledVector(direction, muzzleOffset);
   const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
@@ -171,7 +172,12 @@ function fireProjectile(state: GameState, origin: ShipEntity, direction: Vector3
     .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
   const body = state.physicsWorld.createRigidBody(bodyDesc);
 
-  const colliderDesc = state.rapier.ColliderDesc.ball(0.2)
+  // Choose visual/physics size based on bullet type configuration
+  const cfg = PROJECTILE_CONFIG[origin.ship.bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
+  const visualScale = cfg.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale;
+  const colliderRadius = cfg.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
+
+  const colliderDesc = state.rapier.ColliderDesc.ball(colliderRadius)
     .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
     .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
   const collider = state.physicsWorld.createCollider(colliderDesc, body);
@@ -185,7 +191,7 @@ function fireProjectile(state: GameState, origin: ShipEntity, direction: Vector3
     transform: {
       position: startPosition,
       rotation,
-      scale: 0.2
+      scale: visualScale
     },
     projectile: {
       team: origin.ship.team,
@@ -193,6 +199,8 @@ function fireProjectile(state: GameState, origin: ShipEntity, direction: Vector3
       ttl: lifetime,
       maxTtl: lifetime,
       speed: origin.ship.projectileSpeed
+      ,
+      bulletType: origin.ship.bulletType
     },
     direction: direction.clone()
   }) as ProjectileEntity;
