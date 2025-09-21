@@ -40,11 +40,11 @@ export const DEBUG_VISUALS: DebugVisualFlags = {
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
-  fighter: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -153,4 +153,40 @@ export interface HullTintConfig {
 export const HULL_TINT: HullTintConfig = {
   tintThreshold: 1.00,
   tintStrength: 0.15,
+};
+
+// Global shield ripple tuning (tweakable). These affect the shader and how many
+// ripples the renderer will blend simultaneously. Kept separate from per-hull
+// visuals so designers can experiment without changing hull presets.
+export interface ShieldRippleTuning {
+  /** Maximum number of simultaneous ripples the shader will render. */
+  maxRipples: number;
+  /** Default ripple propagation speed (radians per second). */
+  defaultSpeed: number;
+  /** Base width used when computing per-impact ripple width. */
+  baseWidth: number;
+  /** Multiplier applied to impact amp when computing final shader amplitude. */
+  ampScale: number;
+  /** Minimum scaled amplitude under which ripples are ignored for rendering. */
+  minRenderAmp?: number;
+  /** Blend mode for overlapping ripples: 0 = additive, 1 = perceptual (soft-clamp). */
+  blendMode: 0 | 1;
+  /** If true, ripple contribution can exceed per-hull maxAlpha for visibility. */
+  ignoreMaxAlpha: boolean;
+  /** Color multiplier for ripple tint when blending into base color. */
+  colorMul: number;
+  /** Strength scalar applied to ripple contribution when affecting alpha. */
+  strength: number;
+}
+
+export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
+  maxRipples: 6,
+  defaultSpeed: 3.1,
+  baseWidth: 0.14,
+  ampScale: 4.9,
+  blendMode: 0,
+  ignoreMaxAlpha: false,
+  colorMul: 1.0,
+  strength: 0.7,
+  minRenderAmp: 0.01,
 };

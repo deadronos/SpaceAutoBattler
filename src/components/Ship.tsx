@@ -5,7 +5,7 @@ import { Box3, Color, Sphere, type Group, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
 import type { ShipEntity, ShipHull } from '../types/index.js';
-import { getShieldVisuals, HULL_TINT, TEAM_COLORS } from '../config/renderer.js';
+import { getShieldVisuals, HULL_TINT, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../config/renderer.js';
 import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
@@ -155,8 +155,38 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   // Derived props for material
   const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);
   const opacity = Math.max(0, Math.min(1, s));
-  const ripples = entity.shieldRipples;
-  const ripple = ripples && ripples.length > 0 ? ripples[ripples.length - 1] : undefined;
+  const ripples = entity.shieldRipples ?? [];
+  // Pass up to `maxRipples` latest ripples (oldest first in the array we send)
+  const maxRipples = SHIELD_RIPPLE_TUNING.maxRipples ?? 3;
+  const startIndex = Math.max(0, ripples.length - maxRipples);
+  // Filter and aggregate:
+  // - Scale amp using configured ampScale, drop ripples below minRenderAmp
+  // - If many tiny ripples occur in quick succession, coalesce them into a single stronger ripple
+  const scaled = ripples.map((r) => ({ ...r, scaledAmp: Math.min(1.6, 0.25 + (r.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9)) }));
+  const minAmp = SHIELD_RIPPLE_TUNING.minRenderAmp ?? 0.02;
+  // Keep ripples above threshold
+  const significant = scaled.filter((s) => s.scaledAmp >= minAmp);
+  // Coalesce ripples that are very close in time (within 0.12s) by summing amp (clamped)
+  const coalesced: typeof significant = [];
+  for (const s of significant) {
+    if (coalesced.length === 0) {
+      coalesced.push({ ...s });
+      continue;
+    }
+    const last = coalesced[coalesced.length - 1];
+    if ((s.t0 ?? 0) - (last.t0 ?? 0) <= 0.12) {
+      // merge into last
+      last.scaledAmp = Math.min(1.6, last.scaledAmp + s.scaledAmp * 0.6);
+      // keep earliest t0 for ordering
+      last.t0 = Math.min(last.t0 ?? s.t0, s.t0 ?? last.t0);
+    } else {
+      coalesced.push({ ...s });
+    }
+  }
+  // Only keep the latest `maxRipples` entries
+  const sliced = coalesced.slice(Math.max(0, coalesced.length - maxRipples));
+  const rippleQueue = sliced.map((s) => ({ dir: s.dir, t0: s.t0, amp: s.scaledAmp }));
+  // debug logging removed
 
   const kind = getShieldVisuals(entity.ship.hull).materialKind;
   const key = `shield:${kind}`;
@@ -167,7 +197,7 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   return (
     <mesh ref={meshRef} renderOrder={-1} frustumCulled={false}>
       <sphereGeometry args={[1, 64, 64]} />
-      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={ripple} />
+      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={rippleQueue} />
     </mesh>
   );
 }

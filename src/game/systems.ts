@@ -286,6 +286,8 @@ function resolveProjectiles(state: GameState, delta: number): void {
         const strength = Math.min(1, absorbed / Math.max(1, ship.ship.maxShield));
         const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
         (ship.shieldRipples ??= []).push(ripple);
+        // Dev log: record when a shield ripple is emitted so we can trace runtime behavior
+        // debug logging removed
         // Keep only a few recent ripples for rendering.
         if (ship.shieldRipples.length > 6) ship.shieldRipples.shift();
       }

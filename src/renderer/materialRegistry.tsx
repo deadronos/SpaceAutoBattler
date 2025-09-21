@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Color, ShaderMaterial, Vector3 } from 'three';
+import { Color, ShaderMaterial, Vector3, Vector4 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { MeshTransmissionMaterial } from '@react-three/drei';
 import type { ShieldRipple, ShipHull, Team } from '../types/index.js';
-import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS } from '../config/renderer.js';
+import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../config/renderer.js';
+
+// Maximum ripples the shader supports (compile-time constant mirrored in GLSL)
+const SHADER_MAX_RIPPLES = 8;
 
 export type MaterialKey = string; // e.g., 'shield:hex', 'shield:transmission'
 
@@ -54,11 +57,16 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
         uHexScale: { value: hexScale },
         uEdgeWidth: { value: edgeWidth },
         uMaxAlpha: { value: maxAlpha },
-        uRippleDir: { value: new Vector3(0, 0, 1) },
-        uRippleT0: { value: -999 },
-        uRippleAmp: { value: 0 },
-        uRippleSpeed: { value: 3.1 },
-        uRippleWidth: { value: 0.16 },
+  // Pack ripple per-entry data into vec4 arrays for efficiency: (dir.xyz, amp)
+  uRippleCount: { value: 0 },
+  uRippleData: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)) },
+  uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
+        uRippleSpeed: { value: SHIELD_RIPPLE_TUNING.defaultSpeed },
+        uRippleWidthBase: { value: SHIELD_RIPPLE_TUNING.baseWidth },
+        uRippleBlendMode: { value: SHIELD_RIPPLE_TUNING.blendMode },
+        uRippleIgnoreMaxAlpha: { value: SHIELD_RIPPLE_TUNING.ignoreMaxAlpha ? 1.0 : 0.0 },
+        uRippleColorMul: { value: SHIELD_RIPPLE_TUNING.colorMul },
+        uRippleStrength: { value: SHIELD_RIPPLE_TUNING.strength },
       },
       vertexShader: `
         varying vec3 vWorldPos;
@@ -83,11 +91,17 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   uniform float uEnableRedBoost;
   uniform float uRedBoostPow;
   uniform float uRedBoostMul;
-        uniform vec3 uRippleDir;
-        uniform float uRippleT0;
-        uniform float uRippleAmp;
-        uniform float uRippleSpeed;
-        uniform float uRippleWidth;
+  uniform int uRippleCount;
+  uniform float uRippleSpeed;
+  uniform float uRippleWidthBase;
+  // Packed ripple arrays
+  const int SHADER_MAX_RIPPLES = ${SHADER_MAX_RIPPLES};
+  uniform vec4 uRippleData[SHADER_MAX_RIPPLES];
+  uniform float uRippleT0s[SHADER_MAX_RIPPLES];
+  uniform float uRippleBlendMode;
+  uniform float uRippleIgnoreMaxAlpha;
+  uniform float uRippleColorMul;
+  uniform float uRippleStrength;
 
         float hash(vec2 p){return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453);}
 
@@ -106,23 +120,28 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
           vec2 h = hex(fract(uv)-0.5);
           float edge = smoothstep(uEdgeWidth, 0.0, max(h.x, h.y));
 
-          float t = uTime - uRippleT0;
           float ripple = 0.0;
-          if(t > 0.0){
-            vec3 dir = normalize(uRippleDir);
-            float ang = acos(clamp(dot(N, dir), -1.0, 1.0));
-            float radius = t * uRippleSpeed;
-            float width = max(uRippleWidth, 0.05);
-            float norm = (ang - radius) / width;
-            float gaussian = exp(-norm * norm * 3.5);
-            float ramp = smoothstep(0.0, 0.16, t);
-            ripple = gaussian * ramp * uRippleAmp * exp(-t * 0.65);
+          // Accumulate ripples from packed arrays. Shader supports up to SHADER_MAX_RIPPLES entries.
+          for (int i = 0; i < SHADER_MAX_RIPPLES; i++) {
+            float t = uTime - uRippleT0s[i];
+            vec3 dir = normalize(uRippleData[i].xyz);
+            float amp = uRippleData[i].w;
+            if (t > 0.0 && amp > 0.0) {
+              float ang = acos(clamp(dot(N, dir), -1.0, 1.0));
+              float radius = t * uRippleSpeed;
+              float width = max(uRippleWidthBase, 0.05);
+              float norm = (ang - radius) / width;
+              float gaussian = exp(-norm * norm * 3.5);
+              float ramp = smoothstep(0.0, 0.16, t);
+              ripple += gaussian * ramp * amp * exp(-t * 0.65);
+            }
           }
 
           float sparkle = hash(floor(uv));
           float edgeGlow = edge * (0.7 + 0.3 * sparkle);
-          float rippleGlow = ripple * (1.3 + 0.4 * edge);
-          vec3 rippleTint = mix(vec3(1.0), uTint, 0.35);
+          // Apply color multiplier and strength
+          float rippleGlow = ripple * (1.3 + 0.4 * edge) * uRippleColorMul;
+          vec3 rippleTint = mix(vec3(1.0), uTint, 0.35) * uRippleColorMul;
 
           vec3 base = uTint * (0.4 + edgeGlow);
           vec3 baseCol = clamp(base, 0.0, 1.0);
@@ -130,8 +149,30 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
             baseCol = clamp(pow(baseCol, vec3(uRedBoostPow)) * uRedBoostMul, 0.0, 1.0);
           }
 
-          vec3 col = clamp(baseCol + rippleTint * rippleGlow, 0.0, 1.0);
-          float alpha = clamp(uOpacity * uMaxAlpha * clamp(0.08 + edgeGlow + ripple * 0.7, 0.0, 1.0), 0.0, 1.0);
+          // Combine base color and ripple contribution according to blend mode
+          vec3 col;
+          if(uRippleBlendMode < 0.5) {
+            // Additive: just add ripple tint*glow and clamp
+            col = clamp(baseCol + rippleTint * rippleGlow, 0.0, 1.0);
+          } else {
+            // Perceptual soft clamp: add then apply soft saturation
+            vec3 added = baseCol + rippleTint * rippleGlow;
+            col = added / (1.0 + added); // simple soft-saturate (x/(1+x)) keeps values in 0..1
+          }
+
+          // Alpha: base bubble always respects uMaxAlpha. Ripples add a contribution
+          // which may optionally ignore uMaxAlpha when configured.
+          float rippleAlphaFactor = clamp(0.08 + edgeGlow + ripple * 0.7 * uRippleStrength, 0.0, 1.0);
+          float alphaBase = uOpacity * uMaxAlpha; // base shield respects hull max
+          float rippleContribution = rippleAlphaFactor * uRippleStrength;
+          float alpha;
+          if(uRippleIgnoreMaxAlpha > 0.5) {
+            // Ripple can push alpha up toward full brightness (1.0), added on top of base
+            alpha = clamp(alphaBase + rippleContribution, 0.0, 1.0);
+          } else {
+            // Ripple contribution is limited by hull maxAlpha so bubble overall stays within per-hull cap
+            alpha = clamp(alphaBase + rippleContribution * uMaxAlpha, 0.0, 1.0);
+          }
           if(alpha <= 0.002) discard;
           gl_FragColor = vec4(col, alpha);
         }
@@ -158,18 +199,37 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   }, [team, mat]);
   useEffect(() => {
     const uniforms = mat.uniforms as any;
-    if (ripple) {
-      const amp = Math.min(1.6, 0.25 + ripple.amp * 1.9);
-      uniforms.uRippleDir.value.copy(ripple.dir);
-      uniforms.uRippleT0.value = ripple.t0;
-      uniforms.uRippleAmp.value = amp;
-      uniforms.uRippleSpeed.value = 3.1;
-      uniforms.uRippleWidth.value = 0.14 + (1 - ripple.amp) * 0.06;
-    } else {
-      uniforms.uRippleAmp.value = 0.0;
-      uniforms.uRippleT0.value = -999.0;
-      uniforms.uRippleWidth.value = 0.16;
+    // Prepare default (no ripples)
+    const maxRipples = Math.min(SHIELD_RIPPLE_TUNING.maxRipples ?? 3, SHADER_MAX_RIPPLES);
+    // Ensure underlying arrays exist
+    uniforms.uRippleData.value = uniforms.uRippleData.value ?? Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
+    uniforms.uRippleT0s.value = uniforms.uRippleT0s.value ?? new Array<number>(SHADER_MAX_RIPPLES).fill(-999);
+    // Zero out all entries first
+    for (let i = 0; i < SHADER_MAX_RIPPLES; i++) {
+      const v = uniforms.uRippleData.value[i] as Vector4;
+      v.set(0, 0, 1, 0);
+      uniforms.uRippleT0s.value[i] = -999;
     }
+    uniforms.uRippleCount.value = 0;
+
+    // If the prop is a single ripple, wrap it; but we expect upstream to pass an array of ripples
+    const rippleList = ripple ? (Array.isArray(ripple) ? ripple : [ripple]) : [];
+    const startTime = (uniforms.uTime && typeof uniforms.uTime.value === 'number')
+      ? uniforms.uTime.value
+      : null;
+    // Fill up to maxRipples with the latest entries
+    for (let i = 0; i < Math.min(rippleList.length, maxRipples); i++) {
+      const r = rippleList[rippleList.length - Math.min(rippleList.length, maxRipples) + i];
+      const amp = Math.min(1.6, 0.25 + (r.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9));
+      const idx = i; // place 0..maxRipples-1 in array
+      const dir = r.dir ?? new Vector3(0, 0, 1);
+      uniforms.uRippleData.value[idx].set(dir.x, dir.y, dir.z, amp);
+      uniforms.uRippleT0s.value[idx] = startTime ?? r.t0;
+    }
+    uniforms.uRippleCount.value = Math.min(rippleList.length, maxRipples);
+    // Ensure base values are set
+    uniforms.uRippleSpeed.value = SHIELD_RIPPLE_TUNING.defaultSpeed;
+    uniforms.uRippleWidthBase.value = SHIELD_RIPPLE_TUNING.baseWidth;
   }, [ripple, mat]);
 
   return <primitive object={mat} attach="material" />;
