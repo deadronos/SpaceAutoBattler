@@ -10,7 +10,6 @@ Recent updates (automated agent)
 
 - 2025-09-21: Archived check performed — no files in `memory/` contained explicit "flagged for removal" markers, so nothing was moved to `memory/ARCHIVE/`.
 
-
 - 2025-09-21: Promoted automated DRAFTS to canonical memory files and archived originals under `memory/ARCHIVE/`:
   - Archived: core-gameState.md -> memory/ARCHIVE/core-gameState.2025-09-21.md
   - Archived: core-systems.md -> memory/ARCHIVE/core-systems.2025-09-21.md

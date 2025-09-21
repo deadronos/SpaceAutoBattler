@@ -4,9 +4,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-
 ## Completed
- 
+
 - Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress) — verified on 2025-09-21 by automated agent
 
 - [TASK100](COMPLETED/TASK100-memory-bank-summary.md) Memory-bank summary entry - Create/update memory-bank summary node and task file
