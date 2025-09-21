@@ -25,6 +25,10 @@ export interface ShipComponent {
   hull: ShipHull;
   hp: number;
   maxHp: number;
+  /** Current shield hit points. Visual opacity scales with this value. */
+  shield: number;
+  /** Max shield hit points. */
+  maxShield: number;
   cooldown: number;
   fireRate: number;
   damage: number;
@@ -51,6 +55,8 @@ export interface GameEntity extends TransformComponent {
   direction?: Vector3;
   /** Identifier of the model to render for this entity. */
   model?: ShipHull;
+  /** Recent shield ripple events, renderer-only consumption. Kept on GameState for determinism. */
+  shieldRipples?: ShieldRipple[];
 }
 
 export type ShipEntity = GameEntity & { ship: ShipComponent };
@@ -87,10 +93,22 @@ export interface ShipBlueprint {
 export interface ShipStats {
   hull: ShipHull;
   maxHp: number;
+  /** Suggested shield capacity for ships of this hull. */
+  maxShield?: number;
   damage: number;
   fireRate: number;
   projectileSpeed: number;
   range: number;
   speed: number;
   scale: number;
+}
+
+/** Parameters for a shield ripple kick emitted on impact. */
+export interface ShieldRipple {
+  /** Unit vector direction on the sphere surface in world space at impact moment. */
+  dir: Vector3;
+  /** Time when the ripple started (GameState.time). */
+  t0: number;
+  /** Visual strength (0..1). */
+  amp: number;
 }

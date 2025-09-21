@@ -5,6 +5,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   fighter: {
     hull: 'fighter',
     maxHp: 40,
+    maxShield: 24,
     damage: 8,
     fireRate: 0.9,
     projectileSpeed: 28,
@@ -15,6 +16,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   corvette: {
     hull: 'corvette',
     maxHp: 75,
+    maxShield: 45,
     damage: 12,
     fireRate: 1.2,
     projectileSpeed: 24,
@@ -25,6 +27,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   frigate: {
     hull: 'frigate',
     maxHp: 120,
+    maxShield: 72,
     damage: 16,
     fireRate: 1.5,
     projectileSpeed: 22,
@@ -35,6 +38,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   destroyer: {
     hull: 'destroyer',
     maxHp: 200,
+    maxShield: 120,
     damage: 22,
     fireRate: 1.8,
     projectileSpeed: 20,
@@ -45,6 +49,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   carrier: {
     hull: 'carrier',
     maxHp: 320,
+    maxShield: 200,
     damage: 28,
     fireRate: 2.2,
     projectileSpeed: 18,
@@ -84,6 +89,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       hull: blueprint.hull,
       hp: stats.maxHp,
       maxHp: stats.maxHp,
+      shield: stats.maxShield ?? Math.round(stats.maxHp * 0.6),
+      maxShield: stats.maxShield ?? Math.round(stats.maxHp * 0.6),
       cooldown: stats.fireRate * state.rng.next(),
       fireRate: stats.fireRate,
       damage: stats.damage,
@@ -91,7 +98,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       range: stats.range,
       speed: stats.speed
     },
-    model: blueprint.hull
+    model: blueprint.hull,
+    shieldRipples: []
   };
 
   const registered = state.world.createEntity(entity) as ShipEntity;

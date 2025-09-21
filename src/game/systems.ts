@@ -3,7 +3,8 @@ import type {
   GameEntity,
   GameState,
   ProjectileEntity,
-  ShipEntity
+  ShipEntity,
+  ShieldRipple
 } from '../types/index.js';
 import { destroyEntity } from './state.js';
 import { clampToWorld } from './config.js';
@@ -117,8 +118,25 @@ function resolveProjectiles(state: GameState, delta: number): void {
       const distance = ship.transform.position.distanceTo(projectile.transform.position);
       const impactRadius = ship.transform.scale * 0.9;
       if (distance > impactRadius) continue;
+      // Apply damage to shields first, then to hull.
+      let remaining = projectile.projectile.damage;
+      if (ship.ship.shield > 0) {
+        const absorbed = Math.min(ship.ship.shield, remaining);
+        ship.ship.shield -= absorbed;
+        remaining -= absorbed;
+        // Emit a shield ripple event oriented from impact direction.
+        const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
+        if (dir.lengthSq() > 1e-5) dir.normalize(); else dir.set(0, 0, 1);
+        const strength = Math.min(1, absorbed / Math.max(1, ship.ship.maxShield));
+  const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
+        (ship.shieldRipples ??= []).push(ripple);
+        // Keep only a few recent ripples for rendering.
+        if (ship.shieldRipples.length > 6) ship.shieldRipples.shift();
+      }
 
-      ship.ship.hp -= projectile.projectile.damage;
+      if (remaining > 0) {
+        ship.ship.hp -= remaining;
+      }
       toRemove.add(projectile);
 
       if (ship.ship.hp <= 0) {
