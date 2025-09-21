@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { Mesh } from 'three';
 import type { ProjectileEntity } from '../types/index.js';
 import type React from 'react';
+import { getMaterial } from '../renderer/materialRegistry.js';
 
 export function ProjectileObject({ entity }: { entity: ProjectileEntity }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
@@ -16,10 +17,17 @@ export function ProjectileObject({ entity }: { entity: ProjectileEntity }): Reac
     mesh.scale.set(scale, scale, scale);
   });
 
+  // Select a bullet material by key; fallback to built-in glow if missing
+  const Mat = getMaterial('bullet:laser');
   return (
     <mesh ref={meshRef} castShadow receiveShadow>
       <sphereGeometry args={[0.4, 16, 16]} />
-      <meshStandardMaterial color="#ffd089" emissive="#ff962f" emissiveIntensity={1.8} />
+      {Mat ? (
+        // provide minimal props surface for future materials
+        <Mat />
+      ) : (
+        <meshStandardMaterial color="#ffd089" emissive="#ff962f" emissiveIntensity={1.8} />
+      )}
     </mesh>
   );
 }

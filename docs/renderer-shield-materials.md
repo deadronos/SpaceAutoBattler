@@ -39,3 +39,19 @@ Notes:
 - Simulation determinism is preserved; this is purely visual. All state remains in `GameState`.
 - Opacity still maps to shield ratio (clamped by `maxAlpha`).
 - MeshTransmissionMaterial is imported from `@react-three/drei` and typed via a local stub.
+
+## Registry usage for other visuals
+
+Materials are resolved from `src/renderer/materialRegistry.tsx` using namespaced keys. Built-ins include:
+
+- `shield:hex`, `shield:transmission`
+- `bullet:laser`
+- `explosion:smoke`
+
+To add your own:
+
+```ts
+registerMaterial('bullet:plasma', PlasmaBulletMaterial);
+// then in your component
+const Mat = getMaterial('bullet:plasma') ?? getMaterial('bullet:laser');
+```
