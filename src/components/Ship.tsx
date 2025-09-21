@@ -1,10 +1,11 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import type React from 'react';
-import { Color, ShaderMaterial, type Group, Vector3, type Mesh } from 'three';
+import { Box3, Color, ShaderMaterial, Sphere, type Group, Vector3, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
-import type { ShieldRipple, ShipEntity } from '../types/index.js';
+import type { ShieldRipple, ShipEntity, ShipHull } from '../types/index.js';
+import { getShieldVisuals } from '../config/renderer.js';
 import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 
@@ -24,6 +25,26 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   const gltf = hasValidPath ? (useGLTF(modelPath) as GLTF) : null;
   const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf?.scene]);
 
+  // Compute a per-model bounding radius to size the shield bubble properly.
+  const fallbackRadiusByHull: Record<ShipHull, number> = {
+    fighter: 1.6,
+    corvette: 2.1,
+    frigate: 2.8,
+    destroyer: 3.4,
+    carrier: 4.4,
+  };
+
+  const modelRadius = useMemo(() => {
+    // If scene not loaded, return a conservative fallback based on hull.
+    if (!scene) return fallbackRadiusByHull[entity.ship.hull] ?? 2.0;
+    const box = new Box3().setFromObject(scene);
+    const sphere = new Sphere();
+    box.getBoundingSphere(sphere);
+    // Slight margin so the bubble sits outside the hull — configurable per hull.
+    const { margin } = getShieldVisuals(entity.ship.hull);
+    return sphere.radius * margin;
+  }, [scene, entity.ship.hull]);
+
   useFrame(() => {
     const ref = group.current;
     if (!ref) return;
@@ -36,7 +57,7 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     return (
       <group ref={group} dispose={null}>
         <primitive object={scene} />
-        <ShieldBubble entity={entity} />
+        <ShieldBubble entity={entity} radius={modelRadius} />
       </group>
     );
   }
@@ -48,12 +69,12 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
         <coneGeometry args={[0.6, 1.6, 6]} />
         <meshStandardMaterial color={entity.ship.team === 'blue' ? new Color('#77aaff') : new Color('#ff7788')} />
       </mesh>
-      <ShieldBubble entity={entity} />
+      <ShieldBubble entity={entity} radius={modelRadius} />
     </group>
   );
 }
 
-function ShieldBubble({ entity }: { entity: ShipEntity }): React.ReactElement {
+function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
 
   // Basic hex shield shader, inspired by common techniques:
@@ -63,6 +84,7 @@ function ShieldBubble({ entity }: { entity: ShipEntity }): React.ReactElement {
   // - Opacity scales with shield ratio
   // - Ripple: expand ring from impact direction across sphere via dot(N, dir)
   const material = useMemo(() => {
+    const { hexScale, edgeWidth } = getShieldVisuals(entity.ship.hull);
     const mat = new ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -70,8 +92,8 @@ function ShieldBubble({ entity }: { entity: ShipEntity }): React.ReactElement {
         uTime: { value: 0 },
         uTint: { value: new Color(entity.ship.team === 'blue' ? '#66ccff' : '#ff6699') },
         uOpacity: { value: 1 },
-        uHexScale: { value: 12 },
-        uEdgeWidth: { value: 0.1 },
+        uHexScale: { value: hexScale },
+        uEdgeWidth: { value: edgeWidth },
         uRippleDir: { value: new Vector3(0, 0, 1) },
         uRippleT0: { value: -999 },
         uRippleAmp: { value: 0 },
@@ -80,14 +102,18 @@ function ShieldBubble({ entity }: { entity: ShipEntity }): React.ReactElement {
       },
       vertexShader: `
         varying vec3 vWorldPos;
+        varying vec3 vCenter;
         void main() {
           vec4 wp = modelMatrix * vec4(position, 1.0);
           vWorldPos = wp.xyz;
+          // Sphere center in world space — needed so shading is correct when parented
+          vCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
           gl_Position = projectionMatrix * viewMatrix * wp;
         }
       `,
       fragmentShader: `
         varying vec3 vWorldPos;
+        varying vec3 vCenter;
         uniform float uTime;
         uniform vec3 uTint;
         uniform float uOpacity;
@@ -113,8 +139,8 @@ function ShieldBubble({ entity }: { entity: ShipEntity }): React.ReactElement {
         }
 
         void main(){
-          // Project world position on sphere to get local normal and uv
-          vec3 N = normalize(vWorldPos);
+          // Compute normal relative to sphere center (world space)
+          vec3 N = normalize(vWorldPos - vCenter);
           // Create hex coordinates from spherical mapping
           vec2 uv = vec2(atan(N.z, N.x)/6.2831853 + 0.5, acos(N.y)/3.1415926);
           uv *= uHexScale;
@@ -143,18 +169,27 @@ function ShieldBubble({ entity }: { entity: ShipEntity }): React.ReactElement {
       `
     });
     return mat;
-  }, [entity.ship.team]);
+  }, [entity.ship.team, entity.ship.hull]);
 
   useRenderFrame((_, dt) => {
     const mesh = meshRef.current;
     if (!mesh) return;
     const u = (material.uniforms as any);
     u.uTime.value += dt;
-    // Sync transform to entity (separate from parent in case of GLTF internal scaling)
-    mesh.position.copy(entity.transform.position);
-    mesh.quaternion.copy(entity.transform.rotation);
-    const radius = entity.transform.scale * 1.6;
-    mesh.scale.set(radius, radius, radius);
+    // Anchor to parent ship: local origin with identity rotation.
+    // The parent <group> already carries the ship's world transform.
+    mesh.position.set(0, 0, 0);
+    mesh.quaternion.identity();
+    // Local scale sets bubble radius. Prefer model-computed radius, fallback by hull.
+    const fallbackByHull: Record<ShipHull, number> = {
+      fighter: 1.8,
+      corvette: 2.3,
+      frigate: 3.0,
+      destroyer: 3.7,
+      carrier: 4.6,
+    };
+    const r = radius ?? fallbackByHull[entity.ship.hull] ?? 2.0;
+    mesh.scale.setScalar(r);
 
     // Opacity from shield strength (smoothed)
     const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);
