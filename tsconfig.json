@@ -23,7 +23,8 @@
     "src/**/*.d.ts",
     "test/**/*.ts",
     "test/**/*.js",
-    "eslint.config.ts"
+    "eslint.config.ts",
+    "vitest.config.js"
   ],
   "exclude": ["node_modules", "dist", "test/vitest_old"]
 }
