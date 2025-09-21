@@ -28,11 +28,21 @@ export function getMaterial<P = any>(key: MaterialKey): MaterialComponent<P> | u
 
 // Built-in Shield Hex material (custom shader)
 const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity, ripple }) => {
+  // Alpha computation note:
+  // - The renderer computes `opacity` as the shield fraction: shield / maxShield (clamped 0..1)
+  // - The shader multiplies that `uOpacity` by a glow-driven factor (0.05 + glow) which
+  //   encodes hex-edge glow + transient ripple rings. That product is then clamped by
+  //   `uMaxAlpha` (configured per-hull via getShieldVisuals) so visual opacity never
+  //   exceeds a hull-specific maximum. Finally, tiny final-alpha values are discarded
+  //   by the `if(alpha <= 0.01) discard;` branch to avoid rendering very faint fragments.
+  // Rationale: this produces a shield whose overall visibility scales with remaining
+  // HP, whose local brightness comes from hex/ripple glow, and which is bounded for
+  // consistent visuals across hull sizes.
   const mat = useMemo(() => {
     const { hexScale, edgeWidth, maxAlpha } = getShieldVisuals(hull);
     return new ShaderMaterial({
       transparent: true,
-      depthWrite: false,
+      depthWrite: true,
       uniforms: {
         uTime: { value: 0 },
         uTint: { value: new Color(team === 'blue' ? '#66ccff' : '#ff6699') },
@@ -101,7 +111,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
 
           float glow = edge * (0.7 + 0.3*hash(floor(uv))) + ring;
           vec3 col = uTint * (0.4 + glow);
-          float alpha = min(uMaxAlpha, uOpacity * clamp(0.05 + glow, 0.0, 1.0));
+          float alpha = min(uMaxAlpha, uOpacity * clamp(0.12 + glow, 0.0, 1.0));
           if(alpha <= 0.01) discard;
           gl_FragColor = vec4(col, alpha);
         }
