@@ -57,8 +57,8 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
         uRippleDir: { value: new Vector3(0, 0, 1) },
         uRippleT0: { value: -999 },
         uRippleAmp: { value: 0 },
-        uRippleSpeed: { value: 2.5 },
-        uRippleWidth: { value: 0.2 },
+        uRippleSpeed: { value: 3.1 },
+        uRippleWidth: { value: 0.16 },
       },
       vertexShader: `
         varying vec3 vWorldPos;
@@ -107,26 +107,31 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
           float edge = smoothstep(uEdgeWidth, 0.0, max(h.x, h.y));
 
           float t = uTime - uRippleT0;
-          float ring = 0.0;
+          float ripple = 0.0;
           if(t > 0.0){
-            float d = acos(clamp(dot(N, normalize(uRippleDir)), -1.0, 1.0));
-            float r = t * uRippleSpeed;
-            float w = uRippleWidth;
-            float a = uRippleAmp;
-            float band = 1.0 - smoothstep(r-w, r, d) + smoothstep(r, r+w, d);
-            ring = band * a * exp(-t*1.2);
+            vec3 dir = normalize(uRippleDir);
+            float ang = acos(clamp(dot(N, dir), -1.0, 1.0));
+            float radius = t * uRippleSpeed;
+            float width = max(uRippleWidth, 0.05);
+            float norm = (ang - radius) / width;
+            float gaussian = exp(-norm * norm * 3.5);
+            float ramp = smoothstep(0.0, 0.16, t);
+            ripple = gaussian * ramp * uRippleAmp * exp(-t * 0.65);
           }
 
-            float glow = edge * (0.7 + 0.3*hash(floor(uv))) + ring;
-            // Red boost: improve hex visibility for the red team. Tunable via SHIELD_TUNING.
-            vec3 base = uTint * (0.4 + glow);
-            vec3 col = base;
-            if(uTeamIsRed > 0.5 && uEnableRedBoost > 0.5) {
-              // Apply configured red boost (power & multiplier are tunable via SHIELD_TUNING)
-              col = pow(clamp(base, 0.0, 1.0), vec3(uRedBoostPow)) * uRedBoostMul;
-              col = clamp(col, 0.0, 1.0);
-            }
-          float alpha = clamp(uOpacity * uMaxAlpha * clamp(0.12 + glow, 0.0, 1.0), 0.0, 1.0);
+          float sparkle = hash(floor(uv));
+          float edgeGlow = edge * (0.7 + 0.3 * sparkle);
+          float rippleGlow = ripple * (1.3 + 0.4 * edge);
+          vec3 rippleTint = mix(vec3(1.0), uTint, 0.35);
+
+          vec3 base = uTint * (0.4 + edgeGlow);
+          vec3 baseCol = clamp(base, 0.0, 1.0);
+          if(uTeamIsRed > 0.5 && uEnableRedBoost > 0.5) {
+            baseCol = clamp(pow(baseCol, vec3(uRedBoostPow)) * uRedBoostMul, 0.0, 1.0);
+          }
+
+          vec3 col = clamp(baseCol + rippleTint * rippleGlow, 0.0, 1.0);
+          float alpha = clamp(uOpacity * uMaxAlpha * clamp(0.08 + edgeGlow + ripple * 0.7, 0.0, 1.0), 0.0, 1.0);
           if(alpha <= 0.002) discard;
           gl_FragColor = vec4(col, alpha);
         }
@@ -152,13 +157,18 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     (mat.uniforms as any).uRedBoostMul.value = SHIELD_TUNING.redBoostMultiplier;
   }, [team, mat]);
   useEffect(() => {
+    const uniforms = mat.uniforms as any;
     if (ripple) {
-      (mat.uniforms as any).uRippleDir.value.copy(ripple.dir);
-      (mat.uniforms as any).uRippleT0.value = ripple.t0;
-      (mat.uniforms as any).uRippleAmp.value = ripple.amp * 1.3;
+      const amp = Math.min(1.6, 0.25 + ripple.amp * 1.9);
+      uniforms.uRippleDir.value.copy(ripple.dir);
+      uniforms.uRippleT0.value = ripple.t0;
+      uniforms.uRippleAmp.value = amp;
+      uniforms.uRippleSpeed.value = 3.1;
+      uniforms.uRippleWidth.value = 0.14 + (1 - ripple.amp) * 0.06;
     } else {
-      (mat.uniforms as any).uRippleAmp.value = 0.0;
-      (mat.uniforms as any).uRippleT0.value = -999.0;
+      uniforms.uRippleAmp.value = 0.0;
+      uniforms.uRippleT0.value = -999.0;
+      uniforms.uRippleWidth.value = 0.16;
     }
   }, [ripple, mat]);
 
