@@ -84,7 +84,7 @@ function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number 
   // - Opacity scales with shield ratio
   // - Ripple: expand ring from impact direction across sphere via dot(N, dir)
   const material = useMemo(() => {
-    const { hexScale, edgeWidth } = getShieldVisuals(entity.ship.hull);
+    const { hexScale, edgeWidth, maxAlpha } = getShieldVisuals(entity.ship.hull);
     const mat = new ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -94,6 +94,7 @@ function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number 
         uOpacity: { value: 1 },
         uHexScale: { value: hexScale },
         uEdgeWidth: { value: edgeWidth },
+        uMaxAlpha: { value: maxAlpha },
         uRippleDir: { value: new Vector3(0, 0, 1) },
         uRippleT0: { value: -999 },
         uRippleAmp: { value: 0 },
@@ -119,6 +120,7 @@ function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number 
         uniform float uOpacity;
         uniform float uHexScale;
         uniform float uEdgeWidth;
+        uniform float uMaxAlpha;
         uniform vec3 uRippleDir;
         uniform float uRippleT0;
         uniform float uRippleAmp;
@@ -162,7 +164,7 @@ function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number 
 
           float glow = edge * (0.7 + 0.3*hash(floor(uv))) + ring;
           vec3 col = uTint * (0.4 + glow);
-          float alpha = uOpacity * clamp(0.05 + glow, 0.0, 1.0);
+          float alpha = min(uMaxAlpha, uOpacity * clamp(0.05 + glow, 0.0, 1.0));
           if(alpha <= 0.01) discard;
           gl_FragColor = vec4(col, alpha);
         }
