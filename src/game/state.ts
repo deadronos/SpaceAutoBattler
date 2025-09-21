@@ -22,7 +22,8 @@ export async function createGameState(): Promise<GameState> {
     time: 0,
     queries: {
       ships: world.archetype('ship'),
-      projectiles: world.archetype('projectile')
+      projectiles: world.archetype('projectile'),
+      turrets: world.archetype('turret')
     },
     rng: new SeededRng(1337),
     paused: false,

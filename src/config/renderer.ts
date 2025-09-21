@@ -28,6 +28,16 @@ export interface ShieldVisualSettings {
   };
 }
 
+export interface DebugVisualFlags {
+  showTurretGizmos?: boolean;
+  showMuzzleFlashes?: boolean;
+}
+
+export const DEBUG_VISUALS: DebugVisualFlags = {
+  showTurretGizmos: false,
+  showMuzzleFlashes: true,
+};
+
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   fighter:   { margin: 1.01, 

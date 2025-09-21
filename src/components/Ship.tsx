@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type React from 'react';
 import { Box3, Color, Sphere, type Group, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -53,6 +53,8 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     ref.quaternion.copy(entity.transform.rotation);
     ref.scale.setScalar(entity.transform.scale);
   });
+
+  // Ship object no longer renders turret gizmos or flashes; these are handled by TurretObject or projectile visuals.
 
   if (scene) {
     return (
