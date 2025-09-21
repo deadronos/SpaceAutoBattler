@@ -5,7 +5,7 @@ import { Box3, Color, Sphere, type Group, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
 import type { ShipEntity, ShipHull } from '../types/index.js';
-import { getShieldVisuals } from '../config/renderer.js';
+import { getShieldVisuals, HULL_TINT, TEAM_COLORS } from '../config/renderer.js';
 import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
@@ -25,6 +25,28 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   // Use drei's useGLTF which provides caching and convenience helpers.
   const gltf = hasValidPath ? (useGLTF(modelPath) as GLTF) : null;
   const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf?.scene]);
+
+  // Collect mesh materials from the cloned scene so we can apply a subtle
+  // team-color tint when the ship has no shields. We keep the original
+  // material colors so we can restore them when shields return.
+  const hullMaterialsRef = useRef<Array<{ material: any; originalColor: Color }>>([]);
+  useEffect(() => {
+    hullMaterialsRef.current = [];
+    if (!scene) return;
+    scene.traverse((obj: any) => {
+      // Three.js Mesh objects have isMesh flag
+      if (obj && obj.isMesh && obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach((m: any) => {
+          if (m && m.color && typeof m.color.clone === 'function') {
+            const entry: any = { material: m, originalColor: m.color.clone() };
+            if (m.emissive && typeof m.emissive.clone === 'function') entry.originalEmissive = m.emissive.clone();
+            hullMaterialsRef.current.push(entry);
+          }
+        });
+      }
+    });
+  }, [scene]);
 
   // Compute a per-model bounding radius to size the shield bubble properly.
   const fallbackRadiusByHull: Record<ShipHull, number> = {
@@ -60,7 +82,7 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     return (
       <group ref={group} dispose={null}>
         <primitive object={scene} />
-        <ShieldBubble entity={entity} radius={modelRadius} />
+        <ShieldBubble entity={entity} radius={modelRadius} hullMaterialsRef={hullMaterialsRef} />
       </group>
     );
   }
@@ -70,14 +92,14 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     <group ref={group} dispose={null}>
       <mesh castShadow receiveShadow>
         <coneGeometry args={[0.6, 1.6, 6]} />
-        <meshStandardMaterial color={entity.ship.team === 'blue' ? new Color('#77aaff') : new Color('#ff7788')} />
+        <meshStandardMaterial color={entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red)} />
       </mesh>
       <ShieldBubble entity={entity} radius={modelRadius} />
     </group>
   );
 }
 
-function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number }): React.ReactElement {
+function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity; radius?: number; hullMaterialsRef?: React.MutableRefObject<Array<{ material: any; originalColor: Color }>> }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
 
   useRenderFrame((_, dt) => {
@@ -95,6 +117,40 @@ function ShieldBubble({ entity, radius }: { entity: ShipEntity; radius?: number 
     };
     const r = radius ?? fallbackByHull[entity.ship.hull] ?? 2.0;
     mesh.scale.setScalar(r);
+  });
+  // Apply subtle hull tint when shields are gone so the ship is still team-identifiable.
+  useRenderFrame(() => {
+    const mats = hullMaterialsRef?.current;
+    if (!mats || mats.length === 0) return;
+    // Threshold under which we consider shields 'gone' for tinting purposes.
+    const shieldFraction = entity.ship.shield / Math.max(1, entity.ship.maxShield);
+  const applyTint = shieldFraction <= HULL_TINT.tintThreshold;
+  const teamColor = entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red);
+    for (const entry of mats) {
+      const m = entry.material;
+      if (!m || !m.color) continue;
+      if (applyTint) {
+  // Weak tint: lerp original color towards teamColor by configured strength
+  const t = HULL_TINT.tintStrength;
+        const target = entry.originalColor.clone().lerp(teamColor, t);
+        m.color.copy(target);
+        // If material has emissive, slightly tint it too (but subtle)
+        if (m.emissive && typeof m.emissive.copy === 'function') {
+          m.emissive.copy(target).multiplyScalar(0.08);
+        }
+      } else {
+        // Restore original color
+        m.color.copy(entry.originalColor);
+        if (m.emissive && entry.material.emissive) {
+          // Try to restore emissive to a dimmed version of original if we recorded it; otherwise clear
+          if ((entry as any).originalEmissive) {
+            m.emissive.copy((entry as any).originalEmissive);
+          } else {
+            m.emissive.setHex(0x000000);
+          }
+        }
+      }
+    }
   });
   // Derived props for material
   const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);

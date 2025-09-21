@@ -116,3 +116,41 @@ export const SHIELD_TUNING: ShieldTuning = {
   redBoostMultiplier: 1.45,
   redTint: '#b22222',
 };
+
+// Team color constants used across renderer and placeholder models.
+// Designers can change these to alter the visual identity of teams.
+export const TEAM_COLORS = {
+  blue: '#77aaff',
+  red: '#ff7788',
+} as const;
+
+// Hull tinting when shields are gone: designers can tune how strong the
+// tint is and at what shield fraction it should appear.
+export interface HullTintConfig {
+  /** Fraction (0..1) under which the hull gets a subtle team-tint. */
+  tintThreshold: number;
+  /** How strongly to blend original hull color toward team color (0..1). */
+  tintStrength: number;
+}
+
+/**
+ * HULL_TINT — Designer guidance
+ *
+ * - tintThreshold: fraction in [0..1] under which the hull will receive a
+ *   subtle team tint. Values near 0.0 mean tint only when shields are fully
+ *   depleted; values like 0.1 will tint when shields are low but not empty.
+ *
+ * - tintStrength: blend amount in [0..1]. 0.0 = no tint; 1.0 = completely
+ *   replace hull color with team color. Recommended range: 0.08..0.25. Typical
+ *   defaults used here (0.02 threshold, 0.15 strength) produce a light, readable
+ *   tint that keeps artist colors intact while making team affiliation clear.
+ *
+ * Examples:
+ * - (threshold=0.02, strength=0.10) => very subtle tint only when shield is gone
+ * - (threshold=0.10, strength=0.20) => noticeable tint when shields are low
+ * - (threshold=0.0, strength=0.30)  => tint only at exact zero but stronger
+ */
+export const HULL_TINT: HullTintConfig = {
+  tintThreshold: 1.00,
+  tintStrength: 0.15,
+};

@@ -3,7 +3,7 @@ import { Color, ShaderMaterial, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { MeshTransmissionMaterial } from '@react-three/drei';
 import type { ShieldRipple, ShipHull, Team } from '../types/index.js';
-import { getShieldVisuals, SHIELD_TUNING } from '../config/renderer.js';
+import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS } from '../config/renderer.js';
 
 export type MaterialKey = string; // e.g., 'shield:hex', 'shield:transmission'
 
@@ -45,7 +45,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
       depthWrite: true,
       uniforms: {
         uTime: { value: 0 },
-        uTint: { value: new Color(team === 'blue' ? '#66ccff' : SHIELD_TUNING.redTint) },
+  uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
         uTeamIsRed: { value: team === 'red' ? 1.0 : 0.0 },
         uEnableRedBoost: { value: SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0 },
         uRedBoostPow: { value: SHIELD_TUNING.redBoostPower },
@@ -126,8 +126,8 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
               col = pow(clamp(base, 0.0, 1.0), vec3(uRedBoostPow)) * uRedBoostMul;
               col = clamp(col, 0.0, 1.0);
             }
-          float alpha = min(uMaxAlpha, uOpacity * clamp(0.12 + glow, 0.0, 1.0));
-          if(alpha <= 0.01) discard;
+          float alpha = clamp(uOpacity * uMaxAlpha * clamp(0.12 + glow, 0.0, 1.0), 0.0, 1.0);
+          if(alpha <= 0.002) discard;
           gl_FragColor = vec4(col, alpha);
         }
       `,
@@ -145,7 +145,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     (mat.uniforms as any).uOpacity.value = Math.max(0, Math.min(1, opacity));
   }, [opacity, mat]);
   useEffect(() => {
-  (mat.uniforms as any).uTint.value = new Color(team === 'blue' ? '#66ccff' : SHIELD_TUNING.redTint);
+  (mat.uniforms as any).uTint.value = new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint);
     (mat.uniforms as any).uTeamIsRed.value = team === 'red' ? 1.0 : 0.0;
     (mat.uniforms as any).uEnableRedBoost.value = SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0;
     (mat.uniforms as any).uRedBoostPow.value = SHIELD_TUNING.redBoostPower;
@@ -168,8 +168,9 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
 // Built-in Shield Transmission material (drei)
 const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity }) => {
   const cfg = getShieldVisuals(hull);
-  const tint = useMemo(() => new Color(team === 'blue' ? '#66ccff' : '#b22222'), [team]);
-  const alpha = Math.max(0, Math.min(cfg.maxAlpha, opacity));
+  const tint = useMemo(() => new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
+  // Scale opacity by configured maxAlpha so material alpha is proportional to shield fraction
+  const alpha = Math.max(0, Math.min(1, opacity * cfg.maxAlpha));
   return (
     <MeshTransmissionMaterial
       transparent
