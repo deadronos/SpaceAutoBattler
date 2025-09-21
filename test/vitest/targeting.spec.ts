@@ -11,7 +11,7 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
     transform: {
       position: position.clone(),
       rotation: new Quaternion(),
-      scale: 1
+      scale: 1,
     },
     ship: {
       team,
@@ -25,9 +25,9 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
       damage: 4,
       projectileSpeed: 10,
       range: 12,
-      speed: 5
+      speed: 5,
     },
-    model: 'fighter'
+    model: 'fighter',
   };
 }
 
@@ -41,9 +41,9 @@ describe('findNearestEnemy', () => {
     const state = {
       queries: {
         ships: {
-          entities: [origin, farEnemy, nearEnemy, ally]
-        }
-      }
+          entities: [origin, farEnemy, nearEnemy, ally],
+        },
+      },
     } as unknown as GameState;
 
     const result = findNearestEnemy(state, origin);
@@ -57,9 +57,9 @@ describe('findNearestEnemy', () => {
     const state = {
       queries: {
         ships: {
-          entities: [origin, ally]
-        }
-      }
+          entities: [origin, ally],
+        },
+      },
     } as unknown as GameState;
 
     const result = findNearestEnemy(state, origin);

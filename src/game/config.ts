@@ -10,11 +10,15 @@ export const CAMERA_DEFAULTS = {
   position: [0, 600, 1600] as const,
   fov: 55,
   near: 0.1,
-  far: WORLD_SIZE * 5
+  far: WORLD_SIZE * 5,
 };
 
 // Fog tuned for deep space look at larger scales
-export const FOG_DEFAULTS: readonly [string, number, number] = ['#02030b', WORLD_SIZE * 0.4, WORLD_SIZE * 1.2];
+export const FOG_DEFAULTS: readonly [string, number, number] = [
+  '#02030b',
+  WORLD_SIZE * 0.4,
+  WORLD_SIZE * 1.2,
+];
 
 // AI and movement configuration
 export const WORLD_BOUNDS_MARGIN = 2; // small margin to stay slightly within the cube

@@ -23,4 +23,5 @@ Guidance:
 - When adding substantial AI logic, prefer creating a `src/game/ai/` subfolder and keeping state inside `GameState` rather than module-level singletons.
 
 References:
+
 - `src/game/systems.ts`, `src/game/ships.ts`, `memory/ai_controller_design_reference` (design archive)

@@ -11,34 +11,47 @@ function makeStateStub(): GameState {
     createEntity(obj: any) {
       entities.push(obj);
       return obj;
-    }
+    },
   } as any;
 
   const rapierStub = {
     RigidBodyDesc: {
       kinematicPositionBased: () => ({
-        setTranslation() { return this; },
-        setRotation() { return this; }
-      })
+        setTranslation() {
+          return this;
+        },
+        setRotation() {
+          return this;
+        },
+      }),
     },
     ColliderDesc: {
       ball: () => ({
-        setActiveEvents() { return this; },
-        setActiveCollisionTypes() { return this; }
-      })
+        setActiveEvents() {
+          return this;
+        },
+        setActiveCollisionTypes() {
+          return this;
+        },
+      }),
     },
     ActiveEvents: { COLLISION_EVENTS: 1 },
-    ActiveCollisionTypes: { ALL: 1 }
+    ActiveCollisionTypes: { ALL: 1 },
   } as any;
 
   return {
     rapier: rapierStub,
     physicsWorld: {
-      createRigidBody: () => ({
-        translation() { return { x: 0, y: 0, z: 0 }; },
-        rotation() { return { x: 0, y: 0, z: 0, w: 1 }; }
-      } as any),
-      createCollider: () => ({ handle: Math.floor(Math.random() * 10000) }) as any
+      createRigidBody: () =>
+        ({
+          translation() {
+            return { x: 0, y: 0, z: 0 };
+          },
+          rotation() {
+            return { x: 0, y: 0, z: 0, w: 1 };
+          },
+        }) as any,
+      createCollider: () => ({ handle: Math.floor(Math.random() * 10000) }) as any,
     } as any,
     eventQueue: {} as any,
     world: world as any,
@@ -48,19 +61,19 @@ function makeStateStub(): GameState {
     queries: { ships: { entities: [] }, projectiles: { entities: [] } } as any,
     rng: { next: () => 0.5 } as any,
     paused: false,
-    timeScale: 1
+    timeScale: 1,
   } as unknown as GameState;
 }
 
-function makeShipEntity(hull: any, team: 'blue'|'red', bulletType?: string): ShipEntity {
+function makeShipEntity(hull: any, team: 'blue' | 'red', bulletType?: string): ShipEntity {
   return {
     id: 1,
     rigidBody: {} as any,
     collider: {} as any,
     transform: {
-      position: new Vector3(0,0,0),
+      position: new Vector3(0, 0, 0),
       rotation: new Quaternion(),
-      scale: 1
+      scale: 1,
     },
     ship: {
       team,
@@ -75,9 +88,9 @@ function makeShipEntity(hull: any, team: 'blue'|'red', bulletType?: string): Shi
       projectileSpeed: 10,
       range: 12,
       speed: 5,
-      bulletType
+      bulletType,
     },
-    model: hull
+    model: hull,
   } as unknown as ShipEntity;
 }
 
@@ -86,7 +99,7 @@ describe('fireProjectile bulletType propagation', () => {
     const state = makeStateStub();
     const ship = makeShipEntity('fighter', 'blue', 'bullet:laser');
 
-    fireProjectile(state, ship, new Vector3(0,0,1));
+    fireProjectile(state, ship, new Vector3(0, 0, 1));
 
     const created = state.world.entities[0] as ProjectileEntity;
     expect(created).toBeDefined();
@@ -97,7 +110,7 @@ describe('fireProjectile bulletType propagation', () => {
     const state = makeStateStub();
     const ship = makeShipEntity('destroyer', 'red', 'bullet:heavy');
 
-    fireProjectile(state, ship, new Vector3(0,0,1));
+    fireProjectile(state, ship, new Vector3(0, 0, 1));
 
     const created = state.world.entities[0] as ProjectileEntity;
     expect(created.projectile.bulletType).toBe('bullet:heavy');

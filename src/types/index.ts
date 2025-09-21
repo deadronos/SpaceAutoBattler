@@ -2,7 +2,7 @@ import type { Archetype, World as ECSWorld } from 'miniplex';
 import type { Quaternion, Vector3 } from 'three';
 import type { SeededRng } from '../utils/rng.js';
 
-type RapierModule = typeof import('@dimforge/rapier3d-compat')['default'];
+type RapierModule = (typeof import('@dimforge/rapier3d-compat'))['default'];
 type RapierWorld = RapierModule['World'];
 type Collider = RapierModule['Collider'];
 type EventQueue = RapierModule['EventQueue'];
@@ -148,6 +148,8 @@ export interface GameState {
   nextEntityId: number;
   time: number;
   queries: GameQueries;
+  /** Map from ship entity id -> set of turret entities mounted on that ship. Optional for tests/mocks. */
+  turretsByShip?: Map<number, Set<TurretEntity>>;
   rng: SeededRng;
   /** Whether simulation is paused (authoritative mirror of UI state). */
   paused: boolean;

@@ -10,7 +10,7 @@ This project now supports two shield materials:
 Edit `src/config/renderer.ts` `SHIELD_VISUALS` entries per hull and set:
 
 ```ts
-materialKind: 'transmission'
+materialKind: 'transmission';
 ```
 
 Optional transmission parameters (with defaults):
@@ -22,9 +22,13 @@ Example:
 
 ```ts
 export const SHIELD_VISUALS = {
-  fighter: { materialKind: 'transmission', maxAlpha: 0.4, transmission: { ior: 1.25, roughness: 0.08 } },
+  fighter: {
+    materialKind: 'transmission',
+    maxAlpha: 0.4,
+    transmission: { ior: 1.25, roughness: 0.08 },
+  },
   // ...
-}
+};
 ```
 
 You can also programmatically override for all hulls via:

@@ -26,7 +26,7 @@ test('instancing smoke - no console errors and instanced mesh present', async ({
       if (!scene) return 0;
       let count = 0;
       // traverse may not exist; guard accordingly
-       
+
       // test helper probing global scene; narrow casts are noisy here
       if (typeof (scene as unknown as { traverse?: unknown }).traverse === 'function') {
         const traverseFn = (scene as unknown as { traverse: (cb: (o: unknown) => void) => void })

@@ -14,5 +14,6 @@ Authoritative mapping (current):
 - `src/renderer/*` — renderer-specific modules (threeRenderer, meshFactory, shipInstancer) used solely by the rendering layer.
 
 Notes:
+
 - Many older memories and docs referenced `src/core/*`. The active codebase was reorganized; prefer `src/game/*` and `src/utils/*` as the primary locations for simulation and support utilities.
 - For renderer integration points see `threeRenderer` memory and `src/main.tsx`.

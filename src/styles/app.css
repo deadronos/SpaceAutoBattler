@@ -31,7 +31,11 @@
   font-size: 1.25rem;
   letter-spacing: 0.08em;
   color: #e3f1ff;
-  background: radial-gradient(circle at center, rgba(10, 26, 55, 0.6) 0%, rgba(3, 6, 16, 0.95) 100%);
+  background: radial-gradient(
+    circle at center,
+    rgba(10, 26, 55, 0.6) 0%,
+    rgba(3, 6, 16, 0.95) 100%
+  );
 }
 
 .hud {
@@ -49,6 +53,7 @@
   pointer-events: auto;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   padding: 18px 24px;
   border-radius: 12px;
@@ -79,11 +84,18 @@
 }
 
 .team-card {
-  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 10px;
   padding: 12px;
   background: rgba(4, 9, 18, 0.6);
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.25);
+}
+
+.team-card--blue {
+  --accent: var(--blue);
+}
+.team-card--red {
+  --accent: var(--red);
 }
 
 .team-name {
@@ -112,7 +124,78 @@
 .progress span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, white));
+  background: linear-gradient(90deg, var(--accent), rgba(255, 255, 255, 0.6));
+}
+
+/* Discrete progress fill levels to avoid inline styles */
+.progress-fill {
+  width: 0%;
+  transition: width 180ms linear;
+  display: block;
+  height: 100%;
+}
+.progress-fill--0 {
+  width: 0%;
+}
+.progress-fill--1 {
+  width: 5%;
+}
+.progress-fill--2 {
+  width: 10%;
+}
+.progress-fill--3 {
+  width: 15%;
+}
+.progress-fill--4 {
+  width: 20%;
+}
+.progress-fill--5 {
+  width: 25%;
+}
+.progress-fill--6 {
+  width: 30%;
+}
+.progress-fill--7 {
+  width: 35%;
+}
+.progress-fill--8 {
+  width: 40%;
+}
+.progress-fill--9 {
+  width: 45%;
+}
+.progress-fill--10 {
+  width: 50%;
+}
+.progress-fill--11 {
+  width: 55%;
+}
+.progress-fill--12 {
+  width: 60%;
+}
+.progress-fill--13 {
+  width: 65%;
+}
+.progress-fill--14 {
+  width: 70%;
+}
+.progress-fill--15 {
+  width: 75%;
+}
+.progress-fill--16 {
+  width: 80%;
+}
+.progress-fill--17 {
+  width: 85%;
+}
+.progress-fill--18 {
+  width: 90%;
+}
+.progress-fill--19 {
+  width: 95%;
+}
+.progress-fill--20 {
+  width: 100%;
 }
 
 .hint {
@@ -135,6 +218,7 @@
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -147,15 +231,15 @@
 
 .controls-bar button,
 .controls-bar select {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   padding: 6px 10px;
 }
 
 .controls-bar button:hover,
 .controls-bar select:hover {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .controls-bar .speed {

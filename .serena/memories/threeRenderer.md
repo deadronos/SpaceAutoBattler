@@ -19,4 +19,5 @@ Integration notes:
 - Instancer registration expects prototype meshes to be available before first render; the renderer should gracefully fallback to placeholders if assets are missing.
 
 References:
+
 - `src/main.tsx`, `src/assets/ships.ts`, `src/utils/patchGltfLoader.ts`, `src/renderer/meshFactory.ts`, `src/renderer/shipInstancer.ts`

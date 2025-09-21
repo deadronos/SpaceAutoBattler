@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react';
 import type { Archetype } from 'miniplex';
 import type { GameEntity } from '../types/index.js';
@@ -6,9 +7,11 @@ import type { GameEntity } from '../types/index.js';
 // (avoids violating React's rules of hooks). When `archetype` is null the hook
 // returns an empty array and does not subscribe to events.
 export function useArchetypeEntities<T extends GameEntity>(
-  archetype: Archetype<GameEntity, any> | null
+  archetype: Archetype<GameEntity, any> | null,
 ): T[] {
-  const [entities, setEntities] = useState<T[]>(() => (archetype ? (archetype.entities as T[]) : []));
+  const [entities, setEntities] = useState<T[]>(() =>
+    archetype ? (archetype.entities as T[]) : [],
+  );
 
   useEffect(() => {
     if (!archetype) {

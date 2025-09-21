@@ -4,7 +4,12 @@ import { GLTFLoader as ExamplesGLTFLoader } from 'three/examples/jsm/loaders/GLT
 // Import from three-stdlib root; some versions do not expose loader subpaths in package exports.
 
 type LoaderProto = {
-  load: (url: string | URL, onLoad?: (gltf: unknown) => void, onProgress?: (e: ProgressEvent) => void, onError?: (e: unknown) => void) => void;
+  load: (
+    url: string | URL,
+    onLoad?: (gltf: unknown) => void,
+    onProgress?: (e: ProgressEvent) => void,
+    onError?: (e: unknown) => void,
+  ) => void;
   __loadPatched?: boolean;
 };
 
@@ -16,17 +21,36 @@ function patchPrototype(ctor: LoaderCtor, tag: string): void {
   if (!proto || proto.__loadPatched) return;
   const originalLoad = proto.load;
   if (typeof originalLoad !== 'function') return;
-  proto.load = function patchedLoad(url: unknown, onLoad?: (gltf: unknown) => void, onProgress?: (e: ProgressEvent) => void, onError?: (e: unknown) => void) {
+  proto.load = function patchedLoad(
+    url: unknown,
+    onLoad?: (gltf: unknown) => void,
+    onProgress?: (e: ProgressEvent) => void,
+    onError?: (e: unknown) => void,
+  ) {
     const isString = typeof url === 'string' && url.length > 0;
     const isURLObject = typeof URL !== 'undefined' && url instanceof URL;
     if (!isString && !isURLObject) {
-      try { console.warn(`[patchGltfLoader:${tag}] GLTFLoader.load invalid url:`, url); } catch (e) { void e; }
+      try {
+        console.warn(`[patchGltfLoader:${tag}] GLTFLoader.load invalid url:`, url);
+      } catch (e) {
+        void e;
+      }
       if (typeof onError === 'function') {
-        try { onError(new Error('GLTFLoader.load: invalid url argument')); } catch (e) { void e; }
+        try {
+          onError(new Error('GLTFLoader.load: invalid url argument'));
+        } catch (e) {
+          void e;
+        }
       }
       return undefined as unknown as void;
     }
-    return originalLoad.call(this as unknown as object, url as string | URL, onLoad, onProgress, onError);
+    return originalLoad.call(
+      this as unknown as object,
+      url as string | URL,
+      onLoad,
+      onProgress,
+      onError,
+    );
   };
   proto.__loadPatched = true;
 }
@@ -40,7 +64,7 @@ async function patchStdlib(): Promise<void> {
   const candidates = [
     'three-stdlib/loaders/GLTFLoader',
     'three-stdlib/loaders/GLTFLoader.js',
-    'three-stdlib'
+    'three-stdlib',
   ];
   for (const spec of candidates) {
     try {

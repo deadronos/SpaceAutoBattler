@@ -25,9 +25,18 @@ describe('ShipObject', () => {
       rigidBody: {} as never,
       collider: {} as never,
       transform: {
-        position: { x: 0, y: 0, z: 0, clone() { return this; }, copy() {}, setScalar() {} },
+        position: {
+          x: 0,
+          y: 0,
+          z: 0,
+          clone() {
+            return this;
+          },
+          copy() {},
+          setScalar() {},
+        },
         rotation: { x: 0, y: 0, z: 0, w: 1, copy() {} },
-        scale: 1
+        scale: 1,
       },
       ship: {
         team: 'blue',
@@ -39,9 +48,9 @@ describe('ShipObject', () => {
         damage: 1,
         projectileSpeed: 10,
         range: 10,
-        speed: 5
+        speed: 5,
       },
-      model: undefined
+      model: undefined,
     } as unknown as ShipEntity;
 
     // Creating the element and rendering should not throw (loader is mocked)

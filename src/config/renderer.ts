@@ -40,37 +40,17 @@ export const DEBUG_VISUALS: DebugVisualFlags = {
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
-  fighter:   { margin: 1.01, 
-               hexScale: 48, 
-               edgeWidth: 0.10, 
-               maxAlpha: 0.5,
-               materialKind: 'hex' },
-  corvette:  { margin: 1.01, 
-               hexScale: 48, 
-               edgeWidth: 0.10, 
-               maxAlpha: 0.5, 
-               materialKind: 'hex' },
-  frigate:   { margin: 1.01, 
-               hexScale: 48, 
-               edgeWidth: 0.10, 
-               maxAlpha: 0.5,
-               materialKind: 'hex' },
-  destroyer: { margin: 1.01, 
-               hexScale: 48, 
-               edgeWidth: 0.10, 
-               maxAlpha: 0.5,
-               materialKind: 'hex' },
-  carrier:   { margin: 1.01, 
-               hexScale: 48, 
-               edgeWidth: 0.10, 
-               maxAlpha: 0.5,
-               materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
   margin: 1.12,
   hexScale: 12,
-  edgeWidth: 0.10,
+  edgeWidth: 0.1,
   maxAlpha: 0.5,
   materialKind: 'hex',
   transmission: {
@@ -97,12 +77,15 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
     materialKind: cfg.materialKind ?? DEFAULTS.materialKind,
     transmission: {
       thickness: cfg.transmission?.thickness ?? DEFAULTS.transmission.thickness,
-      chromaticAberration: cfg.transmission?.chromaticAberration ?? DEFAULTS.transmission.chromaticAberration,
+      chromaticAberration:
+        cfg.transmission?.chromaticAberration ?? DEFAULTS.transmission.chromaticAberration,
       anisotropicBlur: cfg.transmission?.anisotropicBlur ?? DEFAULTS.transmission.anisotropicBlur,
       distortion: cfg.transmission?.distortion ?? DEFAULTS.transmission.distortion,
       distortionScale: cfg.transmission?.distortionScale ?? DEFAULTS.transmission.distortionScale,
-      temporalDistortion: cfg.transmission?.temporalDistortion ?? DEFAULTS.transmission.temporalDistortion,
-      attenuationDistance: cfg.transmission?.attenuationDistance ?? DEFAULTS.transmission.attenuationDistance,
+      temporalDistortion:
+        cfg.transmission?.temporalDistortion ?? DEFAULTS.transmission.temporalDistortion,
+      attenuationDistance:
+        cfg.transmission?.attenuationDistance ?? DEFAULTS.transmission.attenuationDistance,
       roughness: cfg.transmission?.roughness ?? DEFAULTS.transmission.roughness,
       clearcoat: cfg.transmission?.clearcoat ?? DEFAULTS.transmission.clearcoat,
       ior: cfg.transmission?.ior ?? DEFAULTS.transmission.ior,

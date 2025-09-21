@@ -26,5 +26,6 @@ Notes & guidance:
 - If you need a canonical shared pool for non-renderer users (tests, headless), add a small `src/utils/assetPool.ts` that implements the minimal Map or LRU interface and attach it to `GameState` at startup.
 
 References:
+
 - `src/utils/patchGltfLoader.ts` — loader compatibility & runtime guard
 - `src/assets/ships.ts` — canonical mapping of ship classes to model URLs

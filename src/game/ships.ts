@@ -1,5 +1,14 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipBlueprint, ShipEntity, ShipHull, ShipStats, TurretState, TurretEntity } from '../types/index.js';
+import type {
+  GameState,
+  ShipBlueprint,
+  ShipEntity,
+  ShipHull,
+  ShipStats,
+  TurretState,
+  TurretEntity,
+} from '../types/index.js';
+import { registerTurret } from './turretRegistry.js';
 
 export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   fighter: {
@@ -13,7 +22,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 14,
     scale: 1,
     bulletType: 'bullet:laser',
-    turrets: []
+    turrets: [],
   },
   corvette: {
     hull: 'corvette',
@@ -38,7 +47,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         maxYaw: Math.PI * 0.6,
         minPitch: -Math.PI * 0.2,
         maxPitch: Math.PI * 0.4,
-        priority: 'antiFighter'
+        priority: 'antiFighter',
       },
       {
         offset: new Vector3(-0.9, 0.2, 0.1),
@@ -51,9 +60,9 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         maxYaw: Math.PI * 0.6,
         minPitch: -Math.PI * 0.2,
         maxPitch: Math.PI * 0.4,
-        priority: 'antiFighter'
-      }
-    ]
+        priority: 'antiFighter',
+      },
+    ],
   },
   frigate: {
     hull: 'frigate',
@@ -67,40 +76,46 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     scale: 1,
     bulletType: 'bullet:plasma',
     turrets: [
-      { offset: new Vector3(1.2, 0.25, 0.0), 
-        damage: 8, 
-        fireRate: 1.2, 
-        projectileSpeed: 22, 
-        range: 220, 
-        bulletType: 'bullet:plasma', 
-        minYaw: -Math.PI * 0.5, 
-        maxYaw: Math.PI * 0.5, 
-        minPitch: -Math.PI * 0.2, 
-        maxPitch: Math.PI * 0.5, 
-        priority: 'any' },
-      { offset: new Vector3(-1.2, 0.25, 0.0), 
-        damage: 8, 
-        fireRate: 1.2, 
-        projectileSpeed: 220, 
-        range: 220, 
-        bulletType: 'bullet:plasma', 
-        minYaw: -Math.PI * 0.5, 
-        maxYaw: Math.PI * 0.5, 
-        minPitch: -Math.PI * 0.2, 
-        maxPitch: Math.PI * 0.5, 
-        priority: 'any' },
-      { offset: new Vector3(0.0, 0.25, -0.8), 
-        damage: 8, 
-        fireRate: 1.2, 
-        projectileSpeed: 22, 
-        range: 220, 
-        bulletType: 'bullet:laser', 
-        minYaw: -Math.PI * 0.9, 
-        maxYaw: Math.PI * 0.9, 
-        minPitch: -Math.PI * 0.3, 
-        maxPitch: Math.PI * 0.4, 
-        priority: 'antiFighter' }
-    ]
+      {
+        offset: new Vector3(1.2, 0.25, 0.0),
+        damage: 8,
+        fireRate: 1.2,
+        projectileSpeed: 22,
+        range: 220,
+        bulletType: 'bullet:plasma',
+        minYaw: -Math.PI * 0.5,
+        maxYaw: Math.PI * 0.5,
+        minPitch: -Math.PI * 0.2,
+        maxPitch: Math.PI * 0.5,
+        priority: 'any',
+      },
+      {
+        offset: new Vector3(-1.2, 0.25, 0.0),
+        damage: 8,
+        fireRate: 1.2,
+        projectileSpeed: 220,
+        range: 220,
+        bulletType: 'bullet:plasma',
+        minYaw: -Math.PI * 0.5,
+        maxYaw: Math.PI * 0.5,
+        minPitch: -Math.PI * 0.2,
+        maxPitch: Math.PI * 0.5,
+        priority: 'any',
+      },
+      {
+        offset: new Vector3(0.0, 0.25, -0.8),
+        damage: 8,
+        fireRate: 1.2,
+        projectileSpeed: 22,
+        range: 220,
+        bulletType: 'bullet:laser',
+        minYaw: -Math.PI * 0.9,
+        maxYaw: Math.PI * 0.9,
+        minPitch: -Math.PI * 0.3,
+        maxPitch: Math.PI * 0.4,
+        priority: 'antiFighter',
+      },
+    ],
   },
   destroyer: {
     hull: 'destroyer',
@@ -114,51 +129,59 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     scale: 1,
     bulletType: 'bullet:heavy',
     turrets: [
-      { offset: new Vector3(1.6, 0.3, -0.2), 
-        damage: 10, 
-        fireRate: 1.4, 
-        projectileSpeed: 20, 
-        range: 260, 
-        bulletType: 'bullet:plasma', 
-        minYaw: -Math.PI * 0.6, 
-        maxYaw: Math.PI * 0.6, 
-        minPitch: -Math.PI * 0.2, 
-        maxPitch: Math.PI * 0.4, 
-        priority: 'antiCapital' },
-      { offset: new Vector3(-1.6, 0.3, -0.2), 
-        damage: 10, 
-        fireRate: 1.4, 
-        projectileSpeed: 20, 
-        range: 260, 
-        bulletType: 'bullet:plasma', 
-        minYaw: -Math.PI * 0.6, 
-        maxYaw: Math.PI * 0.6, 
-        minPitch: -Math.PI * 0.2, 
-        maxPitch: Math.PI * 0.4, 
-        priority: 'antiCapital' },
-      { offset: new Vector3(0.9, 0.3, 0.6), 
-        damage: 10, 
-        fireRate: 1.6, 
-        projectileSpeed: 20, 
-        range: 260, 
-        bulletType: 'bullet:laser', 
-        minYaw: -Math.PI * 0.7, 
-        maxYaw: Math.PI * 0.7, 
-        minPitch: -Math.PI * 0.25, 
-        maxPitch: Math.PI * 0.45, 
-        priority: 'antiFighter' },
-      { offset: new Vector3(-0.9, 0.3, 0.6), 
-        damage: 10, 
-        fireRate: 1.6, 
-        projectileSpeed: 20, 
-        range: 260, 
-        bulletType: 'bullet:laser', 
-        minYaw: -Math.PI * 0.7, 
-        maxYaw: Math.PI * 0.7, 
-        minPitch: -Math.PI * 0.25, 
-        maxPitch: Math.PI * 0.45, 
-        priority: 'antiFighter' }
-    ]
+      {
+        offset: new Vector3(1.6, 0.3, -0.2),
+        damage: 10,
+        fireRate: 1.4,
+        projectileSpeed: 20,
+        range: 260,
+        bulletType: 'bullet:plasma',
+        minYaw: -Math.PI * 0.6,
+        maxYaw: Math.PI * 0.6,
+        minPitch: -Math.PI * 0.2,
+        maxPitch: Math.PI * 0.4,
+        priority: 'antiCapital',
+      },
+      {
+        offset: new Vector3(-1.6, 0.3, -0.2),
+        damage: 10,
+        fireRate: 1.4,
+        projectileSpeed: 20,
+        range: 260,
+        bulletType: 'bullet:plasma',
+        minYaw: -Math.PI * 0.6,
+        maxYaw: Math.PI * 0.6,
+        minPitch: -Math.PI * 0.2,
+        maxPitch: Math.PI * 0.4,
+        priority: 'antiCapital',
+      },
+      {
+        offset: new Vector3(0.9, 0.3, 0.6),
+        damage: 10,
+        fireRate: 1.6,
+        projectileSpeed: 20,
+        range: 260,
+        bulletType: 'bullet:laser',
+        minYaw: -Math.PI * 0.7,
+        maxYaw: Math.PI * 0.7,
+        minPitch: -Math.PI * 0.25,
+        maxPitch: Math.PI * 0.45,
+        priority: 'antiFighter',
+      },
+      {
+        offset: new Vector3(-0.9, 0.3, 0.6),
+        damage: 10,
+        fireRate: 1.6,
+        projectileSpeed: 20,
+        range: 260,
+        bulletType: 'bullet:laser',
+        minYaw: -Math.PI * 0.7,
+        maxYaw: Math.PI * 0.7,
+        minPitch: -Math.PI * 0.25,
+        maxPitch: Math.PI * 0.45,
+        priority: 'antiFighter',
+      },
+    ],
   },
   carrier: {
     hull: 'carrier',
@@ -172,52 +195,60 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     scale: 1,
     bulletType: 'bullet:ion',
     turrets: [
-      { offset: new Vector3(2.0, 0.35, 0.0), 
-        damage: 9, 
-        fireRate: 1.3, 
-        projectileSpeed: 18, 
-        range: 280, 
-        bulletType: 'bullet:ion', 
-        minYaw: -Math.PI * 0.5, 
-        maxYaw: Math.PI * 0.5, 
-        minPitch: -Math.PI * 0.2, 
-        maxPitch: Math.PI * 0.45, 
-        priority: 'antiCapital' },
-      { offset: new Vector3(-2.0, 0.35, 0.0), 
-        damage: 9, 
-        fireRate: 1.3, 
-        projectileSpeed: 18, 
-        range: 280, 
-        bulletType: 'bullet:ion', 
-        minYaw: -Math.PI * 0.5, 
-        maxYaw: Math.PI * 0.5, 
-        minPitch: -Math.PI * 0.2, 
-        maxPitch: Math.PI * 0.45, 
-        priority: 'antiCapital' },
-      { offset: new Vector3(0.0, 0.35, 1.2), 
-        damage: 9, 
-        fireRate: 1.5, 
-        projectileSpeed: 18, 
-        range: 280, 
-        bulletType: 'bullet:laser', 
-        minYaw: -Math.PI * 0.7, 
-        maxYaw: Math.PI * 0.7, 
-        minPitch: -Math.PI * 0.25, 
-        maxPitch: Math.PI * 0.5, 
-        priority: 'antiFighter' },
-      { offset: new Vector3(0.0, 0.35, -1.2), 
-        damage: 9, 
-        fireRate: 1.5, 
-        projectileSpeed: 18, 
-        range: 280, 
-        bulletType: 'bullet:laser', 
-        minYaw: -Math.PI * 0.7, 
-        maxYaw: Math.PI * 0.7, 
-        minPitch: -Math.PI * 0.25, 
-        maxPitch: Math.PI * 0.5, 
-        priority: 'antiFighter' }
-    ]
-  }
+      {
+        offset: new Vector3(2.0, 0.35, 0.0),
+        damage: 9,
+        fireRate: 1.3,
+        projectileSpeed: 18,
+        range: 280,
+        bulletType: 'bullet:ion',
+        minYaw: -Math.PI * 0.5,
+        maxYaw: Math.PI * 0.5,
+        minPitch: -Math.PI * 0.2,
+        maxPitch: Math.PI * 0.45,
+        priority: 'antiCapital',
+      },
+      {
+        offset: new Vector3(-2.0, 0.35, 0.0),
+        damage: 9,
+        fireRate: 1.3,
+        projectileSpeed: 18,
+        range: 280,
+        bulletType: 'bullet:ion',
+        minYaw: -Math.PI * 0.5,
+        maxYaw: Math.PI * 0.5,
+        minPitch: -Math.PI * 0.2,
+        maxPitch: Math.PI * 0.45,
+        priority: 'antiCapital',
+      },
+      {
+        offset: new Vector3(0.0, 0.35, 1.2),
+        damage: 9,
+        fireRate: 1.5,
+        projectileSpeed: 18,
+        range: 280,
+        bulletType: 'bullet:laser',
+        minYaw: -Math.PI * 0.7,
+        maxYaw: Math.PI * 0.7,
+        minPitch: -Math.PI * 0.25,
+        maxPitch: Math.PI * 0.5,
+        priority: 'antiFighter',
+      },
+      {
+        offset: new Vector3(0.0, 0.35, -1.2),
+        damage: 9,
+        fireRate: 1.5,
+        projectileSpeed: 18,
+        range: 280,
+        bulletType: 'bullet:laser',
+        minYaw: -Math.PI * 0.7,
+        maxYaw: Math.PI * 0.7,
+        minPitch: -Math.PI * 0.25,
+        maxPitch: Math.PI * 0.5,
+        priority: 'antiFighter',
+      },
+    ],
+  },
 };
 
 // Note: each ShipStats entry may include `bulletType` which is a material/key string
@@ -248,7 +279,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     transform: {
       position,
       rotation,
-      scale: stats.scale
+      scale: stats.scale,
     },
     ship: {
       team: blueprint.team,
@@ -263,7 +294,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       projectileSpeed: stats.projectileSpeed,
       range: stats.range,
       speed: stats.speed,
-      bulletType: stats.bulletType
+      bulletType: stats.bulletType,
     },
     model: blueprint.hull,
     shieldRipples: [],
@@ -274,8 +305,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       projectileSpeed: t.projectileSpeed,
       range: t.range,
       bulletType: t.bulletType,
-      cooldown: t.fireRate * state.rng.next()
-    }))
+      cooldown: t.fireRate * state.rng.next(),
+    })),
   };
 
   const registered = state.world.createEntity(entity) as ShipEntity;
@@ -302,7 +333,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       transform: {
         position: position.clone(),
         rotation: rotation.clone(),
-        scale: 1
+        scale: 1,
       },
       turret: {
         parent: registered,
@@ -321,10 +352,16 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
         maxYaw: spec.maxYaw ?? Math.PI * 0.9,
         minPitch: spec.minPitch ?? -Math.PI * 0.25,
         maxPitch: spec.maxPitch ?? Math.PI * 0.5,
-        priority: spec.priority ?? 'any'
-      }
+        priority: spec.priority ?? 'any',
+      },
     }) as TurretEntity;
     state.colliderLookup.set(tCollider.handle, turretEntity);
+    // Register turret entity in the turretsByShip map for fast cascade removal.
+    try {
+      registerTurret(state, registered.id, turretEntity);
+    } catch {
+      // defensive: ignore map issues
+    }
   });
   return registered;
 }

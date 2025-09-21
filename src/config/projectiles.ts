@@ -6,22 +6,35 @@ export interface ProjectileConfigItem {
 }
 
 export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
-  'bullet:laser': { visualScale: 0.50, 
-                    colliderRadius: 0.50 * 1.2, 
-                    baseGeometryRadius: 0.5, 
-                    visualMultiplier: 1.0 },
-  'bullet:plasma':{ visualScale: 0.60, 
-                    colliderRadius: 0.60 * 1.2, 
-                    baseGeometryRadius: 0.5, 
-                    visualMultiplier: 1.05 },
-  'bullet:ion':   { visualScale: 0.50, 
-                    colliderRadius: 0.50 * 1.2, 
-                    baseGeometryRadius: 0.5, 
-                    visualMultiplier: 1.0 },
-  'bullet:heavy': { visualScale: 0.70, 
-                    colliderRadius: 0.70 * 1.2,
-                    baseGeometryRadius: 0.6, 
-                    visualMultiplier: 1.25 }
+  'bullet:laser': {
+    visualScale: 0.5,
+    colliderRadius: 0.5 * 1.2,
+    baseGeometryRadius: 0.5,
+    visualMultiplier: 1.0,
+  },
+  'bullet:plasma': {
+    visualScale: 0.6,
+    colliderRadius: 0.6 * 1.2,
+    baseGeometryRadius: 0.5,
+    visualMultiplier: 1.05,
+  },
+  'bullet:ion': {
+    visualScale: 0.5,
+    colliderRadius: 0.5 * 1.2,
+    baseGeometryRadius: 0.5,
+    visualMultiplier: 1.0,
+  },
+  'bullet:heavy': {
+    visualScale: 0.7,
+    colliderRadius: 0.7 * 1.2,
+    baseGeometryRadius: 0.6,
+    visualMultiplier: 1.25,
+  },
 };
 
-export const DEFAULT_PROJECTILE_CONFIG: ProjectileConfigItem = { visualScale: 0.2, colliderRadius: 0.24, baseGeometryRadius: 0.5, visualMultiplier: 1.0 };
+export const DEFAULT_PROJECTILE_CONFIG: ProjectileConfigItem = {
+  visualScale: 0.2,
+  colliderRadius: 0.24,
+  baseGeometryRadius: 0.5,
+  visualMultiplier: 1.0,
+};

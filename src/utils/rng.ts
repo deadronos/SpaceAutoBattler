@@ -27,4 +27,3 @@ export class SeededRng {
     return values[index];
   }
 }
-

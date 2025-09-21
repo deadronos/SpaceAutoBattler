@@ -6,7 +6,7 @@ import type {
   ShipEntity,
   ShieldRipple,
   TurretState,
-  TurretEntity
+  TurretEntity,
 } from '../types/index.js';
 import { destroyEntity } from './state.js';
 import { clampToWorld } from './config.js';
@@ -44,7 +44,7 @@ function prepareShips(state: GameState, delta: number): void {
       ship.rigidBody.setNextKinematicTranslation({
         x: ship.transform.position.x,
         y: ship.transform.position.y,
-        z: ship.transform.position.z
+        z: ship.transform.position.z,
       });
       continue;
     }
@@ -60,39 +60,43 @@ function prepareShips(state: GameState, delta: number): void {
     orientTowards(ship, direction);
 
     if (distance > ship.ship.range * 0.6) {
-      const moveDistance = Math.min(ship.ship.speed * delta, Math.max(distance - ship.ship.range * 0.55, 0));
-      const nextPosition = TEMP_POS
-        .copy(ship.transform.position)
-        .addScaledVector(direction, moveDistance);
+      const moveDistance = Math.min(
+        ship.ship.speed * delta,
+        Math.max(distance - ship.ship.range * 0.55, 0),
+      );
+      const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(
+        direction,
+        moveDistance,
+      );
       clampToWorld(nextPosition);
 
       ship.rigidBody.setNextKinematicTranslation({
         x: nextPosition.x,
         y: nextPosition.y,
-        z: nextPosition.z
+        z: nextPosition.z,
       });
     } else {
       ship.rigidBody.setNextKinematicTranslation({
         x: ship.transform.position.x,
         y: ship.transform.position.y,
-        z: ship.transform.position.z
+        z: ship.transform.position.z,
       });
     }
 
-  if (distance <= ship.ship.range && ship.ship.cooldown <= 0) {
+    if (distance <= ship.ship.range && ship.ship.cooldown <= 0) {
       // Emit a muzzle flash at the ship nose (local forward offset)
       (ship.muzzleFlashes ??= []).push({
         local: new Vector3(0, 0, ship.transform.scale * 1.6),
         t0: state.time,
         amp: 1,
-        bulletType: ship.ship.bulletType
+        bulletType: ship.ship.bulletType,
       });
       fireProjectile(state, ship, direction);
       ship.ship.cooldown = ship.ship.fireRate;
     }
 
     // Legacy embedded turret logic: only run if there are no turret entities present
-    if ((state.queries.turrets.entities.length === 0) && ship.turrets && target) {
+    if (state.queries.turrets.entities.length === 0 && ship.turrets && target) {
       for (const turret of ship.turrets) {
         if (turret.cooldown > 0) continue;
         // Compute turret world-space origin and direction towards target
@@ -100,7 +104,8 @@ function prepareShips(state: GameState, delta: number): void {
         const toTarget = TEMP_DIR.copy(target.transform.position).sub(turretOrigin);
         const dist = toTarget.length();
         if (dist <= turret.range) {
-          if (dist > 1e-5) toTarget.divideScalar(dist); else toTarget.set(0, 0, 1);
+          if (dist > 1e-5) toTarget.divideScalar(dist);
+          else toTarget.set(0, 0, 1);
           // Legacy path: we keep ship-level flashes only when no turret entities are used
           fireProjectile(state, ship, toTarget, {
             originPosition: turretOrigin,
@@ -108,8 +113,8 @@ function prepareShips(state: GameState, delta: number): void {
               damage: turret.damage,
               projectileSpeed: turret.projectileSpeed,
               range: turret.range,
-              bulletType: turret.bulletType
-            }
+              bulletType: turret.bulletType,
+            },
           });
           turret.cooldown = turret.fireRate;
         }
@@ -135,7 +140,7 @@ function updateTurrets(state: GameState, delta: number): void {
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
-      const candidates = ships.filter(s => s.ship.team !== ship.ship.team);
+      const candidates = ships.filter((s) => s.ship.team !== ship.ship.team);
       const small = new Set(['fighter', 'corvette']);
       const large = new Set(['frigate', 'destroyer', 'carrier']);
       const preferSmall = t.turret.priority === 'antiFighter';
@@ -143,10 +148,22 @@ function updateTurrets(state: GameState, delta: number): void {
       let best: ShipEntity | null = null;
       for (const s of candidates) {
         const d = s.transform.position.distanceTo(origin);
-        const bonus = preferSmall ? (small.has(s.ship.hull) ? -10 : (large.has(s.ship.hull) ? +5 : 0))
-                                  : (large.has(s.ship.hull) ? -10 : (small.has(s.ship.hull) ? +5 : 0));
+        const bonus = preferSmall
+          ? small.has(s.ship.hull)
+            ? -10
+            : large.has(s.ship.hull)
+              ? +5
+              : 0
+          : large.has(s.ship.hull)
+            ? -10
+            : small.has(s.ship.hull)
+              ? +5
+              : 0;
         const score = d + bonus;
-        if (score < bestScore) { bestScore = score; best = s; }
+        if (score < bestScore) {
+          bestScore = score;
+          best = s;
+        }
       }
       if (best) target = best;
     }
@@ -156,7 +173,8 @@ function updateTurrets(state: GameState, delta: number): void {
     const toTarget = TEMP_DIR.copy(target.transform.position).sub(origin);
     const dist = toTarget.length();
     if (dist > t.turret.range) continue;
-    if (dist > 1e-5) toTarget.divideScalar(dist); else toTarget.set(0, 0, 1);
+    if (dist > 1e-5) toTarget.divideScalar(dist);
+    else toTarget.set(0, 0, 1);
     // Compute direction in parent ship's local frame to derive yaw/pitch
     const invRot = ship.transform.rotation.clone().invert();
     const localDir = toTarget.clone().applyQuaternion(invRot);
@@ -178,14 +196,24 @@ function updateTurrets(state: GameState, delta: number): void {
     const yawQ = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), clampedYaw);
     const pitchQ = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), clampedPitch);
     const turretRot = ship.transform.rotation.clone().multiply(yawQ).multiply(pitchQ);
-    t.rigidBody.setNextKinematicRotation({ x: turretRot.x, y: turretRot.y, z: turretRot.z, w: turretRot.w });
+    t.rigidBody.setNextKinematicRotation({
+      x: turretRot.x,
+      y: turretRot.y,
+      z: turretRot.z,
+      w: turretRot.w,
+    });
     if (!withinArc) continue;
     // prune old flashes, then add a new one (local forward of turret group)
     if (t.muzzleFlashes && t.muzzleFlashes.length) {
       const life = 0.25;
-      t.muzzleFlashes = t.muzzleFlashes.filter(m => state.time - m.t0 < life);
+      t.muzzleFlashes = t.muzzleFlashes.filter((m) => state.time - m.t0 < life);
     }
-    (t.muzzleFlashes ??= []).push({ local: new Vector3(0, 0, 0.2), t0: state.time, amp: 0.9, bulletType: t.turret.bulletType });
+    (t.muzzleFlashes ??= []).push({
+      local: new Vector3(0, 0, 0.2),
+      t0: state.time,
+      amp: 0.9,
+      bulletType: t.turret.bulletType,
+    });
     // fire
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
@@ -193,8 +221,8 @@ function updateTurrets(state: GameState, delta: number): void {
         damage: t.turret.damage,
         projectileSpeed: t.turret.projectileSpeed,
         range: t.turret.range,
-        bulletType: t.turret.bulletType
-      }
+        bulletType: t.turret.bulletType,
+      },
     });
     t.turret.cooldown = t.turret.fireRate;
   }
@@ -248,9 +276,10 @@ function resolveProjectiles(state: GameState, delta: number): void {
         remaining -= absorbed;
         // Emit a shield ripple event oriented from impact direction.
         const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
-        if (dir.lengthSq() > 1e-5) dir.normalize(); else dir.set(0, 0, 1);
+        if (dir.lengthSq() > 1e-5) dir.normalize();
+        else dir.set(0, 0, 1);
         const strength = Math.min(1, absorbed / Math.max(1, ship.ship.maxShield));
-  const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
+        const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
         (ship.shieldRipples ??= []).push(ripple);
         // Keep only a few recent ripples for rendering.
         if (ship.shieldRipples.length > 6) ship.shieldRipples.shift();
@@ -280,7 +309,12 @@ function orientTowards(ship: ShipEntity, direction: Vector3): void {
   rotation.multiply(banking);
 
   ship.transform.rotation.copy(rotation);
-  ship.rigidBody.setNextKinematicRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
+  ship.rigidBody.setNextKinematicRotation({
+    x: rotation.x,
+    y: rotation.y,
+    z: rotation.z,
+    w: rotation.w,
+  });
 }
 
 export function fireProjectile(
@@ -291,8 +325,10 @@ export function fireProjectile(
     /** If provided, use this exact world position as muzzle; otherwise use ship nose offset. */
     originPosition?: Vector3;
     /** Override projectile stats (used by turrets). */
-    override?: Partial<Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType'>>;
-  }
+    override?: Partial<
+      Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType'>
+    >;
+  },
 ): void {
   const muzzleOffset = origin.transform.scale * 1.6;
   const startPosition = opts?.originPosition
@@ -306,7 +342,7 @@ export function fireProjectile(
   const body = state.physicsWorld.createRigidBody(bodyDesc);
 
   // Choose visual/physics size based on bullet type configuration
-  const bulletKey = (opts?.override?.bulletType ?? origin.ship.bulletType) ?? '';
+  const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType ?? '';
   const cfg = PROJECTILE_CONFIG[bulletKey] ?? DEFAULT_PROJECTILE_CONFIG;
   const visualScale = cfg.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale;
   const colliderRadius = cfg.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
@@ -328,7 +364,7 @@ export function fireProjectile(
     transform: {
       position: startPosition,
       rotation,
-      scale: visualScale
+      scale: visualScale,
     },
     projectile: {
       team: origin.ship.team,
@@ -336,9 +372,9 @@ export function fireProjectile(
       ttl: lifetime,
       maxTtl: lifetime,
       speed,
-      bulletType: opts?.override?.bulletType ?? origin.ship.bulletType
+      bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
     },
-    direction: direction.clone()
+    direction: direction.clone(),
   }) as ProjectileEntity;
 
   state.colliderLookup.set(collider.handle, projectile);

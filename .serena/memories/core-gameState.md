@@ -31,7 +31,9 @@ Key runtime patterns and notes:
 - Where functionality changed from earlier repo versions, memory retains a short note that the old path was `src/core/gameState.ts`.
 
 References:
+
 - `src/game/state.ts`, `src/types/index.ts`, `src/utils/rng.ts`
 
 Notes:
+
 - This memory is authoritative for the canonical `GameState` responsibilities and locations. Use `read_memory` on `src-files-overview` or `threeRenderer` for renderer-specific integration points.

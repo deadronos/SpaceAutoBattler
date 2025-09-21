@@ -27,8 +27,8 @@ export function Hud(): React.ReactElement {
         <h2>Space Auto Battler</h2>
         <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
         <div className="team-grid">
-          <TeamCard summary={blue} accent="var(--blue)" />
-          <TeamCard summary={red} accent="var(--red)" />
+          <TeamCard summary={blue} />
+          <TeamCard summary={red} />
         </div>
         <p className="hint">Ships automatically maneuver, acquire targets, and fire when in range.</p>
       </div>
@@ -52,15 +52,17 @@ function summarize(ships: ShipEntity[]): [TeamSummary, TeamSummary] {
   return [summary.blue, summary.red];
 }
 
-function TeamCard({ summary, accent }: { summary: TeamSummary; accent: string }): React.ReactElement {
+function TeamCard({ summary }: { summary: TeamSummary }): React.ReactElement {
   const capacity = summary.maxHp > 0 ? summary.hp / summary.maxHp : 0;
+  const cls = `team-card team-card--${summary.team}`;
+  const level = Math.max(0, Math.min(20, Math.round(Math.min(capacity, 1) * 20)));
   return (
-    <div className="team-card" style={{ '--accent': accent } as CSSProperties}>
+    <div className={cls}>
       <h3 className="team-name">{summary.team === 'blue' ? 'Alliance' : 'Reavers'}</h3>
       <div className="stat">Fleet strength: <strong>{summary.ships}</strong></div>
       <div className="stat">Total hull integrity: <strong>{summary.hp.toFixed(0)}</strong></div>
       <div className="progress">
-        <span style={{ width: `${Math.min(capacity, 1) * 100}%` }} />
+        <span className={`progress-fill progress-fill--${level}`} />
       </div>
     </div>
   );

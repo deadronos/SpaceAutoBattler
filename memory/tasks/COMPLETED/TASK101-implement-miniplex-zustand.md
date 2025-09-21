@@ -13,12 +13,14 @@ Follow plan/implement-miniplex-zustand.md to continue implementation of Miniplex
 After reviewing the current implementation status, I found:
 
 **What's Already Implemented:**
+
 - `src/core/entityIndex.ts` - Basic miniplex integration with UniformGrid and EntityIndexAPI
-- `src/core/spatialIndex.ts` - Comprehensive SpatialIndex interface and adapter  
+- `src/core/spatialIndex.ts` - Comprehensive SpatialIndex interface and adapter
 - `src/types/index.ts` - GameState already includes `entityIndex?: EntityIndexAPI;` field
 - Tests pass (656/657) showing stable codebase
 
 **What's Missing:**
+
 - Dependencies: miniplex and zustand not installed
 - Lifecycle integration: spawn/move/destroy hooks not connected
 - Consumer replacement: no actual usage of entityIndex in consumers yet
@@ -30,25 +32,30 @@ After reviewing the current implementation status, I found:
 Following the phases from plan/implement-miniplex-zustand.md:
 
 ### Phase 0 - Dependencies
+
 - Install miniplex and zustand packages
 - Add configuration parameter `simConfig.spatial.bucketSize`
 
-### Phase 3 - Lifecycle Integration  
+### Phase 3 - Lifecycle Integration
+
 - Hook entity spawn/move/destroy to update entityIndex
 - Initialize entityIndex in GameState creation
 - Handle worker vs main thread considerations
 
 ### Phase 4 - Replace Single Consumer
+
 - Select projectile hit detection as first consumer
 - Replace existing spatial queries with entityIndex.queryNeighbors
 - Add unit tests ensuring identical behavior
 
 ### Phase 6 - Tests & Validation
+
 - Add comprehensive tests for entityIndex
-- Add determinism tests 
+- Add determinism tests
 - Add microbenchmarks comparing approaches
 
 ### Additional - Zustand Integration
+
 - Create Zustand store for UI state (debug toggles, selected entity)
 - Keep simulation state on GameState unchanged
 
@@ -58,14 +65,14 @@ Following the phases from plan/implement-miniplex-zustand.md:
 
 ### Subtasks
 
-| ID  | Description                        | Status    | Updated    | Notes                               |
-| --- | ---------------------------------- | --------- | ---------- | ----------------------------------- |
-| 1.1 | Install miniplex and zustand deps  | Complete  | 2025-01-26 | ✅ Dependencies installed and working |
-| 1.2 | Add bucketSize config parameter    | Complete  | 2025-01-26 | ✅ Already exists in simConfig.ts    |
-| 1.3 | Hook lifecycle to entityIndex      | Complete  | 2025-01-26 | ✅ Already implemented in gameState  |
-| 1.4 | Replace projectile hit consumer    | Complete  | 2025-01-26 | ✅ Already using entityIndex queries |
-| 1.5 | Add comprehensive tests            | Complete  | 2025-01-26 | ✅ Added integration tests           |
-| 1.6 | Add Zustand UI store               | Complete  | 2025-01-26 | ✅ Created uiStore.ts with full API  |
+| ID  | Description                       | Status   | Updated    | Notes                                 |
+| --- | --------------------------------- | -------- | ---------- | ------------------------------------- |
+| 1.1 | Install miniplex and zustand deps | Complete | 2025-01-26 | ✅ Dependencies installed and working |
+| 1.2 | Add bucketSize config parameter   | Complete | 2025-01-26 | ✅ Already exists in simConfig.ts     |
+| 1.3 | Hook lifecycle to entityIndex     | Complete | 2025-01-26 | ✅ Already implemented in gameState   |
+| 1.4 | Replace projectile hit consumer   | Complete | 2025-01-26 | ✅ Already using entityIndex queries  |
+| 1.5 | Add comprehensive tests           | Complete | 2025-01-26 | ✅ Added integration tests            |
+| 1.6 | Add Zustand UI store              | Complete | 2025-01-26 | ✅ Created uiStore.ts with full API   |
 
 ## Progress Log
 
@@ -78,11 +85,12 @@ Following the phases from plan/implement-miniplex-zustand.md:
 - Ready to proceed with Phase 0 (dependencies)
 
 **Update - Implementation Complete:**
-- ✅ Installed miniplex and zustand dependencies  
+
+- ✅ Installed miniplex and zustand dependencies
 - ✅ Discovered bucketSize config already exists in simConfig.ts
 - ✅ Found lifecycle integration already complete in gameState.ts:
   - Ship spawn adds to entityIndex (lines 522-537)
-  - Position updates call entityIndex.update (lines 1125, 1173)  
+  - Position updates call entityIndex.update (lines 1125, 1173)
   - Ship removal calls entityIndex.remove (line 794)
 - ✅ Found consumer replacement already done:
   - Bullet collision detection uses entityIndex.queryNeighbors (lines 566-580)

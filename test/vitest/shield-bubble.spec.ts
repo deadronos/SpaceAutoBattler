@@ -9,8 +9,8 @@ describe('ShieldBubble anchoring (static check)', () => {
     // Basic heuristics to prevent regression: ensure we reset local transform
     expect(txt).toContain('mesh.position.set(0, 0, 0)');
     expect(txt).toContain('mesh.quaternion.identity()');
-  // No hard-coded constant scalar; should use computed radius variable
-  expect(txt).toContain('const r = radius ??');
+    // No hard-coded constant scalar; should use computed radius variable
+    expect(txt).toContain('const r = radius ??');
     expect(txt).toContain('mesh.scale.setScalar(r)');
   });
 });

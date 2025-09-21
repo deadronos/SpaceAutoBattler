@@ -26,8 +26,8 @@ test.describe('Fire Intent visual debug', () => {
     });
 
     await page.goto(URL);
-  // wait a bit longer for simulation to warm up and for worker AI steps
-  await page.waitForTimeout(8000);
+    // wait a bit longer for simulation to warm up and for worker AI steps
+    await page.waitForTimeout(8000);
 
     // take screenshot for visual inspection
     await page.screenshot({ path: 'tmp/fire-intent-screenshot.png', fullPage: true });
