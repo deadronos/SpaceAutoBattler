@@ -2,17 +2,20 @@
 
 Current focuses (short-term):
 
-- Fixes to AI passive behavior and deterministic edge-cases (branch `ai-passive-fix`).
-- Improve unit test coverage for core AI decision logic and physics-message sync.
-- Maintain canonical `GameState` and reduce module-level side effects.
+- Validate gameplay after 2025 rewrite (branch `feat-shipstats`): main-thread Rapier + R3F step, Miniplex ECS.
+- Improve unit test coverage for AI targeting/movement and projectile resolution.
+- Maintain canonical `GameState` and avoid module-level side effects.
 
 Recent changes:
 
-- Updated AI scoring helpers and several memory entries generated on 2025-09-02.
+- Rewrote `/src` from scratch; Rapier stepped inside R3F `useFrame`, no worker.
+- Added material registry with built-in shield and bullet materials.
+- Introduced per-hull shield visuals in `src/config/renderer.ts`.
 
 Next steps:
 
-- Run full test suite and ensure `npx tsc --noEmit` passes on CI.
-- Add a small deterministic replay test harness to `test/` to assert repeatable simulations.
+- Run full test suite and ensure `npm run typecheck` passes on CI.
+- Add targeted unit tests for `systems.ts` (nearest-target, damage application, shield ripple emission).
+- Add a small deterministic tick helper for tests (mirrors E2E window hooks).
 
-Generated: 2025-09-15
+Generated: 2025-09-21
