@@ -29,6 +29,8 @@ export interface ShipComponent {
   shield: number;
   /** Max shield hit points. */
   maxShield: number;
+  /** Shield regeneration rate in hit points per second (optional). */
+  shieldRegen?: number;
   cooldown: number;
   fireRate: number;
   damage: number;
@@ -169,6 +171,8 @@ export interface ShipStats {
   maxHp: number;
   /** Suggested shield capacity for ships of this hull. */
   maxShield?: number;
+  /** Suggested shield regeneration (hp per second) for this hull. Optional. */
+  shieldRegen?: number;
   damage: number;
   fireRate: number;
   projectileSpeed: number;

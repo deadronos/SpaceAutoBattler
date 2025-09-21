@@ -38,6 +38,11 @@ function prepareShips(state: GameState, delta: number): void {
     if (ship.turrets) {
       for (const turret of ship.turrets) turret.cooldown = Math.max(0, turret.cooldown - delta);
     }
+    // Shield regeneration (per-second rate stored on the ship component). Clamped to maxShield.
+    const regen = ship.ship.shieldRegen ?? 0;
+    if (regen > 0 && ship.ship.shield < ship.ship.maxShield) {
+      ship.ship.shield = Math.min(ship.ship.maxShield, ship.ship.shield + regen * delta);
+    }
     const target = findNearestEnemy(state, ship);
 
     if (!target) {
