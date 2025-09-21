@@ -71,6 +71,10 @@ export interface GameState {
   time: number;
   queries: GameQueries;
   rng: SeededRng;
+  /** Whether simulation is paused (authoritative mirror of UI state). */
+  paused: boolean;
+  /** Global time scale multiplier (1 = real-time). */
+  timeScale: number;
 }
 
 export interface ShipBlueprint {
