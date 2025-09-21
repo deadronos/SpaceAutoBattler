@@ -1,25 +1,28 @@
-# Memory: src/game/state.ts (canonical GameState)
+# Memory — core-gameState
 
-Purpose:
+File: `src/game/state.ts`
 
-- Provide the canonical GameState factory and low-level entity lifecycle helpers used by the simulation and renderer.
+Responsibilities (summary)
 
-Summary of responsibilities (current repo):
+- `createGameState()` initializes Rapier, creates the physics `World` and `EventQueue`, constructs the Miniplex ECS world, and returns the canonical `GameState` used across the app and tests.
+- `destroyEntity(state, entity)` and `disposeGameState(state)` provide robust lifecycle handling for entities and Rapier resources.
+- Spawn helpers: `spawnInitialFleets()`, `spawnRandomShip()`, and `resetGame()` are responsible for consistent, deterministic entity creation.
 
-- createGameState(opts?): initialize Rapier WASM/runtime (Rapier.init), create the Rapier World (zero gravity), build a Miniplex ECS world, set up queries, event queues and a seeded RNG (SeededRng from `src/utils/rng.ts`). Returns a GameState object used across the app.
-- destroyEntity(state, entity): defensive removal of physics colliders and rigid bodies (if present) and removal of the entity from the ECS world. Handles missing/partially-initialized resources safely.
-- spawnInitialFleets(state): helper used at startup to spawn symmetrical Red/Blue fleets using `spawnShip` from `src/game/ships.ts`.
-- disposeGameState(state): cleanup helpers that release physics resources and clear lookups.
+Key data and structures
 
-Integration points and notes:
+- `GameState` contains: Rapier runtime objects (`rapier`, `physicsWorld`, `eventQueue`), `world` (Miniplex), `colliderLookup: Map<number, Entity>`, `turretsByShip: Map<number, Set<Entity>>`, `queries` (ships/projectiles/turrets), `rng` (SeededRng), `time`, `paused`, and `timeScale`.
 
-- `src/game/ships.ts` (spawnShip) creates kinematic/rigid bodies, colliders, and registers collider handles on `state.colliderLookup` — `createGameState` prepares the structures those functions expect.
-- `src/game/systems.ts` consumes fields of GameState (time, world, physics world, colliderLookup, rng) and implements the per-tick simulation step (see memory/core-systems.md).
-- `GameState.assetPool` is described elsewhere as a renderer-side cache; the GameState factory does not enforce a specific asset-pool implementation but the renderer may add one during bootstrap.
-- Determinism: the seeded RNG (`src/utils/rng.ts`) is the canonical source of deterministic randomness for simulation-side behavior.
+- `turretsByShip` is an explicit registry used for efficient turret cascade removal when ships are destroyed.
 
-Edge cases & follow-ups:
+Behavior notes
 
-- Scripts or docs in the repo that reference older paths (e.g., `src/core/*`) should be reviewed; this memory entry replaces the historical `src/core/gameState.ts` mapping.
+- `destroyEntity` performs defensive Rapier removals with `isValid()` checks and try/catch, removes collider lookup entries, uses `turretsByShip` to find and destroy child turrets, and ensures ECS entities are cleaned from queries to avoid stale references in tests.
 
-Tags: GameState, Rapier, Miniplex, createGameState, destroyEntity, deterministic
+- `spawnRandomShip` and other spawn helpers use `state.rng` (the canonical seeded RNG) to ensure deterministic placement and cooldown seeding.
+
+Testing & recommendations
+
+- Tests should create `GameState` with a known seed and use `state.rng` for any randomness.
+- Ensure turret registration helpers (`registerTurret`/`unregisterTurret`) are used in tests to keep `turretsByShip` accurate so `destroyEntity` fast-paths work as intended.
+
+Generated: 2025-09-21 (automated promotion)

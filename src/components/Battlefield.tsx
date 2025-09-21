@@ -5,14 +5,16 @@ import { Suspense } from 'react';
 import type { Archetype } from 'miniplex';
 import type React from 'react';
 import { Color } from 'three';
-import type { GameEntity, ProjectileEntity, ShipEntity } from '../types/index.js';
+import type { GameEntity, ProjectileEntity, ShipEntity, TurretEntity } from '../types/index.js';
 import { useGameState, useOptionalGameState } from '../game/context.js';
 import { updateGame } from '../game/systems.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import { ShipObject } from './Ship.js';
+import { TurretObject } from './Turret.js';
 import { ProjectileObject } from './Projectile.js';
 import { SeededRng } from '../utils/rng.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
+import { useUiStore } from '../game/uiStore.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -34,6 +36,7 @@ export function Battlefield(): React.ReactElement {
       <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
       <Suspense fallback={null}>
         <ShipsLayer archetype={state.queries.ships} />
+        <TurretsLayer archetype={state.queries.turrets} />
         <ProjectilesLayer archetype={state.queries.projectiles} />
       </Suspense>
       <BattlefieldSystems />
@@ -58,9 +61,27 @@ export function Battlefield(): React.ReactElement {
 
 function BattlefieldSystems(): React.ReactElement {
   const state = useGameState();
+  const paused = useUiStore((s) => s.paused);
+  const timeScale = useUiStore((s) => s.timeScale);
   useFrame((_, delta) => {
-    const clamped = Math.min(delta, 0.05);
-    updateGame(state, clamped);
+    // Mirror to state just in case context missed an update
+    state.paused = paused;
+    state.timeScale = timeScale;
+
+    if (paused) return;
+    const scaled = Math.min(delta * Math.max(timeScale, 0), 0.1);
+
+    // Keep Rapier step in sync with visual rate; use integration parameters if available
+    try {
+      const params = (state.physicsWorld as any).integrationParameters;
+      if (params && typeof params.dt === 'number') {
+        params.dt = scaled;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    updateGame(state, scaled);
   });
   return <></>;
 }
@@ -82,6 +103,17 @@ function ProjectilesLayer({ archetype }: { archetype: Archetype<GameEntity, ['pr
     <>
       {projectiles.map((projectile) => (
         <ProjectileObject key={projectile.id} entity={projectile} />
+      ))}
+    </>
+  );
+}
+
+function TurretsLayer({ archetype }: { archetype: Archetype<GameEntity, ['turret']> }): React.ReactElement {
+  const turrets = useArchetypeEntities<TurretEntity>(archetype);
+  return (
+    <>
+      {turrets.map((e) => (
+        <TurretObject key={e.id} entity={e} />
       ))}
     </>
   );

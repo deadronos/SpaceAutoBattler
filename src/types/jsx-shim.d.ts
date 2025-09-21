@@ -4,6 +4,7 @@
 // intrinsic element definitions (especially for @react-three/fiber).
 // TODO: remove this file after fixing React/@react-three type mismatches.
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 declare namespace JSX {
   // Minimal Element type
   interface Element {}

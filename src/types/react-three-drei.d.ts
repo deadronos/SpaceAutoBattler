@@ -8,6 +8,8 @@ declare module '@react-three/drei' {
 
   // lightweight stub for development typechecks
   export function useGLTF(path: string): unknown;
+  // Material component from drei: https://drei.docs.pmnd.rs/shaders/mesh-transmission-material
+  export const MeshTransmissionMaterial: React.FC<Record<string, unknown>>;
   export const Html: React.FC<GroupProps & { center?: boolean }>;
   // Common helpers used in this project
   export const OrbitControls: React.ComponentType<Record<string, unknown>>;

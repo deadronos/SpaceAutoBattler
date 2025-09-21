@@ -15,5 +15,10 @@ export default defineConfig({
     pool: 'threads',
     maxThreads: 24,
     threads: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+    },
   },
 });

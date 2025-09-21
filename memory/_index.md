@@ -12,11 +12,10 @@ This index lists the short searchable memory summaries generated for the `src/` 
 ## Per-file memories
 
 - [core-gameState.md](./core-gameState.md) — `src/game/state.ts` (GameState factory, Rapier init, entity lifecycle helpers like createGameState, destroyEntity, spawnInitialFleets).
-- [core-systems.md](./core-aiController.md) — `src/game/systems.ts` (simulation step: prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles; lightweight AI: nearest-enemy targeting and firing).
-- [core-ships.md](./core-assetLoader.md) — `src/game/ships.ts` (SHIP_STATS, spawnShip, collider registration).
-- [core-physics.md](./core-physics.md) — `src/game/state.ts` & `src/game/systems.ts` (Rapier initialization, physics stepping, collision/resolve helpers).
-- [core-assetLoader.md](./core-assetLoader.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer).
-- [core-assetPool.md](./core-assetPool.md) — Runtime note: `GameState.assetPool` (optional Map used by renderer bootstrap; assets are cached by the renderer/asset loader).
+- [core-systems.md](./core-systems.md) — `src/game/systems.ts` (simulation step: prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles; lightweight AI: nearest-enemy targeting and firing).
+- [core-ships.md](./core-ships.md) — `src/game/ships.ts` (SHIP_STATS, spawnShip, collider registration).
+- [core-physics.md](./core-physics.md) — `src/game/state.ts` & `src/game/systems.ts` (Rapier initialization, main-thread stepping, collision/resolve helpers).
+- [core-assets.md](./core-assets.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer).
 - [core-rng.md](./core-rng.md) — `src/utils/rng.ts` (seeded deterministic RNG used by simulation and spawn randomization).
 
 - [projectbrief.md](./projectbrief.md) — Project brief describing goals, constraints, and success criteria.
@@ -32,4 +31,4 @@ This index lists the short searchable memory summaries generated for the `src/` 
 - Link to relevant config files and note key tunables where appropriate.
 - Prefer short examples and references to where the file is used (e.g., `main.ts` or `simWorker.ts`).
 
-Generated on 2025-09-15 by Copilot agent.
+Generated on 2025-09-21 by Copilot agent.

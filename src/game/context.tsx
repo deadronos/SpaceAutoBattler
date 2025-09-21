@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { GameState } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
 import { updateGame } from './systems.js';
+import { useUiStore } from './uiStore.js';
 
 interface GameContextValue {
   state: GameState | null;
@@ -12,6 +13,8 @@ const GameContext = createContext<GameContextValue | undefined>(undefined);
 
 export function GameProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [state, setState] = useState<GameState | null>(null);
+  const paused = useUiStore((s) => s.paused);
+  const timeScale = useUiStore((s) => s.timeScale);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +88,13 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
       });
     };
   }, []);
+
+  // Mirror UI state to GameState for core systems.
+  useEffect(() => {
+    if (!state) return;
+    state.paused = paused;
+    state.timeScale = timeScale;
+  }, [state, paused, timeScale]);
 
   return <GameContext.Provider value={{ state }}>{children}</GameContext.Provider>;
 }

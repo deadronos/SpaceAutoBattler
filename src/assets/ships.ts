@@ -11,7 +11,7 @@ export const SHIP_MODEL_PATHS = {
   corvette: corvetteUrl,
   frigate: frigateUrl,
   destroyer: destroyerUrl,
-  carrier: carrierUrl
+  carrier: carrierUrl,
 } as const;
 
 export type ShipModelKey = keyof typeof SHIP_MODEL_PATHS;

@@ -3,6 +3,7 @@
 // permissive `IntrinsicElements` shape. It's temporary and should be removed
 // once the codebase is updated to the newer typing expectations.
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type React from 'react';
 
 declare global {

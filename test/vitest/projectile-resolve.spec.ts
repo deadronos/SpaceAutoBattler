@@ -1,0 +1,167 @@
+import { describe, it, expect } from 'vitest';
+import { Quaternion, Vector3 } from 'three';
+import type { GameEntity, GameState, ShipEntity } from '../../src/types/index.js';
+import { fireProjectile, updateGame } from '../../src/game/systems.js';
+
+function makeRigidBodyStub(init?: { pos?: { x: number; y: number; z: number }; rot?: { x: number; y: number; z: number; w: number } }) {
+  let pos = init?.pos ?? { x: 0, y: 0, z: 0 };
+  let rot = init?.rot ?? { x: 0, y: 0, z: 0, w: 1 };
+  return {
+    translation() { return pos; },
+    rotation() { return rot; },
+    setNextKinematicTranslation(p: { x: number; y: number; z: number }) { pos = { ...p }; },
+    setNextKinematicRotation(r: { x: number; y: number; z: number; w: number }) { rot = { ...r }; },
+    isValid() { return true; },
+  } as any;
+}
+
+function makeStateStub(): GameState {
+  const entities: GameEntity[] = [] as any;
+  const queries = { ships: { entities: [] as any[] }, projectiles: { entities: [] as any[] }, turrets: { entities: [] as any[] } } as any;
+  const world = {
+    entities,
+    createEntity(obj: any) {
+      entities.push(obj);
+      // keep queries lists roughly in sync for systems to iterate
+      if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
+      if (obj.ship) (queries.ships.entities as any[]).push(obj);
+      if (obj.turret) (queries.turrets.entities as any[]).push(obj);
+      return obj;
+    },
+    destroyEntity(obj: any) {
+      const i = entities.indexOf(obj);
+      if (i >= 0) entities.splice(i, 1);
+    },
+  } as any;
+
+  const rapierStub = {
+    RigidBodyDesc: { kinematicPositionBased: () => ({
+      _pos: { x: 0, y: 0, z: 0 }, _rot: { x: 0, y: 0, z: 0, w: 1 },
+      setTranslation(x: number, y: number, z: number) { this._pos = { x, y, z }; return this; },
+      setRotation(r: { x: number; y: number; z: number; w: number }) { this._rot = r; return this; },
+    }) },
+    ColliderDesc: { ball: () => ({ setActiveEvents() { return this; }, setActiveCollisionTypes() { return this; } }) },
+    ActiveEvents: { COLLISION_EVENTS: 1 },
+    ActiveCollisionTypes: { ALL: 1 },
+  } as any;
+
+  let nextHandle = 1;
+  const physicsWorld = {
+    createRigidBody: (desc?: any) => makeRigidBodyStub(desc ? { pos: desc._pos, rot: desc._rot } : undefined),
+    createCollider: () => ({ handle: nextHandle++, isValid: () => true }) as any,
+    removeCollider() {},
+    removeRigidBody() {},
+    step() {},
+  } as any;
+
+  return {
+    rapier: rapierStub,
+    physicsWorld,
+    eventQueue: {} as any,
+    world: world as any,
+    colliderLookup: new Map(),
+    nextEntityId: 1,
+    time: 0,
+    queries,
+    rng: { next: () => 0.5 } as any,
+    paused: false,
+    timeScale: 1,
+  } as GameState;
+}
+
+function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shield=5): ShipEntity {
+  const rb = makeRigidBodyStub({ pos: { x: position.x, y: position.y, z: position.z } });
+  return {
+    id,
+    rigidBody: rb as any,
+    collider: { handle: 1000 + id, isValid: () => true } as any,
+    transform: { position: position.clone(), rotation: new Quaternion(), scale: 1 },
+    ship: {
+      team,
+      hull: 'fighter' as any,
+      hp,
+      maxHp: hp,
+      shield,
+      maxShield: shield,
+      cooldown: 0,
+      fireRate: 1,
+      damage: 3,
+      projectileSpeed: 20,
+      range: 15,
+      speed: 0,
+      bulletType: 'bullet:laser',
+    },
+    model: 'fighter' as any,
+    shieldRipples: [],
+  } as ShipEntity;
+}
+
+describe('projectile resolution', () => {
+  it('applies shield then hull damage and emits ripple', () => {
+    const state = makeStateStub();
+    const attacker = makeShip(1, 'blue', new Vector3(0,0,0));
+    const target = makeShip(2, 'red', new Vector3(0,0,0.5), 10, 4); // inside impact radius
+    (state.queries.ships as any).entities = [attacker, target];
+    // Prevent auto-fire from prepareShips for both sides
+    attacker.ship.cooldown = 999;
+    target.ship.cooldown = 999;
+
+    // Fire a projectile that will immediately overlap target in resolve step
+    const dir = new Vector3(0,0,1);
+    const originNearTarget = target.transform.position.clone().addScaledVector(dir, -0.05);
+    fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
+
+    // Step small delta to resolve collision
+    updateGame(state, 0.016);
+
+    // Projectile should be removed
+    expect((state.queries.projectiles as any).entities.length).toBe(0);
+    // Shield should be reduced first (damage 3 -> shield from 4 to 1, hull intact)
+    expect(target.ship.shield).toBe(1);
+    expect(target.ship.hp).toBe(10);
+    // Ripple should be emitted
+    expect(target.shieldRipples && target.shieldRipples.length).toBeGreaterThan(0);
+  });
+
+  it('kills ship when hull <= 0 and removes entity', () => {
+    const state = makeStateStub();
+    const attacker = makeShip(1, 'blue', new Vector3(0,0,0));
+    const target = makeShip(2, 'red', new Vector3(0,0,0.3), 2, 0);
+    (state.queries.ships as any).entities = [attacker, target];
+    attacker.ship.cooldown = 999;
+    target.ship.cooldown = 999;
+
+    // Increase attacker damage to 5 to ensure kill
+    attacker.ship.damage = 5;
+    const dir = new Vector3(0,0,1);
+    const originNearTarget = target.transform.position.clone().addScaledVector(dir, -0.05);
+    fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
+
+    updateGame(state, 0.016);
+
+    // Target should be removed by resolve loop
+    const ships = (state.queries.ships as any).entities as ShipEntity[];
+    expect(ships.find((s) => s.id === target.id)).toBeUndefined();
+  });
+
+  it('removes projectile when ttl expires', () => {
+    const state = makeStateStub();
+    const attacker = makeShip(1, 'blue', new Vector3(0,0,0));
+    const farEnemy = makeShip(2, 'red', new Vector3(1000,0,0));
+    (state.queries.ships as any).entities = [attacker, farEnemy];
+    attacker.ship.cooldown = 999;
+    farEnemy.ship.cooldown = 999;
+
+    // Make very slow projectile with very short range so ttl small
+    attacker.ship.projectileSpeed = 1;
+    attacker.ship.range = 1; // lifetime = 1/1 = 1s
+    fireProjectile(state, attacker, new Vector3(1,0,0));
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
+
+    // Advance time beyond ttl
+    updateGame(state, 1.2);
+    expect((state.queries.projectiles as any).entities.length).toBe(0);
+  });
+});

@@ -68,7 +68,7 @@ Files: src/game/ships.ts, src/game/state.ts, src/components/Ship.tsx
 ```
 
 - AI: findNearestEnemy searches ECS ship entities for combat targets
-- Movement: Ships orient towards targets and move within optimal range  
+- Movement: Ships orient towards targets and move within optimal range
 - Combat: fireProjectile creates projectile entities with Rapier physics bodies
 - Integration: All AI decisions update ECS state, physics handles collisions
 

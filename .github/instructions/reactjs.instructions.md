@@ -5,6 +5,7 @@ applyTo: '**/*.jsx, **/*.tsx,**/*.js, **/*.ts, **/*.css, **/*.scss'
 
 type Props = { title: string; onClick?: () => void };
 return (
+
 <article>
 <h3>{title}</h3>
 <button onClick={onClick}>Action</button>

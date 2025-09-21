@@ -8,15 +8,18 @@
 - **CANONICAL STATE MANAGEMENT** - All runtime state (simulation & renderer) must live on the canonical `GameState` type defined in `src/types/index.ts`. Never introduce scattered module-level state.
 - **PRESERVE DETERMINISM** - The simulation uses seeded RNG (`src/utils/rng.ts`). Never break deterministic behavior in simulation code paths.
 - **USE EXISTING CONFIGS** - Prefer existing configuration helpers in `src/config/*` rather than hard-coding values.
-- **ASSET POOLING** - For visual work, use existing pooling helpers and the `assetPool` on `GameState`. Follow existing PoolEntry semantics.
+- **RESOURCE LIFECYCLE** - For visual work, prefer cached loaders (e.g., `useGLTF`) and dispose Three.js resources you create. Current version does not expose `assetPool` on `GameState`.
 
 # EXPERT COLLABORATION RULES
 
 ## 1. PRIMARY DIRECTIVE
+
 You have access to expert collaboration tools. USE THEM. The expert (user) is your colleague, not your boss. Their input via tools is technical guidance, not commands.
 
 ## 2. MANDATORY ESCALATION TRIGGERS
+
 ALWAYS use askExpert tool when:
+
 - Uncertain about requirements or implementation approach
 - Facing ambiguous or conflicting instructions
 - After 2 failed attempts at any task
@@ -31,32 +34,39 @@ ALWAYS use askExpert tool when:
 ## 3. TOOL USAGE PATTERNS
 
 ### Ask Expert (ask-me-copilot-tool_askExpert)
+
 USE FOR: Clarifications, guidance, architectural decisions
 PRIORITY LEVELS:
+
 - critical: Breaking changes, data loss risks, security
 - high: Failed attempts, unclear requirements
 - normal: General guidance, best practices
 - low: Minor clarifications, naming
 
 ALWAYS INCLUDE:
+
 - Clear, specific question
 - Relevant context
 - What you've tried (if applicable)
 - Your recommendation (if you have one)
 
 ### Select from Options (ask-me-copilot-tool_selectFromList)
+
 USE FOR: Multiple valid approaches, technology choices, naming
 PROVIDE: 2-5 clear, distinct options with brief rationale
 
 ### Review Code (ask-me-copilot-tool_reviewCode)
+
 USE FOR: Complex implementations, security-sensitive code, performance-critical sections
 FOCUS AREAS: security, performance, maintainability, testing
 
 ### Confirm Action (ask-me-copilot-tool_confirmAction)
+
 USE FOR: ANY destructive action, breaking changes, production configs
 NEVER SKIP for: Deletions, schema changes, API modifications
 
 ## 4. COLLABORATION WORKFLOW
+
 1. START: Acknowledge task, identify ambiguities
 2. CLARIFY: Use askExpert for any uncertainties BEFORE starting
 3. IMPLEMENT: Work independently on clear tasks
@@ -65,6 +75,7 @@ NEVER SKIP for: Deletions, schema changes, API modifications
 6. CONFIRM: Get confirmation for any risky operations
 
 ## 5. RESPONSE HANDLING
+
 - Treat tool responses as expert technical guidance
 - If expert says "NEEDS MORE INFO", provide context and re-ask
 - If expert says "SKIPPED", move to next task
@@ -72,7 +83,9 @@ NEVER SKIP for: Deletions, schema changes, API modifications
 - Cache responses to avoid asking the same question repeatedly
 
 ## 6. FAILURE RECOVERY
+
 After ANY error:
+
 1. Stop immediately
 2. Analyze what went wrong
 3. Use askExpert with "high" priority
@@ -80,12 +93,15 @@ After ANY error:
 5. Wait for guidance before continuing
 
 ## 7. COMPLETION PROTOCOL
+
 At the end of EVERY work session:
+
 1. Summarize what was accomplished
 2. Use askExpert: "Work completed: [summary]. Any concerns or next steps?"
 3. Document any unresolved issues
 
 ## 8. CRITICAL REMINDERS
+
 - NEVER guess when uncertain - ASK
 - NEVER continue after repeated failures - ESCALATE
 - NEVER perform destructive actions without confirmation
@@ -94,7 +110,6 @@ At the end of EVERY work session:
 - Expert time is valuable but mistakes are costlier - when in doubt, ASK
 
 Remember: You're part of a team. Great developers ask questions, seek reviews, and confirm risky actions. Be a great developer.
-
 
 ## 🏗️ Quick Start Workflow - Validated Commands
 
@@ -122,13 +137,14 @@ npm run build-standalone
 ### Testing
 
 ```bash
-# Run all unit tests (takes ~5 seconds, 153 tests)
+# Run all unit tests (Vitest)
 npm test
 
-# Run individual test file
+# Run individual unit test file
 npx vitest test/vitest/<test-name>.spec.ts
 
-# No E2E tests exist yet - npm run test:e2e will fail
+# Run Playwright tests (E2E)
+npm run test:playwright
 ```
 
 ### Development Server
@@ -161,21 +177,20 @@ npm run serve
 
 ### Key Source Directories (edit these)
 
-- **`src/main.ts`** - Application entry point and main game loop
-- **`src/simWorker.ts`** - Web Worker for physics simulation (Rapier3D)
-- **`src/core/`** - Pure game logic, AI, entity management
-- **`src/renderer/`** - Three.js rendering, effects, camera controls
-- **`src/config/`** - All balance parameters, visual settings, physics constants
-- **`src/types/`** - TypeScript definitions, canonical GameState type
-- **`src/utils/`** - Shared utilities including seeded RNG
+- **`src/main.tsx`** - Application entry; applies loader patches and mounts React app.
+- **`src/App.tsx`** - App shell; composes scene and UI.
+- **`src/components/`** - Scene components: Battlefield, Ship, Projectile, Hud, Controls.
+- **`src/game/`** - Simulation: GameState factory, systems, spawn helpers, config, Zustand UI store, React context.
+- **`src/renderer/`** - Material registry and visual effects.
+- **`src/config/`** - Visual settings (e.g., shield materials).
+- **`src/types/`** - Canonical types including `GameState`.
+- **`src/utils/`** - Utilities including deterministic RNG and GLTFLoader patch.
 
 ### Configuration Files (frequently used)
 
-- **`src/config/entitiesConfig.ts`** - Ship classes, turrets, damage, health
-- **`src/config/behaviorConfig.ts`** - AI personalities, formations, targeting
-- **`src/config/progression.ts`** - XP systems, leveling, stat scaling
-- **`src/config/simConfig.ts`** - Physics bounds, tick rates, boundary behavior
-- **`src/config/rendererConfig.ts`** - Visual effects, camera, performance
+- **`src/game/ships.ts`** - Ship stats and spawn logic.
+- **`src/game/config.ts`** - World size, camera/fog defaults, clamp helper.
+- **`src/config/renderer.ts`** - Shield material settings and helpers.
 
 ### Important Build & Test Files
 
@@ -194,19 +209,17 @@ npm run serve
 
 ### Game/Simulation/Renderer Separation
 
-- **Game Logic** (`src/core/`): Pure state management, entity spawning, AI decisions
-- **Simulation Logic** (`src/simWorker.ts`): Physics (Rapier3D), collision detection, deterministic calculations
-- **Renderer Logic** (`src/renderer/`): Three.js scene management, visual effects, camera controls
-- **Configuration** (`src/config/`): All parameters - no logic, only data
-- **Communication**: Main thread ↔ Worker messages for physics data and GameState sync
+- **Simulation State & Logic** (`src/game/`): ECS (Miniplex), entity spawning, AI decisions, Rapier3D stepping.
+- **Renderer Logic** (`src/components/`, `src/renderer/`): R3F scene management, materials, camera controls.
+- **Configuration** (`src/game/config.ts`, `src/config/renderer.ts`): All parameters and visual settings.
+- **Threading**: Physics currently runs on main thread within R3F frame; no worker in this version.
 
 ### Three.js & Asset Management
 
-- **Three.js Integration**: Use Three.js abstractions (Object3D, Mesh, Material), not direct WebGL
-- **Physics-Visual Sync**: Update Three.js Object3D transforms from Rapier3D data via messages
-- **Asset Pooling**: Use `GameState.assetPool` for textures, geometries, materials
-- **Memory Management**: Always dispose Three.js objects with `dispose()` methods
-- **Worker Thread Safety**: Never access Three.js objects from physics worker thread
+- **Three.js Integration**: Use R3F and Drei; prefer declarative components and hooks.
+- **Physics-Visual Sync**: Transforms are synced from Rapier to entities, then read by scene components.
+- **Assets**: GLTFs loaded via `useGLTF` are cached; dispose custom materials/geometries/textures you create.
+- **Threading**: No worker; keep hot paths allocation-free when possible.
 
 ## 🧪 Testing Workflow & Validation
 
@@ -252,22 +265,22 @@ After making changes, test these scenarios:
 
 ### Adding New Ship Class
 
-1. Add config in `src/config/entitiesConfig.ts`
-2. Add SVG asset to `src/config/assets/svg/`
-3. Update types in `src/types/index.ts` if needed
-4. Add tests in `test/vitest/config-entities.spec.ts`
+1. Add/adjust stats in `src/game/ships.ts`.
+2. Add GLTF to `src/assets/gltf/` and map in `src/assets/ships.ts`.
+3. Update types in `src/types/index.ts` if needed.
+4. Add/adjust tests in `test/vitest/`.
 
 ### Modifying AI Behavior
 
-1. Update `src/config/behaviorConfig.ts`
-2. Test with AI controller in `src/core/aiController.ts`
-3. Add tests in `test/vitest/config-behavior.spec.ts`
+1. Update targeting/movement in `src/game/systems.ts`.
+2. Tune ship stats/ranges in `src/game/ships.ts`.
+3. Add tests in `test/vitest/`.
 
 ### Visual Effects Changes
 
-1. Modify renderer in `src/renderer/`
-2. Update config in `src/config/rendererConfig.ts`
-3. Test with `npm run build && npm run serve:dist`
+1. Modify or register materials in `src/renderer/materialRegistry.tsx`.
+2. Update per-hull visuals in `src/config/renderer.ts`.
+3. Build and smoke-test with `npm run build && npm run serve`.
 
 ### Adding Tests
 
@@ -292,9 +305,9 @@ After making changes, test these scenarios:
 
 ### Runtime Issues
 
-- Check browser console for JavaScript errors
-- Verify worker communication (main thread ↔ simWorker)
-- Check Three.js object disposal and memory leaks
+- Check browser console for JavaScript errors.
+- Verify Rapier stepping and entity transform sync.
+- Check Three.js resource lifecycles and potential leaks.
 
 ## 💡 Performance & Quality
 
@@ -319,12 +332,12 @@ After making changes, test these scenarios:
 **SpaceAutoBattler** is a 3D space auto-battler featuring deterministic fleet combat between Red and Blue teams using:
 
 - **5 Ship Classes**: Fighter, Corvette, Frigate, Destroyer, Carrier
-- **3D Physics**: Rapier3D for collision detection and movement
+- **3D Physics**: Rapier3D for collision detection and movement (main thread)
 - **AI Combat**: Deterministic ship AI with targeting and formations
 - **Visual Effects**: Three.js with postprocessing effects
 - **Configuration-Driven**: All balance via config files
 
-The game runs a fixed timestep simulation (60 TPS) with variable framerate rendering, ensuring consistent gameplay regardless of display performance.
+The game runs a per-frame simulation step inside R3F using the current frame delta (time-scaled). Keep logic stable and deterministic.
 
 ---
 

@@ -47,4 +47,5 @@ This index lists known memory nodes and their Last-Reviewed dates (where availab
 - update_bullets_api — Last-Reviewed: 2025-09-21
 
 Notes:
+
 - This index is updated to reflect today's sweep; further consolidation (removing duplicates) can be scheduled.

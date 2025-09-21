@@ -1,23 +1,24 @@
 # System Patterns — SpaceAutoBattler
 
-High-level architecture patterns used across the repo:
+This document captures architecture and recurring patterns used across the codebase.
 
-- Game state canonicalization: A single `GameState` object represents all runtime state; modules read and update this state rather than using module-level state.
+Overview
 
-- Clear separation of concerns:
-  - Core logic (`src/core`) — pure game rules, AI, entity management.
-  - Simulation (`src/simWorker.ts`) — deterministic physics (Rapier3D) running in a Web Worker.
-  - Renderer (`src/renderer`) — Three.js visuals and postprocessing on the main thread.
+- Canonical GameState: All runtime state lives on the `GameState` type defined in `src/types/index.ts`. Avoid module-level state.
+- Simulation / Renderer separation: Simulation (ECS + Rapier) exists in `src/game/*` and is deterministic; renderer components in `src/components/*` read from `GameState` and are side-effect free.
+- Deterministic RNG: Use `state.rng` (seeded RNG in `src/utils/rng.ts`) for any simulation randomness; never use `Math.random()` in simulation paths.
+- Resource lifecycle: GLTFs loaded via Drei `useGLTF` (cached); dispose of Three.js resources created manually.
+- Hot-path allocation avoidance: Systems avoid per-frame allocations; use temp vectors and pooling where appropriate.
 
-- Asset pooling: use `GameState.assetPool` for shared geometries, materials, and textures; prefer reuse over allocation.
+Common patterns
 
-- Deterministic RNG: use seeded RNG helpers (`src/utils/rng.ts`) for any simulation-influencing randomness.
+- createGameState()/disposeGameState() factory: `src/game/state.ts` provides lifecycle for Rapier world, Miniplex world, and seeded RNG.
+- Systems composition: `src/game/systems.ts` composes small, focused functions (prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles) executed each tick via `updateGame(state, delta)`.
+- Per-entity buffers: Ship entities maintain a small `shieldRipples` buffer for renderer-driven visual ripples; capped length to avoid unbounded memory growth.
 
-- Message-based sync: main thread and worker communicate via small, serializable messages; never pass Three.js objects across threads.
+Testing & CI
 
-Guidance:
+- Tests should seed the RNG for deterministic behavior and create small `GameState` instances for integration tests.
+- Typecheck (`npm run typecheck`) and unit tests (`npm test`) are required before commits.
 
-- Add high-level integration tests that assert simulation determinism across runs.
-- Keep config values in `src/config` rather than scattering constants through code.
-
-Generated: 2025-09-15
+Generated: 2025-09-21
