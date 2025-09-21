@@ -18,6 +18,8 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
       hull: 'fighter',
       hp: 30,
       maxHp: 30,
+      shield: 18,
+      maxShield: 18,
       cooldown: 0,
       fireRate: 1,
       damage: 4,

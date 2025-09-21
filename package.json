@@ -44,7 +44,6 @@
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/three": "latest",
-  "@react-three/drei": "^10.7.6",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
     "@vitest/browser": "^3.2.4",
@@ -72,7 +71,8 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0",
     "vitest": "^3.2.4",
-    
+  "react-test-renderer": "^18.2.0",
+  "@testing-library/react": "^14.0.0",
     "webpack": "*",
     "webpack-bundle-analyzer": "*",
     "webpack-cli": "*",
@@ -87,6 +87,7 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "latest",
     "@react-three/fiber": "^9.3.0",
+    "@react-three/drei": "^10.7.6",
     "glob": "*",
     "gsap": "^3.13.0",
     "idb-keyval": "^6.2.2",

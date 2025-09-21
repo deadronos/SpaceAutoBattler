@@ -5,11 +5,12 @@ import { Suspense } from 'react';
 import type { Archetype } from 'miniplex';
 import type React from 'react';
 import { Color } from 'three';
-import type { GameEntity, ProjectileEntity, ShipEntity } from '../types/index.js';
+import type { GameEntity, ProjectileEntity, ShipEntity, TurretEntity } from '../types/index.js';
 import { useGameState, useOptionalGameState } from '../game/context.js';
 import { updateGame } from '../game/systems.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import { ShipObject } from './Ship.js';
+import { TurretObject } from './Turret.js';
 import { ProjectileObject } from './Projectile.js';
 import { SeededRng } from '../utils/rng.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
@@ -35,6 +36,7 @@ export function Battlefield(): React.ReactElement {
       <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
       <Suspense fallback={null}>
         <ShipsLayer archetype={state.queries.ships} />
+        <TurretsLayer archetype={state.queries.turrets} />
         <ProjectilesLayer archetype={state.queries.projectiles} />
       </Suspense>
       <BattlefieldSystems />
@@ -101,6 +103,17 @@ function ProjectilesLayer({ archetype }: { archetype: Archetype<GameEntity, ['pr
     <>
       {projectiles.map((projectile) => (
         <ProjectileObject key={projectile.id} entity={projectile} />
+      ))}
+    </>
+  );
+}
+
+function TurretsLayer({ archetype }: { archetype: Archetype<GameEntity, ['turret']> }): React.ReactElement {
+  const turrets = useArchetypeEntities<TurretEntity>(archetype);
+  return (
+    <>
+      {turrets.map((e) => (
+        <TurretObject key={e.id} entity={e} />
       ))}
     </>
   );

@@ -8,7 +8,7 @@
 
 - Source: `src/` (TypeScript only). Do not edit generated `dist/`.
 - Tests: `test/` with `*.spec.ts` (Vitest).
-- Note: Playwright configuration and artifacts exist in the repo, but there are no authored E2E test specs yet; running Playwright will currently find no tests unless new E2E specs are added.
+- E2E: Playwright specs exist under `test/playwright/`.
 - Types: import shared types from `src/types/index.ts` only.
 - Docs: `spec/src-structure.md` (overview), `PR_NOTES/` (breaking-change records).
 
@@ -18,7 +18,7 @@
 - Type-check: `npx tsc --noEmit` — validate types without emitting JS.
 - All tests: `npm test` — run unit suite.
 - Single spec: `npx vitest test/<path>.spec.ts` — target a file.
-- E2E tests: `npx playwright test` — see `playwright.config.js` for config. (we haven't authored any E2E tests yet)
+- E2E tests: `npm run test:playwright` or `npm run test:e2e` — see `playwright.config.cjs` for config.
 
 ## Coding Style & Naming Conventions
 
@@ -44,9 +44,9 @@
 - PRs: include intent, linked issues, and screenshots/logs for visual changes.
 - Breaking types/config: add a record in `PR_NOTES/` and provide migration/fallbacks.
 
-## Engine Integration (Three.js & Rapier3D)
+## Engine Integration (React Three Fiber & Rapier3D)
 
-- Separation: physics in a worker; Three.js rendering on main thread; sync via messages.
-- Asset pooling: use `GameState.assetPool`; always `object.dispose()` before release.
-- Memory: dispose geometries/materials/textures; monitor for leaks; use EffectComposer for post.
-- Performance: prefer pooling and LOD for distant objects.
+- Update loop: Rapier3D runs on the main thread and is stepped from React Three Fiber's `useFrame`.
+- Separation of concerns: simulation state and rendering are decoupled via ECS (Miniplex) and `GameState`.
+- Assets: GLTFs are cached via `@react-three/drei`'s `useGLTF`. Always dispose custom Three.js resources when appropriate.
+- Performance: prefer pooling/re-use and LOD for distant objects; avoid per-frame allocations in hot paths.

@@ -25,12 +25,67 @@ export interface ShipComponent {
   hull: ShipHull;
   hp: number;
   maxHp: number;
+  /** Current shield hit points. Visual opacity scales with this value. */
+  shield: number;
+  /** Max shield hit points. */
+  maxShield: number;
   cooldown: number;
   fireRate: number;
   damage: number;
   projectileSpeed: number;
   range: number;
   speed: number;
+  /** Key for the projectile material/type this ship fires (e.g. 'bullet:laser') */
+  bulletType?: string;
+}
+
+/** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
+export interface TurretSpec {
+  /** Local-space offset from the ship origin where this turret is mounted. */
+  offset: Vector3;
+  /** Damage per projectile. */
+  damage: number;
+  /** Seconds between shots (cooldown). */
+  fireRate: number;
+  /** Projectile speed units per second. */
+  projectileSpeed: number;
+  /** Effective range of this turret. */
+  range: number;
+  /** Optional renderer key for projectile visuals. */
+  bulletType?: string;
+  /** Optional arc limits in radians relative to parent forward. */
+  minYaw?: number;
+  maxYaw?: number;
+  minPitch?: number;
+  maxPitch?: number;
+  /** Optional targeting priority for turret AI. */
+  priority?: 'any' | 'antiFighter' | 'antiCapital';
+}
+
+/** Runtime turret state (derived from TurretSpec). Lives on the parent ship entity. */
+export interface TurretState extends TurretSpec {
+  /** Countdown timer until the turret can fire again. */
+  cooldown: number;
+}
+
+/** ECS component for a turret entity, referencing its parent ship. */
+export interface TurretComponent extends TurretSpec {
+  /** The parent ship this turret is mounted on. */
+  parent: ShipEntity;
+  /** Runtime cooldown timer. */
+  cooldown: number;
+  /** Optional stable index on the parent for ordering. */
+  index?: number;
+  /** Current yaw (around Y) and pitch (around X), radians, relative to parent ship forward. */
+  yaw?: number;
+  pitch?: number;
+  /** Arc limits in radians (relative to parent forward). Defaults to wide arcs if not set. */
+  minYaw?: number;
+  maxYaw?: number;
+  minPitch?: number;
+  maxPitch?: number;
+  /** Targeting priority for turret AI. */
+  priority?: 'any' | 'antiFighter' | 'antiCapital';
 }
 
 export interface ProjectileComponent {
@@ -39,6 +94,20 @@ export interface ProjectileComponent {
   ttl: number;
   maxTtl: number;
   speed: number;
+  /** Material key or type identifier for rendering this projectile (optional) */
+  bulletType?: string;
+}
+
+/** Parameters for a short-lived muzzle flash event emitted when a weapon fires. */
+export interface MuzzleFlash {
+  /** Ship-local position where the flash should be rendered. */
+  local: Vector3;
+  /** Time when the flash started (GameState.time). */
+  t0: number;
+  /** Visual strength (0..1). */
+  amp: number;
+  /** Optional bullet type for tinting the flash. */
+  bulletType?: string;
 }
 
 export interface GameEntity extends TransformComponent {
@@ -47,18 +116,27 @@ export interface GameEntity extends TransformComponent {
   collider: Collider;
   ship?: ShipComponent;
   projectile?: ProjectileComponent;
+  turret?: TurretComponent;
   /** Unit direction vector used for projectile integration. */
   direction?: Vector3;
   /** Identifier of the model to render for this entity. */
   model?: ShipHull;
+  /** Recent shield ripple events, renderer-only consumption. Kept on GameState for determinism. */
+  shieldRipples?: ShieldRipple[];
+  /** Optional array of turrets mounted on this ship (if entity has a ShipComponent). */
+  turrets?: TurretState[];
+  /** Recent muzzle flash events; rendered client-side and naturally fade based on state.time. */
+  muzzleFlashes?: MuzzleFlash[];
 }
 
 export type ShipEntity = GameEntity & { ship: ShipComponent };
 export type ProjectileEntity = GameEntity & { projectile: ProjectileComponent; direction: Vector3 };
+export type TurretEntity = GameEntity & { turret: TurretComponent };
 
 export interface GameQueries {
   ships: Archetype<GameEntity, ['ship']>;
   projectiles: Archetype<GameEntity, ['projectile']>;
+  turrets: Archetype<GameEntity, ['turret']>;
 }
 
 export interface GameState {
@@ -87,10 +165,26 @@ export interface ShipBlueprint {
 export interface ShipStats {
   hull: ShipHull;
   maxHp: number;
+  /** Suggested shield capacity for ships of this hull. */
+  maxShield?: number;
   damage: number;
   fireRate: number;
   projectileSpeed: number;
   range: number;
   speed: number;
   scale: number;
+  /** Preferred bullet/material key for this hull (e.g. 'bullet:laser') */
+  bulletType?: string;
+  /** Optional default turret loadout for this hull. */
+  turrets?: TurretSpec[];
+}
+
+/** Parameters for a shield ripple kick emitted on impact. */
+export interface ShieldRipple {
+  /** Unit vector direction on the sphere surface in world space at impact moment. */
+  dir: Vector3;
+  /** Time when the ripple started (GameState.time). */
+  t0: number;
+  /** Visual strength (0..1). */
+  amp: number;
 }
