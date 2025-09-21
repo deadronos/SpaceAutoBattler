@@ -2,23 +2,27 @@
 
 File: `src/game/state.ts`
 
-Responsibilities:
+Responsibilities (summary)
 
-- Factory `createGameState()` initializes Rapier (main thread), EventQueue, and Miniplex world; sets up queries and seeded RNG.
-- Entity lifecycle helpers: `destroyEntity()` safely removes collider/body and ECS entity; `disposeGameState()` frees Rapier resources.
-- Spawning: `spawnInitialFleets()` creates symmetric fleets; `spawnRandomShip()` picks hull, team-appropriate position; `resetGame()` clears and respawns.
+- `createGameState()` initializes Rapier, creates the physics `World` and `EventQueue`, constructs the Miniplex ECS world, and returns the canonical `GameState` used across the app and tests.
+- `destroyEntity(state, entity)` and `disposeGameState(state)` provide robust lifecycle handling for entities and Rapier resources.
+- Spawn helpers: `spawnInitialFleets()`, `spawnRandomShip()`, and `resetGame()` are responsible for consistent, deterministic entity creation.
 
-Key data:
+Key data and structures
 
-- `GameState` holds all runtime state (Rapier world, ECS world, queries, rng, time, paused, timeScale).
-- `queries` expose `ships` and `projectiles` archetypes for systems and UI layers.
+- `GameState` contains: Rapier runtime objects (`rapier`, `physicsWorld`, `eventQueue`), `world` (Miniplex), `colliderLookup: Map<number, Entity>`, `turretsByShip: Map<number, Set<Entity>>`, `queries` (ships/projectiles/turrets), `rng` (SeededRng), `time`, `paused`, and `timeScale`.
 
-Integration:
+- `turretsByShip` is an explicit registry used for efficient turret cascade removal when ships are destroyed.
 
-- Used by `src/game/context.tsx` to create and own the lifecycle of the state provider.
-- Systems in `src/game/systems.ts` mutate entities referenced by the state.
+Behavior notes
 
-Testing notes:
+- `destroyEntity` performs defensive Rapier removals with `isValid()` checks and try/catch, removes collider lookup entries, uses `turretsByShip` to find and destroy child turrets, and ensures ECS entities are cleaned from queries to avoid stale references in tests.
 
-- Keep deterministic RNG by using `state.rng` when randomness is needed.
-- Prefer integration tests that set up a small state, call `spawnInitialFleets()`, and step systems.
+- `spawnRandomShip` and other spawn helpers use `state.rng` (the canonical seeded RNG) to ensure deterministic placement and cooldown seeding.
+
+Testing & recommendations
+
+- Tests should create `GameState` with a known seed and use `state.rng` for any randomness.
+- Ensure turret registration helpers (`registerTurret`/`unregisterTurret`) are used in tests to keep `turretsByShip` accurate so `destroyEntity` fast-paths work as intended.
+
+Generated: 2025-09-21 (automated promotion)
