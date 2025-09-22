@@ -2,6 +2,7 @@ import { Quaternion, Vector3 } from 'three';
 import type {
   AIState,
   GameState,
+  MotionStats,
   ShipBlueprint,
   ShipEntity,
   ShipHull,
@@ -12,6 +13,20 @@ import type {
 import { registerTurret } from './turretRegistry.js';
 import { getDefaultProfileId } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
+
+/** Create default motion stats for testing and fallback scenarios. */
+export function createDefaultMotionStats(): MotionStats {
+  return {
+    mass: 1.0,
+    maxSpeed: 10,
+    linearAcceleration: 20,
+    linearDamping: 2.0,
+    maxTurnRate: Math.PI,
+    angularAcceleration: Math.PI * 2,
+    angularDamping: 5.0,
+    maxLateralAcceleration: 8,
+  };
+}
 
 export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   fighter: {
@@ -28,6 +43,16 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     scale: 1,
     bulletType: 'bullet:laser',
     turrets: [],
+    motion: {
+      mass: 1.0,
+      maxSpeed: 14, // units/s - matches legacy speed
+      linearAcceleration: 28, // units/s² - high acceleration for agility
+      linearDamping: 3.0, // moderate damping
+      maxTurnRate: Math.PI * 1.5, // rad/s - very agile turning (270°/s)
+      angularAcceleration: Math.PI * 4, // rad/s² - fast turn acceleration
+      angularDamping: 8.0, // high damping for responsive turning
+      maxLateralAcceleration: 12, // units/s² - good strafe ability
+    },
   },
   corvette: {
     hull: 'corvette',
@@ -41,6 +66,16 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 11,
     scale: 1,
     bulletType: 'bullet:plasma',
+    motion: {
+      mass: 1.5,
+      maxSpeed: 11, // units/s - matches legacy speed
+      linearAcceleration: 20, // units/s² - good acceleration
+      linearDamping: 2.5, // moderate damping
+      maxTurnRate: Math.PI * 1.2, // rad/s - good turning (216°/s)
+      angularAcceleration: Math.PI * 3.2, // rad/s² - solid turn acceleration
+      angularDamping: 6.5, // good damping
+      maxLateralAcceleration: 9, // units/s² - decent strafe
+    },
     turrets: [
       {
         offset: new Vector3(0.9, 0.2, 0.1),
@@ -82,6 +117,16 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 9,
     scale: 1,
     bulletType: 'bullet:plasma',
+    motion: {
+      mass: 2.5,
+      maxSpeed: 9, // units/s - matches legacy speed
+      linearAcceleration: 15, // units/s² - moderate acceleration
+      linearDamping: 2.0, // less damping for heavier ship
+      maxTurnRate: Math.PI * 0.9, // rad/s - slower turning (162°/s)
+      angularAcceleration: Math.PI * 2.4, // rad/s² - moderate turn acceleration
+      angularDamping: 5.0, // moderate damping
+      maxLateralAcceleration: 6, // units/s² - limited strafe
+    },
     turrets: [
       {
         offset: new Vector3(1.2, 0.25, 0.0),
@@ -136,6 +181,16 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 7,
     scale: 1,
     bulletType: 'bullet:heavy',
+    motion: {
+      mass: 4.0,
+      maxSpeed: 7, // units/s - matches legacy speed
+      linearAcceleration: 10, // units/s² - slower acceleration
+      linearDamping: 1.5, // low damping for heavy ship
+      maxTurnRate: Math.PI * 0.6, // rad/s - slow turning (108°/s)
+      angularAcceleration: Math.PI * 1.8, // rad/s² - slow turn acceleration
+      angularDamping: 4.0, // moderate damping
+      maxLateralAcceleration: 4, // units/s² - poor strafe
+    },
     turrets: [
       {
         offset: new Vector3(1.6, 0.3, -0.2),
@@ -203,6 +258,16 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 5,
     scale: 1,
     bulletType: 'bullet:ion',
+    motion: {
+      mass: 6.0,
+      maxSpeed: 5, // units/s - matches legacy speed
+      linearAcceleration: 6, // units/s² - very slow acceleration
+      linearDamping: 1.0, // minimal damping for massive ship
+      maxTurnRate: Math.PI * 0.4, // rad/s - very slow turning (72°/s)
+      angularAcceleration: Math.PI * 1.2, // rad/s² - very slow turn acceleration
+      angularDamping: 3.0, // low damping
+      maxLateralAcceleration: 2, // units/s² - minimal strafe
+    },
     turrets: [
       {
         offset: new Vector3(2.0, 0.35, 0.0),
@@ -305,6 +370,9 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       range: stats.range,
       speed: stats.speed,
       bulletType: stats.bulletType,
+      velocity: new Vector3(0, 0, 0),
+      angularVelocity: 0,
+      motion: stats.motion,
     },
     model: blueprint.hull,
     shieldRipples: [],

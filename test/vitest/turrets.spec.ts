@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { updateGame } from '../../src/game/systems.js';
 import type { GameState, ShipEntity, TurretState } from '../../src/types/index.js';
 
@@ -137,6 +138,9 @@ function makeShipWithTurret(
       range: 10,
       speed: 0,
       bulletType: 'bullet:heavy', // different from turret to verify override
+      velocity: new Vector3(0, 0, 0),
+      angularVelocity: 0,
+      motion: createDefaultMotionStats(),
     },
     model: 'corvette' as any,
     shieldRipples: [],
@@ -188,6 +192,9 @@ describe('Turret system', () => {
         range: 10,
         speed: 0,
         bulletType: 'bullet:ion',
+        velocity: new Vector3(0, 0, 0),
+        angularVelocity: 0,
+        motion: createDefaultMotionStats(),
       },
       model: 'fighter' as any,
       shieldRipples: [],
