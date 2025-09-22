@@ -8,6 +8,9 @@ const {
   scoreAttackIntent,
   scoreKiteIntent,
   scoreEscortIntent,
+  scoreInterceptIntent,
+  scoreRepositionIntent,
+  scoreRegroupIntent,
   scoreFleeIntent,
   tieBreak,
 } = __aiTestHooks;
@@ -22,12 +25,24 @@ function createShip(options: {
   maxHp?: number;
   range?: number;
   hull?: ShipEntity['ship']['hull'];
+  velocity?: Vector3;
 }): ShipEntity {
   const maxHp = options.maxHp ?? 120;
   const hp = options.hp ?? maxHp;
+  const velocity = options.velocity ?? new Vector3();
   return {
     id: options.id,
-    rigidBody: {} as never,
+    rigidBody: {
+      setNextKinematicTranslation: () => undefined,
+      setNextKinematicRotation: () => undefined,
+      translation: () => ({
+        x: options.position.x,
+        y: options.position.y,
+        z: options.position.z,
+      }),
+      rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
+      linvel: () => ({ x: velocity.x, y: velocity.y, z: velocity.z }),
+    } as never,
     collider: {} as never,
     transform: {
       position: options.position.clone(),
@@ -147,6 +162,56 @@ describe('AI scorer snapshots', () => {
 
     const retreatScore = scoreFleeIntent(shipHealthy, profile, threat, 'retreat', BASE_TRAITS);
     expect(retreatScore).toBeGreaterThan(healthyScore);
+  });
+
+  it('boosts intercept score for fast VIP threats', () => {
+    const state = createState();
+    const interceptor = createShip({ id: 41, team: 'blue', position: new Vector3(0, 0, 0), hull: 'fighter' });
+    const vip = createShip({ id: 42, team: 'blue', position: new Vector3(60, 0, 0), hull: 'carrier' });
+    const bomber = createShip({
+      id: 43,
+      team: 'red',
+      position: new Vector3(320, 0, 0),
+      hull: 'corvette',
+      velocity: new Vector3(0, 0, -60),
+    });
+    state.blackboard.threatToVip.set(vip.id, bomber.id);
+    const profile = resolveBehaviorProfile('escort');
+
+    const score = scoreInterceptIntent(state, interceptor, profile, bomber, vip, 'hold', BASE_TRAITS);
+    const slow = createShip({ id: 44, team: 'red', position: new Vector3(220, 0, 0), hull: 'corvette' });
+    const neutral = scoreInterceptIntent(state, interceptor, profile, slow, vip, 'hold', BASE_TRAITS);
+
+    expect(score).toBeGreaterThan(neutral);
+    expect(score).toBeGreaterThan(700);
+  });
+
+  it('raises reposition score for artillery outside engagement band', () => {
+    const state = createState();
+    const artillery = createShip({ id: 50, team: 'blue', position: new Vector3(), hull: 'destroyer' });
+    const farTarget = createShip({ id: 51, team: 'red', position: new Vector3(820, 0, 0) });
+    const nearTarget = createShip({ id: 52, team: 'red', position: new Vector3(420, 0, 0) });
+    const profile = resolveBehaviorProfile('artillery');
+
+    const farScore = scoreRepositionIntent(state, artillery, profile, farTarget, BASE_TRAITS, 'hold');
+    const nearScore = scoreRepositionIntent(state, artillery, profile, nearTarget, BASE_TRAITS, 'hold');
+
+    expect(farScore).toBeGreaterThan(nearScore);
+    expect(farScore).toBeGreaterThan(nearScore + 100);
+  });
+
+  it('prefers regroup when posture retreats even at moderate hp', () => {
+    const state = createState();
+    state.blackboard.teamPosture.blue = 'retreat';
+    state.blackboard.allyCentroid.blue.set(240, 0, 0);
+    const profile = resolveBehaviorProfile('brawler');
+    const ship = createShip({ id: 60, team: 'blue', position: new Vector3(0, 0, 0), hp: 80, maxHp: 120 });
+
+    const regroup = scoreRegroupIntent(state, ship, profile, 'retreat', BASE_TRAITS);
+    const hold = scoreRegroupIntent(state, ship, profile, 'hold', BASE_TRAITS);
+
+    expect(regroup).toBeGreaterThan(hold);
+    expect(regroup).toBeGreaterThan(600);
   });
 
   it('breaks intent ties deterministically using trait seed', () => {

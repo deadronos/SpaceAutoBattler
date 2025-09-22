@@ -116,20 +116,17 @@ Phase 7 — Hardening & Tooling — DONE
 - Add counters/metrics on GameState (ai.decisions, ai.skipped, ai.budgetExceeded). (Implemented: metrics fields exist and are updated)
 - Finalize docs and example scenarios in `docs/`. (Completed: `docs/ai-v2-overview.md` refreshed with overlay + validation details)
 
-Phase 8 — Intercept & Reposition — TODO
-- Expand scorer/executor coverage to include `Intercept`, `Reposition`, and `Regroup` intents for bomber and artillery escorts (extend `selectIntent` and write deterministic math mirroring legacy intercept behaviour).
-- Create posture-aware lead targeting that biases interceptors toward fast movers without breaking determinism (reuse hash-based tie-breaking and pooled vectors; avoid additional allocations).
-- Tests: Vitest specs covering intercept band entry, regroup spacing around ally centroid, and regression of escort prioritisation when new intents activate.
+Phase 8 — Intercept & Reposition — DONE
+- Added deterministic scoring + executor coverage for `Intercept`, `Reposition`, and `Regroup` intents. Interceptors now use lead targeting math with pooled vectors, reposition maintains artillery/kiter bands, and regroup responds to posture/HP shifts within one tick.
+- Tests: `ai-scorer.spec.ts` and `ai-executor.spec.ts` expanded with intercept/reposition/regroup assertions; new `ai-intercept.spec.ts` verifies selection precedence (escort > intercept) and posture-driven regrouping.
 
-Phase 9 — Scenario Harness & Visual QA — TODO
-- Build scripted battle scenarios (escort swap, artillery standoff, bomber intercept) that run headless and emit deterministic logs for debugging.
-- Capture representative HUD overlay snapshots or lightweight Playwright flows that toggle AI V2 and verify debug data populates.
-- Tests: scenario harness assertions baked into Vitest (golden log comparison) plus optional screenshot diffs stored under `docs/`.
+Phase 9 — Scenario Harness & Visual QA — DONE
+- Implemented `src/game/aiScenarioHarness.ts` headless runner plus golden log fixture (`ai-escort-scenario.json`) exercised by `ai-scenario-harness.spec.ts`. Harness integrates simple kinematics and posture logging for reproducible QA traces.
+- Docs/memory refreshed with harness usage; HUD overlay capture remains manual follow-up but harness provides deterministic baseline for QA.
 
-Phase 10 — Rollout & Automation — TODO
-- Promote `AI_CONFIG.enabled` default behind environment flag once intercept/regroup stabilise; document rollback steps.
-- Integrate `npm run perf:ai-budget` into CI alongside new scenario tests; gate merges on budget and determinism checks.
-- Provide troubleshooting guide in `docs/ai-v2-rollout.md` (new) summarising toggles, metrics, and recovery commands.
+Phase 10 — Rollout & Automation — DONE
+- `AI_CONFIG` now honours an `AI_V2_DEFAULT` env flag for CI/ops, and `package.json` adds `npm run test:ci` chaining Vitest + perf budget.
+- Authored `docs/ai-v2-rollout.md` covering toggles, required checks, scenario harness workflow, and rollback steps.
 
 ### Implementation status summary (requirements mapping)
 - R1 — Deterministic command stream (Requirement: identical command stream given same seed): DONE — `ai-determinism.spec.ts` replays 40 ticks and compares command streams across identical seeds.
@@ -139,19 +136,19 @@ Phase 10 — Rollout & Automation — TODO
 - R5 — Flag-off preserves legacy: DONE — `ai-regression.spec.ts` exercises the disabled flag path and matches legacy steering.
 
 Next small, high-value actions (tests and tooling):
-- Phase 8: lock intercept/regroup math and add scorer/executor coverage.
-- Phase 9: land deterministic scenario harness + visual toggles for QA.
-- Phase 10: upstream perf harness into CI and prep rollout documentation.
+- DONE — Broadened scenario coverage (heavy bomber intercept + artillery retreat fixtures landed in harness tests; refresh golden logs on intentional behavior shifts).
+- Capture HUD overlay screenshots that demonstrate intercept/reposition/regroup states for docs/QA and link them to the rollout playbook.
+- Evaluate caching strategies for nearest-enemy lookups if perf headroom tightens once larger fleets are introduced.
 
 
 ## Testing Strategy
 
 - Unit (Vitest):
   - Determinism — `ai-determinism.spec.ts` keeps command streams stable across seeded runs.
-  - Scorer — `ai-scorer.spec.ts` snapshots intent scores under posture/VIP changes.
-  - Executors — `ai-executor.spec.ts` validates band keeping, escort radius, and fire gating.
-  - Upcoming — `ai-intercept.spec.ts` (Phase 8) to validate intercept/regroup/reposition scoring and command outputs.
-- Integration: extend scenarios (e.g., escort swaps, artillery standoff) to complement unit coverage, with Phase 9 introducing a deterministic scenario harness + golden-log comparisons.
+  - Scorer — `ai-scorer.spec.ts` snapshots attack/kite/escort/intercept/reposition/regroup scores under posture/VIP changes.
+  - Executors — `ai-executor.spec.ts` validates band keeping, escort radius, fire gating, intercept lead, reposition spacing, and regroup thrust scaling.
+  - Intent precedence — `ai-intercept.spec.ts` ensures escort assignments override intercept/regroup when required.
+- Integration: extend scenarios (e.g., escort swaps, artillery standoff) to complement unit coverage; `ai-scenario-harness.spec.ts` replays golden logs via the new harness.
 - Performance: `npm run perf:ai-budget` enforces the AI tick budget; `perf:instancer` remains available for full renderer profiling.
 - E2E (optional): Playwright smoke to toggle AI v2 and ensure UI flow unchanged.
 

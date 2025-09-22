@@ -49,7 +49,13 @@ function createState(): GameState {
   } as unknown as GameState;
 }
 
-function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEntity {
+function createShip(
+  id: number,
+  team: 'blue' | 'red',
+  position: Vector3,
+  velocity?: Vector3,
+): ShipEntity {
+  const vel = velocity ?? new Vector3();
   const heading = new Vector3(0, 0, 1);
   const ai: AIState = {
     profileId: 'brawler',
@@ -69,7 +75,13 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
 
   return {
     id,
-    rigidBody: {} as never,
+    rigidBody: {
+      setNextKinematicTranslation: () => undefined,
+      setNextKinematicRotation: () => undefined,
+      translation: () => ({ x: position.x, y: position.y, z: position.z }),
+      rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
+      linvel: () => ({ x: vel.x, y: vel.y, z: vel.z }),
+    } as never,
     collider: {} as never,
     transform: {
       position: position.clone(),
@@ -158,5 +170,55 @@ describe('writeCommand executors', () => {
     expect(ship.ai!.command.thrust).toBeCloseTo(0.8, 2);
     expect(ship.ai!.command.firePrimary).toBe(false);
     expect(ship.ai!.command.targetId).toBe(vip.id);
+  });
+
+  it('computes lead heading for intercept intent', () => {
+    const state = createState();
+    const ship = createShip(9, 'blue', new Vector3());
+    ship.ai!.profileId = 'escort';
+    ship.ai!.intent = 'Intercept';
+    ship.ship.projectileSpeed = 120;
+    const movingTarget = createShip(10, 'red', new Vector3(0, 0, 240), new Vector3(60, 0, 0));
+    const profile = resolveBehaviorProfile('escort');
+
+    writeCommand(state, ship, ship.ai!, profile, movingTarget, null);
+
+    expect(ship.ai!.command.thrust).toBeCloseTo(1, 2);
+    const direct = new Vector3().copy(movingTarget.transform.position).sub(ship.transform.position).normalize();
+    expect(ship.ai!.command.heading.x).toBeGreaterThan(direct.x);
+    expect(ship.ai!.command.heading.z).toBeLessThan(direct.z);
+    expect(ship.ai!.command.firePrimary).toBe(true);
+    expect(ship.ai!.command.targetId).toBe(movingTarget.id);
+  });
+
+  it('backs away when repositioning inside desired band', () => {
+    const state = createState();
+    const ship = createShip(11, 'blue', new Vector3());
+    ship.ai!.profileId = 'artillery';
+    ship.ai!.intent = 'Reposition';
+    const closeTarget = createShip(12, 'red', new Vector3(40, 0, 0));
+    const profile = resolveBehaviorProfile('artillery');
+
+    writeCommand(state, ship, ship.ai!, profile, closeTarget, null);
+
+    expect(ship.ai!.command.heading.x).toBeLessThan(-0.5);
+    expect(ship.ai!.command.thrust).toBeCloseTo(0.6, 1);
+    expect(ship.ai!.command.firePrimary).toBe(false);
+  });
+
+  it('steers toward ally centroid and cuts fire when regrouping', () => {
+    const state = createState();
+    const ship = createShip(13, 'blue', new Vector3());
+    ship.ai!.intent = 'Regroup';
+    state.blackboard.allyCentroid.blue.set(300, 0, 0);
+    state.blackboard.teamPosture.blue = 'retreat';
+    const profile = resolveBehaviorProfile('brawler');
+
+    writeCommand(state, ship, ship.ai!, profile, null, null);
+
+    expect(ship.ai!.command.heading.x).toBeGreaterThan(0.5);
+    expect(ship.ai!.command.thrust).toBeGreaterThan(0.75);
+    expect(ship.ai!.command.firePrimary).toBe(false);
+    expect(ship.ai!.command.targetId).toBeUndefined();
   });
 });

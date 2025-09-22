@@ -15,12 +15,12 @@ Responsibilities
 
 Key details
 
-- `updateDecisionSystem` derives ally centroids, team posture (`aggressive`/`hold`/`retreat`), nearest-enemy & VIP threat caches, and escort assignments, then evaluates intent scores (`Attack`, `Kite`, `Escort`, `Flee`) per ship within the configured budget (`config.ai.maxPerTick`). Profiles are modulated by per-ship trait multipliers (aggression/patience/dodge) and deterministic tie-breaking hashes each ship's `traitSeed` with the tick index.
+- `updateDecisionSystem` derives ally centroids, team posture (`aggressive`/`hold`/`retreat`), nearest-enemy & VIP threat caches, and escort assignments, then evaluates intent scores (`Attack`, `Kite`, `Escort`, `Intercept`, `Reposition`, `Regroup`, `Flee`) per ship within the configured budget (`config.ai.maxPerTick`). Profiles are modulated by per-ship trait multipliers (aggression/patience/dodge) and deterministic tie-breaking hashes each ship's `traitSeed` with the tick index.
 - `prepareShips` branches per flag: AI V2 consumes the stored command (normalizing headings, clamping thrust, resolving target IDs for turret fallback) while the legacy path keeps the prior nearest-enemy chase/fire routine. Both flows prune muzzle flashes and use `runEmbeddedTurrets` when no turret entities exist.
 - `runEmbeddedTurrets` centralizes the legacy turret firing path so both AI modes share it; dedicated turret entities remain unaffected.
 - Movement uses pooled vectors (`TEMP_DIR`, `TEMP_POS`), and world clamping to maintain determinism.
 - Projectile spawning still respects `PROJECTILE_CONFIG`/`DEFAULT_PROJECTILE_CONFIG`; only the gating signal changed (AI command vs. distance check).
-- `__aiTestHooks` exports deterministic hooks (`updateDecisionSystem`, scorer helpers, `writeCommand`, `runLegacyShipBehavior`) so Vitest can exercise internals without widening the runtime API surface.
+- `__aiTestHooks` exports deterministic hooks (`updateDecisionSystem`, scorer helpers, `writeCommand`, `computeInterceptHeadingVector`, `runLegacyShipBehavior`) so Vitest can exercise internals without widening the runtime API surface. `runDecisionTick` is also exported to support the deterministic scenario harness (`runAIScenario`).
 
 Implementation notes
 
@@ -32,9 +32,9 @@ Implementation notes
 Follow-ups
 
 - Integration tests now live in `test/vitest/ai-*.spec.ts` (determinism, scorers, executors, legacy fallback). Keep them in sync when touching internals exposed via `__aiTestHooks`.
-- Phase 8: extend `selectIntent`/`writeCommand` to cover intercept/reposition/regroup flows and add matching Vitest coverage.
-- Phase 9: build deterministic scenario harness/golden logs before widening manual testing.
+- Scenario harness now lives in `src/game/aiScenarioHarness.ts` (used by `ai-scenario-harness.spec.ts`); update fixtures when behaviors change intentionally.
 - Consider caching ship lookups for `getShipById` or adding a spatial grid if 300+ ships make the O(N²) nearest-enemy cache too expensive.
+- Monitor the HUD `AiDebugOverlay` for perf impact; if needed, add throttling knobs or sampling controls. Keep an eye on intercept lead math for very slow projectiles.
 - Monitor the HUD `AiDebugOverlay` for perf impact; if needed, add throttling knobs or sampling controls.
 
-Updated: 2025-09-23
+Updated: 2025-09-24

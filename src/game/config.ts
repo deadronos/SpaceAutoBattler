@@ -21,8 +21,22 @@ export const FOG_DEFAULTS: readonly [string, number, number] = [
 ];
 
 // AI configuration
+function readBooleanEnv(name: string): boolean {
+  try {
+    const source = globalThis as unknown as { process?: { env?: Record<string, string | undefined> } };
+    const raw = source.process?.env?.[name];
+    if (!raw) return false;
+    const normalized = raw.toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'on';
+  } catch {
+    return false;
+  }
+}
+
+const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT');
+
 export const AI_CONFIG = {
-  v2Enabled: false,
+  v2Enabled: DEFAULT_AI_V2,
   tickRateHz: 10,
   maxPerTick: 60,
   slices: 5,
