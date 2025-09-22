@@ -2,9 +2,9 @@
 goal: Implement deterministic physics-based ship movement with renderer smoothing and banking
 version: 1.0
 date_created: 2025-09-22
-last_updated: 2025-09-22
+last_updated: 2025-09-24
 owner: SpaceAutoBattler Maintainers
-status: 'Planned'
+status: 'In Review'
 tags:
 	- feature
 	- architecture
@@ -15,7 +15,7 @@ tags:
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: In Review](https://img.shields.io/badge/status-In%20Review-yellow)
 
 This plan implements deterministic, acceleration-limited ship motion in the simulation (canonical GameState) and adds renderer-side smoothing (lerp/slerp) and procedural banking/visual cues. It is derived from `spec/spec-physical-movement.md` and adheres to project constraints: all state lives in GameState and simulation remains deterministic.
 
@@ -39,13 +39,12 @@ This plan implements deterministic, acceleration-limited ship motion in the simu
 
 - GOAL-001: Add motion stats types and per-class defaults.
 
-| Task     | Description                                                                                                       | Completed | Date |
-| -------- | ----------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-001 | Update `src/types/index.ts`: add `MotionStats` interface per spec and extend ship config types to include it.     |           |      |
-| TASK-002 | Update `src/game/ships.ts`: define default `MotionStats` per ship class; units consistent (deg/s, deg/s²).       |           |      |
-| TASK-003 | Add global renderer smoothing defaults in config (fallbacks) in `src/config/renderer.ts` if not present.         |           |      |
-| TASK-004 | Add validation helpers for stats ranges in `src/game/config.ts` or a new `src/game/validation.ts`.               |           |      |
-
+| Task     | Description                                                                                                       | Completed | Date       |
+| -------- | ----------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-001 | Update `src/types/index.ts`: add `MotionStats` interface per spec and extend ship config types to include it.     | ✅        | 2025-09-22 |
+| TASK-002 | Update `src/game/ships.ts`: define default `MotionStats` per ship class; units consistent (deg/s, deg/s²).       | ✅        | 2025-09-22 |
+| TASK-003 | Add global renderer smoothing defaults in config (fallbacks) in `src/config/renderer.ts` if not present.         | ✅        | 2025-09-23 |
+| TASK-004 | Add validation helpers for stats ranges in `src/game/config.ts` or a new `src/game/validation.ts`.               | ✅        | 2025-09-23 |
 Completion criteria:
 
 - Types compile with `npm run typecheck`.
@@ -56,16 +55,15 @@ Completion criteria:
 
 - GOAL-002: Implement deterministic motion system (linear + angular PD control).
 
-| Task     | Description                                                                                                                                        | Completed | Date |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-005 | Create `src/game/systems/motion.ts`: export `updateMotionSystem(state: GameState, dt: number)` implementation.                                     |           |      |
-| TASK-006 | Implement PD-like angular control: shortest-arc error, target angular velocity clamp by `maxTurnRate`, limit change by `angularAcceleration*dt`.   |           |      |
-| TASK-007 | Integrate angular damping with continuous decay `1 - exp(-angularDamping * dt)`; update entity quaternion by angular velocity.                     |           |      |
-| TASK-008 | Implement linear acceleration along forward: clamp by `linearAcceleration`; cap speed by `maxSpeed`; apply continuous linear damping.              |           |      |
-| TASK-009 | Optional lateral accel: apply strafe acceleration limited by `maxLateralAcceleration` if enabled.                                                  |           |      |
-| TASK-010 | Ensure no per-frame allocations; reuse vector/quaternion temporaries; add internal math helpers.                                                   |           |      |
-| TASK-011 | Wire system into main sim loop in `src/game/systems.ts` (call order after AI target selection, before collision/visual sync).                      |           |      |
-
+| Task     | Description                                                                                                      | Completed | Date       |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-005 | Create `src/game/systems/motion.ts`: export `updateMotionSystem(state: GameState, dt: number)` implementation.    | ✅        | 2025-09-22 |
+| TASK-006 | Implement PD-like angular control: shortest-arc error, target angular velocity clamp by `maxTurnRate`, limit change by `angularAcceleration*dt`. | ✅        | 2025-09-22 |
+| TASK-007 | Integrate angular damping with continuous decay `1 - exp(-angularDamping * dt)`; update entity quaternion by angular velocity.                    | ✅        | 2025-09-22 |
+| TASK-008 | Implement linear acceleration along forward: clamp by `linearAcceleration`; cap speed by `maxSpeed`; apply continuous linear damping.             | ✅        | 2025-09-22 |
+| TASK-009 | Optional lateral accel: apply strafe acceleration limited by `maxLateralAcceleration` if enabled.               | ✅        | 2025-09-23 |
+| TASK-010 | Ensure no per-frame allocations; reuse vector/quaternion temporaries; add internal math helpers.                | ✅        | 2025-09-22 |
+| TASK-011 | Wire system into main sim loop in `src/game/systems.ts` (call order after AI target selection, before collision/visual sync).                     | ✅        | 2025-09-22 |
 Completion criteria:
 
 - Deterministic outputs for identical inputs across runs.
@@ -76,12 +74,11 @@ Completion criteria:
 
 - GOAL-003: Add renderer interpolation (visual-only).
 
-| Task     | Description                                                                                                                                          | Completed | Date |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-012 | In `src/components/Ship.tsx`, track prev and current sim transforms per entity; compute alpha = (renderTime - simTickStart) / simDelta (clamped).   |           |      |
-| TASK-013 | Apply `lerp` to positions and `slerp` to rotations for visual transform; do not mutate GameState.                                                   |           |      |
-| TASK-014 | Guard teleports/spawns: reset prev state to current to avoid interpolation trails.                                                                  |           |      |
-
+| Task     | Description                                                                                                  | Completed | Date       |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-012 | In `src/components/Ship.tsx`, track prev and current sim transforms per entity; compute alpha = (renderTime - simTickStart) / simDelta (clamped). | ✅        | 2025-09-23 |
+| TASK-013 | Apply `lerp` to positions and `slerp` to rotations for visual transform; do not mutate GameState.             | ✅        | 2025-09-23 |
+| TASK-014 | Guard teleports/spawns: reset prev state to current to avoid interpolation trails.                             | ✅        | 2025-09-23 |
 Completion criteria:
 
 - Visual motion remains smooth at 60 FPS when sim runs at 20 Hz.
@@ -91,12 +88,11 @@ Completion criteria:
 
 - GOAL-004: Add visual banking and VFX coupling.
 
-| Task     | Description                                                                                                                                   | Completed | Date |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-015 | In `src/components/Ship.tsx`, compute roll angle from yaw rate and/or lateral acceleration; clamp by `maxBankDeg`.                            |           |      |
-| TASK-016 | Smooth bank with a small low-pass filter to avoid jitter; apply as extra roll on top of sim rotation.                                        |           |      |
-| TASK-017 | Hook thruster VFX intensity to forward/lateral throttle where available (e.g., material uniforms or particle emitters).                       |           |      |
-
+| Task     | Description                                                                                                  | Completed | Date       |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-015 | In `src/components/Ship.tsx`, compute roll angle from yaw rate and/or lateral acceleration; clamp by `maxBankDeg`. | ✅        | 2025-09-23 |
+| TASK-016 | Smooth bank with a small low-pass filter to avoid jitter; apply as extra roll on top of sim rotation.            | ✅        | 2025-09-23 |
+| TASK-017 | Hook thruster VFX intensity to forward/lateral throttle where available (e.g., material uniforms or particle emitters). | ✅        | 2025-09-23 |
 Completion criteria:
 
 - Ships visually bank into turns with stable roll.
@@ -106,12 +102,11 @@ Completion criteria:
 
 - GOAL-005: Add unit and integration tests for motion math and system behavior.
 
-| Task     | Description                                                                                                                                       | Completed | Date |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-018 | Create `test/vitest/motion.math.spec.ts`: angle wrap, PD step clamping, damping function, linear accel clamping tests.                            |           |      |
-| TASK-019 | Create `test/vitest/motion.system.spec.ts`: simulate 180° turn and forward accel; verify arrival times and caps within tolerances.                |           |      |
-| TASK-020 | Add determinism test: identical seeds/inputs produce identical state sequences over N ticks.                                                      |           |      |
-
+| Task     | Description                                                                                               | Completed | Date       |
+| -------- | --------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-018 | Create `test/vitest/motion.math.spec.ts`: angle wrap, PD step clamping, damping function, linear accel clamping tests. | ✅        | 2025-09-22 |
+| TASK-019 | Create `test/vitest/motion.system.spec.ts`: simulate 180° turn and forward accel; verify arrival times and caps within tolerances.                | ✅        | 2025-09-22 |
+| TASK-020 | Add determinism test: identical seeds/inputs produce identical state sequences over N ticks.               | ✅        | 2025-09-22 |
 Completion criteria:
 
 - Tests pass locally and in CI.
@@ -121,11 +116,10 @@ Completion criteria:
 
 - GOAL-006: Add basic Playwright E2E smoke for visuals.
 
-| Task     | Description                                                                                                                                             | Completed | Date |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-021 | Create `test/playwright/movement.spec.ts`: start scenario, spawn ships, assert angle/position changes are monotonic and not snapping (heuristic).      |           |      |
-| TASK-022 | Use role-based locators and web-first assertions; avoid hard waits; bind minimal time window to observe turning/accel.                                  |           |      |
-
+| Task     | Description                                                                                                   | Completed | Date       |
+| -------- | ----------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-021 | Create `test/playwright/movement.spec.ts`: start scenario, spawn ships, assert angle/position changes are monotonic and not snapping (heuristic). | ✅        | 2025-09-24 |
+| TASK-022 | Use role-based locators and web-first assertions; avoid hard waits; bind minimal time window to observe turning/accel. | ✅        | 2025-09-24 |
 Completion criteria:
 
 - E2E smoke passes consistently on CI and local.
@@ -134,12 +128,11 @@ Completion criteria:
 
 - GOAL-007: Documentation, tuning defaults, and rollout.
 
-| Task     | Description                                                                                                                | Completed | Date |
-| -------- | -------------------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-023 | Update docs to link `spec/spec-physical-movement.md` from main docs index or README.                                       |           |      |
-| TASK-024 | Tune `src/game/ships.ts` MotionStats per class (Fighter/Corvette/Frigate/etc.); document tuning notes in code comments.    |           |      |
-| TASK-025 | Add troubleshooting notes (dt spikes, teleports, target flip-flop) to `docs/` or README.                                   |           |      |
-
+| Task     | Description                                                                                          | Completed | Date       |
+| -------- | ---------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| TASK-023 | Update docs to link `spec/spec-physical-movement.md` from main docs index or README.                 | ✅        | 2025-09-24 |
+| TASK-024 | Tune `src/game/ships.ts` MotionStats per class (Fighter/Corvette/Frigate/etc.); document tuning notes in code comments. | ✅        | 2025-09-22 |
+| TASK-025 | Add troubleshooting notes (dt spikes, teleports, target flip-flop) to `docs/` or README.             | ✅        | 2025-09-24 |
 Completion criteria:
 
 - Defaults feel good in quick manual test.

@@ -29,6 +29,7 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
       speed: 5,
       velocity: new Vector3(0, 0, 0),
       angularVelocity: 0,
+      lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
     model: 'fighter',

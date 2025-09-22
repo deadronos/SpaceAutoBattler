@@ -4,7 +4,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK102](TASK102-implement-physical-movement.md) Implement Physical Movement System - Adding deterministic physics-based movement with renderer smoothing and banking
+- [TASK102](TASK102-implement-physical-movement.md) Implement Physical Movement System - Motion, renderer smoothing, tests, and docs complete; awaiting review
 
 ## Completed
 

@@ -37,3 +37,9 @@ These can be tuned directly in `Battlefield.tsx` if the world size is changed.
 ---
 
 Legacy docs that referenced broader configs (AI behavior, separation, etc.) are archived. When reintroducing runtime-tunable parameters, prefer a single config module and add minimal unit tests demonstrating the effect of the parameter on behavior.
+
+## Motion troubleshooting
+
+- **dt spikes / low frame rate** — the motion system integrates at a fixed `simulation.step` (default `1/20`). When render frames stall, interpolation can no longer hide the gap. Enable the `__SAB.tick` helper (or lower the render lerp factors in `src/config/renderer.ts`) to keep the simulation advancing deterministically during diagnostics.
+- **Teleporting ships** — large positional deltas usually mean the teleport threshold is too low or `clampToWorld` is clipping ships every frame. Confirm ship stats use sensible `maxSpeed` and `teleportDistance`, then check for stale AI commands that flip targets every tick.
+- **Target flip-flop** — aggressive AI retargeting can cause oscillating headings that look like jitter. Use the motion spec defaults for angular acceleration/damping and inspect AI scorer thresholds; high aggression with low patience tends to thrash.

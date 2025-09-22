@@ -1,5 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipEntity } from '../../types/index.js';
+import type { AICommand, GameState, ShipEntity } from '../../types/index.js';
 import { clampToWorld } from '../config.js';
 
 // Reusable temporary objects to avoid per-frame allocations
@@ -8,6 +8,7 @@ const TEMP_TARGET_DIR = new Vector3();
 const TEMP_VELOCITY_CHANGE = new Vector3();
 const TEMP_ANGULAR_AXIS = new Vector3();
 const TEMP_ROTATION = new Quaternion();
+const TEMP_RIGHT = new Vector3();
 
 /**
  * Update physics-based motion for all ships using acceleration limits and damping.
@@ -30,7 +31,7 @@ export function updateMotionSystem(state: GameState, dt: number): void {
     updateAngularMotion(ship, command.heading, dt);
     
     // Update linear motion (thrust and velocity)
-    updateLinearMotion(ship, command.thrust, dt);
+    updateLinearMotion(ship, command, dt);
     
     // Apply velocity to position through physics
     applyVelocityToPhysics(ship, dt);
@@ -108,26 +109,47 @@ function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: numbe
  * Update ship linear velocity based on thrust command.
  * Applies forward acceleration and lateral strafe if supported.
  */
-function updateLinearMotion(ship: ShipEntity, thrust: number, dt: number): void {
+function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): void {
   const motion = ship.ship.motion;
   const velocity = ship.ship.velocity;
-  
+
   // Get forward direction for thrust
   TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-  
+
   // Apply forward thrust acceleration
-  const forwardAccel = thrust * motion.linearAcceleration;
+  const clampedThrust = Math.max(-1, Math.min(1, command.thrust));
+  const forwardAccel = clampedThrust * motion.linearAcceleration;
   TEMP_VELOCITY_CHANGE.copy(TEMP_FORWARD).multiplyScalar(forwardAccel * dt);
   velocity.add(TEMP_VELOCITY_CHANGE);
-  
-  // TODO: Add lateral acceleration support when AI commands include strafe
-  // const lateralAccel = command.strafe * motion.maxLateralAcceleration;
-  // Apply lateral thrust if supported...
-  
+
+  // Apply lateral acceleration when supported by motion stats and command input.
+  let lateralAccel = 0;
+  const maxStrafe = motion.maxLateralAcceleration ?? 0;
+  if (maxStrafe > 0) {
+    const strafeInput = Math.max(-1, Math.min(1, command.strafe ?? 0));
+    if (Math.abs(strafeInput) > 1e-4) {
+      lateralAccel = strafeInput * maxStrafe;
+      TEMP_RIGHT.set(1, 0, 0).applyQuaternion(ship.transform.rotation);
+      TEMP_VELOCITY_CHANGE.copy(TEMP_RIGHT).multiplyScalar(lateralAccel * dt);
+      velocity.add(TEMP_VELOCITY_CHANGE);
+    }
+  }
+  ship.ship.lateralAcceleration = lateralAccel;
+
   // Apply linear damping (velocity decay)
   const dampingFactor = Math.exp(-motion.linearDamping * dt);
   velocity.multiplyScalar(dampingFactor);
-  
+
+  // Clamp forward component to max speed / reverse speed limits.
+  const forwardSpeed = velocity.dot(TEMP_FORWARD);
+  if (forwardSpeed > motion.maxSpeed) {
+    const excess = forwardSpeed - motion.maxSpeed;
+    velocity.addScaledVector(TEMP_FORWARD, -excess);
+  } else if (motion.maxReverseSpeed != null && forwardSpeed < -motion.maxReverseSpeed) {
+    const deficit = -motion.maxReverseSpeed - forwardSpeed;
+    velocity.addScaledVector(TEMP_FORWARD, deficit);
+  }
+
   // Clamp velocity to maximum speed
   const speed = velocity.length();
   if (speed > motion.maxSpeed) {

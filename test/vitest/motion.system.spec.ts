@@ -35,6 +35,7 @@ function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
       bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
       angularVelocity: 0,
+      lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
     model: 'fighter',
