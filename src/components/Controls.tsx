@@ -9,6 +9,7 @@ export function Controls(): React.ReactElement {
   const timeScale = useUiStore((s) => s.timeScale);
   const togglePause = useUiStore((s) => s.togglePause);
   const setTimeScale = useUiStore((s) => s.setTimeScale);
+  const ppEnabled = useUiStore((s) => s.postprocessingEnabled);
 
   const addShip = (team: 'red' | 'blue') => {
     if (!state) return;
@@ -40,6 +41,7 @@ export function Controls(): React.ReactElement {
           <option value="4">4x</option>
         </select>
       </div>
+      {/* PP tuning sliders removed per request; keep toggle only */}
     </div>
   );
 }

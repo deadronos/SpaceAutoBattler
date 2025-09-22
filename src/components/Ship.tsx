@@ -10,6 +10,7 @@ import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
 import { useOptionalGameState } from '../game/context.js';
+import { useBloomContext } from '../renderer/BloomProvider.js';
 import { useBloomRegistration } from '../renderer/BloomProvider.js';
 
 export function resolveModelPath(modelKey?: string): string {
@@ -27,6 +28,27 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   // Use drei's useGLTF which provides caching and convenience helpers.
   const gltf = hasValidPath ? (useGLTF(modelPath) as GLTF) : null;
   const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf?.scene]);
+
+  // Register engine-like meshes for selective bloom when available
+  const bloomCtx = useBloomContext();
+  useEffect(() => {
+    if (!scene || !bloomCtx) return;
+    const engines: any[] = [];
+    const nameMatch = (s: string | undefined) => {
+      if (!s) return false;
+      const n = s.toLowerCase();
+      return n.includes('engine') || n.includes('thruster') || n.includes('exhaust');
+    };
+    scene.traverse((obj: any) => {
+      if (obj && obj.isMesh) {
+        if (nameMatch(obj.name)) engines.push(obj);
+      }
+    });
+    engines.forEach((o) => bloomCtx.register(o));
+    return () => {
+      engines.forEach((o) => bloomCtx.unregister(o));
+    };
+  }, [scene, bloomCtx]);
 
   // Collect mesh materials from the cloned scene so we can apply a subtle
   // team-color tint when the ship has no shields. We keep the original
