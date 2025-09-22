@@ -132,6 +132,12 @@ export interface AICommand {
   ttl: number;
 }
 
+export interface AITraits {
+  aggression: number;
+  patience: number;
+  dodge: number;
+}
+
 export interface AIState {
   profileId: string;
   intent: AIIntent;
@@ -142,6 +148,7 @@ export interface AIState {
   };
   lod: 0 | 1 | 2;
   traitSeed: number;
+  traits: AITraits;
   targetId?: EntityId;
   lastScore?: number;
   command: AICommand;
@@ -185,6 +192,17 @@ export interface AIManagerState {
   cursor: number;
   slices: number;
   assignments: AITeamAssignments;
+  metrics: AIMetrics;
+}
+
+export interface AIMetrics {
+  totalDecisions: number;
+  totalSkipped: number;
+  budgetHits: number;
+  lastDecisions: number;
+  lastSkipped: number;
+  lastSliceSize: number;
+  lastTotalShips: number;
 }
 
 export interface GameEntity extends TransformComponent {

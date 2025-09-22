@@ -11,6 +11,7 @@ import type {
 } from '../types/index.js';
 import { registerTurret } from './turretRegistry.js';
 import { getDefaultProfileId } from './aiProfiles.js';
+import { generateTraitsFromSeed } from './aiTraits.js';
 
 export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   fighter: {
@@ -380,6 +381,7 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
   const profileId = getDefaultProfileId(hull);
   const heading = new Vector3(0, 0, 1);
   const tickInterval = state.ai.tickInterval || 0.1;
+  const traitSeed = Math.max(1, Math.floor(state.rng.next() * 0x7fffffff));
   return {
     profileId,
     intent: 'Attack',
@@ -389,7 +391,8 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
       burstAt: 0,
     },
     lod: 1,
-    traitSeed: Math.floor(state.rng.next() * 0x7fffffff),
+    traitSeed,
+    traits: generateTraitsFromSeed(traitSeed),
     command: {
       heading,
       thrust: 0,
