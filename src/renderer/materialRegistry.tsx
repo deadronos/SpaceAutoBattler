@@ -53,6 +53,10 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
         uEnableRedBoost: { value: SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0 },
         uRedBoostPow: { value: SHIELD_TUNING.redBoostPower },
         uRedBoostMul: { value: SHIELD_TUNING.redBoostMultiplier },
+  uEdgeAlphaMul: { value: SHIELD_TUNING.edgeAlphaMul },
+  uFillAlphaMul: { value: SHIELD_TUNING.fillAlphaMul },
+        uMinAlphaFloor: { value: SHIELD_TUNING.minAlphaFloor },
+        uFillTintMul: { value: SHIELD_TUNING.fillTintMul },
         uOpacity: { value: 1 },
         uHexScale: { value: hexScale },
         uEdgeWidth: { value: edgeWidth },
@@ -91,6 +95,10 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   uniform float uEnableRedBoost;
   uniform float uRedBoostPow;
   uniform float uRedBoostMul;
+  uniform float uEdgeAlphaMul;
+  uniform float uFillAlphaMul;
+  uniform float uMinAlphaFloor;
+  uniform float uFillTintMul;
   uniform int uRippleCount;
   uniform float uRippleSpeed;
   uniform float uRippleWidthBase;
@@ -105,24 +113,57 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
 
         float hash(vec2 p){return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453);}
 
-        vec2 hex(vec2 p){
-          const vec2 k = vec2(0.8660254, 0.5);
+        // Signed distance to a regular hexagon (flat-top) of radius r
+        float sdHexagon(vec2 p, float r) {
+          const vec3 k = vec3(-0.8660254, 0.5, 0.5773503);
           p = abs(p);
-          p -= 2.0*min(dot(k,p),0.0)*k;
-          p -= vec2(clamp(p.x, -k.y, k.y), 1.0);
-          return p;
+          p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+          p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+          return length(p) * sign(p.y);
+        }
+        // Convert from Cartesian to skewed hex grid coordinates (axial projection helper)
+        vec2 hexSkew(vec2 p) {
+          // Based on Red Blob Games axial coords (flat-top hexes)
+          // q = 2/3 x
+          // r = -1/3 x + sqrt(3)/3 y
+          return vec2((2.0/3.0) * p.x, (-1.0/3.0) * p.x + (0.57735026919) * p.y);
+        }
+        // Convert axial (q,r) back to Cartesian center position
+        vec2 hexUnskew(vec2 h) {
+          // x = 3/2 q
+          // y = sqrt(3)/2 q + sqrt(3) r
+          return vec2(1.5 * h.x, 0.86602540378 * h.x + 1.73205080757 * h.y);
+        }
+        // Find local coordinates within nearest hex cell (centered at origin)
+        vec2 hexLocal(vec2 p) {
+          vec2 a = hexSkew(p);
+          // cube rounding
+          vec3 c = vec3(a.x, -a.x - a.y, a.y);
+          vec3 rc = floor(c + 0.5);
+          vec3 diff = abs(rc - c);
+          if (diff.x > diff.y && diff.x > diff.z) rc.x = -rc.y - rc.z;
+          else if (diff.y > diff.z) rc.y = -rc.x - rc.z;
+          else rc.z = -rc.x - rc.y;
+          vec2 centerAxial = vec2(rc.x, rc.z);
+          vec2 center = hexUnskew(centerAxial);
+          return p - center;
         }
 
         void main(){
           vec3 N = normalize(vWorldPos - vCenter);
           vec2 uv = vec2(atan(N.z, N.x)/6.2831853 + 0.5, acos(N.y)/3.1415926);
           uv *= uHexScale;
-          vec2 h = hex(fract(uv)-0.5);
-          float edge = smoothstep(uEdgeWidth, 0.0, max(h.x, h.y));
+          // Build a true hex tiling on the plane defined by uv
+          vec2 cell = hexLocal(uv);
+          float d = sdHexagon(cell, 0.5);
+          // Border mask near hex edges (1 at edge, 0 away from edge)
+          float w = max(0.0001, uEdgeWidth);
+          float border = 1.0 - smoothstep(0.0, w, abs(d));
 
           float ripple = 0.0;
-          // Accumulate ripples from packed arrays. Shader supports up to SHADER_MAX_RIPPLES entries.
+          // Accumulate ripples from packed arrays; respect uRippleCount to avoid extra work
           for (int i = 0; i < SHADER_MAX_RIPPLES; i++) {
+            if (i >= uRippleCount) break;
             float t = uTime - uRippleT0s[i];
             vec3 dir = normalize(uRippleData[i].xyz);
             float amp = uRippleData[i].w;
@@ -138,12 +179,14 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
           }
 
           float sparkle = hash(floor(uv));
-          float edgeGlow = edge * (0.7 + 0.3 * sparkle);
-          // Apply color multiplier and strength
-          float rippleGlow = ripple * (1.3 + 0.4 * edge) * uRippleColorMul;
+          float edgeGlow = border * (0.7 + 0.3 * sparkle);
+          // Apply color multiplier and strength (slightly bias ripple to show near edges)
+          float rippleGlow = ripple * (1.0 + 0.5 * border) * uRippleColorMul;
           vec3 rippleTint = mix(vec3(1.0), uTint, 0.35) * uRippleColorMul;
 
-          vec3 base = uTint * (0.4 + edgeGlow);
+          // Base color: add subtle interior tint so fill isn't pitch black
+          float fill = clamp(1.0 - border, 0.0, 1.0);
+          vec3 base = uTint * (0.9 * edgeGlow + uFillTintMul * fill);
           vec3 baseCol = clamp(base, 0.0, 1.0);
           if(uTeamIsRed > 0.5 && uEnableRedBoost > 0.5) {
             baseCol = clamp(pow(baseCol, vec3(uRedBoostPow)) * uRedBoostMul, 0.0, 1.0);
@@ -160,11 +203,11 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
             col = added / (1.0 + added); // simple soft-saturate (x/(1+x)) keeps values in 0..1
           }
 
-          // Alpha: base bubble always respects uMaxAlpha. Ripples add a contribution
-          // which may optionally ignore uMaxAlpha when configured.
-          float rippleAlphaFactor = clamp(0.08 + edgeGlow + ripple * 0.7 * uRippleStrength, 0.0, 1.0);
-          float alphaBase = uOpacity * uMaxAlpha; // base shield respects hull max
-          float rippleContribution = rippleAlphaFactor * uRippleStrength;
+          // Alpha: edge-dominant base plus a subtle interior fill so it isn't too transparent
+          float alphaBase = uOpacity * uMaxAlpha * (edgeGlow * uEdgeAlphaMul + fill * uFillAlphaMul);
+          // Ensure a minimal visibility floor
+          alphaBase = max(alphaBase, uOpacity * uMaxAlpha * uMinAlphaFloor);
+          float rippleContribution = clamp(ripple * (0.5 + 0.5 * border) * uRippleStrength, 0.0, 1.0);
           float alpha;
           if(uRippleIgnoreMaxAlpha > 0.5) {
             // Ripple can push alpha up toward full brightness (1.0), added on top of base

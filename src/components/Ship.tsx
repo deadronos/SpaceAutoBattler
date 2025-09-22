@@ -166,7 +166,8 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   const minAmp = SHIELD_RIPPLE_TUNING.minRenderAmp ?? 0.02;
   // Keep ripples above threshold
   const significant = scaled.filter((s) => s.scaledAmp >= minAmp);
-  // Coalesce ripples that are very close in time (within 0.12s) by summing amp (clamped)
+  // Coalesce ripples that are very close in time by summing amp (clamped)
+  const windowSec = SHIELD_RIPPLE_TUNING.coalesceWindow ?? 0.06;
   const coalesced: typeof significant = [];
   for (const s of significant) {
     if (coalesced.length === 0) {
@@ -174,7 +175,7 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
       continue;
     }
     const last = coalesced[coalesced.length - 1];
-    if ((s.t0 ?? 0) - (last.t0 ?? 0) <= 0.12) {
+  if ((s.t0 ?? 0) - (last.t0 ?? 0) <= windowSec) {
       // merge into last
       last.scaledAmp = Math.min(1.6, last.scaledAmp + s.scaledAmp * 0.6);
       // keep earliest t0 for ordering

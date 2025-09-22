@@ -40,11 +40,11 @@ export const DEBUG_VISUALS: DebugVisualFlags = {
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.05, maxAlpha: 0.3, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -108,6 +108,14 @@ export interface ShieldTuning {
   redBoostPower: number;
   redBoostMultiplier: number;
   redTint: string; // hex color used for red team tint
+  /** Multiplier for base alpha along hex edges (0..1+). */
+  edgeAlphaMul: number;
+  /** Multiplier for base alpha inside hex fill (0..1). */
+  fillAlphaMul: number;
+  /** Minimal fraction of uOpacity*uMaxAlpha to ensure the shield remains visible. */
+  minAlphaFloor: number;
+  /** Interior color tint multiplier so fill isn't pitch black. */
+  fillTintMul: number;
 }
 
 export const SHIELD_TUNING: ShieldTuning = {
@@ -115,6 +123,10 @@ export const SHIELD_TUNING: ShieldTuning = {
   redBoostPower: 1.32,
   redBoostMultiplier: 1.45,
   redTint: '#b22222',
+  edgeAlphaMul: 1.2,
+  fillAlphaMul: 0.35,
+  minAlphaFloor: 0.22,
+  fillTintMul: 0.8,
 };
 
 // Team color constants used across renderer and placeholder models.
@@ -167,6 +179,8 @@ export interface ShieldRippleTuning {
   baseWidth: number;
   /** Multiplier applied to impact amp when computing final shader amplitude. */
   ampScale: number;
+  /** Time window in seconds to coalesce tiny rapid ripples into one (visual) event. */
+  coalesceWindow?: number;
   /** Minimum scaled amplitude under which ripples are ignored for rendering. */
   minRenderAmp?: number;
   /** Blend mode for overlapping ripples: 0 = additive, 1 = perceptual (soft-clamp). */
@@ -184,9 +198,10 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   defaultSpeed: 3.1,
   baseWidth: 0.14,
   ampScale: 4.9,
-  blendMode: 0,
+  coalesceWindow: 0.03,
+  blendMode: 1,
   ignoreMaxAlpha: false,
   colorMul: 1.0,
   strength: 0.7,
-  minRenderAmp: 0.01,
+  minRenderAmp: 0.008,
 };
