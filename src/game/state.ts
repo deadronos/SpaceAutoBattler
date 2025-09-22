@@ -12,7 +12,7 @@ import type {
 import { SeededRng } from '../utils/rng.js';
 import { spawnShip } from './ships.js';
 import { unregisterTurret } from './turretRegistry.js';
-import { WORLD_HALF } from './config.js';
+import { AI_CONFIG, WORLD_HALF } from './config.js';
 
 export async function createGameState(): Promise<GameState> {
   await Rapier.init();
@@ -40,6 +40,32 @@ export async function createGameState(): Promise<GameState> {
     rng: new SeededRng(1337),
     paused: false,
     timeScale: 1,
+    ai: {
+      enabled: AI_CONFIG.v2Enabled,
+      tickInterval: 1 / AI_CONFIG.tickRateHz,
+      maxPerTick: AI_CONFIG.maxPerTick,
+      accumulator: 0,
+      tickIndex: 0,
+      cursor: 0,
+      slices: AI_CONFIG.slices,
+      assignments: {
+        escorts: new Map(),
+      },
+    },
+    blackboard: {
+      tickIndex: 0,
+      teamPosture: {
+        blue: 'hold',
+        red: 'hold',
+      },
+      allyCentroid: {
+        blue: new Vector3(),
+        red: new Vector3(),
+      },
+      nearestEnemy: new Map(),
+      threatToVip: new Map(),
+      tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
+    },
   };
 
   return state;
@@ -198,4 +224,14 @@ export function resetGame(state: GameState): void {
   }
   // Respawn baseline fleets
   spawnInitialFleets(state);
+  state.ai.cursor = 0;
+  state.ai.accumulator = 0;
+  state.ai.tickIndex = 0;
+  state.ai.assignments.escorts.clear();
+  state.blackboard.nearestEnemy.clear();
+  state.blackboard.threatToVip.clear();
+  state.blackboard.teamPosture.blue = 'hold';
+  state.blackboard.teamPosture.red = 'hold';
+  state.blackboard.allyCentroid.blue.set(0, 0, 0);
+  state.blackboard.allyCentroid.red.set(0, 0, 0);
 }

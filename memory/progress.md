@@ -4,6 +4,7 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-22: Documented AI v2 scaffolding (state.ai, blackboard, decision system, aiProfiles) and refreshed active context/progress notes.
 - 2025-09-21: Created/verified core memory files (projectbrief.md, productContext.md, activeContext.md, techContext.md, core-*.md)
 - 2025-09-21: Added `systemPatterns.md` to capture architecture guidance and reusable patterns.
 - 2025-09-21: Verified `memory/tasks/_index.md` and added a completed note about memory bank core files.
