@@ -3,7 +3,9 @@ import { useMemo, useRef } from 'react';
 import type React from 'react';
 import type { Group } from 'three';
 import type { TurretEntity } from '../types/index.js';
-import { DEBUG_VISUALS } from '../config/renderer.js';
+// Debug visuals removed from config; keep local defaults (false)
+const SHOW_TURRET_GIZMOS = false;
+const SHOW_MUZZLE_FLASHES = true;
 
 export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactElement {
   const groupRef = useRef<Group>(null);
@@ -17,7 +19,7 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
   });
 
   const Gizmo = useMemo(() => {
-    if (!DEBUG_VISUALS.showTurretGizmos) return null;
+  if (!SHOW_TURRET_GIZMOS) return null;
     return (
       <>
         <mesh frustumCulled={false}>
@@ -34,7 +36,7 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
   }, []);
 
   const Muzzles: React.FC = useMemo(() => {
-    if (!DEBUG_VISUALS.showMuzzleFlashes) return () => null;
+  if (!SHOW_MUZZLE_FLASHES) return () => null;
     return function MuzzleFlashes() {
       return (
         <group name="turret-muzzle-flashes">

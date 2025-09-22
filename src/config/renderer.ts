@@ -28,23 +28,15 @@ export interface ShieldVisualSettings {
   };
 }
 
-export interface DebugVisualFlags {
-  showTurretGizmos?: boolean;
-  showMuzzleFlashes?: boolean;
-}
-
-export const DEBUG_VISUALS: DebugVisualFlags = {
-  showTurretGizmos: false,
-  showMuzzleFlashes: true,
-};
+// Debug visuals flag removed — use explicit runtime toggles or config if needed
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
-  fighter: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 48, edgeWidth: 0.1, maxAlpha: 0.5, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -108,6 +100,14 @@ export interface ShieldTuning {
   redBoostPower: number;
   redBoostMultiplier: number;
   redTint: string; // hex color used for red team tint
+  /** Multiplier for base alpha along hex edges (0..1+). */
+  edgeAlphaMul: number;
+  /** Multiplier for base alpha inside hex fill (0..1). */
+  fillAlphaMul: number;
+  /** Minimal fraction of uOpacity*uMaxAlpha to ensure the shield remains visible. */
+  minAlphaFloor: number;
+  /** Interior color tint multiplier so fill isn't pitch black. */
+  fillTintMul: number;
 }
 
 export const SHIELD_TUNING: ShieldTuning = {
@@ -115,4 +115,88 @@ export const SHIELD_TUNING: ShieldTuning = {
   redBoostPower: 1.32,
   redBoostMultiplier: 1.45,
   redTint: '#b22222',
+  edgeAlphaMul: 1.2,
+  fillAlphaMul: 0.35,
+  minAlphaFloor: 0.22,
+  fillTintMul: 0.9,
+};
+
+// Team color constants used across renderer and placeholder models.
+// Designers can change these to alter the visual identity of teams.
+export const TEAM_COLORS = {
+  blue: '#77aaff',
+  red: '#ff7788',
+} as const;
+
+// Hull tinting when shields are gone: designers can tune how strong the
+// tint is and at what shield fraction it should appear.
+export interface HullTintConfig {
+  /** Fraction (0..1) under which the hull gets a subtle team-tint. */
+  tintThreshold: number;
+  /** How strongly to blend original hull color toward team color (0..1). */
+  tintStrength: number;
+}
+
+/**
+ * HULL_TINT — Designer guidance
+ *
+ * - tintThreshold: fraction in [0..1] under which the hull will receive a
+ *   subtle team tint. Values near 0.0 mean tint only when shields are fully
+ *   depleted; values like 0.1 will tint when shields are low but not empty.
+ *
+ * - tintStrength: blend amount in [0..1]. 0.0 = no tint; 1.0 = completely
+ *   replace hull color with team color. Recommended range: 0.08..0.25. Typical
+ *   defaults used here (0.02 threshold, 0.15 strength) produce a light, readable
+ *   tint that keeps artist colors intact while making team affiliation clear.
+ *
+ * Examples:
+ * - (threshold=0.02, strength=0.10) => very subtle tint only when shield is gone
+ * - (threshold=0.10, strength=0.20) => noticeable tint when shields are low
+ * - (threshold=0.0, strength=0.30)  => tint only at exact zero but stronger
+ */
+export const HULL_TINT: HullTintConfig = {
+  tintThreshold: 1.00,
+  tintStrength: 0.15,
+};
+
+// Global shield ripple tuning (tweakable). These affect the shader and how many
+// ripples the renderer will blend simultaneously. Kept separate from per-hull
+// visuals so designers can experiment without changing hull presets.
+export interface ShieldRippleTuning {
+  /** Maximum number of simultaneous ripples the shader will render. */
+  maxRipples: number;
+  /** Default ripple propagation speed (radians per second). */
+  defaultSpeed: number;
+  /** Base width used when computing per-impact ripple width. */
+  baseWidth: number;
+  /** Multiplier applied to impact amp when computing final shader amplitude. */
+  ampScale: number;
+  /** Time window in seconds to coalesce tiny rapid ripples into one (visual) event. */
+  coalesceWindow?: number;
+  /** Approximate seconds a ripple occupies a shader slot before considered expired. */
+  rippleLife?: number;
+  /** Minimum scaled amplitude under which ripples are ignored for rendering. */
+  minRenderAmp?: number;
+  /** Blend mode for overlapping ripples: 0 = additive, 1 = perceptual (soft-clamp). */
+  blendMode: 0 | 1;
+  /** If true, ripple contribution can exceed per-hull maxAlpha for visibility. */
+  ignoreMaxAlpha: boolean;
+  /** Color multiplier for ripple tint when blending into base color. */
+  colorMul: number;
+  /** Strength scalar applied to ripple contribution when affecting alpha. */
+  strength: number;
+}
+
+export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
+  maxRipples: 8,
+  defaultSpeed: 3.1,
+  baseWidth: 0.10,
+  ampScale: 3.9,
+  coalesceWindow: 0.03,
+  rippleLife: 0.9,
+  blendMode: 1,
+  ignoreMaxAlpha: false,
+  colorMul: 0.5,
+  strength: 0.7,
+  minRenderAmp: 0.008,
 };

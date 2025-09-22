@@ -22,6 +22,8 @@
   display: block;
 }
 
+
+/* Ripple debug overlay removed */
 .loading-overlay {
   width: 100%;
   height: 100%;
@@ -53,8 +55,7 @@
   pointer-events: auto;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  /* backdrop blur disabled for baseline lint */
   padding: 18px 24px;
   border-radius: 12px;
   width: 320px;

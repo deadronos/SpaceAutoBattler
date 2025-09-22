@@ -15,9 +15,12 @@ import { ProjectileObject } from './Projectile.js';
 import { SeededRng } from '../utils/rng.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
+import { BloomProvider } from '../renderer/BloomProvider.js';
+import PostprocessingLazy from './PostprocessingLazy.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
+  const ppEnabled = useUiStore((s) => s.postprocessingEnabled);
 
   if (!state) { 
     return <div className="loading-overlay">Preparing simulation…</div>;
@@ -29,32 +32,67 @@ export function Battlefield(): React.ReactElement {
       camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: CAMERA_DEFAULTS.far }}
       dpr={[1, 2]}
     >
-      <color attach="background" args={[new Color('#02030b')]} />
-      <fog attach="fog" args={FOG_DEFAULTS} />
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[240, 320, 100]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
-      <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
-      <Suspense fallback={null}>
-        <ShipsLayer archetype={state.queries.ships} />
-        <TurretsLayer archetype={state.queries.turrets} />
-        <ProjectilesLayer archetype={state.queries.projectiles} />
-      </Suspense>
-      <BattlefieldSystems />
-      <StarsField />
-      {/* Drei helpers for navigation and orientation */}
-      <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
-      {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
-      <Grid
-        args={[WORLD_SIZE, WORLD_SIZE]}
-        cellSize={50}
-        sectionSize={500}
-        cellColor="#203050"
-        sectionColor="#101725"
-        position={[0, -5, 0]}
-        fadeDistance={WORLD_SIZE}
-        infiniteGrid
-      />
-      <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
+      {ppEnabled ? (
+        <BloomProvider enabled>
+          <color attach="background" args={[new Color('#02030b')]} />
+          <fog attach="fog" args={FOG_DEFAULTS} />
+          <ambientLight intensity={0.35} />
+          <directionalLight position={[240, 320, 100]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
+          <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
+          <Suspense fallback={null}>
+            <ShipsLayer archetype={state.queries.ships} />
+            <TurretsLayer archetype={state.queries.turrets} />
+            <ProjectilesLayer archetype={state.queries.projectiles} />
+          </Suspense>
+          {/* Postprocessing (selective bloom + FXAA) */}
+          <PostprocessingLazy />
+          <BattlefieldSystems />
+          <StarsField />
+          {/* Drei helpers for navigation and orientation */}
+          <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
+          {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
+          <Grid
+            args={[WORLD_SIZE, WORLD_SIZE]}
+            cellSize={50}
+            sectionSize={500}
+            cellColor="#203050"
+            sectionColor="#101725"
+            position={[0, -5, 0]}
+            fadeDistance={WORLD_SIZE}
+            infiniteGrid
+          />
+          <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
+        </BloomProvider>
+      ) : (
+        <>
+          <color attach="background" args={[new Color('#02030b')]} />
+          <fog attach="fog" args={FOG_DEFAULTS} />
+          <ambientLight intensity={0.35} />
+          <directionalLight position={[240, 320, 100]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
+          <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
+          <Suspense fallback={null}>
+            <ShipsLayer archetype={state.queries.ships} />
+            <TurretsLayer archetype={state.queries.turrets} />
+            <ProjectilesLayer archetype={state.queries.projectiles} />
+          </Suspense>
+          <BattlefieldSystems />
+          <StarsField />
+          {/* Drei helpers for navigation and orientation */}
+          <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
+          {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
+          <Grid
+            args={[WORLD_SIZE, WORLD_SIZE]}
+            cellSize={50}
+            sectionSize={500}
+            cellColor="#203050"
+            sectionColor="#101725"
+            position={[0, -5, 0]}
+            fadeDistance={WORLD_SIZE}
+            infiniteGrid
+          />
+          <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
+        </>
+      )}
     </Canvas>
   );
 }
