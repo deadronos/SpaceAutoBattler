@@ -33,14 +33,14 @@ This aligns with the project constraints: all state on GameState, deterministic 
 
 ## Progress Tracking
 
-**Overall Status:** In Progress - 5% complete
+**Overall Status:** In Progress - 15% complete
 
 ### Subtasks
 
 | ID  | Description                                    | Status      | Updated    | Notes                                        |
 |-----|-----------------------------------------------|-------------|------------|----------------------------------------------|
-| 1.1 | Add MotionStats interface to types           | Not Started |            | Phase 1: Foundation types                    |
-| 1.2 | Update ship stats with motion defaults       | Not Started |            | Per-class tuning values                     |
+| 1.1 | Add MotionStats interface to types           | Complete    | 2025-09-22 | Phase 1: Foundation types                    |
+| 1.2 | Update ship stats with motion defaults       | Complete    | 2025-09-22 | Per-class tuning values                     |
 | 1.3 | Add renderer smoothing config                 | Not Started |            | Fallback defaults                            |
 | 1.4 | Add validation helpers                        | Not Started |            | Range validation for stats                   |
 | 2.1 | Create motion system module                   | Not Started |            | Phase 2: Core physics implementation        |
@@ -65,3 +65,10 @@ This aligns with the project constraints: all state on GameState, deterministic 
 - Analyzed current codebase structure and existing ship/physics systems
 - Verified tests pass and TypeScript compiles cleanly
 - Starting Phase 1: Motion Stats Types & Defaults
+- **PHASE 1 COMPLETE**: Added MotionStats interface with mass, acceleration, damping, and turn rates to types
+- Extended ShipComponent with velocity, angularVelocity, and motion fields
+- Added motion stats defaults for all ship classes (fighter through carrier) with realistic values
+- Updated spawnShip function to initialize new motion fields  
+- Fixed all test files to include required motion fields using createDefaultMotionStats helper
+- All 54 tests pass and TypeScript compiles cleanly
+- Ready to start Phase 2: Deterministic Motion System
