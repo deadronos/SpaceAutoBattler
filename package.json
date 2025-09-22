@@ -22,14 +22,8 @@
     "lint": "eslint \"src/**/*.{ts,js}\" --ext .ts --ext .js",
     "lint:fix": "eslint \"src/**/*.{ts,js}\" --ext .ts --ext .js --fix",
     "format": "prettier --write \"**/*.{ts,js,json,css,md}\"",
-    "hash-assets": "node ./scripts/hash-assets.cjs",
-    "validate-config": "node ./scripts/validate-config.mjs",
-    "generate-memory-index": "node ./scripts/generate_memory_index.mjs",
-    "add-memory-node": "node ./scripts/add_memory_node.mjs",
     "generate-memories": "node ./scripts/generate_memories.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
-    "perf:baseline": "node ./scripts/perf/collect-baseline.mjs",
-    "perf:instancer": "node ./scripts/perf/ship-instancer-harness.mjs",
     "perf:ai-budget": "tsx ./scripts/perf/assert-ai-budget.ts"
   },
   "devDependencies": {
