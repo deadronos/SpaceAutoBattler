@@ -199,6 +199,82 @@
   width: 100%;
 }
 
+.ai-debug-overlay {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  pointer-events: auto;
+  background: rgba(6, 14, 32, 0.82);
+  border: 1px solid rgba(90, 184, 255, 0.28);
+  border-radius: 12px;
+  padding: 16px 20px;
+  width: 360px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  color: #e3f1ff;
+  font-size: 0.85rem;
+}
+
+.ai-debug-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ai-debug-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f8fbff;
+}
+
+.ai-debug-meta {
+  opacity: 0.78;
+}
+
+.ai-debug-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.ai-debug-table th,
+.ai-debug-table td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ai-debug-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ai-debug-team {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.ai-debug-team--blue {
+  color: var(--blue);
+}
+
+.ai-debug-team--red {
+  color: var(--red);
+}
+
+.ai-debug-empty {
+  margin: 12px 0 0;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.ai-debug-warning {
+  margin-top: 12px;
+  color: #ffd27d;
+  font-weight: 600;
+}
+
 .hint {
   margin-top: 18px;
   font-size: 0.8rem;

@@ -2,20 +2,21 @@
 
 Current focuses (short-term):
 
-- Finish AI v2 rollout: trait-driven scoring variance, runtime metrics, and documentation to support QA/debugging.
-- Validate gameplay after 2025 rewrite (main-thread Rapier + R3F + Miniplex) while preserving legacy behavior when AI v2 is disabled.
-- Improve unit test coverage for AI intent scoring/movement and projectile resolution.
+- Monitor AI V2 validation suites (determinism, scoring, executors, legacy fallback) and keep them green during feature work.
+- Track Phase 8–10 follow-up work (intercept/regroup intents, deterministic scenario harness, CI integration) while keeping legacy parity intact.
+- Integrate the perf budget assertion into automation once CI hardware targets are finalized.
+- Gather feedback on the HUD debug overlay and extend documentation with practical tuning scenarios.
 
 Recent changes:
 
-- Added trait multipliers (`generateTraitsFromSeed`) so aggression/patience/dodge vary per ship while staying deterministic.
-- Instrumented `state.ai.metrics` to record decision counts, skipped ships, and budget hits per tick.
-- Refreshed docs/memory to explain trait usage and debug counters.
+- Added Vitest suites for determinism (`ai-determinism`), scorer outputs (`ai-scorer`), executor behaviors (`ai-executor`), and legacy parity (`ai-regression`).
+- Authored `scripts/perf/assert-ai-budget.ts` with `npm run perf:ai-budget` to guard the 300-ship tick budget.
+- Introduced HUD `AiDebugOverlay`, UI toggles, and refreshed `docs/ai-v2-overview.md` with validation details.
 
 Next steps:
 
-- Author deterministic Vitest suites for AI scoring (posture/escort influence) and confirm command streams remain stable per seed.
-- Wire a UI/config toggle for QA to enable/disable AI v2 at runtime (if not already exposed).
-- Extend perf harness to measure AI tick budget under 300-ship load with new scheduler.
+- Phase 8: Implement intercept/reposition/regroup intents with deterministic scorers and executors.
+- Phase 9: Add scenario-driven docs/tests (escort swap, artillery standoff) plus overlay capture flows.
+- Phase 10: Wire perf harness + AI toggle coverage into CI before considering flag-on by default.
 
-Updated: 2025-09-22
+Updated: 2025-09-23

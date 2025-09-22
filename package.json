@@ -28,7 +28,8 @@
     "generate-memories": "node ./scripts/generate_memories.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "perf:baseline": "node ./scripts/perf/collect-baseline.mjs",
-    "perf:instancer": "node ./scripts/perf/ship-instancer-harness.mjs"
+    "perf:instancer": "node ./scripts/perf/ship-instancer-harness.mjs",
+    "perf:ai-budget": "tsx ./scripts/perf/assert-ai-budget.ts"
   },
   "devDependencies": {
     "@babel/preset-env": "latest",
@@ -67,6 +68,7 @@
   "prettier": "^3.6.2",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.16.3",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0",
     "vitest": "^3.2.4",

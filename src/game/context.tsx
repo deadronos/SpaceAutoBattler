@@ -15,6 +15,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
   const [state, setState] = useState<GameState | null>(null);
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
+  const aiV2Enabled = useUiStore((s) => s.aiV2Enabled);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +96,11 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
     state.paused = paused;
     state.timeScale = timeScale;
   }, [state, paused, timeScale]);
+
+  useEffect(() => {
+    if (!state?.ai) return;
+    state.ai.enabled = aiV2Enabled;
+  }, [state, aiV2Enabled]);
 
   return <GameContext.Provider value={{ state }}>{children}</GameContext.Provider>;
 }

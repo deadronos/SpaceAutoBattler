@@ -922,6 +922,22 @@ export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEnti
   return closest;
 }
 
+export const __aiTestHooks = {
+  updateDecisionSystem,
+  refreshBlackboard,
+  assignTeamRoles,
+  selectIntent,
+  scoreAttackIntent,
+  scoreKiteIntent,
+  scoreEscortIntent,
+  scoreFleeIntent,
+  tieBreak,
+  computeLod,
+  writeCommand,
+  prepareShips,
+  runLegacyShipBehavior,
+};
+
 function getShipById(state: GameState, id: number | undefined): ShipEntity | null {
   if (id == null) return null;
   const ships = state.queries.ships.entities as ShipEntity[];
