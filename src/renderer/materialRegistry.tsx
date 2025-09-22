@@ -15,6 +15,7 @@ type ShieldMaterialProps = {
   team: Team;
   opacity: number; // 0..1, will be clamped by material
   ripple?: ShieldRipple;
+  simTime?: number; // GameState.time for aligning ripple t0 to local uTime
 };
 
 type MaterialComponent<P = any> = React.FC<P>;
@@ -30,7 +31,7 @@ export function getMaterial<P = any>(key: MaterialKey): MaterialComponent<P> | u
 }
 
 // Built-in Shield Hex material (custom shader)
-const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity, ripple }) => {
+const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity, ripple, simTime }) => {
   // Alpha computation note:
   // - The renderer computes `opacity` as the shield fraction: shield / maxShield (clamped 0..1)
   // - The shader multiplies that `uOpacity` by a glow-driven factor (0.05 + glow) which
@@ -46,7 +47,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   return new ShaderMaterial({
       transparent: true,
       depthWrite: true,
-      uniforms: {
+  uniforms: {
         uTime: { value: 0 },
   uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
         uTeamIsRed: { value: team === 'red' ? 1.0 : 0.0 },
@@ -224,12 +225,12 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   }, [hull, team]);
 
 
-  // Tick time
+  // Tick time for shader animations
   useFrame((_, dt) => {
     (mat.uniforms as any).uTime.value += dt;
   });
 
-  // Update props-driven uniforms
+  // Update props-driven uniforms (non-ripple scheduling settings)
   useEffect(() => {
     (mat.uniforms as any).uOpacity.value = Math.max(0, Math.min(1, opacity));
   }, [opacity, mat]);
@@ -242,12 +243,10 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   }, [team, mat]);
   useEffect(() => {
     const uniforms = mat.uniforms as any;
-    // Prepare default (no ripples)
     const maxRipples = Math.min(SHIELD_RIPPLE_TUNING.maxRipples ?? 3, SHADER_MAX_RIPPLES);
-    // Ensure underlying arrays exist
+    // Prepare default
     uniforms.uRippleData.value = uniforms.uRippleData.value ?? Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
     uniforms.uRippleT0s.value = uniforms.uRippleT0s.value ?? new Array<number>(SHADER_MAX_RIPPLES).fill(-999);
-    // Zero out all entries first
     for (let i = 0; i < SHADER_MAX_RIPPLES; i++) {
       const v = uniforms.uRippleData.value[i] as Vector4;
       v.set(0, 0, 1, 0);
@@ -255,25 +254,25 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     }
     uniforms.uRippleCount.value = 0;
 
-    // If the prop is a single ripple, wrap it; but we expect upstream to pass an array of ripples
-    const rippleList = ripple ? (Array.isArray(ripple) ? ripple : [ripple]) : [];
-    const startTime = (uniforms.uTime && typeof uniforms.uTime.value === 'number')
-      ? uniforms.uTime.value
-      : null;
-    // Fill up to maxRipples with the latest entries
-    for (let i = 0; i < Math.min(rippleList.length, maxRipples); i++) {
-      const r = rippleList[rippleList.length - Math.min(rippleList.length, maxRipples) + i];
+    const list: ShieldRipple[] = ripple ? (Array.isArray(ripple) ? ripple : [ripple]) : [];
+    const bias = ((uniforms.uTime?.value as number) ?? 0) - (simTime ?? 0);
+    const take = Math.min(list.length, maxRipples);
+    for (let i = 0; i < take; i++) {
+      const r = list[list.length - take + i];
       const amp = Math.min(1.6, 0.25 + (r.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9));
-      const idx = i; // place 0..maxRipples-1 in array
       const dir = r.dir ?? new Vector3(0, 0, 1);
-      uniforms.uRippleData.value[idx].set(dir.x, dir.y, dir.z, amp);
-      uniforms.uRippleT0s.value[idx] = startTime ?? r.t0;
+      (uniforms.uRippleData.value[i] as Vector4).set(dir.x, dir.y, dir.z, amp);
+      uniforms.uRippleT0s.value[i] = bias + (r.t0 ?? 0);
     }
-    uniforms.uRippleCount.value = Math.min(rippleList.length, maxRipples);
-    // Ensure base values are set
+    uniforms.uRippleCount.value = take;
     uniforms.uRippleSpeed.value = SHIELD_RIPPLE_TUNING.defaultSpeed;
     uniforms.uRippleWidthBase.value = SHIELD_RIPPLE_TUNING.baseWidth;
-  }, [ripple, mat]);
+    uniforms.uRippleBlendMode.value = SHIELD_RIPPLE_TUNING.blendMode;
+    uniforms.uRippleIgnoreMaxAlpha.value = SHIELD_RIPPLE_TUNING.ignoreMaxAlpha ? 1.0 : 0.0;
+    uniforms.uRippleColorMul.value = SHIELD_RIPPLE_TUNING.colorMul;
+    uniforms.uRippleStrength.value = SHIELD_RIPPLE_TUNING.strength;
+    // No debug overlay: normal runtime behavior only
+  }, [ripple, simTime, mat]);
 
   return <primitive object={mat} attach="material" />;
 };

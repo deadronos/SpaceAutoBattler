@@ -28,23 +28,15 @@ export interface ShieldVisualSettings {
   };
 }
 
-export interface DebugVisualFlags {
-  showTurretGizmos?: boolean;
-  showMuzzleFlashes?: boolean;
-}
-
-export const DEBUG_VISUALS: DebugVisualFlags = {
-  showTurretGizmos: false,
-  showMuzzleFlashes: true,
-};
+// Debug visuals flag removed — use explicit runtime toggles or config if needed
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.3, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.5, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.5, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.5, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.5, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.5, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -126,7 +118,7 @@ export const SHIELD_TUNING: ShieldTuning = {
   edgeAlphaMul: 1.2,
   fillAlphaMul: 0.35,
   minAlphaFloor: 0.22,
-  fillTintMul: 0.8,
+  fillTintMul: 0.9,
 };
 
 // Team color constants used across renderer and placeholder models.
@@ -181,6 +173,8 @@ export interface ShieldRippleTuning {
   ampScale: number;
   /** Time window in seconds to coalesce tiny rapid ripples into one (visual) event. */
   coalesceWindow?: number;
+  /** Approximate seconds a ripple occupies a shader slot before considered expired. */
+  rippleLife?: number;
   /** Minimum scaled amplitude under which ripples are ignored for rendering. */
   minRenderAmp?: number;
   /** Blend mode for overlapping ripples: 0 = additive, 1 = perceptual (soft-clamp). */
@@ -194,14 +188,15 @@ export interface ShieldRippleTuning {
 }
 
 export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
-  maxRipples: 6,
+  maxRipples: 8,
   defaultSpeed: 3.1,
-  baseWidth: 0.14,
-  ampScale: 4.9,
+  baseWidth: 0.10,
+  ampScale: 3.9,
   coalesceWindow: 0.03,
+  rippleLife: 0.9,
   blendMode: 1,
   ignoreMaxAlpha: false,
-  colorMul: 1.0,
+  colorMul: 0.5,
   strength: 0.7,
   minRenderAmp: 0.008,
 };

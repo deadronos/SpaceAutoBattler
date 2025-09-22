@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { Box3, Color, Sphere, type Group, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -9,6 +9,7 @@ import { getShieldVisuals, HULL_TINT, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '
 import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
+import { useOptionalGameState } from '../game/context.js';
 
 export function resolveModelPath(modelKey?: string): string {
   const key = (modelKey ?? 'fighter') as keyof typeof SHIP_MODEL_PATHS;
@@ -101,6 +102,10 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
 
 function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity; radius?: number; hullMaterialsRef?: React.MutableRefObject<Array<{ material: any; originalColor: Color }>> }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
+  const state = useOptionalGameState();
+  const [rippleTick, setRippleTick] = useState(0);
+  const lastCountRef = useRef<number>(0);
+  const lastT0Ref = useRef<number>(-Infinity);
 
   useRenderFrame((_, dt) => {
     const mesh = meshRef.current;
@@ -152,6 +157,17 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
       }
     }
   });
+  // Detect ripple list changes and trigger a render when it happens so uniforms update
+  useRenderFrame(() => {
+    const list = entity.shieldRipples ?? [];
+    const count = list.length;
+    const latestT0 = count > 0 ? (list[count - 1].t0 ?? -Infinity) : -Infinity;
+    if (count !== lastCountRef.current || latestT0 !== lastT0Ref.current) {
+      lastCountRef.current = count;
+      lastT0Ref.current = latestT0;
+      setRippleTick((n) => (n + 1) & 0xffff);
+    }
+  });
   // Derived props for material
   const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);
   const opacity = Math.max(0, Math.min(1, s));
@@ -186,19 +202,19 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   }
   // Only keep the latest `maxRipples` entries
   const sliced = coalesced.slice(Math.max(0, coalesced.length - maxRipples));
-  const rippleQueue = sliced.map((s) => ({ dir: s.dir, t0: s.t0, amp: s.scaledAmp }));
+  const rippleQueue = sliced.map((s) => ({ dir: s.dir, t0: s.t0, amp: s.scaledAmp })) as any;
   // debug logging removed
 
   const kind = getShieldVisuals(entity.ship.hull).materialKind;
   const key = `shield:${kind}`;
   const Mat = (getMaterial<{
-    hull: ShipHull; team: any; opacity: number; ripple?: any;
+    hull: ShipHull; team: any; opacity: number; ripple?: any; simTime?: number;
   }>(key)) ?? getMaterial('shield:hex')!;
 
   return (
     <mesh ref={meshRef} renderOrder={-1} frustumCulled={false}>
       <sphereGeometry args={[1, 64, 64]} />
-      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={rippleQueue} />
+      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={rippleQueue} simTime={state?.time ?? 0} />
     </mesh>
   );
 }

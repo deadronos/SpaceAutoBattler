@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import type React from 'react';
+// debug overlay removed
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -32,6 +32,7 @@ export function Hud(): React.ReactElement {
         </div>
         <p className="hint">Ships automatically maneuver, acquire targets, and fire when in range.</p>
       </div>
+      {/* debug overlay removed */}
     </div>
   );
 }
@@ -67,3 +68,5 @@ function TeamCard({ summary }: { summary: TeamSummary }): React.ReactElement {
     </div>
   );
 }
+
+// Ripple debug panel removed
