@@ -23,7 +23,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     damage: 8,
     fireRate: 0.9,
     projectileSpeed: 28,
-    range: 180,
+    range: 200,
     speed: 14,
     scale: 1,
     bulletType: 'bullet:laser',
