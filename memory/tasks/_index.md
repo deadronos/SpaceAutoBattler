@@ -4,9 +4,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK106](TASK106-ai-intercept-reposition.md) — Phase 8 follow-up covering intercept/reposition/regroup intents and scorer/executor updates.
-- [TASK107](TASK107-ai-scenario-harness.md) — Phase 9 deterministic scenario harness + HUD validation flows.
-- [TASK108](TASK108-ai-rollout-automation.md) — Phase 10 rollout prep, perf harness automation, and documentation.
+- _None — bomber intercept + artillery retreat fixture expansion completed (see Completed section)._ 
 
 ## Completed
 
@@ -20,6 +18,10 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK103](COMPLETED/TASK103-ai-traits.md) AI Trait Variance & Determinism - Added trait multipliers, trait-aware scoring, and Vitest coverage.
 - [TASK104](COMPLETED/TASK104-ai-metrics.md) AI Metrics Instrumentation & Tooling - Added AI manager metrics, docs, and memory updates.
 - [TASK105](COMPLETED/TASK105-ai-v2-validation.md) AI V2 Validation & Tooling - Added determinism/scorer/executor/legacy Vitest suites, perf budget script, HUD overlay, and plan/docs refresh.
+- [TASK106](COMPLETED/TASK106-ai-intercept-reposition.md) AI Intercept & Reposition Intents - Landed intercept/reposition/regroup scoring/executors plus new Vitest coverage and documentation updates.
+- [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) AI Scenario Harness & Visual QA - Added headless harness, golden log test, and docs refresh (HUD capture pending follow-up).
+- [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) AI V2 Rollout & Automation - Added env flag + `test:ci`, authored rollout playbook, and updated memory/tasks.
+- [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) Expand AI Scenario Harness Fixtures - Added bomber intercept + artillery retreat configs with golden logs, refreshed memory/plan entries, and kept tests deterministic.
 
 - Align docs and memory with 2025 rewrite - Updated `llms.txt`, `AGENTS.md`, `.github/copilot-instructions.md`, and memory files to match new src layout (R3F + Miniplex + Rapier on main thread).
 

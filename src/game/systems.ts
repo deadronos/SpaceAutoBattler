@@ -23,6 +23,10 @@ import { generateTraitsFromSeed } from './aiTraits.js';
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
 const TEMP_POS = new Vector3();
+const TEMP_REL_POS = new Vector3();
+const TEMP_TARGET_VEL = new Vector3();
+const TEMP_SHIP_VEL = new Vector3();
+const TEMP_REL_VEL = new Vector3();
 interface IntentCandidate {
   intent: AIIntent;
   score: number;
@@ -66,6 +70,10 @@ function updateDecisionSystem(state: GameState, delta: number): void {
     assignTeamRoles(state, ships);
     runShipDecisions(state, ships, entityById);
   }
+}
+
+export function runDecisionTick(state: GameState, delta: number): void {
+  updateDecisionSystem(state, delta);
 }
 
 function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
@@ -270,6 +278,28 @@ function selectIntent(
     candidates.push({ intent: 'Escort', score: escortScore, target: escortTarget });
   }
 
+  if (primaryTarget) {
+    const interceptScore = scoreInterceptIntent(
+      state,
+      ship,
+      profile,
+      primaryTarget,
+      escortTarget,
+      posture,
+      traits,
+    );
+    candidates.push({ intent: 'Intercept', score: interceptScore, target: primaryTarget });
+
+    const repositionScore = scoreRepositionIntent(state, ship, profile, primaryTarget, traits, posture);
+    candidates.push({ intent: 'Reposition', score: repositionScore, target: primaryTarget });
+  } else {
+    const repositionScore = scoreRepositionIntent(state, ship, profile, null, traits, posture);
+    candidates.push({ intent: 'Reposition', score: repositionScore });
+  }
+
+  const regroupScore = scoreRegroupIntent(state, ship, profile, posture, traits);
+  candidates.push({ intent: 'Regroup', score: regroupScore });
+
   const fleeScore = scoreFleeIntent(ship, profile, primaryTarget, posture, traits);
   candidates.push({ intent: 'Flee', score: fleeScore, target: primaryTarget });
 
@@ -299,6 +329,96 @@ function scoreAttackIntent(
   const bias = profile.classBias[target.ship.hull] ?? 0;
   score += bias;
   return Math.floor(score);
+}
+
+function scoreInterceptIntent(
+  state: GameState,
+  ship: ShipEntity,
+  profile: BehaviorProfile,
+  target: ShipEntity,
+  escortTarget: ShipEntity | null,
+  posture: TeamPosture,
+  traits: AITraits,
+): number {
+  const style = profile.style;
+  if (style !== 'escort' && style !== 'brawler' && style !== 'artillery') {
+    return 180;
+  }
+
+  const distance = ship.transform.position.distanceTo(target.transform.position);
+  const desiredMax = profile.desiredRange[1];
+  const bandPressure = Math.max(0, distance - desiredMax);
+
+  const targetSpeed = getSpeedMagnitude(target);
+  const threatBonus = computeThreatBonus(state, ship.ship.team, target.id);
+  const escortBonus = escortTarget && isThreatPair(state, escortTarget.id, target.id) ? 160 : 0;
+  const aggression = profile.aggression * traits.aggression;
+
+  let score = 480 + bandPressure * 2 + targetSpeed * 14 + aggression * 110 + threatBonus + escortBonus;
+  if (posture === 'aggressive') score += 140;
+  if (posture === 'retreat') score -= 110;
+
+  return Math.floor(score);
+}
+
+function scoreRepositionIntent(
+  state: GameState,
+  ship: ShipEntity,
+  profile: BehaviorProfile,
+  target: ShipEntity | null,
+  traits: AITraits,
+  posture: TeamPosture,
+): number {
+  const patience = profile.patience * traits.patience;
+  const centroid = state.blackboard.allyCentroid[ship.ship.team];
+  if (!target) {
+    const centroidDist = ship.transform.position.distanceTo(centroid);
+    const desire = profile.desiredRange[0];
+    const spacing = Math.max(0, centroidDist - desire * 1.5);
+    let base = 220 + spacing * 1.2 + patience * 70;
+    if (posture === 'hold') base += 50;
+    if (posture === 'retreat') base -= 40;
+    return Math.floor(base);
+  }
+
+  const desiredMin = profile.desiredRange[0];
+  const desiredMax = profile.desiredRange[1];
+  const distance = ship.transform.position.distanceTo(target.transform.position);
+  const below = Math.max(0, desiredMin - distance);
+  const above = Math.max(0, distance - desiredMax);
+  let bandError = Math.abs(distance - (desiredMin + desiredMax) * 0.5);
+
+  let score = 260 + (below + above) * 2.2 + bandError * 0.9 + patience * 80;
+  if (profile.style === 'artillery') score += 150;
+  if (profile.style === 'kiter') score += 90;
+  if (posture === 'retreat') score -= 60;
+  return Math.floor(score);
+}
+
+function scoreRegroupIntent(
+  state: GameState,
+  ship: ShipEntity,
+  profile: BehaviorProfile,
+  posture: TeamPosture,
+  traits: AITraits,
+): number {
+  const centroid = state.blackboard.allyCentroid[ship.ship.team];
+  const distance = ship.transform.position.distanceTo(centroid);
+  const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
+  const gate = profile.gates?.hpRetreatPct ?? 0.3;
+  const patience = profile.patience * traits.patience;
+
+  if (posture === 'retreat' || hpRatio <= gate + 0.05) {
+    let score = 420 + distance * 1.1 + (1 - hpRatio) * 260 + patience * 90;
+    if (posture === 'retreat') score += 140;
+    return Math.floor(score);
+  }
+
+  if (distance > profile.desiredRange[1] * 2.5) {
+    return Math.floor(260 + distance * 0.8 + patience * 60);
+  }
+
+  return 180;
 }
 
 function scoreKiteIntent(
@@ -357,6 +477,81 @@ function scoreFleeIntent(
   return Math.floor((base + Math.max(0, 300 - threat) * dodge) * (1 + nerve * 0.25));
 }
 
+function getSpeedMagnitude(ship: ShipEntity): number {
+  const velocity = getShipVelocity(ship, TEMP_TARGET_VEL);
+  return Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z);
+}
+
+function getShipVelocity(ship: ShipEntity, out: Vector3): Vector3 {
+  const body = ship.rigidBody as unknown as { linvel?: () => { x: number; y: number; z: number } };
+  if (body?.linvel) {
+    const vel = body.linvel();
+    out.set(vel.x, vel.y, vel.z);
+    return out;
+  }
+  out.set(0, 0, 0);
+  return out;
+}
+
+function computeThreatBonus(state: GameState, team: Team, targetId: number): number {
+  const threat = state.blackboard.threatToVip;
+  for (const [vipId, threatId] of threat.entries()) {
+    const vip = getShipById(state, vipId);
+    if (vip && vip.ship.team === team && threatId === targetId) {
+      return 180;
+    }
+  }
+  return 0;
+}
+
+function isThreatPair(state: GameState, vipId: number, targetId: number): boolean {
+  return state.blackboard.threatToVip.get(vipId) === targetId;
+}
+
+function computeInterceptHeadingVector(ship: ShipEntity, target: ShipEntity, out: Vector3): Vector3 {
+  const projectileSpeed = Math.max(1, Math.max(ship.ship.projectileSpeed, ship.ship.speed * 0.75));
+  const relativePos = TEMP_REL_POS.copy(target.transform.position).sub(ship.transform.position);
+  const targetVel = getShipVelocity(target, TEMP_TARGET_VEL);
+  const shipVel = getShipVelocity(ship, TEMP_SHIP_VEL);
+  const relativeVel = TEMP_REL_VEL.copy(targetVel).sub(shipVel);
+
+  const a = relativeVel.lengthSq() - projectileSpeed * projectileSpeed;
+  const b = 2 * relativeVel.dot(relativePos);
+  const c = relativePos.lengthSq();
+
+  let t = 0;
+  if (Math.abs(a) < 1e-5) {
+    t = b !== 0 ? Math.max(0, -c / b) : 0;
+  } else {
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant >= 0) {
+      const sqrt = Math.sqrt(discriminant);
+      const t1 = (-b - sqrt) / (2 * a);
+      const t2 = (-b + sqrt) / (2 * a);
+      t = Math.min(t1, t2);
+      if (t < 0) t = Math.max(t1, t2);
+      if (t < 0) t = 0;
+    } else {
+      t = Math.max(0, -b / (2 * a));
+    }
+  }
+
+  t = Math.min(Math.max(t, 0), 2.5);
+  const future = out.copy(target.transform.position).addScaledVector(targetVel, t);
+  future.sub(ship.transform.position);
+  if (future.lengthSq() < 1e-5) {
+    out.copy(relativePos);
+  } else {
+    out.copy(future);
+  }
+  if (out.lengthSq() < 1e-5) {
+    out.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+  } else {
+    out.normalize();
+  }
+  return out;
+}
+
 function tieBreak(ai: AIState, tickIndex: number, candidates: IntentCandidate[]): IntentCandidate {
   if (candidates.length === 0) {
     return { intent: 'Attack', score: 0 };
@@ -399,6 +594,85 @@ function writeCommand(
   command.ttl = state.ai.tickInterval;
 
   switch (ai.intent) {
+    case 'Intercept':
+      if (target) {
+        computeInterceptHeadingVector(ship, target, heading);
+        command.thrust = 1;
+        const distance = ship.transform.position.distanceTo(target.transform.position);
+        command.firePrimary = distance <= ship.ship.range * 1.15;
+        command.targetId = target.id;
+      } else {
+        heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+        command.thrust = 0.8;
+        command.firePrimary = false;
+        command.targetId = undefined;
+      }
+      break;
+    case 'Reposition':
+      if (target) {
+        heading.copy(target.transform.position).sub(ship.transform.position);
+        const distance = heading.length();
+        if (distance > 1e-5) {
+          heading.divideScalar(distance);
+          const tangent = TEMP_REL_POS.set(-heading.z, 0, heading.x);
+          const hash = hashToInt(ship.id ^ (state.ai.tickIndex * 491));
+          if (tangent.lengthSq() > 1e-5) {
+            tangent.normalize();
+            if (hash & 1) tangent.negate();
+            heading.multiplyScalar(0.6).addScaledVector(tangent, 0.4).normalize();
+          }
+        } else {
+          heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+        }
+        const desiredMin = profile.desiredRange[0];
+        const desiredMax = profile.desiredRange[1];
+        let shouldFire = distance <= ship.ship.range;
+        if (distance > desiredMax * 1.05) {
+          command.thrust = 0.95;
+        } else if (distance < desiredMin * 0.95) {
+          heading.negate();
+          heading.normalize();
+          command.thrust = 0.6;
+          shouldFire = false;
+        } else {
+          command.thrust = profile.style === 'artillery' ? 0.3 : 0.45;
+          if (shouldFire) {
+            shouldFire = distance >= desiredMin && distance <= desiredMax;
+          }
+        }
+        command.firePrimary = shouldFire;
+        command.targetId = target.id;
+      } else {
+        const centroid = state.blackboard.allyCentroid[ship.ship.team];
+        heading.copy(centroid).sub(ship.transform.position);
+        if (heading.lengthSq() < 1e-5) {
+          heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+        } else {
+          heading.normalize();
+        }
+        command.thrust = 0.55;
+        command.firePrimary = false;
+        command.targetId = undefined;
+      }
+      break;
+    case 'Regroup':
+      {
+        const centroid = state.blackboard.allyCentroid[ship.ship.team];
+        heading.copy(centroid).sub(ship.transform.position);
+        if (heading.lengthSq() < 1e-5) {
+          heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+        } else {
+          heading.normalize();
+        }
+        const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
+        const urgency = 1 + Math.max(0, 1 - hpRatio) * 0.5;
+        const posture = state.blackboard.teamPosture[ship.ship.team];
+        const base = posture === 'retreat' ? 0.95 : 0.75;
+        command.thrust = Math.min(1, base * urgency);
+        command.firePrimary = false;
+        command.targetId = undefined;
+      }
+      break;
     case 'Escort':
       if (escortTarget) {
         heading.copy(escortTarget.transform.position).sub(ship.transform.position);
@@ -930,12 +1204,16 @@ export const __aiTestHooks = {
   scoreAttackIntent,
   scoreKiteIntent,
   scoreEscortIntent,
+  scoreInterceptIntent,
+  scoreRepositionIntent,
+  scoreRegroupIntent,
   scoreFleeIntent,
   tieBreak,
   computeLod,
   writeCommand,
   prepareShips,
   runLegacyShipBehavior,
+  computeInterceptHeadingVector,
 };
 
 function getShipById(state: GameState, id: number | undefined): ShipEntity | null {

@@ -18,6 +18,7 @@ This index lists the short searchable memory summaries generated for the `src/` 
 - [core-assets.md](./core-assets.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer).
 - [core-rng.md](./core-rng.md) — `src/utils/rng.ts` (seeded deterministic RNG used by simulation and spawn randomization).
 - [core-aiProfiles.md](./core-aiProfiles.md) — `src/game/aiProfiles.ts` (behavior profile definitions + hull-to-profile mapping for AI v2).
+- [core-aiScenarioHarness.md](./core-aiScenarioHarness.md) — `src/game/aiScenarioHarness.ts` (headless scenario runner feeding deterministic AI command logs and fixtures).
 
 - [projectbrief.md](./projectbrief.md) — Project brief describing goals, constraints, and success criteria.
 - [productContext.md](./productContext.md) — Users, stakeholders, and high-level assumptions.

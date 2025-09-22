@@ -2,9 +2,8 @@
 
 Current focuses (short-term):
 
-- Monitor AI V2 validation suites (determinism, scoring, executors, legacy fallback) and keep them green during feature work.
-- Track Phase 8–10 follow-up work (intercept/regroup intents, deterministic scenario harness, CI integration) while keeping legacy parity intact.
-- Integrate the perf budget assertion into automation once CI hardware targets are finalized.
+- Monitor AI V2 validation suites (determinism, scoring, executors, intercept/regroup selection, scenario harness, legacy fallback) and keep them green during feature work.
+- Maintain the expanded AI scenario harness fixtures (escort, bomber intercept, artillery retreat) while keeping rollout playbook + `npm run test:ci` aligned.
 - Gather feedback on the HUD debug overlay and extend documentation with practical tuning scenarios.
 
 Recent changes:
@@ -15,8 +14,8 @@ Recent changes:
 
 Next steps:
 
-- Phase 8: Implement intercept/reposition/regroup intents with deterministic scorers and executors.
-- Phase 9: Add scenario-driven docs/tests (escort swap, artillery standoff) plus overlay capture flows.
-- Phase 10: Wire perf harness + AI toggle coverage into CI before considering flag-on by default.
+- Capture HUD overlay screenshots that illustrate intercept/reposition/regroup/bomber pursuit states for docs/QA follow-ups.
+- Socialize the AI V2 rollout playbook with QA/ops, capture overlay screenshots for docs, and plan a dry-run with `AI_V2_DEFAULT=on`.
+- Continue monitoring perf budget regressions as we scale ship counts; consider caching nearest-enemy queries if budgets tighten.
 
-Updated: 2025-09-23
+- Updated: 2025-09-25
