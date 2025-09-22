@@ -20,6 +20,7 @@ Key details
 - `runEmbeddedTurrets` centralizes the legacy turret firing path so both AI modes share it; dedicated turret entities remain unaffected.
 - Movement uses pooled vectors (`TEMP_DIR`, `TEMP_POS`), and world clamping to maintain determinism.
 - Projectile spawning still respects `PROJECTILE_CONFIG`/`DEFAULT_PROJECTILE_CONFIG`; only the gating signal changed (AI command vs. distance check).
+- `__aiTestHooks` exports deterministic hooks (`updateDecisionSystem`, scorer helpers, `writeCommand`, `runLegacyShipBehavior`) so Vitest can exercise internals without widening the runtime API surface.
 
 Implementation notes
 
@@ -30,8 +31,10 @@ Implementation notes
 
 Follow-ups
 
-- Add deterministic Vitest coverage for the decision system (blackboard contents, escort assignment, tie-breaking) and regression tests verifying the legacy path when `config.ai.v2Enabled` is `false`.
+- Integration tests now live in `test/vitest/ai-*.spec.ts` (determinism, scorers, executors, legacy fallback). Keep them in sync when touching internals exposed via `__aiTestHooks`.
+- Phase 8: extend `selectIntent`/`writeCommand` to cover intercept/reposition/regroup flows and add matching Vitest coverage.
+- Phase 9: build deterministic scenario harness/golden logs before widening manual testing.
 - Consider caching ship lookups for `getShipById` or adding a spatial grid if 300+ ships make the O(N²) nearest-enemy cache too expensive.
-- A debug overlay (intent, score deltas, desired band error) would help tune profiles during rollout.
+- Monitor the HUD `AiDebugOverlay` for perf impact; if needed, add throttling knobs or sampling controls.
 
-Updated: 2025-09-22
+Updated: 2025-09-23

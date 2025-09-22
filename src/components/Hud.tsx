@@ -3,7 +3,7 @@ import type { ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import type React from 'react';
-// debug overlay removed
+import { AiDebugOverlay } from './AiDebugOverlay.js';
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -23,6 +23,7 @@ export function Hud(): React.ReactElement {
 
   return (
     <div className="hud">
+      <AiDebugOverlay />
       <div className="hud-panel">
         <h2>Space Auto Battler</h2>
         <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
@@ -32,7 +33,6 @@ export function Hud(): React.ReactElement {
         </div>
         <p className="hint">Ships automatically maneuver, acquire targets, and fire when in range.</p>
       </div>
-      {/* debug overlay removed */}
     </div>
   );
 }
