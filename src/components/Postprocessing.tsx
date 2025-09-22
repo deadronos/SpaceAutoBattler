@@ -5,12 +5,13 @@ import {
   RenderPass,
   EffectPass,
   BloomEffect,
+  SelectiveBloomEffect,
   FXAAEffect,
   KernelSize,
-  ToneMappingEffect,
   BlendFunction,
 } from 'postprocessing';
 import { WebGLRenderer, Scene, Camera } from 'three';
+import { useBloomContext } from '../renderer/BloomProvider.js';
 
 type Props = {
   enabled?: boolean;
@@ -20,6 +21,7 @@ export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
+  const bloomCtx = useBloomContext();
 
   useEffect(() => {
     // Only create the composer when postprocessing is enabled. This avoids
@@ -46,20 +48,30 @@ export function Postprocessing({ enabled = false }: Props): null {
       const renderPass = new RenderPass(scene as unknown as Scene, camera as unknown as Camera);
       composer.addPass(renderPass);
 
-      // Bloom effect
-      const bloom = new BloomEffect({
-        blendFunction: BlendFunction.SCREEN,
-        kernelSize: KernelSize.SMALL,
-        luminanceThreshold: 0.85,
-        luminanceSmoothing: 0.1,
-        intensity: 1.0,
-      });
+      // Selective bloom: only affect registered selection
+      const bloom = new SelectiveBloomEffect(
+        scene as unknown as Scene,
+        camera as unknown as Camera,
+        (bloomCtx?.selection ?? new Set()) as any,
+      );
+      // Configure bloom parameters
+      try {
+        (bloom as any).blendMode.blendFunction = BlendFunction.SCREEN;
+        (bloom as any).kernelSize = KernelSize.SMALL;
+        (bloom as any).intensity = 1.0;
+        const lumMat = (bloom as any).luminanceMaterial;
+        if (lumMat) {
+          lumMat.threshold = 0.8;
+          lumMat.smoothing = 0.1;
+        }
+        (bloom as any).mipmapBlur = true;
+      } catch {}
 
       // FXAA
       const fxaa = new FXAAEffect();
 
       // Compose effects into a single pass (order matters: bloom before fxaa)
-      const effectPass = new EffectPass(camera as unknown as Camera, bloom, fxaa);
+  const effectPass = new EffectPass(camera as unknown as Camera, bloom, fxaa);
       effectPass.renderToScreen = true;
       composer.addPass(effectPass);
 
@@ -75,7 +87,7 @@ export function Postprocessing({ enabled = false }: Props): null {
       fxaaRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, bloomCtx ? bloomCtx.selection : null, gl, scene, camera]);
 
   useEffect(() => {
     const composer = composerRef.current;

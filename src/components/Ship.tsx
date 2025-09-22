@@ -10,6 +10,7 @@ import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
 import { useOptionalGameState } from '../game/context.js';
+import { useBloomRegistration } from '../renderer/BloomProvider.js';
 
 export function resolveModelPath(modelKey?: string): string {
   const key = (modelKey ?? 'fighter') as keyof typeof SHIP_MODEL_PATHS;
@@ -102,6 +103,7 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
 
 function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity; radius?: number; hullMaterialsRef?: React.MutableRefObject<Array<{ material: any; originalColor: Color }>> }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
+  useBloomRegistration(meshRef, true);
   const state = useOptionalGameState();
   const [rippleTick, setRippleTick] = useState(0);
   const lastCountRef = useRef<number>(0);

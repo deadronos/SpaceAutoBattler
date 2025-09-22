@@ -5,9 +5,11 @@ import type { ProjectileEntity } from '../types/index.js';
 import type React from 'react';
 import { getMaterial } from '../renderer/materialRegistry.js';
 import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../config/projectiles.js';
+import { useBloomRegistration } from '../renderer/BloomProvider.js';
 
 export function ProjectileObject({ entity }: { entity: ProjectileEntity }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
+  useBloomRegistration(meshRef, true);
 
   useFrame(() => {
     const mesh = meshRef.current;
