@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 
@@ -92,6 +93,9 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3) {
       range: 180,
       speed: 30,
       bulletType: 'bullet:laser',
+      velocity: new Vector3(0, 0, 0),
+      angularVelocity: 0,
+      motion: createDefaultMotionStats(),
     },
     model: 'fighter',
     ai: {

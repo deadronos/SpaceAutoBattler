@@ -19,6 +19,7 @@ import { AI_CONFIG, clampToWorld } from './config.js';
 import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../config/projectiles.js';
 import { resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
+import { updateMotionSystem } from './systems/motion.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -749,6 +750,10 @@ export function updateGame(state: GameState, delta: number): void {
 
   prepareShips(state, delta);
   updateTurrets(state, delta);
+  
+  // Apply physics-based motion after AI decisions but before physics step
+  updateMotionSystem(state, delta);
+  
   advanceProjectiles(state, delta);
 
   state.physicsWorld.step(state.eventQueue);

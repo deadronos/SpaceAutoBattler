@@ -8,6 +8,7 @@ import type {
   Team,
   TeamPosture,
 } from '../types/index.js';
+import { createDefaultMotionStats } from './ships.js';
 import { SeededRng } from '../utils/rng.js';
 import { AI_CONFIG, clampToWorld } from './config.js';
 import { runDecisionTick } from './systems.js';
@@ -217,6 +218,9 @@ function createHarnessShip(
       range: spec.range ?? 260,
       speed: spec.speed ?? 40,
       bulletType: spec.bulletType ?? 'bullet:laser',
+      velocity: new Vector3(0, 0, 0),
+      angularVelocity: 0,
+      motion: createDefaultMotionStats(),
     },
     model: hull,
     ai,

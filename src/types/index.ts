@@ -39,6 +39,12 @@ export interface ShipComponent {
   speed: number;
   /** Key for the projectile material/type this ship fires (e.g. 'bullet:laser') */
   bulletType?: string;
+  /** Current linear velocity in world space (units/s). */
+  velocity: Vector3;
+  /** Current angular velocity in radians per second around Y axis. */
+  angularVelocity: number;
+  /** Motion characteristics for physics-based movement. */
+  motion: MotionStats;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -279,6 +285,28 @@ export interface ShipStats {
   bulletType?: string;
   /** Optional default turret loadout for this hull. */
   turrets?: TurretSpec[];
+  /** Motion characteristics for physics-based movement. */
+  motion: MotionStats;
+}
+
+/** Motion characteristics for physics-based ship movement. */
+export interface MotionStats {
+  /** Ship mass for inertia calculations (arbitrary units). */
+  mass: number;
+  /** Maximum linear speed in units per second. */
+  maxSpeed: number;
+  /** Maximum linear acceleration in units per second squared. */
+  linearAcceleration: number;
+  /** Linear velocity damping factor (0 = no damping, higher = more damping). */
+  linearDamping: number;
+  /** Maximum angular turn rate in radians per second. */
+  maxTurnRate: number;
+  /** Maximum angular acceleration in radians per second squared. */
+  angularAcceleration: number;
+  /** Angular velocity damping factor (0 = no damping, higher = more damping). */
+  angularDamping: number;
+  /** Optional maximum lateral acceleration for strafe movement (units/s²). */
+  maxLateralAcceleration?: number;
 }
 
 /** Parameters for a shield ripple kick emitted on impact. */
