@@ -744,6 +744,11 @@ function writeCommand(
 }
 
 export function updateGame(state: GameState, delta: number): void {
+  const sim = state.simulation;
+  sim.lastTickStart = state.time;
+  sim.lastTickDuration = delta;
+  sim.lastTickIndex += 1;
+
   state.time += delta;
 
   updateDecisionSystem(state, delta);

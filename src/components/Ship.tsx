@@ -1,11 +1,17 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
-import { Box3, Color, Sphere, type Group, type Mesh } from 'three';
+import { Box3, Color, MathUtils, Quaternion, Sphere, Vector3, type Group, type Mesh } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
 import type { ShipEntity, ShipHull } from '../types/index.js';
-import { getShieldVisuals, HULL_TINT, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../config/renderer.js';
+import {
+  getShieldVisuals,
+  HULL_TINT,
+  TEAM_COLORS,
+  SHIELD_RIPPLE_TUNING,
+  resolveRendererMotionConfig,
+} from '../config/renderer.js';
 import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
@@ -20,6 +26,37 @@ export function resolveModelPath(modelKey?: string): string {
 
 export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactElement {
   const group = useRef<Group>(null);
+  const state = useOptionalGameState();
+
+  const smoothing = useMemo(() => {
+    const cfg = resolveRendererMotionConfig(entity.ship.motion);
+    return {
+      ...cfg,
+      positionLerp: MathUtils.clamp(cfg.positionLerp, 0, 1),
+      rotationSlerp: MathUtils.clamp(cfg.rotationSlerp, 0, 1),
+      bankLerp: MathUtils.clamp(cfg.bankLerp, 0, 1),
+      teleportThresholdSq: Math.max(1, cfg.teleportDistance * cfg.teleportDistance),
+    };
+  }, [entity.ship.motion]);
+
+  const prevSimPosition = useMemo(() => new Vector3(), []);
+  const prevSimRotation = useMemo(() => new Quaternion(), []);
+  const currSimPosition = useMemo(() => new Vector3(), []);
+  const currSimRotation = useMemo(() => new Quaternion(), []);
+  const visualPosition = useMemo(() => new Vector3(), []);
+  const visualRotation = useMemo(() => new Quaternion(), []);
+  const interpPosition = useMemo(() => new Vector3(), []);
+  const interpRotation = useMemo(() => new Quaternion(), []);
+  const bankQuaternion = useMemo(() => new Quaternion(), []);
+  const forwardAxis = useMemo(() => new Vector3(0, 0, 1), []);
+  const finalRotation = useMemo(() => new Quaternion(), []);
+  const thrusterColorRef = useMemo(() => new Color(), []);
+  const bankValueRef = useRef(0);
+  const lastTickIndexRef = useRef(-1);
+
+  const thrusterMaterialsRef = useRef<
+    Array<{ material: any; baseEmissive?: Color; baseIntensity?: number }>
+  >([]);
 
   // Resolve path via helper to ensure it's always defined.
   const modelPath = resolveModelPath(entity.model);
@@ -29,11 +66,23 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   const gltf = hasValidPath ? (useGLTF(modelPath) as GLTF) : null;
   const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf?.scene]);
 
+  useLayoutEffect(() => {
+    prevSimPosition.copy(entity.transform.position);
+    currSimPosition.copy(entity.transform.position);
+    visualPosition.copy(entity.transform.position);
+    prevSimRotation.copy(entity.transform.rotation);
+    currSimRotation.copy(entity.transform.rotation);
+    visualRotation.copy(entity.transform.rotation);
+    bankValueRef.current = 0;
+    lastTickIndexRef.current = state?.simulation.lastTickIndex ?? 0;
+  }, [entity.id, state?.simulation.lastTickIndex]);
+
   // Register engine-like meshes for selective bloom when available
   const bloomCtx = useBloomContext();
   useEffect(() => {
-    if (!scene || !bloomCtx) return;
+    if (!scene) return;
     const engines: any[] = [];
+    const thrusters: Array<{ material: any; baseEmissive?: Color; baseIntensity?: number }> = [];
     const nameMatch = (s: string | undefined) => {
       if (!s) return false;
       const n = s.toLowerCase();
@@ -41,12 +90,26 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     };
     scene.traverse((obj: any) => {
       if (obj && obj.isMesh) {
-        if (nameMatch(obj.name)) engines.push(obj);
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        if (nameMatch(obj.name)) {
+          engines.push(obj);
+          mats.forEach((m: any) => {
+            if (!m) return;
+            thrusters.push({
+              material: m,
+              baseEmissive:
+                m.emissive && typeof m.emissive.clone === 'function' ? m.emissive.clone() : undefined,
+              baseIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : undefined,
+            });
+          });
+        }
       }
     });
-    engines.forEach((o) => bloomCtx.register(o));
+    thrusterMaterialsRef.current = thrusters;
+    if (bloomCtx) engines.forEach((o) => bloomCtx.register(o));
     return () => {
-      engines.forEach((o) => bloomCtx.unregister(o));
+      if (bloomCtx) engines.forEach((o) => bloomCtx.unregister(o));
+      thrusterMaterialsRef.current = [];
     };
   }, [scene, bloomCtx]);
 
@@ -95,9 +158,93 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   useFrame(() => {
     const ref = group.current;
     if (!ref) return;
-    ref.position.copy(entity.transform.position);
-    ref.quaternion.copy(entity.transform.rotation);
+
+    const sim = state?.simulation;
+    const tickIndex = sim?.lastTickIndex ?? lastTickIndexRef.current;
+
+    if (tickIndex !== lastTickIndexRef.current) {
+      prevSimPosition.copy(currSimPosition);
+      prevSimRotation.copy(currSimRotation);
+      currSimPosition.copy(entity.transform.position);
+      currSimRotation.copy(entity.transform.rotation);
+      lastTickIndexRef.current = tickIndex;
+
+      const distSq = prevSimPosition.distanceToSquared(currSimPosition);
+      if (distSq > smoothing.teleportThresholdSq) {
+        prevSimPosition.copy(currSimPosition);
+        prevSimRotation.copy(currSimRotation);
+        visualPosition.copy(currSimPosition);
+        visualRotation.copy(currSimRotation);
+      }
+    } else {
+      currSimPosition.copy(entity.transform.position);
+      currSimRotation.copy(entity.transform.rotation);
+    }
+
+    const alpha = sim ? MathUtils.clamp(sim.alpha, 0, 1) : 1;
+    interpPosition.copy(prevSimPosition).lerp(currSimPosition, alpha);
+    if (smoothing.positionLerp <= 0) {
+      visualPosition.copy(interpPosition);
+    } else {
+      visualPosition.lerp(interpPosition, smoothing.positionLerp);
+    }
+
+    interpRotation.copy(prevSimRotation).slerp(currSimRotation, alpha);
+    if (smoothing.rotationSlerp <= 0) {
+      visualRotation.copy(interpRotation);
+    } else {
+      visualRotation.slerp(interpRotation, smoothing.rotationSlerp);
+    }
+
+    const motion = entity.ship.motion;
+    const bankFactor = motion.visualBankFactor ?? smoothing.bankFactor;
+    const maxBankDeg = motion.maxBankDeg ?? smoothing.maxBankDeg;
+    let bankDeg = entity.ship.angularVelocity * bankFactor;
+
+    if (motion.maxLateralAcceleration && motion.maxLateralAcceleration > 0) {
+      const lateralRatio = MathUtils.clamp(
+        entity.ship.lateralAcceleration / motion.maxLateralAcceleration,
+        -1,
+        1,
+      );
+      bankDeg += lateralRatio * maxBankDeg * 0.5;
+    }
+
+    const targetBankRad = MathUtils.degToRad(MathUtils.clamp(bankDeg, -maxBankDeg, maxBankDeg));
+    bankValueRef.current =
+      smoothing.bankLerp <= 0
+        ? targetBankRad
+        : MathUtils.lerp(bankValueRef.current, targetBankRad, smoothing.bankLerp);
+
+    finalRotation.copy(visualRotation);
+    const bankRoll = bankValueRef.current;
+    if (Math.abs(bankRoll) > 1e-4) {
+      bankQuaternion.setFromAxisAngle(forwardAxis, -bankRoll);
+      finalRotation.multiply(bankQuaternion);
+    }
+
+    ref.position.copy(visualPosition);
+    ref.quaternion.copy(finalRotation);
     ref.scale.setScalar(entity.transform.scale);
+
+    const thrusters = thrusterMaterialsRef.current;
+    if (thrusters.length > 0) {
+      const throttle = MathUtils.clamp(entity.ai?.command?.thrust ?? 0, 0, 1);
+      const base = smoothing.thrusterIntensity.base;
+      const range = smoothing.thrusterIntensity.range;
+      for (const entry of thrusters) {
+        const mat = entry.material;
+        if (!mat) continue;
+        const baseIntensity = entry.baseIntensity ?? base;
+        if (typeof mat.emissiveIntensity === 'number') {
+          mat.emissiveIntensity = baseIntensity + range * throttle;
+        }
+        if (entry.baseEmissive && mat.emissive && typeof mat.emissive.copy === 'function') {
+          thrusterColorRef.copy(entry.baseEmissive).multiplyScalar(1 + throttle * 0.6);
+          mat.emissive.copy(thrusterColorRef);
+        }
+      }
+    }
   });
 
   // Ship object no longer renders turret gizmos or flashes; these are handled by TurretObject or projectile visuals.

@@ -47,6 +47,15 @@ function createState(): GameState {
     rng: {} as never,
     paused: false,
     timeScale: 1,
+    simulation: {
+      step: 1 / 20,
+      accumulator: 0,
+      maxSubSteps: 5,
+      alpha: 0,
+      lastTickIndex: 0,
+      lastTickStart: 0,
+      lastTickDuration: 1 / 20,
+    },
   } as unknown as GameState;
 }
 
@@ -106,6 +115,7 @@ function createShip(
       bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
       angularVelocity: 0,
+      lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
     model: 'fighter',

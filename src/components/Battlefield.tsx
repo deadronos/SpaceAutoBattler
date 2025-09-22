@@ -106,20 +106,43 @@ function BattlefieldSystems(): React.ReactElement {
     state.paused = paused;
     state.timeScale = timeScale;
 
-    if (paused) return;
-    const scaled = Math.min(delta * Math.max(timeScale, 0), 0.1);
+    if (paused) {
+      state.simulation.alpha = 0;
+      return;
+    }
+    const sim = state.simulation;
+    const step = sim.step;
+    const maxSteps = Math.max(1, sim.maxSubSteps);
+    const scaled = Math.max(0, delta * Math.max(timeScale, 0));
 
-    // Keep Rapier step in sync with visual rate; use integration parameters if available
+    if (step <= 0) {
+      updateGame(state, scaled);
+      sim.alpha = 0;
+      return;
+    }
+
+    // Prevent unbounded accumulation by clamping to a few steps worth of time.
+    const maxAccum = step * maxSteps;
+    sim.accumulator = Math.min(sim.accumulator + Math.min(scaled, maxAccum), maxAccum);
+
+    // Keep Rapier step aligned with the fixed time step when available.
     try {
       const params = (state.physicsWorld as any).integrationParameters;
       if (params && typeof params.dt === 'number') {
-        params.dt = scaled;
+        params.dt = step;
       }
     } catch {
       /* ignore */
     }
 
-    updateGame(state, scaled);
+    let steps = 0;
+    while (sim.accumulator >= step && steps < maxSteps) {
+      updateGame(state, step);
+      sim.accumulator -= step;
+      steps += 1;
+    }
+
+    sim.alpha = step > 0 ? Math.min(sim.accumulator / step, 1) : 0;
   });
   return <></>;
 }

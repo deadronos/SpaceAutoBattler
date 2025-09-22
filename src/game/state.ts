@@ -40,6 +40,15 @@ export async function createGameState(): Promise<GameState> {
     rng: new SeededRng(1337),
     paused: false,
     timeScale: 1,
+    simulation: {
+      step: 1 / 20,
+      accumulator: 0,
+      maxSubSteps: 5,
+      alpha: 0,
+      lastTickIndex: 0,
+      lastTickStart: 0,
+      lastTickDuration: 1 / 20,
+    },
     ai: {
       enabled: AI_CONFIG.v2Enabled,
       tickInterval: 1 / AI_CONFIG.tickRateHz,
