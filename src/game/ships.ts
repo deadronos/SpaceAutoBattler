@@ -1,5 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import type {
+  AIState,
   GameState,
   ShipBlueprint,
   ShipEntity,
@@ -9,6 +10,7 @@ import type {
   TurretEntity,
 } from '../types/index.js';
 import { registerTurret } from './turretRegistry.js';
+import { getDefaultProfileId } from './aiProfiles.js';
 
 export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   fighter: {
@@ -314,6 +316,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       bulletType: t.bulletType,
       cooldown: t.fireRate * state.rng.next(),
     })),
+    ai: createInitialAIState(state, blueprint.hull),
   };
 
   const registered = state.world.createEntity(entity) as ShipEntity;
@@ -371,4 +374,27 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     }
   });
   return registered;
+}
+
+function createInitialAIState(state: GameState, hull: ShipHull): AIState {
+  const profileId = getDefaultProfileId(hull);
+  const heading = new Vector3(0, 0, 1);
+  const tickInterval = state.ai.tickInterval || 0.1;
+  return {
+    profileId,
+    intent: 'Attack',
+    nextThinkAt: 0,
+    cooldowns: {
+      dodgeAt: 0,
+      burstAt: 0,
+    },
+    lod: 1,
+    traitSeed: Math.floor(state.rng.next() * 0x7fffffff),
+    command: {
+      heading,
+      thrust: 0,
+      firePrimary: false,
+      ttl: tickInterval,
+    },
+  };
 }

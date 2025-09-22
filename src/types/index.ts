@@ -112,6 +112,81 @@ export interface MuzzleFlash {
   bulletType?: string;
 }
 
+export type EntityId = number;
+
+export type AIIntent =
+  | 'Attack'
+  | 'Kite'
+  | 'Escort'
+  | 'Intercept'
+  | 'Flee'
+  | 'Regroup'
+  | 'Reposition';
+
+export interface AICommand {
+  heading: Vector3;
+  thrust: number;
+  firePrimary: boolean;
+  orbit?: number;
+  targetId?: EntityId;
+  ttl: number;
+}
+
+export interface AIState {
+  profileId: string;
+  intent: AIIntent;
+  nextThinkAt: number;
+  cooldowns: {
+    dodgeAt: number;
+    burstAt: number;
+  };
+  lod: 0 | 1 | 2;
+  traitSeed: number;
+  targetId?: EntityId;
+  lastScore?: number;
+  command: AICommand;
+}
+
+export interface BehaviorProfile {
+  desiredRange: readonly [number, number];
+  orbit: number;
+  aggression: number;
+  patience: number;
+  dodgeFreq: number;
+  classBias: Partial<Record<ShipHull, number>>;
+  style: 'brawler' | 'kiter' | 'artillery' | 'escort';
+  gates?: {
+    ammoMin?: number;
+    hpRetreatPct?: number;
+  };
+}
+
+export type TeamPosture = 'aggressive' | 'hold' | 'retreat';
+
+export interface AIBlackboard {
+  tickIndex: number;
+  teamPosture: Record<Team, TeamPosture>;
+  allyCentroid: Record<Team, Vector3>;
+  nearestEnemy: Map<EntityId, EntityId>;
+  threatToVip: Map<EntityId, EntityId>;
+  tmpVectors: Vector3[];
+}
+
+export interface AITeamAssignments {
+  escorts: Map<EntityId, EntityId>;
+}
+
+export interface AIManagerState {
+  enabled: boolean;
+  tickInterval: number;
+  maxPerTick: number;
+  accumulator: number;
+  tickIndex: number;
+  cursor: number;
+  slices: number;
+  assignments: AITeamAssignments;
+}
+
 export interface GameEntity extends TransformComponent {
   id: number;
   rigidBody: RigidBody;
@@ -119,6 +194,7 @@ export interface GameEntity extends TransformComponent {
   ship?: ShipComponent;
   projectile?: ProjectileComponent;
   turret?: TurretComponent;
+  ai?: AIState;
   /** Unit direction vector used for projectile integration. */
   direction?: Vector3;
   /** Identifier of the model to render for this entity. */
@@ -157,6 +233,8 @@ export interface GameState {
   paused: boolean;
   /** Global time scale multiplier (1 = real-time). */
   timeScale: number;
+  ai: AIManagerState;
+  blackboard: AIBlackboard;
 }
 
 export interface ShipBlueprint {
