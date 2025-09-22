@@ -4,6 +4,12 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-24: Implemented AI V2 Phase 8–10 deliverables — added intercept/reposition/regroup scoring + executors, authored scenario harness + golden log tests, wired `npm run test:ci`, documented rollout playbook, and refreshed memory/tasks/docs accordingly.
+- 2025-09-25: Expanded AI scenario harness coverage — added bomber intercept and artillery retreat fixtures + tests, updated memory/tasks, and documented new regression targets.
+- 2025-09-24: Implemented AI V2 Phase 8–10 deliverables — added intercept/reposition/regroup scoring + executors, authored scenario harness + golden log tests, wired `npm run test:ci`, documented rollout playbook, and refreshed memory/tasks/docs accordingly.
+- 2025-09-23: Extended AI V2 plan with Phases 8–10 (intercept/regroup intents, scenario harness, rollout automation) and created new memory tasks to track follow-up work.
+- 2025-09-22: Completed AI V2 validation pass — added determinism/scorer/executor/legacy Vitest suites, HUD debug overlay toggles, perf budget script, and refreshed plan/docs.
+- 2025-09-22: Completed AI V2 traits + metrics pass — added `aiTraits` helper, trait-aware scoring, runtime metrics counters, documentation, and Vitest coverage.
 - 2025-09-22: Documented AI v2 scaffolding (state.ai, blackboard, decision system, aiProfiles) and refreshed active context/progress notes.
 - 2025-09-21: Created/verified core memory files (projectbrief.md, productContext.md, activeContext.md, techContext.md, core-*.md)
 - 2025-09-21: Added `systemPatterns.md` to capture architecture guidance and reusable patterns.

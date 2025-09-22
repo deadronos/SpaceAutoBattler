@@ -2,20 +2,20 @@
 
 Current focuses (short-term):
 
-- Land AI v2 skeleton: deterministic decision system, blackboard scheduling, and profile-driven ship commands behind feature flag.
-- Validate gameplay after 2025 rewrite (main-thread Rapier + R3F + Miniplex) while preserving legacy behavior when AI v2 is disabled.
-- Improve unit test coverage for AI intent scoring/movement and projectile resolution.
+- Monitor AI V2 validation suites (determinism, scoring, executors, intercept/regroup selection, scenario harness, legacy fallback) and keep them green during feature work.
+- Maintain the expanded AI scenario harness fixtures (escort, bomber intercept, artillery retreat) while keeping rollout playbook + `npm run test:ci` aligned.
+- Gather feedback on the HUD debug overlay and extend documentation with practical tuning scenarios.
 
 Recent changes:
 
-- Added `GameState.ai` manager + blackboard scaffolding seeded from `config.ai` (v2 disabled by default).
-- Implemented `updateDecisionSystem` in `systems.ts`, per-ship AI components, and new behavior profiles (`src/game/aiProfiles.ts`).
-- Refactored `prepareShips` to execute AI commands while retaining legacy nearest-enemy fallback; embedded turret logic shared across both paths.
+- Added Vitest suites for determinism (`ai-determinism`), scorer outputs (`ai-scorer`), executor behaviors (`ai-executor`), and legacy parity (`ai-regression`).
+- Authored `scripts/perf/assert-ai-budget.ts` with `npm run perf:ai-budget` to guard the 300-ship tick budget.
+- Introduced HUD `AiDebugOverlay`, UI toggles, and refreshed `docs/ai-v2-overview.md` with validation details.
 
 Next steps:
 
-- Author deterministic Vitest suites for AI scoring (posture/escort influence) and confirm command streams remain stable per seed.
-- Wire a UI/config toggle for QA to enable/disable AI v2 at runtime (if not already exposed).
-- Extend perf harness to measure AI tick budget under 300-ship load with new scheduler.
+- Capture HUD overlay screenshots that illustrate intercept/reposition/regroup/bomber pursuit states for docs/QA follow-ups.
+- Socialize the AI V2 rollout playbook with QA/ops, capture overlay screenshots for docs, and plan a dry-run with `AI_V2_DEFAULT=on`.
+- Continue monitoring perf budget regressions as we scale ship counts; consider caching nearest-enemy queries if budgets tighten.
 
-Updated: 2025-09-22
+- Updated: 2025-09-25

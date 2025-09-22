@@ -11,6 +11,7 @@ import type {
 } from '../types/index.js';
 import { registerTurret } from './turretRegistry.js';
 import { getDefaultProfileId } from './aiProfiles.js';
+import { generateTraitsFromSeed } from './aiTraits.js';
 
 export const SHIP_STATS: Record<ShipHull, ShipStats> = {
   fighter: {
@@ -22,7 +23,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     damage: 8,
     fireRate: 0.9,
     projectileSpeed: 28,
-    range: 180,
+    range: 220,
     speed: 14,
     scale: 1,
     bulletType: 'bullet:laser',
@@ -46,7 +47,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 6,
         fireRate: 1.0,
         projectileSpeed: 24,
-        range: 180,
+        range: 220,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.6,
         maxYaw: Math.PI * 0.6,
@@ -59,7 +60,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 6,
         fireRate: 1.0,
         projectileSpeed: 24,
-        range: 180,
+        range: 220,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.6,
         maxYaw: Math.PI * 0.6,
@@ -87,7 +88,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 8,
         fireRate: 1.2,
         projectileSpeed: 22,
-        range: 220,
+        range: 260,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.5,
         maxYaw: Math.PI * 0.5,
@@ -100,7 +101,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 8,
         fireRate: 1.2,
         projectileSpeed: 220,
-        range: 220,
+        range: 260,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.5,
         maxYaw: Math.PI * 0.5,
@@ -113,7 +114,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 8,
         fireRate: 1.2,
         projectileSpeed: 22,
-        range: 220,
+        range: 260,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.9,
         maxYaw: Math.PI * 0.9,
@@ -131,7 +132,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     damage: 22,
     fireRate: 1.8,
     projectileSpeed: 20,
-    range: 300,
+    range: 360,
     speed: 7,
     scale: 1,
     bulletType: 'bullet:heavy',
@@ -141,7 +142,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 10,
         fireRate: 1.4,
         projectileSpeed: 20,
-        range: 260,
+        range: 280,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.6,
         maxYaw: Math.PI * 0.6,
@@ -154,7 +155,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 10,
         fireRate: 1.4,
         projectileSpeed: 20,
-        range: 260,
+        range: 280,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.6,
         maxYaw: Math.PI * 0.6,
@@ -167,7 +168,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 10,
         fireRate: 1.6,
         projectileSpeed: 20,
-        range: 260,
+        range: 280,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.7,
         maxYaw: Math.PI * 0.7,
@@ -180,7 +181,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         damage: 10,
         fireRate: 1.6,
         projectileSpeed: 20,
-        range: 260,
+        range: 280,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.7,
         maxYaw: Math.PI * 0.7,
@@ -198,7 +199,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     damage: 28,
     fireRate: 2.2,
     projectileSpeed: 18,
-    range: 340,
+    range: 360,
     speed: 5,
     scale: 1,
     bulletType: 'bullet:ion',
@@ -380,6 +381,7 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
   const profileId = getDefaultProfileId(hull);
   const heading = new Vector3(0, 0, 1);
   const tickInterval = state.ai.tickInterval || 0.1;
+  const traitSeed = Math.max(1, Math.floor(state.rng.next() * 0x7fffffff));
   return {
     profileId,
     intent: 'Attack',
@@ -389,7 +391,8 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
       burstAt: 0,
     },
     lod: 1,
-    traitSeed: Math.floor(state.rng.next() * 0x7fffffff),
+    traitSeed,
+    traits: generateTraitsFromSeed(traitSeed),
     command: {
       heading,
       thrust: 0,
