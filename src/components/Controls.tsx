@@ -21,6 +21,8 @@ export function Controls(): React.ReactElement {
       <button onClick={() => state && resetGame(state)}>Reset</button>
       <button onClick={() => addShip('red')}>+ Red</button>
       <button onClick={() => addShip('blue')}>+ Blue</button>
+      {/* Postprocessing toggle (off by default) */}
+      <PostprocessingToggle />
       <div className="speed">
         <label htmlFor="speedSelect">Speed:</label>
         <select
@@ -39,5 +41,15 @@ export function Controls(): React.ReactElement {
         </select>
       </div>
     </div>
+  );
+}
+
+function PostprocessingToggle(): React.ReactElement {
+  const enabled = useUiStore((s) => s.postprocessingEnabled);
+  const toggle = useUiStore((s) => s.togglePostprocessing);
+  return (
+    <button aria-label={`Postprocessing ${enabled ? 'on' : 'off'}`} onClick={toggle} title="Toggle postprocessing (bloom/FXAA)">
+      {enabled ? 'PP: On' : 'PP: Off'}
+    </button>
   );
 }

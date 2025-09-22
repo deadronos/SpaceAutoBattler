@@ -39,6 +39,8 @@ export function Battlefield(): React.ReactElement {
         <TurretsLayer archetype={state.queries.turrets} />
         <ProjectilesLayer archetype={state.queries.projectiles} />
       </Suspense>
+    {/* Postprocessing temporarily disabled: enabling here caused rendering issues in some builds.
+      Postprocessing component remains in the codebase for a future lazy-loaded implementation. */}
       <BattlefieldSystems />
       <StarsField />
       {/* Drei helpers for navigation and orientation */}
