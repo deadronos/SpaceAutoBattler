@@ -51,6 +51,15 @@ export async function createGameState(): Promise<GameState> {
       assignments: {
         escorts: new Map(),
       },
+      metrics: {
+        totalDecisions: 0,
+        totalSkipped: 0,
+        budgetHits: 0,
+        lastDecisions: 0,
+        lastSkipped: 0,
+        lastSliceSize: 0,
+        lastTotalShips: 0,
+      },
     },
     blackboard: {
       tickIndex: 0,

@@ -4,6 +4,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
+- _(none)_
+
 ## Completed
 
 - Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress) — verified on 2025-09-21 by automated agent
@@ -13,6 +15,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) Implement Miniplex + Zustand Integration - Completed comprehensive implementation with lifecycle hooks, consumer replacement, and UI store
 
 - [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) AI V2 Skeleton & Blackboard - Added GameState.ai manager, decision scheduler, behavior profiles, and refactored ship prep to honor the feature flag.
+- [TASK103](COMPLETED/TASK103-ai-traits.md) AI Trait Variance & Determinism - Added trait multipliers, trait-aware scoring, and Vitest coverage.
+- [TASK104](COMPLETED/TASK104-ai-metrics.md) AI Metrics Instrumentation & Tooling - Added AI manager metrics, docs, and memory updates.
 
 - Align docs and memory with 2025 rewrite - Updated `llms.txt`, `AGENTS.md`, `.github/copilot-instructions.md`, and memory files to match new src layout (R3F + Miniplex + Rapier on main thread).
 

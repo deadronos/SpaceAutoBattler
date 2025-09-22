@@ -2,6 +2,7 @@ import { Quaternion, Vector3 } from 'three';
 import type {
   AIIntent,
   AIState,
+  AITraits,
   BehaviorProfile,
   GameEntity,
   GameState,
@@ -17,6 +18,7 @@ import { destroyEntity } from './state.js';
 import { AI_CONFIG, clampToWorld } from './config.js';
 import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../config/projectiles.js';
 import { resolveBehaviorProfile } from './aiProfiles.js';
+import { generateTraitsFromSeed } from './aiTraits.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -49,6 +51,11 @@ function updateDecisionSystem(state: GameState, delta: number): void {
       manager.assignments.escorts.clear();
       state.blackboard.nearestEnemy.clear();
       state.blackboard.threatToVip.clear();
+      const metrics = manager.metrics;
+      metrics.lastDecisions = 0;
+      metrics.lastSkipped = 0;
+      metrics.lastSliceSize = 0;
+      metrics.lastTotalShips = 0;
       continue;
     }
 
@@ -176,17 +183,38 @@ function runShipDecisions(
   const sliceSize = Math.min(manager.maxPerTick, Math.ceil(total / slices));
   const startIndex = manager.cursor % total;
 
+  const metrics = manager.metrics;
+  metrics.lastTotalShips = total;
+  metrics.lastSliceSize = sliceSize;
+  let decisions = 0;
+  let skipped = 0;
+
   for (let processed = 0; processed < sliceSize && processed < total; processed += 1) {
     const index = (startIndex + processed) % total;
     const ship = ships[index];
     const ai = ship.ai;
-    if (!ai) continue;
-    if (ai.nextThinkAt > manager.tickIndex) continue;
+    if (!ai) {
+      skipped += 1;
+      continue;
+    }
+    if (ai.nextThinkAt > manager.tickIndex) {
+      skipped += 1;
+      continue;
+    }
 
     evaluateShip(state, ship, ai, entityById);
+    decisions += 1;
   }
 
   manager.cursor = (startIndex + sliceSize) % total;
+
+  metrics.lastDecisions = decisions;
+  metrics.lastSkipped = skipped;
+  metrics.totalDecisions += decisions;
+  metrics.totalSkipped += skipped;
+  if (sliceSize < total) {
+    metrics.budgetHits += 1;
+  }
 }
 
 function evaluateShip(
@@ -196,6 +224,9 @@ function evaluateShip(
   entityById: Map<number, ShipEntity>,
 ): void {
   const profile = resolveBehaviorProfile(ai.profileId);
+  if (!ai.traits) {
+    ai.traits = generateTraitsFromSeed(ai.traitSeed);
+  }
   const blackboard = state.blackboard;
   const nearestEnemyId = blackboard.nearestEnemy.get(ship.id);
   const target = nearestEnemyId != null ? entityById.get(nearestEnemyId) ?? null : null;
@@ -226,18 +257,20 @@ function selectIntent(
   const candidates: IntentCandidate[] = [];
   const posture = state.blackboard.teamPosture[ship.ship.team];
 
-  const attackScore = scoreAttackIntent(ship, profile, primaryTarget, posture);
+  const traits = ai.traits;
+
+  const attackScore = scoreAttackIntent(ship, profile, primaryTarget, posture, traits);
   candidates.push({ intent: 'Attack', score: attackScore, target: primaryTarget });
 
-  const kiteScore = scoreKiteIntent(ship, profile, primaryTarget, posture);
+  const kiteScore = scoreKiteIntent(ship, profile, primaryTarget, posture, traits);
   candidates.push({ intent: 'Kite', score: kiteScore, target: primaryTarget });
 
   if (escortTarget) {
-    const escortScore = scoreEscortIntent(ship, profile, escortTarget, state);
+    const escortScore = scoreEscortIntent(ship, profile, escortTarget, state, traits);
     candidates.push({ intent: 'Escort', score: escortScore, target: escortTarget });
   }
 
-  const fleeScore = scoreFleeIntent(ship, profile, primaryTarget, posture);
+  const fleeScore = scoreFleeIntent(ship, profile, primaryTarget, posture, traits);
   candidates.push({ intent: 'Flee', score: fleeScore, target: primaryTarget });
 
   candidates.sort((a, b) => b.score - a.score);
@@ -249,6 +282,7 @@ function scoreAttackIntent(
   profile: BehaviorProfile,
   target: ShipEntity | null,
   posture: TeamPosture,
+  traits: AITraits,
 ): number {
   if (!target) return 0;
   const desiredMin = profile.desiredRange[0];
@@ -257,7 +291,8 @@ function scoreAttackIntent(
   const mid = (desiredMin + desiredMax) * 0.5;
   const bandError = Math.abs(dist - mid);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
-  let score = 1000 - bandError * 4 + profile.aggression * 120;
+  const aggression = profile.aggression * traits.aggression;
+  let score = 1000 - bandError * 4 + aggression * 120;
   score += hpRatio * 80;
   if (posture === 'aggressive') score += 90;
   if (posture === 'retreat') score -= 120;
@@ -271,6 +306,7 @@ function scoreKiteIntent(
   profile: BehaviorProfile,
   target: ShipEntity | null,
   posture: TeamPosture,
+  traits: AITraits,
 ): number {
   if (!target) return 100;
   const dist = ship.transform.position.distanceTo(target.transform.position);
@@ -278,7 +314,9 @@ function scoreKiteIntent(
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
   let score = 500 + (dist - desiredMax) * 3;
   score += (1 - hpRatio) * 200;
-  score += profile.patience * 80;
+  const patience = profile.patience * traits.patience;
+  score += patience * 80;
+  score += traits.dodge * 50;
   if (posture === 'retreat') score += 120;
   if (posture === 'aggressive') score -= 60;
   return Math.floor(score);
@@ -289,12 +327,14 @@ function scoreEscortIntent(
   profile: BehaviorProfile,
   escortTarget: ShipEntity,
   state: GameState,
+  traits: AITraits,
 ): number {
   const dist = ship.transform.position.distanceTo(escortTarget.transform.position);
   const threatId = state.blackboard.threatToVip.get(escortTarget.id);
   const threatWeight = threatId != null ? 180 : 0;
   const bandError = Math.abs(dist - profile.desiredRange[0]);
-  return Math.floor(700 - bandError * 2 + profile.patience * 90 + threatWeight);
+  const patience = profile.patience * traits.patience;
+  return Math.floor(700 - bandError * 2 + patience * 90 + threatWeight);
 }
 
 function scoreFleeIntent(
@@ -302,14 +342,19 @@ function scoreFleeIntent(
   profile: BehaviorProfile,
   target: ShipEntity | null,
   posture: TeamPosture,
+  traits: AITraits,
 ): number {
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
   const gate = profile.gates?.hpRetreatPct ?? 0.2;
-  if (hpRatio > gate && posture !== 'retreat') return 150;
+  const patience = profile.patience * traits.patience;
+  if (hpRatio > gate && posture !== 'retreat') return Math.floor(150 - patience * 40);
   const threat = target
     ? ship.transform.position.distanceTo(target.transform.position)
     : profile.desiredRange[1];
-  return Math.floor(400 + (gate - hpRatio) * 400 + Math.max(0, 300 - threat));
+  const nerve = 1 - Math.min(0.6, patience * 0.3);
+  const dodge = 1 + (traits.dodge - 1) * 0.5;
+  const base = 400 + (gate - hpRatio) * 400 * (1 + patience * 0.1);
+  return Math.floor((base + Math.max(0, 300 - threat) * dodge) * (1 + nerve * 0.25));
 }
 
 function tieBreak(ai: AIState, tickIndex: number, candidates: IntentCandidate[]): IntentCandidate {
