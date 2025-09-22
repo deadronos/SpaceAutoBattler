@@ -28,6 +28,10 @@ interface IntentCandidate {
 }
 
 function updateDecisionSystem(state: GameState, delta: number): void {
+  // Defensive: Some unit tests construct lightweight GameState stubs
+  // without initializing the AI manager or blackboard. In that case,
+  // the decision system should no-op to preserve legacy behavior.
+  if (!state.ai || !state.blackboard) return;
   const manager = state.ai;
   if (!manager.enabled) return;
   if (manager.tickInterval <= 0) return;
@@ -436,7 +440,8 @@ export function updateGame(state: GameState, delta: number): void {
 
 function prepareShips(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
-  const useAIV2 = state.ai.enabled;
+  // If AI manager is not present (tests with lightweight stubs), stay on legacy behavior.
+  const useAIV2 = !!state.ai?.enabled;
 
   for (const ship of ships) {
     ship.ship.cooldown = Math.max(0, ship.ship.cooldown - delta);
