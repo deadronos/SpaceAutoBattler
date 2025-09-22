@@ -77,44 +77,58 @@ Use shared scratch vectors to prevent allocations.
 - config.ai.v2Enabled (default false). When disabled, keep existing behavior. Add a UI toggle if useful for QA.
 - Phase rollout (below) ensures safe incremental merges with tests at each step.
 
-## Phased Tasks
+## Phased Tasks (implementation status)
 
-Phase 0 — Skeleton & Flag
-- Add types to `src/types/index.ts` (AIState, AICommand, AIBlackboard, BehaviorProfile).
-- Add `config.ai` (tickRateHz, maxPerTick, enabled) in `src/game/config.ts`.
-- Wire a no-op DecisionSystem behind flag (returns current behavior commands) to validate plumbing.
-- Tests: flag-off regression suite passes.
+Phase 0 — Skeleton & Flag — DONE
+- Add types to `src/types/index.ts` (AIState, AICommand, AIBlackboard, BehaviorProfile). (Implemented)
+- Add `config.ai` (tickRateHz, maxPerTick, enabled) in `src/game/config.ts`. (Implemented)
+- Wire a no-op DecisionSystem behind flag (returns current behavior commands) to validate plumbing. (Implemented: decision system wired behind `state.ai.enabled`)
+- Tests: flag-off regression suite passes. (Partial: fallback exists; explicit regression test should be added)
 
-Phase 1 — Blackboard + Fixed Tick
-- Implement AI tick clock, round-robin scheduler, and empty blackboard holder on `GameState`.
-- Implement nearest-enemy cache (shared query) and ally centroids.
-- Tests: determinism of blackboard content; perf micro-bench for nearest cache.
+Phase 1 — Blackboard + Fixed Tick — DONE
+- Implement AI tick clock, round-robin scheduler, and empty blackboard holder on `GameState`. (Implemented in `updateDecisionSystem` / `state.ai`)
+- Implement nearest-enemy cache (shared query) and ally centroids. (Implemented in `refreshBlackboard`)
+- Tests: determinism of blackboard content; perf micro-bench for nearest cache. (Missing: add unit tests)
 
-Phase 2 — Profiles + Utility Scoring
-- Create `src/game/aiProfiles.ts`, define 3 profiles: Brawler, Kiter, Escort; map defaults in `ships.ts`.
-- Implement integer/fixed-point utility scorer with band error, hp, posture, class bias.
-- Tests: snapshot scores for fixed scenarios; tie-break deterministically with RNG.
+Phase 2 — Profiles + Utility Scoring — DONE
+- Create `src/game/aiProfiles.ts`, define 3 profiles: Brawler, Kiter, Escort; map defaults in `ships.ts`. (Implemented)
+- Implement integer/fixed-point utility scorer with band error, hp, posture, class bias. (Implemented: `score*Intent` functions)
+- Tests: snapshot scores for fixed scenarios; tie-break deterministically with RNG. (Partial: tie-break implemented; add scorer snapshot tests)
 
-Phase 3 — Executors (Attack, Kite, Escort)
-- Implement steering executors; write `AICommand` to entity; integrate fire gating using `src/config/projectiles.ts` ranges.
-- Tests: band-keeping for Kiter; escort radius adherence; fire gating on/off at thresholds.
+Phase 3 — Executors (Attack, Kite, Escort) — DONE
+- Implement steering executors; write `AICommand` to entity; integrate fire gating using `src/config/projectiles.ts` ranges. (Implemented: `writeCommand` and `executeAICommand` exist and integrate firing)
+- Tests: band-keeping for Kiter; escort radius adherence; fire gating on/off at thresholds. (Missing: add executor/integration tests)
 
-Phase 4 — LOD + Budget
-- Implement LOD computation; reduce think frequency for idle/distant; cap per-tick work.
-- Tests: perf harness under 300 ships meets budget; fairness across ticks.
+Phase 4 — LOD + Budget — DONE
+- Implement LOD computation; reduce think frequency for idle/distant; cap per-tick work. (Implemented: `computeLod`, slice scheduling, metrics)
+- Tests: perf harness under 300 ships meets budget; fairness across ticks. (Partial: harness exists (`scripts/perf/ship-instancer-harness.mjs`); automated perf assertion not yet present)
 
-Phase 5 — Team Tactics
-- Add posture calculation and escort assignment; feed into scorer.
-- Tests: verify target shift under posture change; escorts prioritize VIP threats.
+Phase 5 — Team Tactics — DONE
+- Add posture calculation and escort assignment; feed into scorer. (Implemented: `refreshBlackboard` computes posture; `assignTeamRoles` assigns escorts)
+- Tests: verify target shift under posture change; escorts prioritize VIP threats. (Missing: unit tests)
 
-Phase 6 — Traits
-- Seed per-ship small traits (±5–10% aggression/patience/dodge) at spawn using seeded RNG; store in AIState.
-- Tests: determinism across seeds; variety distribution sanity.
+Phase 6 — Traits — DONE
+- Seed per-ship small traits (±5–10% aggression/patience/dodge) at spawn using seeded RNG; store in AIState. (Implemented: `aiTraits.generateTraitsFromSeed`, seeded in `createInitialAIState`)
+- Tests: determinism across seeds; variety distribution sanity. (Partial: trait unit test exists; broader determinism tests missing)
 
-Phase 7 — Hardening & Tooling
-- Add debug overlay (optional) to render intent and band error (dev only).
-- Add counters/metrics on GameState (ai.decisions, ai.skipped, ai.budgetExceeded).
-- Finalize docs and example scenarios in `docs/`.
+Phase 7 — Hardening & Tooling — PARTIAL
+- Add debug overlay (optional) to render intent and band error (dev only). (Missing: no UI overlay yet)
+- Add counters/metrics on GameState (ai.decisions, ai.skipped, ai.budgetExceeded). (Implemented: metrics fields exist and are updated)
+- Finalize docs and example scenarios in `docs/`. (Partial: plan/docs mentioned but not finalized)
+
+### Implementation status summary (requirements mapping)
+- R1 — Deterministic command stream (Requirement: identical command stream given same seed): PARTIAL — code is designed for determinism (seeded RNG, deterministic scorers, deterministic tie-break), but a full tick-level determinism unit/integration test should be added to prove it.
+- R2 — Performance budget at 300 ships: PARTIAL — scheduling, slices, LOD and metrics are implemented and a perf harness exists. Automating the perf assertion and tuning config to meet the target remains.
+- R3 — Behavior variety via profiles: DONE — profiles and scorers/executors are present, producing distinct behaviors; add scenario tests to assert numeric invariants.
+- R4 — Team posture reflected within one tick: DONE — posture and escort assignments are computed and influence scores; add unit test to assert rapid shift.
+- R5 — Flag-off preserves legacy: DONE — code falls back to legacy behavior when `state.ai.enabled` is false; add a regression test to lock this behavior.
+
+Next small, high-value actions (tests and tooling):
+- Add determinism integration test: `test/vitest/ai-determinism.spec.ts` (assert repeatable command sequences across N ticks with same seed).
+- Add scorer snapshot tests: `test/vitest/ai-scorer.spec.ts` (fixtures for expected scores and tie-break behavior).
+- Add executor/integration tests: `test/vitest/ai-executor.spec.ts` (band-keeping, escort radius, fire gating).
+- Add an automated perf assertion to the harness or a small runner: fail if average AI tick time exceeds budget for N ships.
+
 
 ## Testing Strategy
 
