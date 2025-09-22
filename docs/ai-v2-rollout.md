@@ -1,6 +1,6 @@
 # AI V2 Rollout Playbook
 
-_Updated: 2025-09-24_
+_Updated: 2025-09-22_
 
 ## Purpose
 
