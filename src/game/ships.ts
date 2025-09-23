@@ -14,6 +14,7 @@ import { registerTurret } from './turretRegistry.js';
 import { getDefaultProfileId } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { validateMotionStats } from './validation.js';
+import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
 
 /** Create default motion stats for testing and fallback scenarios. */
 export function createDefaultMotionStats(): MotionStats {
@@ -429,6 +430,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       range: stats.range,
       speed: stats.speed,
       bulletType: stats.bulletType,
+      parentCarrierId: blueprint.parentCarrierId,
       velocity: new Vector3(0, 0, 0),
       angularVelocity: 0,
       lateralAcceleration: 0,
@@ -447,6 +449,15 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     })),
     ai: createInitialAIState(state, blueprint.hull),
   };
+
+  if (blueprint.hull === 'carrier') {
+    entity.carrier = {
+      launchCooldownRemaining: 0,
+      activeFighterIds: [],
+      launchIndex: 0,
+      config: CARRIER_LAUNCH_CONFIG,
+    };
+  }
 
   const registered = state.world.createEntity(entity) as ShipEntity;
   state.colliderLookup.set(collider.handle, registered);
