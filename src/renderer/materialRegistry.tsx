@@ -289,16 +289,16 @@ const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team,
       depthWrite={false}
       color={tint}
       attenuationColor={tint}
-      thickness={cfg.transmission.thickness}
-      chromaticAberration={cfg.transmission.chromaticAberration}
-      anisotropicBlur={cfg.transmission.anisotropicBlur}
-      distortion={cfg.transmission.distortion}
-      distortionScale={cfg.transmission.distortionScale}
-      temporalDistortion={cfg.transmission.temporalDistortion}
-      attenuationDistance={cfg.transmission.attenuationDistance}
-      roughness={cfg.transmission.roughness}
-      clearcoat={cfg.transmission.clearcoat}
-      ior={cfg.transmission.ior}
+      thickness={cfg.meshtransmission.thickness}
+      chromaticAberration={cfg.meshtransmission.chromaticAberration}
+      anisotropicBlur={cfg.meshtransmission.anisotropicBlur}
+      distortion={cfg.meshtransmission.distortion}
+      distortionScale={cfg.meshtransmission.distortionScale}
+      temporalDistortion={cfg.meshtransmission.temporalDistortion}
+      attenuationDistance={cfg.meshtransmission.attenuationDistance}
+      roughness={cfg.meshtransmission.roughness}
+      clearcoat={cfg.meshtransmission.clearcoat}
+      ior={cfg.meshtransmission.ior}
       opacity={alpha}
     />
   );
