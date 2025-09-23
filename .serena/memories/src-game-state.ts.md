@@ -1,15 +1,1 @@
-# src/game/state.ts
-
-Path: src/game/state.ts
-Last-Reviewed: 2025-09-21
-
-Purpose: Canonical GameState factory and runtime state management helpers. Creates and disposes `GameState` and provides helper functions for spawning/destroying entities.
-
-Key exports/symbols:
-- createGameState
-- disposeGameState
-- GameState type (canonical runtime state)
-
-Notes:
-- All runtime state must live on `GameState`. Do not introduce module-level mutable state.
-- Deterministic RNG usage expected via `src/utils/rng.ts`.
+# src/game/state.ts\n\nPath: src/game/state.ts\nLast-Reviewed: 2025-09-24\n\nPurpose: GameState factory (`createGameState`), disposal (`disposeGameState`), entity destruction (`destroyEntity`), and spawn helpers (`spawnInitialFleets`, `spawnRandomShip`, `resetGame`).\n\nKey exports/symbols:\n- createGameState — initializes Rapier world, ECS, RNG, AI manager (with blackboard, assignments, metrics), queries\n- disposeGameState — cleans Rapier/ECS/turret registries\n- destroyEntity — removes Rapier handles, cascades turret destruction via registry\n- resetGame — destroys all, respawns fleets, resets AI counters/blackboard\n\nNotes:\n- Canonical state on GameState; AI V2 scaffolding (enabled flag, tick budget, escorts map) added.\n- Spawn attaches AI component with profile/traits from hull seed.\n- Turret registry ensures O(1) cascade removal.

@@ -1,13 +1,1 @@
-# src/game/systems.ts
-
-Path: src/game/systems.ts
-Last-Reviewed: 2025-09-21
-
-Purpose: Simulation systems executed per tick: movement, targeting, projectile updates, collision resolution, and scoring.
-
-Key exports/symbols:
-- stepSimulation / runSystems (names vary) — tick runner
-
-Notes:
-- Should use seeded RNG for any non-deterministic behavior.
-- Keep simulation logic separate from rendering; use `GameState` for data.
+# src/game/systems.ts\n\nPath: src/game/systems.ts\nLast-Reviewed: 2025-09-24\n\nPurpose: Core simulation tick orchestration via `updateGame(state, delta)`, sequencing AI decisions, ship preparation, carrier launches, turret updates, motion application, projectile advancement, physics stepping, transform sync, and resolution.\n\nKey exports/symbols:\n- updateGame — main tick runner (exact order: decision system → prepareShips → carrierLaunch → turrets → motion → projectiles → physics step → sync → resolve)\n- updateDecisionSystem — AI V2 scheduler (blackboard refresh, role assignment, intent evaluation with LOD)\n- prepareShips — applies AI commands or legacy behavior, shield regen, embedded turrets\n- updateMotionSystem — rate-limited heading steering and thrust\n- resolveProjectiles — collision checks, shield/hull damage, destruction queue\n\nNotes:\n- Deterministic via seeded RNG; all state on GameState.\n- AI V2 enabled via config; fallback to legacy nearest-enemy.\n- Pools vectors (TEMP_*) for hot-path efficiency.\n- Metrics tracked in state.ai for debugging (decisions, skips, budget hits).
