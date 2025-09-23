@@ -2,7 +2,7 @@
 // A cubic world sized WORLD_SIZE^3 centered at the origin.
 // Keep gameplay deterministic: no randomness here.
 
-export const WORLD_SIZE = 4000; // length of one edge of the world cube
+export const WORLD_SIZE = 8000; // length of one edge of the world cube
 export const WORLD_HALF = WORLD_SIZE / 2; // half-extent from origin to any face
 
 // Camera defaults tuned for the larger world scale; consumers may override.

@@ -80,11 +80,11 @@ export interface ShieldVisualSettings {
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -99,11 +99,11 @@ const DEFAULTS: Required<ShieldVisualSettings> = {
     chromaticAberration: 0.02,
     anisotropicBlur: 0.1,
     distortion: 0.1,
-    distortionScale: 0.4,
+    distortionScale: 0.3,
     temporalDistortion: 0.1,
     attenuationDistance: 0.6,
     roughness: 0.1,
-    clearcoat: 0.0,
+    clearcoat: 0.5,
     ior: 1.2,
   },
 };

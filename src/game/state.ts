@@ -194,12 +194,12 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
 
 export function spawnInitialFleets(state: GameState): void {
   const formation: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-  const baseSpacing = WORLD_HALF * 0.12;
+  const baseSpacing = WORLD_HALF * 0.05;
   const depthJitter = WORLD_HALF * 0.05;
   const verticalSpread = WORLD_HALF * 0.12;
   const radialJitter = WORLD_HALF * 0.04;
-  const blueAnchorX = -WORLD_HALF * 0.35;
-  const redAnchorX = WORLD_HALF * 0.35;
+  const blueAnchorX = -WORLD_HALF * 0.15;
+  const redAnchorX = WORLD_HALF * 0.15;
 
   formation.forEach((hull, index) => {
     const offset = index - (formation.length - 1) / 2;

@@ -50,17 +50,17 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     shieldRegen: 4.0,
     damage: 8,
     fireRate: 0.9,
-    projectileSpeed: 50,
+    projectileSpeed: 70,
     range: 220,
-    speed: 14,
+    speed: 20,
     scale: 1,
     bulletType: 'bullet:laser',
     turrets: [],
     motion: {
       mass: 1.0,
-      maxSpeed: 14, // units/s - matches legacy speed
+      maxSpeed: 20, // units/s - matches legacy speed
       maxReverseSpeed: 5,
-      linearAcceleration: 28, // units/s² - high acceleration for agility
+      linearAcceleration: 34, // units/s² - high acceleration for agility
       linearDamping: 3.0, // moderate damping
       maxTurnRate: Math.PI * 1.5, // rad/s - very agile turning (270°/s)
       angularAcceleration: Math.PI * 4, // rad/s² - fast turn acceleration
