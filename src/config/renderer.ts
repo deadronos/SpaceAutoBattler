@@ -238,5 +238,5 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   ignoreMaxAlpha: false,
   colorMul: 0.5,
   strength: 0.7,
-  minRenderAmp: 0.008,
+  minRenderAmp: 0.001,
 };
