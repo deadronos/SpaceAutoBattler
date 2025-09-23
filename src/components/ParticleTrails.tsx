@@ -10,12 +10,10 @@ import {
   Object3D
 } from 'three';
 import type { ShipEntity } from '../types/index.js';
-import { THRUSTER_GLOW_CONFIG } from '../config/renderer.js';
+import { THRUSTER_GLOW_CONFIG, PARTICLE_TRAILS_CONFIG } from '../config/renderer.js';
 
 interface ParticleTrailProps {
   ships: ShipEntity[];
-  maxParticles?: number;
-  particleLifetime?: number;
 }
 
 interface Particle {
@@ -31,43 +29,51 @@ interface Particle {
  * Simple particle trail system for ship thrusters.
  * Spawns small particles from ship thruster anchors that fade out over time.
  */
-export function ParticleTrails({ 
-  ships, 
-  maxParticles = 200, 
-  particleLifetime = 0.8 
-}: ParticleTrailProps): React.ReactElement {
+export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElement {
+  // Early out if globally disabled via config
+  if (!PARTICLE_TRAILS_CONFIG.enabled) return <></>;
   const meshRef = useRef<InstancedMesh>(null);
   const particlesRef = useRef<Particle[]>([]);
   const nextParticleIndex = useRef(0);
   const dummy = useMemo(() => new Object3D(), []);
   
-  const geometry = useMemo(() => new SphereGeometry(0.02, 4, 3), []);
-  const material = useMemo(() => new MeshBasicMaterial({
-    color: new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
-    transparent: true,
-    opacity: 0.6,
-  }), []);
+  const geometry = useMemo(() => new SphereGeometry(PARTICLE_TRAILS_CONFIG.size, 6, 4), []);
+  const material = useMemo(() => {
+    const m = new MeshBasicMaterial({
+      color: new Color(PARTICLE_TRAILS_CONFIG.color || THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
+      transparent: true,
+      opacity: PARTICLE_TRAILS_CONFIG.opacity,
+      depthTest: PARTICLE_TRAILS_CONFIG.depthTest,
+      depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
+    });
+    if (PARTICLE_TRAILS_CONFIG.additiveBlending) {
+      // Lazy import enum to avoid direct dependency; numeric value is fine too, but use property if available
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (m as any).blending = 2; // AdditiveBlending
+    }
+    return m;
+  }, []);
 
   // Initialize particle pool
   useEffect(() => {
-    particlesRef.current = Array.from({ length: maxParticles }, () => ({
+    particlesRef.current = Array.from({ length: PARTICLE_TRAILS_CONFIG.maxParticles }, () => ({
       position: new Vector3(),
       velocity: new Vector3(),
       life: 0,
-      maxLife: particleLifetime,
+      maxLife: PARTICLE_TRAILS_CONFIG.lifetime,
       scale: 0,
       shipId: 0,
     }));
-  }, [maxParticles, particleLifetime]);
+  }, []);
 
   // Compute thruster anchors for a ship (replicating Ship.tsx logic)
   const computeThrusterAnchors = (ship: ShipEntity): Vector3[] => {
     const anchors: Vector3[] = [];
-    const anchorCount = THRUSTER_GLOW_CONFIG.anchorsByHull[ship.ship.hull] || 1;
+  const anchorCount = THRUSTER_GLOW_CONFIG.anchorsByHull[ship.ship.hull] || 1;
     
     // Simplified anchor computation - assume standard ship dimensions
-    const shipSize = { x: 2, y: 1, z: 3 }; // Rough estimate
-    const tailZ = -shipSize.z * 0.4; // Behind the ship
+  const shipSize = { x: 2, y: 1, z: 3 }; // Rough estimate used for trail anchors
+  const tailZ = -shipSize.z * PARTICLE_TRAILS_CONFIG.tailZFactor; // Behind the ship
     
     for (let i = 0; i < anchorCount; i++) {
       let x = 0, y = 0;
@@ -92,7 +98,7 @@ export function ParticleTrails({
   };
 
   useFrame((state, delta) => {
-    if (!meshRef.current) return;
+  if (!meshRef.current) return;
 
     const particles = particlesRef.current;
     let activeCount = 0;
@@ -123,32 +129,32 @@ export function ParticleTrails({
     // Spawn new particles from thrusting ships
     for (const ship of ships) {
       const throttle = ship.ai?.command?.thrust ?? 0;
-      if (throttle < 0.1) continue; // Only spawn when thrusting
+      if (throttle < PARTICLE_TRAILS_CONFIG.minThrottle) continue; // Only spawn when thrusting
       
       const anchors = computeThrusterAnchors(ship);
-      const spawnRate = throttle * 8; // Particles per second per anchor
-      const shouldSpawn = Math.random() < spawnRate * delta;
+  const spawnRate = throttle * PARTICLE_TRAILS_CONFIG.spawnRatePerAnchor; // Particles/s per anchor
+  const shouldSpawn = Math.random() < spawnRate * delta;
       
       if (shouldSpawn) {
         for (const anchor of anchors) {
           const particle = particles[nextParticleIndex.current];
-          nextParticleIndex.current = (nextParticleIndex.current + 1) % maxParticles;
+          nextParticleIndex.current = (nextParticleIndex.current + 1) % PARTICLE_TRAILS_CONFIG.maxParticles;
           
           particle.position.copy(anchor);
           
           // Random velocity backwards from ship with some spread
           const backward = new Vector3(0, 0, -1).applyQuaternion(ship.transform.rotation);
-          particle.velocity.copy(backward)
-            .multiplyScalar(0.5 + Math.random() * 0.5)
+          const speed = PARTICLE_TRAILS_CONFIG.backwardSpeed.min + Math.random() * (PARTICLE_TRAILS_CONFIG.backwardSpeed.max - PARTICLE_TRAILS_CONFIG.backwardSpeed.min);
+          particle.velocity.copy(backward).multiplyScalar(speed)
             .add(new Vector3(
-              (Math.random() - 0.5) * 0.3,
-              (Math.random() - 0.5) * 0.3,
-              (Math.random() - 0.5) * 0.1
+              (Math.random() - 0.5) * 2 * PARTICLE_TRAILS_CONFIG.lateralJitter,
+              (Math.random() - 0.5) * 2 * PARTICLE_TRAILS_CONFIG.lateralJitter,
+              (Math.random() - 0.5) * 2 * PARTICLE_TRAILS_CONFIG.longitudinalJitter
             ));
-          
-          particle.life = particleLifetime * (0.8 + Math.random() * 0.4);
+
+          particle.life = PARTICLE_TRAILS_CONFIG.lifetime * (1 - PARTICLE_TRAILS_CONFIG.scaleJitter + Math.random() * 2 * PARTICLE_TRAILS_CONFIG.scaleJitter);
           particle.maxLife = particle.life;
-          particle.scale = 0.8 + Math.random() * 0.4;
+          particle.scale = 1 - PARTICLE_TRAILS_CONFIG.scaleJitter + Math.random() * 2 * PARTICLE_TRAILS_CONFIG.scaleJitter;
           particle.shipId = ship.id;
         }
       }
@@ -160,9 +166,9 @@ export function ParticleTrails({
   });
 
   return (
-    <instancedMesh 
-      ref={meshRef} 
-      args={[geometry, material, maxParticles]}
+    <instancedMesh
+      ref={meshRef}
+      args={[geometry, material, PARTICLE_TRAILS_CONFIG.maxParticles]}
       frustumCulled={false}
     />
   );

@@ -46,7 +46,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     const { hexScale, edgeWidth, maxAlpha } = getShieldVisuals(hull);
   return new ShaderMaterial({
       transparent: true,
-      depthWrite: true,
+      depthWrite: false,
   uniforms: {
         uTime: { value: 0 },
   uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
