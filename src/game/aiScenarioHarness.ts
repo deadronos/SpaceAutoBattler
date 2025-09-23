@@ -12,7 +12,7 @@ import { createDefaultMotionStats } from './ships.js';
 import { SeededRng } from '../utils/rng.js';
 import { AI_CONFIG, clampToWorld } from './config.js';
 import { runDecisionTick, __aiTestHooks } from './systems.js';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
@@ -157,8 +157,7 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     const DIAG_SEEDS = new Set([777, 2029, 4041]);
     try {
       if (DIAG_SEEDS.has(seed)) {
-  const outDir = join('.', 'tmp');
-        if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+        const outDir = join('.', 'tmp');
         const path = join(outDir, `ai-diagnostic-${seed}.log`);
         const lines: string[] = [];
         const shipsList = state.queries.ships.entities as HarnessShip[];
@@ -194,7 +193,15 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
             // ignore diagnostics errors
           }
         }
-        writeFileSync(path, lines.join('\n') + '\n', { encoding: 'utf8' });
+        // fire-and-forget async write to avoid blocking
+        void (async () => {
+          try {
+            await mkdir(outDir, { recursive: true });
+            await writeFile(path, lines.join('\n') + '\n', { encoding: 'utf8' });
+          } catch {
+            // ignore diagnostics write errors
+          }
+        })();
       }
     } catch {
       // swallow any diagnostic errors to avoid impacting tests
@@ -211,12 +218,66 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     state.time += tickInterval;
   }
 
-  return {
+  const log: AIScenarioLog = {
     name: config.name,
     tickInterval,
     seed,
     entries,
   };
+
+  // Optionally dump the normalized JSON log for fixture maintenance.
+  // Enable by setting AI_WRITE_SCENARIO_JSON=1 in the environment.
+  try {
+    const shouldWrite = (() => {
+      try {
+        const v = (globalThis as any)?.process?.env?.AI_WRITE_SCENARIO_JSON;
+        return v === '1' || v === 'true' || v === 'on';
+      } catch {
+        return false;
+      }
+    })();
+    if (shouldWrite) {
+      const outDir = join('.', 'tmp');
+      const file = join(outDir, `ai-scenario-${config.name}.json`);
+      // Normalize headings/positions for stable diffs similar to test helper
+      const normalized: AIScenarioLog = {
+        ...log,
+        entries: log.entries.map((entry) => ({
+          ...entry,
+          commands: entry.commands.map((c) => ({
+            ...c,
+            heading: [
+              Number(c.heading[0].toFixed(3)),
+              Number(c.heading[1].toFixed(3)),
+              Number(c.heading[2].toFixed(3)),
+            ] as [number, number, number],
+            thrust: Number(c.thrust.toFixed(3)),
+          })),
+          positions: entry.positions.map((p) => ({
+            ...p,
+            position: [
+              Number(p.position[0].toFixed(3)),
+              Number(p.position[1].toFixed(3)),
+              Number(p.position[2].toFixed(3)),
+            ] as [number, number, number],
+          })),
+        })),
+      };
+      // fire-and-forget async write
+      void (async () => {
+        try {
+          await mkdir(outDir, { recursive: true });
+          await writeFile(file, JSON.stringify(normalized, null, 2), { encoding: 'utf8' });
+        } catch {
+          // ignore optional dump errors
+        }
+      })();
+    }
+  } catch {
+    // ignore optional dump errors
+  }
+
+  return log;
 }
 
 function createHarnessShip(

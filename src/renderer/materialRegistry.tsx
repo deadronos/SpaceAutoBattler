@@ -288,6 +288,7 @@ const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team,
       transparent
       depthWrite={false}
       color={tint}
+      resolution={256}
       attenuationColor={tint}
       thickness={cfg.meshtransmission.thickness}
       chromaticAberration={cfg.meshtransmission.chromaticAberration}
