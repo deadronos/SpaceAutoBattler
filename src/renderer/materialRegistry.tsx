@@ -306,7 +306,7 @@ const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team,
 
 // Register built-ins
 registerMaterial('shield:hex', ShieldHexMaterial);
-registerMaterial('shield:transmission', ShieldTransmissionMaterial);
+registerMaterial('shield:meshtransmission', ShieldTransmissionMaterial);
 
 // Bullets — simple emissive glow material (laser-like)
 const BulletLaserMaterial: React.FC = () => (

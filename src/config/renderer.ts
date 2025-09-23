@@ -40,7 +40,7 @@ export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotio
   };
 }
 
-export type ShieldMaterialKind = 'hex' | 'transmission';
+export type ShieldMaterialKind = 'hex' | 'meshtransmission';
 
 export interface ShieldVisualSettings {
   /** Multiplier applied to the model bounding-sphere radius. */
@@ -61,7 +61,7 @@ export interface ShieldVisualSettings {
   /** What material to use for the shield: custom hex shader or drei MeshTransmissionMaterial */
   materialKind?: ShieldMaterialKind;
   /** Optional params for MeshTransmissionMaterial when materialKind==='transmission' */
-  transmission?: {
+  meshtransmission?: {
     thickness?: number; // 0..1 typical
     chromaticAberration?: number;
     anisotropicBlur?: number;
@@ -80,11 +80,11 @@ export interface ShieldVisualSettings {
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'transmission' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'meshtransmission' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'meshtransmission' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'meshtransmission' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'meshtransmission' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'meshtransmission' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -94,7 +94,7 @@ const DEFAULTS: Required<ShieldVisualSettings> = {
   maxAlpha: 0.5,
   shieldScale: { x: 1, y: 0.65, z: 1 },
   materialKind: 'hex',
-  transmission: {
+  meshtransmission: {
     thickness: 0.6,
     chromaticAberration: 0.02,
     anisotropicBlur: 0.1,
@@ -117,20 +117,20 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
     maxAlpha: cfg.maxAlpha ?? DEFAULTS.maxAlpha,
     shieldScale: cfg.shieldScale ?? DEFAULTS.shieldScale,
     materialKind: cfg.materialKind ?? DEFAULTS.materialKind,
-    transmission: {
-      thickness: cfg.transmission?.thickness ?? DEFAULTS.transmission.thickness,
+    meshtransmission: {
+      thickness: cfg.meshtransmission?.thickness ?? DEFAULTS.meshtransmission.thickness,
       chromaticAberration:
-        cfg.transmission?.chromaticAberration ?? DEFAULTS.transmission.chromaticAberration,
-      anisotropicBlur: cfg.transmission?.anisotropicBlur ?? DEFAULTS.transmission.anisotropicBlur,
-      distortion: cfg.transmission?.distortion ?? DEFAULTS.transmission.distortion,
-      distortionScale: cfg.transmission?.distortionScale ?? DEFAULTS.transmission.distortionScale,
+        cfg.meshtransmission?.chromaticAberration ?? DEFAULTS.meshtransmission.chromaticAberration,
+      anisotropicBlur: cfg.meshtransmission?.anisotropicBlur ?? DEFAULTS.meshtransmission.anisotropicBlur,
+      distortion: cfg.meshtransmission?.distortion ?? DEFAULTS.meshtransmission.distortion,
+      distortionScale: cfg.meshtransmission?.distortionScale ?? DEFAULTS.meshtransmission.distortionScale,
       temporalDistortion:
-        cfg.transmission?.temporalDistortion ?? DEFAULTS.transmission.temporalDistortion,
+        cfg.meshtransmission?.temporalDistortion ?? DEFAULTS.meshtransmission.temporalDistortion,
       attenuationDistance:
-        cfg.transmission?.attenuationDistance ?? DEFAULTS.transmission.attenuationDistance,
-      roughness: cfg.transmission?.roughness ?? DEFAULTS.transmission.roughness,
-      clearcoat: cfg.transmission?.clearcoat ?? DEFAULTS.transmission.clearcoat,
-      ior: cfg.transmission?.ior ?? DEFAULTS.transmission.ior,
+        cfg.meshtransmission?.attenuationDistance ?? DEFAULTS.meshtransmission.attenuationDistance,
+      roughness: cfg.meshtransmission?.roughness ?? DEFAULTS.meshtransmission.roughness,
+      clearcoat: cfg.meshtransmission?.clearcoat ?? DEFAULTS.meshtransmission.clearcoat,
+      ior: cfg.meshtransmission?.ior ?? DEFAULTS.meshtransmission.ior,
     },
   };
 }
