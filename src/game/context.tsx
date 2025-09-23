@@ -62,7 +62,9 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
                         velocity: ship
                           ? { x: ship.velocity.x, y: ship.velocity.y, z: ship.velocity.z }
                           : { x: 0, y: 0, z: 0 },
-                        angularVelocity: ship?.angularVelocity ?? 0,
+                        angularVelocity: ship
+                          ? { x: ship.angularVelocity.x, y: ship.angularVelocity.y, z: ship.angularVelocity.z }
+                          : { x: 0, y: 0, z: 0 },
                         lateralAcceleration: ship?.lateralAcceleration ?? 0
                       };
                     })
@@ -161,3 +163,4 @@ export function useOptionalGameState(): GameState | null {
   }
   return context.state;
 }
+

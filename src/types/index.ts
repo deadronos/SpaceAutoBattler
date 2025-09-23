@@ -76,8 +76,8 @@ export interface ShipComponent {
   parentCarrierId?: number;
   /** Current linear velocity in world space (units/s). */
   velocity: Vector3;
-  /** Current angular velocity in radians per second around Y axis. */
-  angularVelocity: number;
+  /** Current angular velocity vector in radians per second (axis-angle form). */
+  angularVelocity: Vector3;
   /** Most recent lateral acceleration applied in units per second squared. */
   lateralAcceleration: number;
   /** Motion characteristics for physics-based movement. */
@@ -402,3 +402,5 @@ export interface ShieldRipple {
   /** Visual strength (0..1). */
   amp: number;
 }
+
+

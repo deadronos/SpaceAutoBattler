@@ -145,7 +145,7 @@ function createCarrierEntity(id: number, config: CarrierLaunchConfig): ShipEntit
       speed: 0,
       bulletType: undefined,
       velocity: new Vector3(),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: MOTION_STUB,
     },
@@ -186,7 +186,7 @@ function createFighterEntity(id: number, blueprint: ShipBlueprint): ShipEntity {
       bulletType: 'bullet:laser',
       parentCarrierId: blueprint.parentCarrierId,
       velocity: new Vector3(),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: MOTION_STUB,
     },
@@ -202,3 +202,4 @@ function createState(ships: ShipEntity[]): GameState {
     },
   } as unknown as GameState;
 }
+

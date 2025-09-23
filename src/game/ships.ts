@@ -432,7 +432,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       bulletType: stats.bulletType,
       parentCarrierId: blueprint.parentCarrierId,
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: stats.motion,
     },
@@ -540,3 +540,4 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
     },
   };
 }
+

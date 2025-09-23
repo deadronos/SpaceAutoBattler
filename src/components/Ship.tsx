@@ -278,7 +278,8 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     const motion = entity.ship.motion;
     const bankFactor = motion.visualBankFactor ?? smoothing.bankFactor;
     const maxBankDeg = motion.maxBankDeg ?? smoothing.maxBankDeg;
-    let bankDeg = entity.ship.angularVelocity * bankFactor;
+    const yawRate = entity.ship.angularVelocity.y;
+    let bankDeg = yawRate * bankFactor;
 
     if (motion.maxLateralAcceleration && motion.maxLateralAcceleration > 0) {
       const lateralRatio = MathUtils.clamp(
@@ -473,3 +474,4 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
     </mesh>
   );
 }
+

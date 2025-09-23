@@ -97,7 +97,7 @@ function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shie
       speed: 0,
       bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -127,3 +127,4 @@ describe('shield regeneration', () => {
     expect(s.ship.shield).toBe(20);
   });
 });
+

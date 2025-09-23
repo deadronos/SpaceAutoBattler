@@ -8,6 +8,10 @@ const TEMP_TARGET_DIR = new Vector3();
 const TEMP_VELOCITY_CHANGE = new Vector3();
 const TEMP_ROTATION = new Quaternion();
 const TEMP_RIGHT = new Vector3();
+const TEMP_AXIS = new Vector3();
+const TEMP_DESIRED_AV = new Vector3();
+const TEMP_AV_DELTA = new Vector3();
+const TEMP_UP = new Vector3(0, 1, 0);
 
 /**
  * Update physics-based motion for all ships using acceleration limits and damping.
@@ -44,69 +48,75 @@ function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: numbe
   const motion = ship.ship.motion;
   const kp = motion.turnKp ?? 4.0;
   const kd = motion.turnKd ?? 0.6;
+  const damping = Math.exp(-motion.angularDamping * dt);
+  const angularVelocity = ship.ship.angularVelocity;
 
-  // Compute current yaw and target yaw from headings projected to XZ plane
-  TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-  const cf = TEMP_FORWARD.set(TEMP_FORWARD.x, 0, TEMP_FORWARD.z);
-  const th = TEMP_TARGET_DIR.copy(targetHeading);
-  if (cf.lengthSq() < 1e-8 || th.lengthSq() < 1e-8) {
-    // Nothing meaningful to do; just apply damping
-    ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
+  const desiredForward = TEMP_TARGET_DIR.copy(targetHeading);
+  if (desiredForward.lengthSq() < 1e-8) {
+    angularVelocity.multiplyScalar(damping);
     return;
   }
-  cf.normalize();
-  th.set(th.x, 0, th.z).normalize();
+  desiredForward.normalize();
 
-  const currentYaw = Math.atan2(cf.x, cf.z);
-  const targetYaw = Math.atan2(th.x, th.z);
-  let dyaw = targetYaw - currentYaw;
-  while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
-  while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+  const currentForward = TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+  if (currentForward.lengthSq() < 1e-8) currentForward.set(0, 0, 1);
+  currentForward.normalize();
 
-  // Deadzone to avoid twitch (about 2 degrees)
-  const deadzone = 2 * Math.PI / 180;
-  if (Math.abs(dyaw) < deadzone) {
-    ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
-    // Optional: small slerp toward target for visual smoothness
+  const dot = Math.max(-1, Math.min(1, currentForward.dot(desiredForward)));
+  const angle = Math.acos(dot);
+  if (angle < 1e-4) {
+    angularVelocity.multiplyScalar(damping);
     const s = motion.smoothing?.rotationSlerp ?? 0;
     if (s > 0) {
-      const qTarget = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), targetYaw);
-      ship.transform.rotation.slerp(qTarget, Math.min(1, s));
+      TEMP_ROTATION.setFromUnitVectors(TEMP_RIGHT.set(0, 0, 1), desiredForward);
+      ship.transform.rotation.slerp(TEMP_ROTATION, Math.min(1, s));
       ship.transform.rotation.normalize();
     }
     return;
   }
 
-  // PD control targeting angular velocity
-  const desiredAngularVel = kp * dyaw - kd * ship.ship.angularVelocity;
-  const clampedTarget = Math.max(-motion.maxTurnRate, Math.min(motion.maxTurnRate, desiredAngularVel));
-  const err = clampedTarget - ship.ship.angularVelocity;
-  const maxDv = motion.angularAcceleration * dt;
-  const dv = Math.max(-maxDv, Math.min(maxDv, err));
-  ship.ship.angularVelocity += dv;
-  ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
+  const axis = TEMP_AXIS.crossVectors(currentForward, desiredForward);
+  if (axis.lengthSq() < 1e-10) {
+    axis.copy(currentForward).cross(TEMP_UP);
+    if (axis.lengthSq() < 1e-10) axis.set(1, 0, 0);
+  }
+  axis.normalize();
 
-  // Integrate angular velocity to rotation
-  const w = ship.ship.angularVelocity;
-  if (Math.abs(w) > 0.0005) {
-    const rot = w * dt;
-    TEMP_ROTATION.setFromAxisAngle(new Vector3(0, 1, 0), rot);
+  const desiredAngularVel = TEMP_DESIRED_AV.copy(axis).multiplyScalar(angle * kp);
+  desiredAngularVel.sub(TEMP_AV_DELTA.copy(angularVelocity).multiplyScalar(kd));
+
+  const maxTurnRate = Math.max(1e-6, motion.maxTurnRate);
+  const desiredLen = desiredAngularVel.length();
+  if (desiredLen > maxTurnRate) {
+    desiredAngularVel.multiplyScalar(maxTurnRate / desiredLen);
+  }
+
+  TEMP_AV_DELTA.copy(desiredAngularVel).sub(angularVelocity);
+  const maxDelta = Math.max(0, motion.angularAcceleration) * dt;
+  const deltaLen = TEMP_AV_DELTA.length();
+  if (maxDelta > 0 && deltaLen > maxDelta && deltaLen > 1e-8) {
+    TEMP_AV_DELTA.multiplyScalar(maxDelta / deltaLen);
+  }
+
+  angularVelocity.add(TEMP_AV_DELTA);
+  angularVelocity.multiplyScalar(damping);
+
+  const avLen = angularVelocity.length();
+  if (avLen > 1e-5) {
+    const stepAxis = TEMP_AXIS.copy(angularVelocity).normalize();
+    const stepAngle = avLen * dt;
+    TEMP_ROTATION.setFromAxisAngle(stepAxis, stepAngle);
     ship.transform.rotation.multiplyQuaternions(TEMP_ROTATION, ship.transform.rotation);
     ship.transform.rotation.normalize();
   }
 
-  // When close, optionally slerp a bit toward target to finish smooth
-  const smallAngle = 0.2; // ~11 degrees
-  if (Math.abs(dyaw) < smallAngle) {
-    const s = motion.smoothing?.rotationSlerp ?? 0;
-    if (s > 0) {
-      const qTarget = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), targetYaw);
-      ship.transform.rotation.slerp(qTarget, Math.min(1, s));
-      ship.transform.rotation.normalize();
-    }
+  const s = motion.smoothing?.rotationSlerp ?? 0;
+  if (s > 0) {
+    TEMP_ROTATION.setFromUnitVectors(TEMP_RIGHT.set(0, 0, 1), desiredForward);
+    ship.transform.rotation.slerp(TEMP_ROTATION, Math.min(1, s));
+    ship.transform.rotation.normalize();
   }
 }
-
 /**
  * Update ship linear velocity based on thrust command.
  * Applies forward acceleration and lateral strafe if supported.
@@ -205,3 +215,5 @@ export function shortestAngle(from: number, to: number): number {
 export function dampingFactor(damping: number, dt: number): number {
   return Math.exp(-damping * dt);
 }
+
+

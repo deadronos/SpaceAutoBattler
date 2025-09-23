@@ -101,7 +101,7 @@ function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shie
       speed: 0,
       bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -179,3 +179,4 @@ describe('projectile resolution', () => {
     expect((state.queries.projectiles as any).entities.length).toBe(0);
   });
 });
+

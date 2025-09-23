@@ -148,7 +148,7 @@ function makeShipWithTurret(
       speed: 0,
       bulletType: 'bullet:heavy', // different from turret to verify override
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -203,7 +203,7 @@ describe('Turret system', () => {
         speed: 0,
         bulletType: 'bullet:ion',
         velocity: new Vector3(0, 0, 0),
-        angularVelocity: 0,
+        angularVelocity: new Vector3(0, 0, 0),
         lateralAcceleration: 0,
         motion: createDefaultMotionStats(),
       },
@@ -237,3 +237,4 @@ describe('Turret system', () => {
     expect(moved.length()).toBeLessThan(0.5);
   });
 });
+

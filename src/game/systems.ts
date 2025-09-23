@@ -29,6 +29,7 @@ const TEMP_REL_POS = new Vector3();
 const TEMP_TARGET_VEL = new Vector3();
 const TEMP_SHIP_VEL = new Vector3();
 const TEMP_REL_VEL = new Vector3();
+const TEMP_QUAT = new Quaternion();
 interface IntentCandidate {
   intent: AIIntent;
   score: number;
@@ -824,23 +825,24 @@ function executeAICommand(state: GameState, ship: ShipEntity, delta: number): Sh
   // (Optional) Clamp how fast the commanded heading can rotate per tick.
   try {
     const motion = ship.ship.motion;
-      const tickHz = state.ai && state.ai.tickInterval > 0 ? 1 / state.ai.tickInterval : 10;
+    const tickHz = state.ai && state.ai.tickInterval > 0 ? 1 / state.ai.tickInterval : 10;
     const perTick = 1 / tickHz;
-    const maxYawDelta = Math.max(0.05, motion.maxTurnRate * Math.max(perTick, delta));
-    const currentForward = new Vector3(0, 0, 1).applyQuaternion(ship.transform.rotation);
-    const cf = new Vector3(currentForward.x, 0, currentForward.z);
-    const dh = new Vector3(heading.x, 0, heading.z);
-    if (cf.lengthSq() > 1e-6 && dh.lengthSq() > 1e-6) {
-      cf.normalize();
-      dh.normalize();
-      const currentYaw = Math.atan2(cf.x, cf.z);
-      const targetYaw = Math.atan2(dh.x, dh.z);
-      let dyaw = targetYaw - currentYaw;
-      while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
-      while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
-      const clamped = Math.max(-maxYawDelta, Math.min(maxYawDelta, dyaw));
-      const newYaw = currentYaw + clamped;
-      heading.set(Math.sin(newYaw), 0, Math.cos(newYaw));
+    const maxAngle = Math.max(0.05, motion.maxTurnRate * Math.max(perTick, delta));
+    const currentForward = TEMP_DIR.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    if (currentForward.lengthSq() > 1e-6) {
+      currentForward.normalize();
+      const dot = Math.max(-1, Math.min(1, currentForward.dot(heading)));
+      const angle = Math.acos(dot);
+      if (angle > maxAngle) {
+        const axis = TEMP_REL_POS.crossVectors(currentForward, heading);
+        if (axis.lengthSq() < 1e-10) {
+          axis.copy(currentForward).cross(TEMP_POS.set(0, 1, 0));
+          if (axis.lengthSq() < 1e-10) axis.set(1, 0, 0);
+        }
+        axis.normalize();
+        TEMP_QUAT.setFromAxisAngle(axis, maxAngle);
+        heading.copy(currentForward).applyQuaternion(TEMP_QUAT).normalize();
+      }
     }
   } catch {
     // fallback: keep heading as-is
@@ -1274,3 +1276,5 @@ function getTurretWorldPosition(ship: ShipEntity, turret: TurretState): Vector3 
   world.applyQuaternion(ship.transform.rotation).add(ship.transform.position);
   return world;
 }
+
+
