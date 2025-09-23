@@ -20,6 +20,7 @@ import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../config/projecti
 import { resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { updateMotionSystem } from './systems/motion.js';
+import { updateCarrierLaunchSystem } from './systems/carriers.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -754,6 +755,7 @@ export function updateGame(state: GameState, delta: number): void {
   updateDecisionSystem(state, delta);
 
   prepareShips(state, delta);
+  updateCarrierLaunchSystem(state, delta);
   updateTurrets(state, delta);
   
   // Apply physics-based motion after AI decisions but before physics step

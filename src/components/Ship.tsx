@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
-import { Box3, Color, MathUtils, Quaternion, Sphere, Vector3, type Group, type Mesh } from 'three';
+import { Box3, Color, MathUtils, Quaternion, Sphere, Vector3, SphereGeometry, MeshStandardMaterial, Mesh, type Group } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
 import type { ShipEntity, ShipHull } from '../types/index.js';
@@ -11,6 +11,7 @@ import {
   TEAM_COLORS,
   SHIELD_RIPPLE_TUNING,
   resolveRendererMotionConfig,
+  THRUSTER_GLOW_CONFIG,
 } from '../config/renderer.js';
 import { useFrame as useRenderFrame } from '@react-three/fiber';
 import { SHIP_MODEL_PATHS } from '../assets/ships.js';
@@ -58,6 +59,8 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     Array<{ material: any; baseEmissive?: Color; baseIntensity?: number }>
   >([]);
 
+  const fallbackGlowMeshesRef = useRef<Mesh[]>([]);
+
   // Resolve path via helper to ensure it's always defined.
   const modelPath = resolveModelPath(entity.model);
   const hasValidPath = typeof modelPath === 'string' && modelPath.length > 0;
@@ -88,6 +91,8 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
       const n = s.toLowerCase();
       return n.includes('engine') || n.includes('thruster') || n.includes('exhaust');
     };
+    
+    // First pass: detect engine meshes by name
     scene.traverse((obj: any) => {
       if (obj && obj.isMesh) {
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -95,23 +100,97 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
           engines.push(obj);
           mats.forEach((m: any) => {
             if (!m) return;
+            
+            // Check if emissive is black or very dark
+            const baseEmissive = m.emissive && typeof m.emissive.clone === 'function' ? m.emissive.clone() : new Color(0, 0, 0);
+            const emissiveLuminance = baseEmissive.r * 0.299 + baseEmissive.g * 0.587 + baseEmissive.b * 0.114;
+            
+            // Use default emissive color if current one is too dark
+            const finalEmissive = emissiveLuminance < THRUSTER_GLOW_CONFIG.darkEmissiveThreshold 
+              ? new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor) 
+              : baseEmissive;
+            
+            // Set the material's emissive to our enhanced color
+            if (m.emissive && typeof m.emissive.copy === 'function') {
+              m.emissive.copy(finalEmissive);
+            }
+            
             thrusters.push({
               material: m,
-              baseEmissive:
-                m.emissive && typeof m.emissive.clone === 'function' ? m.emissive.clone() : undefined,
+              baseEmissive: finalEmissive,
               baseIntensity: typeof m.emissiveIntensity === 'number' ? m.emissiveIntensity : undefined,
             });
           });
         }
       }
     });
+
+    // Fallback: create anchor-based glow meshes if no engines found
+    if (engines.length === 0) {
+      const box = new Box3().setFromObject(scene);
+      const size = box.getSize(new Vector3());
+      const anchorCount = THRUSTER_GLOW_CONFIG.anchorsByHull[entity.ship.hull] || 1;
+      
+      // Compute anchor positions at the tail
+      const tailZ = box.min.z - THRUSTER_GLOW_CONFIG.tailOffset * size.z;
+      const glowSize = THRUSTER_GLOW_CONFIG.glowMeshSize * Math.max(size.x, size.y);
+      
+      for (let i = 0; i < anchorCount; i++) {
+        // Position anchors symmetrically
+        let x = 0, y = 0;
+        if (anchorCount === 2) {
+          x = (i === 0 ? -1 : 1) * 0.3 * size.x;
+        } else if (anchorCount === 4) {
+          x = (i % 2 === 0 ? -1 : 1) * 0.25 * size.x;
+          y = (i < 2 ? -1 : 1) * 0.15 * size.y;
+        } else if (anchorCount === 6) {
+          x = (i % 2 === 0 ? -1 : 1) * 0.35 * size.x;
+          y = (Math.floor(i / 2) - 1) * 0.2 * size.y;
+        }
+        
+        // Create small glow mesh
+        const geometry = new SphereGeometry(glowSize, 8, 6);
+        const material = new MeshStandardMaterial({
+          color: THRUSTER_GLOW_CONFIG.defaultEmissiveColor,
+          emissive: new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
+          emissiveIntensity: 1.0,
+          transparent: true,
+          opacity: 0.8,
+        });
+        
+        const glowMesh = new Mesh(geometry, material);
+        glowMesh.position.set(x, y, tailZ);
+        scene.add(glowMesh);
+        
+        engines.push(glowMesh);
+        fallbackGlowMeshesRef.current.push(glowMesh);
+        thrusters.push({
+          material: material,
+          baseEmissive: new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
+          baseIntensity: 1.0,
+        });
+      }
+    }
+
     thrusterMaterialsRef.current = thrusters;
     if (bloomCtx) engines.forEach((o) => bloomCtx.register(o));
+    
     return () => {
       if (bloomCtx) engines.forEach((o) => bloomCtx.unregister(o));
+      
+      // Clean up fallback glow meshes
+      fallbackGlowMeshesRef.current.forEach((mesh) => {
+        if (mesh.parent) mesh.parent.remove(mesh);
+        mesh.geometry.dispose();
+        const material = mesh.material;
+        if (material && !Array.isArray(material) && typeof material.dispose === 'function') {
+          material.dispose();
+        }
+      });
+      fallbackGlowMeshesRef.current = [];
       thrusterMaterialsRef.current = [];
     };
-  }, [scene, bloomCtx]);
+  }, [scene, bloomCtx, entity.ship.hull]);
 
   // Collect mesh materials from the cloned scene so we can apply a subtle
   // team-color tint when the ship has no shields. We keep the original

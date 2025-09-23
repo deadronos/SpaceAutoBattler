@@ -24,7 +24,6 @@ export function updateMotionSystem(state: GameState, dt: number): void {
     // Skip ships without AI commands (passive/destroyed ships)
     if (!ship.ai?.command) continue;
     
-    const motion = ship.ship.motion;
     const command = ship.ai.command;
     
     // Update angular motion (turning toward desired heading)
