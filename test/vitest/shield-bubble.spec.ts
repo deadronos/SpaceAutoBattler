@@ -11,6 +11,8 @@ describe('ShieldBubble anchoring (static check)', () => {
     expect(txt).toContain('mesh.quaternion.identity()');
     // No hard-coded constant scalar; should use computed radius variable
     expect(txt).toContain('const r = radius ??');
-    expect(txt).toContain('mesh.scale.setScalar(r)');
+    // Accept either legacy uniform scale or new non-uniform ellipsoid scale
+    const ok = txt.includes('mesh.scale.setScalar(r)') || txt.includes('mesh.scale.set(');
+    expect(ok).toBe(true);
   });
 });

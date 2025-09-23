@@ -51,6 +51,13 @@ export interface ShieldVisualSettings {
   edgeWidth?: number;
   /** Maximum final alpha for shield material (0..1). */
   maxAlpha?: number;
+  /**
+   * Per-axis non-uniform scale applied to the shield mesh. This enables
+   * ellipsoidal shields where Y (height) is often smaller than X/Z.
+   * Values are multipliers applied on top of the base radius.
+   * Example: { x: 1, y: 0.65, z: 1 }
+   */
+  shieldScale?: { x: number; y: number; z: number };
   /** What material to use for the shield: custom hex shader or drei MeshTransmissionMaterial */
   materialKind?: ShieldMaterialKind;
   /** Optional params for MeshTransmissionMaterial when materialKind==='transmission' */
@@ -72,6 +79,7 @@ export interface ShieldVisualSettings {
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
+  // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
   fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
   corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
   frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
@@ -84,6 +92,7 @@ const DEFAULTS: Required<ShieldVisualSettings> = {
   hexScale: 12,
   edgeWidth: 0.1,
   maxAlpha: 0.5,
+  shieldScale: { x: 1, y: 0.65, z: 1 },
   materialKind: 'hex',
   transmission: {
     thickness: 0.6,
@@ -106,6 +115,7 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
     hexScale: cfg.hexScale ?? DEFAULTS.hexScale,
     edgeWidth: cfg.edgeWidth ?? DEFAULTS.edgeWidth,
     maxAlpha: cfg.maxAlpha ?? DEFAULTS.maxAlpha,
+    shieldScale: cfg.shieldScale ?? DEFAULTS.shieldScale,
     materialKind: cfg.materialKind ?? DEFAULTS.materialKind,
     transmission: {
       thickness: cfg.transmission?.thickness ?? DEFAULTS.transmission.thickness,
@@ -196,7 +206,7 @@ export interface HullTintConfig {
  */
 export const HULL_TINT: HullTintConfig = {
   tintThreshold: 1.00,
-  tintStrength: 0.15,
+  tintStrength: 0.35,
 };
 
 // Global shield ripple tuning (tweakable). These affect the shader and how many

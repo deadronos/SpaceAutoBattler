@@ -371,7 +371,12 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
       carrier: 4.6,
     };
     const r = radius ?? fallbackByHull[entity.ship.hull] ?? 2.0;
-    mesh.scale.setScalar(r);
+    // Non-uniform shield scale (ellipsoid): multiply base radius by per-axis scale
+    const vs = getShieldVisuals(entity.ship.hull);
+    const sx = Math.max(0.05, vs.shieldScale.x) * r;
+    const sy = Math.max(0.05, vs.shieldScale.y) * r;
+    const sz = Math.max(0.05, vs.shieldScale.z) * r;
+    mesh.scale.set(sx, sy, sz);
   });
   // Apply subtle hull tint when shields are gone so the ship is still team-identifiable.
   useRenderFrame(() => {

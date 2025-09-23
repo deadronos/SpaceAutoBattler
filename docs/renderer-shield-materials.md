@@ -44,6 +44,24 @@ Notes:
 - Opacity still maps to shield ratio (clamped by `maxAlpha`).
 - MeshTransmissionMaterial is imported from `@react-three/drei` and typed via a local stub.
 
+## Ellipsoidal shields (mesh scaling)
+
+Shields can be non-uniformly scaled to form an ellipsoid. Configure per hull via `src/config/renderer.ts`:
+
+```ts
+export const SHIELD_VISUALS = {
+  fighter: {
+    // Y smaller than X/Z to better fit most ships
+    shieldScale: { x: 1, y: 0.6, z: 1 },
+  },
+  // ...
+};
+```
+
+If not set, a default `shieldScale` of `{ x: 1, y: 0.65, z: 1 }` is used. The scaling is applied on top of the computed radius, so the final mesh scale is `radius * shieldScale[axis]`.
+
+This change is visual-only. Physics and gameplay collision radii remain unchanged. If the hex pattern looks stretched due to non-uniform scale, a future shader pass can sample pattern coordinates in inverse-scaled space to preserve uniform density.
+
 ## Registry usage for other visuals
 
 Materials are resolved from `src/renderer/materialRegistry.tsx` using namespaced keys. Built-ins include:

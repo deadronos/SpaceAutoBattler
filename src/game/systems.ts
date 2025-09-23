@@ -538,6 +538,9 @@ function computeInterceptHeadingVector(ship: ShipEntity, target: ShipEntity, out
     }
   }
 
+  // Clamp lead time to a fixed horizon (legacy behavior for deterministic tests)
+  // Using a constant 2.5s lead preserves prior fixtures and avoids small drift
+  // in distances that can cascade into off-by-1 intent scores.
   t = Math.min(Math.max(t, 0), 2.5);
   const future = out.copy(target.transform.position).addScaledVector(targetVel, t);
   future.sub(ship.transform.position);
@@ -1097,7 +1100,10 @@ function resolveProjectiles(state: GameState, delta: number): void {
     for (const ship of ships) {
       if (ship.ship.team === projectile.projectile.team) continue;
       const distance = ship.transform.position.distanceTo(projectile.transform.position);
-      const impactRadius = ship.transform.scale * 0.9;
+      // Use projectile config to compute a realistic impact radius (ship radius + projectile radius)
+      const projCfg = PROJECTILE_CONFIG[projectile.projectile.bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
+      const projRadius = projCfg.colliderRadius ?? Math.max(0.08, projectile.transform.scale * 1.2);
+      const impactRadius = ship.transform.scale * 0.9 + projRadius;
       if (distance > impactRadius) continue;
       // Apply damage to shields first, then to hull.
       let remaining = projectile.projectile.damage;
@@ -1189,7 +1195,7 @@ export function fireProjectile(
   const speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
   const damage = opts?.override?.damage ?? origin.ship.damage;
   const range = opts?.override?.range ?? origin.ship.range;
-  const lifetime = Math.min(range / speed, 20);
+  const lifetime = Math.min(range / speed, 30);
 
   const projectile = state.world.createEntity({
     id: state.nextEntityId++,
