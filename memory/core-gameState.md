@@ -4,25 +4,30 @@ File: `src/game/state.ts`
 
 Responsibilities (summary)
 
-- `createGameState()` initializes Rapier, creates the physics `World` and `EventQueue`, constructs the Miniplex ECS world, and returns the canonical `GameState` used across the app and tests.
-- `destroyEntity(state, entity)` and `disposeGameState(state)` provide robust lifecycle handling for entities and Rapier resources.
-- Spawn helpers: `spawnInitialFleets()`, `spawnRandomShip()`, and `resetGame()` are responsible for consistent, deterministic entity creation.
+- `createGameState()` initializes Rapier, the physics `World`/`EventQueue`, the Miniplex ECS world, seeded RNG, and now wires the AI manager (`state.ai`) plus AI blackboard scaffolding.
+- Lifecycle helpers `destroyEntity(state, entity)` / `disposeGameState(state)` manage Rapier resources, ECS cleanup, turret cascade removal, and now leave AI bookkeeping to be rebuilt next tick.
+- Spawn helpers (`spawnInitialFleets`, `spawnRandomShip`, `resetGame`) create deterministic fleets and reseed per-ship cooldowns/AI traits.
 
 Key data and structures
 
-- `GameState` contains: Rapier runtime objects (`rapier`, `physicsWorld`, `eventQueue`), `world` (Miniplex), `colliderLookup: Map<number, Entity>`, `turretsByShip: Map<number, Set<Entity>>`, `queries` (ships/projectiles/turrets), `rng` (SeededRng), `time`, `paused`, and `timeScale`.
-
-- `turretsByShip` is an explicit registry used for efficient turret cascade removal when ships are destroyed.
+- `GameState` now carries:
+  - Rapier runtime objects (`rapier`, `physicsWorld`, `eventQueue`).
+  - ECS world, entity queries, `colliderLookup`, optional `turretsByShip` registry.
+  - Simulation clock (`time`), `paused`, `timeScale`, and canonical `rng`.
+  - `ai: AIManagerState` (flag, tick interval, max-per-tick budget, accumulator, tick index/cursor, slice count, escort assignments map, runtime metrics).
+  - `blackboard: AIBlackboard` (per-team centroids, posture, nearest-enemy/threat maps, scratch vectors, tick index).
 
 Behavior notes
 
-- `destroyEntity` performs defensive Rapier removals with `isValid()` checks and try/catch, removes collider lookup entries, uses `turretsByShip` to find and destroy child turrets, and ensures ECS entities are cleaned from queries to avoid stale references in tests.
-
-- `spawnRandomShip` and other spawn helpers use `state.rng` (the canonical seeded RNG) to ensure deterministic placement and cooldown seeding.
+- `createGameState` seeds AI defaults from `config.ai` (v2 disabled by default, 10 Hz tick). Blackboard vectors are preallocated to avoid per-tick allocations.
+- `resetGame` now resets AI counters, clears escort assignments/nearest caches, and zeroes centroids/posture in addition to respawning fleets.
+- `spawnShip` attaches an `ai` component per ship (profile id derived from hull, initial `AICommand` heading forward, deterministic `traitSeed` + trait multipliers). Turret entity registration unchanged.
+- `destroyEntity` still clears Rapier handles/turret registries; AI state is transient and rebuilt via `updateDecisionSystem` so no extra teardown is needed.
 
 Testing & recommendations
 
-- Tests should create `GameState` with a known seed and use `state.rng` for any randomness.
-- Ensure turret registration helpers (`registerTurret`/`unregisterTurret`) are used in tests to keep `turretsByShip` accurate so `destroyEntity` fast-paths work as intended.
+- Tests toggling AI V2 should assert `state.ai.enabled` and blackboard contents; when flag-off, the legacy systems should behave as before.
+- When spawning ships in tests, inspect `entity.ai` to validate profile assignment or override behavior; any deterministic scenarios should set `state.ai.tickInterval`/`maxPerTick` explicitly.
+- Continue using `registerTurret`/`unregisterTurret` helpers so destroy cascades remain O(1).
 
-Generated: 2025-09-21 (automated promotion)
+Updated: 2025-09-22

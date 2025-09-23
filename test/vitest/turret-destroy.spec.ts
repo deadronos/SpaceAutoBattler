@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameState, ShipEntity, TurretEntity } from '../../src/types/index.js';
 import { destroyEntity } from '../../src/game/state.js';
 import { registerTurret } from '../../src/game/turretRegistry.js';
@@ -94,6 +95,15 @@ function makeStateStub(): GameState {
     rng: { next: () => 0.5 } as any,
     paused: false,
     timeScale: 1,
+    simulation: {
+      step: 1 / 20,
+      accumulator: 0,
+      maxSubSteps: 5,
+      alpha: 0,
+      lastTickIndex: 0,
+      lastTickStart: 0,
+      lastTickDuration: 1 / 20,
+    },
   } as GameState;
 }
 
@@ -118,6 +128,10 @@ function makeShipAndTurret(state: GameState): { ship: ShipEntity; turret: Turret
       range: 1,
       speed: 0,
       bulletType: '',
+      velocity: new Vector3(0, 0, 0),
+      angularVelocity: 0,
+      lateralAcceleration: 0,
+      motion: createDefaultMotionStats(),
     },
     model: 'corvette' as any,
     shieldRipples: [],

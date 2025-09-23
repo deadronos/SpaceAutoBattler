@@ -4,32 +4,37 @@ File: `src/game/systems.ts`
 
 Responsibilities
 
-- `updateGame(state, delta)`: top-level per-tick orchestration. The current order is:
-  1. `prepareShips(state, delta)` — AI and ship-driven actions (movement, firing, embedded turret fallback).
-  2. `updateTurrets(state, delta)` — turret entity updates (aiming, firing).
-  3. `advanceProjectiles(state, delta)` — move projectiles kinematically and clamp to world.
-  4. `state.physicsWorld.step(state.eventQueue)` — step Rapier physics.
-  5. `syncTransforms(state)` — copy rigid body transforms back into ECS transform objects.
-  6. `resolveProjectiles(state, delta)` — TTL handling, collision checks (distance-based), shield absorption & ripple emission, hull damage, and queued destruction.
+- `updateGame(state, delta)`: orchestrates the simulation tick in this order:
+  1. `updateDecisionSystem(state, delta)` — fixed-rate AI V2 scheduler that rebuilds the blackboard, assigns escorts/posture, and runs a round-robin decision slice when the feature flag is enabled.
+  2. `prepareShips(state, delta)` — executes deterministic `AICommand`s (movement, thrust, fire gating) or falls back to the legacy nearest-enemy steering when AI V2 is disabled; also manages shields, muzzle flashes, and embedded turrets.
+  3. `updateTurrets(state, delta)` — updates turret entities (aiming arcs, cooldowns, firing) against nearest targets.
+  4. `advanceProjectiles(state, delta)` — moves projectiles kinematically while clamping to world bounds.
+  5. `state.physicsWorld.step(state.eventQueue)` — steps Rapier physics.
+  6. `syncTransforms(state)` — copies rigid body transforms back onto ECS transforms for rendering.
+  7. `resolveProjectiles(state, delta)` — TTL decrement, collision distance checks, shield absorption/ripple emission, hull damage, and queued destruction.
 
 Key details
 
-- `prepareShips`: simple AI (nearest enemy), orientation, movement with world clamp, firing cooldown management and projectile spawn.
-- `updateTurrets`: updates turret entity kinematics, aiming arcs, and firing when within arc.
-- `advanceProjectiles`: kinematic movement for bullets with world clamp.
-- `syncTransforms`: copy Rapier rigid body transforms back onto ECS entities for renderer.
-- `resolveProjectiles`: TTL handling, shield absorption + ripple emission, hull damage, and entity cleanup.
+- `updateDecisionSystem` derives ally centroids, team posture (`aggressive`/`hold`/`retreat`), nearest-enemy & VIP threat caches, and escort assignments, then evaluates intent scores (`Attack`, `Kite`, `Escort`, `Intercept`, `Reposition`, `Regroup`, `Flee`) per ship within the configured budget (`config.ai.maxPerTick`). Profiles are modulated by per-ship trait multipliers (aggression/patience/dodge) and deterministic tie-breaking hashes each ship's `traitSeed` with the tick index.
+- `prepareShips` branches per flag: AI V2 consumes the stored command (normalizing headings, clamping thrust, resolving target IDs for turret fallback) while the legacy path keeps the prior nearest-enemy chase/fire routine. Both flows prune muzzle flashes and use `runEmbeddedTurrets` when no turret entities exist.
+- `runEmbeddedTurrets` centralizes the legacy turret firing path so both AI modes share it; dedicated turret entities remain unaffected.
+- Movement uses pooled vectors (`TEMP_DIR`, `TEMP_POS`), and world clamping to maintain determinism.
+- Projectile spawning still respects `PROJECTILE_CONFIG`/`DEFAULT_PROJECTILE_CONFIG`; only the gating signal changed (AI command vs. distance check).
+- `__aiTestHooks` exports deterministic hooks (`updateDecisionSystem`, scorer helpers, `writeCommand`, `computeInterceptHeadingVector`, `runLegacyShipBehavior`) so Vitest can exercise internals without widening the runtime API surface. `runDecisionTick` is also exported to support the deterministic scenario harness (`runAIScenario`).
 
 Implementation notes
 
-- Uses temporary Vector3 instances (`TEMP_DIR`, `TEMP_POS`) to avoid per-frame allocations in hot loops.
-- Projectile visuals and physics sizes are determined via `PROJECTILE_CONFIG` mapping with a `DEFAULT_PROJECTILE_CONFIG` fallback.
-- The collision / damage model is intentionally simple and distance-based (no Rapier collision events used for damage resolution in this path).
+- LOD spacing (0/1/2) determines how many AI ticks a ship can skip before its next evaluation; spacing is configurable and keyed off desired range vs. `config.ai.lod` thresholds.
+- Blackboard + assignments reset when no ships remain, and `resetGame` zeroes centroids/posture alongside AI scheduler counters and metrics.
+- AI manager tracks metrics (`lastDecisions`, `lastSkipped`, `lastSliceSize`, cumulative totals, and `budgetHits`) so debugging tools can monitor cadence pressure.
+- Utility scores remain integer-friendly math; posture, profile aggression/patience knobs, and VIP threats bias which intent wins.
 
 Follow-ups
 
-- Tests should verify both the turret-entity flow (when turret entities exist) and the legacy embedded turret fallback (when `state.queries.turrets.entities.length === 0`).
-- Consider adding explicit unit tests for turret priority selection and the scoring heuristic.
-- If you plan to switch to Rapier collision events for projectile hit detection, note the need to update `resolveProjectiles` and remove the distance-based checks.
+- Integration tests now live in `test/vitest/ai-*.spec.ts` (determinism, scorers, executors, legacy fallback). Keep them in sync when touching internals exposed via `__aiTestHooks`.
+- Scenario harness now lives in `src/game/aiScenarioHarness.ts` (used by `ai-scenario-harness.spec.ts`); update fixtures when behaviors change intentionally.
+- Consider caching ship lookups for `getShipById` or adding a spatial grid if 300+ ships make the O(N²) nearest-enemy cache too expensive.
+- Monitor the HUD `AiDebugOverlay` for perf impact; if needed, add throttling knobs or sampling controls. Keep an eye on intercept lead math for very slow projectiles.
+- Monitor the HUD `AiDebugOverlay` for perf impact; if needed, add throttling knobs or sampling controls.
 
-Generated: 2025-09-21 (automated draft)
+Updated: 2025-09-24

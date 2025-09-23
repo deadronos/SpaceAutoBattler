@@ -4,15 +4,20 @@ File: `src/game/ships.ts`
 
 Responsibilities
 
-- Declares `SHIP_STATS` per hull and provides `spawnShip()` to create ECS entity with Rapier body/collider.
-- Initializes health/shield, combat stats, scale, model key, and shield ripple buffer.
+- Defines `SHIP_STATS` per hull and `spawnShip()` which instantiates Rapier rigid bodies/colliders plus ECS entities.
+- Seeds ship combat state (hp/shield regen/cooldowns), model key, muzzle flash buffer, and turret state arrays.
+- Attaches a deterministic AI component per ship (profile id from hull -> behavior profile, initial `AICommand`, `traitSeed` + precomputed trait multipliers for aggression/patience/dodge).
 
 Integration
 
-- Used by `state.ts` spawn helpers and by tests for deterministic setups.
-- Colliders are registered in `GameState.colliderLookup` for potential future collision handling.
+- Called by `state.ts` helpers (`spawnInitialFleets`, `spawnRandomShip`, `resetGame`) and tests; relies on `GameState.rapier`, `rng`, and `ai.tickInterval` to configure runtime state.
+- Registers colliders in `GameState.colliderLookup` and turrets through `registerTurret` to keep cascade removal fast.
+- AI profiles are resolved via `getDefaultProfileId` (see `src/game/aiProfiles.ts`); ships spawn ready for the decision system with trait multipliers derived through `generateTraitsFromSeed`.
 
 Tunables
 
-- Per-hull stats (hp, shield, damage, fireRate, projectile speed/range, movement speed, scale).
-- Collider shapes/sizes if GLBs change scale.
+- Per-hull stats: hp/shield pools, regen, damage, fire rate, projectile speed/range, move speed, scale, default bullet type, optional turret specs.
+- Collider primitive (capsule) sized for current GLB scale; adjust if art assets change.
+- Profile defaults can be overridden by editing `PROFILE_BY_HULL` in `aiProfiles.ts` for new roles/behaviors.
+
+Updated: 2025-09-22
