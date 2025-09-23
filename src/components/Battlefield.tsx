@@ -12,6 +12,7 @@ import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import { ShipObject } from './Ship.js';
 import { TurretObject } from './Turret.js';
 import { ProjectileObject } from './Projectile.js';
+import { ParticleTrails } from './ParticleTrails.js';
 import { SeededRng } from '../utils/rng.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
@@ -154,6 +155,7 @@ function ShipsLayer({ archetype }: { archetype: Archetype<GameEntity, ['ship']> 
       {ships.map((ship) => (
         <ShipObject key={ship.id} entity={ship} />
       ))}
+      <ParticleTrails ships={ships} />
     </>
   );
 }

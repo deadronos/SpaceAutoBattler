@@ -240,3 +240,31 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   strength: 0.7,
   minRenderAmp: 0.001,
 };
+
+// Thruster glow configuration for fallback anchors and default materials
+export interface ThrusterGlowConfig {
+  /** Default emissive color when material emissive is black or very dark */
+  defaultEmissiveColor: string;
+  /** Minimum emissive luminance threshold below which we use default color */
+  darkEmissiveThreshold: number;
+  /** Size of fallback glow meshes relative to model bounding box */
+  glowMeshSize: number;
+  /** Offset distance behind tail plane for glow mesh placement */
+  tailOffset: number;
+  /** Anchor count per hull type for fallback positioning */
+  anchorsByHull: Record<ShipHull, number>;
+}
+
+export const THRUSTER_GLOW_CONFIG: ThrusterGlowConfig = {
+  defaultEmissiveColor: '#5fb6ff',
+  darkEmissiveThreshold: 0.1,
+  glowMeshSize: 0.08,
+  tailOffset: 0.03,
+  anchorsByHull: {
+    fighter: 1,
+    corvette: 2,
+    frigate: 2,
+    destroyer: 4,
+    carrier: 6,
+  },
+};
