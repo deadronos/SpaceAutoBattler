@@ -309,12 +309,12 @@ export interface ParticleTrailsConfig {
 
 export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   enabled: true,
-  maxParticles: 500,
+  maxParticles: 5000,
   lifetime: 0.9,
-  size: 0.06,
+  size: 0.72,
   opacity: 0.75,
-  additiveBlending: true,
-  depthTest: true,
+  additiveBlending: false,
+  depthTest: false,
   depthWrite: false,
   minThrottle: 0.1,
   spawnRatePerAnchor: 12, // particles/sec at full throttle per anchor

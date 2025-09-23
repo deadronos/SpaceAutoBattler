@@ -4,13 +4,17 @@ import {
   InstancedMesh, 
   SphereGeometry, 
   MeshBasicMaterial, 
-  Matrix4, 
   Vector3, 
   Color,
-  Object3D
+  Object3D,
+  Box3,
 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { THRUSTER_GLOW_CONFIG, PARTICLE_TRAILS_CONFIG } from '../config/renderer.js';
+import { useGLTF } from '@react-three/drei';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { SHIP_MODEL_PATHS } from '../assets/ships.js';
+import type { ShipHull } from '../types/index.js';
 
 interface ParticleTrailProps {
   ships: ShipEntity[];
@@ -36,6 +40,50 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
   const particlesRef = useRef<Particle[]>([]);
   const nextParticleIndex = useRef(0);
   const dummy = useMemo(() => new Object3D(), []);
+  const tmpVec = useMemo(() => new Vector3(), []);
+
+  // Preload GLTFs for all hulls and compute local anchors from real model bounds.
+  // These hooks are unconditional to satisfy the Rules of Hooks.
+  const gltfFighter = useGLTF(SHIP_MODEL_PATHS.fighter) as GLTF;
+  const gltfCorvette = useGLTF(SHIP_MODEL_PATHS.corvette) as GLTF;
+  const gltfFrigate = useGLTF(SHIP_MODEL_PATHS.frigate) as GLTF;
+  const gltfDestroyer = useGLTF(SHIP_MODEL_PATHS.destroyer) as GLTF;
+  const gltfCarrier = useGLTF(SHIP_MODEL_PATHS.carrier) as GLTF;
+
+  const anchorLocalsByHull = useMemo(() => {
+    const makeAnchors = (gltf: GLTF | null, hull: ShipHull): Vector3[] => {
+      if (!gltf?.scene) return [];
+      // Compute bounding box from the GLTF scene (local space)
+      gltf.scene.updateMatrixWorld(true);
+      const box = new Box3().setFromObject(gltf.scene);
+      const size = box.getSize(new Vector3());
+      const count = THRUSTER_GLOW_CONFIG.anchorsByHull[hull] || 1;
+      const tailZ = box.min.z - THRUSTER_GLOW_CONFIG.tailOffset * size.z;
+      const anchors: Vector3[] = [];
+      for (let i = 0; i < count; i++) {
+        let x = 0, y = 0;
+        if (count === 2) {
+          x = (i === 0 ? -1 : 1) * 0.3 * size.x;
+        } else if (count === 4) {
+          x = (i % 2 === 0 ? -1 : 1) * 0.25 * size.x;
+          y = (i < 2 ? -1 : 1) * 0.15 * size.y;
+        } else if (count === 6) {
+          x = (i % 2 === 0 ? -1 : 1) * 0.35 * size.x;
+          y = (Math.floor(i / 2) - 1) * 0.2 * size.y;
+        }
+        anchors.push(new Vector3(x, y, tailZ));
+      }
+      return anchors;
+    };
+
+    return new Map<ShipHull, Vector3[]>([
+      ['fighter', makeAnchors(gltfFighter, 'fighter')],
+      ['corvette', makeAnchors(gltfCorvette, 'corvette')],
+      ['frigate', makeAnchors(gltfFrigate, 'frigate')],
+      ['destroyer', makeAnchors(gltfDestroyer, 'destroyer')],
+      ['carrier', makeAnchors(gltfCarrier, 'carrier')],
+    ]);
+  }, [gltfFighter, gltfCorvette, gltfFrigate, gltfDestroyer, gltfCarrier]);
   
   const geometry = useMemo(() => new SphereGeometry(PARTICLE_TRAILS_CONFIG.size, 6, 4), []);
   const material = useMemo(() => {
@@ -66,35 +114,36 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
     }));
   }, []);
 
-  // Compute thruster anchors for a ship (replicating Ship.tsx logic)
-  const computeThrusterAnchors = (ship: ShipEntity): Vector3[] => {
-    const anchors: Vector3[] = [];
-  const anchorCount = THRUSTER_GLOW_CONFIG.anchorsByHull[ship.ship.hull] || 1;
-    
-    // Simplified anchor computation - assume standard ship dimensions
-  const shipSize = { x: 2, y: 1, z: 3 }; // Rough estimate used for trail anchors
-  const tailZ = -shipSize.z * PARTICLE_TRAILS_CONFIG.tailZFactor; // Behind the ship
-    
-    for (let i = 0; i < anchorCount; i++) {
-      let x = 0, y = 0;
-      if (anchorCount === 2) {
-        x = (i === 0 ? -1 : 1) * 0.3 * shipSize.x;
-      } else if (anchorCount === 4) {
-        x = (i % 2 === 0 ? -1 : 1) * 0.25 * shipSize.x;
-        y = (i < 2 ? -1 : 1) * 0.15 * shipSize.y;
-      } else if (anchorCount === 6) {
-        x = (i % 2 === 0 ? -1 : 1) * 0.35 * shipSize.x;
-        y = (Math.floor(i / 2) - 1) * 0.2 * shipSize.y;
+  const computeThrusterAnchorsWorld = (ship: ShipEntity): Vector3[] => {
+    const locals = anchorLocalsByHull.get(ship.ship.hull);
+    if (!locals || locals.length === 0) {
+      // Fallback to heuristic anchors if GLTF not yet ready
+      const count = THRUSTER_GLOW_CONFIG.anchorsByHull[ship.ship.hull] || 1;
+      const anchors: Vector3[] = [];
+      const shipSize = { x: 2, y: 1, z: 3 };
+      const tailZ = -shipSize.z * PARTICLE_TRAILS_CONFIG.tailZFactor;
+      for (let i = 0; i < count; i++) {
+        let x = 0, y = 0;
+        if (count === 2) x = (i === 0 ? -1 : 1) * 0.3 * shipSize.x;
+        else if (count === 4) { x = (i % 2 === 0 ? -1 : 1) * 0.25 * shipSize.x; y = (i < 2 ? -1 : 1) * 0.15 * shipSize.y; }
+        else if (count === 6) { x = (i % 2 === 0 ? -1 : 1) * 0.35 * shipSize.x; y = (Math.floor(i / 2) - 1) * 0.2 * shipSize.y; }
+        anchors.push(new Vector3(x, y, tailZ)
+          .multiplyScalar(ship.transform.scale)
+          .applyQuaternion(ship.transform.rotation)
+          .add(ship.transform.position));
       }
-      
-      const anchor = new Vector3(x, y, tailZ);
-      // Transform to world space
-      anchor.applyQuaternion(ship.transform.rotation);
-      anchor.add(ship.transform.position);
-      anchors.push(anchor);
+      return anchors;
     }
-    
-    return anchors;
+    // Transform local anchors to world using ship transform and scale
+    const out: Vector3[] = new Array(locals.length);
+    for (let i = 0; i < locals.length; i++) {
+      out[i] = tmpVec.clone()
+        .copy(locals[i])
+        .multiplyScalar(ship.transform.scale)
+        .applyQuaternion(ship.transform.rotation)
+        .add(ship.transform.position);
+    }
+    return out;
   };
 
   useFrame((state, delta) => {
@@ -115,7 +164,6 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
       if (particle.life > 0) {
         const lifeRatio = particle.life / particle.maxLife;
         const scale = particle.scale * lifeRatio;
-        const opacity = lifeRatio * 0.6;
         
         dummy.position.copy(particle.position);
         dummy.scale.setScalar(scale);
@@ -131,7 +179,7 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
       const throttle = ship.ai?.command?.thrust ?? 0;
       if (throttle < PARTICLE_TRAILS_CONFIG.minThrottle) continue; // Only spawn when thrusting
       
-      const anchors = computeThrusterAnchors(ship);
+  const anchors = computeThrusterAnchorsWorld(ship);
   const spawnRate = throttle * PARTICLE_TRAILS_CONFIG.spawnRatePerAnchor; // Particles/s per anchor
   const shouldSpawn = Math.random() < spawnRate * delta;
       
