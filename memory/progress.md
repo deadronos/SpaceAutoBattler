@@ -4,7 +4,6 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
-- 2025-09-24: Implemented AI V2 Phase 8–10 deliverables — added intercept/reposition/regroup scoring + executors, authored scenario harness + golden log tests, wired `npm run test:ci`, documented rollout playbook, and refreshed memory/tasks/docs accordingly.
 - 2025-09-25: Expanded AI scenario harness coverage — added bomber intercept and artillery retreat fixtures + tests, updated memory/tasks, and documented new regression targets.
 - 2025-09-24: Implemented AI V2 Phase 8–10 deliverables — added intercept/reposition/regroup scoring + executors, authored scenario harness + golden log tests, wired `npm run test:ci`, documented rollout playbook, and refreshed memory/tasks/docs accordingly.
 - 2025-09-23: Extended AI V2 plan with Phases 8–10 (intercept/regroup intents, scenario harness, rollout automation) and created new memory tasks to track follow-up work.
@@ -31,5 +30,6 @@ Planned actions
 
 - Keep per-file memory documents up-to-date when source files change (especially `src/game/*`).
 - Add short memory entries for any new files added to `src/` that contain important behavior or public APIs.
+- Ensure `core-systems.md` stays aligned when system ordering changes (carrier launch & motion placement just updated 2025-09-24).
 
 Generated: 2025-09-21
