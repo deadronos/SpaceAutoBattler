@@ -35,6 +35,42 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
                 ships: created.queries.ships.entities.length,
                 projectiles: created.queries.projectiles.entities.length
               }),
+              sampleShipMotion: () => {
+                try {
+                  const ships = created.queries.ships.entities;
+                  return {
+                    tick: created.simulation.lastTickIndex,
+                    time: created.time,
+                    ships: ships.map((entity) => {
+                      const transform = entity.transform;
+                      const ship = entity.ship;
+                      return {
+                        id: entity.id,
+                        team: ship?.team ?? null,
+                        hull: ship?.hull ?? null,
+                        position: transform
+                          ? { x: transform.position.x, y: transform.position.y, z: transform.position.z }
+                          : { x: 0, y: 0, z: 0 },
+                        rotation: transform
+                          ? {
+                              x: transform.rotation.x,
+                              y: transform.rotation.y,
+                              z: transform.rotation.z,
+                              w: transform.rotation.w
+                            }
+                          : { x: 0, y: 0, z: 0, w: 1 },
+                        velocity: ship
+                          ? { x: ship.velocity.x, y: ship.velocity.y, z: ship.velocity.z }
+                          : { x: 0, y: 0, z: 0 },
+                        angularVelocity: ship?.angularVelocity ?? 0,
+                        lateralAcceleration: ship?.lateralAcceleration ?? 0
+                      };
+                    })
+                  };
+                } catch {
+                  return { tick: created.simulation.lastTickIndex, time: created.time, ships: [] };
+                }
+              },
               // Advance the simulation by `steps` frames of `dt` seconds each
               tick: (steps = 1, dt = 1 / 60) => {
                 try {

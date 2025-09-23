@@ -1,4 +1,44 @@
-import type { ShipHull } from '../types/index.js';
+import type { MotionStats, ShipHull } from '../types/index.js';
+
+export interface RendererMotionConfig {
+  /** Linear interpolation factor applied every render frame (0..1). */
+  positionLerp: number;
+  /** Spherical interpolation factor for rotation (0..1). */
+  rotationSlerp: number;
+  /** Low-pass filter factor for banking (0..1). */
+  bankLerp: number;
+  /** Maximum bank angle allowed for visuals (degrees). */
+  maxBankDeg: number;
+  /** Conversion factor from yaw rate (rad/s) to bank degrees. */
+  bankFactor: number;
+  /** Distance threshold (units) that resets interpolation to avoid trails. */
+  teleportDistance: number;
+  /** Thruster emissive intensity range scaled by throttle input. */
+  thrusterIntensity: { base: number; range: number };
+}
+
+export const RENDERER_MOTION_DEFAULTS: RendererMotionConfig = {
+  positionLerp: 0.18,
+  rotationSlerp: 0.25,
+  bankLerp: 0.15,
+  maxBankDeg: 32,
+  bankFactor: 18,
+  teleportDistance: 30,
+  thrusterIntensity: { base: 0.4, range: 1.2 },
+};
+
+export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotionConfig {
+  const smoothing = motion?.smoothing;
+  return {
+    positionLerp: smoothing?.positionLerp ?? RENDERER_MOTION_DEFAULTS.positionLerp,
+    rotationSlerp: smoothing?.rotationSlerp ?? RENDERER_MOTION_DEFAULTS.rotationSlerp,
+    bankLerp: smoothing?.bankLerp ?? RENDERER_MOTION_DEFAULTS.bankLerp,
+    maxBankDeg: motion?.maxBankDeg ?? RENDERER_MOTION_DEFAULTS.maxBankDeg,
+    bankFactor: motion?.visualBankFactor ?? RENDERER_MOTION_DEFAULTS.bankFactor,
+    teleportDistance: smoothing?.teleportDistance ?? RENDERER_MOTION_DEFAULTS.teleportDistance,
+    thrusterIntensity: RENDERER_MOTION_DEFAULTS.thrusterIntensity,
+  };
+}
 
 export type ShieldMaterialKind = 'hex' | 'transmission';
 
@@ -198,5 +238,5 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   ignoreMaxAlpha: false,
   colorMul: 0.5,
   strength: 0.7,
-  minRenderAmp: 0.008,
+  minRenderAmp: 0.001,
 };

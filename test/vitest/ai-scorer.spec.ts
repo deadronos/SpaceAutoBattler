@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
+import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
@@ -64,6 +65,10 @@ function createShip(options: {
       range: options.range ?? 260,
       speed: 40,
       bulletType: 'bullet:laser',
+      velocity: new Vector3(0, 0, 0),
+      angularVelocity: 0,
+      lateralAcceleration: 0,
+      motion: createDefaultMotionStats(),
     },
     model: options.hull ?? 'fighter',
   } as ShipEntity;
@@ -100,16 +105,25 @@ function createState(): GameState {
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
-    physicsWorld: {} as never,
-    eventQueue: {} as never,
-    colliderLookup: new Map(),
-    rapier: {} as never,
-    nextEntityId: 1,
-    time: 0,
-    rng: {} as never,
-    paused: false,
-    timeScale: 1,
-  } as unknown as GameState;
+   physicsWorld: {} as never,
+   eventQueue: {} as never,
+   colliderLookup: new Map(),
+   rapier: {} as never,
+   nextEntityId: 1,
+   time: 0,
+   rng: {} as never,
+   paused: false,
+   timeScale: 1,
+    simulation: {
+      step: 1 / 20,
+      accumulator: 0,
+      maxSubSteps: 5,
+      alpha: 0,
+      lastTickIndex: 0,
+      lastTickStart: 0,
+      lastTickDuration: 1 / 20,
+    },
+ } as unknown as GameState;
 }
 
 describe('AI scorer snapshots', () => {
