@@ -262,10 +262,10 @@ export const THRUSTER_GLOW_CONFIG: ThrusterGlowConfig = {
   tailOffset: 0.01,
   anchorsByHull: {
     fighter: 1,
-    corvette: 1,
+    corvette: 2,
     frigate: 2,
-    destroyer: 2,
-    carrier: 2,
+    destroyer: 4,
+    carrier: 6,
   },
 };
 

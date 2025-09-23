@@ -6,7 +6,6 @@ import { clampToWorld } from '../config.js';
 const TEMP_FORWARD = new Vector3();
 const TEMP_TARGET_DIR = new Vector3();
 const TEMP_VELOCITY_CHANGE = new Vector3();
-const TEMP_ANGULAR_AXIS = new Vector3();
 const TEMP_ROTATION = new Quaternion();
 const TEMP_RIGHT = new Vector3();
 
@@ -43,64 +42,68 @@ export function updateMotionSystem(state: GameState, dt: number): void {
  */
 function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: number): void {
   const motion = ship.ship.motion;
-  
-  // Get current forward direction from ship rotation
+  const kp = motion.turnKp ?? 4.0;
+  const kd = motion.turnKd ?? 0.6;
+
+  // Compute current yaw and target yaw from headings projected to XZ plane
   TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-  
-  // Normalize target heading
-  TEMP_TARGET_DIR.copy(targetHeading).normalize();
-  
-  // Calculate shortest arc to target
-  const dot = TEMP_FORWARD.dot(TEMP_TARGET_DIR);
-  
-  // Skip if already aligned (avoid numerical instability)
-  if (dot > 0.9999) {
-    // Apply angular damping when aligned
+  const cf = TEMP_FORWARD.set(TEMP_FORWARD.x, 0, TEMP_FORWARD.z);
+  const th = TEMP_TARGET_DIR.copy(targetHeading);
+  if (cf.lengthSq() < 1e-8 || th.lengthSq() < 1e-8) {
+    // Nothing meaningful to do; just apply damping
     ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
     return;
   }
-  
-  // Calculate cross product to get rotation axis
-  TEMP_ANGULAR_AXIS.crossVectors(TEMP_FORWARD, TEMP_TARGET_DIR);
-  const crossLength = TEMP_ANGULAR_AXIS.length();
-  
-  if (crossLength < 0.0001) {
-    // Vectors are opposite, choose any perpendicular axis
-    TEMP_ANGULAR_AXIS.set(0, 1, 0);
-  } else {
-    TEMP_ANGULAR_AXIS.divideScalar(crossLength);
+  cf.normalize();
+  th.set(th.x, 0, th.z).normalize();
+
+  const currentYaw = Math.atan2(cf.x, cf.z);
+  const targetYaw = Math.atan2(th.x, th.z);
+  let dyaw = targetYaw - currentYaw;
+  while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
+  while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+
+  // Deadzone to avoid twitch (about 2 degrees)
+  const deadzone = 2 * Math.PI / 180;
+  if (Math.abs(dyaw) < deadzone) {
+    ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
+    // Optional: small slerp toward target for visual smoothness
+    const s = motion.smoothing?.rotationSlerp ?? 0;
+    if (s > 0) {
+      const qTarget = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), targetYaw);
+      ship.transform.rotation.slerp(qTarget, Math.min(1, s));
+      ship.transform.rotation.normalize();
+    }
+    return;
   }
-  
-  // Calculate angular error (unsigned angle)
-  const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-  
-  // Determine rotation direction (sign)
-  const sign = TEMP_ANGULAR_AXIS.y >= 0 ? 1 : -1;
-  const signedAngle = angle * sign;
-  
-  // PD control: proportional to angle error
-  const targetAngularVelocity = signedAngle * 4.0; // Proportional gain
-  
-  // Clamp target angular velocity to maximum turn rate
-  const clampedTarget = Math.max(-motion.maxTurnRate, Math.min(motion.maxTurnRate, targetAngularVelocity));
-  
-  // Calculate change in angular velocity (derivative control)
-  const angularVelocityError = clampedTarget - ship.ship.angularVelocity;
-  const maxChange = motion.angularAcceleration * dt;
-  const velocityChange = Math.max(-maxChange, Math.min(maxChange, angularVelocityError));
-  
-  // Apply angular acceleration
-  ship.ship.angularVelocity += velocityChange;
-  
-  // Apply angular damping
+
+  // PD control targeting angular velocity
+  const desiredAngularVel = kp * dyaw - kd * ship.ship.angularVelocity;
+  const clampedTarget = Math.max(-motion.maxTurnRate, Math.min(motion.maxTurnRate, desiredAngularVel));
+  const err = clampedTarget - ship.ship.angularVelocity;
+  const maxDv = motion.angularAcceleration * dt;
+  const dv = Math.max(-maxDv, Math.min(maxDv, err));
+  ship.ship.angularVelocity += dv;
   ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
-  
+
   // Integrate angular velocity to rotation
-  if (Math.abs(ship.ship.angularVelocity) > 0.001) {
-    const rotationAmount = ship.ship.angularVelocity * dt;
-    TEMP_ROTATION.setFromAxisAngle(new Vector3(0, 1, 0), rotationAmount);
+  const w = ship.ship.angularVelocity;
+  if (Math.abs(w) > 0.0005) {
+    const rot = w * dt;
+    TEMP_ROTATION.setFromAxisAngle(new Vector3(0, 1, 0), rot);
     ship.transform.rotation.multiplyQuaternions(TEMP_ROTATION, ship.transform.rotation);
     ship.transform.rotation.normalize();
+  }
+
+  // When close, optionally slerp a bit toward target to finish smooth
+  const smallAngle = 0.2; // ~11 degrees
+  if (Math.abs(dyaw) < smallAngle) {
+    const s = motion.smoothing?.rotationSlerp ?? 0;
+    if (s > 0) {
+      const qTarget = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), targetYaw);
+      ship.transform.rotation.slerp(qTarget, Math.min(1, s));
+      ship.transform.rotation.normalize();
+    }
   }
 }
 

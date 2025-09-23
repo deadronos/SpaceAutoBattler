@@ -367,6 +367,10 @@ export interface MotionStats {
   angularAcceleration: number;
   /** Angular velocity damping factor (0 = no damping, higher = more damping). */
   angularDamping: number;
+  /** Optional proportional gain for yaw control (default: 4.0). */
+  turnKp?: number;
+  /** Optional derivative gain for yaw control based on current angular velocity (default: 0.6). */
+  turnKd?: number;
   /** Optional maximum lateral acceleration for strafe movement (units/s²). */
   maxLateralAcceleration?: number;
   /** Optional renderer smoothing preferences for this hull. */

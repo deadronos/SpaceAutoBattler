@@ -617,6 +617,7 @@ function writeCommand(
         if (distance > 1e-5) {
           heading.divideScalar(distance);
           const tangent = TEMP_REL_POS.set(-heading.z, 0, heading.x);
+          // Use time-varying parity based on global tick index to diversify formations
           const hash = hashToInt(ship.id ^ (state.ai.tickIndex * 491));
           if (tangent.lengthSq() > 1e-5) {
             tangent.normalize();
@@ -626,8 +627,8 @@ function writeCommand(
         } else {
           heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
         }
-        const desiredMin = profile.desiredRange[0];
-        const desiredMax = profile.desiredRange[1];
+          const desiredMin = profile.desiredRange[0];
+          const desiredMax = profile.desiredRange[1];
         let shouldFire = distance <= ship.ship.range;
         if (distance > desiredMax * 1.05) {
           command.thrust = 0.95;
@@ -816,8 +817,31 @@ function executeAICommand(state: GameState, ship: ShipEntity, delta: number): Sh
   } else {
     heading.normalize();
   }
-
-  orientTowards(ship, heading);
+  // Do not snap rotation here; motion system will steer toward heading.
+  // (Optional) Clamp how fast the commanded heading can rotate per tick.
+  try {
+    const motion = ship.ship.motion;
+      const tickHz = state.ai && state.ai.tickInterval > 0 ? 1 / state.ai.tickInterval : 10;
+    const perTick = 1 / tickHz;
+    const maxYawDelta = Math.max(0.05, motion.maxTurnRate * Math.max(perTick, delta));
+    const currentForward = new Vector3(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    const cf = new Vector3(currentForward.x, 0, currentForward.z);
+    const dh = new Vector3(heading.x, 0, heading.z);
+    if (cf.lengthSq() > 1e-6 && dh.lengthSq() > 1e-6) {
+      cf.normalize();
+      dh.normalize();
+      const currentYaw = Math.atan2(cf.x, cf.z);
+      const targetYaw = Math.atan2(dh.x, dh.z);
+      let dyaw = targetYaw - currentYaw;
+      while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
+      while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+      const clamped = Math.max(-maxYawDelta, Math.min(maxYawDelta, dyaw));
+      const newYaw = currentYaw + clamped;
+      heading.set(Math.sin(newYaw), 0, Math.cos(newYaw));
+    }
+  } catch {
+    // fallback: keep heading as-is
+  }
 
   const thrust = Math.min(1, Math.max(0, command.thrust));
   if (thrust > 0) {
