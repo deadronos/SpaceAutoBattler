@@ -53,4 +53,23 @@ describe('Thruster glow enhancement', () => {
     expect(txt).toContain('thrusterIntensity.range');
     expect(txt).toContain('throttle');
   });
+
+  it('has particle trails component integration', () => {
+    const file = path.resolve(__dirname, '../../src/components/ParticleTrails.tsx');
+    expect(fs.existsSync(file)).toBe(true);
+    
+    const txt = fs.readFileSync(file, 'utf-8');
+    
+    // Check for particle system functionality
+    expect(txt).toContain('ParticleTrails');
+    expect(txt).toContain('InstancedMesh');
+    expect(txt).toContain('computeThrusterAnchors');
+    expect(txt).toContain('throttle');
+    
+    // Check it's integrated in Battlefield
+    const battlefieldFile = path.resolve(__dirname, '../../src/components/Battlefield.tsx');
+    const battlefieldTxt = fs.readFileSync(battlefieldFile, 'utf-8');
+    expect(battlefieldTxt).toContain('ParticleTrails');
+    expect(battlefieldTxt).toContain('<ParticleTrails ships={ships} />');
+  });
 });
