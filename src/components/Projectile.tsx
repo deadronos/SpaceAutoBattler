@@ -9,7 +9,7 @@ import { useBloomRegistration } from '../renderer/BloomProvider.js';
 
 export function ProjectileObject({ entity }: { entity: ProjectileEntity }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
-  useBloomRegistration(meshRef, true);
+  useBloomRegistration(meshRef, { group: 'projectiles' });
 
   useFrame(() => {
     const mesh = meshRef.current;

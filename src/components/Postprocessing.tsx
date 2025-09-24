@@ -4,7 +4,6 @@ import {
   EffectComposer,
   RenderPass,
   EffectPass,
-  BloomEffect,
   SelectiveBloomEffect,
   FXAAEffect,
   KernelSize,
@@ -49,30 +48,40 @@ export function Postprocessing({ enabled = false }: Props): null {
       const renderPass = new RenderPass(scene as unknown as Scene, camera as unknown as Camera);
       composer.addPass(renderPass);
 
-      // Selective bloom: only affect registered selection
-      const bloom = new SelectiveBloomEffect(
-        scene as unknown as Scene,
-        camera as unknown as Camera,
-        (bloomCtx?.selection ?? new Set()) as any,
-      );
-      // Configure bloom parameters
-      try {
-        (bloom as any).blendMode.blendFunction = BlendFunction.SCREEN;
-        (bloom as any).kernelSize = KernelSize.SMALL;
-        (bloom as any).intensity = POSTPROCESSING_CONFIG.bloomIntensity ?? 1.0;
-        const lumMat = (bloom as any).luminanceMaterial;
-        if (lumMat) {
-          lumMat.threshold = POSTPROCESSING_CONFIG.bloomThreshold ?? 1.0;
-          lumMat.smoothing = POSTPROCESSING_CONFIG.bloomSmoothing ?? 0.1;
-        }
-        (bloom as any).mipmapBlur = true;
-      } catch {}
+      // Build selective bloom effects per configured group
+      const groupConfigs = POSTPROCESSING_CONFIG.bloomGroups ?? {};
+      const defaultGroup = bloomCtx?.defaultGroup ?? POSTPROCESSING_CONFIG.bloomDefaultGroup ?? 'default';
+      const groupNames = new Set<string>([...Object.keys(groupConfigs), defaultGroup]);
+      const bloomEffects: SelectiveBloomEffect[] = [];
+
+      groupNames.forEach((groupName) => {
+        const selection = bloomCtx?.selections.get(groupName);
+        if (!selection) return;
+        const cfg = groupConfigs[groupName] ?? {};
+        const bloom = new SelectiveBloomEffect(scene as unknown as Scene, camera as unknown as Camera, {
+          blendFunction: BlendFunction.SCREEN,
+          kernelSize: KernelSize.SMALL,
+          intensity: cfg.intensity ?? POSTPROCESSING_CONFIG.bloomIntensity ?? 1.0,
+        });
+        bloom.selection = selection;
+        bloom.ignoreBackground = POSTPROCESSING_CONFIG.bloomIgnoreBackground ?? true;
+        try {
+          const lumMat = (bloom as any).luminanceMaterial;
+          if (lumMat) {
+            lumMat.threshold = cfg.threshold ?? POSTPROCESSING_CONFIG.bloomThreshold ?? 1.0;
+            lumMat.smoothing = cfg.smoothing ?? POSTPROCESSING_CONFIG.bloomSmoothing ?? 0.1;
+          }
+          (bloom as any).mipmapBlur = true;
+        } catch {}
+        bloomEffects.push(bloom);
+      });
 
       // FXAA
       const fxaa = new FXAAEffect();
 
+      const effects = [...bloomEffects, fxaa];
       // Compose effects into a single pass (order matters: bloom before fxaa)
-  const effectPass = new EffectPass(camera as unknown as Camera, bloom, fxaa);
+      const effectPass = new EffectPass(camera as unknown as Camera, ...effects);
       effectPass.renderToScreen = true;
       composer.addPass(effectPass);
 
@@ -88,7 +97,14 @@ export function Postprocessing({ enabled = false }: Props): null {
       fxaaRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, bloomCtx ? bloomCtx.selection : null, gl, scene, camera]);
+  }, [
+    enabled,
+    bloomCtx ? bloomCtx.selections : null,
+    bloomCtx ? bloomCtx.defaultGroup : null,
+    gl,
+    scene,
+    camera,
+  ]);
 
   useEffect(() => {
     const composer = composerRef.current;
