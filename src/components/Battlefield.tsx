@@ -13,6 +13,7 @@ import { ShipObject } from './Ship.js';
 import { TurretObject } from './Turret.js';
 import { ProjectileObject } from './Projectile.js';
 import { ParticleTrails } from './ParticleTrails.js';
+import { CelestialEnvironment } from './environment/CelestialEnvironment.js';
 import { SeededRng } from '../utils/rng.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
@@ -38,9 +39,7 @@ export function Battlefield(): React.ReactElement {
         <BloomProvider enabled>
           <color attach="background" args={[new Color('#02030b')]} />
           <fog attach="fog" args={FOG_DEFAULTS} />
-          <ambientLight intensity={0.35} />
-          <directionalLight position={[240, 320, 100]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
-          <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
+          <CelestialEnvironment />
           <Suspense fallback={null}>
             <ShipsLayer archetype={state.queries.ships} />
             <TurretsLayer archetype={state.queries.turrets} />
@@ -68,9 +67,7 @@ export function Battlefield(): React.ReactElement {
         <>
           <color attach="background" args={[new Color('#02030b')]} />
           <fog attach="fog" args={FOG_DEFAULTS} />
-          <ambientLight intensity={0.35} />
-          <directionalLight position={[240, 320, 100]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]} />
-          <pointLight position={[-180, 240, -120]} intensity={0.8} color="#88aaff" />
+          <CelestialEnvironment />
           <Suspense fallback={null}>
             <ShipsLayer archetype={state.queries.ships} />
             <TurretsLayer archetype={state.queries.turrets} />
