@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect } from 'react';
-import { Color, ShaderMaterial, Texture } from 'three';
+import { Color, ShaderMaterial, Texture, DoubleSide } from 'three';
 
 interface PlanetRimMaterialProps {
   map?: Texture;
@@ -36,6 +36,7 @@ export function PlanetRimMaterial({
         uMetalness: { value: metalness },
         uRoughness: { value: roughness },
       },
+      side: DoubleSide,
       vertexShader: `
         varying vec3 vNormal;
         varying vec3 vViewPosition;
@@ -69,9 +70,14 @@ export function PlanetRimMaterial({
           vec3 baseColor = mix(uColor, texColor.rgb, texColor.a);
           
           // Calculate fresnel for rim lighting.
-          // Use the absolute value of the view-normal dot so the rim is visible
-          // from both above and below the planet (symmetric fresnel).
+          // If we render double-sided, flip the normal for backfaces so
+          // lighting and fresnel remain consistent (avoids interior-lit look).
           vec3 normal = normalize(vNormal);
+          // gl_FrontFacing is true for front-facing fragments; when false,
+          // we are rendering a backface. Flip the normal in that case.
+          if (!gl_FrontFacing) {
+            normal = -normal;
+          }
           vec3 viewDir = normalize(vViewPosition);
           float ndv = abs(dot(normal, viewDir));
           float fresnel = 1.0 - ndv;
