@@ -23,8 +23,11 @@ export function Postprocessing({ enabled = false }: Props): null {
   const fxaaRef = useRef<FXAAEffect | null>(null);
   const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
   const bloomCtx = useBloomContext();
+  const prevAutoClearRef = useRef<boolean | null>(null);
 
   useEffect(() => {
+    const renderer = gl as unknown as WebGLRenderer;
+
     // Only create the composer when postprocessing is enabled. This avoids
     // interfering with the default R3F renderer when the feature is off.
     if (!enabled) {
@@ -37,13 +40,18 @@ export function Postprocessing({ enabled = false }: Props): null {
         fxaaRef.current = null;
       }
       bloomEffectsRef.current = [];
+      if (prevAutoClearRef.current !== null) {
+        renderer.autoClear = prevAutoClearRef.current;
+        prevAutoClearRef.current = null;
+      }
       return;
     }
 
-    try {
-      const renderer = gl as unknown as WebGLRenderer;
-      renderer.autoClear = true;
+    const previousAutoClear = renderer.autoClear;
+    prevAutoClearRef.current = previousAutoClear;
+    renderer.autoClear = false;
 
+    try {
       const composer = new EffectComposer(renderer);
 
       // Render the main scene first
@@ -67,7 +75,11 @@ export function Postprocessing({ enabled = false }: Props): null {
         });
         bloom.selection = selection;
         bloom.ignoreBackground = POSTPROCESSING_CONFIG.bloomIgnoreBackground ?? true;
-  bloom.blendMode.opacity.value = selection.size > 0 ? 1 : 0;
+        bloom.blendMode.opacity.value = selection.size > 0 ? 1 : 0;
+        const depthMask = (bloom as any).depthMaskMaterial;
+        if (depthMask) {
+          depthMask.keepFar = false;
+        }
         try {
           const lumMat = (bloom as any).luminanceMaterial;
           if (lumMat) {
@@ -92,6 +104,10 @@ export function Postprocessing({ enabled = false }: Props): null {
       fxaaRef.current = fxaa;
       bloomEffectsRef.current = bloomEffects;
     } catch (err) {
+      if (prevAutoClearRef.current !== null) {
+        renderer.autoClear = prevAutoClearRef.current;
+        prevAutoClearRef.current = null;
+      }
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.
       // Log for debugging.
@@ -101,6 +117,20 @@ export function Postprocessing({ enabled = false }: Props): null {
       fxaaRef.current = null;
       bloomEffectsRef.current = [];
     }
+    return () => {
+      if (composerRef.current) {
+        try {
+          composerRef.current.dispose();
+        } catch {}
+        composerRef.current = null;
+      }
+      fxaaRef.current = null;
+      bloomEffectsRef.current = [];
+      if (prevAutoClearRef.current !== null) {
+        renderer.autoClear = prevAutoClearRef.current;
+        prevAutoClearRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabled,
