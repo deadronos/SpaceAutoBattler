@@ -45,7 +45,7 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
       useBloomRegistration(ref, true);
       return (
         <mesh ref={ref} position={position} frustumCulled={false}>
-          <sphereGeometry args={[0.1, 10, 10]} />
+          <sphereGeometry args={[1, 10, 10]} />
           <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={intensity} transparent opacity={0.9} />
         </mesh>
       );

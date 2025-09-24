@@ -88,7 +88,7 @@ export function Battlefield(): React.ReactElement {
             cellColor="#203050"
             sectionColor="#101725"
             position={[0, -5, 0]}
-            fadeDistance={WORLD_SIZE}
+            fadeDistance={WORLD_SIZE*3}
             infiniteGrid
           />
           <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
