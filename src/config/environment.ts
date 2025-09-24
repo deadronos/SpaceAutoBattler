@@ -22,6 +22,8 @@ export interface PlanetBodyConfig {
   emissiveBoost?: number;
   /** Optional rim-light strength scalar when shader enhancement is enabled. */
   rimStrength?: number;
+  /** Optional rim glow color for fresnel effect. */
+  rimColor?: string;
 }
 
 export interface StarLightConfig {
@@ -67,6 +69,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       },
       emissiveBoost: 0.065,
       rimStrength: 0.3,
+      rimColor: '#ffaa44',
     },
     {
       id: 'iceCompanion',
@@ -81,6 +84,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       },
       emissiveBoost: 0.025,
       rimStrength: 0.2,
+      rimColor: '#aaccff',
     },
   ],
 };
