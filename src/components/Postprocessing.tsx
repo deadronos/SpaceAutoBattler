@@ -21,6 +21,7 @@ export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
+  const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
   const bloomCtx = useBloomContext();
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function Postprocessing({ enabled = false }: Props): null {
         composerRef.current = null;
         fxaaRef.current = null;
       }
+      bloomEffectsRef.current = [];
       return;
     }
 
@@ -65,6 +67,7 @@ export function Postprocessing({ enabled = false }: Props): null {
         });
         bloom.selection = selection;
         bloom.ignoreBackground = POSTPROCESSING_CONFIG.bloomIgnoreBackground ?? true;
+  bloom.blendMode.opacity.value = selection.size > 0 ? 1 : 0;
         try {
           const lumMat = (bloom as any).luminanceMaterial;
           if (lumMat) {
@@ -87,6 +90,7 @@ export function Postprocessing({ enabled = false }: Props): null {
 
       composerRef.current = composer;
       fxaaRef.current = fxaa;
+      bloomEffectsRef.current = bloomEffects;
     } catch (err) {
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.
@@ -95,6 +99,7 @@ export function Postprocessing({ enabled = false }: Props): null {
       console.warn('Postprocessing init failed, skipping composer:', err);
       composerRef.current = null;
       fxaaRef.current = null;
+      bloomEffectsRef.current = [];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -116,6 +121,11 @@ export function Postprocessing({ enabled = false }: Props): null {
     const composer = composerRef.current;
     if (!composer) return;
     if (enabled) {
+      if (bloomEffectsRef.current.length > 0) {
+        for (const effect of bloomEffectsRef.current) {
+          effect.blendMode.opacity.value = effect.selection.size > 0 ? 1 : 0;
+        }
+      }
       try {
         composer.render(delta);
       } catch (err) {

@@ -39,13 +39,19 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
 
   configuredGroups.forEach((group) => {
     const map = selectionsRef.current;
-    if (!map.has(group)) {
-      const selection = new Selection();
-      selection.exclusive = false;
+    let selection = map.get(group);
+    if (!selection) {
+      selection = new Selection();
       const layer = Math.min(nextLayerRef.current, 31);
       selection.layer = layer;
       nextLayerRef.current = Math.min(layer + 1, 31);
       map.set(group, selection);
+    }
+    selection.exclusive = true;
+    if (selection.size > 0) {
+      selection.forEach((obj) => {
+        obj.layers.enable(0);
+      });
     }
   });
 
@@ -73,7 +79,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       let selection = selectionsRef.current.get(group);
       if (!selection) {
         selection = new Selection();
-        selection.exclusive = false;
+        selection.exclusive = true;
         const layer = Math.min(nextLayerRef.current, 31);
         selection.layer = layer;
         nextLayerRef.current = Math.min(layer + 1, 31);
@@ -81,6 +87,9 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       }
       if (selection && !selection.has(obj)) {
         selection.add(obj);
+        if (selection.exclusive) {
+          obj.layers.enable(0);
+        }
       }
     },
     [defaultGroup],
