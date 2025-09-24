@@ -68,10 +68,13 @@ export function PlanetRimMaterial({
           vec4 texColor = texture2D(uMap, vUv);
           vec3 baseColor = mix(uColor, texColor.rgb, texColor.a);
           
-          // Calculate fresnel for rim lighting
+          // Calculate fresnel for rim lighting.
+          // Use the absolute value of the view-normal dot so the rim is visible
+          // from both above and below the planet (symmetric fresnel).
           vec3 normal = normalize(vNormal);
           vec3 viewDir = normalize(vViewPosition);
-          float fresnel = 1.0 - max(0.0, dot(normal, viewDir));
+          float ndv = abs(dot(normal, viewDir));
+          float fresnel = 1.0 - ndv;
           fresnel = pow(fresnel, 2.0); // Sharper rim
           
           // Apply rim glow

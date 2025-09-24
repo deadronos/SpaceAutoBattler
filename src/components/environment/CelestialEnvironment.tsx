@@ -13,7 +13,13 @@ export function CelestialEnvironment(): React.ReactElement {
       <StarLight config={starLight}>
         {features?.starDisk !== false && (
           // StarDisk is rendered as a child of StarLight so it's parented in the scene graph
-          <StarDisk config={starLight} enabled={true} />
+          <StarDisk
+            config={starLight}
+            enabled={true}
+            size={CELESTIAL_ENVIRONMENT.starDisk?.size}
+            opacity={CELESTIAL_ENVIRONMENT.starDisk?.opacity}
+            distanceMultiplier={CELESTIAL_ENVIRONMENT.starDisk?.distanceMultiplier}
+          />
         )}
       </StarLight>
       <Suspense fallback={null}>

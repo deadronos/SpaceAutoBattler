@@ -52,6 +52,13 @@ export interface StarLightConfig {
 export interface CelestialEnvironmentConfig {
   planets: PlanetBodyConfig[];
   starLight: StarLightConfig;
+  /** Optional star disk appearance settings (size in world units, opacity, and distance multiplier) */
+  starDisk?: {
+    size?: number;
+    opacity?: number;
+    /** Multiplier applied to starLight.distance to compute disk offset */
+    distanceMultiplier?: number;
+  };
   /** Optional parallax billboards for distant objects */
   parallaxBillboards?: Array<{
     id: string;
@@ -73,9 +80,9 @@ export interface CelestialEnvironmentConfig {
 export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   starLight: {
     color: '#ffd8b0',
-    intensity: 4.2,
+    intensity: 1.2,
     direction: { x: -0.2516, y: -0.1509, z: -0.956 },
-    distance: 10000,
+    distance: 30000,
     ambientColor: '#1b2240',
     ambientIntensity: 0.55,
   },
@@ -91,7 +98,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         speed: 0.012,
         offset: 0.6,
       },
-      emissiveBoost: 0.065,
+      emissiveBoost: 0.035,
       rimStrength: 0.3,
       rimColor: '#ffaa44',
       rings: {
@@ -113,7 +120,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         speed: 0.008,
         offset: -0.4,
       },
-      emissiveBoost: 0.025,
+      emissiveBoost: 0.015,
       rimStrength: 0.2,
       rimColor: '#aaccff',
     },
@@ -136,6 +143,12 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       parallaxFactor: 0.03,
     },
   ],
+  // Default star disk settings — tune here to change size/opacity/position globally
+  starDisk: {
+    size: 12000,
+    opacity: 0.9,
+    distanceMultiplier: 1.0,
+  },
   features: {
     starDisk: true,
     planetRims: true,

@@ -17,7 +17,7 @@ export const CAMERA_DEFAULTS = {
 export const FOG_DEFAULTS: readonly [string, number, number] = [
   '#02030b',
   WORLD_SIZE * 0.8,
-  WORLD_SIZE * 4,
+  WORLD_SIZE * 10,
 ];
 
 // AI configuration

@@ -12,6 +12,7 @@ import {
 } from 'postprocessing';
 import { WebGLRenderer, Scene, Camera } from 'three';
 import { useBloomContext } from '../renderer/BloomProvider.js';
+import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 
 type Props = {
   enabled?: boolean;
@@ -58,11 +59,11 @@ export function Postprocessing({ enabled = false }: Props): null {
       try {
         (bloom as any).blendMode.blendFunction = BlendFunction.SCREEN;
         (bloom as any).kernelSize = KernelSize.SMALL;
-        (bloom as any).intensity = 1.0;
+        (bloom as any).intensity = POSTPROCESSING_CONFIG.bloomIntensity ?? 1.0;
         const lumMat = (bloom as any).luminanceMaterial;
         if (lumMat) {
-          lumMat.threshold = 0.8;
-          lumMat.smoothing = 0.1;
+          lumMat.threshold = POSTPROCESSING_CONFIG.bloomThreshold ?? 1.0;
+          lumMat.smoothing = POSTPROCESSING_CONFIG.bloomSmoothing ?? 0.1;
         }
         (bloom as any).mipmapBlur = true;
       } catch {}

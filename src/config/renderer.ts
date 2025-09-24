@@ -324,7 +324,7 @@ export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   size: 0.72,
   opacity: 0.75,
   additiveBlending: false,
-  depthTest: false,
+  depthTest: true,
   depthWrite: false,
   minThrottle: 0.1,
   spawnRatePerAnchor: 12, // particles/sec at full throttle per anchor
@@ -334,5 +334,21 @@ export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   lateralJitter: 0.45,
   longitudinalJitter: 0.15,
   scaleJitter: 0.25,
+};
+
+// Postprocessing / bloom configuration exposed to the renderer.
+export interface PostprocessingConfig {
+  /** Luminance threshold for bloom (higher = fewer pixels bloom) */
+  bloomThreshold: number;
+  /** Smoothing applied around the threshold (0..1) */
+  bloomSmoothing: number;
+  /** Global intensity multiplier for bloom effect */
+  bloomIntensity: number;
+}
+
+export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
+  bloomThreshold: 10.0,
+  bloomSmoothing: 0.1,
+  bloomIntensity: 1.0,
 };
 
