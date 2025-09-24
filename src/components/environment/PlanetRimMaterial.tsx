@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect } from 'react';
-import { Color, ShaderMaterial, Texture, DoubleSide } from 'three';
+import { Color, ShaderMaterial, Texture } from 'three';
 
 interface PlanetRimMaterialProps {
   map?: Texture;
@@ -20,7 +20,7 @@ export function PlanetRimMaterial({
   rimStrength = 0.0,
   rimColor = '#ffffff',
   metalness = 0.0,
-  roughness = 1.0
+  roughness = 1.0,
 }: PlanetRimMaterialProps): React.ReactElement {
   const materialRef = useRef<ShaderMaterial>(null);
 
@@ -36,7 +36,6 @@ export function PlanetRimMaterial({
         uMetalness: { value: metalness },
         uRoughness: { value: roughness },
       },
-      side: DoubleSide,
       vertexShader: `
         varying vec3 vNormal;
         varying vec3 vViewPosition;
@@ -89,7 +88,7 @@ export function PlanetRimMaterial({
           // Combine base color with emissive and rim
           vec3 emissiveContrib = uEmissive * uEmissiveIntensity;
           vec3 finalColor = baseColor + emissiveContrib + rimGlow;
-          
+
           gl_FragColor = vec4(finalColor, 1.0);
         }
       `
@@ -103,8 +102,8 @@ export function PlanetRimMaterial({
       material.uniforms.uColor.value.set(color);
       material.uniforms.uEmissive.value = emissive || new Color('#000000');
       material.uniforms.uEmissiveIntensity.value = emissiveIntensity;
-      material.uniforms.uRimStrength.value = rimStrength;
-      material.uniforms.uRimColor.value.set(rimColor);
+  material.uniforms.uRimStrength.value = rimStrength;
+  material.uniforms.uRimColor.value.set(rimColor);
       material.uniforms.uMetalness.value = metalness;
       material.uniforms.uRoughness.value = roughness;
       material.needsUpdate = true;

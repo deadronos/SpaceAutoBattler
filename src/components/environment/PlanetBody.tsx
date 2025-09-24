@@ -8,6 +8,7 @@ import type { PlanetBodyConfig } from '../../config/environment.js';
 import { PLANET_GEOMETRY_SEGMENTS } from '../../config/environment.js';
 import { PlanetRimMaterial } from './PlanetRimMaterial.js';
 import { PlanetRings } from './PlanetRings.js';
+import { PlanetRimShell } from './PlanetRimShell.js';
 
 interface PlanetBodyProps {
   config: PlanetBodyConfig;
@@ -58,6 +59,8 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
   const emissiveIntensity = config.emissiveBoost ?? 0.05;
   const useRimGlow = (config.rimStrength ?? 0) > 0;
 
+  const hideRingsParam = false;
+
   if (error) {
     console.warn('[PlanetBody] Missing texture key', config.id, error);
   }
@@ -71,7 +74,7 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
             map={texture ?? undefined}
             color={texture ? undefined : fallbackColor}
             emissive={emissiveColor}
-            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.6}
+            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.5}
             rimStrength={config.rimStrength ?? 0}
             rimColor={config.rimColor ?? '#ffffff'}
             metalness={0}
@@ -85,7 +88,7 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
             metalness={0}
             roughness={0.85}
             emissive={emissiveColor}
-            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.6}
+            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.5}
           />
         )}
       </mesh>
@@ -96,7 +99,7 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
           color={config.rings.color}
           opacity={config.rings.opacity}
           rotationSpeed={config.rings.rotationSpeed}
-          enabled={true}
+          enabled={!hideRingsParam}
         />
       )}
     </group>
