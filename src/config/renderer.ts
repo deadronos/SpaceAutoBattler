@@ -335,3 +335,53 @@ export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   longitudinalJitter: 0.15,
   scaleJitter: 0.25,
 };
+
+// Starfield background configuration
+export interface StarfieldConfig {
+  /** Whether the starfield background is enabled. */
+  enabled: boolean;
+  /** Quality preset for the shader: affects loop counts and resolution. */
+  quality: 'high' | 'medium' | 'low';
+  /** How often to update the render target in frames (1 = every frame). */
+  updateFrequency: number;
+  /** Width resolution for the shader render target (height = width / 2 for equirect). */
+  shaderResolution: number;
+  /** Radius of the surrounding sphere in world units. */
+  radius: number;
+  /** Shader zoom parameter. */
+  zoom: number;
+  /** Shader tile parameter for folding. */
+  tile: number;
+  /** Animation speed multiplier. */
+  speed: number;
+  /** Brightness of star colors. */
+  brightness: number;
+  /** Dark matter threshold in shader. */
+  darkmatter: number;
+  /** Distance fading factor. */
+  distfading: number;
+  /** Color saturation adjust. */
+  saturation: number;
+  /** Exposure scalar applied after fractal accumulation (lower reduces whiteness). */
+  /** Final post multiplication applied to accumulated color (original shader used 0.01). */
+  finalScale: number;
+  /** Scales the neutral base fog contribution (was implicitly 1 then multiplied by finalScale). 0 = disable. */
+  baseContribution: number;
+}
+
+export const STARFIELD_CONFIG: StarfieldConfig = {
+  enabled: true,
+  quality: 'medium',
+  updateFrequency: 1,
+  shaderResolution: 1024,
+  radius: 50000,
+  zoom: 0.800,
+  tile: 0.850,
+  speed: 0.010,
+  brightness: 0.0015,
+  darkmatter: 0.300,
+  distfading: 0.730,
+  saturation: 0.850,
+  finalScale: 0.01,
+  baseContribution: 1.0,
+};

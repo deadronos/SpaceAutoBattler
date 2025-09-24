@@ -18,6 +18,11 @@ import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
 import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
+import { STARFIELD_CONFIG } from '../config/renderer.js';
+import StarfieldSphere from './StarfieldSphere.js';
+
+// Adjust camera far plane to fit starfield sphere
+const STARFIELD_FAR = Math.max(CAMERA_DEFAULTS.far, (STARFIELD_CONFIG.radius ?? 0) * 1.2);
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -30,9 +35,10 @@ export function Battlefield(): React.ReactElement {
   return (
     <Canvas
       shadows
-      camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: CAMERA_DEFAULTS.far }}
+      camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: STARFIELD_FAR }}
       dpr={[1, 2]}
     >
+      <StarfieldSphere {...STARFIELD_CONFIG} />
       {ppEnabled ? (
         <BloomProvider enabled>
           <color attach="background" args={[new Color('#02030b')]} />
@@ -48,7 +54,6 @@ export function Battlefield(): React.ReactElement {
           {/* Postprocessing (selective bloom + FXAA) */}
           <PostprocessingLazy />
           <BattlefieldSystems />
-          <StarsField />
           {/* Drei helpers for navigation and orientation */}
           <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
           {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
@@ -77,7 +82,6 @@ export function Battlefield(): React.ReactElement {
             <ProjectilesLayer archetype={state.queries.projectiles} />
           </Suspense>
           <BattlefieldSystems />
-          <StarsField />
           {/* Drei helpers for navigation and orientation */}
           <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
           {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
@@ -182,31 +186,32 @@ function TurretsLayer({ archetype }: { archetype: Archetype<GameEntity, ['turret
   );
 }
 
-function StarsField(): React.ReactElement {
-  return (
-    <group>
-      <points position={[0, 0, 0]}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[STAR_POSITIONS, 3]}
-          />
-        </bufferGeometry>
-        <pointsMaterial color="#ffffff" size={0.3} sizeAttenuation depthWrite={false} />
-      </points>
-    </group>
-  );
-}
+// Commented out as it's replaced by the new shader-based starfield
+// function StarsField(): React.ReactElement {
+//   return (
+//     <group>
+//       <points position={[0, 0, 0]}>
+//         <bufferGeometry>
+//           <bufferAttribute
+//             attach="attributes-position"
+//             args={[STAR_POSITIONS, 3]}
+//           />
+//         </bufferGeometry>
+//         <pointsMaterial color="#ffffff" size={0.3} sizeAttenuation depthWrite={false} />
+//       </points>
+//     </group>
+//   );
+// }
 
-const STAR_POSITIONS = (() => {
-  const positions: number[] = [];
-  const spread = WORLD_SIZE * 0.9;
-  const rng = new SeededRng(2024);
-  for (let i = 0; i < 1500; i += 1) {
-    const x = (rng.next() - 0.5) * spread;
-    const y = rng.next() * (WORLD_SIZE * 0.4) + 40;
-    const z = (rng.next() - 0.5) * spread;
-    positions.push(x, y, z);
-  }
-  return new Float32Array(positions);
-})();
+// const STAR_POSITIONS = (() => {
+//   const positions: number[] = [];
+//   const spread = WORLD_SIZE * 0.9;
+//   const rng = new SeededRng(2024);
+//   for (let i = 0; i < 1500; i += 1) {
+//     const x = (rng.next() - 0.5) * spread;
+//     const y = rng.next() * (WORLD_SIZE * 0.4) + 40;
+//     const z = (rng.next() - 0.5) * spread;
+//     positions.push(x, y, z);
+//   }
+//   return new Float32Array(positions);
+// })();
