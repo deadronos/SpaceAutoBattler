@@ -6,6 +6,8 @@ import { useOptionalGameState } from '../../game/context.js';
 import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
 import { PLANET_GEOMETRY_SEGMENTS } from '../../config/environment.js';
+import { PlanetRimMaterial } from './PlanetRimMaterial.js';
+import { PlanetRings } from './PlanetRings.js';
 
 interface PlanetBodyProps {
   config: PlanetBodyConfig;
@@ -54,6 +56,7 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
 
   const emissiveColor = useMemo(() => new Color(fallbackColor).multiplyScalar(1.2), [fallbackColor]);
   const emissiveIntensity = config.emissiveBoost ?? 0.05;
+  const useRimGlow = (config.rimStrength ?? 0) > 0;
 
   if (error) {
     console.warn('[PlanetBody] Missing texture key', config.id, error);
@@ -63,16 +66,39 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
     <group ref={groupRef} position={[config.position.x, config.position.y, config.position.z]}>
       <mesh>
         <sphereGeometry args={[config.radius, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]} />
-        <meshStandardMaterial
-          attach="material"
-          map={texture ?? undefined}
-          color={texture ? undefined : fallbackColor}
-          metalness={0}
-          roughness={0.85}
-          emissive={emissiveColor}
-          emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.6}
-        />
+        {useRimGlow ? (
+          <PlanetRimMaterial
+            map={texture ?? undefined}
+            color={texture ? undefined : fallbackColor}
+            emissive={emissiveColor}
+            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.6}
+            rimStrength={config.rimStrength ?? 0}
+            rimColor={config.rimColor ?? '#ffffff'}
+            metalness={0}
+            roughness={0.85}
+          />
+        ) : (
+          <meshStandardMaterial
+            attach="material"
+            map={texture ?? undefined}
+            color={texture ? undefined : fallbackColor}
+            metalness={0}
+            roughness={0.85}
+            emissive={emissiveColor}
+            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.6}
+          />
+        )}
       </mesh>
+      {config.rings && (
+        <PlanetRings
+          innerRadius={config.rings.innerRadius}
+          outerRadius={config.rings.outerRadius}
+          color={config.rings.color}
+          opacity={config.rings.opacity}
+          rotationSpeed={config.rings.rotationSpeed}
+          enabled={true}
+        />
+      )}
     </group>
   );
 });
