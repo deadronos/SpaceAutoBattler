@@ -47,25 +47,25 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
   return new ShaderMaterial({
       transparent: true,
       depthWrite: false,
-  uniforms: {
+      uniforms: {
         uTime: { value: 0 },
-  uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
+        uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
         uTeamIsRed: { value: team === 'red' ? 1.0 : 0.0 },
         uEnableRedBoost: { value: SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0 },
         uRedBoostPow: { value: SHIELD_TUNING.redBoostPower },
         uRedBoostMul: { value: SHIELD_TUNING.redBoostMultiplier },
-  uEdgeAlphaMul: { value: SHIELD_TUNING.edgeAlphaMul },
-  uFillAlphaMul: { value: SHIELD_TUNING.fillAlphaMul },
+        uEdgeAlphaMul: { value: SHIELD_TUNING.edgeAlphaMul },
+        uFillAlphaMul: { value: SHIELD_TUNING.fillAlphaMul },
         uMinAlphaFloor: { value: SHIELD_TUNING.minAlphaFloor },
         uFillTintMul: { value: SHIELD_TUNING.fillTintMul },
         uOpacity: { value: 1 },
         uHexScale: { value: hexScale },
         uEdgeWidth: { value: edgeWidth },
         uMaxAlpha: { value: maxAlpha },
-  // Pack ripple per-entry data into vec4 arrays for efficiency: (dir.xyz, amp)
-  uRippleCount: { value: 0 },
-  uRippleData: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)) },
-  uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
+        // Pack ripple per-entry data into vec4 arrays for efficiency: (dir.xyz, amp)
+        uRippleCount: { value: 0 },
+        uRippleData: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)) },
+        uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
         uRippleSpeed: { value: SHIELD_RIPPLE_TUNING.defaultSpeed },
         uRippleWidthBase: { value: SHIELD_RIPPLE_TUNING.baseWidth },
         uRippleBlendMode: { value: SHIELD_RIPPLE_TUNING.blendMode },
@@ -92,25 +92,25 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
         uniform float uHexScale;
         uniform float uEdgeWidth;
         uniform float uMaxAlpha;
-  uniform float uTeamIsRed;
-  uniform float uEnableRedBoost;
-  uniform float uRedBoostPow;
-  uniform float uRedBoostMul;
-  uniform float uEdgeAlphaMul;
-  uniform float uFillAlphaMul;
-  uniform float uMinAlphaFloor;
-  uniform float uFillTintMul;
-  uniform int uRippleCount;
-  uniform float uRippleSpeed;
-  uniform float uRippleWidthBase;
-  // Packed ripple arrays
-  const int SHADER_MAX_RIPPLES = ${SHADER_MAX_RIPPLES};
-  uniform vec4 uRippleData[SHADER_MAX_RIPPLES];
-  uniform float uRippleT0s[SHADER_MAX_RIPPLES];
-  uniform float uRippleBlendMode;
-  uniform float uRippleIgnoreMaxAlpha;
-  uniform float uRippleColorMul;
-  uniform float uRippleStrength;
+        uniform float uTeamIsRed;
+        uniform float uEnableRedBoost;
+        uniform float uRedBoostPow;
+        uniform float uRedBoostMul;
+        uniform float uEdgeAlphaMul;
+        uniform float uFillAlphaMul;
+        uniform float uMinAlphaFloor;
+        uniform float uFillTintMul;
+        uniform int uRippleCount;
+        uniform float uRippleSpeed;
+        uniform float uRippleWidthBase;
+        // Packed ripple arrays
+        const int SHADER_MAX_RIPPLES = ${SHADER_MAX_RIPPLES};
+        uniform vec4 uRippleData[SHADER_MAX_RIPPLES];
+        uniform float uRippleT0s[SHADER_MAX_RIPPLES];
+        uniform float uRippleBlendMode;
+        uniform float uRippleIgnoreMaxAlpha;
+        uniform float uRippleColorMul;
+        uniform float uRippleStrength;
 
         float hash(vec2 p){return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453);}
 
