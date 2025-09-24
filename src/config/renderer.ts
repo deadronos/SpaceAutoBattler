@@ -347,7 +347,7 @@ export interface PostprocessingConfig {
 }
 
 export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
-  bloomThreshold: 10.0,
+  bloomThreshold: 100.0,
   bloomSmoothing: 0.001,
   bloomIntensity: 1.0,
 };
