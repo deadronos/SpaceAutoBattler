@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { Color, RingGeometry, ShaderMaterial } from 'three';
+import { Color, RingGeometry, ShaderMaterial, DoubleSide, AdditiveBlending } from 'three';
 import { useFrame } from '@react-three/fiber';
 
 interface PlanetRingsProps {
@@ -25,18 +25,16 @@ export function PlanetRings({
   outerRadius,
   color = '#ccaa88',
   opacity = 0.6,
-  segments = 64,
+  segments = 128,
   rotationSpeed = 0.001,
   enabled = true,
 }: PlanetRingsProps): React.ReactElement | null {
   const meshRef = useRef<Mesh>(null);
 
-  // Create ring geometry
   const geometry = useMemo(() => {
     return new RingGeometry(innerRadius, outerRadius, segments, 1);
   }, [innerRadius, outerRadius, segments]);
 
-  // Create ring material with alpha gradient
   const material = useMemo(() => {
     return new ShaderMaterial({
       uniforms: {
@@ -48,14 +46,12 @@ export function PlanetRings({
       vertexShader: `
         varying vec2 vUv;
         varying float vRadius;
-        
+
         void main() {
           vUv = uv;
-          
-          // Calculate radius from center
+          // radius in [0,1] across the ring
           vec2 center = vec2(0.5, 0.5);
           vRadius = distance(vUv, center) * 2.0;
-          
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
@@ -64,47 +60,47 @@ export function PlanetRings({
         uniform float uOpacity;
         uniform float uInnerRadius;
         uniform float uOuterRadius;
-        
+
         varying vec2 vUv;
         varying float vRadius;
-        
+
         void main() {
-          // Calculate normalized radius (0 at inner, 1 at outer)
-          float normalizedRadius = (vRadius - 0.0) / 1.0;
-          
-          // Create alpha gradient that fades towards edges
+          // Simple normalized radius used for patterns
+          float normalizedRadius = clamp(vRadius, 0.0, 1.0);
+
+          // Base alpha shaped as a bell around the middle of the ring
           float alpha = 1.0 - abs(normalizedRadius - 0.5) * 2.0;
-          alpha = smoothstep(0.0, 0.3, alpha) * smoothstep(1.0, 0.7, alpha);
-          
-          // Add some ring structure variation
-          float ringPattern = sin(normalizedRadius * 20.0) * 0.1 + 0.9;
+          alpha = smoothstep(0.0, 0.4, alpha) * smoothstep(1.0, 0.6, alpha);
+
+          // Fine ringing pattern
+          float ringPattern = sin(normalizedRadius * 80.0) * 0.08 + 0.92;
           alpha *= ringPattern;
-          
-          // Fade at inner and outer edges
-          float edgeFade = smoothstep(0.0, 0.1, normalizedRadius) * 
-                          smoothstep(1.0, 0.9, normalizedRadius);
+
+          // Edge fade near inner/outer radii
+          float edgeFade = smoothstep(0.0, 0.05, normalizedRadius) * smoothstep(1.0, 0.95, normalizedRadius);
           alpha *= edgeFade;
-          
+
           gl_FragColor = vec4(uColor, alpha * uOpacity);
         }
       `,
       transparent: true,
       depthWrite: false,
+      depthTest: true,
+      side: DoubleSide,
+      blending: AdditiveBlending,
     });
   }, [color, opacity, innerRadius, outerRadius]);
 
-  // Animate rotation
   useFrame((_, delta) => {
     if (meshRef.current && rotationSpeed !== 0) {
       meshRef.current.rotation.z += rotationSpeed * delta;
     }
   });
 
-  if (!enabled) {
-    return null;
-  }
+  if (!enabled) return null;
 
-  return (
-    <mesh ref={meshRef} geometry={geometry} material={material} rotation={[-Math.PI / 2, 0, 0]} />
-  );
+  // renderOrder set slightly higher than planet meshes so rings draw after planet depth pass
+  return <mesh ref={meshRef} geometry={geometry} material={material} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10} />;
 }
+
+export default PlanetRings;
