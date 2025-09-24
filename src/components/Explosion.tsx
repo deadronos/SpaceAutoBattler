@@ -6,7 +6,7 @@ import { getMaterial } from '../renderer/materialRegistry.js';
 // Placeholder explosion mesh; when explosion entities are added, this can be used.
 export function ExplosionObject({ position = [0,0,0], size = 1 }: { position?: [number, number, number]; size?: number }): React.ReactElement {
   const ref = useRef<Mesh>(null);
-  useBloomRegistration(ref, true);
+  useBloomRegistration(ref, { group: 'explosions' });
   const Mat = useMemo(() => getMaterial('explosion:smoke'), []);
   return (
     <mesh ref={ref} position={position} scale={[size, size, size]} frustumCulled={false}>

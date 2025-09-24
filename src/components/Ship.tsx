@@ -173,8 +173,8 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
     }
 
     thrusterMaterialsRef.current = thrusters;
-    if (bloomCtx) engines.forEach((o) => bloomCtx.register(o));
-    
+    if (bloomCtx) engines.forEach((o) => bloomCtx.register(o, { group: 'engines' }));
+
     return () => {
       if (bloomCtx) engines.forEach((o) => bloomCtx.unregister(o));
       
@@ -352,7 +352,7 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
 
 function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity; radius?: number; hullMaterialsRef?: React.MutableRefObject<Array<{ material: any; originalColor: Color }>> }): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
-  useBloomRegistration(meshRef, true);
+  useBloomRegistration(meshRef, { group: 'shields' });
   const state = useOptionalGameState();
   const [rippleTick, setRippleTick] = useState(0);
   const lastCountRef = useRef<number>(0);
