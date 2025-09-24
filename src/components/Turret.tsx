@@ -46,7 +46,7 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
       return (
         <mesh ref={ref} position={position} frustumCulled={false}>
           <sphereGeometry args={[0.1, 10, 10]} />
-          <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={intensity} transparent opacity={0.6} />
+          <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={intensity} transparent opacity={0.9} />
         </mesh>
       );
     }
@@ -60,7 +60,7 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
               position={[m.local.x, m.local.y, m.local.z]}
               color={m.bulletType === 'bullet:heavy' ? '#ffb36b' : '#ffd089'}
               emissive="#ff962f"
-              intensity={1.6}
+              intensity={8.6}
             />
           ))}
         </group>
