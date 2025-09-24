@@ -364,7 +364,7 @@ export interface PostprocessingConfig {
 }
 
 export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
-  bloomThreshold: 10.0,
+  bloomThreshold: 1.6,
   bloomSmoothing: 0.001,
   bloomIntensity: 1.0,
   bloomIgnoreBackground: true,
@@ -372,7 +372,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
   bloomLayerStart: 11,
   bloomGroups: {
     default: {
-      intensity: 1.0,
+      intensity: 0.5,
     },
     engines: {
       intensity: 1.35,

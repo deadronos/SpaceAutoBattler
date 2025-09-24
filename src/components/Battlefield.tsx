@@ -59,7 +59,7 @@ export function Battlefield(): React.ReactElement {
             sectionColor="#101725"
             position={[0, -5, 0]}
             fadeDistance={WORLD_SIZE}
-            infiniteGrid
+            transparent
           />
           <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
         </BloomProvider>
