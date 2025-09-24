@@ -24,6 +24,14 @@ export interface PlanetBodyConfig {
   rimStrength?: number;
   /** Optional rim glow color for fresnel effect. */
   rimColor?: string;
+  /** Optional ring system configuration. */
+  rings?: {
+    innerRadius: number;
+    outerRadius: number;
+    color?: string;
+    opacity?: number;
+    rotationSpeed?: number;
+  };
 }
 
 export interface StarLightConfig {
@@ -44,6 +52,22 @@ export interface StarLightConfig {
 export interface CelestialEnvironmentConfig {
   planets: PlanetBodyConfig[];
   starLight: StarLightConfig;
+  /** Optional parallax billboards for distant objects */
+  parallaxBillboards?: Array<{
+    id: string;
+    position: [number, number, number];
+    size: number;
+    color?: string;
+    opacity?: number;
+    parallaxFactor?: number;
+  }>;
+  /** Feature toggles for safe enable/disable */
+  features?: {
+    starDisk?: boolean;
+    planetRims?: boolean;
+    planetRings?: boolean;
+    parallaxBillboards?: boolean;
+  };
 }
 
 export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
@@ -70,6 +94,13 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       emissiveBoost: 0.065,
       rimStrength: 0.3,
       rimColor: '#ffaa44',
+      rings: {
+        innerRadius: 2200,
+        outerRadius: 3800,
+        color: '#ccaa88',
+        opacity: 0.4,
+        rotationSpeed: 0.001,
+      },
     },
     {
       id: 'iceCompanion',
@@ -87,6 +118,30 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       rimColor: '#aaccff',
     },
   ],
+  parallaxBillboards: [
+    {
+      id: 'distantStar1',
+      position: [8000, 2000, -12000],
+      size: 600,
+      color: '#ffddaa', 
+      opacity: 0.3,
+      parallaxFactor: 0.05,
+    },
+    {
+      id: 'distantNebula',
+      position: [-6000, -1000, -15000],
+      size: 1200,
+      color: '#6688dd',
+      opacity: 0.2,
+      parallaxFactor: 0.03,
+    },
+  ],
+  features: {
+    starDisk: true,
+    planetRims: true,
+    planetRings: true,
+    parallaxBillboards: true,
+  },
 };
 
 export const PLANET_GEOMETRY_SEGMENTS = {

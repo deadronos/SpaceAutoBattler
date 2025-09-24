@@ -8,9 +8,9 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK117](TASK117-planet-performance.md) Planet Performance Budget - Geometry segments bounded; capture pending
 - [TASK118](TASK118-planet-rendering-tests.md) Planet Rendering Tests - Vitest config coverage added
 - [TASK119](TASK119-celestial-implementation.md) Celestial Implementation Tracking - Core implementation done; docs/QA TODO
-- [TASK120](TASK120-visual-polish-track.md) Visual Polish Track - Star disk billboard, rim glow, lighting balance (Track 1)
-- [TASK121](TASK121-robustness-testing-track.md) Robustness & Testing Track - Deterministic tests, fallback tests, Playwright baselines (Track 2) 
-- [TASK122](TASK122-feature-expansion-track.md) Feature Expansion Track - Gas giant rings, parallax billboards, config toggles (Track 3)
+- [TASK120](TASK120-visual-polish-track.md) Visual Polish Track - Star disk billboard, rim glow, lighting balance (Track 1) ✅ COMPLETED
+- [TASK121](TASK121-robustness-testing-track.md) Robustness & Testing Track - Deterministic tests, fallback tests, Playwright baselines (Track 2) ✅ COMPLETED
+- [TASK122](TASK122-feature-expansion-track.md) Feature Expansion Track - Gas giant rings, parallax billboards, config toggles (Track 3) ✅ COMPLETED
 
 ## Completed
 

@@ -7,6 +7,7 @@ import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
 import { PLANET_GEOMETRY_SEGMENTS } from '../../config/environment.js';
 import { PlanetRimMaterial } from './PlanetRimMaterial.js';
+import { PlanetRings } from './PlanetRings.js';
 
 interface PlanetBodyProps {
   config: PlanetBodyConfig;
@@ -88,6 +89,16 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
           />
         )}
       </mesh>
+      {config.rings && (
+        <PlanetRings
+          innerRadius={config.rings.innerRadius}
+          outerRadius={config.rings.outerRadius}
+          color={config.rings.color}
+          opacity={config.rings.opacity}
+          rotationSpeed={config.rings.rotationSpeed}
+          enabled={true}
+        />
+      )}
     </group>
   );
 });
