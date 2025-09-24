@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react';
-import type { Mesh } from 'three';
+import { useMemo, useRef, useEffect } from 'react';
+import type { Mesh, Object3D } from 'three';
 import { Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { StarLightConfig } from '../../config/environment.js';
@@ -17,10 +17,10 @@ interface StarDiskProps {
 export function StarDisk({ config, size = 800, opacity = 0.12, enabled = true }: StarDiskProps): React.ReactElement | null {
   const meshRef = useRef<Mesh>(null);
 
-  const position = useMemo(() => {
-    // Place the star disk far away in the direction of the star light
+  // Local offset from the parent (StarLight group's origin). When parented, this is the disk's local position.
+  const localOffset = useMemo(() => {
     const direction = new Vector3(config.direction.x, config.direction.y, config.direction.z).normalize();
-    const distance = Math.max(config.distance * 0.8, 8000); // Slightly closer than the light itself
+    const distance = Math.max(config.distance * 0.8, 8000);
     return direction.multiplyScalar(-distance).toArray();
   }, [config.direction.x, config.direction.y, config.direction.z, config.distance]);
 
@@ -36,7 +36,7 @@ export function StarDisk({ config, size = 800, opacity = 0.12, enabled = true }:
   }
 
   return (
-    <mesh ref={meshRef} position={position as [number, number, number]}>
+    <mesh ref={meshRef} position={localOffset as [number, number, number]}>
       <circleGeometry args={[size, 32]} />
       <meshBasicMaterial
         color={config.color}

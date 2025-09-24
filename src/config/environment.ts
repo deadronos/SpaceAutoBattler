@@ -140,7 +140,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     starDisk: true,
     planetRims: true,
     planetRings: true,
-    parallaxBillboards: true,
+    parallaxBillboards: false,
   },
 };
 
