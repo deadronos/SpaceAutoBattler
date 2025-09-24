@@ -10,14 +10,14 @@ export const CAMERA_DEFAULTS = {
   position: [0, 600, 1600] as const,
   fov: 55,
   near: 0.1,
-  far: WORLD_SIZE * 5,
+  far: WORLD_SIZE * 10,
 };
 
 // Fog tuned for deep space look at larger scales
 export const FOG_DEFAULTS: readonly [string, number, number] = [
   '#02030b',
-  WORLD_SIZE * 0.4,
-  WORLD_SIZE * 1.2,
+  WORLD_SIZE * 0.8,
+  WORLD_SIZE * 4,
 ];
 
 // AI configuration

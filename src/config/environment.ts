@@ -47,9 +47,9 @@ export interface CelestialEnvironmentConfig {
 export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   starLight: {
     color: '#ffd8b0',
-    intensity: 1.2,
+    intensity: 4.2,
     direction: { x: -0.2516, y: -0.1509, z: -0.956 },
-    distance: 5000,
+    distance: 10000,
     ambientColor: '#1b2240',
     ambientIntensity: 0.55,
   },
@@ -65,7 +65,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         speed: 0.012,
         offset: 0.6,
       },
-      emissiveBoost: 0.075,
+      emissiveBoost: 0.065,
       rimStrength: 0.3,
     },
     {
@@ -79,7 +79,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         speed: 0.008,
         offset: -0.4,
       },
-      emissiveBoost: 0.03,
+      emissiveBoost: 0.025,
       rimStrength: 0.2,
     },
   ],

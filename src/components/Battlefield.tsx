@@ -77,6 +77,7 @@ export function Battlefield(): React.ReactElement {
           {/* Drei helpers for navigation and orientation */}
           <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
           {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
+          {/*fadeDistance={WORLD_SIZE}*/}
           <Grid
             args={[WORLD_SIZE, WORLD_SIZE]}
             cellSize={50}
@@ -84,8 +85,8 @@ export function Battlefield(): React.ReactElement {
             cellColor="#203050"
             sectionColor="#101725"
             position={[0, -5, 0]}
-            fadeDistance={WORLD_SIZE*3}
-            infiniteGrid
+            transparent
+            opacity={0.1}
           />
           <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
         </>
@@ -185,7 +186,7 @@ function StarsField(): React.ReactElement {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[STAR_POSITIONS, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#ffffff" size={0.3} sizeAttenuation depthWrite={false} />
+        <pointsMaterial color="#ffffff" size={0.9} sizeAttenuation depthWrite={false} />
       </points>
     </group>
   );
@@ -195,7 +196,7 @@ const STAR_POSITIONS = (() => {
   const positions: number[] = [];
   const spread = WORLD_SIZE * 0.9;
   const rng = new SeededRng(2024);
-  for (let i = 0; i < 1500; i += 1) {
+  for (let i = 0; i < 3500; i += 1) {
     const x = (rng.next() - 0.5) * spread;
     const y = rng.next() * (WORLD_SIZE * 0.4) + 40;
     const z = (rng.next() - 0.5) * spread;
