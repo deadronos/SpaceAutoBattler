@@ -86,8 +86,7 @@ export function PlanetRings({
       transparent: true,
       depthWrite: false,
       depthTest: true,
-      side: DoubleSide,
-      blending: AdditiveBlending,
+      side: DoubleSide
     });
   }, [color, opacity, innerRadius, outerRadius]);
 
