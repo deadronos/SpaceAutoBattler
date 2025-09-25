@@ -48,7 +48,7 @@ export function StarLight({ config, externalLightRef, children }: StarLightProps
           position={[0, 0, 0]}
           intensity={config.intensity}
           color={config.color}
-          castShadow={false}
+          castShadow={true}
         />
         {children}
       </group>

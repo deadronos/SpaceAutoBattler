@@ -24,7 +24,7 @@ export function CelestialEnvironment(): React.ReactElement {
       <StarLight config={starLight}>
         {features?.starDisk !== false && (
           // StarDisk is rendered as a child of StarLight so it's parented in the scene graph
-          <StarDisk
+          <StarDisk key={"StarDisk"}
             config={starLight}
             enabled={true}
             size={CELESTIAL_ENVIRONMENT.starDisk?.size}

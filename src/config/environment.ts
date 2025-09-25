@@ -192,7 +192,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   // Default star disk settings — tune here to change size/opacity/position globally
   starDisk: {
     size: 12000,
-    opacity: 0.9,
+    opacity: 1.0,
     distanceMultiplier: 1.0,
     shader: {
       bloomGroup: 'star',
