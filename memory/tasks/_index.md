@@ -4,7 +4,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- _None right now — celestial environment follow-ups will be captured as new tasks once perf validation and documentation work resumes._
+- _None currently - skysphere implementation completed._
 
 ## Completed
 
@@ -33,6 +33,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK121](COMPLETED/TASK121-robustness-testing-track.md) — Added deterministic rotation tests, texture fallback validation, and Playwright baselines.
 - [TASK122](COMPLETED/TASK122-feature-expansion-track.md) — Shipped gas giant rings, parallax billboards, and config toggles.
 - [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
+- [TASK110](TASK110-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.
 
 ## Pending
 
