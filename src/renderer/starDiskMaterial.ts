@@ -19,6 +19,7 @@ import type {
   StarDiskPaletteOffsetsConfig,
   StarDiskPaletteColorOffsetConfig,
 } from '../config/environment.js';
+import { colorFromConfig } from '../utils/color.js';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
@@ -144,11 +145,12 @@ const FALLBACK_NOISE = (() => {
 const resolveTexture = (texture: Texture | null | undefined, fallback: Texture): Texture => texture ?? fallback;
 
 function resolveColor(hex: string | undefined, fallback: Color): Color {
+  // Use colorFromConfig to produce a linear Color for shader math
   if (!hex) {
     return fallback.clone();
   }
   try {
-    return new Color(hex);
+    return colorFromConfig(hex);
   } catch {
     return fallback.clone();
   }
@@ -222,8 +224,8 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
   const noiseScrollSpeed = clamp(shader?.noiseScrollSpeed ?? DEFAULTS.noiseScrollSpeed, 0, 5);
   const noiseDriftSpeed = clamp(shader?.noiseDriftSpeed ?? DEFAULTS.noiseDriftSpeed, 0, 5);
   const brightness = clamp((light.intensity ?? 1) / 1.6, 0, 3);
-  // Interpret configured hex as sRGB and convert to linear for shader math
-  const baseColor = new Color(light.color ?? '#ffffff').convertSRGBToLinear();
+  // Use the central helper so base color is produced in linear space for shader math
+  const baseColor = colorFromConfig(light.color ?? '#ffffff');
   const { core, primary, secondary } = buildColorPalette(baseColor, shader);
 
   return {

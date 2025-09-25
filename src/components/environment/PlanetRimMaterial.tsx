@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { Color, ShaderMaterial, Texture } from 'three';
+import { colorFromConfig } from '../../utils/color.js';
 
 interface PlanetRimMaterialProps {
   map?: Texture;
@@ -28,11 +29,11 @@ export function PlanetRimMaterial({
     return new ShaderMaterial({
       uniforms: {
         uMap: { value: map || null },
-        uColor: { value: new Color(color) },
-        uEmissive: { value: emissive || new Color('#000000') },
+        uColor: { value: colorFromConfig(color) },
+        uEmissive: { value: colorFromConfig(emissive ? emissive : '#000000') },
         uEmissiveIntensity: { value: emissiveIntensity },
         uRimStrength: { value: rimStrength },
-        uRimColor: { value: new Color(rimColor) },
+        uRimColor: { value: colorFromConfig(rimColor) },
         uMetalness: { value: metalness },
         uRoughness: { value: roughness },
       },
@@ -99,11 +100,9 @@ export function PlanetRimMaterial({
   useEffect(() => {
     if (material) {
       material.uniforms.uMap.value = map || null;
-      material.uniforms.uColor.value.set(color);
-      material.uniforms.uEmissive.value = emissive || new Color('#000000');
-      material.uniforms.uEmissiveIntensity.value = emissiveIntensity;
-  material.uniforms.uRimStrength.value = rimStrength;
-  material.uniforms.uRimColor.value.set(rimColor);
+      material.uniforms.uColor.value.copy(colorFromConfig(color));
+      material.uniforms.uEmissive.value.copy(colorFromConfig(emissive ? emissive : '#000000'));
+      material.uniforms.uRimColor.value.copy(colorFromConfig(rimColor));
       material.uniforms.uMetalness.value = metalness;
       material.uniforms.uRoughness.value = roughness;
       material.needsUpdate = true;

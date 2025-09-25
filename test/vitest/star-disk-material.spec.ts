@@ -94,7 +94,7 @@ describe('star disk material config', () => {
       },
     });
 
-    const baseHex = new Color(BASE_LIGHT.color).getHexString();
+  const baseHex = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHexString();
     expect(config.uniforms.colorCore.getHexString()).not.toBe(baseHex);
     expect(config.uniforms.colorPrimary.getHexString()).not.toBe(baseHex);
     expect(config.uniforms.colorSecondary.getHexString()).not.toBe(baseHex);
@@ -114,12 +114,12 @@ describe('star disk material config', () => {
       },
     });
 
-    const expectedCore = new Color(BASE_LIGHT.color);
-    expectedCore.offsetHSL(0.05, 0.4, 0.2);
-    const expectedPrimary = new Color(BASE_LIGHT.color);
-    expectedPrimary.offsetHSL(-0.1, -0.2, 0.1);
-    const expectedSecondary = new Color(BASE_LIGHT.color);
-    expectedSecondary.offsetHSL(0.15, 0.5, -0.3);
+  const expectedCore = new Color(BASE_LIGHT.color).convertSRGBToLinear();
+  expectedCore.offsetHSL(0.05, 0.4, 0.2);
+  const expectedPrimary = new Color(BASE_LIGHT.color).convertSRGBToLinear();
+  expectedPrimary.offsetHSL(-0.1, -0.2, 0.1);
+  const expectedSecondary = new Color(BASE_LIGHT.color).convertSRGBToLinear();
+  expectedSecondary.offsetHSL(0.15, 0.5, -0.3);
 
     expect(config.uniforms.colorCore.getHexString()).toBe(expectedCore.getHexString());
     expect(config.uniforms.colorPrimary.getHexString()).toBe(expectedPrimary.getHexString());
@@ -128,8 +128,8 @@ describe('star disk material config', () => {
 
   it('exposes fiery defaults when no overrides are supplied', () => {
     const config = buildStarDiskMaterialConfig({ light: BASE_LIGHT, opacity: 0.75 });
-    const baseHex = new Color(BASE_LIGHT.color).getHexString();
-    const baseHsl = new Color(BASE_LIGHT.color).getHSL({ h: 0, s: 0, l: 0 });
+  const baseHex = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHexString();
+  const baseHsl = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHSL({ h: 0, s: 0, l: 0 });
     const secondaryHsl = config.uniforms.colorSecondary.getHSL({ h: 0, s: 0, l: 0 });
 
     expect(config.uniforms.coronaIntensity).toBeCloseTo(1.28, 2);

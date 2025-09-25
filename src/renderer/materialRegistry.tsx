@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { MeshTransmissionMaterial } from '@react-three/drei';
 import type { ShieldRipple, ShipHull, Team } from '../types/index.js';
 import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../config/renderer.js';
+import { colorFromConfig } from '../utils/color.js';
 
 // Maximum ripples the shader supports (compile-time constant mirrored in GLSL)
 const SHADER_MAX_RIPPLES = 8;
@@ -49,7 +50,8 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
       depthWrite: false,
       uniforms: {
         uTime: { value: 0 },
-        uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
+        // Store uniform tint in linear space for shader math consistency
+        uTint: { value: colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
         uTeamIsRed: { value: team === 'red' ? 1.0 : 0.0 },
         uEnableRedBoost: { value: SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0 },
         uRedBoostPow: { value: SHIELD_TUNING.redBoostPower },
@@ -235,7 +237,8 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     (mat.uniforms as any).uOpacity.value = Math.max(0, Math.min(1, opacity));
   }, [opacity, mat]);
   useEffect(() => {
-  (mat.uniforms as any).uTint.value = new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint);
+    // Copy a linearised tint into the uniform to avoid mutating caller-provided Color
+    (mat.uniforms as any).uTint.value.copy(colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint));
     (mat.uniforms as any).uTeamIsRed.value = team === 'red' ? 1.0 : 0.0;
     (mat.uniforms as any).uEnableRedBoost.value = SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0;
     (mat.uniforms as any).uRedBoostPow.value = SHIELD_TUNING.redBoostPower;
@@ -280,7 +283,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
 // Built-in Shield Transmission material (drei)
 const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity }) => {
   const cfg = getShieldVisuals(hull);
-  const tint = useMemo(() => new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
+  const tint = useMemo(() => colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
   // Scale opacity by configured maxAlpha so material alpha is proportional to shield fraction
   const alpha = Math.max(0, Math.min(1, opacity * cfg.maxAlpha));
   return (
