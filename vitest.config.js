@@ -1,13 +1,34 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const glslLoaderPlugin = () => ({
+  name: 'vitest-glsl-loader',
+  enforce: 'pre',
+  load(id) {
+    if (!id.endsWith('.glsl')) {
+      return null;
+    }
+
+    const source = fs.readFileSync(id, 'utf-8');
+    return {
+      code: `export default ${JSON.stringify(source)};`,
+      map: null,
+    };
+  },
+});
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  assetsInclude: ['**/*.glb'],
+  plugins: [glslLoaderPlugin()],
+  assetsInclude: ['**/*.glb', '**/*.glsl'],
   test: {
     include: ['test/vitest/*.spec.ts', 'test/vitest/*.test.ts', 'test/vitest/**/*.spec.ts'],
     exclude: ['test/playwright/**'],
     environment: 'happy-dom',
-    setupFiles: path.resolve(__dirname, 'test/vitest/setupTests.ts'),
+    setupFiles: path.resolve(rootDir, 'test/vitest/setupTests.ts'),
     globals: true,
     watch: false,
     // Extend default timeout to reduce flakes when many tests run in parallel on CI/dev machines

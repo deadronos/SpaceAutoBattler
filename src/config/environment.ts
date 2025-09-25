@@ -59,6 +59,29 @@ export interface SkysphereConfig {
   opacity?: number;
 }
 
+export interface StarDiskShaderConfig {
+  /** Bloom group label used when registering the star disk mesh. */
+  bloomGroup?: string;
+  /** Multiplier applied to elapsed simulation seconds for shader time. */
+  timeMultiplier?: number;
+  /** Base frequency scale for first corona noise octave. */
+  coronaScale1?: number;
+  /** Base frequency scale for second corona noise octave. */
+  coronaScale2?: number;
+  /** Scalar applied to overall corona brightness. */
+  coronaIntensity?: number;
+  /** Exponent used for alpha falloff from core to rim. */
+  coronaFalloff?: number;
+  /** Scalar applied to radial noise coordinate. */
+  noiseScale?: number;
+  /** Additional warm/cool offset applied to derived colors. */
+  colorShift?: number;
+  /** Optional explicit color overrides. */
+  colorCore?: string;
+  colorPrimary?: string;
+  colorSecondary?: string;
+}
+
 export interface CelestialEnvironmentConfig {
   planets: PlanetBodyConfig[];
   starLight: StarLightConfig;
@@ -70,6 +93,7 @@ export interface CelestialEnvironmentConfig {
     opacity?: number;
     /** Multiplier applied to starLight.distance to compute disk offset */
     distanceMultiplier?: number;
+    shader?: StarDiskShaderConfig;
   };
   /** Optional parallax billboards for distant objects */
   parallaxBillboards?: Array<{
@@ -166,6 +190,16 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     size: 12000,
     opacity: 0.9,
     distanceMultiplier: 1.0,
+    shader: {
+      bloomGroup: 'star',
+      timeMultiplier: 1.0,
+      coronaScale1: 15,
+      coronaScale2: 45,
+      coronaIntensity: 1.0,
+      coronaFalloff: 2.2,
+      noiseScale: 1.0,
+      colorShift: 0.0,
+    },
   },
   features: {
     skysphere: true,

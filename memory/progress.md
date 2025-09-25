@@ -4,6 +4,7 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-25: Integrated star disk shader pipeline (GLSL assets, Vitest loader, deterministic uniforms) and closed TASK124 with validation notes.
 - 2025-09-25: Authored celestial environment memory refresh (activeContext, progress, task index) and documented renderer focus, replacing legacy AI rollout notes.
 - 2025-09-25: Added `memory/core-celestialEnvironment.md` summarising config schema, environment components, texture hook, and deterministic rotation safeguards.
 - 2025-09-25: Reconciled `memory/tasks/_index.md` with `COMPLETED/` folder, normalised task statuses (TASK110–TASK123) and captured remaining performance follow-ups.
