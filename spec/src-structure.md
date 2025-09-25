@@ -12,7 +12,6 @@ This document lists the files and folders under `src/` with a concise purpose de
 ## assets
 
 - `src/assets/ships.ts` — Exposes GLB paths and mapping for ship models used by the Ship component.
-- `src/assets/svg/` — Small SVG icons for hull types (fighter, corvette, frigate, destroyer, carrier) used in HUD and debug UI.
 - `src/assets/AGENTS.md` — Guidance notes for working with asset files in this repo.
 
 ## components

@@ -2,20 +2,20 @@
 
 Current focuses (short-term):
 
-- Monitor AI V2 validation suites (determinism, scoring, executors, intercept/regroup selection, scenario harness, legacy fallback) and keep them green during feature work.
-- Maintain the expanded AI scenario harness fixtures (escort, bomber intercept, artillery retreat) while keeping rollout playbook + `npm run test:ci` aligned.
-- Gather feedback on the HUD debug overlay and extend documentation with practical tuning scenarios.
+- Lock in the celestial environment baseline: star disk billboard, rim-glow shader, parallax billboards, and lighting balance driven by `CELESTIAL_ENVIRONMENT`.
+- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
+- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
 
 Recent changes:
 
-- Added Vitest suites for determinism (`ai-determinism`), scorer outputs (`ai-scorer`), executor behaviors (`ai-executor`), and legacy parity (`ai-regression`).
-- Authored `scripts/perf/assert-ai-budget.ts` with `npm run perf:ai-budget` to guard the 300-ship tick budget.
-- Introduced HUD `AiDebugOverlay`, UI toggles, and refreshed `docs/ai-v2-overview.md` with validation details.
+- Landed `CelestialEnvironment`, `StarLight`, `PlanetBody`, `PlanetRings`, and `ParallaxBillboard` components wired to the new config and optional rim shader.
+- Added `usePlanetTexture` hook with SRGB/anisotropy handling, deterministic rotation based on simulation time, and feature toggles (star disk, billboards, rims).
+- Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
 
 Next steps:
 
-- Capture HUD overlay screenshots that illustrate intercept/reposition/regroup/bomber pursuit states for docs/QA follow-ups.
-- Socialize the AI V2 rollout playbook with QA/ops, capture overlay screenshots for docs, and plan a dry-run with `AI_V2_DEFAULT=on`.
-- Continue monitoring perf budget regressions as we scale ship counts; consider caching nearest-enemy queries if budgets tighten.
+- Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
+- Gather curated screenshots showcasing rim glow and star disk variants for docs and QA sign-off.
+- Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 
 - Updated: 2025-09-25

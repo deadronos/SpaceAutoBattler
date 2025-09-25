@@ -324,7 +324,7 @@ export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   size: 0.72,
   opacity: 0.75,
   additiveBlending: false,
-  depthTest: false,
+  depthTest: true,
   depthWrite: false,
   minThrottle: 0.1,
   spawnRatePerAnchor: 12, // particles/sec at full throttle per anchor
@@ -334,5 +334,71 @@ export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   lateralJitter: 0.45,
   longitudinalJitter: 0.15,
   scaleJitter: 0.25,
+};
+
+// Postprocessing / bloom configuration exposed to the renderer.
+export interface BloomGroupConfig {
+  /** Optional override for bloom intensity for this group. */
+  intensity?: number;
+  /** Optional override for luminance threshold. */
+  threshold?: number;
+  /** Optional override for smoothing around the threshold. */
+  smoothing?: number;
+}
+
+export interface PostprocessingConfig {
+  /** Luminance threshold for bloom (higher = fewer pixels bloom) */
+  bloomThreshold: number;
+  /** Smoothing applied around the threshold (0..1) */
+  bloomSmoothing: number;
+  /** Global intensity multiplier for bloom effect */
+  bloomIntensity: number;
+  /** Whether the selective bloom pass should ignore the scene background color. */
+  bloomIgnoreBackground: boolean;
+  /** Default bloom group name used when components opt-in without explicit configuration. */
+  bloomDefaultGroup: string;
+  /** Starting render layer used when allocating `Selection` layers for bloom groups. */
+  bloomLayerStart: number;
+  /** Per-group configuration overrides for selective bloom. */
+  bloomGroups: Record<string, BloomGroupConfig>;
+}
+
+export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
+  bloomThreshold: 1.6,
+  bloomSmoothing: 0.001,
+  bloomIntensity: 1.0,
+  bloomIgnoreBackground: true,
+  bloomDefaultGroup: 'default',
+  bloomLayerStart: 11,
+  bloomGroups: {
+    default: {
+      intensity: 0.5,
+    },
+    engines: {
+      intensity: 1.35,
+      smoothing: 0.008,
+      threshold: 9.0,
+    },
+    shields: {
+      intensity: 1.5,
+      smoothing: 0.02,
+      threshold: 8.0,
+    },
+    projectiles: {
+      intensity: 1.25,
+      smoothing: 0.006,
+      threshold: 9.5,
+    },
+    explosions: {
+      intensity: 1.6,
+      smoothing: 0.035,
+      threshold: 7.5,
+    },
+    muzzleFlashes: {
+      intensity: 1.4,
+      smoothing: 0.01,
+      threshold: 9.0,
+    },
+  },
 };
 

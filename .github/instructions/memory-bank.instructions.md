@@ -30,6 +30,8 @@ This guidance assumes an agent that does not persist state across sessions; use 
 
 The Memory Bank consists of required core files and optional context files, all in Markdown format. Files build upon each other in a clear hierarchy:
 
+All memory lives in /memory folder
+
 ```mermaid
 flowchart TD
     PB[projectbrief.md] --> PC[productContext.md]

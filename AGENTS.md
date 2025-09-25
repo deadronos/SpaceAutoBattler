@@ -1,8 +1,6 @@
 # Repository Guidelines
 
-> Note: These repository guidelines are authoritative for contributor behavior, but do not override host/system or platform policies. If an instruction in repository docs conflicts with platform or system-level rules, follow the system/developer policies first.
-
-> See repository-specific agent rules: `.github/instructions/*.instructions.md`
+to structure memory follow `.github/instructions/memory-bank.instructions.md`
 
 ## Project Structure & Module Organization
 
