@@ -13,11 +13,13 @@ export function CelestialEnvironment(): React.ReactElement {
     <group>
       {/* Skysphere renders first to ensure it's behind everything else */}
       {features?.skysphere !== false && skysphere && (
-        <Skysphere
-          textureKey={skysphere.textureKey}
-          radius={skysphere.radius}
-          opacity={skysphere.opacity}
-        />
+        <Suspense fallback={null}>
+          <Skysphere
+            textureKey={skysphere.textureKey}
+            radius={skysphere.radius}
+            opacity={skysphere.opacity}
+          />
+        </Suspense>
       )}
       <StarLight config={starLight}>
         {features?.starDisk !== false && (
