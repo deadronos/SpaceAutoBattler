@@ -1,10 +1,9 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { AxesHelper } from 'three';
+import { AxesHelper, Color, NoToneMapping, SRGBColorSpace } from 'three';
 import { Suspense } from 'react';
 import type { Archetype } from 'miniplex';
 import type React from 'react';
-import { Color } from 'three';
 import type { GameEntity, ProjectileEntity, ShipEntity, TurretEntity } from '../types/index.js';
 import { useGameState, useOptionalGameState } from '../game/context.js';
 import { updateGame } from '../game/systems.js';
@@ -33,6 +32,11 @@ export function Battlefield(): React.ReactElement {
       shadows
       camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: CAMERA_DEFAULTS.far }}
       dpr={[1, 2]}
+      onCreated={({ gl }) => {
+        gl.outputColorSpace = SRGBColorSpace;
+        gl.toneMapping = NoToneMapping;
+        gl.toneMappingExposure = 1;
+      }}
     >
       <StarsField />
       {ppEnabled ? (

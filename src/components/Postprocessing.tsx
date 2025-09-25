@@ -9,7 +9,17 @@ import {
   KernelSize,
   BlendFunction,
 } from 'postprocessing';
-import { WebGLRenderer, Scene, Camera } from 'three';
+import {
+  WebGLRenderer,
+  Scene,
+  Camera,
+  WebGLRenderTarget,
+  HalfFloatType,
+  RGBAFormat,
+  SRGBColorSpace,
+  NoToneMapping,
+  Vector2,
+} from 'three';
 import { useBloomContext } from '../renderer/BloomProvider.js';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 
@@ -22,8 +32,12 @@ export function Postprocessing({ enabled = false }: Props): null {
   const composerRef = useRef<EffectComposer | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
   const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
+  const renderTargetRef = useRef<WebGLRenderTarget | null>(null);
   const bloomCtx = useBloomContext();
   const prevAutoClearRef = useRef<boolean | null>(null);
+  const prevToneMappingRef = useRef<WebGLRenderer['toneMapping'] | null>(null);
+  const prevExposureRef = useRef<number | null>(null);
+  const prevColorSpaceRef = useRef<WebGLRenderer['outputColorSpace'] | null>(null);
 
   useEffect(() => {
     const renderer = gl as unknown as WebGLRenderer;
@@ -40,9 +54,25 @@ export function Postprocessing({ enabled = false }: Props): null {
         fxaaRef.current = null;
       }
       bloomEffectsRef.current = [];
+      if (renderTargetRef.current) {
+        renderTargetRef.current.dispose();
+        renderTargetRef.current = null;
+      }
       if (prevAutoClearRef.current !== null) {
         renderer.autoClear = prevAutoClearRef.current;
         prevAutoClearRef.current = null;
+      }
+      if (prevToneMappingRef.current !== null) {
+        renderer.toneMapping = prevToneMappingRef.current;
+        prevToneMappingRef.current = null;
+      }
+      if (prevExposureRef.current !== null) {
+        renderer.toneMappingExposure = prevExposureRef.current;
+        prevExposureRef.current = null;
+      }
+      if (prevColorSpaceRef.current !== null) {
+        renderer.outputColorSpace = prevColorSpaceRef.current;
+        prevColorSpaceRef.current = null;
       }
       return;
     }
@@ -50,9 +80,30 @@ export function Postprocessing({ enabled = false }: Props): null {
     const previousAutoClear = renderer.autoClear;
     prevAutoClearRef.current = previousAutoClear;
     renderer.autoClear = false;
+    if (prevToneMappingRef.current === null) {
+      prevToneMappingRef.current = renderer.toneMapping;
+    }
+    if (prevExposureRef.current === null) {
+      prevExposureRef.current = renderer.toneMappingExposure;
+    }
+    if (prevColorSpaceRef.current === null) {
+      prevColorSpaceRef.current = renderer.outputColorSpace;
+    }
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = NoToneMapping;
+    renderer.toneMappingExposure = 1;
+
+    const sizeVector = renderer.getSize(new Vector2());
+    const pixelRatio = renderer.getPixelRatio();
+    const renderTarget = new WebGLRenderTarget(sizeVector.x * pixelRatio, sizeVector.y * pixelRatio, {
+      format: RGBAFormat,
+      type: HalfFloatType,
+    });
+    renderTarget.texture.colorSpace = SRGBColorSpace;
+    renderTargetRef.current = renderTarget;
 
     try {
-      const composer = new EffectComposer(renderer);
+      const composer = new EffectComposer(renderer, renderTarget);
 
       // Render the main scene first
       const renderPass = new RenderPass(scene as unknown as Scene, camera as unknown as Camera);
@@ -108,6 +159,22 @@ export function Postprocessing({ enabled = false }: Props): null {
         renderer.autoClear = prevAutoClearRef.current;
         prevAutoClearRef.current = null;
       }
+      if (renderTargetRef.current) {
+        renderTargetRef.current.dispose();
+        renderTargetRef.current = null;
+      }
+      if (prevToneMappingRef.current !== null) {
+        renderer.toneMapping = prevToneMappingRef.current;
+        prevToneMappingRef.current = null;
+      }
+      if (prevExposureRef.current !== null) {
+        renderer.toneMappingExposure = prevExposureRef.current;
+        prevExposureRef.current = null;
+      }
+      if (prevColorSpaceRef.current !== null) {
+        renderer.outputColorSpace = prevColorSpaceRef.current;
+        prevColorSpaceRef.current = null;
+      }
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.
       // Log for debugging.
@@ -126,9 +193,25 @@ export function Postprocessing({ enabled = false }: Props): null {
       }
       fxaaRef.current = null;
       bloomEffectsRef.current = [];
+      if (renderTargetRef.current) {
+        renderTargetRef.current.dispose();
+        renderTargetRef.current = null;
+      }
       if (prevAutoClearRef.current !== null) {
         renderer.autoClear = prevAutoClearRef.current;
         prevAutoClearRef.current = null;
+      }
+      if (prevToneMappingRef.current !== null) {
+        renderer.toneMapping = prevToneMappingRef.current;
+        prevToneMappingRef.current = null;
+      }
+      if (prevExposureRef.current !== null) {
+        renderer.toneMappingExposure = prevExposureRef.current;
+        prevExposureRef.current = null;
+      }
+      if (prevColorSpaceRef.current !== null) {
+        renderer.outputColorSpace = prevColorSpaceRef.current;
+        prevColorSpaceRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,6 +228,7 @@ export function Postprocessing({ enabled = false }: Props): null {
     const composer = composerRef.current;
     if (!composer) return;
     composer.setSize(size.width, size.height);
+    renderTargetRef.current?.setSize(size.width, size.height);
   }, [size]);
 
   useFrame((_, delta) => {
