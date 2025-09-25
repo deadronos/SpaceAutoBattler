@@ -59,31 +59,73 @@ export interface SkysphereConfig {
   opacity?: number;
 }
 
+export interface StarDiskPaletteColorOffsetConfig {
+  /** Hue offset applied via `Color.offsetHSL` when generating derived palette colours. */
+  hue?: number;
+  /** Saturation offset applied to the derived palette colour. */
+  saturation?: number;
+  /** Lightness offset applied to the derived palette colour. */
+  lightness?: number;
+}
+
+export interface StarDiskPaletteOffsetsConfig {
+  /** Derived colour adjustments for the stellar core tint. */
+  core?: StarDiskPaletteColorOffsetConfig;
+  /** Derived colour adjustments for the bright rim around the core. */
+  primary?: StarDiskPaletteColorOffsetConfig;
+  /** Derived colour adjustments for the corona/wisps. */
+  secondary?: StarDiskPaletteColorOffsetConfig;
+}
+
 export interface StarDiskShaderConfig {
-  /** Bloom group label used when registering the star disk mesh. */
+  /** Bloom group label that determines which selective-bloom profile the disk emits into. */
   bloomGroup?: string;
-  /** Multiplier applied to elapsed simulation seconds for shader time. */
+  /** Multiplier applied to elapsed simulation seconds; higher values speed up every animated element. */
   timeMultiplier?: number;
-  /** Base frequency scale for first corona noise octave. */
+  /** Controls the scale of broad, low-frequency wisps in the corona (set lower for chunky bands, higher for fine streaks). */
   coronaScale1?: number;
-  /** Base frequency scale for second corona noise octave. */
+  /** Controls the scale of fine-detail filaments in the corona (raises frequency of the secondary noise octave). */
   coronaScale2?: number;
-  /** Scalar applied to overall corona brightness. */
+  /** Global multiplier for corona brightness before bloom, useful for dialing overall aggression of the glow. */
   coronaIntensity?: number;
-  /** Exponent used for alpha falloff from core to rim. */
+  /** Exponent driving how quickly opacity falls off from the core into space (lower = softer edge, higher = sharper rim). */
   coronaFalloff?: number;
-  /** Scalar applied to radial noise coordinate. */
+  /** Multiplies the radial noise coordinate, stretching or compressing corona distortions along the star radius. */
   noiseScale?: number;
-  /** Additional warm/cool offset applied to derived colors. */
+  /** Adjusts the hue balance for generated palette colours: negative cools, positive warms the corona. */
   colorShift?: number;
-  /** Optional explicit color overrides. */
+  /** Explicit overrides for the core/rim/corona palette; leave undefined to derive from the star light colour. */
   colorCore?: string;
   colorPrimary?: string;
   colorSecondary?: string;
-  /** Blend strength applied when sampling the organic texture detail. */
+  /** Blend strength applied when sampling the baked organic texture detail (0 = ignore texture, 1 = full filament influence). */
   textureMix?: number;
-  /** Flicker intensity contributed by the RGBA noise texture. */
+  /** Flicker amplitude contributed by the RGBA noise texture alpha channel (adds pulsation to the corona). */
   textureFlicker?: number;
+  /** Scales the brightness of the luminous star core. */
+  coreStrength?: number;
+  /** Boosts the bright rim and filament contributions wrapped around the core. */
+  rimStrength?: number;
+  /** Multiplies the long-form corona wisps imparted by the noise octaves. */
+  coronaStrength?: number;
+  /** Adjusts the soft halo that extends beyond the corona. */
+  outerGlowStrength?: number;
+  /** Overall alpha multiplier to make the disk denser or more transparent without changing colour. */
+  alphaStrength?: number;
+  /** Blend factor between primary and secondary palette colours when tinting the corona (0 = primary, 1 = secondary). */
+  coronaColorBlend?: number;
+  /** Multiplies angular tiling for the organic texture, increasing or decreasing filament repetition. */
+  organicTiling?: number;
+  /** Scales scroll speed of the organic texture along the angular axis. */
+  organicScrollSpeed?: number;
+  /** Multiplies angular and radial tiling for the RGBA noise texture. */
+  noiseTiling?: number;
+  /** Scales scroll speed of the RGBA noise texture. */
+  noiseScrollSpeed?: number;
+  /** Scales the secondary drift applied to the noise texture lookup (adds subtle shimmering). */
+  noiseDriftSpeed?: number;
+  /** Optional palette offsets for derived colours when explicit overrides are omitted. */
+  paletteOffsets?: StarDiskPaletteOffsetsConfig;
 }
 
 export interface CelestialEnvironmentConfig {
@@ -120,7 +162,7 @@ export interface CelestialEnvironmentConfig {
 
 export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   starLight: {
-    color: '#ffd8b0',
+    color: '#ffd27a',
     intensity: 1.2,
     direction: { x: -0.2516, y: -0.1509, z: -0.956 },
     distance: 30000,
@@ -191,20 +233,36 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   ],
   // Default star disk settings — tune here to change size/opacity/position globally
   starDisk: {
-    size: 12000,
-    opacity: 1.0,
-    distanceMultiplier: 1.0,
+    size: 12000, // Billboard radius in world units; higher values make the sun larger on screen.
+    opacity: 1.0, // Final alpha multiplier applied after shader calculations.
+    distanceMultiplier: 1.0, // Offsets the disk away from the light based on StarLight.distance (keeps parallax consistent).
     shader: {
-      bloomGroup: 'star',
-      timeMultiplier: 1.0,
-      coronaScale1: 15,
-      coronaScale2: 45,
-      coronaIntensity: 1.52,
-      coronaFalloff: 1.85,
-      noiseScale: 0.85,
-      colorShift: 0.5,
-      textureMix: 1,
-      textureFlicker: 0.92,
+      bloomGroup: 'star', // Register in the dedicated bloom group for tailored thresholds.
+      timeMultiplier: 1.0, // Master speed control for all animated noise and texture scrolling.
+      coronaScale1: 15, // Sets size of broad wisps; lower = chunky bands, higher = thinner streaks.
+      coronaScale2: 45, // Controls high-frequency detail layered on top of the broad wisps.
+      coronaIntensity: 1.52, // Overall brightness of corona energy before bloom post-processing.
+      coronaFalloff: 1.85, // Drives how quickly opacity fades from core to rim; higher tightens the edge.
+      noiseScale: 0.85, // Stretches corona distortion along the radius for a slightly elongated look.
+      colorShift: 0.5, // Warms the palette derived from the star light colour.
+      textureMix: 1, // Blend strength for the baked organic texture filaments.
+      textureFlicker: 0.92, // Flicker amplitude sourced from noise texture alpha for lively breathing.
+      coreStrength: 1.08, // Boost the inner stellar core to remain brighter than the corona.
+      rimStrength: 1.1, // Emphasise the bright ring wrapping the core and filament overlays.
+      coronaStrength: 1.0, // Leave overall corona brightness near neutral.
+      outerGlowStrength: 1.0, // Default halo contribution around the star.
+      alphaStrength: 1.0, // Keep transparency at baseline (use <1 for subtler disk, >1 for denser).
+      coronaColorBlend: 0.68, // Lean corona tint slightly toward the secondary palette colour.
+      organicTiling: 1.0, // Use default filament repetition frequency.
+      organicScrollSpeed: 1.0, // Baseline drift speed for organic texture.
+      noiseTiling: 1.0, // Leave RGBA noise frequency at authored value.
+      noiseScrollSpeed: 1.0, // Baseline drift speed for RGBA noise.
+      noiseDriftSpeed: 1.0, // Baseline secondary shimmer for the RGBA noise sample.
+      paletteOffsets: {
+        core: { hue: 0.01, saturation: 0.22, lightness: 0.06 }, // Core tint skew relative to star light colour.
+        primary: { hue: 0.015, saturation: 0.18, lightness: -0.06 }, // Rim tint skew for contrast around the core.
+        secondary: { hue: 0.03, saturation: 0.32, lightness: -0.22 }, // Corona tint skew for hotter wisps.
+      },
     },
   },
   features: {

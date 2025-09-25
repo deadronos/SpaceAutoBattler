@@ -8,6 +8,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK129](TASK129-star-disk-palette-offsets.md) — Parameterise star disk palette offsets for configurable hue/saturation/lightness skew.
+- [TASK128](TASK128-star-disk-shader-controls.md) — Expose additional star disk shader controls through config and shader uniforms.
 - [TASK127](TASK127-star-disk-fidelity.md) — Refined star disk shader to match fiery reference without washing out texture detail.
 - [TASK125](TASK125-star-disk-textures.md) — Bake procedural star disk textures and integrate them into shader pipeline.
 - [TASK126](TASK126-star-disk-fiery-tuning.md) — Corrected star disk aspect ratio and retuned shader for a hotter corona.

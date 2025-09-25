@@ -4,6 +4,8 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-26: Parameterised StarDisk palette offsets, introduced config schemas, updated material helper clamps, expanded Vitest coverage, and documented the change (TASK129).
+- 2025-09-26: Surfaced additional StarDisk shader controls (strength multipliers, color blend, tiling, scroll speeds), updated GLSL/material wiring, expanded Vitest coverage, and documented defaults (TASK128).
 - 2025-09-25: Completed TASK127 fiery fidelity pass — warmed palette, increased texture influence, rebalanced shader brightness, updated environment defaults, and revalidated via `npm run typecheck`, `npm test`, and `npm run build`.
 - 2025-09-25: Corrected star disk aspect ratio, boosted corona intensity defaults, updated environment overrides, and expanded Vitest coverage for fiery fallbacks (TASK126).
 - 2025-09-25: Baked deterministic star disk textures, integrated sampler-driven shader updates, and closed TASK125 with new Vitest coverage plus npm typecheck/test validation.

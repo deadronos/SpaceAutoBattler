@@ -70,3 +70,103 @@ Memory Updates (activeContext, progress, core-celestialEnvironment)
 ## 8. Implementation Plan (summary)
 
 See `tasks.md` for an execution checklist covering the edits described above.
+
+---
+
+## 9. Star Disk Shader Control Exposure — 2025-09-26
+
+### 9.1 Overview
+
+Expose the remaining StarDisk shader controls through `CelestialEnvironment` so art direction can tune corona, core, rim, glow, and texture motion without editing shader source. Extend shader, material helpers, and defaults while preserving deterministic fallbacks.
+
+### 9.2 Architecture
+
+- **Config Layer:** `StarDiskShaderConfig` gains new fields (strength, blend, tiling, scroll speeds). `CELESTIAL_ENVIRONMENT` documents defaults.
+- **Material Builder:** `buildStarDiskMaterialConfig` clamps inputs, derives colours, and outputs `StarDiskUniformValues` with new entries.
+- **Renderer:** `createStarDiskMaterial` injects uniforms, `updateStarDiskUniforms` keeps them in sync, and the fragment shader consumes them for visual control.
+- **Component:** `StarDisk.tsx` continues to memoise the material and propagate updated config/uniforms.
+
+### 9.3 Data Flow
+
+```text
+CelestialEnvironment.starDisk.shader
+        │ (clamped by)
+        ▼
+buildStarDiskMaterialConfig → StarDiskUniformValues
+        │                      │
+        ▼                      ▼
+createStarDiskMaterial   updateStarDiskUniforms
+        │
+        ▼
+starDisk.fragment.glsl (samplers + scaling)
+```
+
+### 9.4 Interfaces & Schemas
+
+| Interface | Additions |
+| --- | --- |
+| `StarDiskShaderConfig` | `coreStrength`, `rimStrength`, `coronaStrength`, `outerGlowStrength`, `alphaStrength`, `coronaColorBlend`, `organicTiling`, `organicScrollSpeed`, `noiseTiling`, `noiseScrollSpeed`, `noiseDriftSpeed`. |
+| `StarDiskUniformValues` | Matching numeric properties (floats) used to drive fragment shader calculations. |
+| GLSL Uniforms | `uCoreStrength`, `uRimStrength`, `uCoronaStrength`, `uOuterGlowStrength`, `uAlphaStrength`, `uCoronaColorBlend`, `uOrganicTiling`, `uOrganicScrollSpeed`, `uNoiseTiling`, `uNoiseScrollSpeed`, `uNoiseDriftSpeed`. |
+
+### 9.5 Error Handling Matrix (Incremental)
+
+| Scenario | Detection | Impact | Mitigation |
+| --- | --- | --- | --- |
+| Config supplies out-of-range intensity or tiling values | Vitest clamp assertions or visual regression | Shader blows out brightness or aliases | Clamp values in `buildStarDiskMaterialConfig` (0–4 for intensities, 0.25–4 for tiling, 0–5 for speeds). |
+| Missing textures with new uniforms | Runtime fallback textures | Potential dim output | Preserve baseline defaults and ensure uniform multipliers keep brightness > 0; covered in fallback test. |
+| Shader uniform mismatch | WebGL compile errors or undefined uniform warnings | Star disk renders incorrectly or not at all | Keep TS uniform map and GLSL sync; lifecycle test checks uniform presence after updates. |
+
+### 9.6 Testing Strategy
+
+- Extend Vitest clamp and lifecycle tests to assert new uniform values.
+- Manual spot-check by tweaking `CELESTIAL_ENVIRONMENT.starDisk.shader` values and verifying in render preview (post-merge).
+- Maintain `npm run typecheck` and `npm test` as minimum validation gates.
+
+---
+
+## 10. Star Disk Palette Offsets — 2025-09-26
+
+### 10.1 Overview
+
+Expose the palette skew used when deriving core, rim, and corona colours from the star light. Allow hue/saturation/lightness multipliers to be configured per colour channel while keeping defaults aligned with the fiery baseline.
+
+### 10.2 Architecture
+
+- **Config Layer:** `StarDiskShaderConfig.paletteOffsets` supplies optional hue/saturation/lightness offsets for core, primary, and secondary colours.
+- **Material Builder:** `buildColorPalette` clamps offsets, applies them when explicit colour overrides are absent, and falls back to defaults otherwise.
+- **Shader:** Continues to consume the resolved colours; no new uniforms required.
+- **Defaults:** `CELESTIAL_ENVIRONMENT` documents the prior hard-coded offsets for easy adjustment.
+
+### 10.3 Data Flow
+
+```text
+StarLight.color → base Color → buildColorPalette
+      │                                  │
+      └─ paletteOffsets (config) ────────┘
+                │ (clamped offsets)
+                ▼
+        Derived palette (core, primary, secondary)
+```
+
+### 10.4 Interfaces & Schemas
+
+| Interface | Additions |
+| --- | --- |
+| `StarDiskShaderConfig` | New `paletteOffsets` property referencing `StarDiskPaletteOffsetsConfig`. |
+| `StarDiskPaletteColorOffsetConfig` | Encapsulates optional `hue`, `saturation`, and `lightness` adjustments. |
+| `StarDiskPaletteOffsetsConfig` | Groups offsets for `core`, `primary`, and `secondary` derived colours. |
+
+### 10.5 Error Handling Matrix (Incremental)
+
+| Scenario | Detection | Impact | Mitigation |
+| --- | --- | --- | --- |
+| Offsets set beyond safe range | Vitest clamp test failure | Colours wrap or produce NaNs in shader | Clamp offsets between -1 and 1 before application. |
+| Offsets applied alongside explicit colour overrides | Visual mismatch vs expectation | Provided overrides ignored | Skip offset application when explicit hex colours are supplied. |
+| Missing defaults after refactor | Regression back to desaturated palette | Inconsistent art direction | Keep defaults in `CELESTIAL_ENVIRONMENT` matching previous constants. |
+
+### 10.6 Testing Strategy
+
+- Vitest cases cover clamp behaviour (ensuring HSL stays in range) and custom offset application.
+- Manual verification remains optional; runtime behaviour unchanged aside from palette tuning.
+- Continue running `npm run typecheck` and `npm test` after edits.

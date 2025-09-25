@@ -8,6 +8,8 @@ Current focuses (short-term):
 
 Recent changes:
 
+- Parameterised StarDisk palette offsets (hue/saturation/lightness) via config defaults and clamps, adding Vitest coverage for custom palettes.
+- Surfaced additional StarDisk shader controls (core/rim/corona/glow strengths, texture tiling, scroll speeds) through config, shader uniforms, and Vitest coverage.
 - Corrected StarDisk aspect ratio by feeding the reciprocal viewport aspect into shader uniforms and guarding extreme camera shapes.
 - Raised star disk corona intensity and texture blend defaults, retuned fragment contributions for a hotter corona, and expanded Vitest coverage for fiery fallbacks.
 - Generated deterministic star disk texture assets, updated shader/material uniforms to sample them, and expanded Vitest coverage to capture texture handling.
@@ -19,6 +21,8 @@ Recent changes:
 
 Next steps:
 
+- Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
+- Capture a render comparison showcasing the new shader control ranges (core-focused vs corona-focused) for docs.
 - Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
 - Gather curated screenshots showcasing rim glow and star disk variants for docs and QA sign-off (include new fiery fidelity output).
 - Refresh Playwright/visual baselines to cover the texture-enhanced star disk once art direction is approved.
