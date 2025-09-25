@@ -13,6 +13,7 @@ import {
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskShaderConfig } from '../../config/environment.js';
+import { applyStarDiskDebugOverrides } from '../../config/starDiskDebug.js';
 import { useOptionalGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import {
@@ -47,7 +48,8 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const defaultSize = size ?? env?.starDisk?.size ?? 800;
   const defaultOpacity = opacity ?? env?.starDisk?.opacity ?? 0.12;
   const defaultDistanceMultiplier = distanceMultiplier ?? env?.starDisk?.distanceMultiplier ?? 0.8;
-  const shaderConfig = shader ?? env?.starDisk?.shader;
+  const baseShaderConfig = shader ?? env?.starDisk?.shader;
+  const shaderConfig = useMemo(() => applyStarDiskDebugOverrides(baseShaderConfig), [baseShaderConfig]);
   const meshRef = useRef<Mesh>(null);
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const aspectWarnedRef = useRef(false);

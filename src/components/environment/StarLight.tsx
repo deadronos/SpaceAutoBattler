@@ -27,6 +27,20 @@ export function StarLight({ config, externalLightRef, children }: StarLightProps
     }
     target.position.set(0, 0, 0);
     light.target = target;
+    light.castShadow = true;
+    const shadow = light.shadow;
+    shadow.mapSize.set(2048, 2048);
+    shadow.bias = -0.0002;
+    shadow.normalBias = 0.02;
+    const camera = shadow.camera;
+    const span = Math.max(config.distance * 0.6, 1000);
+    camera.near = 1;
+    camera.far = Math.max(config.distance * 2, span * 1.25);
+    camera.left = -span;
+    camera.right = span;
+    camera.top = span;
+    camera.bottom = -span;
+    camera.updateProjectionMatrix();
     // Mirror the internal ref into the optional external ref so parents can access it
     if (externalLightRef) {
       try {
@@ -36,7 +50,7 @@ export function StarLight({ config, externalLightRef, children }: StarLightProps
         // noop: if external ref is read-only we ignore
       }
     }
-  }, [target, externalLightRef]);
+  }, [target, externalLightRef, config.distance]);
 
   return (
     <>

@@ -33,6 +33,9 @@ export interface StarDiskUniformValues {
   coronaIntensity: number;
   coronaFalloff: number;
   noiseScale: number;
+  textureRadialPower: number;
+  coronaEdgeSoftness: number;
+  baseFillStrength: number;
   textureMix: number;
   textureFlicker: number;
   coreStrength: number;
@@ -90,6 +93,9 @@ const DEFAULTS = {
   coronaFalloff: 2,
   noiseScale: 1,
   colorShift: 0.45,
+  textureRadialPower: 0.68,
+  coronaEdgeSoftness: 0.72,
+  baseFillStrength: 0.18,
   textureMix: 0.98,
   textureFlicker: 0.88,
   coreStrength: 1,
@@ -210,6 +216,9 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
   const coronaIntensity = clamp(shader?.coronaIntensity ?? DEFAULTS.coronaIntensity, 0, 10);
   const coronaFalloff = clamp(shader?.coronaFalloff ?? DEFAULTS.coronaFalloff, 0.1, 8);
   const noiseScale = clamp(shader?.noiseScale ?? DEFAULTS.noiseScale, 0.1, 10);
+  const textureRadialPower = clamp(shader?.textureRadialPower ?? DEFAULTS.textureRadialPower, 0.2, 2);
+  const coronaEdgeSoftness = clamp(shader?.coronaEdgeSoftness ?? DEFAULTS.coronaEdgeSoftness, 0.2, 3);
+  const baseFillStrength = clamp(shader?.baseFillStrength ?? DEFAULTS.baseFillStrength, 0, 1);
   const textureMix = clamp(shader?.textureMix ?? DEFAULTS.textureMix, 0, 1);
   const textureFlicker = clamp(shader?.textureFlicker ?? DEFAULTS.textureFlicker, 0, 2);
   const coreStrength = clamp(shader?.coreStrength ?? DEFAULTS.coreStrength, 0, 4);
@@ -240,6 +249,9 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
       coronaIntensity,
       coronaFalloff,
       noiseScale,
+    textureRadialPower,
+    coronaEdgeSoftness,
+    baseFillStrength,
       textureMix,
       textureFlicker,
       coreStrength,
@@ -288,6 +300,9 @@ export function createStarDiskMaterial(values: StarDiskUniformValues, textures: 
       uCoronaIntensity: { value: values.coronaIntensity },
       uCoronaFalloff: { value: values.coronaFalloff },
       uNoiseScale: { value: values.noiseScale },
+    uTextureRadialPower: { value: values.textureRadialPower },
+    uCoronaEdgeSoftness: { value: values.coronaEdgeSoftness },
+    uBaseFillStrength: { value: values.baseFillStrength },
       uTextureMix: { value: values.textureMix },
       uTextureFlicker: { value: values.textureFlicker },
       uCoreStrength: { value: values.coreStrength },
@@ -339,6 +354,9 @@ export function updateStarDiskUniforms(
   uniforms.uCoronaIntensity.value = values.coronaIntensity;
   uniforms.uCoronaFalloff.value = values.coronaFalloff;
   uniforms.uNoiseScale.value = values.noiseScale;
+  uniforms.uTextureRadialPower.value = values.textureRadialPower;
+  uniforms.uCoronaEdgeSoftness.value = values.coronaEdgeSoftness;
+  uniforms.uBaseFillStrength.value = values.baseFillStrength;
   uniforms.uTextureMix.value = values.textureMix;
   uniforms.uTextureFlicker.value = values.textureFlicker;
   uniforms.uCoreStrength.value = values.coreStrength;

@@ -13,6 +13,9 @@ uniform float uCoronaScale2;
 uniform float uCoronaIntensity;
 uniform float uNoiseScale;
 uniform float uCoronaFalloff;
+uniform float uTextureRadialPower;
+uniform float uCoronaEdgeSoftness;
+uniform float uBaseFillStrength;
 uniform vec3 uColorCore;
 uniform vec3 uColorPrimary;
 uniform vec3 uColorSecondary;
@@ -63,20 +66,22 @@ void main() {
   float time = uTime * uTimeScale;
   float fade = pow(length(2.0 * p), 0.5);
   float angle = atan(p.x, p.y) / 6.28318530718;
-  vec3 coord = vec3(angle, dist * uNoiseScale, time * 0.1);
-
-  float angleWrapped = fract(angle + 0.5);
   float radial = clamp(dist, 0.0, 1.0);
+  float radialCoord = pow(radial, max(uTextureRadialPower, 0.2));
+  vec3 coord = vec3(angle, radialCoord * uNoiseScale, time * 0.1);
+
+  float swirl = sin(radialCoord * 6.0 + time * 0.25) * 0.04;
+  float angleWrapped = fract(angle + 0.5 + swirl);
   vec2 organicUv = vec2(
     angleWrapped * 2.0 * uOrganicTiling + time * 0.02 * uOrganicScrollSpeed,
-    pow(radial, 0.8) * uOrganicTiling
+    radialCoord * uOrganicTiling
   );
   vec3 organicSample = texture2D(uTextureOrganic, organicUv).rgb;
   float organicLuma = dot(organicSample, vec3(0.299, 0.587, 0.114));
 
   vec2 noiseUv = vec2(
     angleWrapped * 12.0 * uNoiseTiling + time * 0.1 * uNoiseScrollSpeed,
-    radial * 6.0 * uNoiseTiling + time * 0.04 * uNoiseScrollSpeed
+    radialCoord * 6.0 * uNoiseTiling + time * 0.04 * uNoiseScrollSpeed
   );
   vec4 noiseSample = texture2D(
     uTextureNoise,
@@ -97,8 +102,10 @@ void main() {
     fVal2 += (0.5 / power) * snoise(coord + vec3(0.0, -time, time * 0.2), scale2);
   }
 
-  float corona = pow(max(fVal1, 0.0) * max(1.1 - fade, 0.0), 2.0) * 50.0;
-  corona += pow(max(fVal2, 0.0) * max(1.1 - fade, 0.0), 2.0) * 65.0;
+  float coronaEdge = pow(max(1.0 - radial, 0.0), clamp(uCoronaEdgeSoftness, 0.2, 3.0));
+  float coronaEnvelope = pow(coronaEdge, 0.9);
+  float corona = pow(max(fVal1, 0.0) * coronaEnvelope, 2.0) * 46.0;
+  corona += pow(max(fVal2, 0.0) * coronaEnvelope, 2.0) * 58.0;
   float textureWeight = clamp(uTextureMix, 0.0, 1.0);
   float organicGain = mix(1.0, 0.6 + organicLuma * 1.4, textureWeight);
   corona *= uCoronaIntensity * (1.15 - drift1 * 0.55) * organicGain * noiseFlicker;
@@ -120,14 +127,26 @@ void main() {
   color += organicSample * (rim * 0.38 * textureWeight);
   color += noiseSample.rgb * (rim * 0.22 * textureWeight);
 
-  float outerGlow = pow(max(1.0 - dist, 0.0), 1.1) * (0.52 + uBrightness * 0.4) * uOuterGlowStrength;
+  float outerGlowBoost = 1.0 + max(0.0, 1.0 - clamp(uCoronaEdgeSoftness, 0.2, 3.0)) * 0.5;
+  float outerGlow = pow(max(1.0 - dist, 0.0), 1.1) * (0.52 + uBrightness * 0.4) * uOuterGlowStrength * outerGlowBoost;
   color += uColorSecondary * outerGlow * 0.58;
+
+  float midBand = clamp(1.0 - abs(radial - 0.55) * 1.8, 0.0, 1.0);
+  float rimBand = clamp(1.0 - abs(radial - 0.88) * 6.0, 0.0, 1.0);
+  float baseFill = pow(midBand, 2.0) + rimBand * 0.35;
+  vec3 fillTint = mix(uColorCore, uColorSecondary, 0.45);
+  float clampedBaseFillStrength = clamp(uBaseFillStrength, 0.0, 1.0);
+  color += fillTint * baseFill * clampedBaseFillStrength;
+  color += uColorSecondary * rimBand * clampedBaseFillStrength * 0.22;
 
   color *= noiseTint;
   color = clamp(color, 0.0, 1.0);
 
   float alphaCore = pow(max(1.0 - dist, 0.0), uCoronaFalloff);
-  float alpha = alphaCore + coronaScaled * 0.014;
+  float alpha = alphaCore * mix(0.78, 1.12, clamp(1.0 - uCoronaEdgeSoftness, 0.0, 1.0));
+  alpha += coronaScaled * 0.014;
+  alpha += baseFill * clampedBaseFillStrength * 0.16;
+  alpha += rimBand * clampedBaseFillStrength * 0.08;
   alpha = clamp(alpha * uOpacity * (0.62 + uBrightness * 0.28) * organicGain * uAlphaStrength, 0.0, 1.0);
 
   if (alpha <= 0.002) {

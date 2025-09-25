@@ -6,7 +6,6 @@ import { useOptionalGameState } from '../../game/context.js';
 import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
 import { PLANET_GEOMETRY_SEGMENTS } from '../../config/environment.js';
-import { PlanetRimMaterial } from './PlanetRimMaterial.js';
 import { PlanetRings } from './PlanetRings.js';
 import { PlanetRimShell } from './PlanetRimShell.js';
 
@@ -67,31 +66,30 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
 
   return (
     <group ref={groupRef} position={[config.position.x, config.position.y, config.position.z]}>
-      <mesh>
+      <mesh castShadow receiveShadow>
         <sphereGeometry args={[config.radius, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]} />
-        {useRimGlow ? (
-          <PlanetRimMaterial
-            map={texture ?? undefined}
-            color={texture ? undefined : fallbackColor}
-            emissive={emissiveColor}
-            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.5}
+        <meshStandardMaterial
+          attach="material"
+          map={texture ?? undefined}
+          color={texture ? undefined : fallbackColor}
+          metalness={0}
+          roughness={0.85}
+          emissive={emissiveColor}
+          emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.5}
+        />
+      </mesh>
+      {useRimGlow && (
+        <mesh castShadow={false} receiveShadow={false} renderOrder={5}>
+          <sphereGeometry
+            args={[config.radius * 1.015, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]}
+          />
+          <PlanetRimShell
+            radius={config.radius * 1.015}
             rimStrength={config.rimStrength ?? 0}
             rimColor={config.rimColor ?? '#ffffff'}
-            metalness={0}
-            roughness={0.85}
           />
-        ) : (
-          <meshStandardMaterial
-            attach="material"
-            map={texture ?? undefined}
-            color={texture ? undefined : fallbackColor}
-            metalness={0}
-            roughness={0.85}
-            emissive={emissiveColor}
-            emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.5}
-          />
-        )}
-      </mesh>
+        </mesh>
+      )}
       {config.rings && (
         <PlanetRings
           innerRadius={config.rings.innerRadius}

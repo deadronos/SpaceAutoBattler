@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { Color, DataTexture, RGBAFormat, ShaderMaterial, Texture, UnsignedByteType } from 'three';
-import type { StarLightConfig } from '../../src/config/environment.js';
+import type { StarLightConfig, StarDiskShaderConfig } from '../../src/config/environment.js';
 import {
   buildStarDiskMaterialConfig,
   createStarDiskMaterial,
@@ -8,6 +8,7 @@ import {
   updateStarDiskUniforms,
   type StarDiskTextures,
 } from '../../src/renderer/starDiskMaterial.js';
+import { applyStarDiskDebugOverrides } from '../../src/config/starDiskDebug.js';
 
 const BASE_LIGHT: StarLightConfig = {
   color: '#ffd8b0',
@@ -29,6 +30,9 @@ describe('star disk material config', () => {
         coronaIntensity: 25,
         coronaFalloff: 0.05,
         noiseScale: 0.05,
+        textureRadialPower: 10,
+        coronaEdgeSoftness: -5,
+        baseFillStrength: 2,
         colorCore: '#ff0000',
         textureMix: 1.5,
         textureFlicker: 3,
@@ -68,19 +72,22 @@ describe('star disk material config', () => {
     expect(config.uniforms.coronaIntensity).toBe(10);
     expect(config.uniforms.coronaFalloff).toBe(0.1);
     expect(config.uniforms.noiseScale).toBe(0.1);
+    expect(config.uniforms.textureRadialPower).toBe(2);
+    expect(config.uniforms.coronaEdgeSoftness).toBe(0.2);
+    expect(config.uniforms.baseFillStrength).toBe(1);
     expect(config.uniforms.textureMix).toBe(1);
     expect(config.uniforms.textureFlicker).toBe(2);
-  expect(config.uniforms.coreStrength).toBe(4);
-  expect(config.uniforms.rimStrength).toBe(0);
-  expect(config.uniforms.coronaStrength).toBe(4);
-  expect(config.uniforms.outerGlowStrength).toBe(4);
-  expect(config.uniforms.alphaStrength).toBe(3);
-  expect(config.uniforms.coronaColorBlend).toBe(1);
-  expect(config.uniforms.organicTiling).toBeCloseTo(0.25, 4);
-  expect(config.uniforms.organicScrollSpeed).toBe(5);
-  expect(config.uniforms.noiseTiling).toBe(4);
-  expect(config.uniforms.noiseScrollSpeed).toBe(5);
-  expect(config.uniforms.noiseDriftSpeed).toBe(5);
+    expect(config.uniforms.coreStrength).toBe(4);
+    expect(config.uniforms.rimStrength).toBe(0);
+    expect(config.uniforms.coronaStrength).toBe(4);
+    expect(config.uniforms.outerGlowStrength).toBe(4);
+    expect(config.uniforms.alphaStrength).toBe(3);
+    expect(config.uniforms.coronaColorBlend).toBe(1);
+    expect(config.uniforms.organicTiling).toBeCloseTo(0.25, 4);
+    expect(config.uniforms.organicScrollSpeed).toBe(5);
+    expect(config.uniforms.noiseTiling).toBe(4);
+    expect(config.uniforms.noiseScrollSpeed).toBe(5);
+    expect(config.uniforms.noiseDriftSpeed).toBe(5);
     expect(config.uniforms.colorCore.getHexString()).toBe('ff0000');
     expect(config.uniforms.brightness).toBeGreaterThan(0);
   });
@@ -94,7 +101,7 @@ describe('star disk material config', () => {
       },
     });
 
-  const baseHex = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHexString();
+    const baseHex = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHexString();
     expect(config.uniforms.colorCore.getHexString()).not.toBe(baseHex);
     expect(config.uniforms.colorPrimary.getHexString()).not.toBe(baseHex);
     expect(config.uniforms.colorSecondary.getHexString()).not.toBe(baseHex);
@@ -114,12 +121,12 @@ describe('star disk material config', () => {
       },
     });
 
-  const expectedCore = new Color(BASE_LIGHT.color).convertSRGBToLinear();
-  expectedCore.offsetHSL(0.05, 0.4, 0.2);
-  const expectedPrimary = new Color(BASE_LIGHT.color).convertSRGBToLinear();
-  expectedPrimary.offsetHSL(-0.1, -0.2, 0.1);
-  const expectedSecondary = new Color(BASE_LIGHT.color).convertSRGBToLinear();
-  expectedSecondary.offsetHSL(0.15, 0.5, -0.3);
+    const expectedCore = new Color(BASE_LIGHT.color).convertSRGBToLinear();
+    expectedCore.offsetHSL(0.05, 0.4, 0.2);
+    const expectedPrimary = new Color(BASE_LIGHT.color).convertSRGBToLinear();
+    expectedPrimary.offsetHSL(-0.1, -0.2, 0.1);
+    const expectedSecondary = new Color(BASE_LIGHT.color).convertSRGBToLinear();
+    expectedSecondary.offsetHSL(0.15, 0.5, -0.3);
 
     expect(config.uniforms.colorCore.getHexString()).toBe(expectedCore.getHexString());
     expect(config.uniforms.colorPrimary.getHexString()).toBe(expectedPrimary.getHexString());
@@ -128,13 +135,16 @@ describe('star disk material config', () => {
 
   it('exposes fiery defaults when no overrides are supplied', () => {
     const config = buildStarDiskMaterialConfig({ light: BASE_LIGHT, opacity: 0.75 });
-  const baseHex = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHexString();
-  const baseHsl = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHSL({ h: 0, s: 0, l: 0 });
+    const baseHex = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHexString();
+    const baseHsl = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHSL({ h: 0, s: 0, l: 0 });
     const secondaryHsl = config.uniforms.colorSecondary.getHSL({ h: 0, s: 0, l: 0 });
 
     expect(config.uniforms.coronaIntensity).toBeCloseTo(1.28, 2);
     expect(config.uniforms.textureMix).toBeGreaterThan(0.95);
     expect(config.uniforms.textureFlicker).toBeGreaterThan(0.85);
+    expect(config.uniforms.textureRadialPower).toBeCloseTo(0.68, 2);
+    expect(config.uniforms.coronaEdgeSoftness).toBeCloseTo(0.72, 2);
+    expect(config.uniforms.baseFillStrength).toBeCloseTo(0.18, 2);
     expect(config.uniforms.brightness).toBeGreaterThan(0.6);
     expect(config.uniforms.brightness).toBeLessThan(0.9);
     expect(config.uniforms.colorCore.getHexString()).not.toBe(baseHex);
@@ -175,6 +185,9 @@ describe('star disk material lifecycle', () => {
         coronaScale1: 32,
         textureMix: 0.2,
         textureFlicker: 0.1,
+        textureRadialPower: 0.4,
+        coronaEdgeSoftness: 1.8,
+        baseFillStrength: 0.05,
         coreStrength: 0.5,
         rimStrength: 1.8,
         coronaStrength: 1.4,
@@ -202,6 +215,9 @@ describe('star disk material lifecycle', () => {
     );
     expect(uniforms.uTextureMix.value).toBe(updatedConfig.uniforms.textureMix);
     expect(uniforms.uTextureFlicker.value).toBe(updatedConfig.uniforms.textureFlicker);
+    expect(uniforms.uTextureRadialPower.value).toBe(updatedConfig.uniforms.textureRadialPower);
+    expect(uniforms.uCoronaEdgeSoftness.value).toBe(updatedConfig.uniforms.coronaEdgeSoftness);
+    expect(uniforms.uBaseFillStrength.value).toBe(updatedConfig.uniforms.baseFillStrength);
     expect(uniforms.uCoreStrength.value).toBe(updatedConfig.uniforms.coreStrength);
     expect(uniforms.uRimStrength.value).toBe(updatedConfig.uniforms.rimStrength);
     expect(uniforms.uCoronaStrength.value).toBe(updatedConfig.uniforms.coronaStrength);
@@ -237,11 +253,95 @@ describe('star disk material lifecycle', () => {
     expect(uniforms.uCoronaIntensity.value).toBe(config.uniforms.coronaIntensity);
     expect(uniforms.uTextureMix.value).toBe(config.uniforms.textureMix);
     expect(uniforms.uTextureFlicker.value).toBe(config.uniforms.textureFlicker);
-  expect(uniforms.uCoreStrength.value).toBe(config.uniforms.coreStrength);
+    expect(uniforms.uTextureRadialPower.value).toBe(config.uniforms.textureRadialPower);
+    expect(uniforms.uCoronaEdgeSoftness.value).toBe(config.uniforms.coronaEdgeSoftness);
+    expect(uniforms.uBaseFillStrength.value).toBe(config.uniforms.baseFillStrength);
+    expect(uniforms.uCoreStrength.value).toBe(config.uniforms.coreStrength);
     expect((uniforms.uTextureOrganic.value as Texture).name).toBe('StarDiskOrganicFallback');
     expect((uniforms.uTextureNoise.value as Texture).name).toBe('StarDiskNoiseFallback');
     expect(uniforms.uOpacity.value).toBeLessThanOrEqual(1);
 
     material.dispose();
+  });
+});
+
+describe('star disk debug overrides', () => {
+  const debugGlobal = globalThis as {
+    __STAR_DISK_DEBUG__?: { shaderOverrides?: Partial<StarDiskShaderConfig> };
+    __STAR_DISK_DEBUG_STATE__?: { merged?: StarDiskShaderConfig };
+  };
+
+  afterEach(() => {
+    delete debugGlobal.__STAR_DISK_DEBUG__;
+    delete debugGlobal.__STAR_DISK_DEBUG_STATE__;
+  });
+
+  it('returns base config when no debug context is present', () => {
+    const base: StarDiskShaderConfig = { textureMix: 0.5 };
+    const result = applyStarDiskDebugOverrides(base);
+    expect(result).toBe(base);
+  });
+
+  it('merges numeric overrides from the debug context without mutating the base', () => {
+    const base: StarDiskShaderConfig = {
+      textureMix: 0.5,
+      coronaStrength: 1.2,
+    };
+    debugGlobal.__STAR_DISK_DEBUG__ = {
+      shaderOverrides: {
+        textureMix: 0.1,
+        coronaStrength: 2.4,
+      },
+    };
+
+    const result = applyStarDiskDebugOverrides(base);
+
+    expect(result).not.toBe(base);
+    expect(result?.textureMix).toBe(0.1);
+    expect(result?.coronaStrength).toBe(2.4);
+    expect(base.textureMix).toBe(0.5);
+    expect(base.coronaStrength).toBe(1.2);
+  });
+
+  it('deep merges palette offsets without mutating the source config', () => {
+    const base: StarDiskShaderConfig = {
+      paletteOffsets: {
+        core: { hue: 0.1 },
+        primary: { saturation: 0.2 },
+      },
+    };
+    debugGlobal.__STAR_DISK_DEBUG__ = {
+      shaderOverrides: {
+        paletteOffsets: {
+          core: { saturation: 0.3 },
+          secondary: { lightness: -0.15 },
+        },
+      },
+    };
+
+    const result = applyStarDiskDebugOverrides(base);
+
+    expect(result).not.toBe(base);
+    expect(result?.paletteOffsets?.core?.hue).toBe(0.1);
+    expect(result?.paletteOffsets?.core?.saturation).toBe(0.3);
+    expect(result?.paletteOffsets?.secondary?.lightness).toBe(-0.15);
+    expect(base.paletteOffsets?.core?.saturation).toBeUndefined();
+    expect(base.paletteOffsets?.secondary).toBeUndefined();
+  });
+
+  it('returns overrides when no base config is supplied', () => {
+    debugGlobal.__STAR_DISK_DEBUG__ = {
+      shaderOverrides: {
+        textureRadialPower: 0.4,
+        coronaEdgeSoftness: 1.1,
+      },
+    };
+
+    const result = applyStarDiskDebugOverrides(undefined);
+
+    expect(result).toBeDefined();
+    expect(result?.textureRadialPower).toBe(0.4);
+    expect(result?.coronaEdgeSoftness).toBe(1.1);
+    expect(debugGlobal.__STAR_DISK_DEBUG_STATE__?.merged?.textureRadialPower).toBe(0.4);
   });
 });

@@ -170,3 +170,58 @@ StarLight.color → base Color → buildColorPalette
 - Vitest cases cover clamp behaviour (ensuring HSL stays in range) and custom offset application.
 - Manual verification remains optional; runtime behaviour unchanged aside from palette tuning.
 - Continue running `npm run typecheck` and `npm test` after edits.
+
+---
+
+## 11. Star Disk Render Capture Workflow — 2025-09-26
+
+### 11.1 Overview
+
+Establish a deterministic Playwright workflow that captures "before" and "after" star disk screenshots for documentation. The test toggles shader overrides at runtime, ensuring the before image represents the pre-radial preset while the after image uses the new defaults.
+
+### 11.2 Architecture
+
+- **Debug Interface:** `window.__STAR_DISK_DEBUG__` exposes `shaderOverrides` consumed by the celestial environment bootstrapping code.
+- **Renderer Hook:** `applyStarDiskDebugOverrides` merges overrides into the material config before the `StarDisk` component builds uniforms.
+- **Playwright Spec:** `star-disk-compare.spec.ts` orchestrates two captures: one with overrides (before) and one without (after), persisting images under `playwright-debug/` for doc usage.
+- **Storage:** Screenshots land in `playwright-debug/star-disk-before.png` and `playwright-debug/star-disk-after.png`, separate from baseline snapshots to avoid CI noise.
+
+### 11.3 Data Flow
+
+```text
+Playwright test
+        │
+        ├─ before step: page.addInitScript sets window.__STAR_DISK_DEBUG__.shaderOverrides
+        │        │
+        │        ▼
+        │   applyStarDiskDebugOverrides → merged config → StarDisk uniforms → screenshot (before)
+        │
+        └─ after step: clears overrides via page.evaluate → defaults render → screenshot (after)
+```
+
+### 11.4 Interfaces & Contracts
+
+| Interface | Contract |
+| --- | --- |
+| `window.__STAR_DISK_DEBUG__.shaderOverrides` | Partial `StarDiskShaderConfig` applied for the session when defined before material creation. |
+| `applyStarDiskDebugOverrides(config, overrides)` | Returns merged config without mutating the original object. |
+| Playwright Capture Task | Provides CLI to run `npx playwright test star-disk-compare.spec.ts --update-snapshots` producing two PNG captures. |
+
+### 11.5 Error Handling Matrix
+
+| Scenario | Detection | Impact | Mitigation |
+| --- | --- | --- | --- |
+| Overrides applied mid-flight after material creation | Screenshots identical; debug override ignored | Before/after comparison fails | Add guard to reapply config only if overrides exist during initial material build; Playwright test ensures overrides set before load. |
+| Screenshot directory missing | Playwright save throws ENOENT | Test fails before artifact write | Ensure test creates `playwright-debug/` before writing. |
+| Overrides leaking into "after" capture | Images match, reducing value | Document fails to show contrast | Explicitly clear `window.__STAR_DISK_DEBUG__` and reload before after capture. |
+| Debug hook pollutes production | Overrides persisting in shipped build | Runtime unpredictability | Gate debug hook usage behind dev/test flag; default pipeline does not set debug object. |
+
+### 11.6 Testing Strategy
+
+- Playwright spec compares pixel histograms to ensure before ≠ after, providing a sanity assertion besides artifact generation.
+- Manual validation: open the saved PNGs to confirm visual differences before embedding in docs.
+- Maintain `npm run typecheck` and `npm test` to confirm TypeScript and unit suites remain healthy after integrating debug hook.
+
+### 11.7 Camera Alignment
+
+- Star disk visibility on load now comes from flipping the `StarLight.direction` vector to point toward the initial camera target while leaving the distance unchanged. This maintains lighting direction consistency and keeps Playwright captures deterministic without additional camera automation.

@@ -4,8 +4,14 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-27: Replaced custom rim material with a standard surface plus rim shell overlay, refreshed documentation/tasks, and reran validation (`npm run typecheck`, `npm test`) to confirm planets stay visible with cast/receive shadows (TASK132).
+- 2025-09-26: Refactored planet rim material to retain PBR lighting, enabled planet cast/receive shadows, tuned directional light shadow map, and added Vitest coverage for rim shader injection (TASK132).
+- 2025-09-26: Reoriented `StarLight.direction` toward the default camera target so the star disk renders in-frame on load while preserving lighting distance; regenerated Playwright before/after captures.
+- 2025-09-26: Implemented TASK131 Playwright capture workflow — added debug override helper, unit coverage, comparison spec, and generated before/after artifacts under `playwright-debug/` (typecheck, unit, and Playwright suites passing).
+- 2025-09-26: Drafted requirements (memory/requirements.md), design (design.md §11), and TASK131 plan for Playwright-driven star disk before/after renders.
 - 2025-09-26: Parameterised StarDisk palette offsets, introduced config schemas, updated material helper clamps, expanded Vitest coverage, and documented the change (TASK129).
 - 2025-09-26: Surfaced additional StarDisk shader controls (strength multipliers, color blend, tiling, scroll speeds), updated GLSL/material wiring, expanded Vitest coverage, and documented defaults (TASK128).
+- 2025-09-25: Implemented TASK130 radial spread tuning — added radial shaping uniforms, updated fragment shader with base fill + swirl, refreshed environment defaults, and validated via `npm run typecheck` and `npm test`.
 - 2025-09-25: Completed TASK127 fiery fidelity pass — warmed palette, increased texture influence, rebalanced shader brightness, updated environment defaults, and revalidated via `npm run typecheck`, `npm test`, and `npm run build`.
 - 2025-09-25: Corrected star disk aspect ratio, boosted corona intensity defaults, updated environment overrides, and expanded Vitest coverage for fiery fallbacks (TASK126).
 - 2025-09-25: Baked deterministic star disk textures, integrated sampler-driven shader updates, and closed TASK125 with new Vitest coverage plus npm typecheck/test validation.

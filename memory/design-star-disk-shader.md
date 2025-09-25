@@ -17,7 +17,7 @@
 
 ## 3. Confidence & Execution Strategy
 
-- Deterministic time sourcing already exists in `PlanetBody`; reuse pattern to keep visuals stable.
+- Capture/clamp the new parameters (`textureRadialPower` between 0.2–2, `coronaEdgeSoftness` between 0.2–3, `baseFillStrength` between 0–1).
 - Shader port is self-contained and mirrors prior `starNest` adaptation, reducing unknowns.
 - Plan: implement full feature with automated tests and documentation updates under a single branch iteration.
 
@@ -188,3 +188,39 @@ flowchart TD
 - **Unit:** Cover fallback textures to ensure fiery parameters persist even without external PNGs.
 - **Visual:** Refresh Playwright baseline capturing the warmer corona once QA approves.
 - **Manual:** Capture before/after screenshots in debug UI to confirm the orange filament pattern matches the reference.
+
+## 13. 2025-09-25 — Organic Radial Spread
+
+### Goals
+
+- Broaden animated energy so filaments and glow inhabit the mid/outer disc instead of concentrating at the core.
+- Introduce tunable radial shaping parameters that artists can adjust per scene while keeping deterministic behaviour.
+- Preserve existing fiery palette and performance characteristics.
+
+### Adjustments
+
+- `StarDiskShaderConfig`
+  - Add `textureRadialPower` (default 0.68) to bias organic/noise texture sampling outward.
+  - Add `coronaEdgeSoftness` (default 0.72) to relax the corona falloff exponent and keep rim energy alive.
+  - Add `baseFillStrength` (default 0.18) to blend a mid-disc fill that ties core and rim together.
+- `starDisk.fragment.glsl`
+  - Replace hard-coded radial exponents with the new uniforms for both organic and RGBA noise UVs.
+  - Apply `coronaEdgeSoftness` when shaping the corona energy curve and alpha fade.
+  - Add a mid-disc fill term tinted between core and corona colours so the outer disc never goes fully dark.
+- `StarDiskUniformValues` / `buildStarDiskMaterialConfig`
+  - Capture/clamp the new parameters (`textureRadialPower` between 0.2–2, `coronaEdgeSoftness` between 0.2–3, `baseFillStrength` between 0–1).
+  - Ensure `updateStarDiskUniforms` pushes the new uniforms without material recreation.
+- `CELESTIAL_ENVIRONMENT`
+  - Set defaults matching the new presets to deliver a fuller disc for the showcase star.
+
+### Error Handling
+
+- Clamp new parameters to their supported ranges before writing uniforms to prevent NaN energy spikes.
+- Base fill contribution is bounded by alpha to avoid over-saturating bloom; added guard ensures alpha gain stays within `[0, 1]`.
+- Uniform update path includes null checks so legacy materials without the new uniforms fail gracefully (logged once).
+
+### Testing Strategy
+
+- **Unit:** Extend `star-disk-material.spec.ts` to cover default values, clamping behaviour, and uniform propagation via `updateStarDiskUniforms`.
+- **Unit:** Validate that `buildStarDiskMaterialConfig` respects overrides for the new parameters.
+- **Manual:** Capture side-by-side renders to confirm fuller-disc animation; adjust config presets as needed based on art feedback.

@@ -92,6 +92,12 @@ export interface StarDiskShaderConfig {
   coronaFalloff?: number;
   /** Multiplies the radial noise coordinate, stretching or compressing corona distortions along the star radius. */
   noiseScale?: number;
+  /** Exponent applied to radial texture sampling; lower than 1 pushes organic detail toward the outer disc. */
+  textureRadialPower?: number;
+  /** Exponent shaping how gently corona energy fades toward the rim (lower keeps the rim energised). */
+  coronaEdgeSoftness?: number;
+  /** Blends a tinted base fill tying the core and rim energy together across the disc. */
+  baseFillStrength?: number;
   /** Adjusts the hue balance for generated palette colours: negative cools, positive warms the corona. */
   colorShift?: number;
   /** Explicit overrides for the core/rim/corona palette; leave undefined to derive from the star light colour. */
@@ -164,7 +170,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   starLight: {
     color: '#ffd27a',
     intensity: 1.2,
-    direction: { x: -0.2516, y: -0.1509, z: -0.956 },
+    direction: { x: 0.2516, y: 0.1509, z: 0.956 },
     distance: 30000,
     ambientColor: '#1b2240',
     ambientIntensity: 0.55,
@@ -242,20 +248,23 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       coronaScale1: 15, // Sets size of broad wisps; lower = chunky bands, higher = thinner streaks.
       coronaScale2: 45, // Controls high-frequency detail layered on top of the broad wisps.
       coronaIntensity: 1.52, // Overall brightness of corona energy before bloom post-processing.
-      coronaFalloff: 1.85, // Drives how quickly opacity fades from core to rim; higher tightens the edge.
+      coronaFalloff: 1.005, // Drives how quickly opacity fades from core to rim; higher tightens the edge.
+    textureRadialPower: 0.68, // Bias organic and noise sampling outward across the disc.
+    coronaEdgeSoftness: 0.72, // Relax corona falloff to keep rim filaments animated.
+    baseFillStrength: 0.18, // Blend a cohesive fill tying the core and rim together.
       noiseScale: 0.85, // Stretches corona distortion along the radius for a slightly elongated look.
       colorShift: 0.5, // Warms the palette derived from the star light colour.
-      textureMix: 1, // Blend strength for the baked organic texture filaments.
+      textureMix: 0.7, // Blend strength for the baked organic texture filaments.
       textureFlicker: 0.92, // Flicker amplitude sourced from noise texture alpha for lively breathing.
       coreStrength: 1.08, // Boost the inner stellar core to remain brighter than the corona.
       rimStrength: 1.1, // Emphasise the bright ring wrapping the core and filament overlays.
       coronaStrength: 1.0, // Leave overall corona brightness near neutral.
-      outerGlowStrength: 1.0, // Default halo contribution around the star.
-      alphaStrength: 1.0, // Keep transparency at baseline (use <1 for subtler disk, >1 for denser).
+      outerGlowStrength: 1.6, // Default halo contribution around the star.
+      alphaStrength: 1.1, // Keep transparency at baseline (use <1 for subtler disk, >1 for denser).
       coronaColorBlend: 0.68, // Lean corona tint slightly toward the secondary palette colour.
-      organicTiling: 1.0, // Use default filament repetition frequency.
+      organicTiling: 3.0, // Use default filament repetition frequency.
       organicScrollSpeed: 1.0, // Baseline drift speed for organic texture.
-      noiseTiling: 1.0, // Leave RGBA noise frequency at authored value.
+      noiseTiling: 2.0, // Leave RGBA noise frequency at authored value.
       noiseScrollSpeed: 1.0, // Baseline drift speed for RGBA noise.
       noiseDriftSpeed: 1.0, // Baseline secondary shimmer for the RGBA noise sample.
       paletteOffsets: {

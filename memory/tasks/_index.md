@@ -8,6 +8,9 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK132](TASK132-planet-shadowing.md) — Planet shadowing enhancement (standard material + rim shell with cast/receive shadows).
+- [TASK131](TASK131-star-disk-render-capture.md) — Automated before/after star disk screenshot captures via Playwright.
+- [TASK130](TASK130-star-disk-radial-spread.md) — Expand star disk radial energy to fill the disc with organic animation.
 - [TASK129](TASK129-star-disk-palette-offsets.md) — Parameterise star disk palette offsets for configurable hue/saturation/lightness skew.
 - [TASK128](TASK128-star-disk-shader-controls.md) — Expose additional star disk shader controls through config and shader uniforms.
 - [TASK127](TASK127-star-disk-fidelity.md) — Refined star disk shader to match fiery reference without washing out texture detail.
