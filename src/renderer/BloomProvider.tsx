@@ -25,7 +25,7 @@ const Ctx = createContext<BloomCtx | null>(null);
 const FALLBACK_GROUP = 'default';
 const LAYER_START = POSTPROCESSING_CONFIG.bloomLayerStart ?? 11;
 
-export function BloomProvider({ enabled, children }: { enabled: boolean; children: React.ReactNode }): React.ReactElement {
+export function BloomProvider({ enabled, children }: { enabled: boolean; children?: React.ReactNode }): React.ReactElement | null {
   const selectionsRef = useRef<Map<string, Selection>>(new Map());
   const objectGroupRef = useRef<Map<Object3D, string>>(new Map());
   const nextLayerRef = useRef<number>(LAYER_START);
@@ -47,9 +47,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       nextLayerRef.current = Math.min(layer + 1, 31);
       map.set(group, selection);
     }
-    selection.exclusive = true;
-    // Remove the problematic code that was putting objects back on layer 0
-    // Objects should stay on their dedicated bloom layers for selective bloom to work
+  selection.exclusive = false;
   });
 
   const register = React.useCallback(
@@ -113,7 +111,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
     [enabled, defaultGroup, register, unregister],
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={value}>{children ?? null}</Ctx.Provider>;
 }
 
 export function useBloomContext(): BloomCtx | null {

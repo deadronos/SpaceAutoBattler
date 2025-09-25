@@ -4,15 +4,6 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK102](TASK102-implement-physical-movement.md) Implement Physical Movement System - Motion, renderer smoothing, tests, and docs complete; awaiting review
-- [TASK117](TASK117-planet-performance.md) Planet Performance Budget - Geometry segments bounded; capture pending
-- [TASK118](TASK118-planet-rendering-tests.md) Planet Rendering Tests - Vitest config coverage added
-- [TASK119](TASK119-celestial-implementation.md) Celestial Implementation Tracking - Core implementation done; docs/QA TODO
-- [TASK120](TASK120-visual-polish-track.md) Visual Polish Track - Star disk billboard, rim glow, lighting balance (Track 1) ✅ COMPLETED
-- [TASK121](TASK121-robustness-testing-track.md) Robustness & Testing Track - Deterministic tests, fallback tests, Playwright baselines (Track 2) ✅ COMPLETED
-- [TASK122](TASK122-feature-expansion-track.md) Feature Expansion Track - Gas giant rings, parallax billboards, config toggles (Track 3) ✅ COMPLETED
-- [TASK123](TASK123-selective-bloom-fix.md) Selective Bloom Contrast Fix - Group-based selective bloom landed ✅ COMPLETED
-
 ## Completed
 
 - Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress) ??" verified on 2025-09-21 by automated agent
@@ -36,13 +27,15 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) AI Scenario Harness & Visual QA - Added headless harness, golden log test, and docs refresh (HUD capture pending follow-up).
 - [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) AI V2 Rollout & Automation - Added env flag + 	est:ci, authored rollout playbook, and updated memory/tasks.
 - [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) Expand AI Scenario Harness Fixtures - Added bomber intercept + artillery retreat configs with golden logs, refreshed memory/plan entries, and kept tests deterministic.
-
-- Align docs and memory with 2025 rewrite - Updated llms.txt, AGENTS.md, .github/copilot-instructions.md, and memory files to match new src layout (R3F + Miniplex + Rapier on main thread).
+- [TASK102](TASK102-implement-physical-movement.md) Implement Physical Movement System - Motion, renderer smoothing, tests, and docs complete; awaiting review
+- [TASK117](TASK117-planet-performance.md) Planet Performance Budget - Geometry segments bounded; capture pending
+- [TASK118](TASK118-planet-rendering-tests.md) Planet Rendering Tests - Vitest config coverage added
+- [TASK119](TASK119-celestial-implementation.md) Celestial Implementation Tracking - Core implementation done; docs/QA TODO
+- [TASK120](TASK120-visual-polish-track.md) Visual Polish Track - Star disk billboard, rim glow, lighting balance (Track 1) ✅ COMPLETED
+- [TASK121](TASK121-robustness-testing-track.md) Robustness & Testing Track - Deterministic tests, fallback tests, Playwright baselines (Track 2) ✅ COMPLETED
+- [TASK122](TASK122-feature-expansion-track.md) Feature Expansion Track - Gas giant rings, parallax billboards, config toggles (Track 3) ✅ COMPLETED
+- [TASK123](TASK123-selective-bloom-fix.md) Selective Bloom Contrast Fix - Group-based selective bloom landed ✅ COMPLETED
 
 ## Pending
-
-- Add CI link-check job
-
-- Expand docs/_index.md from llms.txt
 
 ## Abandoned
