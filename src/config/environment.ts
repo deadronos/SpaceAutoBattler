@@ -1,4 +1,5 @@
 import type { PlanetTextureKey } from '../assets/planets.js';
+import type { SkyspherTextureKey } from '../assets/skysphere.js';
 
 export interface PlanetBodyConfig {
   id: string;
@@ -49,9 +50,20 @@ export interface StarLightConfig {
   ambientIntensity?: number;
 }
 
+export interface SkysphereConfig {
+  /** Texture key for the skysphere background */
+  textureKey: SkyspherTextureKey;
+  /** Radius of the skysphere in world units */
+  radius?: number;
+  /** Overall opacity of the skysphere */
+  opacity?: number;
+}
+
 export interface CelestialEnvironmentConfig {
   planets: PlanetBodyConfig[];
   starLight: StarLightConfig;
+  /** Optional skysphere configuration for 360-degree background */
+  skysphere?: SkysphereConfig;
   /** Optional star disk appearance settings (size in world units, opacity, and distance multiplier) */
   starDisk?: {
     size?: number;
@@ -70,6 +82,7 @@ export interface CelestialEnvironmentConfig {
   }>;
   /** Feature toggles for safe enable/disable */
   features?: {
+    skysphere?: boolean;
     starDisk?: boolean;
     planetRims?: boolean;
     planetRings?: boolean;
@@ -85,6 +98,11 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     distance: 30000,
     ambientColor: '#1b2240',
     ambientIntensity: 0.55,
+  },
+  skysphere: {
+    textureKey: 'richBlueNebulae',
+    radius: 45000, // Larger than star light distance to ensure it's behind everything
+    opacity: 1.0,
   },
   planets: [
     {
@@ -150,6 +168,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     distanceMultiplier: 1.0,
   },
   features: {
+    skysphere: true,
     starDisk: true,
     planetRims: true,
     planetRings: true,

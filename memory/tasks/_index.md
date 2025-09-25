@@ -4,7 +4,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- _None right now — celestial environment follow-ups will be captured as new tasks once perf validation and documentation work resumes._
+- [TASK110](TASK110-implement-skysphere.md) Implement 8192x4096 Skysphere - Creating skysphere component and integrating into environment system
 
 ## Completed
 

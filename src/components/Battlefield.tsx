@@ -41,7 +41,6 @@ export function Battlefield(): React.ReactElement {
       <StarsField />
       {ppEnabled ? (
         <BloomProvider enabled>
-          <color attach="background" args={[new Color('#02030b')]} />
           <fog attach="fog" args={FOG_DEFAULTS} />
           <CelestialEnvironment />
           <Suspense fallback={null}>
@@ -69,7 +68,6 @@ export function Battlefield(): React.ReactElement {
         </BloomProvider>
       ) : (
         <>
-          <color attach="background" args={[new Color('#02030b')]} />
           <fog attach="fog" args={FOG_DEFAULTS} />
           <CelestialEnvironment />
           <Suspense fallback={null}>

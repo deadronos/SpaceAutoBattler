@@ -4,12 +4,21 @@ import { PlanetBody } from './PlanetBody.js';
 import { StarLight } from './StarLight.js';
 import { StarDisk } from './StarDisk.js';
 import { ParallaxBillboard } from './ParallaxBillboard.js';
+import { Skysphere } from './Skysphere.js';
 import type { DirectionalLight } from 'three';
 
 export function CelestialEnvironment(): React.ReactElement {
-  const { starLight, planets, parallaxBillboards, features } = CELESTIAL_ENVIRONMENT;
+  const { starLight, skysphere, planets, parallaxBillboards, features } = CELESTIAL_ENVIRONMENT;
   return (
     <group>
+      {/* Skysphere renders first to ensure it's behind everything else */}
+      {features?.skysphere !== false && skysphere && (
+        <Skysphere
+          textureKey={skysphere.textureKey}
+          radius={skysphere.radius}
+          opacity={skysphere.opacity}
+        />
+      )}
       <StarLight config={starLight}>
         {features?.starDisk !== false && (
           // StarDisk is rendered as a child of StarLight so it's parented in the scene graph
