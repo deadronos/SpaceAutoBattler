@@ -1,4 +1,16 @@
-import { Color, ShaderMaterial } from 'three';
+import {
+  ClampToEdgeWrapping,
+  Color,
+  DataTexture,
+  LinearFilter,
+  NearestFilter,
+  RepeatWrapping,
+  RGBAFormat,
+  ShaderMaterial,
+  SRGBColorSpace,
+  Texture,
+  UnsignedByteType,
+} from 'three';
 import fragmentShader from './shaders/starDisk.fragment.glsl';
 import vertexShader from './shaders/starDisk.vertex.glsl';
 import type { StarDiskShaderConfig, StarLightConfig } from '../config/environment.js';
@@ -15,6 +27,8 @@ export interface StarDiskUniformValues {
   coronaIntensity: number;
   coronaFalloff: number;
   noiseScale: number;
+  textureMix: number;
+  textureFlicker: number;
   colorCore: Color;
   colorPrimary: Color;
   colorSecondary: Color;
@@ -23,12 +37,19 @@ export interface StarDiskUniformValues {
 export interface StarDiskMaterialConfig {
   bloomGroup: string;
   uniforms: StarDiskUniformValues;
+  textures: StarDiskTextures;
 }
 
 export interface BuildStarDiskMaterialOptions {
   light: StarLightConfig;
   opacity: number;
   shader?: StarDiskShaderConfig;
+  textures?: Partial<StarDiskTextures>;
+}
+
+export interface StarDiskTextures {
+  organic: Texture | null;
+  noise: Texture | null;
 }
 
 const DEFAULTS = {
@@ -40,7 +61,47 @@ const DEFAULTS = {
   coronaFalloff: 2.2,
   noiseScale: 1,
   colorShift: 0,
+  textureMix: 0.65,
+  textureFlicker: 0.4,
 };
+
+const FALLBACK_ORGANIC = (() => {
+  const data = new Uint8Array([
+    208, 142, 88, 255,
+    104, 62, 36, 255,
+    72, 44, 28, 255,
+    248, 214, 162, 255,
+  ]);
+  const texture = new DataTexture(data, 2, 2, RGBAFormat, UnsignedByteType);
+  texture.name = 'StarDiskOrganicFallback';
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = ClampToEdgeWrapping;
+  texture.minFilter = LinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.colorSpace = SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+})();
+
+const FALLBACK_NOISE = (() => {
+  const data = new Uint8Array([
+    64, 180, 220, 255,
+    220, 120, 80, 255,
+    160, 200, 96, 255,
+    32, 80, 200, 255,
+  ]);
+  const texture = new DataTexture(data, 2, 2, RGBAFormat, UnsignedByteType);
+  texture.name = 'StarDiskNoiseFallback';
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.minFilter = NearestFilter;
+  texture.magFilter = NearestFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+})();
+
+const resolveTexture = (texture: Texture | null | undefined, fallback: Texture): Texture => texture ?? fallback;
 
 function resolveColor(hex: string | undefined, fallback: Color): Color {
   if (!hex) {
@@ -88,6 +149,8 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
   const coronaIntensity = clamp(shader?.coronaIntensity ?? DEFAULTS.coronaIntensity, 0, 10);
   const coronaFalloff = clamp(shader?.coronaFalloff ?? DEFAULTS.coronaFalloff, 0.1, 8);
   const noiseScale = clamp(shader?.noiseScale ?? DEFAULTS.noiseScale, 0.1, 10);
+  const textureMix = clamp(shader?.textureMix ?? DEFAULTS.textureMix, 0, 1);
+  const textureFlicker = clamp(shader?.textureFlicker ?? DEFAULTS.textureFlicker, 0, 2);
   const brightness = clamp((light.intensity ?? 1) / 1.4, 0, 4);
   const baseColor = new Color(light.color ?? '#ffffff');
   const { core, primary, secondary } = buildColorPalette(baseColor, shader);
@@ -104,9 +167,15 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
       coronaIntensity,
       coronaFalloff,
       noiseScale,
+      textureMix,
+      textureFlicker,
       colorCore: core,
       colorPrimary: primary,
       colorSecondary: secondary,
+    },
+    textures: {
+      organic: options.textures?.organic ?? null,
+      noise: options.textures?.noise ?? null,
     },
   };
 }
@@ -115,7 +184,9 @@ export interface CreateStarDiskMaterialResult {
   material: ShaderMaterial;
 }
 
-export function createStarDiskMaterial(values: StarDiskUniformValues): ShaderMaterial {
+export function createStarDiskMaterial(values: StarDiskUniformValues, textures: StarDiskTextures): ShaderMaterial {
+  const organicTexture = resolveTexture(textures.organic, FALLBACK_ORGANIC);
+  const noiseTexture = resolveTexture(textures.noise, FALLBACK_NOISE);
   const material = new ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -133,9 +204,13 @@ export function createStarDiskMaterial(values: StarDiskUniformValues): ShaderMat
       uCoronaIntensity: { value: values.coronaIntensity },
       uCoronaFalloff: { value: values.coronaFalloff },
       uNoiseScale: { value: values.noiseScale },
+      uTextureMix: { value: values.textureMix },
+      uTextureFlicker: { value: values.textureFlicker },
       uColorCore: { value: values.colorCore.clone() },
       uColorPrimary: { value: values.colorPrimary.clone() },
       uColorSecondary: { value: values.colorSecondary.clone() },
+      uTextureOrganic: { value: organicTexture },
+      uTextureNoise: { value: noiseTexture },
     },
   });
   return material;
@@ -143,17 +218,22 @@ export function createStarDiskMaterial(values: StarDiskUniformValues): ShaderMat
 
 export function tryCreateStarDiskMaterial(
   values: StarDiskUniformValues,
-  factory: (uniforms: StarDiskUniformValues) => ShaderMaterial = createStarDiskMaterial,
+  textures: StarDiskTextures,
+  factory: (uniforms: StarDiskUniformValues, textures: StarDiskTextures) => ShaderMaterial = createStarDiskMaterial,
 ): ShaderMaterial | null {
   try {
-    return factory(values);
+    return factory(values, textures);
   } catch (error) {
     console.warn('[StarDisk] Failed to create shader material, falling back to basic material.', error);
     return null;
   }
 }
 
-export function updateStarDiskUniforms(material: ShaderMaterial, values: StarDiskUniformValues): void {
+export function updateStarDiskUniforms(
+  material: ShaderMaterial,
+  values: StarDiskUniformValues,
+  textures?: StarDiskTextures,
+): void {
   const uniforms = material.uniforms as Record<string, { value: unknown }>;
   uniforms.uTimeScale.value = values.timeScale;
   uniforms.uBrightness.value = values.brightness;
@@ -164,7 +244,13 @@ export function updateStarDiskUniforms(material: ShaderMaterial, values: StarDis
   uniforms.uCoronaIntensity.value = values.coronaIntensity;
   uniforms.uCoronaFalloff.value = values.coronaFalloff;
   uniforms.uNoiseScale.value = values.noiseScale;
+  uniforms.uTextureMix.value = values.textureMix;
+  uniforms.uTextureFlicker.value = values.textureFlicker;
   (uniforms.uColorCore.value as Color).copy(values.colorCore);
   (uniforms.uColorPrimary.value as Color).copy(values.colorPrimary);
   (uniforms.uColorSecondary.value as Color).copy(values.colorSecondary);
+  if (textures) {
+    uniforms.uTextureOrganic.value = resolveTexture(textures.organic, FALLBACK_ORGANIC);
+    uniforms.uTextureNoise.value = resolveTexture(textures.noise, FALLBACK_NOISE);
+  }
 }

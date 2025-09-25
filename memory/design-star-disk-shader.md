@@ -5,6 +5,7 @@
 - Goal: replace the static `StarDisk` billboard material with a Shadertoy-inspired solar corona shader that reacts to star config while remaining deterministic for tests.
 - Scope: new GLSL shader assets, `StarDisk` component refactor, renderer config extensions, and bloom registration.
 - Confidence: 0.87 (High). Prior shader work in repo plus clear porting path allow a full implementation without a PoC.
+- Extension (2025-09-25): integrate procedural textures approximating Shadertoy’s `Organic2` and `RGBA Noise Small`, correct aspect handling, retune uniforms to achieve the target glow, and expose deterministic generation script plus texture blend/flicker controls.
 
 ## 2. Requirements (EARS)
 
@@ -26,6 +27,7 @@
 - Uniform pump consumes:
   - Star config (color, intensity, distance) and optional shader overrides from `CELESTIAL_ENVIRONMENT`.
   - Simulation clock from `useOptionalGameState()` with fallback to renderer time when absent.
+- Texture loader (new): load deterministic data textures for noise modulation, exposing them through `StarDiskMaterial` helper; fallback to procedural snoise when unavailable.
 - `useBloomRegistration` assigns a new `bloomGroup` (e.g., `star`).
 - Fallback path swaps to previous `meshBasicMaterial` when shader creation throws.
 
@@ -41,10 +43,14 @@ flowchart TD
 
 ## 5. Data Flow & Lifecycle
 
-1. `StarDisk` memoises shader uniforms structure on mount.
+1. `StarDisk` memoises shader uniforms structure on mount, loading deterministic PNG textures (`organic`, `noiseRgba`) via `@react-three/drei`'s `useTexture` with repeat/nearest sampling to feed `uTextureOrganic` and `uTextureNoise` uniforms.
+
 2. On each frame, deterministic time and derived brightness feed into uniforms (`uTime`, `uBrightness`, `uRadius`).
+
 3. Color/intensity updates trigger React `useEffect` to patch uniforms without recreating material.
+
 4. Bloom registration runs once per ref change and synchronises with `BloomProvider` selection layers.
+
 5. `useEffect` cleanup disposes the shader, textures, and unregisters bloom handles.
 
 ## 6. Interfaces & Data Models
@@ -59,6 +65,8 @@ flowchart TD
     bloomGroup?: string; // default 'star'
     timeMultiplier?: number;
     colorShift?: number; // warm/cool tint slider
+    textureMix?: number; // blend strength for organic sampler
+    textureFlicker?: number; // flicker weight from noise sampler
   }
   ```
 
@@ -72,7 +80,8 @@ flowchart TD
   ```
 
 - New helper: `buildStarDiskUniforms(config: StarLightConfig, disk: StarDiskShaderConfig | undefined): StarDiskUniforms` returning a serialisable object for tests.
-- Shader uniforms (GLSL): `uTime`, `uResolution`, `uBrightness`, `uRadius`, `uColor`, `uCorona1`, `uCorona2`, `uNoiseScale`, `uColorShift`, `uStarCore`, `uFalloff`.
+- Texture sourcing: `STAR_DISK_TEXTURE_PATHS` + React `useTexture` hook ensure deterministic PNG sampling with optional fallbacks (`organic`, `noiseRgba`).
+- Shader uniforms (GLSL): `uTime`, `uBrightness`, `uRadius`, `uAspect`, `uOpacity`, `uCoronaScale1`, `uCoronaScale2`, `uCoronaIntensity`, `uCoronaFalloff`, `uNoiseScale`, `uTextureMix`, `uTextureFlicker`, `uColorCore`, `uColorPrimary`, `uColorSecondary`, `uTextureOrganic`, `uTextureNoise`.
 - React hook signature: `useStarDiskMaterial(params: UseStarDiskMaterialParams): ShaderMaterial | null` (optional abstraction for testing and fallback).
 
 ## 7. Error Handling Matrix
@@ -80,6 +89,7 @@ flowchart TD
 | Scenario | Detection | Impact | Mitigation |
 | --- | --- | --- | --- |
 | WebGL shader compilation error | `ShaderMaterial` logs `material.onBeforeCompile` error | Star disk missing; black circle | Catch error, log warning, fall back to `meshBasicMaterial`. |
+| Texture load failure | Loader throws or returns undefined | Loss of high-frequency detail | Log warning, use procedural snoise path and cached neutral textures. |
 | Bloom registration context absent | `useBloomRegistration` returns null | Disk not on bloom layer | Guard hook usage and log debug message; still render without bloom. |
 | GameState unavailable (e.g., loading) | `useOptionalGameState()` returns null | Animation stalls | Fallback to renderer clock for time. |
 | Config override NaN/invalid | Runtime uniform update receives invalid numbers | Shader artifacts | Clamp/sanitize overrides before writing uniforms. |
@@ -90,6 +100,7 @@ flowchart TD
 - **Unit (Vitest)**
   - `buildStarDiskUniforms.spec.ts`: verifies deterministic time mapping, color conversions, and config overrides.
   - `StarDisk.spec.tsx`: shallow render using React Testing Library + `@react-three/test-renderer` to assert fallback handling when shader hook returns null.
+- Add tests ensuring texture loader returns deterministic data, fallback path when fs read fails, and aspect correction in uniform updates.
 - **Integration / Visual**
   - Update `test/playwright/celestial-visual-baseline.spec.ts` screenshot or add new baseline for star disk glow.
   - Optional: add GPU-free assertion verifying bloom layer registration via debug toggle.

@@ -80,6 +80,10 @@ export interface StarDiskShaderConfig {
   colorCore?: string;
   colorPrimary?: string;
   colorSecondary?: string;
+  /** Blend strength applied when sampling the organic texture detail. */
+  textureMix?: number;
+  /** Flicker intensity contributed by the RGBA noise texture. */
+  textureFlicker?: number;
 }
 
 export interface CelestialEnvironmentConfig {
@@ -199,6 +203,8 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       coronaFalloff: 2.2,
       noiseScale: 1.0,
       colorShift: 0.0,
+      textureMix: 0.7,
+      textureFlicker: 0.45,
     },
   },
   features: {

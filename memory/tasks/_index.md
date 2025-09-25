@@ -4,10 +4,11 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- _None tracked._
+_None tracked._
 
 ## Completed
 
+- [TASK125](TASK125-star-disk-textures.md) — Bake procedural star disk textures and integrate them into shader pipeline.
 - [TASK100](COMPLETED/TASK100-memory-bank-summary.md) — Memory-bank summary entry for initial knowledge-base bootstrap.
 - [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) — Implemented Miniplex + Zustand integration with lifecycle hooks and UI store replacement.
 - [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag.

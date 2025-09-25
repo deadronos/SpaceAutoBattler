@@ -1,7 +1,17 @@
 import { useMemo, useRef, useEffect } from 'react';
-import type { Mesh } from 'three';
-import { Vector3, ShaderMaterial } from 'three';
-import { useFrame } from '@react-three/fiber';
+import type { Mesh, Texture } from 'three';
+import {
+  Vector3,
+  ShaderMaterial,
+  RepeatWrapping,
+  ClampToEdgeWrapping,
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  NearestFilter,
+  SRGBColorSpace,
+} from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useTexture } from '@react-three/drei';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskShaderConfig } from '../../config/environment.js';
 import { useOptionalGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
@@ -10,6 +20,7 @@ import {
   tryCreateStarDiskMaterial,
   updateStarDiskUniforms,
 } from '../../renderer/starDiskMaterial.js';
+import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../../assets/starDiskTextures.js';
 
 interface StarDiskShaderUniforms {
   uTime: { value: number };
@@ -40,6 +51,31 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const meshRef = useRef<Mesh>(null);
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const gameState = useOptionalGameState();
+  const { gl } = useThree();
+  const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<StarDiskTextureKey, Texture | undefined>;
+  const organicTexture = starTextures.organic ?? null;
+  const noiseTexture = starTextures.noiseRgba ?? null;
+
+  useEffect(() => {
+    const maxAniso = Math.min(8, gl.capabilities.getMaxAnisotropy());
+    if (organicTexture) {
+      organicTexture.wrapS = RepeatWrapping;
+      organicTexture.wrapT = ClampToEdgeWrapping;
+      organicTexture.minFilter = LinearMipmapLinearFilter;
+      organicTexture.magFilter = LinearFilter;
+      organicTexture.anisotropy = maxAniso;
+      organicTexture.colorSpace = SRGBColorSpace;
+      organicTexture.needsUpdate = true;
+    }
+    if (noiseTexture) {
+      noiseTexture.wrapS = RepeatWrapping;
+      noiseTexture.wrapT = RepeatWrapping;
+      noiseTexture.minFilter = NearestFilter;
+      noiseTexture.magFilter = NearestFilter;
+      noiseTexture.generateMipmaps = false;
+      noiseTexture.needsUpdate = true;
+    }
+  }, [gl, organicTexture, noiseTexture]);
 
   // Local offset from the parent (StarLight group's origin). When parented, this is the disk's local position.
   const localOffset = useMemo(() => {
@@ -54,12 +90,16 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
         light: config,
         opacity: defaultOpacity,
         shader: shaderConfig,
+        textures: {
+          organic: organicTexture,
+          noise: noiseTexture,
+        },
       }),
-    [config, defaultOpacity, shaderConfig],
+    [config, defaultOpacity, shaderConfig, organicTexture, noiseTexture],
   );
 
   const shaderMaterial = useMemo(() => {
-    const mat = tryCreateStarDiskMaterial(materialConfig.uniforms);
+    const mat = tryCreateStarDiskMaterial(materialConfig.uniforms, materialConfig.textures);
     shaderMaterialRef.current = mat;
     return mat;
   }, [materialConfig]);
@@ -67,7 +107,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   useEffect(() => {
     const mat = shaderMaterialRef.current;
     if (!mat) return;
-    updateStarDiskUniforms(mat, materialConfig.uniforms);
+    updateStarDiskUniforms(mat, materialConfig.uniforms, materialConfig.textures);
   }, [materialConfig]);
 
   useEffect(() => {
@@ -89,7 +129,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     if (!mat) {
       return;
     }
-  const uniforms = mat.uniforms as unknown as StarDiskShaderUniforms;
+    const uniforms = mat.uniforms as unknown as StarDiskShaderUniforms;
     const sim = gameState?.simulation;
     if (sim) {
       const elapsed = sim.lastTickStart + sim.alpha * sim.step;
