@@ -80,11 +80,11 @@ export interface ShieldVisualSettings {
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -381,7 +381,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
       threshold: 0.9,
     },
     shields: {
-      intensity: 1.0,
+      intensity: 0.7,
       smoothing: 0.02,
       threshold: 0.9,
     },

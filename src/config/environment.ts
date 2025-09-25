@@ -116,7 +116,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         speed: 0.012,
         offset: 0.6,
       },
-      emissiveBoost: 0.015,
+      emissiveBoost: 0.005,
       rimStrength: 0.3,
       rimColor: '#ffaa44',
       rings: {
@@ -138,7 +138,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         speed: 0.008,
         offset: -0.4,
       },
-      emissiveBoost: 0.005,
+      emissiveBoost: 0.0005,
       rimStrength: 0.2,
       rimColor: '#aaccff',
     },
