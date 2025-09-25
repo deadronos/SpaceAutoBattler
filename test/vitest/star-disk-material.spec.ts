@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Color, DataTexture, RGBAFormat, ShaderMaterial, UnsignedByteType } from 'three';
+import { Color, DataTexture, RGBAFormat, ShaderMaterial, Texture, UnsignedByteType } from 'three';
 import type { StarLightConfig } from '../../src/config/environment.js';
 import {
   buildStarDiskMaterialConfig,
@@ -63,6 +63,25 @@ describe('star disk material config', () => {
     expect(config.uniforms.colorPrimary.getHexString()).not.toBe(baseHex);
     expect(config.uniforms.colorSecondary.getHexString()).not.toBe(baseHex);
   });
+
+  it('exposes fiery defaults when no overrides are supplied', () => {
+    const config = buildStarDiskMaterialConfig({ light: BASE_LIGHT, opacity: 0.75 });
+    const baseHex = new Color(BASE_LIGHT.color).getHexString();
+    const baseHsl = new Color(BASE_LIGHT.color).getHSL({ h: 0, s: 0, l: 0 });
+    const secondaryHsl = config.uniforms.colorSecondary.getHSL({ h: 0, s: 0, l: 0 });
+
+    expect(config.uniforms.coronaIntensity).toBeCloseTo(1.28, 2);
+    expect(config.uniforms.textureMix).toBeGreaterThan(0.95);
+    expect(config.uniforms.textureFlicker).toBeGreaterThan(0.85);
+    expect(config.uniforms.brightness).toBeGreaterThan(0.6);
+    expect(config.uniforms.brightness).toBeLessThan(0.9);
+    expect(config.uniforms.colorCore.getHexString()).not.toBe(baseHex);
+    expect(config.uniforms.colorPrimary.getHexString()).not.toBe(baseHex);
+    expect(config.uniforms.colorSecondary.getHexString()).not.toBe(baseHex);
+    expect(secondaryHsl.s).toBeGreaterThanOrEqual(baseHsl.s);
+    expect(secondaryHsl.h).toBeGreaterThanOrEqual(baseHsl.h);
+    expect(secondaryHsl.l).toBeLessThan(baseHsl.l);
+  });
 });
 
 describe('star disk material lifecycle', () => {
@@ -118,5 +137,21 @@ describe('star disk material lifecycle', () => {
       throw new Error('fail');
     });
     expect(material).toBeNull();
+  });
+
+  it('retains fiery tuning when falling back to generated textures', () => {
+    const textures: StarDiskTextures = { organic: null, noise: null };
+    const config = buildStarDiskMaterialConfig({ light: BASE_LIGHT, opacity: 0.7, textures });
+    const material = createStarDiskMaterial(config.uniforms, textures);
+    const uniforms = material.uniforms as Record<string, { value: unknown }>;
+
+    expect(uniforms.uCoronaIntensity.value).toBe(config.uniforms.coronaIntensity);
+    expect(uniforms.uTextureMix.value).toBe(config.uniforms.textureMix);
+    expect(uniforms.uTextureFlicker.value).toBe(config.uniforms.textureFlicker);
+    expect((uniforms.uTextureOrganic.value as Texture).name).toBe('StarDiskOrganicFallback');
+    expect((uniforms.uTextureNoise.value as Texture).name).toBe('StarDiskNoiseFallback');
+    expect(uniforms.uOpacity.value).toBeLessThanOrEqual(1);
+
+    material.dispose();
   });
 });

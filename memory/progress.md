@@ -4,6 +4,8 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-25: Completed TASK127 fiery fidelity pass — warmed palette, increased texture influence, rebalanced shader brightness, updated environment defaults, and revalidated via `npm run typecheck`, `npm test`, and `npm run build`.
+- 2025-09-25: Corrected star disk aspect ratio, boosted corona intensity defaults, updated environment overrides, and expanded Vitest coverage for fiery fallbacks (TASK126).
 - 2025-09-25: Baked deterministic star disk textures, integrated sampler-driven shader updates, and closed TASK125 with new Vitest coverage plus npm typecheck/test validation.
 - 2025-09-25: Integrated star disk shader pipeline (GLSL assets, Vitest loader, deterministic uniforms) and closed TASK124 with validation notes.
 - 2025-09-25: Authored celestial environment memory refresh (activeContext, progress, task index) and documented renderer focus, replacing legacy AI rollout notes.

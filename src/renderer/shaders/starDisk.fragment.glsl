@@ -6,7 +6,7 @@ uniform float uTime;
 uniform float uTimeScale;
 uniform float uBrightness;
 uniform float uRadius;
-uniform float uAspect;
+uniform float uAspectInv;
 uniform float uOpacity;
 uniform float uCoronaScale1;
 uniform float uCoronaScale2;
@@ -43,7 +43,7 @@ float snoise(vec3 uv, float res) {
 
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
-  p.x *= uAspect;
+  p.x *= uAspectInv;
   float dist = length(p);
   if (dist > 1.2) {
     discard;
@@ -77,29 +77,35 @@ void main() {
     fVal2 += (0.5 / power) * snoise(coord + vec3(0.0, -time, time * 0.2), scale2);
   }
 
-  float corona = pow(max(fVal1, 0.0) * max(1.1 - fade, 0.0), 2.0) * 45.0;
-  corona += pow(max(fVal2, 0.0) * max(1.1 - fade, 0.0), 2.0) * 45.0;
-  float organicGain = mix(1.0, 0.55 + organicLuma * 1.6, clamp(uTextureMix, 0.0, 1.0));
-  corona *= uCoronaIntensity * (1.2 - drift1 * 0.6) * organicGain * noiseFlicker;
+  float corona = pow(max(fVal1, 0.0) * max(1.1 - fade, 0.0), 2.0) * 50.0;
+  corona += pow(max(fVal2, 0.0) * max(1.1 - fade, 0.0), 2.0) * 65.0;
+  float textureWeight = clamp(uTextureMix, 0.0, 1.0);
+  float organicGain = mix(1.0, 0.6 + organicLuma * 1.4, textureWeight);
+  corona *= uCoronaIntensity * (1.15 - drift1 * 0.55) * organicGain * noiseFlicker;
 
   float core = smoothstep(uRadius * 0.25, uRadius * 0.6, 1.0 - dist);
   float rim = smoothstep(uRadius * 0.0, uRadius * 0.3, 1.0 - dist) - core;
 
   vec3 color = vec3(0.0);
-  color += uColorCore * (core * (0.6 + uBrightness * 0.4));
-  color += uColorPrimary * (rim * (0.4 + uBrightness * 0.6));
-  vec3 organicTint = mix(vec3(1.0), organicSample, clamp(uTextureMix, 0.0, 1.0));
-  color += (uColorSecondary * (0.2 + uBrightness * 0.3) + uColorPrimary * 0.1) * corona * 0.02;
-  color *= mix(vec3(1.0), organicTint, 0.35 * clamp(uTextureMix, 0.0, 1.0));
-  color += organicSample * (rim * 0.25 * clamp(uTextureMix, 0.0, 1.0));
-  color += noiseSample.rgb * (rim * 0.1 * clamp(uTextureMix, 0.0, 1.0));
+  color += uColorCore * (core * (0.68 + uBrightness * 0.32));
+  color += uColorPrimary * (rim * (0.46 + uBrightness * 0.5));
+  vec3 coronaColor = mix(uColorPrimary, uColorSecondary, 0.7);
+  color += coronaColor * corona * 0.018;
+  vec3 organicTint = mix(vec3(1.0), organicSample, 0.55 * textureWeight);
+  vec3 noiseTint = mix(vec3(1.0), noiseSample.rgb, 0.25 * textureWeight);
+  color = mix(color, color * organicTint, 0.42 * textureWeight);
+  color += organicSample * (rim * 0.38 * textureWeight);
+  color += noiseSample.rgb * (rim * 0.22 * textureWeight);
 
-  float outerGlow = pow(max(1.0 - dist, 0.0), 1.2) * (0.5 + uBrightness * 0.5);
-  color += uColorSecondary * outerGlow * 0.6;
+  float outerGlow = pow(max(1.0 - dist, 0.0), 1.1) * (0.52 + uBrightness * 0.4);
+  color += uColorSecondary * outerGlow * 0.58;
+
+  color *= noiseTint;
+  color = clamp(color, 0.0, 1.0);
 
   float alphaCore = pow(max(1.0 - dist, 0.0), uCoronaFalloff);
-  float alpha = alphaCore + corona * 0.015;
-  alpha = clamp(alpha * uOpacity * (0.6 + uBrightness * 0.4) * organicGain, 0.0, 1.0);
+  float alpha = alphaCore + corona * 0.014;
+  alpha = clamp(alpha * uOpacity * (0.62 + uBrightness * 0.28) * organicGain, 0.0, 1.0);
 
   if (alpha <= 0.002) {
     discard;

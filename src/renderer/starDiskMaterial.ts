@@ -57,12 +57,12 @@ const DEFAULTS = {
   timeMultiplier: 1,
   coronaScale1: 15,
   coronaScale2: 45,
-  coronaIntensity: 1,
-  coronaFalloff: 2.2,
+  coronaIntensity: 1.28,
+  coronaFalloff: 2,
   noiseScale: 1,
-  colorShift: 0,
-  textureMix: 0.65,
-  textureFlicker: 0.4,
+  colorShift: 0.45,
+  textureMix: 0.98,
+  textureFlicker: 0.88,
 };
 
 const FALLBACK_ORGANIC = (() => {
@@ -127,13 +127,13 @@ function buildColorPalette(base: Color, shader?: StarDiskShaderConfig): {
   const secondary = resolveColor(shader?.colorSecondary, baseClone);
 
   if (!shader?.colorCore) {
-    core.offsetHSL(0, 0.15 * shift, 0.12 * shift);
+    core.offsetHSL(0.01 * shift, 0.22 * shift, 0.06 * shift);
   }
   if (!shader?.colorPrimary) {
-    primary.offsetHSL(0, 0.07 * shift, -0.05 * shift);
+    primary.offsetHSL(0.015 * shift, 0.18 * shift, -0.06 * shift);
   }
   if (!shader?.colorSecondary) {
-    secondary.offsetHSL(0, -0.04 * shift, 0.18 * shift);
+    secondary.offsetHSL(0.03 * shift, 0.32 * shift, -0.22 * shift);
   }
 
   return { core, primary, secondary };
@@ -151,7 +151,7 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
   const noiseScale = clamp(shader?.noiseScale ?? DEFAULTS.noiseScale, 0.1, 10);
   const textureMix = clamp(shader?.textureMix ?? DEFAULTS.textureMix, 0, 1);
   const textureFlicker = clamp(shader?.textureFlicker ?? DEFAULTS.textureFlicker, 0, 2);
-  const brightness = clamp((light.intensity ?? 1) / 1.4, 0, 4);
+  const brightness = clamp((light.intensity ?? 1) / 1.6, 0, 3);
   const baseColor = new Color(light.color ?? '#ffffff');
   const { core, primary, secondary } = buildColorPalette(baseColor, shader);
 
@@ -194,10 +194,10 @@ export function createStarDiskMaterial(values: StarDiskUniformValues, textures: 
     fragmentShader,
     uniforms: {
       uTime: { value: 0 },
-      uTimeScale: { value: values.timeScale },
-      uBrightness: { value: values.brightness },
-      uRadius: { value: values.radius },
-      uAspect: { value: 1 },
+    uTimeScale: { value: values.timeScale },
+    uBrightness: { value: values.brightness },
+    uRadius: { value: values.radius },
+    uAspectInv: { value: 1 },
       uOpacity: { value: values.opacity },
       uCoronaScale1: { value: values.coronaScale1 },
       uCoronaScale2: { value: values.coronaScale2 },
