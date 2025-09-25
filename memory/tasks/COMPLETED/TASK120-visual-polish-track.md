@@ -1,8 +1,8 @@
-# [TASK120] - Visual Polish Track (Low Risk)
+# TASK120 – Visual Polish Track (Low Risk)
 
-**Status:** In Progress  
+**Status:** Complete  
 **Added:** 2025-01-23  
-**Updated:** 2025-01-23
+**Updated:** 2025-09-25
 
 ## Original Request
 
@@ -27,11 +27,11 @@ Key improvements needed:
 ## Implementation Plan
 
 - [x] Analyze existing celestial system architecture
-- [ ] Create star disk billboard component referencing starDirection from config
-- [ ] Enhance PlanetBody material with optional fresnel rim glow
-- [ ] Adjust lighting balance in CELESTIAL_ENVIRONMENT config
-- [ ] Test visual improvements don't impact UI/ship visibility
-- [ ] Add configuration options for enabling/disabling features
+- [x] Create star disk billboard component referencing starDirection from config
+- [x] Enhance PlanetBody material with optional fresnel rim glow
+- [x] Adjust lighting balance in CELESTIAL_ENVIRONMENT config
+- [x] Test visual improvements don't impact UI/ship visibility
+- [x] Add configuration options for enabling/disabling features
 
 ## Progress Tracking
 
@@ -55,3 +55,7 @@ Key improvements needed:
 - Analyzed existing celestial system
 - Identified starDirection in CELESTIAL_ENVIRONMENT config
 - Confirmed rimStrength already exists per planet
+
+### 2025-09-25
+
+- Validated final implementation during memory refresh; outstanding perf capture remains tracked in active context (no further code work required).

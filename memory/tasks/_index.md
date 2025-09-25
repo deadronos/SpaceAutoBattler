@@ -4,38 +4,40 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
+- _None right now — celestial environment follow-ups will be captured as new tasks once perf validation and documentation work resumes._
+
 ## Completed
 
-- Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress) ??" verified on 2025-09-21 by automated agent
-
-- [TASK100](COMPLETED/TASK100-memory-bank-summary.md) Memory-bank summary entry - Create/update memory-bank summary node and task file
-
-- [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) Implement Miniplex + Zustand Integration - Completed comprehensive implementation with lifecycle hooks, consumer replacement, and UI store
-- [TASK110](TASK110-planet-texture-assets.md) Planet Texture Asset Naming - Texture keys confirmed; registry in place
-- [TASK111](TASK111-celestial-environment-config.md) Celestial Environment Config Design - Config shipped
-- [TASK112](TASK112-planet-texture-loading.md) Planet Texture Loading & Caching - usePlanetTexture hook ready
-- [TASK113](TASK113-planet-material-baseline.md) Planet Material Baseline - Baseline material defined
-- [TASK114](TASK114-celestial-components.md) Celestial Components Architecture - Components integrated
-- [TASK115](TASK115-star-light-integration.md) Star Light Integration - Directional + ambient light live
-- [TASK116](TASK116-deterministic-rotation.md) Deterministic Rotation Safeguards - Renderer uses simulation clock
-
-- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) AI V2 Skeleton & Blackboard - Added GameState.ai manager, decision scheduler, behavior profiles, and refactored ship prep to honor the feature flag.
-- [TASK103](COMPLETED/TASK103-ai-traits.md) AI Trait Variance & Determinism - Added trait multipliers, trait-aware scoring, and Vitest coverage.
-- [TASK104](COMPLETED/TASK104-ai-metrics.md) AI Metrics Instrumentation & Tooling - Added AI manager metrics, docs, and memory updates.
-- [TASK105](COMPLETED/TASK105-ai-v2-validation.md) AI V2 Validation & Tooling - Added determinism/scorer/executor/legacy Vitest suites, perf budget script, HUD overlay, and plan/docs refresh.
-- [TASK106](COMPLETED/TASK106-ai-intercept-reposition.md) AI Intercept & Reposition Intents - Landed intercept/reposition/regroup scoring/executors plus new Vitest coverage and documentation updates.
-- [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) AI Scenario Harness & Visual QA - Added headless harness, golden log test, and docs refresh (HUD capture pending follow-up).
-- [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) AI V2 Rollout & Automation - Added env flag + 	est:ci, authored rollout playbook, and updated memory/tasks.
-- [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) Expand AI Scenario Harness Fixtures - Added bomber intercept + artillery retreat configs with golden logs, refreshed memory/plan entries, and kept tests deterministic.
-- [TASK102](TASK102-implement-physical-movement.md) Implement Physical Movement System - Motion, renderer smoothing, tests, and docs complete; awaiting review
-- [TASK117](TASK117-planet-performance.md) Planet Performance Budget - Geometry segments bounded; capture pending
-- [TASK118](TASK118-planet-rendering-tests.md) Planet Rendering Tests - Vitest config coverage added
-- [TASK119](TASK119-celestial-implementation.md) Celestial Implementation Tracking - Core implementation done; docs/QA TODO
-- [TASK120](TASK120-visual-polish-track.md) Visual Polish Track - Star disk billboard, rim glow, lighting balance (Track 1) ✅ COMPLETED
-- [TASK121](TASK121-robustness-testing-track.md) Robustness & Testing Track - Deterministic tests, fallback tests, Playwright baselines (Track 2) ✅ COMPLETED
-- [TASK122](TASK122-feature-expansion-track.md) Feature Expansion Track - Gas giant rings, parallax billboards, config toggles (Track 3) ✅ COMPLETED
-- [TASK123](TASK123-selective-bloom-fix.md) Selective Bloom Contrast Fix - Group-based selective bloom landed ✅ COMPLETED
+- [TASK100](COMPLETED/TASK100-memory-bank-summary.md) — Memory-bank summary entry for initial knowledge-base bootstrap.
+- [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) — Implemented Miniplex + Zustand integration with lifecycle hooks and UI store replacement.
+- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag.
+- [TASK102](COMPLETED/TASK102-implement-physical-movement.md) — Delivered deterministic physical movement system, renderer smoothing, and tests.
+- [TASK103](COMPLETED/TASK103-ai-traits.md) — Added AI trait multipliers with deterministic seeding and coverage.
+- [TASK104](COMPLETED/TASK104-ai-metrics.md) — Instrumented AI metrics and documented rollout.
+- [TASK105](COMPLETED/TASK105-ai-v2-validation.md) — Added determinism/scorer/executor/legacy suites, perf budget script, HUD overlay updates.
+- [TASK106](COMPLETED/TASK106-ai-intercept-reposition.md) — Landed intercept/reposition/regroup scoring and executors with documentation updates.
+- [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) — Authored headless scenario harness with golden log regression tests.
+- [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) — Wired AI V2 rollout automation, env flag toggles, and CI alignment.
+- [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) — Added bomber intercept and artillery retreat scenarios with logs.
+- [TASK110](COMPLETED/TASK110-planet-texture-assets.md) — Canonicalised planet texture asset keys and registry.
+- [TASK111](COMPLETED/TASK111-celestial-environment-config.md) — Authored celestial environment config schema and defaults.
+- [TASK112](COMPLETED/TASK112-planet-texture-loading.md) — Implemented `usePlanetTexture` hook with SRGB/anisotropy setup.
+- [TASK113](COMPLETED/TASK113-planet-material-baseline.md) — Established baseline planet material with emissive boost controls.
+- [TASK114](COMPLETED/TASK114-celestial-components.md) — Integrated CelestialEnvironment/StarLight/PlanetBody components.
+- [TASK115](COMPLETED/TASK115-star-light-integration.md) — Finalised directional + ambient lighting aligned with config.
+- [TASK116](COMPLETED/TASK116-deterministic-rotation.md) — Locked deterministic rotation safeguards tied to simulation time.
+- [TASK117](COMPLETED/TASK117-planet-performance.md) — Bounded geometry segments and documented pending perf capture follow-up.
+- [TASK118](COMPLETED/TASK118-planet-rendering-tests.md) — Added Vitest coverage for config shape and loader fallbacks.
+- [TASK119](COMPLETED/TASK119-celestial-implementation.md) — Tracked full celestial integration, noting remaining documentation/QA items.
+- [TASK120](COMPLETED/TASK120-visual-polish-track.md) — Delivered star disk, rim glow, lighting balance, and feature toggles.
+- [TASK121](COMPLETED/TASK121-robustness-testing-track.md) — Added deterministic rotation tests, texture fallback validation, and Playwright baselines.
+- [TASK122](COMPLETED/TASK122-feature-expansion-track.md) — Shipped gas giant rings, parallax billboards, and config toggles.
+- [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
 
 ## Pending
 
+- _None tracked._
+
 ## Abandoned
+
+- _None tracked._
