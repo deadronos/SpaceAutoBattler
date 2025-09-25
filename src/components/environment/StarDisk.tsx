@@ -24,7 +24,7 @@ import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../../assets/s
 
 interface StarDiskShaderUniforms {
   uTime: { value: number };
-  uAspect: { value: number };
+  uAspectInv: { value: number };
 }
 
 interface StarDiskProps {
@@ -50,6 +50,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const shaderConfig = shader ?? env?.starDisk?.shader;
   const meshRef = useRef<Mesh>(null);
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
+  const aspectWarnedRef = useRef(false);
   const gameState = useOptionalGameState();
   const { gl } = useThree();
   const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<StarDiskTextureKey, Texture | undefined>;
@@ -113,6 +114,9 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   useEffect(() => {
     const mat = shaderMaterial;
     return () => {
+      if (shaderMaterialRef.current === mat) {
+        shaderMaterialRef.current = null;
+      }
       mat?.dispose();
     };
   }, [shaderMaterial]);
@@ -137,7 +141,13 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     } else {
       uniforms.uTime.value += delta;
     }
-    uniforms.uAspect.value = viewport.aspect || 1;
+    const rawAspect = viewport.aspect;
+    const safeAspect = Number.isFinite(rawAspect) && rawAspect > 0 ? rawAspect : 1;
+    if (safeAspect > 8 && !aspectWarnedRef.current) {
+      console.warn(`[StarDisk] Unusually high viewport aspect detected: ${safeAspect.toFixed(2)}.`);
+      aspectWarnedRef.current = true;
+    }
+    uniforms.uAspectInv.value = 1 / Math.max(safeAspect, 0.0001);
   });
 
   if (!enabled) {

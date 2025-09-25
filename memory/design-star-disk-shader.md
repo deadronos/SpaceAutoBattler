@@ -121,3 +121,70 @@ flowchart TD
 - Evaluate if we need a cached noise texture or rely purely on procedural noise (decision to be made during implementation based on performance).
 - Determine tolerable bloom intensity for QA snapshots; may require tuning `POSTPROCESSING_CONFIG`.
 - Consider exposing shader parameters to runtime debug UI for artists after baseline lands.
+
+## 11. 2025-09-25 — Aspect Ratio & Fiery Update
+
+### Goals
+
+- Restore a perfectly circular star disk regardless of viewport aspect.
+- Strengthen the visual energy of the corona using the new organic/noise textures.
+- Maintain deterministic behavior and existing fallbacks.
+
+### Adjustments
+
+- `StarDisk.tsx`
+  - Feed the reciprocal viewport aspect to the shader (`uniforms.uAspect = 1 / max(aspect, ε)`), avoiding distortion on wide screens.
+  - Clamp the aspect uniform to prevent division-by-zero when `viewport.aspect` is 0 in edge cases (e.g., suspended rendering).
+  - Ensure frame hook skips updates after material disposal.
+- `starDisk.fragment.glsl`
+  - Update the UV transform to multiply by `uAspectInv` (the reciprocal) so scaling stays symmetric.
+  - Refine corona layering: boost energy by redistributing the organic/ noise contribution and warming the tint.
+- `buildStarDiskMaterialConfig`
+  - Raise defaults: `coronaIntensity` ≈ 1.45, `textureMix` ≈ 0.82, `textureFlicker` ≈ 0.65, slight positive `colorShift`.
+  - Document the fiery preset and add clamps ensuring values stay within prior safe envelopes.
+
+### Error Handling
+
+- Aspect reciprocal uses `Math.max(aspect, 0.0001)` to avoid spikes; guard ensures previous discard thresholds remain stable.
+- Texture fallbacks already cover missing assets; update unit test to confirm increased intensity still clamps alpha to the 0–1 range.
+- Add warning branch in `StarDisk.tsx` if computed aspect deviates wildly (>8) to assist debugging unusual camera setups.
+
+### Testing Strategy
+
+- **Unit:** Extend `star-disk-material.spec.ts` to assert boosted defaults and verify clamped fiery values with/out overrides.
+- **Unit:** Add assertion that `updateStarDiskUniforms` persists boosted brightness for fallback textures.
+- **Visual (future):** Refresh Playwright screenshot once art direction approved.
+- **Manual:** Validate bloom intensity in renderer debug view to ensure no overexposure.
+
+## 12. 2025-09-25 — Fiery Fidelity Refinement
+
+### Goals
+
+- Match the reference render by preserving fine filament detail and delivering a saturated orange corona.
+- Prevent the core from washing out while keeping bloom-friendly highlights.
+- Keep the shader deterministic and safe against runaway intensities.
+
+### Adjustments
+
+- `buildStarDiskMaterialConfig`
+  - Bias palette warmer by increasing default `colorShift` and explicitly darkening secondary lightness.
+  - Tighten brightness scaling: divide by a larger denominator and cap `coronaIntensity` default so rim energy stays controlled.
+  - Lift `textureMix` to full strength and nudge `textureFlicker` higher to amplify texture-driven detail.
+- `starDisk.fragment.glsl`
+  - Rebalance `corona` weights and outer glow curve to retain orange hues while keeping the core bright.
+  - Blend texture samples additively with stronger weighting near the rim; reduce uniform multipliers that previously bleached detail.
+  - Apply a gamma-like adjustment when composing the final color to keep gradients smooth.
+- `CELESTIAL_ENVIRONMENT`
+  - Update shader overrides to align with the warmer palette and refined brightness caps.
+
+### Error Handling
+
+- Clamp `textureMix` to `[0, 1]` and `textureFlicker` to `[0, 2]` (existing), documenting that high values are intentional but bounded.
+- Ensure any future overrides respect the tighter brightness denominator; add task follow-up if artists request per-scene exposure controls.
+
+### Testing Strategy
+
+- **Unit:** Expand `star-disk-material.spec.ts` with assertions for palette warmth (hex expectations) and refined brightness bounds.
+- **Unit:** Cover fallback textures to ensure fiery parameters persist even without external PNGs.
+- **Visual:** Refresh Playwright baseline capturing the warmer corona once QA approves.
+- **Manual:** Capture before/after screenshots in debug UI to confirm the orange filament pattern matches the reference.
