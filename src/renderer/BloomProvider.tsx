@@ -48,11 +48,8 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       map.set(group, selection);
     }
     selection.exclusive = true;
-    if (selection.size > 0) {
-      selection.forEach((obj) => {
-        obj.layers.enable(0);
-      });
-    }
+    // Remove the problematic code that was putting objects back on layer 0
+    // Objects should stay on their dedicated bloom layers for selective bloom to work
   });
 
   const register = React.useCallback(
@@ -87,9 +84,8 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       }
       if (selection && !selection.has(obj)) {
         selection.add(obj);
-        if (selection.exclusive) {
-          obj.layers.enable(0);
-        }
+        // Objects are automatically assigned to the selection's layer when added
+        // No need to manually enable layer 0 as that defeats selective bloom
       }
     },
     [defaultGroup],
