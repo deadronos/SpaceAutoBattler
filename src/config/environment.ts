@@ -273,9 +273,9 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       textureRadialPower: 0.48, // Enhanced outward bias for organic sampling
       coronaEdgeSoftness: 0.5, // Sharper corona edge for better contrast
       baseFillStrength: 0.15, // Reduced mid-disc fill for better core contrast
-      coreRadiusInner: 0.16, // Tighter core for concentrated hotspot
-      coreRadiusOuter: 0.48, // Sharper core falloff for luminance ratio
-      coreTightness: 2.0, // More concentrated white-hot center
+      coreRadiusInner: 0.14, // Even tighter core for concentrated hotspot
+      coreRadiusOuter: 0.45, // Sharper core falloff for luminance ratio
+      coreTightness: 2.4, // More concentrated white-hot center
       haloFalloff: 1.1, // Tighter halo falloff to meet 35% criteria
       coreHotspotMix: 0.28, // Enhanced white-hot center for bloom
       coreDetailStrength: 0.95, // Enhanced organic texture detail in core
@@ -285,8 +285,8 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       colorShift: 0.72, // Warmer palette for fiery effect
       textureMix: 0.95, // Near-full texture blend for maximum detail
       textureFlicker: 1.35, // Enhanced flicker for lively effect
-      coreStrength: 2.2, // Boosted core brightness for luminance ratio
-      rimStrength: 1.6, // Balanced rim brightness
+      coreStrength: 2.6, // Further boosted core brightness for luminance ratio  
+      rimStrength: 1.4, // Slightly reduced rim to enhance contrast
       coronaStrength: 1.55, // Enhanced corona visibility
       outerGlowStrength: 1.9, // Controlled outer glow for halo criteria
       alphaStrength: 1.25, // Enhanced alpha for bloom pickup
