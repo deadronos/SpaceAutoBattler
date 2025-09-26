@@ -71,11 +71,9 @@ function generate() {
 
   const content = "import { describe, it, expect, vi } from 'vitest';\n\n" +
     "// Auto-generated smoke test. Tries to import many project modules to increase\n" +
-    "// coverage. We mock heavy external libs above so imports don't fail.\n" +
-    `const heavyMocks = ${JSON.stringify(heavyMocks, null, 2)};\n` +
-    "heavyMocks.forEach(m => {\n" +
-    "  try { vi.mock(m, () => ({})); } catch (e) { /* ignore */ }\n" +
-    "});\n\n" +
+    "// coverage. We mock heavy external libs above so imports don't fail.\n\n" +
+    "// Mock heavy external deps at the top level\n" +
+    heavyMocks.map(m => `vi.mock('${m}', () => ({}));`).join('\n') + '\n\n' +
     `const modules = ${JSON.stringify(imports, null, 2)};\n\n` +
     "describe('smoke imports', () => {\n" +
     "  for (const m of modules) {\n" +
