@@ -42,6 +42,8 @@ uniform float uOrganicScrollSpeed;
 uniform float uNoiseTiling;
 uniform float uNoiseScrollSpeed;
 uniform float uNoiseDriftSpeed;
+uniform float uSwirlRate;
+uniform float uSectorDarkeningStrength;
 
 float snoise(vec3 uv, float res) {
   const vec3 s = vec3(1.0, 100.0, 10000.0);
@@ -78,8 +80,19 @@ void main() {
   float radialCoord = pow(radial, max(uTextureRadialPower, 0.2));
   vec3 coord = vec3(angle, radialCoord * uNoiseScale, time * 0.1);
 
-  float swirl = sin(radialCoord * 6.0 + time * 0.25) * 0.04;
-  float angleWrapped = fract(angle + 0.5 + swirl);
+  // Enhanced swirl effect for organic texture sampling
+  float swirlAmount = sin(radialCoord * 6.0 + time * 0.25) * 0.04;
+  float enhancedSwirl = swirlAmount + sin(radialCoord * 3.14159 + time * uSwirlRate * 0.5) * uSwirlRate * 0.02;
+  float angleWrapped = fract(angle + 0.5 + enhancedSwirl);
+  
+  // Sector darkening for flame-like patterns
+  float sectorModulation = 1.0;
+  if (uSectorDarkeningStrength > 0.0) {
+    float sectorAngle = angle * 8.0 + time * 0.1;
+    float sectorNoise = snoise(vec3(sectorAngle, radialCoord * 2.0, time * 0.05), 4.0);
+    sectorModulation = mix(1.0, 0.4 + abs(sectorNoise) * 0.6, uSectorDarkeningStrength * smoothstep(0.3, 0.8, radialCoord));
+  }
+  
   vec2 organicUv = vec2(
     angleWrapped * 2.0 * uOrganicTiling + time * 0.02 * uOrganicScrollSpeed,
     radialCoord * uOrganicTiling
@@ -118,7 +131,7 @@ void main() {
   corona += pow(max(fVal2, 0.0) * coronaEnvelope, 2.0) * 58.0;
   float textureWeight = clamp(uTextureMix, 0.0, 1.0);
   float organicGain = mix(1.0, 0.6 + organicLuma * 1.4, textureWeight);
-  corona *= uCoronaIntensity * (1.15 - drift1 * 0.55) * organicGain * noiseFlicker;
+  corona *= uCoronaIntensity * (1.15 - drift1 * 0.55) * organicGain * noiseFlicker * sectorModulation;
   float filamentStrength = clamp(uCoronaFilamentStrength, 0.0, 2.5);
   if (filamentStrength > 0.0) {
     float filamentEnvelope = pow(max(fVal1, 0.0), 1.35) * 0.6 + pow(max(fVal2, 0.0), 1.25) * 0.4;
