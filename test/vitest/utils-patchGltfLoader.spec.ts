@@ -2,7 +2,13 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock three.js GLTFLoader before importing the patch
 const mockLoad = vi.fn();
-const mockGLTFLoader = {
+
+interface PatchedLoaderPrototype {
+  load: typeof mockLoad;
+  __loadPatched?: boolean;
+}
+
+const mockGLTFLoader: { prototype: PatchedLoaderPrototype } = {
   prototype: {
     load: mockLoad,
   },
@@ -16,14 +22,14 @@ describe('patchGltfLoader', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset the patched flag
-    delete (mockGLTFLoader.prototype as any).__loadPatched;
+    delete mockGLTFLoader.prototype.__loadPatched;
   });
 
   it('patches GLTFLoader to handle invalid URLs', async () => {
     // Import the patch module to trigger patching
     await import('../../src/utils/patchGltfLoader.js');
     
-    expect(mockGLTFLoader.prototype.__loadPatched).toBe(true);
+  expect(mockGLTFLoader.prototype.__loadPatched).toBe(true);
     
     // Create a mock loader instance
     const loader = Object.create(mockGLTFLoader.prototype);
@@ -97,8 +103,6 @@ describe('patchGltfLoader', () => {
   });
 
   it('does not patch when constructor is undefined', async () => {
-    const mockUndefinedCtor = undefined;
-    
     // This tests the guard condition in patchPrototype
     // The patch should handle undefined constructors gracefully
     await import('../../src/utils/patchGltfLoader.js');

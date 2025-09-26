@@ -4,6 +4,7 @@ This file summarizes recent work and maintenance actions performed on the memory
 
 Recent updates (automated agent)
 
+- 2025-09-27: Stabilised smoke import loader map, rewrote projectile geometry specs to inspect JSX output, and confirmed `npm run typecheck`, `npm test`, `npm run build` pass after the React 19 upgrade (TASK133).
 - 2025-09-27: Replaced custom rim material with a standard surface plus rim shell overlay, refreshed documentation/tasks, and reran validation (`npm run typecheck`, `npm test`) to confirm planets stay visible with cast/receive shadows (TASK132).
 - 2025-09-26: Refactored planet rim material to retain PBR lighting, enabled planet cast/receive shadows, tuned directional light shadow map, and added Vitest coverage for rim shader injection (TASK132).
 - 2025-09-26: Reoriented `StarLight.direction` toward the default camera target so the star disk renders in-frame on load while preserving lighting distance; regenerated Playwright before/after captures.

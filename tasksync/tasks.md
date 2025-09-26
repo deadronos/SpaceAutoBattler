@@ -47,3 +47,16 @@ Execute the memory bank refresh defined in `design.md`, ensuring documentation a
 - Updated memory documents (`activeContext`, `progress`, `tasks/_index`, task statuses).
 - New `memory/core-celestialEnvironment.md` reference.
 - Validation notes captured in final summary.
+
+---
+
+## Task 133 — Build/Test Resilience
+
+**Description:** Restore `npm test` and `npm run build` by migrating smoke imports to TypeScript loaders, consolidating projectile geometry configuration, and hardening Vitest mocks/type guards.
+
+**Expected Outcome:** Unit tests and webpack builds complete without module resolution or TypeScript errors; projectile geometry stays aligned with configuration across bullet types.
+
+**Dependencies:**
+
+- Access to `src/components/Projectile.tsx`, `src/config/projectiles.ts`, and associated Vitest specs.
+- Ability to run validation commands locally (`npm run typecheck`, `npm test`, `npm run build`).

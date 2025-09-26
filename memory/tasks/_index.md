@@ -41,6 +41,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK121](COMPLETED/TASK121-robustness-testing-track.md) — Added deterministic rotation tests, texture fallback validation, and Playwright baselines.
 - [TASK122](COMPLETED/TASK122-feature-expansion-track.md) — Shipped gas giant rings, parallax billboards, and config toggles.
 - [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
+- [TASK133](TASK133-build-test-resilience.md) — Stabilise vitest smoke imports, projectile geometry tests, and webpack build after TypeScript migration.
 - [TASK124](TASK124-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
 - [TASK110](TASK110-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.
 

@@ -38,3 +38,18 @@ export const DEFAULT_PROJECTILE_CONFIG: ProjectileConfigItem = {
   baseGeometryRadius: 0.5,
   visualMultiplier: 1.0,
 };
+
+export function getProjectileConfig(bulletType?: string | null): ProjectileConfigItem {
+  return PROJECTILE_CONFIG[bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
+}
+
+export function getProjectileBaseRadius(bulletType?: string | null): number {
+  const config = getProjectileConfig(bulletType);
+  if (typeof config.baseGeometryRadius === 'number') {
+    return config.baseGeometryRadius;
+  }
+  if (typeof DEFAULT_PROJECTILE_CONFIG.baseGeometryRadius === 'number') {
+    return DEFAULT_PROJECTILE_CONFIG.baseGeometryRadius;
+  }
+  return 0.5;
+}

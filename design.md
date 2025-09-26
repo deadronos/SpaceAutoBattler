@@ -225,3 +225,47 @@ Playwright test
 ### 11.7 Camera Alignment
 
 - Star disk visibility on load now comes from flipping the `StarLight.direction` vector to point toward the initial camera target while leaving the distance unchanged. This maintains lighting direction consistency and keeps Playwright captures deterministic without additional camera automation.
+
+## 12. Build/Test Resilience — 2025-09-27
+
+### 12.1 Overview
+
+Stabilise the unit test and build pipelines after the TypeScript migration by aligning smoke import paths with `.ts` sources, centralising projectile geometry radius lookups, and tightening Vitest mocks so React hooks execute without dispatcher errors. Ensure webpack’s strict TypeScript checks on test files no longer fail under the new runtime patterns.
+
+### 12.2 Architecture
+
+- **Smoke Loader Map:** Replace the string array with a map of loader functions so Vite tracks each module (`import('../../src/config/carriers.ts')`, etc.) during bundling.
+- **Projectile Geometry Helper:** Introduce a helper that resolves projectile configuration (base radius + visual multiplier) for a bullet type and reuse it in `ProjectileObject` and Vitest specs.
+- **React/R3F Test Mocks:** Provide targeted mocks for `useRef` and `useFrame` inside projectile geometry specs to avoid invalid hook calls while keeping JSX runtime untouched.
+- **Error Formatting Utility:** Narrow unknown errors in smoke imports before logging to satisfy `tsc` during `npm run build`.
+
+### 12.3 Data Flow
+
+```text
+Vitest smoke spec ──▶ loader map entry ──▶ module import ──▶ assertion
+ProjectileObject ──▶ resolveProjectileConfig ──▶ geometry radius ──▶ sphereGeometry args
+Projectile specs ──▶ mocked hooks ──▶ component invocation ──▶ captured geometry args
+```
+
+### 12.4 Interfaces & Contracts
+
+| Interface | Contract |
+| --- | --- |
+| `resolveProjectileConfig(bulletType?: string)` | Returns the active projectile config with defaults applied for geometry radius and visual multiplier. |
+| `getProjectileBaseRadius(bulletType?: string)` | Helper consumed by `ProjectileObject` and tests to compute the base geometry radius. |
+| Smoke loader map | Keys are display-friendly paths; values are loader functions returning a dynamic import promise. |
+
+### 12.5 Error Handling Matrix
+
+| Scenario | Detection | Impact | Mitigation |
+| --- | --- | --- | --- |
+| Dynamic import still points at `.js` file | Smoke spec failure (`Cannot find module`) | Test suite fails | Ensure loader map imports `.ts` sources and is covered by unit test. |
+| Geometry helper returns `undefined` radius | Geometry tests fail or mesh scales incorrectly | Visual artefacts in runtime | Helper falls back to default config radius when bullet type missing. |
+| Mocked hooks leak into other suites | Unexpected behaviour in unrelated tests | Broader test instability | Scope mocks to projectile geometry specs and reset after each test. |
+| Error formatter assumes `message` on unknown | `tsc` error during webpack build | Build fails | Guard message access with `instanceof Error` or optional chaining fallback. |
+
+### 12.6 Testing Strategy
+
+- Run `npm run typecheck`, `npm test`, and `npm run build` after changes.
+- Targeted Vitest specs: `projectile-geometry.spec.tsx`, `projectile-geometry.react.spec.tsx`, and `smoke/import_all.spec.ts`.
+- Spot-check runtime by rendering a projectile manually if time allows (optional).
