@@ -30,7 +30,6 @@ export function CelestialEnvironment(): React.ReactElement {
             size={CELESTIAL_ENVIRONMENT.starDisk?.size}
             opacity={CELESTIAL_ENVIRONMENT.starDisk?.opacity}
             distanceMultiplier={CELESTIAL_ENVIRONMENT.starDisk?.distanceMultiplier}
-            shader={CELESTIAL_ENVIRONMENT.starDisk?.shader}
           />
         )}
       </StarLight>

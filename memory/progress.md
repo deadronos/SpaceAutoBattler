@@ -2,7 +2,10 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-09-27: Declared GLSL precision and uniform bindings for the main sequence star shader to resolve runtime compilation errors; re-ran `npm run typecheck` and `npm test` to confirm stability.
 Recent updates (automated agent)
+
+- 2025-09-27: Restored main sequence star disk visibility by wiring a GLSL `main` entrypoint, added a unit assertion guarding the shader string, and reran `npm run typecheck` plus `npm test` (TASK134 follow-up).
 
 - 2025-09-27: Stabilised smoke import loader map, rewrote projectile geometry specs to inspect JSX output, and confirmed `npm run typecheck`, `npm test`, `npm run build` pass after the React 19 upgrade (TASK133).
 - 2025-09-27: Replaced custom rim material with a standard surface plus rim shell overlay, refreshed documentation/tasks, and reran validation (`npm run typecheck`, `npm test`) to confirm planets stay visible with cast/receive shadows (TASK132).

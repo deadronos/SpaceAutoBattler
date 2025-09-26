@@ -24,7 +24,6 @@ const moduleKeys = [
   '../../../src/config/environment.ts',
   '../../../src/config/projectiles.ts',
   '../../../src/config/renderer.ts',
-  '../../../src/config/starDiskDebug.ts',
   '../../../src/game/aiProfiles.ts',
   '../../../src/game/aiScenarioHarness.ts',
   '../../../src/game/aiTraits.ts',

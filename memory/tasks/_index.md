@@ -8,6 +8,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK134](TASK134-main-sequence-star-shader.md) — Ported `mainsequencestar` shader, refactored StarDisk material/component, and added unit coverage for uniforms and fallback path.
 - [TASK132](TASK132-planet-shadowing.md) — Planet shadowing enhancement (standard material + rim shell with cast/receive shadows).
 - [TASK131](TASK131-star-disk-render-capture.md) — Automated before/after star disk screenshot captures via Playwright.
 - [TASK130](TASK130-star-disk-radial-spread.md) — Expand star disk radial energy to fill the disc with organic animation.
