@@ -376,4 +376,27 @@ describe('star disk debug overrides', () => {
     expect(result?.coronaEdgeSoftness).toBe(1.1);
     expect(debugGlobal.__STAR_DISK_DEBUG_STATE__?.merged?.textureRadialPower).toBe(0.4);
   });
+
+  it('includes new fiery enhancement parameters in debug overrides', () => {
+    const base: StarDiskShaderConfig = {
+      swirlRate: 0.2,
+      sectorDarkeningStrength: 0.1,
+    };
+    debugGlobal.__STAR_DISK_DEBUG__ = {
+      shaderOverrides: {
+        swirlRate: 0.8,
+        sectorDarkeningStrength: 0.6,
+        coreStrength: 2.5,
+      },
+    };
+
+    const result = applyStarDiskDebugOverrides(base);
+
+    expect(result).not.toBe(base);
+    expect(result?.swirlRate).toBe(0.8);
+    expect(result?.sectorDarkeningStrength).toBe(0.6);
+    expect(result?.coreStrength).toBe(2.5);
+    expect(base.swirlRate).toBe(0.2);
+    expect(base.sectorDarkeningStrength).toBe(0.1);
+  });
 });

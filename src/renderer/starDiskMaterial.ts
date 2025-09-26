@@ -133,13 +133,33 @@ const DEFAULTS = {
 };
 
 const FALLBACK_ORGANIC = (() => {
+  // Enhanced organic texture with higher contrast and radial bias for fiery effect
   const data = new Uint8Array([
-    208, 142, 88, 255,
-    104, 62, 36, 255,
-    72, 44, 28, 255,
-    248, 214, 162, 255,
+    // Top row: bright core colors (enhanced whites and yellows)
+    255, 220, 140, 255,    // Bright yellow-white  
+    240, 180, 80, 255,     // Golden orange
+    255, 200, 100, 255,    // Warm yellow
+    250, 160, 60, 255,     // Deep orange
+    
+    // Second row: mid-tone transitions
+    200, 120, 40, 255,     // Dark orange
+    150, 80, 30, 255,      // Brown-orange
+    180, 100, 45, 255,     // Medium orange
+    220, 140, 70, 255,     // Light orange
+    
+    // Third row: darker outer colors with contrast
+    80, 40, 20, 255,       // Dark brown
+    60, 30, 15, 255,       // Very dark brown
+    100, 50, 25, 255,      // Medium brown
+    120, 60, 30, 255,      // Light brown
+    
+    // Bottom row: rim colors for contrast
+    40, 20, 10, 255,       // Almost black
+    160, 80, 20, 255,      // Burnt orange
+    90, 45, 15, 255,       // Dark burnt
+    200, 100, 30, 255,     // Bright burnt orange
   ]);
-  const texture = new DataTexture(data, 2, 2, RGBAFormat, UnsignedByteType);
+  const texture = new DataTexture(data, 4, 4, RGBAFormat, UnsignedByteType);
   texture.name = 'StarDiskOrganicFallback';
   texture.wrapS = RepeatWrapping;
   texture.wrapT = ClampToEdgeWrapping;
@@ -151,13 +171,30 @@ const FALLBACK_ORGANIC = (() => {
 })();
 
 const FALLBACK_NOISE = (() => {
+  // Enhanced noise texture with better variance for filament detail
   const data = new Uint8Array([
-    64, 180, 220, 255,
-    220, 120, 80, 255,
-    160, 200, 96, 255,
-    32, 80, 200, 255,
+    // High contrast noise pattern for better filament variance
+    255, 200, 100, 255,    // Bright yellow (high variance)
+    80, 40, 20, 255,       // Dark brown (low variance) 
+    220, 160, 60, 255,     // Medium orange (mid variance)
+    40, 20, 10, 255,       // Very dark (creates contrast)
+    
+    200, 120, 40, 255,     // Orange
+    60, 30, 15, 255,       // Dark
+    180, 140, 80, 255,     // Light orange  
+    100, 50, 25, 255,      // Medium dark
+    
+    240, 180, 90, 255,     // Bright
+    70, 35, 18, 255,       // Dark
+    160, 100, 50, 255,     // Medium
+    90, 45, 22, 255,       // Medium dark
+    
+    210, 140, 70, 255,     // Light
+    50, 25, 12, 255,       // Very dark
+    150, 90, 45, 255,      // Medium  
+    120, 70, 35, 255,      // Medium dark
   ]);
-  const texture = new DataTexture(data, 2, 2, RGBAFormat, UnsignedByteType);
+  const texture = new DataTexture(data, 4, 4, RGBAFormat, UnsignedByteType);
   texture.name = 'StarDiskNoiseFallback';
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
