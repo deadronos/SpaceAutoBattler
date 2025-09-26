@@ -20,6 +20,10 @@ uniform float uCoreRadiusInner;
 uniform float uCoreRadiusOuter;
 uniform float uCoreTightness;
 uniform float uHaloFalloff;
+uniform float uCoreHotspotMix;
+uniform float uCoreDetailStrength;
+uniform float uCoreDetailNoise;
+uniform float uCoronaFilamentStrength;
 uniform vec3 uColorCore;
 uniform vec3 uColorPrimary;
 uniform vec3 uColorSecondary;
@@ -92,6 +96,8 @@ void main() {
     noiseUv + vec2(time * 0.01 * uNoiseDriftSpeed, -time * 0.015 * uNoiseDriftSpeed)
   );
   float noiseFlicker = mix(1.0 - uTextureFlicker, 1.0 + uTextureFlicker, clamp(noiseSample.a, 0.0, 1.0));
+  float proceduralDetail = snoise(coord + vec3(0.0, time * 0.24, -time * 0.08), max(1.0, uCoronaScale1 * 0.7));
+  float proceduralDetailAlt = snoise(coord + vec3(0.0, time * 0.36, time * 0.12), max(1.0, uCoronaScale2 * 0.5));
 
   float drift1 = abs(snoise(coord + vec3(0.0, -time * 0.35, time * 0.02), max(1.0, uCoronaScale1)));
   float drift2 = abs(snoise(coord + vec3(0.0, -time * 0.15, time * 0.02), max(1.0, uCoronaScale2)));
@@ -113,23 +119,44 @@ void main() {
   float textureWeight = clamp(uTextureMix, 0.0, 1.0);
   float organicGain = mix(1.0, 0.6 + organicLuma * 1.4, textureWeight);
   corona *= uCoronaIntensity * (1.15 - drift1 * 0.55) * organicGain * noiseFlicker;
+  float filamentStrength = clamp(uCoronaFilamentStrength, 0.0, 2.5);
+  if (filamentStrength > 0.0) {
+    float filamentEnvelope = pow(max(fVal1, 0.0), 1.35) * 0.6 + pow(max(fVal2, 0.0), 1.25) * 0.4;
+    filamentEnvelope += organicLuma * 0.45 + abs(proceduralDetail) * 0.35;
+    corona *= mix(1.0, 0.7 + filamentEnvelope, min(filamentStrength, 1.8));
+  }
 
   float innerRadius = clamp(uCoreRadiusInner, 0.0, 0.95);
   float outerRadius = clamp(uCoreRadiusOuter, innerRadius + 0.05, 1.0);
   float coreBase = 1.0 - smoothstep(innerRadius, outerRadius, radial);
   coreBase = pow(clamp(coreBase, 0.0, 1.0), clamp(uCoreTightness, 0.5, 4.0));
+  float detailStrength = clamp(uCoreDetailStrength, 0.0, 2.0);
+  float detailNoiseStrength = clamp(uCoreDetailNoise, 0.0, 2.0);
+  float coreDetail = 1.0;
+  if (detailStrength > 0.0 || detailNoiseStrength > 0.0) {
+    float organicDetail = mix(1.0, 0.55 + organicLuma * 1.35, min(detailStrength, 1.2));
+    float noiseDetail = mix(1.0, 0.65 + noiseSample.r * 0.9 + abs(proceduralDetail) * 0.7, min(detailNoiseStrength, 1.5));
+    float secondaryDetail = mix(1.0, 0.7 + abs(proceduralDetailAlt) * 1.1, min(detailNoiseStrength * 0.8, 1.2));
+    coreDetail = organicDetail * mix(1.0, noiseDetail * secondaryDetail, clamp(detailNoiseStrength, 0.0, 1.5));
+    coreDetail = mix(1.0, coreDetail, clamp(detailStrength + detailNoiseStrength, 0.0, 1.8));
+  }
+  // Core-adjacent band that wraps tightly around the hotspot before the rim glow fully takes over.
   float rimCoreBand = smoothstep(innerRadius + 0.02, min(outerRadius + 0.18, 1.0), radial);
   float rimFade = 1.0 - smoothstep(min(outerRadius + 0.18, 1.0), min(outerRadius + 0.32, 1.3), radial);
   float rimBase = max(rimCoreBand * rimFade - coreBase * 0.35, 0.0);
   float core = coreBase * uCoreStrength;
+  core *= mix(1.0, coreDetail, clamp(detailStrength + detailNoiseStrength, 0.0, 1.0));
   float rim = rimBase * uRimStrength;
 
   vec3 color = vec3(0.0);
-  vec3 coreBlend = mix(uColorCore, vec3(1.0), 0.4);
+  vec3 detailTint = mix(uColorCore, mix(organicSample, noiseSample.rgb, 0.35), clamp(detailStrength * 0.75, 0.0, 1.0));
+  vec3 coreBlend = mix(detailTint, vec3(1.0), clamp(uCoreHotspotMix, 0.0, 1.0));
   vec3 rimBlend = mix(uColorPrimary, uColorCore, 0.2);
   color += coreBlend * (core * (0.92 + uBrightness * 0.45));
+  color += organicSample * (core * 0.18 * textureWeight * clamp(detailStrength, 0.0, 1.2));
   color += rimBlend * (rim * (0.58 + uBrightness * 0.52));
   vec3 coronaColor = mix(uColorPrimary, uColorSecondary, clamp(uCoronaColorBlend, 0.0, 1.0));
+  coronaColor = mix(coronaColor, normalize(coronaColor) * length(coronaColor), clamp(filamentStrength * 0.25, 0.0, 0.4));
   float coronaScaled = corona * uCoronaStrength;
   color += coronaColor * coronaScaled * 0.026;
   vec3 organicTint = mix(vec3(1.0), organicSample, 0.55 * textureWeight);
@@ -144,8 +171,10 @@ void main() {
   color += uColorSecondary * outerGlow * 0.58;
 
   float midBand = clamp(1.0 - abs(radial - 0.55) * 1.8, 0.0, 1.0);
+  // Outer band used for softer fill contributions further from the core highlight.
   float rimFillBand = clamp(1.0 - abs(radial - 0.88) * 6.0, 0.0, 1.0);
   float baseFill = pow(midBand, 2.0) + rimFillBand * 0.35;
+  baseFill *= mix(1.0, 0.85 + organicLuma * 0.5, clamp(detailStrength * 0.4, 0.0, 0.6));
   vec3 fillTint = mix(uColorCore, uColorSecondary, 0.45);
   float clampedBaseFillStrength = clamp(uBaseFillStrength, 0.0, 1.0);
   color += fillTint * baseFill * clampedBaseFillStrength;

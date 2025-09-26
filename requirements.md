@@ -59,3 +59,9 @@ This document captures the testable requirements for updating the `memory/` know
 
 3. **WHEN** the star disk before/after capture workflow runs, **THE SYSTEM SHALL** emit distinct PNGs and confirm the after image meets the brightness and hue thresholds.  
    _Acceptance:_ `star-disk-compare.spec.ts` captures both PNGs, compares buffers for inequality, and asserts the measured luminance/hue metrics on the after render satisfy Requirements 1–2.
+
+4. **WHEN** the default celestial environment renders, **THE SYSTEM SHALL** exhibit mid-radius texture contrast so that the luminance standard deviation of 32 evenly spaced samples at 45% of the inferred disk radius is ≥ 0.08 (linear RGB).  
+   _Acceptance:_ The Playwright spec parses the captured PNG, samples the ring, computes the standard deviation, and fails if it drops below 0.08.
+
+5. **WHEN** the default celestial environment renders, **THE SYSTEM SHALL** keep the outer halo luminance below 35% of the core luminance at 95% of the inferred disk radius to preserve a soft falloff.  
+   _Acceptance:_ The Playwright spec samples the ring near the rim, divides by the measured core luminance, and fails if the ratio exceeds 0.35.

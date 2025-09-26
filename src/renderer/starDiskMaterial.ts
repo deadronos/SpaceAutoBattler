@@ -40,6 +40,10 @@ export interface StarDiskUniformValues {
   coreRadiusOuter: number;
   coreTightness: number;
   haloFalloff: number;
+  coreHotspotMix: number;
+  coreDetailStrength: number;
+  coreDetailNoise: number;
+  coronaFilamentStrength: number;
   textureMix: number;
   textureFlicker: number;
   coreStrength: number;
@@ -91,32 +95,36 @@ const DEFAULT_PALETTE_OFFSETS: Record<'core' | 'primary' | 'secondary', PaletteO
 const DEFAULTS = {
   bloomGroup: 'star',
   timeMultiplier: 1,
-  coronaScale1: 15,
-  coronaScale2: 45,
-  coronaIntensity: 1.72,
-  coronaFalloff: 1.1,
-  noiseScale: 1,
-  colorShift: 0.52,
-  textureRadialPower: 0.6,
-  coronaEdgeSoftness: 0.64,
-  baseFillStrength: 0.22,
-  coreRadiusInner: 0.2,
-  coreRadiusOuter: 0.56,
-  coreTightness: 1.5,
-  haloFalloff: 1.1,
-  textureMix: 0.95,
-  textureFlicker: 1.02,
-  coreStrength: 1.6,
-  rimStrength: 1.3,
-  coronaStrength: 1.15,
-  outerGlowStrength: 1.6,
-  alphaStrength: 1.12,
-  coronaColorBlend: 0.66,
-  organicTiling: 2.6,
-  organicScrollSpeed: 1.1,
-  noiseTiling: 2,
-  noiseScrollSpeed: 1.1,
-  noiseDriftSpeed: 1.1,
+  coronaScale1: 18,
+  coronaScale2: 52,
+  coronaIntensity: 1.88,
+  coronaFalloff: 0.92,
+  noiseScale: 0.9,
+  colorShift: 0.64,
+  textureRadialPower: 0.52,
+  coronaEdgeSoftness: 0.6,
+  baseFillStrength: 0.18,
+  coreRadiusInner: 0.18,
+  coreRadiusOuter: 0.54,
+  coreTightness: 1.6,
+  haloFalloff: 0.92,
+  coreHotspotMix: 0.24,
+  coreDetailStrength: 0.82,
+  coreDetailNoise: 0.66,
+  coronaFilamentStrength: 0.92,
+  textureMix: 0.9,
+  textureFlicker: 1.24,
+  coreStrength: 1.88,
+  rimStrength: 1.72,
+  coronaStrength: 1.46,
+  outerGlowStrength: 2.18,
+  alphaStrength: 1.18,
+  coronaColorBlend: 0.6,
+  organicTiling: 3.4,
+  organicScrollSpeed: 1.24,
+  noiseTiling: 2.8,
+  noiseScrollSpeed: 1.32,
+  noiseDriftSpeed: 1.42,
   paletteOffsets: DEFAULT_PALETTE_OFFSETS,
 };
 
@@ -232,6 +240,10 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
   const coreRadiusOuter = Math.max(coreRadiusOuterRaw, coreRadiusInner + 0.05);
   const coreTightness = clamp(shader?.coreTightness ?? DEFAULTS.coreTightness, 0.5, 4);
   const haloFalloff = clamp(shader?.haloFalloff ?? DEFAULTS.haloFalloff, 0.2, 4);
+  const coreHotspotMix = clamp(shader?.coreHotspotMix ?? DEFAULTS.coreHotspotMix, 0, 1);
+  const coreDetailStrength = clamp(shader?.coreDetailStrength ?? DEFAULTS.coreDetailStrength, 0, 2);
+  const coreDetailNoise = clamp(shader?.coreDetailNoise ?? DEFAULTS.coreDetailNoise, 0, 2);
+  const coronaFilamentStrength = clamp(shader?.coronaFilamentStrength ?? DEFAULTS.coronaFilamentStrength, 0, 2.5);
   const textureMix = clamp(shader?.textureMix ?? DEFAULTS.textureMix, 0, 1);
   const textureFlicker = clamp(shader?.textureFlicker ?? DEFAULTS.textureFlicker, 0, 2);
   const coreStrength = clamp(shader?.coreStrength ?? DEFAULTS.coreStrength, 0, 4);
@@ -269,6 +281,10 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
       coreRadiusOuter,
       coreTightness,
       haloFalloff,
+  coreHotspotMix,
+  coreDetailStrength,
+  coreDetailNoise,
+  coronaFilamentStrength,
       textureMix,
       textureFlicker,
       coreStrength,
@@ -324,6 +340,10 @@ export function createStarDiskMaterial(values: StarDiskUniformValues, textures: 
       uCoreRadiusOuter: { value: values.coreRadiusOuter },
       uCoreTightness: { value: values.coreTightness },
       uHaloFalloff: { value: values.haloFalloff },
+  uCoreHotspotMix: { value: values.coreHotspotMix },
+  uCoreDetailStrength: { value: values.coreDetailStrength },
+  uCoreDetailNoise: { value: values.coreDetailNoise },
+  uCoronaFilamentStrength: { value: values.coronaFilamentStrength },
       uTextureMix: { value: values.textureMix },
       uTextureFlicker: { value: values.textureFlicker },
       uCoreStrength: { value: values.coreStrength },
@@ -382,6 +402,10 @@ export function updateStarDiskUniforms(
   uniforms.uCoreRadiusOuter.value = values.coreRadiusOuter;
   uniforms.uCoreTightness.value = values.coreTightness;
   uniforms.uHaloFalloff.value = values.haloFalloff;
+  uniforms.uCoreHotspotMix.value = values.coreHotspotMix;
+  uniforms.uCoreDetailStrength.value = values.coreDetailStrength;
+  uniforms.uCoreDetailNoise.value = values.coreDetailNoise;
+  uniforms.uCoronaFilamentStrength.value = values.coronaFilamentStrength;
   uniforms.uTextureMix.value = values.textureMix;
   uniforms.uTextureFlicker.value = values.textureFlicker;
   uniforms.uCoreStrength.value = values.coreStrength;
