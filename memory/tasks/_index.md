@@ -4,15 +4,9 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Known issues
 
-- Duplicate task ID collisions detected during memory audit (2025-09-26):
-  - `TASK102` appeared in multiple files. Mapping applied: `COMPLETED/TASK102-implement-physical-movement.md` → `COMPLETED/TASK136-implement-physical-movement.md`. TASK102 retained for AI V2 skeleton (`COMPLETED/TASK102-ai-v2-skeleton.md`).
-  - `TASK110` appeared in multiple files. Mapping applied: `COMPLETED/TASK110-implement-skysphere.md` → `COMPLETED/TASK137-implement-skysphere.md`. TASK110 retained for planet texture assets (`COMPLETED/TASK110-planet-texture-assets.md`).
-
-  Recommendation: Reassign one of the colliding task IDs to a new unique ID and update references. A follow-up task has been created: `TASK135` (see below).
-
 ## In Progress
 
-- [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
+
 
 ## Completed
 
@@ -53,6 +47,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
 - [TASK133](TASK133-build-test-resilience.md) — Stabilise vitest smoke imports, projectile geometry tests, and webpack build after TypeScript migration.
 - [TASK124](TASK124-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
+- [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
 ## Pending
 
@@ -61,12 +56,3 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Abandoned
 
 - _None tracked._
-
-## ID MAPPING
-
-- TASK102 → TASK102 (AI V2 Skeleton) — retained
-- TASK102 → TASK136 (Physical Movement) — migrated
-- TASK110 → TASK110 (Planet Texture Assets) — retained
-- TASK110 → TASK137 (Skysphere) — migrated
-
-(See `TASK135` for reconciliation history and the mapping applied on 2025-09-26.)
