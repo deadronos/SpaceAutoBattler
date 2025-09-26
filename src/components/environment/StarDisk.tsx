@@ -142,6 +142,16 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
         height: Number.isFinite(height) && height > 0 ? height : 1,
       },
     };
+    // Camera roll around the view direction is the Z component of Euler rotation in Three.js
+    // when using default XYZ order and typical camera controls (OrbitControls). Clamp NaN.
+    const roll = (camera as any).rotation?.z as number | undefined;
+    if (typeof roll === 'number' && Number.isFinite(roll)) {
+      uniformUpdate.cameraRoll = roll;
+    } else {
+      uniformUpdate.cameraRoll = 0;
+    }
+    // Star-fixed north: keep inner content stable; could be animated using environment star spin later.
+    uniformUpdate.starNorth = 0;
     if (organicTexture) {
       uniformUpdate.organic = organicTexture;
     }

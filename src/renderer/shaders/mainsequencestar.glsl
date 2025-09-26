@@ -8,6 +8,14 @@ uniform float iTime;
 uniform vec3 iResolution;
 uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
+// Camera roll angle around view direction in radians. Used to de-rotate the inner pattern so it
+// appears stable inside the billboard even as the camera rolls.
+uniform float iCameraRoll;
+// Star-fixed orientation in radians (0 means +X to the right in the disk's UV space).
+uniform float iStarNorth;
+
+// Geometry-provided UVs for the billboard (stable in object space)
+varying vec2 vUv;
 
 float snoise(vec3 uv, float res)	// by trisomie21
 {
@@ -43,7 +51,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
 	float brightness	= freqs[1] * 0.25 + freqs[2] * 0.25;
 	float radius		= 0.24 + brightness * 0.2;
-	float invRadius 	= 1.0/radius;
+	float invRadius 	= 1.0 / radius;
 	
 	vec3 orange			= vec3( 0.8, 0.65, 0.3 );
 	vec3 orangeRed		= vec3( 0.8, 0.35, 0.1 );
@@ -57,7 +65,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	float fVal1		= 1.0 - fade;
 	float fVal2		= 1.0 - fade;
 	
-	float angle		= atan( p.x, p.y )/6.2832;
+	// Compute polar angle and compensate camera roll so the screen-space noise basis doesn't spin
+	float angle		= (atan( p.x, p.y ) - iCameraRoll)/6.2832;
 	float dist		= length(p);
 	vec3 coord		= vec3( angle, dist, time * 0.1 );
 	
@@ -80,13 +89,23 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec2 sp = -1.0 + 2.0 * uv;
 	sp.x *= aspect;
 	sp *= ( 2.0 - brightness );
-  	float r = dot(sp,sp);
-	float f = (1.0-sqrt(abs(1.0-r)))/(r) + brightness * 0.5;
+	float r = dot(sp,sp);
+	float f = (1.0 - sqrt(abs(1.0 - r))) / (r + 1e-6) + brightness * 0.5;
 	if( dist < radius ){
 		corona			*= pow( dist * invRadius, 24.0 );
-  		vec2 newUv;
- 		newUv.x = sp.x*f;
-  		newUv.y = sp.y*f;
+		// Build star-fixed local coordinates from geometry UVs so the inner texture doesn't spin
+		// with camera roll. vUv is in [0,1]; remap to [-1,1] with center at 0.
+		vec2 uvLocal = (vUv * 2.0 - 1.0);
+		// Rotate by -iStarNorth so increasing iStarNorth rotates the content counterclockwise.
+	float cn = cos(-iStarNorth);
+	float sn = sin(-iStarNorth);
+	vec2 uvRot = vec2(cn * uvLocal.x - sn * uvLocal.y, sn * uvLocal.x + cn * uvLocal.y);
+		// Apply same warping model as screen-space path to preserve look, but omit aspect correction.
+		float rLocal = dot(uvRot, uvRot);
+	float fLocal = (1.0 - sqrt(abs(1.0 - rLocal))) / (rLocal + 1e-6) + brightness * 0.5;
+		vec2 newUv;
+		newUv.x = uvRot.x * fLocal;
+		newUv.y = uvRot.y * fLocal;
 		newUv += vec2( time, 0.0 );
 		
 		vec3 texSample 	= texture( iChannel0, newUv ).rgb;

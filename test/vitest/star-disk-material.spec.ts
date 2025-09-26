@@ -12,6 +12,8 @@ const extractUniforms = (material: ShaderMaterial) =>
     iResolution: { value: { x: number; y: number; z: number } };
     iChannel0: { value: Texture };
     iChannel1: { value: Texture };
+    iCameraRoll: { value: number };
+    iStarNorth: { value: number };
   };
 
 describe('createMainSequenceStarMaterial', () => {
@@ -35,6 +37,8 @@ describe('createMainSequenceStarMaterial', () => {
     expect(uniforms.iChannel0.value.name).toBe('TestOrganic');
     expect(uniforms.iChannel1.value).toBe(noise);
     expect(uniforms.iChannel1.value.name).toBe('TestNoise');
+    expect(uniforms.iCameraRoll.value).toBe(0);
+    expect(uniforms.iStarNorth.value).toBe(0);
     expect(material.fragmentShader).toContain('void main()');
   });
 
@@ -61,6 +65,8 @@ describe('updateMainSequenceStarUniforms', () => {
       resolution: { width: 1920, height: 1080 },
       organic,
       noise,
+      cameraRoll: Math.PI / 4,
+      starNorth: Math.PI / 6,
     });
 
     expect(uniforms.iTime.value).toBe(42.5);
@@ -70,6 +76,8 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iChannel0.value.name).toBe('UpdatedOrganic');
     expect(uniforms.iChannel1.value).toBe(noise);
     expect(uniforms.iChannel1.value.name).toBe('UpdatedNoise');
+    expect(uniforms.iCameraRoll.value).toBeCloseTo(Math.PI / 4);
+    expect(uniforms.iStarNorth.value).toBeCloseTo(Math.PI / 6);
   });
 
   it('clamps non-finite resolution inputs and reuses fallback textures', () => {
@@ -89,10 +97,14 @@ describe('updateMainSequenceStarUniforms', () => {
       resolution: { width: 800, height: 600 },
       organic: null,
       noise: null,
+      cameraRoll: Number.NaN,
+      starNorth: Number.NaN,
     });
 
     expect(uniforms.iChannel0.value.name).toBe('MainSequenceOrganicFallback');
     expect(uniforms.iChannel1.value.name).toBe('MainSequenceNoiseFallback');
+    expect(uniforms.iCameraRoll.value).toBe(0);
+    expect(uniforms.iStarNorth.value).toBe(0);
   });
 });
 

@@ -24,6 +24,10 @@ export interface MainSequenceStarUniformUpdate {
   resolution: { width: number; height: number };
   organic?: Texture | null;
   noise?: Texture | null;
+  /** Camera roll angle around the view direction in radians. Optional; defaults to 0. */
+  cameraRoll?: number;
+  /** Star-fixed north angle in radians for inner-UV orientation (0 aligns to +U axis). */
+  starNorth?: number;
 }
 
 const DEFAULT_RESOLUTION = new Vector3(1, 1, 1);
@@ -95,6 +99,8 @@ interface MainSequenceUniformMap {
   iResolution: { value: Vector3 };
   iChannel0: { value: Texture };
   iChannel1: { value: Texture };
+  iCameraRoll: { value: number };
+  iStarNorth: { value: number };
 }
 
 export function createMainSequenceStarMaterial(options: MainSequenceStarMaterialOptions): ShaderMaterial {
@@ -112,6 +118,8 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
       iResolution: { value: DEFAULT_RESOLUTION.clone() },
       iChannel0: { value: organicTexture },
       iChannel1: { value: noiseTexture },
+      iCameraRoll: { value: 0 },
+      iStarNorth: { value: 0 },
     },
   });
 
@@ -134,6 +142,14 @@ export function updateMainSequenceStarUniforms(
   }
   if (update.noise !== undefined) {
     uniforms.iChannel1.value = resolveTexture(update.noise, FALLBACK_NOISE);
+  }
+  if (update.cameraRoll !== undefined) {
+    const v = Number.isFinite(update.cameraRoll as number) ? (update.cameraRoll as number) : 0;
+    uniforms.iCameraRoll.value = v;
+  }
+  if (update.starNorth !== undefined) {
+    const v = Number.isFinite(update.starNorth as number) ? (update.starNorth as number) : 0;
+    uniforms.iStarNorth.value = v;
   }
 }
 
