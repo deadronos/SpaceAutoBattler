@@ -2,13 +2,15 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
-- 2025-09-27: Declared GLSL precision and uniform bindings for the main sequence star shader to resolve runtime compilation errors; re-ran `npm run typecheck` and `npm test` to confirm stability.
+- 2025-09-26: Memory bank audit — corrected future-dated entries, normalised timestamps, and noted duplicate task IDs (TASK102, TASK110). Created follow-up task TASK135 to reconcile task ID collisions and updated `memory/tasks/_index.md`.
+
+- 2025-09-26: Declared GLSL precision and uniform bindings for the main sequence star shader to resolve runtime compilation errors; re-ran `npm run typecheck` and `npm test` to confirm stability.
 Recent updates (automated agent)
 
-- 2025-09-27: Restored main sequence star disk visibility by wiring a GLSL `main` entrypoint, added a unit assertion guarding the shader string, and reran `npm run typecheck` plus `npm test` (TASK134 follow-up).
+- 2025-09-26: Restored main sequence star disk visibility by wiring a GLSL `main` entrypoint, added a unit assertion guarding the shader string, and reran `npm run typecheck` plus `npm test` (TASK134 follow-up).
 
-- 2025-09-27: Stabilised smoke import loader map, rewrote projectile geometry specs to inspect JSX output, and confirmed `npm run typecheck`, `npm test`, `npm run build` pass after the React 19 upgrade (TASK133).
-- 2025-09-27: Replaced custom rim material with a standard surface plus rim shell overlay, refreshed documentation/tasks, and reran validation (`npm run typecheck`, `npm test`) to confirm planets stay visible with cast/receive shadows (TASK132).
+- 2025-09-26: Stabilised smoke import loader map, rewrote projectile geometry specs to inspect JSX output, and confirmed `npm run typecheck`, `npm test`, `npm run build` pass after the React 19 upgrade (TASK133).
+- 2025-09-26: Replaced custom rim material with a standard surface plus rim shell, refreshed documentation/tasks, and reran validation (`npm run typecheck`, `npm test`) to confirm planets stay visible with cast/receive shadows (TASK132).
 - 2025-09-26: Refactored planet rim material to retain PBR lighting, enabled planet cast/receive shadows, tuned directional light shadow map, and added Vitest coverage for rim shader injection (TASK132).
 - 2025-09-26: Reoriented `StarLight.direction` toward the default camera target so the star disk renders in-frame on load while preserving lighting distance; regenerated Playwright before/after captures.
 - 2025-09-26: Implemented TASK131 Playwright capture workflow — added debug override helper, unit coverage, comparison spec, and generated before/after artifacts under `playwright-debug/` (typecheck, unit, and Playwright suites passing).
@@ -23,7 +25,6 @@ Recent updates (automated agent)
 - 2025-09-25: Authored celestial environment memory refresh (activeContext, progress, task index) and documented renderer focus, replacing legacy AI rollout notes.
 - 2025-09-25: Added `memory/core-celestialEnvironment.md` summarising config schema, environment components, texture hook, and deterministic rotation safeguards.
 - 2025-09-25: Reconciled `memory/tasks/_index.md` with `COMPLETED/` folder, normalised task statuses (TASK110–TASK123) and captured remaining performance follow-ups.
-- 2025-09-25: Documented Playwright visual baselines and Vitest coverage for celestial environment (`celestial-environment`, `planet-deterministic-rotation`, `planet-texture-fallback`).
 - 2025-09-24: Delivered celestial environment renderer baseline — `CelestialEnvironment`, `StarLight`, `PlanetBody`, `PlanetRings`, rim material, and config toggles.
 - 2025-09-24: Implemented `usePlanetTexture` hook with SRGB, anisotropy setup, and fallback colour; set shared geometry segments and deterministic rotation pipeline.
 - 2025-09-24: Created task suite TASK110–TASK119 to track environment delivery (textures, config, materials, lighting, validation) and captured code references.
@@ -39,4 +40,6 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-Generated: 2025-09-21
+- Last audited: 2025-09-26
+
+- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.

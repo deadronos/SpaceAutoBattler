@@ -2,9 +2,17 @@
 
 This index tracks active tasks and their memory files. Use the `tasks/` folder for task-specific planning.
 
+## Known issues
+
+- Duplicate task ID collisions detected during memory audit (2025-09-26):
+  - `TASK102` appeared in multiple files. Mapping applied: `COMPLETED/TASK102-implement-physical-movement.md` → `COMPLETED/TASK136-implement-physical-movement.md`. TASK102 retained for AI V2 skeleton (`COMPLETED/TASK102-ai-v2-skeleton.md`).
+  - `TASK110` appeared in multiple files. Mapping applied: `COMPLETED/TASK110-implement-skysphere.md` → `COMPLETED/TASK137-implement-skysphere.md`. TASK110 retained for planet texture assets (`COMPLETED/TASK110-planet-texture-assets.md`).
+
+  Recommendation: Reassign one of the colliding task IDs to a new unique ID and update references. A follow-up task has been created: `TASK135` (see below).
+
 ## In Progress
 
-- _None tracked._
+- [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
 ## Completed
 
@@ -19,8 +27,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK126](TASK126-star-disk-fiery-tuning.md) — Corrected star disk aspect ratio and retuned shader for a hotter corona.
 - [TASK100](COMPLETED/TASK100-memory-bank-summary.md) — Memory-bank summary entry for initial knowledge-base bootstrap.
 - [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) — Implemented Miniplex + Zustand integration with lifecycle hooks and UI store replacement.
-- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag.
-- [TASK102](COMPLETED/TASK102-implement-physical-movement.md) — Delivered deterministic physical movement system, renderer smoothing, and tests.
+- [TASK136](COMPLETED/TASK136-implement-physical-movement.md) — Implemented Miniplex + deterministic physical movement system, renderer smoothing, and tests.  (Renamed from TASK102 to resolve ID collision.)
+- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag. (Retained TASK102 identifier.)
 - [TASK103](COMPLETED/TASK103-ai-traits.md) — Added AI trait multipliers with deterministic seeding and coverage.
 - [TASK104](COMPLETED/TASK104-ai-metrics.md) — Instrumented AI metrics and documented rollout.
 - [TASK105](COMPLETED/TASK105-ai-v2-validation.md) — Added determinism/scorer/executor/legacy suites, perf budget script, HUD overlay updates.
@@ -28,7 +36,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) — Authored headless scenario harness with golden log regression tests.
 - [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) — Wired AI V2 rollout automation, env flag toggles, and CI alignment.
 - [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) — Added bomber intercept and artillery retreat scenarios with logs.
-- [TASK110](COMPLETED/TASK110-planet-texture-assets.md) — Canonicalised planet texture asset keys and registry.
+- [TASK110](COMPLETED/TASK110-planet-texture-assets.md) — Canonicalised planet texture asset keys and registry. (Retained TASK110 identifier.)
+- [TASK137](COMPLETED/TASK137-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.  (Renamed from TASK110 to resolve ID collision.)
 - [TASK111](COMPLETED/TASK111-celestial-environment-config.md) — Authored celestial environment config schema and defaults.
 - [TASK112](COMPLETED/TASK112-planet-texture-loading.md) — Implemented `usePlanetTexture` hook with SRGB/anisotropy setup.
 - [TASK113](COMPLETED/TASK113-planet-material-baseline.md) — Established baseline planet material with emissive boost controls.
@@ -44,7 +53,6 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
 - [TASK133](TASK133-build-test-resilience.md) — Stabilise vitest smoke imports, projectile geometry tests, and webpack build after TypeScript migration.
 - [TASK124](TASK124-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
-- [TASK110](TASK110-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.
 
 ## Pending
 
@@ -53,3 +61,12 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Abandoned
 
 - _None tracked._
+
+## ID MAPPING
+
+- TASK102 → TASK102 (AI V2 Skeleton) — retained
+- TASK102 → TASK136 (Physical Movement) — migrated
+- TASK110 → TASK110 (Planet Texture Assets) — retained
+- TASK110 → TASK137 (Skysphere) — migrated
+
+(See `TASK135` for reconciliation history and the mapping applied on 2025-09-26.)
