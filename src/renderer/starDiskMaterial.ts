@@ -57,6 +57,8 @@ export interface StarDiskUniformValues {
   noiseTiling: number;
   noiseScrollSpeed: number;
   noiseDriftSpeed: number;
+  swirlRate: number;
+  sectorDarkeningStrength: number;
   colorCore: Color;
   colorPrimary: Color;
   colorSecondary: Color;
@@ -125,6 +127,8 @@ const DEFAULTS = {
   noiseTiling: 2.8,
   noiseScrollSpeed: 1.32,
   noiseDriftSpeed: 1.42,
+  swirlRate: 0.3,
+  sectorDarkeningStrength: 0.15,
   paletteOffsets: DEFAULT_PALETTE_OFFSETS,
 };
 
@@ -257,6 +261,8 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
   const noiseTiling = clamp(shader?.noiseTiling ?? DEFAULTS.noiseTiling, 0.25, 4);
   const noiseScrollSpeed = clamp(shader?.noiseScrollSpeed ?? DEFAULTS.noiseScrollSpeed, 0, 5);
   const noiseDriftSpeed = clamp(shader?.noiseDriftSpeed ?? DEFAULTS.noiseDriftSpeed, 0, 5);
+  const swirlRate = clamp(shader?.swirlRate ?? DEFAULTS.swirlRate, 0, 2);
+  const sectorDarkeningStrength = clamp(shader?.sectorDarkeningStrength ?? DEFAULTS.sectorDarkeningStrength, 0, 2);
   const brightness = clamp((light.intensity ?? 1) / 1.6, 0, 3);
   // Use the central helper so base color is produced in linear space for shader math
   const baseColor = colorFromConfig(light.color ?? '#ffffff');
@@ -298,6 +304,8 @@ export function buildStarDiskMaterialConfig(options: BuildStarDiskMaterialOption
       noiseTiling,
       noiseScrollSpeed,
       noiseDriftSpeed,
+      swirlRate,
+      sectorDarkeningStrength,
       colorCore: core,
       colorPrimary: primary,
       colorSecondary: secondary,
@@ -357,6 +365,8 @@ export function createStarDiskMaterial(values: StarDiskUniformValues, textures: 
       uNoiseTiling: { value: values.noiseTiling },
       uNoiseScrollSpeed: { value: values.noiseScrollSpeed },
       uNoiseDriftSpeed: { value: values.noiseDriftSpeed },
+      uSwirlRate: { value: values.swirlRate },
+      uSectorDarkeningStrength: { value: values.sectorDarkeningStrength },
       uColorCore: { value: values.colorCore.clone() },
       uColorPrimary: { value: values.colorPrimary.clone() },
       uColorSecondary: { value: values.colorSecondary.clone() },
@@ -419,6 +429,8 @@ export function updateStarDiskUniforms(
   uniforms.uNoiseTiling.value = values.noiseTiling;
   uniforms.uNoiseScrollSpeed.value = values.noiseScrollSpeed;
   uniforms.uNoiseDriftSpeed.value = values.noiseDriftSpeed;
+  uniforms.uSwirlRate.value = values.swirlRate;
+  uniforms.uSectorDarkeningStrength.value = values.sectorDarkeningStrength;
   (uniforms.uColorCore.value as Color).copy(values.colorCore);
   (uniforms.uColorPrimary.value as Color).copy(values.colorPrimary);
   (uniforms.uColorSecondary.value as Color).copy(values.colorSecondary);

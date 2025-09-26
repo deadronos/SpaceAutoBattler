@@ -56,6 +56,8 @@ describe('star disk material config', () => {
           secondary: { hue: 1.5, saturation: 1.5, lightness: -1.5 },
         },
         noiseDriftSpeed: 12,
+        swirlRate: 3,
+        sectorDarkeningStrength: 5,
       },
     });
 
@@ -96,6 +98,8 @@ describe('star disk material config', () => {
     expect(config.uniforms.noiseTiling).toBe(4);
     expect(config.uniforms.noiseScrollSpeed).toBe(5);
     expect(config.uniforms.noiseDriftSpeed).toBe(5);
+    expect(config.uniforms.swirlRate).toBe(2); // Clamped from 3 to 2
+    expect(config.uniforms.sectorDarkeningStrength).toBe(2); // Clamped from 5 to 2
     expect(config.uniforms.colorCore.getHexString()).toBe('ff0000');
     expect(config.uniforms.brightness).toBeGreaterThan(0);
   });
