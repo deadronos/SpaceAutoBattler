@@ -16,6 +16,10 @@ uniform float uCoronaFalloff;
 uniform float uTextureRadialPower;
 uniform float uCoronaEdgeSoftness;
 uniform float uBaseFillStrength;
+uniform float uCoreRadiusInner;
+uniform float uCoreRadiusOuter;
+uniform float uCoreTightness;
+uniform float uHaloFalloff;
 uniform vec3 uColorCore;
 uniform vec3 uColorPrimary;
 uniform vec3 uColorSecondary;
@@ -110,17 +114,24 @@ void main() {
   float organicGain = mix(1.0, 0.6 + organicLuma * 1.4, textureWeight);
   corona *= uCoronaIntensity * (1.15 - drift1 * 0.55) * organicGain * noiseFlicker;
 
-  float coreBase = smoothstep(uRadius * 0.25, uRadius * 0.6, 1.0 - dist);
-  float rimBase = smoothstep(uRadius * 0.0, uRadius * 0.3, 1.0 - dist) - coreBase;
+  float innerRadius = clamp(uCoreRadiusInner, 0.0, 0.95);
+  float outerRadius = clamp(uCoreRadiusOuter, innerRadius + 0.05, 1.0);
+  float coreBase = 1.0 - smoothstep(innerRadius, outerRadius, radial);
+  coreBase = pow(clamp(coreBase, 0.0, 1.0), clamp(uCoreTightness, 0.5, 4.0));
+  float rimCoreBand = smoothstep(innerRadius + 0.02, min(outerRadius + 0.18, 1.0), radial);
+  float rimFade = 1.0 - smoothstep(min(outerRadius + 0.18, 1.0), min(outerRadius + 0.32, 1.3), radial);
+  float rimBase = max(rimCoreBand * rimFade - coreBase * 0.35, 0.0);
   float core = coreBase * uCoreStrength;
-  float rim = max(rimBase, 0.0) * uRimStrength;
+  float rim = rimBase * uRimStrength;
 
   vec3 color = vec3(0.0);
-  color += uColorCore * (core * (0.68 + uBrightness * 0.32));
-  color += uColorPrimary * (rim * (0.46 + uBrightness * 0.5));
+  vec3 coreBlend = mix(uColorCore, vec3(1.0), 0.4);
+  vec3 rimBlend = mix(uColorPrimary, uColorCore, 0.2);
+  color += coreBlend * (core * (0.92 + uBrightness * 0.45));
+  color += rimBlend * (rim * (0.58 + uBrightness * 0.52));
   vec3 coronaColor = mix(uColorPrimary, uColorSecondary, clamp(uCoronaColorBlend, 0.0, 1.0));
   float coronaScaled = corona * uCoronaStrength;
-  color += coronaColor * coronaScaled * 0.018;
+  color += coronaColor * coronaScaled * 0.026;
   vec3 organicTint = mix(vec3(1.0), organicSample, 0.55 * textureWeight);
   vec3 noiseTint = mix(vec3(1.0), noiseSample.rgb, 0.25 * textureWeight);
   color = mix(color, color * organicTint, 0.42 * textureWeight);
@@ -128,26 +139,28 @@ void main() {
   color += noiseSample.rgb * (rim * 0.22 * textureWeight);
 
   float outerGlowBoost = 1.0 + max(0.0, 1.0 - clamp(uCoronaEdgeSoftness, 0.2, 3.0)) * 0.5;
-  float outerGlow = pow(max(1.0 - dist, 0.0), 1.1) * (0.52 + uBrightness * 0.4) * uOuterGlowStrength * outerGlowBoost;
+  float haloExponent = clamp(uHaloFalloff, 0.2, 4.0);
+  float outerGlow = pow(max(1.0 - dist, 0.0), haloExponent) * (0.58 + uBrightness * 0.45) * uOuterGlowStrength * outerGlowBoost;
   color += uColorSecondary * outerGlow * 0.58;
 
   float midBand = clamp(1.0 - abs(radial - 0.55) * 1.8, 0.0, 1.0);
-  float rimBand = clamp(1.0 - abs(radial - 0.88) * 6.0, 0.0, 1.0);
-  float baseFill = pow(midBand, 2.0) + rimBand * 0.35;
+  float rimFillBand = clamp(1.0 - abs(radial - 0.88) * 6.0, 0.0, 1.0);
+  float baseFill = pow(midBand, 2.0) + rimFillBand * 0.35;
   vec3 fillTint = mix(uColorCore, uColorSecondary, 0.45);
   float clampedBaseFillStrength = clamp(uBaseFillStrength, 0.0, 1.0);
   color += fillTint * baseFill * clampedBaseFillStrength;
-  color += uColorSecondary * rimBand * clampedBaseFillStrength * 0.22;
+  color += uColorSecondary * rimFillBand * clampedBaseFillStrength * 0.22;
 
   color *= noiseTint;
   color = clamp(color, 0.0, 1.0);
 
-  float alphaCore = pow(max(1.0 - dist, 0.0), uCoronaFalloff);
-  float alpha = alphaCore * mix(0.78, 1.12, clamp(1.0 - uCoronaEdgeSoftness, 0.0, 1.0));
+  float alphaCore = pow(max(1.0 - radial, 0.0), uCoronaFalloff);
+  float alpha = alphaCore * mix(0.82, 1.16, clamp(1.0 - uCoronaEdgeSoftness, 0.0, 1.0));
   alpha += coronaScaled * 0.014;
-  alpha += baseFill * clampedBaseFillStrength * 0.16;
-  alpha += rimBand * clampedBaseFillStrength * 0.08;
-  alpha = clamp(alpha * uOpacity * (0.62 + uBrightness * 0.28) * organicGain * uAlphaStrength, 0.0, 1.0);
+  alpha += baseFill * clampedBaseFillStrength * 0.2;
+  alpha += rimFillBand * clampedBaseFillStrength * 0.12;
+  alpha += outerGlow * 0.06;
+  alpha = clamp(alpha * uOpacity * (0.66 + uBrightness * 0.32) * organicGain * uAlphaStrength, 0.0, 1.0);
 
   if (alpha <= 0.002) {
     discard;

@@ -48,3 +48,14 @@ This document captures the testable requirements for updating the `memory/` know
 
 4. **WHEN** designers adjust palette offsets, **THE SYSTEM SHALL** ensure derived colours stay within valid colour space bounds to avoid NaN or wrap-around artefacts.  
    _Acceptance:_ Vitest guard rails check that the resulting HSL values remain within the 0–1 range and the shader renders without warnings.
+
+## Star Disk Fiery Match — 2025-09-27
+
+1. **WHEN** the default celestial environment renders without debug overrides, **THE SYSTEM SHALL** display a star disk whose core brightness exceeds the surrounding corona by at least 2.2×.  
+   _Acceptance:_ Playwright evaluates the canvas at runtime and asserts the luminance of the central pixel divided by a 0.6 radius sample is ≥ 2.2.
+
+2. **WHEN** the default celestial environment renders, **THE SYSTEM SHALL** tint the corona to a warm orange hue (25°–55°) at 60% of the disk radius.  
+   _Acceptance:_ Playwright samples the pixel at `(radius * 0.6, 0)` in canvas space and verifies its computed hue is within the warm range.
+
+3. **WHEN** the star disk before/after capture workflow runs, **THE SYSTEM SHALL** emit distinct PNGs and confirm the after image meets the brightness and hue thresholds.  
+   _Acceptance:_ `star-disk-compare.spec.ts` captures both PNGs, compares buffers for inequality, and asserts the measured luminance/hue metrics on the after render satisfy Requirements 1–2.

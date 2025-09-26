@@ -36,6 +36,10 @@ describe('star disk material config', () => {
         colorCore: '#ff0000',
         textureMix: 1.5,
         textureFlicker: 3,
+    coreRadiusInner: 0.9,
+    coreRadiusOuter: 0.4,
+    coreTightness: 7,
+    haloFalloff: 10,
         coreStrength: 6,
         rimStrength: -2,
         coronaStrength: 12,
@@ -75,6 +79,10 @@ describe('star disk material config', () => {
     expect(config.uniforms.textureRadialPower).toBe(2);
     expect(config.uniforms.coronaEdgeSoftness).toBe(0.2);
     expect(config.uniforms.baseFillStrength).toBe(1);
+    expect(config.uniforms.coreRadiusInner).toBeCloseTo(0.6, 6);
+    expect(config.uniforms.coreRadiusOuter).toBeCloseTo(0.65, 6);
+    expect(config.uniforms.coreTightness).toBe(4);
+    expect(config.uniforms.haloFalloff).toBe(4);
     expect(config.uniforms.textureMix).toBe(1);
     expect(config.uniforms.textureFlicker).toBe(2);
     expect(config.uniforms.coreStrength).toBe(4);
@@ -139,12 +147,16 @@ describe('star disk material config', () => {
     const baseHsl = new Color(BASE_LIGHT.color).convertSRGBToLinear().getHSL({ h: 0, s: 0, l: 0 });
     const secondaryHsl = config.uniforms.colorSecondary.getHSL({ h: 0, s: 0, l: 0 });
 
-    expect(config.uniforms.coronaIntensity).toBeCloseTo(1.28, 2);
-    expect(config.uniforms.textureMix).toBeGreaterThan(0.95);
-    expect(config.uniforms.textureFlicker).toBeGreaterThan(0.85);
-    expect(config.uniforms.textureRadialPower).toBeCloseTo(0.68, 2);
-    expect(config.uniforms.coronaEdgeSoftness).toBeCloseTo(0.72, 2);
-    expect(config.uniforms.baseFillStrength).toBeCloseTo(0.18, 2);
+    expect(config.uniforms.coronaIntensity).toBeCloseTo(1.72, 2);
+    expect(config.uniforms.textureMix).toBeGreaterThan(0.9);
+    expect(config.uniforms.textureFlicker).toBeGreaterThan(1.0);
+    expect(config.uniforms.textureRadialPower).toBeCloseTo(0.6, 2);
+    expect(config.uniforms.coronaEdgeSoftness).toBeCloseTo(0.64, 2);
+    expect(config.uniforms.baseFillStrength).toBeCloseTo(0.22, 2);
+  expect(config.uniforms.coreRadiusInner).toBeCloseTo(0.2, 2);
+  expect(config.uniforms.coreRadiusOuter).toBeCloseTo(0.56, 2);
+    expect(config.uniforms.coreTightness).toBeCloseTo(1.5, 2);
+    expect(config.uniforms.haloFalloff).toBeCloseTo(1.1, 2);
     expect(config.uniforms.brightness).toBeGreaterThan(0.6);
     expect(config.uniforms.brightness).toBeLessThan(0.9);
     expect(config.uniforms.colorCore.getHexString()).not.toBe(baseHex);
@@ -188,6 +200,10 @@ describe('star disk material lifecycle', () => {
         textureRadialPower: 0.4,
         coronaEdgeSoftness: 1.8,
         baseFillStrength: 0.05,
+    coreRadiusInner: 0.1,
+    coreRadiusOuter: 0.45,
+    coreTightness: 1.9,
+    haloFalloff: 0.6,
         coreStrength: 0.5,
         rimStrength: 1.8,
         coronaStrength: 1.4,
@@ -218,6 +234,10 @@ describe('star disk material lifecycle', () => {
     expect(uniforms.uTextureRadialPower.value).toBe(updatedConfig.uniforms.textureRadialPower);
     expect(uniforms.uCoronaEdgeSoftness.value).toBe(updatedConfig.uniforms.coronaEdgeSoftness);
     expect(uniforms.uBaseFillStrength.value).toBe(updatedConfig.uniforms.baseFillStrength);
+    expect(uniforms.uCoreRadiusInner.value).toBe(updatedConfig.uniforms.coreRadiusInner);
+    expect(uniforms.uCoreRadiusOuter.value).toBe(updatedConfig.uniforms.coreRadiusOuter);
+    expect(uniforms.uCoreTightness.value).toBe(updatedConfig.uniforms.coreTightness);
+    expect(uniforms.uHaloFalloff.value).toBe(updatedConfig.uniforms.haloFalloff);
     expect(uniforms.uCoreStrength.value).toBe(updatedConfig.uniforms.coreStrength);
     expect(uniforms.uRimStrength.value).toBe(updatedConfig.uniforms.rimStrength);
     expect(uniforms.uCoronaStrength.value).toBe(updatedConfig.uniforms.coronaStrength);
@@ -256,6 +276,10 @@ describe('star disk material lifecycle', () => {
     expect(uniforms.uTextureRadialPower.value).toBe(config.uniforms.textureRadialPower);
     expect(uniforms.uCoronaEdgeSoftness.value).toBe(config.uniforms.coronaEdgeSoftness);
     expect(uniforms.uBaseFillStrength.value).toBe(config.uniforms.baseFillStrength);
+    expect(uniforms.uCoreRadiusInner.value).toBe(config.uniforms.coreRadiusInner);
+    expect(uniforms.uCoreRadiusOuter.value).toBe(config.uniforms.coreRadiusOuter);
+    expect(uniforms.uCoreTightness.value).toBe(config.uniforms.coreTightness);
+    expect(uniforms.uHaloFalloff.value).toBe(config.uniforms.haloFalloff);
     expect(uniforms.uCoreStrength.value).toBe(config.uniforms.coreStrength);
     expect((uniforms.uTextureOrganic.value as Texture).name).toBe('StarDiskOrganicFallback');
     expect((uniforms.uTextureNoise.value as Texture).name).toBe('StarDiskNoiseFallback');
