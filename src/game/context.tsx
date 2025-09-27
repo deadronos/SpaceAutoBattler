@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { GameState } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
 import { updateGame } from './systems.js';
-import { useUiStore } from './uiStore.js';
+import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
 
 interface GameContextValue {
   state: GameState | null;
@@ -16,6 +16,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
   const aiV2Enabled = useUiStore((s) => s.aiV2Enabled);
+  const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +63,9 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
                         velocity: ship
                           ? { x: ship.velocity.x, y: ship.velocity.y, z: ship.velocity.z }
                           : { x: 0, y: 0, z: 0 },
-                        angularVelocity: ship?.angularVelocity ?? 0,
+                        angularVelocity: ship
+                          ? { x: ship.angularVelocity.x, y: ship.angularVelocity.y, z: ship.angularVelocity.z }
+                          : { x: 0, y: 0, z: 0 },
                         lateralAcceleration: ship?.lateralAcceleration ?? 0
                       };
                     })
@@ -138,6 +141,11 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
     state.ai.enabled = aiV2Enabled;
   }, [state, aiV2Enabled]);
 
+  useEffect(() => {
+    if (!state) return;
+    mirrorHudHealthBarsFlag(state, hudHealthBarsEnabled);
+  }, [state, hudHealthBarsEnabled]);
+
   return <GameContext.Provider value={{ state }}>{children}</GameContext.Provider>;
 }
 
@@ -161,3 +169,4 @@ export function useOptionalGameState(): GameState | null {
   }
   return context.state;
 }
+

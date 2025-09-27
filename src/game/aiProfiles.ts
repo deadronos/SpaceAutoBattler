@@ -4,8 +4,8 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
   brawler: {
     desiredRange: [120, 220] as const,
     orbit: 0,
-    aggression: 0.8,
-    patience: 0.4,
+    aggression: 0.9,
+    patience: 0.3,
     dodgeFreq: 0.2,
     classBias: {
       fighter: 20,
@@ -33,10 +33,10 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     },
   },
   escort: {
-    desiredRange: [90, 180] as const,
+    desiredRange: [70, 180] as const,
     orbit: 60,
-    aggression: 0.6,
-    patience: 0.8,
+    aggression: 0.8,
+    patience: 0.5,
     dodgeFreq: 0.3,
     classBias: {
       fighter: 15,
@@ -48,10 +48,10 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     },
   },
   artillery: {
-    desiredRange: [360, 520] as const,
+    desiredRange: [260, 400] as const,
     orbit: 0,
-    aggression: 0.4,
-    patience: 0.9,
+    aggression: 0.6,
+    patience: 0.7,
     dodgeFreq: 0.1,
     classBias: {
       carrier: 25,

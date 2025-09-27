@@ -12,7 +12,7 @@ import type {
 import { SeededRng } from '../utils/rng.js';
 import { spawnShip } from './ships.js';
 import { unregisterTurret } from './turretRegistry.js';
-import { AI_CONFIG, WORLD_HALF } from './config.js';
+import { AI_CONFIG, WORLD_HALF, clampToWorld } from './config.js';
 
 export async function createGameState(): Promise<GameState> {
   await Rapier.init();
@@ -40,6 +40,9 @@ export async function createGameState(): Promise<GameState> {
     rng: new SeededRng(1337),
     paused: false,
     timeScale: 1,
+    uiFlags: {
+      hudHealthBars: false,
+    },
     simulation: {
       step: 1 / 20,
       accumulator: 0,
@@ -194,46 +197,64 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
 
 export function spawnInitialFleets(state: GameState): void {
   const formation: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-  const spacing = 60;
+  const baseSpacing = WORLD_HALF * 0.05;
+  const depthJitter = WORLD_HALF * 0.05;
+  const verticalSpread = WORLD_HALF * 0.12;
+  const radialJitter = WORLD_HALF * 0.04;
+  const blueAnchorX = -WORLD_HALF * 0.15;
+  const redAnchorX = WORLD_HALF * 0.15;
 
   formation.forEach((hull, index) => {
-    const offsetZ = (index - (formation.length - 1) / 2) * spacing;
+    const offset = index - (formation.length - 1) / 2;
+    const zBase = offset * baseSpacing;
+    const zJitter = (state.rng.next() - 0.5) * depthJitter;
+    const yOffset = (state.rng.next() - 0.5) * verticalSpread;
+    const xJitter = (state.rng.next() - 0.5) * radialJitter;
+
+    const bluePosition = new Vector3(blueAnchorX + xJitter, yOffset, zBase + zJitter);
+    const redPosition = new Vector3(redAnchorX - xJitter, -yOffset, -(zBase + zJitter));
+
+    clampToWorld(bluePosition);
+    clampToWorld(redPosition);
+
     spawnShip(state, {
       hull,
       team: 'blue',
-      position: new Vector3(-WORLD_HALF * 0.06 + index * 18, 0, offsetZ),
+      position: bluePosition,
       heading: 0,
     });
 
     spawnShip(state, {
       hull,
       team: 'red',
-      position: new Vector3(WORLD_HALF * 0.06 - index * 18, 0, offsetZ),
+      position: redPosition,
       heading: Math.PI,
     });
   });
 }
-
 // Spawn a single random ship for the team at a reasonable location.
 export function spawnRandomShip(state: GameState, team: Team): void {
   const hulls: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
   const hull = hulls[Math.floor(state.rng.next() * hulls.length)];
 
-  const radius = WORLD_HALF * 0.1;
-  const angle = state.rng.next() * Math.PI * 2;
-  const zSpread = WORLD_HALF * 0.2;
-  const x = (team === 'blue' ? -1 : 1) * (WORLD_HALF * 0.05 + state.rng.next() * radius);
-  const z = Math.cos(angle) * radius * 0.5 + (state.rng.next() - 0.5) * zSpread;
+  const lateralRadius = WORLD_HALF * 0.25;
+  const verticalSpread = WORLD_HALF * 0.15;
+  const anchorX = (team === 'blue' ? -1 : 1) * WORLD_HALF * 0.3;
+  const x = anchorX + (state.rng.next() - 0.5) * lateralRadius;
+  const z = (state.rng.next() - 0.5) * lateralRadius;
+  const y = (state.rng.next() - 0.5) * verticalSpread;
   const heading = team === 'blue' ? 0 : Math.PI;
+
+  const position = new Vector3(x, y, z);
+  clampToWorld(position);
 
   spawnShip(state, {
     hull,
     team,
-    position: new Vector3(x, 0, z),
+    position,
     heading,
   });
 }
-
 // Reset the simulation entities and respawn starting fleets.
 export function resetGame(state: GameState): void {
   // Destroy all entities safely
@@ -253,3 +274,7 @@ export function resetGame(state: GameState): void {
   state.blackboard.allyCentroid.blue.set(0, 0, 0);
   state.blackboard.allyCentroid.red.set(0, 0, 0);
 }
+
+
+
+

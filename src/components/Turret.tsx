@@ -42,11 +42,11 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
   if (!SHOW_MUZZLE_FLASHES) return () => null;
     function MuzzleSphere({ position, color, emissive, intensity }: { position: [number, number, number]; color: string; emissive: string; intensity: number }) {
       const ref = useReactRef<Mesh>(null);
-      useBloomRegistration(ref, true);
+      useBloomRegistration(ref, { group: 'muzzleFlashes' });
       return (
         <mesh ref={ref} position={position} frustumCulled={false}>
-          <sphereGeometry args={[0.1, 10, 10]} />
-          <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={intensity} transparent opacity={0.6} />
+          <sphereGeometry args={[1, 10, 10]} />
+          <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={intensity} transparent opacity={0.9} />
         </mesh>
       );
     }
@@ -60,7 +60,7 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
               position={[m.local.x, m.local.y, m.local.z]}
               color={m.bulletType === 'bullet:heavy' ? '#ffb36b' : '#ffd089'}
               emissive="#ff962f"
-              intensity={1.6}
+              intensity={8.6}
             />
           ))}
         </group>

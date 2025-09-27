@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { MeshTransmissionMaterial } from '@react-three/drei';
 import type { ShieldRipple, ShipHull, Team } from '../types/index.js';
 import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../config/renderer.js';
+import { colorFromConfig } from '../utils/color.js';
 
 // Maximum ripples the shader supports (compile-time constant mirrored in GLSL)
 const SHADER_MAX_RIPPLES = 8;
@@ -46,26 +47,27 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     const { hexScale, edgeWidth, maxAlpha } = getShieldVisuals(hull);
   return new ShaderMaterial({
       transparent: true,
-      depthWrite: true,
-  uniforms: {
+      depthWrite: false,
+      uniforms: {
         uTime: { value: 0 },
-  uTint: { value: new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
+        // Store uniform tint in linear space for shader math consistency
+        uTint: { value: colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },
         uTeamIsRed: { value: team === 'red' ? 1.0 : 0.0 },
         uEnableRedBoost: { value: SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0 },
         uRedBoostPow: { value: SHIELD_TUNING.redBoostPower },
         uRedBoostMul: { value: SHIELD_TUNING.redBoostMultiplier },
-  uEdgeAlphaMul: { value: SHIELD_TUNING.edgeAlphaMul },
-  uFillAlphaMul: { value: SHIELD_TUNING.fillAlphaMul },
+        uEdgeAlphaMul: { value: SHIELD_TUNING.edgeAlphaMul },
+        uFillAlphaMul: { value: SHIELD_TUNING.fillAlphaMul },
         uMinAlphaFloor: { value: SHIELD_TUNING.minAlphaFloor },
         uFillTintMul: { value: SHIELD_TUNING.fillTintMul },
         uOpacity: { value: 1 },
         uHexScale: { value: hexScale },
         uEdgeWidth: { value: edgeWidth },
         uMaxAlpha: { value: maxAlpha },
-  // Pack ripple per-entry data into vec4 arrays for efficiency: (dir.xyz, amp)
-  uRippleCount: { value: 0 },
-  uRippleData: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)) },
-  uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
+        // Pack ripple per-entry data into vec4 arrays for efficiency: (dir.xyz, amp)
+        uRippleCount: { value: 0 },
+        uRippleData: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)) },
+        uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
         uRippleSpeed: { value: SHIELD_RIPPLE_TUNING.defaultSpeed },
         uRippleWidthBase: { value: SHIELD_RIPPLE_TUNING.baseWidth },
         uRippleBlendMode: { value: SHIELD_RIPPLE_TUNING.blendMode },
@@ -92,25 +94,25 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
         uniform float uHexScale;
         uniform float uEdgeWidth;
         uniform float uMaxAlpha;
-  uniform float uTeamIsRed;
-  uniform float uEnableRedBoost;
-  uniform float uRedBoostPow;
-  uniform float uRedBoostMul;
-  uniform float uEdgeAlphaMul;
-  uniform float uFillAlphaMul;
-  uniform float uMinAlphaFloor;
-  uniform float uFillTintMul;
-  uniform int uRippleCount;
-  uniform float uRippleSpeed;
-  uniform float uRippleWidthBase;
-  // Packed ripple arrays
-  const int SHADER_MAX_RIPPLES = ${SHADER_MAX_RIPPLES};
-  uniform vec4 uRippleData[SHADER_MAX_RIPPLES];
-  uniform float uRippleT0s[SHADER_MAX_RIPPLES];
-  uniform float uRippleBlendMode;
-  uniform float uRippleIgnoreMaxAlpha;
-  uniform float uRippleColorMul;
-  uniform float uRippleStrength;
+        uniform float uTeamIsRed;
+        uniform float uEnableRedBoost;
+        uniform float uRedBoostPow;
+        uniform float uRedBoostMul;
+        uniform float uEdgeAlphaMul;
+        uniform float uFillAlphaMul;
+        uniform float uMinAlphaFloor;
+        uniform float uFillTintMul;
+        uniform int uRippleCount;
+        uniform float uRippleSpeed;
+        uniform float uRippleWidthBase;
+        // Packed ripple arrays
+        const int SHADER_MAX_RIPPLES = ${SHADER_MAX_RIPPLES};
+        uniform vec4 uRippleData[SHADER_MAX_RIPPLES];
+        uniform float uRippleT0s[SHADER_MAX_RIPPLES];
+        uniform float uRippleBlendMode;
+        uniform float uRippleIgnoreMaxAlpha;
+        uniform float uRippleColorMul;
+        uniform float uRippleStrength;
 
         float hash(vec2 p){return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453);}
 
@@ -235,7 +237,8 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
     (mat.uniforms as any).uOpacity.value = Math.max(0, Math.min(1, opacity));
   }, [opacity, mat]);
   useEffect(() => {
-  (mat.uniforms as any).uTint.value = new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint);
+    // Copy a linearised tint into the uniform to avoid mutating caller-provided Color
+    (mat.uniforms as any).uTint.value.copy(colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint));
     (mat.uniforms as any).uTeamIsRed.value = team === 'red' ? 1.0 : 0.0;
     (mat.uniforms as any).uEnableRedBoost.value = SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0;
     (mat.uniforms as any).uRedBoostPow.value = SHIELD_TUNING.redBoostPower;
@@ -280,7 +283,7 @@ const ShieldHexMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity,
 // Built-in Shield Transmission material (drei)
 const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team, opacity }) => {
   const cfg = getShieldVisuals(hull);
-  const tint = useMemo(() => new Color(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
+  const tint = useMemo(() => colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
   // Scale opacity by configured maxAlpha so material alpha is proportional to shield fraction
   const alpha = Math.max(0, Math.min(1, opacity * cfg.maxAlpha));
   return (
@@ -288,17 +291,18 @@ const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team,
       transparent
       depthWrite={false}
       color={tint}
+      resolution={256}
       attenuationColor={tint}
-      thickness={cfg.transmission.thickness}
-      chromaticAberration={cfg.transmission.chromaticAberration}
-      anisotropicBlur={cfg.transmission.anisotropicBlur}
-      distortion={cfg.transmission.distortion}
-      distortionScale={cfg.transmission.distortionScale}
-      temporalDistortion={cfg.transmission.temporalDistortion}
-      attenuationDistance={cfg.transmission.attenuationDistance}
-      roughness={cfg.transmission.roughness}
-      clearcoat={cfg.transmission.clearcoat}
-      ior={cfg.transmission.ior}
+      thickness={cfg.meshtransmission.thickness}
+      chromaticAberration={cfg.meshtransmission.chromaticAberration}
+      anisotropicBlur={cfg.meshtransmission.anisotropicBlur}
+      distortion={cfg.meshtransmission.distortion}
+      distortionScale={cfg.meshtransmission.distortionScale}
+      temporalDistortion={cfg.meshtransmission.temporalDistortion}
+      attenuationDistance={cfg.meshtransmission.attenuationDistance}
+      roughness={cfg.meshtransmission.roughness}
+      clearcoat={cfg.meshtransmission.clearcoat}
+      ior={cfg.meshtransmission.ior}
       opacity={alpha}
     />
   );
@@ -306,7 +310,7 @@ const ShieldTransmissionMaterial: React.FC<ShieldMaterialProps> = ({ hull, team,
 
 // Register built-ins
 registerMaterial('shield:hex', ShieldHexMaterial);
-registerMaterial('shield:transmission', ShieldTransmissionMaterial);
+registerMaterial('shield:meshtransmission', ShieldTransmissionMaterial);
 
 // Bullets — simple emissive glow material (laser-like)
 const BulletLaserMaterial: React.FC = () => (

@@ -129,7 +129,7 @@ function makeShipAndTurret(state: GameState): { ship: ShipEntity; turret: Turret
       speed: 0,
       bulletType: '',
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -192,3 +192,4 @@ describe('Turret destruction', () => {
     expect(state.colliderLookup.has((turret.collider as any).handle)).toBe(false);
   });
 });
+

@@ -1,28 +1,29 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// We'll mock three's SphereGeometry (sphereGeometry constructor is used via JSX as <sphereGeometry args={[r, 16, 16]} />)
-vi.mock('three', async () => {
-  const actual = await vi.importActual<any>('three');
-  // Provide a fake SphereGeometry function that records its args
-  const SphereGeometry = function (...args: any[]) {
-    (SphereGeometry as any).lastArgs = args;
-    return { args } as any;
-  };
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof import('react')>('react');
   return {
     ...actual,
-    SphereGeometry,
-    // Also expose Mesh for types (not strictly necessary)
-    Mesh: actual.Mesh
+    useRef: <T,>(initial: T | null) => ({ current: initial }),
   };
 });
+
+vi.mock('@react-three/fiber', () => ({
+  useFrame: () => undefined,
+}));
 
 // Mock material registry since ProjectileObject imports it
 vi.mock('../../src/renderer/materialRegistry.js', () => ({
   getMaterial: () => undefined
 }));
 
+vi.mock('../../src/renderer/BloomProvider.js', () => ({
+  useBloomRegistration: () => undefined,
+}));
+
+import type { ReactElement } from 'react';
 import { ProjectileObject } from '../../src/components/Projectile.js';
-import { PROJECTILE_CONFIG } from '../../src/config/projectiles.js';
+import { getProjectileBaseRadius } from '../../src/config/projectiles.js';
 
 function makeProjectileEntity(bulletType?: string, scale = 1) {
   return {
@@ -47,28 +48,34 @@ function makeProjectileEntity(bulletType?: string, scale = 1) {
 }
 
 describe('Projectile geometry uses config radius', () => {
-  beforeEach(() => {
-    // reset lastArgs
-    (require('three').SphereGeometry as any).lastArgs = undefined;
-  });
-
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   it('uses baseGeometryRadius from config for laser', () => {
     const entity = makeProjectileEntity('bullet:laser', 1);
-    // Call component function directly so its body (and JSX creation) runs
-    ProjectileObject({ entity } as any);
-    const lastArgs = (require('three').SphereGeometry as any).lastArgs;
-    expect(lastArgs).toBeDefined();
-    expect(lastArgs[0]).toBe(PROJECTILE_CONFIG['bullet:laser'].baseGeometryRadius);
+  const element = ProjectileObject({ entity } as any) as AnyReactElement;
+    const args = findSphereArgs(element);
+    expect(args).toBeDefined();
+    expect(args?.[0]).toBe(getProjectileBaseRadius('bullet:laser'));
   });
 
   it('uses baseGeometryRadius for heavy', () => {
     const entity = makeProjectileEntity('bullet:heavy', 1);
-    ProjectileObject({ entity } as any);
-    const lastArgs = (require('three').SphereGeometry as any).lastArgs;
-    expect(lastArgs[0]).toBe(PROJECTILE_CONFIG['bullet:heavy'].baseGeometryRadius);
+  const element = ProjectileObject({ entity } as any) as AnyReactElement;
+    const args = findSphereArgs(element);
+    expect(args?.[0]).toBe(getProjectileBaseRadius('bullet:heavy'));
   });
 });
+
+type AnyReactElement = ReactElement<Record<string, unknown>, string | ((props: any) => ReactElement)>;
+
+function findSphereArgs(element: AnyReactElement): unknown[] | undefined {
+  const children = element.props.children;
+  const list = Array.isArray(children) ? children : [children];
+  const sphere = list.find((child) => child && typeof child === 'object' && (child as AnyReactElement).type === 'sphereGeometry') as
+    | AnyReactElement
+    | undefined;
+  const args = sphere?.props?.args;
+  return Array.isArray(args) ? args : undefined;
+}

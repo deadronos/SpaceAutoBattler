@@ -40,7 +40,7 @@ export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotio
   };
 }
 
-export type ShieldMaterialKind = 'hex' | 'transmission';
+export type ShieldMaterialKind = 'hex' | 'meshtransmission';
 
 export interface ShieldVisualSettings {
   /** Multiplier applied to the model bounding-sphere radius. */
@@ -51,10 +51,17 @@ export interface ShieldVisualSettings {
   edgeWidth?: number;
   /** Maximum final alpha for shield material (0..1). */
   maxAlpha?: number;
+  /**
+   * Per-axis non-uniform scale applied to the shield mesh. This enables
+   * ellipsoidal shields where Y (height) is often smaller than X/Z.
+   * Values are multipliers applied on top of the base radius.
+   * Example: { x: 1, y: 0.65, z: 1 }
+   */
+  shieldScale?: { x: number; y: number; z: number };
   /** What material to use for the shield: custom hex shader or drei MeshTransmissionMaterial */
   materialKind?: ShieldMaterialKind;
   /** Optional params for MeshTransmissionMaterial when materialKind==='transmission' */
-  transmission?: {
+  meshtransmission?: {
     thickness?: number; // 0..1 typical
     chromaticAberration?: number;
     anisotropicBlur?: number;
@@ -72,11 +79,12 @@ export interface ShieldVisualSettings {
 
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -84,17 +92,18 @@ const DEFAULTS: Required<ShieldVisualSettings> = {
   hexScale: 12,
   edgeWidth: 0.1,
   maxAlpha: 0.5,
+  shieldScale: { x: 1, y: 0.65, z: 1 },
   materialKind: 'hex',
-  transmission: {
+  meshtransmission: {
     thickness: 0.6,
     chromaticAberration: 0.02,
     anisotropicBlur: 0.1,
     distortion: 0.1,
-    distortionScale: 0.4,
+    distortionScale: 0.3,
     temporalDistortion: 0.1,
     attenuationDistance: 0.6,
     roughness: 0.1,
-    clearcoat: 0.0,
+    clearcoat: 0.5,
     ior: 1.2,
   },
 };
@@ -106,21 +115,22 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
     hexScale: cfg.hexScale ?? DEFAULTS.hexScale,
     edgeWidth: cfg.edgeWidth ?? DEFAULTS.edgeWidth,
     maxAlpha: cfg.maxAlpha ?? DEFAULTS.maxAlpha,
+    shieldScale: cfg.shieldScale ?? DEFAULTS.shieldScale,
     materialKind: cfg.materialKind ?? DEFAULTS.materialKind,
-    transmission: {
-      thickness: cfg.transmission?.thickness ?? DEFAULTS.transmission.thickness,
+    meshtransmission: {
+      thickness: cfg.meshtransmission?.thickness ?? DEFAULTS.meshtransmission.thickness,
       chromaticAberration:
-        cfg.transmission?.chromaticAberration ?? DEFAULTS.transmission.chromaticAberration,
-      anisotropicBlur: cfg.transmission?.anisotropicBlur ?? DEFAULTS.transmission.anisotropicBlur,
-      distortion: cfg.transmission?.distortion ?? DEFAULTS.transmission.distortion,
-      distortionScale: cfg.transmission?.distortionScale ?? DEFAULTS.transmission.distortionScale,
+        cfg.meshtransmission?.chromaticAberration ?? DEFAULTS.meshtransmission.chromaticAberration,
+      anisotropicBlur: cfg.meshtransmission?.anisotropicBlur ?? DEFAULTS.meshtransmission.anisotropicBlur,
+      distortion: cfg.meshtransmission?.distortion ?? DEFAULTS.meshtransmission.distortion,
+      distortionScale: cfg.meshtransmission?.distortionScale ?? DEFAULTS.meshtransmission.distortionScale,
       temporalDistortion:
-        cfg.transmission?.temporalDistortion ?? DEFAULTS.transmission.temporalDistortion,
+        cfg.meshtransmission?.temporalDistortion ?? DEFAULTS.meshtransmission.temporalDistortion,
       attenuationDistance:
-        cfg.transmission?.attenuationDistance ?? DEFAULTS.transmission.attenuationDistance,
-      roughness: cfg.transmission?.roughness ?? DEFAULTS.transmission.roughness,
-      clearcoat: cfg.transmission?.clearcoat ?? DEFAULTS.transmission.clearcoat,
-      ior: cfg.transmission?.ior ?? DEFAULTS.transmission.ior,
+        cfg.meshtransmission?.attenuationDistance ?? DEFAULTS.meshtransmission.attenuationDistance,
+      roughness: cfg.meshtransmission?.roughness ?? DEFAULTS.meshtransmission.roughness,
+      clearcoat: cfg.meshtransmission?.clearcoat ?? DEFAULTS.meshtransmission.clearcoat,
+      ior: cfg.meshtransmission?.ior ?? DEFAULTS.meshtransmission.ior,
     },
   };
 }
@@ -196,7 +206,7 @@ export interface HullTintConfig {
  */
 export const HULL_TINT: HullTintConfig = {
   tintThreshold: 1.00,
-  tintStrength: 0.15,
+  tintStrength: 0.35,
 };
 
 // Global shield ripple tuning (tweakable). These affect the shader and how many
@@ -240,3 +250,161 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   strength: 0.7,
   minRenderAmp: 0.001,
 };
+
+// Thruster glow configuration for fallback anchors and default materials
+export interface ThrusterGlowConfig {
+  /** Default emissive color when material emissive is black or very dark */
+  defaultEmissiveColor: string;
+  /** Minimum emissive luminance threshold below which we use default color */
+  darkEmissiveThreshold: number;
+  /** Size of fallback glow meshes relative to model bounding box */
+  glowMeshSize: number;
+  /** Offset distance behind tail plane for glow mesh placement */
+  tailOffset: number;
+  /** Anchor count per hull type for fallback positioning */
+  anchorsByHull: Record<ShipHull, number>;
+}
+
+export const THRUSTER_GLOW_CONFIG: ThrusterGlowConfig = {
+  defaultEmissiveColor: '#5fb6ff',
+  darkEmissiveThreshold: 0.9,
+  glowMeshSize: 0.02,
+  tailOffset: 0.01,
+  anchorsByHull: {
+    fighter: 1,
+    corvette: 2,
+    frigate: 2,
+    destroyer: 4,
+    carrier: 6,
+  },
+};
+
+// Particle trails (engine exhaust) — renderer-only visual configuration.
+// These settings do not affect simulation determinism and only control
+// how the trail particles look and spawn on the client.
+export interface ParticleTrailsConfig {
+  /** Master enable for ParticleTrails component. If false, the component returns null. */
+  enabled: boolean;
+  /** Maximum number of particles kept in the pool (across all ships). */
+  maxParticles: number;
+  /** Base lifetime in seconds for a newly spawned particle. */
+  lifetime: number;
+  /** Base particle size in world units (before per-particle scale/jitter and life fading). */
+  size: number;
+  /** Base opacity for the particle material (actual opacity fades with life). */
+  opacity: number;
+  /** If true, use additive blending for brighter exhaust; if false, normal blending. */
+  additiveBlending: boolean;
+  /** Whether particle fragments participate in depth testing. Disable to ensure visibility. */
+  depthTest: boolean;
+  /** Whether particles write to depth buffer. Usually false for transparent effects. */
+  depthWrite: boolean;
+  /** Min throttle under which no particles are spawned. */
+  minThrottle: number;
+  /** Particles-per-second per anchor when throttle = 1.0. (Probabilistic spawner) */
+  spawnRatePerAnchor: number;
+  /** Engine exhaust base color (commonly matches thruster glow color). */
+  color: string;
+  /** Relative tail offset used by the trails' fallback anchors (heuristic length factor). */
+  tailZFactor: number;
+  /** Backward velocity along local -Z, as a scalar speed range (units/s). */
+  backwardSpeed: { min: number; max: number };
+  /** Lateral velocity jitter magnitude (units/s) applied in X and Y. */
+  lateralJitter: number;
+  /** Longitudinal jitter magnitude (units/s) applied along Z. */
+  longitudinalJitter: number;
+  /** Per-particle scale range multiplier around 1.0, e.g., 0.8..1.2 => ±20%. */
+  scaleJitter: number;
+}
+
+export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
+  enabled: true,
+  maxParticles: 5000,
+  lifetime: 0.9,
+  size: 0.72,
+  opacity: 0.75,
+  additiveBlending: false,
+  depthTest: true,
+  depthWrite: false,
+  minThrottle: 0.1,
+  spawnRatePerAnchor: 12, // particles/sec at full throttle per anchor
+  color: '#5fb6ff',
+  tailZFactor: 0.45, // behind ship origin relative to heuristic length
+  backwardSpeed: { min: 0.8, max: 1.6 },
+  lateralJitter: 0.45,
+  longitudinalJitter: 0.15,
+  scaleJitter: 0.25,
+};
+
+// Postprocessing / bloom configuration exposed to the renderer.
+export interface BloomGroupConfig {
+  /** Optional override for bloom intensity for this group. */
+  intensity?: number;
+  /** Optional override for luminance threshold. */
+  threshold?: number;
+  /** Optional override for smoothing around the threshold. */
+  smoothing?: number;
+}
+
+export interface PostprocessingConfig {
+  /** Luminance threshold for bloom (higher = fewer pixels bloom) */
+  bloomThreshold: number;
+  /** Smoothing applied around the threshold (0..1) */
+  bloomSmoothing: number;
+  /** Global intensity multiplier for bloom effect */
+  bloomIntensity: number;
+  /** Whether the selective bloom pass should ignore the scene background color. */
+  bloomIgnoreBackground: boolean;
+  /** Default bloom group name used when components opt-in without explicit configuration. */
+  bloomDefaultGroup: string;
+  /** Starting render layer used when allocating `Selection` layers for bloom groups. */
+  bloomLayerStart: number;
+  /** Per-group configuration overrides for selective bloom. */
+  bloomGroups: Record<string, BloomGroupConfig>;
+}
+
+export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
+  bloomThreshold: 0.1,
+  bloomSmoothing: 0.001,
+  bloomIntensity: 0.1,
+  bloomIgnoreBackground: true,
+  bloomDefaultGroup: 'default',
+  bloomLayerStart: 11,
+  bloomGroups: {
+    default: {
+      threshold: 1.0,
+      intensity: 0.5,
+    },
+    engines: {
+      intensity: 10.35,
+      smoothing: 0.008,
+      threshold: 0.9,
+    },
+    shields: {
+      intensity: 0.7,
+      smoothing: 0.02,
+      threshold: 0.9,
+    },
+    projectiles: {
+      intensity: 5.25,
+      smoothing: 0.006,
+      threshold: 0.9,
+    },
+    explosions: {
+      intensity: 1.6,
+      smoothing: 0.035,
+      threshold: 1.0,
+    },
+    muzzleFlashes: {
+      intensity: 10.4,
+      smoothing: 0.01,
+      threshold: 1.0,
+    },
+    star: {
+      intensity: 1.6,
+      smoothing: 0.01,
+      threshold: 1.0,
+    },
+  },
+};
+

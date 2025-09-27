@@ -52,6 +52,10 @@ export default (env = {}, argv) => {
         }
         ,
         {
+          test: /\.(glsl|vs|fs)$/i,
+          type: 'asset/source'
+        },
+        {
           test: /\.(glb|gltf)$/i,
           type: 'asset/resource',
           // Include a separator before the contenthash for readability and

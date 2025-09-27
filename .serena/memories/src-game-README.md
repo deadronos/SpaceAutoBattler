@@ -1,9 +1,1 @@
-# src/game/README.md
-
-Path: src/game/README.md
-Last-Reviewed: 2025-09-21
-
-Purpose: Overview of the game simulation modules: state, ships, systems, turretRegistry, and uiStore.
-
-Notes:
-- Good place for design notes and EARS-style requirements for simulation.
+# src/game/README.md\n\nPath: src/game/README.md\nLast-Reviewed: 2025-09-24\n\nPurpose: Simulation core: deterministic fleet combat with AI V2 (decision system, blackboard, profiles/traits), ECS entities (ships, projectiles, turrets), Rapier physics, and config-driven tuning.\n\nModules:\n- state.ts — GameState factory, spawn/destroy, reset\n- systems.ts — tick orchestration (AI → prepare → carriers → turrets → motion → projectiles → physics → sync → resolve)\n- ships.ts — hull stats, spawn with AI attachment\n- aiProfiles.ts / aiTraits.ts — behavior profiles and seeded traits\n- aiScenarioHarness.ts — headless test harness for golden logs\n- config.ts — world/AI constants\n\nNotes:\n- All state canonical on GameState; determinism via seeded RNG.\n- AI V2 opt-in; legacy fallback preserved.\n- Use for EARS requirements on simulation behaviors.

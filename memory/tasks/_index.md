@@ -2,33 +2,62 @@
 
 This index tracks active tasks and their memory files. Use the `tasks/` folder for task-specific planning.
 
+## Known issues
+
 ## In Progress
 
-- [TASK102](TASK102-implement-physical-movement.md) Implement Physical Movement System - Motion, renderer smoothing, tests, and docs complete; awaiting review
+- _None tracked._
+
 
 ## Completed
 
-- Memory bank core files created/updated (projectbrief, productContext, systemPatterns, techContext, activeContext, progress) — verified on 2025-09-21 by automated agent
-
-- [TASK100](COMPLETED/TASK100-memory-bank-summary.md) Memory-bank summary entry - Create/update memory-bank summary node and task file
-
-- [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) Implement Miniplex + Zustand Integration - Completed comprehensive implementation with lifecycle hooks, consumer replacement, and UI store
-
-- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) AI V2 Skeleton & Blackboard - Added GameState.ai manager, decision scheduler, behavior profiles, and refactored ship prep to honor the feature flag.
-- [TASK103](COMPLETED/TASK103-ai-traits.md) AI Trait Variance & Determinism - Added trait multipliers, trait-aware scoring, and Vitest coverage.
-- [TASK104](COMPLETED/TASK104-ai-metrics.md) AI Metrics Instrumentation & Tooling - Added AI manager metrics, docs, and memory updates.
-- [TASK105](COMPLETED/TASK105-ai-v2-validation.md) AI V2 Validation & Tooling - Added determinism/scorer/executor/legacy Vitest suites, perf budget script, HUD overlay, and plan/docs refresh.
-- [TASK106](COMPLETED/TASK106-ai-intercept-reposition.md) AI Intercept & Reposition Intents - Landed intercept/reposition/regroup scoring/executors plus new Vitest coverage and documentation updates.
-- [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) AI Scenario Harness & Visual QA - Added headless harness, golden log test, and docs refresh (HUD capture pending follow-up).
-- [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) AI V2 Rollout & Automation - Added env flag + `test:ci`, authored rollout playbook, and updated memory/tasks.
-- [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) Expand AI Scenario Harness Fixtures - Added bomber intercept + artillery retreat configs with golden logs, refreshed memory/plan entries, and kept tests deterministic.
-
-- Align docs and memory with 2025 rewrite - Updated `llms.txt`, `AGENTS.md`, `.github/copilot-instructions.md`, and memory files to match new src layout (R3F + Miniplex + Rapier on main thread).
+- [TASK141](TASK141-hud-health-overlays.md) — Implemented HUD health overlays with deterministic easing, occlusion safeguards, and Vitest coverage.
+- [TASK140](TASK140-star-disk-boundary-feather.md) — Delivered star disk boundary feather uniforms, shader attenuation, and regression tests.
+- [TASK139](TASK139-star-disk-haze-taper.md) — Implement star disk haze taper with camera-aware gradient fade and updated shader uniforms.
+- [TASK138](TASK138-star-disk-view-compensation.md) — Fix star disk billboarding by locking orientation and adding view-compensation uniforms.
+- [TASK134](TASK134-main-sequence-star-shader.md) — Ported `mainsequencestar` shader, refactored StarDisk material/component, and added unit coverage for uniforms and fallback path.
+- [TASK132](TASK132-planet-shadowing.md) — Planet shadowing enhancement (standard material + rim shell with cast/receive shadows).
+- [TASK131](TASK131-star-disk-render-capture.md) — Automated before/after star disk screenshot captures via Playwright.
+- [TASK130](TASK130-star-disk-radial-spread.md) — Expand star disk radial energy to fill the disc with organic animation.
+- [TASK129](TASK129-star-disk-palette-offsets.md) — Parameterise star disk palette offsets for configurable hue/saturation/lightness skew.
+- [TASK128](TASK128-star-disk-shader-controls.md) — Expose additional star disk shader controls through config and shader uniforms.
+- [TASK127](TASK127-star-disk-fidelity.md) — Refined star disk shader to match fiery reference without washing out texture detail.
+- [TASK125](TASK125-star-disk-textures.md) — Bake procedural star disk textures and integrate them into shader pipeline.
+- [TASK126](TASK126-star-disk-fiery-tuning.md) — Corrected star disk aspect ratio and retuned shader for a hotter corona.
+- [TASK100](COMPLETED/TASK100-memory-bank-summary.md) — Memory-bank summary entry for initial knowledge-base bootstrap.
+- [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) — Implemented Miniplex + Zustand integration with lifecycle hooks and UI store replacement.
+- [TASK136](COMPLETED/TASK136-implement-physical-movement.md) — Implemented Miniplex + deterministic physical movement system, renderer smoothing, and tests.  (Renamed from TASK102 to resolve ID collision.)
+- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag. (Retained TASK102 identifier.)
+- [TASK103](COMPLETED/TASK103-ai-traits.md) — Added AI trait multipliers with deterministic seeding and coverage.
+- [TASK104](COMPLETED/TASK104-ai-metrics.md) — Instrumented AI metrics and documented rollout.
+- [TASK105](COMPLETED/TASK105-ai-v2-validation.md) — Added determinism/scorer/executor/legacy suites, perf budget script, HUD overlay updates.
+- [TASK106](COMPLETED/TASK106-ai-intercept-reposition.md) — Landed intercept/reposition/regroup scoring and executors with documentation updates.
+- [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) — Authored headless scenario harness with golden log regression tests.
+- [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) — Wired AI V2 rollout automation, env flag toggles, and CI alignment.
+- [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) — Added bomber intercept and artillery retreat scenarios with logs.
+- [TASK110](COMPLETED/TASK110-planet-texture-assets.md) — Canonicalised planet texture asset keys and registry. (Retained TASK110 identifier.)
+- [TASK137](COMPLETED/TASK137-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.  (Renamed from TASK110 to resolve ID collision.)
+- [TASK111](COMPLETED/TASK111-celestial-environment-config.md) — Authored celestial environment config schema and defaults.
+- [TASK112](COMPLETED/TASK112-planet-texture-loading.md) — Implemented `usePlanetTexture` hook with SRGB/anisotropy setup.
+- [TASK113](COMPLETED/TASK113-planet-material-baseline.md) — Established baseline planet material with emissive boost controls.
+- [TASK114](COMPLETED/TASK114-celestial-components.md) — Integrated CelestialEnvironment/StarLight/PlanetBody components.
+- [TASK115](COMPLETED/TASK115-star-light-integration.md) — Finalised directional + ambient lighting aligned with config.
+- [TASK116](COMPLETED/TASK116-deterministic-rotation.md) — Locked deterministic rotation safeguards tied to simulation time.
+- [TASK117](COMPLETED/TASK117-planet-performance.md) — Bounded geometry segments and documented pending perf capture follow-up.
+- [TASK118](COMPLETED/TASK118-planet-rendering-tests.md) — Added Vitest coverage for config shape and loader fallbacks.
+- [TASK119](COMPLETED/TASK119-celestial-implementation.md) — Tracked full celestial integration, noting remaining documentation/QA items.
+- [TASK120](COMPLETED/TASK120-visual-polish-track.md) — Delivered star disk, rim glow, lighting balance, and feature toggles.
+- [TASK121](COMPLETED/TASK121-robustness-testing-track.md) — Added deterministic rotation tests, texture fallback validation, and Playwright baselines.
+- [TASK122](COMPLETED/TASK122-feature-expansion-track.md) — Shipped gas giant rings, parallax billboards, and config toggles.
+- [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
+- [TASK133](TASK133-build-test-resilience.md) — Stabilise vitest smoke imports, projectile geometry tests, and webpack build after TypeScript migration.
+- [TASK124](TASK124-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
+- [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
 ## Pending
 
-- Add CI link-check job
-
-- Expand `docs/_index.md` from `llms.txt`
+- _None tracked._
 
 ## Abandoned
+
+- _None tracked._

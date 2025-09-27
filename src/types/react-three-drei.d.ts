@@ -7,6 +7,7 @@ declare module '@react-three/drei' {
   import { GroupProps } from '@react-three/fiber';
 
   // lightweight stub for development typechecks
+  export function useTexture<T = string>(input: T): any;
   export function useGLTF(path: string): unknown;
   // Material component from drei: https://drei.docs.pmnd.rs/shaders/mesh-transmission-material
   export const MeshTransmissionMaterial: React.FC<Record<string, unknown>>;

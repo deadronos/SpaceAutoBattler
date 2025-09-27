@@ -12,6 +12,41 @@ export type Team = 'blue' | 'red';
 
 export type ShipHull = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carrier';
 
+export type StatusEffectTag = 'jammed' | 'shield-down' | 'engine-disrupted' | 'hacked';
+
+export interface CarrierLaunchSlot {
+  /** Forward offset in world units relative to the carrier's origin. */
+  forward: number;
+  /** Lateral offset in world units relative to the carrier's right vector. */
+  lateral: number;
+  /** Optional vertical offset in world units relative to the carrier's up vector. */
+  vertical?: number;
+}
+
+export interface CarrierLaunchConfig {
+  /** Maximum number of alive fighters this carrier may field simultaneously. */
+  maxActive: number;
+  /** Cooldown in seconds between launch attempts. */
+  cooldownSeconds: number;
+  /** Number of fighters released per launch cycle (respecting the active cap). */
+  batchSize: number;
+  /** Launch pattern offsets relative to the carrier. */
+  formation: readonly CarrierLaunchSlot[];
+  /** Optional lateral jitter radius applied when spawning fighters. */
+  jitterRadius?: number;
+}
+
+export interface CarrierComponent {
+  /** Countdown timer before the carrier may launch another batch. */
+  launchCooldownRemaining: number;
+  /** List of fighter entity ids that are currently alive and tracked by the carrier. */
+  activeFighterIds: number[];
+  /** Cursor used to rotate through launch formation slots deterministically. */
+  launchIndex: number;
+  /** Launch behaviour configuration, usually sourced from CARRIER_LAUNCH_CONFIG. */
+  config: CarrierLaunchConfig;
+}
+
 export interface TransformComponent {
   transform: {
     position: Vector3;
@@ -39,14 +74,18 @@ export interface ShipComponent {
   speed: number;
   /** Key for the projectile material/type this ship fires (e.g. 'bullet:laser') */
   bulletType?: string;
+  /** Optional identifier if this ship was launched from a parent carrier. */
+  parentCarrierId?: number;
   /** Current linear velocity in world space (units/s). */
   velocity: Vector3;
-  /** Current angular velocity in radians per second around Y axis. */
-  angularVelocity: number;
+  /** Current angular velocity vector in radians per second (axis-angle form). */
+  angularVelocity: Vector3;
   /** Most recent lateral acceleration applied in units per second squared. */
   lateralAcceleration: number;
   /** Motion characteristics for physics-based movement. */
   motion: MotionStats;
+  /** Optional status effects applied to this ship for HUD overlays. */
+  effects?: StatusEffectTag[];
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -222,6 +261,7 @@ export interface GameEntity extends TransformComponent {
   ship?: ShipComponent;
   projectile?: ProjectileComponent;
   turret?: TurretComponent;
+  carrier?: CarrierComponent;
   ai?: AIState;
   /** Unit direction vector used for projectile integration. */
   direction?: Vector3;
@@ -265,6 +305,13 @@ export interface GameState {
   simulation: SimulationClock;
   ai: AIManagerState;
   blackboard: AIBlackboard;
+  /** Flags mirrored from the UI store to keep deterministic playback. */
+  uiFlags: HudUiFlags;
+}
+
+export interface HudUiFlags {
+  /** Whether HUD health bars are currently enabled. */
+  hudHealthBars: boolean;
 }
 
 export interface SimulationClock {
@@ -289,6 +336,7 @@ export interface ShipBlueprint {
   team: Team;
   position: Vector3;
   heading: number;
+  parentCarrierId?: number;
 }
 
 export interface ShipStats {
@@ -330,6 +378,10 @@ export interface MotionStats {
   angularAcceleration: number;
   /** Angular velocity damping factor (0 = no damping, higher = more damping). */
   angularDamping: number;
+  /** Optional proportional gain for yaw control (default: 4.0). */
+  turnKp?: number;
+  /** Optional derivative gain for yaw control based on current angular velocity (default: 0.6). */
+  turnKd?: number;
   /** Optional maximum lateral acceleration for strafe movement (units/s²). */
   maxLateralAcceleration?: number;
   /** Optional renderer smoothing preferences for this hull. */
@@ -361,3 +413,5 @@ export interface ShieldRipple {
   /** Visual strength (0..1). */
   amp: number;
 }
+
+

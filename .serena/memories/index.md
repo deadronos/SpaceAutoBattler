@@ -1,51 +1,19 @@
 # Memory Index
 
-Generated: 2025-09-21
+Updated: 2025-09-27
 
-This index lists known memory nodes and their Last-Reviewed dates (where available). Nodes updated during the 2025-09-21 sweep are marked accordingly.
+This index lists known memory nodes and their Last-Reviewed dates (where available). Entries updated during the 2025-09-25/26 sweep are marked accordingly.
 
-- activeContext — Last-Reviewed: 2025-09-02
-- ai_controller_api — Last-Reviewed: 2025-09-21
-- asset_pool_api — Last-Reviewed: 2025-09-21
-- carrier_spawn_logic_api — Last-Reviewed: 2025-09-15
-- ci_instructions — Last-Reviewed: 2025-09-15
-- code_structure — Last-Reviewed: 2025-09-07
-- contributor_notes — Last-Reviewed: 2025-09-15
+- activeContext — Last-Reviewed: 2025-09-26
+- progress — Last-Reviewed: 2025-09-26
 - core-gameState — Last-Reviewed: 2025-09-21
-- decision_engine_api — Last-Reviewed: 2025-09-21
-- entrypoints — Last-Reviewed: 2025-09-15
-- game_state_api — Last-Reviewed: 2025-09-21
-- handle_level_ups_api — Last-Reviewed: 2025-09-21
-- intent_manager_api — Last-Reviewed: 2025-09-21
-- main-simWorker-protocol — Last-Reviewed: 2025-09-15
-- main.ts — Last-Reviewed: 2025-09-21
-- memory-bank-summary — Last-Reviewed: 2025-09-21
-- process_deaths_xp_api — Last-Reviewed: 2025-09-21
-- productContext — Last-Reviewed: 2025-09-07
-- progress — Last-Reviewed: 2025-09-15
-- projectbrief — Last-Reviewed: 2025-09-07
-- projectileSystem_api — Last-Reviewed: 2025-09-07
-- projectile_system_api — Last-Reviewed: 2025-09-21 (HISTORICAL)
-- project_purpose — Last-Reviewed: 2025-09-07
-- renderer-effects — Last-Reviewed: 2025-09-15
-- review-summary-2025-09-07 — Last-Reviewed: 2025-09-07
-- review-summary-2025-09-15 — Last-Reviewed: 2025-09-15
-- session-2025-09-10-eslint-prettier-lint-setup — Last-Reviewed: 2025-09-07
-- simWorker.ts — Last-Reviewed: 2025-09-15
-- spawnSystem_api — Last-Reviewed: 2025-09-07
-- spawn_system_api — Last-Reviewed: 2025-09-21 (HISTORICAL)
-- src-files-overview — Last-Reviewed: 2025-09-21
-- steering_api — Last-Reviewed: 2025-09-07
-- style_conventions — Last-Reviewed: 2025-09-07
-- suggested_commands — Last-Reviewed: 2025-09-07
-- svg_loader_api — Last-Reviewed: 2025-09-15
-- systemPatterns — Last-Reviewed: 2025-09-07
-- techContext — Last-Reviewed: 2025-09-07
-- threeRenderer — Last-Reviewed: 2025-09-21
-- turret_firing_api — Last-Reviewed: 2025-09-21
-- turret_targeting_api — Last-Reviewed: 2025-09-21
-- update_bullets_api — Last-Reviewed: 2025-09-21
+- src-App.tsx — Last-Reviewed: 2025-09-21
+- src-game-state.ts — Last-Reviewed: 2025-09-21
+- src-utils-rng.ts — Last-Reviewed: 2025-09-21
+- src-memories-index-2025-09-21 — Last-Reviewed: 2025-09-21
+- memory/tasks/_index.md — Last-Reviewed: 2025-09-26 (reconciled)
+- memory/core-celestialEnvironment.md — Last-Reviewed: 2025-09-25
 
 Notes:
-
-- This index is updated to reflect today's sweep; further consolidation (removing duplicates) can be scheduled.
+- The `activeContext` and `progress` memories were refreshed to reflect the current celestial environment focus and task reconciliations performed on 2025-09-25/26.
+- Further housekeeping: reconcile any duplicate/historical memory nodes and remove or archive superseded entries (follow-up TASK135).

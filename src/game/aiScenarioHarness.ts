@@ -11,8 +11,10 @@ import type {
 import { createDefaultMotionStats } from './ships.js';
 import { SeededRng } from '../utils/rng.js';
 import { AI_CONFIG, clampToWorld } from './config.js';
-import { runDecisionTick } from './systems.js';
-import { getDefaultProfileId } from './aiProfiles.js';
+import { runDecisionTick, __aiTestHooks } from './systems.js';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 
 const HARNESS_TEMP = new Vector3();
@@ -148,6 +150,62 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
   const entries: AIScenarioLogEntry[] = [];
   for (let i = 0; i < config.ticks; i += 1) {
     runDecisionTick(state, tickInterval);
+  // Diagnostic: for a small set of known flaky seeds, dump per-ship
+  // candidate scoring to tmp/ai-diagnostic-<seed>.log to help tuning.
+    // This is intentionally lightweight and only enabled for the
+    // scenario seeds that are currently under investigation.
+    const DIAG_SEEDS = new Set([777, 2029, 4041]);
+    try {
+      if (DIAG_SEEDS.has(seed)) {
+        const outDir = join('.', 'tmp');
+        const path = join(outDir, `ai-diagnostic-${seed}.log`);
+        const lines: string[] = [];
+        const shipsList = state.queries.ships.entities as HarnessShip[];
+        for (const ship of shipsList) {
+          if (!ship.ai) continue;
+          const ai = ship.ai;
+          const profileId = ai.profileId;
+          const profile = resolveBehaviorProfile(profileId);
+          // Build candidates using the exported test hook if available.
+          try {
+            const nearest = state.blackboard.nearestEnemy.get(ship.id);
+            const primaryTarget = nearest != null ? (state.queries.ships.entities as HarnessShip[]).find((s) => s.id === nearest) ?? null : null;
+            const escortTargetId = state.ai?.assignments?.escorts?.get?.(ship.id);
+            const escortTarget = escortTargetId ? (state.queries.ships.entities as HarnessShip[]).find((s) => s.id === escortTargetId) ?? null : null;
+            type LocalCandidate = { intent: AIIntent; score: number; target?: ShipEntity | null };
+            const candidates: LocalCandidate[] = [];
+            // Use the same scoring helpers exported from systems for accuracy
+            candidates.push({ intent: 'Attack', score: __aiTestHooks.scoreAttackIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+            candidates.push({ intent: 'Kite', score: __aiTestHooks.scoreKiteIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+            if (escortTarget) candidates.push({ intent: 'Escort', score: __aiTestHooks.scoreEscortIntent(ship as unknown as ShipEntity, profile, escortTarget as unknown as ShipEntity, state as unknown as GameState, ai.traits) });
+            if (primaryTarget) {
+              candidates.push({ intent: 'Intercept', score: __aiTestHooks.scoreInterceptIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity, escortTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+              candidates.push({ intent: 'Reposition', score: __aiTestHooks.scoreRepositionIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity, ai.traits, state.blackboard.teamPosture[ship.ship.team]) });
+            } else {
+              candidates.push({ intent: 'Reposition', score: __aiTestHooks.scoreRepositionIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, null, ai.traits, state.blackboard.teamPosture[ship.ship.team]) });
+            }
+            candidates.push({ intent: 'Regroup', score: __aiTestHooks.scoreRegroupIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+            candidates.push({ intent: 'Flee', score: __aiTestHooks.scoreFleeIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+            candidates.sort((a, b) => b.score - a.score);
+            const chosen = __aiTestHooks.tieBreak(ai as unknown as AIState, state.ai.tickIndex, candidates as unknown as any as any[]);
+            lines.push(`tick=${state.ai.tickIndex} ship=${ship.id} intent=${ai.intent} lastScore=${ai.lastScore} chosen=${chosen?.intent} candidates=${candidates.map((c) => `${c.intent}:${c.score}`).join(',')}`);
+          } catch {
+            // ignore diagnostics errors
+          }
+        }
+        // fire-and-forget async write to avoid blocking
+        void (async () => {
+          try {
+            await mkdir(outDir, { recursive: true });
+            await writeFile(path, lines.join('\n') + '\n', { encoding: 'utf8' });
+          } catch {
+            // ignore diagnostics write errors
+          }
+        })();
+      }
+    } catch {
+      // swallow any diagnostic errors to avoid impacting tests
+    }
 
     entries.push({
       tick: state.ai.tickIndex,
@@ -160,12 +218,66 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     state.time += tickInterval;
   }
 
-  return {
+  const log: AIScenarioLog = {
     name: config.name,
     tickInterval,
     seed,
     entries,
   };
+
+  // Optionally dump the normalized JSON log for fixture maintenance.
+  // Enable by setting AI_WRITE_SCENARIO_JSON=1 in the environment.
+  try {
+    const shouldWrite = (() => {
+      try {
+        const v = (globalThis as any)?.process?.env?.AI_WRITE_SCENARIO_JSON;
+        return v === '1' || v === 'true' || v === 'on';
+      } catch {
+        return false;
+      }
+    })();
+    if (shouldWrite) {
+      const outDir = join('.', 'tmp');
+      const file = join(outDir, `ai-scenario-${config.name}.json`);
+      // Normalize headings/positions for stable diffs similar to test helper
+      const normalized: AIScenarioLog = {
+        ...log,
+        entries: log.entries.map((entry) => ({
+          ...entry,
+          commands: entry.commands.map((c) => ({
+            ...c,
+            heading: [
+              Number(c.heading[0].toFixed(3)),
+              Number(c.heading[1].toFixed(3)),
+              Number(c.heading[2].toFixed(3)),
+            ] as [number, number, number],
+            thrust: Number(c.thrust.toFixed(3)),
+          })),
+          positions: entry.positions.map((p) => ({
+            ...p,
+            position: [
+              Number(p.position[0].toFixed(3)),
+              Number(p.position[1].toFixed(3)),
+              Number(p.position[2].toFixed(3)),
+            ] as [number, number, number],
+          })),
+        })),
+      };
+      // fire-and-forget async write
+      void (async () => {
+        try {
+          await mkdir(outDir, { recursive: true });
+          await writeFile(file, JSON.stringify(normalized, null, 2), { encoding: 'utf8' });
+        } catch {
+          // ignore optional dump errors
+        }
+      })();
+    }
+  } catch {
+    // ignore optional dump errors
+  }
+
+  return log;
 }
 
 function createHarnessShip(
@@ -219,7 +331,7 @@ function createHarnessShip(
       speed: spec.speed ?? 40,
       bulletType: spec.bulletType ?? 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -339,3 +451,4 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
     clampToWorld(ship.transform.position);
   }
 }
+

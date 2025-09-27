@@ -2,20 +2,45 @@
 
 Current focuses (short-term):
 
-- Monitor AI V2 validation suites (determinism, scoring, executors, intercept/regroup selection, scenario harness, legacy fallback) and keep them green during feature work.
-- Maintain the expanded AI scenario harness fixtures (escort, bomber intercept, artillery retreat) while keeping rollout playbook + `npm run test:ci` aligned.
-- Gather feedback on the HUD debug overlay and extend documentation with practical tuning scenarios.
+- Lock in the celestial environment baseline: star disk billboard, rim-glow shader, parallax billboards, and lighting balance driven by `CELESTIAL_ENVIRONMENT`.
+- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
+- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
+- Maintain the star disk haze taper so the rim fades at grazing angles without flattening the core glow, keeping presets deterministic.
+- Tune and document the star disk boundary feather presets so artists can blend edges without losing bloom cues.
+- Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
 
 Recent changes:
 
-- Added Vitest suites for determinism (`ai-determinism`), scorer outputs (`ai-scorer`), executor behaviors (`ai-executor`), and legacy parity (`ai-regression`).
-- Authored `scripts/perf/assert-ai-budget.ts` with `npm run perf:ai-budget` to guard the 300-ship tick budget.
-- Introduced HUD `AiDebugOverlay`, UI toggles, and refreshed `docs/ai-v2-overview.md` with validation details.
+- Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
+- Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
+- Captured requirements and design for an automated Playwright workflow that outputs before/after star disk screenshots using debug overrides.
+- Implemented the debug override helper, Playwright comparison spec, and generated before/after artifacts under `playwright-debug/` with passing validation gates.
+- Re-oriented `StarLight.direction` toward the default camera so the star disk is framed on load without changing lighting distance.
+- Parameterised StarDisk palette offsets (hue/saturation/lightness) via config defaults and clamps, adding Vitest coverage for custom palettes.
+- Surfaced additional StarDisk shader controls (core/rim/corona/glow strengths, texture tiling, scroll speeds) through config, shader uniforms, and Vitest coverage.
+- Corrected StarDisk aspect ratio by feeding the reciprocal viewport aspect into shader uniforms and guarding extreme camera shapes.
+- Raised star disk corona intensity and texture blend defaults, retuned fragment contributions for a hotter corona, and expanded Vitest coverage for fiery fallbacks.
+- Generated deterministic star disk texture assets, updated shader/material uniforms to sample them, and expanded Vitest coverage to capture texture handling.
+- Expanded star disk radial shaping with new uniforms (texture radial power, corona edge softness, base fill), updated GLSL to fill the disc organically, and extended Vitest coverage for defaults/clamping.
+- Finalised fiery fidelity tuning: warmer palette, stronger texture weighting, balanced brightness, refreshed environment overrides, and extended Vitest assertions to cover hue/lightness thresholds; validated via `npm run typecheck`, `npm test`, and `npm run build`.
+- Landed `CelestialEnvironment`, `StarLight`, `PlanetBody`, `PlanetRings`, and `ParallaxBillboard` components wired to the new config and optional rim shader.
+- Added `usePlanetTexture` hook with SRGB/anisotropy handling, deterministic rotation based on simulation time, and feature toggles (star disk, billboards, rims).
+- Integrated solar-corona star disk shader with deterministic uniforms, GLSL asset pipeline, and Vitest coverage for material lifecycle.
+- Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
+- Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
+- Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
+- Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `npm run typecheck`, `npm test`.
 
 Next steps:
 
-- Capture HUD overlay screenshots that illustrate intercept/reposition/regroup/bomber pursuit states for docs/QA follow-ups.
-- Socialize the AI V2 rollout playbook with QA/ops, capture overlay screenshots for docs, and plan a dry-run with `AI_V2_DEFAULT=on`.
-- Continue monitoring perf budget regressions as we scale ship counts; consider caching nearest-enemy queries if budgets tighten.
+- Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
+- Capture a render comparison showcasing the new shader control ranges (core-focused vs corona-focused) for docs.
+- Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
+- Gather curated screenshots showcasing rim glow and star disk variants for docs and QA sign-off (include new fiery fidelity output).
+- Refresh Playwright/visual baselines to cover the texture-enhanced star disk once art direction is approved.
+- Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
+- Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
 
-- Updated: 2025-09-25
+- 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
+
+- Updated: 2025-09-27

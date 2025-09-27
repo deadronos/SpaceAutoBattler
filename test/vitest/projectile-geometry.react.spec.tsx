@@ -1,27 +1,29 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock three's SphereGeometry so we can capture constructor args
-vi.mock('three', async () => {
-  const actual = await vi.importActual<any>('three');
-  const SphereGeometry = function (...args: any[]) {
-    (SphereGeometry as any).lastArgs = args;
-    return { args } as any;
-  } as any;
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof import('react')>('react');
   return {
     ...actual,
-    SphereGeometry,
-    Mesh: actual.Mesh
+    useRef: <T,>(initial: T | null) => ({ current: initial }),
   };
 });
+
+vi.mock('@react-three/fiber', () => ({
+  useFrame: () => undefined,
+}));
 
 // Mock material registry
 vi.mock('../../src/renderer/materialRegistry.js', () => ({
   getMaterial: () => undefined
 }));
 
+vi.mock('../../src/renderer/BloomProvider.js', () => ({
+  useBloomRegistration: () => undefined,
+}));
+
+import type { ReactElement, JSXElementConstructor } from 'react';
 import { ProjectileObject } from '../../src/components/Projectile.js';
-import { PROJECTILE_CONFIG } from '../../src/config/projectiles.js';
+import { getProjectileBaseRadius } from '../../src/config/projectiles.js';
 
 function makeProjectileEntity(bulletType?: string, scale = 1) {
   return {
@@ -46,32 +48,34 @@ function makeProjectileEntity(bulletType?: string, scale = 1) {
 }
 
 describe('Projectile renderer (react-test-renderer) geometry radius', () => {
-  beforeEach(() => {
-    (require('three').SphereGeometry as any).lastArgs = undefined;
-  });
-
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders sphere geometry with configured base radius for laser', () => {
     const entity = makeProjectileEntity('bullet:laser', 1);
-    // Call the component function directly to create the element and trigger geometry construction
-    // This avoids needing react-test-renderer in the test environment.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    ProjectileObject({ entity } as any);
-    const lastArgs = (require('three').SphereGeometry as any).lastArgs;
-    expect(lastArgs).toBeDefined();
-    expect(lastArgs[0]).toBe(PROJECTILE_CONFIG['bullet:laser'].baseGeometryRadius);
+    const element = ProjectileObject({ entity } as any) as AnyReactElement;
+    const args = findSphereArgs(element);
+    expect(args).toBeDefined();
+    expect(args?.[0]).toBe(getProjectileBaseRadius('bullet:laser'));
   });
 
   it('renders sphere geometry with configured base radius for heavy', () => {
     const entity = makeProjectileEntity('bullet:heavy', 1);
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    ProjectileObject({ entity } as any);
-    const lastArgs = (require('three').SphereGeometry as any).lastArgs;
-    expect(lastArgs[0]).toBe(PROJECTILE_CONFIG['bullet:heavy'].baseGeometryRadius);
+    const element = ProjectileObject({ entity } as any) as AnyReactElement;
+    const args = findSphereArgs(element);
+    expect(args?.[0]).toBe(getProjectileBaseRadius('bullet:heavy'));
   });
 });
+
+type AnyReactElement = ReactElement<Record<string, unknown>, string | JSXElementConstructor<any>>;
+
+function findSphereArgs(element: AnyReactElement): unknown[] | undefined {
+  const children = element.props.children;
+  const list = Array.isArray(children) ? children : [children];
+  const sphere = list.find(
+    (child) => child && typeof child === 'object' && (child as AnyReactElement).type === 'sphereGeometry'
+  ) as AnyReactElement | undefined;
+  const args = sphere?.props?.args;
+  return Array.isArray(args) ? args : undefined;
+}

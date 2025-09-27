@@ -1,12 +1,1 @@
-# src/game/config.ts
-
-Path: src/game/config.ts
-Last-Reviewed: 2025-09-21
-
-Purpose: World size, camera/fog defaults, and gameplay clamp helpers. Centralized simulation config.
-
-Key exports/symbols:
-- WORLD_SIZE, CAMERA_DEFAULTS, clamp helper
-
-Notes:
-- Use these values in systems and ship stats where appropriate.
+# src/game/config.ts\n\nPath: src/game/config.ts\nLast-Reviewed: 2025-09-24\n\nPurpose: Simulation constants (world bounds, AI tick rate/budget/LOD, clamp utilities).\n\nKey exports/symbols:\n- WORLD_HALF — half-extents for clamping\n- AI_CONFIG — v2Enabled (false default), tickRateHz (10), maxPerTick (50), slices (auto), lod thresholds\n- clampToWorld — positions to bounds\n\nNotes:\n- AI budget controls decision cadence; LOD skips far ships.\n- Used in state init, decision system, blackboard refresh.

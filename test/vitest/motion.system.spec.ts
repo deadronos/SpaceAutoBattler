@@ -34,7 +34,7 @@ function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
       speed: 10,
       bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -151,16 +151,16 @@ describe('Motion System Behavior', () => {
     const state = createMockGameState([ship]);
     
     // Start with some angular velocity and already aligned heading
-    ship.ship.angularVelocity = 2.0; // rad/s
+    ship.ship.angularVelocity.set(0, 2.0, 0); // rad/s around yaw
     ship.ai!.command.heading = new Vector3(0, 0, 1); // same as current forward
     
-    const initialAngularVel = ship.ship.angularVelocity;
+    const initialAngularSpeed = ship.ship.angularVelocity.length();
     
     // Run motion update
     updateMotionSystem(state, 0.016);
     
     // Angular velocity should be reduced by damping
-    expect(Math.abs(ship.ship.angularVelocity)).toBeLessThan(Math.abs(initialAngularVel));
+    expect(ship.ship.angularVelocity.length()).toBeLessThan(initialAngularSpeed);
   });
 
   it('handles ships without AI commands gracefully', () => {
@@ -176,3 +176,4 @@ describe('Motion System Behavior', () => {
     }).not.toThrow();
   });
 });
+

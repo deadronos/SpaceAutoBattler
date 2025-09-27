@@ -6,9 +6,12 @@ import { clampToWorld } from '../config.js';
 const TEMP_FORWARD = new Vector3();
 const TEMP_TARGET_DIR = new Vector3();
 const TEMP_VELOCITY_CHANGE = new Vector3();
-const TEMP_ANGULAR_AXIS = new Vector3();
 const TEMP_ROTATION = new Quaternion();
 const TEMP_RIGHT = new Vector3();
+const TEMP_AXIS = new Vector3();
+const TEMP_DESIRED_AV = new Vector3();
+const TEMP_AV_DELTA = new Vector3();
+const TEMP_UP = new Vector3(0, 1, 0);
 
 /**
  * Update physics-based motion for all ships using acceleration limits and damping.
@@ -24,7 +27,6 @@ export function updateMotionSystem(state: GameState, dt: number): void {
     // Skip ships without AI commands (passive/destroyed ships)
     if (!ship.ai?.command) continue;
     
-    const motion = ship.ship.motion;
     const command = ship.ai.command;
     
     // Update angular motion (turning toward desired heading)
@@ -44,67 +46,77 @@ export function updateMotionSystem(state: GameState, dt: number): void {
  */
 function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: number): void {
   const motion = ship.ship.motion;
-  
-  // Get current forward direction from ship rotation
-  TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-  
-  // Normalize target heading
-  TEMP_TARGET_DIR.copy(targetHeading).normalize();
-  
-  // Calculate shortest arc to target
-  const dot = TEMP_FORWARD.dot(TEMP_TARGET_DIR);
-  
-  // Skip if already aligned (avoid numerical instability)
-  if (dot > 0.9999) {
-    // Apply angular damping when aligned
-    ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
+  const kp = motion.turnKp ?? 4.0;
+  const kd = motion.turnKd ?? 0.6;
+  const damping = Math.exp(-motion.angularDamping * dt);
+  const angularVelocity = ship.ship.angularVelocity;
+
+  const desiredForward = TEMP_TARGET_DIR.copy(targetHeading);
+  if (desiredForward.lengthSq() < 1e-8) {
+    angularVelocity.multiplyScalar(damping);
     return;
   }
-  
-  // Calculate cross product to get rotation axis
-  TEMP_ANGULAR_AXIS.crossVectors(TEMP_FORWARD, TEMP_TARGET_DIR);
-  const crossLength = TEMP_ANGULAR_AXIS.length();
-  
-  if (crossLength < 0.0001) {
-    // Vectors are opposite, choose any perpendicular axis
-    TEMP_ANGULAR_AXIS.set(0, 1, 0);
-  } else {
-    TEMP_ANGULAR_AXIS.divideScalar(crossLength);
+  desiredForward.normalize();
+
+  const currentForward = TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+  if (currentForward.lengthSq() < 1e-8) currentForward.set(0, 0, 1);
+  currentForward.normalize();
+
+  const dot = Math.max(-1, Math.min(1, currentForward.dot(desiredForward)));
+  const angle = Math.acos(dot);
+  if (angle < 1e-4) {
+    angularVelocity.multiplyScalar(damping);
+    const s = motion.smoothing?.rotationSlerp ?? 0;
+    if (s > 0) {
+      TEMP_ROTATION.setFromUnitVectors(TEMP_RIGHT.set(0, 0, 1), desiredForward);
+      ship.transform.rotation.slerp(TEMP_ROTATION, Math.min(1, s));
+      ship.transform.rotation.normalize();
+    }
+    return;
   }
-  
-  // Calculate angular error (unsigned angle)
-  const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-  
-  // Determine rotation direction (sign)
-  const sign = TEMP_ANGULAR_AXIS.y >= 0 ? 1 : -1;
-  const signedAngle = angle * sign;
-  
-  // PD control: proportional to angle error
-  const targetAngularVelocity = signedAngle * 4.0; // Proportional gain
-  
-  // Clamp target angular velocity to maximum turn rate
-  const clampedTarget = Math.max(-motion.maxTurnRate, Math.min(motion.maxTurnRate, targetAngularVelocity));
-  
-  // Calculate change in angular velocity (derivative control)
-  const angularVelocityError = clampedTarget - ship.ship.angularVelocity;
-  const maxChange = motion.angularAcceleration * dt;
-  const velocityChange = Math.max(-maxChange, Math.min(maxChange, angularVelocityError));
-  
-  // Apply angular acceleration
-  ship.ship.angularVelocity += velocityChange;
-  
-  // Apply angular damping
-  ship.ship.angularVelocity *= Math.exp(-motion.angularDamping * dt);
-  
-  // Integrate angular velocity to rotation
-  if (Math.abs(ship.ship.angularVelocity) > 0.001) {
-    const rotationAmount = ship.ship.angularVelocity * dt;
-    TEMP_ROTATION.setFromAxisAngle(new Vector3(0, 1, 0), rotationAmount);
+
+  const axis = TEMP_AXIS.crossVectors(currentForward, desiredForward);
+  if (axis.lengthSq() < 1e-10) {
+    axis.copy(currentForward).cross(TEMP_UP);
+    if (axis.lengthSq() < 1e-10) axis.set(1, 0, 0);
+  }
+  axis.normalize();
+
+  const desiredAngularVel = TEMP_DESIRED_AV.copy(axis).multiplyScalar(angle * kp);
+  desiredAngularVel.sub(TEMP_AV_DELTA.copy(angularVelocity).multiplyScalar(kd));
+
+  const maxTurnRate = Math.max(1e-6, motion.maxTurnRate);
+  const desiredLen = desiredAngularVel.length();
+  if (desiredLen > maxTurnRate) {
+    desiredAngularVel.multiplyScalar(maxTurnRate / desiredLen);
+  }
+
+  TEMP_AV_DELTA.copy(desiredAngularVel).sub(angularVelocity);
+  const maxDelta = Math.max(0, motion.angularAcceleration) * dt;
+  const deltaLen = TEMP_AV_DELTA.length();
+  if (maxDelta > 0 && deltaLen > maxDelta && deltaLen > 1e-8) {
+    TEMP_AV_DELTA.multiplyScalar(maxDelta / deltaLen);
+  }
+
+  angularVelocity.add(TEMP_AV_DELTA);
+  angularVelocity.multiplyScalar(damping);
+
+  const avLen = angularVelocity.length();
+  if (avLen > 1e-5) {
+    const stepAxis = TEMP_AXIS.copy(angularVelocity).normalize();
+    const stepAngle = avLen * dt;
+    TEMP_ROTATION.setFromAxisAngle(stepAxis, stepAngle);
     ship.transform.rotation.multiplyQuaternions(TEMP_ROTATION, ship.transform.rotation);
     ship.transform.rotation.normalize();
   }
-}
 
+  const s = motion.smoothing?.rotationSlerp ?? 0;
+  if (s > 0) {
+    TEMP_ROTATION.setFromUnitVectors(TEMP_RIGHT.set(0, 0, 1), desiredForward);
+    ship.transform.rotation.slerp(TEMP_ROTATION, Math.min(1, s));
+    ship.transform.rotation.normalize();
+  }
+}
 /**
  * Update ship linear velocity based on thrust command.
  * Applies forward acceleration and lateral strafe if supported.
@@ -203,3 +215,5 @@ export function shortestAngle(from: number, to: number): number {
 export function dampingFactor(damping: number, dt: number): number {
   return Math.exp(-damping * dt);
 }
+
+

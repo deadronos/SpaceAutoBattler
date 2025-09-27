@@ -4,14 +4,24 @@ import {
   EffectComposer,
   RenderPass,
   EffectPass,
-  BloomEffect,
   SelectiveBloomEffect,
   FXAAEffect,
   KernelSize,
   BlendFunction,
 } from 'postprocessing';
-import { WebGLRenderer, Scene, Camera } from 'three';
+import {
+  WebGLRenderer,
+  Scene,
+  Camera,
+  WebGLRenderTarget,
+  HalfFloatType,
+  RGBAFormat,
+  SRGBColorSpace,
+  NoToneMapping,
+  Vector2,
+} from 'three';
 import { useBloomContext } from '../renderer/BloomProvider.js';
+import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 
 type Props = {
   enabled?: boolean;
@@ -21,9 +31,17 @@ export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
+  const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
+  const renderTargetRef = useRef<WebGLRenderTarget | null>(null);
   const bloomCtx = useBloomContext();
+  const prevAutoClearRef = useRef<boolean | null>(null);
+  const prevToneMappingRef = useRef<WebGLRenderer['toneMapping'] | null>(null);
+  const prevExposureRef = useRef<number | null>(null);
+  const prevColorSpaceRef = useRef<WebGLRenderer['outputColorSpace'] | null>(null);
 
   useEffect(() => {
+    const renderer = gl as unknown as WebGLRenderer;
+
     // Only create the composer when postprocessing is enabled. This avoids
     // interfering with the default R3F renderer when the feature is off.
     if (!enabled) {
@@ -35,49 +53,128 @@ export function Postprocessing({ enabled = false }: Props): null {
         composerRef.current = null;
         fxaaRef.current = null;
       }
+      bloomEffectsRef.current = [];
+      if (renderTargetRef.current) {
+        renderTargetRef.current.dispose();
+        renderTargetRef.current = null;
+      }
+      if (prevAutoClearRef.current !== null) {
+        renderer.autoClear = prevAutoClearRef.current;
+        prevAutoClearRef.current = null;
+      }
+      if (prevToneMappingRef.current !== null) {
+        renderer.toneMapping = prevToneMappingRef.current;
+        prevToneMappingRef.current = null;
+      }
+      if (prevExposureRef.current !== null) {
+        renderer.toneMappingExposure = prevExposureRef.current;
+        prevExposureRef.current = null;
+      }
+      if (prevColorSpaceRef.current !== null) {
+        renderer.outputColorSpace = prevColorSpaceRef.current;
+        prevColorSpaceRef.current = null;
+      }
       return;
     }
 
-    try {
-      const renderer = gl as unknown as WebGLRenderer;
-      renderer.autoClear = true;
+    const previousAutoClear = renderer.autoClear;
+    prevAutoClearRef.current = previousAutoClear;
+    renderer.autoClear = false;
+    if (prevToneMappingRef.current === null) {
+      prevToneMappingRef.current = renderer.toneMapping;
+    }
+    if (prevExposureRef.current === null) {
+      prevExposureRef.current = renderer.toneMappingExposure;
+    }
+    if (prevColorSpaceRef.current === null) {
+      prevColorSpaceRef.current = renderer.outputColorSpace;
+    }
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = NoToneMapping;
+    renderer.toneMappingExposure = 1;
 
-      const composer = new EffectComposer(renderer);
+    const sizeVector = renderer.getSize(new Vector2());
+    const pixelRatio = renderer.getPixelRatio();
+    const renderTarget = new WebGLRenderTarget(sizeVector.x * pixelRatio, sizeVector.y * pixelRatio, {
+      format: RGBAFormat,
+      type: HalfFloatType,
+    });
+    renderTarget.texture.colorSpace = SRGBColorSpace;
+    renderTargetRef.current = renderTarget;
+
+    try {
+      const composer = new EffectComposer(renderer, renderTarget);
 
       // Render the main scene first
       const renderPass = new RenderPass(scene as unknown as Scene, camera as unknown as Camera);
       composer.addPass(renderPass);
 
-      // Selective bloom: only affect registered selection
-      const bloom = new SelectiveBloomEffect(
-        scene as unknown as Scene,
-        camera as unknown as Camera,
-        (bloomCtx?.selection ?? new Set()) as any,
-      );
-      // Configure bloom parameters
-      try {
-        (bloom as any).blendMode.blendFunction = BlendFunction.SCREEN;
-        (bloom as any).kernelSize = KernelSize.SMALL;
-        (bloom as any).intensity = 1.0;
-        const lumMat = (bloom as any).luminanceMaterial;
-        if (lumMat) {
-          lumMat.threshold = 0.8;
-          lumMat.smoothing = 0.1;
+      // Build selective bloom effects per configured group
+      const groupConfigs = POSTPROCESSING_CONFIG.bloomGroups ?? {};
+      const defaultGroup = bloomCtx?.defaultGroup ?? POSTPROCESSING_CONFIG.bloomDefaultGroup ?? 'default';
+      const groupNames = new Set<string>([...Object.keys(groupConfigs), defaultGroup]);
+      const bloomEffects: SelectiveBloomEffect[] = [];
+
+      groupNames.forEach((groupName) => {
+        const selection = bloomCtx?.selections.get(groupName);
+        if (!selection) return;
+        const cfg = groupConfigs[groupName] ?? {};
+        const bloom = new SelectiveBloomEffect(scene as unknown as Scene, camera as unknown as Camera, {
+          blendFunction: BlendFunction.SCREEN,
+          kernelSize: KernelSize.SMALL,
+          intensity: cfg.intensity ?? POSTPROCESSING_CONFIG.bloomIntensity ?? 1.0,
+        });
+        bloom.selection = selection;
+        bloom.ignoreBackground = POSTPROCESSING_CONFIG.bloomIgnoreBackground ?? true;
+        bloom.blendMode.opacity.value = selection.size > 0 ? 1 : 0;
+        const depthMask = (bloom as any).depthMaskMaterial;
+        if (depthMask) {
+          depthMask.keepFar = false;
         }
-        (bloom as any).mipmapBlur = true;
-      } catch {}
+        try {
+          const lumMat = (bloom as any).luminanceMaterial;
+          if (lumMat) {
+            lumMat.threshold = cfg.threshold ?? POSTPROCESSING_CONFIG.bloomThreshold ?? 1.0;
+            lumMat.smoothing = cfg.smoothing ?? POSTPROCESSING_CONFIG.bloomSmoothing ?? 0.1;
+          }
+          (bloom as any).mipmapBlur = true;
+        } catch {}
+        bloomEffects.push(bloom);
+      });
 
       // FXAA
       const fxaa = new FXAAEffect();
 
+      const effects = [...bloomEffects, fxaa];
       // Compose effects into a single pass (order matters: bloom before fxaa)
-  const effectPass = new EffectPass(camera as unknown as Camera, bloom, fxaa);
+      const effectPass = new EffectPass(camera as unknown as Camera, ...effects);
       effectPass.renderToScreen = true;
       composer.addPass(effectPass);
 
       composerRef.current = composer;
       fxaaRef.current = fxaa;
+      bloomEffectsRef.current = bloomEffects;
     } catch (err) {
+      if (prevAutoClearRef.current !== null) {
+        renderer.autoClear = prevAutoClearRef.current;
+        prevAutoClearRef.current = null;
+      }
+      if (renderTargetRef.current) {
+        renderTargetRef.current.dispose();
+        renderTargetRef.current = null;
+      }
+      if (prevToneMappingRef.current !== null) {
+        renderer.toneMapping = prevToneMappingRef.current;
+        prevToneMappingRef.current = null;
+      }
+      if (prevExposureRef.current !== null) {
+        renderer.toneMappingExposure = prevExposureRef.current;
+        prevExposureRef.current = null;
+      }
+      if (prevColorSpaceRef.current !== null) {
+        renderer.outputColorSpace = prevColorSpaceRef.current;
+        prevColorSpaceRef.current = null;
+      }
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.
       // Log for debugging.
@@ -85,20 +182,64 @@ export function Postprocessing({ enabled = false }: Props): null {
       console.warn('Postprocessing init failed, skipping composer:', err);
       composerRef.current = null;
       fxaaRef.current = null;
+      bloomEffectsRef.current = [];
     }
+    return () => {
+      if (composerRef.current) {
+        try {
+          composerRef.current.dispose();
+        } catch {}
+        composerRef.current = null;
+      }
+      fxaaRef.current = null;
+      bloomEffectsRef.current = [];
+      if (renderTargetRef.current) {
+        renderTargetRef.current.dispose();
+        renderTargetRef.current = null;
+      }
+      if (prevAutoClearRef.current !== null) {
+        renderer.autoClear = prevAutoClearRef.current;
+        prevAutoClearRef.current = null;
+      }
+      if (prevToneMappingRef.current !== null) {
+        renderer.toneMapping = prevToneMappingRef.current;
+        prevToneMappingRef.current = null;
+      }
+      if (prevExposureRef.current !== null) {
+        renderer.toneMappingExposure = prevExposureRef.current;
+        prevExposureRef.current = null;
+      }
+      if (prevColorSpaceRef.current !== null) {
+        renderer.outputColorSpace = prevColorSpaceRef.current;
+        prevColorSpaceRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, bloomCtx ? bloomCtx.selection : null, gl, scene, camera]);
+  }, [
+    enabled,
+    bloomCtx ? bloomCtx.selections : null,
+    bloomCtx ? bloomCtx.defaultGroup : null,
+    gl,
+    scene,
+    camera,
+  ]);
 
   useEffect(() => {
     const composer = composerRef.current;
     if (!composer) return;
     composer.setSize(size.width, size.height);
+    renderTargetRef.current?.setSize(size.width, size.height);
   }, [size]);
 
   useFrame((_, delta) => {
     const composer = composerRef.current;
     if (!composer) return;
     if (enabled) {
+      if (bloomEffectsRef.current.length > 0) {
+        for (const effect of bloomEffectsRef.current) {
+          effect.blendMode.opacity.value = effect.selection.size > 0 ? 1 : 0;
+        }
+      }
       try {
         composer.render(delta);
       } catch (err) {

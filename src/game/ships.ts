@@ -14,6 +14,7 @@ import { registerTurret } from './turretRegistry.js';
 import { getDefaultProfileId } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { validateMotionStats } from './validation.js';
+import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
 
 /** Create default motion stats for testing and fallback scenarios. */
 export function createDefaultMotionStats(): MotionStats {
@@ -46,20 +47,20 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     maxHp: 40,
     maxShield: 24,
     // hp per second
-    shieldRegen: 1.5,
+    shieldRegen: 4.0,
     damage: 8,
     fireRate: 0.9,
-    projectileSpeed: 28,
+    projectileSpeed: 80,
     range: 220,
-    speed: 14,
+    speed: 40,
     scale: 1,
     bulletType: 'bullet:laser',
     turrets: [],
     motion: {
       mass: 1.0,
-      maxSpeed: 14, // units/s - matches legacy speed
+      maxSpeed: 40, // units/s - matches legacy speed
       maxReverseSpeed: 5,
-      linearAcceleration: 28, // units/s² - high acceleration for agility
+      linearAcceleration: 34, // units/s² - high acceleration for agility
       linearDamping: 3.0, // moderate damping
       maxTurnRate: Math.PI * 1.5, // rad/s - very agile turning (270°/s)
       angularAcceleration: Math.PI * 4, // rad/s² - fast turn acceleration
@@ -79,17 +80,17 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     hull: 'corvette',
     maxHp: 75,
     maxShield: 45,
-    shieldRegen: 2.0,
+    shieldRegen: 5.0,
     damage: 12,
     fireRate: 1.2,
-    projectileSpeed: 24,
+    projectileSpeed: 80,
     range: 220,
-    speed: 11,
+    speed: 15,
     scale: 1,
     bulletType: 'bullet:plasma',
     motion: {
       mass: 1.5,
-      maxSpeed: 11, // units/s - matches legacy speed
+      maxSpeed: 15, // units/s - matches legacy speed
       maxReverseSpeed: 4,
       linearAcceleration: 20, // units/s² - good acceleration
       linearDamping: 2.5, // moderate damping
@@ -111,7 +112,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(0.9, 0.2, 0.1),
         damage: 6,
         fireRate: 1.0,
-        projectileSpeed: 24,
+        projectileSpeed: 80,
         range: 220,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.6,
@@ -124,7 +125,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(-0.9, 0.2, 0.1),
         damage: 6,
         fireRate: 1.0,
-        projectileSpeed: 24,
+        projectileSpeed: 80,
         range: 220,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.6,
@@ -139,17 +140,17 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     hull: 'frigate',
     maxHp: 120,
     maxShield: 72,
-    shieldRegen: 3.0,
+    shieldRegen: 7.0,
     damage: 16,
     fireRate: 1.5,
-    projectileSpeed: 22,
+    projectileSpeed: 80,
     range: 260,
-    speed: 9,
+    speed: 12,
     scale: 1,
     bulletType: 'bullet:plasma',
     motion: {
       mass: 2.5,
-      maxSpeed: 9, // units/s - matches legacy speed
+      maxSpeed: 12, // units/s - matches legacy speed
       maxReverseSpeed: 3,
       linearAcceleration: 15, // units/s² - moderate acceleration
       linearDamping: 2.0, // less damping for heavier ship
@@ -171,7 +172,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(1.2, 0.25, 0.0),
         damage: 8,
         fireRate: 1.2,
-        projectileSpeed: 22,
+        projectileSpeed: 50,
         range: 260,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.5,
@@ -184,7 +185,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(-1.2, 0.25, 0.0),
         damage: 8,
         fireRate: 1.2,
-        projectileSpeed: 220,
+        projectileSpeed: 50,
         range: 260,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.5,
@@ -197,7 +198,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(0.0, 0.25, -0.8),
         damage: 8,
         fireRate: 1.2,
-        projectileSpeed: 22,
+        projectileSpeed: 80,
         range: 260,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.9,
@@ -212,17 +213,17 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     hull: 'destroyer',
     maxHp: 200,
     maxShield: 120,
-    shieldRegen: 4.0,
+    shieldRegen: 8.0,
     damage: 22,
     fireRate: 1.8,
-    projectileSpeed: 20,
-    range: 360,
-    speed: 7,
+    projectileSpeed: 50,
+    range: 400,
+    speed: 10,
     scale: 1,
     bulletType: 'bullet:heavy',
     motion: {
       mass: 4.0,
-      maxSpeed: 7, // units/s - matches legacy speed
+      maxSpeed: 10, // units/s - matches legacy speed
       maxReverseSpeed: 2.5,
       linearAcceleration: 10, // units/s² - slower acceleration
       linearDamping: 1.5, // low damping for heavy ship
@@ -244,8 +245,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(1.6, 0.3, -0.2),
         damage: 10,
         fireRate: 1.4,
-        projectileSpeed: 20,
-        range: 280,
+        projectileSpeed: 50,
+        range: 380,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.6,
         maxYaw: Math.PI * 0.6,
@@ -257,8 +258,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(-1.6, 0.3, -0.2),
         damage: 10,
         fireRate: 1.4,
-        projectileSpeed: 20,
-        range: 280,
+        projectileSpeed: 50,
+        range: 380,
         bulletType: 'bullet:plasma',
         minYaw: -Math.PI * 0.6,
         maxYaw: Math.PI * 0.6,
@@ -270,8 +271,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(0.9, 0.3, 0.6),
         damage: 10,
         fireRate: 1.6,
-        projectileSpeed: 20,
-        range: 280,
+        projectileSpeed: 80,
+        range: 360,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.7,
         maxYaw: Math.PI * 0.7,
@@ -283,8 +284,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(-0.9, 0.3, 0.6),
         damage: 10,
         fireRate: 1.6,
-        projectileSpeed: 20,
-        range: 280,
+        projectileSpeed: 80,
+        range: 360,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.7,
         maxYaw: Math.PI * 0.7,
@@ -298,17 +299,17 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     hull: 'carrier',
     maxHp: 320,
     maxShield: 200,
-    shieldRegen: 5.0,
+    shieldRegen: 10.0,
     damage: 28,
     fireRate: 2.2,
-    projectileSpeed: 18,
-    range: 360,
-    speed: 5,
+    projectileSpeed: 50,
+    range: 400,
+    speed: 7,
     scale: 1,
     bulletType: 'bullet:ion',
     motion: {
       mass: 6.0,
-      maxSpeed: 5, // units/s - matches legacy speed
+      maxSpeed: 7, // units/s - matches legacy speed
       maxReverseSpeed: 2,
       linearAcceleration: 6, // units/s² - very slow acceleration
       linearDamping: 1.0, // minimal damping for massive ship
@@ -330,8 +331,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(2.0, 0.35, 0.0),
         damage: 9,
         fireRate: 1.3,
-        projectileSpeed: 18,
-        range: 280,
+        projectileSpeed: 50,
+        range: 360,
         bulletType: 'bullet:ion',
         minYaw: -Math.PI * 0.5,
         maxYaw: Math.PI * 0.5,
@@ -343,8 +344,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(-2.0, 0.35, 0.0),
         damage: 9,
         fireRate: 1.3,
-        projectileSpeed: 18,
-        range: 280,
+        projectileSpeed: 50,
+        range: 360,
         bulletType: 'bullet:ion',
         minYaw: -Math.PI * 0.5,
         maxYaw: Math.PI * 0.5,
@@ -356,8 +357,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(0.0, 0.35, 1.2),
         damage: 9,
         fireRate: 1.5,
-        projectileSpeed: 18,
-        range: 280,
+        projectileSpeed: 80,
+        range: 360,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.7,
         maxYaw: Math.PI * 0.7,
@@ -369,8 +370,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         offset: new Vector3(0.0, 0.35, -1.2),
         damage: 9,
         fireRate: 1.5,
-        projectileSpeed: 18,
-        range: 280,
+        projectileSpeed: 80,
+        range: 360,
         bulletType: 'bullet:laser',
         minYaw: -Math.PI * 0.7,
         maxYaw: Math.PI * 0.7,
@@ -429,8 +430,9 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       range: stats.range,
       speed: stats.speed,
       bulletType: stats.bulletType,
+      parentCarrierId: blueprint.parentCarrierId,
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: stats.motion,
     },
@@ -447,6 +449,15 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     })),
     ai: createInitialAIState(state, blueprint.hull),
   };
+
+  if (blueprint.hull === 'carrier') {
+    entity.carrier = {
+      launchCooldownRemaining: 0,
+      activeFighterIds: [],
+      launchIndex: 0,
+      config: CARRIER_LAUNCH_CONFIG,
+    };
+  }
 
   const registered = state.world.createEntity(entity) as ShipEntity;
   state.colliderLookup.set(collider.handle, registered);
@@ -529,3 +540,4 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
     },
   };
 }
+

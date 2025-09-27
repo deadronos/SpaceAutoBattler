@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { GameState } from '../types/index.js';
 import { AI_CONFIG } from './config.js';
 
 type UiState = {
@@ -17,6 +18,9 @@ type UiState = {
   aiDebugEnabled: boolean;
   toggleAiDebug: () => void;
   setAiDebugEnabled: (v: boolean) => void;
+  hudHealthBarsEnabled: boolean;
+  toggleHudHealthBars: () => void;
+  setHudHealthBarsEnabled: (v: boolean) => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -34,4 +38,16 @@ export const useUiStore = create<UiState>((set) => ({
   aiDebugEnabled: false,
   toggleAiDebug: () => set((s) => ({ aiDebugEnabled: !s.aiDebugEnabled })),
   setAiDebugEnabled: (v: boolean) => set({ aiDebugEnabled: v }),
+  hudHealthBarsEnabled: false,
+  toggleHudHealthBars: () => set((s) => ({ hudHealthBarsEnabled: !s.hudHealthBarsEnabled })),
+  setHudHealthBarsEnabled: (v: boolean) => set({ hudHealthBarsEnabled: v }),
 }));
+
+export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolean): void {
+  if (!state) return;
+  if (!state.uiFlags) {
+    state.uiFlags = { hudHealthBars: enabled };
+    return;
+  }
+  state.uiFlags.hudHealthBars = enabled;
+}

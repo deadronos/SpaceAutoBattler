@@ -1,6 +1,6 @@
 ﻿# SpaceAutoBattler
 
-![Gameplay preview](VideoCapture.gif)
+![Gameplay preview](image.png)
 
 SpaceAutoBattler is a lightweight, research-oriented 3D space combat simulator. The project separates deterministic simulation logic (pure game logic under `src/game`) from rendering and UI (`src/components`, `App.tsx`) so you can run headless tests and fast experiments.
 

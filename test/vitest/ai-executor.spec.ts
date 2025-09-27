@@ -114,7 +114,7 @@ function createShip(
       speed: 40,
       bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
-      angularVelocity: 0,
+      angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
     },
@@ -236,3 +236,4 @@ describe('writeCommand executors', () => {
     expect(ship.ai!.command.targetId).toBeUndefined();
   });
 });
+
