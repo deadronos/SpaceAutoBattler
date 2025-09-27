@@ -1,14 +1,5 @@
 {
   // Recommended extensions for this workspace (updated to match locally installed extensions).
-  "recommendations": [
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
-    "ms-azuretools.vscode-docker",
-    "ms-vscode.vscode-typescript-next",
-    "eamodio.gitlens",
-    "streetsidesoftware.code-spell-checker",
-    "github.copilot-chat",
-    "github.copilot"
-  ],
+  "recommendations": [],
   "unwantedRecommendations": []
 }
