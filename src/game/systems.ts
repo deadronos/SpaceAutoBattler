@@ -24,6 +24,7 @@ import { updateMotionSystem } from './systems/motion.js';
 import { updateCarrierLaunchSystem } from './systems/carriers.js';
 import { emitShipKillExplosion, updateExplosions } from './explosions.js';
 import { SeededRng } from '../utils/rng.js';
+import { aggregateKpis, recordBandSample, recordIntentMetrics, recordShotMetrics } from './metrics.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -33,6 +34,7 @@ const TEMP_TARGET_VEL = new Vector3();
 const TEMP_SHIP_VEL = new Vector3();
 const TEMP_REL_VEL = new Vector3();
 const TEMP_QUAT = new Quaternion();
+const TEMP_RNG = new SeededRng(1);
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 interface IntentCandidate {
   intent: AIIntent;
@@ -206,9 +208,9 @@ function computeEscortShellOffset(vipId: number, slotIndex: number, total: numbe
     Math.sin(azimuth) * sinInclination,
   );
   const jitterSeed = hashToInt(vipId ^ ((slotIndex + 1) * 8191));
-  const rng = new SeededRng(Math.abs(jitterSeed) + 1);
-  const radialJitter = 1 + rng.range(-0.08, 0.08);
-  const verticalJitter = rng.range(-0.12, 0.12);
+  TEMP_RNG.reset(Math.abs(jitterSeed) + 1);
+  const radialJitter = 1 + TEMP_RNG.range(-0.08, 0.08);
+  const verticalJitter = TEMP_RNG.range(-0.12, 0.12);
   base.y += verticalJitter;
   if (base.lengthSq() < 1e-5) base.set(0, 1, 0);
   base.normalize().multiplyScalar(Math.max(20, radius * radialJitter));
@@ -262,15 +264,22 @@ function runShipDecisions(
   entityById: Map<number, ShipEntity>,
 ): void {
   const manager = state.ai;
+  const metrics = manager.metrics;
   const total = ships.length;
-  if (total === 0) return;
+  if (total === 0) {
+    metrics.lastTotalShips = 0;
+    metrics.lastSliceSize = 0;
+    metrics.lastDecisions = 0;
+    metrics.lastSkipped = 0;
+    aggregateKpis(metrics, manager.tickIndex);
+    return;
+  }
 
   const slices = Math.max(1, Math.ceil(total / Math.max(1, manager.maxPerTick)));
   manager.slices = slices;
   const sliceSize = Math.min(manager.maxPerTick, Math.ceil(total / slices));
   const startIndex = manager.cursor % total;
 
-  const metrics = manager.metrics;
   metrics.lastTotalShips = total;
   metrics.lastSliceSize = sliceSize;
   let decisions = 0;
@@ -302,6 +311,8 @@ function runShipDecisions(
   if (sliceSize < total) {
     metrics.budgetHits += 1;
   }
+
+  aggregateKpis(metrics, manager.tickIndex);
 }
 
 function evaluateShip(
@@ -327,13 +338,8 @@ function evaluateShip(
   ai.targetId = intent.target?.id ?? target?.id;
   ai.desiredRange = profile.desiredRange;
 
-  if (
-    AI_CONFIG.engagementBoostEnabled &&
-    (ai.intent === 'Attack' || ai.intent === 'Intercept') &&
-    state.time <= AI_CONFIG.openingSalvoDuration
-  ) {
-    state.ai.metrics.openingAggressiveIntents += 1;
-  }
+  const isOpeningWindow = state.time <= AI_CONFIG.openingSalvoDuration;
+  recordIntentMetrics(state.ai.metrics, state.ai.tickIndex, state.time, ai.intent, isOpeningWindow);
 
   const lod = computeLod(ship, target, profile);
   ai.lod = lod;
@@ -950,9 +956,9 @@ function applyVerticalPerturbation(
   const amplitude = profile.verticalManeuver;
   if (amplitude <= 0) return;
   if (heading.lengthSq() < 1e-6) return;
-  const seed = hashToInt(ai.traitSeed ^ ship.id ^ (state.ai.tickIndex * 1229));
-  const rng = new SeededRng(Math.abs(seed) + 1);
-  const perturb = rng.normal(amplitude * 0.3, 0.05);
+  const seed = Math.abs(hashToInt(ai.traitSeed ^ ship.id ^ (state.ai.tickIndex * 1229))) + 1;
+  TEMP_RNG.reset(seed);
+  const perturb = TEMP_RNG.normal(amplitude * 0.3, 0.05);
   heading.y += perturb;
 
   if (target) {
@@ -1113,16 +1119,11 @@ function executeAICommand(state: GameState, ship: ShipEntity, delta: number): Sh
   }
 
   try {
-    const metrics = state.ai.metrics;
-    metrics.verticalSamples += 1;
-    if (Math.abs(heading.y) >= 0.1) metrics.verticalAboveThreshold += 1;
     if (target && ai.desiredRange) {
-      metrics.inBandSamples += 1;
       const [min, max] = ai.desiredRange;
       const distance = ship.transform.position.distanceTo(target.transform.position);
-      if (distance >= min && distance <= max) {
-        metrics.inBandSatisfied += 1;
-      }
+      const satisfied = distance >= min && distance <= max;
+      recordBandSample(state.ai.metrics, ship.ship.hull, satisfied);
     }
   } catch {
     // metrics are best-effort; ignore failures in lightweight harnesses
@@ -1138,6 +1139,19 @@ function executeAICommand(state: GameState, ship: ShipEntity, delta: number): Sh
     const fireDir = TEMP_DIR.copy(heading);
     if (fireDir.lengthSq() < 1e-5) fireDir.set(0, 0, 1);
     else fireDir.normalize();
+
+    const distanceToTarget = target
+      ? ship.transform.position.distanceTo(target.transform.position)
+      : undefined;
+    const deltaY = target ? target.transform.position.y - ship.transform.position.y : undefined;
+    recordShotMetrics(state.ai.metrics, {
+      shipId: ship.id,
+      hull: ship.ship.hull,
+      time: state.time,
+      distance: distanceToTarget,
+      deltaY,
+    });
+
     fireProjectile(state, ship, fireDir);
     ship.ship.cooldown = ship.ship.fireRate;
   }
@@ -1195,6 +1209,16 @@ function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta: number
       amp: 1,
       bulletType: ship.ship.bulletType,
     });
+    const metrics = state.ai?.metrics;
+    if (metrics && target) {
+      recordShotMetrics(metrics, {
+        shipId: ship.id,
+        hull: ship.ship.hull,
+        time: state.time,
+        distance,
+        deltaY: target.transform.position.y - ship.transform.position.y,
+      });
+    }
     fireProjectile(state, ship, direction);
     ship.ship.cooldown = ship.ship.fireRate;
   }
@@ -1211,6 +1235,16 @@ function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: ShipEnti
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
+    const metrics = state.ai?.metrics;
+    if (metrics) {
+      recordShotMetrics(metrics, {
+        shipId: ship.id,
+        hull: ship.ship.hull,
+        time: state.time,
+        distance: dist,
+        deltaY: target.transform.position.y - ship.transform.position.y,
+      });
+    }
     fireProjectile(state, ship, toTarget, {
       originPosition: turretOrigin,
       override: {
@@ -1309,6 +1343,16 @@ function updateTurrets(state: GameState, delta: number): void {
       amp: 0.9,
       bulletType: t.turret.bulletType,
     });
+    const metrics = state.ai?.metrics;
+    if (metrics) {
+      recordShotMetrics(metrics, {
+        shipId: ship.id,
+        hull: ship.ship.hull,
+        time: state.time,
+        distance: dist,
+        deltaY: target.transform.position.y - ship.transform.position.y,
+      });
+    }
     // fire
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
@@ -1525,6 +1569,7 @@ export const __aiTestHooks = {
   prepareShips,
   runLegacyShipBehavior,
   computeInterceptHeadingVector,
+  executeAICommand,
 };
 
 function getShipById(state: GameState, id: number | undefined): ShipEntity | null {

@@ -1,6 +1,9 @@
 import { Quaternion, Vector3 } from 'three';
 import type {
   AIIntent,
+  AIIntentSnapshot,
+  AIKpiSummary,
+  AIMetrics,
   AIState,
   GameState,
   ShipEntity,
@@ -16,6 +19,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
+import { createDefaultMetrics, aggregateKpis, SHIP_HULLS } from './metrics.js';
 
 const HARNESS_TEMP = new Vector3();
 
@@ -70,11 +74,20 @@ export interface AIScenarioLogEntry {
   positions: AIScenarioPositionLog[];
 }
 
+export interface AIScenarioMetrics {
+  kpis: AIKpiSummary;
+  firstShotTimes: number[];
+  intentTimeline: AIIntentSnapshot[];
+  shotDistance: Record<ShipHull, { buckets: readonly number[]; counts: number[]; total: number }>;
+  shotDeltaY: Record<ShipHull, { buckets: readonly number[]; counts: number[]; total: number }>;
+}
+
 export interface AIScenarioLog {
   name: string;
   tickInterval: number;
   seed: number;
   entries: AIScenarioLogEntry[];
+  metrics: AIScenarioMetrics;
 }
 
 type HarnessShip = ShipEntity & { __harnessVelocity?: Vector3 };
@@ -103,20 +116,7 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       cursor: 0,
       slices: AI_CONFIG.slices,
       assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-        verticalSamples: 0,
-        verticalAboveThreshold: 0,
-        inBandSamples: 0,
-        inBandSatisfied: 0,
-        openingAggressiveIntents: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -252,11 +252,13 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     state.time += tickInterval;
   }
 
+  aggregateKpis(state.ai.metrics, state.ai.tickIndex);
   const log: AIScenarioLog = {
     name: config.name,
     tickInterval,
     seed,
     entries,
+    metrics: snapshotMetrics(state.ai.metrics),
   };
 
   // Optionally dump the normalized JSON log for fixture maintenance.
@@ -486,5 +488,56 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
     }
     clampToWorld(ship.transform.position);
   }
+}
+
+function snapshotMetrics(metrics: AIMetrics): AIScenarioMetrics {
+  const firstShotTimes = [...metrics.firstShotTimes];
+  const intentTimeline = metrics.intentTimeline.map((entry) => ({
+    tick: entry.tick,
+    time: entry.time,
+    counts: { ...entry.counts },
+    total: entry.total,
+  }));
+
+  const shotDistance = Object.create(null) as AIScenarioMetrics['shotDistance'];
+  const shotDeltaY = Object.create(null) as AIScenarioMetrics['shotDeltaY'];
+  for (const hull of SHIP_HULLS) {
+    const distanceHist = metrics.shotDistanceHist[hull];
+    shotDistance[hull] = {
+      buckets: [...distanceHist.buckets],
+      counts: [...distanceHist.counts],
+      total: distanceHist.total,
+    };
+    const deltaHist = metrics.shotDeltaYHist[hull];
+    shotDeltaY[hull] = {
+      buckets: [...deltaHist.buckets],
+      counts: [...deltaHist.counts],
+      total: deltaHist.total,
+    };
+  }
+
+  const source = metrics.kpis;
+  const inBandByHull = Object.create(null) as AIScenarioMetrics['kpis']['inBand']['byHull'];
+  for (const hull of SHIP_HULLS) {
+    inBandByHull[hull] = { ...source.inBand.byHull[hull] };
+  }
+
+  const kpis: AIKpiSummary = {
+    firstShot: { ...source.firstShot },
+    openingAggression: { ...source.openingAggression },
+    inBand: {
+      overall: { ...source.inBand.overall },
+      byHull: inBandByHull,
+    },
+    vertical: { ...source.vertical },
+  };
+
+  return {
+    kpis,
+    firstShotTimes,
+    intentTimeline,
+    shotDistance,
+    shotDeltaY,
+  };
 }
 

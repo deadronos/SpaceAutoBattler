@@ -7,7 +7,8 @@
 
 - Compliance score from 2025-09-27 review: **88%** (core behavior in place; validation gaps remain).
 - Strengths: vertical execution, range policy adjustments, escort shell distribution, spawn geometry, and configuration toggles all ship-ready.
-- Attention areas: acceptance metrics, deterministic validation harness, telemetry breadth, and minor performance hardening.
+- Attention areas: deterministic validation harness thresholds, developer HUD visualization hooks, and follow-up performance profiling.
+- Recent progress (2025-09-28): KPI instrumentation, per-hull telemetry snapshots, and RNG reuse landed alongside `test/vitest/ai-metrics.spec.ts` coverage.
 
 ## Improvement Areas
 
@@ -18,6 +19,7 @@
   - Extend `AIMetrics` with accumulator fields for first-shot timestamps, intent timelines, and per-hull shot distance histograms.
   - Add lightweight aggregators that compute desired percentiles and percentages at deterministic checkpoints (e.g., end-of-sim or 30s window).
   - Expose aggregation results via debug logging or structured telemetry for automated gating.
+  - ✅ `src/types/index.ts`, `src/game/metrics.ts`, and `src/game/systems.ts` now provide full KPI aggregation with AiDebug overlay surfacing summaries.
 
 ### 2. Deterministic Validation Harness
 
@@ -34,6 +36,7 @@
   - Record `Δy` per fired shot and bucket by hull for elevation analysis.
   - Track time of first firing event per ship to support time-to-first-shot KPI.
   - Provide developer HUD hooks (optional) that visualise vertical spread, band adherence, and engagement posture.
+  - ✅ Shot telemetry and per-hull histograms flow via `recordShotMetrics`; AiDebug overlay surfaces opening aggression, first-shot, in-band, and vertical ratios.
 
 ### 4. Performance & Determinism Hardening
 
@@ -42,6 +45,7 @@
   - Reuse temp vectors/RNG instances (or derive deterministic jitters without instantiating new RNG objects) in decision hot paths.
   - Audit any unseeded randomness; ensure all AI-time RNG flows originate from `state.rng` or `SeededRng` seeded with explicit values.
   - Profile 15v15 (AI tick 15 Hz) to confirm decision budget stays within target slices.
+  - ✅ Escort shell offsets and vertical perturbations reuse a cached `SeededRng`, eliminating per-tick allocations.
 
 ### 5. Documentation & Decision Artifacts
 
@@ -50,6 +54,7 @@
   - Update `memory/requirements.md` and the design doc with finalized metric formulas.
   - Record a decision log entry once KPI implementation stabilizes (noting any compromises or tuning knobs).
   - Add developer onboarding notes covering the new telemetry and test commands.
+  - ✅ Requirements now document KPI definitions and `AiDebugOverlay` exposes aggregated metrics; onboarding notes pending.
 
 ## Suggested Test Coverage
 

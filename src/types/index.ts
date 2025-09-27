@@ -298,6 +298,61 @@ export interface EscortAssignment {
   threatId?: EntityId;
 }
 
+export interface AIIntentSnapshot {
+  tick: number;
+  time: number;
+  counts: Partial<Record<AIIntent, number>>;
+  total: number;
+}
+
+export interface AIShotHistogram {
+  buckets: readonly number[];
+  counts: number[];
+  total: number;
+}
+
+export interface AIInBandStats {
+  samples: number;
+  satisfied: number;
+}
+
+export interface AIInBandSummary {
+  samples: number;
+  satisfied: number;
+  ratio: number | null;
+}
+
+export interface AIInBandSummaryByHull {
+  overall: AIInBandSummary;
+  byHull: Record<ShipHull, AIInBandSummary>;
+}
+
+export interface AIFirstShotSummary {
+  samples: number;
+  p50: number | null;
+  p90: number | null;
+}
+
+export interface AIOpeningAggressionSummary {
+  total: number;
+  aggressive: number;
+  ratio: number | null;
+}
+
+export interface AIVerticalSummary {
+  samples: number;
+  aboveThreshold: number;
+  threshold: number;
+  ratio: number | null;
+}
+
+export interface AIKpiSummary {
+  firstShot: AIFirstShotSummary;
+  openingAggression: AIOpeningAggressionSummary;
+  inBand: AIInBandSummaryByHull;
+  vertical: AIVerticalSummary;
+}
+
 export interface AIManagerState {
   enabled: boolean;
   tickInterval: number;
@@ -323,6 +378,16 @@ export interface AIMetrics {
   inBandSamples: number;
   inBandSatisfied: number;
   openingAggressiveIntents: number;
+  openingTotalIntents: number;
+  firstShotTimes: number[];
+  firstShotByShip: Record<number, number>;
+  intentTimeline: AIIntentSnapshot[];
+  inBandByHull: Record<ShipHull, AIInBandStats>;
+  shotDistanceHist: Record<ShipHull, AIShotHistogram>;
+  shotDeltaYHist: Record<ShipHull, AIShotHistogram>;
+  shotVerticalThreshold: number;
+  lastAggregationTick: number;
+  kpis: AIKpiSummary;
 }
 
 export interface GameEntity extends TransformComponent {

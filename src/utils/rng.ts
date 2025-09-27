@@ -2,6 +2,10 @@ export class SeededRng {
   private state: number;
 
   constructor(seed: number) {
+    this.reset(seed);
+  }
+
+  reset(seed: number): void {
     this.state = seed >>> 0;
     if (this.state === 0) {
       this.state = 1;

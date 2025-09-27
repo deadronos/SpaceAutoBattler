@@ -12,6 +12,7 @@ import type {
 import { SeededRng } from '../utils/rng.js';
 import { spawnShip, SHIP_STATS } from './ships.js';
 import { unregisterTurret } from './turretRegistry.js';
+import { createDefaultMetrics, resetMetrics } from './metrics.js';
 import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
 
 export async function createGameState(): Promise<GameState> {
@@ -66,20 +67,7 @@ export async function createGameState(): Promise<GameState> {
       assignments: {
         escorts: new Map(),
       },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-        verticalSamples: 0,
-        verticalAboveThreshold: 0,
-        inBandSamples: 0,
-        inBandSatisfied: 0,
-        openingAggressiveIntents: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -279,6 +267,7 @@ export function resetGame(state: GameState): void {
   for (const e of [...state.world.entities]) {
     destroyEntity(state, e);
   }
+  resetMetrics(state.ai.metrics);
   // Respawn baseline fleets
   spawnInitialFleets(state);
   state.ai.cursor = 0;

@@ -1,4 +1,11 @@
 # Requirements — Star Disk Shader Integration
+## 2025-09-28 - AI KPI Instrumentation
+
+1. **WHEN** the AI records its first projectile per ship during a simulation, **THE SYSTEM SHALL** persist the shot time and emit percentile summaries (p50 ≤ 20 s, p90 ≤ 30 s) through the metrics snapshot. *(Acceptance: `test/vitest/ai-metrics.spec.ts` seeds synthetic shot events, runs `aggregateKpis`, and asserts percentile outputs plus reset semantics.)*
+2. **WHEN** intents are evaluated within the 30 s opening window, **THE SYSTEM SHALL** track Attack/Intercept decisions against total decisions so the opening aggression ratio remains ≥ 0.6. *(Acceptance: `test/vitest/ai-metrics.spec.ts` exercises `recordIntentMetrics` and verifies the computed ratio.)*
+3. **WHEN** ships reconcile desired range bands, **THE SYSTEM SHALL** accumulate overall and per-hull in-band adherence (target ≥ 0.65) for KPI gating. *(Acceptance: `test/vitest/ai-metrics.spec.ts` feeds deterministic samples into `recordBandSample` and inspects aggregated ratios.)*
+4. **WHEN** primary weapons fire with known elevation deltas, **THE SYSTEM SHALL** bucket shot distances and deltaY values per hull and report the proportion of shots with |deltaY| ≥ 100 units (target ≥ 0.25). *(Acceptance: `test/vitest/ai-metrics.spec.ts` records vertical shots and confirms histogram counters along with the vertical ratio output.)*
+
 
 ## 2025-09-26 — Main Sequence Star Shader Integration
 

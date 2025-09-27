@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
 const { selectIntent } = __aiTestHooks;
@@ -30,20 +31,7 @@ function createState(): GameState {
       cursor: 0,
       slices: 1,
       assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-        verticalSamples: 0,
-        verticalAboveThreshold: 0,
-        inBandSamples: 0,
-        inBandSatisfied: 0,
-        openingAggressiveIntents: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,

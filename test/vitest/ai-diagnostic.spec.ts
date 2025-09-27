@@ -5,6 +5,7 @@ import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import fs from 'fs';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import { createDefaultMetrics } from '../../src/game/metrics.js';
 
 // Lightweight diagnostic — prints per-ship candidate scores for a failing
 // scenario so we can see which scoring term flips the top intent.
@@ -112,20 +113,7 @@ it('diagnostic: escort + bomber + artillery scenarios candidate breakdown', () =
         tickInterval: 0.1,
         tickIndex: 1,
         assignments: { escorts: new Map() },
-        metrics: {
-          totalDecisions: 0,
-          totalSkipped: 0,
-          budgetHits: 0,
-          lastDecisions: 0,
-          lastSkipped: 0,
-          lastSliceSize: 0,
-          lastTotalShips: 0,
-          verticalSamples: 0,
-          verticalAboveThreshold: 0,
-          inBandSamples: 0,
-          inBandSatisfied: 0,
-          openingAggressiveIntents: 0,
-        },
+        metrics: createDefaultMetrics(),
       },
       blackboard: {
         tickIndex: 1,
