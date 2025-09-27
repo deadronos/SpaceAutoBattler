@@ -98,6 +98,24 @@ Proposed small improvements (low-risk):
 2. Add a CI link-check job to validate README and docs links.
 3. Add a lightweight API audit that exposes minimal test helpers for external tooling.
 
+## Deployment
+
+This project is configured to automatically deploy to GitHub Pages when a new tag is created (e.g., for releases). The deployment process:
+
+1. **Automatic deployment**: Push a git tag (e.g., `v1.0.0`) to trigger the GitHub Actions workflow
+2. **Quality gates**: The workflow runs `npm run typecheck` and `npm test` before building
+3. **Build and deploy**: Creates a production build and deploys to GitHub Pages
+4. **File handling**: Automatically copies `spaceautobattler.html` to `index.html` for proper GitHub Pages routing
+
+To create a release deployment:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The site will be available at `https://[username].github.io/SpaceAutoBattler/` after deployment completes.
+
 ## Contributing
 
 Fork the repository, create a feature branch, add tests, and open a pull request. Follow these rules:
