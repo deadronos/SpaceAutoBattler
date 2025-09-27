@@ -67,4 +67,12 @@ const DEFAULT_CONFIG = {
   animationDurationMs: 150,
   statusBadgeSize: 16,
   statusBadgeGap: 12,
+  // Opacity tunables - kept in sync with DEFAULT_HUD_HEALTH_OVERLAY_CONFIG defaults
+  overlayOpacity: 0.86,
+  barBgOpacity: 0.9,
+  fillOpacity: 1,
+  statusBadgeOpacity: 0.95,
+  // HUD offset defaults - no offset
+  hudOffsetX: 0,
+  hudOffsetY: 0,
 };

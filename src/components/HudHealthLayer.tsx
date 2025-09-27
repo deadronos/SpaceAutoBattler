@@ -132,11 +132,15 @@ export function layoutOverlays(overlays: ShipHudOverlaySnapshot[], ctx: LayoutCo
 
 function placeOverlay(overlay: ShipHudOverlaySnapshot, ctx: LayoutContext): { x: number; y: number; hidden: boolean } {
   if (!overlay.visible) {
-    return { x: overlay.x, y: overlay.y, hidden: true };
+    // Even when hidden, return coordinates adjusted by the configured HUD offset so callers
+    // see consistent screen positions for overlays.
+    return { x: overlay.x + ctx.config.hudOffsetX, y: overlay.y + ctx.config.hudOffsetY, hidden: true };
   }
   const { viewport, reserved, config } = ctx;
-  let x = overlay.x;
-  let y = overlay.y;
+  // Apply configured HUD offset (in pixels) to the overlay's reported screen coordinates.
+  // Positive x moves the HUD right; positive y moves it down.
+  let x = overlay.x + config.hudOffsetX;
+  let y = overlay.y + config.hudOffsetY;
   const dims = overlayDimensions(overlay, config);
   let box = buildBox(x, y, dims);
 
@@ -171,8 +175,13 @@ function overlayDimensions(overlay: ShipHudOverlaySnapshot, config: HudHealthOve
   const badgeCount = Math.min(MAX_BADGES, overlay.statusEffects.length);
   const overflow = overlay.statusEffects.length > badgeCount ? 1 : 0;
   const statusWidth = badgeCount + overflow > 0 ? config.statusBadgeGap + (badgeCount + overflow) * config.statusBadgeSize : 0;
-  const width = config.barWidth + statusWidth;
-  const height = config.barHeight * 2 + config.gap + 12;
+  // Include horizontal padding from the overlay (12px left + 12px right) so the placement math
+  // matches the actual rendered box width the user sees on screen.
+  const horizontalPadding = 12 + 12;
+  const width = config.barWidth + statusWidth + horizontalPadding;
+  // Include vertical padding (8px top + 8px bottom) so height matches the rendered box.
+  const verticalPadding = 8 + 8;
+  const height = config.barHeight * 2 + config.gap + verticalPadding;
   return { width, height };
 }
 

@@ -40,7 +40,14 @@ export function ShipHudOverlay({ overlay, config }: ShipHudOverlayProps): React.
   const containerStyle = useMemo(() => ({
     left: `${overlay.screen.x}px`,
     top: `${overlay.screen.y}px`,
-  }), [overlay.screen.x, overlay.screen.y]);
+    // Expose the configured bar width to the stylesheet so the outer bar element can size correctly
+    ['--hud-bar-width']: `${config.barWidth}px`,
+    // Opacity tunables for HUD visuals
+    ['--hud-overlay-opacity']: String(config.overlayOpacity),
+    ['--hud-bar-bg-opacity']: String(config.barBgOpacity),
+    ['--hud-fill-opacity']: String(config.fillOpacity),
+    ['--hud-badge-opacity']: String(config.statusBadgeOpacity),
+  }), [overlay.screen.x, overlay.screen.y, config.barWidth, config.overlayOpacity, config.barBgOpacity, config.fillOpacity, config.statusBadgeOpacity]);
 
   if (overlay.screen.hidden) {
     return null;
@@ -52,7 +59,8 @@ export function ShipHudOverlay({ overlay, config }: ShipHudOverlayProps): React.
   return (
     <div
       className={`ship-hud-overlay ship-hud-overlay--${overlay.team}`}
-      style={containerStyle}
+      // Cast to React.CSSProperties so custom properties are accepted by TypeScript
+      style={containerStyle as React.CSSProperties}
       role="group"
       aria-label={`${overlay.hull} hull ${healthPercent}% integrity${hasShield ? `, shields ${shieldPercent}%` : ''}`}
     >
@@ -84,9 +92,15 @@ function StatusEffectStrip({ effects, overflowCount }: { effects: StatusEffectVi
   return (
     <div className="ship-hud-overlay__badges" role="list">
       {effects.map((effect) => (
-        <StatusEffectBadge key={effect.tag} effect={effect} />
+        <div key={effect.tag} role="listitem">
+          <StatusEffectBadge effect={effect} />
+        </div>
       ))}
-      {overflowCount > 0 ? <StatusOverflowBadge count={overflowCount} /> : null}
+      {overflowCount > 0 ? (
+        <div role="listitem">
+          <StatusOverflowBadge count={overflowCount} />
+        </div>
+      ) : null}
     </div>
   );
 }
