@@ -43,3 +43,5 @@ Planned actions
 - Last audited: 2025-09-26
 
 - 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.
+
+- 2025-09-28: Planned TASK139 star disk haze taper follow-up — captured requirements (EARS), design doc, and task plan with error handling/testing strategy before implementation.

@@ -60,3 +60,13 @@ Execute the memory bank refresh defined in `design.md`, ensuring documentation a
 
 - Access to `src/components/Projectile.tsx`, `src/config/projectiles.ts`, and associated Vitest specs.
 - Ability to run validation commands locally (`npm run typecheck`, `npm test`, `npm run build`).
+
+---
+
+## Task 139 — Star Disk Haze Taper
+
+**Description:** Implement camera-aware haze taper for the star disk so the rim fades at grazing angles without flattening the core glow.
+
+**Expected Outcome:** Configurable haze controls wired through `CelestialEnvironmentConfig`, updated shader/material uniforms, and validation (unit + visual) confirming edge attenuation.
+
+**Dependencies:** Follow-up to TASK138; relies on existing view-alignment uniform plumbing and shader asset pipeline.

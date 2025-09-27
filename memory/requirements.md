@@ -14,6 +14,19 @@
 3. **WHEN** webpack’s TypeScript loader evaluates Vitest specs during `npm run build`, **THE SYSTEM SHALL** narrow error objects before reading their properties so compilation completes without type errors. *(Validation: `npm run build` finishes without TypeScript diagnostics.)*
 4. **WHEN** projectile geometry tests exercise React hooks, **THE SYSTEM SHALL** provide stable mocked hooks that avoid invalid dispatcher access. *(Validation: projectile geometry specs run without `Invalid hook call` failures.)*
 
+## 2025-09-27 — Star Disk View Compensation
+
+1. **WHEN** the star disk component mounts with the feature enabled, **THE SYSTEM SHALL** orient the disk geometry using the configured star light direction instead of the active camera so the facing stays deterministic. *(Validation: `test/vitest/star-disk-orientation.spec.ts` verifies the helper quaternion maps local +Z to the configured direction and falls back to identity for invalid input.)*
+2. **WHEN** the render loop advances with an active camera, **THE SYSTEM SHALL** compute a deterministic view-alignment vector per frame and push it into the star disk shader uniforms. *(Validation: `test/vitest/star-disk-material.spec.ts` exercises the new uniform update and confirms the values remain stable for mocked camera transforms.)*
+3. **WHEN** the camera observes the star disk from glancing angles, **THE SYSTEM SHALL** adjust the shader’s radial falloff using the supplied view-alignment uniform so perceived corona brightness varies by no more than 10% relative to a head-on view. *(Validation: manual camera-orbit capture recorded in the star disk Playwright regression scenario; automated tolerance tracking pending follow-up task.)*
+
+## 2025-09-28 — Star Disk Haze Taper
+
+1. **WHEN** the star disk shader evaluates corona intensity beyond the inner 75% radius, **THE SYSTEM SHALL** apply a configurable taper curve that reduces haze contribution toward zero at the plane horizon. *(Acceptance: planned `test/vitest/star-disk-haze-taper.spec.ts` asserts the fragment helper outputs a zeroed haze factor at the configured horizon threshold.)*
+2. **WHEN** the view-alignment uniform reports a facing cosine below the `edgeFadeThreshold`, **THE SYSTEM SHALL** clamp the haze multiplier so the visible rim brightness does not exceed the core brightness by more than 10%. *(Acceptance: unit test extends `test/vitest/star-disk-material.spec.ts` to validate clamped multiplier calculations with mocked facing inputs.)*
+3. **WHEN** `CelestialEnvironmentConfig.starDisk.haze` overrides the default taper strength, **THE SYSTEM SHALL** propagate the new scalar to shader uniforms within the same render frame. *(Acceptance: component test in `test/vitest/star-disk.component.spec.tsx` mutates the config and observes the updated uniform payload.)*
+4. **WHEN** shader compilation or uniform initialisation for haze taper fails, **THE SYSTEM SHALL** fall back to the prior view-compensated shader path while logging a warning and maintaining deterministic output. *(Acceptance: negative-path unit test in `test/vitest/star-disk-material.spec.ts` mocks uniform injection failure and asserts warning plus fallback behavior.)*
+
 ## EARS Statements
 
 1. **WHEN** the celestial environment renders with `features.starDisk !== false`, **THE SYSTEM SHALL** draw the star disk using the main sequence shader material anchored to `StarLight` configuration. *(Validation: visual snapshot shows shader-driven corona.)*

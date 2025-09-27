@@ -9,6 +9,7 @@ import {
   LinearMipmapLinearFilter,
   NearestFilter,
   SRGBColorSpace,
+  Quaternion,
 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
@@ -22,6 +23,12 @@ import {
   type MainSequenceStarUniformUpdate,
 } from '../../renderer/starDiskMaterial.js';
 import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../../assets/starDiskTextures.js';
+import {
+  computeStarDiskQuaternion,
+  createViewAlignmentScratch,
+  computeViewAlignment,
+  type ViewAlignment,
+} from '../../renderer/starDiskOrientation.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -45,6 +52,15 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const aspectWarnedRef = useRef(false);
   const fallbackTimeRef = useRef(0);
+  const baseQuaternion = useMemo<Quaternion>(() => computeStarDiskQuaternion(config.direction), [
+    config.direction.x,
+    config.direction.y,
+    config.direction.z,
+  ]);
+  const meshWorldPosition = useMemo(() => new Vector3(), []);
+  const viewScratch = useMemo(() => createViewAlignmentScratch(), []);
+  const viewAlignmentRef = useRef<ViewAlignment>({ x: 0, y: 0, z: 1 });
+
   const gameState = useOptionalGameState();
   const { gl } = useThree();
   const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<StarDiskTextureKey, Texture | undefined>;
@@ -71,6 +87,14 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
       noiseTexture.needsUpdate = true;
     }
   }, [gl, organicTexture, noiseTexture]);
+
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh || typeof (mesh.quaternion as unknown as { copy?: unknown })?.copy !== 'function') {
+      return;
+    }
+    mesh.quaternion.copy(baseQuaternion);
+  }, [baseQuaternion]);
 
   // Local offset from the parent (StarLight group's origin). When parented, this is the disk's local position.
   const localOffset = useMemo(() => {
@@ -111,14 +135,14 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     if (!enabled) {
       return;
     }
-    const { camera, viewport } = state;
-    if (meshRef.current) {
-      meshRef.current.lookAt(camera.position);
-    }
     const mat = shaderMaterialRef.current;
     if (!mat) {
       return;
     }
+
+    const { camera, viewport } = state;
+    const mesh = meshRef.current;
+    const meshQuaternion = mesh?.quaternion ?? null;
     const sim = gameState?.simulation;
     let elapsed: number;
     if (sim) {
@@ -142,15 +166,32 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
         height: Number.isFinite(height) && height > 0 ? height : 1,
       },
     };
-    // Camera roll around the view direction is the Z component of Euler rotation in Three.js
-    // when using default XYZ order and typical camera controls (OrbitControls). Clamp NaN.
+
+    const alignment = viewAlignmentRef.current;
+    alignment.x = 0;
+    alignment.y = 0;
+    alignment.z = 1;
+    const cameraPosition = (camera as { position?: Vector3 }).position;
+    if (
+      mesh &&
+      meshQuaternion &&
+      cameraPosition &&
+      Number.isFinite(cameraPosition.x) &&
+      Number.isFinite(cameraPosition.y) &&
+      Number.isFinite(cameraPosition.z)
+    ) {
+      mesh.updateMatrixWorld();
+      meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
+      computeViewAlignment(meshQuaternion, meshWorldPosition, cameraPosition, viewScratch, alignment);
+    }
+    uniformUpdate.viewAlignment = alignment;
+
     const roll = (camera as any).rotation?.z as number | undefined;
     if (typeof roll === 'number' && Number.isFinite(roll)) {
       uniformUpdate.cameraRoll = roll;
     } else {
       uniformUpdate.cameraRoll = 0;
     }
-    // Star-fixed north: keep inner content stable; could be animated using environment star spin later.
     uniformUpdate.starNorth = 0;
     if (organicTexture) {
       uniformUpdate.organic = organicTexture;

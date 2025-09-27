@@ -28,6 +28,8 @@ export interface MainSequenceStarUniformUpdate {
   cameraRoll?: number;
   /** Star-fixed north angle in radians for inner-UV orientation (0 aligns to +U axis). */
   starNorth?: number;
+  /** Camera-to-disk alignment encoded as (planeX, planeY, facingCos). */
+  viewAlignment?: { x: number; y: number; z: number };
 }
 
 const DEFAULT_RESOLUTION = new Vector3(1, 1, 1);
@@ -101,6 +103,7 @@ interface MainSequenceUniformMap {
   iChannel1: { value: Texture };
   iCameraRoll: { value: number };
   iStarNorth: { value: number };
+  iViewAlignment: { value: Vector3 };
 }
 
 export function createMainSequenceStarMaterial(options: MainSequenceStarMaterialOptions): ShaderMaterial {
@@ -120,6 +123,7 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
       iChannel1: { value: noiseTexture },
       iCameraRoll: { value: 0 },
       iStarNorth: { value: 0 },
+      iViewAlignment: { value: new Vector3(0, 0, 1) },
     },
   });
 
@@ -150,6 +154,13 @@ export function updateMainSequenceStarUniforms(
   if (update.starNorth !== undefined) {
     const v = Number.isFinite(update.starNorth as number) ? (update.starNorth as number) : 0;
     uniforms.iStarNorth.value = v;
+  }
+  if (update.viewAlignment !== undefined) {
+    const safeX = Number.isFinite(update.viewAlignment.x) ? update.viewAlignment.x : 0;
+    const safeY = Number.isFinite(update.viewAlignment.y) ? update.viewAlignment.y : 0;
+    const safeZRaw = Number.isFinite(update.viewAlignment.z) ? update.viewAlignment.z : 1;
+    const safeZ = Math.min(Math.max(safeZRaw, 0), 1);
+    uniforms.iViewAlignment.value.set(safeX, safeY, safeZ);
   }
 }
 

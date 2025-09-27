@@ -5,6 +5,7 @@ Current focuses (short-term):
 - Lock in the celestial environment baseline: star disk billboard, rim-glow shader, parallax billboards, and lighting balance driven by `CELESTIAL_ENVIRONMENT`.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
+- Shape the star disk haze taper so the rim fades at grazing angles without flattening the core glow; propagate new config settings and shader uniforms per TASK139.
 
 Recent changes:
 
@@ -24,6 +25,7 @@ Recent changes:
 - Added `usePlanetTexture` hook with SRGB/anisotropy handling, deterministic rotation based on simulation time, and feature toggles (star disk, billboards, rims).
 - Integrated solar-corona star disk shader with deterministic uniforms, GLSL asset pipeline, and Vitest coverage for material lifecycle.
 - Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
+- Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
 
 Next steps:
 
@@ -35,6 +37,7 @@ Next steps:
 - Refresh Playwright/visual baselines to cover the texture-enhanced star disk once art direction is approved.
 - Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
+- Implement haze taper shader changes, unit coverage, and config wiring per TASK139 design, then validate via `npm run typecheck`, `npm test`, and updated visual captures.
 
 - 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
 

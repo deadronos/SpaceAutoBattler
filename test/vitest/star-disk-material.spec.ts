@@ -14,6 +14,7 @@ const extractUniforms = (material: ShaderMaterial) =>
     iChannel1: { value: Texture };
     iCameraRoll: { value: number };
     iStarNorth: { value: number };
+    iViewAlignment: { value: { x: number; y: number; z: number } };
   };
 
 describe('createMainSequenceStarMaterial', () => {
@@ -39,6 +40,9 @@ describe('createMainSequenceStarMaterial', () => {
     expect(uniforms.iChannel1.value.name).toBe('TestNoise');
     expect(uniforms.iCameraRoll.value).toBe(0);
     expect(uniforms.iStarNorth.value).toBe(0);
+    expect(uniforms.iViewAlignment.value.x).toBe(0);
+    expect(uniforms.iViewAlignment.value.y).toBe(0);
+    expect(uniforms.iViewAlignment.value.z).toBe(1);
     expect(material.fragmentShader).toContain('void main()');
   });
 
@@ -67,6 +71,7 @@ describe('updateMainSequenceStarUniforms', () => {
       noise,
       cameraRoll: Math.PI / 4,
       starNorth: Math.PI / 6,
+      viewAlignment: { x: 0.6, y: -0.8, z: 0.75 },
     });
 
     expect(uniforms.iTime.value).toBe(42.5);
@@ -78,6 +83,9 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iChannel1.value.name).toBe('UpdatedNoise');
     expect(uniforms.iCameraRoll.value).toBeCloseTo(Math.PI / 4);
     expect(uniforms.iStarNorth.value).toBeCloseTo(Math.PI / 6);
+    expect(uniforms.iViewAlignment.value.x).toBeCloseTo(0.6);
+    expect(uniforms.iViewAlignment.value.y).toBeCloseTo(-0.8);
+    expect(uniforms.iViewAlignment.value.z).toBeCloseTo(0.75);
   });
 
   it('clamps non-finite resolution inputs and reuses fallback textures', () => {
@@ -99,12 +107,16 @@ describe('updateMainSequenceStarUniforms', () => {
       noise: null,
       cameraRoll: Number.NaN,
       starNorth: Number.NaN,
+      viewAlignment: { x: Number.POSITIVE_INFINITY, y: Number.NaN, z: 2 },
     });
 
     expect(uniforms.iChannel0.value.name).toBe('MainSequenceOrganicFallback');
     expect(uniforms.iChannel1.value.name).toBe('MainSequenceNoiseFallback');
     expect(uniforms.iCameraRoll.value).toBe(0);
     expect(uniforms.iStarNorth.value).toBe(0);
+    expect(uniforms.iViewAlignment.value.x).toBe(0);
+    expect(uniforms.iViewAlignment.value.y).toBe(0);
+    expect(uniforms.iViewAlignment.value.z).toBe(1);
   });
 });
 
