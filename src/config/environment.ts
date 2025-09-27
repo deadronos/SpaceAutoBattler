@@ -68,6 +68,15 @@ export interface StarDiskHazeConfig {
   edgeExponent?: number;
 }
 
+export interface StarDiskBoundaryConfig {
+  /** Normalized radius (0-1) where boundary feathering begins. */
+  featherStart?: number;
+  /** Exponent controlling falloff steepness near the rim. */
+  featherExponent?: number;
+  /** Minimum alpha multiplier preserved at the rim. */
+  alphaFloor?: number;
+}
+
 export interface StarDiskConfig {
   /** Billboard radius in world units; higher values make the sun larger on screen. */
   size?: number;
@@ -77,6 +86,8 @@ export interface StarDiskConfig {
   distanceMultiplier?: number;
   /** Optional haze taper controls for rim falloff. */
   haze?: StarDiskHazeConfig;
+  /** Optional boundary feather configuration for alpha roll-off. */
+  boundary?: StarDiskBoundaryConfig;
 }
 
 export interface CelestialEnvironmentConfig {
@@ -179,12 +190,17 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   // Default star disk settings — tune here to change size/opacity/position globally
   starDisk: {
     size: 12000,
-    opacity: 1.0,
+    opacity: 0.9,
     distanceMultiplier: 1.0,
     haze: {
       taperStrength: 0.85,
       edgeFadeThreshold: 0.3,
       edgeExponent: 2.0,
+    },
+    boundary: {
+      featherStart: 0.88,
+      featherExponent: 2.4,
+      alphaFloor: 0.02,
     },
   },
   features: {

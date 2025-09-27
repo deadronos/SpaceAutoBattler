@@ -27,6 +27,14 @@
 3. **WHEN** `CelestialEnvironmentConfig.starDisk.haze` overrides the default taper strength, **THE SYSTEM SHALL** propagate the new scalar to shader uniforms within the same render frame. *(Acceptance: component test in `test/vitest/star-disk.component.spec.tsx` mutates the config and observes the updated uniform payload.)*
 4. **WHEN** shader compilation or uniform initialisation for haze taper fails, **THE SYSTEM SHALL** fall back to the prior view-compensated shader path while logging a warning and maintaining deterministic output. *(Acceptance: negative-path unit test in `test/vitest/star-disk-material.spec.ts` mocks uniform injection failure and asserts warning plus fallback behavior.)*
 
+## 2025-09-27 — Star Disk Boundary Feather
+
+1. **WHEN** the star disk boundary feather radius decreases via configuration, **THE SYSTEM SHALL** drive the fragment alpha below 0.01 before the billboard radius to avoid a hard edge. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` samples the shader helper and asserts the alpha falls below the target threshold at the configured radius.)*
+2. **WHEN** boundary feathering is disabled (radius ≥ 0.999 or alpha floor ≥ 0.99), **THE SYSTEM SHALL** match the legacy alpha output within 1% tolerance. *(Acceptance: `test/vitest/star-disk-material.spec.ts` compares the resulting uniform vector against the legacy baseline and confirms the legacy curve.)*
+3. **WHEN** runtime configuration hot-reloads, **THE SYSTEM SHALL** update the boundary feather uniforms on the next frame without re-instantiating the material. *(Acceptance: `test/vitest/star-disk.component.spec.tsx` mutates the environment config and expects the uniforms to change in place.)*
+4. **WHEN** the camera approaches a grazing angle, **THE SYSTEM SHALL** clamp feather calculations to finite numbers and avoid NaNs. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` feeds extreme facing values through the uniform updater and asserts finite vector components.)*
+5. **WHEN** the feather exponent increases, **THE SYSTEM SHALL** maintain a continuous alpha derivative across the curve to prevent banding. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` samples contiguous radii and checks monotonic decrease without discontinuities.)*
+
 ## EARS Statements
 
 1. **WHEN** the celestial environment renders with `features.starDisk !== false`, **THE SYSTEM SHALL** draw the star disk using the main sequence shader material anchored to `StarLight` configuration. *(Validation: visual snapshot shows shader-driven corona.)*
