@@ -22,7 +22,6 @@
     "lint": "eslint \"src/**/*.{ts,js}\" --ext .ts --ext .js",
     "lint:fix": "eslint \"src/**/*.{ts,js}\" --ext .ts --ext .js --fix",
     "format": "prettier --write \"**/*.{ts,js,json,css,md}\"",
-    "generate-memories": "node ./scripts/generate_memories.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "perf:ai-budget": "tsx ./scripts/perf/assert-ai-budget.ts",
     "build:deploy": "npm run typecheck && npm test && npm run build && cp dist/spaceautobattler.html dist/index.html"
