@@ -100,7 +100,16 @@ Proposed small improvements (low-risk):
 
 ## Deployment
 
-This project is configured to automatically deploy to GitHub Pages when a new tag is created (e.g., for releases). The deployment process:
+This project is configured to automatically deploy to GitHub Pages when a new tag is created (e.g., for releases).
+
+### Initial Setup
+
+Repository owners need to enable GitHub Pages:
+1. Go to repository Settings → Pages
+2. Set Source to "GitHub Actions"
+3. No additional configuration needed
+
+### Deployment Process
 
 1. **Automatic deployment**: Push a git tag (e.g., `v1.0.0`) to trigger the GitHub Actions workflow
 2. **Quality gates**: The workflow runs `npm run typecheck` and `npm test` before building
@@ -115,6 +124,15 @@ git push origin v1.0.0
 ```
 
 The site will be available at `https://[username].github.io/SpaceAutoBattler/` after deployment completes.
+
+### Local Testing
+
+Test the deployment build process locally:
+
+```powershell
+npm run build:deploy
+npm run serve
+```
 
 ## Contributing
 
