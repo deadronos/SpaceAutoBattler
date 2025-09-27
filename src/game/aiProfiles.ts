@@ -13,6 +13,9 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
       frigate: 5,
     },
     style: 'brawler',
+    verticalManeuver: 0.25,
+    elevationPreference: 'follow',
+    bandPreference: 'mid',
     gates: {
       hpRetreatPct: 0.25,
     },
@@ -28,6 +31,9 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
       carrier: 12,
     },
     style: 'kiter',
+    verticalManeuver: 0.2,
+    elevationPreference: 'follow',
+    bandPreference: 'outer',
     gates: {
       hpRetreatPct: 0.35,
     },
@@ -43,6 +49,9 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
       corvette: 10,
     },
     style: 'escort',
+    verticalManeuver: 0.38,
+    elevationPreference: 'follow',
+    bandPreference: 'mid',
     gates: {
       hpRetreatPct: 0.3,
     },
@@ -58,6 +67,9 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
       destroyer: 15,
     },
     style: 'artillery',
+    verticalManeuver: 0.18,
+    elevationPreference: 'above',
+    bandPreference: 'outer',
     gates: {
       hpRetreatPct: 0.4,
     },
