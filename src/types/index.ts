@@ -162,7 +162,7 @@ export interface MuzzleFlash {
 export interface ExplosionEvent {
   id: number;
   seed: number;
-  faction: 'alliance' | 'ravers';
+  faction: 'alliance' | 'reavers';
   hull: ShipHull;
   position: Vector3;
   radius: number;
@@ -199,6 +199,13 @@ export interface ExplosionConfigEntry {
     shockwave: string;
     fireballHot: string;
     smoke: string;
+  };
+  timing: {
+    duration: number;
+    lightDuration: number;
+    shockwave: { delay: number; duration: number };
+    fireball: { delay: number; duration: number };
+    debrisSpeed: [number, number];
   };
 }
 

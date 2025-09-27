@@ -15,6 +15,8 @@ export function Controls(): React.ReactElement {
   const toggleAiDebug = useUiStore((s) => s.toggleAiDebug);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
   const toggleHudHealthBars = useUiStore((s) => s.toggleHudHealthBars);
+  const explosionDebugEnabled = useUiStore((s) => s.explosionDebugEnabled);
+  const toggleExplosionDebug = useUiStore((s) => s.toggleExplosionDebug);
 
   const addShip = (team: 'red' | 'blue') => {
     if (!state) return;
@@ -45,6 +47,12 @@ export function Controls(): React.ReactElement {
         title="Toggle AI debug overlay (requires AI V2)"
       >
         AI Debug: {aiDebugEnabled ? 'On' : 'Off'}
+      </button>
+      <button
+        onClick={toggleExplosionDebug}
+        title="Toggle explosion debug info (shows timing parameters)"
+      >
+        Explosion Debug: {explosionDebugEnabled ? 'On' : 'Off'}
       </button>
       <div className="speed">
         <label htmlFor="speedSelect">Speed:</label>
