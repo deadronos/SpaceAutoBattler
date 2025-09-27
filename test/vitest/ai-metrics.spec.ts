@@ -130,6 +130,66 @@ describe('AI metrics aggregation', () => {
 });
 
 function createStubState(): GameState {
+  const ships: ShipEntity[] = [];
+  const projectiles: unknown[] = [];
+  let colliderHandle = 1;
+
+  const rapierStub = {
+    RigidBodyDesc: {
+      kinematicPositionBased: () => ({
+        translation: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        setTranslation(x: number, y: number, z: number) {
+          this.translation = { x, y, z };
+          return this;
+        },
+        setRotation(rotation: { x: number; y: number; z: number; w: number }) {
+          this.rotation = { ...rotation };
+          return this;
+        },
+      }),
+    },
+    ColliderDesc: {
+      ball: (radius: number) => ({
+        radius,
+        setActiveEvents() {
+          return this;
+        },
+        setActiveCollisionTypes() {
+          return this;
+        },
+      }),
+    },
+    ActiveEvents: { COLLISION_EVENTS: 0 },
+    ActiveCollisionTypes: { ALL: 0 },
+  };
+
+  const physicsWorldStub = {
+    createRigidBody: (desc: { translation: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number; w: number } }) => ({
+      translation: () => ({ ...desc.translation }),
+      rotation: () => ({ ...desc.rotation }),
+      setNextKinematicTranslation: () => undefined,
+      setNextKinematicRotation: () => undefined,
+    }),
+    createCollider: (desc: { radius?: number }, body: unknown) => ({
+      handle: colliderHandle++,
+      radius: desc.radius ?? 0,
+      body,
+    }),
+  };
+
+  const worldStub = {
+    entities: ships,
+    createEntity: (entity: unknown) => {
+      projectiles.push(entity);
+      return entity;
+    },
+    destroyEntity: (entity: unknown) => {
+      const index = projectiles.indexOf(entity);
+      if (index >= 0) projectiles.splice(index, 1);
+    },
+  };
+
   return {
     ai: {
       enabled: true,
@@ -151,18 +211,21 @@ function createStubState(): GameState {
       tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
       strengthRatio: { blue: 1, red: 1 },
     },
-    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
-    world: {} as never,
-    physicsWorld: {} as never,
+    queries: {
+      ships: { entities: ships },
+      projectiles: { entities: projectiles },
+      turrets: { entities: [] },
+    },
+    world: worldStub as unknown as GameState['world'],
+    physicsWorld: physicsWorldStub as unknown as GameState['physicsWorld'],
     eventQueue: {} as never,
     colliderLookup: new Map(),
-    rapier: {} as never,
+    rapier: rapierStub as unknown as GameState['rapier'],
     nextEntityId: 1,
     time: 5,
     rng: {} as never,
     paused: false,
     timeScale: 1,
-    uiFlags: { hudHealthBars: false },
     simulation: {
       step: 1 / 20,
       accumulator: 0,

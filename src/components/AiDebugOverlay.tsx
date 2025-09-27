@@ -130,7 +130,7 @@ export function AiDebugOverlay(): React.ReactElement | null {
           {kpis.inBand.overall.samples})
         </span>
         <span>
-          Vertical deltaY >= {Math.round(kpis.vertical.threshold)}: {formatPercent(kpis.vertical.ratio)} (
+          Vertical deltaY &gt;= {Math.round(kpis.vertical.threshold)}: {formatPercent(kpis.vertical.ratio)} (
           {kpis.vertical.aboveThreshold}/{kpis.vertical.samples})
         </span>
       </div>

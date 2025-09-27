@@ -156,11 +156,9 @@ export function recordIntentMetrics(
   snapshot.total += 1;
   snapshot.counts[intent] = (snapshot.counts[intent] ?? 0) + 1;
 
-  if (isOpeningWindow) {
-    metrics.openingTotalIntents += 1;
-    if (intent === 'Attack' || intent === 'Intercept') {
-      metrics.openingAggressiveIntents += 1;
-    }
+  metrics.openingTotalIntents += 1;
+  if (isOpeningWindow && (intent === 'Attack' || intent === 'Intercept')) {
+    metrics.openingAggressiveIntents += 1;
   }
 }
 
@@ -259,10 +257,7 @@ function addToHistogram(hist: AIShotHistogram, value: number): void {
 function percentile(sortedValues: number[], p: number): number {
   if (sortedValues.length === 0) return 0;
   if (sortedValues.length === 1) return sortedValues[0];
-  const target = (sortedValues.length - 1) * p;
-  const lower = Math.floor(target);
-  const upper = Math.ceil(target);
-  const weight = target - lower;
-  if (lower === upper) return sortedValues[lower];
-  return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * weight;
+  const clamped = Math.max(0, Math.min(1, p));
+  const index = Math.floor((sortedValues.length - 1) * clamped);
+  return sortedValues[index];
 }

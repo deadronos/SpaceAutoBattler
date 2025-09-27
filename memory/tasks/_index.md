@@ -6,12 +6,12 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- _None tracked._
-
+_None tracked._
 
 ## Completed
 
 - [TASK143](TASK143-design-ai-improvement-v0.1.1.md) — Implement AI Improvement v0.1.1 vertical engagement, spawn, and range updates per design memo.
+- [TASK144](TASK144-ai-metrics-resilience.md) — Restored percentile helper, Rapier shims, and AI scenario metrics fixtures; `npm test` passes.
 - [TASK142](TASK142-ship-kill-explosionfx.md) — Implement ship kill explosion FX pipeline across simulation, config, renderer, and tests per design memo.
 
 - [TASK141](TASK141-hud-health-overlays.md) — Implemented HUD health overlays with deterministic easing, occlusion safeguards, and Vitest coverage.

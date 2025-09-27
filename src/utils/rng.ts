@@ -1,5 +1,5 @@
 export class SeededRng {
-  private state: number;
+  private state = 1;
 
   constructor(seed: number) {
     this.reset(seed);

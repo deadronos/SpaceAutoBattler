@@ -597,5 +597,290 @@
         }
       ]
     }
-  ]
+  ],
+  "metrics": {
+    "kpis": {
+      "firstShot": {
+        "samples": 0,
+        "p50": null,
+        "p90": null
+      },
+      "openingAggression": {
+        "total": 20,
+        "aggressive": 20,
+        "ratio": 1
+      },
+      "inBand": {
+        "overall": {
+          "samples": 0,
+          "satisfied": 0,
+          "ratio": null
+        },
+        "byHull": {
+          "fighter": {
+            "samples": 0,
+            "satisfied": 0,
+            "ratio": null
+          },
+          "corvette": {
+            "samples": 0,
+            "satisfied": 0,
+            "ratio": null
+          },
+          "frigate": {
+            "samples": 0,
+            "satisfied": 0,
+            "ratio": null
+          },
+          "destroyer": {
+            "samples": 0,
+            "satisfied": 0,
+            "ratio": null
+          },
+          "carrier": {
+            "samples": 0,
+            "satisfied": 0,
+            "ratio": null
+          }
+        }
+      },
+      "vertical": {
+        "samples": 0,
+        "aboveThreshold": 0,
+        "threshold": 100,
+        "ratio": null
+      }
+    },
+    "firstShotTimes": [],
+    "intentTimeline": [
+      {
+        "tick": 1,
+        "time": 0,
+        "counts": {
+          "Intercept": 3,
+          "Attack": 1
+        },
+        "total": 4
+      },
+      {
+        "tick": 2,
+        "time": 0.1,
+        "counts": {
+          "Intercept": 1,
+          "Attack": 1
+        },
+        "total": 2
+      },
+      {
+        "tick": 3,
+        "time": 0.2,
+        "counts": {
+          "Intercept": 3,
+          "Attack": 1
+        },
+        "total": 4
+      },
+      {
+        "tick": 4,
+        "time": 0.30000000000000004,
+        "counts": {
+          "Intercept": 2,
+          "Attack": 1
+        },
+        "total": 3
+      },
+      {
+        "tick": 5,
+        "time": 0.4,
+        "counts": {
+          "Intercept": 3,
+          "Attack": 1
+        },
+        "total": 4
+      },
+      {
+        "tick": 6,
+        "time": 0.5,
+        "counts": {
+          "Intercept": 2,
+          "Attack": 1
+        },
+        "total": 3
+      }
+    ],
+    "shotDistance": {
+      "fighter": {
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "corvette": {
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "frigate": {
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "destroyer": {
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "carrier": {
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      }
+    },
+    "shotDeltaY": {
+      "fighter": {
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "corvette": {
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "frigate": {
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "destroyer": {
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      },
+      "carrier": {
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0
+      }
+    }
+  }
 }
