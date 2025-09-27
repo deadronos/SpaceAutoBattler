@@ -13,7 +13,7 @@ import {
 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig } from '../../config/environment.js';
+import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useOptionalGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import {
@@ -42,15 +42,18 @@ interface StarDiskProps {
   enabled?: boolean;
   /** Optional haze taper configuration overriding environment defaults. */
   haze?: StarDiskHazeConfig;
+  /** Optional boundary feather configuration overriding environment defaults. */
+  boundary?: StarDiskBoundaryConfig;
 }
 
-export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = true, haze }: StarDiskProps): React.ReactElement | null {
+export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = true, haze, boundary }: StarDiskProps): React.ReactElement | null {
   // Allow defaults to be supplied via the environment config when not passed explicitly
   const env = (globalThis as unknown as { __CELESTIAL__?: CelestialEnvironmentConfig }).__CELESTIAL__;
   const defaultSize = size ?? env?.starDisk?.size ?? 800;
   const defaultOpacity = opacity ?? env?.starDisk?.opacity ?? 0.12;
   const defaultDistanceMultiplier = distanceMultiplier ?? env?.starDisk?.distanceMultiplier ?? 0.8;
   const fallbackHaze = env?.starDisk?.haze;
+  const fallbackBoundary = env?.starDisk?.boundary;
   const meshRef = useRef<Mesh>(null);
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const aspectWarnedRef = useRef(false);
@@ -80,6 +83,25 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     fallbackHaze?.taperStrength,
     fallbackHaze?.edgeFadeThreshold,
     fallbackHaze?.edgeExponent,
+  ]);
+
+  const boundaryConfig = useMemo<MainSequenceStarUniformUpdate['boundary']>(() => {
+    const source = boundary ?? fallbackBoundary;
+    if (!source) {
+      return undefined;
+    }
+    return {
+      featherStart: source.featherStart,
+      featherExponent: source.featherExponent,
+      alphaFloor: source.alphaFloor,
+    };
+  }, [
+    boundary?.featherStart,
+    boundary?.featherExponent,
+    boundary?.alphaFloor,
+    fallbackBoundary?.featherStart,
+    fallbackBoundary?.featherExponent,
+    fallbackBoundary?.alphaFloor,
   ]);
 
   const gameState = useOptionalGameState();
@@ -209,6 +231,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     if (hazeConfig) {
       uniformUpdate.haze = hazeConfig;
     }
+    uniformUpdate.boundary = boundaryConfig;
 
     const roll = (camera as any).rotation?.z as number | undefined;
     if (typeof roll === 'number' && Number.isFinite(roll)) {

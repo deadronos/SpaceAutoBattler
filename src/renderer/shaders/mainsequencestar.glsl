@@ -16,6 +16,7 @@ uniform float iStarNorth;
 // Camera alignment: X/Y encode projected direction on the disk plane, Z is facing cosine.
 uniform vec3 iViewAlignment;
 uniform vec3 iHazeParams;
+uniform vec4 iBoundaryFeather;
 
 // Geometry-provided UVs for the billboard (stable in object space)
 varying vec2 vUv;
@@ -54,6 +55,23 @@ float hazeTaper(vec2 planeCoords)
   return mix(1.0, hazeFade, rimWeight);
 }
 
+float boundaryFeather(vec2 planeCoords)
+{
+  float disableStart = iBoundaryFeather.x;
+  float disableFloor = iBoundaryFeather.z;
+  if (disableStart >= 0.999 || disableFloor >= 0.999) {
+    return 1.0;
+  }
+  float radius = clamp(length(planeCoords), 0.0, 1.0);
+  float featherStart = clamp(iBoundaryFeather.x, 0.6, 0.999);
+  float exponent = max(iBoundaryFeather.y, 0.5);
+  float alphaFloor = clamp(iBoundaryFeather.z, 0.0, 1.0);
+  float rimMix = smoothstep(featherStart, 1.0, radius);
+  float t = pow(clamp(rimMix, 0.0, 1.0), exponent);
+  float feather = mix(1.0, alphaFloor, t);
+  return clamp(feather, 0.0, 1.0);
+}
+
 float freqs[4];
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
@@ -86,6 +104,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec2 tangentAxis = vec2(-viewAxis.y, viewAxis.x);
 	vec2 compensatedPlane = tangentAxis * dot(planeAligned, tangentAxis) + viewAxis * (dot(planeAligned, viewAxis) / safeCos);
 	float hazeAttenuation = hazeTaper(compensatedPlane);
+	float boundaryAttenuation = boundaryFeather(compensatedPlane);
 
 	vec2 p = compensatedPlane * 0.5;
 	float fade		= pow( length( 2.0 * p ), 0.5 );
@@ -137,8 +156,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	corona *= viewBoost;
 	starGlow *= viewBoost;
 	starSphere *= mix(0.7, 1.0, facingCos);
-	fragColor.rgb	= vec3( f * ( 0.75 + brightness * 0.3 ) * orange ) + starSphere + corona * orange + starGlow * orangeRed;
-	fragColor.a		= 1.0;
+	vec3 diskCore = vec3( f * ( 0.75 + brightness * 0.3 ) * orange ) + starSphere;
+	vec3 haloColor = corona * orange + starGlow * orangeRed;
+	vec3 attenuatedColor = (diskCore + haloColor) * boundaryAttenuation;
+	fragColor.rgb	= attenuatedColor;
+	fragColor.a		= boundaryAttenuation;
 }
 
 void main() {

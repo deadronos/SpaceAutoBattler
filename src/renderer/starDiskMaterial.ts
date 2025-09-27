@@ -10,6 +10,7 @@ import {
   Texture,
   UnsignedByteType,
   Vector3,
+  Vector4,
 } from 'three';
 import fragmentShader from './shaders/mainsequencestar.glsl';
 import vertexShader from './shaders/starDisk.vertex.glsl';
@@ -24,6 +25,19 @@ export interface StarDiskHazeUniformResult {
   fade: number;
   edgeThreshold: number;
   edgeExponent: number;
+}
+
+export interface StarDiskBoundaryUniformInput {
+  featherStart?: number;
+  featherExponent?: number;
+  alphaFloor?: number;
+}
+
+export interface StarDiskBoundaryUniformResult {
+  start: number;
+  exponent: number;
+  alphaFloor: number;
+  reserved: number;
 }
 
 export interface MainSequenceStarMaterialOptions {
@@ -44,9 +58,30 @@ export interface MainSequenceStarUniformUpdate {
   viewAlignment?: { x: number; y: number; z: number };
   /** Optional haze taper configuration controlling rim attenuation. */
   haze?: StarDiskHazeUniformInput;
+  /** Optional boundary feather settings for alpha fade near the rim. */
+  boundary?: StarDiskBoundaryUniformInput;
 }
 
 const DEFAULT_RESOLUTION = new Vector3(1, 1, 1);
+
+const DEFAULT_BOUNDARY_SETTINGS: Required<StarDiskBoundaryUniformInput> = Object.freeze({
+  featherStart: 0.92,
+  featherExponent: 2,
+  alphaFloor: 0,
+});
+
+const LEGACY_BOUNDARY_SETTINGS = Object.freeze({
+  start: 0.999,
+  exponent: 1,
+  alphaFloor: 1,
+});
+
+const DEFAULT_BOUNDARY_VECTOR = new Vector4(
+  DEFAULT_BOUNDARY_SETTINGS.featherStart,
+  DEFAULT_BOUNDARY_SETTINGS.featherExponent,
+  DEFAULT_BOUNDARY_SETTINGS.alphaFloor,
+  0,
+);
 
 const FALLBACK_ORGANIC = (() => {
   const data = new Uint8Array([
@@ -119,6 +154,7 @@ interface MainSequenceUniformMap {
   iStarNorth: { value: number };
   iViewAlignment: { value: Vector3 };
   iHazeParams: { value: Vector3 };
+  iBoundaryFeather: { value: Vector4 };
 }
 
 const DEFAULT_HAZE_SETTINGS: Required<StarDiskHazeUniformInput> = Object.freeze({
@@ -128,6 +164,41 @@ const DEFAULT_HAZE_SETTINGS: Required<StarDiskHazeUniformInput> = Object.freeze(
 });
 
 const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
+
+export function deriveBoundaryUniform(input?: StarDiskBoundaryUniformInput): StarDiskBoundaryUniformResult {
+  const disableByStart = Number.isFinite(input?.featherStart as number)
+    && (input?.featherStart as number) >= 0.999;
+  const disableByFloor = Number.isFinite(input?.alphaFloor as number)
+    && (input?.alphaFloor as number) >= 0.99;
+  if (disableByStart || disableByFloor) {
+    return {
+      start: LEGACY_BOUNDARY_SETTINGS.start,
+      exponent: LEGACY_BOUNDARY_SETTINGS.exponent,
+      alphaFloor: LEGACY_BOUNDARY_SETTINGS.alphaFloor,
+      reserved: 0,
+    };
+  }
+
+  const rawStart = Number.isFinite(input?.featherStart as number)
+    ? (input?.featherStart as number)
+    : DEFAULT_BOUNDARY_SETTINGS.featherStart;
+  const start = Math.min(Math.max(rawStart, 0.6), 0.999);
+  const rawExponent = Number.isFinite(input?.featherExponent as number)
+    ? (input?.featherExponent as number)
+    : DEFAULT_BOUNDARY_SETTINGS.featherExponent;
+  const exponent = Math.min(Math.max(rawExponent, 0.5), 6);
+  const rawFloor = Number.isFinite(input?.alphaFloor as number)
+    ? (input?.alphaFloor as number)
+    : DEFAULT_BOUNDARY_SETTINGS.alphaFloor;
+  const alphaFloor = Math.min(Math.max(rawFloor, 0), 0.3);
+
+  return {
+    start,
+    exponent,
+    alphaFloor,
+    reserved: 0,
+  };
+}
 
 export function deriveHazeUniform(
   facingCos: number,
@@ -178,6 +249,7 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
       iStarNorth: { value: 0 },
       iViewAlignment: { value: new Vector3(0, 0, 1) },
       iHazeParams: { value: new Vector3(1, DEFAULT_HAZE_SETTINGS.edgeFadeThreshold, DEFAULT_HAZE_SETTINGS.edgeExponent) },
+      iBoundaryFeather: { value: DEFAULT_BOUNDARY_VECTOR.clone() },
     },
   });
 
@@ -219,6 +291,8 @@ export function updateMainSequenceStarUniforms(
   const facingCosine = uniforms.iViewAlignment.value.z;
   const hazeParams = deriveHazeUniform(facingCosine, update.haze);
   uniforms.iHazeParams.value.set(hazeParams.fade, hazeParams.edgeThreshold, hazeParams.edgeExponent);
+  const boundaryParams = deriveBoundaryUniform(update.boundary);
+  uniforms.iBoundaryFeather.value.set(boundaryParams.start, boundaryParams.exponent, boundaryParams.alphaFloor, boundaryParams.reserved);
 }
 
 export function disposeMainSequenceStarMaterial(material: ShaderMaterial | null): void {

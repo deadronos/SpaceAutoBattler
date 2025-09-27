@@ -16,6 +16,7 @@ const extractUniforms = (material: ShaderMaterial) =>
     iStarNorth: { value: number };
     iViewAlignment: { value: { x: number; y: number; z: number } };
     iHazeParams: { value: { x: number; y: number; z: number } };
+    iBoundaryFeather: { value: { x: number; y: number; z: number; w: number } };
   };
 
 describe('createMainSequenceStarMaterial', () => {
@@ -47,6 +48,10 @@ describe('createMainSequenceStarMaterial', () => {
     expect(uniforms.iHazeParams.value.x).toBe(1);
     expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.3);
     expect(uniforms.iHazeParams.value.z).toBeCloseTo(2);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(2, 2);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0, 3);
+    expect(uniforms.iBoundaryFeather.value.w).toBe(0);
     expect(material.fragmentShader).toContain('void main()');
   });
 
@@ -56,6 +61,7 @@ describe('createMainSequenceStarMaterial', () => {
 
     expect(uniforms.iChannel0.value.name).toBe('MainSequenceOrganicFallback');
     expect(uniforms.iChannel1.value.name).toBe('MainSequenceNoiseFallback');
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
   });
 });
 
@@ -77,6 +83,7 @@ describe('updateMainSequenceStarUniforms', () => {
       starNorth: Math.PI / 6,
       viewAlignment: { x: 0.6, y: -0.8, z: 0.75 },
       haze: { taperStrength: 0.9, edgeFadeThreshold: 0.25, edgeExponent: 3.5 },
+      boundary: { featherStart: 0.85, featherExponent: 3.2, alphaFloor: 0.1 },
     });
 
     expect(uniforms.iTime.value).toBe(42.5);
@@ -95,6 +102,9 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iHazeParams.value.x).toBeGreaterThan(0.0);
     expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.25);
     expect(uniforms.iHazeParams.value.z).toBeCloseTo(3.5);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.85, 2);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(3.2, 2);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.1, 2);
   });
 
   it('clamps non-finite resolution inputs and reuses fallback textures', () => {
@@ -118,6 +128,7 @@ describe('updateMainSequenceStarUniforms', () => {
       starNorth: Number.NaN,
       viewAlignment: { x: Number.POSITIVE_INFINITY, y: Number.NaN, z: 2 },
       haze: { taperStrength: Number.NaN, edgeFadeThreshold: Number.POSITIVE_INFINITY, edgeExponent: Number.NaN },
+      boundary: { featherStart: Number.NaN, featherExponent: Number.NaN, alphaFloor: Number.NaN },
     });
 
     expect(uniforms.iChannel0.value.name).toBe('MainSequenceOrganicFallback');
@@ -130,6 +141,24 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iHazeParams.value.x).toBe(1);
     expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.3);
     expect(uniforms.iHazeParams.value.z).toBeCloseTo(2);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(2, 2);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0, 3);
+  });
+
+  it('disables boundary feathering when legacy values are requested', () => {
+    const material = createMainSequenceStarMaterial({ organic: null, noise: null });
+    const uniforms = extractUniforms(material);
+
+    updateMainSequenceStarUniforms(material, {
+      time: 0,
+      resolution: { width: 1024, height: 1024 },
+      boundary: { featherStart: 1, alphaFloor: 1, featherExponent: 5 },
+    });
+
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.999, 3);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(1, 3);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(1, 3);
   });
 });
 

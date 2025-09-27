@@ -3,6 +3,7 @@
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
 - 2025-09-28: Completed TASK139 haze taper implementation — added config knobs, material clamps, shader attenuation, new Vitest coverage, and validated via `npm run typecheck` + `npm test`. Visual capture remains as a follow-up once art direction finalises reference frames.
+- 2025-09-27: Completed TASK140 boundary feather implementation — extended CelestialEnvironment boundary config, added `deriveBoundaryUniform` + GLSL attenuation, refreshed StarDisk component wiring, authored new Vitest/component specs, and re-ran `npm run typecheck` plus `npm test`.
 
 - 2025-09-26: Memory bank audit — corrected future-dated entries, normalised timestamps, and noted duplicate task IDs (TASK102, TASK110). Created follow-up task TASK135 to reconcile task ID collisions and updated `memory/tasks/_index.md`.
 
@@ -42,6 +43,6 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-- Last audited: 2025-09-26
+- Last audited: 2025-09-27
 
 - 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.

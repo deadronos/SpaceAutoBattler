@@ -6,6 +6,7 @@ Current focuses (short-term):
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
 - Maintain the star disk haze taper so the rim fades at grazing angles without flattening the core glow, keeping presets deterministic.
+- Tune and document the star disk boundary feather presets so artists can blend edges without losing bloom cues.
 - Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
 
 Recent changes:
@@ -28,6 +29,7 @@ Recent changes:
 - Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
 - Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
 - Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
+- Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `npm run typecheck`, `npm test`.
 
 Next steps:
 
@@ -41,4 +43,4 @@ Next steps:
 
 - 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
 
-- Updated: 2025-09-26
+- Updated: 2025-09-27
