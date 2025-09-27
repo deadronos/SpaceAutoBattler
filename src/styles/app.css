@@ -3,6 +3,9 @@
   --red: #ff6f6f;
   --panel-bg: rgba(7, 15, 32, 0.78);
   --panel-border: rgba(90, 184, 255, 0.3);
+  --hud-overlay-opacity: 0.86;
+  --hud-bar-bg-opacity: 0.9;
+  --hud-fill-opacity: 1;
   color-scheme: dark;
 }
 
@@ -49,6 +52,120 @@
   align-items: flex-start;
   padding: 24px;
   box-sizing: border-box;
+}
+
+.hud-health-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 0.75rem;
+}
+
+.ship-hud-overlay {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  /* background opacity driven by --hud-overlay-opacity (fallback to previous 0.86) */
+  background: rgba(12, 21, 38, var(--hud-overlay-opacity, 0.86));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  min-width: 0;
+  color: #ecf4ff;
+}
+
+.ship-hud-overlay--blue {
+  box-shadow: 0 12px 30px rgba(76, 194, 255, 0.18);
+}
+
+.ship-hud-overlay--red {
+  box-shadow: 0 12px 30px rgba(255, 111, 111, 0.18);
+}
+
+.ship-hud-overlay__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ship-hud-overlay__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ship-hud-overlay__bar {
+  position: relative;
+  /* driven by JS via --hud-bar-width; fallback to 40px for older browsers */
+  width: var(--hud-bar-width, 40px);
+  height: 6px;
+  /* bar background opacity driven by --hud-bar-bg-opacity (fallback to 0.9) */
+  background: rgba(15, 25, 38, var(--hud-bar-bg-opacity, 0.9));
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ship-hud-overlay__bar--disabled {
+  opacity: 0.35;
+}
+
+.ship-hud-overlay__fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 150ms ease-out;
+  /* allow JS to tune the fill opacity via --hud-fill-opacity */
+  opacity: var(--hud-fill-opacity, 1);
+}
+
+.ship-hud-overlay__badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 16px;
+}
+
+.ship-hud-overlay__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(42, 56, 76, var(--hud-badge-opacity, 0.95));
+  color: #ecf4ff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.ship-hud-overlay__badge--warning {
+  background: #f59e0b;
+  color: #0b1728;
+}
+
+.ship-hud-overlay__badge--critical {
+  background: #ef4444;
+  color: #fdf9f9;
+}
+
+.ship-hud-overlay__badge--info {
+  background: #3b82f6;
+  color: #f8fbff;
+}
+
+.ship-hud-overlay__badge--overflow {
+  padding: 0 4px;
+  width: auto;
+}
+
+.hud-health-fallback {
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: rgba(236, 244, 255, 0.86);
 }
 
 .hud-panel {
@@ -201,8 +318,8 @@
 
 .ai-debug-overlay {
   position: absolute;
-  top: 24px;
-  left: 24px;
+  top: 48px;
+  left: 16px;
   pointer-events: auto;
   background: rgba(6, 14, 32, 0.82);
   border: 1px solid rgba(90, 184, 255, 0.28);

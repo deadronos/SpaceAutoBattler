@@ -18,6 +18,7 @@ import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
 import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
+import { HudOverlayCollector } from './HudOverlayCollector.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -51,6 +52,7 @@ export function Battlefield(): React.ReactElement {
           {/* Postprocessing (selective bloom + FXAA) */}
           <PostprocessingLazy />
           <BattlefieldSystems />
+          <HudOverlayCollector />
           {/* Drei helpers for navigation and orientation */}
           <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
           {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
@@ -76,6 +78,7 @@ export function Battlefield(): React.ReactElement {
             <ProjectilesLayer archetype={state.queries.projectiles} />
           </Suspense>
           <BattlefieldSystems />
+          <HudOverlayCollector />
           {/* Drei helpers for navigation and orientation */}
           <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
           {/* Replace manual gridHelper with @react-three/drei Grid for performance and features */}
