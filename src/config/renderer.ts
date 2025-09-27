@@ -80,11 +80,11 @@ export interface ShieldVisualSettings {
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.03, maxAlpha: 0.7, materialKind: 'hex' },
+  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -364,40 +364,46 @@ export interface PostprocessingConfig {
 }
 
 export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
-  bloomThreshold: 1.6,
+  bloomThreshold: 0.1,
   bloomSmoothing: 0.001,
-  bloomIntensity: 1.0,
+  bloomIntensity: 0.1,
   bloomIgnoreBackground: true,
   bloomDefaultGroup: 'default',
   bloomLayerStart: 11,
   bloomGroups: {
     default: {
+      threshold: 1.0,
       intensity: 0.5,
     },
     engines: {
-      intensity: 1.35,
+      intensity: 10.35,
       smoothing: 0.008,
-      threshold: 9.0,
+      threshold: 0.9,
     },
     shields: {
-      intensity: 1.5,
+      intensity: 0.7,
       smoothing: 0.02,
-      threshold: 8.0,
+      threshold: 0.9,
     },
     projectiles: {
-      intensity: 1.25,
+      intensity: 5.25,
       smoothing: 0.006,
-      threshold: 9.5,
+      threshold: 0.9,
     },
     explosions: {
       intensity: 1.6,
       smoothing: 0.035,
-      threshold: 7.5,
+      threshold: 1.0,
     },
     muzzleFlashes: {
-      intensity: 1.4,
+      intensity: 10.4,
       smoothing: 0.01,
-      threshold: 9.0,
+      threshold: 1.0,
+    },
+    star: {
+      intensity: 1.6,
+      smoothing: 0.01,
+      threshold: 1.0,
     },
   },
 };

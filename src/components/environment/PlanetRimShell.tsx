@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { ShaderMaterial, Color, AdditiveBlending, DoubleSide } from 'three';
+import { colorFromConfig } from '../../utils/color.js';
 
 interface PlanetRimShellProps {
   radius: number;
@@ -12,7 +13,7 @@ export function PlanetRimShell({ radius, rimStrength = 0.2, rimColor = '#ffffff'
     return new ShaderMaterial({
       uniforms: {
         uRimStrength: { value: rimStrength },
-        uRimColor: { value: new Color(rimColor) },
+        uRimColor: { value: colorFromConfig(rimColor) },
       },
       vertexShader: `
         varying vec3 vNormal;

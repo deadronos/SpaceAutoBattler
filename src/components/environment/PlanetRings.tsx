@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
 import { Color, RingGeometry, ShaderMaterial, DoubleSide, AdditiveBlending } from 'three';
 import { useFrame } from '@react-three/fiber';
+import { colorFromConfig } from '../../utils/color.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -38,7 +39,7 @@ export function PlanetRings({
   const material = useMemo(() => {
     return new ShaderMaterial({
       uniforms: {
-        uColor: { value: new Color(color) },
+        uColor: { value: colorFromConfig(color) },
         uOpacity: { value: opacity },
         uInnerRadius: { value: innerRadius },
         uOuterRadius: { value: outerRadius },

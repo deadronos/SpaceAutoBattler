@@ -47,3 +47,26 @@ Execute the memory bank refresh defined in `design.md`, ensuring documentation a
 - Updated memory documents (`activeContext`, `progress`, `tasks/_index`, task statuses).
 - New `memory/core-celestialEnvironment.md` reference.
 - Validation notes captured in final summary.
+
+---
+
+## Task 133 — Build/Test Resilience
+
+**Description:** Restore `npm test` and `npm run build` by migrating smoke imports to TypeScript loaders, consolidating projectile geometry configuration, and hardening Vitest mocks/type guards.
+
+**Expected Outcome:** Unit tests and webpack builds complete without module resolution or TypeScript errors; projectile geometry stays aligned with configuration across bullet types.
+
+**Dependencies:**
+
+- Access to `src/components/Projectile.tsx`, `src/config/projectiles.ts`, and associated Vitest specs.
+- Ability to run validation commands locally (`npm run typecheck`, `npm test`, `npm run build`).
+
+---
+
+## Task 139 — Star Disk Haze Taper
+
+**Description:** Implement camera-aware haze taper for the star disk so the rim fades at grazing angles without flattening the core glow.
+
+**Expected Outcome:** Configurable haze controls wired through `CelestialEnvironmentConfig`, updated shader/material uniforms, and validation (unit + visual) confirming edge attenuation.
+
+**Dependencies:** Follow-up to TASK138; relies on existing view-alignment uniform plumbing and shader asset pipeline.
