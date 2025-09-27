@@ -126,3 +126,12 @@ export interface HudHealthBarsStoreSlice {
 - The HUD health-bar toggle defaults to `off` on first launch and on low-power profiles; the preference persists once the user enables it.
 - Render at most two concurrent status icons per ship. Additional effects collapse into a consolidated `+N` badge with tooltip details.
 - Advanced per-player color customization remains out of scope for the initial release; revisit after baseline accessibility validation.
+
+## Implementation Outcome (2025-03-29)
+
+- **UI Store & Game State:** Added `hudHealthBarsEnabled` slice with toggle/setters in `src/game/uiStore.ts` and mirrored deterministic flagging through `src/game/context.tsx` and `src/game/state.ts`, keeping replays authoritative.
+- **Renderer Pipeline:** Introduced `HudOverlayCollector` to gather ship projections and feed a centralized `hudOverlayStore` (`src/renderer/hudOverlayStore.ts`). Layout and occlusion handling land in `HudHealthLayer`, while `ShipHudOverlay` renders stacked bars, tooltips, and deterministic easing (`src/utils/deterministicLerp.ts`).
+- **Configuration & Accessibility:** Codified overlay config and status effect registry in `src/config/hudHealth.ts`, ensuring WCAG-aligned colours, badge capping, and fallback text in `Hud.tsx` when overlays are disabled.
+- **Controls & Styling:** `src/components/Controls.tsx` hosts the toggle with ARIA labelling and reduced-motion support via `src/hooks/usePrefersReducedMotion.ts`; visual styling resides in `src/styles/app.css`.
+- **Testing:** Vitest coverage spans layout, occlusion, animation smoothing, status effect fallbacks, and UI store mirroring (`test/vitest/hud-overlay-layout.spec.ts`, `hud-overlay-animation.spec.ts`, `hud-status-icons.spec.ts`, `ui-store-hud-toggle.spec.ts`, plus shared setup).
+- **Task Tracking:** Documented completion in `memory/tasks/TASK141-hud-health-overlays.md` and updated `memory/tasks/_index.md` to reflect the delivered overlay system.

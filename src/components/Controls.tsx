@@ -9,11 +9,12 @@ export function Controls(): React.ReactElement {
   const timeScale = useUiStore((s) => s.timeScale);
   const togglePause = useUiStore((s) => s.togglePause);
   const setTimeScale = useUiStore((s) => s.setTimeScale);
-  const ppEnabled = useUiStore((s) => s.postprocessingEnabled);
   const aiEnabled = useUiStore((s) => s.aiV2Enabled);
   const toggleAi = useUiStore((s) => s.toggleAiV2);
   const aiDebugEnabled = useUiStore((s) => s.aiDebugEnabled);
   const toggleAiDebug = useUiStore((s) => s.toggleAiDebug);
+  const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
+  const toggleHudHealthBars = useUiStore((s) => s.toggleHudHealthBars);
 
   const addShip = (team: 'red' | 'blue') => {
     if (!state) return;
@@ -28,6 +29,13 @@ export function Controls(): React.ReactElement {
       <button onClick={() => addShip('blue')}>+ Blue</button>
       {/* Postprocessing toggle (off by default) */}
       <PostprocessingToggle />
+      <button
+        onClick={toggleHudHealthBars}
+        aria-pressed={hudHealthBarsEnabled}
+        title="Toggle per-ship HUD health overlays"
+      >
+        HUD Bars: {hudHealthBarsEnabled ? 'On' : 'Off'}
+      </button>
       <button onClick={toggleAi} title="Toggle AI V2 (utility-based decision system)">
         AI V2: {aiEnabled ? 'On' : 'Off'}
       </button>

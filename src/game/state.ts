@@ -40,6 +40,9 @@ export async function createGameState(): Promise<GameState> {
     rng: new SeededRng(1337),
     paused: false,
     timeScale: 1,
+    uiFlags: {
+      hudHealthBars: false,
+    },
     simulation: {
       step: 1 / 20,
       accumulator: 0,
