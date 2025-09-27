@@ -31,6 +31,7 @@ export async function createGameState(): Promise<GameState> {
     // it here for the runtime.
     turretsByShip: new Map(),
     nextEntityId: 1,
+    nextExplosionId: 1,
     time: 0,
     queries: {
       ships: world.archetype('ship'),
@@ -43,6 +44,8 @@ export async function createGameState(): Promise<GameState> {
     uiFlags: {
       hudHealthBars: false,
     },
+    explosions: [],
+    explosionPool: [],
     simulation: {
       step: 1 / 20,
       accumulator: 0,

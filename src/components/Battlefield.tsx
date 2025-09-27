@@ -19,6 +19,7 @@ import { useUiStore } from '../game/uiStore.js';
 import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';
+import { ExplosionsLayer } from './ExplosionRenderer.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -48,6 +49,7 @@ export function Battlefield(): React.ReactElement {
             <ShipsLayer archetype={state.queries.ships} />
             <TurretsLayer archetype={state.queries.turrets} />
             <ProjectilesLayer archetype={state.queries.projectiles} />
+            <ExplosionsLayer />
           </Suspense>
           {/* Postprocessing (selective bloom + FXAA) */}
           <PostprocessingLazy />
@@ -76,6 +78,7 @@ export function Battlefield(): React.ReactElement {
             <ShipsLayer archetype={state.queries.ships} />
             <TurretsLayer archetype={state.queries.turrets} />
             <ProjectilesLayer archetype={state.queries.projectiles} />
+            <ExplosionsLayer />
           </Suspense>
           <BattlefieldSystems />
           <HudOverlayCollector />
