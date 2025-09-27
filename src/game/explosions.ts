@@ -105,7 +105,8 @@ export function emitShipKillExplosion(
   event.flashIntensity = config.flashIntensity;
   event.shockwave.delay = config.timing.shockwave.delay;
   event.shockwave.duration = config.timing.shockwave.duration;
-  event.shockwave.maxRadius = radius * 1.8;
+  const shockMulti = config.shockwaveMaxRadiusMulti ?? 1.8;
+  event.shockwave.maxRadius = radius * shockMulti;
   event.fireball.delay = config.timing.fireball.delay;
   event.fireball.duration = config.timing.fireball.duration;
   event.debris.count = config.debrisCount;

@@ -207,6 +207,8 @@ export interface ExplosionConfigEntry {
     fireball: { delay: number; duration: number };
     debrisSpeed: [number, number];
   };
+  /** Multiplier applied to the configured explosion radius to compute the shockwave max radius. Default: 1.8 */
+  shockwaveMaxRadiusMulti?: number;
 }
 
 export type EntityId = number;
