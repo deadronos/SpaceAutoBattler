@@ -15,6 +15,7 @@ uniform float iCameraRoll;
 uniform float iStarNorth;
 // Camera alignment: X/Y encode projected direction on the disk plane, Z is facing cosine.
 uniform vec3 iViewAlignment;
+uniform vec3 iHazeParams;
 
 // Geometry-provided UVs for the billboard (stable in object space)
 varying vec2 vUv;
@@ -40,6 +41,17 @@ float snoise(vec3 uv, float res)	// by trisomie21
 	float r1 = mix(mix(r.x, r.y, f.x), mix(r.z, r.w, f.x), f.y);
 	
 	return mix(r0, r1, f.z)*2.-1.;
+}
+
+float hazeTaper(vec2 planeCoords)
+{
+  float radius = length(planeCoords);
+  float rimStart = mix(0.65, 0.85, clamp(iHazeParams.y, 0.0, 0.9));
+  float rimMix = smoothstep(rimStart, 1.0, radius);
+  float rimExponent = max(iHazeParams.z, 0.5);
+  float hazeFade = clamp(iHazeParams.x, 0.0, 1.1);
+  float rimWeight = pow(rimMix, rimExponent);
+  return mix(1.0, hazeFade, rimWeight);
 }
 
 float freqs[4];
@@ -73,6 +85,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec2 viewAxis = axisLength > 0.0001 ? iViewAlignment.xy / axisLength : vec2(0.0, 1.0);
 	vec2 tangentAxis = vec2(-viewAxis.y, viewAxis.x);
 	vec2 compensatedPlane = tangentAxis * dot(planeAligned, tangentAxis) + viewAxis * (dot(planeAligned, viewAxis) / safeCos);
+	float hazeAttenuation = hazeTaper(compensatedPlane);
 
 	vec2 p = compensatedPlane * 0.5;
 	float fade		= pow( length( 2.0 * p ), 0.5 );
@@ -118,6 +131,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	}
 	
 	float starGlow	= min( max( 1.0 - dist * ( 1.0 - brightness ), 0.0 ), 1.0 );
+	corona *= hazeAttenuation;
+	float cappedHaze = min(hazeAttenuation, 1.0);
+	starGlow *= cappedHaze;
 	corona *= viewBoost;
 	starGlow *= viewBoost;
 	starSphere *= mix(0.7, 1.0, facingCos);

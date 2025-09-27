@@ -15,6 +15,7 @@ const extractUniforms = (material: ShaderMaterial) =>
     iCameraRoll: { value: number };
     iStarNorth: { value: number };
     iViewAlignment: { value: { x: number; y: number; z: number } };
+    iHazeParams: { value: { x: number; y: number; z: number } };
   };
 
 describe('createMainSequenceStarMaterial', () => {
@@ -43,6 +44,9 @@ describe('createMainSequenceStarMaterial', () => {
     expect(uniforms.iViewAlignment.value.x).toBe(0);
     expect(uniforms.iViewAlignment.value.y).toBe(0);
     expect(uniforms.iViewAlignment.value.z).toBe(1);
+    expect(uniforms.iHazeParams.value.x).toBe(1);
+    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.3);
+    expect(uniforms.iHazeParams.value.z).toBeCloseTo(2);
     expect(material.fragmentShader).toContain('void main()');
   });
 
@@ -72,6 +76,7 @@ describe('updateMainSequenceStarUniforms', () => {
       cameraRoll: Math.PI / 4,
       starNorth: Math.PI / 6,
       viewAlignment: { x: 0.6, y: -0.8, z: 0.75 },
+      haze: { taperStrength: 0.9, edgeFadeThreshold: 0.25, edgeExponent: 3.5 },
     });
 
     expect(uniforms.iTime.value).toBe(42.5);
@@ -86,6 +91,10 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iViewAlignment.value.x).toBeCloseTo(0.6);
     expect(uniforms.iViewAlignment.value.y).toBeCloseTo(-0.8);
     expect(uniforms.iViewAlignment.value.z).toBeCloseTo(0.75);
+    expect(uniforms.iHazeParams.value.x).toBeLessThan(1.01);
+    expect(uniforms.iHazeParams.value.x).toBeGreaterThan(0.0);
+    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.25);
+    expect(uniforms.iHazeParams.value.z).toBeCloseTo(3.5);
   });
 
   it('clamps non-finite resolution inputs and reuses fallback textures', () => {
@@ -108,6 +117,7 @@ describe('updateMainSequenceStarUniforms', () => {
       cameraRoll: Number.NaN,
       starNorth: Number.NaN,
       viewAlignment: { x: Number.POSITIVE_INFINITY, y: Number.NaN, z: 2 },
+      haze: { taperStrength: Number.NaN, edgeFadeThreshold: Number.POSITIVE_INFINITY, edgeExponent: Number.NaN },
     });
 
     expect(uniforms.iChannel0.value.name).toBe('MainSequenceOrganicFallback');
@@ -117,6 +127,9 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iViewAlignment.value.x).toBe(0);
     expect(uniforms.iViewAlignment.value.y).toBe(0);
     expect(uniforms.iViewAlignment.value.z).toBe(1);
+    expect(uniforms.iHazeParams.value.x).toBe(1);
+    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.3);
+    expect(uniforms.iHazeParams.value.z).toBeCloseTo(2);
   });
 });
 

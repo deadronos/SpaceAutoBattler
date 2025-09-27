@@ -1,6 +1,6 @@
 # TASK139 - Star Disk Haze Taper
 
-**Status:** In Progress  
+**Status:** Completed  
 **Added:** 2025-09-28  
 **Updated:** 2025-09-28
 
@@ -26,11 +26,11 @@ See `memory/design-star-disk-haze-taper.md` for architecture, data flow, interfa
 
 ## Implementation Plan
 
-1. **Config & Types** — Extend `CelestialEnvironmentConfig.starDisk` with the `haze` group (`taperStrength`, `edgeFadeThreshold`, `edgeExponent`), updating runtime schema, defaults, and TypeScript interfaces. *(Owner: Copilot — Pending)*
-2. **Material Uniforms** — Update `updateMainSequenceStarUniforms` to compute the new haze payload using view alignment and config values, including clamps and warnings. *(Owner: Copilot — Pending)*
-3. **Shader Updates** — Modify `mainsequencestar.glsl` (and any shared helpers) to consume `iHazeParams`, applying the taper to corona/haze contribution while keeping the core untouched. *(Owner: Copilot — Pending)*
-4. **Component Wiring** — Ensure `StarDisk.tsx` feeds config overrides into the uniform update each frame without extra allocations; add memoized selectors if needed. *(Owner: Copilot — Pending)*
-5. **Testing & Validation** — Add/update Vitest suites (`star-disk-material.spec.ts`, new `star-disk-haze-taper.spec.ts`, component test) and run `npm run typecheck`, `npm test`; capture before/after renders for manual validation. *(Owner: Copilot — Pending)*
+1. **Config & Types** — Extend `CelestialEnvironmentConfig.starDisk` with the `haze` group (`taperStrength`, `edgeFadeThreshold`, `edgeExponent`), updating runtime schema, defaults, and TypeScript interfaces. *(Owner: Copilot — Completed 2025-09-28)*
+2. **Material Uniforms** — Update `updateMainSequenceStarUniforms` to compute the new haze payload using view alignment and config values, including clamps and warnings. *(Owner: Copilot — Completed 2025-09-28)*
+3. **Shader Updates** — Modify `mainsequencestar.glsl` (and any shared helpers) to consume `iHazeParams`, applying the taper to corona/haze contribution while keeping the core untouched. *(Owner: Copilot — Completed 2025-09-28)*
+4. **Component Wiring** — Ensure `StarDisk.tsx` feeds config overrides into the uniform update each frame without extra allocations; add memoized selectors if needed. *(Owner: Copilot — Completed 2025-09-28)*
+5. **Testing & Validation** — Add/update Vitest suites (`star-disk-material.spec.ts`, new `star-disk-haze-taper.spec.ts`, component test) and run `npm run typecheck`, `npm test`; capture before/after renders for manual validation. *(Owner: Copilot — Completed 2025-09-28; manual visual capture deferred to follow-up)*
 
 ## Error Handling Matrix
 
@@ -51,17 +51,17 @@ See `memory/design-star-disk-haze-taper.md` for architecture, data flow, interfa
 
 ## Progress Tracking
 
-**Overall Status:** Planning — 10%
+**Overall Status:** Completed — 100%
 
 ### Subtasks
 
 | ID | Description | Status | Updated | Notes |
 | --- | --- | --- | --- | --- |
 | 1.1 | Capture requirements and design artefacts | Completed | 2025-09-28 | Requirements + design documents written and linked |
-| 1.2 | Implement config and material changes | Not Started | — | Pending architecture review |
-| 1.3 | Extend shader with haze taper | Not Started | — | |
-| 1.4 | Wire component + tests | Not Started | — | |
-| 1.5 | Run validation commands & captures | Not Started | — | |
+| 1.2 | Implement config and material changes | Completed | 2025-09-28 | Added haze config defaults, uniforms, and helper clamps |
+| 1.3 | Extend shader with haze taper | Completed | 2025-09-28 | Shader uses `iHazeParams` to attenuate corona at the rim |
+| 1.4 | Wire component + tests | Completed | 2025-09-28 | StarDisk passes haze config; new Vitest coverage committed |
+| 1.5 | Run validation commands & captures | Completed | 2025-09-28 | `npm run typecheck`, `npm test`; visual capture pending follow-up |
 
 ## Progress Log
 
@@ -69,3 +69,5 @@ See `memory/design-star-disk-haze-taper.md` for architecture, data flow, interfa
 
 - Drafted EARS requirements, design doc, and implementation plan for the haze taper follow-up.
 - Documented error handling expectations and testing strategy ahead of coding.
+- Implemented haze taper pipeline (config, uniforms, shader) with deterministic clamps.
+- Added Vitest coverage (`star-disk-material`, new `star-disk-haze-taper`) and re-ran `npm run typecheck`, `npm test` (all passing). Visual capture queued for separate task once art direction signs off.

@@ -14,6 +14,18 @@ import {
 import fragmentShader from './shaders/mainsequencestar.glsl';
 import vertexShader from './shaders/starDisk.vertex.glsl';
 
+export interface StarDiskHazeUniformInput {
+  taperStrength?: number;
+  edgeFadeThreshold?: number;
+  edgeExponent?: number;
+}
+
+export interface StarDiskHazeUniformResult {
+  fade: number;
+  edgeThreshold: number;
+  edgeExponent: number;
+}
+
 export interface MainSequenceStarMaterialOptions {
   organic: Texture | null;
   noise: Texture | null;
@@ -30,6 +42,8 @@ export interface MainSequenceStarUniformUpdate {
   starNorth?: number;
   /** Camera-to-disk alignment encoded as (planeX, planeY, facingCos). */
   viewAlignment?: { x: number; y: number; z: number };
+  /** Optional haze taper configuration controlling rim attenuation. */
+  haze?: StarDiskHazeUniformInput;
 }
 
 const DEFAULT_RESOLUTION = new Vector3(1, 1, 1);
@@ -104,6 +118,45 @@ interface MainSequenceUniformMap {
   iCameraRoll: { value: number };
   iStarNorth: { value: number };
   iViewAlignment: { value: Vector3 };
+  iHazeParams: { value: Vector3 };
+}
+
+const DEFAULT_HAZE_SETTINGS: Required<StarDiskHazeUniformInput> = Object.freeze({
+  taperStrength: 0.85,
+  edgeFadeThreshold: 0.3,
+  edgeExponent: 2,
+});
+
+const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
+
+export function deriveHazeUniform(
+  facingCos: number,
+  input?: StarDiskHazeUniformInput,
+): StarDiskHazeUniformResult {
+  const rawStrength = Number.isFinite(input?.taperStrength as number)
+    ? (input?.taperStrength as number)
+    : DEFAULT_HAZE_SETTINGS.taperStrength;
+  const strength = clamp01(rawStrength);
+  const rawThreshold = Number.isFinite(input?.edgeFadeThreshold as number)
+    ? (input?.edgeFadeThreshold as number)
+    : DEFAULT_HAZE_SETTINGS.edgeFadeThreshold;
+  const threshold = Math.min(Math.max(rawThreshold, 0), 0.9);
+  const rawExponent = Number.isFinite(input?.edgeExponent as number)
+    ? (input?.edgeExponent as number)
+    : DEFAULT_HAZE_SETTINGS.edgeExponent;
+  const exponent = Math.min(Math.max(rawExponent, 0.5), 6);
+
+  const safeFacing = clamp01(Number.isFinite(facingCos) ? facingCos : 1);
+  const denom = Math.max(1 - threshold, 1e-3);
+  const normalized = Math.pow(clamp01((safeFacing - threshold) / denom), exponent);
+  const horizonFloor = clamp01(1 - strength);
+  const fade = Math.min(Math.max(horizonFloor + (1 - horizonFloor) * normalized, 0), 1.1);
+
+  return {
+    fade,
+    edgeThreshold: threshold,
+    edgeExponent: exponent,
+  };
 }
 
 export function createMainSequenceStarMaterial(options: MainSequenceStarMaterialOptions): ShaderMaterial {
@@ -124,6 +177,7 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
       iCameraRoll: { value: 0 },
       iStarNorth: { value: 0 },
       iViewAlignment: { value: new Vector3(0, 0, 1) },
+      iHazeParams: { value: new Vector3(1, DEFAULT_HAZE_SETTINGS.edgeFadeThreshold, DEFAULT_HAZE_SETTINGS.edgeExponent) },
     },
   });
 
@@ -162,6 +216,9 @@ export function updateMainSequenceStarUniforms(
     const safeZ = Math.min(Math.max(safeZRaw, 0), 1);
     uniforms.iViewAlignment.value.set(safeX, safeY, safeZ);
   }
+  const facingCosine = uniforms.iViewAlignment.value.z;
+  const hazeParams = deriveHazeUniform(facingCosine, update.haze);
+  uniforms.iHazeParams.value.set(hazeParams.fade, hazeParams.edgeThreshold, hazeParams.edgeExponent);
 }
 
 export function disposeMainSequenceStarMaterial(material: ShaderMaterial | null): void {

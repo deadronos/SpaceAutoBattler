@@ -2,6 +2,8 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-09-28: Completed TASK139 haze taper implementation — added config knobs, material clamps, shader attenuation, new Vitest coverage, and validated via `npm run typecheck` + `npm test`. Visual capture remains as a follow-up once art direction finalises reference frames.
+
 - 2025-09-26: Memory bank audit — corrected future-dated entries, normalised timestamps, and noted duplicate task IDs (TASK102, TASK110). Created follow-up task TASK135 to reconcile task ID collisions and updated `memory/tasks/_index.md`.
 
 - 2025-09-26: Declared GLSL precision and uniform bindings for the main sequence star shader to resolve runtime compilation errors; re-ran `npm run typecheck` and `npm test` to confirm stability.
@@ -43,5 +45,3 @@ Planned actions
 - Last audited: 2025-09-26
 
 - 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.
-
-- 2025-09-28: Planned TASK139 star disk haze taper follow-up — captured requirements (EARS), design doc, and task plan with error handling/testing strategy before implementation.

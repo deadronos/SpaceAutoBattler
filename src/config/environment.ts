@@ -59,6 +59,25 @@ export interface SkysphereConfig {
   opacity?: number;
 }
 
+export interface StarDiskHazeConfig {
+  /** Strength of the haze taper (0 disables taper, 1 removes rim haze entirely). */
+  taperStrength?: number;
+  /** Facing cosine threshold below which the haze begins to fade out. */
+  edgeFadeThreshold?: number;
+  /** Exponent applied to the smoothstep controlling how aggressively the haze collapses. */
+  edgeExponent?: number;
+}
+
+export interface StarDiskConfig {
+  /** Billboard radius in world units; higher values make the sun larger on screen. */
+  size?: number;
+  /** Final alpha multiplier applied after shader calculations. */
+  opacity?: number;
+  /** Offsets the disk away from the light based on StarLight.distance (keeps parallax consistent). */
+  distanceMultiplier?: number;
+  /** Optional haze taper controls for rim falloff. */
+  haze?: StarDiskHazeConfig;
+}
 
 export interface CelestialEnvironmentConfig {
   planets: PlanetBodyConfig[];
@@ -66,12 +85,7 @@ export interface CelestialEnvironmentConfig {
   /** Optional skysphere configuration for 360-degree background */
   skysphere?: SkysphereConfig;
   /** Optional star disk appearance settings (size in world units, opacity, and distance multiplier) */
-  starDisk?: {
-    size?: number;
-    opacity?: number;
-    /** Multiplier applied to starLight.distance to compute disk offset */
-    distanceMultiplier?: number;
-  };
+  starDisk?: StarDiskConfig;
   /** Optional parallax billboards for distant objects */
   parallaxBillboards?: Array<{
     id: string;
@@ -164,9 +178,14 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   ],
   // Default star disk settings — tune here to change size/opacity/position globally
   starDisk: {
-    size: 12000, // Billboard radius in world units; higher values make the sun larger on screen.
-    opacity: 1.0, // Final alpha multiplier applied after shader calculations.
-    distanceMultiplier: 1.0, // Offsets the disk away from the light based on StarLight.distance (keeps parallax consistent).
+    size: 12000,
+    opacity: 1.0,
+    distanceMultiplier: 1.0,
+    haze: {
+      taperStrength: 0.85,
+      edgeFadeThreshold: 0.3,
+      edgeExponent: 2.0,
+    },
   },
   features: {
     skysphere: true,

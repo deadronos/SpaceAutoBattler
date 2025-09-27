@@ -5,7 +5,8 @@ Current focuses (short-term):
 - Lock in the celestial environment baseline: star disk billboard, rim-glow shader, parallax billboards, and lighting balance driven by `CELESTIAL_ENVIRONMENT`.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
-- Shape the star disk haze taper so the rim fades at grazing angles without flattening the core glow; propagate new config settings and shader uniforms per TASK139.
+- Maintain the star disk haze taper so the rim fades at grazing angles without flattening the core glow, keeping presets deterministic.
+- Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
 
 Recent changes:
 
@@ -26,10 +27,10 @@ Recent changes:
 - Integrated solar-corona star disk shader with deterministic uniforms, GLSL asset pipeline, and Vitest coverage for material lifecycle.
 - Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
 - Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
+- Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
 
 Next steps:
 
-- Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
 - Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
 - Capture a render comparison showcasing the new shader control ranges (core-focused vs corona-focused) for docs.
 - Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
@@ -37,7 +38,6 @@ Next steps:
 - Refresh Playwright/visual baselines to cover the texture-enhanced star disk once art direction is approved.
 - Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
-- Implement haze taper shader changes, unit coverage, and config wiring per TASK139 design, then validate via `npm run typecheck`, `npm test`, and updated visual captures.
 
 - 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
 
