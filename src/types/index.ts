@@ -1,5 +1,5 @@
 import type { Archetype, World as ECSWorld } from 'miniplex';
-import type { Quaternion, Vector3 } from 'three';
+import type { ColorRepresentation, Quaternion, Vector3 } from 'three';
 import type { SeededRng } from '../utils/rng.js';
 
 type RapierModule = (typeof import('@dimforge/rapier3d-compat'))['default'];
@@ -159,6 +159,58 @@ export interface MuzzleFlash {
   bulletType?: string;
 }
 
+export interface ExplosionEvent {
+  id: number;
+  seed: number;
+  faction: 'alliance' | 'reavers';
+  hull: ShipHull;
+  position: Vector3;
+  radius: number;
+  startTime: number;
+  duration: number;
+  lightDuration: number;
+  lightFalloff: number;
+  lightColor: ColorRepresentation;
+  flashIntensity: number;
+  shockwave: { delay: number; duration: number; maxRadius: number };
+  fireball: { delay: number; duration: number };
+  debris: { count: number; speed: [number, number] };
+  particles: { sparks: number; plasma: number; smoke: number };
+  palette: {
+    flash: string;
+    shockwave: string;
+    fireballHot: string;
+    smoke: string;
+  };
+  variant?: string;
+  elapsed: number;
+  lightElapsed: number;
+}
+
+export interface ExplosionConfigEntry {
+  baseRadius: number;
+  flashIntensity: number;
+  lightColor: ColorRepresentation;
+  lightFalloff: number;
+  debrisCount: number;
+  particleCounts: { sparks: number; plasma: number; smoke: number };
+  palette: {
+    flash: string;
+    shockwave: string;
+    fireballHot: string;
+    smoke: string;
+  };
+  timing: {
+    duration: number;
+    lightDuration: number;
+    shockwave: { delay: number; duration: number };
+    fireball: { delay: number; duration: number };
+    debrisSpeed: [number, number];
+  };
+  /** Multiplier applied to the configured explosion radius to compute the shockwave max radius. Default: 1.8 */
+  shockwaveMaxRadiusMulti?: number;
+}
+
 export type EntityId = number;
 
 export type AIIntent =
@@ -292,6 +344,7 @@ export interface GameState {
   world: ECSWorld<GameEntity>;
   colliderLookup: Map<number, GameEntity>;
   nextEntityId: number;
+  nextExplosionId: number;
   time: number;
   queries: GameQueries;
   /** Map from ship entity id -> set of turret entities mounted on that ship. Optional for tests/mocks. */
@@ -307,6 +360,10 @@ export interface GameState {
   blackboard: AIBlackboard;
   /** Flags mirrored from the UI store to keep deterministic playback. */
   uiFlags: HudUiFlags;
+  /** Active explosion events pooled for renderer consumption. */
+  explosions: ExplosionEvent[];
+  /** Recycled explosion events available for reuse to maintain determinism. */
+  explosionPool: ExplosionEvent[];
 }
 
 export interface HudUiFlags {

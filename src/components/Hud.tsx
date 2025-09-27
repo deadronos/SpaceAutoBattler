@@ -4,6 +4,7 @@ import { useOptionalGameState } from '../game/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import type React from 'react';
 import { AiDebugOverlay } from './AiDebugOverlay.js';
+import { ExplosionDebugOverlay } from './ExplosionDebugOverlay.js';
 import { HudHealthLayer } from './HudHealthLayer.js';
 import { useUiStore } from '../game/uiStore.js';
 
@@ -28,6 +29,7 @@ export function Hud(): React.ReactElement {
     <div className="hud">
       <HudHealthLayer />
       <AiDebugOverlay />
+      <ExplosionDebugOverlay />
       <div className="hud-panel">
         <h2>Space Auto Battler</h2>
         <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>

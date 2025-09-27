@@ -21,6 +21,7 @@ import { resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { updateMotionSystem } from './systems/motion.js';
 import { updateCarrierLaunchSystem } from './systems/carriers.js';
+import { emitShipKillExplosion, updateExplosions } from './explosions.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -809,6 +810,7 @@ export function updateGame(state: GameState, delta: number): void {
 
   syncTransforms(state);
   resolveProjectiles(state, delta);
+  updateExplosions(state, delta);
 }
 
 function prepareShips(state: GameState, delta: number): void {
@@ -1170,6 +1172,7 @@ function resolveProjectiles(state: GameState, delta: number): void {
       toRemove.add(projectile);
 
       if (ship.ship.hp <= 0) {
+        emitShipKillExplosion(state, ship, projectile);
         toRemove.add(ship);
       }
       break;

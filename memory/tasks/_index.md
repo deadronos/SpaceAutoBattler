@@ -11,6 +11,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK142](TASK142-ship-kill-explosionfx.md) — Implement ship kill explosion FX pipeline across simulation, config, renderer, and tests per design memo.
+
 - [TASK141](TASK141-hud-health-overlays.md) — Implemented HUD health overlays with deterministic easing, occlusion safeguards, and Vitest coverage.
 - [TASK140](TASK140-star-disk-boundary-feather.md) — Delivered star disk boundary feather uniforms, shader attenuation, and regression tests.
 - [TASK139](TASK139-star-disk-haze-taper.md) — Implement star disk haze taper with camera-aware gradient fade and updated shader uniforms.
