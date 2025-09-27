@@ -62,11 +62,24 @@ function makeStateStub(): GameState {
     world: world as any,
     colliderLookup: new Map(),
     nextEntityId: 1,
+    nextExplosionId: 1,
     time: 0,
     queries,
     rng: { next: () => 0.5 } as any,
     paused: false,
     timeScale: 1,
+    explosions: [],
+    explosionPool: [],
+    uiFlags: { hudHealthBars: false },
+    ai: undefined as any,
+    blackboard: {
+      tickIndex: 0,
+      teamPosture: { blue: 'hold', red: 'hold' },
+      allyCentroid: { blue: new Vector3(), red: new Vector3() },
+      nearestEnemy: new Map(),
+      threatToVip: new Map(),
+      tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
+    } as any,
     simulation: {
       step: 1 / 20,
       accumulator: 0,
@@ -158,6 +171,8 @@ describe('projectile resolution', () => {
     // Target should be removed by resolve loop
     const ships = (state.queries.ships as any).entities as ShipEntity[];
     expect(ships.find((s) => s.id === target.id)).toBeUndefined();
+    expect(state.explosions.length).toBe(1);
+    expect(state.explosions[0]?.faction).toBe('reavers');
   });
 
   it('removes projectile when ttl expires', () => {

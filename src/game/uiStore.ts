@@ -21,6 +21,9 @@ type UiState = {
   hudHealthBarsEnabled: boolean;
   toggleHudHealthBars: () => void;
   setHudHealthBarsEnabled: (v: boolean) => void;
+  explosionDebugEnabled: boolean;
+  toggleExplosionDebug: () => void;
+  setExplosionDebugEnabled: (v: boolean) => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -41,6 +44,9 @@ export const useUiStore = create<UiState>((set) => ({
   hudHealthBarsEnabled: false,
   toggleHudHealthBars: () => set((s) => ({ hudHealthBarsEnabled: !s.hudHealthBarsEnabled })),
   setHudHealthBarsEnabled: (v: boolean) => set({ hudHealthBarsEnabled: v }),
+  explosionDebugEnabled: false,
+  toggleExplosionDebug: () => set((s) => ({ explosionDebugEnabled: !s.explosionDebugEnabled })),
+  setExplosionDebugEnabled: (v: boolean) => set({ explosionDebugEnabled: v }),
 }));
 
 export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolean): void {

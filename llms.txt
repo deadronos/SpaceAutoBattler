@@ -1,71 +1,69 @@
-﻿# SpaceAutoBattler — LLM Navigation Guide
+﻿# SpaceAutoBattler
 
-Deterministic 3D space auto-battler. This file orients contributors and LLMs to the canonical sources, configs, tests, and rules — updated for the 2025 rewrite.
+> Lightweight research-oriented 3D space combat simulator that separates deterministic simulation logic from rendering and UI. Use this file as a concise map for models and humans to find core docs, specs, sample code, and configuration.
 
-Core rules (short):
-- Edit only TypeScript in `src/`. Never modify generated `dist/` files.
-- All runtime state lives on `GameState` (see `src/types/index.ts`). No module-level mutable state.
-- Preserve determinism in simulation paths. Use the seeded RNG in `src/utils/rng.ts`.
-- Prefer config/data in `src/game/*.ts` and `src/config/*.ts` over hard-coded values when tuning.
-- Always run `npm run typecheck` and `npm test` before committing.
+Last updated: 2025-09-27
 
-## Source map (what to edit)
+This file focuses on sources that explain the project's purpose, architecture, simulation contracts, configuration, and tests. Prefer the `src/` and `spec/` paths for implementation and formal specifications respectively.
 
-- `src/main.tsx` — App entry. Applies GLTF loader patch, mounts `<App/>`.
-- `src/App.tsx` — App shell. Wires `GameProvider`, `<Battlefield/>`, `<Hud/>`, `<Controls/>`.
-- `src/components/` — React Three Fiber scene objects and UI.
-  - `Battlefield.tsx` — Creates Canvas, lights, Grid, hooks up systems via `useFrame`.
-  - `Ship.tsx` / `Projectile.tsx` — Visuals and transform sync. Shields use material registry.
-  - `Hud.tsx` / `Controls.tsx` — Heads-up display and simulation controls (pause, speed, spawn).
-- `src/game/` — Simulation state and systems (miniplex ECS + Rapier3D on main thread).
-  - `state.ts` — `createGameState`, entity lifecycle, initial fleets, spawn helpers.
-  - `systems.ts` — Per-frame update: ship AI (nearest-target), movement, projectiles, damage, ripples.
-  - `ships.ts` — Ship blueprints/stats and `spawnShip` (creates Rapier bodies/colliders).
-  - `config.ts` — World constants (size, fog/camera defaults), clamp helper.
-  - `context.tsx` — React provider exposing `GameState`; E2E-only window hooks.
-  - `uiStore.ts` — UI state via Zustand (paused, timeScale).
-- `src/renderer/materialRegistry.tsx` — Material registry with built-in shield (hex/transmission), bullet, explosion materials.
-- `src/config/renderer.ts` — Per-hull shield visual settings and helpers.
-- `src/assets/` — GLTF URL mappings and SVGs.
-- `src/utils/` — Utilities: deterministic RNG; GLTFLoader patch.
-- `src/types/` — Canonical types including `GameState`, `GameEntity`, and components.
+## Documentation
 
-Notes:
-- This rewrite runs Rapier on the main thread (stepped inside R3F `useFrame`), not a worker.
-- Assets are cached via drei/useGLTF; there is no `assetPool` on `GameState` in this version.
+- [README](README.md): Project overview, quick start, scripts, deployment notes, and contributing rules.
+- [Copilot-Processing](Copilot-Processing.md): Agent processing notes and workflow guidance for contributors and bots.
+- [Developer source layout](spec/src-structure.md): Developer-facing map of `src/` entry points and conventions.
+- [Motion system spec](spec/spec-physical-movement.md): Deterministic ship movement, renderer interpolation, and simulation expectations.
+- [AI overview and rollout](docs/ai-v2-overview.md): High-level AI design and rollout notes used by the project.
+- [Configuration parameters](docs/CONFIG_PARAMETERS.md): Catalog of tunable parameters and their meanings.
 
-## Tests & validation
+## Specifications
 
-- Unit tests: `test/vitest/` (Vitest; happy-dom env).
-- E2E: `test/playwright/e2e.spec.ts` with `playwright.config.cjs`.
-- Useful scripts (see `package.json`):
-  - `npm run typecheck` — TypeScript check.
-  - `npm test` — Vitest (unit).
-  - `npm run test:playwright` or `npm run test:e2e` — Playwright E2E.
-  - `npm run build` / `npm run build:dev` — Webpack builds.
-  - `npm run start` — Webpack dev server; `npm run serve` to serve `dist/`.
+- [Requirements](requirements.md): Top-level repository requirements and acceptance criteria.
+- [Spec directory](spec/): All formal specifications and design documents (see individual files like `spec/spec-physical-movement.md`).
+- [AGENTS guide](AGENTS.md): Repository guidelines, coding patterns, and agent integration notes.
 
-## Assets & configuration
+## Examples & Entry Points
 
-- Visuals: `src/config/renderer.ts` (shield visuals per hull).
-- Ship stats & spawn: `src/game/ships.ts`, `src/game/state.ts`.
-- GLTFs: `src/assets/gltf/*.glb` (imported via asset/resource, referenced from `src/assets/ships.ts`).
-- SVGs: `src/assets/svg/*.svg`.
+- [App bootstrap](src/main.tsx): Application bootstrap and renderer mounting example.
+- [Top-level App](src/App.tsx): Minimal application usage and UI composition.
+- [UI template](src/ui.html): Minimal static UI template / preview harness.
+- [Sample scripts](scripts/): Utility and generation scripts used by the project (e.g., smoke tests, asset generation).
 
-## Docs & specs
+## Source & Core Libraries
 
-- `AGENTS.md` — Contributor and agent rules (kept in sync with this guide).
-- `docs/` — Design notes (renderer, balance, data flow).
-- `spec/` — Structure overview and UI docs.
+- [Game logic (pure)](src/game/): Deterministic simulation logic, systems, and ship blueprints — safe to run headless.
+- [Rendering components](src/components/): React / R3F components (Ship, Projectile, HUD).
+- [Types (canonical)](src/types/index.ts): Single source of truth for runtime state (`GameState`) and shared interfaces.
+- [Seeded RNG utility](src/utils/rng.ts): Deterministic RNG used across simulation codepaths.
 
-## Memory (project context)
+## Configuration & Tooling
 
-- `memory/activeContext.md` — Current focus and decisions.
-- `memory/_index.md` — Memory index and tasks.
+- [package.json](package.json): Scripts, dependencies, and common commands.
+- [TypeScript config](tsconfig.json): Compiler options and path layout.
+- [Webpack config](webpack.config.mjs): Build pipeline for dev and production bundles.
+- [Playwright config](playwright.config.cjs): End-to-end test configuration and runners.
+- [Vitest config](vitest.config.js): Unit test runner configuration.
+- [ESLint config](eslint.config.ts) / [Prettier config](prettier.config.cjs): Linting and formatting rules.
 
-## Quick contributor reminders
+## Tests & CI
 
-- Keep all mutable runtime state on `GameState`.
-- Maintain determinism in `src/game/systems.ts` (use seeded RNG if randomness is required).
-- Dispose Three.js resources when adding new materials/geometries. Drei/useGLTF caches models.
-- When changing hull stats or visuals, update `src/game/ships.ts` and/or `src/config/renderer.ts` and add/adjust tests if relevant.
+- [Unit tests (Vitest)](test/vitest/): Deterministic logic tests and helpers.
+- [E2E tests (Playwright)](test/playwright/): End-to-end UI flows and accessibility checks.
+- [Test artifacts](test-output/): Playwright captures, reports, and test outputs.
+- [Coverage reports](coverage/): Test coverage artifacts and HTML reports.
+
+## Memory & Project Context
+
+- [Memory index](memory/_index.md): High-level memory bank index and navigation.
+- [Active context](memory/activeContext.md): Current work focus and recent changes.
+- [Progress log](memory/progress.md): Project progress and outstanding work.
+- [Tasks index](memory/tasks/_index.md): Active and archived tasks for cross-agent continuity.
+- [Project brief](memory/projectbrief.md): Foundational project goals and scope.
+
+## Optional / Secondary
+
+- [LICENSE](LICENSE.MD): Project license (MIT).
+- [CHANGELOG](CHANGELOG.md): Historical changelog and release notes.
+- [Spec & design backlog](plan/): Planning and design artifacts (architecture and system plans).
+- [Local dev helpers](scripts/): Utility scripts not required for core understanding.
+
+---
