@@ -172,7 +172,7 @@ describe('projectile resolution', () => {
     const ships = (state.queries.ships as any).entities as ShipEntity[];
     expect(ships.find((s) => s.id === target.id)).toBeUndefined();
     expect(state.explosions.length).toBe(1);
-    expect(state.explosions[0]?.faction).toBe('ravers');
+    expect(state.explosions[0]?.faction).toBe('reavers');
   });
 
   it('removes projectile when ttl expires', () => {

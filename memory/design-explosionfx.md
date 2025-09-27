@@ -12,7 +12,7 @@ Explosions triggered by ship destruction currently have no bespoke visual treatm
 - Emit deterministic explosion events every time a ship is destroyed, including seeded data for renderer playback.
 - Render a multi-stage explosion stack (flash → shockwave → fireball → debris → smoke) that reads clearly in Playwright captures.
 - Apply transient dynamic lighting to nearby ships without disturbing camera transforms or physics.
-- Respect faction palettes (Alliance cool tones, Ravers warm tones) and scale visuals by hull size.
+- Respect faction palettes (Alliance cool tones, Reavers warm tones) and scale visuals by hull size.
 - Maintain performance by reusing pools, instancing, and bloom groups already configured for explosions.
 
 ## Non-Goals
@@ -54,7 +54,7 @@ Render Frame (Battlefield)
 
 ## Visual Stages
 
-1. **Flash (0–0.12s):** Additive quad/sprite at explosion origin; emissive intensity derived from hull size. Alliance palette: #a6d8ff core rimmed with #ffffff. Ravers palette: #ffb347 core with #ff6138 rim. Flicker amplitude seeded via `SeededRng`.
+1. **Flash (0–0.12s):** Additive quad/sprite at explosion origin; emissive intensity derived from hull size. Alliance palette: #a6d8ff core rimmed with #ffffff. Reavers palette: #ffb347 core with #ff6138 rim. Flicker amplitude seeded via `SeededRng`.
 2. **Shockwave (0.08–0.40s):** Expanding torus/plane with custom shader performing radial alpha falloff and normal-based distortion of background. Radius growth and opacity planned via `ShockwaveTimeline` configuration, independent of camera distance.
 3. **Fireball Core (0.20–0.60s):** Noise-distorted sphere using triplanar noise to animate edges; emissive color interpolates from faction tint to neutral charcoal (#2f2f2f).
 4. **Debris Trails (0.18–0.90s):** Instanced shard meshes (low-poly triangles) launched along seeded cone vectors. Each shard uses glowing edge material (emissive Fresnel) that cools over lifetime.
@@ -67,7 +67,7 @@ Render Frame (Battlefield)
 ## Faction & Hull Scaling
 
 - Alliance (blue/white): cooler flash, pale shockwave edge, light-blue plasma wisps. Light color `#a6d8ff`.
-- Ravers (orange/red): warmer flash, high-contrast sparks, red-orange smoke fringe. Light color `#ff8447`.
+- Reavers (orange/red): warmer flash, high-contrast sparks, red-orange smoke fringe. Light color `#ff8447`.
 - Hull tiers adjust explosion radius, debris count, and smoke density via `EXPLOSION_CONFIG.hulls` mapping (e.g., fighter small, carrier massive) while maintaining consistent timing percentages.
 
 ## Interfaces & Configuration
@@ -76,7 +76,7 @@ Render Frame (Battlefield)
 export interface ExplosionEvent {
   id: number;
   seed: number;
-  faction: 'alliance' | 'ravers';
+  faction: 'alliance' | 'reavers';
   hull: ShipHull;
   position: Vector3;
   radius: number;
@@ -127,7 +127,7 @@ export interface ExplosionConfigEntry {
   - `explosions-lighting.spec.tsx`: dynamic light intensity scales by distance; camera matrices unchanged.
   - `explosions-lifecycle.spec.ts`: events expire and recycle pools, unregistering bloom and lights.
 - **Integration (Playwright):**
-  - `explosions-visual.spec.ts`: orchestrated battle replicates Alliance vs Ravers ship kills, captures baseline images verifying stage presence and faction palettes.
+  - `explosions-visual.spec.ts`: orchestrated battle replicates Alliance vs Reavers ship kills, captures baseline images verifying stage presence and faction palettes.
 - **Manual:**
   - QA smoke run in dev build toggling selective bloom intensity to ensure explosion halo remains controlled.
 

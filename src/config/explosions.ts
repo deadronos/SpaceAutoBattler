@@ -1,6 +1,6 @@
 import type { ExplosionConfigEntry, ShipHull } from '../types/index.js';
 
-export type ExplosionFaction = 'alliance' | 'ravers';
+export type ExplosionFaction = 'alliance' | 'reavers';
 
 const DEFAULT_PARTICLE_COUNTS = { sparks: 10, plasma: 6, smoke: 8 } as const;
 
@@ -115,7 +115,7 @@ const ALLIANCE_BASE: Record<ShipHull, ExplosionConfigEntry> = {
   },
 };
 
-const RAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
+const REAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
   fighter: {
     baseRadius: 3.2,
     flashIntensity: 1.2,
@@ -225,7 +225,7 @@ const RAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
 
 export const EXPLOSION_CONFIG: Record<ExplosionFaction, Record<ShipHull, ExplosionConfigEntry>> = {
   alliance: ALLIANCE_BASE,
-  ravers: RAVERS_BASE,
+  reavers: REAVERS_BASE,
 };
 
 export const DEFAULT_EXPLOSION_CONFIG: ExplosionConfigEntry = {

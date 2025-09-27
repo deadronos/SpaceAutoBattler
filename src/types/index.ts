@@ -162,7 +162,7 @@ export interface MuzzleFlash {
 export interface ExplosionEvent {
   id: number;
   seed: number;
-  faction: 'alliance' | 'ravers';
+  faction: 'alliance' | 'reavers';
   hull: ShipHull;
   position: Vector3;
   radius: number;

@@ -129,18 +129,18 @@ describe('emitShipKillExplosion', () => {
   it('applies faction-specific timing differences', () => {
     const state = makeState(0.5);
     const allianceShip = makeShip('blue', 'destroyer', 1.0);
-    const raversShip = makeShip('red', 'destroyer', 1.0);
+    const reaversShip = makeShip('red', 'destroyer', 1.0);
 
     const allianceEvent = emitShipKillExplosion(state, allianceShip);
-    const raversEvent = emitShipKillExplosion(state, raversShip);
+    const reaversEvent = emitShipKillExplosion(state, reaversShip);
 
-    // Ravers should generally have longer, more dramatic explosions
-    expect(raversEvent.duration).toBeGreaterThan(allianceEvent.duration);
-    expect(raversEvent.lightDuration).toBeGreaterThan(allianceEvent.lightDuration);
+    // Reavers should generally have longer, more dramatic explosions
+    expect(reaversEvent.duration).toBeGreaterThan(allianceEvent.duration);
+    expect(reaversEvent.lightDuration).toBeGreaterThan(allianceEvent.lightDuration);
     
     // Colors should be faction-specific
     expect(allianceEvent.palette.flash).toContain('#a6d8ff'); // Alliance blue
-    expect(raversEvent.palette.flash).toContain('#ffb347'); // Ravers orange
+    expect(reaversEvent.palette.flash).toContain('#ffb347'); // Reavers orange
   });
 
   it('scales timing appropriately by hull size', () => {

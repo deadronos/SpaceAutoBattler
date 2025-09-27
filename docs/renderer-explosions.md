@@ -4,7 +4,7 @@ This document outlines the explosion configuration system and provides guideline
 
 ## Overview
 
-The explosion system uses faction-aware and hull-specific configuration to create visually distinct ship-kill effects. All timing and intensity parameters are configurable per faction (Alliance/Ravers) and hull size (Fighter → Carrier), allowing for nuanced visual storytelling.
+The explosion system uses faction-aware and hull-specific configuration to create visually distinct ship-kill effects. All timing and intensity parameters are configurable per faction (Alliance/Reavers) and hull size (Fighter → Carrier), allowing for nuanced visual storytelling.
 
 ## Configuration Structure
 
@@ -60,7 +60,7 @@ The system provides these baseline timing patterns:
 | Fireball Delay | 0.2s | 0.17-0.18s | 0.18-0.19s | 0.19-0.2s | 0.21-0.22s | 0.23-0.25s |
 | Fireball Duration | 0.4s | 0.35-0.38s | 0.38-0.4s | 0.4-0.42s | 0.45-0.48s | 0.5-0.55s |
 
-*Note: Alliance tends toward shorter, cleaner explosions; Ravers favor longer, more dramatic effects.*
+*Note: Alliance tends toward shorter, cleaner explosions; Reavers favor longer, more dramatic effects.*
 
 ## Tuning Workflow
 
@@ -73,7 +73,7 @@ Use the **Explosion Debug** toggle in the game controls to enable explosion para
 Focus tuning on these key scenarios:
 - **Fighter swarms** - Need quick, snappy explosions that don't overwhelm the scene
 - **Capital ship kills** - Should feel significant and dramatic
-- **Faction distinction** - Alliance (clinical, blue) vs Ravers (aggressive, orange)
+- **Faction distinction** - Alliance (clinical, blue) vs Reavers (aggressive, orange)
 - **Bloom interaction** - Ensure explosions enhance rather than wash out other effects
 
 ### 3. Parameter Guidelines
@@ -102,7 +102,7 @@ Focus tuning on these key scenarios:
 
 - [ ] **Single explosion** - Verify timing feels natural in isolation
 - [ ] **Multiple explosions** - Test performance with 5-10 simultaneous explosions
-- [ ] **Faction contrast** - Ensure Alliance/Ravers explosions feel distinct
+- [ ] **Faction contrast** - Ensure Alliance/Reavers explosions feel distinct
 - [ ] **Hull scaling** - Verify larger ships feel more impactful
 - [ ] **Bloom balance** - Check that explosions don't overwhelm other bloom elements
 - [ ] **Replay determinism** - Config changes only affect new explosions

@@ -56,13 +56,13 @@ export function ExplosionDebugOverlay(): React.ReactElement | null {
       <div>
         <strong>Config Samples:</strong>
         <ConfigSample faction="alliance" hull="fighter" />
-        <ConfigSample faction="ravers" hull="carrier" />
+        <ConfigSample faction="reavers" hull="carrier" />
       </div>
     </div>
   );
 }
 
-function ConfigSample({ faction, hull }: { faction: 'alliance' | 'ravers'; hull: ShipHull }): React.ReactElement {
+function ConfigSample({ faction, hull }: { faction: 'alliance' | 'reavers'; hull: ShipHull }): React.ReactElement {
   const config = getExplosionConfig(faction, hull);
   
   return (

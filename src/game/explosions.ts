@@ -58,8 +58,8 @@ function recycleExplosion(state: GameState, event: ExplosionEvent): void {
   state.explosionPool.push(event);
 }
 
-function teamToFaction(team: ShipEntity['ship']['team']): 'alliance' | 'ravers' {
-  return team === 'blue' ? 'alliance' : 'ravers';
+function teamToFaction(team: ShipEntity['ship']['team']): 'alliance' | 'reavers' {
+  return team === 'blue' ? 'alliance' : 'reavers';
 }
 
 export function emitShipKillExplosion(
