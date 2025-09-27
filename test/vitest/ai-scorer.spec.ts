@@ -93,6 +93,11 @@ function createState(): GameState {
         lastSkipped: 0,
         lastSliceSize: 0,
         lastTotalShips: 0,
+        verticalSamples: 0,
+        verticalAboveThreshold: 0,
+        inBandSamples: 0,
+        inBandSatisfied: 0,
+        openingAggressiveIntents: 0,
       },
     },
     blackboard: {
@@ -102,6 +107,7 @@ function createState(): GameState {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [],
+      strengthRatio: { blue: 1, red: 1 },
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
@@ -132,7 +138,7 @@ describe('AI scorer snapshots', () => {
     const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0), hull: 'fighter' });
     const profile = resolveBehaviorProfile('brawler');
     const holdScore = scoreAttackIntent(ship, profile, target, 'hold', BASE_TRAITS);
-    expect(holdScore).toBe(1100);
+    expect(holdScore).toBe(1136);
 
     const retreatScore = scoreAttackIntent(ship, profile, target, 'retreat', BASE_TRAITS);
     expect(retreatScore).toBe(holdScore - 120);
@@ -158,9 +164,10 @@ describe('AI scorer snapshots', () => {
     const vip = createShip({ id: 22, team: 'blue', position: new Vector3(90, 0, 0), hull: 'carrier' });
     const profile = resolveBehaviorProfile('escort');
 
-    const noThreat = scoreEscortIntent(escort, profile, vip, state, BASE_TRAITS);
+    const assignment = { vipId: vip.id, offset: new Vector3(50, 0, 0) };
+    const noThreat = scoreEscortIntent(escort, profile, vip, state, BASE_TRAITS, assignment);
     state.blackboard.threatToVip.set(vip.id, 999);
-    const threatened = scoreEscortIntent(escort, profile, vip, state, BASE_TRAITS);
+    const threatened = scoreEscortIntent(escort, profile, vip, state, BASE_TRAITS, assignment);
     expect(threatened).toBeGreaterThan(noThreat);
   });
 
@@ -192,9 +199,10 @@ describe('AI scorer snapshots', () => {
     state.blackboard.threatToVip.set(vip.id, bomber.id);
     const profile = resolveBehaviorProfile('escort');
 
-    const score = scoreInterceptIntent(state, interceptor, profile, bomber, vip, 'hold', BASE_TRAITS);
+    const assignment = { vipId: vip.id, offset: new Vector3(60, 0, 0) };
+    const score = scoreInterceptIntent(state, interceptor, profile, bomber, vip, 'hold', BASE_TRAITS, assignment);
     const slow = createShip({ id: 44, team: 'red', position: new Vector3(220, 0, 0), hull: 'corvette' });
-    const neutral = scoreInterceptIntent(state, interceptor, profile, slow, vip, 'hold', BASE_TRAITS);
+    const neutral = scoreInterceptIntent(state, interceptor, profile, slow, vip, 'hold', BASE_TRAITS, assignment);
 
     expect(score).toBeGreaterThan(neutral);
     expect(score).toBeGreaterThan(700);

@@ -253,6 +253,10 @@ export interface AIState {
   targetId?: EntityId;
   lastScore?: number;
   command: AICommand;
+  stickinessUntil: number;
+  stickinessHeading: Vector3;
+  stickinessTargetId?: EntityId;
+  desiredRange?: readonly [number, number];
 }
 
 export interface BehaviorProfile {
@@ -267,6 +271,9 @@ export interface BehaviorProfile {
     ammoMin?: number;
     hpRetreatPct?: number;
   };
+  verticalManeuver: number;
+  elevationPreference?: 'above' | 'below' | 'follow';
+  bandPreference?: 'outer' | 'mid' | 'inner';
 }
 
 export type TeamPosture = 'aggressive' | 'hold' | 'retreat';
@@ -278,10 +285,17 @@ export interface AIBlackboard {
   nearestEnemy: Map<EntityId, EntityId>;
   threatToVip: Map<EntityId, EntityId>;
   tmpVectors: Vector3[];
+  strengthRatio: Record<Team, number>;
 }
 
 export interface AITeamAssignments {
-  escorts: Map<EntityId, EntityId>;
+  escorts: Map<EntityId, EscortAssignment>;
+}
+
+export interface EscortAssignment {
+  vipId: EntityId;
+  offset: Vector3;
+  threatId?: EntityId;
 }
 
 export interface AIManagerState {
@@ -304,6 +318,11 @@ export interface AIMetrics {
   lastSkipped: number;
   lastSliceSize: number;
   lastTotalShips: number;
+  verticalSamples: number;
+  verticalAboveThreshold: number;
+  inBandSamples: number;
+  inBandSatisfied: number;
+  openingAggressiveIntents: number;
 }
 
 export interface GameEntity extends TransformComponent {

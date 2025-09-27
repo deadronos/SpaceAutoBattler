@@ -43,6 +43,11 @@ function createState(): GameState {
         lastSkipped: 0,
         lastSliceSize: 0,
         lastTotalShips: 0,
+        verticalSamples: 0,
+        verticalAboveThreshold: 0,
+        inBandSamples: 0,
+        inBandSatisfied: 0,
+        openingAggressiveIntents: 0,
       },
     },
     blackboard: {
@@ -52,6 +57,7 @@ function createState(): GameState {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [],
+      strengthRatio: { blue: 1, red: 1 },
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
@@ -116,6 +122,8 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3) {
       lod: 0,
       traitSeed: 42,
       traits: { aggression: 1, patience: 1, dodge: 1 },
+      stickinessUntil: 0,
+      stickinessHeading: new Vector3(0, 0, 1),
       command: {
         heading: new Vector3(0, 0, 1),
         thrust: 0,

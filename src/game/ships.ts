@@ -532,6 +532,8 @@ function createInitialAIState(state: GameState, hull: ShipHull): AIState {
     lod: 1,
     traitSeed,
     traits: generateTraitsFromSeed(traitSeed),
+    stickinessUntil: 0,
+    stickinessHeading: new Vector3(0, 0, 1),
     command: {
       heading,
       thrust: 0,
