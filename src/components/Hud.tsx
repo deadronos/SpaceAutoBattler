@@ -4,6 +4,8 @@ import { useOptionalGameState } from '../game/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import type React from 'react';
 import { AiDebugOverlay } from './AiDebugOverlay.js';
+import { HudHealthLayer } from './HudHealthLayer.js';
+import { useUiStore } from '../game/uiStore.js';
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -20,9 +22,11 @@ export function Hud(): React.ReactElement {
   const ships = useArchetypeEntities<ShipEntity>(state ? state.queries.ships : null);
 
   const [blue, red] = useMemo(() => summarize(ships), [ships]);
+  const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
 
   return (
     <div className="hud">
+      <HudHealthLayer />
       <AiDebugOverlay />
       <div className="hud-panel">
         <h2>Space Auto Battler</h2>
@@ -32,6 +36,11 @@ export function Hud(): React.ReactElement {
           <TeamCard summary={red} />
         </div>
         <p className="hint">Ships automatically maneuver, acquire targets, and fire when in range.</p>
+        {hudHealthBarsEnabled ? null : (
+          <p className="hud-health-fallback" role="status">
+            HUD health overlays disabled — average hull integrity: Alliance {formatPercent(blue)} · Reavers {formatPercent(red)}.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -70,3 +79,9 @@ function TeamCard({ summary }: { summary: TeamSummary }): React.ReactElement {
 }
 
 // Ripple debug panel removed
+
+function formatPercent(summary: TeamSummary): string {
+  if (summary.maxHp <= 0) return '0%';
+  const ratio = Math.max(0, Math.min(1, summary.hp / summary.maxHp));
+  return `${Math.round(ratio * 100)}%`;
+}

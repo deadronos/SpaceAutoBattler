@@ -12,6 +12,8 @@ export type Team = 'blue' | 'red';
 
 export type ShipHull = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carrier';
 
+export type StatusEffectTag = 'jammed' | 'shield-down' | 'engine-disrupted' | 'hacked';
+
 export interface CarrierLaunchSlot {
   /** Forward offset in world units relative to the carrier's origin. */
   forward: number;
@@ -82,6 +84,8 @@ export interface ShipComponent {
   lateralAcceleration: number;
   /** Motion characteristics for physics-based movement. */
   motion: MotionStats;
+  /** Optional status effects applied to this ship for HUD overlays. */
+  effects?: StatusEffectTag[];
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -301,6 +305,13 @@ export interface GameState {
   simulation: SimulationClock;
   ai: AIManagerState;
   blackboard: AIBlackboard;
+  /** Flags mirrored from the UI store to keep deterministic playback. */
+  uiFlags: HudUiFlags;
+}
+
+export interface HudUiFlags {
+  /** Whether HUD health bars are currently enabled. */
+  hudHealthBars: boolean;
 }
 
 export interface SimulationClock {
