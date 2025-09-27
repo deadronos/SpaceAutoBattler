@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../src/types/index.js';
 import { emitShipKillExplosion, updateExplosions, resetExplosionOverflowWarning } from '../../src/game/explosions.js';
-import { getExplosionConfig } from '../../src/config/explosions.js';
+import { getExplosionConfig, DEFAULT_EXPLOSION_CONFIG } from '../../src/config/explosions.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 
 function makeState(rngValue = 0.42): GameState {
@@ -98,7 +98,7 @@ beforeEach(() => {
 });
 
 describe('emitShipKillExplosion', () => {
-  it('creates deterministic explosion event with faction palette', () => {
+  it('creates deterministic explosion event with faction palette and timing', () => {
     const state = makeState(0.123456789);
     const ship = makeShip('blue', 'frigate', 2.2);
     const projectile = makeProjectile('red');
@@ -116,6 +116,50 @@ describe('emitShipKillExplosion', () => {
     expect(event.flashIntensity).toBeCloseTo(config.flashIntensity, 5);
     expect(event.particles.sparks).toBe(config.particleCounts.sparks);
     expect(event.palette.flash).toBe(config.palette.flash);
+    
+    // Test timing configuration
+    expect(event.duration).toBe(config.timing.duration);
+    expect(event.lightDuration).toBe(config.timing.lightDuration);
+    expect(event.shockwave.delay).toBe(config.timing.shockwave.delay);
+    expect(event.shockwave.duration).toBe(config.timing.shockwave.duration);
+    expect(event.fireball.delay).toBe(config.timing.fireball.delay);
+    expect(event.fireball.duration).toBe(config.timing.fireball.duration);
+  });
+
+  it('applies faction-specific timing differences', () => {
+    const state = makeState(0.5);
+    const allianceShip = makeShip('blue', 'destroyer', 1.0);
+    const raversShip = makeShip('red', 'destroyer', 1.0);
+
+    const allianceEvent = emitShipKillExplosion(state, allianceShip);
+    const raversEvent = emitShipKillExplosion(state, raversShip);
+
+    // Ravers should generally have longer, more dramatic explosions
+    expect(raversEvent.duration).toBeGreaterThan(allianceEvent.duration);
+    expect(raversEvent.lightDuration).toBeGreaterThan(allianceEvent.lightDuration);
+    
+    // Colors should be faction-specific
+    expect(allianceEvent.palette.flash).toContain('#a6d8ff'); // Alliance blue
+    expect(raversEvent.palette.flash).toContain('#ffb347'); // Ravers orange
+  });
+
+  it('scales timing appropriately by hull size', () => {
+    const state = makeState(0.7);
+    const fighter = makeShip('blue', 'fighter', 1.0);
+    const carrier = makeShip('blue', 'carrier', 1.0);
+
+    const fighterEvent = emitShipKillExplosion(state, fighter);
+    const carrierEvent = emitShipKillExplosion(state, carrier);
+
+    // Larger ships should have longer explosions
+    expect(carrierEvent.duration).toBeGreaterThan(fighterEvent.duration);
+    expect(carrierEvent.lightDuration).toBeGreaterThan(fighterEvent.lightDuration);
+    expect(carrierEvent.shockwave.duration).toBeGreaterThan(fighterEvent.shockwave.duration);
+    expect(carrierEvent.fireball.duration).toBeGreaterThan(fighterEvent.fireball.duration);
+    
+    // Debris speed should also scale
+    expect(carrierEvent.debris.speed[0]).toBeGreaterThan(fighterEvent.debris.speed[0]);
+    expect(carrierEvent.debris.speed[1]).toBeGreaterThan(fighterEvent.debris.speed[1]);
   });
 });
 
@@ -136,5 +180,55 @@ describe('updateExplosions', () => {
     expect(state.explosionPool.length).toBe(1);
     expect(event.elapsed).toBe(0);
     expect(event.lightElapsed).toBe(0);
+  });
+});
+
+describe('explosion config parsing', () => {
+  it('provides valid default config with timing', () => {
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.duration).toBeGreaterThan(0);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.lightDuration).toBeGreaterThan(0);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.shockwave.delay).toBeGreaterThanOrEqual(0);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.shockwave.duration).toBeGreaterThan(0);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.fireball.delay).toBeGreaterThanOrEqual(0);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.fireball.duration).toBeGreaterThan(0);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed).toHaveLength(2);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed[1]).toBeGreaterThan(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed[0]);
+  });
+
+  it('handles invalid faction gracefully with fallback', () => {
+    // @ts-expect-error - testing invalid input
+    const config = getExplosionConfig('invalid-faction', 'fighter');
+    expect(config).toBe(DEFAULT_EXPLOSION_CONFIG);
+    expect(config.timing.duration).toBe(DEFAULT_EXPLOSION_CONFIG.timing.duration);
+  });
+
+  it('handles invalid hull gracefully with fallback', () => {
+    // @ts-expect-error - testing invalid input  
+    const config = getExplosionConfig('alliance', 'invalid-hull');
+    expect(config).toBe(DEFAULT_EXPLOSION_CONFIG);
+    expect(config.timing.duration).toBe(DEFAULT_EXPLOSION_CONFIG.timing.duration);
+  });
+});
+
+describe('deterministic behavior', () => {
+  it('produces identical explosion timing with same seed', () => {
+    const seed = 0.42;
+    const state1 = makeState(seed);
+    const state2 = makeState(seed);
+    const ship1 = makeShip('blue', 'frigate', 1.5);
+    const ship2 = makeShip('blue', 'frigate', 1.5);
+
+    const event1 = emitShipKillExplosion(state1, ship1);
+    const event2 = emitShipKillExplosion(state2, ship2);
+
+    // All timing should be identical
+    expect(event1.duration).toBe(event2.duration);
+    expect(event1.lightDuration).toBe(event2.lightDuration);
+    expect(event1.shockwave.delay).toBe(event2.shockwave.delay);
+    expect(event1.shockwave.duration).toBe(event2.shockwave.duration);
+    expect(event1.fireball.delay).toBe(event2.fireball.delay);
+    expect(event1.fireball.duration).toBe(event2.fireball.duration);
+    expect(event1.debris.speed).toEqual(event2.debris.speed);
+    expect(event1.seed).toBe(event2.seed);
   });
 });

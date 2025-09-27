@@ -8,13 +8,6 @@ import type {
 import { DEFAULT_EXPLOSION_CONFIG, getExplosionConfig } from '../config/explosions.js';
 
 const MAX_EXPLOSIONS = 48;
-const DEFAULT_DURATION = 1.8;
-const DEFAULT_LIGHT_DURATION = 0.25;
-const SHOCKWAVE_DELAY = 0.08;
-const SHOCKWAVE_DURATION = 0.32;
-const FIREBALL_DELAY = 0.2;
-const FIREBALL_DURATION = 0.4;
-const BASE_DEBRIS_SPEED: [number, number] = [12, 26];
 
 let overflowWarned = false;
 
@@ -23,6 +16,7 @@ function obtainExplosion(state: GameState): ExplosionEvent {
   if (pooled) {
     return pooled;
   }
+  const defaultTiming = DEFAULT_EXPLOSION_CONFIG.timing;
   return {
     id: 0,
     seed: 0,
@@ -31,14 +25,24 @@ function obtainExplosion(state: GameState): ExplosionEvent {
     position: new Vector3(),
     radius: 0,
     startTime: 0,
-    duration: DEFAULT_DURATION,
-    lightDuration: DEFAULT_LIGHT_DURATION,
+    duration: defaultTiming.duration,
+    lightDuration: defaultTiming.lightDuration,
     lightFalloff: DEFAULT_EXPLOSION_CONFIG.lightFalloff,
     lightColor: DEFAULT_EXPLOSION_CONFIG.lightColor,
     flashIntensity: DEFAULT_EXPLOSION_CONFIG.flashIntensity,
-    shockwave: { delay: SHOCKWAVE_DELAY, duration: SHOCKWAVE_DURATION, maxRadius: 0 },
-    fireball: { delay: FIREBALL_DELAY, duration: FIREBALL_DURATION },
-    debris: { count: DEFAULT_EXPLOSION_CONFIG.debrisCount, speed: [...BASE_DEBRIS_SPEED] as [number, number] },
+    shockwave: { 
+      delay: defaultTiming.shockwave.delay, 
+      duration: defaultTiming.shockwave.duration, 
+      maxRadius: 0 
+    },
+    fireball: { 
+      delay: defaultTiming.fireball.delay, 
+      duration: defaultTiming.fireball.duration 
+    },
+    debris: { 
+      count: DEFAULT_EXPLOSION_CONFIG.debrisCount, 
+      speed: [...defaultTiming.debrisSpeed] as [number, number] 
+    },
     particles: { ...DEFAULT_EXPLOSION_CONFIG.particleCounts },
     palette: { ...DEFAULT_EXPLOSION_CONFIG.palette },
     elapsed: 0,
@@ -94,19 +98,19 @@ export function emitShipKillExplosion(
   const radius = config.baseRadius * ship.transform.scale;
   event.radius = radius;
   event.startTime = state.time;
-  event.duration = DEFAULT_DURATION;
-  event.lightDuration = DEFAULT_LIGHT_DURATION;
+  event.duration = config.timing.duration;
+  event.lightDuration = config.timing.lightDuration;
   event.lightFalloff = config.lightFalloff;
   event.lightColor = config.lightColor;
   event.flashIntensity = config.flashIntensity;
-  event.shockwave.delay = SHOCKWAVE_DELAY;
-  event.shockwave.duration = SHOCKWAVE_DURATION;
+  event.shockwave.delay = config.timing.shockwave.delay;
+  event.shockwave.duration = config.timing.shockwave.duration;
   event.shockwave.maxRadius = radius * 1.8;
-  event.fireball.delay = FIREBALL_DELAY;
-  event.fireball.duration = FIREBALL_DURATION;
+  event.fireball.delay = config.timing.fireball.delay;
+  event.fireball.duration = config.timing.fireball.duration;
   event.debris.count = config.debrisCount;
-  const debrisSpeedMin = BASE_DEBRIS_SPEED[0] * (0.6 + ship.transform.scale * 0.4);
-  const debrisSpeedMax = BASE_DEBRIS_SPEED[1] * (0.7 + ship.transform.scale * 0.5);
+  const debrisSpeedMin = config.timing.debrisSpeed[0] * (0.6 + ship.transform.scale * 0.4);
+  const debrisSpeedMax = config.timing.debrisSpeed[1] * (0.7 + ship.transform.scale * 0.5);
   event.debris.speed = [debrisSpeedMin, debrisSpeedMax];
   event.particles = { ...config.particleCounts };
   event.palette = { ...config.palette };

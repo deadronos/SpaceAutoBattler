@@ -200,6 +200,13 @@ export interface ExplosionConfigEntry {
     fireballHot: string;
     smoke: string;
   };
+  timing: {
+    duration: number;
+    lightDuration: number;
+    shockwave: { delay: number; duration: number };
+    fireball: { delay: number; duration: number };
+    debrisSpeed: [number, number];
+  };
 }
 
 export type EntityId = number;
