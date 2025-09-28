@@ -134,6 +134,24 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
       // Compute anchor positions at the tail
       const tailZ = box.min.z - THRUSTER_GLOW_CONFIG.tailOffset * size.z;
       const glowSize = THRUSTER_GLOW_CONFIG.glowMeshSize * Math.max(size.x, size.y);
+
+      // Debug logging for engine glow attachment analysis
+      const hasExtremeValues = !Number.isFinite(box.min.z) || !Number.isFinite(size.z) || 
+        !Number.isFinite(tailZ) || Math.abs(tailZ) > 10000 || Math.abs(box.min.z) > 10000;
+      
+      if (hasExtremeValues) {
+        console.warn(`[Ship] Engine glow extreme values detected:`, {
+          shipId: entity.id,
+          hull: entity.ship.hull,
+          boxMin: { x: box.min.x, y: box.min.y, z: box.min.z },
+          boxMax: { x: box.max.x, y: box.max.y, z: box.max.z },
+          size: { x: size.x, y: size.y, z: size.z },
+          tailOffset: THRUSTER_GLOW_CONFIG.tailOffset,
+          computedTailZ: tailZ,
+          glowSize: glowSize,
+          anchorCount: anchorCount
+        });
+      }
       
       for (let i = 0; i < anchorCount; i++) {
         // Position anchors symmetrically
@@ -161,6 +179,18 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
         const glowMesh = new Mesh(geometry, material);
         glowMesh.position.set(x, y, tailZ);
         scene.add(glowMesh);
+
+        // Debug logging for individual glow mesh positions
+        const hasExtremeMeshPosition = Math.abs(x) > 1000 || Math.abs(y) > 1000 || Math.abs(tailZ) > 1000;
+        if (hasExtremeMeshPosition) {
+          console.warn(`[Ship] Engine glow mesh extreme position:`, {
+            shipId: entity.id,
+            hull: entity.ship.hull,
+            glowIndex: i,
+            position: { x, y, z: tailZ },
+            anchorCount: anchorCount
+          });
+        }
         
         engines.push(glowMesh);
         fallbackGlowMeshesRef.current.push(glowMesh);
