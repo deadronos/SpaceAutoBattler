@@ -16,6 +16,7 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     verticalManeuver: 0.25,
     elevationPreference: 'follow',
     bandPreference: 'mid',
+    engagementBias: 25,
     gates: {
       hpRetreatPct: 0.25,
     },
@@ -34,6 +35,7 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     verticalManeuver: 0.15, // cruiser: 0.15 per issue spec (assuming kiter = cruiser-like)
     elevationPreference: 'follow',
     bandPreference: 'outer',
+    engagementBias: 15,
     gates: {
       hpRetreatPct: 0.35,
     },
@@ -52,6 +54,7 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     verticalManeuver: 0.5, // fighters: 0.5 per issue spec
     elevationPreference: 'follow',
     bandPreference: 'mid',
+    engagementBias: 30,
     gates: {
       hpRetreatPct: 0.3,
     },
@@ -70,6 +73,7 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     verticalManeuver: 0.05, // artillery: 0.05 per issue spec
     elevationPreference: 'above',
     bandPreference: 'outer',
+    engagementBias: 10,
     gates: {
       hpRetreatPct: 0.4,
     },

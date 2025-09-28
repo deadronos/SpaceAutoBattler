@@ -149,7 +149,7 @@ it('diagnostic: escort + bomber + artillery scenarios candidate breakdown', () =
       const escortAssignment = state.ai.assignments.escorts.get(ship.id) ?? null;
       const escort = escortAssignment ? ships.find((s) => s.id === escortAssignment.vipId) ?? null : null;
 
-      const attack = __aiTestHooks.scoreAttackIntent(ship, profile, primary, state.blackboard.teamPosture[ship.ship.team], ai.traits);
+      const attack = __aiTestHooks.scoreAttackIntent(state, ship, profile, primary, state.blackboard.teamPosture[ship.ship.team], ai.traits);
       const kite = __aiTestHooks.scoreKiteIntent(ship, profile, primary, state.blackboard.teamPosture[ship.ship.team], ai.traits);
       const escortScore = escort
         ? __aiTestHooks.scoreEscortIntent(ship, profile, escort, state, ai.traits, escortAssignment)
