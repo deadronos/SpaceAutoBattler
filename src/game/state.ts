@@ -113,6 +113,12 @@ export async function createGameState(): Promise<GameState> {
         blue: new Map(),
         red: new Map(),
       },
+      // Vertical dispersion tracking for validation
+      verticalDispersion: {
+        headingYSamples: [],
+        positionYSamples: [],
+        lastUpdateTick: -1,
+      },
     },
   };
 
