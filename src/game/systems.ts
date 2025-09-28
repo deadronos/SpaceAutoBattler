@@ -253,6 +253,22 @@ function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   blackboard.strengthRatio.red = redStrength;
   blackboard.teamPosture.blue = resolvePosture(blueStrength);
   blackboard.teamPosture.red = resolvePosture(redStrength);
+
+  // Collect vertical dispersion statistics for validation
+  if (blackboard.verticalDispersion && blackboard.verticalDispersion.lastUpdateTick !== blackboard.tickIndex) {
+    blackboard.verticalDispersion.positionYSamples.length = 0;
+    blackboard.verticalDispersion.headingYSamples.length = 0;
+    blackboard.verticalDispersion.lastUpdateTick = blackboard.tickIndex;
+  }
+  
+  // Collect position Y samples for dispersion analysis
+  if (blackboard.verticalDispersion) {
+    for (const ship of ships) {
+      if (ship.ai && ship.ship.hp > 0) {
+        blackboard.verticalDispersion.positionYSamples.push(ship.transform.position.y);
+      }
+    }
+  }
 }
 
 function resolvePosture(strengthRatio: number): TeamPosture {
@@ -1120,6 +1136,11 @@ function writeCommand(
 
   if (target && distanceToTarget != null) {
     updateBandStickiness(state, ai, target, distanceToTarget, profile.desiredRange, heading);
+  }
+
+  // Collect heading Y sample for vertical dispersion statistics
+  if (AI_CONFIG.verticalEnabled && Math.abs(heading.y) > 1e-6 && state.blackboard.verticalDispersion) {
+    state.blackboard.verticalDispersion.headingYSamples.push(heading.y);
   }
 }
 

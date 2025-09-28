@@ -4,6 +4,7 @@ import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
+import { AI_CONFIG } from '../../src/game/config.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
 const { writeCommand } = __aiTestHooks;
@@ -29,6 +30,14 @@ function createState(): GameState {
       threatToVip: new Map(),
       tmpVectors: [],
       strengthRatio: { blue: 1, red: 1 },
+      teamPriority: { blue: [], red: [] },
+      priorityIndex: { blue: new Map(), red: new Map() },
+      focusFire: { blue: new Map(), red: new Map() },
+      verticalDispersion: {
+        headingYSamples: [],
+        positionYSamples: [],
+        lastUpdateTick: -1,
+      },
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
@@ -246,6 +255,62 @@ describe('writeCommand executors', () => {
     expect(Math.abs(fighter.ai!.command.heading.y)).toBeGreaterThan(0.01);
   });
 
+  it('applies role-specific vertical perturbation amplitudes', () => {
+    const state = createState();
+    state.ai.tickIndex = 10;
+    
+    // Test different profiles to ensure role-specific amplitudes
+    const testCases = [
+      { profileId: 'escort', expectedMin: 0.45, description: 'fighters (escort profile)' },
+      { profileId: 'brawler', expectedMin: 0.2, description: 'corvettes (brawler profile)' },
+      { profileId: 'artillery', expectedMin: 0.01, description: 'artillery (destroyer/carrier)' },
+    ];
+
+    for (const { profileId, expectedMin, description } of testCases) {
+      const ship = createShip(Math.floor(Math.random() * 1000), 'blue', new Vector3());
+      ship.ai!.profileId = profileId;
+      ship.ai!.intent = 'Attack';
+      const profile = resolveBehaviorProfile(profileId);
+      const target = createShip(Math.floor(Math.random() * 1000), 'red', new Vector3(200, 50, 0));
+
+      // Test multiple samples to account for RNG variation
+      let maxPerturbation = 0;
+      for (let i = 0; i < 10; i++) {
+        state.ai.tickIndex = 10 + i;
+        writeCommand(state, ship, ship.ai!, profile, target, null, null);
+        maxPerturbation = Math.max(maxPerturbation, Math.abs(ship.ai!.command.heading.y));
+      }
+
+      expect(profile.verticalManeuver).toBeGreaterThanOrEqual(expectedMin);
+      // Test that some vertical perturbation is applied
+      expect(maxPerturbation).toBeGreaterThan(0); // ${description} should have some vertical perturbation
+    }
+  });
+
+  it('does not apply vertical perturbation when verticalEnabled is false', () => {
+    const state = createState();
+    state.ai.tickIndex = 6;
+    const fighter = createShip(30, 'blue', new Vector3());
+    fighter.ai!.profileId = 'escort';
+    fighter.ai!.intent = 'Attack';
+    const profile = resolveBehaviorProfile('escort');
+    const target = createShip(31, 'red', new Vector3(190, 0, 0));
+
+    // Temporarily disable vertical perturbation
+    const originalVerticalEnabled = AI_CONFIG.verticalEnabled;
+    (AI_CONFIG as any).verticalEnabled = false;
+
+    try {
+      writeCommand(state, fighter, fighter.ai!, profile, target, null, null);
+      
+      // When disabled, heading.y should be close to 0 (no vertical perturbation)
+      expect(Math.abs(fighter.ai!.command.heading.y)).toBeLessThan(0.001);
+    } finally {
+      // Restore original setting
+      (AI_CONFIG as any).verticalEnabled = originalVerticalEnabled;
+    }
+  });
+
   it('records stickiness when maintaining preferred band', () => {
     const state = createState();
     state.ai.tickIndex = 10;
@@ -260,6 +325,53 @@ describe('writeCommand executors', () => {
     expect(brawler.ai!.stickinessUntil).toBeGreaterThan(state.ai.tickIndex);
     expect(brawler.ai!.stickinessTargetId).toBe(target.id);
     expect(brawler.ai!.stickinessHeading.length()).toBeGreaterThan(0);
+  });
+
+  it('collects vertical dispersion statistics for validation', () => {
+    const state = createState();
+    state.ai.tickIndex = 15;
+    
+    // Create multiple ships with different profiles
+    const ships = [
+      { id: 101, profileId: 'escort', position: new Vector3(0, 0, 0) },
+      { id: 102, profileId: 'brawler', position: new Vector3(50, 10, 0) },
+      { id: 103, profileId: 'artillery', position: new Vector3(100, -5, 0) },
+      { id: 104, profileId: 'escort', position: new Vector3(150, 8, 0) },
+    ];
+
+    const entities = ships.map(config => {
+      const ship = createShip(config.id, 'blue', config.position);
+      ship.ai!.profileId = config.profileId;
+      ship.ai!.intent = 'Attack';
+      return ship;
+    });
+
+    // Create targets
+    const targets = [
+      createShip(201, 'red', new Vector3(200, 0, 0)),
+      createShip(202, 'red', new Vector3(250, 20, 0)),
+    ];
+
+    // Execute AI commands for all ships
+    for (let i = 0; i < entities.length; i++) {
+      const ship = entities[i];
+      const profile = resolveBehaviorProfile(ship.ai!.profileId);
+      const target = targets[i % targets.length];
+      writeCommand(state, ship, ship.ai!, profile, target, null, null);
+    }
+
+    // Verify vertical dispersion statistics were collected
+    expect(state.blackboard.verticalDispersion?.headingYSamples).toBeDefined();
+    expect(state.blackboard.verticalDispersion!.headingYSamples.length).toBeGreaterThan(0);
+
+    // Verify some vertical diversity (not all zeros)
+    const headingYSamples = state.blackboard.verticalDispersion!.headingYSamples;
+    const nonZeroSamples = headingYSamples.filter(y => Math.abs(y) > 0.001);
+    expect(nonZeroSamples.length).toBeGreaterThan(0); // Should have some non-zero vertical components
+
+    // Check that heading Y values are clamped
+    const maxAbsY = Math.max(...headingYSamples.map(y => Math.abs(y)));
+    expect(maxAbsY).toBeLessThanOrEqual(0.3); // Should respect headingYClamp
   });
 });
 

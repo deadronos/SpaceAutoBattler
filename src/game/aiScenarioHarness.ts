@@ -129,6 +129,11 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       teamPriority: { blue: [], red: [] },
       priorityIndex: { blue: new Map(), red: new Map() },
       focusFire: { blue: new Map(), red: new Map() },
+      verticalDispersion: {
+        headingYSamples: [],
+        positionYSamples: [],
+        lastUpdateTick: -1,
+      },
     },
     queries: {
       ships: { entities: ships },
