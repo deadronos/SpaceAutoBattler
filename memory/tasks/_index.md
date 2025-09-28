@@ -6,9 +6,9 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
-
 ## Completed
+
+- [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
 
 - [TASK149](COMPLETED/TASK149-performance-audit-report.md) — Repository-wide renderer performance audit with batched ratings and recommendations recorded in `docs/performance-report-v0.1.1.md`.
 - [TASK148](TASK148-perf-monitor-overlay.md) — Landed draggable `r3f-perf` overlay with HUD toggle, persisted position state, and passing Vitest coverage.
