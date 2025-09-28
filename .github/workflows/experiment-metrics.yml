@@ -1,20 +1,20 @@
 name: AI Experiment Metrics
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'src/game/config.ts'
-      - 'src/game/systems.ts' 
-      - 'src/game/ships.ts'
-      - 'scripts/perf/**'
-  push:
-    branches: [ main ]
-    paths:
-      - 'src/game/config.ts'
-      - 'src/game/systems.ts'
-      - 'src/game/ships.ts'
-      - 'scripts/perf/**'
+##  pull_request:
+#    branches: [ main ]
+#    paths:
+#      - 'src/game/config.ts'
+#      - 'src/game/systems.ts' 
+#      - 'src/game/ships.ts'
+#      - 'scripts/perf/**'
+#  push:
+#    branches: [ main ]
+#    paths:
+#      - 'src/game/config.ts'
+#      - 'src/game/systems.ts'
+#      - 'src/game/ships.ts'
+#      - 'scripts/perf/**'
   workflow_dispatch:
 
 jobs:
