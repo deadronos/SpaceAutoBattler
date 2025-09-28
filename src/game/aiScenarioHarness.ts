@@ -14,12 +14,12 @@ import type {
 import { createDefaultMotionStats } from './ships.js';
 import { SeededRng } from '../utils/rng.js';
 import { AI_CONFIG, clampToWorld } from './config.js';
-import { runDecisionTick, __aiTestHooks } from './systems.js';
+import { runDecisionTick, __aiTestHooks, fireProjectile } from './systems.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
-import { createDefaultMetrics, aggregateKpis, SHIP_HULLS } from './metrics.js';
+import { createDefaultMetrics, aggregateKpis, SHIP_HULLS, recordShotMetrics } from './metrics.js';
 
 const HARNESS_TEMP = new Vector3();
 
@@ -142,15 +142,62 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     } as HarnessQueries,
     world: {
       entities: ships,
-      createEntity: () => ({}) as ShipEntity,
+      createEntity: (entity: unknown) => {
+        // Add projectile to queries for metrics tracking
+        (state.queries.projectiles.entities as unknown[]).push(entity);
+        return entity as ShipEntity;
+      },
+      // Newer API alias used by miniplex v2
+      add: (entity: unknown) => {
+        // Add projectile to queries for metrics tracking
+        (state.queries.projectiles.entities as unknown[]).push(entity);
+        return entity as ShipEntity;
+      },
       destroyEntity: () => undefined,
+      // Newer API alias used by miniplex v2
+      remove: () => undefined,
     } as unknown as GameState['world'],
-    physicsWorld: {} as never,
+    physicsWorld: {
+      createRigidBody: (desc: { translation: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number; w: number } }) => ({
+        translation: () => ({ ...desc.translation }),
+        rotation: () => ({ ...desc.rotation }),
+        setNextKinematicTranslation: () => undefined,
+        setNextKinematicRotation: () => undefined,
+      }),
+      createCollider: (desc: { radius?: number }, body: unknown) => ({
+        handle: Math.random(), // Simple handle for testing
+        radius: desc.radius ?? 0,
+        body,
+      }),
+    } as never,
     eventQueue: {} as never,
     colliderLookup: new Map(),
     rapier: {
-      RigidBodyDesc: { kinematicPositionBased: () => ({}) },
-      ColliderDesc: { ball: () => ({}) },
+      RigidBodyDesc: {
+        kinematicPositionBased: () => ({
+          translation: { x: 0, y: 0, z: 0 },
+          rotation: { x: 0, y: 0, z: 0, w: 1 },
+          setTranslation(x: number, y: number, z: number) {
+            this.translation = { x, y, z };
+            return this;
+          },
+          setRotation(rotation: { x: number; y: number; z: number; w: number }) {
+            this.rotation = { ...rotation };
+            return this;
+          },
+        }),
+      },
+      ColliderDesc: {
+        ball: (radius: number) => ({
+          radius,
+          setActiveEvents() {
+            return this;
+          },
+          setActiveCollisionTypes() {
+            return this;
+          },
+        }),
+      },
       ActiveEvents: { COLLISION_EVENTS: 0 },
       ActiveCollisionTypes: { ALL: 0 },
     } as never,
@@ -324,6 +371,67 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
   return log;
 }
 
+/**
+ * Exported helper function to collect test metrics from an AI scenario log.
+ * This can be used by external tools for AI experiment validation.
+ */
+export function collectTestMetrics(log: AIScenarioLog): {
+  timeToFirstShot: { p50: number | null; p90: number | null; samples: number };
+  verticalDispersion: { fighterEscortVerticalRatio: number; totalCommands: number };
+  inBandTime: { overall: number | null; fighter: number | null; corvette: number | null };
+  openingAggression: { ratio: number | null; total: number };
+} {
+  const metrics = log.metrics;
+  
+  // Time-to-first-shot metrics
+  const timeToFirstShot = {
+    p50: metrics.kpis.firstShot.p50,
+    p90: metrics.kpis.firstShot.p90,
+    samples: metrics.kpis.firstShot.samples,
+  };
+
+  // Vertical dispersion - count commands with |heading.y| > 0.05 for fighters/escorts
+  let verticalCommands = 0;
+  let totalFighterEscortCommands = 0;
+  
+  for (const entry of log.entries) {
+    for (const command of entry.commands) {
+      // Assuming fighters and corvettes act as escorts in these scenarios
+      if (command.intent === 'Attack' || command.intent === 'Intercept' || command.intent === 'Kite') {
+        totalFighterEscortCommands++;
+        if (Math.abs(command.heading[1]) > 0.05) {
+          verticalCommands++;
+        }
+      }
+    }
+  }
+  
+  const verticalDispersion = {
+    fighterEscortVerticalRatio: totalFighterEscortCommands > 0 ? verticalCommands / totalFighterEscortCommands : 0,
+    totalCommands: totalFighterEscortCommands,
+  };
+
+  // In-band time metrics
+  const inBandTime = {
+    overall: metrics.kpis.inBand.overall.ratio,
+    fighter: metrics.kpis.inBand.byHull.fighter?.ratio ?? null,
+    corvette: metrics.kpis.inBand.byHull.corvette?.ratio ?? null,
+  };
+
+  // Opening aggression metrics
+  const openingAggression = {
+    ratio: metrics.kpis.openingAggression.ratio,
+    total: metrics.kpis.openingAggression.total,
+  };
+
+  return {
+    timeToFirstShot,
+    verticalDispersion,
+    inBandTime,
+    openingAggression,
+  };
+}
+
 function createHarnessShip(
   spec: AIScenarioShipConfig,
   index: number,
@@ -482,6 +590,8 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
   for (const ship of ships) {
     const ai = ship.ai;
     if (!ai) continue;
+    
+    // Handle movement
     const heading = HARNESS_TEMP.copy(ai.command.heading);
     if (heading.lengthSq() < 1e-5) {
       heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
@@ -495,6 +605,39 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
       ship.transform.position.addScaledVector(ship.__harnessVelocity, delta);
     }
     clampToWorld(ship.transform.position);
+
+    // Handle shooting
+    if (ai.command.firePrimary && ship.ship.cooldown <= 0) {
+      // Find target for metrics recording (like the AI system does)
+      const targetId = ai.command.targetId ?? ai.targetId;
+      const target = targetId 
+        ? (state.queries.ships.entities as HarnessShip[]).find(s => s.id === targetId)
+        : null;
+      
+      // Record shot metrics before firing (like executeAICommand does)
+      const distanceToTarget = target
+        ? ship.transform.position.distanceTo(target.transform.position)
+        : undefined;
+      const deltaY = target ? target.transform.position.y - ship.transform.position.y : undefined;
+      
+      recordShotMetrics(state.ai.metrics, {
+        shipId: ship.id,
+        hull: ship.ship.hull,
+        time: state.time,
+        distance: distanceToTarget,
+        deltaY,
+      });
+      
+      // Fire projectile in the command heading direction
+      const fireDirection = heading.clone().normalize();
+      fireProjectile(state, ship, fireDirection);
+      ship.ship.cooldown = ship.ship.fireRate;
+    }
+
+    // Update cooldowns
+    if (ship.ship.cooldown > 0) {
+      ship.ship.cooldown -= delta;
+    }
   }
 }
 
