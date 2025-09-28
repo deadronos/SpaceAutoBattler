@@ -1,8 +1,8 @@
 # TASK145 - Implement AI Determinism & Coordination Overhaul
 
-**Status:** In Progress  
-**Added:** 2025-09-28  
-**Updated:** 2025-09-29
+**Status:** Completed
+**Added:** 2025-09-28
+**Updated:** 2025-09-30
 
 ## Original Request
 
@@ -16,12 +16,12 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 
 - [x] **Score precision & comparator (P0):** Quantise scores to 0.1 resolution, replace `Math.floor` usage, implement comparator ordering (intent rank → threat rank → distance → ship index), and instrument tie metrics.
 - [x] **Target prioritisation (P0):** Extend blackboard caches with threat-weighted ordering and focus-fire tracking; update intent selection to prefer highest threat targets with deterministic ordering.
-- [ ] **Interrupt responsiveness (P0):** Introduce interrupt manager tracking HP drops, VIP threats, and target loss; ensure `nextThinkAt` snaps to the current tick and record latency metrics.
+- [x] **Interrupt responsiveness (P0):** Introduce interrupt manager tracking HP drops, VIP threats, and target loss; ensure `nextThinkAt` snaps to the current tick and record latency metrics.
   - Drafted event flow (hp-drop, vip-threat, target-lost) with per-ship cooldown guardrails and latency histogram buckets (2025-09-29).
   - Identified touch points in `AIManagerState.interrupts`, `resolveDamageEvents`, and harness updates for `test/vitest/ai-interrupts.spec.ts`.
-- [ ] **Vertical clamp expansion (P1):** Parameterise heading Y clamp by profile role and band error; expand range for agile hulls while preserving deterministic behaviour.
-- [ ] **Diagnostics expansion (P1):** Extend metrics payload with tie count, comparator fallbacks, decision latency histogram, focus-fire ratios, and vertical amplitude distribution; update harness serialization and consumer tooling.
-- [ ] **Scoring enrichment & tuning (P1/P2):** Integrate threat/focus weighting into intent scores, rebalance constants, and validate KPI/telemetry baselines; retain toggles for incremental rollout.
+- [x] **Vertical clamp expansion (P1):** Parameterise heading Y clamp by profile role and band error; expand range for agile hulls while preserving deterministic behaviour.
+- [x] **Diagnostics expansion (P1):** Extend metrics payload with tie count, comparator fallbacks, decision latency histogram, focus-fire ratios, and vertical amplitude distribution; update harness serialization and consumer tooling.
+- [x] **Scoring enrichment & tuning (P1/P2):** Integrate threat/focus weighting into intent scores, rebalance constants, and validate KPI/telemetry baselines; retain toggles for incremental rollout.
 
 ## Error Handling Matrix (Draft)
 
@@ -34,7 +34,7 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 
 ## Progress Tracking
 
-**Overall Status:** In Progress - 30%
+**Overall Status:** Completed - 100%
 
 ### Subtasks
 
@@ -42,18 +42,18 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 | --- | ------------------------------------------------------- | ------------- | ----------- | ----- |
 | 1.1 | Implement score quantisation and deterministic comparator| Completed     | 2025-09-28  | Shipped prior to this pass; quantiser/comparator live in `src/game/systems.ts`. |
 | 1.2 | Build threat-weighted target prioritisation cache       | Completed     | 2025-09-28  | Blackboard priority queues and focus tracking already in place. |
-| 1.3 | Add interrupt manager for reactive decisions            | In Progress   | 2025-09-29  | Outlined event flow, cooldown guard, and test harness coverage for `ai-interrupts`. |
-| 1.4 | Expand vertical clamp per role                          | Not Started   | 2025-09-28  | Needs profile-driven clamp parameters and tests. |
-| 1.5 | Extend diagnostics with tie/latency/focus data          | Not Started   | 2025-09-28  | Update metrics, harness logs, and dashboard consumers. |
-| 1.6 | Tune scoring weights with threat/focus bias             | Not Started   | 2025-09-28  | Dependent on prior steps; adjust constants and tests. |
+| 1.3 | Add interrupt manager for reactive decisions            | Completed     | 2025-09-30  | Interrupt queue snaps `nextThinkAt`, latency buckets covered by new Vitest spec. |
+| 1.4 | Expand vertical clamp per role                          | Completed     | 2025-09-30  | Added role-aware clamps plus heading dispersion coverage in `ai-vertical` spec. |
+| 1.5 | Extend diagnostics with tie/latency/focus data          | Completed     | 2025-09-30  | Harness metrics expose decision latency, focus fire, heading amplitude, and ties. |
+| 1.6 | Tune scoring weights with threat/focus bias             | Completed     | 2025-09-30  | Threat/focus weighting stabilised with deterministic scoring snapshots and fixtures. |
 
 ## Progress Log
 
-### 2025-09-29
+### 2025-09-30
 
-- Refined interrupt manager scope with explicit hp-drop, vip-threat, and target-loss triggers plus per-ship cooldown safeguards.
-- Drafted error handling matrix covering comparator fallbacks, cache rebuilds, interrupt throttling, and metrics trimming.
-- Marked subtask 1.3 in progress with documented code touch points and planned coverage in `test/vitest/ai-interrupts.spec.ts`; next action is to implement the queue and hp-drop hook instrumentation.
+- Implemented interrupt queue flow end-to-end with `ai-interrupts` regression spec capturing latency bucket resets.
+- Added vertical clamp verification for agile vs heavy hulls and expanded heading amplitude sampling diagnostics.
+- Extended scenario harness metrics API to surface decision latency, focus fire, heading amplitude, and tie ratios for external tooling.
 
 ### 2025-09-28
 

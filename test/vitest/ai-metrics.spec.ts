@@ -251,10 +251,22 @@ describe('AI metrics harness scenarios', () => {
     expect(metrics).toHaveProperty('verticalDispersion');
     expect(metrics).toHaveProperty('inBandTime');
     expect(metrics).toHaveProperty('openingAggression');
-    
+    expect(metrics).toHaveProperty('decisionLatency');
+    expect(metrics).toHaveProperty('focusFire');
+    expect(metrics).toHaveProperty('headingAmplitude');
+    expect(metrics).toHaveProperty('ties');
+
     expect(metrics.timeToFirstShot).toHaveProperty('p50');
     expect(metrics.timeToFirstShot).toHaveProperty('p90');
     expect(metrics.timeToFirstShot).toHaveProperty('samples');
+    expect(metrics.decisionLatency).toHaveProperty('buckets');
+    expect(metrics.decisionLatency).toHaveProperty('total');
+    expect(metrics.focusFire).toHaveProperty('samples');
+    expect(metrics.focusFire).toHaveProperty('avg');
+    expect(metrics.headingAmplitude).toHaveProperty('samples');
+    expect(metrics.headingAmplitude).toHaveProperty('avg');
+    expect(metrics.ties).toHaveProperty('decisions');
+    expect(metrics.ties).toHaveProperty('ratio');
   });
 });
 

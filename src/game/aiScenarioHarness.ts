@@ -388,9 +388,13 @@ export function collectTestMetrics(log: AIScenarioLog): {
   verticalDispersion: { fighterEscortVerticalRatio: number; totalCommands: number };
   inBandTime: { overall: number | null; fighter: number | null; corvette: number | null };
   openingAggression: { ratio: number | null; total: number };
+  decisionLatency: { buckets: [number, number, number, number]; total: number };
+  focusFire: { samples: number; avg: number | null; max: number | null };
+  headingAmplitude: { samples: number; avg: number | null; min: number | null; max: number | null };
+  ties: { decisions: number; fallbacks: number; ratio: number | null };
 } {
   const metrics = log.metrics;
-  
+
   // Time-to-first-shot metrics
   const timeToFirstShot = {
     p50: metrics.kpis.firstShot.p50,
@@ -432,11 +436,40 @@ export function collectTestMetrics(log: AIScenarioLog): {
     total: metrics.kpis.openingAggression.total,
   };
 
+  const [latency0, latency1, latency2, latency3] = metrics.kpis.decisionLatency.buckets;
+  const decisionLatency = {
+    buckets: [latency0, latency1, latency2, latency3] as [number, number, number, number],
+    total: metrics.kpis.decisionLatency.total,
+  };
+
+  const focusFire = {
+    samples: metrics.kpis.focusFire.samples,
+    avg: metrics.kpis.focusFire.ratioAvg,
+    max: metrics.kpis.focusFire.ratioMax,
+  };
+
+  const headingAmplitude = {
+    samples: metrics.kpis.headingAmplitude.samples,
+    avg: metrics.kpis.headingAmplitude.avg,
+    min: metrics.kpis.headingAmplitude.min,
+    max: metrics.kpis.headingAmplitude.max,
+  };
+
+  const ties = {
+    decisions: metrics.kpis.ties.decisions,
+    fallbacks: metrics.kpis.ties.fallbacks,
+    ratio: metrics.kpis.ties.ratio,
+  };
+
   return {
     timeToFirstShot,
     verticalDispersion,
     inBandTime,
     openingAggression,
+    decisionLatency,
+    focusFire,
+    headingAmplitude,
+    ties,
   };
 }
 
