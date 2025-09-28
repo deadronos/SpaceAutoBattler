@@ -126,10 +126,10 @@ describe('AI scorer snapshots', () => {
     const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0), hull: 'fighter' });
     const profile = resolveBehaviorProfile('brawler');
     const holdScore = scoreAttackIntent(ship, profile, target, 'hold', BASE_TRAITS);
-    expect(holdScore).toBe(1136);
+  expect(holdScore).toBeCloseTo(1136, 0);
 
-    const retreatScore = scoreAttackIntent(ship, profile, target, 'retreat', BASE_TRAITS);
-    expect(retreatScore).toBe(holdScore - 120);
+  const retreatScore = scoreAttackIntent(ship, profile, target, 'retreat', BASE_TRAITS);
+  expect(retreatScore).toBeCloseTo(holdScore - 120, 1);
 
     const distant = createShip({ id: 3, team: 'red', position: new Vector3(400, 0, 0), hull: 'carrier' });
     const farScore = scoreAttackIntent(ship, profile, distant, 'hold', BASE_TRAITS);

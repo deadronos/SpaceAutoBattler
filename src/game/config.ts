@@ -47,6 +47,21 @@ export const AI_CONFIG = {
   headingYClamp: 0.3,
   strengthRatioThreshold: 1.6,
   bandStickinessDuration: 3,
+  scorePrecision: 0.1,
+  intentPriority: ['Attack', 'Intercept', 'Escort', 'Kite', 'Reposition', 'Regroup', 'Flee'] as const,
+  threatWeights: {
+    hull: {
+      carrier: 6,
+      destroyer: 5,
+      frigate: 4,
+      corvette: 3,
+      fighter: 2,
+    } as const,
+    hpScalar: 0.0025,
+    vipBonus: 3,
+    focusPenalty: 1.2,
+    distanceScale: 600,
+  },
   lod: {
     activeDistance: 320,
     idleDistance: 900,

@@ -59,6 +59,8 @@ export function createDefaultMetrics(): AIMetrics {
     inBandSatisfied: 0,
     openingAggressiveIntents: 0,
     openingTotalIntents: 0,
+  tieDecisions: 0,
+  tieFallbacks: 0,
     firstShotTimes: [],
     firstShotByShip: {},
     intentTimeline: [],
@@ -98,6 +100,8 @@ export function resetMetrics(metrics: AIMetrics): void {
   metrics.inBandSatisfied = 0;
   metrics.openingAggressiveIntents = 0;
   metrics.openingTotalIntents = 0;
+  metrics.tieDecisions = 0;
+  metrics.tieFallbacks = 0;
   metrics.firstShotTimes.length = 0;
   metrics.firstShotByShip = {};
   metrics.intentTimeline.length = 0;

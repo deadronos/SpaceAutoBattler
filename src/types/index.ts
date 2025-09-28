@@ -286,6 +286,9 @@ export interface AIBlackboard {
   threatToVip: Map<EntityId, EntityId>;
   tmpVectors: Vector3[];
   strengthRatio: Record<Team, number>;
+  teamPriority: Record<Team, PrioritisedTarget[]>;
+  priorityIndex: Record<Team, Map<EntityId, number>>;
+  focusFire: Record<Team, Map<EntityId, number>>;
 }
 
 export interface AITeamAssignments {
@@ -303,6 +306,13 @@ export interface AIIntentSnapshot {
   time: number;
   counts: Partial<Record<AIIntent, number>>;
   total: number;
+}
+
+export interface PrioritisedTarget {
+  id: EntityId;
+  threat: number;
+  distanceSq: number;
+  focusLoad: number;
 }
 
 export interface AIShotHistogram {
@@ -379,6 +389,8 @@ export interface AIMetrics {
   inBandSatisfied: number;
   openingAggressiveIntents: number;
   openingTotalIntents: number;
+  tieDecisions: number;
+  tieFallbacks: number;
   firstShotTimes: number[];
   firstShotByShip: Record<number, number>;
   intentTimeline: AIIntentSnapshot[];

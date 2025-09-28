@@ -126,6 +126,9 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       threatToVip: new Map(),
       tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
       strengthRatio: { blue: 1, red: 1 },
+      teamPriority: { blue: [], red: [] },
+      priorityIndex: { blue: new Map(), red: new Map() },
+      focusFire: { blue: new Map(), red: new Map() },
     },
     queries: {
       ships: { entities: ships },

@@ -86,6 +86,18 @@ export async function createGameState(): Promise<GameState> {
         blue: 1,
         red: 1,
       },
+      teamPriority: {
+        blue: [],
+        red: [],
+      },
+      priorityIndex: {
+        blue: new Map(),
+        red: new Map(),
+      },
+      focusFire: {
+        blue: new Map(),
+        red: new Map(),
+      },
     },
   };
 
