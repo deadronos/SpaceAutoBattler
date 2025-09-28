@@ -9,14 +9,6 @@ export function Controls(): React.ReactElement {
   const timeScale = useUiStore((s) => s.timeScale);
   const togglePause = useUiStore((s) => s.togglePause);
   const setTimeScale = useUiStore((s) => s.setTimeScale);
-  const aiEnabled = useUiStore((s) => s.aiV2Enabled);
-  const toggleAi = useUiStore((s) => s.toggleAiV2);
-  const aiDebugEnabled = useUiStore((s) => s.aiDebugEnabled);
-  const toggleAiDebug = useUiStore((s) => s.toggleAiDebug);
-  const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
-  const toggleHudHealthBars = useUiStore((s) => s.toggleHudHealthBars);
-  const explosionDebugEnabled = useUiStore((s) => s.explosionDebugEnabled);
-  const toggleExplosionDebug = useUiStore((s) => s.toggleExplosionDebug);
 
   const addShip = (team: 'red' | 'blue') => {
     if (!state) return;
@@ -29,31 +21,7 @@ export function Controls(): React.ReactElement {
       <button onClick={() => state && resetGame(state)}>Reset</button>
       <button onClick={() => addShip('red')}>+ Red</button>
       <button onClick={() => addShip('blue')}>+ Blue</button>
-      {/* Postprocessing toggle (off by default) */}
-      <PostprocessingToggle />
-      <button
-        onClick={toggleHudHealthBars}
-        aria-pressed={hudHealthBarsEnabled}
-        title="Toggle per-ship HUD health overlays"
-      >
-        HUD Bars: {hudHealthBarsEnabled ? 'On' : 'Off'}
-      </button>
-      <button onClick={toggleAi} title="Toggle AI V2 (utility-based decision system)">
-        AI V2: {aiEnabled ? 'On' : 'Off'}
-      </button>
-      <button
-        onClick={toggleAiDebug}
-        disabled={!aiEnabled}
-        title="Toggle AI debug overlay (requires AI V2)"
-      >
-        AI Debug: {aiDebugEnabled ? 'On' : 'Off'}
-      </button>
-      <button
-        onClick={toggleExplosionDebug}
-        title="Toggle explosion debug info (shows timing parameters)"
-      >
-        Explosion Debug: {explosionDebugEnabled ? 'On' : 'Off'}
-      </button>
+      {/* Simulation modifiers moved to HUD settings */}
       <div className="speed">
         <label htmlFor="speedSelect">Speed:</label>
         <select
@@ -71,17 +39,7 @@ export function Controls(): React.ReactElement {
           <option value="4">4x</option>
         </select>
       </div>
-      {/* PP tuning sliders removed per request; keep toggle only */}
+      {/* PP tuning sliders removed per request; toggles live in HUD drawers */}
     </div>
-  );
-}
-
-function PostprocessingToggle(): React.ReactElement {
-  const enabled = useUiStore((s) => s.postprocessingEnabled);
-  const toggle = useUiStore((s) => s.togglePostprocessing);
-  return (
-    <button aria-label={`Postprocessing ${enabled ? 'on' : 'off'}`} onClick={toggle} title="Toggle postprocessing (bloom/FXAA)">
-      {enabled ? 'PP: On' : 'PP: Off'}
-    </button>
   );
 }

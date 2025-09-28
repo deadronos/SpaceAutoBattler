@@ -1,5 +1,12 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-09-28 — HUD Settings & Debug Panels
+
+1. **WHEN** a user activates the HUD gear control, **THE SYSTEM SHALL** reveal a settings drawer anchored to the HUD panel and hide it when the gear is toggled again. *(Acceptance: `test/vitest/ui-settings-panels.spec.tsx` exercises the gear button, asserts the drawer toggles visibility, and checks ARIA attributes.)*
+2. **WHEN** the settings drawer is visible, **THE SYSTEM SHALL** expose toggles for postprocessing, HUD health overlays, and AI V2 that mutate the existing `useUiStore` flags without reloading the scene. *(Acceptance: `test/vitest/ui-settings-panels.spec.tsx` clicks the drawer toggles and verifies store state updates plus component reactions via spies.)*
+3. **WHEN** the UI store initialises for a fresh session, **THE SYSTEM SHALL** default `postprocessingEnabled` and `aiV2Enabled` to `true` while retaining deterministic hydration via config mirrors. *(Acceptance: `test/vitest/ui-store-defaults.spec.ts` asserts the initial store snapshot reflects the new defaults and honours `AI_CONFIG.v2Enabled` overrides.)*
+4. **WHEN** the HUD wrench control is activated, **THE SYSTEM SHALL** present a modular debug drawer that lists all registered debug toggles (initially AI Debug and Explosion Debug) and updates their store flags via a shared registry. *(Acceptance: `test/vitest/ui-debug-panels.spec.tsx` registers sample toggles, opens the drawer, and ensures each control drives its associated store mutator.)*
+
 ## 2025-09-28 — AI 3D Combat Stage 1
 
 1. **WHEN** `spawnInitialFleets` executes with the default seeded RNG, **THE SYSTEM SHALL** derive ship Y offsets from `SPAWN_CONFIG.verticalSpreadFactor` with randomized team anchor heights so the median absolute altitude across all spawned ships exceeds 200 units. *(Acceptance: `test/vitest/spawn-geometry.spec.ts` adds `ensures seeded vertical dispersion exceeds threshold` which measures seeded runs.)*
