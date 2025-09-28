@@ -10,6 +10,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK146](TASK146-ai-3d-combat-stage1.md) — Enable 3D Combat Stage 1 spawn geometry and cadence (issue #194).
 - [TASK143](TASK143-design-ai-improvement-v0.1.1.md) — Implement AI Improvement v0.1.1 vertical engagement, spawn, and range updates per design memo.
 - [TASK144](TASK144-ai-metrics-resilience.md) — Restored percentile helper, Rapier shims, and AI scenario metrics fixtures; `npm test` passes.
 - [TASK142](TASK142-ship-kill-explosionfx.md) — Implement ship kill explosion FX pipeline across simulation, config, renderer, and tests per design memo.

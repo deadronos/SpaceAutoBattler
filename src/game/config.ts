@@ -21,23 +21,36 @@ export const FOG_DEFAULTS: readonly [string, number, number] = [
 ];
 
 // AI configuration
-function readBooleanEnv(name: string): boolean {
+function readBooleanEnv(name: string, defaultValue = false): boolean {
   try {
     const source = globalThis as unknown as { process?: { env?: Record<string, string | undefined> } };
     const raw = source.process?.env?.[name];
-    if (!raw) return false;
+    if (!raw) return defaultValue;
     const normalized = raw.toLowerCase();
     return normalized === '1' || normalized === 'true' || normalized === 'on';
   } catch {
-    return false;
+    return defaultValue;
   }
 }
 
 const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT');
+const TICK_RATE_BASE = 12;
+const TICK_RATE_EXPERIMENTAL = 15;
+const TICK_RATE_FORCE_ON = readBooleanEnv('AI_TICKRATE_EXPERIMENT_ON');
+const TICK_RATE_FORCE_OFF = readBooleanEnv('AI_TICKRATE_EXPERIMENT_OFF');
+const TICK_RATE_EXPERIMENT_ENABLED = TICK_RATE_FORCE_OFF
+  ? false
+  : TICK_RATE_FORCE_ON
+  ? true
+  : true;
+const TICK_RATE_EFFECTIVE = TICK_RATE_EXPERIMENT_ENABLED ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
 
 export const AI_CONFIG = {
   v2Enabled: DEFAULT_AI_V2,
-  tickRateHz: 15,
+  tickRateHzBase: TICK_RATE_BASE,
+  tickRateHzExperimental: TICK_RATE_EXPERIMENTAL,
+  tickRateHzExperiment: TICK_RATE_EXPERIMENT_ENABLED,
+  tickRateHz: TICK_RATE_EFFECTIVE,
   maxPerTick: 60,
   slices: 5,
   verticalEnabled: true,
