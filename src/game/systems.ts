@@ -498,7 +498,7 @@ function selectIntent(
 
   const traits = ai.traits;
 
-  const attackScore = scoreAttackIntent(ship, profile, primaryTarget, posture, traits);
+  const attackScore = scoreAttackIntent(state, ship, profile, primaryTarget, posture, traits);
   candidates.push({ intent: 'Attack', score: attackScore, target: primaryTarget });
 
   const kiteScore = scoreKiteIntent(ship, profile, primaryTarget, posture, traits);
@@ -574,6 +574,7 @@ function selectIntent(
 }
 
 function scoreAttackIntent(
+  state: GameState,
   ship: ShipEntity,
   profile: BehaviorProfile,
   target: ShipEntity | null,
@@ -588,15 +589,27 @@ function scoreAttackIntent(
   const bandError = Math.abs(dist - mid);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
   const aggression = profile.aggression * traits.aggression;
+  
+  // Apply opening salvo boost if enabled and in opening period
+  const isOpeningSalvo = AI_CONFIG.engagementBoostEnabled && 
+    state.time < AI_CONFIG.openingSalvoDuration;
+  const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
+  
   // Band error weighting tuned to preserve historical snapshot expectations.
   // Using 4.6 yields 1100 for the canonical brawler test case at 150u distance.
-  let score = 1000 - bandError * 4.6 + aggression * 120;
+  let score = 1000 - bandError * 4.6 + aggression * 120 * aggressionMultiplier;
   score += hpRatio * 80;
-  if (posture === 'aggressive') score += 90;
+  if (posture === 'aggressive') score += 90 * aggressionMultiplier;
   if (posture === 'retreat') score -= 120;
   const bias = profile.classBias[target.ship.hull] ?? 0;
   score += bias;
   score += computeBandPreferenceBonus(dist, desiredMin, desiredMax, profile.bandPreference);
+  
+  // Add engagement bias if enabled
+  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+    score += profile.engagementBias;
+  }
+  
   return quantizeScore(score);
 }
 
@@ -644,16 +657,26 @@ function scoreInterceptIntent(
   const threatBonus = computeThreatBonus(state, ship.ship.team, target.id);
   const escortBonus = escortAssignment && escortAssignment.threatId === target.id ? 80 : 0;
   const aggression = profile.aggression * traits.aggression;
+  
+  // Apply opening salvo boost if enabled and in opening period
+  const isOpeningSalvo = AI_CONFIG.engagementBoostEnabled && 
+    state.time < AI_CONFIG.openingSalvoDuration;
+  const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
 
   // Intercept base tuned conservatively to balance against kite/reposition.
   // Keep the baseline consistent with prior fixtures to avoid cascading
   // snapshot diffs. Recent diagnostic attempts that nudged this value caused
   // wider changes across multiple scenarios, so revert to the canonical
   // baseline and iterate more surgically if needed.
-  let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 + threatBonus + escortBonus;
-  if (posture === 'aggressive') score += 100;
+  let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 * aggressionMultiplier + threatBonus + escortBonus;
+  if (posture === 'aggressive') score += 100 * aggressionMultiplier;
   if (posture === 'retreat') score -= 110;
   score += computeBandPreferenceBonus(distance, profile.desiredRange[0], desiredMax, profile.bandPreference);
+  
+  // Add engagement bias if enabled
+  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+    score += profile.engagementBias;
+  }
 
   return quantizeScore(score);
 }
