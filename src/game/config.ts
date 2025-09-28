@@ -33,8 +33,37 @@ function readBooleanEnv(name: string, defaultValue = false): boolean {
   }
 }
 
+// Helper to read URL query parameters for runtime configuration
+function readQueryParam(name: string): string | null {
+  try {
+    if (typeof window !== 'undefined' && window.location) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+  } catch {
+    // Ignore errors in non-browser environments
+  }
+  return null;
+}
+
+function readBooleanParam(name: string, defaultValue: boolean): boolean {
+  const query = readQueryParam(name);
+  if (query !== null) {
+    const normalized = query.toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'on';
+  }
+  return defaultValue;
+}
+
+function readStringParam(name: string, defaultValue: string): string {
+  const query = readQueryParam(name);
+  return query || defaultValue;
+}
+
 const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT', true);
 const TICK_RATE_BASE = 12;
+
+// Tick rate experiment flags
 const TICK_RATE_EXPERIMENTAL = 15;
 const TICK_RATE_FORCE_ON = readBooleanEnv('AI_TICKRATE_EXPERIMENT_ON');
 const TICK_RATE_FORCE_OFF = readBooleanEnv('AI_TICKRATE_EXPERIMENT_OFF');
@@ -45,17 +74,60 @@ const TICK_RATE_EXPERIMENT_ENABLED = TICK_RATE_FORCE_OFF
   : true;
 const TICK_RATE_EFFECTIVE = TICK_RATE_EXPERIMENT_ENABLED ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
 
+// Vertical maneuver experiment flags
+const VERTICAL_FORCE_ON = readBooleanEnv('AI_VERTICAL_EXPERIMENT_ON');
+const VERTICAL_FORCE_OFF = readBooleanEnv('AI_VERTICAL_EXPERIMENT_OFF');
+const VERTICAL_DEFAULT = VERTICAL_FORCE_OFF
+  ? false
+  : VERTICAL_FORCE_ON
+  ? true
+  : true; // Current default
+const VERTICAL_EXPERIMENT_ENABLED = readBooleanParam('ai_vertical', VERTICAL_DEFAULT);
+
+// Engagement boost experiment flags
+const ENGAGEMENT_BOOST_FORCE_ON = readBooleanEnv('AI_ENGAGEMENT_BOOST_ON');
+const ENGAGEMENT_BOOST_FORCE_OFF = readBooleanEnv('AI_ENGAGEMENT_BOOST_OFF');
+const ENGAGEMENT_BOOST_DEFAULT = ENGAGEMENT_BOOST_FORCE_OFF
+  ? false
+  : ENGAGEMENT_BOOST_FORCE_ON
+  ? true
+  : true; // Current default
+const ENGAGEMENT_BOOST_ENABLED = readBooleanParam('ai_engagement', ENGAGEMENT_BOOST_DEFAULT);
+
+// Range policy experiment flags
+function readStringEnv(name: string, defaultValue: string): string {
+  try {
+    const source = globalThis as unknown as { process?: { env?: Record<string, string | undefined> } };
+    const raw = source.process?.env?.[name];
+    return raw || defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+const RANGE_POLICY_OVERRIDE = readStringEnv('AI_RANGE_POLICY', '');
+const RANGE_POLICY_DEFAULT = RANGE_POLICY_OVERRIDE ? RANGE_POLICY_OVERRIDE : 'v0.1.1-exp' as const; // Current default
+const RANGE_POLICY_EFFECTIVE = readStringParam('ai_range_policy', RANGE_POLICY_DEFAULT);
+
+// Update tick rate to also support query params for consistency
+const TICK_RATE_QUERY_OVERRIDE = readQueryParam('ai_tick_rate');
+const TICK_RATE_EXPERIMENT_QUERY = readBooleanParam('ai_tick_experiment', TICK_RATE_EXPERIMENT_ENABLED);
+const TICK_RATE_FINAL = TICK_RATE_QUERY_OVERRIDE 
+  ? TICK_RATE_QUERY_OVERRIDE === 'experimental' || TICK_RATE_QUERY_OVERRIDE === '15'
+  : TICK_RATE_EXPERIMENT_QUERY;
+const TICK_RATE_EFFECTIVE_FINAL = TICK_RATE_FINAL ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
+
 export const AI_CONFIG = {
   v2Enabled: DEFAULT_AI_V2,
   tickRateHzBase: TICK_RATE_BASE,
   tickRateHzExperimental: TICK_RATE_EXPERIMENTAL,
-  tickRateHzExperiment: TICK_RATE_EXPERIMENT_ENABLED,
-  tickRateHz: TICK_RATE_EFFECTIVE,
+  tickRateHzExperiment: TICK_RATE_FINAL,
+  tickRateHz: TICK_RATE_EFFECTIVE_FINAL,
   maxPerTick: 60,
   slices: 5,
-  verticalEnabled: true,
-  engagementBoostEnabled: true,
-  rangePolicy: 'v0.1.1-exp' as const,
+  verticalEnabled: VERTICAL_EXPERIMENT_ENABLED,
+  engagementBoostEnabled: ENGAGEMENT_BOOST_ENABLED,
+  rangePolicy: RANGE_POLICY_EFFECTIVE,
   openingSalvoDuration: 30,
   openingSalvoAggressionBoost: 1.2,
   headingYClamp: 0.3,
@@ -81,6 +153,39 @@ export const AI_CONFIG = {
     idleDistance: 900,
   },
 };
+
+/**
+ * Runtime AI Configuration Helpers
+ * 
+ * These functions check for runtime overrides from the UI store and return
+ * the effective configuration values, allowing for real-time experimentation.
+ */
+
+// Lazy import to avoid circular dependency
+let _useUiStore: any = null;
+function getUiStore() {
+  if (_useUiStore === null) {
+    // Dynamic import to avoid circular dependency
+    _useUiStore = require('./uiStore.js').useUiStore;
+  }
+  return _useUiStore;
+}
+
+export function getEffectiveAIConfig() {
+  try {
+    const uiState = getUiStore().getState();
+    return {
+      ...AI_CONFIG,
+      verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
+      engagementBoostEnabled: uiState.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
+      tickRateHzExperiment: uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
+      rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
+    };
+  } catch {
+    // Fallback to static config if UI store is not available
+    return AI_CONFIG;
+  }
+}
 
 export const SPAWN_CONFIG = {
   verticalSpreadFactor: 0.2,
