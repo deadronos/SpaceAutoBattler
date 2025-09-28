@@ -37,7 +37,15 @@ function makeStateStub(): GameState {
       entities.push(obj);
       return obj;
     },
+    add(obj: any) {
+      entities.push(obj);
+      return obj;
+    },
     destroyEntity(obj: any) {
+      const i = entities.indexOf(obj);
+      if (i >= 0) entities.splice(i, 1);
+    },
+    remove(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
     },

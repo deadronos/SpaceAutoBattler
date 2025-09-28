@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { GameState } from '../types/index.js';
+import type { GameState, GameEntity } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
 import { updateGame } from './systems.js';
 import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
@@ -11,7 +11,12 @@ interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
-export function GameProvider({ children }: { children: ReactNode }): React.ReactElement {
+type GameProviderProps = {
+  children: ReactNode;
+  fallback?: ReactNode;
+};
+
+export function GameProvider({ children, fallback = null }: GameProviderProps): React.ReactElement {
   const [state, setState] = useState<GameState | null>(null);
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
@@ -42,7 +47,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
                   return {
                     tick: created.simulation.lastTickIndex,
                     time: created.time,
-                    ships: ships.map((entity) => {
+                    ships: ships.map((entity: GameEntity) => {
                       const transform = entity.transform;
                       const ship = entity.ship;
                       return {
@@ -146,7 +151,11 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
     mirrorHudHealthBarsFlag(state, hudHealthBarsEnabled);
   }, [state, hudHealthBarsEnabled]);
 
-  return <GameContext.Provider value={{ state }}>{children}</GameContext.Provider>;
+  return (
+    <GameContext.Provider value={{ state }}>
+      {state ? children : fallback}
+    </GameContext.Provider>
+  );
 }
 
 export function useGameState(): GameState {

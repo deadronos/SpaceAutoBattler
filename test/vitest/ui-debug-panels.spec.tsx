@@ -12,6 +12,8 @@ const DEFAULT_FLAGS = (() => {
     aiV2Enabled: snapshot.aiV2Enabled,
     aiDebugEnabled: snapshot.aiDebugEnabled,
     explosionDebugEnabled: snapshot.explosionDebugEnabled,
+    perfMonitorEnabled: snapshot.perfMonitorEnabled,
+    perfMonitorPosition: { ...snapshot.perfMonitorPosition },
   };
 })();
 
@@ -40,14 +42,25 @@ describe('DebugDrawer', () => {
     expect(useUiStore.getState().explosionDebugEnabled).toBe(true);
   });
 
+  it('toggles the perf monitor flag', () => {
+    render(<DebugDrawer />);
+    const trigger = screen.getByRole('button', { name: 'Debug overlays' });
+    fireEvent.click(trigger);
+
+    const perfSwitch = screen.getByRole('switch', { name: 'Perf Monitor' });
+    expect(perfSwitch.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(perfSwitch);
+    expect(useUiStore.getState().perfMonitorEnabled).toBe(true);
+  });
+
   it('disables AI Debug toggle when AI V2 is off', () => {
     useUiStore.setState({ aiV2Enabled: false, aiDebugEnabled: false });
     render(<DebugDrawer />);
     const trigger = screen.getByRole('button', { name: 'Debug overlays' });
     fireEvent.click(trigger);
 
-  const aiSwitch = screen.getByRole('switch', { name: 'AI Debug' }) as HTMLButtonElement;
-  expect(aiSwitch.getAttribute('aria-checked')).toBe('false');
-  expect(aiSwitch.disabled).toBe(true);
+    const aiSwitch = screen.getByRole('switch', { name: 'AI Debug' }) as HTMLButtonElement;
+    expect(aiSwitch.getAttribute('aria-checked')).toBe('false');
+    expect(aiSwitch.disabled).toBe(true);
   });
 });

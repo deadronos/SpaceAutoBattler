@@ -2,7 +2,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { AxesHelper, Color, NoToneMapping, SRGBColorSpace } from 'three';
 import { Suspense } from 'react';
-import type { Archetype } from 'miniplex';
+import type { Archetype } from '../types/index.js';
 import type React from 'react';
 import type { GameEntity, ProjectileEntity, ShipEntity, TurretEntity } from '../types/index.js';
 import { useGameState, useOptionalGameState } from '../game/context.js';
@@ -20,6 +20,7 @@ import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';
 import { ExplosionsLayer } from './ExplosionRenderer.js';
+import { PerfMonitorOverlay } from './PerfMonitorOverlay.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -99,6 +100,7 @@ export function Battlefield(): React.ReactElement {
           <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
         </>
       )}
+      <PerfMonitorOverlay />
     </Canvas>
   );
 }

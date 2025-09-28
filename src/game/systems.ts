@@ -253,6 +253,22 @@ function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   blackboard.strengthRatio.red = redStrength;
   blackboard.teamPosture.blue = resolvePosture(blueStrength);
   blackboard.teamPosture.red = resolvePosture(redStrength);
+
+  // Collect vertical dispersion statistics for validation
+  if (blackboard.verticalDispersion && blackboard.verticalDispersion.lastUpdateTick !== blackboard.tickIndex) {
+    blackboard.verticalDispersion.positionYSamples.length = 0;
+    blackboard.verticalDispersion.headingYSamples.length = 0;
+    blackboard.verticalDispersion.lastUpdateTick = blackboard.tickIndex;
+  }
+  
+  // Collect position Y samples for dispersion analysis
+  if (blackboard.verticalDispersion) {
+    for (const ship of ships) {
+      if (ship.ai && ship.ship.hp > 0) {
+        blackboard.verticalDispersion.positionYSamples.push(ship.transform.position.y);
+      }
+    }
+  }
 }
 
 function resolvePosture(strengthRatio: number): TeamPosture {
@@ -482,7 +498,7 @@ function selectIntent(
 
   const traits = ai.traits;
 
-  const attackScore = scoreAttackIntent(ship, profile, primaryTarget, posture, traits);
+  const attackScore = scoreAttackIntent(state, ship, profile, primaryTarget, posture, traits);
   candidates.push({ intent: 'Attack', score: attackScore, target: primaryTarget });
 
   const kiteScore = scoreKiteIntent(ship, profile, primaryTarget, posture, traits);
@@ -558,6 +574,7 @@ function selectIntent(
 }
 
 function scoreAttackIntent(
+  state: GameState,
   ship: ShipEntity,
   profile: BehaviorProfile,
   target: ShipEntity | null,
@@ -572,15 +589,27 @@ function scoreAttackIntent(
   const bandError = Math.abs(dist - mid);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
   const aggression = profile.aggression * traits.aggression;
+  
+  // Apply opening salvo boost if enabled and in opening period
+  const isOpeningSalvo = AI_CONFIG.engagementBoostEnabled && 
+    state.time < AI_CONFIG.openingSalvoDuration;
+  const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
+  
   // Band error weighting tuned to preserve historical snapshot expectations.
   // Using 4.6 yields 1100 for the canonical brawler test case at 150u distance.
-  let score = 1000 - bandError * 4.6 + aggression * 120;
+  let score = 1000 - bandError * 4.6 + aggression * 120 * aggressionMultiplier;
   score += hpRatio * 80;
-  if (posture === 'aggressive') score += 90;
+  if (posture === 'aggressive') score += 90 * aggressionMultiplier;
   if (posture === 'retreat') score -= 120;
   const bias = profile.classBias[target.ship.hull] ?? 0;
   score += bias;
   score += computeBandPreferenceBonus(dist, desiredMin, desiredMax, profile.bandPreference);
+  
+  // Add engagement bias if enabled
+  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+    score += profile.engagementBias;
+  }
+  
   return quantizeScore(score);
 }
 
@@ -628,16 +657,26 @@ function scoreInterceptIntent(
   const threatBonus = computeThreatBonus(state, ship.ship.team, target.id);
   const escortBonus = escortAssignment && escortAssignment.threatId === target.id ? 80 : 0;
   const aggression = profile.aggression * traits.aggression;
+  
+  // Apply opening salvo boost if enabled and in opening period
+  const isOpeningSalvo = AI_CONFIG.engagementBoostEnabled && 
+    state.time < AI_CONFIG.openingSalvoDuration;
+  const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
 
   // Intercept base tuned conservatively to balance against kite/reposition.
   // Keep the baseline consistent with prior fixtures to avoid cascading
   // snapshot diffs. Recent diagnostic attempts that nudged this value caused
   // wider changes across multiple scenarios, so revert to the canonical
   // baseline and iterate more surgically if needed.
-  let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 + threatBonus + escortBonus;
-  if (posture === 'aggressive') score += 100;
+  let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 * aggressionMultiplier + threatBonus + escortBonus;
+  if (posture === 'aggressive') score += 100 * aggressionMultiplier;
   if (posture === 'retreat') score -= 110;
   score += computeBandPreferenceBonus(distance, profile.desiredRange[0], desiredMax, profile.bandPreference);
+  
+  // Add engagement bias if enabled
+  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+    score += profile.engagementBias;
+  }
 
   return quantizeScore(score);
 }
@@ -1120,6 +1159,11 @@ function writeCommand(
 
   if (target && distanceToTarget != null) {
     updateBandStickiness(state, ai, target, distanceToTarget, profile.desiredRange, heading);
+  }
+
+  // Collect heading Y sample for vertical dispersion statistics
+  if (AI_CONFIG.verticalEnabled && Math.abs(heading.y) > 1e-6 && state.blackboard.verticalDispersion) {
+    state.blackboard.verticalDispersion.headingYSamples.push(heading.y);
   }
 }
 
@@ -1679,17 +1723,36 @@ export function fireProjectile(
 
   let speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
   if (AI_CONFIG.rangePolicy === 'v0.1.1-exp' && !opts?.override) {
+    // Apply projectile speed biases to spread effective engagement distances
     if (origin.ship.hull === 'destroyer' || origin.ship.hull === 'carrier') {
+      // Artillery platforms: faster projectiles for longer effective range
       speed *= 1.05;
-    } else if ((origin.ship.bulletType ?? '').includes('laser')) {
+    } else if (origin.ship.hull === 'fighter') {
+      // Fast interceptors: slightly faster projectiles for quick engagements
+      speed *= 1.02;
+    } else if (origin.ship.hull === 'corvette') {
+      // Balanced medium ships: slight speed reduction for mid-range focus
+      speed *= 0.98;
+    } else if (origin.ship.hull === 'frigate') {
+      // Support ships: moderate speed reduction to encourage positioning
+      speed *= 0.96;
+    }
+    
+    // Additional weapon type adjustments to complement hull-based changes
+    const bulletType = origin.ship.bulletType ?? '';
+    if (bulletType.includes('laser')) {
+      // Laser weapons: emphasize precision over speed
       speed *= 0.97;
+    } else if (bulletType.includes('heavy') || bulletType.includes('ion')) {
+      // Heavy/ion weapons: slightly faster for better range utilization
+      speed *= 1.03;
     }
   }
   const damage = opts?.override?.damage ?? origin.ship.damage;
   const range = opts?.override?.range ?? origin.ship.range;
   const lifetime = Math.min(range / speed, 30);
 
-  const projectile = state.world.createEntity({
+  const projectile = state.world.add({
     id: state.nextEntityId++,
     rigidBody: body,
     collider,

@@ -1,4 +1,5 @@
 import { useUiStore, type UiState } from '../game/uiStore.js';
+import { AI_CONFIG } from '../game/config.js';
 
 export type HudToggleDefinition = {
   id: string;
@@ -58,6 +59,42 @@ export const DEBUG_TOGGLES: HudToggleDefinition[] = [
     select: (state) => state.explosionDebugEnabled,
     toggle: () => {
       useUiStore.getState().toggleExplosionDebug();
+    },
+  },
+  {
+    id: 'perf-monitor',
+    label: 'Perf Monitor',
+    description: 'Display draggable r3f-perf metrics overlay',
+    select: (state) => state.perfMonitorEnabled,
+    toggle: () => {
+      useUiStore.getState().togglePerfMonitor();
+    },
+  },
+  {
+    id: 'ai-vertical',
+    label: 'AI Vertical',
+    description: 'Enable 3D vertical maneuvering',
+    select: (state) => state.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleAiVertical();
+    },
+  },
+  {
+    id: 'ai-engagement-boost',
+    label: 'AI Engagement Boost',
+    description: 'Enable engagement boost during opening salvo',
+    select: (state) => state.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleAiEngagementBoost();
+    },
+  },
+  {
+    id: 'ai-tick-experiment',
+    label: 'AI Tick Rate Experiment',
+    description: 'Enable experimental 15Hz tick rate',
+    select: (state) => state.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
+    toggle: () => {
+      useUiStore.getState().toggleAiTickRateExperiment();
     },
   },
 ];

@@ -13,7 +13,9 @@ function makeState(rngValue = 0.42): GameState {
     world: {
       entities: [],
       createEntity: (entity: any) => entity,
+      add: (entity: any) => entity,
       destroyEntity: () => undefined,
+      remove: () => undefined,
     } as any,
     colliderLookup: new Map(),
     nextEntityId: 1,

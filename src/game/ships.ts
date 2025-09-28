@@ -15,6 +15,26 @@ import { getDefaultProfileId } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { validateMotionStats } from './validation.js';
 import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
+import { AI_CONFIG } from './config.js';
+import { SeededRng } from '../utils/rng.js';
+
+/**
+ * Apply range variance based on range policy and ship's trait seed.
+ * Provides ±5% variance to weapon ranges when rangePolicy is 'v0.1.1-exp'.
+ */
+function applyRangeVariance(baseRange: number, traitSeed: number, weaponIndex = 0): number {
+  if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp') return baseRange;
+  
+  // Create a deterministic seed combining traitSeed and weapon index for consistency
+  const rangeSeed = Math.abs((traitSeed ^ (weaponIndex * 7919)) >>> 0) || 1;
+  const rng = new SeededRng(rangeSeed);
+  
+  // Apply ±5% variance
+  const variance = 0.05;
+  const modifier = 1 + (rng.next() * 2 - 1) * variance; // [-5%, +5%]
+  
+  return Math.round(baseRange * modifier);
+}
 
 /** Create default motion stats for testing and fallback scenarios. */
 export function createDefaultMotionStats(): MotionStats {
@@ -406,6 +426,9 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
   const collider = state.physicsWorld.createCollider(colliderDesc, body);
 
+  // Create AI state first to get traitSeed for deterministic variance  
+  const aiState = createInitialAIState(state, blueprint.hull);
+  
   const entity: ShipEntity = {
     id: state.nextEntityId++,
     rigidBody: body,
@@ -427,7 +450,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       fireRate: stats.fireRate,
       damage: stats.damage,
       projectileSpeed: stats.projectileSpeed,
-      range: stats.range,
+      range: applyRangeVariance(stats.range, aiState.traitSeed, 0), // Apply variance to main weapon
       speed: stats.speed,
       bulletType: stats.bulletType,
       parentCarrierId: blueprint.parentCarrierId,
@@ -438,16 +461,16 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     },
     model: blueprint.hull,
     shieldRipples: [],
-    turrets: (stats.turrets ?? []).map<TurretState>((t) => ({
+    turrets: (stats.turrets ?? []).map<TurretState>((t, idx) => ({
       offset: t.offset.clone(),
       damage: t.damage,
       fireRate: t.fireRate,
       projectileSpeed: t.projectileSpeed,
-      range: t.range,
+      range: applyRangeVariance(t.range, aiState.traitSeed, idx + 1), // Apply variance to turret weapons
       bulletType: t.bulletType,
       cooldown: t.fireRate * state.rng.next(),
     })),
-    ai: createInitialAIState(state, blueprint.hull),
+    ai: aiState,
   };
 
   if (blueprint.hull === 'carrier') {
@@ -459,7 +482,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     };
   }
 
-  const registered = state.world.createEntity(entity) as ShipEntity;
+  const registered = state.world.add(entity) as ShipEntity;
   state.colliderLookup.set(collider.handle, registered);
 
   // Spawn turret entities for each turret spec
@@ -476,7 +499,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       .setSensor(true as unknown as boolean);
     const tCollider = state.physicsWorld.createCollider(tColliderDesc, tBody);
 
-    const turretEntity = state.world.createEntity({
+    const turretEntity = state.world.add({
       id: state.nextEntityId++,
       rigidBody: tBody,
       collider: tCollider,

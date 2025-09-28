@@ -21,6 +21,21 @@ export async function createGameState(): Promise<GameState> {
   const eventQueue = new Rapier.EventQueue(true);
   const world = new ECSWorld<GameEntity>();
 
+  // Backwards-compatibility shims for older code and test mocks.
+  // Miniplex v2 exposes `add`, `remove`, and `with` — older code used
+  // `createEntity`, `destroyEntity`, and `archetype`. Provide tiny shims so
+  // both shapes work and we don't have to update every usage at once.
+  const wAny = world as unknown as Record<string, unknown>;
+  if (typeof wAny.createEntity === 'undefined') {
+    (wAny as any).createEntity = (...args: any[]) => (world as any).add(...args);
+  }
+  if (typeof wAny.destroyEntity === 'undefined') {
+    (wAny as any).destroyEntity = (entity: unknown) => (world as any).remove(entity);
+  }
+  if (typeof wAny.archetype === 'undefined') {
+    (wAny as any).archetype = (...args: any[]) => (world as any).with(...args);
+  }
+
   const state: GameState = {
     rapier: Rapier,
     physicsWorld,
@@ -35,9 +50,9 @@ export async function createGameState(): Promise<GameState> {
     nextExplosionId: 1,
     time: 0,
     queries: {
-      ships: world.archetype('ship'),
-      projectiles: world.archetype('projectile'),
-      turrets: world.archetype('turret'),
+      ships: world.with('ship'),
+      projectiles: world.with('projectile'),
+      turrets: world.with('turret'),
     },
     rng: new SeededRng(1337),
     paused: false,
@@ -97,6 +112,12 @@ export async function createGameState(): Promise<GameState> {
       focusFire: {
         blue: new Map(),
         red: new Map(),
+      },
+      // Vertical dispersion tracking for validation
+      verticalDispersion: {
+        headingYSamples: [],
+        positionYSamples: [],
+        lastUpdateTick: -1,
       },
     },
   };
@@ -187,8 +208,8 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
     // ignore
   }
 
-  const registered = entity as Parameters<GameState['world']['destroyEntity']>[0];
-  state.world.destroyEntity(registered);
+  // Use current Miniplex API to remove the entity from the world.
+  state.world.remove(entity as GameEntity);
 
   // Defensive: some test harnesses or lightweight mocks may keep separate
   // `.entities` arrays on query objects. Ensure the entity is removed from
