@@ -256,7 +256,7 @@ export function spawnRandomShip(state: GameState, team: Team): void {
   const hull = hulls[Math.floor(state.rng.next() * hulls.length)];
 
   const lateralRadius = WORLD_HALF * 0.25;
-  const verticalSpread = WORLD_HALF * 0.15;
+  const verticalSpread = WORLD_HALF * SPAWN_CONFIG.verticalSpreadFactor;
   const anchorX = (team === 'blue' ? -1 : 1) * WORLD_HALF * 0.3;
   const x = anchorX + (state.rng.next() - 0.5) * lateralRadius;
   const z = (state.rng.next() - 0.5) * lateralRadius;

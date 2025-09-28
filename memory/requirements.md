@@ -1,4 +1,20 @@
 # Requirements — Star Disk Shader Integration
+
+## 2025-09-28 — HUD Settings & Debug Panels
+
+1. **WHEN** a user activates the HUD gear control, **THE SYSTEM SHALL** reveal a settings drawer anchored to the HUD panel and hide it when the gear is toggled again. *(Acceptance: `test/vitest/ui-settings-panels.spec.tsx` exercises the gear button, asserts the drawer toggles visibility, and checks ARIA attributes.)*
+2. **WHEN** the settings drawer is visible, **THE SYSTEM SHALL** expose toggles for postprocessing, HUD health overlays, and AI V2 that mutate the existing `useUiStore` flags without reloading the scene. *(Acceptance: `test/vitest/ui-settings-panels.spec.tsx` clicks the drawer toggles and verifies store state updates plus component reactions via spies.)*
+3. **WHEN** the UI store initialises for a fresh session, **THE SYSTEM SHALL** default `postprocessingEnabled` and `aiV2Enabled` to `true` while retaining deterministic hydration via config mirrors. *(Acceptance: `test/vitest/ui-store-defaults.spec.ts` asserts the initial store snapshot reflects the new defaults and honours `AI_CONFIG.v2Enabled` overrides.)*
+4. **WHEN** the HUD wrench control is activated, **THE SYSTEM SHALL** present a modular debug drawer that lists all registered debug toggles (initially AI Debug and Explosion Debug) and updates their store flags via a shared registry. *(Acceptance: `test/vitest/ui-debug-panels.spec.tsx` registers sample toggles, opens the drawer, and ensures each control drives its associated store mutator.)*
+
+## 2025-09-28 — AI 3D Combat Stage 1
+
+1. **WHEN** `spawnInitialFleets` executes with the default seeded RNG, **THE SYSTEM SHALL** derive ship Y offsets from `SPAWN_CONFIG.verticalSpreadFactor` with randomized team anchor heights so the median absolute altitude across all spawned ships exceeds 200 units. *(Acceptance: `test/vitest/spawn-geometry.spec.ts` adds `ensures seeded vertical dispersion exceeds threshold` which measures seeded runs.)*
+2. **WHEN** `spawnInitialFleets` runs multiple times under the same seed, **THE SYSTEM SHALL** reproduce identical ship altitude sequences for each team to preserve determinism. *(Acceptance: `test/vitest/spawn-geometry.spec.ts` introduces `produces deterministic vertical offsets for seed 1337` comparing two seeded worlds.)*
+3. **WHEN** `spawnInitialFleets` positions opposing teams, **THE SYSTEM SHALL** enforce a minimum centroid separation of `SPAWN_CONFIG.initialSeparationFactor × maxWeaponRange` to guarantee ≥ 1.5× max range spacing. *(Acceptance: existing `separates teams by configured factor` test updated to assert the stricter threshold.)*
+4. **WHEN** the AI scheduler initializes, **THE SYSTEM SHALL** apply the experimental 15 Hz tick rate only when `AI_CONFIG.tickRateHzExperiment` is enabled, otherwise falling back to the 12 Hz baseline. *(Acceptance: new `test/vitest/ai-tick-rate.spec.ts` verifies the feature flag toggles the effective tick interval.)*
+5. **WHEN** the 15 Hz experiment is active, **THE SYSTEM SHALL** execute at least 95% of the theoretical decision tick increase (15 Hz vs 12 Hz) over an equal-duration seeded scenario relative to the baseline. *(Acceptance: `test/vitest/ai-tick-rate.spec.ts` compares accumulated decision ticks for baseline and experimental runs and asserts the ratio ≥ 0.95 × expected.)*
+
 ## 2025-09-28 - AI KPI Instrumentation
 
 1. **WHEN** the AI records its first projectile per ship during a simulation, **THE SYSTEM SHALL** persist the shot time and emit percentile summaries (p50 ≤ 20 s, p90 ≤ 30 s) through the metrics snapshot. *(Acceptance: `test/vitest/ai-metrics.spec.ts` seeds synthetic shot events, runs `aggregateKpis`, and asserts percentile outputs plus reset semantics.)*
