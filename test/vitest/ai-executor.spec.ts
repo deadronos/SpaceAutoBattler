@@ -326,5 +326,52 @@ describe('writeCommand executors', () => {
     expect(brawler.ai!.stickinessTargetId).toBe(target.id);
     expect(brawler.ai!.stickinessHeading.length()).toBeGreaterThan(0);
   });
+
+  it('collects vertical dispersion statistics for validation', () => {
+    const state = createState();
+    state.ai.tickIndex = 15;
+    
+    // Create multiple ships with different profiles
+    const ships = [
+      { id: 101, profileId: 'escort', position: new Vector3(0, 0, 0) },
+      { id: 102, profileId: 'brawler', position: new Vector3(50, 10, 0) },
+      { id: 103, profileId: 'artillery', position: new Vector3(100, -5, 0) },
+      { id: 104, profileId: 'escort', position: new Vector3(150, 8, 0) },
+    ];
+
+    const entities = ships.map(config => {
+      const ship = createShip(config.id, 'blue', config.position);
+      ship.ai!.profileId = config.profileId;
+      ship.ai!.intent = 'Attack';
+      return ship;
+    });
+
+    // Create targets
+    const targets = [
+      createShip(201, 'red', new Vector3(200, 0, 0)),
+      createShip(202, 'red', new Vector3(250, 20, 0)),
+    ];
+
+    // Execute AI commands for all ships
+    for (let i = 0; i < entities.length; i++) {
+      const ship = entities[i];
+      const profile = resolveBehaviorProfile(ship.ai!.profileId);
+      const target = targets[i % targets.length];
+      writeCommand(state, ship, ship.ai!, profile, target, null, null);
+    }
+
+    // Verify vertical dispersion statistics were collected
+    expect(state.blackboard.verticalDispersion?.headingYSamples).toBeDefined();
+    expect(state.blackboard.verticalDispersion!.headingYSamples.length).toBeGreaterThan(0);
+
+    // Verify some vertical diversity (not all zeros)
+    const headingYSamples = state.blackboard.verticalDispersion!.headingYSamples;
+    const nonZeroSamples = headingYSamples.filter(y => Math.abs(y) > 0.001);
+    expect(nonZeroSamples.length).toBeGreaterThan(0); // Should have some non-zero vertical components
+
+    // Check that heading Y values are clamped
+    const maxAbsY = Math.max(...headingYSamples.map(y => Math.abs(y)));
+    expect(maxAbsY).toBeLessThanOrEqual(0.3); // Should respect headingYClamp
+  });
 });
 
