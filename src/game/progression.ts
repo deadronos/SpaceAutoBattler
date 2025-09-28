@@ -17,6 +17,8 @@ import {
   MORALE_ABILITIES,
   SUBSYSTEM_CONFIG,
   SUBSYSTEM_EFFECTS,
+  HULL_DAMAGE_TYPES,
+  HULL_ARMOR_VALUES,
   calculateXpForLevel,
   calculateLevelBonus,
   getDamageEffectiveness
@@ -231,7 +233,7 @@ export function applySubsystemDamage(ship: ShipComponent, hullDamage: number, rn
 /**
  * Update a subsystem's status based on its HP
  */
-function updateSubsystemStatus(subsystem: Subsystem): void {
+export function updateSubsystemStatus(subsystem: Subsystem): void {
   const hpRatio = subsystem.hp / Math.max(1, subsystem.maxHp);
   
   if (hpRatio <= SUBSYSTEM_CONFIG.offlineThreshold) {
