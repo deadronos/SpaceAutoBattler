@@ -194,7 +194,7 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
             type LocalCandidate = { intent: AIIntent; score: number; target?: ShipEntity | null };
             const candidates: LocalCandidate[] = [];
             // Use the same scoring helpers exported from systems for accuracy
-            candidates.push({ intent: 'Attack', score: __aiTestHooks.scoreAttackIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+            candidates.push({ intent: 'Attack', score: __aiTestHooks.scoreAttackIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
             candidates.push({ intent: 'Kite', score: __aiTestHooks.scoreKiteIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
             if (escortTarget)
               candidates.push({

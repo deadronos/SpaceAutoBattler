@@ -122,17 +122,19 @@ function createState(): GameState {
 
 describe('AI scorer snapshots', () => {
   it('favors attack intent when inside desired engagement band', () => {
+    const state = createState();
     const ship = createShip({ id: 1, team: 'blue', position: new Vector3(), hp: 96, maxHp: 120 });
     const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0), hull: 'fighter' });
     const profile = resolveBehaviorProfile('brawler');
-    const holdScore = scoreAttackIntent(ship, profile, target, 'hold', BASE_TRAITS);
-  expect(holdScore).toBeCloseTo(1136, 0);
+    const holdScore = scoreAttackIntent(state, ship, profile, target, 'hold', BASE_TRAITS);
+    // Updated expectation: base 1136 + engagement bias 25 + opening salvo boost ~21.6 = ~1182.6
+    expect(holdScore).toBeCloseTo(1182.6, 0);
 
-  const retreatScore = scoreAttackIntent(ship, profile, target, 'retreat', BASE_TRAITS);
-  expect(retreatScore).toBeCloseTo(holdScore - 120, 1);
+    const retreatScore = scoreAttackIntent(state, ship, profile, target, 'retreat', BASE_TRAITS);
+    expect(retreatScore).toBeCloseTo(holdScore - 120, 1);
 
     const distant = createShip({ id: 3, team: 'red', position: new Vector3(400, 0, 0), hull: 'carrier' });
-    const farScore = scoreAttackIntent(ship, profile, distant, 'hold', BASE_TRAITS);
+    const farScore = scoreAttackIntent(state, ship, profile, distant, 'hold', BASE_TRAITS);
     expect(holdScore).toBeGreaterThan(farScore);
   });
 
@@ -239,6 +241,67 @@ describe('AI scorer snapshots', () => {
     const first = tieBreak(ai, 12, candidates);
     const second = tieBreak(ai, 12, candidates);
     expect(first.intent).toBe(second.intent);
+  });
+
+  it('applies engagement bias to attack intent scores', () => {
+    const state = createState();
+    const ship = createShip({ id: 1, team: 'blue', position: new Vector3() });
+    const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0) });
+    
+    // Test with brawler profile (engagementBias: 25)
+    const brawlerProfile = resolveBehaviorProfile('brawler');
+    const brawlerScore = scoreAttackIntent(state, ship, brawlerProfile, target, 'hold', BASE_TRAITS);
+    
+    // Test with escort profile (engagementBias: 30) 
+    const escortProfile = resolveBehaviorProfile('escort');
+    const escortScore = scoreAttackIntent(state, ship, escortProfile, target, 'hold', BASE_TRAITS);
+    
+    // Escort should have higher engagement bias (+5 more than brawler)
+    // Note: Scores will be different due to different desiredRange, but escort should get more engagement boost
+    expect(escortProfile.engagementBias).toBe(30);
+    expect(brawlerProfile.engagementBias).toBe(25);
+  });
+
+  it('applies opening salvo aggression boost during initial period', () => {
+    const ship = createShip({ id: 1, team: 'blue', position: new Vector3() });
+    const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0) });
+    const profile = resolveBehaviorProfile('brawler');
+    
+    // Test during opening salvo (time=0)
+    const earlyState = createState();
+    earlyState.time = 0;
+    const earlyScore = scoreAttackIntent(earlyState, ship, profile, target, 'hold', BASE_TRAITS);
+    
+    // Test after opening salvo period (time=35s > 30s duration)
+    const lateState = createState();
+    lateState.time = 35;
+    const lateScore = scoreAttackIntent(lateState, ship, profile, target, 'hold', BASE_TRAITS);
+    
+    // Early score should be higher due to opening salvo aggression boost
+    expect(earlyScore).toBeGreaterThan(lateScore);
+    
+    // The difference should be approximately the aggression boost difference
+    // aggression * 120 * (1.2 - 1.0) = 0.9 * 1 * 120 * 0.2 = 21.6
+    expect(earlyScore - lateScore).toBeCloseTo(21.6, 1);
+  });
+
+  it('applies opening salvo boost to intercept intent as well', () => {
+    const ship = createShip({ id: 1, team: 'blue', position: new Vector3() });
+    const target = createShip({ id: 2, team: 'red', position: new Vector3(300, 0, 0) });
+    const profile = resolveBehaviorProfile('escort');
+    
+    // Test during opening salvo
+    const earlyState = createState();
+    earlyState.time = 0;
+    const earlyScore = scoreInterceptIntent(earlyState, ship, profile, target, null, 'hold', BASE_TRAITS, null);
+    
+    // Test after opening salvo period
+    const lateState = createState();
+    lateState.time = 35;
+    const lateScore = scoreInterceptIntent(lateState, ship, profile, target, null, 'hold', BASE_TRAITS, null);
+    
+    // Early score should be higher due to opening salvo boost
+    expect(earlyScore).toBeGreaterThan(lateScore);
   });
 });
 

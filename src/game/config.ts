@@ -57,6 +57,7 @@ export const AI_CONFIG = {
   engagementBoostEnabled: true,
   rangePolicy: 'v0.1.1-exp' as const,
   openingSalvoDuration: 30,
+  openingSalvoAggressionBoost: 1.2,
   headingYClamp: 0.3,
   strengthRatioThreshold: 1.6,
   bandStickinessDuration: 3,

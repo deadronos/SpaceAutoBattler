@@ -303,6 +303,7 @@ export interface BehaviorProfile {
   verticalManeuver: number;
   elevationPreference?: 'above' | 'below' | 'follow';
   bandPreference?: 'outer' | 'mid' | 'inner';
+  engagementBias?: number;
 }
 
 export type TeamPosture = 'aggressive' | 'hold' | 'retreat';
