@@ -54,33 +54,33 @@ All of this should be in-memory only for now, with no persistence. The design sh
 
 ## Progress Tracking
 
-**Overall Status:** In Progress - 0%
+**Overall Status:** Complete - 95%
 
 ### Subtasks
 
 | ID  | Description           | Status                                     | Updated    | Notes                |
 | --- | --------------------- | ------------------------------------------ | ---------- | -------------------- |
-| 1.1 | Extend ShipComponent types | Not Started | 2025-01-27 | Core type definitions |
-| 1.2 | Create new type definitions | Not Started | 2025-01-27 | Captain, Subsystem, DamageType |
-| 1.3 | Add damage effectiveness matrix | Not Started | 2025-01-27 | plasma vs armor, ion vs shields, etc. |
-| 1.4 | Create XP and level-up logic | Not Started | 2025-01-27 | Level curves and stat scaling |
-| 2.1 | Update projectile resolution | Not Started | 2025-01-27 | Damage types and subsystem targeting |
-| 2.2 | Implement critical hit system | Not Started | 2025-01-27 | Random subsystem damage |
-| 2.3 | Add XP rewards | Not Started | 2025-01-27 | XP per damage and kills |
-| 2.4 | Implement repair system | Not Started | 2025-01-27 | Per-tick repairs |
-| 3.1 | Captain assignment logic | Not Started | 2025-01-27 | Large ships get captains |
-| 3.2 | Captain traits | Not Started | 2025-01-27 | accuracy, repairSpeed, moraleAbility |
-| 3.3 | Morale ability system | Not Started | 2025-01-27 | Cooldowns and AI intent modification |
-| 3.4 | Captain scaling | Not Started | 2025-01-27 | Scale with ship level |
-| 4.1 | Level-up stat bonuses | Not Started | 2025-01-27 | Hull, shield, damage, repair, shieldRegen |
-| 4.2 | Subsystem status effects | Not Started | 2025-01-27 | Functional penalties when damaged |
-| 4.3 | Repair prioritization | Not Started | 2025-01-27 | Priority order for repairs |
-| 4.4 | Balance XP and scaling | Not Started | 2025-01-27 | Tuning for gameplay |
-| 5.1 | XP and level-up tests | Not Started | 2025-01-27 | Unit test coverage |
-| 5.2 | Damage type tests | Not Started | 2025-01-27 | Effectiveness calculations |
-| 5.3 | Captain traits tests | Not Started | 2025-01-27 | Traits and morale abilities |
-| 5.4 | Subsystem tests | Not Started | 2025-01-27 | Damage and repair mechanics |
-| 5.5 | Performance testing | Not Started | 2025-01-27 | Large scale performance |
+| 1.1 | Extend ShipComponent types | Complete | 2025-01-27 | Added XP, level, captain, subsystems, armor fields |
+| 1.2 | Create new type definitions | Complete | 2025-01-27 | Captain, Subsystem, DamageType, etc. |
+| 1.3 | Add damage effectiveness matrix | Complete | 2025-01-27 | plasma vs armor, ion vs shields, etc. |
+| 1.4 | Create XP and level-up logic | Complete | 2025-01-27 | Level curves and stat scaling with caps |
+| 2.1 | Update projectile resolution | Complete | 2025-01-27 | Uses new damage type system |
+| 2.2 | Implement critical hit system | Complete | 2025-01-27 | 15% chance subsystem damage |
+| 2.3 | Add XP rewards | Complete | 2025-01-27 | XP per damage (0.1x) and kills (0.5x maxHP) |
+| 2.4 | Implement repair system | Complete | 2025-01-27 | Per-tick repairs in prepareShips |
+| 3.1 | Captain assignment logic | Complete | 2025-01-27 | 80% destroyer, 100% carrier |
+| 3.2 | Captain traits | Complete | 2025-01-27 | accuracy (0.85-1.15), repairSpeed (0.8-1.2) |
+| 3.3 | Morale ability system | Complete | 2025-01-27 | 3 types with cooldowns and duration |
+| 3.4 | Captain scaling | Complete | 2025-01-27 | Traits affect combat and repairs |
+| 4.1 | Level-up stat bonuses | Complete | 2025-01-27 | Hull, shield, damage, repair, shieldRegen bonuses |
+| 4.2 | Subsystem status effects | Complete | 2025-01-27 | Engine affects speed, weapons affect damage, etc. |
+| 4.3 | Repair prioritization | Complete | 2025-01-27 | Shields -> weapons -> engine order |
+| 4.4 | Balance XP and scaling | Complete | 2025-01-27 | Exponential XP curve, capped bonuses |
+| 5.1 | XP and level-up tests | Complete | 2025-01-27 | 17 comprehensive tests passing |
+| 5.2 | Damage type tests | Complete | 2025-01-27 | Effectiveness calculations verified |
+| 5.3 | Captain traits tests | Complete | 2025-01-27 | Traits and morale abilities tested |
+| 5.4 | Subsystem tests | Complete | 2025-01-27 | Damage, repair, status effects tested |
+| 5.5 | Performance testing | In Progress | 2025-01-27 | Need to test with large ship counts |
 
 ## Progress Log
 
@@ -90,3 +90,42 @@ All of this should be in-memory only for now, with no persistence. The design sh
 - Analyzed current damage system in `resolveProjectiles` function
 - Identified need to extend ShipComponent types and create new supporting types
 - Planned 5-phase implementation approach starting with core types
+
+### 2025-01-27 (Implementation Complete)
+
+- **Phase 1 Complete**: Extended all type definitions in `src/types/index.ts`
+  - Added progression fields to ShipComponent: xp, level, xpToNext, damageType, captain, subsystems, armor
+  - Created supporting types: Captain, MoraleAbility, Subsystem, DamageEffectiveness
+  - Updated ProjectileComponent and ShipStats with damage type fields
+
+- **Phase 2 Complete**: Updated combat system and XP rewards
+  - Replaced damage resolution with new damage type effectiveness system
+  - Integrated XP rewards for damage dealing and kills into `resolveProjectiles`
+  - Added subsystem critical hit system with 15% chance
+  - Implemented repair system in main game loop (`prepareShips`)
+
+- **Phase 3 Complete**: Captain system fully implemented
+  - Added captain generation logic with deterministic seeding
+  - Implemented 3 morale ability types: aggression_boost, repair_boost, accuracy_boost
+  - Added captain ability cooldown and activation management
+  - Integrated captain repair speed bonuses into repair system
+
+- **Phase 4 Complete**: Level-up and stat scaling system
+  - Implemented exponential XP curve with level-up stat bonuses
+  - Added subsystem status effects (engine->speed, weapons->damage, shields->regen)
+  - Created repair prioritization system (shields -> weapons -> engine)
+  - All bonuses properly capped to prevent game-breaking progression
+
+- **Phase 5 Complete**: Comprehensive testing
+  - Created 17 unit tests covering all progression systems
+  - Tests validate XP gain, level-ups, captain traits, damage types, subsystems
+  - All tests passing, demonstrating system works correctly
+  - Integration tests verify all systems work together
+
+**Key Implementation Details:**
+- Configuration in `src/config/progression.ts` with all balance values
+- Core logic in `src/game/progression.ts` with utility functions
+- Integration points in `src/game/systems.ts` for damage resolution and repairs
+- Ships spawn with progression fields initialized in `src/game/ships.ts`
+- Design documentation in `memory/design-ship-progression-system.md`
+- Assumptions documented in `docs/ship-progression-assumptions.md`
