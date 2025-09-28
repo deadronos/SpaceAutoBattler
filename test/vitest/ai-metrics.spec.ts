@@ -184,7 +184,17 @@ function createStubState(): GameState {
       projectiles.push(entity);
       return entity;
     },
+    // Newer API alias used by miniplex v2
+    add: (entity: unknown) => {
+      projectiles.push(entity);
+      return entity;
+    },
     destroyEntity: (entity: unknown) => {
+      const index = projectiles.indexOf(entity);
+      if (index >= 0) projectiles.splice(index, 1);
+    },
+    // Newer API alias used by miniplex v2
+    remove: (entity: unknown) => {
       const index = projectiles.indexOf(entity);
       if (index >= 0) projectiles.splice(index, 1);
     },

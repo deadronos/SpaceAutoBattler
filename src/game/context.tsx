@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { GameState } from '../types/index.js';
+import type { GameState, GameEntity } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
 import { updateGame } from './systems.js';
 import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
@@ -42,7 +42,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
                   return {
                     tick: created.simulation.lastTickIndex,
                     time: created.time,
-                    ships: ships.map((entity) => {
+                    ships: ships.map((entity: GameEntity) => {
                       const transform = entity.transform;
                       const ship = entity.ship;
                       return {

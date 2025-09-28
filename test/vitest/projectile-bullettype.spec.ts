@@ -12,6 +12,10 @@ function makeStateStub(): GameState {
       entities.push(obj);
       return obj;
     },
+    add(obj: any) {
+      entities.push(obj);
+      return obj;
+    },
   } as any;
 
   const rapierStub = {

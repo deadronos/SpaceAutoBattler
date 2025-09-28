@@ -2,7 +2,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { AxesHelper, Color, NoToneMapping, SRGBColorSpace } from 'three';
 import { Suspense } from 'react';
-import type { Archetype } from 'miniplex';
+import type { Archetype } from '../types/index.js';
 import type React from 'react';
 import type { GameEntity, ProjectileEntity, ShipEntity, TurretEntity } from '../types/index.js';
 import { useGameState, useOptionalGameState } from '../game/context.js';

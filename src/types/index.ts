@@ -1,4 +1,4 @@
-import type { Archetype, World as ECSWorld } from 'miniplex';
+import type { World as ECSWorld } from 'miniplex';
 import type { ColorRepresentation, Quaternion, Vector3 } from 'three';
 import type { SeededRng } from '../utils/rng.js';
 
@@ -212,6 +212,35 @@ export interface ExplosionConfigEntry {
 }
 
 export type EntityId = number;
+
+/**
+ * Minimal representation of the parts of a Miniplex query that the codebase
+ * depends on. This avoids pulling in a non-existent `Archetype` export and
+ * keeps typing tight for our usage patterns (entities + lifecycle events).
+ */
+type MiniplexQueryReturn<T> = {
+  entities: T[];
+};
+
+type LegacyArchetypeShape<T> = MiniplexQueryReturn<T> & {
+  onEntityAdded?: {
+    add?: (cb: () => void) => void;
+    remove?: (cb: () => void) => void;
+    subscribe?: (cb: (entity?: T) => void) => void | (() => void) | { unsubscribe: () => void };
+  };
+  onEntityRemoved?: {
+    add?: (cb: () => void) => void;
+    remove?: (cb: () => void) => void;
+    subscribe?: (cb: (entity?: T) => void) => void | (() => void) | { unsubscribe: () => void };
+  };
+  [key: string]: unknown;
+};
+
+// Keep a compatible `Archetype` exported symbol for the rest of the codebase so
+// existing usages (e.g. `Archetype<GameEntity, ['ship']>`) continue to work.
+export type Archetype<T, _C extends readonly string[] = readonly string[]> =
+  | (ReturnType<ECSWorld<object>['with']> & MiniplexQueryReturn<T>)
+  | LegacyArchetypeShape<T>;
 
 export type AIIntent =
   | 'Attack'

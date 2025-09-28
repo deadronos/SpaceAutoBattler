@@ -1689,7 +1689,7 @@ export function fireProjectile(
   const range = opts?.override?.range ?? origin.ship.range;
   const lifetime = Math.min(range / speed, 30);
 
-  const projectile = state.world.createEntity({
+  const projectile = state.world.add({
     id: state.nextEntityId++,
     rigidBody: body,
     collider,

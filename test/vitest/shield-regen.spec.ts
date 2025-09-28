@@ -28,7 +28,18 @@ function makeStateStub(): GameState {
       if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
+    add(obj: any) {
+      entities.push(obj);
+      if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
+      if (obj.ship) (queries.ships.entities as any[]).push(obj);
+      if (obj.turret) (queries.turrets.entities as any[]).push(obj);
+      return obj;
+    },
     destroyEntity(obj: any) {
+      const i = entities.indexOf(obj);
+      if (i >= 0) entities.splice(i, 1);
+    },
+    remove(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
     },

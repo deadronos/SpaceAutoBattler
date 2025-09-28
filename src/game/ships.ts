@@ -459,7 +459,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     };
   }
 
-  const registered = state.world.createEntity(entity) as ShipEntity;
+  const registered = state.world.add(entity) as ShipEntity;
   state.colliderLookup.set(collider.handle, registered);
 
   // Spawn turret entities for each turret spec
@@ -476,7 +476,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       .setSensor(true as unknown as boolean);
     const tCollider = state.physicsWorld.createCollider(tColliderDesc, tBody);
 
-    const turretEntity = state.world.createEntity({
+    const turretEntity = state.world.add({
       id: state.nextEntityId++,
       rigidBody: tBody,
       collider: tCollider,
