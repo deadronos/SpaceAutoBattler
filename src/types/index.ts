@@ -14,6 +14,45 @@ export type ShipHull = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carri
 
 export type StatusEffectTag = 'jammed' | 'shield-down' | 'engine-disrupted' | 'hacked';
 
+// Ship Progression System Types
+export type DamageType = 'kinetic' | 'plasma' | 'ion' | 'explosive';
+
+export type SubsystemType = 'engine' | 'weapons' | 'shields';
+
+export type SubsystemStatus = 'online' | 'damaged' | 'offline';
+
+export type MoraleEffectType = 'aggression_boost' | 'repair_boost' | 'accuracy_boost';
+
+export interface Subsystem {
+  hp: number;
+  maxHp: number;
+  status: SubsystemStatus;
+  repairRate: number;
+}
+
+export interface MoraleAbility {
+  cooldownRemaining: number;
+  maxCooldown: number;
+  duration: number;
+  effect: MoraleEffectType;
+  isActive: boolean;
+  activeUntil: number; // Game time when effect expires
+}
+
+export interface Captain {
+  accuracy: number;        // Multiplier for hit chance (0.8 - 1.2)
+  repairSpeed: number;     // Multiplier for repair rate (0.8 - 1.2)
+  moraleAbility?: MoraleAbility;
+}
+
+export interface DamageEffectiveness {
+  [damageType: string]: {
+    hull: number;         // Effectiveness vs hull HP
+    shield: number;       // Effectiveness vs shield HP  
+    armor: number;        // Effectiveness vs armor defense
+  };
+}
+
 export interface CarrierLaunchSlot {
   /** Forward offset in world units relative to the carrier's origin. */
   forward: number;
@@ -86,6 +125,28 @@ export interface ShipComponent {
   motion: MotionStats;
   /** Optional status effects applied to this ship for HUD overlays. */
   effects?: StatusEffectTag[];
+  
+  // Ship Progression System
+  /** Experience points accumulated by this ship */
+  xp: number;
+  /** Current level of this ship */
+  level: number;
+  /** Experience points needed to reach next level */
+  xpToNext: number;
+  /** Damage type this ship deals (overrides bulletType for effectiveness calculations) */
+  damageType: DamageType;
+  
+  // Captain System (for large ships)
+  /** Captain assigned to this ship (destroyers and carriers only) */
+  captain?: Captain;
+  
+  // Subsystem Health
+  /** Health and status of ship subsystems */
+  subsystems: Record<SubsystemType, Subsystem>;
+  
+  // Defense Categories (for damage type effectiveness)
+  /** Armor value for damage type calculations */
+  armor: number;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -145,6 +206,8 @@ export interface ProjectileComponent {
   speed: number;
   /** Material key or type identifier for rendering this projectile (optional) */
   bulletType?: string;
+  /** Damage type for effectiveness calculations */
+  damageType: DamageType;
 }
 
 /** Parameters for a short-lived muzzle flash event emitted when a weapon fires. */
@@ -598,6 +661,10 @@ export interface ShipStats {
   scale: number;
   /** Preferred bullet/material key for this hull (e.g. 'bullet:laser') */
   bulletType?: string;
+  /** Default damage type for this hull */
+  damageType: DamageType;
+  /** Base armor value for this hull */
+  armor: number;
   /** Optional default turret loadout for this hull. */
   turrets?: TurretSpec[];
   /** Motion characteristics for physics-based movement. */

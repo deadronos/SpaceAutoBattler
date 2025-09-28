@@ -31,6 +31,15 @@ import { updateCarrierLaunchSystem } from './systems/carriers.js';
 import { emitShipKillExplosion, updateExplosions } from './explosions.js';
 import { SeededRng } from '../utils/rng.js';
 import { aggregateKpis, recordBandSample, recordIntentMetrics, recordShotMetrics } from './metrics.js';
+import { 
+  awardDamageXp, 
+  awardKillXp, 
+  applySubsystemDamage, 
+  repairSubsystems, 
+  updateCaptainAbilities,
+  calculateEffectiveDamage,
+  getEffectiveStats
+} from './progression.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -1414,6 +1423,10 @@ function prepareShips(state: GameState, delta: number): void {
       ship.ship.shield = Math.min(ship.ship.maxShield, ship.ship.shield + regen * delta);
     }
 
+    // Update progression systems
+    updateCaptainAbilities(ship.ship, state.time, delta);
+    repairSubsystems(ship.ship, delta);
+
     let preferredTarget: ShipEntity | null = null;
 
     if (useAIV2 && ship.ai) {
@@ -1790,17 +1803,24 @@ function resolveProjectiles(state: GameState, delta: number): void {
        const projRadius = projCfg.colliderRadius ?? Math.max(0.08, projectile.transform.scale * 1.2);
        const impactRadius = ship.transform.scale * 0.9 + projRadius;
        if (distance > impactRadius) continue;
-       // Apply damage to shields first, then to hull.
-       let remaining = projectile.projectile.damage;
-       if (ship.ship.shield > 0) {
-         const absorbed = Math.min(ship.ship.shield, remaining);
-         ship.ship.shield -= absorbed;
-         remaining -= absorbed;
+       
+       // Use new damage type effectiveness system
+       const damageResult = calculateEffectiveDamage(
+         projectile.projectile.damage,
+         projectile.projectile.damageType,
+         ship.ship.shield,
+         ship.ship.armor
+       );
+       
+       // Apply shield damage
+       if (damageResult.shieldDamage > 0) {
+         ship.ship.shield -= damageResult.shieldDamage;
+         
          // Emit a shield ripple event oriented from impact direction.
          const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
          if (dir.lengthSq() > 1e-5) dir.normalize();
          else dir.set(0, 0, 1);
-         const strength = Math.min(1, absorbed / Math.max(1, ship.ship.maxShield));
+         const strength = Math.min(1, damageResult.shieldDamage / Math.max(1, ship.ship.maxShield));
          const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
          // Always append ripple events to the ship's history; the renderer/coalescer
          // will select up to maxRipples of the latest entries and handle visual blending.
@@ -1809,14 +1829,34 @@ function resolveProjectiles(state: GameState, delta: number): void {
          // Keep a reasonable history cap to avoid unbounded growth
          if (list.length > 64) list.shift();
        }
- 
-      let hullDamage = 0;
-      if (remaining > 0) {
-        const prevHp = ship.ship.hp;
-        ship.ship.hp -= remaining;
-        hullDamage = Math.max(0, prevHp - ship.ship.hp);
-      }
+       
+       // Apply armor damage (reduce armor value)
+       if (damageResult.armorDamage > 0) {
+         ship.ship.armor = Math.max(0, ship.ship.armor - damageResult.armorDamage * 0.1); // Armor degrades slowly
+       }
+       
+       // Apply hull damage
+       let hullDamage = 0;
+       if (damageResult.hullDamage > 0) {
+         const prevHp = ship.ship.hp;
+         ship.ship.hp -= damageResult.hullDamage;
+         hullDamage = Math.max(0, prevHp - ship.ship.hp);
+         
+         // Apply subsystem damage on critical hits
+         applySubsystemDamage(ship.ship, hullDamage, new SeededRng(projectile.id + state.time));
+       }
+       
        toRemove.add(projectile);
+       
+       // Award XP to the attacker ship for damage dealt
+       const totalDamageDealt = damageResult.shieldDamage + damageResult.armorDamage + damageResult.hullDamage;
+       if (totalDamageDealt > 0) {
+         // Find the attacker ship (this is simplified - in reality we'd track the shooter)
+         const attackerShip = ships.find(s => s.ship.team === projectile.projectile.team);
+         if (attackerShip) {
+           awardDamageXp(attackerShip.ship, totalDamageDealt);
+         }
+       }
  
       
       if (manager && hullDamage > 0) {
@@ -1837,6 +1877,13 @@ function resolveProjectiles(state: GameState, delta: number): void {
          
           queueTargetLossInterrupts(state, ships, ship.id);
         }
+        
+        // Award kill XP to the attacker
+        const killerShip = ships.find(s => s.ship.team === projectile.projectile.team);
+        if (killerShip) {
+          awardKillXp(killerShip.ship, ship.ship.maxHp);
+        }
+        
          emitShipKillExplosion(state, ship, projectile);
          toRemove.add(ship);
        }
@@ -1946,6 +1993,7 @@ export function fireProjectile(
       maxTtl: lifetime,
       speed,
       bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
+      damageType: origin.ship.damageType,
     },
     direction: direction.clone(),
   }) as ProjectileEntity;

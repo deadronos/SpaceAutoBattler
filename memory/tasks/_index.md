@@ -6,6 +6,8 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
+- [TASK151](TASK151-ship-progression-system.md) — Implement richer ship progression and damage systems with XP, captains, damage types, and subsystems.
+
 ## Completed
 
 - [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
