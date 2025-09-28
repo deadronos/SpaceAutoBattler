@@ -20,6 +20,7 @@ import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';
 import { ExplosionsLayer } from './ExplosionRenderer.js';
+import { PerfMonitorOverlay } from './PerfMonitorOverlay.js';
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
@@ -99,6 +100,7 @@ export function Battlefield(): React.ReactElement {
           <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
         </>
       )}
+      <PerfMonitorOverlay />
     </Canvas>
   );
 }

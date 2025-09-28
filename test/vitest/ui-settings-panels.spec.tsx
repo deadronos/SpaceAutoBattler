@@ -12,6 +12,8 @@ const DEFAULT_FLAGS = (() => {
     aiV2Enabled: snapshot.aiV2Enabled,
     aiDebugEnabled: snapshot.aiDebugEnabled,
     explosionDebugEnabled: snapshot.explosionDebugEnabled,
+    perfMonitorEnabled: snapshot.perfMonitorEnabled,
+    perfMonitorPosition: { ...snapshot.perfMonitorPosition },
   };
 })();
 
@@ -24,13 +26,13 @@ describe('SettingsDrawer', () => {
   it('toggles the drawer visibility via the gear button', () => {
     render(<SettingsDrawer />);
     const trigger = screen.getByRole('button', { name: 'Simulation settings' });
-  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByRole('switch', { name: 'Postprocessing' })).toBeNull();
 
     fireEvent.click(trigger);
 
-  expect(trigger.getAttribute('aria-expanded')).toBe('true');
-  expect(screen.getByRole('switch', { name: 'Postprocessing' })).toBeDefined();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('switch', { name: 'Postprocessing' })).toBeDefined();
   });
 
   it('updates UI store flags when toggles are clicked', () => {
@@ -39,7 +41,7 @@ describe('SettingsDrawer', () => {
     fireEvent.click(trigger);
 
     const postprocessingSwitch = screen.getByRole('switch', { name: 'Postprocessing' });
-  expect(postprocessingSwitch.getAttribute('aria-checked')).toBe('true');
+    expect(postprocessingSwitch.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(postprocessingSwitch);
     expect(useUiStore.getState().postprocessingEnabled).toBe(false);
 

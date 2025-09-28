@@ -24,6 +24,11 @@ export type UiState = {
   explosionDebugEnabled: boolean;
   toggleExplosionDebug: () => void;
   setExplosionDebugEnabled: (v: boolean) => void;
+  perfMonitorEnabled: boolean;
+  togglePerfMonitor: () => void;
+  setPerfMonitorEnabled: (v: boolean) => void;
+  perfMonitorPosition: { x: number; y: number };
+  setPerfMonitorPosition: (position: { x: number; y: number }) => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -47,6 +52,12 @@ export const useUiStore = create<UiState>((set) => ({
   explosionDebugEnabled: false,
   toggleExplosionDebug: () => set((s) => ({ explosionDebugEnabled: !s.explosionDebugEnabled })),
   setExplosionDebugEnabled: (v: boolean) => set({ explosionDebugEnabled: v }),
+  perfMonitorEnabled: false,
+  togglePerfMonitor: () => set((s) => ({ perfMonitorEnabled: !s.perfMonitorEnabled })),
+  setPerfMonitorEnabled: (v: boolean) => set({ perfMonitorEnabled: v }),
+  perfMonitorPosition: { x: 16, y: 16 },
+  setPerfMonitorPosition: (position: { x: number; y: number }) =>
+    set({ perfMonitorPosition: { x: position.x, y: position.y } }),
 }));
 
 export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolean): void {

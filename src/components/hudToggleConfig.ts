@@ -60,4 +60,13 @@ export const DEBUG_TOGGLES: HudToggleDefinition[] = [
       useUiStore.getState().toggleExplosionDebug();
     },
   },
+  {
+    id: 'perf-monitor',
+    label: 'Perf Monitor',
+    description: 'Display draggable r3f-perf metrics overlay',
+    select: (state) => state.perfMonitorEnabled,
+    toggle: () => {
+      useUiStore.getState().togglePerfMonitor();
+    },
+  },
 ];

@@ -11,7 +11,12 @@ interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
-export function GameProvider({ children }: { children: ReactNode }): React.ReactElement {
+type GameProviderProps = {
+  children: ReactNode;
+  fallback?: ReactNode;
+};
+
+export function GameProvider({ children, fallback = null }: GameProviderProps): React.ReactElement {
   const [state, setState] = useState<GameState | null>(null);
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
@@ -146,7 +151,11 @@ export function GameProvider({ children }: { children: ReactNode }): React.React
     mirrorHudHealthBarsFlag(state, hudHealthBarsEnabled);
   }, [state, hudHealthBarsEnabled]);
 
-  return <GameContext.Provider value={{ state }}>{children}</GameContext.Provider>;
+  return (
+    <GameContext.Provider value={{ state }}>
+      {state ? children : fallback}
+    </GameContext.Provider>
+  );
 }
 
 export function useGameState(): GameState {
