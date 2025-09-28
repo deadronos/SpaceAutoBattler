@@ -318,6 +318,12 @@ export interface AIBlackboard {
   teamPriority: Record<Team, PrioritisedTarget[]>;
   priorityIndex: Record<Team, Map<EntityId, number>>;
   focusFire: Record<Team, Map<EntityId, number>>;
+  // Vertical dispersion tracking for validation (optional for backward compatibility)
+  verticalDispersion?: {
+    headingYSamples: number[];
+    positionYSamples: number[];
+    lastUpdateTick: number;
+  };
 }
 
 export interface AITeamAssignments {

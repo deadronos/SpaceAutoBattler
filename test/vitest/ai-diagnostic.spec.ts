@@ -126,6 +126,11 @@ it('diagnostic: escort + bomber + artillery scenarios candidate breakdown', () =
         teamPriority: { blue: [], red: [] },
         priorityIndex: { blue: new Map(), red: new Map() },
         focusFire: { blue: new Map(), red: new Map() },
+        verticalDispersion: {
+          headingYSamples: [],
+          positionYSamples: [],
+          lastUpdateTick: -1,
+        },
       },
       queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] } },
       world: { entities: ships },
