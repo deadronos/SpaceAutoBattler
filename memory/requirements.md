@@ -83,6 +83,12 @@
 4. **WHEN** the camera approaches a grazing angle, **THE SYSTEM SHALL** clamp feather calculations to finite numbers and avoid NaNs. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` feeds extreme facing values through the uniform updater and asserts finite vector components.)*
 5. **WHEN** the feather exponent increases, **THE SYSTEM SHALL** maintain a continuous alpha derivative across the curve to prevent banding. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` samples contiguous radii and checks monotonic decrease without discontinuities.)*
 
+## 2025-09-28 — AI Scenario Determinism Refresh
+
+1. **WHEN** `runAIScenario` executes the escort intercept scenario with seed `777`, **THE SYSTEM SHALL** emit a normalized log whose commands, headings, thrust, and positions match `test/vitest/fixtures/ai-escort-scenario.json` within the three-decimal rounding tolerance. *(Acceptance: `test/vitest/ai-scenario-harness.spec.ts` verifies the normalized log equals the refreshed fixture.)*
+2. **WHEN** the bomber intercept scenario runs with seed `2029`, **THE SYSTEM SHALL** capture deterministic `metrics.firstShotTimes` samples and propagate the values into the `metrics.kpis.firstShot` percentiles reflected in `test/vitest/fixtures/ai-bomber-intercept-scenario.json`. *(Acceptance: `test/vitest/ai-scenario-harness.spec.ts` asserts the normalized log including metrics matches the fixture.)*
+3. **WHEN** the artillery retreat scenario progresses through its six ticks under seed `4041`, **THE SYSTEM SHALL** accumulate `metrics.shotDeltaY` and `metrics.shotDistance` histograms with non-zero counts consistent with the refreshed `test/vitest/fixtures/ai-artillery-retreat-scenario.json`. *(Acceptance: `test/vitest/ai-scenario-harness.spec.ts` compares the normalized log against the fixture.)*
+
 ## EARS Statements
 
 1. **WHEN** the celestial environment renders with `features.starDisk !== false`, **THE SYSTEM SHALL** draw the star disk using the main sequence shader material anchored to `StarLight` configuration. *(Validation: visual snapshot shows shader-driven corona.)*

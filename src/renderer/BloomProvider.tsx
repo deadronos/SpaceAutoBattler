@@ -25,6 +25,16 @@ const Ctx = createContext<BloomCtx | null>(null);
 const FALLBACK_GROUP = 'default';
 const LAYER_START = POSTPROCESSING_CONFIG.bloomLayerStart ?? 11;
 
+// Helper: ensure a provided layer index is an integer in the valid Three.js
+// range [0..31]. If input is not finite, return a safe fallback (LAYER_START).
+function normalizeLayerIndex(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return Math.max(0, Math.min(Math.floor(Number(LAYER_START) || 11), 31));
+  // integer clamp
+  const i = Math.floor(n);
+  return Math.max(0, Math.min(i, 31));
+}
+
 export function BloomProvider({ enabled, children }: { enabled: boolean; children?: React.ReactNode }): React.ReactElement | null {
   const selectionsRef = useRef<Map<string, Selection>>(new Map());
   const objectGroupRef = useRef<Map<Object3D, string>>(new Map());
@@ -42,12 +52,23 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
     let selection = map.get(group);
     if (!selection) {
       selection = new Selection();
-      const layer = Math.min(nextLayerRef.current, 31);
+      // Defensive: normalize the candidate layer index before assigning to
+      // the selection. Log debug info to help reproduce intermittent
+      // "Layer out of range" warnings when present in runtime.
+      const candidate = nextLayerRef.current;
+      const layer = normalizeLayerIndex(candidate);
+      // Debug logging (kept at debug level) prints the configured start and
+      // the resolved layer we will assign. Avoid logging during tests.
+      if (process.env.NODE_ENV !== 'test') {
+        // eslint-disable-next-line no-console
+        console.debug('[BloomProvider] allocating layer', { group, candidate, layer, LAYER_START });
+      }
       selection.layer = layer;
+      // advance next layer; keep it normalized as well
       nextLayerRef.current = Math.min(layer + 1, 31);
       map.set(group, selection);
     }
-  selection.exclusive = false;
+    selection.exclusive = false;
   });
 
   const register = React.useCallback(
@@ -75,7 +96,12 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       if (!selection) {
         selection = new Selection();
         selection.exclusive = true;
-        const layer = Math.min(nextLayerRef.current, 31);
+        const candidate = nextLayerRef.current;
+        const layer = normalizeLayerIndex(candidate);
+        if (process.env.NODE_ENV !== 'test') {
+          // eslint-disable-next-line no-console
+          console.debug('[BloomProvider] register allocating layer', { group, candidate, layer, LAYER_START });
+        }
         selection.layer = layer;
         nextLayerRef.current = Math.min(layer + 1, 31);
         selectionsRef.current.set(group, selection);
