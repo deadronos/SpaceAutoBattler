@@ -1723,10 +1723,29 @@ export function fireProjectile(
 
   let speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
   if (AI_CONFIG.rangePolicy === 'v0.1.1-exp' && !opts?.override) {
+    // Apply projectile speed biases to spread effective engagement distances
     if (origin.ship.hull === 'destroyer' || origin.ship.hull === 'carrier') {
+      // Artillery platforms: faster projectiles for longer effective range
       speed *= 1.05;
-    } else if ((origin.ship.bulletType ?? '').includes('laser')) {
+    } else if (origin.ship.hull === 'fighter') {
+      // Fast interceptors: slightly faster projectiles for quick engagements
+      speed *= 1.02;
+    } else if (origin.ship.hull === 'corvette') {
+      // Balanced medium ships: slight speed reduction for mid-range focus
+      speed *= 0.98;
+    } else if (origin.ship.hull === 'frigate') {
+      // Support ships: moderate speed reduction to encourage positioning
+      speed *= 0.96;
+    }
+    
+    // Additional weapon type adjustments to complement hull-based changes
+    const bulletType = origin.ship.bulletType ?? '';
+    if (bulletType.includes('laser')) {
+      // Laser weapons: emphasize precision over speed
       speed *= 0.97;
+    } else if (bulletType.includes('heavy') || bulletType.includes('ion')) {
+      // Heavy/ion weapons: slightly faster for better range utilization
+      speed *= 1.03;
     }
   }
   const damage = opts?.override?.damage ?? origin.ship.damage;
