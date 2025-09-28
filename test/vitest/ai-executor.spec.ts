@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
 const { writeCommand } = __aiTestHooks;
@@ -18,15 +19,7 @@ function createState(): GameState {
       cursor: 0,
       slices: 1,
       assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -35,6 +28,7 @@ function createState(): GameState {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [],
+      strengthRatio: { blue: 1, red: 1 },
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
@@ -75,6 +69,8 @@ function createShip(
     lod: 0,
     traitSeed: 1234,
     traits: { aggression: 1, patience: 1, dodge: 1 },
+    stickinessUntil: 0,
+    stickinessHeading: new Vector3(0, 0, 1),
     command: {
       heading,
       thrust: 0,
@@ -132,7 +128,7 @@ describe('writeCommand executors', () => {
 
     ship.ai!.intent = 'Attack';
     ship.ai!.command.heading.set(0, 0, 0);
-    writeCommand(state, ship, ship.ai!, profile, target, null);
+    writeCommand(state, ship, ship.ai!, profile, target, null, null);
 
     expect(ship.ai!.command.thrust).toBeCloseTo(0.35, 2);
     expect(ship.ai!.command.firePrimary).toBe(true);
@@ -148,7 +144,7 @@ describe('writeCommand executors', () => {
     const profile = resolveBehaviorProfile('brawler');
 
     ship.ai!.intent = 'Attack';
-    writeCommand(state, ship, ship.ai!, profile, target, null);
+    writeCommand(state, ship, ship.ai!, profile, target, null, null);
 
     expect(ship.ai!.command.thrust).toBeCloseTo(0.6, 2);
     expect(ship.ai!.command.heading.x).toBeCloseTo(-1, 2);
@@ -163,7 +159,7 @@ describe('writeCommand executors', () => {
     const profile = resolveBehaviorProfile('kiter');
 
     ship.ai!.intent = 'Kite';
-    writeCommand(state, ship, ship.ai!, profile, target, null);
+    writeCommand(state, ship, ship.ai!, profile, target, null, null);
 
     expect(ship.ai!.command.heading.x).toBeCloseTo(-1, 2);
     expect(ship.ai!.command.thrust).toBe(1);
@@ -178,7 +174,7 @@ describe('writeCommand executors', () => {
     const profile = resolveBehaviorProfile('escort');
 
     ship.ai!.intent = 'Escort';
-    writeCommand(state, ship, ship.ai!, profile, null, vip);
+    writeCommand(state, ship, ship.ai!, profile, null, vip, null);
 
     expect(ship.ai!.command.heading.z).toBeCloseTo(1, 2);
     expect(ship.ai!.command.thrust).toBeCloseTo(0.8, 2);
@@ -195,7 +191,7 @@ describe('writeCommand executors', () => {
     const movingTarget = createShip(10, 'red', new Vector3(0, 0, 240), new Vector3(60, 0, 0));
     const profile = resolveBehaviorProfile('escort');
 
-    writeCommand(state, ship, ship.ai!, profile, movingTarget, null);
+    writeCommand(state, ship, ship.ai!, profile, movingTarget, null, null);
 
     expect(ship.ai!.command.thrust).toBeCloseTo(1, 2);
     const direct = new Vector3().copy(movingTarget.transform.position).sub(ship.transform.position).normalize();
@@ -213,7 +209,7 @@ describe('writeCommand executors', () => {
     const closeTarget = createShip(12, 'red', new Vector3(40, 0, 0));
     const profile = resolveBehaviorProfile('artillery');
 
-    writeCommand(state, ship, ship.ai!, profile, closeTarget, null);
+    writeCommand(state, ship, ship.ai!, profile, closeTarget, null, null);
 
     expect(ship.ai!.command.heading.x).toBeLessThan(-0.5);
     expect(ship.ai!.command.thrust).toBeCloseTo(0.6, 1);
@@ -228,12 +224,42 @@ describe('writeCommand executors', () => {
     state.blackboard.teamPosture.blue = 'retreat';
     const profile = resolveBehaviorProfile('brawler');
 
-    writeCommand(state, ship, ship.ai!, profile, null, null);
+    writeCommand(state, ship, ship.ai!, profile, null, null, null);
 
     expect(ship.ai!.command.heading.x).toBeGreaterThan(0.5);
     expect(ship.ai!.command.thrust).toBeGreaterThan(0.75);
     expect(ship.ai!.command.firePrimary).toBe(false);
     expect(ship.ai!.command.targetId).toBeUndefined();
+  });
+
+  it('applies vertical perturbation for fighters during attack', () => {
+    const state = createState();
+    state.ai.tickIndex = 6;
+    const fighter = createShip(30, 'blue', new Vector3());
+    fighter.ai!.profileId = 'escort';
+    fighter.ai!.intent = 'Attack';
+    const profile = resolveBehaviorProfile('escort');
+    const target = createShip(31, 'red', new Vector3(190, 0, 0));
+
+    writeCommand(state, fighter, fighter.ai!, profile, target, null, null);
+
+    expect(Math.abs(fighter.ai!.command.heading.y)).toBeGreaterThan(0.01);
+  });
+
+  it('records stickiness when maintaining preferred band', () => {
+    const state = createState();
+    state.ai.tickIndex = 10;
+    const brawler = createShip(40, 'blue', new Vector3());
+    brawler.ai!.profileId = 'brawler';
+    brawler.ai!.intent = 'Attack';
+    const profile = resolveBehaviorProfile('brawler');
+    const target = createShip(41, 'red', new Vector3(180, 0, 0));
+
+    writeCommand(state, brawler, brawler.ai!, profile, target, null, null);
+
+    expect(brawler.ai!.stickinessUntil).toBeGreaterThan(state.ai.tickIndex);
+    expect(brawler.ai!.stickinessTargetId).toBe(target.id);
+    expect(brawler.ai!.stickinessHeading.length()).toBeGreaterThan(0);
   });
 });
 

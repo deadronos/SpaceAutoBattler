@@ -37,14 +37,42 @@ const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT');
 
 export const AI_CONFIG = {
   v2Enabled: DEFAULT_AI_V2,
-  tickRateHz: 10,
+  tickRateHz: 15,
   maxPerTick: 60,
   slices: 5,
+  verticalEnabled: true,
+  engagementBoostEnabled: true,
+  rangePolicy: 'v0.1.1-exp' as const,
+  openingSalvoDuration: 30,
+  headingYClamp: 0.3,
+  strengthRatioThreshold: 1.6,
+  bandStickinessDuration: 3,
+  scorePrecision: 0.1,
+  intentPriority: ['Attack', 'Intercept', 'Escort', 'Kite', 'Reposition', 'Regroup', 'Flee'] as const,
+  threatWeights: {
+    hull: {
+      carrier: 6,
+      destroyer: 5,
+      frigate: 4,
+      corvette: 3,
+      fighter: 2,
+    } as const,
+    hpScalar: 0.0025,
+    vipBonus: 3,
+    focusPenalty: 1.2,
+    distanceScale: 600,
+  },
   lod: {
     activeDistance: 320,
     idleDistance: 900,
   },
 };
+
+export const SPAWN_CONFIG = {
+  verticalSpreadFactor: 0.2,
+  anchorYRandomization: true,
+  initialSeparationFactor: 1.5,
+} as const;
 
 // AI and movement configuration
 export const WORLD_BOUNDS_MARGIN = 2; // small margin to stay slightly within the cube

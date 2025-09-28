@@ -253,6 +253,10 @@ export interface AIState {
   targetId?: EntityId;
   lastScore?: number;
   command: AICommand;
+  stickinessUntil: number;
+  stickinessHeading: Vector3;
+  stickinessTargetId?: EntityId;
+  desiredRange?: readonly [number, number];
 }
 
 export interface BehaviorProfile {
@@ -267,6 +271,9 @@ export interface BehaviorProfile {
     ammoMin?: number;
     hpRetreatPct?: number;
   };
+  verticalManeuver: number;
+  elevationPreference?: 'above' | 'below' | 'follow';
+  bandPreference?: 'outer' | 'mid' | 'inner';
 }
 
 export type TeamPosture = 'aggressive' | 'hold' | 'retreat';
@@ -278,10 +285,82 @@ export interface AIBlackboard {
   nearestEnemy: Map<EntityId, EntityId>;
   threatToVip: Map<EntityId, EntityId>;
   tmpVectors: Vector3[];
+  strengthRatio: Record<Team, number>;
+  teamPriority: Record<Team, PrioritisedTarget[]>;
+  priorityIndex: Record<Team, Map<EntityId, number>>;
+  focusFire: Record<Team, Map<EntityId, number>>;
 }
 
 export interface AITeamAssignments {
-  escorts: Map<EntityId, EntityId>;
+  escorts: Map<EntityId, EscortAssignment>;
+}
+
+export interface EscortAssignment {
+  vipId: EntityId;
+  offset: Vector3;
+  threatId?: EntityId;
+}
+
+export interface AIIntentSnapshot {
+  tick: number;
+  time: number;
+  counts: Partial<Record<AIIntent, number>>;
+  total: number;
+}
+
+export interface PrioritisedTarget {
+  id: EntityId;
+  threat: number;
+  distanceSq: number;
+  focusLoad: number;
+}
+
+export interface AIShotHistogram {
+  buckets: readonly number[];
+  counts: number[];
+  total: number;
+}
+
+export interface AIInBandStats {
+  samples: number;
+  satisfied: number;
+}
+
+export interface AIInBandSummary {
+  samples: number;
+  satisfied: number;
+  ratio: number | null;
+}
+
+export interface AIInBandSummaryByHull {
+  overall: AIInBandSummary;
+  byHull: Record<ShipHull, AIInBandSummary>;
+}
+
+export interface AIFirstShotSummary {
+  samples: number;
+  p50: number | null;
+  p90: number | null;
+}
+
+export interface AIOpeningAggressionSummary {
+  total: number;
+  aggressive: number;
+  ratio: number | null;
+}
+
+export interface AIVerticalSummary {
+  samples: number;
+  aboveThreshold: number;
+  threshold: number;
+  ratio: number | null;
+}
+
+export interface AIKpiSummary {
+  firstShot: AIFirstShotSummary;
+  openingAggression: AIOpeningAggressionSummary;
+  inBand: AIInBandSummaryByHull;
+  vertical: AIVerticalSummary;
 }
 
 export interface AIManagerState {
@@ -304,6 +383,23 @@ export interface AIMetrics {
   lastSkipped: number;
   lastSliceSize: number;
   lastTotalShips: number;
+  verticalSamples: number;
+  verticalAboveThreshold: number;
+  inBandSamples: number;
+  inBandSatisfied: number;
+  openingAggressiveIntents: number;
+  openingTotalIntents: number;
+  tieDecisions: number;
+  tieFallbacks: number;
+  firstShotTimes: number[];
+  firstShotByShip: Record<number, number>;
+  intentTimeline: AIIntentSnapshot[];
+  inBandByHull: Record<ShipHull, AIInBandStats>;
+  shotDistanceHist: Record<ShipHull, AIShotHistogram>;
+  shotDeltaYHist: Record<ShipHull, AIShotHistogram>;
+  shotVerticalThreshold: number;
+  lastAggregationTick: number;
+  kpis: AIKpiSummary;
 }
 
 export interface GameEntity extends TransformComponent {

@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
 const { selectIntent } = __aiTestHooks;
@@ -30,15 +31,7 @@ function createState(): GameState {
       cursor: 0,
       slices: 1,
       assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -47,6 +40,10 @@ function createState(): GameState {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [],
+      strengthRatio: { blue: 1, red: 1 },
+      teamPriority: { blue: [], red: [] },
+      priorityIndex: { blue: new Map(), red: new Map() },
+      focusFire: { blue: new Map(), red: new Map() },
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
@@ -80,6 +77,8 @@ function createShip(options: ShipOptions): ShipEntity {
     lod: 0,
     traitSeed: 123,
     traits: { ...BASE_TRAITS },
+    stickinessUntil: 0,
+    stickinessHeading: new Vector3(0, 0, 1),
     command: {
       heading: new Vector3(0, 0, 1),
       thrust: 0,
@@ -150,7 +149,7 @@ describe('selectIntent with new intents', () => {
     state.blackboard.threatToVip.set(vip.id, bomber.id);
     const profile = resolveBehaviorProfile('escort');
 
-    const intent = selectIntent(state, interceptor, interceptor.ai!, profile, bomber, null);
+    const intent = selectIntent(state, interceptor, interceptor.ai!, profile, bomber, null, null);
 
     expect(intent.intent).toBe('Intercept');
   });
@@ -163,7 +162,15 @@ describe('selectIntent with new intents', () => {
     state.blackboard.threatToVip.set(vip.id, threat.id);
     const profile = resolveBehaviorProfile('escort');
 
-    const intent = selectIntent(state, escort, escort.ai!, profile, threat, vip);
+    const intent = selectIntent(
+      state,
+      escort,
+      escort.ai!,
+      profile,
+      threat,
+      vip,
+      { vipId: vip.id, offset: new Vector3(60, 0, 0) },
+    );
 
     expect(intent.intent).toBe('Escort');
   });
@@ -176,7 +183,7 @@ describe('selectIntent with new intents', () => {
     const profile = resolveBehaviorProfile('brawler');
     ship.ai!.profileId = 'brawler';
 
-    const intent = selectIntent(state, ship, ship.ai!, profile, null, null);
+    const intent = selectIntent(state, ship, ship.ai!, profile, null, null, null);
 
     expect(intent.intent).toBe('Regroup');
   });

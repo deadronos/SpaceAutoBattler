@@ -350,6 +350,19 @@
   opacity: 0.78;
 }
 
+.ai-debug-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 4px 12px;
+  margin: 8px 0 12px;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.ai-debug-kpis span {
+  display: block;
+}
+
 .ai-debug-table {
   width: 100%;
   border-collapse: collapse;

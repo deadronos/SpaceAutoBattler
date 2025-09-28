@@ -1,6 +1,9 @@
 import { Quaternion, Vector3 } from 'three';
 import type {
   AIIntent,
+  AIIntentSnapshot,
+  AIKpiSummary,
+  AIMetrics,
   AIState,
   GameState,
   ShipEntity,
@@ -16,6 +19,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
+import { createDefaultMetrics, aggregateKpis, SHIP_HULLS } from './metrics.js';
 
 const HARNESS_TEMP = new Vector3();
 
@@ -70,11 +74,20 @@ export interface AIScenarioLogEntry {
   positions: AIScenarioPositionLog[];
 }
 
+export interface AIScenarioMetrics {
+  kpis: AIKpiSummary;
+  firstShotTimes: number[];
+  intentTimeline: AIIntentSnapshot[];
+  shotDistance: Record<ShipHull, { buckets: readonly number[]; counts: number[]; total: number }>;
+  shotDeltaY: Record<ShipHull, { buckets: readonly number[]; counts: number[]; total: number }>;
+}
+
 export interface AIScenarioLog {
   name: string;
   tickInterval: number;
   seed: number;
   entries: AIScenarioLogEntry[];
+  metrics: AIScenarioMetrics;
 }
 
 type HarnessShip = ShipEntity & { __harnessVelocity?: Vector3 };
@@ -103,15 +116,7 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       cursor: 0,
       slices: AI_CONFIG.slices,
       assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -120,6 +125,10 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
+      strengthRatio: { blue: 1, red: 1 },
+      teamPriority: { blue: [], red: [] },
+      priorityIndex: { blue: new Map(), red: new Map() },
+      focusFire: { blue: new Map(), red: new Map() },
     },
     queries: {
       ships: { entities: ships },
@@ -169,17 +178,45 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
           // Build candidates using the exported test hook if available.
           try {
             const nearest = state.blackboard.nearestEnemy.get(ship.id);
-            const primaryTarget = nearest != null ? (state.queries.ships.entities as HarnessShip[]).find((s) => s.id === nearest) ?? null : null;
-            const escortTargetId = state.ai?.assignments?.escorts?.get?.(ship.id);
-            const escortTarget = escortTargetId ? (state.queries.ships.entities as HarnessShip[]).find((s) => s.id === escortTargetId) ?? null : null;
+            const primaryTarget =
+              nearest != null
+                ? ((state.queries.ships.entities as HarnessShip[]).find((s) => s.id === nearest) ?? null)
+                : null;
+            const escortAssignment = state.ai?.assignments?.escorts?.get?.(ship.id) ?? null;
+            const escortTarget = escortAssignment
+              ? ((state.queries.ships.entities as HarnessShip[]).find((s) => s.id === escortAssignment.vipId) ?? null)
+              : null;
             type LocalCandidate = { intent: AIIntent; score: number; target?: ShipEntity | null };
             const candidates: LocalCandidate[] = [];
             // Use the same scoring helpers exported from systems for accuracy
             candidates.push({ intent: 'Attack', score: __aiTestHooks.scoreAttackIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
             candidates.push({ intent: 'Kite', score: __aiTestHooks.scoreKiteIntent(ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
-            if (escortTarget) candidates.push({ intent: 'Escort', score: __aiTestHooks.scoreEscortIntent(ship as unknown as ShipEntity, profile, escortTarget as unknown as ShipEntity, state as unknown as GameState, ai.traits) });
+            if (escortTarget)
+              candidates.push({
+                intent: 'Escort',
+                score: __aiTestHooks.scoreEscortIntent(
+                  ship as unknown as ShipEntity,
+                  profile,
+                  escortTarget as unknown as ShipEntity,
+                  state as unknown as GameState,
+                  ai.traits,
+                  escortAssignment,
+                ),
+              });
             if (primaryTarget) {
-              candidates.push({ intent: 'Intercept', score: __aiTestHooks.scoreInterceptIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity, escortTarget as unknown as ShipEntity | null, state.blackboard.teamPosture[ship.ship.team], ai.traits) });
+              candidates.push({
+                intent: 'Intercept',
+                score: __aiTestHooks.scoreInterceptIntent(
+                  state as unknown as GameState,
+                  ship as unknown as ShipEntity,
+                  profile,
+                  primaryTarget as unknown as ShipEntity,
+                  escortTarget as unknown as ShipEntity | null,
+                  state.blackboard.teamPosture[ship.ship.team],
+                  ai.traits,
+                  escortAssignment,
+                ),
+              });
               candidates.push({ intent: 'Reposition', score: __aiTestHooks.scoreRepositionIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, primaryTarget as unknown as ShipEntity, ai.traits, state.blackboard.teamPosture[ship.ship.team]) });
             } else {
               candidates.push({ intent: 'Reposition', score: __aiTestHooks.scoreRepositionIntent(state as unknown as GameState, ship as unknown as ShipEntity, profile, null, ai.traits, state.blackboard.teamPosture[ship.ship.team]) });
@@ -218,11 +255,13 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     state.time += tickInterval;
   }
 
+  aggregateKpis(state.ai.metrics, state.ai.tickIndex);
   const log: AIScenarioLog = {
     name: config.name,
     tickInterval,
     seed,
     entries,
+    metrics: snapshotMetrics(state.ai.metrics),
   };
 
   // Optionally dump the normalized JSON log for fixture maintenance.
@@ -300,6 +339,8 @@ function createHarnessShip(
     lod: 0,
     traitSeed,
     traits: generateTraitsFromSeed(traitSeed),
+    stickinessUntil: 0,
+    stickinessHeading: new Vector3(0, 0, 1),
     targetId: undefined,
     lastScore: undefined,
     command: {
@@ -450,5 +491,56 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
     }
     clampToWorld(ship.transform.position);
   }
+}
+
+function snapshotMetrics(metrics: AIMetrics): AIScenarioMetrics {
+  const firstShotTimes = [...metrics.firstShotTimes];
+  const intentTimeline = metrics.intentTimeline.map((entry) => ({
+    tick: entry.tick,
+    time: entry.time,
+    counts: { ...entry.counts },
+    total: entry.total,
+  }));
+
+  const shotDistance = Object.create(null) as AIScenarioMetrics['shotDistance'];
+  const shotDeltaY = Object.create(null) as AIScenarioMetrics['shotDeltaY'];
+  for (const hull of SHIP_HULLS) {
+    const distanceHist = metrics.shotDistanceHist[hull];
+    shotDistance[hull] = {
+      buckets: [...distanceHist.buckets],
+      counts: [...distanceHist.counts],
+      total: distanceHist.total,
+    };
+    const deltaHist = metrics.shotDeltaYHist[hull];
+    shotDeltaY[hull] = {
+      buckets: [...deltaHist.buckets],
+      counts: [...deltaHist.counts],
+      total: deltaHist.total,
+    };
+  }
+
+  const source = metrics.kpis;
+  const inBandByHull = Object.create(null) as AIScenarioMetrics['kpis']['inBand']['byHull'];
+  for (const hull of SHIP_HULLS) {
+    inBandByHull[hull] = { ...source.inBand.byHull[hull] };
+  }
+
+  const kpis: AIKpiSummary = {
+    firstShot: { ...source.firstShot },
+    openingAggression: { ...source.openingAggression },
+    inBand: {
+      overall: { ...source.inBand.overall },
+      byHull: inBandByHull,
+    },
+    vertical: { ...source.vertical },
+  };
+
+  return {
+    kpis,
+    firstShotTimes,
+    intentTimeline,
+    shotDistance,
+    shotDeltaY,
+  };
 }
 
