@@ -19,7 +19,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
-import { createDefaultMetrics, aggregateKpis, SHIP_HULLS } from './metrics.js';
+import { createDefaultMetrics, aggregateKpis, SHIP_HULLS, recordShotMetrics } from './metrics.js';
 
 const HARNESS_TEMP = new Vector3();
 
@@ -371,6 +371,67 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
   return log;
 }
 
+/**
+ * Exported helper function to collect test metrics from an AI scenario log.
+ * This can be used by external tools for AI experiment validation.
+ */
+export function collectTestMetrics(log: AIScenarioLog): {
+  timeToFirstShot: { p50: number | null; p90: number | null; samples: number };
+  verticalDispersion: { fighterEscortVerticalRatio: number; totalCommands: number };
+  inBandTime: { overall: number | null; fighter: number | null; corvette: number | null };
+  openingAggression: { ratio: number | null; total: number };
+} {
+  const metrics = log.metrics;
+  
+  // Time-to-first-shot metrics
+  const timeToFirstShot = {
+    p50: metrics.kpis.firstShot.p50,
+    p90: metrics.kpis.firstShot.p90,
+    samples: metrics.kpis.firstShot.samples,
+  };
+
+  // Vertical dispersion - count commands with |heading.y| > 0.05 for fighters/escorts
+  let verticalCommands = 0;
+  let totalFighterEscortCommands = 0;
+  
+  for (const entry of log.entries) {
+    for (const command of entry.commands) {
+      // Assuming fighters and corvettes act as escorts in these scenarios
+      if (command.intent === 'Attack' || command.intent === 'Intercept' || command.intent === 'Kite') {
+        totalFighterEscortCommands++;
+        if (Math.abs(command.heading[1]) > 0.05) {
+          verticalCommands++;
+        }
+      }
+    }
+  }
+  
+  const verticalDispersion = {
+    fighterEscortVerticalRatio: totalFighterEscortCommands > 0 ? verticalCommands / totalFighterEscortCommands : 0,
+    totalCommands: totalFighterEscortCommands,
+  };
+
+  // In-band time metrics
+  const inBandTime = {
+    overall: metrics.kpis.inBand.overall.ratio,
+    fighter: metrics.kpis.inBand.byHull.fighter?.ratio ?? null,
+    corvette: metrics.kpis.inBand.byHull.corvette?.ratio ?? null,
+  };
+
+  // Opening aggression metrics
+  const openingAggression = {
+    ratio: metrics.kpis.openingAggression.ratio,
+    total: metrics.kpis.openingAggression.total,
+  };
+
+  return {
+    timeToFirstShot,
+    verticalDispersion,
+    inBandTime,
+    openingAggression,
+  };
+}
+
 function createHarnessShip(
   spec: AIScenarioShipConfig,
   index: number,
@@ -547,10 +608,25 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
 
     // Handle shooting
     if (ai.command.firePrimary && ship.ship.cooldown <= 0) {
-      // Debug output when firing happens
-      if (state.ai.tickIndex < 60) { // Only log early ticks to avoid spam
-        console.log(`Tick ${state.ai.tickIndex}: Ship ${ship.id} firing! Cooldown: ${ship.ship.cooldown}`);
-      }
+      // Find target for metrics recording (like the AI system does)
+      const targetId = ai.command.targetId ?? ai.targetId;
+      const target = targetId 
+        ? (state.queries.ships.entities as HarnessShip[]).find(s => s.id === targetId)
+        : null;
+      
+      // Record shot metrics before firing (like executeAICommand does)
+      const distanceToTarget = target
+        ? ship.transform.position.distanceTo(target.transform.position)
+        : undefined;
+      const deltaY = target ? target.transform.position.y - ship.transform.position.y : undefined;
+      
+      recordShotMetrics(state.ai.metrics, {
+        shipId: ship.id,
+        hull: ship.ship.hull,
+        time: state.time,
+        distance: distanceToTarget,
+        deltaY,
+      });
       
       // Fire projectile in the command heading direction
       const fireDirection = heading.clone().normalize();
