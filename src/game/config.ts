@@ -117,6 +117,18 @@ const TICK_RATE_FINAL = TICK_RATE_QUERY_OVERRIDE
   : TICK_RATE_EXPERIMENT_QUERY;
 const TICK_RATE_EFFECTIVE_FINAL = TICK_RATE_FINAL ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
 
+// Debug logging for feature flag configuration (only in development)
+if (typeof globalThis !== 'undefined' && globalThis.console) {
+  const isDev = readQueryParam('debug') === 'config' || readBooleanEnv('DEBUG_CONFIG');
+  if (isDev) {
+    console.log('🔧 AI Feature Flag Configuration:');
+    console.log(`  verticalEnabled: ${VERTICAL_EXPERIMENT_ENABLED} (env: ${VERTICAL_FORCE_ON ? 'ON' : VERTICAL_FORCE_OFF ? 'OFF' : 'default'})`);
+    console.log(`  engagementBoostEnabled: ${ENGAGEMENT_BOOST_ENABLED} (env: ${ENGAGEMENT_BOOST_FORCE_ON ? 'ON' : ENGAGEMENT_BOOST_FORCE_OFF ? 'OFF' : 'default'})`);
+    console.log(`  tickRateHzExperiment: ${TICK_RATE_FINAL} (env: ${TICK_RATE_FORCE_ON ? 'ON' : TICK_RATE_FORCE_OFF ? 'OFF' : 'default'})`);
+    console.log(`  rangePolicy: ${RANGE_POLICY_EFFECTIVE} (env: ${RANGE_POLICY_OVERRIDE || 'default'})`);
+  }
+}
+
 export const AI_CONFIG = {
   v2Enabled: DEFAULT_AI_V2,
   tickRateHzBase: TICK_RATE_BASE,
