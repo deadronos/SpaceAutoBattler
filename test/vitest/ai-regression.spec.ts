@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 
 const { prepareShips, runLegacyShipBehavior } = __aiTestHooks;
@@ -35,15 +36,7 @@ function createState(): GameState {
       cursor: 0,
       slices: 1,
       assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -52,6 +45,7 @@ function createState(): GameState {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [],
+      strengthRatio: { blue: 1, red: 1 },
     },
     queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
     world: {} as never,
@@ -116,6 +110,8 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3) {
       lod: 0,
       traitSeed: 42,
       traits: { aggression: 1, patience: 1, dodge: 1 },
+      stickinessUntil: 0,
+      stickinessHeading: new Vector3(0, 0, 1),
       command: {
         heading: new Vector3(0, 0, 1),
         thrust: 0,

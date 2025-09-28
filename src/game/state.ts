@@ -10,9 +10,10 @@ import type {
   ShipEntity,
 } from '../types/index.js';
 import { SeededRng } from '../utils/rng.js';
-import { spawnShip } from './ships.js';
+import { spawnShip, SHIP_STATS } from './ships.js';
 import { unregisterTurret } from './turretRegistry.js';
-import { AI_CONFIG, WORLD_HALF, clampToWorld } from './config.js';
+import { createDefaultMetrics, resetMetrics } from './metrics.js';
+import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
 
 export async function createGameState(): Promise<GameState> {
   await Rapier.init();
@@ -66,15 +67,7 @@ export async function createGameState(): Promise<GameState> {
       assignments: {
         escorts: new Map(),
       },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-      },
+      metrics: createDefaultMetrics(),
     },
     blackboard: {
       tickIndex: 0,
@@ -89,6 +82,22 @@ export async function createGameState(): Promise<GameState> {
       nearestEnemy: new Map(),
       threatToVip: new Map(),
       tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
+      strengthRatio: {
+        blue: 1,
+        red: 1,
+      },
+      teamPriority: {
+        blue: [],
+        red: [],
+      },
+      priorityIndex: {
+        blue: new Map(),
+        red: new Map(),
+      },
+      focusFire: {
+        blue: new Map(),
+        red: new Map(),
+      },
     },
   };
 
@@ -200,12 +209,18 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
 
 export function spawnInitialFleets(state: GameState): void {
   const formation: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-  const baseSpacing = WORLD_HALF * 0.05;
-  const depthJitter = WORLD_HALF * 0.05;
-  const verticalSpread = WORLD_HALF * 0.12;
-  const radialJitter = WORLD_HALF * 0.04;
-  const blueAnchorX = -WORLD_HALF * 0.15;
-  const redAnchorX = WORLD_HALF * 0.15;
+  const maxRange = Math.max(...Object.values(SHIP_STATS).map((stats) => stats.range));
+  const separation = Math.max(200, maxRange * SPAWN_CONFIG.initialSeparationFactor);
+  const halfSeparation = separation * 0.5;
+  const baseSpacing = Math.max(120, separation * 0.25);
+  const depthJitter = separation * 0.2;
+  const verticalSpread = WORLD_HALF * SPAWN_CONFIG.verticalSpreadFactor;
+  const radialJitter = separation * 0.15;
+  const blueAnchorX = -halfSeparation;
+  const redAnchorX = halfSeparation;
+  const anchorYOffsetRange = SPAWN_CONFIG.anchorYRandomization ? verticalSpread * 0.5 : 0;
+  const blueAnchorY = SPAWN_CONFIG.anchorYRandomization ? (state.rng.next() - 0.5) * anchorYOffsetRange : 0;
+  const redAnchorY = SPAWN_CONFIG.anchorYRandomization ? (state.rng.next() - 0.5) * anchorYOffsetRange : 0;
 
   formation.forEach((hull, index) => {
     const offset = index - (formation.length - 1) / 2;
@@ -214,8 +229,8 @@ export function spawnInitialFleets(state: GameState): void {
     const yOffset = (state.rng.next() - 0.5) * verticalSpread;
     const xJitter = (state.rng.next() - 0.5) * radialJitter;
 
-    const bluePosition = new Vector3(blueAnchorX + xJitter, yOffset, zBase + zJitter);
-    const redPosition = new Vector3(redAnchorX - xJitter, -yOffset, -(zBase + zJitter));
+    const bluePosition = new Vector3(blueAnchorX + xJitter, blueAnchorY + yOffset, zBase + zJitter);
+    const redPosition = new Vector3(redAnchorX - xJitter, redAnchorY - yOffset, -(zBase + zJitter));
 
     clampToWorld(bluePosition);
     clampToWorld(redPosition);
@@ -264,6 +279,7 @@ export function resetGame(state: GameState): void {
   for (const e of [...state.world.entities]) {
     destroyEntity(state, e);
   }
+  resetMetrics(state.ai.metrics);
   // Respawn baseline fleets
   spawnInitialFleets(state);
   state.ai.cursor = 0;

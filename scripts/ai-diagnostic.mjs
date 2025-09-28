@@ -118,19 +118,32 @@ for (const config of configs) {
     const profile = resolveBehaviorProfile(ai.profileId);
     const primaryId = state.blackboard.nearestEnemy.get(ship.id);
     const primary = primaryId != null ? ships.find((s) => s.id === primaryId) ?? null : null;
-    const escortId = state.ai.assignments.escorts.get(ship.id);
-    const escort = escortId != null ? ships.find((s) => s.id === escortId) ?? null : null;
+    const escortAssignment = state.ai.assignments.escorts.get(ship.id) ?? null;
+    const escort = escortAssignment ? ships.find((s) => s.id === escortAssignment.vipId) ?? null : null;
 
     const attack = __aiTestHooks.scoreAttackIntent(ship, profile, primary, state.blackboard.teamPosture[ship.ship.team], ai.traits);
     const kite = __aiTestHooks.scoreKiteIntent(ship, profile, primary, state.blackboard.teamPosture[ship.ship.team], ai.traits);
-    const escortScore = escort ? __aiTestHooks.scoreEscortIntent(ship, profile, escort, state, ai.traits) : 0;
-    const intercept = primary ? __aiTestHooks.scoreInterceptIntent(state, ship, profile, primary, escort, state.blackboard.teamPosture[ship.ship.team], ai.traits) : 0;
+    const escortScore = escort
+      ? __aiTestHooks.scoreEscortIntent(ship, profile, escort, state, ai.traits, escortAssignment)
+      : 0;
+    const intercept = primary
+      ? __aiTestHooks.scoreInterceptIntent(
+          state,
+          ship,
+          profile,
+          primary,
+          escort,
+          state.blackboard.teamPosture[ship.ship.team],
+          ai.traits,
+          escortAssignment,
+        )
+      : 0;
     const reposition = __aiTestHooks.scoreRepositionIntent(state, ship, profile, primary, ai.traits, state.blackboard.teamPosture[ship.ship.team]);
     const regroup = __aiTestHooks.scoreRegroupIntent(state, ship, profile, state.blackboard.teamPosture[ship.ship.team], ai.traits);
     const flee = __aiTestHooks.scoreFleeIntent(ship, profile, primary, state.blackboard.teamPosture[ship.ship.team], ai.traits);
 
     const line = `Ship ${ship.id} (${ship.ship.hull}) primary:${primary?.id ?? 'none'} escort:${escort?.id ?? 'none'} -> attack:${attack} intercept:${intercept} escort:${escortScore} kite:${kite} reposition:${reposition} regroup:${regroup} flee:${flee}\n`;
-    const chosen = __aiTestHooks.selectIntent(state, ship, ai, profile, primary, escort);
+    const chosen = __aiTestHooks.selectIntent(state, ship, ai, profile, primary, escort, escortAssignment);
     const chosenLine = `  selected -> ${chosen.intent} ${chosen.score}\n`;
     fs.appendFileSync('tmp/ai-diagnostic.log', line + chosenLine);
     console.log(line + chosenLine);

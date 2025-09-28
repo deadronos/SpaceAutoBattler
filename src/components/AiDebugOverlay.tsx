@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type React from 'react';
-import type { ShipEntity } from '../types/index.js';
+import type { AIKpiSummary, ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { resolveBehaviorProfile } from '../game/aiProfiles.js';
@@ -24,6 +24,7 @@ interface SnapshotData {
     slice: number;
     totalShips: number;
     budgetHits: number;
+    kpis: AIKpiSummary;
   };
   postures: Record<'blue' | 'red', string>;
   rows: SnapshotRow[];
@@ -36,6 +37,11 @@ export function AiDebugOverlay(): React.ReactElement | null {
   const aiEnabled = useUiStore((s) => s.aiV2Enabled);
   const debugEnabled = useUiStore((s) => s.aiDebugEnabled);
   const [refreshTick, setRefreshTick] = useState(0);
+
+  const formatPercent = (value: number | null): string =>
+    value == null ? '—' : `${(value * 100).toFixed(1)}%`;
+  const formatSeconds = (value: number | null): string =>
+    value == null ? '—' : `${value.toFixed(1)}s`;
 
   useEffect(() => {
     if (!debugEnabled) return undefined;
@@ -84,6 +90,7 @@ export function AiDebugOverlay(): React.ReactElement | null {
         slice: state.ai.metrics.lastSliceSize,
         totalShips: ships.length,
         budgetHits: state.ai.metrics.budgetHits,
+        kpis: state.ai.metrics.kpis,
       },
       postures: {
         blue: state.blackboard.teamPosture.blue,
@@ -94,6 +101,8 @@ export function AiDebugOverlay(): React.ReactElement | null {
   }, [state, aiEnabled, debugEnabled, refreshTick]);
 
   if (!snapshot) return null;
+
+  const kpis = snapshot.metrics.kpis;
 
   return (
     <div className="ai-debug-overlay" role="region" aria-live="polite">
@@ -106,6 +115,24 @@ export function AiDebugOverlay(): React.ReactElement | null {
         <div className="ai-debug-meta">
           Posture — Blue: {snapshot.postures.blue} · Red: {snapshot.postures.red}
         </div>
+      </div>
+      <div className="ai-debug-kpis">
+        <span>
+          Opening Aggression: {formatPercent(kpis.openingAggression.ratio)} ({kpis.openingAggression.aggressive}/
+          {kpis.openingAggression.total})
+        </span>
+        <span>
+          First Shot (p50/p90): {formatSeconds(kpis.firstShot.p50)} / {formatSeconds(kpis.firstShot.p90)} (n=
+          {kpis.firstShot.samples})
+        </span>
+        <span>
+          In-Band: {formatPercent(kpis.inBand.overall.ratio)} ({kpis.inBand.overall.satisfied}/
+          {kpis.inBand.overall.samples})
+        </span>
+        <span>
+          Vertical deltaY &gt;= {Math.round(kpis.vertical.threshold)}: {formatPercent(kpis.vertical.ratio)} (
+          {kpis.vertical.aboveThreshold}/{kpis.vertical.samples})
+        </span>
       </div>
       {snapshot.rows.length ? (
         <table className="ai-debug-table">

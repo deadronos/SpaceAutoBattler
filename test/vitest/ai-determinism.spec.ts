@@ -73,6 +73,10 @@ describe('AI determinism', () => {
     }
 
     try {
+      const totalDecisions = first.ai.metrics.totalDecisions;
+      expect(totalDecisions).toBeGreaterThan(0);
+      const tieRatio = totalDecisions > 0 ? first.ai.metrics.tieDecisions / totalDecisions : 0;
+      expect(tieRatio).toBeLessThanOrEqual(0.05);
       expect(firstHistory).toEqual(secondHistory);
     } finally {
       disposeGameState(first);
