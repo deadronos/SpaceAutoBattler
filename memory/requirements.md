@@ -1,5 +1,13 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-09-28 — AI Determinism & Coordination Overhaul (Task145)
+
+1. **WHEN** the AI scores multiple intent candidates for a ship within the same tick, **THE SYSTEM SHALL** deterministically select the winner using quantised scores, intent priority ordering, threat rank, distance, and candidate index before falling back to seeded randomness only when all tiebreakers match. *(Acceptance: `test/vitest/ai-determinism.spec.ts` asserts identical command streams across seeded runs and verifies the tie-usage ratio stays ≤5%.)*
+2. **WHEN** a ship experiences a critical event (≥10% HP loss in a single tick, target destruction, or a VIP gaining a new attacker), **THE SYSTEM SHALL** trigger an interrupt that forces the ship’s `nextThinkAt` to the current tick and records decision latency ≤1 tick. *(Acceptance: `test/vitest/ai-interrupts.spec.ts` simulates each trigger, checks `nextThinkAt` snapping, and confirms latency histogram updates.)*
+3. **WHEN** the blackboard rebuilds target priorities each decision tick, **THE SYSTEM SHALL** calculate threat weights that incorporate hull class, remaining HP, VIP protection, and active focus-fire counts, exposing the selected target’s focus ratio via diagnostics. *(Acceptance: `test/vitest/ai-target-priority.spec.ts` seeds contrived fleets, validates ordering, and inspects logged focus ratios.)*
+4. **WHEN** heading commands apply vertical perturbations, **THE SYSTEM SHALL** clamp the resulting Y component using role-based limits scaled by range band error so agile profiles reach up to 0.6 while heavy hulls stay ≤0.35. *(Acceptance: `test/vitest/ai-vertical.spec.ts` verifies clamp selection and band-error scaling across fighter, corvette, and destroyer profiles.)*
+5. **WHEN** AI metrics aggregate after a scenario run, **THE SYSTEM SHALL** include tie counts, tie fallback counts, decision latency histograms, focus-fire ratios, and vertical amplitude distributions in both runtime metrics and exported scenario logs. *(Acceptance: `test/vitest/ai-metrics.spec.ts` and `test/vitest/ai-scenario-harness.spec.ts` read the enriched metrics payload and assert the new fields match expected values.)*
+
 ## 2025-09-28 — HUD Settings & Debug Panels
 
 1. **WHEN** a user activates the HUD gear control, **THE SYSTEM SHALL** reveal a settings drawer anchored to the HUD panel and hide it when the gear is toggled again. *(Acceptance: `test/vitest/ui-settings-panels.spec.tsx` exercises the gear button, asserts the drawer toggles visibility, and checks ARIA attributes.)*

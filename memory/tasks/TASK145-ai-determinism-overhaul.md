@@ -14,23 +14,23 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 
 ## Implementation Plan
 
-- [ ] **Score precision & comparator (P0):** Quantise scores to 0.1 resolution, replace `Math.floor` usage, implement comparator ordering (intent rank → threat rank → distance → ship index), and instrument tie metrics.
-- [ ] **Target prioritisation (P0):** Extend blackboard caches with threat-weighted ordering and focus-fire tracking; update intent selection to prefer highest threat targets with deterministic ordering.
-- [ ] **Interrupt responsiveness (P0):** Introduce interrupt manager tracking hp drops, VIP threats, and target loss; ensure `nextThinkAt` snaps to the current tick and record latency metrics.
+- [x] **Score precision & comparator (P0):** Quantise scores to 0.1 resolution, replace `Math.floor` usage, implement comparator ordering (intent rank → threat rank → distance → ship index), and instrument tie metrics.
+- [x] **Target prioritisation (P0):** Extend blackboard caches with threat-weighted ordering and focus-fire tracking; update intent selection to prefer highest threat targets with deterministic ordering.
+- [ ] **Interrupt responsiveness (P0):** Introduce interrupt manager tracking HP drops, VIP threats, and target loss; ensure `nextThinkAt` snaps to the current tick and record latency metrics.
 - [ ] **Vertical clamp expansion (P1):** Parameterise heading Y clamp by profile role and band error; expand range for agile hulls while preserving deterministic behaviour.
 - [ ] **Diagnostics expansion (P1):** Extend metrics payload with tie count, comparator fallbacks, decision latency histogram, focus-fire ratios, and vertical amplitude distribution; update harness serialization and consumer tooling.
 - [ ] **Scoring enrichment & tuning (P1/P2):** Integrate threat/focus weighting into intent scores, rebalance constants, and validate KPI/telemetry baselines; retain toggles for incremental rollout.
 
 ## Progress Tracking
 
-**Overall Status:** Not Started - 0%
+**Overall Status:** In Progress - 20%
 
 ### Subtasks
 
 | ID  | Description                                             | Status        | Updated     | Notes |
 | --- | ------------------------------------------------------- | ------------- | ----------- | ----- |
-| 1.1 | Implement score quantisation and deterministic comparator| Not Started   | 2025-09-28  | Pending code updates for scoring helpers and tie metrics. |
-| 1.2 | Build threat-weighted target prioritisation cache       | Not Started   | 2025-09-28  | Requires blackboard extensions and selection tweaks. |
+| 1.1 | Implement score quantisation and deterministic comparator| Completed     | 2025-09-28  | Shipped prior to this pass; quantiser/comparator live in `src/game/systems.ts`. |
+| 1.2 | Build threat-weighted target prioritisation cache       | Completed     | 2025-09-28  | Blackboard priority queues and focus tracking already in place. |
 | 1.3 | Add interrupt manager for reactive decisions            | Not Started   | 2025-09-28  | Tie into hp delta, VIP threat, and target loss hooks. |
 | 1.4 | Expand vertical clamp per role                          | Not Started   | 2025-09-28  | Needs profile-driven clamp parameters and tests. |
 | 1.5 | Extend diagnostics with tie/latency/focus data          | Not Started   | 2025-09-28  | Update metrics, harness logs, and dashboard consumers. |
@@ -41,4 +41,4 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 ### 2025-09-28
 
 - Captured determinism-focused task with staged implementation plan derived from design memo.
-- Pending kickoff of score precision work; awaiting code implementation phase following requirements/design approval.
+- Documented requirements/design updates confirming score precision and target prioritisation are landed; queued interrupt/diagnostics/vertical scope for implementation.

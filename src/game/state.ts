@@ -83,6 +83,13 @@ export async function createGameState(): Promise<GameState> {
         escorts: new Map(),
       },
       metrics: createDefaultMetrics(),
+      interrupts: [],
+      interruptState: {
+        cooldownTick: new Map(),
+        damageThisTick: new Map(),
+        lastDamageTick: -1,
+        vipThreatAssignments: new Map(),
+      },
     },
     blackboard: {
       tickIndex: 0,
@@ -112,6 +119,10 @@ export async function createGameState(): Promise<GameState> {
       focusFire: {
         blue: new Map(),
         red: new Map(),
+      },
+      teamCounts: {
+        blue: 0,
+        red: 0,
       },
       // Vertical dispersion tracking for validation
       verticalDispersion: {

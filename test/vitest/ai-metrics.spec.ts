@@ -10,12 +10,10 @@ import {
 } from '../../src/game/metrics.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
-import { 
-  runAIScenario, 
+import {
+  runAIScenario,
   collectTestMetrics,
-  type AIScenarioConfig, 
-  type AIScenarioLog,
-  type AIScenarioMetrics 
+  type AIScenarioConfig,
 } from '../../src/game/aiScenarioHarness.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
@@ -64,6 +62,18 @@ describe('AI metrics aggregation', () => {
     recordIntentMetrics(metrics, 1, 6, 'Regroup', true);
     recordIntentMetrics(metrics, 1, 8, 'Kite', false);
 
+  metrics.focusFireSamples = 2;
+  metrics.focusFireRatioSum = 1.2;
+  metrics.focusFireRatioMax = 0.75;
+  metrics.headingAmplitudeSamples = 3;
+  metrics.headingAmplitudeSum = 0.9;
+  metrics.headingAmplitudeMin = 0.1;
+  metrics.headingAmplitudeMax = 0.5;
+  metrics.decisionLatencyBuckets = [3, 2, 1, 0];
+  metrics.tieDecisions = 4;
+  metrics.tieFallbacks = 1;
+  metrics.totalDecisions = 20;
+
     aggregateKpis(metrics, 60);
 
     const { kpis } = metrics;
@@ -84,6 +94,19 @@ describe('AI metrics aggregation', () => {
     expect(kpis.vertical.samples).toBe(4);
     expect(kpis.vertical.aboveThreshold).toBe(2);
     expect(kpis.vertical.ratio).toBeCloseTo(0.5, 5);
+
+  expect(kpis.decisionLatency.buckets).toEqual([3, 2, 1, 0]);
+  expect(kpis.decisionLatency.total).toBe(6);
+  expect(kpis.focusFire.samples).toBe(2);
+  expect(kpis.focusFire.ratioAvg).toBeCloseTo(0.6, 5);
+  expect(kpis.focusFire.ratioMax).toBeCloseTo(0.75, 5);
+  expect(kpis.headingAmplitude.samples).toBe(3);
+  expect(kpis.headingAmplitude.avg).toBeCloseTo(0.3, 5);
+  expect(kpis.headingAmplitude.min).toBeCloseTo(0.1, 5);
+  expect(kpis.headingAmplitude.max).toBeCloseTo(0.5, 5);
+  expect(kpis.ties.decisions).toBe(4);
+  expect(kpis.ties.fallbacks).toBe(1);
+  expect(kpis.ties.ratio).toBeCloseTo(0.2, 5);
 
     resetMetrics(metrics);
     expect(metrics.firstShotTimes).toHaveLength(0);
@@ -326,6 +349,8 @@ function createStubState(): GameState {
       threatToVip: new Map(),
       tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
       strengthRatio: { blue: 1, red: 1 },
+      focusFire: { blue: new Map(), red: new Map() },
+      teamCounts: { blue: 0, red: 0 },
     },
     queries: {
       ships: { entities: ships },

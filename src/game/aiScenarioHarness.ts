@@ -117,6 +117,13 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       slices: AI_CONFIG.slices,
       assignments: { escorts: new Map() },
       metrics: createDefaultMetrics(),
+      interrupts: [],
+      interruptState: {
+        cooldownTick: new Map(),
+        damageThisTick: new Map(),
+        lastDamageTick: -1,
+        vipThreatAssignments: new Map(),
+      },
     },
     blackboard: {
       tickIndex: 0,
@@ -129,6 +136,7 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       teamPriority: { blue: [], red: [] },
       priorityIndex: { blue: new Map(), red: new Map() },
       focusFire: { blue: new Map(), red: new Map() },
+      teamCounts: { blue: 0, red: 0 },
       verticalDispersion: {
         headingYSamples: [],
         positionYSamples: [],
@@ -681,6 +689,18 @@ function snapshotMetrics(metrics: AIMetrics): AIScenarioMetrics {
       byHull: inBandByHull,
     },
     vertical: { ...source.vertical },
+    decisionLatency: {
+      buckets: [
+        source.decisionLatency.buckets[0],
+        source.decisionLatency.buckets[1],
+        source.decisionLatency.buckets[2],
+        source.decisionLatency.buckets[3],
+      ],
+      total: source.decisionLatency.total,
+    },
+    focusFire: { ...source.focusFire },
+    headingAmplitude: { ...source.headingAmplitude },
+    ties: { ...source.ties },
   };
 
   return {

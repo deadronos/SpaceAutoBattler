@@ -4,9 +4,14 @@ import type {
   AIState,
   AITraits,
   AIMetrics,
+  AIManagerState,
   BehaviorProfile,
   GameEntity,
   GameState,
+  IntentInterruptEvent,
+  AIInterruptState,
+  AIInterruptReason,
+  EntityId,
   ProjectileEntity,
   ShipEntity,
   ShieldRipple,
@@ -38,6 +43,7 @@ const TEMP_QUAT = new Quaternion();
 const TEMP_RNG = new SeededRng(1);
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const SCORE_EPSILON = 1e-6;
+const INTERRUPT_KEY_SEPARATOR = ':';
 
 function quantizeScore(value: number): number {
   const precision = AI_CONFIG.scorePrecision > 0 ? AI_CONFIG.scorePrecision : 0.1;
@@ -98,6 +104,12 @@ function updateDecisionSystem(state: GameState, delta: number): void {
   if (!manager.enabled) return;
   if (manager.tickInterval <= 0) return;
 
+  ensureInterruptState(manager);
+  getInterruptQueue(manager);
+  if (!state.blackboard.teamCounts) {
+    state.blackboard.teamCounts = { blue: 0, red: 0 };
+  }
+
   manager.accumulator += delta;
 
   while (manager.accumulator >= manager.tickInterval) {
@@ -111,6 +123,10 @@ function updateDecisionSystem(state: GameState, delta: number): void {
       manager.assignments.escorts.clear();
       state.blackboard.nearestEnemy.clear();
       state.blackboard.threatToVip.clear();
+      if (state.blackboard.teamCounts) {
+        state.blackboard.teamCounts.blue = 0;
+        state.blackboard.teamCounts.red = 0;
+      }
       const metrics = manager.metrics;
       metrics.lastDecisions = 0;
       metrics.lastSkipped = 0;
@@ -124,6 +140,7 @@ function updateDecisionSystem(state: GameState, delta: number): void {
 
     refreshBlackboard(state, ships);
     assignTeamRoles(state, ships);
+    processInterruptQueue(manager, entityById);
     runShipDecisions(state, ships, entityById);
   }
 }
@@ -134,6 +151,14 @@ export function runDecisionTick(state: GameState, delta: number): void {
 
 function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   const { blackboard } = state;
+  const manager = state.ai;
+  if (!manager) return;
+  const interruptState = ensureInterruptState(manager);
+  const vipAssignments = interruptState.vipThreatAssignments;
+  const teamCounts = blackboard.teamCounts ?? (blackboard.teamCounts = { blue: 0, red: 0 });
+  teamCounts.blue = 0;
+  teamCounts.red = 0;
+  const seenVip = new Set<number>();
   const shipById = new Map<number, ShipEntity>();
   for (const ship of ships) shipById.set(ship.id, ship);
   const centroid = blackboard.allyCentroid;
@@ -160,10 +185,12 @@ function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
       centroid.blue.add(ship.transform.position);
       blueCount += 1;
       blueHp += ship.ship.hp;
+      teamCounts.blue += 1;
     } else {
       centroid.red.add(ship.transform.position);
       redCount += 1;
       redHp += ship.ship.hp;
+      teamCounts.red += 1;
     }
   }
 
@@ -187,7 +214,32 @@ function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
     if (bestId != null) {
       blackboard.nearestEnemy.set(ship.id, bestId);
       if (ship.ship.hull === 'carrier' || ship.ship.hull === 'destroyer') {
+        const previous = vipAssignments.get(ship.id);
         blackboard.threatToVip.set(ship.id, bestId);
+        if (previous !== bestId) {
+          const tick = manager.tickIndex;
+          queueInterrupt(manager, {
+            shipId: ship.id,
+            reason: 'vip-threat',
+            tick,
+            sourceId: bestId,
+          });
+          for (const [escortId, assignment] of manager.assignments.escorts.entries()) {
+            if (assignment.vipId !== ship.id) continue;
+            queueInterrupt(manager, {
+              shipId: escortId,
+              reason: 'vip-threat',
+              tick,
+              sourceId: bestId,
+            });
+          }
+        }
+        vipAssignments.set(ship.id, bestId);
+        seenVip.add(ship.id);
+      }
+    } else if (ship.ship.hull === 'carrier' || ship.ship.hull === 'destroyer') {
+      if (vipAssignments.has(ship.id)) {
+        vipAssignments.delete(ship.id);
       }
     }
   }
@@ -468,6 +520,7 @@ function evaluateShip(
   const escortTarget = escortAssignment ? entityById.get(escortAssignment.vipId) ?? null : null;
 
   const intent = selectIntent(state, ship, ai, profile, target, escortTarget, escortAssignment);
+  const previousTargetId = ai.targetId ?? null;
   ai.intent = intent.intent;
   ai.lastScore = intent.score;
   ai.targetId = intent.target?.id ?? target?.id ?? fallbackTarget?.id;
@@ -482,6 +535,11 @@ function evaluateShip(
   ai.nextThinkAt = state.ai.tickIndex + spacing;
 
   writeCommand(state, ship, ai, profile, intent.target ?? target, escortTarget, escortAssignment);
+
+  if (ai.intent === 'Attack' || ai.intent === 'Intercept') {
+    const finalTarget = intent.target ?? target ?? fallbackTarget;
+    recordFocusDiagnostics(state, ship, finalTarget, previousTargetId);
+  }
 }
 
 function selectIntent(
@@ -604,13 +662,25 @@ function scoreAttackIntent(
   const bias = profile.classBias[target.ship.hull] ?? 0;
   score += bias;
   score += computeBandPreferenceBonus(dist, desiredMin, desiredMax, profile.bandPreference);
-  
-  // Add engagement bias if enabled
-  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
-    score += profile.engagementBias;
+  const priorityIndex = state.blackboard.priorityIndex?.[ship.ship.team];
+  if (priorityIndex) {
+    const rank = priorityIndex.get(target.id);
+    if (rank != null && Number.isFinite(rank)) {
+      score += Math.max(0, 140 - rank * 12);
+    }
   }
-  
-  return quantizeScore(score);
+  score += computeThreatBonus(state, ship.ship.team, target.id);
+  const focusMap = state.blackboard.focusFire?.[ship.ship.team];
+  const focusLoad = focusMap ? focusMap.get(target.id) ?? 0 : 0;
+  const focusBias = focusLoad === 0 ? 40 : Math.max(-80, 35 - focusLoad * 30);
+  score += focusBias;
+   
+   // Add engagement bias if enabled
+   if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+     score += profile.engagementBias;
+   }
+   
+   return quantizeScore(score);
 }
 
 function computeBandPreferenceBonus(
@@ -669,14 +739,24 @@ function scoreInterceptIntent(
   // wider changes across multiple scenarios, so revert to the canonical
   // baseline and iterate more surgically if needed.
   let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 * aggressionMultiplier + threatBonus + escortBonus;
-  if (posture === 'aggressive') score += 100 * aggressionMultiplier;
-  if (posture === 'retreat') score -= 110;
-  score += computeBandPreferenceBonus(distance, profile.desiredRange[0], desiredMax, profile.bandPreference);
-  
-  // Add engagement bias if enabled
-  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
-    score += profile.engagementBias;
+   if (posture === 'aggressive') score += 100 * aggressionMultiplier;
+   if (posture === 'retreat') score -= 110;
+   score += computeBandPreferenceBonus(distance, profile.desiredRange[0], desiredMax, profile.bandPreference);
+  const interceptIndex = state.blackboard.priorityIndex?.[ship.ship.team];
+  if (interceptIndex) {
+    const interceptRank = interceptIndex.get(target.id);
+    if (interceptRank != null && Number.isFinite(interceptRank)) {
+      score += Math.max(0, 120 - interceptRank * 10);
+    }
   }
+  const focusMap = state.blackboard.focusFire?.[ship.ship.team];
+  const interceptFocusLoad = focusMap ? focusMap.get(target.id) ?? 0 : 0;
+   score += Math.max(-70, 28 - interceptFocusLoad * 24);
+   
+   // Add engagement bias if enabled
+   if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+     score += profile.engagementBias;
+   }
 
   return quantizeScore(score);
 }
@@ -1195,7 +1275,79 @@ function applyVerticalPerturbation(
     }
   }
 
-  heading.y = Math.max(-AI_CONFIG.headingYClamp, Math.min(AI_CONFIG.headingYClamp, heading.y));
+  const clampCfg = AI_CONFIG.verticalClamp ?? { default: AI_CONFIG.headingYClamp };
+  const hull = ship.ship.hull;
+  let baseClamp = Number(clampCfg.default ?? AI_CONFIG.headingYClamp);
+  if (hull === 'destroyer' || hull === 'carrier') {
+    baseClamp = Number(clampCfg.heavy ?? baseClamp);
+  } else if (hull === 'fighter' || hull === 'corvette' || profile.style === 'escort') {
+    baseClamp = Number(clampCfg.highAgility ?? baseClamp);
+  }
+
+  const desiredRange = ai.desiredRange ?? profile.desiredRange;
+  let scale = 1;
+  if (target && desiredRange) {
+    const [desiredMin, desiredMax] = desiredRange;
+    const span = Math.max(1, desiredMax - desiredMin);
+    const distance = ship.transform.position.distanceTo(target.transform.position);
+    const midpoint = (desiredMin + desiredMax) * 0.5;
+    const deviation = Math.abs(distance - midpoint);
+    const normalized = deviation / span;
+    scale += Math.min(0.6, normalized * 0.75);
+  }
+
+  const amplitudeScale = 0.8 + Math.min(0.6, amplitude * 0.5);
+  let clamp = baseClamp * scale * amplitudeScale;
+  const heavyCap = Number(clampCfg.default ?? baseClamp);
+  const agilityCap = Number(clampCfg.highAgility ?? clampCfg.default ?? baseClamp);
+  if (hull === 'destroyer' || hull === 'carrier') {
+    clamp = Math.min(clamp, heavyCap);
+  } else {
+    clamp = Math.min(clamp, agilityCap);
+  }
+  clamp = Math.max(0.1, Math.min(clamp, 0.7));
+  heading.y = Math.max(-clamp, Math.min(clamp, heading.y));
+
+  const metrics = state.ai?.metrics;
+  if (metrics) {
+    const amplitude = Math.abs(heading.y);
+    metrics.headingAmplitudeSamples += 1;
+    metrics.headingAmplitudeSum += amplitude;
+    if (amplitude < metrics.headingAmplitudeMin) {
+      metrics.headingAmplitudeMin = amplitude;
+    }
+    if (amplitude > metrics.headingAmplitudeMax) {
+      metrics.headingAmplitudeMax = amplitude;
+    }
+  }
+}
+
+function recordFocusDiagnostics(
+  state: GameState,
+  ship: ShipEntity,
+  target: ShipEntity | null,
+  previousTargetId: EntityId | null,
+): void {
+  if (!target) return;
+  const manager = state.ai;
+  if (!manager) return;
+  const teamCounts = state.blackboard.teamCounts;
+  const teamCount = teamCounts ? teamCounts[ship.ship.team] ?? 0 : 0;
+  if (teamCount <= 0) return;
+  const focusFire = state.blackboard.focusFire;
+  if (!focusFire) return;
+  const focusMap = focusFire[ship.ship.team];
+  if (!focusMap) return;
+  const existing = focusMap.get(target.id) ?? 0;
+  const includesSelf = previousTargetId != null && previousTargetId === target.id && existing > 0;
+  const contribution = includesSelf ? existing : existing + 1;
+  const ratio = Math.min(1, Math.max(0, contribution / teamCount));
+  const metrics = manager.metrics;
+  metrics.focusFireSamples += 1;
+  metrics.focusFireRatioSum += ratio;
+  if (ratio > metrics.focusFireRatioMax) {
+    metrics.focusFireRatioMax = ratio;
+  }
 }
 
 function updateBandStickiness(
@@ -1485,7 +1637,7 @@ function updateTurrets(state: GameState, delta: number): void {
   const turrets = state.queries.turrets.entities as TurretEntity[];
   for (const t of turrets) {
     const ship = t.turret.parent;
-    // sync turret transform with parent + local offset
+    // sync turret transform with parent + local turret offset
     const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
     t.rigidBody.setNextKinematicTranslation({ x: origin.x, y: origin.y, z: origin.z });
     // choose target considering priority
@@ -1617,59 +1769,85 @@ function resolveProjectiles(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   const toRemove = new Set<GameEntity>();
-
-  for (const projectile of projectiles) {
-    projectile.projectile.ttl -= delta;
-    if (projectile.projectile.ttl <= 0) {
-      toRemove.add(projectile);
-      continue;
-    }
-
-    for (const ship of ships) {
-      if (ship.ship.team === projectile.projectile.team) continue;
-      const distance = ship.transform.position.distanceTo(projectile.transform.position);
-      // Use projectile config to compute a realistic impact radius (ship radius + projectile radius)
-      const projCfg = PROJECTILE_CONFIG[projectile.projectile.bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
-      const projRadius = projCfg.colliderRadius ?? Math.max(0.08, projectile.transform.scale * 1.2);
-      const impactRadius = ship.transform.scale * 0.9 + projRadius;
-      if (distance > impactRadius) continue;
-      // Apply damage to shields first, then to hull.
-      let remaining = projectile.projectile.damage;
-      if (ship.ship.shield > 0) {
-        const absorbed = Math.min(ship.ship.shield, remaining);
-        ship.ship.shield -= absorbed;
-        remaining -= absorbed;
-        // Emit a shield ripple event oriented from impact direction.
-        const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
-        if (dir.lengthSq() > 1e-5) dir.normalize();
-        else dir.set(0, 0, 1);
-        const strength = Math.min(1, absorbed / Math.max(1, ship.ship.maxShield));
-        const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
-        // Always append ripple events to the ship's history; the renderer/coalescer
-        // will select up to maxRipples of the latest entries and handle visual blending.
-        const list = (ship.shieldRipples ??= []);
-        list.push(ripple);
-        // Keep a reasonable history cap to avoid unbounded growth
-        if (list.length > 64) list.shift();
-      }
-
+  const manager = state.ai;
+  if (manager) {
+    ensureInterruptState(manager);
+    getInterruptQueue(manager);
+  }
+ 
+   for (const projectile of projectiles) {
+     projectile.projectile.ttl -= delta;
+     if (projectile.projectile.ttl <= 0) {
+       toRemove.add(projectile);
+       continue;
+     }
+ 
+     for (const ship of ships) {
+       if (ship.ship.team === projectile.projectile.team) continue;
+       const distance = ship.transform.position.distanceTo(projectile.transform.position);
+       // Use projectile config to compute a realistic impact radius (ship radius + projectile radius)
+       const projCfg = PROJECTILE_CONFIG[projectile.projectile.bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
+       const projRadius = projCfg.colliderRadius ?? Math.max(0.08, projectile.transform.scale * 1.2);
+       const impactRadius = ship.transform.scale * 0.9 + projRadius;
+       if (distance > impactRadius) continue;
+       // Apply damage to shields first, then to hull.
+       let remaining = projectile.projectile.damage;
+       if (ship.ship.shield > 0) {
+         const absorbed = Math.min(ship.ship.shield, remaining);
+         ship.ship.shield -= absorbed;
+         remaining -= absorbed;
+         // Emit a shield ripple event oriented from impact direction.
+         const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
+         if (dir.lengthSq() > 1e-5) dir.normalize();
+         else dir.set(0, 0, 1);
+         const strength = Math.min(1, absorbed / Math.max(1, ship.ship.maxShield));
+         const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
+         // Always append ripple events to the ship's history; the renderer/coalescer
+         // will select up to maxRipples of the latest entries and handle visual blending.
+         const list = (ship.shieldRipples ??= []);
+         list.push(ripple);
+         // Keep a reasonable history cap to avoid unbounded growth
+         if (list.length > 64) list.shift();
+       }
+ 
+      let hullDamage = 0;
       if (remaining > 0) {
+        const prevHp = ship.ship.hp;
         ship.ship.hp -= remaining;
+        hullDamage = Math.max(0, prevHp - ship.ship.hp);
       }
-      toRemove.add(projectile);
-
-      if (ship.ship.hp <= 0) {
-        emitShipKillExplosion(state, ship, projectile);
-        toRemove.add(ship);
+       toRemove.add(projectile);
+ 
+      
+      if (manager && hullDamage > 0) {
+        const totalDamage = accumulateInterruptDamage(manager, ship.id, hullDamage, manager.tickIndex);
+        const maxHp = Math.max(1, ship.ship.maxHp);
+        if (totalDamage / maxHp >= (AI_CONFIG.interruptHpDrop ?? 0.1)) {
+          queueInterrupt(manager, {
+            shipId: ship.id,
+            reason: 'hp-drop',
+            tick: manager.tickIndex,
+            sourceId: projectile.id,
+          });
+        }
       }
-      break;
-    }
-  }
-
-  for (const entity of toRemove) {
-    destroyEntity(state, entity);
-  }
-}
+ 
+       if (ship.ship.hp <= 0) {
+        if (manager) {
+         
+          queueTargetLossInterrupts(state, ships, ship.id);
+        }
+         emitShipKillExplosion(state, ship, projectile);
+         toRemove.add(ship);
+       }
+       break;
+     }
+   }
+ 
+   for (const entity of toRemove) {
+     destroyEntity(state, entity);
+   }
+ }
 
 function orientTowards(ship: ShipEntity, direction: Vector3): void {
   const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
@@ -1829,6 +2007,91 @@ function getTurretWorldPosition(ship: ShipEntity, turret: TurretState): Vector3 
   // rotate by ship rotation, then add ship position
   world.applyQuaternion(ship.transform.rotation).add(ship.transform.position);
   return world;
+}
+
+// Interrupt manager helper utilities
+function ensureInterruptState(manager: AIManagerState): AIInterruptState {
+  if (!manager.interruptState) {
+    manager.interruptState = {
+      cooldownTick: new Map(),
+      damageThisTick: new Map(),
+      lastDamageTick: -1,
+      vipThreatAssignments: new Map(),
+    };
+  }
+  return manager.interruptState;
+}
+
+function getInterruptQueue(manager: AIManagerState): IntentInterruptEvent[] {
+  if (!manager.interrupts) manager.interrupts = [];
+  return manager.interrupts;
+}
+
+function interruptKey(shipId: EntityId, reason: AIInterruptReason): string {
+  return `${shipId}${INTERRUPT_KEY_SEPARATOR}${reason}`;
+}
+
+function queueInterrupt(manager: AIManagerState, event: IntentInterruptEvent): void {
+  const state = ensureInterruptState(manager);
+  const queue = getInterruptQueue(manager);
+  const key = interruptKey(event.shipId, event.reason);
+  const cooldown = Math.max(0, AI_CONFIG.interruptCooldownTicks ?? 0);
+  const lastTick = state.cooldownTick.get(key);
+  if (lastTick != null && event.tick - lastTick <= cooldown) return;
+  state.cooldownTick.set(key, event.tick);
+  queue.push(event);
+}
+
+function accumulateInterruptDamage(
+  manager: AIManagerState,
+  shipId: EntityId,
+  damage: number,
+  tick: number,
+): number {
+  const state = ensureInterruptState(manager);
+  if (state.lastDamageTick !== tick) {
+    state.damageThisTick.clear();
+    state.lastDamageTick = tick;
+  }
+  const next = (state.damageThisTick.get(shipId) ?? 0) + damage;
+  state.damageThisTick.set(shipId, next);
+  return next;
+}
+
+function queueTargetLossInterrupts(state: GameState, ships: ShipEntity[], targetId: EntityId): void {
+  const manager = state.ai;
+  if (!manager) return;
+  const queueTick = manager.tickIndex;
+  for (const ship of ships) {
+    if (ship.id === targetId) continue;
+    const ai = ship.ai;
+    if (!ai || ai.targetId !== targetId) continue;
+    queueInterrupt(manager, {
+      shipId: ship.id,
+      reason: 'target-lost',
+      tick: queueTick,
+      sourceId: targetId,
+    });
+  }
+}
+
+function processInterruptQueue(manager: AIManagerState, entities: Map<number, ShipEntity>): void {
+  const queue = getInterruptQueue(manager);
+  if (queue.length === 0) return;
+  const metrics = manager.metrics;
+  const currentTick = manager.tickIndex;
+  for (const event of queue) {
+    const ship = entities.get(event.shipId);
+    if (!ship || !ship.ai) continue;
+    if (ship.ship.hp <= 0) continue;
+    if (ship.ai.nextThinkAt > currentTick) {
+      ship.ai.nextThinkAt = currentTick;
+    }
+    const latency = Math.max(0, currentTick - event.tick);
+    const bucket = latency >= 3 ? 3 : latency;
+    metrics.decisionLatencyBuckets[bucket] += 1;
+  }
+  queue.length = 0;
 }
 
 

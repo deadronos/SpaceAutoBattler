@@ -319,6 +319,7 @@ export interface AIBlackboard {
   teamPriority: Record<Team, PrioritisedTarget[]>;
   priorityIndex: Record<Team, Map<EntityId, number>>;
   focusFire: Record<Team, Map<EntityId, number>>;
+  teamCounts?: Record<Team, number>;
   // Vertical dispersion tracking for validation (optional for backward compatibility)
   verticalDispersion?: {
     headingYSamples: number[];
@@ -349,6 +350,22 @@ export interface PrioritisedTarget {
   threat: number;
   distanceSq: number;
   focusLoad: number;
+}
+
+export type AIInterruptReason = 'hp-drop' | 'target-lost' | 'vip-threat' | 'manual';
+
+export interface IntentInterruptEvent {
+  shipId: EntityId;
+  reason: AIInterruptReason;
+  tick: number;
+  sourceId?: EntityId;
+}
+
+export interface AIInterruptState {
+  cooldownTick: Map<string, number>;
+  damageThisTick: Map<EntityId, number>;
+  lastDamageTick: number;
+  vipThreatAssignments: Map<EntityId, EntityId>;
 }
 
 export interface AIShotHistogram {
@@ -392,11 +409,39 @@ export interface AIVerticalSummary {
   ratio: number | null;
 }
 
+export interface AIDecisionLatencySummary {
+  buckets: [number, number, number, number];
+  total: number;
+}
+
+export interface AIFocusFireSummary {
+  samples: number;
+  ratioAvg: number | null;
+  ratioMax: number | null;
+}
+
+export interface AIHeadingAmplitudeSummary {
+  samples: number;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+export interface AITieSummary {
+  decisions: number;
+  fallbacks: number;
+  ratio: number | null;
+}
+
 export interface AIKpiSummary {
   firstShot: AIFirstShotSummary;
   openingAggression: AIOpeningAggressionSummary;
   inBand: AIInBandSummaryByHull;
   vertical: AIVerticalSummary;
+  decisionLatency: AIDecisionLatencySummary;
+  focusFire: AIFocusFireSummary;
+  headingAmplitude: AIHeadingAmplitudeSummary;
+  ties: AITieSummary;
 }
 
 export interface AIManagerState {
@@ -409,6 +454,8 @@ export interface AIManagerState {
   slices: number;
   assignments: AITeamAssignments;
   metrics: AIMetrics;
+  interrupts?: IntentInterruptEvent[];
+  interruptState?: AIInterruptState;
 }
 
 export interface AIMetrics {
@@ -427,6 +474,14 @@ export interface AIMetrics {
   openingTotalIntents: number;
   tieDecisions: number;
   tieFallbacks: number;
+  decisionLatencyBuckets: [number, number, number, number];
+  focusFireSamples: number;
+  focusFireRatioSum: number;
+  focusFireRatioMax: number;
+  headingAmplitudeSamples: number;
+  headingAmplitudeSum: number;
+  headingAmplitudeMin: number;
+  headingAmplitudeMax: number;
   firstShotTimes: number[];
   firstShotByShip: Record<number, number>;
   intentTimeline: AIIntentSnapshot[];

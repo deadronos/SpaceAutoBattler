@@ -152,33 +152,17 @@ export const AI_CONFIG = {
 
 ## Implementation Plan
 
-1. **Score precision & comparator (P0):**
-   - Remove `Math.floor` from `score*Intent` functions and route through `quantiseScore(score, AI_CONFIG.scorePrecision)`.
-   - Implement `compareIntents(IntentScore a, IntentScore b)` using priority tables and tie breakers.
-   - Update `tieBreak` to use comparator and reserve RNG as last resort.
-   - Instrument metrics for tie counts.
+1. **Score precision & comparator (P0 — DONE):** `quantizeScore` now precedes every comparison in `src/game/systems.ts`, `compareIntentCandidates` orders candidates deterministically (score → intent priority → threat rank → distance → candidate index), and `tieBreak` records metrics before falling back to seeded randomness.
 
-2. **Target prioritisation (P0):**
-   - Extend blackboard with `teamPriority: Map<Team, PrioritisedTarget[]>` and `focusFire: Map<number, number>`.
-   - Adjust `refreshBlackboard` to populate queue using threat weights and focus counts.
-   - Update `selectIntent` to fetch primary target from priority list instead of nearest-only.
+2. **Target prioritisation (P0 — DONE):** Blackboard caches (`teamPriority`, `priorityIndex`, `focusFire`) hold threat-weighted queues each tick, `refreshBlackboard` aggregates hull/HP/VIP/focus signals with deterministic sorting, and `selectIntent` prefers the highest-ranked target while preserving a nearest-enemy fallback.
 
-3. **Interrupt responsiveness (P0):**
-   - Introduce `IntentInterruptManager` to track events and force `nextThinkAt` update.
-   - Hook into hp updates, target removal, VIP threat changes.
-   - Add tests plus instrumentation for latency metrics.
+3. **Interrupt responsiveness (P0 — IN PROGRESS):** Add an `interrupts` queue to `AIManagerState`, emit events from HP deltas, target destruction, and VIP threat changes, snap affected ships’ `nextThinkAt` to the current tick while logging latency samples, and expose histogram buckets via `AIMetrics.decisionLatency` with coverage in `test/vitest/ai-interrupts.spec.ts`.
 
-4. **Vertical clamp expansion (P1):**
-   - Parameterise clamp by profile role and band error; allow dynamic clamp up to 0.6 for agile hulls.
-   - Ensure heading normalisation remains stable.
+4. **Vertical clamp expansion (P1 — IN PROGRESS):** Introduce role-driven clamps in `AI_CONFIG.verticalClamp`, compute per-command Y bounds in `applyVerticalPerturbation` using role plus range-band error scaling, persist heading amplitudes in `blackboard.verticalDispersion`, and validate agile vs heavy hull thresholds in `test/vitest/ai-vertical.spec.ts`.
 
-5. **Diagnostics (P1):**
-   - Extend `AIMetrics` with tie/latency/focus arrays.
-   - Update harness serialization and debug overlay to show new metrics.
+5. **Diagnostics (P1 — IN PROGRESS):** Extend `AIMetrics` with tie ratios, latency buckets, focus-fire ratios, and vertical amplitude summaries; update `aggregateKpis` and scenario `snapshotMetrics` to emit the enriched payload; and exercise the outputs via `test/vitest/ai-metrics.spec.ts` plus refreshed harness fixtures.
 
-6. **Scoring enrichment (P1/P2):**
-   - Incorporate threat weight bonuses, hp gating, and focus fire bias into `scoreAttackIntent`, etc.
-   - Rebalance constants; update tests and metrics baselines.
+6. **Scoring enrichment (P1/P2 — IN PROGRESS):** Rebalance `scoreAttackIntent`, `scoreInterceptIntent`, and `scoreEscortIntent` to incorporate threat-rank bonuses, focus alignment bias, and VIP incentives with rollout toggles in `AI_CONFIG.threatWeights`, then adjust regression tests and KPI baselines accordingly.
 
 ## Risks & Mitigations
 

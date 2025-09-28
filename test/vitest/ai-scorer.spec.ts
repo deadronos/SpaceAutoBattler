@@ -127,8 +127,8 @@ describe('AI scorer snapshots', () => {
     const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0), hull: 'fighter' });
     const profile = resolveBehaviorProfile('brawler');
     const holdScore = scoreAttackIntent(state, ship, profile, target, 'hold', BASE_TRAITS);
-    // Updated expectation: base 1136 + engagement bias 25 + opening salvo boost ~21.6 = ~1182.6
-    expect(holdScore).toBeCloseTo(1182.6, 0);
+    // Updated expectation: base 1136 + engagement bias 25 + opening salvo boost ~21.6 + focus bias 40 ≈ 1222.6
+    expect(holdScore).toBeCloseTo(1222.6, 0);
 
     const retreatScore = scoreAttackIntent(state, ship, profile, target, 'retreat', BASE_TRAITS);
     expect(retreatScore).toBeCloseTo(holdScore - 120, 1);
@@ -250,11 +250,11 @@ describe('AI scorer snapshots', () => {
     
     // Test with brawler profile (engagementBias: 25)
     const brawlerProfile = resolveBehaviorProfile('brawler');
-    const brawlerScore = scoreAttackIntent(state, ship, brawlerProfile, target, 'hold', BASE_TRAITS);
+    const _brawlerScore = scoreAttackIntent(state, ship, brawlerProfile, target, 'hold', BASE_TRAITS);
     
     // Test with escort profile (engagementBias: 30) 
     const escortProfile = resolveBehaviorProfile('escort');
-    const escortScore = scoreAttackIntent(state, ship, escortProfile, target, 'hold', BASE_TRAITS);
+    const _escortScore = scoreAttackIntent(state, ship, escortProfile, target, 'hold', BASE_TRAITS);
     
     // Escort should have higher engagement bias (+5 more than brawler)
     // Note: Scores will be different due to different desiredRange, but escort should get more engagement boost

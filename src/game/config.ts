@@ -143,6 +143,13 @@ export const AI_CONFIG = {
   openingSalvoDuration: 30,
   openingSalvoAggressionBoost: 1.2,
   headingYClamp: 0.3,
+  verticalClamp: {
+    default: 0.45,
+    highAgility: 0.6,
+    heavy: 0.35,
+  } as const,
+  interruptHpDrop: 0.1,
+  interruptCooldownTicks: 1,
   strengthRatioThreshold: 1.6,
   bandStickinessDuration: 3,
   scorePrecision: 0.1,
