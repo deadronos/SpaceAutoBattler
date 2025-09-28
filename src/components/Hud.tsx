@@ -7,6 +7,7 @@ import { AiDebugOverlay } from './AiDebugOverlay.js';
 import { ExplosionDebugOverlay } from './ExplosionDebugOverlay.js';
 import { HudHealthLayer } from './HudHealthLayer.js';
 import { useUiStore } from '../game/uiStore.js';
+import { SettingsDrawer, DebugDrawer } from './HudToggleDrawer.js';
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -31,8 +32,16 @@ export function Hud(): React.ReactElement {
       <AiDebugOverlay />
       <ExplosionDebugOverlay />
       <div className="hud-panel">
-        <h2>Space Auto Battler</h2>
-        <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
+        <div className="hud-panel__header">
+          <div>
+            <h2>Space Auto Battler</h2>
+            <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
+          </div>
+          <div className="hud-panel__actions" aria-label="HUD controls">
+            <SettingsDrawer />
+            <DebugDrawer />
+          </div>
+        </div>
         <div className="team-grid">
           <TeamCard summary={blue} />
           <TeamCard summary={red} />

@@ -33,7 +33,7 @@ function readBooleanEnv(name: string, defaultValue = false): boolean {
   }
 }
 
-const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT');
+const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT', true);
 const TICK_RATE_BASE = 12;
 const TICK_RATE_EXPERIMENTAL = 15;
 const TICK_RATE_FORCE_ON = readBooleanEnv('AI_TICKRATE_EXPERIMENT_ON');

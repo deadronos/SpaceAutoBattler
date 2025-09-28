@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
 import { AI_CONFIG } from './config.js';
 
-type UiState = {
+export type UiState = {
   paused: boolean;
   timeScale: number; // 0.25x .. 4x typical
   // Postprocessing toggle (bloom/FXAA/etc.)
@@ -29,7 +29,7 @@ type UiState = {
 export const useUiStore = create<UiState>((set) => ({
   paused: false,
   timeScale: 1,
-  postprocessingEnabled: false,
+  postprocessingEnabled: true,
   togglePostprocessing: () => set((s) => ({ postprocessingEnabled: !s.postprocessingEnabled })),
   setPostprocessingEnabled: (v: boolean) => set({ postprocessingEnabled: v }),
   togglePause: () => set((s) => ({ paused: !s.paused })),
