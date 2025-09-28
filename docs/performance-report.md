@@ -1,0 +1,221 @@
+---
+post_title: "Renderer Performance Audit — Batches 1 & 2"
+author1: "GitHub Copilot"
+post_slug: "performance-audit-batches-1-2"
+microsoft_alias: "deadronos"
+featured_image: "/assets/images/perf-report/hero.png"
+categories:
+  - engineering
+tags:
+  - performance
+  - rendering
+  - audit
+ai_note: "Partially AI-assisted: automated code inspection and evidence collection"
+summary: "Incremental renderer performance audit covering files 1–16. Batches 1 & 2 ratings, evidence, and short recommendations."
+post_date: "2025-09-28"
+---
+
+## Purpose and Scope
+
+This document presents an incremental slice of the full renderer performance audit.
+Each batch covers a short list of files (5–10) to make the review digestible. Results
+below use the shared rubric (Excellent / Good / Fair / Poor) and include concise
+evidence and recommended follow-ups.
+
+## Batch 1 — Files 1–8 (summary)
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/App.tsx` | Excellent | Thin top-level composition; uses `GameProvider` and delegates to scene layers. No per-frame work here. | None — keep as-is. |
+| `src/assets/planets.ts` | Excellent | Static asset mapping constants; imports resolved at build time via webpack asset rules. Zero runtime allocations. | None — validate asset pipeline in CI occasionally. |
+| `src/assets/ships.ts` | Excellent | Canonicalised GLB path map; provides deterministic keys for loader cache. Build-time imports avoid runtime IO. | None — consider adding size metadata for LOD decisions later. |
+| `src/assets/skysphere.ts` | Excellent | Single, large texture exported as constant; read-only mapping avoids allocation. | None — ensure texture compression pipeline remains optimized. |
+| `src/assets/starDiskTextures.ts` | Excellent | Two static texture paths used by the star-disk shader; simple, deterministic. | None. |
+| `src/components/AiDebugOverlay.tsx` | Good | Uses `useMemo` to snapshot metrics and rows; throttles UI updates via interval (REFRESH_INTERVAL_MS). Creates a temporary `rows` array per refresh (expected for debug UI). | Keep interval-based throttling; consider reusing small object pool for rows if update cost becomes measurable in large worlds. |
+| `src/components/Battlefield.tsx` | Good | Strong composition: Suspense for GLTFs, `SeededRng` for STAR_POSITIONS (precomputed Float32Array), optional `PostprocessingLazy`. Uses instanced `points` for stars. Potential per-ship instancing is not present (maps each ship to a `ShipObject`). | Consider ship model instancing or batched draws for common hulls to reduce per-entity render cost when ship counts grow. Document expected scale envelope and safe ship counts. |
+| `src/components/Controls.tsx` | Fair | Small UI component with event handlers. Not a render-hot path, but could cause synchronous state changes affecting the simulation. | No urgent perf change; keep simple. If Controls grows, memoize handlers or extract heavy logic off the click path. |
+
+## Notes & Next Steps for Batch 1
+
+- Batch 1 shows strong, low-allocation patterns for asset and header files.
+- `Battlefield` is architected for good reuse (precomputed star positions,
+  Suspense). The main area for improvement is ship rendering scalability.
+- `AiDebugOverlay` is intentionally debug-only and balanced between clarity and
+  cost; its throttling is adequate for the moment.
+
+## Batch 2 — Files 9–16 (Environment Components)
+
+This batch covers core celestial environment and billboard components responsible
+for large-scale visuals and atmospheric elements.
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/components/environment/CelestialEnvironment.tsx` | Excellent | Thin composition that delegates to specialized components (`Skysphere`, `StarLight`, `StarDisk`, `PlanetBody`, `ParallaxBillboard`). Uses `Suspense` for GLTF/texture loading so blocking costs are minimised. | None — keep composition pattern. Consider documenting load-time budgets for large scenes. |
+| `src/components/environment/ParallaxBillboard.tsx` | Fair | Implements camera-based parallax in `useFrame` with a few per-frame Vector3 allocations (`new Vector3()` per frame inside hook) and clones. Billboards face the camera each frame; this is expected but the implementation allocates temporaries on every frame. | Replace per-frame allocation with preallocated temporaries (memoized Vector3) and reuse `camera.position` subtraction into a single mutable vector. Consider throttling for very many billboards or switching to GPU-driven parallax if density rises. |
+| `src/components/environment/PlanetBody.tsx` | Good | Uses `useMemo` for tilt and rotation quaternions, `useFrame` for deterministic spin. Loads planet textures via `usePlanetTexture` (hook caches texture) and reuses computed quaternions to avoid allocations. Rim shell and rings isolated into separate components. | Good balance; ensure `PLANET_GEOMETRY_SEGMENTS` remains conservative to avoid geometric overdraw on lower-end devices. Keep texture caching validated in CI. |
+| `src/components/environment/PlanetRimShell.tsx` | Good | Creates a `ShaderMaterial` via `useMemo` and returns it as a primitive. Material creation is explicit and memoized; shader code is compact and uses small uniform sets. | Monitor shader compile times on low-end GPUs; consider sharing a material instance across planets of identical parameters to reduce compile count. |
+| `src/components/environment/PlanetRings.tsx` | Fair | Builds a `RingGeometry` in `useMemo` (good) and a custom `ShaderMaterial` (good). The `useFrame` rotates the mesh each frame, which is expected, but the fragment shader contains a moderately expensive pattern (`sin` with many repeats) that may be heavy at high resolutions. | Consider precomputing subtle ring patterns into a small texture to move math into sampling, or lower the frequency in the fragment shader for distant LOD. If multiple similar rings exist, reuse geometry/material instances. |
+| `src/components/environment/Skysphere.tsx` | Excellent | Uses `useTexture` and configures mipmaps/filters/flip flags via `useMemo`. The skysphere is rendered with `frustumCulled={false}`, a single large mesh—optimal for background rendering. | None — ensure texture compression and mipmaps are tuned in asset pipeline. |
+| `src/components/environment/StarDisk.tsx` | Good | Complex shader-backed star disk: creates and updates a main-sequence shader material, updates uniforms each frame with deterministic time from simulation when available, and registers bloom selections. Uses `useTexture` and carefully sets texture parameters (anisotropy, filters). Gracefully falls back to basic material on shader init failure. | Largely well-designed. Consider sharing the compiled shader material across instances or reusing a single material if multiple star disks are possible. Verify uniform updates are minimal and avoid allocating new objects inside the hot `useFrame` path. |
+| `src/components/environment/StarLight.tsx` | Excellent | Centralized directional light encapsulation: computes directional position via `useMemo`, configures shadow camera in `useEffect`, and mirrors internal ref to optional external ref. Lightweight per-frame behavior (none) and explicit shadow tuning. | None — keep shadow map sizes and bias values under review for performance; consider exposing dynamic shadow resolution for adaptive quality. |
+
+## Batch 2 — Observations
+
+- Environment components show strong memoization and clear separation of concerns.
+- Main perf hotspots in this batch are per-frame allocations in `ParallaxBillboard` and the fragment math density in `PlanetRings`.
+- Star disk shader demonstrates robust defensive design (fallback when shader creation fails) and careful texture configuration.
+
+## Batch 3 — Files 17–22 (Explosions, Particles, Materials, Bloom)
+
+This batch inspects explosion event plumbing (game & renderer), instanced
+explosion meshes, particle trail pooling, and renderer material + bloom helper
+infrastructure.
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/components/ExplosionRenderer.tsx` | Excellent | Heavy use of instanced meshes for flash, shockwave, fireball, debris, sparks, plasma, and smoke (capacity constants defined). Precomputes derived particle data per-event via seeded RNG and caches it. Updates instance matrices and instanceColor flags only when needed and sets mesh.count to active indices. Uses frustumCulled=false for predictable lifetime rendering and disposes geometry/materials on unmount. | None urgent — maintain capacities and derived cache. Consider exposing capacity bounds as tunables and document memory footprint. Add a small unit test to validate instance count and matrix updates for edge cases. |
+| `src/components/ParticleTrails.tsx` | Good | Implements an instanced mesh particle pool with preallocated particle objects and reuses an `Object3D` (`dummy`) to write instance matrices. Preloads GLTFs to compute anchor positions and uses an efficient ring buffer for particle reuse. Some runtime use of `Math.random()` and occasional `clone()` when transforming anchor locals to world; there are a few per-frame clones in the fallback path. | Replace fallback per-frame `tmpVec.clone()` with a preallocated temp vector and avoid repeated `Math.random()` calls in hot paths by using `SeededRng` or a lightweight PRNG if determinism is required. Consider moving GLTF anchor computation entirely to build/initialization (memoized) to avoid fallback work. |
+| `src/config/explosions.ts` | Excellent | Centralized per-hull explosion parameters with consistent scaling constants, particle counts, and timing. Avoids runtime branching by providing table lookups and a `getExplosionConfig` accessor. | None — consider adding comments about approximate footprint per-hull to aid tuning and capacity planning. |
+| `src/game/explosions.ts` | Good | Uses pooled `ExplosionEvent` objects with `state.explosionPool` and `obtainExplosion`/`recycleExplosion` helpers. Avoids unbounded allocations by recycling events and evicting oldest when capacity exceeded. Good mapping of config to runtime event fields. | Consider a small telemetry counter for hard evictions to aid tuning and CI checks; ensure pool warm-up for expected scenario tests. |
+| `src/renderer/BloomProvider.tsx` | Excellent | Provides a stable selection registry per bloom group and registers/unregisters objects via `useBloomRegistration`. Uses `postprocessing.Selection` and assigns unique layers to selection groups to enable selective bloom without per-frame allocation. | None — good pattern. Consider adding diagnostics that can be toggled to report selection sizes. |
+| `src/renderer/materialRegistry.tsx` | Excellent | Centralized material registry with `registerMaterial` / `getMaterial` lookup. Built-in shield shader uses packed ripple uniforms and memoized ShaderMaterial. Materials are created in `useMemo` and are disposed on unmount; shader uses preallocated uniform arrays to avoid repeated allocations per frame. | None immediate; consider a shared material pooling path for identical parameter sets to further reduce compile counts when many similar ships exist. |
+
+## Batch 3 — Observations
+
+- Explosion rendering is a clear strength: deterministic derived caches, broad use of instancing, and explicit capacity constants avoid per-frame allocations and GC churn.
+- Particle trails are well-implemented using instance meshes and an object pool, but have small leftover allocations in fallback anchor computation and use `Math.random()` which is nondeterministic. Consider a deterministic PRNG in hot paths for consistent replay.
+- Material registry and bloom provider provide robust infrastructure for consistent visual effects and selective postprocessing without per-frame object churn.
+
+## Batch 4 — Files 23–30 (HUD & Postprocessing UX)
+
+This batch inspects HUD composition, overlay layout, HUD toggles, perf monitor overlay
+and the lazy postprocessing wrapper.
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/components/Hud.tsx` | Good | Thin composition layer that mounts HUD elements and toggles. Uses `useArchetypeEntities` unconditionally to avoid hook rules violations and memoizes team summaries. HUD is mostly DOM/CSS-driven (not render hot-path). | Keep composition thin. For very large fleets, consider debouncing `summarize` or computing summary server-side for remote replays. |
+| `src/components/HudHealthLayer.tsx` | Excellent | Computes overlay layouts from a stable `useHudOverlayStore` snapshot and performs placement math with `useMemo` and layout-only `useLayoutEffect` to measure reserved DOM rects. Uses well-bounded algorithms and early-exits for hidden overlays. | None critical. Consider throttling layout recomputes on extreme resize rates; current useMemo/useLayoutEffect pattern is efficient. |
+| `src/components/ShipHudOverlay.tsx` | Good | Uses deterministic easing (`lerpBySeed`) for smooth transitions and respects reduced-motion preferences; memoizes style objects to avoid re-renders where possible. Renders a bounded number of badge elements per overlay. | Consider memoizing `StatusEffectBadge` and `StatusOverflowBadge` if overlays cause many re-renders (profiling recommended). |
+| `src/components/HudToggleDrawer.tsx` | Excellent | Lightweight toggle list driven by `hudToggleConfig` definitions and `useUiStore` selectors. Toggle handlers use store mutations directly (fast). Proper ARIA attributes and keyboard handling provided. | None — nice accessibility/patterns. If toggle list grows, virtualize list rendering. |
+| `src/components/hudToggleConfig.ts` | Excellent | Centralized toggle definitions referencing `useUiStore`. All toggles are non-allocating and use `getState()` calls for imperative toggles when needed. | None. Keep toggle metadata centralized for easy auditing. |
+| `src/components/PerfMonitorOverlay.tsx` | Good | Draggable `r3f-perf` wrapper with robust pointer handling and bounds clamping. Uses requestAnimationFrame polling to wait for the DOM node to appear and cleans up handlers on unmount. | Minor: Move RAF polling to a small DOM observer for robust binding without micro-raf loops. Consider debouncing setPosition calls under rapid drags to reduce store churn. |
+| `src/components/PostprocessingLazy.tsx` | Excellent | Uses React.lazy + Suspense to avoid importing heavy postprocessing code unless enabled. Keeps main render path light until needed. | None; maintain lazy wrapper for large features. |
+
+## Batch 4 — Observations
+
+- HUD stack is well-structured: layout work is performed in JS once per snapshot, overlays are bounded, and reduced-motion accessibility is respected.
+- `PerfMonitorOverlay` adds a little DOM-binding complexity (pointer drag + RAF) but is constrained and toggled behind a UI flag.
+- Lazy postprocessing avoids adding heavy composer code to initial bundle; this pattern is already in use and recommended.
+
+## Batch 5 — Files 31–39 (Ships, Turrets, Projectiles, Motion, Carriers, Hooks)
+
+This batch inspects the core entity renderers and movement/carrier systems plus utility hooks used by many components.
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/components/Ship.tsx` | Excellent | Heavy use of memoized objects for vectors/quaternions, per-tick interpolation (visual smoothing) using simulation alpha, and selective material tinting via `hullMaterialsRef`. Uses `useGLTF` caching and creates fallback glow meshes only when necessary. Disposes fallback meshes and materials on unmount. | Keep large per-instance allocations memoized (already done). Consider sharing fallback geometry/material instances across ships if many spawns use fallback path. |
+| `src/components/Turret.tsx` | Good | Lightweight per-entity transform updates in `useFrame` and optional muzzle flash gizmos that register with bloom when enabled. The `Muzzles` component creates dynamic children based on `entity.muzzleFlashes`. Design avoids per-frame allocations in the hot path. | Consider memoizing `MuzzleSphere` components or reusing a small pool for muzzle flash meshes if muzzle flash counts spike. |
+| `src/components/Projectile.tsx` | Good | Per-frame `useFrame` updates transform/scale of a sphere mesh and uses `getMaterial`/`useBloomRegistration`. Geometry chosen by `getProjectileBaseRadius` avoids runtime geometry allocation in frame. | If projectile counts rise into hundreds, consider instanced projectile rendering or GPU particle approach for cheaper draws. Add LOD or culling where applicable. |
+| `src/game/systems/motion.ts` | Excellent | Uses many module-level temporary vectors/quaternions to avoid allocations and implements robust angular/linear updates with damping, clamping, and physics integration. Applies velocities to kinematic rigid bodies via Rapier `setNextKinematicTranslation/Rotation` without allocation. | None; follow this pattern for other systems to keep hot loops allocation-free. Add microbenchmarks for pathological entity counts if needed. |
+| `src/game/systems/carriers.ts` | Good | Deterministic carrier launch system that reuses seeded RNG from `GameState` and computes launch offsets via preallocated temps. Prunes tracked fighters efficiently and obeys per-carrier capacity. | Consider adding a carrier launch pool warm-up in high-density scenarios; expose jitterRadius and formation tuning for runtime scale testing. |
+| `src/game/turretRegistry.ts` | Excellent | Minimal registry with add/remove helpers guarded for safety and avoids O(N) scans on ship destruction (used by `state.turretsByShip`). | None; lightweight and efficient. |
+| `src/hooks/useArchetypeEntities.ts` | Excellent | Robust hook that supports both legacy and modern Miniplex subscription APIs, avoids allocations where possible, and returns empty list for null archetypes to simplify caller code (avoids conditional hooks). | None; good pattern. Consider micro-optimizing the `handleChange` copy into a stable buffer when large archetypes cause frequent churn. |
+| `src/hooks/usePlanetTexture.ts` | Excellent | Centralized texture setup with anisotropy, mipmaps, and SRGB color space. `useMemo` ensures returned object references are stable and errors surfaced when keys are invalid. | None — maintain texture pipeline tooling. |
+| `src/hooks/usePrefersReducedMotion.ts` | Excellent | Minimal and correct hookup to `prefers-reduced-motion` via `matchMedia`. Proper cleanup of event listeners. | None. |
+
+## Batch 5 — Observations
+
+- Ship rendering and motion are architected for low allocations and smooth visuals: interpolation uses memoized vectors, smoothing parameters are clamped, and hull tinting uses pre-recorded original colors to avoid repeated clones.
+- Projectile and turret objects follow a per-entity transform update model; scaling to large counts will benefit from instancing or batching.
+- Motion system and carrier launcher use seeded RNG and module-level temps, demonstrating careful allocation control in hot loops.
+- Hooks are robust and avoid surprising allocations or lifecycle pitfalls.
+
+## Batch 6 — Files 40–46 (AI, Utilities, Types)
+
+This batch inspects AI profile/trait code, the AI scenario harness used for headless
+validation, core utility modules (RNG, color helpers, deterministic lerp), and the
+central `types` surface that guides runtime and tooling.
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/game/aiProfiles.ts` | Good | Simple, declarative behavior profiles and hull-to-profile mapping. Low allocation and clear tuning knobs for desired ranges and biases. | None urgent; consider adding brief comments about the expected scale envelope for each profile to aid tuning. |
+| `src/game/aiTraits.ts` | Excellent | Deterministic trait generation using `SeededRng` with tight variance bounds. Small, testable implementation with no per-frame work. | None — well-suited for deterministic tests and scenario harness runs. |
+| `src/game/aiScenarioHarness.ts` | Excellent | Self-contained headless harness that builds a lightweight, deterministic GameState shim, runs decision ticks, snapshots KPIs, and optionally writes diagnostic artifacts. Uses seeded RNG, preallocated vectors, and lightweight shims to avoid heavy Rapier dependencies. Designed for offline analysis rather than runtime. | Keep harness separated from runtime code; consider toggling optional async writes behind an explicit environment flag (already present) and add a small doc snippet explaining expected artifacts and where to find diagnostic logs. |
+| `src/utils/rng.ts` | Excellent | Lehmer PRNG implementation with seed reset, common operations, deterministic normal sampling (Box–Muller), and no external dependencies. Module-level and per-instance use is cheap and predictable. | None. Consider unit tests validating distribution moments for regression detection. |
+| `src/utils/deterministicLerp.ts` | Excellent | Small deterministic smoothing helpers tied to seeded RNG. Allocation-free and suitable for per-entity smoothing use. | None. Keep documented usage for visual smoothing patterns. |
+| `src/utils/color.ts` | Excellent | Safe color conversion helper that converts inputs to linear `three.Color` instances with fallbacks and defensive try/catch. Uses cloning to avoid mutating inputs. | None. Consider adding a small test ensuring color conversion invariants across SRGB/linear spaces. |
+| `src/types/index.ts` | Excellent | Comprehensive type surface for GameState, entities, AI, and renderer contracts. Types are explicit and used consistently across code (helps avoid accidental runtime structures). | None — types provide clear contracts that support the audit and testing efforts. |
+
+## Batch 6 — Observations
+
+- AI modules are deterministic and designed for testability; the harness is a valuable asset for regression detection and KPI capture.
+- Utility modules (RNG, deterministic lerp) enforce determinism and are safe for hot-path usage because they avoid allocations and side-effects.
+- Types are thorough and provide stability across subsystems — excellent for audit traceability and test scaffolding.
+
+## Batch 7 — Files 47–58 (Remaining Renderer Utilities, Configs & Finalization)
+
+Final batch: remaining renderer utilities, configuration modules, and small
+supporting utilities. This batch finishes the per-file ratings and provides the
+report's consolidated findings and an acceptance checklist.
+
+| File | Rating | Rationale / Evidence | Recommendation (short) |
+| --- | ---: | --- | --- |
+| `src/renderer/starDiskMaterial.ts` | Excellent | Well-factored shader material factory with safe fallbacks for textures (DataTexture), carefully clamped uniform derivation (`deriveHazeUniform`, `deriveBoundaryUniform`), and explicit `updateMainSequenceStarUniforms` that avoids per-frame allocations by writing into preallocated uniform objects. | None; keep shader uniform update shape stable and document reserve vector layout for future shader changes. |
+| `src/renderer/starDiskOrientation.ts` | Excellent | Small, allocation-free orientation helpers with a scratch object factory and a view-alignment algorithm that avoids temporaries in the hot path when the caller reuses scratch space. | None; encourage reuse of `createViewAlignmentScratch` caller-side to avoid repeated allocations. |
+| `src/renderer/rippleDebug.ts` | Good | Minimal, efficient debug counters using a Map with simple getters / clearing helpers. Low overhead and useful for telemetric checks. | None. Consider exposing size-limited history or sample windows if running in long-running debug sessions. |
+| `src/config/renderer.ts` | Good | Centralized renderer tuning constants used across many components (bloom groups, thruster glow, particle trails). Keeps tuning discoverable but contains many values—good for audit and tuning. | Add a short table in the config file documenting approximate cost/impact for major knobs (e.g., bloom groups, particle counts) to aid runtime tuning. |
+| `src/config/environment.ts` | Good | Environment scene defaults and feature flags are declarative and used by `CelestialEnvironment` and components. | None immediate; consider documenting texture budgets and fallback behavior for large texture assets. |
+| `src/config/hudHealth.ts` | Good | HUD layout constants and badge sizing centralized for visual consistency. | None. Keep guard rails for min/max bar widths for accessibility. |
+| `src/config/projectiles.ts` | Good | Centralized projectile sizing and visual multipliers used by `ProjectileObject`. | Consider adding LOD radius thresholds and recommended instancing thresholds for projectiles to guide future optimizations. |
+| `src/config/carriers.ts` | Good | Carrier launch formation definitions and tuning are centralized. | Add comments describing expected fighter density and recommended maxActive for different hardware targets. |
+| `src/config/starDiskDebug.ts` | Fair | Debug overrides for star disk rendering. Useful for development but may expose expensive paths if accidentally enabled in production. | Ensure debug toggles are gated from production builds or clearly documented; avoid shipping heavy debug paths enabled by default. |
+| `src/utils/patchGltfLoader.ts` | Excellent | Defensive runtime patch for GLTFLoader to guard against invalid input; idempotent, best-effort attempts to patch multiple loader variants and safe-guards errors to avoid breaking the app. | None — keep as a runtime resilience helper. |
+| `src/components/Explosion.tsx` | Good | Small, memoized mesh that registers with bloom and uses `getMaterial` from the material registry. Lightweight and suitable as a placeholder for debug/preview usage. | None; if used in large numbers, convert to instanced approach or reuse a single shared mesh instance. |
+
+## Consolidated Findings
+
+- Strengths
+  - Consistent allocation control in hot loops: `systems/motion.ts`, `ExplosionRenderer`, `ParticleTrails`, `Ship` smoothing are explicit about reusing temporaries and object pools.
+  - Determinism is enforced across the codebase: `SeededRng` usage, AI harness for regression tests, and `useSeed`-like patterns for visual smoothing.
+  - Rendering infrastructure is modular and centralized: `materialRegistry`, `BloomProvider`, and `Postprocessing` isolate heavy systems and provide robust fallback patterns.
+  - Lazy loading patterns (`PostprocessingLazy`) and caching (`useGLTF`, `useTexture`) reduce initial load weights and repeated work.
+
+- Risks / Areas for future work
+  - Per-entity rendering of projectiles/turrets/ships may not scale to very high entity counts; prototype GPU instancing/ batching strategies for projectiles and ship hulls.
+  - Particle systems contain a few fallback allocations and nondeterministic `Math.random()` usage; replace hot-path randomness with `SeededRng` when determinism is required and avoid runtime `clone()`/`new` in fallback paths.
+  - Shader complexity (e.g., `PlanetRings`, shield hex shader) may be heavy on fragment pipelines; consider baking or LODing expensive math where feasible.
+  - Ensure debug toggles (e.g., `starDiskDebug`) cannot be accidentally enabled in production builds or CI runs.
+
+## Recommendations (prioritized)
+
+1. High impact / Low effort
+   - Replace `Math.random()` in `ParticleTrails` hot path with a project `SeededRng` instance for deterministic profiling and reproducibility. (Files: `ParticleTrails.tsx`) — Effort: Low, Impact: High
+   - Add small telemetry counters for explosion pool evictions (`game/explosions.ts`) to detect underprovisioning in scenarios. — Effort: Low, Impact: High
+   - Debounce `PerfMonitorOverlay` position writes to the UI store during drag operations to reduce store churn. — Effort: Low, Impact: Medium
+
+2. High impact / Medium effort
+   - Prototype instanced projectile rendering to replace per-entity `ProjectileObject` meshes when projectile counts exceed a threshold (e.g., 200+). (Files: `Projectile.tsx`, `materialRegistry.tsx`) — Effort: Medium, Impact: High
+   - Move heavy ring/fragment math in `PlanetRings` to a sampled texture or lower frequency variant for distant LODs. — Effort: Medium, Impact: High
+
+3. Medium impact / Low-to-Medium effort
+   - Share fallback geometry/material instances for `Ship` fallback meshes and for `Ship` glow anchors to reduce per-ship compile and memory costs. — Effort: Low, Impact: Medium
+   - Replace RAF polling in `PerfMonitorOverlay` binding with a `MutationObserver`. — Effort: Low, Impact: Low
+
+4. Long-term / Research
+   - Add a benchmark harness for large-battle scenarios using the `aiScenarioHarness` with high entity counts to profile CPU and GPU bottlenecks and validate impact of instancing changes. — Effort: High, Impact: High
+
+## Validation Checklist (pre-merge)
+
+- [ ] Every TypeScript module under `src/` appears once in the ratings table. (Cross-check: run `Get-ChildItem -Recurse -Include *.ts,*.tsx` and verify table entries.)
+- [ ] Run `npx tsc --noEmit` (typecheck) and fix any diagnostics introduced by follow-up changes.
+- [ ] Run `npm test` (Vitest) to verify unit suites. All new tests must be deterministic using seeded RNG where randomness is required. (Target: tests pass.)
+- [ ] Update `memory/tasks/TASK149-performance-audit-report.md` with final status, summary of changes, and follow-up task list. (This file has been updated with per-batch logs.)
+- [ ] Confirm markdown front matter and content pass repository's markdown validation rules (YAML front matter present, `post_title`, `post_date`, `author1`, etc.).
+- [ ] Document any follow-up technical debt items in `memory/tasks/` and create actionable issues for high-impact items (instancing prototype, particle determinism).
+
+
+---
+
+(End of Report)
+
+
