@@ -14,7 +14,7 @@ import type {
 import { createDefaultMotionStats } from './ships.js';
 import { SeededRng } from '../utils/rng.js';
 import { AI_CONFIG, clampToWorld } from './config.js';
-import { runDecisionTick, __aiTestHooks } from './systems.js';
+import { runDecisionTick, __aiTestHooks, fireProjectile } from './systems.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
@@ -142,15 +142,62 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     } as HarnessQueries,
     world: {
       entities: ships,
-      createEntity: () => ({}) as ShipEntity,
+      createEntity: (entity: unknown) => {
+        // Add projectile to queries for metrics tracking
+        (state.queries.projectiles.entities as unknown[]).push(entity);
+        return entity as ShipEntity;
+      },
+      // Newer API alias used by miniplex v2
+      add: (entity: unknown) => {
+        // Add projectile to queries for metrics tracking
+        (state.queries.projectiles.entities as unknown[]).push(entity);
+        return entity as ShipEntity;
+      },
       destroyEntity: () => undefined,
+      // Newer API alias used by miniplex v2
+      remove: () => undefined,
     } as unknown as GameState['world'],
-    physicsWorld: {} as never,
+    physicsWorld: {
+      createRigidBody: (desc: { translation: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number; w: number } }) => ({
+        translation: () => ({ ...desc.translation }),
+        rotation: () => ({ ...desc.rotation }),
+        setNextKinematicTranslation: () => undefined,
+        setNextKinematicRotation: () => undefined,
+      }),
+      createCollider: (desc: { radius?: number }, body: unknown) => ({
+        handle: Math.random(), // Simple handle for testing
+        radius: desc.radius ?? 0,
+        body,
+      }),
+    } as never,
     eventQueue: {} as never,
     colliderLookup: new Map(),
     rapier: {
-      RigidBodyDesc: { kinematicPositionBased: () => ({}) },
-      ColliderDesc: { ball: () => ({}) },
+      RigidBodyDesc: {
+        kinematicPositionBased: () => ({
+          translation: { x: 0, y: 0, z: 0 },
+          rotation: { x: 0, y: 0, z: 0, w: 1 },
+          setTranslation(x: number, y: number, z: number) {
+            this.translation = { x, y, z };
+            return this;
+          },
+          setRotation(rotation: { x: number; y: number; z: number; w: number }) {
+            this.rotation = { ...rotation };
+            return this;
+          },
+        }),
+      },
+      ColliderDesc: {
+        ball: (radius: number) => ({
+          radius,
+          setActiveEvents() {
+            return this;
+          },
+          setActiveCollisionTypes() {
+            return this;
+          },
+        }),
+      },
       ActiveEvents: { COLLISION_EVENTS: 0 },
       ActiveCollisionTypes: { ALL: 0 },
     } as never,
@@ -482,6 +529,8 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
   for (const ship of ships) {
     const ai = ship.ai;
     if (!ai) continue;
+    
+    // Handle movement
     const heading = HARNESS_TEMP.copy(ai.command.heading);
     if (heading.lengthSq() < 1e-5) {
       heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
@@ -495,6 +544,24 @@ function applyHarnessIntegration(state: GameState, delta: number): void {
       ship.transform.position.addScaledVector(ship.__harnessVelocity, delta);
     }
     clampToWorld(ship.transform.position);
+
+    // Handle shooting
+    if (ai.command.firePrimary && ship.ship.cooldown <= 0) {
+      // Debug output when firing happens
+      if (state.ai.tickIndex < 60) { // Only log early ticks to avoid spam
+        console.log(`Tick ${state.ai.tickIndex}: Ship ${ship.id} firing! Cooldown: ${ship.ship.cooldown}`);
+      }
+      
+      // Fire projectile in the command heading direction
+      const fireDirection = heading.clone().normalize();
+      fireProjectile(state, ship, fireDirection);
+      ship.ship.cooldown = ship.ship.fireRate;
+    }
+
+    // Update cooldowns
+    if (ship.ship.cooldown > 0) {
+      ship.ship.cooldown -= delta;
+    }
   }
 }
 
