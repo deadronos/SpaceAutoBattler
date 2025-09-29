@@ -1402,6 +1402,14 @@ export function updateGame(state: GameState, delta: number): void {
 
   state.physicsWorld.step(state.eventQueue);
 
+  // Execute pending reset after physics step completes to avoid Rapier errors
+  if (sim.pendingReset) {
+    const resetFn = sim.pendingReset;
+    sim.pendingReset = null; // Clear first to avoid re-entry
+    resetFn();
+    return; // Skip remaining systems after reset to avoid stale entity references
+  }
+
   syncTransforms(state);
   resolveProjectiles(state, delta);
   updateExplosions(state, delta);

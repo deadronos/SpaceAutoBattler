@@ -18,7 +18,7 @@ import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
 export async function createGameState(): Promise<GameState> {
   await Rapier.init();
   const physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
-  const eventQueue = new Rapier.EventQueue(true);
+  const eventQueue = new Rapier.EventQueue({ auto: true });
   const world = new ECSWorld<GameEntity>();
 
   // Backwards-compatibility shims for older code and test mocks.
@@ -70,6 +70,7 @@ export async function createGameState(): Promise<GameState> {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      pendingReset: null,
     },
     ai: {
       enabled: AI_CONFIG.v2Enabled,
@@ -324,6 +325,19 @@ export function resetGame(state: GameState): void {
   state.blackboard.teamPosture.red = 'hold';
   state.blackboard.allyCentroid.blue.set(0, 0, 0);
   state.blackboard.allyCentroid.red.set(0, 0, 0);
+  
+  // Clear pending reset flag to avoid repeated execution
+  if (state.simulation.pendingReset) {
+    state.simulation.pendingReset = null;
+  }
+}
+
+/**
+ * Schedule a reset to be executed after the current physics step completes.
+ * This avoids Rapier console errors that occur when resetting during active physics stepping.
+ */
+export function requestReset(state: GameState): void {
+  state.simulation.pendingReset = () => resetGame(state);
 }
 
 

@@ -647,6 +647,8 @@ export interface SimulationClock {
   lastTickStart: number;
   /** Duration in seconds of the latest completed tick. */
   lastTickDuration: number;
+  /** Optional pending reset closure to be executed after the current physics step completes. */
+  pendingReset?: (() => void) | null;
 }
 
 export interface ShipBlueprint {
