@@ -54,6 +54,23 @@ const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const SCORE_EPSILON = 1e-6;
 const INTERRUPT_KEY_SEPARATOR = ':';
 
+type KinematicBody = { setNextKinematicTranslation: (t: { x: number; y: number; z: number }) => void };
+
+function safeSetNextKinematicTranslation(
+  rb: KinematicBody | null | undefined,
+  x: number,
+  y: number,
+  z: number,
+): void {
+  if (!rb) return;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
+  try {
+    rb.setNextKinematicTranslation({ x, y, z });
+  } catch {
+    // Ignore invalid operations on disposed bodies; will be corrected on next sync
+  }
+}
+
 function quantizeScore(value: number): number {
   const precision = AI_CONFIG.scorePrecision > 0 ? AI_CONFIG.scorePrecision : 0.1;
   if (!Number.isFinite(value)) return 0;
@@ -1500,13 +1517,10 @@ function executeAICommand(state: GameState, ship: ShipEntity, delta: number): Sh
     const moveDistance = ship.ship.speed * thrust * delta;
     const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(heading, moveDistance);
     clampToWorld(nextPosition);
-    ship.rigidBody.setNextKinematicTranslation({ x: nextPosition.x, y: nextPosition.y, z: nextPosition.z });
+    safeSetNextKinematicTranslation(ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
   } else {
-    ship.rigidBody.setNextKinematicTranslation({
-      x: ship.transform.position.x,
-      y: ship.transform.position.y,
-      z: ship.transform.position.z,
-    });
+    const p = ship.transform.position;
+    safeSetNextKinematicTranslation(ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
   }
 
   let target: ShipEntity | null = null;
