@@ -45,6 +45,7 @@ function makeState(rngValue = 0.42): GameState {
     uiFlags: { hudHealthBars: false },
     explosions: [],
     explosionPool: [],
+    progressionEvents: new Map(),
   } as GameState;
 }
 

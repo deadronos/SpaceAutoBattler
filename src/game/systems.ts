@@ -1864,7 +1864,7 @@ function resolveProjectiles(state: GameState, delta: number): void {
          // Find the attacker ship (this is simplified - in reality we'd track the shooter)
          const attackerShip = ships.find(s => s.ship.team === projectile.projectile.team);
          if (attackerShip) {
-           awardDamageXp(attackerShip.ship, totalDamageDealt);
+           awardDamageXp(attackerShip.ship, totalDamageDealt, state, attackerShip.id);
          }
        }
  
@@ -1891,7 +1891,7 @@ function resolveProjectiles(state: GameState, delta: number): void {
         // Award kill XP to the attacker
         const killerShip = ships.find(s => s.ship.team === projectile.projectile.team);
         if (killerShip) {
-          awardKillXp(killerShip.ship, ship.ship.maxHp);
+          awardKillXp(killerShip.ship, ship.ship.maxHp, state, killerShip.id);
         }
         
          emitShipKillExplosion(state, ship, projectile);
