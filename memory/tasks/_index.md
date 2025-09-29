@@ -68,7 +68,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Pending
 
-- _None tracked._
+- [TASK154](TASK154-rapier-reset-stability.md) — Address Rapier reset console errors by deferring world teardown and modernizing the event queue options.
 
 ## Abandoned
 
