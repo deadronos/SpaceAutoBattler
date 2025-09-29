@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, ShipEntity, ProgressionEvent } from '../../src/types/index.js';
+import type { ProgressionEvent } from '../../src/types/index.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
 
 // Test the core data transformation logic separately from React rendering
 describe('Progression Panel Data Transformation', () => {
   it('transforms GameState ships to progression panel format', () => {
     // Create mock ship data
-    const mockShips: ShipEntity[] = [
+    const mockShips = [
       {
         id: 1,
         ship: {
@@ -37,7 +37,7 @@ describe('Progression Panel Data Transformation', () => {
           scale: 1,
         },
       },
-    ];
+    ] as any;
 
     const progressionEvents = new Map<number, ProgressionEvent[]>();
     progressionEvents.set(1, [
