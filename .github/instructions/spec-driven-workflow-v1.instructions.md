@@ -61,12 +61,12 @@ End.
   - **Interfaces:** API contracts, schemas, public-facing function signatures.
   - **Data Models:** Data structures and database schemas.
 
-> Note: This repository uses a centralized Memory Bank for project context and task tracking. Store design and related artifacts under the `/memory` folder so they are discoverable by agents and maintainers (for example: `memory/design.md`, `memory/requirements.md`).
+> Note: This repository uses a centralized Memory Bank for project context and task tracking. Store design and related artifacts under the `/memory` folder so they are discoverable by agents and maintainers (for example: `memory/designs/design.md`, `memory/requirements.md`).
 
 **Recommended memory placement:**
 
 - Requirements: `memory/requirements.md` (EARS-style requirements)
-- Design: `memory/design.md` (architecture, interfaces, diagrams)
+- Design: `memory/designs/design.md` (architecture, interfaces, diagrams)
 - Tasks & plan: `memory/tasks/_index.md` and `memory/tasks/TASKID-*.md`
 - Active context & progress: `memory/activeContext.md`, `memory/progress.md`
 
