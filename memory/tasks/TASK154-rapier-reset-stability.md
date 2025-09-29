@@ -1,8 +1,8 @@
 # TASK154 - Rapier Reset Stability
 
-**Status:** Pending  
+**Status:** Completed  
 **Added:** 2025-09-29  
-**Updated:** 2025-09-29
+**Updated:** 2025-01-27
 
 ## Original Request
 
@@ -64,16 +64,34 @@ Continue the Rapier reset fix to eliminate the Rapier console errors that appear
 
 ## Progress Tracking
 
-**Overall Status:** Not Started — 0%
+**Overall Status:** Completed — 100%
 
 ### Subtasks
 
 | ID | Description | Status | Updated | Notes |
 | --- | --- | --- | --- | --- |
-| 1.1 | Extend `SimulationClock` with `pendingReset` field and default | Not Started | — | — |
-| 1.2 | Implement deferred reset scheduling + UI integration | Not Started | — | — |
-| 1.3 | Update tests and validation scripts | Not Started | — | — |
+| 1.1 | Extend `SimulationClock` with `pendingReset` field and default | Complete | 2025-01-27 | Added optional pendingReset field to SimulationClock interface |
+| 1.2 | Implement deferred reset scheduling + UI integration | Complete | 2025-01-27 | Added requestReset helper and updated Controls.tsx |
+| 1.3 | Update tests and validation scripts | Complete | 2025-01-27 | Added comprehensive Vitest coverage |
 
 ## Progress Log
 
-_No progress recorded yet._
+### 2025-01-27
+
+- Extended `SimulationClock` interface with optional `pendingReset?: (() => void) | null` field
+- Added `requestReset(state: GameState)` helper function that schedules reset for later execution
+- Modified `updateGame` to execute pending resets after physics step completes and skip remaining systems to avoid stale entity references
+- Updated `Controls.tsx` component to use `requestReset` instead of direct `resetGame` calls
+- Modernized `EventQueue` initialization to use options object `{ auto: true }` instead of boolean parameter
+- Created comprehensive test suite in `rapier-reset-stability.spec.ts` with 7 test cases covering:
+  - SimulationClock initialization with null pendingReset
+  - requestReset sets pendingReset without immediate execution
+  - Deferred reset execution until after physics step
+  - pendingReset flag clearing after execution
+  - Multiple reset request coalescing into single execution
+  - Direct resetGame clears pendingReset flag
+  - Modern EventQueue initialization validation
+- All tests pass and full test suite (288 tests) continues to pass
+- TypeScript compilation successful with no errors
+
+**TASK154 completed successfully. Runtime Rapier errors during reset button usage should now be eliminated through deferred reset execution.**

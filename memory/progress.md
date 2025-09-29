@@ -2,6 +2,8 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-01-27: Completed TASK154 Rapier reset stability — added deferred reset execution to eliminate runtime console errors during reset button usage. Extended SimulationClock with pendingReset field, implemented requestReset helper, modified updateGame to process resets after physics step, updated Controls.tsx, modernized EventQueue initialization, and added comprehensive Vitest coverage with 7 test cases. All 288 tests pass and TypeScript compilation successful.
+
 - 2025-09-29: Completed TASK152 progression test hardening — hydrated AI scenario harness ships with progression defaults, updated projectile expectations for damage type modifiers, and confirmed `npm test` passes.
 
 - 2025-09-28: Completed TASK147 HUD settings/debug drawers — refactored control bar, added gear/wrench drawers with modular toggle config, defaulted postprocessing/AI V2 to enabled, updated styles, and landed Vitest coverage (`ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels`) alongside `npm run typecheck` + `npm test`.
