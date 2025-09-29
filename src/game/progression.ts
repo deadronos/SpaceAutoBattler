@@ -1,18 +1,16 @@
-import type { 
-  ShipComponent, 
-  ShipEntity, 
-  Captain, 
+import type {
+  ShipComponent,
+  Captain,
   MoraleAbility,
   MoraleEffectType,
   Subsystem,
   SubsystemType,
   DamageType,
-  GameState
+  ShipLevelBonuses
 } from '../types/index.js';
 import { SeededRng } from '../utils/rng.js';
 import {
   XP_CONFIG,
-  LEVEL_BONUSES,
   CAPTAIN_CONFIG,
   MORALE_ABILITIES,
   SUBSYSTEM_CONFIG,
@@ -23,6 +21,39 @@ import {
   calculateLevelBonus,
   getDamageEffectiveness
 } from '../config/progression.js';
+
+export function createLevelBonusState(): ShipLevelBonuses {
+  return {
+    hull: 0,
+    shield: 0,
+    damage: 0,
+    shieldRegen: 0,
+    repairRate: 0,
+    fireRate: 0,
+  };
+}
+
+function ensureLevelBonuses(ship: ShipComponent): ShipLevelBonuses {
+  if (!ship.levelBonuses) {
+    ship.levelBonuses = createLevelBonusState();
+  }
+  return ship.levelBonuses;
+}
+
+function normaliseBonus(value: number): number {
+  return Math.max(0, value);
+}
+
+function recoverBaseStat(current: number, previousBonus: number): number {
+  if (!Number.isFinite(current) || current === 0) {
+    return 0;
+  }
+  const divisor = 1 + Math.max(previousBonus, 0);
+  if (divisor <= 0) {
+    return 0;
+  }
+  return current / divisor;
+}
 
 /**
  * Award XP to a ship for dealing damage
@@ -64,34 +95,51 @@ export function checkLevelUp(ship: ShipComponent): boolean {
  * Apply stat bonuses when a ship levels up
  */
 function applyLevelUpBonuses(ship: ShipComponent): void {
-  const hullBonus = calculateLevelBonus('hull', ship.level);
-  const shieldBonus = calculateLevelBonus('shield', ship.level);
-  const damageBonus = calculateLevelBonus('damage', ship.level);
-  const shieldRegenBonus = calculateLevelBonus('shieldRegen', ship.level);
-  const repairBonus = calculateLevelBonus('repairRate', ship.level);
-  const fireRateBonus = calculateLevelBonus('fireRate', ship.level);
+  const levelBonuses = ensureLevelBonuses(ship);
 
-  // Apply percentage bonuses to base stats
-  // Note: These bonuses are cumulative, so we calculate from base values
-  // This would require storing base values, but for simplicity we'll apply incremental bonuses
-  const hullIncrease = ship.maxHp * LEVEL_BONUSES.hull.bonus;
-  const shieldIncrease = ship.maxShield * LEVEL_BONUSES.shield.bonus;
-  const damageIncrease = ship.damage * LEVEL_BONUSES.damage.bonus;
-  const shieldRegenIncrease = (ship.shieldRegen ?? 0) * LEVEL_BONUSES.shieldRegen.bonus;
-  const fireRateIncrease = ship.fireRate * LEVEL_BONUSES.fireRate.bonus;
-  
-  ship.maxHp += hullIncrease;
-  ship.hp += hullIncrease; // Also heal the ship
-  ship.maxShield += shieldIncrease;
-  ship.damage += damageIncrease;
-  ship.shieldRegen = (ship.shieldRegen ?? 0) + shieldRegenIncrease;
-  ship.fireRate += fireRateIncrease;
-  
-  // Apply repair rate bonus to all subsystems
-  const repairIncrease = LEVEL_BONUSES.repairRate.bonus;
+  const hullBonus = normaliseBonus(calculateLevelBonus('hull', ship.level));
+  const shieldBonus = normaliseBonus(calculateLevelBonus('shield', ship.level));
+  const damageBonus = normaliseBonus(calculateLevelBonus('damage', ship.level));
+  const shieldRegenBonus = normaliseBonus(calculateLevelBonus('shieldRegen', ship.level));
+  const repairBonus = normaliseBonus(calculateLevelBonus('repairRate', ship.level));
+  const fireRateBonus = normaliseBonus(calculateLevelBonus('fireRate', ship.level));
+
+  const previousHullBonus = normaliseBonus(levelBonuses.hull);
+  const previousMaxHp = ship.maxHp;
+  const baseMaxHp = recoverBaseStat(previousMaxHp, previousHullBonus);
+  const newMaxHp = baseMaxHp * (1 + hullBonus);
+  ship.maxHp = newMaxHp;
+  ship.hp = Math.min(newMaxHp, ship.hp + (newMaxHp - previousMaxHp));
+  levelBonuses.hull = hullBonus;
+
+  const previousShieldBonus = normaliseBonus(levelBonuses.shield);
+  const baseMaxShield = recoverBaseStat(ship.maxShield, previousShieldBonus);
+  ship.maxShield = baseMaxShield * (1 + shieldBonus);
+  levelBonuses.shield = shieldBonus;
+
+  const previousDamageBonus = normaliseBonus(levelBonuses.damage);
+  const baseDamage = recoverBaseStat(ship.damage, previousDamageBonus);
+  ship.damage = baseDamage * (1 + damageBonus);
+  levelBonuses.damage = damageBonus;
+
+  const previousShieldRegenBonus = normaliseBonus(levelBonuses.shieldRegen);
+  const baseShieldRegen = recoverBaseStat(ship.shieldRegen ?? 0, previousShieldRegenBonus);
+  const updatedShieldRegen = baseShieldRegen * (1 + shieldRegenBonus);
+  ship.shieldRegen = updatedShieldRegen;
+  levelBonuses.shieldRegen = shieldRegenBonus;
+
+  const previousFireRateBonus = normaliseBonus(levelBonuses.fireRate);
+  const baseFireRate = recoverBaseStat(ship.fireRate, previousFireRateBonus);
+  ship.fireRate = baseFireRate * (1 + fireRateBonus);
+  levelBonuses.fireRate = fireRateBonus;
+
+  const previousRepairBonus = normaliseBonus(levelBonuses.repairRate);
   for (const subsystem of Object.values(ship.subsystems)) {
-    subsystem.repairRate += subsystem.repairRate * repairIncrease;
+    if (!subsystem) continue;
+    const baseRepairRate = recoverBaseStat(subsystem.repairRate, previousRepairBonus);
+    subsystem.repairRate = baseRepairRate * (1 + repairBonus);
   }
+  levelBonuses.repairRate = repairBonus;
 }
 
 /**
@@ -362,6 +410,7 @@ export function createProgressionDefaults(hull: string): {
   level: number;
   xpToNext: number;
   damageType: DamageType;
+  levelBonuses: ShipLevelBonuses;
   captain?: Captain;
   subsystems: Record<SubsystemType, Subsystem>;
   armor: number;
@@ -371,6 +420,7 @@ export function createProgressionDefaults(hull: string): {
     level: 1,
     xpToNext: calculateXpForLevel(2),
     damageType: HULL_DAMAGE_TYPES[hull] || 'kinetic',
+    levelBonuses: createLevelBonusState(),
     captain: undefined,
     subsystems: createSubsystems(100), // Default HP for tests
     armor: HULL_ARMOR_VALUES[hull] || 10,

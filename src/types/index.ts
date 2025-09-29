@@ -30,6 +30,15 @@ export interface Subsystem {
   repairRate: number;
 }
 
+export interface ShipLevelBonuses {
+  hull: number;
+  shield: number;
+  damage: number;
+  shieldRegen: number;
+  repairRate: number;
+  fireRate: number;
+}
+
 export interface MoraleAbility {
   cooldownRemaining: number;
   maxCooldown: number;
@@ -48,7 +57,7 @@ export interface Captain {
 export interface DamageEffectiveness {
   [damageType: string]: {
     hull: number;         // Effectiveness vs hull HP
-    shield: number;       // Effectiveness vs shield HP  
+    shield: number;       // Effectiveness vs shield HP
     armor: number;        // Effectiveness vs armor defense
   };
 }
@@ -125,7 +134,7 @@ export interface ShipComponent {
   motion: MotionStats;
   /** Optional status effects applied to this ship for HUD overlays. */
   effects?: StatusEffectTag[];
-  
+
   // Ship Progression System
   /** Experience points accumulated by this ship */
   xp: number;
@@ -135,15 +144,17 @@ export interface ShipComponent {
   xpToNext: number;
   /** Damage type this ship deals (overrides bulletType for effectiveness calculations) */
   damageType: DamageType;
-  
+  /** Cumulative level bonus multipliers applied to capped stats */
+  levelBonuses: ShipLevelBonuses;
+
   // Captain System (for large ships)
   /** Captain assigned to this ship (destroyers and carriers only) */
   captain?: Captain;
-  
+
   // Subsystem Health
   /** Health and status of ship subsystems */
   subsystems: Record<SubsystemType, Subsystem>;
-  
+
   // Defense Categories (for damage type effectiveness)
   /** Armor value for damage type calculations */
   armor: number;
@@ -724,5 +735,3 @@ export interface ShieldRipple {
   /** Visual strength (0..1). */
   amp: number;
 }
-
-

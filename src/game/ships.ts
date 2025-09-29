@@ -18,7 +18,7 @@ import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
 import { AI_CONFIG } from './config.js';
 import { SeededRng } from '../utils/rng.js';
 import { HULL_DAMAGE_TYPES, HULL_ARMOR_VALUES, calculateXpForLevel } from '../config/progression.js';
-import { generateCaptain, createSubsystems } from './progression.js';
+import { generateCaptain, createSubsystems, createLevelBonusState } from './progression.js';
 
 /**
  * Apply range variance based on range policy and ship's trait seed.
@@ -476,6 +476,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       level: 1,
       xpToNext: calculateXpForLevel(2),
       damageType: stats.damageType,
+      levelBonuses: createLevelBonusState(),
       captain: generateCaptain(blueprint.hull, aiState.traitSeed + 1000), // Offset seed for captain
       subsystems: createSubsystems(stats.maxHp),
       armor: stats.armor,

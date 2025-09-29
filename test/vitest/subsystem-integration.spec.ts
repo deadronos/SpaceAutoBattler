@@ -1,20 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Vector3, Quaternion } from 'three';
-import type { ShipComponent, GameState, ShipEntity } from '../../src/types/index.js';
-import { createGameState } from '../../src/game/state.js';
-import { updateGame } from '../../src/game/systems.js';
-import { spawnShip } from '../../src/game/ships.js';
-import { getEffectiveStats, applySubsystemDamage } from '../../src/game/progression.js';
+import { describe, it, expect } from 'vitest';
+import { Vector3 } from 'three';
+import type { ShipComponent } from '../../src/types/index.js';
+import { getEffectiveStats, applySubsystemDamage, createLevelBonusState } from '../../src/game/progression.js';
 import { SeededRng } from '../../src/utils/rng.js';
 
 describe('Subsystem Integration Tests', () => {
-  let state: GameState;
-
-  beforeEach(async () => {
-    // This would normally initialize Rapier, but for testing we'll mock it
-    // These tests focus on the subsystem effect integration
-  });
-
   it('should apply subsystem damage effects to ship stats', () => {
     // Create a test ship with subsystem damage
     const testShip: ShipComponent = {
@@ -60,6 +50,7 @@ describe('Subsystem Integration Tests', () => {
       level: 1,
       xpToNext: 100,
       damageType: 'kinetic',
+      levelBonuses: createLevelBonusState(),
       captain: undefined,
       subsystems: {
         engine: { hp: 12, maxHp: 12, status: 'online', repairRate: 1.2 },
@@ -141,6 +132,7 @@ describe('Subsystem Integration Tests', () => {
       level: 1,
       xpToNext: 100,
       damageType: 'kinetic',
+      levelBonuses: createLevelBonusState(),
       captain: undefined,
       subsystems: {
         engine: { hp: 12, maxHp: 12, status: 'online', repairRate: 1.2 },
@@ -224,6 +216,7 @@ describe('Subsystem Integration Tests', () => {
       level: 1,
       xpToNext: 100,
       damageType: 'kinetic',
+      levelBonuses: createLevelBonusState(),
       captain: undefined,
       subsystems: {
         engine: { hp: 12, maxHp: 12, status: 'online', repairRate: 1.2 },

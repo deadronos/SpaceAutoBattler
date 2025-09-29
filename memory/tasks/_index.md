@@ -10,6 +10,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
 - [TASK152](TASK152-fix-progression-tests.md) — Hardened Vitest ship stubs with progression defaults; full suite passes (2025-09-29).
 - [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
 

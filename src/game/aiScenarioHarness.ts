@@ -525,6 +525,7 @@ function createHarnessShip(
       level: progression.level,
       xpToNext: progression.xpToNext,
       damageType: progression.damageType,
+    levelBonuses: progression.levelBonuses,
       captain: progression.captain,
       subsystems,
       armor: progression.armor,

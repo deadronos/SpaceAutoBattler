@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Vector3, Quaternion } from 'three';
-import type { ShipComponent, DamageType, SubsystemType } from '../../src/types/index.js';
+import { Vector3 } from 'three';
+import type { ShipComponent } from '../../src/types/index.js';
 import {
   awardDamageXp,
   awardKillXp,
@@ -17,7 +17,7 @@ import {
   updateSubsystemStatus
 } from '../../src/game/progression.js';
 import { SeededRng } from '../../src/utils/rng.js';
-import { calculateXpForLevel } from '../../src/config/progression.js';
+import { calculateXpForLevel, LEVEL_BONUSES } from '../../src/config/progression.js';
 
 describe('Ship Progression System', () => {
   let testShip: ShipComponent;
@@ -194,8 +194,7 @@ describe('Ship Progression System', () => {
     });
 
     it('should apply subsystem damage on critical hits', () => {
-      const rng = new SeededRng(12345);
-      const initialHp = testShip.subsystems.weapons.hp;
+  const rng = new SeededRng(12345);
       
       // Apply damage multiple times to try to trigger critical hit
       for (let i = 0; i < 20; i++) {
@@ -274,6 +273,49 @@ describe('Ship Progression System', () => {
       subsystem.hp = subsystem.maxHp * 0.1; // Below 25% = offline
       updateSubsystemStatus(subsystem);
       expect(subsystem.status).toBe('offline');
+    });
+  });
+
+  describe('Level bonus caps', () => {
+    const levelAfterCap = 11;
+
+    const levelShipTo = (ship: ShipComponent, targetLevel: number): void => {
+      while (ship.level < targetLevel) {
+        ship.xp = ship.xpToNext;
+        checkLevelUp(ship);
+      }
+    };
+
+    it('caps stat multipliers at configured limits', () => {
+      const baseMaxHp = testShip.maxHp;
+      const baseMaxShield = testShip.maxShield;
+      const baseDamage = testShip.damage;
+      const baseShieldRegen = testShip.shieldRegen ?? 0;
+      const baseRepairRate = testShip.subsystems.engine.repairRate;
+
+      levelShipTo(testShip, levelAfterCap);
+
+      expect(testShip.maxHp).toBeCloseTo(baseMaxHp * (1 + LEVEL_BONUSES.hull.cap));
+      expect(testShip.hp).toBeCloseTo(testShip.maxHp);
+      expect(testShip.maxShield).toBeCloseTo(baseMaxShield * (1 + LEVEL_BONUSES.shield.cap));
+      expect(testShip.damage).toBeCloseTo(baseDamage * (1 + LEVEL_BONUSES.damage.cap));
+      expect(testShip.shieldRegen ?? 0).toBeCloseTo(baseShieldRegen * (1 + LEVEL_BONUSES.shieldRegen.cap));
+      expect(testShip.subsystems.engine.repairRate).toBeCloseTo(baseRepairRate * (1 + LEVEL_BONUSES.repairRate.cap));
+      expect(testShip.levelBonuses.hull).toBeCloseTo(LEVEL_BONUSES.hull.cap);
+      expect(testShip.levelBonuses.fireRate).toBeCloseTo(LEVEL_BONUSES.fireRate.cap);
+    });
+
+    it('stops increasing fire rate beyond its cap', () => {
+      const baseFireRate = testShip.fireRate;
+
+      levelShipTo(testShip, LEVEL_BONUSES.fireRate.maxLevel + 1);
+      const cappedFireRate = testShip.fireRate;
+
+      expect(cappedFireRate).toBeCloseTo(baseFireRate * (1 + LEVEL_BONUSES.fireRate.cap));
+
+      levelShipTo(testShip, LEVEL_BONUSES.fireRate.maxLevel + 5);
+      expect(testShip.fireRate).toBeCloseTo(cappedFireRate);
+      expect(testShip.levelBonuses.fireRate).toBeCloseTo(LEVEL_BONUSES.fireRate.cap);
     });
   });
 
