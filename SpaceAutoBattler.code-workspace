@@ -4,9 +4,4 @@
 			"path": "."
 		}
 	],
-	"settings": {
-		"git.ignoreLimitWarning": true,
-		"powershell.enableProfileLoading": true,
-		"powershell.scriptAnalysis.enable": true
-	}
 }

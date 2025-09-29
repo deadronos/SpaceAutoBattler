@@ -6,7 +6,7 @@
 
 ## Original Request
 
-Implement the guidance outlined in `memory/design-explosionfx.md`, adding deterministic multi-stage ship kill explosion effects and integrating them across simulation and renderer layers.
+Implement the guidance outlined in `memory/designs_completed/design-explosionfx.md`, adding deterministic multi-stage ship kill explosion effects and integrating them across simulation and renderer layers.
 
 ## Thought Process
 

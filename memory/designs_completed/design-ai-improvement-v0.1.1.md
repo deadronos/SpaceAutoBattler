@@ -44,7 +44,7 @@ flowchart TD
 1. At simulation start, `initializeFleets` applies increased vertical spread (`WORLD_HALF * verticalSpreadFactor`), randomizes team anchor Y, and sets initial separation to ~1.5× max range using configurable factors, ensuring deterministic placement via seed.
 2. During each AI tick (elevated to 15 Hz via `AI_CONFIG.tickRateHz`), the system evaluates intents for each ship, applying engagement boost scoring (prefer Attack/Intercept in opening window unless outnumbered) and band stickiness inertia.
 3. Post-intent selection, `computeExecutionHeading` injects role-based vertical perturbation (clamped y-component) using seeded RNG, respecting `verticalEnabled` toggle and behavior profile preferences (e.g., artillery elevation bias).
-4. For escorts, `assignEscortTargets` distributes positions on a spherical shell around VIPs and biases intercepts toward nearest threats.
+4. For escorts, `assignEscortTargets` distributes positions on a spherical shell around VIPs and biases intercepts toward nearest threats via distance metric.
 5. Motion system (`updateKinematics`) executes the 3D heading, incorporating range policy nudges (v0.1.1-exp) for band adherence during Reposition/Attack.
 6. Firing and projectile resolution proceed as before, with metrics logged for vertical dispersion, in-band time, and engagement frequency.
 7. Expired or retreating ships regroup toward team spawn centroid with 3D vectors, applying hysteresis to prevent oscillation.
@@ -174,4 +174,3 @@ export const SPAWN_CONFIG = {
 - Debug HUD for metrics.
 - Ship stats alignment with ranges.
 - Optional: High ground/flanking mechanics.
-

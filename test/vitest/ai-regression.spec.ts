@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
@@ -72,7 +73,7 @@ function createState(): GameState {
 
 function createShip(id: number, team: 'blue' | 'red', position: Vector3) {
   const recorder = createRigidBodyRecorder();
-  const ship: ShipEntity = {
+  const ship = {
     id,
     rigidBody: recorder.body as never,
     collider: {} as never,
@@ -119,7 +120,9 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3) {
         ttl: 0.1,
       },
     },
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
   return { ship, recorder };
 }
 

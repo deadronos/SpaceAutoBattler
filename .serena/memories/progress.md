@@ -2,6 +2,13 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-09-29: Completed TASK152 progression test hardening — hydrated AI scenario harness ships with progression defaults, updated projectile expectations for damage type modifiers, and confirmed `npm test` passes.
+
+- 2025-09-28: Completed TASK147 HUD settings/debug drawers — refactored control bar, added gear/wrench drawers with modular toggle config, defaulted postprocessing/AI V2 to enabled, updated styles, and landed Vitest coverage (`ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels`) alongside `npm run typecheck` + `npm test`.
+
+- 2025-09-28: Completed TASK139 haze taper implementation — added config knobs, material clamps, shader attenuation, new Vitest coverage, and validated via `npm run typecheck` + `npm test`. Visual capture remains as a follow-up once art direction finalises reference frames.
+- 2025-09-27: Completed TASK140 boundary feather implementation — extended CelestialEnvironment boundary config, added `deriveBoundaryUniform` + GLSL attenuation, refreshed StarDisk component wiring, authored new Vitest/component specs, and re-ran `npm run typecheck` plus `npm test`.
+
 - 2025-09-26: Memory bank audit — corrected future-dated entries, normalised timestamps, and noted duplicate task IDs (TASK102, TASK110). Created follow-up task TASK135 to reconcile task ID collisions and updated `memory/tasks/_index.md`.
 
 - 2025-09-26: Declared GLSL precision and uniform bindings for the main sequence star shader to resolve runtime compilation errors; re-ran `npm run typecheck` and `npm test` to confirm stability.
@@ -16,7 +23,6 @@ Recent updates (automated agent)
 - 2025-09-26: Implemented TASK131 Playwright capture workflow — added debug override helper, unit coverage, comparison spec, and generated before/after artifacts under `playwright-debug/` (typecheck, unit, and Playwright suites passing).
 - 2025-09-26: Drafted requirements (memory/requirements.md), design (design.md §11), and TASK131 plan for Playwright-driven star disk before/after renders.
 - 2025-09-26: Parameterised StarDisk palette offsets, introduced config schemas, updated material helper clamps, expanded Vitest coverage, and documented the change (TASK129).
-- 2025-09-26: Surfaced additional StarDisk shader controls (strength multipliers, color blend, tiling, scroll speeds), updated GLSL/material wiring, expanded Vitest coverage, and documented defaults (TASK128).
 - 2025-09-25: Implemented TASK130 radial spread tuning — added radial shaping uniforms, updated fragment shader with base fill + swirl, refreshed environment defaults, and validated via `npm run typecheck` and `npm test`.
 - 2025-09-25: Completed TASK127 fiery fidelity pass — warmed palette, increased texture influence, rebalanced shader brightness, updated environment defaults, and revalidated via `npm run typecheck`, `npm test`, and `npm run build`.
 - 2025-09-25: Corrected star disk aspect ratio, boosted corona intensity defaults, updated environment overrides, and expanded Vitest coverage for fiery fallbacks (TASK126).
@@ -40,6 +46,6 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-- Last audited: 2025-09-26
+- Last audited: 2025-09-29
 
-- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.
+- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`.

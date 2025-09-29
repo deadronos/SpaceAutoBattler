@@ -31,6 +31,6 @@ This index lists the short searchable memory summaries generated for the `src/` 
 
 - Keep each memory short (200-800 words) and focused on the file's responsibilities.
 - Link to relevant config files and note key tunables where appropriate.
-- Prefer short examples and references to where the file is used (e.g., `main.ts` or `simWorker.ts`).
+- Prefer short examples and references to where the file is used (e.g., `main.ts` or `systems.ts`).
 
 Generated on 2025-09-21 by Copilot agent.

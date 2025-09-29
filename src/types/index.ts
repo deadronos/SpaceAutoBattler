@@ -14,6 +14,54 @@ export type ShipHull = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carri
 
 export type StatusEffectTag = 'jammed' | 'shield-down' | 'engine-disrupted' | 'hacked';
 
+// Ship Progression System Types
+export type DamageType = 'kinetic' | 'plasma' | 'ion' | 'explosive';
+
+export type SubsystemType = 'engine' | 'weapons' | 'shields';
+
+export type SubsystemStatus = 'online' | 'damaged' | 'offline';
+
+export type MoraleEffectType = 'aggression_boost' | 'repair_boost' | 'accuracy_boost';
+
+export interface Subsystem {
+  hp: number;
+  maxHp: number;
+  status: SubsystemStatus;
+  repairRate: number;
+}
+
+export interface ShipLevelBonuses {
+  hull: number;
+  shield: number;
+  damage: number;
+  shieldRegen: number;
+  repairRate: number;
+  fireRate: number;
+}
+
+export interface MoraleAbility {
+  cooldownRemaining: number;
+  maxCooldown: number;
+  duration: number;
+  effect: MoraleEffectType;
+  isActive: boolean;
+  activeUntil: number; // Game time when effect expires
+}
+
+export interface Captain {
+  accuracy: number;        // Multiplier for hit chance (0.8 - 1.2)
+  repairSpeed: number;     // Multiplier for repair rate (0.8 - 1.2)
+  moraleAbility?: MoraleAbility;
+}
+
+export interface DamageEffectiveness {
+  [damageType: string]: {
+    hull: number;         // Effectiveness vs hull HP
+    shield: number;       // Effectiveness vs shield HP
+    armor: number;        // Effectiveness vs armor defense
+  };
+}
+
 export interface CarrierLaunchSlot {
   /** Forward offset in world units relative to the carrier's origin. */
   forward: number;
@@ -86,6 +134,30 @@ export interface ShipComponent {
   motion: MotionStats;
   /** Optional status effects applied to this ship for HUD overlays. */
   effects?: StatusEffectTag[];
+
+  // Ship Progression System
+  /** Experience points accumulated by this ship */
+  xp: number;
+  /** Current level of this ship */
+  level: number;
+  /** Experience points needed to reach next level */
+  xpToNext: number;
+  /** Damage type this ship deals (overrides bulletType for effectiveness calculations) */
+  damageType: DamageType;
+  /** Cumulative level bonus multipliers applied to capped stats */
+  levelBonuses: ShipLevelBonuses;
+
+  // Captain System (for large ships)
+  /** Captain assigned to this ship (destroyers and carriers only) */
+  captain?: Captain;
+
+  // Subsystem Health
+  /** Health and status of ship subsystems */
+  subsystems: Record<SubsystemType, Subsystem>;
+
+  // Defense Categories (for damage type effectiveness)
+  /** Armor value for damage type calculations */
+  armor: number;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -145,6 +217,8 @@ export interface ProjectileComponent {
   speed: number;
   /** Material key or type identifier for rendering this projectile (optional) */
   bulletType?: string;
+  /** Damage type for effectiveness calculations */
+  damageType: DamageType;
 }
 
 /** Parameters for a short-lived muzzle flash event emitted when a weapon fires. */
@@ -319,6 +393,7 @@ export interface AIBlackboard {
   teamPriority: Record<Team, PrioritisedTarget[]>;
   priorityIndex: Record<Team, Map<EntityId, number>>;
   focusFire: Record<Team, Map<EntityId, number>>;
+  teamCounts?: Record<Team, number>;
   // Vertical dispersion tracking for validation (optional for backward compatibility)
   verticalDispersion?: {
     headingYSamples: number[];
@@ -349,6 +424,22 @@ export interface PrioritisedTarget {
   threat: number;
   distanceSq: number;
   focusLoad: number;
+}
+
+export type AIInterruptReason = 'hp-drop' | 'target-lost' | 'vip-threat' | 'manual';
+
+export interface IntentInterruptEvent {
+  shipId: EntityId;
+  reason: AIInterruptReason;
+  tick: number;
+  sourceId?: EntityId;
+}
+
+export interface AIInterruptState {
+  cooldownTick: Map<string, number>;
+  damageThisTick: Map<EntityId, number>;
+  lastDamageTick: number;
+  vipThreatAssignments: Map<EntityId, EntityId>;
 }
 
 export interface AIShotHistogram {
@@ -392,11 +483,39 @@ export interface AIVerticalSummary {
   ratio: number | null;
 }
 
+export interface AIDecisionLatencySummary {
+  buckets: [number, number, number, number];
+  total: number;
+}
+
+export interface AIFocusFireSummary {
+  samples: number;
+  ratioAvg: number | null;
+  ratioMax: number | null;
+}
+
+export interface AIHeadingAmplitudeSummary {
+  samples: number;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+export interface AITieSummary {
+  decisions: number;
+  fallbacks: number;
+  ratio: number | null;
+}
+
 export interface AIKpiSummary {
   firstShot: AIFirstShotSummary;
   openingAggression: AIOpeningAggressionSummary;
   inBand: AIInBandSummaryByHull;
   vertical: AIVerticalSummary;
+  decisionLatency: AIDecisionLatencySummary;
+  focusFire: AIFocusFireSummary;
+  headingAmplitude: AIHeadingAmplitudeSummary;
+  ties: AITieSummary;
 }
 
 export interface AIManagerState {
@@ -409,6 +528,8 @@ export interface AIManagerState {
   slices: number;
   assignments: AITeamAssignments;
   metrics: AIMetrics;
+  interrupts?: IntentInterruptEvent[];
+  interruptState?: AIInterruptState;
 }
 
 export interface AIMetrics {
@@ -427,6 +548,14 @@ export interface AIMetrics {
   openingTotalIntents: number;
   tieDecisions: number;
   tieFallbacks: number;
+  decisionLatencyBuckets: [number, number, number, number];
+  focusFireSamples: number;
+  focusFireRatioSum: number;
+  focusFireRatioMax: number;
+  headingAmplitudeSamples: number;
+  headingAmplitudeSum: number;
+  headingAmplitudeMin: number;
+  headingAmplitudeMax: number;
   firstShotTimes: number[];
   firstShotByShip: Record<number, number>;
   intentTimeline: AIIntentSnapshot[];
@@ -518,6 +647,8 @@ export interface SimulationClock {
   lastTickStart: number;
   /** Duration in seconds of the latest completed tick. */
   lastTickDuration: number;
+  /** Optional pending reset closure to be executed after the current physics step completes. */
+  pendingReset?: (() => void) | null;
 }
 
 export interface ShipBlueprint {
@@ -543,6 +674,10 @@ export interface ShipStats {
   scale: number;
   /** Preferred bullet/material key for this hull (e.g. 'bullet:laser') */
   bulletType?: string;
+  /** Default damage type for this hull */
+  damageType: DamageType;
+  /** Base armor value for this hull */
+  armor: number;
   /** Optional default turret loadout for this hull. */
   turrets?: TurretSpec[];
   /** Motion characteristics for physics-based movement. */
@@ -602,5 +737,3 @@ export interface ShieldRipple {
   /** Visual strength (0..1). */
   amp: number;
 }
-
-

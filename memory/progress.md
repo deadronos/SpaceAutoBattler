@@ -2,6 +2,10 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-01-27: Completed TASK154 Rapier reset stability — added deferred reset execution to eliminate runtime console errors during reset button usage. Extended SimulationClock with pendingReset field, implemented requestReset helper, modified updateGame to process resets after physics step, updated Controls.tsx, modernized EventQueue initialization, and added comprehensive Vitest coverage with 7 test cases. All 288 tests pass and TypeScript compilation successful.
+
+- 2025-09-29: Completed TASK152 progression test hardening — hydrated AI scenario harness ships with progression defaults, updated projectile expectations for damage type modifiers, and confirmed `npm test` passes.
+
 - 2025-09-28: Completed TASK147 HUD settings/debug drawers — refactored control bar, added gear/wrench drawers with modular toggle config, defaulted postprocessing/AI V2 to enabled, updated styles, and landed Vitest coverage (`ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels`) alongside `npm run typecheck` + `npm test`.
 
 - 2025-09-28: Completed TASK139 haze taper implementation — added config knobs, material clamps, shader attenuation, new Vitest coverage, and validated via `npm run typecheck` + `npm test`. Visual capture remains as a follow-up once art direction finalises reference frames.
@@ -45,6 +49,8 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-- Last audited: 2025-09-27
+- Last audited: 2025-09-29
 
-- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.
+- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`.
+
+- 2025-09-29: Completed TASK135 cross-reference reconciliation and ran markdown/link linting across `memory/` and `memory/tasks/`. Updated `memory/tasks/_index.md` to reflect final mappings and removed superseded references.

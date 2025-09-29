@@ -5,6 +5,7 @@ import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
+import { applyProgressionDefaults } from './helpers/progression.js';
 
 const { selectIntent } = __aiTestHooks;
 
@@ -88,8 +89,8 @@ function createShip(options: ShipOptions): ShipEntity {
   };
 
   const velocity = options.velocity ?? new Vector3();
-
-  return {
+  const baseMaxHp = options.maxHp ?? options.hp ?? 100;
+  const ship = {
     id: options.id,
     rigidBody: {
       setNextKinematicTranslation: () => undefined,
@@ -111,8 +112,8 @@ function createShip(options: ShipOptions): ShipEntity {
     ship: {
       team: options.team,
       hull: options.hull ?? 'fighter',
-      hp: options.hp ?? 100,
-      maxHp: options.maxHp ?? options.hp ?? 100,
+      hp: options.hp ?? baseMaxHp,
+      maxHp: baseMaxHp,
       shield: 0,
       maxShield: 0,
       shieldRegen: 0,
@@ -130,7 +131,10 @@ function createShip(options: ShipOptions): ShipEntity {
     },
     model: options.hull ?? 'fighter',
     ai,
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  return ship;
 }
 
 describe('selectIntent with new intents', () => {

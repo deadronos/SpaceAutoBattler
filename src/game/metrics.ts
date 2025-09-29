@@ -59,8 +59,16 @@ export function createDefaultMetrics(): AIMetrics {
     inBandSatisfied: 0,
     openingAggressiveIntents: 0,
     openingTotalIntents: 0,
-  tieDecisions: 0,
-  tieFallbacks: 0,
+    tieDecisions: 0,
+    tieFallbacks: 0,
+    decisionLatencyBuckets: [0, 0, 0, 0],
+    focusFireSamples: 0,
+    focusFireRatioSum: 0,
+    focusFireRatioMax: 0,
+    headingAmplitudeSamples: 0,
+    headingAmplitudeSum: 0,
+    headingAmplitudeMin: Number.POSITIVE_INFINITY,
+    headingAmplitudeMax: Number.NEGATIVE_INFINITY,
     firstShotTimes: [],
     firstShotByShip: {},
     intentTimeline: [],
@@ -82,6 +90,10 @@ export function createDefaultMetrics(): AIMetrics {
         threshold: DEFAULT_VERTICAL_THRESHOLD,
         ratio: null,
       },
+      decisionLatency: { buckets: [0, 0, 0, 0], total: 0 },
+      focusFire: { samples: 0, ratioAvg: null, ratioMax: null },
+      headingAmplitude: { samples: 0, avg: null, min: null, max: null },
+      ties: { decisions: 0, fallbacks: 0, ratio: null },
     },
   };
 }
@@ -102,6 +114,14 @@ export function resetMetrics(metrics: AIMetrics): void {
   metrics.openingTotalIntents = 0;
   metrics.tieDecisions = 0;
   metrics.tieFallbacks = 0;
+  metrics.decisionLatencyBuckets = [0, 0, 0, 0];
+  metrics.focusFireSamples = 0;
+  metrics.focusFireRatioSum = 0;
+  metrics.focusFireRatioMax = 0;
+  metrics.headingAmplitudeSamples = 0;
+  metrics.headingAmplitudeSum = 0;
+  metrics.headingAmplitudeMin = Number.POSITIVE_INFINITY;
+  metrics.headingAmplitudeMax = Number.NEGATIVE_INFINITY;
   metrics.firstShotTimes.length = 0;
   metrics.firstShotByShip = {};
   metrics.intentTimeline.length = 0;
@@ -138,6 +158,22 @@ export function resetMetrics(metrics: AIMetrics): void {
   metrics.kpis.vertical.aboveThreshold = 0;
   metrics.kpis.vertical.ratio = null;
   metrics.kpis.vertical.threshold = metrics.shotVerticalThreshold;
+  const latencyBuckets = metrics.kpis.decisionLatency.buckets;
+  latencyBuckets[0] = 0;
+  latencyBuckets[1] = 0;
+  latencyBuckets[2] = 0;
+  latencyBuckets[3] = 0;
+  metrics.kpis.decisionLatency.total = 0;
+  metrics.kpis.focusFire.samples = 0;
+  metrics.kpis.focusFire.ratioAvg = null;
+  metrics.kpis.focusFire.ratioMax = null;
+  metrics.kpis.headingAmplitude.samples = 0;
+  metrics.kpis.headingAmplitude.avg = null;
+  metrics.kpis.headingAmplitude.min = null;
+  metrics.kpis.headingAmplitude.max = null;
+  metrics.kpis.ties.decisions = 0;
+  metrics.kpis.ties.fallbacks = 0;
+  metrics.kpis.ties.ratio = null;
   metrics.lastAggregationTick = -1;
 }
 
@@ -241,6 +277,45 @@ export function aggregateKpis(metrics: AIMetrics, tick: number): void {
   metrics.kpis.vertical.threshold = metrics.shotVerticalThreshold;
   metrics.kpis.vertical.ratio =
     metrics.verticalSamples > 0 ? metrics.verticalAboveThreshold / metrics.verticalSamples : null;
+
+  const latencyBuckets = metrics.decisionLatencyBuckets;
+  const latencyTotal = latencyBuckets[0] + latencyBuckets[1] + latencyBuckets[2] + latencyBuckets[3];
+  metrics.kpis.decisionLatency.buckets = [
+    latencyBuckets[0],
+    latencyBuckets[1],
+    latencyBuckets[2],
+    latencyBuckets[3],
+  ];
+  metrics.kpis.decisionLatency.total = latencyTotal;
+
+  metrics.kpis.focusFire.samples = metrics.focusFireSamples;
+  if (metrics.focusFireSamples > 0) {
+    const avg = metrics.focusFireRatioSum / metrics.focusFireSamples;
+    metrics.kpis.focusFire.ratioAvg = Math.min(1, Math.max(0, avg));
+    metrics.kpis.focusFire.ratioMax = Math.min(1, Math.max(0, metrics.focusFireRatioMax));
+  } else {
+    metrics.kpis.focusFire.ratioAvg = null;
+    metrics.kpis.focusFire.ratioMax = null;
+  }
+
+  metrics.kpis.headingAmplitude.samples = metrics.headingAmplitudeSamples;
+  if (metrics.headingAmplitudeSamples > 0) {
+    const avg = metrics.headingAmplitudeSum / metrics.headingAmplitudeSamples;
+    metrics.kpis.headingAmplitude.avg = avg;
+    const min = metrics.headingAmplitudeMin;
+    const max = metrics.headingAmplitudeMax;
+    metrics.kpis.headingAmplitude.min = Number.isFinite(min) ? min : null;
+    metrics.kpis.headingAmplitude.max = Number.isFinite(max) ? max : null;
+  } else {
+    metrics.kpis.headingAmplitude.avg = null;
+    metrics.kpis.headingAmplitude.min = null;
+    metrics.kpis.headingAmplitude.max = null;
+  }
+
+  metrics.kpis.ties.decisions = metrics.tieDecisions;
+  metrics.kpis.ties.fallbacks = metrics.tieFallbacks;
+  metrics.kpis.ties.ratio =
+    metrics.totalDecisions > 0 ? metrics.tieDecisions / metrics.totalDecisions : null;
 
   metrics.lastAggregationTick = tick;
 }

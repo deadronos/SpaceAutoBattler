@@ -20,6 +20,7 @@ import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { createDefaultMetrics, aggregateKpis, SHIP_HULLS, recordShotMetrics } from './metrics.js';
+import { createProgressionDefaults, createSubsystems } from './progression.js';
 
 const HARNESS_TEMP = new Vector3();
 
@@ -117,6 +118,13 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       slices: AI_CONFIG.slices,
       assignments: { escorts: new Map() },
       metrics: createDefaultMetrics(),
+      interrupts: [],
+      interruptState: {
+        cooldownTick: new Map(),
+        damageThisTick: new Map(),
+        lastDamageTick: -1,
+        vipThreatAssignments: new Map(),
+      },
     },
     blackboard: {
       tickIndex: 0,
@@ -129,6 +137,7 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
       teamPriority: { blue: [], red: [] },
       priorityIndex: { blue: new Map(), red: new Map() },
       focusFire: { blue: new Map(), red: new Map() },
+      teamCounts: { blue: 0, red: 0 },
       verticalDispersion: {
         headingYSamples: [],
         positionYSamples: [],
@@ -380,9 +389,13 @@ export function collectTestMetrics(log: AIScenarioLog): {
   verticalDispersion: { fighterEscortVerticalRatio: number; totalCommands: number };
   inBandTime: { overall: number | null; fighter: number | null; corvette: number | null };
   openingAggression: { ratio: number | null; total: number };
+  decisionLatency: { buckets: [number, number, number, number]; total: number };
+  focusFire: { samples: number; avg: number | null; max: number | null };
+  headingAmplitude: { samples: number; avg: number | null; min: number | null; max: number | null };
+  ties: { decisions: number; fallbacks: number; ratio: number | null };
 } {
   const metrics = log.metrics;
-  
+
   // Time-to-first-shot metrics
   const timeToFirstShot = {
     p50: metrics.kpis.firstShot.p50,
@@ -424,11 +437,40 @@ export function collectTestMetrics(log: AIScenarioLog): {
     total: metrics.kpis.openingAggression.total,
   };
 
+  const [latency0, latency1, latency2, latency3] = metrics.kpis.decisionLatency.buckets;
+  const decisionLatency = {
+    buckets: [latency0, latency1, latency2, latency3] as [number, number, number, number],
+    total: metrics.kpis.decisionLatency.total,
+  };
+
+  const focusFire = {
+    samples: metrics.kpis.focusFire.samples,
+    avg: metrics.kpis.focusFire.ratioAvg,
+    max: metrics.kpis.focusFire.ratioMax,
+  };
+
+  const headingAmplitude = {
+    samples: metrics.kpis.headingAmplitude.samples,
+    avg: metrics.kpis.headingAmplitude.avg,
+    min: metrics.kpis.headingAmplitude.min,
+    max: metrics.kpis.headingAmplitude.max,
+  };
+
+  const ties = {
+    decisions: metrics.kpis.ties.decisions,
+    fallbacks: metrics.kpis.ties.fallbacks,
+    ratio: metrics.kpis.ties.ratio,
+  };
+
   return {
     timeToFirstShot,
     verticalDispersion,
     inBandTime,
     openingAggression,
+    decisionLatency,
+    focusFire,
+    headingAmplitude,
+    ties,
   };
 }
 
@@ -444,6 +486,13 @@ function createHarnessShip(
   const hull = spec.hull;
   const profileId = spec.profileId ?? getDefaultProfileId(hull);
   const traitSeed = spec.traitSeed ?? rng.int(1, 1_000_000);
+  const maxHp = spec.maxHp ?? spec.hp ?? 100;
+  const hp = spec.hp ?? maxHp;
+  const maxShield = spec.maxShield ?? spec.shield ?? 0;
+  const shield = spec.shield ?? maxShield;
+  const progression = createProgressionDefaults(hull);
+  const subsystems = createSubsystems(maxHp);
+
   const ai: AIState = {
     profileId,
     intent: 'Attack',
@@ -472,10 +521,18 @@ function createHarnessShip(
     ship: {
       team: spec.team,
       hull,
-      hp: spec.hp ?? 100,
-      maxHp: spec.maxHp ?? spec.hp ?? 100,
-      shield: spec.shield ?? 0,
-      maxShield: spec.maxShield ?? spec.shield ?? 0,
+      xp: progression.xp,
+      level: progression.level,
+      xpToNext: progression.xpToNext,
+      damageType: progression.damageType,
+    levelBonuses: progression.levelBonuses,
+      captain: progression.captain,
+      subsystems,
+      armor: progression.armor,
+      hp,
+      maxHp,
+      shield,
+      maxShield,
       shieldRegen: 0,
       cooldown: 0,
       fireRate: spec.fireRate ?? 0.8,
@@ -681,6 +738,18 @@ function snapshotMetrics(metrics: AIMetrics): AIScenarioMetrics {
       byHull: inBandByHull,
     },
     vertical: { ...source.vertical },
+    decisionLatency: {
+      buckets: [
+        source.decisionLatency.buckets[0],
+        source.decisionLatency.buckets[1],
+        source.decisionLatency.buckets[2],
+        source.decisionLatency.buckets[3],
+      ],
+      total: source.decisionLatency.total,
+    },
+    focusFire: { ...source.focusFire },
+    headingAmplitude: { ...source.headingAmplitude },
+    ties: { ...source.ties },
   };
 
   return {

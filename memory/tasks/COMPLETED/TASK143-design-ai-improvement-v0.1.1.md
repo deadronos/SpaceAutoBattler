@@ -6,7 +6,7 @@
 
 ## Original Request
 
-Implement the changes defined in `design-ai-improvement-v0.1.1.md`, applying Memory Bank instructions and tracking progress via the tasks index.
+Implement the changes defined in `memory/designs_completed/design-ai-improvement-v0.1.1.md`, applying Memory Bank instructions and tracking progress via the tasks index.
 
 ## Thought Process
 

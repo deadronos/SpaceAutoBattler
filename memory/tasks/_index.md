@@ -6,11 +6,16 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
-- [TASK149](TASK149-performance-audit-report.md) — Produce performance audit ratings for all `src/` files and publish findings in `docs/performance-report.md`.
+- [TASK151](TASK151-ship-progression-system.md) — Implement richer ship progression and damage systems with XP, captains, damage types, and subsystems.
 
 ## Completed
 
+- [TASK154](TASK154-rapier-reset-stability.md) — Implemented deferred reset execution to eliminate Rapier console errors during reset button usage (2025-01-27).
+- [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
+- [TASK152](TASK152-fix-progression-tests.md) — Hardened Vitest ship stubs with progression defaults; full suite passes (2025-09-29).
+- [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
+
+- [TASK149](COMPLETED/TASK149-performance-audit-report.md) — Repository-wide renderer performance audit with batched ratings and recommendations recorded in `docs/performance-report-v0.1.1.md`.
 - [TASK148](TASK148-perf-monitor-overlay.md) — Landed draggable `r3f-perf` overlay with HUD toggle, persisted position state, and passing Vitest coverage.
 - [TASK147](TASK147-hud-settings-debug-panels.md) — HUD settings/debug drawers with shared toggle config, tests, and validation.
 - [TASK146](TASK146-ai-3d-combat-stage1.md) — Enable 3D Combat Stage 1 spawn geometry and cadence (issue #194).

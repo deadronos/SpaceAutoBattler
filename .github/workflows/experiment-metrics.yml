@@ -77,12 +77,8 @@ jobs:
       env: ${{ matrix.experiment.env }}
       
     - name: Run extended performance test (higher load)
-      run: npm run perf:ai-budget || echo "⚠️  Extended performance test failed - known issue with test harness"
-      env:
-        AI_BUDGET_SHIPS: 450
-        AI_BUDGET_TICKS: 200 
-        AI_BUDGET_MS: 3.5
-        ${{ matrix.experiment.env }}
+      env: ${{ matrix.experiment.env }}
+      run: AI_BUDGET_SHIPS=450 AI_BUDGET_TICKS=200 AI_BUDGET_MS=3.5 npm run perf:ai-budget || echo "⚠️  Extended performance test failed - known issue with test harness"
 
   experiment-summary:
     name: Experiment Results Summary

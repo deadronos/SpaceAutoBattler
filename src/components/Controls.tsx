@@ -1,7 +1,7 @@
 import React from 'react';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
-import { resetGame, spawnRandomShip } from '../game/state.js';
+import { requestReset, spawnRandomShip } from '../game/state.js';
 
 export function Controls(): React.ReactElement {
   const state = useOptionalGameState();
@@ -18,7 +18,7 @@ export function Controls(): React.ReactElement {
   return (
     <div className="controls-bar">
       <button onClick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
-      <button onClick={() => state && resetGame(state)}>Reset</button>
+      <button onClick={() => state && requestReset(state)}>Reset</button>
       <button onClick={() => addShip('red')}>+ Red</button>
       <button onClick={() => addShip('blue')}>+ Blue</button>
       {/* Simulation modifiers moved to HUD settings */}

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import { updateMotionSystem } from '../../src/game/systems/motion.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 
 function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
-  return {
+  const shipEntity = {
     id: Math.floor(Math.random() * 10000),
     rigidBody: {
       setNextKinematicTranslation: () => {},
@@ -54,7 +55,10 @@ function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
         ttl: 0.1,
       },
     },
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(shipEntity.ship, { maxHpOverride: shipEntity.ship.maxHp });
+  return shipEntity;
 }
 
 function createMockGameState(ships: ShipEntity[]): GameState {
