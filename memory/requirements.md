@@ -1,5 +1,11 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-09-29 — Carrier Spawn Queue (TASK226)
+
+1. **WHEN** `updateCarrierLaunchSystem` iterates over carriers, **THE SYSTEM SHALL** queue fighter spawn operations and execute them only after the loop completes so Rapier never receives nested borrows that trigger the "recursive use" error. *(Acceptance: new Vitest regression exercises the launch cycle and asserts `spawnShip` is invoked after the carrier loop without throwing.)*
+2. **WHEN** a carrier schedules fighter launches within a tick, **THE SYSTEM SHALL** cap the queued count so the total of existing and newly spawned fighters never exceeds `config.maxActive`. *(Acceptance: the regression test seeds a carrier at the cap and verifies no additional spawns are enqueued or executed.)*
+3. **WHEN** a queued spawn executes, **THE SYSTEM SHALL** append the spawned fighter id to `carrier.activeFighterIds` and refresh the carrier tracking map before the next simulation tick. *(Acceptance: the regression test confirms the dequeued fighter id is recorded and survives a subsequent pruning pass.)*
+
 ## 2025-09-29 — Ship Level Bonus Caps (TASK153)
 
 1. **WHEN** a ship crosses any level threshold above 1, **THE SYSTEM SHALL** recompute `maxHp` and `hp` using the base hull value scaled by the capped hull bonus so the resulting multiplier never exceeds +50%. *(Acceptance: `test/vitest/progression-system.spec.ts` levels a ship to level 11 and asserts `maxHp` equals `baseHp × 1.5` while current `hp` increases by the delta.)*

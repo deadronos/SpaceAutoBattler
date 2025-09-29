@@ -7,6 +7,7 @@ Current focuses (short-term):
 
 Recent changes:
 
+- Deferred carrier fighter spawning (TASK226) by queuing launch blueprints and flushing after iteration to resolve Rapier unsafe aliasing crashes; added Vitest regressions and reran `npm run typecheck` + `npm test`.
 - Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.

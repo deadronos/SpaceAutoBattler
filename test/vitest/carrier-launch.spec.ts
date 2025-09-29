@@ -108,6 +108,47 @@ describe('carrier launch system', () => {
     const foreignIds = carrier.carrier?.activeFighterIds.filter((id) => id === otherFighter.id) ?? [];
     expect(foreignIds.length).toBe(0);
   });
+
+  it('does not enqueue launches when the carrier is already at maxActive within the tick', () => {
+    const config = makeConfig({ cooldownSeconds: 0, maxActive: 2 });
+    const carrier = createCarrierEntity(5, config);
+    const fighterA = createFighterEntity(6000, {
+      hull: 'fighter',
+      team: carrier.ship.team,
+      position: new Vector3(),
+      heading: 0,
+      parentCarrierId: carrier.id,
+    });
+    const fighterB = createFighterEntity(6001, {
+      hull: 'fighter',
+      team: carrier.ship.team,
+      position: new Vector3(),
+      heading: 0,
+      parentCarrierId: carrier.id,
+    });
+    carrier.carrier!.activeFighterIds.push(fighterA.id, fighterB.id);
+    const ships: ShipEntity[] = [carrier, fighterA, fighterB];
+    const state = createState(ships);
+
+    updateCarrierLaunchSystem(state, 0);
+
+    expect(spawnShipMock).not.toHaveBeenCalled();
+    expect(carrier.carrier?.activeFighterIds.length).toBe(config.maxActive);
+  });
+
+  it('queues launches for multiple carriers and flushes them deterministically', () => {
+    const config = makeConfig({ cooldownSeconds: 0.1, maxActive: 3 });
+    const carrierA = createCarrierEntity(6, config);
+    const carrierB = createCarrierEntity(7, config);
+    const ships: ShipEntity[] = [carrierA, carrierB];
+    const state = createState(ships);
+
+    updateCarrierLaunchSystem(state, 0);
+
+    expect(spawnShipMock).toHaveBeenCalledTimes(2);
+    expect(carrierA.carrier?.activeFighterIds).toEqual([1000]);
+    expect(carrierB.carrier?.activeFighterIds).toEqual([1001]);
+  });
 });
 
 function makeConfig(overrides: Partial<CarrierLaunchConfig> = {}): CarrierLaunchConfig {
