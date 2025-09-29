@@ -218,6 +218,29 @@ describe('Ship Progression System', () => {
       expect(testShip.subsystems.weapons.hp).toBeGreaterThan(initialHp);
     });
 
+    it('should apply subsystem status effects to actual ship performance', () => {
+      // Test shield regen multiplier
+      testShip.subsystems.shields.hp = 10; // Low HP = damaged status
+      testShip.subsystems.shields.status = 'damaged';
+      
+      const stats = getEffectiveStats(testShip);
+      expect(stats.shieldRegenMultiplier).toBe(0.7); // Should be reduced
+      
+      // Test weapon damage multiplier
+      testShip.subsystems.weapons.hp = 5; // Very low HP = offline status  
+      testShip.subsystems.weapons.status = 'offline';
+      
+      const stats2 = getEffectiveStats(testShip);
+      expect(stats2.damageMultiplier).toBe(0.4); // Should be severely reduced
+      
+      // Test engine speed multiplier
+      testShip.subsystems.engine.hp = 15; // Moderate HP = damaged status
+      testShip.subsystems.engine.status = 'damaged';
+      
+      const stats3 = getEffectiveStats(testShip);
+      expect(stats3.speedMultiplier).toBe(0.75); // Should be reduced
+    });
+
     it('should apply subsystem status effects', () => {
       // Damage engine to test speed reduction
       testShip.subsystems.engine.hp = 10; // Low HP

@@ -1418,14 +1418,16 @@ function prepareShips(state: GameState, delta: number): void {
       for (const turret of ship.turrets) turret.cooldown = Math.max(0, turret.cooldown - delta);
     }
 
-    const regen = ship.ship.shieldRegen ?? 0;
-    if (regen > 0 && ship.ship.shield < ship.ship.maxShield) {
-      ship.ship.shield = Math.min(ship.ship.maxShield, ship.ship.shield + regen * delta);
-    }
-
     // Update progression systems
     updateCaptainAbilities(ship.ship, state.time, delta);
     repairSubsystems(ship.ship, delta);
+
+    // Apply subsystem effects to shield regeneration
+    const effectiveStats = getEffectiveStats(ship.ship);
+    const regen = (ship.ship.shieldRegen ?? 0) * effectiveStats.shieldRegenMultiplier;
+    if (regen > 0 && ship.ship.shield < ship.ship.maxShield) {
+      ship.ship.shield = Math.min(ship.ship.maxShield, ship.ship.shield + regen * delta);
+    }
 
     let preferredTarget: ShipEntity | null = null;
 
@@ -1973,7 +1975,7 @@ export function fireProjectile(
       speed *= 1.03;
     }
   }
-  const damage = opts?.override?.damage ?? origin.ship.damage;
+  const damage = (opts?.override?.damage ?? origin.ship.damage) * getEffectiveStats(origin.ship).damageMultiplier;
   const range = opts?.override?.range ?? origin.ship.range;
   const lifetime = Math.min(range / speed, 30);
 
