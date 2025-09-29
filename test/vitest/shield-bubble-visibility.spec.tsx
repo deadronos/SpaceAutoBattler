@@ -8,14 +8,18 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
 
   it('includes conditional rendering for low shield levels', () => {
     const txt = fs.readFileSync(shipFilePath, 'utf-8');
-    
+
     // Ensure shield bubble is conditionally rendered when shields are very low
     expect(txt).toContain('minShieldThreshold');
-    expect(txt).toContain('if (s < minShieldThreshold)');
+    expect(txt).toContain('if (shieldFraction < minShieldThreshold)');
     expect(txt).toContain('return <></>;');
-    
+
     // Ensure the threshold is set to a reasonable value (like 0.01 for 1%)
     expect(txt).toMatch(/minShieldThreshold\s*=\s*0\.0[1-9]/);
+
+    // Ensure we track shield changes reactively via state updates
+    expect(txt).toContain('const [shieldFraction, setShieldFraction] = useState');
+    expect(txt).toContain('setShieldFraction(nextFraction);');
   });
 
   it('fixes HULL_TINT threshold to prevent always-on hull tinting', () => {
@@ -29,10 +33,11 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
 
   it('ensures shield bubble logic prevents rendering at exactly 0 shields', () => {
     const txt = fs.readFileSync(shipFilePath, 'utf-8');
-    
+
     // Test the mathematical logic: shield fraction calculation should work correctly
-    expect(txt).toContain('entity.ship.shield / Math.max(1, entity.ship.maxShield)');
-    
+    expect(txt).toContain('const ratio = shield / Math.max(1, maxShield);');
+    expect(txt).toContain('MathUtils.clamp(ratio, 0, 1)');
+
     // With 0 shields and any maxShield > 0, the fraction should be 0
     // And 0 < minShieldThreshold (0.01) should be true, causing early return
     const shieldFraction = 0 / Math.max(1, 100);  // 0
