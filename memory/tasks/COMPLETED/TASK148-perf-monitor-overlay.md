@@ -47,7 +47,7 @@ Wire the [`r3f-perf`](https://github.com/utsuboco/r3f-perf) panel into the battl
 
 ### 2025-09-28
 
-- Captured requirements in `memory/requirements.md` and drafted technical design (`memory/design-perf-monitor-overlay.md`) prior to implementation.
+- Captured requirements in `memory/requirements.md` and drafted technical design (`memory/designs_completed/design-perf-monitor-overlay.md`) prior to implementation.
 - Extended `useUiStore` slice, registered the HUD toggle, created `PerfMonitorOverlay`, and mounted it inside `Battlefield`.
 - Authored `test/vitest/perf-monitor.spec.tsx`, refreshed existing HUD toggle specs, and mocked `r3f-perf` for deterministic assertions.
 - Ran `npm run typecheck` and `npm test` with all suites passing.

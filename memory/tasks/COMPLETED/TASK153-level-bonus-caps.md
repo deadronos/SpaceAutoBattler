@@ -42,6 +42,6 @@ P1 — Enforce level bonus caps when leveling up. The level-up handler computes 
 ### 2025-09-29
 
 - Captured initial analysis of uncontrolled stat growth and drafted plan to track cumulative level bonuses per stat.
-- Authored EARS requirements (`memory/requirements.md`) and design doc (`memory/design-ship-level-bonus-caps.md`) covering architecture, error handling, and testing strategy.
+- Authored EARS requirements (`memory/requirements.md`) and design doc (`memory/designs_completed/design-ship-level-bonus-caps.md`) covering architecture, error handling, and testing strategy.
 - Implemented ship-level bonus tracking, refactored `applyLevelUpBonuses` to use capped totals, and initialised zeroed bonus state across ship factories and harness helpers.
 - Added Vitest assertions ensuring stats plateau at configured caps, updated subsystem fixtures, and ran `npm run typecheck` plus `npm test` with passing results.

@@ -6,7 +6,7 @@
 
 ## Original Request
 
-Implement `/memory/design-hud-health-overlays.md` fully, adding HUD health overlays with task tracking in the memory bank.
+Implement `/memory/designs_completed/design-hud-health-overlays.md` fully, adding HUD health overlays with task tracking in the memory bank.
 
 ## Thought Process
 

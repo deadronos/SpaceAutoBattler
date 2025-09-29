@@ -37,5 +37,5 @@ Fix `npm test` failures affecting the AI scenario harness fixtures.
 ### 2025-09-28
 
 - Reproduced Vitest failures confined to `ai-scenario-harness.spec.ts`, confirming fixture drift as the root cause.
-- Authored updated requirements (`memory/requirements.md`) and design document (`memory/design-ai-scenario-determinism-refresh.md`) to formalize the refresh approach.
+- Authored updated requirements (`memory/requirements.md`) and design document (`memory/designs_completed/design-ai-scenario-determinism-refresh.md`) to formalize the refresh approach.
 - Regenerated fixtures via `npx tsx tmp/refresh-ai-fixtures.ts`, validated diffs, and re-ran `npm test` plus `npm run typecheck` with passing results.

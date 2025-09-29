@@ -6,7 +6,7 @@
 
 ## Original Request
 
-Execute the AI decision determinism and coordination improvements captured in `memory/design-ai-determinism-v0.1.1.md`, ensuring documentation-driven development with traceable requirements, comprehensive testing, and progress tracking via the Memory Bank.
+Execute the AI decision determinism and coordination improvements captured in `memory/designs_completed/design-ai-determinism-v0.1.1.md`, ensuring documentation-driven development with traceable requirements, comprehensive testing, and progress tracking via the Memory Bank.
 
 ## Thought Process
 

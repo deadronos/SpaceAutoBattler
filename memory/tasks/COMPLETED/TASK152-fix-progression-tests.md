@@ -33,7 +33,7 @@ Initial hypothesis: the production code now assumes fully populated progression 
 
 | ID  | Description                                    | Status         | Updated    | Notes |
 | --- | ---------------------------------------------- | -------------- | ---------- | ----- |
-| 1.1 | Requirements/design documentation              | Completed      | 2025-09-29 | Added EARS + design memo (`memory/design-progression-test-hardening.md`). |
+| 1.1 | Requirements/design documentation              | Completed      | 2025-09-29 | Added EARS + design memo (`memory/designs_completed/design-progression-test-hardening.md`). |
 | 1.2 | Progression helper implementation              | Completed      | 2025-09-29 | Introduced `applyProgressionDefaults` helper for Vitest ship stubs. |
 | 1.3 | Test suite updates                             | Completed      | 2025-09-29 | Updated affected specs and harness ships to populate progression fields. |
 | 1.4 | Validation (typecheck + tests)                 | Completed      | 2025-09-29 | `npm test -- --run --reporter=verbose`. |
@@ -43,6 +43,6 @@ Initial hypothesis: the production code now assumes fully populated progression 
 ### 2025-09-29
 
 - Created task scaffold outlining plan to harden Vitest ship stubs against progression schema changes.
-- Documented requirements in `memory/requirements.md` and design in `memory/design-progression-test-hardening.md`.
+- Documented requirements in `memory/requirements.md` and design in `memory/designs_completed/design-progression-test-hardening.md`.
 - Wired `applyProgressionDefaults` into remaining specs and hydrated AI scenario harness ships with progression defaults.
 - Aligned projectile resolution expectation with kinetic shield multipliers and confirmed full suite via `npm test -- --run --reporter=verbose`.
