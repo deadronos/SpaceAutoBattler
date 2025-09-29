@@ -457,6 +457,13 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   // Derived props for material
   const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);
   const opacity = Math.max(0, Math.min(1, s));
+  
+  // Only render shield bubble if shields are above minimal threshold
+  const minShieldThreshold = 0.01; // 1% shields minimum to show bubble
+  if (s < minShieldThreshold) {
+    return <></>;
+  }
+  
   const ripples = entity.shieldRipples ?? [];
   // Pass up to `maxRipples` latest ripples (oldest first in the array we send)
   const maxRipples = SHIELD_RIPPLE_TUNING.maxRipples ?? 3;
