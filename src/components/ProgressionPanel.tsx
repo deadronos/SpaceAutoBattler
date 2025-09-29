@@ -35,51 +35,7 @@ export function ProgressionPanel(): React.ReactElement | null {
     return () => clearInterval(id);
   }, [enabled]);
 
-  const progressionData = useMemo<ProgressionPanelShip[] | null>(() => {
-    if (!enabled || !state) return null;
-    
-    const ships = state.queries.ships.entities as ShipEntity[];
-    const progressionShips: ProgressionPanelShip[] = [];
-
-    for (const ship of ships) {
-      // Get events for this ship from GameState
-      const events = state.progressionEvents?.get(ship.id) || [];
-      
-      progressionShips.push({
-        id: ship.id,
-        name: `${ship.ship.hull}-${ship.id}`,
-        type: ship.ship.hull,
-        team: ship.ship.team,
-        level: ship.ship.level,
-        xp: ship.ship.xp,
-        xpToNext: ship.ship.xpToNext,
-        events: events.slice(-MAX_EVENTS_PER_SHIP)
-      });
-    }
-
-    // Sort by level descending, then by XP
-    progressionShips.sort((a, b) => {
-      if (a.level !== b.level) return b.level - a.level;
-      return b.xp - a.xp;
-    });
-
-    return progressionShips.slice(0, 50); // Cap at 50 ships for performance
-  }, [state, enabled, refreshTick]);
-
-  if (!enabled) return null;
-  if (!progressionData || progressionData.length === 0) return null;
-
-  const style: React.CSSProperties = {
-    position: 'fixed',
-    top: `${position.y}px`,
-    left: `${position.x}px`,
-    right: 'auto',
-    bottom: 'auto',
-    cursor: dragging ? 'grabbing' : 'grab',
-    zIndex: 30,
-  };
-
-  // Drag behavior (attach to header for better UX)
+  // Drag behavior (attach to header for better UX). Placed before early returns to keep hook order stable.
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return;
     let node: HTMLDivElement | null = panelRef.current;
@@ -138,6 +94,52 @@ export function ProgressionPanel(): React.ReactElement | null {
       setDragging(false);
     };
   }, [enabled, setPosition]);
+
+  const progressionData = useMemo<ProgressionPanelShip[] | null>(() => {
+    if (!enabled || !state) return null;
+    
+    const ships = state.queries.ships.entities as ShipEntity[];
+    const progressionShips: ProgressionPanelShip[] = [];
+
+    for (const ship of ships) {
+      // Get events for this ship from GameState
+      const events = state.progressionEvents?.get(ship.id) || [];
+      
+      progressionShips.push({
+        id: ship.id,
+        name: `${ship.ship.hull}-${ship.id}`,
+        type: ship.ship.hull,
+        team: ship.ship.team,
+        level: ship.ship.level,
+        xp: ship.ship.xp,
+        xpToNext: ship.ship.xpToNext,
+        events: events.slice(-MAX_EVENTS_PER_SHIP)
+      });
+    }
+
+    // Sort by level descending, then by XP
+    progressionShips.sort((a, b) => {
+      if (a.level !== b.level) return b.level - a.level;
+      return b.xp - a.xp;
+    });
+
+    return progressionShips.slice(0, 50); // Cap at 50 ships for performance
+  }, [state, enabled, refreshTick]);
+
+  if (!enabled) return null;
+  if (!progressionData || progressionData.length === 0) return null;
+
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    top: `${position.y}px`,
+    left: `${position.x}px`,
+    right: 'auto',
+    bottom: 'auto',
+    cursor: dragging ? 'grabbing' : 'grab',
+    zIndex: 30,
+  };
+
+  
 
   return (
     <div ref={panelRef} className="progression-panel" role="region" aria-live="polite" style={style}>

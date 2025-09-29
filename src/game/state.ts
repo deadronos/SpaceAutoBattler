@@ -16,7 +16,9 @@ import { createDefaultMetrics, resetMetrics } from './metrics.js';
 import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
 
 export async function createGameState(): Promise<GameState> {
-  await Rapier.init();
+  // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
+  // Passing an empty object keeps default behavior and removes the warning.
+  await Rapier.init({});
   const physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
   const eventQueue = new Rapier.EventQueue({ auto: true });
   const world = new ECSWorld<GameEntity>();
