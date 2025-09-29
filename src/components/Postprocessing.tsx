@@ -1,27 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import {
-  EffectComposer,
-  RenderPass,
-  EffectPass,
-  SelectiveBloomEffect,
-  FXAAEffect,
-  KernelSize,
-  BlendFunction,
-} from 'postprocessing';
-import {
-  WebGLRenderer,
-  Scene,
-  Camera,
-  WebGLRenderTarget,
-  HalfFloatType,
-  RGBAFormat,
-  SRGBColorSpace,
-  NoToneMapping,
-  Vector2,
-} from 'three';
+import { type EffectComposer, type FXAAEffect, type SelectiveBloomEffect } from 'postprocessing';
+import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget } from 'three';
 import { useBloomContext } from '../renderer/BloomProvider.js';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
+import {
+  createComposer,
+  type ComposerSetupResult,
+} from './postprocessing/createComposer.js';
+import {
+  buildEffects,
+  type BloomContextLike,
+} from './postprocessing/buildEffects.js';
 
 type Props = {
   enabled?: boolean;
@@ -30,189 +20,74 @@ type Props = {
 export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
+  const composerSetupRef = useRef<ComposerSetupResult | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
   const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
   const renderTargetRef = useRef<WebGLRenderTarget | null>(null);
   const bloomCtx = useBloomContext();
-  const prevAutoClearRef = useRef<boolean | null>(null);
-  const prevToneMappingRef = useRef<WebGLRenderer['toneMapping'] | null>(null);
-  const prevExposureRef = useRef<number | null>(null);
-  const prevColorSpaceRef = useRef<WebGLRenderer['outputColorSpace'] | null>(null);
+
+  const cleanupComposer = useCallback(() => {
+    const setup = composerSetupRef.current;
+    composerSetupRef.current = null;
+
+    if (setup) {
+      try {
+        setup.dispose();
+      } catch {}
+      try {
+        setup.restoreRendererState();
+      } catch {}
+    }
+
+    composerRef.current = null;
+    fxaaRef.current = null;
+    bloomEffectsRef.current = [];
+    renderTargetRef.current = null;
+  }, []);
 
   useEffect(() => {
     const renderer = gl as unknown as WebGLRenderer;
 
-    // Only create the composer when postprocessing is enabled. This avoids
-    // interfering with the default R3F renderer when the feature is off.
     if (!enabled) {
-      // If the composer exists from a prior enabled state, dispose it.
-      if (composerRef.current) {
-        try {
-          composerRef.current.dispose();
-        } catch {}
-        composerRef.current = null;
-        fxaaRef.current = null;
-      }
-      bloomEffectsRef.current = [];
-      if (renderTargetRef.current) {
-        renderTargetRef.current.dispose();
-        renderTargetRef.current = null;
-      }
-      if (prevAutoClearRef.current !== null) {
-        renderer.autoClear = prevAutoClearRef.current;
-        prevAutoClearRef.current = null;
-      }
-      if (prevToneMappingRef.current !== null) {
-        renderer.toneMapping = prevToneMappingRef.current;
-        prevToneMappingRef.current = null;
-      }
-      if (prevExposureRef.current !== null) {
-        renderer.toneMappingExposure = prevExposureRef.current;
-        prevExposureRef.current = null;
-      }
-      if (prevColorSpaceRef.current !== null) {
-        renderer.outputColorSpace = prevColorSpaceRef.current;
-        prevColorSpaceRef.current = null;
-      }
-      return;
+      cleanupComposer();
+      return cleanupComposer;
     }
 
-    const previousAutoClear = renderer.autoClear;
-    prevAutoClearRef.current = previousAutoClear;
-    renderer.autoClear = false;
-    if (prevToneMappingRef.current === null) {
-      prevToneMappingRef.current = renderer.toneMapping;
-    }
-    if (prevExposureRef.current === null) {
-      prevExposureRef.current = renderer.toneMappingExposure;
-    }
-    if (prevColorSpaceRef.current === null) {
-      prevColorSpaceRef.current = renderer.outputColorSpace;
-    }
-    renderer.outputColorSpace = SRGBColorSpace;
-    renderer.toneMapping = NoToneMapping;
-    renderer.toneMappingExposure = 1;
-
-    const sizeVector = renderer.getSize(new Vector2());
-    const pixelRatio = renderer.getPixelRatio();
-    const renderTarget = new WebGLRenderTarget(sizeVector.x * pixelRatio, sizeVector.y * pixelRatio, {
-      format: RGBAFormat,
-      type: HalfFloatType,
-    });
-    renderTarget.texture.colorSpace = SRGBColorSpace;
-    renderTargetRef.current = renderTarget;
+    const bloomContext: BloomContextLike | null = bloomCtx
+      ? { defaultGroup: bloomCtx.defaultGroup, selections: bloomCtx.selections }
+      : null;
 
     try {
-      const composer = new EffectComposer(renderer, renderTarget);
-
-      // Render the main scene first
-      const renderPass = new RenderPass(scene as unknown as Scene, camera as unknown as Camera);
-      composer.addPass(renderPass);
-
-      // Build selective bloom effects per configured group
-      const groupConfigs = POSTPROCESSING_CONFIG.bloomGroups ?? {};
-      const defaultGroup = bloomCtx?.defaultGroup ?? POSTPROCESSING_CONFIG.bloomDefaultGroup ?? 'default';
-      const groupNames = new Set<string>([...Object.keys(groupConfigs), defaultGroup]);
-      const bloomEffects: SelectiveBloomEffect[] = [];
-
-      groupNames.forEach((groupName) => {
-        const selection = bloomCtx?.selections.get(groupName);
-        if (!selection) return;
-        const cfg = groupConfigs[groupName] ?? {};
-        const bloom = new SelectiveBloomEffect(scene as unknown as Scene, camera as unknown as Camera, {
-          blendFunction: BlendFunction.SCREEN,
-          kernelSize: KernelSize.SMALL,
-          intensity: cfg.intensity ?? POSTPROCESSING_CONFIG.bloomIntensity ?? 1.0,
-        });
-        bloom.selection = selection;
-        bloom.ignoreBackground = POSTPROCESSING_CONFIG.bloomIgnoreBackground ?? true;
-        bloom.blendMode.opacity.value = selection.size > 0 ? 1 : 0;
-        const depthMask = (bloom as any).depthMaskMaterial;
-        if (depthMask) {
-          depthMask.keepFar = false;
-        }
-        try {
-          const lumMat = (bloom as any).luminanceMaterial;
-          if (lumMat) {
-            lumMat.threshold = cfg.threshold ?? POSTPROCESSING_CONFIG.bloomThreshold ?? 1.0;
-            lumMat.smoothing = cfg.smoothing ?? POSTPROCESSING_CONFIG.bloomSmoothing ?? 0.1;
-          }
-          (bloom as any).mipmapBlur = true;
-        } catch {}
-        bloomEffects.push(bloom);
+      const { effectPass, bloomEffects, fxaa } = buildEffects({
+        scene: scene as unknown as Scene,
+        camera: camera as unknown as Camera,
+        bloomContext,
+        config: POSTPROCESSING_CONFIG,
       });
 
-      // FXAA
-      const fxaa = new FXAAEffect();
+      const composerSetup = createComposer({
+        renderer,
+        scene: scene as unknown as Scene,
+        camera: camera as unknown as Camera,
+        effectPass,
+      });
 
-      const effects = [...bloomEffects, fxaa];
-      // Compose effects into a single pass (order matters: bloom before fxaa)
-      const effectPass = new EffectPass(camera as unknown as Camera, ...effects);
-      effectPass.renderToScreen = true;
-      composer.addPass(effectPass);
-
-      composerRef.current = composer;
-      fxaaRef.current = fxaa;
+      composerSetupRef.current = composerSetup;
+      composerRef.current = composerSetup.composer;
+      renderTargetRef.current = composerSetup.renderTarget;
       bloomEffectsRef.current = bloomEffects;
+      fxaaRef.current = fxaa;
     } catch (err) {
-      if (prevAutoClearRef.current !== null) {
-        renderer.autoClear = prevAutoClearRef.current;
-        prevAutoClearRef.current = null;
-      }
-      if (renderTargetRef.current) {
-        renderTargetRef.current.dispose();
-        renderTargetRef.current = null;
-      }
-      if (prevToneMappingRef.current !== null) {
-        renderer.toneMapping = prevToneMappingRef.current;
-        prevToneMappingRef.current = null;
-      }
-      if (prevExposureRef.current !== null) {
-        renderer.toneMappingExposure = prevExposureRef.current;
-        prevExposureRef.current = null;
-      }
-      if (prevColorSpaceRef.current !== null) {
-        renderer.outputColorSpace = prevColorSpaceRef.current;
-        prevColorSpaceRef.current = null;
-      }
+      cleanupComposer();
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.
       // Log for debugging.
       // eslint-disable-next-line no-console
       console.warn('Postprocessing init failed, skipping composer:', err);
-      composerRef.current = null;
-      fxaaRef.current = null;
-      bloomEffectsRef.current = [];
     }
+
     return () => {
-      if (composerRef.current) {
-        try {
-          composerRef.current.dispose();
-        } catch {}
-        composerRef.current = null;
-      }
-      fxaaRef.current = null;
-      bloomEffectsRef.current = [];
-      if (renderTargetRef.current) {
-        renderTargetRef.current.dispose();
-        renderTargetRef.current = null;
-      }
-      if (prevAutoClearRef.current !== null) {
-        renderer.autoClear = prevAutoClearRef.current;
-        prevAutoClearRef.current = null;
-      }
-      if (prevToneMappingRef.current !== null) {
-        renderer.toneMapping = prevToneMappingRef.current;
-        prevToneMappingRef.current = null;
-      }
-      if (prevExposureRef.current !== null) {
-        renderer.toneMappingExposure = prevExposureRef.current;
-        prevExposureRef.current = null;
-      }
-      if (prevColorSpaceRef.current !== null) {
-        renderer.outputColorSpace = prevColorSpaceRef.current;
-        prevColorSpaceRef.current = null;
-      }
+      cleanupComposer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -222,6 +97,7 @@ export function Postprocessing({ enabled = false }: Props): null {
     gl,
     scene,
     camera,
+    cleanupComposer,
   ]);
 
   useEffect(() => {
