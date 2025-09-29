@@ -2,12 +2,13 @@
 
 Current focuses (short-term):
 
-- Lock in the celestial environment baseline: star disk billboard, rim-glow shader, parallax billboards, and lighting balance driven by `CELESTIAL_ENVIRONMENT`.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
 
 Recent changes:
 
+- Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
+- Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
 - Captured requirements and design for an automated Playwright workflow that outputs before/after star disk screenshots using debug overrides.
@@ -19,15 +20,17 @@ Recent changes:
 - Raised star disk corona intensity and texture blend defaults, retuned fragment contributions for a hotter corona, and expanded Vitest coverage for fiery fallbacks.
 - Generated deterministic star disk texture assets, updated shader/material uniforms to sample them, and expanded Vitest coverage to capture texture handling.
 - Expanded star disk radial shaping with new uniforms (texture radial power, corona edge softness, base fill), updated GLSL to fill the disc organically, and extended Vitest coverage for defaults/clamping.
-- Finalised fiery fidelity tuning: warmer palette, stronger texture weighting, balanced brightness, refreshed environment overrides, and extended Vitest assertions to cover hue/lightness thresholds; validated via `npm run typecheck`, `npm test`, and `npm run build`.
+- Finalised fiery fidelity tuning: warmer palette, stronger texture weighting, balanced brightness, refreshed environment overrides, and extended Vitest coverage to cover hue/lightness thresholds; validated via `npm run typecheck`, `npm test`, and `npm run build`.
 - Landed `CelestialEnvironment`, `StarLight`, `PlanetBody`, `PlanetRings`, and `ParallaxBillboard` components wired to the new config and optional rim shader.
 - Added `usePlanetTexture` hook with SRGB/anisotropy handling, deterministic rotation based on simulation time, and feature toggles (star disk, billboards, rims).
 - Integrated solar-corona star disk shader with deterministic uniforms, GLSL asset pipeline, and Vitest coverage for material lifecycle.
 - Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
+- Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
+- Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
+- Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `npm run typecheck`, `npm test`.
 
 Next steps:
 
-- Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
 - Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
 - Capture a render comparison showcasing the new shader control ranges (core-focused vs corona-focused) for docs.
 - Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
@@ -36,6 +39,9 @@ Next steps:
 - Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
 
-- 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
+Status updates:
 
-- Updated: 2025-09-26
+- 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
+- 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
+
+- Updated: 2025-09-29

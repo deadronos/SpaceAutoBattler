@@ -4,18 +4,29 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Known issues
 
-- Duplicate task ID collisions detected during memory audit (2025-09-26):
-  - `TASK102` appeared in multiple files. Mapping applied: `COMPLETED/TASK102-implement-physical-movement.md` → `COMPLETED/TASK136-implement-physical-movement.md`. TASK102 retained for AI V2 skeleton (`COMPLETED/TASK102-ai-v2-skeleton.md`).
-  - `TASK110` appeared in multiple files. Mapping applied: `COMPLETED/TASK110-implement-skysphere.md` → `COMPLETED/TASK137-implement-skysphere.md`. TASK110 retained for planet texture assets (`COMPLETED/TASK110-planet-texture-assets.md`).
-
-  Recommendation: Reassign one of the colliding task IDs to a new unique ID and update references. A follow-up task has been created: `TASK135` (see below).
-
 ## In Progress
 
-- [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
+- [TASK151](TASK151-ship-progression-system.md) — Implement richer ship progression and damage systems with XP, captains, damage types, and subsystems.
 
 ## Completed
 
+- [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
+- [TASK152](TASK152-fix-progression-tests.md) — Hardened Vitest ship stubs with progression defaults; full suite passes (2025-09-29).
+- [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.
+
+- [TASK149](COMPLETED/TASK149-performance-audit-report.md) — Repository-wide renderer performance audit with batched ratings and recommendations recorded in `docs/performance-report-v0.1.1.md`.
+- [TASK148](TASK148-perf-monitor-overlay.md) — Landed draggable `r3f-perf` overlay with HUD toggle, persisted position state, and passing Vitest coverage.
+- [TASK147](TASK147-hud-settings-debug-panels.md) — HUD settings/debug drawers with shared toggle config, tests, and validation.
+- [TASK146](TASK146-ai-3d-combat-stage1.md) — Enable 3D Combat Stage 1 spawn geometry and cadence (issue #194).
+- [TASK150](TASK150-update-ai-scenario-fixtures.md) — Refresh AI scenario harness fixtures to align with new deterministic metrics outputs.
+- [TASK143](TASK143-design-ai-improvement-v0.1.1.md) — Implement AI Improvement v0.1.1 vertical engagement, spawn, and range updates per design memo.
+- [TASK144](TASK144-ai-metrics-resilience.md) — Restored percentile helper, Rapier shims, and AI scenario metrics fixtures; `npm test` passes.
+- [TASK142](TASK142-ship-kill-explosionfx.md) — Implement ship kill explosion FX pipeline across simulation, config, renderer, and tests per design memo.
+
+- [TASK141](TASK141-hud-health-overlays.md) — Implemented HUD health overlays with deterministic easing, occlusion safeguards, and Vitest coverage.
+- [TASK140](TASK140-star-disk-boundary-feather.md) — Delivered star disk boundary feather uniforms, shader attenuation, and regression tests.
+- [TASK139](TASK139-star-disk-haze-taper.md) — Implement star disk haze taper with camera-aware gradient fade and updated shader uniforms.
+- [TASK138](TASK138-star-disk-view-compensation.md) — Fix star disk billboarding by locking orientation and adding view-compensation uniforms.
 - [TASK134](TASK134-main-sequence-star-shader.md) — Ported `mainsequencestar` shader, refactored StarDisk material/component, and added unit coverage for uniforms and fallback path.
 - [TASK132](TASK132-planet-shadowing.md) — Planet shadowing enhancement (standard material + rim shell with cast/receive shadows).
 - [TASK131](TASK131-star-disk-render-capture.md) — Automated before/after star disk screenshot captures via Playwright.
@@ -53,6 +64,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK123](COMPLETED/TASK123-selective-bloom-fix.md) — Fixed selective bloom contrast using group-based routing.
 - [TASK133](TASK133-build-test-resilience.md) — Stabilise vitest smoke imports, projectile geometry tests, and webpack build after TypeScript migration.
 - [TASK124](TASK124-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
+- [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
 ## Pending
 
@@ -62,11 +74,3 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 - _None tracked._
 
-## ID MAPPING
-
-- TASK102 → TASK102 (AI V2 Skeleton) — retained
-- TASK102 → TASK136 (Physical Movement) — migrated
-- TASK110 → TASK110 (Planet Texture Assets) — retained
-- TASK110 → TASK137 (Skysphere) — migrated
-
-(See `TASK135` for reconciliation history and the mapping applied on 2025-09-26.)
