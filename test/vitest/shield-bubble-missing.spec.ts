@@ -170,8 +170,7 @@ describe('ShieldBubble missing issue reproduction', () => {
     for (const test of carrierShieldLevels) {
       const f = computeShieldFraction(test.shield, test.maxShield);
       const visible = f >= minShieldThreshold;
-      expect(visible).toBe(test.expected, 
-        `Carrier with ${test.shield}/${test.maxShield} shields should ${test.expected ? 'show' : 'hide'} bubble`);
+      expect(visible).toBe(test.expected);
     }
   });
 });
