@@ -3,12 +3,12 @@ import fs from 'fs';
 import path from 'path';
 
 describe('Thruster glow enhancement', () => {
-  it('has fallback anchor computation logic in Ship.tsx', () => {
-    const file = path.resolve(__dirname, '../../src/components/Ship.tsx');
+  it('has fallback anchor computation logic in useShipThrusters hook', () => {
+    const file = path.resolve(__dirname, '../../src/hooks/useShipThrusters.ts');
     const txt = fs.readFileSync(file, 'utf-8');
     
     // Check for fallback anchor computation
-    expect(txt).toContain('// Fallback: create anchor-based glow meshes if no engines found');
+    expect(txt).toContain('if (engines.length === 0)');
     expect(txt).toContain('anchorsByHull');
     expect(txt).toContain('THRUSTER_GLOW_CONFIG');
     
@@ -39,19 +39,25 @@ describe('Thruster glow enhancement', () => {
   });
 
   it('preserves existing thruster functionality', () => {
-    const file = path.resolve(__dirname, '../../src/components/Ship.tsx');
-    const txt = fs.readFileSync(file, 'utf-8');
+    const thrusterFile = path.resolve(__dirname, '../../src/hooks/useShipThrusters.ts');
+    const thrusterTxt = fs.readFileSync(thrusterFile, 'utf-8');
     
     // Check that name-based detection is still first priority
-    expect(txt).toContain('nameMatch');
-    expect(txt).toContain("n.includes('engine')");
-    expect(txt).toContain("n.includes('thruster')");
-    expect(txt).toContain("n.includes('exhaust')");
+    expect(thrusterTxt).toContain('nameMatch');
+    expect(thrusterTxt).toContain("n.includes('engine')");
+    expect(thrusterTxt).toContain("n.includes('thruster')");
+    expect(thrusterTxt).toContain("n.includes('exhaust')");
     
-    // Check thruster intensity scaling still works
-    expect(txt).toContain('thrusterIntensity.base');
-    expect(txt).toContain('thrusterIntensity.range');
-    expect(txt).toContain('throttle');
+    // Check thruster intensity scaling function is properly defined
+    expect(thrusterTxt).toContain('updateThrusterIntensity');
+    expect(thrusterTxt).toContain('baseIntensity');
+    expect(thrusterTxt).toContain('throttle');
+    
+    // Verify usage of thruster intensity scaling in Ship component
+    const shipFile = path.resolve(__dirname, '../../src/components/Ship.tsx');
+    const shipTxt = fs.readFileSync(shipFile, 'utf-8');
+    expect(shipTxt).toContain('smoothing.thrusterIntensity.base');
+    expect(shipTxt).toContain('smoothing.thrusterIntensity.range');
   });
 
   it('has particle trails component integration', () => {

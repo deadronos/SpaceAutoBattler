@@ -6,7 +6,7 @@ import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegist
 import { SHIELD_TUNING, SHIELD_VISUALS } from '../../src/config/renderer.js';
 
 describe('ShieldBubble visibility behavior (static analysis)', () => {
-  const shipFilePath = path.resolve(__dirname, '../../src/components/Ship.tsx');
+  const shipFilePath = path.resolve(__dirname, '../../src/components/ship/ShipShield.tsx');
   const configFilePath = path.resolve(__dirname, '../../src/config/renderer.ts');
 
   it('includes conditional rendering for low shield levels', () => {
