@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
 import type { AICommand, GameState, ShipEntity } from '../../types/index.js';
 import { clampToWorld } from '../config.js';
+import { getEffectiveStats } from '../progression.js';
 
 // Reusable temporary objects to avoid per-frame allocations
 const TEMP_FORWARD = new Vector3();
@@ -152,20 +153,25 @@ function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): v
   const dampingFactor = Math.exp(-motion.linearDamping * dt);
   velocity.multiplyScalar(dampingFactor);
 
+  // Apply subsystem effects to speed
+  const effectiveStats = getEffectiveStats(ship.ship);
+  const effectiveMaxSpeed = motion.maxSpeed * effectiveStats.speedMultiplier;
+  const effectiveMaxReverseSpeed = motion.maxReverseSpeed ? motion.maxReverseSpeed * effectiveStats.speedMultiplier : undefined;
+
   // Clamp forward component to max speed / reverse speed limits.
   const forwardSpeed = velocity.dot(TEMP_FORWARD);
-  if (forwardSpeed > motion.maxSpeed) {
-    const excess = forwardSpeed - motion.maxSpeed;
+  if (forwardSpeed > effectiveMaxSpeed) {
+    const excess = forwardSpeed - effectiveMaxSpeed;
     velocity.addScaledVector(TEMP_FORWARD, -excess);
-  } else if (motion.maxReverseSpeed != null && forwardSpeed < -motion.maxReverseSpeed) {
-    const deficit = -motion.maxReverseSpeed - forwardSpeed;
+  } else if (effectiveMaxReverseSpeed != null && forwardSpeed < -effectiveMaxReverseSpeed) {
+    const deficit = -effectiveMaxReverseSpeed - forwardSpeed;
     velocity.addScaledVector(TEMP_FORWARD, deficit);
   }
 
   // Clamp velocity to maximum speed
   const speed = velocity.length();
-  if (speed > motion.maxSpeed) {
-    velocity.multiplyScalar(motion.maxSpeed / speed);
+  if (speed > effectiveMaxSpeed) {
+    velocity.multiplyScalar(effectiveMaxSpeed / speed);
   }
 }
 

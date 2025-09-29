@@ -5,6 +5,7 @@ import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { runDecisionTick, __aiTestHooks } from '../../src/game/systems.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
+import { applyProgressionDefaults } from './helpers/progression.js';
 
 const { refreshBlackboard, assignTeamRoles } = __aiTestHooks;
 
@@ -44,7 +45,7 @@ describe('AI interrupts', () => {
 });
 
 function createTestState(): { state: GameState; ships: ShipEntity[] } {
-  const ship: ShipEntity = {
+  const ship = {
     id: 1,
     rigidBody: {
       setNextKinematicTranslation: () => undefined,
@@ -102,9 +103,9 @@ function createTestState(): { state: GameState; ships: ShipEntity[] } {
       stickinessTargetId: undefined,
       desiredRange: undefined,
     } satisfies AIState,
-  } as ShipEntity;
+  } as unknown as ShipEntity;
 
-  const enemy: ShipEntity = {
+  const enemy = {
     id: 2,
     rigidBody: {
       setNextKinematicTranslation: () => undefined,
@@ -140,7 +141,10 @@ function createTestState(): { state: GameState; ships: ShipEntity[] } {
       motion: createDefaultMotionStats(),
     },
     model: 'corvette',
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  applyProgressionDefaults(enemy.ship, { maxHpOverride: enemy.ship.maxHp });
 
   const ships: ShipEntity[] = [ship, enemy];
 

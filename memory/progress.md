@@ -2,6 +2,8 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-09-29: Completed TASK152 progression test hardening — hydrated AI scenario harness ships with progression defaults, updated projectile expectations for damage type modifiers, and confirmed `npm test -- --run --reporter=verbose` passes.
+
 - 2025-09-28: Completed TASK147 HUD settings/debug drawers — refactored control bar, added gear/wrench drawers with modular toggle config, defaulted postprocessing/AI V2 to enabled, updated styles, and landed Vitest coverage (`ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels`) alongside `npm run typecheck` + `npm test`.
 
 - 2025-09-28: Completed TASK139 haze taper implementation — added config knobs, material clamps, shader attenuation, new Vitest coverage, and validated via `npm run typecheck` + `npm test`. Visual capture remains as a follow-up once art direction finalises reference frames.

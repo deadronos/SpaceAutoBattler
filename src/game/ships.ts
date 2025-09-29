@@ -17,6 +17,8 @@ import { validateMotionStats } from './validation.js';
 import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
 import { AI_CONFIG } from './config.js';
 import { SeededRng } from '../utils/rng.js';
+import { HULL_DAMAGE_TYPES, HULL_ARMOR_VALUES, calculateXpForLevel } from '../config/progression.js';
+import { generateCaptain, createSubsystems, createLevelBonusState } from './progression.js';
 
 /**
  * Apply range variance based on range policy and ship's trait seed.
@@ -75,6 +77,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 40,
     scale: 1,
     bulletType: 'bullet:laser',
+    damageType: HULL_DAMAGE_TYPES.fighter,
+    armor: HULL_ARMOR_VALUES.fighter,
     turrets: [],
     motion: {
       mass: 1.0,
@@ -108,6 +112,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 15,
     scale: 1,
     bulletType: 'bullet:plasma',
+    damageType: HULL_DAMAGE_TYPES.corvette,
+    armor: HULL_ARMOR_VALUES.corvette,
     motion: {
       mass: 1.5,
       maxSpeed: 15, // units/s - matches legacy speed
@@ -168,6 +174,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 12,
     scale: 1,
     bulletType: 'bullet:plasma',
+    damageType: HULL_DAMAGE_TYPES.frigate,
+    armor: HULL_ARMOR_VALUES.frigate,
     motion: {
       mass: 2.5,
       maxSpeed: 12, // units/s - matches legacy speed
@@ -241,6 +249,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 10,
     scale: 1,
     bulletType: 'bullet:heavy',
+    damageType: HULL_DAMAGE_TYPES.destroyer,
+    armor: HULL_ARMOR_VALUES.destroyer,
     motion: {
       mass: 4.0,
       maxSpeed: 10, // units/s - matches legacy speed
@@ -327,6 +337,8 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
     speed: 7,
     scale: 1,
     bulletType: 'bullet:ion',
+    damageType: HULL_DAMAGE_TYPES.carrier,
+    armor: HULL_ARMOR_VALUES.carrier,
     motion: {
       mass: 6.0,
       maxSpeed: 7, // units/s - matches legacy speed
@@ -458,6 +470,16 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: stats.motion,
+      
+      // Ship Progression System
+      xp: 0,
+      level: 1,
+      xpToNext: calculateXpForLevel(2),
+      damageType: stats.damageType,
+      levelBonuses: createLevelBonusState(),
+      captain: generateCaptain(blueprint.hull, aiState.traitSeed + 1000), // Offset seed for captain
+      subsystems: createSubsystems(stats.maxHp),
+      armor: stats.armor,
     },
     model: blueprint.hull,
     shieldRipples: [],

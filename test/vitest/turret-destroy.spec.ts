@@ -4,6 +4,7 @@ import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameState, ShipEntity, TurretEntity } from '../../src/types/index.js';
 import { destroyEntity } from '../../src/game/state.js';
 import { registerTurret } from '../../src/game/turretRegistry.js';
+import { applyProgressionDefaults } from './helpers/progression.js';
 
 function makeRigidBodyStub(init?: {
   pos?: { x: number; y: number; z: number };
@@ -117,7 +118,7 @@ function makeStateStub(): GameState {
 
 function makeShipAndTurret(state: GameState): { ship: ShipEntity; turret: TurretEntity } {
   const rb = makeRigidBodyStub();
-  const ship: ShipEntity = {
+  const ship = {
     id: 1,
     rigidBody: rb as any,
     collider: { handle: 100, isValid: () => true } as any,
@@ -135,7 +136,7 @@ function makeShipAndTurret(state: GameState): { ship: ShipEntity; turret: Turret
       projectileSpeed: 1,
       range: 1,
       speed: 0,
-      bulletType: '',
+      bulletType: 'bullet:laser',
       velocity: new Vector3(0, 0, 0),
       angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
@@ -144,7 +145,9 @@ function makeShipAndTurret(state: GameState): { ship: ShipEntity; turret: Turret
     model: 'corvette' as any,
     shieldRipples: [],
     turrets: [],
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
 
   const tBody = makeRigidBodyStub();
   const turret: TurretEntity = {

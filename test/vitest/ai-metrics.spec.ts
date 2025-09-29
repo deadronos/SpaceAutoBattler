@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import {
   createDefaultMetrics,
   recordShotMetrics,
@@ -411,7 +412,7 @@ function createStubShip(id: number, team: 'blue' | 'red', position: Vector3): Sh
     },
   };
 
-  return {
+  const shipEntity = {
     id,
     rigidBody: {
       setNextKinematicTranslation: () => undefined,
@@ -448,7 +449,10 @@ function createStubShip(id: number, team: 'blue' | 'red', position: Vector3): Sh
     },
     model: 'fighter',
     ai,
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(shipEntity.ship, { maxHpOverride: shipEntity.ship.maxHp });
+  return shipEntity;
 }
 
 // Scenario configurations for deterministic testing

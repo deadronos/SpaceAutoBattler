@@ -20,6 +20,7 @@ import { join } from 'path';
 import { getDefaultProfileId, resolveBehaviorProfile } from './aiProfiles.js';
 import { generateTraitsFromSeed } from './aiTraits.js';
 import { createDefaultMetrics, aggregateKpis, SHIP_HULLS, recordShotMetrics } from './metrics.js';
+import { createProgressionDefaults, createSubsystems } from './progression.js';
 
 const HARNESS_TEMP = new Vector3();
 
@@ -485,6 +486,13 @@ function createHarnessShip(
   const hull = spec.hull;
   const profileId = spec.profileId ?? getDefaultProfileId(hull);
   const traitSeed = spec.traitSeed ?? rng.int(1, 1_000_000);
+  const maxHp = spec.maxHp ?? spec.hp ?? 100;
+  const hp = spec.hp ?? maxHp;
+  const maxShield = spec.maxShield ?? spec.shield ?? 0;
+  const shield = spec.shield ?? maxShield;
+  const progression = createProgressionDefaults(hull);
+  const subsystems = createSubsystems(maxHp);
+
   const ai: AIState = {
     profileId,
     intent: 'Attack',
@@ -513,10 +521,18 @@ function createHarnessShip(
     ship: {
       team: spec.team,
       hull,
-      hp: spec.hp ?? 100,
-      maxHp: spec.maxHp ?? spec.hp ?? 100,
-      shield: spec.shield ?? 0,
-      maxShield: spec.maxShield ?? spec.shield ?? 0,
+      xp: progression.xp,
+      level: progression.level,
+      xpToNext: progression.xpToNext,
+      damageType: progression.damageType,
+    levelBonuses: progression.levelBonuses,
+      captain: progression.captain,
+      subsystems,
+      armor: progression.armor,
+      hp,
+      maxHp,
+      shield,
+      maxShield,
       shieldRegen: 0,
       cooldown: 0,
       fireRate: spec.fireRate ?? 0.8,

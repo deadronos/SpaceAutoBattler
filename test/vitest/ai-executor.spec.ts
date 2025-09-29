@@ -6,6 +6,7 @@ import { __aiTestHooks } from '../../src/game/systems.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import { AI_CONFIG } from '../../src/game/config.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
+import { applyProgressionDefaults } from './helpers/progression.js';
 
 const { writeCommand } = __aiTestHooks;
 
@@ -88,7 +89,7 @@ function createShip(
     },
   };
 
-  return {
+  const ship = {
     id,
     rigidBody: {
       setNextKinematicTranslation: () => undefined,
@@ -125,7 +126,10 @@ function createShip(
     },
     model: 'fighter',
     ai,
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  return ship;
 }
 
 describe('writeCommand executors', () => {
@@ -266,8 +270,8 @@ describe('writeCommand executors', () => {
       { profileId: 'artillery', expectedMin: 0.01, description: 'artillery (destroyer/carrier)' },
     ];
 
-    for (const { profileId, expectedMin, description } of testCases) {
-      const ship = createShip(Math.floor(Math.random() * 1000), 'blue', new Vector3());
+    for (const [testCaseIndex, { profileId, expectedMin, description: _description }] of testCases.entries()) {
+      const ship = createShip(20 + testCaseIndex, 'blue', new Vector3(0, 0, 0));
       ship.ai!.profileId = profileId;
       ship.ai!.intent = 'Attack';
       const profile = resolveBehaviorProfile(profileId);
@@ -283,7 +287,7 @@ describe('writeCommand executors', () => {
 
       expect(profile.verticalManeuver).toBeGreaterThanOrEqual(expectedMin);
       // Test that some vertical perturbation is applied
-      expect(maxPerturbation).toBeGreaterThan(0); // ${description} should have some vertical perturbation
+      expect(maxPerturbation).toBeGreaterThan(0); // verifies role-specific ships actually perturb vertically
     }
   });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameEntity, GameState, ShipEntity } from '../../src/types/index.js';
 import { fireProjectile, updateGame } from '../../src/game/systems.js';
@@ -105,7 +106,7 @@ function makeStateStub(): GameState {
 
 function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shield=5): ShipEntity {
   const rb = makeRigidBodyStub({ pos: { x: position.x, y: position.y, z: position.z } });
-  return {
+  const shipEntity = {
     id,
     rigidBody: rb as any,
     collider: { handle: 1000 + id, isValid: () => true } as any,
@@ -131,7 +132,10 @@ function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shie
     },
     model: 'fighter' as any,
     shieldRipples: [],
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(shipEntity.ship, { maxHpOverride: shipEntity.ship.maxHp });
+  return shipEntity;
 }
 
 describe('projectile resolution', () => {
@@ -155,8 +159,8 @@ describe('projectile resolution', () => {
 
     // Projectile should be removed
     expect((state.queries.projectiles as any).entities.length).toBe(0);
-    // Shield should be reduced first (damage 3 -> shield from 4 to 1, hull intact)
-    expect(target.ship.shield).toBe(1);
+    // Shield should be reduced first (kinetic damage effectiveness 0.8 -> shield from 4 to 1.6)
+    expect(target.ship.shield).toBeCloseTo(1.6, 5);
     expect(target.ship.hp).toBe(10);
     // Ripple should be emitted
     expect(target.shieldRipples && target.shieldRipples.length).toBeGreaterThan(0);
