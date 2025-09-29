@@ -41,35 +41,38 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
   const nextLayerRef = useRef<number>(LAYER_START);
   const defaultGroup = POSTPROCESSING_CONFIG.bloomDefaultGroup ?? FALLBACK_GROUP;
 
-  // Ensure selections exist for all configured groups on every render (idempotent).
-  const configuredGroups = useMemo(() => {
+  // Ensure selections exist for all configured groups - only run when groups change.
+  const configuredGroupsArray = useMemo(() => {
     const groups = POSTPROCESSING_CONFIG.bloomGroups ?? {};
-    return new Set<string>([...Object.keys(groups), defaultGroup]);
+    return [...new Set([...Object.keys(groups), defaultGroup])];
   }, [defaultGroup]);
 
-  configuredGroups.forEach((group) => {
+  // Initialize selections for all configured groups only when groups change
+  React.useEffect(() => {
     const map = selectionsRef.current;
-    let selection = map.get(group);
-    if (!selection) {
-      selection = new Selection();
-      // Defensive: normalize the candidate layer index before assigning to
-      // the selection. Log debug info to help reproduce intermittent
-      // "Layer out of range" warnings when present in runtime.
-      const candidate = nextLayerRef.current;
-      const layer = normalizeLayerIndex(candidate);
-      // Debug logging (kept at debug level) prints the configured start and
-      // the resolved layer we will assign. Avoid logging during tests.
-      if (process.env.NODE_ENV !== 'test') {
-        // eslint-disable-next-line no-console
-        console.debug('[BloomProvider] allocating layer', { group, candidate, layer, LAYER_START });
+    configuredGroupsArray.forEach((group) => {
+      let selection = map.get(group);
+      if (!selection) {
+        selection = new Selection();
+        // Defensive: normalize the candidate layer index before assigning to
+        // the selection. Log debug info to help reproduce intermittent
+        // "Layer out of range" warnings when present in runtime.
+        const candidate = nextLayerRef.current;
+        const layer = normalizeLayerIndex(candidate);
+        // Debug logging (kept at debug level) prints the configured start and
+        // the resolved layer we will assign. Avoid logging during tests.
+        if (process.env.NODE_ENV !== 'test') {
+          // eslint-disable-next-line no-console
+          console.debug('[BloomProvider] allocating layer', { group, candidate, layer, LAYER_START });
+        }
+        selection.layer = layer;
+        // advance next layer; keep it normalized as well
+        nextLayerRef.current = Math.min(layer + 1, 31);
+        map.set(group, selection);
       }
-      selection.layer = layer;
-      // advance next layer; keep it normalized as well
-      nextLayerRef.current = Math.min(layer + 1, 31);
-      map.set(group, selection);
-    }
-    selection.exclusive = false;
-  });
+      selection.exclusive = false;
+    });
+  }, [configuredGroupsArray]);
 
   const register = React.useCallback(
     (obj: Object3D | null | undefined, options?: BloomRegistrationOptions) => {
