@@ -361,7 +361,7 @@ export function scoreEscortIntent(
   escortAssignment: EscortAssignment | null,
 ): number {
   const dist = ship.transform.position.distanceTo(escortTarget.transform.position);
-  const threatId = escortAssignment ? escortAssignment.threatId : state.blackboard.threatToVip.get(escortTarget.id);
+  const threatId = escortAssignment?.threatId ?? state.blackboard.threatToVip.get(escortTarget.id);
   const threatWeight = threatId != null ? 220 : 0;
   const desiredRadius = escortAssignment?.offset.length() ?? profile.desiredRange[0];
   const bandError = Math.abs(dist - desiredRadius);

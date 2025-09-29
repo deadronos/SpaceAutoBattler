@@ -92,7 +92,10 @@ function runShipDecisions(
     const idx = (startIndex + i) % total;
     const ship = ships[idx];
     const ai = ship.ai;
-    if (!ai) continue;
+    if (!ai) {
+      skipped += 1;
+      continue;
+    }
     if (ai.nextThinkAt > manager.tickIndex) {
       skipped += 1;
       continue;
