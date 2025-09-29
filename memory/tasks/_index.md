@@ -12,6 +12,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Completed
 
 - [TASK226](TASK226-carrier-spawn-scheduling.md) — Deferred carrier fighter spawn execution to eliminate Rapier unsafe aliasing crashes and added regression coverage (2025-09-29).
+- [TASK227](TASK227-shield-bubble-visibility.md) — Restored shield bubble visibility by enforcing overlay render order, disabling depth tests, and adding regression coverage (2025-09-29).
 - [TASK154](TASK154-rapier-reset-stability.md) — Implemented deferred reset execution to eliminate Rapier console errors during reset button usage (2025-01-27).
 - [TASK225](TASK225-shield-bubble-visibility.md) — Fixed missing shield bubble rendering when shields regenerate after spawning depleted (2025-02-14).
 - [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).

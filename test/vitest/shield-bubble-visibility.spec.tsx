@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { SHIELD_RENDER_ORDER } from '../../src/components/Ship.js';
+import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
 
 describe('ShieldBubble visibility behavior (static analysis)', () => {
   const shipFilePath = path.resolve(__dirname, '../../src/components/Ship.tsx');
@@ -57,5 +59,18 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
     expect(shieldFractionFull >= minThreshold).toBe(true);   // 100% shields should render
     expect(shieldFractionPartial >= minThreshold).toBe(true); // 50% shields should render  
     expect(shieldFractionMinimal >= minThreshold).toBe(true); // 1% shields should render
+  });
+
+  it('applies SHIELD_RENDER_ORDER constant with positive value', () => {
+    expect(SHIELD_RENDER_ORDER).toBeGreaterThan(0);
+    const txt = fs.readFileSync(shipFilePath, 'utf-8');
+    expect(txt.includes('renderOrder={SHIELD_RENDER_ORDER}')).toBe(true);
+  });
+
+  it('disables depth testing on the shield hex material factory', () => {
+    const mat = createShieldHexShaderMaterial('carrier', 'blue');
+    expect(mat.depthTest).toBe(false);
+    expect(mat.depthWrite).toBe(false);
+    mat.dispose();
   });
 });

@@ -20,6 +20,8 @@ import { useOptionalGameState } from '../game/context.js';
 import { useBloomContext } from '../renderer/BloomProvider.js';
 import { useBloomRegistration } from '../renderer/BloomProvider.js';
 
+export const SHIELD_RENDER_ORDER = 20;
+
 export function resolveModelPath(modelKey?: string): string {
   const key = (modelKey ?? 'fighter') as keyof typeof SHIP_MODEL_PATHS;
   return SHIP_MODEL_PATHS[key] ?? SHIP_MODEL_PATHS.fighter;
@@ -590,7 +592,7 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   }>(key)) ?? getMaterial('shield:hex')!;
 
   return (
-    <mesh ref={meshRef} renderOrder={-1} frustumCulled={false}>
+    <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
       <sphereGeometry args={[1, 64, 64]} />
       <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={rippleQueue} simTime={state?.time ?? 0} />
     </mesh>

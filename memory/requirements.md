@@ -1,5 +1,11 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-09-29 — Shield Bubble Visibility Regression (TASK227)
+
+1. **WHEN** a ship entity reports `shield/maxShield ≥ 0.01`, **THE SYSTEM SHALL** render the shield bubble mesh after opaque hull geometry so the bubble remains visible regardless of hull draw order. *(Acceptance: Vitest regression reads `Ship.tsx` to confirm `ShieldBubble` uses a positive `SHIELD_RENDER_ORDER` constant greater than zero.)*
+2. **WHEN** the shield bubble material initialises, **THE SYSTEM SHALL** disable depth testing (or render after the hull) while leaving depth write disabled so the bubble overlays hull pixels without affecting depth buffers. *(Acceptance: unit test exercises the shield material factory and asserts the resulting `ShaderMaterial` has `depthTest === false` and `depthWrite === false`.)*
+3. **WHEN** a carrier or any hull spawns with full shields, **THE SYSTEM SHALL** surface a visible shield bubble within the first render frame, ensuring bloom registration remains active for the `shields` group. *(Acceptance: regression test instantiates a carrier entity and verifies bloom registration plus mesh visibility flag on the first frame.)*
+
 ## 2025-09-29 — Carrier Spawn Queue (TASK226)
 
 1. **WHEN** `updateCarrierLaunchSystem` iterates over carriers, **THE SYSTEM SHALL** queue fighter spawn operations and execute them only after the loop completes so Rapier never receives nested borrows that trigger the "recursive use" error. *(Acceptance: new Vitest regression exercises the launch cycle and asserts `spawnShip` is invoked after the carrier loop without throwing.)*
