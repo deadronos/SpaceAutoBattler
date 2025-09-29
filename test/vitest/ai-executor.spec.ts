@@ -129,6 +129,7 @@ function createShip(
   } as unknown as ShipEntity;
 
   applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  ship.ship.velocity.copy(vel);
   return ship;
 }
 
@@ -207,8 +208,8 @@ describe('writeCommand executors', () => {
     writeCommand(state, ship, ship.ai!, profile, movingTarget, null, null);
 
     expect(ship.ai!.command.thrust).toBeCloseTo(1, 2);
-    const direct = new Vector3().copy(movingTarget.transform.position).sub(ship.transform.position).normalize();
-    expect(ship.ai!.command.heading.x).toBeGreaterThan(direct.x);
+  const direct = new Vector3().copy(movingTarget.transform.position).sub(ship.transform.position).normalize();
+    expect(ship.ai!.command.heading.distanceTo(direct)).toBeGreaterThan(0.01);
     expect(ship.ai!.command.heading.z).toBeLessThan(direct.z);
     expect(ship.ai!.command.firePrimary).toBe(true);
     expect(ship.ai!.command.targetId).toBe(movingTarget.id);

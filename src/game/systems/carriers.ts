@@ -4,6 +4,7 @@ import type {
   CarrierLaunchConfig,
   CarrierLaunchSlot,
   GameState,
+  ShipBlueprint,
   ShipEntity,
 } from '../../types/index.js';
 import { spawnShip } from '../ships.js';
@@ -28,6 +29,8 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
   const aliveById = new Map<number, ShipEntity>();
   for (const ship of ships) aliveById.set(ship.id, ship);
 
+  const pendingSpawns: Array<() => void> = [];
+
   for (const ship of ships) {
     const carrier = ship.carrier;
     if (!carrier) continue;
@@ -50,21 +53,32 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
     for (; spawned < launches; spawned += 1) {
       const slotIndex = (carrier.launchIndex + spawned) % Math.max(1, carrier.config.formation.length);
       const slot = carrier.config.formation[slotIndex] ?? FALLBACK_SLOT;
-      const spawnPosition = computeLaunchPosition(ship, carrier.config, slot, state);
+      const spawnPosition = computeLaunchPosition(ship, carrier.config, slot, state).clone();
       const heading = computeHeadingYaw(ship.transform.rotation);
-      const fighter = spawnShip(state, {
+      const blueprint: ShipBlueprint = {
         hull: 'fighter',
         team: ship.ship.team,
         position: spawnPosition,
         heading,
         parentCarrierId: ship.id,
+      };
+
+      pendingSpawns.push(() => {
+        const fighter = spawnShip(state, blueprint);
+        carrier.activeFighterIds.push(fighter.id);
+        aliveById.set(fighter.id, fighter);
       });
-      carrier.activeFighterIds.push(fighter.id);
-      aliveById.set(fighter.id, fighter);
     }
 
     carrier.launchIndex += spawned;
     carrier.launchCooldownRemaining = carrier.config.cooldownSeconds;
+  }
+
+  if (pendingSpawns.length > 0) {
+    // Flush queued spawns after carrier iteration to avoid Rapier re-entrancy during world mutation.
+    for (const spawn of pendingSpawns) {
+      spawn();
+    }
   }
 }
 

@@ -926,15 +926,16 @@ function getSpeedMagnitude(ship: ShipEntity): number {
 }
 
 function getShipVelocity(ship: ShipEntity, out: Vector3): Vector3 {
-  const body = ship.rigidBody as unknown as { linvel?: () => { x: number; y: number; z: number } };
-  if (body?.linvel) {
-    const vel = body.linvel();
-    out.set(vel.x, vel.y, vel.z);
+  const component = ship.ship;
+  const velocity = component?.velocity;
+  if (!velocity) {
+    out.set(0, 0, 0);
     return out;
   }
-  // No rigid-body velocity available in this environment (tests/stubs).
-  // Return a zero vector to indicate no movement.
-  out.set(0, 0, 0);
+  const x = Number.isFinite(velocity.x) ? velocity.x : 0;
+  const y = Number.isFinite(velocity.y) ? velocity.y : 0;
+  const z = Number.isFinite(velocity.z) ? velocity.z : 0;
+  out.set(x, y, z);
   return out;
 }
 
