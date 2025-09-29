@@ -15,4 +15,13 @@ describe('ShieldBubble anchoring (static check)', () => {
     const ok = txt.includes('mesh.scale.setScalar(r)') || txt.includes('mesh.scale.set(');
     expect(ok).toBe(true);
   });
+
+  it('includes conditional rendering for low shield levels', () => {
+    const file = path.resolve(__dirname, '../../src/components/Ship.tsx');
+    const txt = fs.readFileSync(file, 'utf-8');
+    // Ensure shield bubble is conditionally rendered when shields are very low
+    expect(txt).toContain('minShieldThreshold');
+    expect(txt).toContain('if (shieldFraction < minShieldThreshold)');
+    expect(txt).toContain('return <></>;');
+  });
 });

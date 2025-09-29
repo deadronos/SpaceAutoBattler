@@ -31,6 +31,15 @@ export const SETTINGS_TOGGLES: HudToggleDefinition[] = [
     },
   },
   {
+    id: 'progression-panel',
+    label: 'Progression Panel',
+    description: 'Ship XP, levels, and event tracking',
+    select: (state) => state.progressionPanelEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleProgressionPanel();
+    },
+  },
+  {
     id: 'ai-v2',
     label: 'AI V2',
     description: 'Utility-based decision system',

@@ -23,6 +23,14 @@ export type SubsystemStatus = 'online' | 'damaged' | 'offline';
 
 export type MoraleEffectType = 'aggression_boost' | 'repair_boost' | 'accuracy_boost';
 
+export interface ProgressionEvent {
+  ts: number; // epoch ms
+  type: 'damage' | 'kill' | 'levelup' | 'other';
+  deltaXp?: number; // positive usually
+  source?: string; // attacker id or weapon
+  details?: string;
+}
+
 export interface Subsystem {
   hp: number;
   maxHp: number;
@@ -625,6 +633,8 @@ export interface GameState {
   explosions: ExplosionEvent[];
   /** Recycled explosion events available for reuse to maintain determinism. */
   explosionPool: ExplosionEvent[];
+  /** Progression events by ship ID for UI consumption. */
+  progressionEvents: Map<number, ProgressionEvent[]>;
 }
 
 export interface HudUiFlags {

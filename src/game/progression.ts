@@ -6,7 +6,9 @@ import type {
   Subsystem,
   SubsystemType,
   DamageType,
-  ShipLevelBonuses
+  ShipLevelBonuses,
+  ProgressionEvent,
+  GameState
 } from '../types/index.js';
 import { SeededRng } from '../utils/rng.js';
 import {
@@ -56,33 +58,89 @@ function recoverBaseStat(current: number, previousBonus: number): number {
 }
 
 /**
+ * Add a progression event for a ship
+ */
+function addProgressionEvent(
+  state: GameState | null,
+  shipId: number,
+  event: Omit<ProgressionEvent, 'ts'>
+): void {
+  if (!state) return;
+  
+  const events = state.progressionEvents.get(shipId) || [];
+  const newEvent: ProgressionEvent = {
+    ...event,
+    ts: Date.now()
+  };
+  
+  events.push(newEvent);
+  
+  // Keep only the last N events per ship
+  const MAX_EVENTS = 20;
+  if (events.length > MAX_EVENTS) {
+    events.splice(0, events.length - MAX_EVENTS);
+  }
+  
+  state.progressionEvents.set(shipId, events);
+}
+
+/**
  * Award XP to a ship for dealing damage
  */
-export function awardDamageXp(ship: ShipComponent, damageDealt: number): void {
+export function awardDamageXp(ship: ShipComponent, damageDealt: number, state?: GameState | null, shipId?: number): void {
   const xpGained = damageDealt * XP_CONFIG.damageXpMultiplier;
   ship.xp += xpGained;
-  checkLevelUp(ship);
+  
+  // Track progression event
+  if (state && shipId !== undefined) {
+    addProgressionEvent(state, shipId, {
+      type: 'damage',
+      deltaXp: xpGained,
+      details: `${damageDealt.toFixed(1)} damage dealt`
+    });
+  }
+  
+  checkLevelUp(ship, state, shipId);
 }
 
 /**
  * Award XP to a ship for killing an enemy
  */
-export function awardKillXp(ship: ShipComponent, targetMaxHp: number): void {
+export function awardKillXp(ship: ShipComponent, targetMaxHp: number, state?: GameState | null, shipId?: number): void {
   const xpGained = targetMaxHp * XP_CONFIG.killXpMultiplier;
   ship.xp += xpGained;
-  checkLevelUp(ship);
+  
+  // Track progression event
+  if (state && shipId !== undefined) {
+    addProgressionEvent(state, shipId, {
+      type: 'kill',
+      deltaXp: xpGained,
+      details: `Enemy destroyed (${targetMaxHp.toFixed(0)} HP)`
+    });
+  }
+  
+  checkLevelUp(ship, state, shipId);
 }
 
 /**
  * Check if a ship should level up and apply bonuses if so
  */
-export function checkLevelUp(ship: ShipComponent): boolean {
+export function checkLevelUp(ship: ShipComponent, state?: GameState | null, shipId?: number): boolean {
   let leveledUp = false;
   
   while (ship.xp >= ship.xpToNext) {
+    const oldLevel = ship.level;
     ship.level += 1;
     ship.xp -= ship.xpToNext;
     ship.xpToNext = calculateXpForLevel(ship.level + 1) - calculateXpForLevel(ship.level);
+    
+    // Track level-up event
+    if (state && shipId !== undefined) {
+      addProgressionEvent(state, shipId, {
+        type: 'levelup',
+        details: `Level ${oldLevel} → ${ship.level}`
+      });
+    }
     
     applyLevelUpBonuses(ship);
     leveledUp = true;

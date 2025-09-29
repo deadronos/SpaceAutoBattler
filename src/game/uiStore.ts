@@ -29,6 +29,11 @@ export type UiState = {
   setPerfMonitorEnabled: (v: boolean) => void;
   perfMonitorPosition: { x: number; y: number };
   setPerfMonitorPosition: (position: { x: number; y: number }) => void;
+  progressionPanelPosition: { x: number; y: number };
+  setProgressionPanelPosition: (position: { x: number; y: number }) => void;
+  progressionPanelEnabled: boolean;
+  toggleProgressionPanel: () => void;
+  setProgressionPanelEnabled: (v: boolean) => void;
   // AI Experiment flags (runtime overrides)
   aiVerticalEnabled: boolean | null; // null = use config default
   toggleAiVertical: () => void;
@@ -70,6 +75,12 @@ export const useUiStore = create<UiState>((set) => ({
   perfMonitorPosition: { x: 16, y: 16 },
   setPerfMonitorPosition: (position: { x: number; y: number }) =>
     set({ perfMonitorPosition: { x: position.x, y: position.y } }),
+  progressionPanelPosition: { x: 16, y: 120 },
+  setProgressionPanelPosition: (position: { x: number; y: number }) =>
+    set({ progressionPanelPosition: { x: position.x, y: position.y } }),
+  progressionPanelEnabled: false,
+  toggleProgressionPanel: () => set((s) => ({ progressionPanelEnabled: !s.progressionPanelEnabled })),
+  setProgressionPanelEnabled: (v: boolean) => set({ progressionPanelEnabled: v }),
   // AI Experiment flags (runtime overrides) - null means use config default
   aiVerticalEnabled: null,
   toggleAiVertical: () => set((s) => ({ 

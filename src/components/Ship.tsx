@@ -387,6 +387,44 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   const [rippleTick, setRippleTick] = useState(0);
   const lastCountRef = useRef<number>(0);
   const lastT0Ref = useRef<number>(-Infinity);
+  const minShieldThreshold = 0.01; // 1% shields minimum to show bubble
+
+  const computeShieldFraction = () => {
+    const maxShield = entity.ship.maxShield;
+    const shield = entity.ship.shield;
+    if (!Number.isFinite(maxShield) || maxShield <= 0) {
+      return 0;
+    }
+    if (!Number.isFinite(shield)) {
+      return 0;
+    }
+    const ratio = shield / Math.max(1, maxShield);
+    if (!Number.isFinite(ratio)) {
+      return 0;
+    }
+    return MathUtils.clamp(ratio, 0, 1);
+  };
+
+  const [shieldFraction, setShieldFraction] = useState(() => computeShieldFraction());
+  const shieldFractionRef = useRef(shieldFraction);
+  const shieldVisibleRef = useRef(shieldFraction >= minShieldThreshold);
+
+  useEffect(() => {
+    shieldFractionRef.current = shieldFraction;
+    shieldVisibleRef.current = shieldFraction >= minShieldThreshold;
+  }, [shieldFraction, minShieldThreshold]);
+
+  useRenderFrame(() => {
+    const nextFraction = computeShieldFraction();
+    const nextVisible = nextFraction >= minShieldThreshold;
+    const prevFraction = shieldFractionRef.current;
+    const fractionDelta = Math.abs(nextFraction - prevFraction);
+    if (fractionDelta > 0.0005 || nextVisible !== shieldVisibleRef.current) {
+      shieldFractionRef.current = nextFraction;
+      shieldVisibleRef.current = nextVisible;
+      setShieldFraction(nextFraction);
+    }
+  });
 
   useRenderFrame((_, dt) => {
     const mesh = meshRef.current;
@@ -455,8 +493,13 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
     }
   });
   // Derived props for material
-  const s = entity.ship.shield / Math.max(1, entity.ship.maxShield);
-  const opacity = Math.max(0, Math.min(1, s));
+  const opacity = Math.max(0, Math.min(1, shieldFraction));
+
+  // Only render shield bubble if shields are above minimal threshold
+  if (shieldFraction < minShieldThreshold) {
+    return <></>;
+  }
+  
   const ripples = entity.shieldRipples ?? [];
   // Pass up to `maxRipples` latest ripples (oldest first in the array we send)
   const maxRipples = SHIELD_RIPPLE_TUNING.maxRipples ?? 3;

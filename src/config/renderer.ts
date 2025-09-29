@@ -205,7 +205,7 @@ export interface HullTintConfig {
  * - (threshold=0.0, strength=0.30)  => tint only at exact zero but stronger
  */
 export const HULL_TINT: HullTintConfig = {
-  tintThreshold: 1.00,
+  tintThreshold: 0.02,
   tintStrength: 0.35,
 };
 
