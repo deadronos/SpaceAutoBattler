@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
@@ -21,7 +21,13 @@ const MAX_EVENTS_PER_SHIP = 5;
 export function ProgressionPanel(): React.ReactElement | null {
   const state = useOptionalGameState();
   const enabled = useUiStore((s) => s.progressionPanelEnabled);
+  const position = useUiStore((s) => s.progressionPanelPosition);
+  const setPosition = useUiStore((s) => s.setProgressionPanelPosition);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const posRef = useRef(position);
+  useEffect(() => { posRef.current = position; }, [position]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -63,8 +69,78 @@ export function ProgressionPanel(): React.ReactElement | null {
   if (!enabled) return null;
   if (!progressionData || progressionData.length === 0) return null;
 
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    top: `${position.y}px`,
+    left: `${position.x}px`,
+    right: 'auto',
+    bottom: 'auto',
+    cursor: dragging ? 'grabbing' : 'grab',
+    zIndex: 30,
+  };
+
+  // Drag behavior (attach to header for better UX)
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined') return;
+    let node: HTMLDivElement | null = panelRef.current;
+    if (!node) return;
+    const header = node.querySelector<HTMLDivElement>('.progression-panel__header');
+    if (!header) return;
+
+    const drag = {
+      active: false,
+      origin: { x: posRef.current.x, y: posRef.current.y },
+      start: { x: 0, y: 0 },
+      size: { x: 0, y: 0 },
+    };
+
+    const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+    const onMove = (e: PointerEvent) => {
+      if (!drag.active) return;
+      const dx = e.clientX - drag.start.x;
+      const dy = e.clientY - drag.start.y;
+      const nextX = drag.origin.x + dx;
+      const nextY = drag.origin.y + dy;
+      const margin = 8;
+      const maxX = Math.max(0, window.innerWidth - drag.size.x - margin);
+      const maxY = Math.max(0, window.innerHeight - drag.size.y - margin);
+      setPosition({ x: clamp(nextX, margin, maxX), y: clamp(nextY, margin, maxY) });
+    };
+
+    const onUp = () => {
+      if (!drag.active) return;
+      drag.active = false;
+      setDragging(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (!node) return;
+      drag.active = true;
+      drag.origin = { x: posRef.current.x, y: posRef.current.y };
+      drag.start = { x: e.clientX, y: e.clientY };
+      drag.size = { x: node.offsetWidth, y: node.offsetHeight };
+      setDragging(true);
+      e.preventDefault();
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    };
+
+    header.addEventListener('pointerdown', onDown);
+    return () => {
+      header.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      drag.active = false;
+      setDragging(false);
+    };
+  }, [enabled, setPosition]);
+
   return (
-    <div className="progression-panel" role="region" aria-live="polite">
+    <div ref={panelRef} className="progression-panel" role="region" aria-live="polite" style={style}>
       <div className="progression-panel__header">
         <div className="progression-panel__title">Progression</div>
         <div className="progression-panel__meta">
