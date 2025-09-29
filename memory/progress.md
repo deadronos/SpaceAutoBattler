@@ -2,7 +2,7 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
-- 2025-09-29: Completed TASK152 progression test hardening — hydrated AI scenario harness ships with progression defaults, updated projectile expectations for damage type modifiers, and confirmed `npm test -- --run --reporter=verbose` passes.
+- 2025-09-29: Completed TASK152 progression test hardening — hydrated AI scenario harness ships with progression defaults, updated projectile expectations for damage type modifiers, and confirmed `npm test` passes.
 
 - 2025-09-28: Completed TASK147 HUD settings/debug drawers — refactored control bar, added gear/wrench drawers with modular toggle config, defaulted postprocessing/AI V2 to enabled, updated styles, and landed Vitest coverage (`ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels`) alongside `npm run typecheck` + `npm test`.
 
@@ -47,6 +47,8 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-- Last audited: 2025-09-27
+- Last audited: 2025-09-29
 
-- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`. Next: update cross-references and run markdown/link linting.
+- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`.
+
+- 2025-09-29: Completed TASK135 cross-reference reconciliation and ran markdown/link linting across `memory/` and `memory/tasks/`. Updated `memory/tasks/_index.md` to reflect final mappings and removed superseded references.

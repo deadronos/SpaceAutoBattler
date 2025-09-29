@@ -39,6 +39,9 @@ Next steps:
 - Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
 
-- 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
+Status updates:
+
+- 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
+- 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
 
 - Updated: 2025-09-29

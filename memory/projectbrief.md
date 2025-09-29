@@ -14,4 +14,17 @@
 - Simulation determinism preserved via the seeded RNG (`src/utils/rng.ts`).
 - Fast unit tests (Vitest) and reproducible CI builds.
 
-Generated: 2025-09-21
+**Governance & memory bank:**
+
+- Memory files under `memory/` are the canonical source for decisions, requirements, and designs. All significant changes (requirements, design decisions, and task mappings) should be reflected in the Memory Bank and referenced in PRs.
+
+**Recent updates (summary):**
+
+- 2025-09-25 → 2025-09-29: Delivered a series of renderer and determinism updates including the CelestialEnvironment components, deterministic star-disk textures, Playwright capture workflow for before/after comparisons, and test hardening for ship progression scenarios.
+
+**Minimal EARS-style requirements (examples):**
+
+- WHEN a simulation run is executed in CI, THE SYSTEM SHALL use a seeded RNG to produce repeatable outcomes [Acceptance: run the `determinism.spec.ts` suite and compare replay snapshots].
+- WHEN visual regressions are evaluated, THE SYSTEM SHALL produce Playwright before/after captures deterministically given the same seed and debug overrides [Acceptance: `playwright-debug/` captures match saved baselines on the CI job].
+
+Generated: 2025-09-29
