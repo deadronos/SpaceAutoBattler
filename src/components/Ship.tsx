@@ -392,17 +392,35 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
   const computeShieldFraction = () => {
     const maxShield = entity.ship.maxShield;
     const shield = entity.ship.shield;
+    
+    // Enhanced validation with debugging for shield bubble missing issue
     if (!Number.isFinite(maxShield) || maxShield <= 0) {
+      // Debug log for invalid maxShield values that could cause missing bubbles
+      if (maxShield !== 0) {
+        console.warn(`[ShieldBubble] Ship ${entity.id} (${entity.ship.hull}) has invalid maxShield:`, maxShield);
+      }
       return 0;
     }
     if (!Number.isFinite(shield)) {
+      console.warn(`[ShieldBubble] Ship ${entity.id} (${entity.ship.hull}) has invalid shield:`, shield);
       return 0;
     }
-    const ratio = shield / Math.max(1, maxShield);
+    
+    // Use more robust calculation to handle edge cases
+    const ratio = shield / maxShield;
     if (!Number.isFinite(ratio)) {
+      console.warn(`[ShieldBubble] Ship ${entity.id} (${entity.ship.hull}) computed invalid ratio:`, { shield, maxShield, ratio });
       return 0;
     }
-    return MathUtils.clamp(ratio, 0, 1);
+    
+    const fraction = MathUtils.clamp(ratio, 0, 1);
+    
+    // Debug log for cases where shields should show but bubble doesn't
+    if (fraction >= minShieldThreshold && fraction < 1.0) {
+      console.debug(`[ShieldBubble] Ship ${entity.id} (${entity.ship.hull}) shield fraction: ${fraction.toFixed(3)} (${shield}/${maxShield})`);
+    }
+    
+    return fraction;
   };
 
   const [shieldFraction, setShieldFraction] = useState(() => computeShieldFraction());
@@ -419,10 +437,28 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
     const nextVisible = nextFraction >= minShieldThreshold;
     const prevFraction = shieldFractionRef.current;
     const fractionDelta = Math.abs(nextFraction - prevFraction);
-    if (fractionDelta > 0.0005 || nextVisible !== shieldVisibleRef.current) {
-      shieldFractionRef.current = nextFraction;
-      shieldVisibleRef.current = nextVisible;
-      setShieldFraction(nextFraction);
+    
+    // Additional safety check: if computed fraction is 0 but we have shields, use backup calculation
+    let finalFraction = nextFraction;
+    if (nextFraction === 0 && entity.ship.shield > 0 && entity.ship.maxShield > 0) {
+      const backupFraction = Math.max(0, Math.min(1, entity.ship.shield / entity.ship.maxShield));
+      if (Number.isFinite(backupFraction) && backupFraction > 0) {
+        console.warn(`[ShieldBubble] Using backup calculation for ship ${entity.id} (${entity.ship.hull}):`, {
+          computed: nextFraction,
+          backup: backupFraction,
+          shield: entity.ship.shield,
+          maxShield: entity.ship.maxShield
+        });
+        finalFraction = backupFraction;
+      }
+    }
+    
+    const finalVisible = finalFraction >= minShieldThreshold;
+    
+    if (fractionDelta > 0.0005 || finalVisible !== shieldVisibleRef.current) {
+      shieldFractionRef.current = finalFraction;
+      shieldVisibleRef.current = finalVisible;
+      setShieldFraction(finalFraction);
     }
   });
 
@@ -497,6 +533,19 @@ function ShieldBubble({ entity, radius, hullMaterialsRef }: { entity: ShipEntity
 
   // Only render shield bubble if shields are above minimal threshold
   if (shieldFraction < minShieldThreshold) {
+    // Debug log for potential missing shield bubble cases
+    if (entity.ship.shield > 0 && entity.ship.maxShield > 0) {
+      const expectedFraction = entity.ship.shield / entity.ship.maxShield;
+      if (expectedFraction >= minShieldThreshold) {
+        console.warn(`[ShieldBubble] Shield bubble should be visible but isn't for ship ${entity.id} (${entity.ship.hull}):`, {
+          shield: entity.ship.shield,
+          maxShield: entity.ship.maxShield,
+          expectedFraction: expectedFraction.toFixed(3),
+          computedFraction: shieldFraction.toFixed(3),
+          threshold: minShieldThreshold
+        });
+      }
+    }
     return <></>;
   }
   
