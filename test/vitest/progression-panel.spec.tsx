@@ -1,10 +1,24 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { GameState, ShipEntity, ProgressionEvent } from '../../src/types/index.js';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel.js';
 import { GameProvider } from '../../src/game/context.js';
 import { useUiStore } from '../../src/game/uiStore.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
+
+// Inject a mockable GameState into ProgressionPanel by mocking game context hooks/provider locally
+let __injectedGameState: GameState | null = null;
+vi.mock('../../src/game/context.js', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    // Pass-through provider to avoid creating a real GameState in tests
+    GameProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    // Return the injected GameState for components under test
+    useOptionalGameState: () => __injectedGameState,
+  };
+});
 
 // Mock GameState for testing
 function createMockGameState(): GameState {
@@ -124,13 +138,15 @@ describe('ProgressionPanel', () => {
   beforeEach(() => {
     // Reset UI store state
     useUiStore.getState().setProgressionPanelEnabled(false);
+    __injectedGameState = null;
   });
 
   it('renders null when disabled', () => {
     const mockState = createMockGameState();
+    __injectedGameState = mockState;
     
     const { container } = render(
-      <GameProvider value={mockState}>
+      <GameProvider>
         <ProgressionPanel />
       </GameProvider>
     );
@@ -140,76 +156,80 @@ describe('ProgressionPanel', () => {
 
   it('renders progression panel when enabled', () => {
     const mockState = createMockGameState();
+    __injectedGameState = mockState;
     
     // Enable the progression panel
     useUiStore.getState().setProgressionPanelEnabled(true);
     
     render(
-      <GameProvider value={mockState}>
+      <GameProvider>
         <ProgressionPanel />
       </GameProvider>
     );
 
-    expect(screen.getByText('Progression')).toBeInTheDocument();
-    expect(screen.getByText('2 ships tracked')).toBeInTheDocument();
+  expect(screen.getByText('Progression')).to.exist;
+  expect(screen.getByText('2 ships tracked')).to.exist;
   });
 
   it('displays ships with correct information', () => {
     const mockState = createMockGameState();
+    __injectedGameState = mockState;
     useUiStore.getState().setProgressionPanelEnabled(true);
     
     render(
-      <GameProvider value={mockState}>
+      <GameProvider>
         <ProgressionPanel />
       </GameProvider>
     );
 
     // Check for ship names and levels
-    expect(screen.getByText('fighter-1')).toBeInTheDocument();
-    expect(screen.getByText('Lv 2')).toBeInTheDocument();
-    expect(screen.getByText('destroyer-2')).toBeInTheDocument();
-    expect(screen.getByText('Lv 1')).toBeInTheDocument();
+  expect(screen.getByText('fighter-1')).to.exist;
+  expect(screen.getByText('Lv 2')).to.exist;
+  expect(screen.getByText('destroyer-2')).to.exist;
+  expect(screen.getByText('Lv 1')).to.exist;
 
     // Check for XP display
-    expect(screen.getByText('150 / 50 XP')).toBeInTheDocument();
-    expect(screen.getByText('75 / 125 XP')).toBeInTheDocument();
+  expect(screen.getByText('150 / 50 XP')).to.exist;
+  expect(screen.getByText('75 / 125 XP')).to.exist;
   });
 
   it('sorts ships by level then XP', () => {
     const mockState = createMockGameState();
+    __injectedGameState = mockState;
     useUiStore.getState().setProgressionPanelEnabled(true);
     
     render(
-      <GameProvider value={mockState}>
+      <GameProvider>
         <ProgressionPanel />
       </GameProvider>
     );
 
     const shipCards = screen.getAllByText(/Lv \d+/);
     // Level 2 ship (fighter) should come first, then Level 1 ship (destroyer)
-    expect(shipCards[0]).toHaveTextContent('Lv 2');
-    expect(shipCards[1]).toHaveTextContent('Lv 1');
+  expect((shipCards[0] as HTMLElement).textContent).to.contain('Lv 2');
+  expect((shipCards[1] as HTMLElement).textContent).to.contain('Lv 1');
   });
 
   it('displays progression events when ship is expanded', () => {
     const mockState = createMockGameState();
+    __injectedGameState = mockState;
     useUiStore.getState().setProgressionPanelEnabled(true);
     
     render(
-      <GameProvider value={mockState}>
+      <GameProvider>
         <ProgressionPanel />
       </GameProvider>
     );
 
     // Find and click the expand button for the first ship (fighter-1)
-    const expandButtons = screen.getAllByLabelText(/Expand events|Collapse events/);
-    expandButtons[0].click();
+  const expandButtons = screen.getAllByLabelText(/Expand events|Collapse events/);
+  fireEvent.click(expandButtons[0]);
 
     // Check for event details
-    expect(screen.getByText('+10 XP')).toBeInTheDocument();
-    expect(screen.getByText('15.0 damage dealt')).toBeInTheDocument();
-    expect(screen.getByText('+50 XP')).toBeInTheDocument();
-    expect(screen.getByText('Enemy destroyed (100 HP)')).toBeInTheDocument();
-    expect(screen.getByText('Level 1 → 2')).toBeInTheDocument();
+  expect(screen.getByText('+10 XP')).to.exist;
+  expect(screen.getByText('15.0 damage dealt')).to.exist;
+  expect(screen.getByText('+50 XP')).to.exist;
+  expect(screen.getByText('Enemy destroyed (100 HP)')).to.exist;
+  expect(screen.getByText('Level 1 → 2')).to.exist;
   });
 });
