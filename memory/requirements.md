@@ -5,6 +5,13 @@
 1. **WHEN** a ship entity reports `shield/maxShield ≥ 0.01`, **THE SYSTEM SHALL** render the shield bubble mesh after opaque hull geometry so the bubble remains visible regardless of hull draw order. *(Acceptance: Vitest regression reads `Ship.tsx` to confirm `ShieldBubble` uses a positive `SHIELD_RENDER_ORDER` constant greater than zero.)*
 2. **WHEN** the shield bubble material initialises, **THE SYSTEM SHALL** disable depth testing (or render after the hull) while leaving depth write disabled so the bubble overlays hull pixels without affecting depth buffers. *(Acceptance: unit test exercises the shield material factory and asserts the resulting `ShaderMaterial` has `depthTest === false` and `depthWrite === false`.)*
 3. **WHEN** a carrier or any hull spawns with full shields, **THE SYSTEM SHALL** surface a visible shield bubble within the first render frame, ensuring bloom registration remains active for the `shields` group. *(Acceptance: regression test instantiates a carrier entity and verifies bloom registration plus mesh visibility flag on the first frame.)*
+4. **WHEN** a ship maintains `shield/maxShield ≥ 0.5`, **THE SYSTEM SHALL** keep the shield bubble alpha above a readable floor (≥0.35) so the sphere is unmistakable against the starfield. *(Acceptance: configuration test asserts `SHIELD_TUNING.minAlphaFloor ≥ 0.35` and per-hull `maxAlpha ≥ 0.8`.)*
+
+## 2025-09-29 — Rapier Velocity Sampling Hardening (TASK228)
+
+1. **WHEN** AI scoring or intercept helpers require a ship's movement vector, **THE SYSTEM SHALL** read from `ship.ship.velocity` maintained by the motion system instead of invoking `rigidBody.linvel()` so Rapier is never re-entered during decision ticks. *(Acceptance: unit test exercises `scoreInterceptIntent` with seeded velocities and asserts the helper never calls a mocked `linvel` spy.)*
+2. **WHEN** a ship lacks a populated `ShipComponent.velocity` vector or the components are non-finite, **THE SYSTEM SHALL** return a zero vector without touching Rapier APIs to keep AI calculations stable in harnesses and during disposal frames. *(Acceptance: regression covers a ship with missing velocity and verifies `getShipVelocity` outputs zero without throwing or calling Rapier mocks.)*
+3. **WHEN** tests simulate intercept calculations with moving targets, **THE SYSTEM SHALL** ensure the stored `ShipComponent.velocity` values propagate into intercept scoring so the resulting lead direction matches expectations within a small tolerance. *(Acceptance: Vitest spec seeds interceptor/target velocities and asserts the computed intercept heading reflects the stored velocities.)*
 
 ## 2025-09-29 — Carrier Spawn Queue (TASK226)
 

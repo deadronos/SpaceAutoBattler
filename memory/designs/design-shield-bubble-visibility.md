@@ -17,6 +17,7 @@ Restore visible shield bubbles for all hulls after reports that they disappeared
 - Ensure the shield material opts out of depth testing (`depthTest=false`) while keeping `depthWrite=false` so overlays remain deterministic and do not interfere with other transparent layers.
 - Guard bloom registration to remain unchanged so the bubble still participates in the `shields` group.
 - Add regression tests that exercise render order and material flags using lightweight component mounts.
+- Brighten the default shield tuning so alpha floors and per-hull caps guarantee obvious visibility (raise `minAlphaFloor`, `fillAlphaMul`, and `maxAlpha` where necessary) and increase per-hull radius margins to peel the sphere away from the hull.
 
 ### Diagram
 
@@ -67,6 +68,7 @@ ShipObject group
 
 - Add Vitest component regression verifying shield mesh `renderOrder` and `material.depthTest` values.
 - Extend integration-style test to confirm bloom registration still attaches to `shields` group.
+- Add static config assertion for shield alpha floors and maximum opacity caps to lock the brighter tuning.
 - Re-run existing shield bubble visibility specs and renderer smoke suite.
 
 ## Rollout & Validation

@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { SHIELD_RENDER_ORDER } from '../../src/components/Ship.js';
 import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
+import { SHIELD_TUNING, SHIELD_VISUALS } from '../../src/config/renderer.js';
 
 describe('ShieldBubble visibility behavior (static analysis)', () => {
   const shipFilePath = path.resolve(__dirname, '../../src/components/Ship.tsx');
@@ -72,5 +73,15 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
     expect(mat.depthTest).toBe(false);
     expect(mat.depthWrite).toBe(false);
     mat.dispose();
+  });
+
+  it('enforces bright shield tuning for readability', () => {
+    expect(SHIELD_TUNING.minAlphaFloor).toBeGreaterThanOrEqual(0.35);
+    expect(SHIELD_TUNING.fillAlphaMul).toBeGreaterThan(0.45);
+    (['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'] as const).forEach((hull) => {
+      const cfg = SHIELD_VISUALS[hull];
+      expect(cfg.maxAlpha ?? 0).toBeGreaterThanOrEqual(0.8);
+      expect(cfg.margin ?? 0).toBeGreaterThan(1.05);
+    });
   });
 });

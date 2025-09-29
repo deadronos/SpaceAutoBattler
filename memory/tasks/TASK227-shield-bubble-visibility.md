@@ -34,7 +34,8 @@ User report: "shield bubbles are missing, examine /src" (2025-09-29).
 | 1.1 | Document requirements and design in memory bank                         | Complete      | 2025-09-29 | Requirements + design committed. |
 | 1.2 | Adjust shield render order and depth testing behavior                   | Complete      | 2025-09-29 | Render order constant added; material disables depth test. |
 | 1.3 | Add regression tests for shield render order and bloom registration     | Complete      | 2025-09-29 | Vitest coverage asserts constant usage and material flags. |
-| 1.4 | Run validation suite and capture visual confirmation                    | In Progress   | 2025-09-29 | `npm run typecheck`, `npm test` executed; screenshot follow-up pending manual capture. |
+| 1.4 | Brighten shield tuning (alpha floors, margins) and add config regression| Complete      | 2025-09-29 | Increased visibility via config updates and static tests. |
+| 1.5 | Run validation suite and capture visual confirmation                    | Complete      | 2025-09-29 | `npm run typecheck`, `npm test`; awaiting manual screenshot confirmation. |
 
 ## Progress Log
 
@@ -44,3 +45,5 @@ User report: "shield bubbles are missing, examine /src" (2025-09-29).
 - Authored EARS requirements (TASK227) and design doc outlining render order + depth test adjustments.
 - Implemented render order constant, disabled depth testing in shield materials, and added regression tests.
 - Ran `npm run typecheck` and `npm test`; noted manual screenshot still outstanding.
+- Observed field report showing bubbles still too faint, reopened task to brighten shield tuning and add config regression.
+- Brightened shield tuning (higher margins, opacity multipliers, lighter team colors) and added config regression before rerunning validation suite.
