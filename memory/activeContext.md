@@ -2,15 +2,12 @@
 
 Current focuses (short-term):
 
-- Lock in the celestial environment baseline: star disk billboard, rim-glow shader, parallax billboards, and lighting balance driven by `CELESTIAL_ENVIRONMENT`.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
-- Maintain the star disk haze taper so the rim fades at grazing angles without flattening the core glow, keeping presets deterministic.
-- Tune and document the star disk boundary feather presets so artists can blend edges without losing bloom cues.
-- Capture palette comparison renders illustrating how offset tweaks change core/rim/corona balance for documentation.
 
 Recent changes:
 
+- Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
@@ -44,4 +41,4 @@ Next steps:
 
 - 2025-09-26: Memory bank audit — normalized timestamps and detected duplicate task IDs (see `memory/tasks/_index.md`).
 
-- Updated: 2025-09-27
+- Updated: 2025-09-29

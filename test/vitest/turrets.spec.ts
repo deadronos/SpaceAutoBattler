@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { updateGame } from '../../src/game/systems.js';
 import type { GameState, ShipEntity, TurretState } from '../../src/types/index.js';
@@ -145,7 +146,7 @@ function makeShipWithTurret(
   turret: Omit<TurretState, 'cooldown'> & { cooldown?: number },
 ): ShipEntity {
   const rb = makeRigidBodyStub();
-  const ship: ShipEntity = {
+  const ship = {
     id: Math.floor(Math.random() * 10000),
     rigidBody: rb as any,
     collider: { handle: Math.floor(Math.random() * 10000), isValid: () => true } as any,
@@ -186,7 +187,9 @@ function makeShipWithTurret(
         cooldown: turret.cooldown ?? 0,
       },
     ],
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { hull: 'corvette', maxHpOverride: ship.ship.maxHp });
   return ship;
 }
 
@@ -204,7 +207,7 @@ describe('Turret system', () => {
     });
 
     const enemy = makeRigidBodyStub();
-    const enemyShip: ShipEntity = {
+    const enemyShip = {
       id: 999,
       rigidBody: enemy as any,
       collider: { handle: 9999, isValid: () => true } as any,
@@ -230,7 +233,9 @@ describe('Turret system', () => {
       },
       model: 'fighter' as any,
       shieldRipples: [],
-    } as ShipEntity;
+    } as unknown as ShipEntity;
+
+    applyProgressionDefaults(enemyShip.ship, { maxHpOverride: enemyShip.ship.maxHp });
 
     // Register ships in state queries so systems can iterate
     (state.queries.ships as any).entities = [friendly, enemyShip];

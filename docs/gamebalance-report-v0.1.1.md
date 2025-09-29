@@ -1,6 +1,6 @@
 # Game Balance Report v0.1.0
 **SpaceAutoBattler Balance Analysis**  
-*Generated: December 2025*
+*Generated: September 2025*
 
 ## Executive Summary
 

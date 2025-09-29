@@ -16,6 +16,7 @@ import type {
   ShipEntity,
 } from '../../src/types/index.js';
 import { SeededRng } from '../../src/utils/rng.js';
+import { applyProgressionDefaults } from './helpers/progression.js';
 
 const MOTION_STUB: MotionStats = {
   mass: 1,
@@ -120,7 +121,7 @@ function makeConfig(overrides: Partial<CarrierLaunchConfig> = {}): CarrierLaunch
 }
 
 function createCarrierEntity(id: number, config: CarrierLaunchConfig): ShipEntity {
-  return {
+  const ship = {
     id,
     rigidBody: {} as any,
     collider: {} as any,
@@ -156,11 +157,14 @@ function createCarrierEntity(id: number, config: CarrierLaunchConfig): ShipEntit
       launchIndex: 0,
       config,
     },
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  return ship;
 }
 
 function createFighterEntity(id: number, blueprint: ShipBlueprint): ShipEntity {
-  return {
+  const ship = {
     id,
     rigidBody: {} as any,
     collider: {} as any,
@@ -191,7 +195,10 @@ function createFighterEntity(id: number, blueprint: ShipBlueprint): ShipEntity {
       motion: MOTION_STUB,
     },
     model: 'fighter',
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  return ship;
 }
 
 function createState(ships: ShipEntity[]): GameState {

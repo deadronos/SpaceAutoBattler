@@ -1,5 +1,11 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-09-29 — Ship Progression Test Hardening
+
+1. **WHEN** unit tests instantiate ship entities without calling the production ship factory, **THE SYSTEM SHALL** apply a shared helper that hydrates progression defaults (XP, level, xpToNext, damageType, armor, and subsystem status records) so subsystem lookups never throw. *(Acceptance: `test/vitest/motion.system.spec.ts`, `test/vitest/ai-metrics.spec.ts`, and `test/vitest/projectile-resolve.spec.ts` all run without `subsystems.engine` access errors.)*
+2. **WHEN** tests need to mutate subsystem health or statuses for specific scenarios, **THE SYSTEM SHALL** start from a fully populated subsystem record returned by the helper and allow per-test overrides without removing required keys. *(Acceptance: `test/vitest/turrets.spec.ts` and `test/vitest/shield-regen.spec.ts` adjust subsystem data while keeping `engine`, `weapons`, and `shields` entries defined.)*
+3. **WHEN** future progression fields are introduced on `ShipComponent`, **THE SYSTEM SHALL** centralise test schema updates inside the helper so affected suites only require helper consumption instead of manual property updates. *(Acceptance: helper module exports typed surface reviewed by `test/vitest/projectile-bullettype.spec.ts` and `test/vitest/ai-regression.spec.ts` with no ad-hoc property additions.)*
+
 ## 2025-09-28 — AI Determinism & Coordination Overhaul (Task145)
 
 1. **WHEN** the AI scores multiple intent candidates for a ship within the same tick, **THE SYSTEM SHALL** deterministically select the winner using quantised scores, intent priority ordering, threat rank, distance, and candidate index before falling back to seeded randomness only when all tiebreakers match. *(Acceptance: `test/vitest/ai-determinism.spec.ts` asserts identical command streams across seeded runs and verifies the tie-usage ratio stays ≤5%.)*
@@ -75,21 +81,6 @@
 2. **WHEN** the renderer evaluates active explosion events each frame, **THE SYSTEM SHALL** drive the flash, shockwave, fireball, debris, and smoke stages according to the event’s seeded timeline and configuration values. *(Acceptance: renderer unit `test/vitest/explosions-renderer.spec.tsx` feeds a seeded event into the explosion renderer and asserts staged outputs and bloom registration.)*
 3. **WHEN** an explosion occurs within the dynamic lighting falloff radius of nearby ships, **THE SYSTEM SHALL** emit a transient point light pulse scaled by distance while leaving camera transforms unchanged (i.e., no screen shake). *(Acceptance: component test `test/vitest/explosions-lighting.spec.tsx` verifies emitted light intensity, falloff clamps, and asserts camera state remains untouched.)*
 4. **WHEN** an explosion event reaches the end of its configured duration, **THE SYSTEM SHALL** unregister all bloom selections, dispose transient lights, and recycle the event for reuse within the same frame. *(Acceptance: unit test `test/vitest/explosions-lifecycle.spec.ts` advances simulated time beyond the event lifetime and confirms cleanup hooks run exactly once.)*
-
-## 2025-09-28 — Star Disk Haze Taper
-
-1. **WHEN** the star disk shader evaluates corona intensity beyond the inner 75% radius, **THE SYSTEM SHALL** apply a configurable taper curve that reduces haze contribution toward zero at the plane horizon. *(Acceptance: planned `test/vitest/star-disk-haze-taper.spec.ts` asserts the fragment helper outputs a zeroed haze factor at the configured horizon threshold.)*
-2. **WHEN** the view-alignment uniform reports a facing cosine below the `edgeFadeThreshold`, **THE SYSTEM SHALL** clamp the haze multiplier so the visible rim brightness does not exceed the core brightness by more than 10%. *(Acceptance: unit test extends `test/vitest/star-disk-material.spec.ts` to validate clamped multiplier calculations with mocked facing inputs.)*
-3. **WHEN** `CelestialEnvironmentConfig.starDisk.haze` overrides the default taper strength, **THE SYSTEM SHALL** propagate the new scalar to shader uniforms within the same render frame. *(Acceptance: component test in `test/vitest/star-disk.component.spec.tsx` mutates the config and observes the updated uniform payload.)*
-4. **WHEN** shader compilation or uniform initialisation for haze taper fails, **THE SYSTEM SHALL** fall back to the prior view-compensated shader path while logging a warning and maintaining deterministic output. *(Acceptance: negative-path unit test in `test/vitest/star-disk-material.spec.ts` mocks uniform injection failure and asserts warning plus fallback behavior.)*
-
-## 2025-09-27 — Star Disk Boundary Feather
-
-1. **WHEN** the star disk boundary feather radius decreases via configuration, **THE SYSTEM SHALL** drive the fragment alpha below 0.01 before the billboard radius to avoid a hard edge. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` samples the shader helper and asserts the alpha falls below the target threshold at the configured radius.)*
-2. **WHEN** boundary feathering is disabled (radius ≥ 0.999 or alpha floor ≥ 0.99), **THE SYSTEM SHALL** match the legacy alpha output within 1% tolerance. *(Acceptance: `test/vitest/star-disk-material.spec.ts` compares the resulting uniform vector against the legacy baseline and confirms the legacy curve.)*
-3. **WHEN** runtime configuration hot-reloads, **THE SYSTEM SHALL** update the boundary feather uniforms on the next frame without re-instantiating the material. *(Acceptance: `test/vitest/star-disk.component.spec.tsx` mutates the environment config and expects the uniforms to change in place.)*
-4. **WHEN** the camera approaches a grazing angle, **THE SYSTEM SHALL** clamp feather calculations to finite numbers and avoid NaNs. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` feeds extreme facing values through the uniform updater and asserts finite vector components.)*
-5. **WHEN** the feather exponent increases, **THE SYSTEM SHALL** maintain a continuous alpha derivative across the curve to prevent banding. *(Acceptance: `test/vitest/star-disk-boundary.spec.ts` samples contiguous radii and checks monotonic decrease without discontinuities.)*
 
 ## 2025-09-28 — AI Scenario Determinism Refresh
 

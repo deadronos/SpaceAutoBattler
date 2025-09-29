@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import { fireProjectile } from '../../src/game/systems.js';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../src/types/index.js';
 
@@ -79,7 +80,7 @@ function makeStateStub(): GameState {
 }
 
 function makeShipEntity(hull: any, team: 'blue' | 'red', bulletType?: string): ShipEntity {
-  return {
+  const entity = {
     id: 1,
     rigidBody: {} as any,
     collider: {} as any,
@@ -105,6 +106,9 @@ function makeShipEntity(hull: any, team: 'blue' | 'red', bulletType?: string): S
     },
     model: hull,
   } as unknown as ShipEntity;
+
+  applyProgressionDefaults(entity.ship, { hull, maxHpOverride: entity.ship.maxHp });
+  return entity;
 }
 
 describe('fireProjectile bulletType propagation', () => {

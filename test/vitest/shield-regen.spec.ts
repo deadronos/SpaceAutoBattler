@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Vector3, Quaternion } from 'three';
+import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 import { updateGame } from '../../src/game/systems.js';
@@ -100,7 +101,7 @@ function makeStateStub(): GameState {
 
 function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shield=10, maxShield=20, regen=0): ShipEntity {
   const rb = makeRigidBodyStub({ pos: { x: position.x, y: position.y, z: position.z } });
-  return {
+  const shipEntity = {
     id,
     rigidBody: rb as any,
     collider: { handle: 1000 + id, isValid: () => true } as any,
@@ -127,7 +128,10 @@ function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shie
     },
     model: 'fighter' as any,
     shieldRipples: [],
-  } as ShipEntity;
+  } as unknown as ShipEntity;
+
+  applyProgressionDefaults(shipEntity.ship, { maxHpOverride: shipEntity.ship.maxHp });
+  return shipEntity;
 }
 
 describe('shield regeneration', () => {
