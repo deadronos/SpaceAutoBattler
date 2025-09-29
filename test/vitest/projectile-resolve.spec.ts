@@ -82,6 +82,7 @@ function makeStateStub(): GameState {
     timeScale: 1,
     explosions: [],
     explosionPool: [],
+    progressionEvents: new Map(),
     uiFlags: { hudHealthBars: false },
     ai: undefined as any,
     blackboard: {

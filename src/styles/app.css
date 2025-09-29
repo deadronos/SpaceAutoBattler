@@ -599,3 +599,209 @@
   align-items: center;
   gap: 6px;
 }
+
+/* Progression Panel Styles */
+.progression-panel {
+  position: absolute;
+  top: 48px;
+  right: 16px;
+  pointer-events: auto;
+  background: rgba(6, 14, 32, 0.82);
+  border: 1px solid rgba(90, 184, 255, 0.28);
+  border-radius: 12px;
+  padding: 16px 20px;
+  width: 380px;
+  max-height: 600px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  color: #e3f1ff;
+  font-size: 0.85rem;
+}
+
+.progression-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.progression-panel__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f8fbff;
+}
+
+.progression-panel__meta {
+  opacity: 0.78;
+  font-size: 0.8rem;
+}
+
+.progression-panel__ships {
+  max-height: 520px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ship-progression-card {
+  background: rgba(20, 34, 56, 0.6);
+  border: 1px solid rgba(70, 150, 230, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.ship-progression-card--blue {
+  border-left: 3px solid #4a9eff;
+}
+
+.ship-progression-card--red {
+  border-left: 3px solid #ff6b6b;
+}
+
+.ship-progression-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ship-progression-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ship-progression-card__name {
+  font-weight: 500;
+  color: #f8fbff;
+  font-size: 0.9rem;
+}
+
+.ship-progression-card__level {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  color: #4a9eff;
+  font-weight: 600;
+}
+
+.ship-progression-card__xp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.ship-progression-card__xp-text {
+  font-size: 0.75rem;
+  opacity: 0.9;
+  text-align: right;
+}
+
+.ship-progression-card__progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ship-progression-card__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #6bb6ff);
+  transition: width 0.3s ease;
+}
+
+.ship-progression-card__toggle {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e3f1ff;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ship-progression-card__toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.ship-progression-card__events {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.progression-events {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progression-events--empty {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  font-style: italic;
+  margin: 0;
+}
+
+.progression-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  padding: 4px 0;
+}
+
+.progression-event__icon {
+  width: 16px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.progression-event__icon--damage {
+  color: #ff9b47;
+}
+
+.progression-event__icon--kill {
+  color: #ff6b6b;
+}
+
+.progression-event__icon--levelup {
+  color: #ffd700;
+}
+
+.progression-event__time {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  min-width: 32px;
+}
+
+.progression-event__delta {
+  font-weight: 500;
+  color: #4a9eff;
+  min-width: 60px;
+}
+
+.progression-event__details {
+  opacity: 0.8;
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}

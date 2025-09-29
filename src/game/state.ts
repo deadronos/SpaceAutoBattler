@@ -62,6 +62,7 @@ export async function createGameState(): Promise<GameState> {
     },
     explosions: [],
     explosionPool: [],
+    progressionEvents: new Map(),
     simulation: {
       step: 1 / 20,
       accumulator: 0,
