@@ -2,30 +2,34 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { LinearSRGBColorSpace, NoToneMapping, SRGBColorSpace, Vector2 } from 'three';
 import type { Camera, Scene, WebGLRenderer } from 'three';
 
-const mockComposerDispose = vi.fn();
+const hoisted = vi.hoisted(() => {
+  const mockComposerDispose = vi.fn();
 
-class MockEffectComposer {
-  public passes: unknown[] = [];
-  public dispose = mockComposerDispose;
-  public setSize = vi.fn();
+  class MockEffectComposer {
+    public passes: unknown[] = [];
+    public dispose = mockComposerDispose;
+    public setSize = vi.fn();
 
-  constructor(public renderer: unknown, public renderTarget: unknown) {}
+    constructor(public renderer: unknown, public renderTarget: unknown) {}
 
-  addPass(pass: unknown): void {
-    this.passes.push(pass);
+    addPass(pass: unknown): void {
+      this.passes.push(pass);
+    }
   }
-}
 
-class MockRenderPass {
-  constructor(public scene: unknown, public camera: unknown) {}
-}
+  class MockRenderPass {
+    constructor(public scene: unknown, public camera: unknown) {}
+  }
+
+  return { MockEffectComposer, MockRenderPass, mockComposerDispose };
+});
 
 vi.mock('postprocessing', async (importOriginal) => {
   const actual = await importOriginal<typeof import('postprocessing')>();
   return {
     ...actual,
-    EffectComposer: MockEffectComposer,
-    RenderPass: MockRenderPass,
+    EffectComposer: hoisted.MockEffectComposer,
+    RenderPass: hoisted.MockRenderPass,
   };
 });
 
@@ -33,7 +37,7 @@ import { createComposer } from '../../../src/components/postprocessing/createCom
 
 describe('createComposer', () => {
   beforeEach(() => {
-    mockComposerDispose.mockClear();
+    hoisted.mockComposerDispose.mockClear();
   });
 
   it('configures renderer state and wires passes', () => {
@@ -57,7 +61,7 @@ describe('createComposer', () => {
     expect(renderer.toneMapping).toBe(NoToneMapping);
     expect(renderer.toneMappingExposure).toBe(1);
 
-    const composer = result.composer as unknown as MockEffectComposer;
+    const composer = result.composer as unknown as InstanceType<typeof hoisted.MockEffectComposer>;
     expect(composer.renderTarget.texture.colorSpace).toBe(SRGBColorSpace);
     expect(composer.passes).toHaveLength(2);
     expect(composer.passes[1]).toBe(effectPass);
@@ -92,7 +96,7 @@ describe('createComposer', () => {
     result.dispose();
     result.dispose();
 
-    expect(mockComposerDispose).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockComposerDispose).toHaveBeenCalledTimes(1);
     expect(renderTargetDispose).toHaveBeenCalledTimes(1);
   });
 });

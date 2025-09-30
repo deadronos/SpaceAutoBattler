@@ -38,4 +38,5 @@ Refactor src/components/Postprocessing.tsx by extracting composer and effect cre
 ### 2025-09-30
 
 - Implemented helper modules and refactored Postprocessing.tsx to rely on them while preserving runtime behaviour.
-- Added unit tests under test/components/postprocessing/ and expanded Vitest include globs; local npx vitest run test/components/postprocessing failed because the Rollup native binary @rollup/rollup-linux-x64-gnu is missing in this environment.
+- Added unit tests under test/components/postprocessing/ and expanded Vitest include globs; the new test suite initially failed because the Rollup native binary @rollup/rollup-linux-x64-gnu was missing.
+- Installed @rollup/rollup-linux-x64-gnu, refreshed dependencies with npm install, and confirmed the suite with the postprocessing Vitest run.

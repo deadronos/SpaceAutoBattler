@@ -2,52 +2,63 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import type { Camera, Scene } from 'three';
 import type { PostprocessingConfig } from '../../../src/config/renderer.js';
 
-class MockSelection {
-  constructor(public size: number) {}
-}
-
-class MockSelectiveBloomEffect {
-  public selection: MockSelection | null = null;
-  public ignoreBackground = false;
-  public blendMode = { opacity: { value: 0 } };
-  public depthMaskMaterial = { keepFar: true };
-  public luminanceMaterial = { threshold: 0, smoothing: 0 };
-  public mipmapBlur = false;
-  public static created: MockSelectiveBloomEffect[] = [];
-
-  constructor(
-    public scene: Scene,
-    public camera: Camera,
-    public options: { blendFunction: unknown; kernelSize: unknown; intensity: number },
-  ) {
-    MockSelectiveBloomEffect.created.push(this);
+const hoisted = vi.hoisted(() => {
+  class MockSelection {
+    constructor(public size: number) {}
   }
-}
 
-class MockFXAAEffect {}
+  const BlendFunction = { SCREEN: 'SCREEN' } as const;
+  const KernelSize = { SMALL: 'SMALL' } as const;
 
-class MockEffectPass {
-  public renderToScreen = false;
-  public effects: unknown[];
+  class MockSelectiveBloomEffect {
+    public selection: InstanceType<typeof MockSelection> | null = null;
+    public ignoreBackground = false;
+    public blendMode = { opacity: { value: 0 } };
+    public depthMaskMaterial = { keepFar: true };
+    public luminanceMaterial = { threshold: 0, smoothing: 0 };
+    public mipmapBlur = false;
+    public static created: MockSelectiveBloomEffect[] = [];
 
-  constructor(public camera: Camera, ...effects: unknown[]) {
-    this.effects = effects;
+    constructor(
+      public scene: Scene,
+      public camera: Camera,
+      public options: { blendFunction: unknown; kernelSize: unknown; intensity: number },
+    ) {
+      MockSelectiveBloomEffect.created.push(this);
+    }
   }
-}
 
-const BlendFunction = { SCREEN: 'SCREEN' } as const;
-const KernelSize = { SMALL: 'SMALL' } as const;
+  class MockFXAAEffect {}
+
+  class MockEffectPass {
+    public renderToScreen = false;
+    public effects: unknown[];
+
+    constructor(public camera: Camera, ...effects: unknown[]) {
+      this.effects = effects;
+    }
+  }
+
+  return {
+    MockSelection,
+    MockSelectiveBloomEffect,
+    MockFXAAEffect,
+    MockEffectPass,
+    BlendFunction,
+    KernelSize,
+  };
+});
 
 vi.mock('postprocessing', async (importOriginal) => {
   const actual = await importOriginal<typeof import('postprocessing')>();
   return {
     ...actual,
-    SelectiveBloomEffect: MockSelectiveBloomEffect,
-    FXAAEffect: MockFXAAEffect,
-    EffectPass: MockEffectPass,
-    BlendFunction,
-    KernelSize,
-    Selection: MockSelection,
+    SelectiveBloomEffect: hoisted.MockSelectiveBloomEffect,
+    FXAAEffect: hoisted.MockFXAAEffect,
+    EffectPass: hoisted.MockEffectPass,
+    BlendFunction: hoisted.BlendFunction,
+    KernelSize: hoisted.KernelSize,
+    Selection: hoisted.MockSelection,
   };
 });
 
@@ -68,12 +79,12 @@ const baseConfig: PostprocessingConfig = {
 
 describe('buildEffects', () => {
   beforeEach(() => {
-    MockSelectiveBloomEffect.created = [];
+    hoisted.MockSelectiveBloomEffect.created = [];
   });
 
   it('creates bloom effects for selections and applies config overrides', () => {
-    const selection = new MockSelection(3);
-    const enginesSelection = new MockSelection(0);
+    const selection = new hoisted.MockSelection(3);
+    const enginesSelection = new hoisted.MockSelection(0);
     const bloomContext = {
       defaultGroup: 'default',
       selections: new Map([
@@ -89,13 +100,13 @@ describe('buildEffects', () => {
       config: baseConfig,
     });
 
-    expect(fxaa).toBeInstanceOf(MockFXAAEffect);
-    expect(effectPass).toBeInstanceOf(MockEffectPass);
+    expect(fxaa).toBeInstanceOf(hoisted.MockFXAAEffect);
+    expect(effectPass).toBeInstanceOf(hoisted.MockEffectPass);
     expect(effectPass.effects).toHaveLength(3);
     expect(effectPass.renderToScreen).toBe(true);
 
     expect(bloomEffects).toHaveLength(2);
-    const defaultBloom = bloomEffects[0] as unknown as MockSelectiveBloomEffect;
+    const defaultBloom = bloomEffects[0] as unknown as InstanceType<typeof hoisted.MockSelectiveBloomEffect>;
     expect(defaultBloom.options.intensity).toBe(0.6);
     expect(defaultBloom.ignoreBackground).toBe(true);
     expect(defaultBloom.blendMode.opacity.value).toBe(1);
@@ -104,7 +115,7 @@ describe('buildEffects', () => {
     expect(defaultBloom.luminanceMaterial.smoothing).toBe(0.3);
     expect(defaultBloom.mipmapBlur).toBe(true);
 
-    const enginesBloom = bloomEffects[1] as unknown as MockSelectiveBloomEffect;
+    const enginesBloom = bloomEffects[1] as unknown as InstanceType<typeof hoisted.MockSelectiveBloomEffect>;
     enginesSelection.size = 0;
     expect(enginesBloom.blendMode.opacity.value).toBe(0);
 
