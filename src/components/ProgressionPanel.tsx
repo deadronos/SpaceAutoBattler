@@ -3,6 +3,7 @@ import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
+import './progression-panel.css';
 
 interface ProgressionPanelShip {
   id: number;
@@ -129,20 +130,20 @@ export function ProgressionPanel(): React.ReactElement | null {
   if (!enabled) return null;
   if (!progressionData || progressionData.length === 0) return null;
 
-  const style: React.CSSProperties = {
-    position: 'fixed',
-    top: `${position.y}px`,
-    left: `${position.x}px`,
-    right: 'auto',
-    bottom: 'auto',
-    cursor: dragging ? 'grabbing' : 'grab',
-    zIndex: 30,
-  };
+  // Position and dynamic styles are applied via DOM updates to avoid JSX inline style props
+  useEffect(() => {
+    const node = panelRef.current;
+    if (!node) return;
+    node.style.position = 'fixed';
+    node.style.top = `${position.y}px`;
+    node.style.left = `${position.x}px`;
+    node.style.zIndex = '30';
+    node.style.cursor = dragging ? 'grabbing' : 'grab';
+  }, [position, dragging]);
 
-  
 
   return (
-    <div ref={panelRef} className="progression-panel" role="region" aria-live="polite" style={style}>
+    <div ref={panelRef} className="progression-panel" role="region" aria-live="polite">
       <div className="progression-panel__header">
         <div className="progression-panel__title">Progression</div>
         <div className="progression-panel__meta">
@@ -163,7 +164,24 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
   
   const progressPercent = ship.xpToNext > 0 ? (ship.xp / ship.xpToNext) * 100 : 100;
   const teamClass = `ship-progression-card ship-progression-card--${ship.team}`;
+  const fillRef = useRef<HTMLDivElement | null>(null);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
 
+  // Update progress fill width via DOM to avoid inline JSX style props
+  useEffect(() => {
+    const node = fillRef.current;
+    if (!node) return;
+    const clamped = Math.min(100, Math.max(0, progressPercent));
+    node.style.width = `${clamped}%`;
+  }, [progressPercent]);
+
+  // Update aria-expanded attribute via DOM
+  useEffect(() => {
+    const node = toggleRef.current;
+    if (!node) return;
+    node.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }, [expanded]);
+   
   return (
     <div className={teamClass}>
       <div className="ship-progression-card__header" onClick={() => setExpanded(!expanded)}>
@@ -178,32 +196,32 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
           <div className="ship-progression-card__progress-bar">
             <div 
               className="ship-progression-card__progress-fill"
-              style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+              ref={fillRef}
             />
-          </div>
-        </div>
-        <button
-          type="button"
-          className="ship-progression-card__toggle"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse events' : 'Expand events'}
-        >
-          {expanded ? '−' : '+'}
-        </button>
-      </div>
-      {expanded && (
-        <div className="ship-progression-card__events">
-          {ship.events.length > 0 ? (
-            <ul className="progression-events">
-              {ship.events.map((event, index) => (
-                <EventRow key={`${ship.id}-${index}`} event={event} />
-              ))}
-            </ul>
-          ) : (
-            <p className="progression-events--empty">No recent events</p>
-          )}
-        </div>
-      )}
+           </div>
+         </div>
+         <button
+           type="button"
+           ref={toggleRef}
+           className="ship-progression-card__toggle"
+           aria-label={expanded ? 'Collapse events' : 'Expand events'}
+         >
+           {expanded ? '−' : '+'}
+         </button>
+       </div>
+       {expanded && (
+         <div className="ship-progression-card__events">
+           {ship.events.length > 0 ? (
+             <ul className="progression-events">
+               {ship.events.map((event, index) => (
+                 <EventRow key={`${ship.id}-${index}`} event={event} />
+               ))}
+             </ul>
+           ) : (
+             <p className="progression-events--empty">No recent events</p>
+           )}
+         </div>
+       )}
     </div>
   );
 }

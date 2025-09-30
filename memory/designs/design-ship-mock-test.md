@@ -82,6 +82,7 @@ When both tiers pass, the hull is considered visually validated.
 ## Failure Diagnostics
 
 On a visual failure, tests will collect and persist to `test/playwright/debug/<hullId>-<timestamp>/`:
+
 - Full-page screenshot
 - Cropped ship screenshot (actual)
 - Diff image (actual vs baseline)
