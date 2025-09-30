@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import type { Camera, Scene } from 'three';
 import type { PostprocessingConfig } from '../../../src/config/renderer.js';
+import type { BloomContextLike } from '../../../src/components/postprocessing/buildEffects.js';
 
 const hoisted = vi.hoisted(() => {
   class MockSelection {
@@ -91,7 +92,7 @@ describe('buildEffects', () => {
         ['default', selection],
         ['engines', enginesSelection],
       ]),
-    };
+    } as unknown as BloomContextLike;
 
     const { effectPass, bloomEffects, fxaa, effects } = buildEffects({
       scene: { id: 'scene' } as unknown as Scene,
@@ -102,8 +103,9 @@ describe('buildEffects', () => {
 
     expect(fxaa).toBeInstanceOf(hoisted.MockFXAAEffect);
     expect(effectPass).toBeInstanceOf(hoisted.MockEffectPass);
-    expect(effectPass.effects).toHaveLength(3);
-    expect(effectPass.renderToScreen).toBe(true);
+    const effectPassInstance = effectPass as unknown as InstanceType<typeof hoisted.MockEffectPass>;
+    expect(effectPassInstance.effects).toHaveLength(3);
+    expect(effectPassInstance.renderToScreen).toBe(true);
 
     expect(bloomEffects).toHaveLength(2);
     const defaultBloom = bloomEffects[0] as unknown as InstanceType<typeof hoisted.MockSelectiveBloomEffect>;
@@ -126,7 +128,7 @@ describe('buildEffects', () => {
     const bloomContext = {
       defaultGroup: 'default',
       selections: new Map(),
-    };
+    } as unknown as BloomContextLike;
 
     const { bloomEffects, effectPass } = buildEffects({
       scene: {} as Scene,
@@ -136,6 +138,7 @@ describe('buildEffects', () => {
     });
 
     expect(bloomEffects).toHaveLength(0);
-    expect(effectPass.effects).toHaveLength(1);
+    const effectPassInstance = effectPass as unknown as InstanceType<typeof hoisted.MockEffectPass>;
+    expect(effectPassInstance.effects).toHaveLength(1);
   });
 });

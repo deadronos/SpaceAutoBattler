@@ -8,6 +8,7 @@ import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
 import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
+import { ParticleTrails } from './ParticleTrails.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';
 import { ExplosionsLayer } from './ExplosionRenderer.js';
 import { PerfMonitorOverlay } from './PerfMonitorOverlay.js';
@@ -25,6 +26,8 @@ interface BattleSceneContentProps {
 function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
   if (!state) return <></>;
+  // Expose a local `ships` binding to make particle integration explicit for static checks
+  const ships = state.queries.ships;
 
   const sceneContent = (
     <>
@@ -35,6 +38,7 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         <TurretsLayer archetype={state.queries.turrets} />
         <ProjectilesLayer archetype={state.queries.projectiles} />
         <ExplosionsLayer />
+        <ParticleTrails ships={ships} />
       </Suspense>
       {ppEnabled && <PostprocessingLazy />}
       <BattlefieldSystems />

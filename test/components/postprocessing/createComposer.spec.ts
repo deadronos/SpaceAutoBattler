@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { LinearSRGBColorSpace, NoToneMapping, SRGBColorSpace, Vector2 } from 'three';
 import type { Camera, Scene, WebGLRenderer } from 'three';
+import type { EffectPass } from 'postprocessing';
 
 const hoisted = vi.hoisted(() => {
   const mockComposerDispose = vi.fn();
@@ -52,7 +53,7 @@ describe('createComposer', () => {
 
     const scene = { id: 'scene' } as unknown as Scene;
     const camera = { id: 'camera' } as unknown as Camera;
-    const effectPass = { id: 'effectPass' } as unknown;
+    const effectPass = { id: 'effectPass' } as unknown as EffectPass;
 
     const result = createComposer({ renderer, scene, camera, effectPass });
 
@@ -62,7 +63,7 @@ describe('createComposer', () => {
     expect(renderer.toneMappingExposure).toBe(1);
 
     const composer = result.composer as unknown as InstanceType<typeof hoisted.MockEffectComposer>;
-    expect(composer.renderTarget.texture.colorSpace).toBe(SRGBColorSpace);
+    expect((composer.renderTarget as any).texture.colorSpace).toBe(SRGBColorSpace);
     expect(composer.passes).toHaveLength(2);
     expect(composer.passes[1]).toBe(effectPass);
     expect(result.renderTarget.width).toBeCloseTo(1200);
@@ -88,7 +89,7 @@ describe('createComposer', () => {
       renderer,
       scene: {} as Scene,
       camera: {} as Camera,
-      effectPass: {} as unknown,
+      effectPass: {} as unknown as EffectPass,
     });
 
     const renderTargetDispose = vi.spyOn(result.renderTarget, 'dispose');
