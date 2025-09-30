@@ -6,7 +6,7 @@ describe('safeSetNextKinematicTranslation', () => {
     const setter = vi.fn();
     const body = { setNextKinematicTranslation: setter };
 
-    safeSetNextKinematicTranslation(body, 1, 2, 3);
+    safeSetNextKinematicTranslation(null, body, 1, 2, 3);
 
     expect(setter).toHaveBeenCalledTimes(1);
     expect(setter).toHaveBeenCalledWith({ x: 1, y: 2, z: 3 });
@@ -16,9 +16,9 @@ describe('safeSetNextKinematicTranslation', () => {
     const setter = vi.fn();
     const body = { setNextKinematicTranslation: setter };
 
-    safeSetNextKinematicTranslation(null, 1, 2, 3);
-    safeSetNextKinematicTranslation(undefined, 1, 2, 3);
-    safeSetNextKinematicTranslation(body, Number.POSITIVE_INFINITY, 0, 0);
+    safeSetNextKinematicTranslation(null, null, 1, 2, 3);
+    safeSetNextKinematicTranslation(null, undefined, 1, 2, 3);
+    safeSetNextKinematicTranslation(null, body, Number.POSITIVE_INFINITY, 0, 0);
 
     expect(setter).not.toHaveBeenCalled();
   });
@@ -29,7 +29,7 @@ describe('safeSetNextKinematicTranslation', () => {
     });
     const body = { setNextKinematicTranslation: setter };
 
-    expect(() => safeSetNextKinematicTranslation(body, 4, 5, 6)).not.toThrow();
+    expect(() => safeSetNextKinematicTranslation(null, body, 4, 5, 6)).not.toThrow();
     expect(setter).toHaveBeenCalledTimes(1);
   });
 });
