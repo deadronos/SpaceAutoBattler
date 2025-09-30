@@ -138,3 +138,29 @@ All of this should be in-memory only for now, with no persistence. The design sh
 - Ships spawn with progression fields initialized in `src/game/ships.ts`
 - Design documentation in `memory/design-ship-progression-system.md`
 - Assumptions documented in `docs/ship-progression-assumptions.md`
+
+### 2025-09-30 (Perf run: 150 ships)
+
+- Executed quick perf harness with environment: `AI_BUDGET_SHIPS=150`, `AI_BUDGET_TICKS=200`, `AI_BUDGET_MS=3.5` using `npm run perf:ai-budget`.
+- Result: The harness exited with a non-zero status (1). The run failed with a runtime TypeError originating from `refreshBlackboard` while reading a `blue` property.
+
+Raw harness output:
+
+```text
+[ai-budget] booting harness
+[ai-budget] error while running budget assertion TypeError: Cannot read properties of undefined (reading 'blue')
+    at refreshBlackboard (D:\GitHub\SpaceAutoBattler\src\game\systems\decision\blackboard.ts:40:27)
+    at updateDecisionSystem (D:\GitHub\SpaceAutoBattler\src\game\systems\decision\manager.ts:209:5)
+    at main (D:\GitHub\SpaceAutoBattler\scripts\perf\assert-ai-budget.ts:146:7)
+    at <anonymous> (D:\GitHub\SpaceAutoBattler\scripts\perf\assert-ai-budget.ts:171:1)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:647:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Command exited with code 1
+```
+
+- Immediate next steps:
+  1. Investigate `refreshBlackboard` at `src/game/systems/decision/blackboard.ts` to determine why it expects a `blue` property on an undefined object (likely a missing team or side assignment in the test fixture or harness setup).
+  2. Re-run the harness after adding a small guard (or fixing the fixture) so that the perf run can complete successfully and produce baseline numbers.
+  3. Once a successful run completes, append the measured metrics to this task and leave a short acceptance note.

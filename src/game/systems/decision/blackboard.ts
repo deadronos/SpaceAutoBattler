@@ -27,7 +27,7 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   const seenVip = new Set<number>();
   const shipById = new Map<number, ShipEntity>();
   for (const ship of ships) shipById.set(ship.id, ship);
-  const centroid = blackboard.allyCentroid;
+  const centroid = blackboard.allyCentroid ?? (blackboard.allyCentroid = { blue: new Vector3(), red: new Vector3() });
   centroid.blue.set(0, 0, 0);
   centroid.red.set(0, 0, 0);
   let blueCount = 0;
