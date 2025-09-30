@@ -95,10 +95,10 @@ export function executeAICommand(state: GameState, ship: ShipEntity, delta: numb
     const moveDistance = ship.ship.speed * thrust * delta;
     const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(heading, moveDistance);
     clampToWorld(nextPosition);
-    safeSetNextKinematicTranslation(ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
+    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
   } else {
     const p = ship.transform.position;
-    safeSetNextKinematicTranslation(ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
   }
 
   let target: ShipEntity | null = null;
@@ -153,11 +153,8 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
   const target = findNearestEnemy(state, ship);
 
   if (!target) {
-    ship.rigidBody.setNextKinematicTranslation({
-      x: ship.transform.position.x,
-      y: ship.transform.position.y,
-      z: ship.transform.position.z,
-    });
+    const p = ship.transform.position;
+    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
     return null;
   }
 
@@ -178,18 +175,10 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
     );
     const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(direction, moveDistance);
     clampToWorld(nextPosition);
-
-    ship.rigidBody.setNextKinematicTranslation({
-      x: nextPosition.x,
-      y: nextPosition.y,
-      z: nextPosition.z,
-    });
+    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
   } else {
-    ship.rigidBody.setNextKinematicTranslation({
-      x: ship.transform.position.x,
-      y: ship.transform.position.y,
-      z: ship.transform.position.z,
-    });
+    const p = ship.transform.position;
+    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
   }
 
   if (distance <= ship.ship.range && ship.ship.cooldown <= 0) {

@@ -1,15 +1,16 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipEntity } from '../../types/index.js';
+import type { GameState, ShipEntity, ProjectileEntity } from '../../types/index.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../../config/projectiles.js';
 import { getEffectiveStats } from '../progression.js';
+import { enqueueDeferredMutation } from '../simulationQueue.js';
 
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
 
 export function advanceProjectiles(state: GameState, delta: number): void {
-  const projectiles = state.queries.projectiles.entities as any[];
+  const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   for (const projectile of projectiles) {
     const move = projectile.projectile.speed * delta;
     const direction = projectile.direction;
@@ -36,20 +37,10 @@ export function fireProjectile(
     : origin.transform.position.clone().addScaledVector(direction, muzzleOffset);
   const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
 
-  const bodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
-    .setTranslation(startPosition.x, startPosition.y, startPosition.z)
-    .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
-  const body = state.physicsWorld.createRigidBody(bodyDesc);
-
   const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType ?? '';
   const cfg = PROJECTILE_CONFIG[bulletKey] ?? DEFAULT_PROJECTILE_CONFIG;
   const visualScale = cfg.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale;
   const colliderRadius = cfg.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
-
-  const colliderDesc = state.rapier.ColliderDesc.ball(colliderRadius)
-    .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
-    .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
-  const collider = state.physicsWorld.createCollider(colliderDesc, body);
 
   let speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
   if (AI_CONFIG.rangePolicy === 'v0.1.1-exp' && !opts?.override) {
@@ -74,27 +65,54 @@ export function fireProjectile(
   const range = opts?.override?.range ?? origin.ship.range;
   const lifetime = Math.min(range / speed, 30);
 
-  const projectile = state.world.add({
-    id: state.nextEntityId++,
-    rigidBody: body,
-    collider,
-    transform: {
-      position: startPosition,
-      rotation,
-      scale: visualScale,
-    },
-    projectile: {
-      team: origin.ship.team,
-      damage,
-      ttl: lifetime,
-      maxTtl: lifetime,
-      speed,
-      bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
-      damageType: origin.ship.damageType,
-      sourceId: origin.id,
-    },
-    direction: direction.clone(),
-  });
+  const spawnDirection = direction.clone();
+  const rotationComponents = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
+  const positionComponents = { x: startPosition.x, y: startPosition.y, z: startPosition.z };
+  const projectileData = {
+    team: origin.ship.team,
+    damage,
+    ttl: lifetime,
+    speed,
+    bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
+    damageType: origin.ship.damageType,
+    sourceId: origin.id,
+  };
 
-  state.colliderLookup.set(collider.handle, projectile);
+  enqueueDeferredMutation(state, () => {
+    const bodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
+      .setTranslation(positionComponents.x, positionComponents.y, positionComponents.z)
+      .setRotation(rotationComponents);
+    const body = state.physicsWorld.createRigidBody(bodyDesc);
+
+    const colliderDesc = state.rapier.ColliderDesc.ball(colliderRadius)
+      .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
+      .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
+    const collider = state.physicsWorld.createCollider(colliderDesc, body);
+
+    const projectile = state.world.add({
+      id: state.nextEntityId++,
+      rigidBody: body,
+      collider,
+      transform: {
+        position: new Vector3(positionComponents.x, positionComponents.y, positionComponents.z),
+        rotation: new Quaternion(rotationComponents.x, rotationComponents.y, rotationComponents.z, rotationComponents.w),
+        scale: visualScale,
+      },
+      projectile: {
+        team: projectileData.team,
+        damage: projectileData.damage,
+        ttl: projectileData.ttl,
+        maxTtl: projectileData.ttl,
+        speed: projectileData.speed,
+        bulletType: projectileData.bulletType,
+        damageType: projectileData.damageType,
+        sourceId: projectileData.sourceId,
+      },
+      direction: spawnDirection.clone(),
+    });
+
+    if (collider?.handle != null) {
+      state.colliderLookup.set(collider.handle, projectile);
+    }
+  });
 }

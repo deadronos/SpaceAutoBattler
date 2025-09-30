@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { enqueueDeferredMutation, flushDeferredMutations } from '../../src/game/simulationQueue.js';
+import {
+  enqueueDeferredMutation,
+  enqueuePostPhysicsMutation,
+  flushDeferredMutations,
+  flushPostPhysicsMutations,
+  recordRapierGuardTrip,
+} from '../../src/game/simulationQueue.js';
 import { createTestGameState } from './helpers/fixtures.js';
 
 describe('simulation queue', () => {
@@ -11,11 +17,11 @@ describe('simulation queue', () => {
     enqueueDeferredMutation(state, () => order.push(1));
     enqueueDeferredMutation(state, () => order.push(2));
 
-  flushDeferredMutations(state);
-  flushDeferredMutations(state);
+    flushDeferredMutations(state);
+    flushDeferredMutations(state);
 
-  expect(order).toEqual([1, 2]);
-  expect(state.simulation.deferredMutations).toHaveLength(0);
+    expect(order).toEqual([1, 2]);
+    expect(state.simulation.deferredMutations).toHaveLength(0);
   });
 
   it('defers newly enqueued operations until the next flush', () => {
@@ -40,6 +46,7 @@ describe('simulation queue', () => {
   it('swallows errors from deferred operations without propagating', () => {
     const state = createTestGameState();
     state.simulation.deferredMutations.length = 0;
+    const diagnostics = state.simulation.rapierDiagnostics;
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const faulty = vi.fn(() => {
@@ -51,7 +58,37 @@ describe('simulation queue', () => {
     expect(() => flushDeferredMutations(state)).not.toThrow();
     expect(faulty).toHaveBeenCalledTimes(1);
     expect(state.simulation.deferredMutations).toHaveLength(0);
+    expect(diagnostics.deferredMutationFailures).toBe(1);
+    expect(diagnostics.lastFailureTick).toBe(state.simulation.lastTickIndex);
+    expect(diagnostics.lastDeferredMutationError).toBe('mutation failed');
 
     warnSpy.mockRestore();
+  });
+
+  it('supports a separate post-physics queue with identical semantics', () => {
+    const state = createTestGameState();
+    state.simulation.postStepMutations.length = 0;
+
+    const order: number[] = [];
+    enqueuePostPhysicsMutation(state, () => order.push(1));
+    enqueuePostPhysicsMutation(state, () => order.push(2));
+
+    flushPostPhysicsMutations(state);
+    flushPostPhysicsMutations(state);
+
+    expect(order).toEqual([1, 2]);
+    expect(state.simulation.postStepMutations).toHaveLength(0);
+  });
+
+  it('tracks guard trips in diagnostics', () => {
+    const state = createTestGameState();
+    const diagnostics = state.simulation.rapierDiagnostics;
+    const previousTrips = diagnostics.guardTrips;
+
+    recordRapierGuardTrip(state, new Error('guarded'));
+
+    expect(diagnostics.guardTrips).toBe(previousTrips + 1);
+    expect(diagnostics.lastGuardTick).toBe(state.simulation.lastTickIndex);
+    expect(diagnostics.lastDeferredMutationError).toBe('guarded');
   });
 });

@@ -158,3 +158,17 @@ export function safeSetNextKinematicTranslation(
 - Carrier launch logic enqueues spawn closures and relies on the global flush inserted in `src/game/systems.ts` prior to `physicsWorld.step`, eliminating Rapier cold-start aliasing panics in smoke scenarios.
 - Regression coverage: `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, and `test/vitest/safe-kinematics.spec.ts` assert queue semantics, cold-start execution, and safe kinematic handling. Full suite (`npm test`) and `npm run typecheck` executed on 2025-09-30.
 - `src/components/Ship.tsx` guards non-finite `smoothing.thrusterIntensity` values before delegating to thruster hooks, maintaining prior renderer behaviour expected by `test/vitest/thruster-glow.spec.ts` after the queue refactor.
+
+## Implementation Notes — 2025-10-02
+
+- Extended `SimulationClock` with a mirrored `postStepMutations` queue plus `rapierDiagnostics` counters, initialised in `createGameState` alongside the existing deferred queue.
+- `simulationQueue.ts` now exports helpers for both queues and records diagnostics for failures and guard trips; `safeSetNextKinematicTranslation` receives the `GameState` to log guard events.
+- `fireProjectile` stages Rapier body/collider creation via `enqueueDeferredMutation`, cloning spawn parameters eagerly and verifying no projectile entity appears until the next `flushDeferredMutations` call. Updated specs (`projectile-bullettype`, `projectile-resolve`) assert deferred staging.
+- `requestReset` enqueues reset closures onto the post-step queue and `updateGame` drains it immediately after `physicsWorld.step`. The revised `rapier-reset-stability` suite inspects queue length and verifies single execution plus queue clearing.
+- `simulation-queue.spec.ts` gained coverage for diagnostics increments and post-step queue semantics, ensuring both queues clear after each flush.
+
+## Follow-up Opportunities
+
+- Surface `simulation.rapierDiagnostics` metrics through the developer HUD so guard trips and mutation failures are visible without inspecting logs.
+- Capture snapshot-based regression for projectile queue order (e.g., multi-projectile flush) to guard against regressions when introducing pooling optimisations.
+- Evaluate pooling or object reuse inside the deferred projectile spawn closure to minimise per-shot allocations once stability is confirmed.

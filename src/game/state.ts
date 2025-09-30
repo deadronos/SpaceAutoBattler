@@ -14,6 +14,7 @@ import { spawnShip, SHIP_STATS } from './ships.js';
 import { unregisterTurret } from './turretRegistry.js';
 import { createDefaultMetrics, resetMetrics } from './metrics.js';
 import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
+import { enqueuePostPhysicsMutation } from './simulationQueue.js';
 
 export async function createGameState(): Promise<GameState> {
   // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
@@ -74,7 +75,14 @@ export async function createGameState(): Promise<GameState> {
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
       deferredMutations: [],
-      pendingReset: null,
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
     ai: {
       enabled: AI_CONFIG.v2Enabled,
@@ -330,10 +338,8 @@ export function resetGame(state: GameState): void {
   state.blackboard.allyCentroid.blue.set(0, 0, 0);
   state.blackboard.allyCentroid.red.set(0, 0, 0);
   
-  // Clear pending reset flag to avoid repeated execution
-  if (state.simulation.pendingReset) {
-    state.simulation.pendingReset = null;
-  }
+  // Clear any queued post-step mutations now that the reset executed.
+  state.simulation.postStepMutations.length = 0;
 }
 
 /**
@@ -341,7 +347,13 @@ export function resetGame(state: GameState): void {
  * This avoids Rapier console errors that occur when resetting during active physics stepping.
  */
 export function requestReset(state: GameState): void {
-  state.simulation.pendingReset = () => resetGame(state);
+  const queue = state.simulation.postStepMutations;
+  if (queue.some((fn) => (fn as { __resetTag?: boolean }).__resetTag)) {
+    return;
+  }
+  const op: (() => void) & { __resetTag?: boolean } = () => resetGame(state);
+  op.__resetTag = true;
+  enqueuePostPhysicsMutation(state, op);
 }
 
 

@@ -9,6 +9,13 @@
 
 **Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`npm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
 
+## 2025-09-30 — Rapier Queue Extensions (TASK230 follow-up)
+
+1. **WHEN** `fireProjectile` is invoked during a simulation tick, **THE SYSTEM SHALL** stage projectile creation via the deferred mutation queue so Rapier rigid body/collider allocation executes at the flush point, preventing nested mutable borrows during turret or AI loops. *(Acceptance: unit test exercises `fireProjectile`, asserts no projectile entity exists before flushing, then verifies creation after `flushDeferredMutations`.)*
+2. **WHEN** `requestReset` schedules a simulation reset, **THE SYSTEM SHALL** enqueue the reset closure into a post-physics deferred queue that executes immediately after `physicsWorld.step`, ensuring resets never run mid-step and leaving the queue empty afterwards. *(Acceptance: refreshed `rapier-reset-stability.spec.ts` inspects queue length before and after `updateGame` and confirms single execution.)*
+3. **WHEN** deferred mutation flushes or safe kinematic guards catch Rapier exceptions or invalid inputs, **THE SYSTEM SHALL** increment counters in `simulation.rapierDiagnostics` and capture the latest failure metadata so diagnostics highlight systems that may need additional guards. *(Acceptance: extended queue and kinematics unit tests force failures and assert diagnostic counters/metadata are updated.)*
+4. **WHEN** pre-physics or post-physics deferred queues complete their flush, **THE SYSTEM SHALL** clear all queued operations so subsequent ticks begin from an empty queue and operations execute at most once. *(Acceptance: queue regression validates both queues report zero length after flush even when new ops are enqueued during execution.)*
+
 ## 2025-09-29 — Shield Bubble Visibility Regression (TASK227)
 
 1. **WHEN** a ship entity reports `shield/maxShield ≥ 0.01`, **THE SYSTEM SHALL** render the shield bubble mesh after opaque hull geometry so the bubble remains visible regardless of hull draw order. *(Acceptance: Vitest regression reads `Ship.tsx` to confirm `ShieldBubble` uses a positive `SHIELD_RENDER_ORDER` constant greater than zero.)*

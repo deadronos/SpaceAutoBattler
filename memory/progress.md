@@ -2,6 +2,8 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-10-01: Extended deferred mutation queue to projectile spawning and pending reset logic, added post-step flush with diagnostics tracking, refreshed Vitest fixtures to cover new queue fields, expanded simulation queue tests for guard trip accounting, and updated requirements/design/active context documentation. Pending follow-ups: HUD exposure of diagnostics and regression snapshot harness. Validation pending (`npm run typecheck`, `npm test` queued next session).
+
 - 2025-09-30: Completed TASK230 Rapier startup borrow guard — added `simulation.deferredMutations` queue, shared safe kinematic utility, carrier launch enqueue/flush integration, renderer thruster guard, refreshed regression coverage (`simulation-queue`, `carrier-launch`, `safe-kinematics`), and reran `npm run typecheck` + `npm test` (472 passing).
 - 2025-01-27: Completed TASK154 Rapier reset stability — added deferred reset execution to eliminate runtime console errors during reset button usage. Extended SimulationClock with pendingReset field, implemented requestReset helper, modified updateGame to process resets after physics step, updated Controls.tsx, modernized EventQueue initialization, and added comprehensive Vitest coverage with 7 test cases. All 288 tests pass and TypeScript compilation successful.
 

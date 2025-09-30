@@ -66,7 +66,7 @@ export function updateTurrets(state: GameState, delta: number): void {
   for (const t of turrets) {
     const ship = t.turret.parent;
   const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
-  safeSetNextKinematicTranslation(t.rigidBody as unknown as KinematicBody, origin.x, origin.y, origin.z);
+  safeSetNextKinematicTranslation(state, t.rigidBody as unknown as KinematicBody, origin.x, origin.y, origin.z);
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];

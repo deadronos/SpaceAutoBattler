@@ -646,6 +646,20 @@ export interface HudUiFlags {
 
 export type DeferredMutation = () => void;
 
+export interface RapierDiagnostics {
+  /** Number of deferred operations that threw during the latest run. */
+  deferredMutationFailures: number;
+  /** Number of times safety guards skipped or caught Rapier kinematic calls. */
+  guardTrips: number;
+  /** Most recent tick index when a deferred mutation failed (-1 if never). */
+  lastFailureTick: number;
+  /** Most recent tick index when a guard trip occurred (-1 if never). */
+  lastGuardTick: number;
+  /** Optional message captured from the last deferred mutation error. */
+  lastDeferredMutationError?: string |
+    undefined;
+}
+
 export interface SimulationClock {
   /** Fixed step size in seconds for simulation updates. */
   step: number;
@@ -663,8 +677,10 @@ export interface SimulationClock {
   lastTickDuration: number;
   /** Deferred world mutation queue drained once per tick before the physics step. */
   deferredMutations: DeferredMutation[];
-  /** Optional pending reset closure to be executed after the current physics step completes. */
-  pendingReset?: (() => void) | null;
+  /** Deferred operations executed immediately after `physicsWorld.step`. */
+  postStepMutations: DeferredMutation[];
+  /** Aggregated diagnostics capturing Rapier guard trips and deferred failures. */
+  rapierDiagnostics: RapierDiagnostics;
 }
 
 export interface ShipBlueprint {

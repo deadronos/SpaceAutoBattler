@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { fireProjectile } from '../../src/game/systems.js';
+import { flushDeferredMutations } from '../../src/game/simulationQueue.js';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../src/types/index.js';
 
 function makeStateStub(): GameState {
@@ -76,6 +77,14 @@ function makeStateStub(): GameState {
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
       deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
   } as unknown as GameState;
 }
@@ -118,6 +127,8 @@ describe('fireProjectile bulletType propagation', () => {
     const ship = makeShipEntity('fighter', 'blue', 'bullet:laser');
 
     fireProjectile(state, ship, new Vector3(0, 0, 1));
+  expect(state.simulation.deferredMutations).toHaveLength(1);
+  flushDeferredMutations(state);
 
     const created = state.world.entities[0] as ProjectileEntity;
     expect(created).toBeDefined();
@@ -129,6 +140,8 @@ describe('fireProjectile bulletType propagation', () => {
     const ship = makeShipEntity('destroyer', 'red', 'bullet:heavy');
 
     fireProjectile(state, ship, new Vector3(0, 0, 1));
+  expect(state.simulation.deferredMutations).toHaveLength(1);
+  flushDeferredMutations(state);
 
     const created = state.world.entities[0] as ProjectileEntity;
     expect(created.projectile.bulletType).toBe('bullet:heavy');
