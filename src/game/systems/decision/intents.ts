@@ -439,6 +439,7 @@ export function updateBandStickiness(
     const durationTicks = Math.max(1, Math.round(AI_CONFIG.bandStickinessDuration / tickInterval));
     ai.stickinessUntil = state.ai.tickIndex + durationTicks;
     ai.stickinessTargetId = target.id;
+    if (!ai.stickinessHeading) ai.stickinessHeading = new Vector3();
     ai.stickinessHeading.copy(heading);
   } else if (distance > max * 1.2 || distance < min * 0.8) {
     ai.stickinessUntil = 0;

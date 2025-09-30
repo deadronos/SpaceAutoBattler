@@ -184,6 +184,7 @@ export function recordIntentMetrics(
   intent: AIIntent,
   isOpeningWindow: boolean,
 ): void {
+  if (!metrics.intentTimeline) metrics.intentTimeline = [];
   let snapshot = metrics.intentTimeline.at(-1) ?? null;
   if (!snapshot || snapshot.tick !== tick) {
     snapshot = { tick, time, counts: {}, total: 0 };
@@ -241,6 +242,7 @@ export function recordShotMetrics(
 }
 
 export function aggregateKpis(metrics: AIMetrics, tick: number): void {
+  if (!metrics.firstShotTimes) metrics.firstShotTimes = [];
   if (metrics.firstShotTimes.length > 0) {
     const sorted = [...metrics.firstShotTimes].sort((a, b) => a - b);
     metrics.kpis.firstShot.samples = sorted.length;

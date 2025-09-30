@@ -35,6 +35,14 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   let blueHp = 0;
   let redHp = 0;
 
+  if (!blackboard.nearestEnemy) blackboard.nearestEnemy = new Map();
+  if (!blackboard.threatToVip) blackboard.threatToVip = new Map();
+  if (!blackboard.teamPriority) blackboard.teamPriority = { blue: [], red: [] };
+  if (!blackboard.priorityIndex) blackboard.priorityIndex = { blue: new Map(), red: new Map() };
+  if (!blackboard.focusFire) blackboard.focusFire = { blue: new Map(), red: new Map() };
+  if (!blackboard.strengthRatio) blackboard.strengthRatio = { blue: 1, red: 1 };
+  if (!blackboard.teamPosture) blackboard.teamPosture = { blue: 'hold', red: 'hold' };
+
   blackboard.nearestEnemy.clear();
   blackboard.threatToVip.clear();
   blackboard.teamPriority.blue.length = 0;
