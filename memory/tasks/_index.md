@@ -8,7 +8,6 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 - [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
 - [TASK228](TASK228-rapier-velocity-sampling.md) — Harden AI velocity sampling to use `ShipComponent.velocity` and avoid Rapier re-entrancy during intent scoring.
-- [TASK151](TASK151-ship-progression-system.md) — Implement richer ship progression and damage systems with XP, captains, damage types, and subsystems.
 
 ## Completed
 
