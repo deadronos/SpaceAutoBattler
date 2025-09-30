@@ -2,11 +2,21 @@
 
 Current focuses (short-term):
 
-- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
-- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
+- Validate Playwright ship hull rendering tests (TASK154) with local build + serve cycle and generate initial baselines
+- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready
+- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default
 
 Recent changes:
 
+- **TASK154 (In Progress - 70%)**: Implemented Playwright ship mock render tests per design document:
+  * Created test page (`test/playwright/pages/ship-renderer.html`) with Three.js scene, fixed camera/lighting, deterministic rendering
+  * Implemented `window.__TEST__` API (waitForReady, getSceneSummary, setOptions) for test coordination
+  * Created comprehensive test suite (`test/playwright/ship-hulls.spec.ts`) with two-tier verification (scene introspection + screenshot comparison)
+  * Added baseline generation script (`scripts/generate-playwright-baselines.ts`) with CLI args and SwiftShader support
+  * Documented workflow in `test/playwright/README-ship-tests.md` covering running tests, generating baselines, troubleshooting
+  * All TypeScript compilation passes (`npm run typecheck`)
+  * Pending: Local validation with actual GLTF assets, CI job integration, Chromium flag tuning
+  
 - Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
@@ -31,6 +41,7 @@ Recent changes:
 
 Next steps:
 
+- **TASK154**: Validate ship hull tests locally (`npm run build && npm run serve`, then `npm run test:playwright:ship`), generate baselines, review screenshots, integrate into CI
 - Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
 - Capture a render comparison showcasing the new shader control ranges (core-focused vs corona-focused) for docs.
 - Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
@@ -41,7 +52,8 @@ Next steps:
 
 Status updates:
 
+- 2025-09-30: TASK154 Phase 1 & 2 completed — ship hull test infrastructure implemented with TypeScript compilation passing
 - 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
 - 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
 
-- Updated: 2025-09-29
+- Updated: 2025-09-30

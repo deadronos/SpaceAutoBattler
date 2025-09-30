@@ -18,6 +18,8 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:playwright": "playwright test -c playwright.config.cjs",
+    "test:playwright:ship": "playwright test -c playwright.config.cjs ship-hulls.spec.ts",
+    "generate-baselines": "npm run build && npm run serve & sleep 5 && tsx scripts/generate-playwright-baselines.ts && kill %1",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,js}\" --ext .ts --ext .js",
     "lint:fix": "eslint \"src/**/*.{ts,js}\" --ext .ts --ext .js --fix",
