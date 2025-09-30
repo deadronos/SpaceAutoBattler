@@ -86,7 +86,9 @@ export function resolveProjectiles(state: GameState, delta: number): void {
 
       const totalDamageDealt = damageResult.shieldDamage + damageResult.armorDamage + damageResult.hullDamage;
       if (totalDamageDealt > 0) {
-        const attackerShip = ships.find((s) => s.ship.team === projectile.projectile.team);
+        const attackerShip = projectile.projectile.sourceId
+          ? ships.find((s) => s.id === projectile.projectile.sourceId)
+          : ships.find((s) => s.ship.team === projectile.projectile.team);
         if (attackerShip) {
           awardDamageXp(attackerShip.ship, totalDamageDealt, state, attackerShip.id);
         }
@@ -110,7 +112,9 @@ export function resolveProjectiles(state: GameState, delta: number): void {
           queueTargetLossInterrupts(state, ships, ship.id);
         }
 
-        const killerShip = ships.find((s) => s.ship.team === projectile.projectile.team);
+        const killerShip = projectile.projectile.sourceId
+          ? ships.find((s) => s.id === projectile.projectile.sourceId)
+          : ships.find((s) => s.ship.team === projectile.projectile.team);
         if (killerShip) {
           awardKillXp(killerShip.ship, ship.ship.maxHp, state, killerShip.id);
         }

@@ -6,13 +6,13 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage.
 - [TASK228](TASK228-rapier-velocity-sampling.md) — Harden AI velocity sampling to use `ShipComponent.velocity` and avoid Rapier re-entrancy during intent scoring.
 - [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224).
 - [TASK151](TASK151-ship-progression-system.md) — Implement richer ship progression and damage systems with XP, captains, damage types, and subsystems.
 
 ## Completed
 
+- [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage. (2025-09-29)
 - [TASK226](TASK226-carrier-spawn-scheduling.md) — Deferred carrier fighter spawn execution to eliminate Rapier unsafe aliasing crashes and added regression coverage (2025-09-29).
 - [TASK227](TASK227-shield-bubble-visibility.md) — Restored shield visibility with overlay render order, depth-test disablement, and brighter alpha tuning plus regression coverage (2025-09-29).
 - [TASK154](TASK154-rapier-reset-stability.md) — Implemented deferred reset execution to eliminate Rapier console errors during reset button usage (2025-01-27).

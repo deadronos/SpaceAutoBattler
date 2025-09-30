@@ -227,6 +227,8 @@ export interface ProjectileComponent {
   bulletType?: string;
   /** Damage type for effectiveness calculations */
   damageType: DamageType;
+  /** Entity ID of the ship that fired this projectile */
+  sourceId?: number;
 }
 
 /** Parameters for a short-lived muzzle flash event emitted when a weapon fires. */

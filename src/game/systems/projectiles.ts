@@ -91,6 +91,7 @@ export function fireProjectile(
       speed,
       bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
       damageType: origin.ship.damageType,
+      sourceId: origin.id,
     },
     direction: direction.clone(),
   });
