@@ -1,186 +1,25 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import {
-  AdditiveBlending,
-  Color,
-  DoubleSide,
-  Group,
-  InstancedMesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  Object3D,
-  PlaneGeometry,
-  PointLight,
-  Quaternion,
-  RingGeometry,
-  SphereGeometry,
-  TetrahedronGeometry,
-  Vector3,
-} from 'three';
-import type { ExplosionEvent } from '../types/index.js';
-import { SeededRng } from '../utils/rng.js';
+import { InstancedMesh, Object3D, Quaternion, Vector3, Color } from 'three';
 import { useBloomRegistration } from '../renderer/BloomProvider.js';
 import { useGameState } from '../game/context.js';
-
-interface DerivedParticle {
-  direction: Vector3;
-  speed: number;
-  lifetime: number;
-  axis: Vector3;
-  spin: number;
-  scale: number;
-}
-
-interface DerivedSmoke {
-  offset: Vector3;
-  drift: Vector3;
-  scale: number;
-  lifetime: number;
-}
-
-interface DerivedExplosionData {
-  flicker: number;
-  debris: DerivedParticle[];
-  sparks: DerivedParticle[];
-  plasma: DerivedParticle[];
-  smoke: DerivedSmoke[];
-}
-
-interface CachedDerived {
-  seed: number;
-  radius: number;
-  hull: ExplosionEvent['hull'];
-  data: DerivedExplosionData;
-}
-
-const MAX_EVENTS = 48;
-const MAX_DEBRIS = 24;
-const MAX_SPARKS = 32;
-const MAX_PLASMA = 24;
-const MAX_SMOKE = 28;
-
-const FLASH_DURATION = 0.12;
-const DEBRIS_DELAY = 0.18;
-const SPARKS_DELAY = 0.22;
-const PLASMA_DELAY = 0.25;
-const SMOKE_DELAY = 0.3;
-const SPARKS_LIFETIME = 0.35;
-const PLASMA_LIFETIME = 0.9;
-const SMOKE_LIFETIME = 1.8;
-
-const FLASH_CAPACITY = MAX_EVENTS;
-const SHOCKWAVE_CAPACITY = MAX_EVENTS;
-const FIREBALL_CAPACITY = MAX_EVENTS;
-const DEBRIS_CAPACITY = MAX_EVENTS * MAX_DEBRIS;
-const SPARKS_CAPACITY = MAX_EVENTS * MAX_SPARKS;
-const PLASMA_CAPACITY = MAX_EVENTS * MAX_PLASMA;
-const SMOKE_CAPACITY = MAX_EVENTS * MAX_SMOKE;
-
-const derivedCache = new WeakMap<ExplosionEvent, CachedDerived>();
-const colorCache = new Map<string, Color>();
-
-function getCachedColor(value: string): Color {
-  let color = colorCache.get(value);
-  if (!color) {
-    color = new Color(value);
-    colorCache.set(value, color);
-  }
-  return color;
-}
-
-function randomUnitVector(rng: SeededRng): Vector3 {
-  const u = rng.next();
-  const v = rng.next();
-  const theta = 2 * Math.PI * u;
-  const phi = Math.acos(2 * v - 1);
-  const sinPhi = Math.sin(phi);
-  return new Vector3(
-    Math.cos(theta) * sinPhi,
-    Math.sin(theta) * sinPhi,
-    Math.cos(phi),
-  );
-}
-
-function createDerived(event: ExplosionEvent): DerivedExplosionData {
-  const rng = new SeededRng(Math.max(1, event.seed || 1));
-  const debris: DerivedParticle[] = [];
-  const sparks: DerivedParticle[] = [];
-  const plasma: DerivedParticle[] = [];
-  const smoke: DerivedSmoke[] = [];
-
-  for (let i = 0; i < Math.min(event.debris.count, MAX_DEBRIS); i += 1) {
-    const direction = randomUnitVector(rng).normalize();
-    const speed = rng.range(event.debris.speed[0], event.debris.speed[1]);
-    const lifetime = rng.range(0.55, 0.95);
-    const axis = randomUnitVector(rng).normalize();
-    const spin = rng.range(-Math.PI, Math.PI);
-    const scale = rng.range(0.6, 1.2);
-    debris.push({ direction, speed, lifetime, axis, spin, scale });
-  }
-
-  for (let i = 0; i < Math.min(event.particles.sparks, MAX_SPARKS); i += 1) {
-    const direction = randomUnitVector(rng).normalize();
-    const speed = rng.range(event.radius * 2.5, event.radius * 3.5);
-    const lifetime = rng.range(0.2, SPARKS_LIFETIME);
-    const axis = randomUnitVector(rng).normalize();
-    const spin = rng.range(-Math.PI, Math.PI);
-    const scale = rng.range(0.4, 0.9);
-    sparks.push({ direction, speed, lifetime, axis, spin, scale });
-  }
-
-  for (let i = 0; i < Math.min(event.particles.plasma, MAX_PLASMA); i += 1) {
-    const direction = randomUnitVector(rng).normalize();
-    const speed = rng.range(event.radius * 0.8, event.radius * 1.6);
-    const lifetime = rng.range(0.6, PLASMA_LIFETIME);
-    const axis = randomUnitVector(rng).normalize();
-    const spin = rng.range(-Math.PI, Math.PI);
-    const scale = rng.range(0.8, 1.4);
-    plasma.push({ direction, speed, lifetime, axis, spin, scale });
-  }
-
-  for (let i = 0; i < Math.min(event.particles.smoke, MAX_SMOKE); i += 1) {
-    const offsetDir = randomUnitVector(rng).normalize();
-    offsetDir.y = Math.abs(offsetDir.y);
-    const driftDir = randomUnitVector(rng).normalize();
-    driftDir.y = Math.abs(driftDir.y);
-    const offset = offsetDir.multiplyScalar(event.radius * rng.range(0.15, 0.35));
-    const drift = driftDir.multiplyScalar(rng.range(event.radius * 0.08, event.radius * 0.16));
-    const scale = rng.range(0.6, 1.6);
-    const lifetime = rng.range(1.1, SMOKE_LIFETIME);
-    smoke.push({ offset, drift, scale, lifetime });
-  }
-
-  return {
-    flicker: rng.range(0.85, 1.15),
-    debris,
-    sparks,
-    plasma,
-    smoke,
-  };
-}
-
-function getDerived(event: ExplosionEvent): DerivedExplosionData {
-  const cached = derivedCache.get(event);
-  if (cached && cached.seed === event.seed && cached.radius === event.radius && cached.hull === event.hull) {
-    return cached.data;
-  }
-  const data = createDerived(event);
-  derivedCache.set(event, {
-    seed: event.seed,
-    radius: event.radius,
-    hull: event.hull,
-    data,
-  });
-  return data;
-}
-
-function easeOutQuad(t: number): number {
-  return 1 - (1 - t) * (1 - t);
-}
-
-function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
+import {
+  DEBRIS_CAPACITY,
+  DEBRIS_DELAY,
+  FIREBALL_CAPACITY,
+  FLASH_CAPACITY,
+  FLASH_DURATION,
+  PLASMA_CAPACITY,
+  PLASMA_DELAY,
+  SHOCKWAVE_CAPACITY,
+  SMOKE_CAPACITY,
+  SMOKE_DELAY,
+  SPARKS_CAPACITY,
+  SPARKS_DELAY,
+} from './explosions/constants.js';
+import { clamp01, easeOutQuad, getCachedColor, getDerived } from './explosions/derived.js';
+import { useExplosionResources } from './explosions/materials.js';
+import { DynamicLightManager } from './explosions/DynamicLightManager.js';
 
 export function ExplosionRenderer(): React.ReactElement {
   const state = useGameState();
@@ -196,136 +35,12 @@ export function ExplosionRenderer(): React.ReactElement {
   useBloomRegistration(shockwaveRef, { group: 'explosions' });
   useBloomRegistration(fireballRef, { group: 'explosions' });
 
+  const { geometries, materials } = useExplosionResources();
+
   const dummy = useMemo(() => new Object3D(), []);
   const tmpQuat = useMemo(() => new Quaternion(), []);
   const tmpVec = useMemo(() => new Vector3(), []);
   const color = useMemo(() => new Color(), []);
-
-  const flashGeometry = useMemo(() => new SphereGeometry(1, 16, 16), []);
-  const shockwaveGeometry = useMemo(() => new RingGeometry(0.5, 0.7, 32), []);
-  const fireballGeometry = useMemo(() => new SphereGeometry(1, 20, 16), []);
-  const debrisGeometry = useMemo(() => new TetrahedronGeometry(0.4, 0), []);
-  const sparkGeometry = useMemo(() => new SphereGeometry(0.2, 8, 6), []);
-  const plasmaGeometry = useMemo(() => new PlaneGeometry(1, 1), []);
-  const smokeGeometry = useMemo(() => new PlaneGeometry(1, 1), []);
-
-  const flashMaterial = useMemo(() => {
-    const mat = new MeshBasicMaterial({
-      color: new Color('#ffffff'),
-      transparent: true,
-      opacity: 0.9,
-      blending: AdditiveBlending,
-      depthWrite: false,
-    });
-    mat.toneMapped = false;
-    return mat;
-  }, []);
-
-  const shockwaveMaterial = useMemo(() => {
-    const mat = new MeshBasicMaterial({
-      color: new Color('#ffffff'),
-      transparent: true,
-      opacity: 0.8,
-      blending: AdditiveBlending,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    mat.toneMapped = false;
-    return mat;
-  }, []);
-
-  const fireballMaterial = useMemo(() => {
-    const mat = new MeshStandardMaterial({
-      color: new Color('#ff8844'),
-      emissive: new Color('#ff5500'),
-      emissiveIntensity: 2.2,
-      roughness: 0.6,
-      metalness: 0,
-    });
-    mat.toneMapped = true;
-    return mat;
-  }, []);
-
-  const debrisMaterial = useMemo(() => {
-    const mat = new MeshStandardMaterial({
-      color: new Color('#ffaa66'),
-      emissive: new Color('#ff9966'),
-      emissiveIntensity: 1.6,
-      roughness: 0.8,
-      metalness: 0.1,
-    });
-    mat.toneMapped = true;
-    return mat;
-  }, []);
-
-  const sparksMaterial = useMemo(() => {
-    const mat = new MeshBasicMaterial({
-      color: new Color('#ffcc88'),
-      transparent: true,
-      opacity: 0.85,
-      blending: AdditiveBlending,
-      depthWrite: false,
-    });
-    mat.toneMapped = false;
-    return mat;
-  }, []);
-
-  const plasmaMaterial = useMemo(() => {
-    const mat = new MeshBasicMaterial({
-      color: new Color('#ff9955'),
-      transparent: true,
-      opacity: 0.6,
-      blending: AdditiveBlending,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    mat.toneMapped = false;
-    return mat;
-  }, []);
-
-  const smokeMaterial = useMemo(() => {
-    const mat = new MeshBasicMaterial({
-      color: new Color('#555555'),
-      transparent: true,
-      opacity: 0.75,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    mat.toneMapped = true;
-    return mat;
-  }, []);
-
-  useEffect(() => () => {
-    flashGeometry.dispose();
-    shockwaveGeometry.dispose();
-    fireballGeometry.dispose();
-    debrisGeometry.dispose();
-    sparkGeometry.dispose();
-    plasmaGeometry.dispose();
-    smokeGeometry.dispose();
-    flashMaterial.dispose();
-    shockwaveMaterial.dispose();
-    fireballMaterial.dispose();
-    debrisMaterial.dispose();
-    sparksMaterial.dispose();
-    plasmaMaterial.dispose();
-    smokeMaterial.dispose();
-  }, [
-    debrisGeometry,
-    debrisMaterial,
-    fireballGeometry,
-    fireballMaterial,
-    flashGeometry,
-    flashMaterial,
-    plasmaGeometry,
-    plasmaMaterial,
-    shockwaveGeometry,
-    shockwaveMaterial,
-    smokeGeometry,
-    smokeMaterial,
-    sparkGeometry,
-    sparksMaterial,
-  ]);
 
   useFrame(({ camera }) => {
     const events = state.explosions;
@@ -533,83 +248,41 @@ export function ExplosionRenderer(): React.ReactElement {
     <group>
       <instancedMesh
         ref={flashRef}
-        args={[flashGeometry, flashMaterial, FLASH_CAPACITY]}
+        args={[geometries.flash, materials.flash, FLASH_CAPACITY]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={shockwaveRef}
-        args={[shockwaveGeometry, shockwaveMaterial, SHOCKWAVE_CAPACITY]}
+        args={[geometries.shockwave, materials.shockwave, SHOCKWAVE_CAPACITY]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={fireballRef}
-        args={[fireballGeometry, fireballMaterial, FIREBALL_CAPACITY]}
+        args={[geometries.fireball, materials.fireball, FIREBALL_CAPACITY]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={debrisRef}
-        args={[debrisGeometry, debrisMaterial, DEBRIS_CAPACITY]}
+        args={[geometries.debris, materials.debris, DEBRIS_CAPACITY]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={sparksRef}
-        args={[sparkGeometry, sparksMaterial, SPARKS_CAPACITY]}
+        args={[geometries.sparks, materials.sparks, SPARKS_CAPACITY]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={plasmaRef}
-        args={[plasmaGeometry, plasmaMaterial, PLASMA_CAPACITY]}
+        args={[geometries.plasma, materials.plasma, PLASMA_CAPACITY]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={smokeRef}
-        args={[smokeGeometry, smokeMaterial, SMOKE_CAPACITY]}
+        args={[geometries.smoke, materials.smoke, SMOKE_CAPACITY]}
         frustumCulled={false}
       />
     </group>
   );
-}
-
-export function DynamicLightManager(): React.ReactElement {
-  const state = useGameState();
-  const groupRef = useRef<Group>(null);
-  const lightsRef = useRef<PointLight[]>([]);
-
-  useFrame(() => {
-    const group = groupRef.current;
-    if (!group) return;
-    const events = state.explosions;
-    const lights = lightsRef.current;
-
-    while (lights.length < MAX_EVENTS) {
-      const light = new PointLight('#ffffff', 0, 0, 2);
-      light.castShadow = false;
-      light.visible = false;
-      group.add(light);
-      lights.push(light);
-    }
-
-    let active = 0;
-    for (const event of events) {
-      if (active >= lights.length) break;
-      const light = lights[active];
-      const lightPhase = event.lightDuration > 0 ? event.lightElapsed / event.lightDuration : 1;
-      const intensity = event.flashIntensity * Math.max(0, 1 - lightPhase);
-      light.visible = intensity > 0.02;
-      light.intensity = intensity * 6;
-      light.decay = Math.max(0.8, event.lightFalloff / 100);
-      light.distance = event.radius * 6;
-      light.color.set(event.lightColor as any);
-      light.position.copy(event.position);
-      active += 1;
-    }
-
-    for (let i = active; i < lights.length; i += 1) {
-      lights[i].visible = false;
-    }
-  });
-
-  return <group ref={groupRef} />;
 }
 
 export function ExplosionsLayer(): React.ReactElement {
@@ -620,3 +293,4 @@ export function ExplosionsLayer(): React.ReactElement {
     </group>
   );
 }
+
