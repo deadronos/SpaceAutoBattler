@@ -1,7 +1,9 @@
+import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { MathUtils, Quaternion, Vector3 } from 'three';
+import { MathUtils, Quaternion, Vector3, type Group } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { resolveRendererMotionConfig } from '../config/renderer.js';
+import { useOptionalGameState } from '../game/context.js';
 
 export interface InterpolationState {
   prevSimPosition: Vector3;
@@ -31,11 +33,14 @@ export interface SmoothingConfig {
 
 export function useShipInterpolation(
   entity: ShipEntity,
-  lastTickIndex: number,
+  groupRef: React.RefObject<Group | null>,
 ): {
   state: InterpolationState;
   smoothing: SmoothingConfig;
 } {
+  const state = useOptionalGameState();
+  const lastTickIndex = state?.simulation.lastTickIndex ?? 0;
+
   const smoothing = useMemo(() => {
     const cfg = resolveRendererMotionConfig(entity.ship.motion);
     return {
@@ -63,6 +68,26 @@ export function useShipInterpolation(
   const bankValueRef = useRef(0);
   const lastTickIndexRef = useRef(-1);
 
+  const interpolationState = useMemo((): InterpolationState => ({
+    prevSimPosition,
+    prevSimRotation,
+    currSimPosition,
+    currSimRotation,
+    visualPosition,
+    visualRotation,
+    interpPosition,
+    interpRotation,
+    bankQuaternion,
+    forwardAxis,
+    finalRotation,
+    get bankValue() { return bankValueRef.current; },
+    get lastTickIndex() { return lastTickIndexRef.current; },
+  }), [
+    prevSimPosition, prevSimRotation, currSimPosition, currSimRotation,
+    visualPosition, visualRotation, interpPosition, interpRotation,
+    bankQuaternion, forwardAxis, finalRotation
+  ]);
+
   useLayoutEffect(() => {
     prevSimPosition.copy(entity.transform.position);
     currSimPosition.copy(entity.transform.position);
@@ -74,22 +99,31 @@ export function useShipInterpolation(
     lastTickIndexRef.current = lastTickIndex;
   }, [entity.id, lastTickIndex]);
 
+  useFrame(() => {
+    const ref = groupRef.current;
+    if (!ref) return;
+
+    const sim = state?.simulation;
+    const tickIndex = sim?.lastTickIndex ?? lastTickIndexRef.current;
+    const alpha = sim ? MathUtils.clamp(sim.alpha, 0, 1) : 1;
+
+    updateInterpolation(
+      entity,
+      interpolationState,
+      smoothing,
+      alpha,
+      tickIndex,
+      bankValueRef,
+      lastTickIndexRef,
+    );
+
+    ref.position.copy(interpolationState.visualPosition);
+    ref.quaternion.copy(interpolationState.finalRotation);
+    ref.scale.setScalar(entity.transform.scale);
+  });
+
   return {
-    state: {
-      prevSimPosition,
-      prevSimRotation,
-      currSimPosition,
-      currSimRotation,
-      visualPosition,
-      visualRotation,
-      interpPosition,
-      interpRotation,
-      bankQuaternion,
-      forwardAxis,
-      finalRotation,
-      bankValue: bankValueRef.current,
-      lastTickIndex: lastTickIndexRef.current,
-    },
+    state: interpolationState,
     smoothing,
   };
 }

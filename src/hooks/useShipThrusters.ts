@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { Box3, Color, Mesh, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
+import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { Box3, Color, MathUtils, Mesh, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../config/renderer.js';
 import { useBloomContext } from '../renderer/BloomProvider.js';
+import type { SmoothingConfig } from './useShipInterpolation.js';
 
 export interface ThrusterMaterial {
   material: any;
@@ -13,9 +15,11 @@ export interface ThrusterMaterial {
 export function useShipThrusters(
   scene: any | null,
   entity: ShipEntity,
+  smoothing: SmoothingConfig,
 ): React.MutableRefObject<ThrusterMaterial[]> {
   const thrusterMaterialsRef = useRef<ThrusterMaterial[]>([]);
   const fallbackGlowMeshesRef = useRef<Mesh[]>([]);
+  const thrusterColorRef = useMemo(() => new Color(), []);
   const bloomCtx = useBloomContext();
 
   useEffect(() => {
@@ -148,6 +152,20 @@ export function useShipThrusters(
       thrusterMaterialsRef.current = [];
     };
   }, [scene, bloomCtx, entity.ship.hull, entity.id]);
+
+  useFrame(() => {
+    const thrusters = thrusterMaterialsRef.current;
+    if (thrusters.length > 0) {
+      const throttle = MathUtils.clamp(entity.ai?.command?.thrust ?? 0, 0, 1);
+      updateThrusterIntensity(
+        thrusters,
+        throttle,
+        smoothing.thrusterIntensity.base,
+        smoothing.thrusterIntensity.range,
+        thrusterColorRef,
+      );
+    }
+  });
 
   return thrusterMaterialsRef;
 }
