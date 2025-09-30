@@ -1,178 +1,164 @@
 # Source (src) structure
 
-Generated on: 2025-09-27
+Updated on: 2025-09-30
 
-This document lists the files and folders under `src/` with a concise purpose
-summary for each entry. It is intended to help new contributors quickly locate
+This document lists the files and folders under `src/` with a concise
+purpose summary for each entry. It's intended to help new contributors find
 core systems and understand responsibilities across the codebase.
 
-## Top-level
+Files are grouped by subdirectory. Descriptions focus on the primary role,
+key exports, and any notable dependencies or behaviors.
 
-- `src/ui.html` — Minimal host HTML used during development; contains loading
-  placeholder and base background styles.
-- `src/main.tsx` — Application bootstrap: patches loaders, creates the React
-  root, and mounts `<App />`.
-- `src/App.tsx` — Top-level React application shell. Sets up `GameProvider` and
-  composes Battlefield, HUD, and controls.
-- `src/AGENTS.md` — Contributor guidance for working inside `src/`.
-- `src/styles/` — Global CSS and related notes (see dedicated section below).
+## Root files
 
-## assets
+- `App.tsx` — Main React application component; renders the game canvas, HUD,
+  and controls.
+- `AGENTS.md` — High-level agents guide for the entire `src` directory. Covers
+  purpose, language, and best practices.
 
-- `src/assets/ships.ts` — Mapping of ship blueprint IDs to GLB assets and helper
-  metadata consumed by visual components.
-- `src/assets/planets.ts` — Accessors for procedural planet textures and their
-  material setup.
-- `src/assets/skysphere.ts` — Helper for loading the background skysphere texture.
-- `src/assets/starDiskTextures.ts` — Registry for star disk texture variants used
-  by renderer materials.
-- `src/assets/AGENTS.md` — Guidelines for managing binary assets and attribution.
-- `src/assets/gltf/` — Source GLB/FBX/texture packs for ships (includes
-  attribution and original author resources).
-- `src/assets/skysphere/` — Skysphere texture and attribution file.
-- `src/assets/textures/` — Planet, gas giant, and star textures with attribution
-  notes.
+## `src/components`
 
-## components
+- `AGENTS.md` — Agents guide for React components, emphasizing patterns,
+  performance, and testing.
+- `Hud.tsx` — Renders the main HUD with team summaries, health overlays, and
+  toggle drawers.
+- `hudToggleConfig.ts` — Defines toggle configurations for HUD settings and
+  debug overlays.
+- `derived.ts` — Computes derived particle data (debris, sparks, etc.) from
+  explosion events.
+- `constants.ts` — Explosion rendering constants (capacities, lifetimes).
+- `Turret.tsx` — Renders turret entities with optional debug gizmos and muzzle
+  flashes.
+- `ShipHudOverlay.tsx` — Individual ship health bar overlay with status
+  effects.
+- `shieldUtils.ts` — Utilities for shield fraction computation and
+  validation.
+- `ExplosionRenderer.tsx` — Instanced rendering for explosion effects
+  (flash, shockwave, particles).
+- `ExplosionDebugOverlay.tsx` — Debug UI for explosion events and
+  configuration.
+- `Explosion.tsx` — Placeholder for single explosion mesh rendering.
+- `rippleUtils.ts` — Processes shield ripples for rendering (scaling,
+  coalescing).
+- `ShipShield.tsx` — Renders shield bubble with hex or transmission material.
+- `ShipModel.tsx` — Loads and manages ship GLTF models with material handling.
+- `HudOverlayCollector.tsx` — Collects ship positions for HUD overlays.
+- `HudHealthLayer.tsx` — Manages layout and rendering of health overlays.
+- `PerfMonitorOverlay.tsx` — Draggable performance monitor using r3f-perf.
+- `ParticleTrails.tsx` — Instanced particle system for ship engine exhaust.
+- `HudToggleDrawer.tsx` — Reusable drawer for HUD toggles and settings.
+- `TurretsLayer.tsx` — Renders all turret entities.
+- `StarsField.tsx` — Renders static starfield points.
+- `ShipsLayer.tsx` — Renders all ship entities and particle trails.
+- `ProjectilesLayer.tsx` — Renders all projectile entities.
+- `PostprocessingLazy.tsx` — Lazy-loaded postprocessing component.
+- `Postprocessing.tsx` — Selective bloom and FXAA postprocessing setup.
+- `Controls.tsx` — UI controls for pause, reset, and spawning ships.
+- `BattlefieldSystems.tsx` — Fixed-step simulation integration.
+- `Battlefield.tsx` — Main Three.js canvas with scene, lights, and layers.
 
-- `src/components/AiDebugOverlay.tsx` — React overlay that displays AI decision
-  snapshots, scores, and metrics.
-- `src/components/Battlefield.tsx` — R3F canvas and scene composition. Creates
-  lights, fog, star field, and steps the deterministic simulation (Rapier → ECS
-  → visuals).
-- `src/components/Controls.tsx` — UI controls bar for pause, reset, spawn, time
-  scale, post-processing, and AI toggles.
-- `src/components/Explosion.tsx` — Placeholder explosion mesh that registers for
-  selective bloom; used until entity-driven VFX lands.
-- `src/components/Hud.tsx` — Heads-up display and fleet summary panel with
-  optional AI debug overlay.
-- `src/components/HudHealthLayer.tsx` — HUD layer that renders ship health bars
-  and status metadata.
-- `src/components/HudOverlayCollector.tsx` — Collects HUD overlay elements from
-  ship components and forwards them to the HUD layer.
-- `src/components/ParticleTrails.tsx` — Mesh particle trails for projectiles and
-  thrusters, reusing material registry entries.
-- `src/components/Postprocessing.tsx` — Post-processing pipeline (selective
-  bloom, FXAA) integrated with `BloomProvider` registration.
-- `src/components/PostprocessingLazy.tsx` — Lazy-loaded wrapper for
-  `Postprocessing` to reduce the initial bundle size.
-- `src/components/Projectile.tsx` — Projectile visuals and transforms sourced
-  from the deterministic simulation.
-- `src/components/Ship.tsx` — Ship renderer: resolves GLB models, applies hull
-  tints, thruster effects, shield bubble, and interpolated transforms.
-- `src/components/ShipHudOverlay.tsx` — Ship-level HUD overlay origin that
-  publishes status data to the collector.
-- `src/components/Turret.tsx` — Turret geometry and muzzle flash visuals, plus
-  bloom registration for muzzle objects.
-- `src/components/environment/` — Celestial environment primitives (star disk,
-  planets, skysphere, lighting, parallax billboards) assembled by Battlefield.
-- `src/components/AGENTS.md` — Guidance and patterns for authoring components.
+## `src/config`
 
-## config
+- `AGENTS.md` — Agents guide for configuration files.
+- `hudHealth.ts` — HUD health bar and status effect configurations.
+- `explosions.ts` — Explosion visual and timing configurations.
+- `experiments.ts` — AI experiment flags and overrides.
+- `environment.ts` — Celestial environment (planets, stars, skysphere).
+- `carriers.ts` — Carrier launch system configuration.
+- `projectiles.ts` — Projectile visual and collider configurations.
+- `progression.ts` — Ship progression, XP, and damage type configs.
+- `starDiskDebug.ts` — Debug settings for star disk rendering.
 
-- `src/config/carriers.ts` — Carrier hull configuration, bay counts, and spawn
-  sequencing helpers.
-- `src/config/environment.ts` — Environment parameters (fog, parallax layer
-  layout, celestial scaling).
-- `src/config/hudHealth.ts` — Tunable values that drive HUD health overlay
-  thresholds and animations.
-- `src/config/projectiles.ts` — Projectile tuning and mapping for visuals and
-  physics parameters.
-- `src/config/renderer.ts` — Renderer constants (shield visuals, ripple tuning,
-  hull tints, motion defaults).
-- `src/config/starDiskDebug.ts` — Debug presets and toggles for the star disk
-  material.
-- `src/config/AGENTS.md` — Configuration file conventions.
+## `src/game`
 
-## game
+- `AGENTS.md` — Agents guide for the game simulation layer.
+- `README.md` — World configuration and setup notes.
+- `progression.ts` — Ship progression system (XP, levels, subsystems).
+- `metrics.ts` — AI decision and performance metrics tracking.
+- `explosions.ts` — Explosion event management and pooling.
+- `context.tsx` — React context for `GameState` provider.
+- `config.ts` — World bounds, AI flags, and simulation parameters.
+- `ships.ts` — Ship stats, spawning, and blueprint handling.
+- `aiTraits.ts` — Deterministic AI trait generation from seeds.
+- `aiScenarioHarness.ts` — AI scenario testing harness.
+- `state.ts` — `GameState` creation, disposal, and fleet spawning.
+- `validation.ts` — Motion stats validation utilities.
+- `uiStore.ts` — Zustand store for UI state (pause, toggles).
+- `turretRegistry.ts` — Turret entity registration and cleanup.
+- `integration.ts` — Test harness integration logic.
+- `types.ts` — AI scenario and metrics types.
+- `stateBuilder.ts` — Builds test harness state.
+- `metricsSummary.ts` — Summarizes AI test metrics.
+- `logging.ts` — Serializes and logs scenario data.
+- `shipControl.ts` — Physics-based ship motion updates.
+- `combat.ts` — Projectile firing, collision, and damage resolution.
+- `carriers.ts` — Carrier fighter launch mechanics.
+- `manager.ts` — AI decision system core.
+- `blackboard.ts` — Shared AI blackboard updates.
+- `interrupts.ts` — AI intent interrupt handling.
+- `intents.ts` — AI intent scoring and selection.
+- `intent-utils.ts` — Shared intent utilities.
+- `combat-intents.ts` — Attack, kite, flee scoring.
+- `tactical-intents.ts` — Intercept, reposition scoring.
+- `formation-intents.ts` — Regroup, escort scoring.
 
-- `src/game/context.tsx` — React context and `GameProvider` lifecycle that owns
-  the canonical `GameState` (creation, teardown, and hooks).
-- `src/game/state.ts` — `createGameState` factory, Rapier initialization,
-  Miniplex world, seeded RNG, spawn/reset helpers, and disposal utilities.
-- `src/game/config.ts` — World constants (bounds, fog), camera defaults, and
-  AI configuration defaults.
-- `src/game/ships.ts` — Ship blueprints, spawn logic, `SHIP_STATS`, motion stats,
-  and turret creation helpers.
-- `src/game/systems.ts` — Orchestrator for simulation systems: AI ticks, turret
-  logic, projectile advancement, physics stepping, and transform sync.
-- `src/game/systems/` — Specialized systems (carrier launch management,
-  motion/banking logic) split out for maintainability.
-- `src/game/turretRegistry.ts` — Registry that tracks turret ownership for
-  lookups and cascade deletion.
-- `src/game/uiStore.ts` — Zustand store backing UI controls (pause, speed,
-  post-processing, AI toggles, debug flags).
-- `src/game/validation.ts` — Validation helpers enforcing plausible motion stats
-  and configuration inputs.
-- `src/game/aiTraits.ts` — Deterministic AI trait generator (aggression, patience,
-  dodge modifiers) seeded via RNG.
-- `src/game/aiProfiles.ts` — AI profile resolution and defaults consumed by
-  ships and debugger tooling.
-- `src/game/aiScenarioHarness.ts` — Headless harness for AI simulations used in
-  testing and balancing.
-- `src/game/README.md` — Overview of world configuration and camera/scale notes.
-- `src/game/AGENTS.md` — Game-layer guidance (determinism, GameState usage,
-  testing protocol).
+## `src/hooks`
 
-## hooks
+- `AGENTS.md` — Agents guide for custom React hooks.
+- `useShipThrusters.ts` — Manages ship thruster glow materials.
+- `useShipInterpolation.ts` — Smooths ship motion for rendering.
+- `usePrefersReducedMotion.ts` — Detects reduced motion preference.
+- `usePlanetTexture.ts` — Loads and configures planet textures.
+- `useArchetypeEntities.ts` — Subscribes to ECS archetype changes.
 
-- `src/hooks/useArchetypeEntities.ts` — Subscribes to a Miniplex archetype and
-  returns a stable entity list for rendering components.
-- `src/hooks/usePlanetTexture.ts` — Hook that manages async loading of planet
-  textures and caching for environment components.
-- `src/hooks/usePrefersReducedMotion.ts` — Media-query hook that surfaces user
-  reduced-motion preference to adapt effects.
-- `src/hooks/AGENTS.md` — Guidance for creating hooks in this project.
+## `src/renderer`
 
-## renderer
+- `AGENTS.md` — Agents guide for rendering utilities.
+- `BloomProvider.tsx` — Selective bloom context and registration.
+- `rippleDebug.ts` — Debug ripple count tracking (unused).
+- `materialRegistry.tsx` — Registers shader materials for entities.
+- `starDiskOrientation.ts` — Computes star disk view alignment.
+- `starDiskMaterial.ts` — Main sequence star shader material.
+- `starDisk.vertex.glsl` — Star disk vertex shader.
+- `starDisk.fragment.glsl` — Star disk fragment shader.
+- `mainsequencestar.glsl` — Main sequence star fragment shader.
 
-- `src/renderer/BloomProvider.tsx` — Context provider enabling selective bloom
-  registration for meshes.
-- `src/renderer/hudOverlayStore.ts` — Internal store used by HUD overlays to
-  publish and subscribe to ship overlay data.
-- `src/renderer/materialRegistry.tsx` — Registry for reusable material components
-  (shield shader, transmission material, bullet/explosion materials).
-- `src/renderer/rippleDebug.ts` — Debug utility tracking shield ripple counts.
-- `src/renderer/starDiskMaterial.ts` — Configurable star disk material builder
-  tying together GLSL shaders and texture inputs.
-- `src/renderer/starDiskOrientation.ts` — Helper functions for orienting the star
-  disk and aligning visual offsets.
-- `src/renderer/shaders/` — GLSL shader sources for the star disk and
-  main-sequence star effects.
-- `src/renderer/AGENTS.md` — Renderer-level contributor guidance.
+## `src/styles`
 
-## styles
+- `AGENTS.md` — Agents guide for CSS assets.
+- `app.css` — Global styles for HUD, overlays, and layout.
 
-- `src/styles/app.css` — Global CSS for HUD, controls, debug overlays, and layout.
-- `src/styles/AGENTS.md` — Notes on styling conventions inside `src/styles/`.
+## `src/types`
 
-## types
+- `AGENTS.md` — Agents guide for TypeScript declarations.
+- `jsx-compat.d.ts` — JSX compatibility shim for React 19.
+- `assets.d.ts` — Type declarations for asset modules.
+- `glsl.d.ts` — GLSL module declaration.
+- `index.ts` — Core types (`GameState`, entities, AI).
+- `react-three-drei.d.ts` — Ambient declaration for `@react-three/drei`.
 
-- `src/types/index.ts` — Canonical TypeScript types (`GameState`, entities,
-  motion stats, AI state, config shapes).
-- `src/types/assets.d.ts` — Module declarations for binary assets (e.g. `*.glb`).
-- `src/types/glsl.d.ts` — Ambient module declarations for GLSL shader imports.
-- `src/types/jsx-compat.d.ts` — Compatibility shim mapping `JSX.Element` to
-  React types during upgrades.
-- `src/types/jsx-shim.d.ts` — Temporary JSX shim that relaxes intrinsic element
-  typing pending dependency updates.
-- `src/types/react-three-drei.d.ts` — Ambient declarations for `@react-three/drei`
-  stubs (`MeshTransmissionMaterial`, `useGLTF`, `OrbitControls`).
-- `src/types/three-stdlib-ambient.d.ts` — Ambient types for GLTFLoader helpers
-  used during development.
-- `src/types/AGENTS.md` — Notes about type declarations and maintenance.
+## `src/utils`
 
-## utils
+- `AGENTS.md` — Agents guide for utilities.
+- `rng.ts` — Seeded RNG for deterministic randomness.
+- `deterministicLerp.ts` — Seeded lerp for consistent easing.
+- `color.ts` — Color conversion and config utilities.
+- `patchGltfLoader.ts` — Runtime patch for `GLTFLoader`.
 
-- `src/utils/color.ts` — Color helper functions shared by HUD and renderer code.
-- `src/utils/deterministicLerp.ts` — Deterministic interpolation helpers that
-  avoid floating-point drift between runs.
-- `src/utils/patchGltfLoader.ts` — Runtime patch/guard for GLTFLoader to safely
-  resolve assets across environments.
-- `src/utils/rng.ts` — Deterministic seeded RNG (Lehmer-like) used across
-  simulation and AI flows.
-- `src/utils/AGENTS.md` — Utility-layer guidance and patterns.
+## `src/assets`
 
-## root-level docs (in src)
+- `AGENTS.md` — Agents guide for static assets.
+- `starDiskTextures.ts` — Star disk texture paths.
+- `skysphere.ts` — Skysphere texture paths.
+- `ships.ts` — Ship GLTF model paths.
+- `planets.ts` — Planet texture paths.
 
-- `src/AGENTS.md` — Top-level contributor notes for working inside `src/`.
+## Notes
+
+- Total files: ~135 (including subdirectories and assets).
+- Core focus: Simulation (`game/`) and rendering (`renderer/`,
+  `components/`) dominate; hooks bridge React and Three.js.
+- Dependencies: Types centralize shared shapes; configs provide tweakable
+  values without code changes.
+- Testing: Most files have Vitest specs or Playwright coverage; see `test/`
+  for details.
