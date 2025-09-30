@@ -39,6 +39,7 @@ function makeState(rngValue = 0.42): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
     },
     ai: undefined as any,
     blackboard: undefined as any,

@@ -1,38 +1,18 @@
 import { Quaternion, Vector3 } from 'three';
-import type {
-  GameState,
-  ShipEntity,
-  AIState,
-  ShipComponent,
-} from '../../types/index.js';
+import type { GameState, ShipEntity } from '../../types/index.js';
+import type { KinematicBody } from '../physics/safeKinematics.js';
 import { clampToWorld } from '../config.js';
 import { recordBandSample, recordShotMetrics } from '../metrics.js';
 import { updateCaptainAbilities, repairSubsystems, getEffectiveStats } from '../progression.js';
 import { fireProjectile } from './projectiles.js';
 import { findNearestEnemy, runEmbeddedTurrets } from './turrets.js';
+import { safeSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
 const TEMP_POS = new Vector3();
 const TEMP_REL_POS = new Vector3();
 const TEMP_QUAT = new Quaternion();
-
-export type KinematicBody = { setNextKinematicTranslation: (t: { x: number; y: number; z: number }) => void };
-
-export function safeSetNextKinematicTranslation(
-  rb: KinematicBody | null | undefined,
-  x: number,
-  y: number,
-  z: number,
-): void {
-  if (!rb) return;
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
-  try {
-    rb.setNextKinematicTranslation({ x, y, z });
-  } catch {
-    // Ignore invalid operations on disposed bodies; will be corrected on next sync
-  }
-}
 
 export function prepareShips(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];

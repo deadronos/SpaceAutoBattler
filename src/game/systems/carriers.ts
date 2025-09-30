@@ -8,6 +8,7 @@ import type {
   ShipEntity,
 } from '../../types/index.js';
 import { spawnShip } from '../ships.js';
+import { enqueueDeferredMutation } from '../simulationQueue.js';
 
 const TEMP_FORWARD = new Vector3();
 const TEMP_RIGHT = new Vector3();
@@ -28,8 +29,6 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
 
   const aliveById = new Map<number, ShipEntity>();
   for (const ship of ships) aliveById.set(ship.id, ship);
-
-  const pendingSpawns: Array<() => void> = [];
 
   for (const ship of ships) {
     const carrier = ship.carrier;
@@ -63,7 +62,7 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
         parentCarrierId: ship.id,
       };
 
-      pendingSpawns.push(() => {
+      enqueueDeferredMutation(state, () => {
         const fighter = spawnShip(state, blueprint);
         carrier.activeFighterIds.push(fighter.id);
         aliveById.set(fighter.id, fighter);
@@ -74,12 +73,6 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
     carrier.launchCooldownRemaining = carrier.config.cooldownSeconds;
   }
 
-  if (pendingSpawns.length > 0) {
-    // Flush queued spawns after carrier iteration to avoid Rapier re-entrancy during world mutation.
-    for (const spawn of pendingSpawns) {
-      spawn();
-    }
-  }
 }
 
 function pruneTrackedFighters(

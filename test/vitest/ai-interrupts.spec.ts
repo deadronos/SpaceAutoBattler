@@ -208,6 +208,7 @@ function createTestState(): { state: GameState; ships: ShipEntity[] } {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 0,
+      deferredMutations: [],
     },
   } as unknown as GameState;
 

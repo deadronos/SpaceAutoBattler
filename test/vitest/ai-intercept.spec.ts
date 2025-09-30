@@ -65,6 +65,7 @@ function createState(): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
     },
     timeScale: 1,
   } as unknown as GameState;

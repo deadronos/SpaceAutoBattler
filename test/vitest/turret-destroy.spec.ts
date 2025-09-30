@@ -112,8 +112,9 @@ function makeStateStub(): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
     },
-  } as GameState;
+  } as unknown as GameState;
 }
 
 function makeShipAndTurret(state: GameState): { ship: ShipEntity; turret: TurretEntity } {

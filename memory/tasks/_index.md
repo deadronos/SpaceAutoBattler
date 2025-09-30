@@ -13,6 +13,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 - [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224). (2025-09-30)
 - [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage. (2025-09-29)
+- [TASK230](TASK230-rapier-startup-borrow-guard.md) — Deferred Rapier world mutations behind a deterministic queue, shared safe kinematic guards, and refreshed regressions. (2025-09-30)
 - [TASK226](TASK226-carrier-spawn-scheduling.md) — Deferred carrier fighter spawn execution to eliminate Rapier unsafe aliasing crashes and added regression coverage (2025-09-29).
 - [TASK227](TASK227-shield-bubble-visibility.md) — Restored shield visibility with overlay render order, depth-test disablement, and brighter alpha tuning plus regression coverage (2025-09-29).
 - [TASK154](TASK154-rapier-reset-stability.md) — Implemented deferred reset execution to eliminate Rapier console errors during reset button usage (2025-01-27).

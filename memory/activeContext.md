@@ -4,9 +4,9 @@ Current focuses (short-term):
 
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
+- Monitor deferred mutation queue adoption across remaining systems (projectiles, resets) and capture any Rapier diagnostics after cold-start scenarios.
 
-Recent changes:
-
+- Deferred mutation queue (TASK230) now funnels cold-start Rapier mutations through `simulation.deferredMutations`, shares safe kinematic guards across ships/turrets, updates fixtures, and revalidates via `npm run typecheck` + full `npm test` (472 passing). Includes renderer guard for non-finite thruster intensities consumed by thruster glow tests.
 - Deferred carrier fighter spawning (TASK226) by queuing launch blueprints and flushing after iteration to resolve Rapier unsafe aliasing crashes; added Vitest regressions and reran `npm run typecheck` + `npm test`.
 - Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
@@ -39,10 +39,11 @@ Next steps:
 - Refresh Playwright/visual baselines to cover the texture-enhanced star disk once art direction is approved.
 - Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
+- Evaluate extending the deferred mutation queue to projectile spawning and pending reset handling; capture findings in design follow-ups.
 
 Status updates:
 
 - 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
 - 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
 
-- Updated: 2025-09-29
+- Updated: 2025-09-30

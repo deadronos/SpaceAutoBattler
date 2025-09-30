@@ -72,6 +72,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
     },
     progressionEvents: new Map(),
   } as unknown as GameState;

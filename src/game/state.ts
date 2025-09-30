@@ -73,6 +73,7 @@ export async function createGameState(): Promise<GameState> {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
       pendingReset: null,
     },
     ai: {

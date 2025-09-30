@@ -644,6 +644,8 @@ export interface HudUiFlags {
   hudHealthBars: boolean;
 }
 
+export type DeferredMutation = () => void;
+
 export interface SimulationClock {
   /** Fixed step size in seconds for simulation updates. */
   step: number;
@@ -659,6 +661,8 @@ export interface SimulationClock {
   lastTickStart: number;
   /** Duration in seconds of the latest completed tick. */
   lastTickDuration: number;
+  /** Deferred world mutation queue drained once per tick before the physics step. */
+  deferredMutations: DeferredMutation[];
   /** Optional pending reset closure to be executed after the current physics step completes. */
   pendingReset?: (() => void) | null;
 }
