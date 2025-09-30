@@ -25,14 +25,10 @@ import {
   computeInterceptHeadingVector,
 } from './systems/decision/intents.js';
 import { prepareShips, executeAICommand, runLegacyShipBehavior } from './systems/shipControl.js';
-import {
-  fireProjectile,
-  findNearestEnemy,
-  updateTurrets,
-  advanceProjectiles,
-  resolveProjectiles,
-  syncTransforms,
-} from './systems/combat.js';
+import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
+import { findNearestEnemy, updateTurrets } from './systems/turrets.js';
+import { resolveProjectiles } from './systems/damage.js';
+import { syncTransforms } from './systems/sync.js';
 
 export { updateDecisionSystem, fireProjectile, findNearestEnemy };
 

@@ -8,7 +8,8 @@ import type {
 import { clampToWorld } from '../config.js';
 import { recordBandSample, recordShotMetrics } from '../metrics.js';
 import { updateCaptainAbilities, repairSubsystems, getEffectiveStats } from '../progression.js';
-import { fireProjectile, findNearestEnemy, runEmbeddedTurrets } from './combat.js';
+import { fireProjectile } from './projectiles.js';
+import { findNearestEnemy, runEmbeddedTurrets } from './turrets.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
