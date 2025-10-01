@@ -127,7 +127,11 @@ export function ProgressionPanel(): React.ReactElement | null {
     return progressionShips.slice(0, 50); // Cap at 50 ships for performance
   }, [state, enabled, refreshTick]);
 
-  // Keep DOM update effect before early returns so hooks are always called in the same order.
+  // NOTE: This effect was intentionally placed before the component's early returns
+  // so the hook is executed on every render. Moving it after conditional returns
+  // previously caused mismatched hook ordering and the runtime error
+  // "Rendered more hooks than during the previous render." See React Rules of Hooks:
+  // https://react.dev/link/rules-of-hooks
   useEffect(() => {
     const node = panelRef.current;
     // Guard the body so the hook runs but does nothing when not mounted or disabled
