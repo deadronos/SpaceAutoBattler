@@ -11,6 +11,7 @@ export function createRigidBodyShim(
   velocity?: readonly [number, number, number],
 ) {
   const vel = velocity ? new Vector3(...velocity) : new Vector3();
+  const angvelVar = { x: 0, y: 0, z: 0 };
   return {
     setNextKinematicTranslation: ({ x, y, z }: { x: number; y: number; z: number }) => {
       position.set(x, y, z);
@@ -28,9 +29,19 @@ export function createRigidBodyShim(
     }) => {
       rotation.set(x, y, z, w);
     },
+    setLinvel: ({ x, y, z }: { x: number; y: number; z: number }) => {
+      vel.set(x, y, z);
+    },
+    setAngvel: ({ x, y, z }: { x: number; y: number; z: number }) => {
+      // shim: store angular velocity in a closure variable for test inspection
+      angvelVar.x = x;
+      angvelVar.y = y;
+      angvelVar.z = z;
+    },
     translation: () => ({ x: position.x, y: position.y, z: position.z }),
     rotation: () => ({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w }),
     linvel: () => ({ x: vel.x, y: vel.y, z: vel.z }),
+    angvel: () => ({ ...angvelVar }),
   };
 }
 
@@ -44,6 +55,8 @@ export function createPhysicsWorldShim() {
       rotation: () => ({ ...desc.rotation }),
       setNextKinematicTranslation: () => undefined,
       setNextKinematicRotation: () => undefined,
+      setLinvel: () => undefined,
+      setAngvel: () => undefined,
     }),
     createCollider: (desc: { radius?: number }, body: unknown) => ({
       handle: Math.random(),

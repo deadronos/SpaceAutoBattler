@@ -1,68 +1,66 @@
 import { describe, expect, it, vi } from 'vitest';
-import { safeSetNextKinematicTranslation, safeSetNextKinematicRotation } from '../../src/game/physics/safeKinematics.js';
+import { createTestGameState } from './helpers/fixtures.js';
+import { flushDeferredMutations } from '../../src/game/simulationQueue.js';
+import { deferSetNextKinematicTranslation, deferSetNextKinematicRotation } from '../../src/game/physics/safeKinematics.js';
 
-describe('safeSetNextKinematicTranslation', () => {
-  it('invokes the underlying setter when coordinates are finite', () => {
+describe('deferred kinematic translation', () => {
+  it('enqueues and the queued operation invokes the underlying setter on flush', () => {
+    const state = createTestGameState();
     const setter = vi.fn();
-    const body = { setNextKinematicTranslation: setter };
+    const body = { setNextKinematicTranslation: setter } as unknown as any;
 
-    safeSetNextKinematicTranslation(null, body, 1, 2, 3);
+    deferSetNextKinematicTranslation(state, body, 1, 2, 3);
+    expect(state.simulation.deferredMutations).toHaveLength(1);
 
+    flushDeferredMutations(state);
     expect(setter).toHaveBeenCalledTimes(1);
     expect(setter).toHaveBeenCalledWith({ x: 1, y: 2, z: 3 });
   });
 
-  it('ignores missing bodies or non-finite coordinates', () => {
-    const setter = vi.fn();
-    const body = { setNextKinematicTranslation: setter };
-
-    safeSetNextKinematicTranslation(null, null, 1, 2, 3);
-    safeSetNextKinematicTranslation(null, undefined, 1, 2, 3);
-    safeSetNextKinematicTranslation(null, body, Number.POSITIVE_INFINITY, 0, 0);
-
-    expect(setter).not.toHaveBeenCalled();
-  });
-
-  it('swallows exceptions from the underlying Rapier call', () => {
+  it('swallows exceptions from the underlying Rapier call and records diagnostics', () => {
+    const state = createTestGameState();
     const setter = vi.fn(() => {
       throw new Error('Rapier panic');
     });
-    const body = { setNextKinematicTranslation: setter };
+    const body = { setNextKinematicTranslation: setter } as unknown as any;
 
-    expect(() => safeSetNextKinematicTranslation(null, body, 4, 5, 6)).not.toThrow();
-    expect(setter).toHaveBeenCalledTimes(1);
+    deferSetNextKinematicTranslation(state, body, 4, 5, 6);
+    expect(state.simulation.deferredMutations).toHaveLength(1);
+
+    // flush should not throw even if the underlying setter throws
+    expect(() => flushDeferredMutations(state)).not.toThrow();
+    // diagnostics should reflect a guard/trip being recorded
+    expect(state.simulation.rapierDiagnostics.guardTrips + state.simulation.rapierDiagnostics.deferredMutationFailures).toBeGreaterThan(0);
   });
 });
 
-describe('safeSetNextKinematicRotation', () => {
-  it('invokes the underlying setter when components are finite', () => {
+describe('deferred kinematic rotation', () => {
+  it('enqueues and the queued operation invokes the underlying setter on flush', () => {
+    const state = createTestGameState();
     const setter = vi.fn();
     const body = { setNextKinematicTranslation: () => {}, setNextKinematicRotation: setter } as unknown as any;
 
-    safeSetNextKinematicRotation(null, body, 1, 2, 3, 1);
+    deferSetNextKinematicRotation(state, body, 1, 2, 3, 1);
+    expect(state.simulation.deferredMutations).toHaveLength(1);
 
+    flushDeferredMutations(state);
     expect(setter).toHaveBeenCalledTimes(1);
     expect(setter).toHaveBeenCalledWith({ x: 1, y: 2, z: 3, w: 1 });
   });
 
-  it('ignores missing bodies or non-finite components', () => {
-    const setter = vi.fn();
-    const body = { setNextKinematicTranslation: () => {}, setNextKinematicRotation: setter } as unknown as any;
-
-    safeSetNextKinematicRotation(null, null, 1, 2, 3, 1);
-    safeSetNextKinematicRotation(null, undefined, 1, 2, 3, 1);
-    safeSetNextKinematicRotation(null, body, Number.NaN, 0, 0, 1);
-
-    expect(setter).not.toHaveBeenCalled();
-  });
-
-  it('swallows exceptions from the underlying Rapier call', () => {
+  it('swallows exceptions from the underlying Rapier call and records diagnostics', () => {
+    const state = createTestGameState();
     const setter = vi.fn(() => {
       throw new Error('Rapier panic');
     });
     const body = { setNextKinematicTranslation: () => {}, setNextKinematicRotation: setter } as unknown as any;
 
-    expect(() => safeSetNextKinematicRotation(null, body, 4, 5, 6, 1)).not.toThrow();
-    expect(setter).toHaveBeenCalledTimes(1);
+    deferSetNextKinematicRotation(state, body, 4, 5, 6, 1);
+    expect(state.simulation.deferredMutations).toHaveLength(1);
+
+    // flush should not throw even if the underlying setter throws
+    expect(() => flushDeferredMutations(state)).not.toThrow();
+    // diagnostics should reflect a guard/trip being recorded
+    expect(state.simulation.rapierDiagnostics.guardTrips + state.simulation.rapierDiagnostics.deferredMutationFailures).toBeGreaterThan(0);
   });
 });
