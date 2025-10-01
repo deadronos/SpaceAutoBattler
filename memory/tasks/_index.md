@@ -8,6 +8,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 - [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
 - [TASK228](TASK228-rapier-velocity-sampling.md) — Harden AI velocity sampling to use `ShipComponent.velocity` and avoid Rapier re-entrancy during intent scoring.
+- [TASK231](TASK231-sweep-wrap-rapier-mutators.md) — Sweep repository for Rapier mutators and add deferred/post wrappers + tests. (2025-10-01)
 
 ## Completed
 
@@ -77,6 +78,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Pending
 
 - _None tracked._
+- [TASK232](TASK232-update-memory-bank-tasks.md) — Update memory bank task files and `_index.md` to record progress for the deferred Rapier migration work. (2025-10-01)
 
 ## Abandoned
 

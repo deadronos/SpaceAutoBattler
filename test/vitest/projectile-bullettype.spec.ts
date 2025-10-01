@@ -1,149 +1,73 @@
-import { describe, it, expect } from 'vitest';
-import { Quaternion, Vector3 } from 'three';
-import { applyProgressionDefaults } from './helpers/progression.js';
-import { fireProjectile } from '../../src/game/systems.js';
-import { flushDeferredMutations } from '../../src/game/simulationQueue.js';
-import type { GameState, ShipEntity, ProjectileEntity } from '../../src/types/index.js';
-
-function makeStateStub(): GameState {
-  // Minimal stub with world, rapier, physicsWorld, eventQueue etc. We only need world.createEntity
-  const entities: any[] = [];
-  const world = {
-    entities,
-    createEntity(obj: any) {
-      entities.push(obj);
-      return obj;
-    },
-    add(obj: any) {
-      entities.push(obj);
-      return obj;
-    },
-  } as any;
-
-  const rapierStub = {
-    RigidBodyDesc: {
-      kinematicPositionBased: () => ({
-        setTranslation() {
-          return this;
-        },
-        setRotation() {
-          return this;
-        },
-      }),
-    },
-    ColliderDesc: {
-      ball: () => ({
-        setActiveEvents() {
-          return this;
-        },
-        setActiveCollisionTypes() {
-          return this;
-        },
-      }),
-    },
-    ActiveEvents: { COLLISION_EVENTS: 1 },
-    ActiveCollisionTypes: { ALL: 1 },
-  } as any;
-
-  return {
-    rapier: rapierStub,
-    physicsWorld: {
-      createRigidBody: () =>
-        ({
-          translation() {
-            return { x: 0, y: 0, z: 0 };
-          },
-          rotation() {
-            return { x: 0, y: 0, z: 0, w: 1 };
-          },
-        }) as any,
-      createCollider: () => ({ handle: Math.floor(Math.random() * 10000) }) as any,
-    } as any,
-    eventQueue: {} as any,
-    world: world as any,
-    colliderLookup: new Map(),
-    nextEntityId: 1,
-    time: 0,
-    queries: { ships: { entities: [] }, projectiles: { entities: [] } } as any,
-    rng: { next: () => 0.5 } as any,
-    paused: false,
-    timeScale: 1,
-    simulation: {
-      step: 1 / 20,
-      accumulator: 0,
-      maxSubSteps: 5,
-      alpha: 0,
-      lastTickIndex: 0,
-      lastTickStart: 0,
-      lastTickDuration: 1 / 20,
-      deferredMutations: [],
-      postStepMutations: [],
-      rapierDiagnostics: {
-        deferredMutationFailures: 0,
-        guardTrips: 0,
-        lastFailureTick: -1,
-        lastGuardTick: -1,
-        lastDeferredMutationError: undefined,
-      },
-    },
-  } as unknown as GameState;
-}
-
-function makeShipEntity(hull: any, team: 'blue' | 'red', bulletType?: string): ShipEntity {
-  const entity = {
-    id: 1,
-    rigidBody: {} as any,
-    collider: {} as any,
-    transform: {
-      position: new Vector3(0, 0, 0),
-      rotation: new Quaternion(),
-      scale: 1,
-    },
-    ship: {
-      team,
-      hull,
-      hp: 10,
-      maxHp: 10,
-      shield: 5,
-      maxShield: 5,
-      cooldown: 0,
-      fireRate: 1,
-      damage: 2,
-      projectileSpeed: 10,
-      range: 12,
-      speed: 5,
-      bulletType,
-    },
-    model: hull,
-  } as unknown as ShipEntity;
-
-  applyProgressionDefaults(entity.ship, { hull, maxHpOverride: entity.ship.maxHp });
-  return entity;
-}
+import { describe, expect, it } from 'vitest';
+import { Vector3 } from 'three';
+import { createTestGameState, createTestShip } from './helpers/fixtures.js';
+import { fireProjectile } from '../../src/game/systems/projectiles.js';
+import { flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
+import { createRapierShim, createPhysicsWorldShim } from '../../src/game/aiScenarioHarness/rapierShim.js';
 
 describe('fireProjectile bulletType propagation', () => {
   it('attaches bulletType from fighter to projectile', () => {
-    const state = makeStateStub();
-    const ship = makeShipEntity('fighter', 'blue', 'bullet:laser');
+    const state = createTestGameState();
+    // provide minimal shims so post-step mutations can create physics objects
+    state.rapier = createRapierShim();
+    state.physicsWorld = createPhysicsWorldShim();
+    state.world = {
+      entities: [],
+      add(obj: any) {
+        (state.queries.projectiles.entities as any[]).push(obj);
+        this.entities.push(obj);
+        return obj;
+      },
+      createEntity(obj: any) {
+        (state.queries.projectiles.entities as any[]).push(obj);
+        this.entities.push(obj);
+        return obj;
+      },
+      destroyEntity() {},
+      remove() {},
+    } as any;
+    const ship = createTestShip(1, 'blue', new Vector3(0, 0, 0));
+    ship.ship.bulletType = 'bullet:laser';
 
     fireProjectile(state, ship, new Vector3(0, 0, 1));
-  expect(state.simulation.deferredMutations).toHaveLength(1);
-  flushDeferredMutations(state);
+    expect(state.simulation.postStepMutations).toHaveLength(1);
+    flushPostPhysicsMutations(state);
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
 
-    const created = state.world.entities[0] as ProjectileEntity;
+    const created = (state.queries.projectiles as any).entities[0];
     expect(created).toBeDefined();
     expect(created.projectile.bulletType).toBe('bullet:laser');
   });
 
   it('attaches heavy bullet type and sets larger scale', () => {
-    const state = makeStateStub();
-    const ship = makeShipEntity('destroyer', 'red', 'bullet:heavy');
+    const state = createTestGameState();
+    // provide minimal shims so post-step mutations can create physics objects
+    state.rapier = createRapierShim();
+    state.physicsWorld = createPhysicsWorldShim();
+    state.world = {
+      entities: [],
+      add(obj: any) {
+        (state.queries.projectiles.entities as any[]).push(obj);
+        this.entities.push(obj);
+        return obj;
+      },
+      createEntity(obj: any) {
+        (state.queries.projectiles.entities as any[]).push(obj);
+        this.entities.push(obj);
+        return obj;
+      },
+      destroyEntity() {},
+      remove() {},
+    } as any;
+    const ship = createTestShip(2, 'red', new Vector3(0, 0, 0));
+    ship.ship.bulletType = 'bullet:heavy';
 
     fireProjectile(state, ship, new Vector3(0, 0, 1));
-  expect(state.simulation.deferredMutations).toHaveLength(1);
-  flushDeferredMutations(state);
+    expect(state.simulation.postStepMutations).toHaveLength(1);
+    flushPostPhysicsMutations(state);
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
 
-    const created = state.world.entities[0] as ProjectileEntity;
+    const created = (state.queries.projectiles as any).entities[0];
     expect(created.projectile.bulletType).toBe('bullet:heavy');
     // scale should be larger than default 0.2
     expect(created.transform.scale).toBeGreaterThan(0.25);

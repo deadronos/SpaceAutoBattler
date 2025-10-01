@@ -8,7 +8,7 @@ import type {
   ShipEntity,
 } from '../../types/index.js';
 import { spawnShip } from '../ships.js';
-import { enqueueDeferredMutation } from '../simulationQueue.js';
+import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
 
 const TEMP_FORWARD = new Vector3();
 const TEMP_RIGHT = new Vector3();
@@ -62,7 +62,7 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
         parentCarrierId: ship.id,
       };
 
-      enqueueDeferredMutation(state, () => {
+      enqueuePostPhysicsMutation(state, () => {
         const fighter = spawnShip(state, blueprint);
         carrier.activeFighterIds.push(fighter.id);
         aliveById.set(fighter.id, fighter);

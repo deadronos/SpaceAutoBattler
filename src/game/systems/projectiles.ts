@@ -3,7 +3,7 @@ import type { GameState, ShipEntity, ProjectileEntity } from '../../types/index.
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../../config/projectiles.js';
 import { getEffectiveStats } from '../progression.js';
-import { enqueueDeferredMutation } from '../simulationQueue.js';
+import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 
@@ -80,7 +80,7 @@ export function fireProjectile(
     sourceId: origin.id,
   };
 
-  enqueueDeferredMutation(state, () => {
+  enqueuePostPhysicsMutation(state, () => {
     const bodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
       .setTranslation(positionComponents.x, positionComponents.y, positionComponents.z)
       .setRotation(rotationComponents);
