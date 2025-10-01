@@ -1,24 +1,14 @@
 import React from 'react';
-import type { ShieldRipple, ShipHull, Team } from '../types/index.js';
-import { ShieldHexMaterial } from './shaders/shieldHexShader.js';
-import { ShieldTransmissionMaterial } from './materials/shieldMaterials.js';
+import { ShieldHexMaterial, ShieldTransmissionMaterial } from './shields/index.js';
 import {
   BulletLaserMaterial,
   BulletPlasmaMaterial,
   BulletIonMaterial,
   BulletHeavyMaterial,
-} from './materials/bulletMaterials.js';
-import { ExplosionSmokeMaterial } from './materials/explosionMaterials.js';
+  ExplosionSmokeMaterial,
+} from './materials/index.js';
 
 export type MaterialKey = string;
-
-type ShieldMaterialProps = {
-  hull: ShipHull;
-  team: Team;
-  opacity: number;
-  ripple?: ShieldRipple;
-  simTime?: number;
-};
 
 type MaterialComponent<P = any> = React.FC<P>;
 
@@ -41,5 +31,6 @@ registerMaterial('bullet:ion', BulletIonMaterial);
 registerMaterial('bullet:heavy', BulletHeavyMaterial);
 registerMaterial('explosion:smoke', ExplosionSmokeMaterial);
 
-export type { ShieldMaterialProps };
-export { ShieldHexMaterial, ShieldTransmissionMaterial };
+// Re-export shield materials and types for backward compatibility
+export { ShieldHexMaterial, ShieldTransmissionMaterial, createShieldHexShaderMaterial } from './shields/index.js';
+export type { ShieldHexMaterialProps, ShieldTransmissionMaterialProps } from './shields/index.js';
