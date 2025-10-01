@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { act } from 'react-dom/test-utils';
 import type { GameState, ShipEntity, ProgressionEvent } from '../../src/types/index.js';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel.js';
 import { GameProvider } from '../../src/game/context.js';
@@ -223,5 +224,36 @@ describe('ProgressionPanel', () => {
   expect(screen.getByText('+50 XP')).to.exist;
   expect(screen.getByText('Enemy destroyed (100 HP)')).to.exist;
   expect(screen.getByText('Level 1 → 2')).to.exist;
+  });
+
+  it('does not change hooks order when toggling enabled without unmount', () => {
+    const mockState = createMockGameState();
+    __injectedGameState = mockState;
+
+    // Start disabled and render
+    useUiStore.getState().setProgressionPanelEnabled(false);
+    render(
+      <GameProvider>
+        <ProgressionPanel />
+      </GameProvider>
+    );
+
+    // Initially the panel should not be present
+    expect(screen.queryByText('Progression')).toBeNull();
+
+    // Toggle enabled without unmounting and assert no hook errors (React would throw if hooks order changed)
+    act(() => {
+      useUiStore.getState().setProgressionPanelEnabled(true);
+    });
+
+    // After enabling, the panel should render
+    expect(screen.queryByText('Progression')).toBeTruthy();
+
+    // Toggle back to disabled to ensure hooks remain stable across toggles
+    act(() => {
+      useUiStore.getState().setProgressionPanelEnabled(false);
+    });
+
+    expect(screen.queryByText('Progression')).toBeNull();
   });
 });
