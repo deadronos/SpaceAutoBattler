@@ -127,20 +127,20 @@ export function ProgressionPanel(): React.ReactElement | null {
     return progressionShips.slice(0, 50); // Cap at 50 ships for performance
   }, [state, enabled, refreshTick]);
 
-  if (!enabled) return null;
-  if (!progressionData || progressionData.length === 0) return null;
-
-  // Position and dynamic styles are applied via DOM updates to avoid JSX inline style props
+  // Keep DOM update effect before early returns so hooks are always called in the same order.
   useEffect(() => {
     const node = panelRef.current;
-    if (!node) return;
+    // Guard the body so the hook runs but does nothing when not mounted or disabled
+    if (!node || !enabled) return;
     node.style.position = 'fixed';
     node.style.top = `${position.y}px`;
     node.style.left = `${position.x}px`;
     node.style.zIndex = '30';
     node.style.cursor = dragging ? 'grabbing' : 'grab';
-  }, [position, dragging]);
+  }, [position, dragging, enabled]);
 
+  if (!enabled) return null;
+  if (!progressionData || progressionData.length === 0) return null;
 
   return (
     <div ref={panelRef} className="progression-panel" role="region" aria-live="polite">
