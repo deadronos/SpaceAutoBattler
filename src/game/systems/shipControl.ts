@@ -6,7 +6,7 @@ import { recordBandSample, recordShotMetrics } from '../metrics.js';
 import { updateCaptainAbilities, repairSubsystems, getEffectiveStats } from '../progression.js';
 import { fireProjectile } from './projectiles.js';
 import { findNearestEnemy, runEmbeddedTurrets } from './turrets.js';
-import { safeSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+import { deferSetNextKinematicTranslation, deferSetNextKinematicRotation } from '../physics/safeKinematics.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -95,10 +95,10 @@ export function executeAICommand(state: GameState, ship: ShipEntity, delta: numb
     const moveDistance = ship.ship.speed * thrust * delta;
     const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(heading, moveDistance);
     clampToWorld(nextPosition);
-    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
+    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
   } else {
     const p = ship.transform.position;
-    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
   }
 
   let target: ShipEntity | null = null;
@@ -154,7 +154,7 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
 
   if (!target) {
     const p = ship.transform.position;
-    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
     return null;
   }
 
@@ -166,7 +166,7 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
     direction.set(0, 0, 1);
   }
 
-  orientTowards(ship, direction);
+  orientTowards(state, ship, direction);
 
   if (distance > ship.ship.range * 0.6) {
     const moveDistance = Math.min(
@@ -175,10 +175,10 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
     );
     const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(direction, moveDistance);
     clampToWorld(nextPosition);
-    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
+    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
   } else {
     const p = ship.transform.position;
-    safeSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
   }
 
   if (distance <= ship.ship.range && ship.ship.cooldown <= 0) {
@@ -205,19 +205,14 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
   return target;
 }
 
-export function orientTowards(ship: ShipEntity, direction: Vector3): void {
+export function orientTowards(state: GameState, ship: ShipEntity, direction: Vector3): void {
   const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
   const bank = Math.max(Math.min(direction.x * 0.6, 0.6), -0.6);
   const banking = new Quaternion().setFromAxisAngle(FORWARD, -bank);
   rotation.multiply(banking);
 
   ship.transform.rotation.copy(rotation);
-  ship.rigidBody.setNextKinematicRotation({
-    x: rotation.x,
-    y: rotation.y,
-    z: rotation.z,
-    w: rotation.w,
-  });
+  deferSetNextKinematicRotation(state, ship.rigidBody as unknown as KinematicBody, rotation.x, rotation.y, rotation.z, rotation.w);
 }
 
 export function getShipById(state: GameState, id: number | undefined): ShipEntity | null {

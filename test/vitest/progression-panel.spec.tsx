@@ -6,6 +6,7 @@ import { ProgressionPanel } from '../../src/components/ProgressionPanel.js';
 import { GameProvider } from '../../src/game/context.js';
 import { useUiStore } from '../../src/game/uiStore.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
+import { createTestGameState } from './helpers/fixtures.js';
 
 // Inject a mockable GameState into ProgressionPanel by mocking game context hooks/provider locally
 let __injectedGameState: GameState | null = null;
@@ -25,6 +26,8 @@ function createMockGameState(): GameState {
   const mockShips: ShipEntity[] = [
     {
       id: 1,
+      rigidBody: { setNextKinematicTranslation: () => {}, setNextKinematicRotation: () => {} } as any,
+      collider: {} as any,
       ship: {
         team: 'blue',
         hull: 'fighter',
@@ -55,6 +58,8 @@ function createMockGameState(): GameState {
     },
     {
       id: 2,
+      rigidBody: { setNextKinematicTranslation: () => {}, setNextKinematicRotation: () => {} } as any,
+      collider: {} as any,
       ship: {
         team: 'red',
         hull: 'destroyer',
@@ -106,32 +111,19 @@ function createMockGameState(): GameState {
     }
   ]);
 
-  return {
-    queries: {
-      ships: {
-        entities: mockShips
-      }
-    },
-    progressionEvents,
-    // Add other required GameState fields as minimal mocks
-    rapier: {} as any,
-    physicsWorld: {} as any,
-    eventQueue: {} as any,
-    world: {} as any,
-    colliderLookup: new Map(),
-    nextEntityId: 3,
-    nextExplosionId: 1,
-    time: 0,
-    rng: { next: () => 0.5 } as any,
-    paused: false,
-    timeScale: 1,
-    simulation: {} as any,
-    ai: {} as any,
-    blackboard: {} as any,
-    uiFlags: { hudHealthBars: false },
-    explosions: [],
-    explosionPool: [],
-  } as GameState;
+  const base = createTestGameState({ queries: { ships: { entities: mockShips }, projectiles: { entities: [] }, turrets: { entities: [] } } });
+  base.progressionEvents = progressionEvents;
+  base.nextEntityId = 3;
+  base.nextExplosionId = 1;
+  base.time = 0;
+  base.rng = { next: () => 0.5 } as any;
+  base.ai = base.ai ?? ({} as any);
+  base.blackboard = base.blackboard ?? ({} as any);
+  base.uiFlags = { hudHealthBars: false };
+  base.explosions = [];
+  base.explosionPool = [];
+
+  return base as GameState;
 }
 
 describe('ProgressionPanel', () => {

@@ -89,6 +89,24 @@ export function createHarnessState(options: {
     rng,
     paused: false,
     timeScale: 1,
+    simulation: {
+      step: tickInterval,
+      accumulator: 0,
+      maxSubSteps: 5,
+      alpha: 0,
+      lastTickIndex: 0,
+      lastTickStart: 0,
+      lastTickDuration: tickInterval,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
+    },
   } as unknown as HarnessGameState;
 
   return state;

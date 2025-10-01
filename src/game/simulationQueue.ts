@@ -2,11 +2,19 @@ import type { GameState, DeferredMutation } from '../types/index.js';
 
 export function enqueueDeferredMutation(state: GameState, op: DeferredMutation): void {
   if (typeof op !== 'function') return;
+  if (!state) return;
+  if (!state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
+    throw new Error('enqueueDeferredMutation requires state.simulation.deferredMutations to be initialized. Initialize a SimulationClock on state.simulation (use createTestGameState in tests).');
+  }
   state.simulation.deferredMutations.push(op);
 }
 
 export function enqueuePostPhysicsMutation(state: GameState, op: DeferredMutation): void {
   if (typeof op !== 'function') return;
+  if (!state) return;
+  if (!state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
+    throw new Error('enqueuePostPhysicsMutation requires state.simulation.postStepMutations to be initialized. Initialize a SimulationClock on state.simulation (use createTestGameState in tests).');
+  }
   state.simulation.postStepMutations.push(op);
 }
 

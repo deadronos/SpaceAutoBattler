@@ -4,6 +4,7 @@ import { applyProgressionDefaults } from './helpers/progression.js';
 import { updateMotionSystem } from '../../src/game/systems/motion.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
+import { createTestGameState } from './helpers/fixtures.js';
 
 function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
   const shipEntity = {
@@ -62,12 +63,7 @@ function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
 }
 
 function createMockGameState(ships: ShipEntity[]): GameState {
-  return {
-    queries: {
-      ships: { entities: ships },
-    },
-    time: 0,
-  } as any;
+  return createTestGameState({ queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] } }, time: 0 });
 }
 
 describe('Motion System Behavior', () => {

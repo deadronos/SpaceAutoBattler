@@ -4,6 +4,8 @@ import { clampToWorld, AI_CONFIG } from '../config.js';
 import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../../config/projectiles.js';
 import { getEffectiveStats } from '../progression.js';
 import { enqueueDeferredMutation } from '../simulationQueue.js';
+import type { KinematicBody } from '../physics/safeKinematics.js';
+import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
@@ -18,7 +20,7 @@ export function advanceProjectiles(state: GameState, delta: number): void {
     const next = TEMP_POS.copy(current).addScaledVector(direction, move);
     clampToWorld(next);
 
-    projectile.rigidBody.setNextKinematicTranslation({ x: next.x, y: next.y, z: next.z });
+    deferSetNextKinematicTranslation(state, projectile.rigidBody as unknown as KinematicBody, next.x, next.y, next.z);
   }
 }
 

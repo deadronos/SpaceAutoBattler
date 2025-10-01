@@ -1,7 +1,9 @@
 import { Quaternion, Vector3 } from 'three';
 import type { AICommand, GameState, ShipEntity } from '../../types/index.js';
+import type { KinematicBody } from '../physics/safeKinematics.js';
 import { clampToWorld } from '../config.js';
 import { getEffectiveStats } from '../progression.js';
+import { deferSetNextKinematicTranslation, deferSetNextKinematicRotation } from '../physics/safeKinematics.js';
 
 // Reusable temporary objects to avoid per-frame allocations
 const TEMP_FORWARD = new Vector3();
@@ -36,8 +38,8 @@ export function updateMotionSystem(state: GameState, dt: number): void {
     // Update linear motion (thrust and velocity)
     updateLinearMotion(ship, command, dt);
     
-    // Apply velocity to position through physics
-    applyVelocityToPhysics(ship, dt);
+    // Apply velocity to position through physics using safe helpers
+    applyVelocityToPhysics(state, ship, dt);
   }
 }
 
@@ -179,7 +181,7 @@ function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): v
  * Apply the computed velocity to the physics rigid body.
  * This updates the kinematic rigid body's next position.
  */
-function applyVelocityToPhysics(ship: ShipEntity, dt: number): void {
+function applyVelocityToPhysics(state: GameState, ship: ShipEntity, dt: number): void {
   const velocity = ship.ship.velocity;
   const currentPos = ship.transform.position;
   
@@ -193,14 +195,16 @@ function applyVelocityToPhysics(ship: ShipEntity, dt: number): void {
   // Clamp to world bounds
   clampToWorld(nextPos);
   
-  // Update kinematic rigid body
-  ship.rigidBody.setNextKinematicTranslation(nextPos);
-  ship.rigidBody.setNextKinematicRotation({
-    x: ship.transform.rotation.x,
-    y: ship.transform.rotation.y,
-    z: ship.transform.rotation.z,
-    w: ship.transform.rotation.w,
-  });
+  // Update kinematic rigid body safely (guard against Rapier borrow errors)
+  deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPos.x, nextPos.y, nextPos.z);
+  deferSetNextKinematicRotation(
+    state,
+    ship.rigidBody as unknown as KinematicBody,
+    ship.transform.rotation.x,
+    ship.transform.rotation.y,
+    ship.transform.rotation.z,
+    ship.transform.rotation.w,
+  );
 }
 
 /**

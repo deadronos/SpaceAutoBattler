@@ -3,7 +3,7 @@ import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../typ
 import { recordShotMetrics } from '../metrics.js';
 import { fireProjectile, TEMP_DIR, TEMP_POS } from './projectiles.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
-import { safeSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 
 export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
   const ships = state.queries.ships.entities as ShipEntity[];
@@ -65,8 +65,8 @@ export function updateTurrets(state: GameState, delta: number): void {
   const turrets = state.queries.turrets.entities as TurretEntity[];
   for (const t of turrets) {
     const ship = t.turret.parent;
-  const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
-  safeSetNextKinematicTranslation(state, t.rigidBody as unknown as KinematicBody, origin.x, origin.y, origin.z);
+    const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
+    deferSetNextKinematicTranslation(state, t.rigidBody as unknown as KinematicBody, origin.x, origin.y, origin.z);
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
