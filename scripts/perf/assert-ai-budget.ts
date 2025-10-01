@@ -5,6 +5,7 @@ import process from 'node:process';
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import { createTestGameState, createTestAIState } from '../../test/vitest/helpers/fixtures.js';
 
 const { updateDecisionSystem } = __aiTestHooks;
 
@@ -51,71 +52,33 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
       range: 260,
       speed: 40,
       bulletType: 'bullet:laser',
+      xp: 0,
+      level: 1,
+      xpToNext: 100,
+      damageType: 'kinetic',
+      levelBonuses: { hp: 0, shield: 0, damage: 0, fireRate: 0, repair: 0, shieldRegen: 0 },
+      captain: undefined,
+      subsystems: {
+        engine: { hp: 18, maxHp: 18, status: 'online', repairRate: 1.8 },
+        weapons: { hp: 18, maxHp: 18, status: 'online', repairRate: 1.8 },
+        shields: { hp: 18, maxHp: 18, status: 'online', repairRate: 1.8 },
+      },
+      armor: 0,
+      velocity: new Vector3(),
+      angularVelocity: new Vector3(),
+      lateralAcceleration: 0,
+      motion: { desiredHeading: new Vector3(0, 0, 1), speed: 0 },
     },
     model: 'fighter',
-    ai: {
+    ai: createTestAIState({
       profileId: team === 'blue' ? 'brawler' : 'escort',
-      intent: 'Attack',
-      nextThinkAt: 0,
-      cooldowns: { dodgeAt: 0, burstAt: 0 },
-      lod: 0,
       traitSeed: id * 97,
-      traits: { aggression: 1, patience: 1, dodge: 1 },
-      command: {
-        heading: new Vector3(0, 0, 1),
-        thrust: 0,
-        firePrimary: false,
-        ttl: 0.1,
-      },
-    },
+    }),
   } as ShipEntity;
 }
 
 function createState(): GameState {
-  return {
-    ai: {
-      enabled: true,
-      tickInterval: 0.1,
-      maxPerTick: Math.max(20, Math.ceil(SHIP_COUNT / 5)),
-      accumulator: 0,
-      tickIndex: 0,
-      cursor: 0,
-      slices: 1,
-      assignments: { escorts: new Map() },
-      metrics: {
-        totalDecisions: 0,
-        totalSkipped: 0,
-        budgetHits: 0,
-        lastDecisions: 0,
-        lastSkipped: 0,
-        lastSliceSize: 0,
-        lastTotalShips: 0,
-      },
-    },
-    blackboard: {
-      tickIndex: 0,
-      teamPosture: { blue: 'hold', red: 'hold' },
-      allyCentroid: { blue: new Vector3(), red: new Vector3() },
-      nearestEnemy: new Map(),
-      threatToVip: new Map(),
-      tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
-    },
-    queries: {
-      ships: { entities: [] as ShipEntity[] },
-      projectiles: { entities: [] as never[] },
-      turrets: { entities: [] as never[] },
-    },
-    world: {} as never,
-    physicsWorld: {} as never,
-    eventQueue: {} as never,
-    colliderLookup: new Map(),
-    rapier: {} as never,
-    nextEntityId: 1,
-    time: 0,
-    rng: {} as never,
-    paused: false,
-    timeScale: 1,
-  } as unknown as GameState;
+  return createTestGameState();
 }
 
 function populateShips(state: GameState): void {

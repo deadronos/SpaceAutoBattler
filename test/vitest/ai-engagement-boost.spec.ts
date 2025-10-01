@@ -3,7 +3,7 @@ import { Vector3 } from 'three';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
-import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
+import type { GameState, ShipEntity } from '../../src/types/index.js';
 
 const { selectIntent, writeCommand } = __aiTestHooks;
 
@@ -51,6 +51,15 @@ function createState(time = 0): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
     nextExplosionId: 1,
     explosions: [],
@@ -179,7 +188,6 @@ describe('Engagement Boost Acceptance Criteria', () => {
     const profile = resolveBehaviorProfile('brawler');
 
     // Use writeCommand instead of selectIntent to trigger stickiness logic
-    const { writeCommand } = __aiTestHooks;
     writeCommand(state, ship, ship.ai!, profile, target, null, null);
     
     // Verify stickiness was established

@@ -1,6 +1,6 @@
 # core/gameState
 
-Last-Reviewed: 2025-09-21
+Last-Reviewed: 2025-09-30
 
 **Memory name:** core-gameState (authoritative)
 
@@ -29,6 +29,13 @@ Key runtime patterns and notes:
 - Determinism is provided via `SeededRng` located at `src/utils/rng.ts`; the simulation must use `state.rng` when deterministic randomness is required.
 - `GameState` may hold an optional `assetPool` reference (renderer attaches this during bootstrap). The renderer is responsible for three.js asset caching and prototype registration.
 - Where functionality changed from earlier repo versions, memory retains a short note that the old path was `src/core/gameState.ts`.
+
+Verification log:
+
+- 2025-09-30: Agent inspection performed against actual source files. Files reviewed: `src/game/state.ts`, `src/utils/rng.ts`, `src/types/index.ts`, `src/game/context.tsx`, `src/game/uiStore.ts`. Actions:
+  - Confirmed `createGameState` implementation initializes Rapier, seeded RNG (`SeededRng` with default seed `1337`), and constructs the `GameState` shape consistent with `src/types/index.ts` `GameState` interface.
+  - Confirmed no module-level runtime state outside of `GameState` factory.
+  - Confirmed `disposeGameState`, `destroyEntity`, and `spawnInitialFleets` exports exist and their responsibilities match the memory description.
 
 References:
 

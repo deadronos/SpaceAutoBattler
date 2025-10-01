@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
@@ -7,7 +7,7 @@ import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 import { applyProgressionDefaults } from './helpers/progression.js';
 
-const { selectIntent } = __aiTestHooks;
+const { selectIntent, computeInterceptHeadingVector } = __aiTestHooks;
 
 const BASE_TRAITS = { aggression: 1, patience: 1, dodge: 1 } as const;
 
@@ -19,6 +19,7 @@ type ShipOptions = {
   hp?: number;
   maxHp?: number;
   velocity?: Vector3;
+  linvel?: () => { x: number; y: number; z: number };
 };
 
 function createState(): GameState {
@@ -64,6 +65,15 @@ function createState(): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
     timeScale: 1,
   } as unknown as GameState;
@@ -101,7 +111,7 @@ function createShip(options: ShipOptions): ShipEntity {
         z: options.position.z,
       }),
       rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
-      linvel: () => ({ x: velocity.x, y: velocity.y, z: velocity.z }),
+  linvel: options.linvel ?? (() => ({ x: velocity.x, y: velocity.y, z: velocity.z })),
     } as never,
     collider: {} as never,
     transform: {
@@ -134,6 +144,7 @@ function createShip(options: ShipOptions): ShipEntity {
   } as unknown as ShipEntity;
 
   applyProgressionDefaults(ship.ship, { maxHpOverride: ship.ship.maxHp });
+  ship.ship.velocity.copy(velocity);
   return ship;
 }
 
@@ -190,6 +201,52 @@ describe('selectIntent with new intents', () => {
     const intent = selectIntent(state, ship, ship.ai!, profile, null, null, null);
 
     expect(intent.intent).toBe('Regroup');
+  });
+
+  it('uses ShipComponent velocity for intercept heading without touching Rapier', () => {
+    const interceptor = createShip({ id: 8, team: 'blue', position: new Vector3(0, 0, 0) });
+    interceptor.ship.projectileSpeed = 120;
+    const targetVelocity = new Vector3(60, 0, 0);
+    const linvelSpy = vi.fn(() => ({ x: -999, y: -999, z: -999 }));
+    const target = createShip({
+      id: 9,
+      team: 'red',
+      position: new Vector3(0, 0, 220),
+      velocity: targetVelocity,
+      linvel: linvelSpy,
+    });
+
+    const stationary = createShip({
+      id: 12,
+      team: 'red',
+      position: target.transform.position.clone(),
+    });
+
+    const movingHeading = computeInterceptHeadingVector(interceptor, target, new Vector3());
+    const stationaryHeading = computeInterceptHeadingVector(interceptor, stationary, new Vector3());
+
+    expect(movingHeading.distanceTo(stationaryHeading)).toBeGreaterThan(0.01);
+    expect(movingHeading.length()).toBeCloseTo(1, 5);
+    expect(linvelSpy).not.toHaveBeenCalled();
+  });
+
+  it('falls back to zero velocity when ShipComponent velocity is missing', () => {
+    const interceptor = createShip({ id: 10, team: 'blue', position: new Vector3(0, 0, 0) });
+    const targetVelocity = new Vector3(0, 0, 0);
+    const linvelSpy = vi.fn(() => ({ x: 123, y: 456, z: 789 }));
+    const target = createShip({
+      id: 11,
+      team: 'red',
+      position: new Vector3(120, 0, 0),
+      velocity: targetVelocity,
+      linvel: linvelSpy,
+    });
+    (target.ship as any).velocity = undefined;
+
+    const result = computeInterceptHeadingVector(interceptor, target, new Vector3());
+
+    expect(result.length()).toBeGreaterThan(0);
+    expect(linvelSpy).not.toHaveBeenCalled();
   });
 });
 

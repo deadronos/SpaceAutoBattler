@@ -137,6 +137,15 @@ function makeStateStub(): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
   } as GameState;
 }

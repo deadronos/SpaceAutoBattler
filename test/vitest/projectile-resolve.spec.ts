@@ -4,6 +4,7 @@ import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameEntity, GameState, ShipEntity } from '../../src/types/index.js';
 import { fireProjectile, updateGame } from '../../src/game/systems.js';
+import { flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
 
 function makeRigidBodyStub(init?: { pos?: { x: number; y: number; z: number }; rot?: { x: number; y: number; z: number; w: number } }) {
   let pos = init?.pos ?? { x: 0, y: 0, z: 0 };
@@ -101,6 +102,15 @@ function makeStateStub(): GameState {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
   } as GameState;
 }
@@ -152,8 +162,10 @@ describe('projectile resolution', () => {
     // Fire a projectile that will immediately overlap target in resolve step
     const dir = new Vector3(0,0,1);
     const originNearTarget = target.transform.position.clone().addScaledVector(dir, -0.05);
-    fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
-    expect((state.queries.projectiles as any).entities.length).toBe(1);
+  fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
+  expect(state.simulation.postStepMutations).toHaveLength(1);
+  flushPostPhysicsMutations(state);
+  expect((state.queries.projectiles as any).entities.length).toBe(1);
 
     // Step small delta to resolve collision
     updateGame(state, 0.016);
@@ -179,8 +191,10 @@ describe('projectile resolution', () => {
     attacker.ship.damage = 5;
     const dir = new Vector3(0,0,1);
     const originNearTarget = target.transform.position.clone().addScaledVector(dir, -0.05);
-    fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
-    expect((state.queries.projectiles as any).entities.length).toBe(1);
+  fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
+  expect(state.simulation.postStepMutations).toHaveLength(1);
+  flushPostPhysicsMutations(state);
+  expect((state.queries.projectiles as any).entities.length).toBe(1);
 
     updateGame(state, 0.016);
 
@@ -202,8 +216,10 @@ describe('projectile resolution', () => {
     // Make very slow projectile with very short range so ttl small
     attacker.ship.projectileSpeed = 1;
     attacker.ship.range = 1; // lifetime = 1/1 = 1s
-    fireProjectile(state, attacker, new Vector3(1,0,0));
-    expect((state.queries.projectiles as any).entities.length).toBe(1);
+  fireProjectile(state, attacker, new Vector3(1,0,0));
+  expect(state.simulation.postStepMutations).toHaveLength(1);
+  flushPostPhysicsMutations(state);
+  expect((state.queries.projectiles as any).entities.length).toBe(1);
 
     // Advance time beyond ttl
     updateGame(state, 1.2);

@@ -1,6 +1,7 @@
 # Repository Guidelines
 
 to structure memory follow `.github/instructions/memory-bank.instructions.md`
+create tasks files in `memory/tasks` and update with progress
 
 ## Project Structure & Module Organization
 

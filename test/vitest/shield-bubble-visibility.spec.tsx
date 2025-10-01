@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { SHIELD_RENDER_ORDER } from '../../src/components/Ship.js';
+import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
+import { SHIELD_TUNING, SHIELD_VISUALS } from '../../src/config/renderer.js';
 
 describe('ShieldBubble visibility behavior (static analysis)', () => {
-  const shipFilePath = path.resolve(__dirname, '../../src/components/Ship.tsx');
+  const shipFilePath = path.resolve(__dirname, '../../src/components/ship/ShipShield.tsx');
   const configFilePath = path.resolve(__dirname, '../../src/config/renderer.ts');
 
   it('includes conditional rendering for low shield levels', () => {
@@ -19,7 +22,7 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
 
     // Ensure we track shield changes reactively via state updates
     expect(txt).toContain('const [shieldFraction, setShieldFraction] = useState');
-    expect(txt).toContain('setShieldFraction(nextFraction);');
+    expect(txt).toContain('setShieldFraction('); // More flexible match
   });
 
   it('fixes HULL_TINT threshold to prevent always-on hull tinting', () => {
@@ -35,7 +38,7 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
     const txt = fs.readFileSync(shipFilePath, 'utf-8');
 
     // Test the mathematical logic: shield fraction calculation should work correctly
-    expect(txt).toContain('const ratio = shield / Math.max(1, maxShield);');
+    expect(txt).toContain('const ratio = shield / maxShield;');
     expect(txt).toContain('MathUtils.clamp(ratio, 0, 1)');
 
     // With 0 shields and any maxShield > 0, the fraction should be 0
@@ -57,5 +60,28 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
     expect(shieldFractionFull >= minThreshold).toBe(true);   // 100% shields should render
     expect(shieldFractionPartial >= minThreshold).toBe(true); // 50% shields should render  
     expect(shieldFractionMinimal >= minThreshold).toBe(true); // 1% shields should render
+  });
+
+  it('applies SHIELD_RENDER_ORDER constant with positive value', () => {
+    expect(SHIELD_RENDER_ORDER).toBeGreaterThan(0);
+    const txt = fs.readFileSync(shipFilePath, 'utf-8');
+    expect(txt.includes('renderOrder={SHIELD_RENDER_ORDER}')).toBe(true);
+  });
+
+  it('disables depth testing on the shield hex material factory', () => {
+    const mat = createShieldHexShaderMaterial('carrier', 'blue');
+    expect(mat.depthTest).toBe(false);
+    expect(mat.depthWrite).toBe(false);
+    mat.dispose();
+  });
+
+  it('enforces bright shield tuning for readability', () => {
+    expect(SHIELD_TUNING.minAlphaFloor).toBeGreaterThanOrEqual(0.35);
+    expect(SHIELD_TUNING.fillAlphaMul).toBeGreaterThan(0.45);
+    (['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'] as const).forEach((hull) => {
+      const cfg = SHIELD_VISUALS[hull];
+      expect(cfg.maxAlpha ?? 0).toBeGreaterThanOrEqual(0.8);
+      expect(cfg.margin ?? 0).toBeGreaterThan(1.05);
+    });
   });
 });

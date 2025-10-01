@@ -1,0 +1,55 @@
+import type React from 'react';
+import { useFrame } from '@react-three/fiber';
+import { useGameState } from '../game/context.js';
+import { updateGame } from '../game/systems.js';
+import { useUiStore } from '../game/uiStore.js';
+
+export function BattlefieldSystems(): React.ReactElement {
+  const state = useGameState();
+  const paused = useUiStore((s) => s.paused);
+  const timeScale = useUiStore((s) => s.timeScale);
+
+  useFrame((_, delta) => {
+    state.paused = paused;
+    state.timeScale = timeScale;
+
+    if (paused) {
+      state.simulation.alpha = 0;
+      return;
+    }
+
+    const sim = state.simulation;
+    const step = sim.step;
+    const maxSteps = Math.max(1, sim.maxSubSteps);
+    const scaled = Math.max(0, delta * Math.max(timeScale, 0));
+
+    if (step <= 0) {
+      updateGame(state, scaled);
+      sim.alpha = 0;
+      return;
+    }
+
+    const maxAccum = step * maxSteps;
+    sim.accumulator = Math.min(sim.accumulator + Math.min(scaled, maxAccum), maxAccum);
+
+    try {
+      const params = (state.physicsWorld as any).integrationParameters;
+      if (params && typeof params.dt === 'number') {
+        params.dt = step;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    let steps = 0;
+    while (sim.accumulator >= step && steps < maxSteps) {
+      updateGame(state, step);
+      sim.accumulator -= step;
+      steps += 1;
+    }
+
+    sim.alpha = step > 0 ? Math.min(sim.accumulator / step, 1) : 0;
+  });
+
+  return <></>;
+}

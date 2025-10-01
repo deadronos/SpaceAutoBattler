@@ -1,5 +1,40 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-09-30 — Rapier Startup Borrow Guard (TASK230)
+
+1. **WHEN** the simulation tick processes deferred world mutations (carrier spawns, queued disposals, projectile instantiation), **THE SYSTEM SHALL** execute those mutations only after all per-frame kinematic writes have completed so Rapier never observes overlapping mutable borrows. *(Acceptance: Vitest regression drives a cold-start tick with queued fighter launches and asserts no Rapier panic is thrown while entities appear after the deferred flush.)*
+2. **WHEN** turret systems update kinematic bodies, **THE SYSTEM SHALL** route translations and rotations through the safe setter that tolerates disposed or concurrently-mutated bodies, returning early on invalid input instead of throwing. *(Acceptance: unit test injects a disposed turret rigid body and verifies the safe wrapper prevents Rapier errors while leaving the remainder of the loop unaffected.)*
+3. **WHEN** a new GameState initialises and advances its first frame, **THE SYSTEM SHALL** guarantee the deferred mutation queue runs exactly once per tick in deterministic insertion order so cold-start fleet spawns succeed without duplicate executions. *(Acceptance: regression inspects the queue order across repeated cold-start ticks and matches captured snapshots from stable seeds.)*
+4. **WHEN** the physics step completes, **THE SYSTEM SHALL** clear deferred mutation queues before the next frame so stale operations cannot re-run on subsequent ticks. *(Acceptance: regression enqueues dummy operations, steps twice, and confirms the operation executes once and the queue is empty before the second tick.)*
+
+**Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`npm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
+
+## 2025-09-30 — Rapier Queue Extensions (TASK230 follow-up)
+
+1. **WHEN** `fireProjectile` is invoked during a simulation tick, **THE SYSTEM SHALL** stage projectile creation via the deferred mutation queue so Rapier rigid body/collider allocation executes at the flush point, preventing nested mutable borrows during turret or AI loops. *(Acceptance: unit test exercises `fireProjectile`, asserts no projectile entity exists before flushing, then verifies creation after `flushDeferredMutations`.)*
+2. **WHEN** `requestReset` schedules a simulation reset, **THE SYSTEM SHALL** enqueue the reset closure into a post-physics deferred queue that executes immediately after `physicsWorld.step`, ensuring resets never run mid-step and leaving the queue empty afterwards. *(Acceptance: refreshed `rapier-reset-stability.spec.ts` inspects queue length before and after `updateGame` and confirms single execution.)*
+3. **WHEN** deferred mutation flushes or safe kinematic guards catch Rapier exceptions or invalid inputs, **THE SYSTEM SHALL** increment counters in `simulation.rapierDiagnostics` and capture the latest failure metadata so diagnostics highlight systems that may need additional guards. *(Acceptance: extended queue and kinematics unit tests force failures and assert diagnostic counters/metadata are updated.)*
+4. **WHEN** pre-physics or post-physics deferred queues complete their flush, **THE SYSTEM SHALL** clear all queued operations so subsequent ticks begin from an empty queue and operations execute at most once. *(Acceptance: queue regression validates both queues report zero length after flush even when new ops are enqueued during execution.)*
+
+## 2025-09-29 — Shield Bubble Visibility Regression (TASK227)
+
+1. **WHEN** a ship entity reports `shield/maxShield ≥ 0.01`, **THE SYSTEM SHALL** render the shield bubble mesh after opaque hull geometry so the bubble remains visible regardless of hull draw order. *(Acceptance: Vitest regression reads `Ship.tsx` to confirm `ShieldBubble` uses a positive `SHIELD_RENDER_ORDER` constant greater than zero.)*
+2. **WHEN** the shield bubble material initialises, **THE SYSTEM SHALL** disable depth testing (or render after the hull) while leaving depth write disabled so the bubble overlays hull pixels without affecting depth buffers. *(Acceptance: unit test exercises the shield material factory and asserts the resulting `ShaderMaterial` has `depthTest === false` and `depthWrite === false`.)*
+3. **WHEN** a carrier or any hull spawns with full shields, **THE SYSTEM SHALL** surface a visible shield bubble within the first render frame, ensuring bloom registration remains active for the `shields` group. *(Acceptance: regression test instantiates a carrier entity and verifies bloom registration plus mesh visibility flag on the first frame.)*
+4. **WHEN** a ship maintains `shield/maxShield ≥ 0.5`, **THE SYSTEM SHALL** keep the shield bubble alpha above a readable floor (≥0.35) so the sphere is unmistakable against the starfield. *(Acceptance: configuration test asserts `SHIELD_TUNING.minAlphaFloor ≥ 0.35` and per-hull `maxAlpha ≥ 0.8`.)*
+
+## 2025-09-29 — Rapier Velocity Sampling Hardening (TASK228)
+
+1. **WHEN** AI scoring or intercept helpers require a ship's movement vector, **THE SYSTEM SHALL** read from `ship.ship.velocity` maintained by the motion system instead of invoking `rigidBody.linvel()` so Rapier is never re-entered during decision ticks. *(Acceptance: unit test exercises `scoreInterceptIntent` with seeded velocities and asserts the helper never calls a mocked `linvel` spy.)*
+2. **WHEN** a ship lacks a populated `ShipComponent.velocity` vector or the components are non-finite, **THE SYSTEM SHALL** return a zero vector without touching Rapier APIs to keep AI calculations stable in harnesses and during disposal frames. *(Acceptance: regression covers a ship with missing velocity and verifies `getShipVelocity` outputs zero without throwing or calling Rapier mocks.)*
+3. **WHEN** tests simulate intercept calculations with moving targets, **THE SYSTEM SHALL** ensure the stored `ShipComponent.velocity` values propagate into intercept scoring so the resulting lead direction matches expectations within a small tolerance. *(Acceptance: Vitest spec seeds interceptor/target velocities and asserts the computed intercept heading reflects the stored velocities.)*
+
+## 2025-09-29 — Carrier Spawn Queue (TASK226)
+
+1. **WHEN** `updateCarrierLaunchSystem` iterates over carriers, **THE SYSTEM SHALL** queue fighter spawn operations and execute them only after the loop completes so Rapier never receives nested borrows that trigger the "recursive use" error. *(Acceptance: new Vitest regression exercises the launch cycle and asserts `spawnShip` is invoked after the carrier loop without throwing.)*
+2. **WHEN** a carrier schedules fighter launches within a tick, **THE SYSTEM SHALL** cap the queued count so the total of existing and newly spawned fighters never exceeds `config.maxActive`. *(Acceptance: the regression test seeds a carrier at the cap and verifies no additional spawns are enqueued or executed.)*
+3. **WHEN** a queued spawn executes, **THE SYSTEM SHALL** append the spawned fighter id to `carrier.activeFighterIds` and refresh the carrier tracking map before the next simulation tick. *(Acceptance: the regression test confirms the dequeued fighter id is recorded and survives a subsequent pruning pass.)*
+
 ## 2025-09-29 — Ship Level Bonus Caps (TASK153)
 
 1. **WHEN** a ship crosses any level threshold above 1, **THE SYSTEM SHALL** recompute `maxHp` and `hp` using the base hull value scaled by the capped hull bonus so the resulting multiplier never exceeds +50%. *(Acceptance: `test/vitest/progression-system.spec.ts` levels a ship to level 11 and asserts `maxHp` equals `baseHp × 1.5` while current `hp` increases by the delta.)*

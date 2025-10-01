@@ -6,11 +6,17 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224).
-- [TASK151](TASK151-ship-progression-system.md) — Implement richer ship progression and damage systems with XP, captains, damage types, and subsystems.
+- [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
+- [TASK228](TASK228-rapier-velocity-sampling.md) — Harden AI velocity sampling to use `ShipComponent.velocity` and avoid Rapier re-entrancy during intent scoring.
+- [TASK231](TASK231-sweep-wrap-rapier-mutators.md) — Sweep repository for Rapier mutators and add deferred/post wrappers + tests. (2025-10-01)
 
 ## Completed
 
+- [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224). (2025-09-30)
+- [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage. (2025-09-29)
+- [TASK230](TASK230-rapier-startup-borrow-guard.md) — Deferred Rapier world mutations behind a deterministic queue, shared safe kinematic guards, and refreshed regressions. (2025-09-30)
+- [TASK226](TASK226-carrier-spawn-scheduling.md) — Deferred carrier fighter spawn execution to eliminate Rapier unsafe aliasing crashes and added regression coverage (2025-09-29).
+- [TASK227](TASK227-shield-bubble-visibility.md) — Restored shield visibility with overlay render order, depth-test disablement, and brighter alpha tuning plus regression coverage (2025-09-29).
 - [TASK154](TASK154-rapier-reset-stability.md) — Implemented deferred reset execution to eliminate Rapier console errors during reset button usage (2025-01-27).
 - [TASK225](TASK225-shield-bubble-visibility.md) — Fixed missing shield bubble rendering when shields regenerate after spawning depleted (2025-02-14).
 - [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
@@ -72,6 +78,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Pending
 
 - _None tracked._
+- [TASK232](TASK232-update-memory-bank-tasks.md) — Update memory bank task files and `_index.md` to record progress for the deferred Rapier migration work. (2025-10-01)
 
 ## Abandoned
 
