@@ -403,7 +403,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
     star: {
       intensity: 1.6,
       smoothing: 0.01,
-      threshold: 1.0,
+      threshold: 0.9,
     },
   },
 };

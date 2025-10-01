@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useRef } from 'react';
 import { Selection } from 'postprocessing';
-import type { Object3D } from 'three';
+import type { Camera, Object3D } from 'three';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 
 export interface BloomRegistrationOptions {
@@ -18,6 +18,17 @@ type BloomCtx = {
   selections: Map<string, Selection>;
   register: (obj: Object3D | null | undefined, options?: BloomRegistrationOptions) => void;
   unregister: (obj: Object3D | null | undefined) => void;
+  /**
+   * Compute the union bitmask of all selection layers.
+   * Useful for telling a Camera which layers must be visible to render
+   * selective-bloom objects (e.g. star layer, muzzle flashes, etc.).
+   */
+  getSelectionLayerMask: () => number;
+  /**
+   * Enable all selection layers on a given camera and return the
+   * camera's previous layers.mask so callers can restore it.
+   */
+  enableCameraLayers: (camera: Camera) => number;
 };
 
 const Ctx = createContext<BloomCtx | null>(null);
@@ -136,9 +147,73 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       selections: selectionsRef.current,
       register,
       unregister,
+      /**
+       * Compute the union bitmask of all selection layers.
+       * Useful for telling a Camera which layers must be visible to render
+       * selective-bloom objects (e.g. star layer, muzzle flashes, etc.).
+       */
+      getSelectionLayerMask(): number {
+        let mask = 0;
+        for (const sel of selectionsRef.current.values()) {
+          const layer = (sel as any).layer;
+          if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+            mask |= (1 << layer);
+          }
+        }
+        return mask;
+      },
+      /**
+       * Enable all selection layers on a given camera and return the
+       * camera's previous layers.mask so callers can restore it.
+       */
+      enableCameraLayers(camera: Camera): number {
+        if (!camera || typeof camera.layers === 'undefined') return 0;
+        const prev = camera.layers.mask;
+        const mask = (() => {
+          let m = 0;
+          for (const sel of selectionsRef.current.values()) {
+            const layer = (sel as any).layer;
+            if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+              m |= (1 << layer);
+            }
+          }
+          return m;
+        })();
+        try {
+          camera.layers.mask = prev | mask;
+        } catch { /* ignore */ }
+        return prev;
+      },
     }),
     [enabled, defaultGroup, register, unregister],
   );
+
+  // Expose a small dev helper so E2E tests can query the current selection
+  // layer mask without coupling to internal refs. This is only a debug aid
+  // and intentionally attached to window to keep test code concise.
+  React.useEffect(() => {
+    try {
+      const win = typeof window !== 'undefined' ? (window as any) : undefined;
+      if (win) {
+        win.__copilot_getSelectionLayerMask = () => {
+          let mask = 0;
+          for (const sel of selectionsRef.current.values()) {
+            const layer = (sel as any).layer;
+            if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+              mask |= (1 << layer);
+            }
+          }
+          return mask;
+        };
+      }
+    } catch { /* ignore */ }
+    return () => {
+      try {
+        const win = typeof window !== 'undefined' ? (window as any) : undefined;
+        if (win && win.__copilot_getSelectionLayerMask) delete win.__copilot_getSelectionLayerMask;
+      } catch { /* ignore */ }
+    };
+  }, []);
 
   return <Ctx.Provider value={value}>{children ?? null}</Ctx.Provider>;
 }

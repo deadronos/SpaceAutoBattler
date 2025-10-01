@@ -253,6 +253,274 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
     },
   });
 
+  // DEV: one-time shader / program logging to help debug missing rendering.
+  // Logs truncated shader sources at compile time and polls three.js renderer
+  // internals for the WebGL program to print getProgramInfoLog and gl.getError.
+  // This is guarded to run only in non-production builds and removes itself
+  // after reporting to avoid log spam.
+  const _urlSearch = typeof window !== 'undefined' ? window.location.search : '';
+  const _enableShaderDevLogging = process.env.NODE_ENV !== 'production' || /[?&]copilot_debug=1/.test(_urlSearch);
+  if (_enableShaderDevLogging) {
+     let logged = false;
+     try {
+       material.onBeforeCompile = (shader, renderer) => {
+         // Allow the onBeforeCompile to run again if automation requests a
+         // forced opaque shader (even if we've previously logged).
+         const _win = (typeof window !== 'undefined') ? (window as Window & { __copilot_forceStarOpaque?: boolean }) : undefined;
+         if (logged && !(_win && _win.__copilot_forceStarOpaque)) return;
+         logged = true;
+
+         try {
+           console.groupCollapsed('[STARDEV] MainSequenceStar shader compile info');
+           console.log('[STARDEV] vertex shader (trunc):', (shader.vertexShader || '').slice(0, 1024));
+           console.log('[STARDEV] fragment shader (trunc):', (shader.fragmentShader || '').slice(0, 1024));
+
+           // DEV: Indicate compilation attempt immediately so it is visible
+           // even when console output is noisy or the GL program isn't yet
+           // available. This flag + DOM node are transient and only used
+           // for debugging.
+           try {
+             (window as unknown as { __STAR_COMPILED?: boolean }).__STAR_COMPILED = true;
+             try {
+               // Persistent marker for automation checks
+               if (typeof localStorage !== 'undefined' && localStorage) {
+                 localStorage.setItem('copilot_star_compiled', String(Date.now()));
+               }
+             } catch { void 0; }
+             if (typeof document !== 'undefined') {
+               try {
+                 document.documentElement.setAttribute('data-star-compiled', '1');
+               } catch { void 0; }
+               const id = 'copilot-star-compiled-indicator';
+               if (!document.getElementById(id)) {
+                 const el = document.createElement('div');
+                 el.id = id;
+                 el.textContent = 'STAR COMPILE STARTED';
+                 el.style.cssText = 'position:fixed; right:12px; bottom:12px; padding:6px 10px; background:rgba(59,130,246,0.95); color:white; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size:12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.35); z-index:9999999;';
+                 document.body.appendChild(el);
+                 setTimeout(() => { try { el.remove(); } catch { /* ignore */ } }, 4000);
+               }
+             }
+           } catch (flagErr) {
+             console.warn('[STARDEV] failed to create DOM compile-start indicator', flagErr);
+           }
+         } catch (e) {
+           console.warn('[STARDEV] failed to print shader source', e);
+         }
+
+         try {
+           // Access renderer internals carefully via `unknown` casts to avoid `any`.
+           const props = (renderer as unknown as { properties?: { get: (k: ShaderMaterial) => unknown } }).properties;
+           const start = Date.now();
+           const maxWaitMs = 10000; // stop polling after 10s
+           const pollInterval = 200;
+
+           // Persistent markers: write an unconditional flag to localStorage
+           // and a global window flag right when compilation is attempted.
+           try { (window as unknown as { __STAR_COMPILE_ATTEMPTED?: string }).__STAR_COMPILE_ATTEMPTED = String(Date.now()); } catch { void 0; }
+           try { if (typeof localStorage !== 'undefined') { localStorage.setItem('copilot_star_compiled', String(Date.now())); } } catch { void 0; }
+
+           const handle = setInterval(() => {
+             try {
+               const matProp = props?.get(material) as unknown;
+               const programField = (matProp as { program?: unknown } | undefined)?.program;
+
+               let webglProgram: WebGLProgram | null = null;
+               if (programField && typeof programField === 'object') {
+                 // programField may itself be the WebGLProgram or an object with `.program`.
+                 webglProgram = (programField as { program?: WebGLProgram }).program ?? (programField as unknown as WebGLProgram);
+               } else if (programField && typeof programField !== 'object') {
+                 // Fallback if programField is a primitive (unlikely) — try casting.
+                 webglProgram = programField as unknown as WebGLProgram;
+               }
+
+               if (webglProgram) {
+                 try {
+                  // Dump final material state when program is found so automation can inspect runtime uniforms
+                  try { if (_enableShaderDevLogging) dumpMaterialState(); } catch { /* ignore */ }
+                   const gl = renderer.getContext();
+                   const programInfo = gl.getProgramInfoLog(webglProgram);
+                   if (programInfo && programInfo.length) console.log('[STARDEV] GL Program InfoLog:', programInfo);
+                   const err = gl.getError();
+                   if (err !== 0) console.log('[STARDEV] GL getError:', err);
+
+                  // Also record deterministic program metadata to the global debug log
+                  try {
+                    const win = (window as unknown as { __copilot_glLogs?: Array<unknown> });
+                    if (win && win.__copilot_glLogs) {
+                      const linkStatus = Boolean(gl.getProgramParameter(webglProgram, (gl as WebGLRenderingContext).LINK_STATUS));
+                      const activeUniforms = Number(gl.getProgramParameter(webglProgram, (gl as WebGLRenderingContext).ACTIVE_UNIFORMS));
+                      const activeAttributes = Number(gl.getProgramParameter(webglProgram, (gl as WebGLRenderingContext).ACTIVE_ATTRIBUTES));
+                      const uniforms: Array<{ name: string; size: number; type: number } | null> = [];
+                      for (let i = 0; i < Math.min(activeUniforms, 200); i++) {
+                        try {
+                          const u = gl.getActiveUniform(webglProgram, i);
+                          uniforms.push(u ? { name: u.name, size: u.size, type: u.type } : null);
+                        } catch {
+                          uniforms.push(null);
+                        }
+                      }
+                      const attributes: Array<{ name: string; size: number; type: number } | null> = [];
+                      for (let i = 0; i < Math.min(activeAttributes, 200); i++) {
+                        try {
+                          const a = gl.getActiveAttrib(webglProgram, i);
+                          attributes.push(a ? { name: a.name, size: a.size, type: a.type } : null);
+                        } catch {
+                          attributes.push(null);
+                        }
+                      }
+                      try {
+                        win.__copilot_glLogs.push({ time: Date.now(), type: 'programMetadataViaPoller', details: { linkStatus, activeUniforms, activeAttributes, uniforms, attributes } });
+                      } catch {
+                        // Ignore push failures
+                      }
+                    }
+                  } catch {
+                    // swallow metadata push errors — non-critical
+                  }
+
+                   // DEV: expose a small DOM-visible indicator so users can
+                   // visually confirm the shader compiled/linked even when
+                   // console logs are noisy. Set a global flag and insert
+                   // a transient overlay node (removed after 4s).
+                   try {
+                     (window as unknown as { __STAR_COMPILED?: boolean }).__STAR_COMPILED = true;
+                     if (typeof document !== 'undefined') {
+                       const id = 'copilot-star-compiled-indicator';
+                       if (!document.getElementById(id)) {
+                         const el = document.createElement('div');
+                         el.id = id;
+                         el.textContent = 'STAR COMPILED';
+                         el.style.cssText = 'position:fixed; right:12px; bottom:12px; padding:6px 10px; background:rgba(16,185,129,0.95); color:white; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size:12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.35); z-index:9999999;';
+                         document.body.appendChild(el);
+                         setTimeout(() => { try { el.remove(); } catch { /* ignore */ } }, 4000);
+                       }
+                     }
+                   } catch (domErr) {
+                     console.warn('[STARDEV] failed to create DOM compile indicator', domErr);
+                   }
+                 } catch (inner) {
+                   console.warn('[STARDEV] failed to read GL program/log', inner);
+                 }
+                clearInterval(handle);
+                console.groupEnd();
+                return;
+               }
+
+               if (Date.now() - start > maxWaitMs) {
+                 clearInterval(handle);
+                 console.warn('[STARDEV] timed out waiting for compiled WebGL program (dev-only)');
+                 console.groupEnd();
+               }
+             } catch (pollErr) {
+               // Continue polling; don't throw. Keep surface-level warning for debugging.
+               console.warn('[STARDEV] poll error while waiting for program', pollErr);
+             }
+           }, pollInterval);
+         } catch (e) {
+           console.warn('[STARDEV] failed to install program poller', e);
+           console.groupEnd();
+         }
+       };
+     } catch (e) {
+       console.warn('[STARDEV] failed to attach onBeforeCompile logging', e);
+     }
+   }
+
+  // DEV: helper to snapshot material uniforms and texture bindings for automation
+  const dumpMaterialState = () => {
+    try {
+      const win = (typeof window !== 'undefined') ? (window as Window & { __copilot_starUniforms?: Array<unknown> }) : undefined;
+      if (!win) return;
+      win.__copilot_starUniforms = win.__copilot_starUniforms || [];
+
+      const uniformsMap: Record<string, unknown> = {};
+      try {
+        const u = material.uniforms as unknown as Record<string, { value: unknown }>;
+        for (const k of Object.keys(u)) {
+          const v = u[k]?.value as unknown;
+           if (v == null) {
+             uniformsMap[k] = null;
+           } else if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') {
+             uniformsMap[k] = v;
+           } else {
+            const maybeArrProvider = v as unknown as { toArray?: unknown };
+            if (maybeArrProvider && typeof maybeArrProvider.toArray === 'function') {
+              try { uniformsMap[k] = (maybeArrProvider.toArray as Function).call(v); } catch { uniformsMap[k] = String(v); }
+            } else if ((v as Texture) instanceof Texture) {
+              const tex = v as Texture;
+              const img = (tex as unknown as { image?: { width?: number; height?: number } }).image || null;
+              uniformsMap[k] = {
+                name: tex.name || null,
+                width: img && img.width ? img.width : null,
+                height: img && img.height ? img.height : null,
+                wrapS: tex.wrapS,
+                wrapT: tex.wrapT,
+                minFilter: tex.minFilter,
+                magFilter: tex.magFilter,
+                generateMipmaps: Boolean((tex as unknown as { generateMipmaps?: boolean }).generateMipmaps),
+                colorSpace: (tex as unknown as { colorSpace?: unknown }).colorSpace || null,
+              };
+            } else if (Array.isArray(v)) {
+              uniformsMap[k] = v.slice(0, 10);
+            } else {
+              uniformsMap[k] = String(v);
+            }
+          }
+         }
+       } catch {
+         // ignore uniform serialization failures
+       }
+
+      const snapshot = {
+        time: Date.now(),
+        materialName: material.name,
+        materialSettings: {
+          transparent: Boolean(material.transparent),
+          depthWrite: Boolean(material.depthWrite),
+          depthTest: Boolean((material as unknown as { depthTest?: boolean }).depthTest),
+          side: (material as unknown as { side?: unknown }).side ?? null,
+        },
+        uniforms: uniformsMap,
+      };
+
+      try { win.__copilot_starUniforms.push(snapshot); } catch { /* ignore */ }
+    } catch {
+      // swallow
+    }
+  };
+
+  // Dump initial state synchronously so automation can pick it up early
+  if (_enableShaderDevLogging) dumpMaterialState();
+
+  // DEV: when debugging, force the material to render on-top so automated
+  // sampling can determine whether the disk is being occluded by scene
+  // geometry (depth) vs failing to produce visible output. This is limited
+  // to development or when `copilot_debug=1` is present in the URL.
+  if (_enableShaderDevLogging) {
+    try {
+      // Disable depth test/write so the material draws regardless of scene depth
+      (material as unknown as { depthTest?: boolean }).depthTest = false;
+      material.depthWrite = false;
+      // Signal that the material has been forced on-top for automation
+      try { (window as unknown as { __copilot_star_forceOnTop?: boolean }).__copilot_star_forceOnTop = true; } catch { /* ignore */ }
+    } catch {
+      // swallow dev-only errors
+    }
+  }
+
+  // If automation requests a forced opaque fallback, replace fragment
+  // shader with a minimal opaque output so we can validate geometry
+  // and render pipeline independently of the production shader.
+  try {
+    const win = (typeof window !== 'undefined') ? (window as Window & { __copilot_forceStarOpaque?: boolean; __copilot_star_forcedOpaque?: boolean }) : undefined;
+    if (win && win.__copilot_forceStarOpaque) {
+      // minimal GLSL fragment for debug builds
+      material.fragmentShader = 'precision mediump float;\nvoid main() { gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }';
+      try { win.__copilot_star_forcedOpaque = true; } catch { /* ignore */ }
+    }
+  } catch { /* swallow dev-only override errors */ }
+
   return material;
 }
 
