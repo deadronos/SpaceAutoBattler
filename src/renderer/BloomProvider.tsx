@@ -188,33 +188,6 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
     [enabled, defaultGroup, register, unregister],
   );
 
-  // Expose a small dev helper so E2E tests can query the current selection
-  // layer mask without coupling to internal refs. This is only a debug aid
-  // and intentionally attached to window to keep test code concise.
-  React.useEffect(() => {
-    try {
-      const win = typeof window !== 'undefined' ? (window as any) : undefined;
-      if (win) {
-        win.__copilot_getSelectionLayerMask = () => {
-          let mask = 0;
-          for (const sel of selectionsRef.current.values()) {
-            const layer = (sel as any).layer;
-            if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
-              mask |= (1 << layer);
-            }
-          }
-          return mask;
-        };
-      }
-    } catch { /* ignore */ }
-    return () => {
-      try {
-        const win = typeof window !== 'undefined' ? (window as any) : undefined;
-        if (win && win.__copilot_getSelectionLayerMask) delete win.__copilot_getSelectionLayerMask;
-      } catch { /* ignore */ }
-    };
-  }, []);
-
   return <Ctx.Provider value={value}>{children ?? null}</Ctx.Provider>;
 }
 

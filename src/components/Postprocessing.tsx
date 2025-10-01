@@ -19,10 +19,7 @@ type Props = {
 
 export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size, invalidate } = useThree();
-  // Debug override: allow tests to disable postprocessing at runtime
-  // by setting `window.__copilot_disablePostprocessing = true`.
-  const debugDisable = typeof window !== 'undefined' && (window as any).__copilot_disablePostprocessing === true;
-  const effectiveEnabled = enabled && !debugDisable;
+  const effectiveEnabled = enabled;
   const composerRef = useRef<EffectComposer | null>(null);
   const composerSetupRef = useRef<ComposerSetupResult | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
@@ -121,29 +118,6 @@ export function Postprocessing({ enabled = false }: Props): null {
         }
       }
       try {
-        // DEV: optional per-frame composer snapshot for automation/debugging.
-        // Enable by setting `window.__copilot_enableComposerSnapshot = true` in the page.
-        try {
-          const win = typeof window !== 'undefined' ? (window as any) : undefined;
-          if (win && win.__copilot_enableComposerSnapshot) {
-            try {
-              const renderer = gl as unknown as WebGLRenderer;
-              const pre = {
-                timestamp: Date.now(),
-                autoClear: !!renderer.autoClear,
-                toneMapping: String(renderer.toneMapping),
-                toneMappingExposure: typeof (renderer as any).toneMappingExposure === 'number' ? (renderer as any).toneMappingExposure : null,
-                outputColorSpace: (renderer.outputColorSpace && (renderer.outputColorSpace as any).name) ? (renderer.outputColorSpace as any).name : String(renderer.outputColorSpace),
-                renderTargetSize: renderTargetRef.current ? { width: renderTargetRef.current.width, height: renderTargetRef.current.height } : null,
-                bloomSelectionCounts: bloomEffectsRef.current.map((e) => (e.selection ? e.selection.size : 0)),
-                bloomBlendOpacities: bloomEffectsRef.current.map((e) => (e.blendMode ? Number(e.blendMode.opacity.value) : null)),
-                fxaaPresent: !!fxaaRef.current,
-              } as const;
-              try { win.__copilot_composerSnapshot = { pre, post: null }; } catch { /* ignore */ }
-            } catch { /* ignore */ }
-          }
-        } catch { /* ignore */ }
-
         // Use BloomProvider helper to enable all bloom selection layers on the camera
         // and restore the previous mask afterwards. This centralizes the logic
         // inside BloomProvider so tests can assert it deterministically.
@@ -156,78 +130,13 @@ export function Postprocessing({ enabled = false }: Props): null {
 
         composer.render(delta);
 
-        // Deterministic marker: indicate that the composer completed a render
-        try { if (typeof window !== 'undefined') (window as any).__copilot_composerRendered = Date.now(); } catch { /* ignore */ }
-
         // Restore camera layers to previous mask so other systems are unaffected
         try {
           camera.layers.mask = prevCameraLayersMask;
         } catch { /* ignore */ }
-
-        // DEV: optional post-composer write test for automation/debugging.
-        // Inject a tiny 3×3 white quad to verify framebuffer writability.
-        // Enable by setting `window.__copilot_injectPostWrite = true` in the page.
-        try {
-          const win = typeof window !== 'undefined' ? (window as any) : undefined;
-          if (win && win.__copilot_injectPostWrite) {
-            try {
-              const renderer = gl as unknown as WebGLRenderer;
-              const canvas = renderer.domElement;
-              const w = canvas.width;
-              const h = canvas.height;
-              // Get star projection from window.__copilot_star_screenPos (set by StarDisk)
-              const screenPos = win.__copilot_star_screenPos;
-              if (screenPos && typeof screenPos.pxX === 'number' && typeof screenPos.pxY === 'number') {
-                const pxX = screenPos.pxX;
-                const pxY = screenPos.pxY;
-                const cssWidth = screenPos.width || 1;
-                const cssHeight = screenPos.height || 1;
-                // Convert CSS pixel coords to device pixel coords
-                const dpr = renderer.getPixelRatio();
-                const deviceX = Math.floor(pxX * dpr);
-                const deviceY = Math.floor((cssHeight - 1 - pxY) * dpr);
-                // Enable scissor to constrain write to 50×50 region (increased for visibility)
-                const writeSize = 50;
-                renderer.setScissorTest(true);
-                renderer.setScissor(deviceX - writeSize / 2, deviceY - writeSize / 2, writeSize, writeSize);
-                renderer.clearColor();
-                // Write opaque magenta for high visibility
-                const prevClearColor = renderer.getClearColor(new Color());
-                const prevClearAlpha = renderer.getClearAlpha();
-                renderer.setClearColor(0xff00ff, 1.0);
-                renderer.clear(true, false, false);
-                renderer.setClearColor(prevClearColor, prevClearAlpha);
-                renderer.setScissorTest(false);
-                // Signal that the post-composer write completed so tests can await this deterministically
-                try { (win as any).__copilot_postWritePerformed = Date.now(); } catch { /* ignore */ }
-                // Log that we executed the write
-                try { console.log('[copilot] post-composer write executed at device', deviceX, deviceY, 'from CSS', pxX, pxY); } catch {}
-              }
-            } catch { /* ignore */ }
-          }
-        } catch { /* ignore */ }
-
-        try {
-          const win = typeof window !== 'undefined' ? (window as any) : undefined;
-          if (win && win.__copilot_enableComposerSnapshot) {
-            try {
-              const post = { timestamp: Date.now(), renderSucceeded: true };
-              try { win.__copilot_composerSnapshot = { ...(win.__copilot_composerSnapshot || {}), post }; } catch { /* ignore */ }
-            } catch { /* ignore */ }
-          }
-        } catch { /* ignore */ }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn('Postprocessing render failed:', err);
-        try {
-          const win = typeof window !== 'undefined' ? (window as any) : undefined;
-          if (win && win.__copilot_enableComposerSnapshot) {
-            try {
-              const post = { timestamp: Date.now(), renderSucceeded: false, error: String(err) };
-              try { win.__copilot_composerSnapshot = { ...(win.__copilot_composerSnapshot || {}), post }; } catch { /* ignore */ }
-            } catch { /* ignore */ }
-          }
-        } catch { /* ignore */ }
       }
     }
     // Return true to skip R3F's default render (composer handles rendering)

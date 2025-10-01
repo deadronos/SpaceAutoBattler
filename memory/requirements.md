@@ -1,5 +1,12 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-10-02 — Star Disk Debug Lockdown (TASK233)
+
+1. **WHEN** the StarDisk component renders without the `copilot_debug=1` query flag, **THE SYSTEM SHALL** avoid registering any debug helpers on `window` and remove any lingering debug overlays so production builds ship without the instrumentation surface. *(Acceptance: Vitest component spec renders `StarDisk` with a clean `window.location.search` and asserts no `window.__copilot_*` properties or `#copilot-star-screen-indicator` exist after mount.)*
+2. **WHEN** the StarDisk component renders with the `copilot_debug=1` query flag, **THE SYSTEM SHALL** register the existing debug helper functions (layer toggles, material overrides) so automation can drive them while the flag remains present. *(Acceptance: Vitest spec sets `window.location.search='?copilot_debug=1'`, renders `StarDisk`, advances a frame, and confirms helper functions are attached.)*
+3. **WHEN** StarDisk mounts without debug enabled, **THE SYSTEM SHALL** remove any pre-existing `window.__copilot_*` helper functions so prior debug sessions cannot force materials or render order in production. *(Acceptance: Vitest spec seeds helper functions before render, mounts without the flag, and verifies they are cleared.)*
+4. **WHEN** StarDisk unmounts or debug mode is disabled, **THE SYSTEM SHALL** remove any debug overlays and helper functions it previously registered to avoid leaking UI artifacts. *(Acceptance: Vitest spec renders with debug enabled, unmounts, and asserts helpers/overlay are removed.)*
+
 ## 2025-09-30 — Rapier Startup Borrow Guard (TASK230)
 
 1. **WHEN** the simulation tick processes deferred world mutations (carrier spawns, queued disposals, projectile instantiation), **THE SYSTEM SHALL** execute those mutations only after all per-frame kinematic writes have completed so Rapier never observes overlapping mutable borrows. *(Acceptance: Vitest regression drives a cold-start tick with queued fighter launches and asserts no Rapier panic is thrown while entities appear after the deferred flush.)*

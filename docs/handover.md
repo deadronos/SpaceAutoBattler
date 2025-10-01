@@ -23,36 +23,38 @@ This note captures the current state of the selective-bloom pipeline work and th
 
 These helpers deliver deterministic signals for automation and are safe while left dormant, but they add surface area and console noise if toggled manually.
 
-## Recommended cleanup steps
+## Cleanup performed in this change
 
-1. **Remove window globals from BloomProvider.**
-	- Delete the dev-only `__copilot_getSelectionLayerMask` attachment.
-	- Update the Playwright spec to derive expectations directly from the page context (e.g., via `page.evaluate` calling `bloomCtx.enableCameraLayers` with an instrumented camera) or assert observable pixels instead.
+The temporary debug helpers described above were removed or migrated to less-invasive mechanisms and the tests were updated accordingly. The following actions were taken in this change set:
 
-2. **Retire composer debug flags.**
-	- Remove the `__copilot_composerRendered` and `__copilot_postWritePerformed` writes from the postprocessing `useFrame` handler.
-	- Simplify the Playwright test to rely on visible output or an exposed testing hook exposed via React context (e.g., promise returned by a testing-only prop).
+1. Removed the dev-only window global from `BloomProvider`:
+   - Deleted `window.__copilot_getSelectionLayerMask`. Tests now avoid querying internal masks and instead assert observable output where possible.
 
-3. **Delete the magenta scissor write path.**
-	- Drop the `__copilot_injectPostWrite` branch and associated logging once the test no longer requires framebuffer manipulation.
-	- Remove `__copilot_enableComposerSnapshot` snapshot support unless debugging proves it still valuable in CI; it presently exists solely for optional instrumentation.
+2. Retired composer debug flags and snapshot instrumentation in `Postprocessing`:
+   - Removed writes to `__copilot_composerRendered` and `__copilot_postWritePerformed` from the composer render loop.
+   - Dropped the `__copilot_enableComposerSnapshot` snapshot creation and consumption code paths.
+   - Removed the `__copilot_injectPostWrite` (magenta scissor write) branch used for framebuffer verification.
 
-4. **Tighten StarDisk instrumentation.**
-	- Remove the `__copilot_star_screenPos` export if the test moves away from pixel sampling.
-	- If positional data remains useful, prefer a testing prop or context rather than a window global.
+3. Tightened `StarDisk` instrumentation:
+   - Stopped writing `__copilot_star_screenPos` to `window`. The on-screen projection remains available via a small DOM overlay element (`#copilot-star-screen-indicator`) with a `data-copilot-screen-pos` attribute so tests can query the visible position without relying on window globals.
+   - Removed the internal GPU read path that wrote `__copilot_star_pixelRead`; tests now perform direct `readPixels` calls from the page context when required.
 
-Each deletion should be accompanied by corresponding test updates so CI remains green. Consider introducing targeted testing utilities (e.g., a composable hook that returns a promise once the composer renders) to preserve determinism without global state.
+4. Tests updated:
+   - `test/playwright/star-visibility.spec.ts` was updated to read the star overlay DOM marker and perform a page-context `readPixels` instead of polling window globals. It no longer sets `__copilot_enableComposerSnapshot`, `__copilot_injectPostWrite`, or queries `__copilot_getSelectionLayerMask`.
+   - Unit tests touching `Postprocessing` and `BloomProvider` were adjusted to remain deterministic without the old debug signals.
 
-## Validation state
+## Validation status
 
-- Last verified with `npx playwright test test/playwright/star-visibility.spec.ts -c playwright.config.cjs --project=firefox --reporter=list` (passes).
-- Unit expectation covered by `test/vitest/bloom-provider-api.spec.ts` (included in standard `npm test`).
-- No additional builds or type checks were necessary for this documentation update.
+Changes were validated locally:
 
-## Suggested next actions
+- TypeScript typecheck: `npx tsc --noEmit` — passed.
+- Unit tests (Vitest): `npm test` — all tests passed after test updates.
+- Playwright tests: the `star-visibility.spec.ts` test was refactored to avoid global reads; it should be run in CI across browser projects to confirm deterministic behavior.
 
-- Schedule the cleanup described above once long-term confidence in the tests is achieved.
-- Run the Playwright suite across Chromium/WebKit after removing globals to confirm determinism without platform-specific hooks.
-- Decide whether the composer snapshot or magenta write offer ongoing value; if so, migrate them behind a formal debug build flag rather than window globals.
+## Suggested follow-ups
 
-Please leave this handover in place (updating as progress continues) so future agents can assess whether the temporary instrumentation is still required.
+- Consider adding a small testing utility (composable hook or React context) that exposes a promise which resolves after the composer completes a render cycle — this provides deterministic test synchronization without window globals.
+- Run the Playwright suite across Chromium and WebKit in CI to ensure the new DOM-based sampling is stable on all platforms.
+- If any of the other `__copilot_*` development helpers (e.g., WebGL log collectors) are no longer needed, migrate them behind a formal debug build flag or remove them in a follow-up cleanup.
+
+Each of these changes is recorded in the git history. If any of the removed hooks are still required for future debugging, prefer a targeted, opt-in debug build flag or a test-only prop/context rather than window globals.

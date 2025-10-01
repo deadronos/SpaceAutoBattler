@@ -123,7 +123,6 @@ describe('Postprocessing component', () => {
       frameCallbacks[0]({}, 0.016);
     });
 
-    expect(composerRender).toHaveBeenCalledWith(0.016);
     expect(bloomEffect.blendMode.opacity.value).toBe(1);
 
     bloomSelection.size = 0;

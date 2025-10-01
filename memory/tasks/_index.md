@@ -12,6 +12,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK233](TASK233-star-disk-debug-lockdown.md) — Locked down StarDisk debug helpers so forced-on-top instrumentation only activates with the explicit `?copilot_debug=1` flag and added Vitest coverage. (2025-10-02)
 - [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224). (2025-09-30)
 - [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage. (2025-09-29)
 - [TASK230](TASK230-rapier-startup-borrow-guard.md) — Deferred Rapier world mutations behind a deterministic queue, shared safe kinematic guards, and refreshed regressions. (2025-09-30)
