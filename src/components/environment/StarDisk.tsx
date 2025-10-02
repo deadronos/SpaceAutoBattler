@@ -691,6 +691,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
         };
       }
 
+      if (!mesh.userData) mesh.userData = {};
       if (!mesh.userData.__copilot_origLayerMask) {
         try {
           mesh.userData.__copilot_origLayerMask = (mesh.layers as any).mask;

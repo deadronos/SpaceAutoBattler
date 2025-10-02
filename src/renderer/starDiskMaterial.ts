@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   ClampToEdgeWrapping,
   DataTexture,
   LinearFilter,
@@ -241,6 +242,10 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
     transparent: true,
     premultipliedAlpha: true,
     depthWrite: false,
+    // Halo is additive: it should add light and glow rather than darken
+    // underlying geometry. This reduces the illusion of transparency on
+    // occluded planets when the halo overlaps them.
+    blending: AdditiveBlending,
     vertexShader,
     fragmentShader,
     uniforms: {
