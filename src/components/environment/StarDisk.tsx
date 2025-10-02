@@ -31,40 +31,7 @@ import {
   computeViewAlignment,
   type ViewAlignment,
 } from '../../renderer/starDiskOrientation.js';
-
-const STAR_TIME_WRAP_SECONDS = 8192;
-
-function wrapStarTime(time: number): { wrapped: number; cycles: number } {
-  if (!Number.isFinite(time)) {
-    return { wrapped: 0, cycles: 0 };
-  }
-  if (!(STAR_TIME_WRAP_SECONDS > 0)) {
-    return { wrapped: time, cycles: 0 };
-  }
-  const period = STAR_TIME_WRAP_SECONDS;
-  const cycles = Math.trunc(time / period);
-  let wrapped = time - cycles * period;
-  if (wrapped < 0) {
-    wrapped += period;
-  }
-  return { wrapped, cycles };
-}
-
-function isCopilotDebugEnabled(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  try {
-    const win = window as Window & { __copilotDebugForce?: boolean };
-    if (win.__copilotDebugForce) {
-      return true;
-    }
-    const search = typeof win.location?.search === 'string' ? win.location.search : '';
-    return /[?&]copilot_debug=1/.test(search);
-  } catch {
-    return false;
-  }
-}
+import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../utils/starDisk.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
