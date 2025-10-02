@@ -2,7 +2,11 @@
 // trisomie21 (THANKS!)
 // My apologies for the ugly code.
 
+#if defined(GL_FRAGMENT_PRECISION_HIGH)
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform float iTime;
 uniform vec3 iResolution;
@@ -119,7 +123,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec3 coord		= vec3( angle, distPolar, time * 0.1 );
 	
 	float newTime1	= abs( snoise( coord + vec3( 0.0, -time * ( 0.35 + brightness * 0.001 ), time * 0.015 ), 15.0 ) );
-	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), time * 0.015 ), 45.0 ) );	
+	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), time * 0.015 ), 45.0 ) );
 	for( int i=1; i<=7; i++ ){
 		float power = pow( 2.0, float(i + 1) );
 		fVal1 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, time * 0.2 ), ( power * ( 10.0 ) * ( newTime1 + 1.0 ) ) );
