@@ -165,6 +165,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec3 attenuatedColor = (diskCore + haloColor) * boundaryAttenuation;
 	fragColor.rgb	= attenuatedColor;
 	fragColor.a		= boundaryAttenuation;
+
+// Premultiply RGB by alpha to match the material's premultipliedAlpha=true setting.
+// This ensures correct blending when composited with opaque geometry (e.g., planets),
+// preventing hard edges, halos, or incorrect occlusion artifacts.
+	fragColor.rgb *= fragColor.a;
 }
 
 void main() {
