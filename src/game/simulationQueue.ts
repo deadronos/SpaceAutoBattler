@@ -8,6 +8,10 @@ export interface RapierStepPanicSnapshot {
   stack?: string;
   timestamp: number;
   totalPanics: number;
+  /** Optional subsystem name when the snapshot was created due to a subsystem failure. */
+  subsystem?: string;
+  /** Optional sanitized state snapshot suitable for diagnostics and logging. */
+  sanitizedState?: unknown;
 }
 
 const MAX_RAPIER_PANIC_SNAPSHOTS = 20;
@@ -76,6 +80,29 @@ export function recordRapierStepPanic(state: GameState, error: unknown): void {
     stack,
     timestamp,
     totalPanics: diagnostics.stepPanics,
+  });
+}
+
+export function recordSubsystemFailure(state: GameState, subsystem: string, error: unknown, sanitizedState?: unknown): void {
+  const diagnostics = state.simulation.rapierDiagnostics;
+  diagnostics.subsystemFailures = (diagnostics.subsystemFailures || 0) + 1;
+
+  const tickIndex = state.simulation.lastTickIndex;
+  diagnostics.lastSubsystemFailureTick = tickIndex;
+  diagnostics.lastSubsystemFailureTimestamp = Date.now();
+  diagnostics.lastSubsystemFailureMessage = error instanceof Error ? error.message : String(error ?? 'Subsystem failure');
+  diagnostics.lastSubsystemFailureStack = error instanceof Error ? error.stack ?? undefined : undefined;
+
+  publishRapierPanicSnapshot({
+    tickIndex,
+    simulationTime: state.time,
+    delta: state.simulation.lastTickDuration,
+    message: diagnostics.lastSubsystemFailureMessage ?? 'Subsystem failure',
+    stack: diagnostics.lastSubsystemFailureStack,
+    timestamp: diagnostics.lastSubsystemFailureTimestamp,
+    totalPanics: diagnostics.subsystemFailures,
+    subsystem,
+    sanitizedState,
   });
 }
 

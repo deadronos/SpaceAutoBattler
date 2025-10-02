@@ -32,6 +32,16 @@ export interface RapierDiagnostics {
   lastStepPanicStack?: string | undefined;
   /** Wall-clock timestamp (ms) when the most recent step panic snapshot was recorded. */
   lastStepPanicTimestamp: number;
+  /** Number of subsystem-level failures encountered since startup. */
+  subsystemFailures: number;
+  /** Most recent tick index when a subsystem failure occurred (-1 if never). */
+  lastSubsystemFailureTick: number;
+  /** Error message captured from the most recent subsystem failure (if available). */
+  lastSubsystemFailureMessage?: string | undefined;
+  /** Stack trace captured from the most recent subsystem failure (if available). */
+  lastSubsystemFailureStack?: string | undefined;
+  /** Wall-clock timestamp (ms) when the most recent subsystem failure was recorded. */
+  lastSubsystemFailureTimestamp: number;
 }
 
 export interface SimulationClock {
