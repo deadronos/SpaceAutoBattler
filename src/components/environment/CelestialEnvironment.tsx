@@ -2,7 +2,7 @@ import { Suspense, useRef } from 'react';
 import { CELESTIAL_ENVIRONMENT } from '../../config/environment.js';
 import { PlanetBody } from './PlanetBody.js';
 import { StarLight } from './StarLight.js';
-import { StarDisk } from './StarDisk.js';
+import { StarSphere } from './StarSphere.js';
 import { ParallaxBillboard } from './ParallaxBillboard.js';
 import { Skysphere } from './Skysphere.js';
 import type { DirectionalLight } from 'three';
@@ -23,14 +23,20 @@ export function CelestialEnvironment(): React.ReactElement {
       )}
       <StarLight config={starLight}>
         {features?.starDisk !== false && (
-          // StarDisk is rendered as a child of StarLight so it's parented in the scene graph
-          <StarDisk key={"StarDisk"}
+          // StarSphere replaces the old StarDisk billboard. It is parented
+          // under StarLight so it can use the StarLight config to compute
+          // its local offset and orientation. Pass through the global
+          // starDisk appearance settings so the two implementations stay
+          // visually consistent.
+          <StarSphere
+            key={"StarSphere"}
             config={starLight}
             enabled={true}
             size={CELESTIAL_ENVIRONMENT.starDisk?.size}
             opacity={CELESTIAL_ENVIRONMENT.starDisk?.opacity}
             distanceMultiplier={CELESTIAL_ENVIRONMENT.starDisk?.distanceMultiplier}
             haze={CELESTIAL_ENVIRONMENT.starDisk?.haze}
+            boundary={CELESTIAL_ENVIRONMENT.starDisk?.boundary}
           />
         )}
       </StarLight>

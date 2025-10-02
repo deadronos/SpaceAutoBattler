@@ -62,3 +62,8 @@ Planned actions
 - 2025-09-29: Completed TASK135 cross-reference reconciliation and ran markdown/link linting across `memory/` and `memory/tasks/`. Updated `memory/tasks/_index.md` to reflect final mappings and removed superseded references.
 
 Memory audit: 2025-09-30 — updated several per-file memories to reflect source changes in `src/game/*`, `src/utils/*`, and renderer asset mappings.
+
+## 2025-10-03 — Memory alignment
+
+- Updated core memory files in `memory/` to match current `src/` implementations (GameState shape, seeded RNG usage, deferred mutation queues, Rapier diagnostics, AI harness shapes, and system ordering). Verified references to `createGameState`, `SeededRng`, `simulationQueue`, and AI harness exports.
+- Follow-up: consider running markdown linting across the memory folder and normalising list styles (bullets) where inconsistencies remain.
