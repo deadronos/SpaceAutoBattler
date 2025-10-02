@@ -27,6 +27,7 @@ import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { useStarBloom } from '../../hooks/useStarBloom.js';
 import { useDevShaderCompile } from '../../hooks/useDevShaderCompile.js';
 import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
+import { StarDiskMesh } from './StarDiskMesh.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -810,32 +811,14 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const showDebugHelpers = debugEnabled;
 
   return (
-    <mesh ref={meshRef} position={localOffset as [number, number, number]}>
-      <circleGeometry args={[defaultSize, 64]} />
-      {shaderMaterial ? (
-        <primitive object={shaderMaterial as unknown as object} attach="material" />
-      ) : (
-        <meshBasicMaterial
-          color={config.color}
-          transparent
-          opacity={defaultOpacity}
-          depthWrite={false}
-          depthTest={true}
-        />
-      )}
-
-      {showDebugHelpers && (
-        <>
-          {/* Dev helper: small red box at the star local origin to validate placement */}
-          <mesh position={[0, 0, 0]} renderOrder={9999}>
-            <boxGeometry args={[Math.max(1, defaultSize * 0.05), Math.max(1, defaultSize * 0.05), Math.max(1, defaultSize * 0.05)]} />
-            <meshBasicMaterial color="red" depthTest={false} depthWrite={false} />
-          </mesh>
-
-          {/* Dev helper: axes for orientation/scale debugging */}
-          <axesHelper args={[Math.max(10, defaultSize * 0.2)]} />
-        </>
-      )}
-    </mesh>
+    <StarDiskMesh
+      meshRef={meshRef}
+      localOffset={localOffset as [number, number, number]}
+      size={defaultSize}
+      shaderMaterial={shaderMaterial}
+      config={config}
+      opacity={defaultOpacity}
+      showDebugHelpers={showDebugHelpers}
+    />
   );
 }
