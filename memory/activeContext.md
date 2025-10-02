@@ -2,6 +2,8 @@
 
 Current focuses (short-term):
 
+- Surface Rapier step panic diagnostics (TASK236) so automation can inspect `simulation.rapierDiagnostics` and `window.__copilot_rapierPanics` when physics panics halt StarDisk animation.
+- Ensure StarDisk retains animated shader output even when the `?copilot_debug=1` flag is present (TASK234) and validate `iTime` progression under debug.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
 - Validate the new projectile/reset queue coverage by sampling Rapier diagnostics after cold-start and reset flows; surface anomalies for follow-up if counters increment.

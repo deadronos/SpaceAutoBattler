@@ -30,12 +30,15 @@ export async function createGameState(): Promise<GameState> {
   // both shapes work and we don't have to update every usage at once.
   const wAny = world as unknown as Record<string, unknown>;
   if (typeof wAny.createEntity === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wAny as any).createEntity = (...args: any[]) => (world as any).add(...args);
   }
   if (typeof wAny.destroyEntity === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wAny as any).destroyEntity = (entity: unknown) => (world as any).remove(entity);
   }
   if (typeof wAny.archetype === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wAny as any).archetype = (...args: any[]) => (world as any).with(...args);
   }
 
@@ -82,6 +85,13 @@ export async function createGameState(): Promise<GameState> {
         lastFailureTick: -1,
         lastGuardTick: -1,
         lastDeferredMutationError: undefined,
+        stepPanics: 0,
+        lastStepPanicTick: -1,
+        lastStepPanicTime: 0,
+        lastStepPanicDelta: 0,
+        lastStepPanicMessage: undefined,
+        lastStepPanicStack: undefined,
+        lastStepPanicTimestamp: 0,
       },
     },
     ai: {

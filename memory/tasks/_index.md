@@ -12,6 +12,9 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK235](TASK235-star-disk-simulation-fallback.md) — Restored star disk animation when the simulation clock stalls without debug helpers enabled. (2025-10-03)
+- [TASK234](TASK234-star-disk-animation.md) — Restored star disk shader animation with debug flag active and added monotonic uniform tests. (2025-10-03)
+- [TASK236](TASK236-rapier-wasm-panic-diagnostics.md) — Captured Rapier step panic diagnostics, wired debug snapshot buffer, and added regression coverage. (2025-10-02)
 - [TASK233](TASK233-star-disk-debug-lockdown.md) — Locked down StarDisk debug helpers so forced-on-top instrumentation only activates with the explicit `?copilot_debug=1` flag and added Vitest coverage. (2025-10-02)
 - [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224). (2025-09-30)
 - [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage. (2025-09-29)

@@ -1,5 +1,21 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-10-02 — Rapier WASM Panic Diagnostics (TASK236)
+
+1. **WHEN** `physicsWorld.step` throws a runtime error during a simulation tick, **THE SYSTEM SHALL** record step panic metadata (message, stack, tick index, simulation time, and delta) inside `simulation.rapierDiagnostics` so debugging tools can recover the failure context. *(Acceptance: Vitest spec forces a step throw and asserts the diagnostics capture message, stack, tick index, time, and delta.)*
+2. **WHEN** a Rapier step panic is captured while Copilot debug mode is active, **THE SYSTEM SHALL** append a timestamped snapshot to `window.__copilot_rapierPanics` (trimming to the most recent 20 entries) to enable runtime inspection from Playwright. *(Acceptance: Vitest spec stubs `window` with the debug flag, triggers a panic, and confirms the snapshot buffer length and newest entry contents.)*
+3. **WHEN** multiple Rapier step panics occur within the same simulation tick, **THE SYSTEM SHALL** increment a cumulative counter while updating `lastStepPanicTick` only once and emitting at most one snapshot for that tick to avoid log floods. *(Acceptance: Vitest spec invokes the recorder twice for the same tick and asserts the counter increments while only one snapshot is stored for that tick.)*
+
+## 2025-10-03 — Star Disk Debug Animation Restoration (TASK234)
+
+1. **WHEN** the StarDisk component renders with the `copilot_debug=1` query flag and no forced basic-material override is registered, **THE SYSTEM SHALL** attach the production `MainSequenceStarMaterial` so the animated shader remains visible during debug sessions. *(Acceptance: Vitest component spec mounts `StarDisk` with the query flag and asserts the mesh material remains a `ShaderMaterial` instance after a render frame.)*
+2. **WHEN** the StarDisk render loop executes, **THE SYSTEM SHALL** advance the shader uniform time monotonically so the `iTime` uniform increases on each frame. *(Acceptance: Vitest spec spies on `updateMainSequenceStarUniforms`, advances multiple frames, and verifies successive calls receive strictly increasing `time` values.)*
+
+## 2025-10-03 — Star Disk Simulation Fallback (TASK235)
+
+1. **WHEN** the StarDisk component renders without the debug flag and the simulation clock fails to advance between frames, **THE SYSTEM SHALL** fall back to frame delta accumulation so the shader `iTime` uniform continues increasing, preventing a static star disk. *(Acceptance: Vitest spec stubs a stationary simulation clock and asserts uniform `time` values strictly increase across frames.)*
+2. **WHEN** the simulation clock resumes advancing, **THE SYSTEM SHALL** realign the shader `iTime` uniform with simulation time within the same frame without introducing discontinuities. *(Acceptance: Vitest spec transitions from the fallback path to an advancing simulation and verifies the next uniform update matches the simulation time and remains ≥ the prior fallback value.)*
+
 ## 2025-10-02 — Star Disk Debug Lockdown (TASK233)
 
 1. **WHEN** the StarDisk component renders without the `copilot_debug=1` query flag, **THE SYSTEM SHALL** avoid registering any debug helpers on `window` and remove any lingering debug overlays so production builds ship without the instrumentation surface. *(Acceptance: Vitest component spec renders `StarDisk` with a clean `window.location.search` and asserts no `window.__copilot_*` properties or `#copilot-star-screen-indicator` exist after mount.)*

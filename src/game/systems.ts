@@ -29,7 +29,11 @@ import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
 import { findNearestEnemy, updateTurrets } from './systems/turrets.js';
 import { resolveProjectiles } from './systems/damage.js';
 import { syncTransforms } from './systems/sync.js';
-import { flushDeferredMutations, flushPostPhysicsMutations } from './simulationQueue.js';
+import {
+  flushDeferredMutations,
+  flushPostPhysicsMutations,
+  recordRapierStepPanic,
+} from './simulationQueue.js';
 
 export { updateDecisionSystem, fireProjectile, findNearestEnemy };
 
@@ -55,7 +59,12 @@ export function updateGame(state: GameState, delta: number): void {
 
   flushDeferredMutations(state);
 
-  state.physicsWorld.step(state.eventQueue);
+  try {
+    state.physicsWorld.step(state.eventQueue);
+  } catch (error) {
+    recordRapierStepPanic(state, error);
+    throw error;
+  }
 
   flushPostPhysicsMutations(state);
 

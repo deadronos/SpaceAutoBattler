@@ -104,6 +104,13 @@ function makeStateStub(): GameState {
         lastFailureTick: -1,
         lastGuardTick: -1,
         lastDeferredMutationError: undefined,
+        stepPanics: 0,
+        lastStepPanicTick: -1,
+        lastStepPanicTime: 0,
+        lastStepPanicDelta: 0,
+        lastStepPanicMessage: undefined,
+        lastStepPanicStack: undefined,
+        lastStepPanicTimestamp: 0,
       },
     },
   } as GameState;

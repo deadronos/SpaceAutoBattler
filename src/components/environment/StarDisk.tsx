@@ -60,6 +60,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const aspectWarnedRef = useRef(false);
   const fallbackTimeRef = useRef(0);
+  const lastUniformTimeRef = useRef(0);
   const baseQuaternion = useMemo<Quaternion>(() => computeStarDiskQuaternion(config.direction), [
     config.direction.x,
     config.direction.y,
@@ -420,14 +421,43 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     const mesh = meshRef.current;
     const meshQuaternion = mesh?.quaternion ?? null;
     const sim = gameState?.simulation;
+    const deltaSeconds = Number.isFinite(delta) && delta > 0 ? delta : 0;
+    const simTime = sim ? sim.lastTickStart + sim.alpha * sim.step : undefined;
+    const hasSimTime = typeof simTime === 'number' && Number.isFinite(simTime);
+    const renderClock = (state as { clock?: { getElapsedTime?: () => number; elapsedTime?: number } }).clock;
+    let renderTime: number | undefined;
+    if (renderClock) {
+      if (typeof renderClock.getElapsedTime === 'function') {
+        renderTime = renderClock.getElapsedTime();
+      } else if (Number.isFinite(renderClock.elapsedTime ?? NaN)) {
+        renderTime = renderClock.elapsedTime as number;
+      }
+    }
+    if (typeof renderTime !== 'number' || !Number.isFinite(renderTime)) {
+      renderTime = undefined;
+    }
+
+    const EPSILON = 1e-6;
+    const fallbackStep = deltaSeconds > 0 ? deltaSeconds : 1 / 60;
+    let candidateTime = Number.NEGATIVE_INFINITY;
+    if (hasSimTime) {
+      candidateTime = Math.max(candidateTime, simTime as number);
+    }
+    if (typeof renderTime === 'number') {
+      candidateTime = Math.max(candidateTime, renderTime);
+    }
+
     let elapsed: number;
-    if (sim) {
-      elapsed = sim.lastTickStart + sim.alpha * sim.step;
+    if (Number.isFinite(candidateTime) && candidateTime > lastUniformTimeRef.current + EPSILON) {
+      elapsed = candidateTime;
       fallbackTimeRef.current = elapsed;
     } else {
-      fallbackTimeRef.current += delta;
+      const base = Math.max(lastUniformTimeRef.current, fallbackTimeRef.current);
+      fallbackTimeRef.current = base + fallbackStep;
       elapsed = fallbackTimeRef.current;
     }
+
+    lastUniformTimeRef.current = elapsed;
     const rawAspect = viewport.aspect;
     const safeAspect = Number.isFinite(rawAspect) && rawAspect > 0 ? rawAspect : 1;
     if (safeAspect > 8 && !aspectWarnedRef.current) {
@@ -838,24 +868,13 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
 
   if (!enabled) return null;
 
-  const forceBasicDevMaterial = debugEnabled;
+  const showDebugHelpers = debugEnabled;
 
   return (
     <mesh ref={meshRef} position={localOffset as [number, number, number]}>
       <circleGeometry args={[defaultSize, 64]} />
       {shaderMaterial ? (
-        !forceBasicDevMaterial ? (
-          <primitive object={shaderMaterial as unknown as object} attach="material" />
-        ) : (
-          <meshBasicMaterial
-            color="#ffffff"
-            transparent={false}
-            opacity={1}
-            depthWrite={false}
-            depthTest={false}
-            side={DoubleSide}
-          />
-        )
+        <primitive object={shaderMaterial as unknown as object} attach="material" />
       ) : (
         <meshBasicMaterial
           color={config.color}
@@ -866,7 +885,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
         />
       )}
 
-      {forceBasicDevMaterial && (
+      {showDebugHelpers && (
         <>
           {/* Dev helper: small red box at the star local origin to validate placement */}
           <mesh position={[0, 0, 0]} renderOrder={9999}>

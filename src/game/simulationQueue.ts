@@ -1,5 +1,84 @@
 import type { GameState, DeferredMutation } from '../types/index.js';
 
+export interface RapierStepPanicSnapshot {
+  tickIndex: number;
+  simulationTime: number;
+  delta: number;
+  message: string;
+  stack?: string;
+  timestamp: number;
+  totalPanics: number;
+}
+
+const MAX_RAPIER_PANIC_SNAPSHOTS = 20;
+
+function isCopilotDebugEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  try {
+    const win = window as Window & { __copilotDebugForce?: boolean };
+    if (win.__copilotDebugForce) {
+      return true;
+    }
+    const search = typeof win.location?.search === 'string' ? win.location.search : '';
+    return /[?&]copilot_debug=1/.test(search);
+  } catch {
+    return false;
+  }
+}
+
+export function publishRapierPanicSnapshot(snapshot: RapierStepPanicSnapshot): void {
+  if (!isCopilotDebugEnabled()) {
+    return;
+  }
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    const win = window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] };
+    const buffer = win.__copilot_rapierPanics ?? [];
+    buffer.push(snapshot);
+    while (buffer.length > MAX_RAPIER_PANIC_SNAPSHOTS) {
+      buffer.shift();
+    }
+    win.__copilot_rapierPanics = buffer;
+  } catch {
+    /* ignore debug exposure errors */
+  }
+}
+
+export function recordRapierStepPanic(state: GameState, error: unknown): void {
+  const diagnostics = state.simulation.rapierDiagnostics;
+  diagnostics.stepPanics += 1;
+
+  const tickIndex = state.simulation.lastTickIndex;
+  if (diagnostics.lastStepPanicTick === tickIndex) {
+    return;
+  }
+
+  const message = error instanceof Error ? error.message : String(error ?? 'Rapier panic');
+  const stack = error instanceof Error ? error.stack ?? undefined : undefined;
+  const timestamp = Date.now();
+
+  diagnostics.lastStepPanicTick = tickIndex;
+  diagnostics.lastStepPanicTime = state.time;
+  diagnostics.lastStepPanicDelta = state.simulation.lastTickDuration;
+  diagnostics.lastStepPanicMessage = message;
+  diagnostics.lastStepPanicStack = stack;
+  diagnostics.lastStepPanicTimestamp = timestamp;
+
+  publishRapierPanicSnapshot({
+    tickIndex,
+    simulationTime: state.time,
+    delta: state.simulation.lastTickDuration,
+    message,
+    stack,
+    timestamp,
+    totalPanics: diagnostics.stepPanics,
+  });
+}
+
 export function enqueueDeferredMutation(state: GameState, op: DeferredMutation): void {
   if (typeof op !== 'function') return;
   if (!state) return;
