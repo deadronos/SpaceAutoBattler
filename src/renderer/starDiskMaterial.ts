@@ -65,9 +65,9 @@ export interface MainSequenceStarUniformUpdate {
 const DEFAULT_RESOLUTION = new Vector3(1, 1, 1);
 
 const DEFAULT_BOUNDARY_SETTINGS: Required<StarDiskBoundaryUniformInput> = Object.freeze({
-  featherStart: 0.92,
-  featherExponent: 2,
-  alphaFloor: 0,
+  featherStart: 0.875,
+  featherExponent: 1.75,
+  alphaFloor: 0.05,
 });
 
 const LEGACY_BOUNDARY_SETTINGS = Object.freeze({
@@ -158,9 +158,9 @@ interface MainSequenceUniformMap {
 }
 
 const DEFAULT_HAZE_SETTINGS: Required<StarDiskHazeUniformInput> = Object.freeze({
-  taperStrength: 0.85,
-  edgeFadeThreshold: 0.3,
-  edgeExponent: 2,
+  taperStrength: 0.9,
+  edgeFadeThreshold: 0.5,
+  edgeExponent: 1.25,
 });
 
 const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
@@ -232,11 +232,14 @@ export function deriveHazeUniform(
 
 export function createMainSequenceStarMaterial(options: MainSequenceStarMaterialOptions): ShaderMaterial {
   const organicTexture = resolveTexture(options.organic, FALLBACK_ORGANIC);
+  organicTexture.anisotropy = 16;
   const noiseTexture = resolveTexture(options.noise, FALLBACK_NOISE);
+  noiseTexture.anisotropy = 16;
 
   const material = new ShaderMaterial({
     name: 'MainSequenceStarMaterial',
     transparent: true,
+    premultipliedAlpha: true,
     depthWrite: false,
     vertexShader,
     fragmentShader,

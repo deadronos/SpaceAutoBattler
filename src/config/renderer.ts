@@ -367,7 +367,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
   bloomThreshold: 0.1,
   bloomSmoothing: 0.001,
   bloomIntensity: 0.1,
-  bloomIgnoreBackground: true,
+  bloomIgnoreBackground: false,
   bloomDefaultGroup: 'default',
   bloomLayerStart: 11,
   bloomGroups: {
@@ -401,9 +401,9 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
       threshold: 1.0,
     },
     star: {
-      intensity: 1.6,
+      intensity: 2.2,
       smoothing: 0.01,
-      threshold: 0.9,
+      threshold: 1.2,
     },
   },
 };
