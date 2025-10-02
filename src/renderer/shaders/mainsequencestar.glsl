@@ -2,7 +2,11 @@
 // trisomie21 (THANKS!)
 // My apologies for the ugly code.
 
+#if defined(GL_FRAGMENT_PRECISION_HIGH)
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform float iTime;
 uniform vec3 iResolution;
