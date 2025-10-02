@@ -117,6 +117,11 @@ function makeStateStub(): GameState {
         lastStepPanicMessage: undefined,
         lastStepPanicStack: undefined,
         lastStepPanicTimestamp: 0,
+        subsystemFailures: 0,
+        lastSubsystemFailureTick: -1,
+        lastSubsystemFailureMessage: undefined,
+        lastSubsystemFailureStack: undefined,
+        lastSubsystemFailureTimestamp: 0,
       },
     },
   } as GameState;

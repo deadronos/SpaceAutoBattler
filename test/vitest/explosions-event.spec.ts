@@ -41,7 +41,7 @@ function makeState(rngValue = 0.42): GameState {
       lastTickDuration: 1 / 20,
       deferredMutations: [],
       postStepMutations: [],
-      rapierDiagnostics: {
+        rapierDiagnostics: {
         deferredMutationFailures: 0,
         guardTrips: 0,
         lastFailureTick: -1,
@@ -53,7 +53,12 @@ function makeState(rngValue = 0.42): GameState {
         lastStepPanicDelta: 0,
         lastStepPanicMessage: undefined,
         lastStepPanicStack: undefined,
-        lastStepPanicTimestamp: 0,
+          lastStepPanicTimestamp: 0,
+          subsystemFailures: 0,
+          lastSubsystemFailureTick: -1,
+          lastSubsystemFailureMessage: undefined,
+          lastSubsystemFailureStack: undefined,
+          lastSubsystemFailureTimestamp: 0,
       },
     },
     ai: undefined as any,
