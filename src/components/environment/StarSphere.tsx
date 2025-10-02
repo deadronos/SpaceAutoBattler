@@ -52,7 +52,13 @@ export function StarSphere({
   const fallbackBoundary = env?.starDisk?.boundary;
   const radius = defaultSize;
 
-  const meshRef = useRef<Mesh | null>(null);
+  // We keep two meshes:
+  // 1) depthMeshRef: a slightly smaller sphere that writes only to the depth
+  //    buffer (colorWrite=false). This ensures scene objects can occlude the
+  //    star even when the visible shader uses additive blending.
+  // 2) visualMeshRef: the visible sphere that receives the star shader.
+  const depthMeshRef = useRef<Mesh | null>(null);
+  const visualMeshRef = useRef<Mesh | null>(null);
   const { gl, camera, size: viewportSize } = useThree();
 
   // Prefer passed-in textures; otherwise use the global loader hook.
@@ -86,15 +92,24 @@ export function StarSphere({
     defaultDistanceMultiplier,
   ]);
 
-  // Assign material to the mesh when it becomes available / changes.
+  // Assign the shader to the visual mesh and ensure it performs depth
+  // testing (so it can be occluded) but does not write depth. The depth
+  // mesh handles writing depth to preserve occlusion for nearer objects.
   useEffect(() => {
-    const mesh = meshRef.current;
+    const mesh = visualMeshRef.current;
     const mat = appliedMaterial;
     if (!mesh) return;
     if (mat) {
       try {
         mesh.material = mat as any;
-        try { (mat as any).needsUpdate = true; } catch { /* ignore */ }
+        try {
+          // Visual shader should test against depth but typically must
+          // not write depth because the dedicated depth-only pass covers
+          // that responsibility.
+          (mat as any).depthTest = true;
+          (mat as any).depthWrite = false;
+          (mat as any).needsUpdate = true;
+        } catch { /* ignore */ }
       } catch {
         /* ignore */
       }
@@ -126,18 +141,32 @@ export function StarSphere({
 
   if (!enabled) return null;
 
+  // Slightly scale the depth-only sphere down to avoid z-fighting with the
+  // visible shader geometry.
+  const DEPTH_SCALE = 0.995;
+
   return (
-    <mesh ref={meshRef} position={localOffset} visible={enabled}>
-      {/* Use a reasonably high-res sphere so shader sampling looks smooth */}
-      <sphereGeometry args={[radius, 64, 32]} />
-      {appliedMaterial ? (
-        <primitive attach="material" object={appliedMaterial as unknown as object} />
-      ) : (
-        // Fallback material for when shader creation fails or is
-        // intentionally omitted. Apply the configured opacity as a
-        // reasonable default for the simpler material.
-        <meshBasicMaterial color="#fff" transparent={true} opacity={defaultOpacity} />
-      )}
-    </mesh>
+    <group position={localOffset}>
+      {/* Depth-only pass: writes to depth but not to color. */}
+      <mesh ref={depthMeshRef} visible={enabled} renderOrder={0}>
+        <sphereGeometry args={[radius * DEPTH_SCALE, 32, 16]} />
+        <meshBasicMaterial color="#000" transparent={true} opacity={1} depthWrite={true} depthTest={true} colorWrite={false} />
+      </mesh>
+
+      {/* Visual pass: shader-driven sphere that tests against depth so
+          nearer scene objects render in front. */}
+      <mesh ref={visualMeshRef} visible={enabled} renderOrder={1}>
+        {/* Use a reasonably high-res sphere so shader sampling looks smooth */}
+        <sphereGeometry args={[radius, 64, 32]} />
+        {appliedMaterial ? (
+          <primitive attach="material" object={appliedMaterial as unknown as object} />
+        ) : (
+          // Fallback material for when shader creation fails or is
+          // intentionally omitted. Use depth-enabled basic material so it
+          // both contributes color and occludes other objects as expected.
+          <meshBasicMaterial color="#fff" transparent={true} opacity={defaultOpacity} depthWrite={true} depthTest={true} />
+        )}
+      </mesh>
+    </group>
   );
 }
