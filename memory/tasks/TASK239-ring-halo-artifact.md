@@ -59,16 +59,26 @@ User reported wedge-shaped dark artifacts visible in the battlefield screenshot 
 
 - [ ] Reproduce and log baseline (screenshots + mesh/material state)
 - [ ] Isolate cause via shader/material toggles
-- [ ] Implement conservative shader changes and expose small debug toggles
-- [ ] Tune renderOrder/depth flags and verify
+- [x] Implement conservative shader changes and expose small debug toggles
+- [x] Tune renderOrder/depth flags and verify
 - [ ] Add visual QA doc and update tests
 - [ ] Cross-GPU validation
+
+**Overall Status:** In Progress - 40%
 
 ## Progress Log
 
 ### 2025-10-02
 
 - Task created and added to `memory/tasks` index. Initial plan documented.
+
+### 2025-10-02 (evening)
+
+- Replaced the procedural ring falloff with multi-lobe blending and a configurable alpha floor to eliminate the dark wedge when
+  composited against the star halo.
+- Added runtime debug hooks for adjusting ring alpha floor/opacity and introduced a dedicated foreground render order to keep
+  rings above the halo layer.
+- Raised the star disk boundary alpha floor to maintain a visible glow when rings occlude the rim.
 
 ---
 

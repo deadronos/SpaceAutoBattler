@@ -23,10 +23,17 @@ export const RENDER_ORDER_OPAQUE_CORE = -10;
 export const RENDER_ORDER_OPAQUE_GEOMETRY = 0;
 
 /**
- * Translucent additive effects (star halos, planetary rings, bloom glows).
- * Drawn last with depthTest=true to respect occlusion while adding light.
+ * Translucent additive effects (star halos, bloom glows).
+ * Drawn late with depthTest=true to respect occlusion while adding light.
  */
 export const RENDER_ORDER_TRANSLUCENT_ADDITIVE = 10;
+
+/**
+ * Foreground translucent elements that must sit above the generic additive layer.
+ * Used for planetary rings so they composite cleanly over the star halo without
+ * risking z-fighting or precision artifacts when render order ties occur.
+ */
+export const RENDER_ORDER_TRANSLUCENT_FOREGROUND = 12;
 
 /**
  * Helper to validate renderOrder assignments during development.
@@ -40,6 +47,7 @@ export function validateRenderOrder(
     RENDER_ORDER_OPAQUE_CORE,
     RENDER_ORDER_OPAQUE_GEOMETRY,
     RENDER_ORDER_TRANSLUCENT_ADDITIVE,
+    RENDER_ORDER_TRANSLUCENT_FOREGROUND,
   ];
 
   if (!validOrders.includes(renderOrder)) {

@@ -17,6 +17,7 @@ Recent changes:
   * Created comprehensive documentation in `docs/star-disk-telemetry.md`
   * Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
   * Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
+- Refined gas giant rings to remove halo wedge artifacts: introduced multi-lobe alpha shaping with a tunable floor, bumped the star disk boundary alpha floor, and gave rings a foreground render order for stable blending when postprocessing is disabled.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { Color, RingGeometry, ShaderMaterial, DoubleSide, AdditiveBlending } from 'three';
+import { RingGeometry, ShaderMaterial, DoubleSide, AdditiveBlending } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { colorFromConfig } from '../../utils/color.js';
-import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
+import { RENDER_ORDER_TRANSLUCENT_FOREGROUND } from '../../renderer/sceneLayerOrder.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -44,6 +44,7 @@ export function PlanetRings({
         uOpacity: { value: opacity },
         uInnerRadius: { value: innerRadius },
         uOuterRadius: { value: outerRadius },
+        uAlphaFloor: { value: 0.028 },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -71,6 +72,7 @@ export function PlanetRings({
         uniform float uOpacity;
         uniform float uInnerRadius;
         uniform float uOuterRadius;
+        uniform float uAlphaFloor;
 
         varying vec2 vUv;
         varying float vRadius;
@@ -80,25 +82,33 @@ export function PlanetRings({
           // position which avoids UV seam discontinuities.
           float normalizedRadius = vRadius;
 
-          // Base alpha shaped as a bell around the middle of the ring
-          float alpha = 1.0 - abs(normalizedRadius - 0.5) * 2.0;
-          // Use monotonic smoothstep ranges (edge0 < edge1)
-          alpha = smoothstep(0.0, 0.4, alpha) * smoothstep(0.6, 1.0, alpha);
+          // Mid-band emphasises the primary dust lane. The abs() based curve is
+          // clamped and eased to prevent abrupt falloffs that produced visible
+          // wedges when composited against the star disk halo.
+          float midBand = 1.0 - abs(normalizedRadius - 0.58) * 2.15;
+          midBand = smoothstep(0.0, 0.7, clamp(midBand, 0.0, 1.0));
 
-          // Fine ringing pattern (radial). Keep this gentle so it doesn't create
-          // high-contrast masks that exacerbate blending issues when composited.
-          float ringPattern = sin(normalizedRadius * 80.0) * 0.03 + 0.97;
-          alpha *= ringPattern;
+          // Soft highlight sitting closer to the outer edge to simulate light
+          // catching the ring. This provides a secondary lobe that breaks up the
+          // otherwise uniform gradient and helps the blend over bright halos.
+          float highlight = smoothstep(0.36, 0.55, normalizedRadius)
+            * (1.0 - smoothstep(0.6, 0.78, normalizedRadius));
 
-          // Edge fade near inner/outer radii — use ordered edges
-          float edgeFade = smoothstep(0.0, 0.05, normalizedRadius) * smoothstep(0.95, 1.0, normalizedRadius);
-          alpha *= edgeFade;
+          // Forward-scattered dust glow. Keeps a gentle contribution on the
+          // outer third of the ring without introducing hard cutoffs.
+          float forwardScatter = smoothstep(0.55, 0.8, normalizedRadius)
+            * (1.0 - smoothstep(0.82, 1.0, normalizedRadius));
 
-          // Ensure a small alpha floor so the ring remains visible and
-          // does not get completely discarded by the compositor. This
-          // reduces the chance the ring vanishes due to tiny numerical
-          // alpha values while still letting the edges fade gracefully.
-          alpha = max(alpha, 0.02);
+          // Feather against the planet occlusion and outer vacuum.
+          float innerFeather = smoothstep(0.02, 0.18, normalizedRadius);
+          float outerFeather = 1.0 - smoothstep(0.82, 1.0, normalizedRadius);
+
+          float ringPattern = sin(normalizedRadius * 90.0) * 0.035 + 0.965;
+          float alpha = ((midBand * 0.75) + (highlight * 0.45) + (forwardScatter * 0.25))
+            * innerFeather * outerFeather * ringPattern;
+
+          alpha = clamp(alpha, 0.0, 1.0);
+          alpha = max(alpha, uAlphaFloor);
           gl_FragColor = vec4(uColor, alpha * uOpacity);
         }
       `,
@@ -142,6 +152,17 @@ export function PlanetRings({
             return { set: false, reason: String(e) };
           }
         };
+        (window as any).__copilot_setRingAlphaFloor = (v: any) => {
+          try {
+            const n = Number(v);
+            if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
+            material.uniforms.uAlphaFloor.value = Math.max(0, Math.min(n, 0.2));
+            try { (material as any).needsUpdate = true; } catch { /* ignore */ }
+            return { set: true, value: material.uniforms.uAlphaFloor.value };
+          } catch (e) {
+            return { set: false, reason: String(e) };
+          }
+        };
       } catch {
         /* swallow debug attach errors */
       }
@@ -160,7 +181,15 @@ export function PlanetRings({
 
   // Rings use additive blending and translucent layer ordering to render after
   // opaque geometry (planets, star cores) while respecting depth occlusion.
-  return <mesh ref={meshRef} geometry={geometry} material={material} rotation={[-Math.PI / 2, 0, 0]} renderOrder={RENDER_ORDER_TRANSLUCENT_ADDITIVE} />;
+  return (
+    <mesh
+      ref={meshRef}
+      geometry={geometry}
+      material={material}
+      rotation={[-Math.PI / 2, 0, 0]}
+      renderOrder={RENDER_ORDER_TRANSLUCENT_FOREGROUND}
+    />
+  );
 }
 
 export default PlanetRings;

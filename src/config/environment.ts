@@ -200,7 +200,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     boundary: {
       featherStart: 0.88,
       featherExponent: 2.4,
-      alphaFloor: 0.02,
+      alphaFloor: 0.05,
     },
   },
   features: {

@@ -2,6 +2,7 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-10-02: Tuned gas giant ring blending (TASK239) — reworked ring alpha shaping with multi-lobe falloff, added a debug-tunable alpha floor, assigned rings a foreground render order, and raised the star disk boundary alpha floor to eliminate halo wedges when postprocessing is disabled. Validation pending (`npx tsc --noEmit`, `npm test`).
 - 2025-10-02: Implemented StarDisk uniform telemetry monitoring (TASK237) — exposed `window.__copilot_starDiskTelemetry` with iTime progression tracking, frame-to-frame deltas, and Rapier panic correlation fields; added Vitest coverage (5 passing tests) and comprehensive documentation in `docs/star-disk-telemetry.md`. Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`.
 - 2025-10-02: Instrumented Rapier step panic diagnostics (TASK236) — extended `RapierDiagnostics` with panic metadata, wrapped `physicsWorld.step` to record + rethrow panics, published `window.__copilot_rapierPanics` snapshots behind debug flag override, refreshed test fixtures, and added Vitest coverage (`rapier-diagnostics`, `update-game-panic`). Validation: `npm run typecheck`, `npm test` (500 passing, existing Three.js warnings).
 - 2025-10-03: Completed TASK235 Star Disk simulation fallback — added `lastUniformTimeRef` guard, delta-based fallback when simulation stalls, expanded Vitest coverage for stalled/resumed clocks, and reran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` plus `npm run typecheck`.
