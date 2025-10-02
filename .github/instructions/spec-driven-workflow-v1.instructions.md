@@ -4,6 +4,10 @@ applyTo: '**'
 ---
 
 # Spec-Driven Workflow — Quick Loop
+Hint: use memory folder ( look at .github/instructions/memory-bank.instructions.md for templates)
+use /memory/designs folder to store designs
+use /memory/tasks folder to store task files
+
 
 Receipt: "Follow a 6-phase spec-driven loop: Analyze → Design → Implement → Validate → Reflect → Handoff."
 
