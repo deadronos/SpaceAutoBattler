@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import type { Mesh } from 'three';
 import {
   Vector3,
@@ -26,6 +26,7 @@ import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { useStarBloom } from '../../hooks/useStarBloom.js';
 import { useDevShaderCompile } from '../../hooks/useDevShaderCompile.js';
+import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -118,20 +119,9 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   useEffect(() => {
     shaderMaterialRef.current = shaderMaterial;
   }, [shaderMaterial]);
-  const removeDebugOverlay = useCallback(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-    const overlay = document.getElementById('copilot-star-screen-indicator');
-    if (overlay) {
-      try {
-        overlay.remove();
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
-
+  
+  const removeDebugOverlay = useDebugOverlayCleanup();
+  
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh || typeof (mesh.quaternion as unknown as { copy?: unknown })?.copy !== 'function') {
@@ -171,56 +161,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
 
   useDevShaderCompile(debugEnabled, meshRef, shaderMaterial, gl, scene, camera);
 
-  useEffect(() => {
-    const clearDebugWindow = () => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-  const win = window as unknown as Record<string, unknown>;
-      const keys = [
-        '__copilot_setStarLayer',
-        '__copilot_resetStarLayer',
-        '__copilot_setStarBasicMaterial',
-        '__copilot_restoreStarMaterial',
-        '__copilot_forceBasicMaterialActive',
-        '__copilot_forceBasicMaterialColor',
-        '__copilot_forceBasicMaterialApplied',
-        '__copilot_starLayerSetAt',
-        '__copilot_starLayerResetAt',
-        '__copilot_forceStarOpaqueRequest',
-        '__copilot_forceStarOpaque',
-        '__copilot_forceStarOpaqueApplied',
-        '__copilot_forceStarOnTopRequest',
-        '__copilot_star_forceOnTop',
-        '__copilot_forceBasicMaterialRequest',
-        '__copilot_restoreOriginalStarMaterial',
-        '__copilot_restoreOriginalStarMaterialApplied',
-        '__copilot_starMeshStatus',
-        '__copilot_rotateCameraDeltaDeg',
-        '__copilot_rotateAppliedAt',
-      ];
-      for (const key of keys) {
-        if (key in win) {
-          try {
-            delete win[key];
-          } catch {
-            win[key] = undefined;
-          }
-        }
-      }
-    };
-
-    if (debugEnabled) {
-      return () => {
-        clearDebugWindow();
-        removeDebugOverlay();
-      };
-    }
-
-    clearDebugWindow();
-    removeDebugOverlay();
-    return undefined;
-  }, [debugEnabled, removeDebugOverlay]);
+  useStarDebug(debugEnabled, removeDebugOverlay);
 
   useStarBloom(meshRef, enabled, shaderMaterial);
 
