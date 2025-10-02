@@ -37,6 +37,7 @@ export function CelestialEnvironment(): React.ReactElement {
             distanceMultiplier={CELESTIAL_ENVIRONMENT.starDisk?.distanceMultiplier}
             haze={CELESTIAL_ENVIRONMENT.starDisk?.haze}
             boundary={CELESTIAL_ENVIRONMENT.starDisk?.boundary}
+            depthCoreRadius={CELESTIAL_ENVIRONMENT.starDisk?.depthCoreRadius}
           />
         )}
       </StarLight>

@@ -26,6 +26,10 @@ interface StarSphereProps {
   noiseTexture?: Texture | null;
   /** Optional pre-built ShaderMaterial to use instead of creating one */
   materialOverride?: ShaderMaterial | null;
+  /** Normalized (0..1) radius for the opaque depth core; overrides derived value */
+  depthCoreRadius?: number;
+  /** Attempt to enable alpha-to-coverage/MSAA for smoother alpha-tested edges when available */
+  enableAlphaToCoverage?: boolean;
 }
 
 export function StarSphere({
@@ -39,6 +43,8 @@ export function StarSphere({
   organicTexture: organicOverride,
   noiseTexture: noiseOverride,
   materialOverride,
+  depthCoreRadius: depthCoreRadiusProp,
+  enableAlphaToCoverage = true,
 }: StarSphereProps): React.ReactElement | null {
   // Reuse global environment defaults where present so this sphere matches
   // the existing StarDisk configuration. Treat `starDisk.size` as a radius
@@ -103,9 +109,6 @@ export function StarSphere({
       try {
         mesh.material = mat as any;
         try {
-          // Visual shader should test against depth but typically must
-          // not write depth because the dedicated depth-only pass covers
-          // that responsibility.
           (mat as any).depthTest = true;
           (mat as any).depthWrite = false;
           (mat as any).needsUpdate = true;
@@ -115,6 +118,71 @@ export function StarSphere({
       }
     }
   }, [appliedMaterial]);
+
+  // Precompute a depth core radius used by the shader and the depth
+  // geometry. This is derived from either the explicit prop or the
+  // configured boundary.featherStart with a conservative offset.
+  const boundaryStart = Number(boundary?.featherStart ?? fallbackBoundary?.featherStart ?? 0.88);
+  const derivedDepthCoreRadius = depthCoreRadiusProp !== undefined
+    ? Math.min(Math.max(Number(depthCoreRadiusProp), 0), 1)
+    : Math.min(Math.max(boundaryStart - 0.12, 0.02), 0.95);
+  const depthMeshNormalized = Math.min(Math.max(derivedDepthCoreRadius, 0.02), 0.99);
+  const depthMeshRadius = radius * depthMeshNormalized * 0.995;
+
+  // Always use a simple depth-only basic material for the depth pass. This
+  // avoids shader-clone artifacts and keeps the depth pre-pass predictable.
+  const depthMaterialRef = useRef<MeshBasicMaterial | null>(null);
+  useEffect(() => {
+    const depthMesh = depthMeshRef.current;
+    if (!depthMesh) return;
+    // Dispose previous material if we created one
+    const prev = depthMaterialRef.current as any;
+    if (prev && prev.dispose) {
+      try { prev.dispose(); } catch { /* ignore */ }
+    }
+    const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true });
+    // Mark that this material should not write into the color buffer when
+    // the renderer supports the feature (we set the flag here for the
+    // renderer to honor at draw time).
+    (basic as any).colorWrite = false;
+    depthMaterialRef.current = basic;
+    try { depthMesh.material = basic as any; } catch { /* ignore */ }
+    return () => {
+      const p = depthMaterialRef.current as any;
+      if (p && p.dispose) {
+        try { p.dispose(); } catch { /* ignore */ }
+      }
+      depthMaterialRef.current = null;
+    };
+  }, [radius]);
+
+  // Attempt to enable alpha-to-coverage on the raw GL context and toggle
+  // material.alphaToCoverage when supported. This can reduce aliasing on
+  // alpha-tested edges when the browser's MSAA is active.
+  useEffect(() => {
+    if (!enableAlphaToCoverage) return;
+    try {
+      const raw = (gl as any).getContext ? (gl as any).getContext() : null;
+      if (raw && typeof raw.enable === 'function' && typeof (raw as any).SAMPLE_ALPHA_TO_COVERAGE !== 'undefined') {
+        try { raw.enable((raw as any).SAMPLE_ALPHA_TO_COVERAGE); } catch { /* ignore */ }
+      }
+    } catch {
+      /* ignore */
+    }
+    // Also try to enable alphaToCoverage on the shader material if the
+    // runtime/three.js version exposes the property.
+    try {
+      if (appliedMaterial) {
+        try { (appliedMaterial as any).alphaToCoverage = true; } catch { /* ignore */ }
+      }
+      const depthMat = depthMaterialRef.current;
+      if (depthMat) {
+        try { (depthMat as any).alphaToCoverage = true; } catch { /* ignore */ }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [gl, appliedMaterial, enableAlphaToCoverage]);
 
   // Update shader uniforms each frame. Includes time, resolution, textures,
   // camera roll and optional haze/boundary settings mirroring StarDisk.
@@ -136,6 +204,7 @@ export function StarSphere({
       viewAlignment: { x: 0, y: 0, z: 1 },
       haze: haze ?? fallbackHaze,
       boundary: boundary ?? fallbackBoundary,
+      depthCoreRadius: derivedDepthCoreRadius,
     });
   });
 
@@ -143,21 +212,25 @@ export function StarSphere({
 
   // Slightly scale the depth-only sphere down to avoid z-fighting with the
   // visible shader geometry.
-  const DEPTH_SCALE = 0.995;
+  const DEPTH_SCALE = 0.92;
 
   return (
     <group position={localOffset}>
-      {/* Depth-only pass: writes to depth but not to color. */}
+      {/* Depth-only pass: writes to depth but not to color. Use a simple
+          depth-only basic material to avoid cloning the shader and the
+          artifacts it previously produced. The depth geometry is slightly
+          smaller than the visual sphere so the visible halo can overlap
+          without z-fighting. */}
       <mesh ref={depthMeshRef} visible={enabled} renderOrder={0}>
-        <sphereGeometry args={[radius * DEPTH_SCALE, 32, 16]} />
-        <meshBasicMaterial color="#000" transparent={true} opacity={1} depthWrite={true} depthTest={true} colorWrite={false} />
+        <sphereGeometry args={[depthMeshRadius, 128, 64]} />
       </mesh>
 
       {/* Visual pass: shader-driven sphere that tests against depth so
-          nearer scene objects render in front. */}
+          nearer scene objects render in front. Increased geometry
+          segments reduce visible faceting and sampling artifacts. */}
       <mesh ref={visualMeshRef} visible={enabled} renderOrder={1}>
-        {/* Use a reasonably high-res sphere so shader sampling looks smooth */}
-        <sphereGeometry args={[radius, 64, 32]} />
+        {/* Use a higher-res sphere so shader sampling looks smooth */}
+        <sphereGeometry args={[radius, 128, 64]} />
         {appliedMaterial ? (
           <primitive attach="material" object={appliedMaterial as unknown as object} />
         ) : (

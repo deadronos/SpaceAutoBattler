@@ -21,6 +21,10 @@ uniform float iStarNorth;
 uniform vec3 iViewAlignment;
 uniform vec3 iHazeParams;
 uniform vec4 iBoundaryFeather;
+// Normalized radius (0..1) inside which we force the star to be fully opaque.
+// This helps create a stable depth core used for occlusion (depth pre-pass)
+// while allowing the outer halo to remain translucent.
+uniform float iDepthCoreRadius;
 
 // Geometry-provided UVs for the billboard (stable in object space)
 varying vec2 vUv;
@@ -164,7 +168,16 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec3 haloColor = corona * orange + starGlow * orangeRed;
 	vec3 attenuatedColor = (diskCore + haloColor) * boundaryAttenuation;
 	fragColor.rgb	= attenuatedColor;
-	fragColor.a		= boundaryAttenuation;
+	// If a depth-core radius is provided, smoothly push alpha toward 1.0
+	// for regions inside that radius. This creates a stable opaque core
+	// that depth pre-passes can rely on without producing a hard seam.
+	float planeRadius = length(compensatedPlane);
+	float coreFade = 1.0;
+	if (iDepthCoreRadius > 0.0) {
+	  float edge = 0.02; // soft transition width in normalized plane space
+	  coreFade = smoothstep(iDepthCoreRadius + edge, iDepthCoreRadius, planeRadius);
+	}
+	fragColor.a		= mix(boundaryAttenuation, 1.0, coreFade);
 
 // Premultiply RGB by alpha to match the material's premultipliedAlpha=true setting.
 // This ensures correct blending when composited with opaque geometry (e.g., planets),

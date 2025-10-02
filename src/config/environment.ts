@@ -88,6 +88,8 @@ export interface StarDiskConfig {
   haze?: StarDiskHazeConfig;
   /** Optional boundary feather configuration for alpha roll-off. */
   boundary?: StarDiskBoundaryConfig;
+  /** Normalized (0..1) radius to define an opaque core for depth pre-pass. */
+  depthCoreRadius?: number;
 }
 
 export interface CelestialEnvironmentConfig {
@@ -202,6 +204,10 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       featherExponent: 2.4,
       alphaFloor: 0.02,
     },
+    // Normalized radius for the opaque core used for depth occlusion. A
+    // conservative default derived from boundary.featherStart ensures the
+    // depth pass hides the star's interior while preserving the halo.
+    depthCoreRadius: 0.76,
   },
   features: {
     skysphere: true,
