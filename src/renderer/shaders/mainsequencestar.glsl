@@ -22,6 +22,8 @@ uniform vec3 iViewAlignment;
 uniform vec3 iHazeParams;
 uniform vec4 iBoundaryFeather;
 
+const float STAR_TIME_WRAP_SECONDS = 8192.0;
+
 // Geometry-provided UVs for the billboard (stable in object space)
 varying vec2 vUv;
 
@@ -91,7 +93,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	
 	vec3 orange		= vec3( 0.8, 0.65, 0.3 );
 	vec3 orangeRed		= vec3( 0.8, 0.35, 0.1 );
-	float time	= iTime * 0.1;
+	float loopedTime = mod(iTime, STAR_TIME_WRAP_SECONDS);
+	float time	= loopedTime * 0.1;
+	float timeLow	= loopedTime * 0.01;
+	float timeSlow	= loopedTime * 0.015;
+	float timeFast	= loopedTime * 0.2;
 
 	vec2 planeLocal = vUv * 2.0 - 1.0;
 	float cosNorth = cos(-iStarNorth);
@@ -120,14 +126,14 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	// Compute polar angle and compensate camera roll so the screen-space noise basis doesn't spin
 	float angle		= (atan( p.x, p.y ) - iCameraRoll)/6.2832;
 	float distPolar		= length(p);
-	vec3 coord		= vec3( angle, distPolar, time * 0.1 );
+	vec3 coord		= vec3( angle, distPolar, timeLow );
 	
-	float newTime1	= abs( snoise( coord + vec3( 0.0, -time * ( 0.35 + brightness * 0.001 ), time * 0.015 ), 15.0 ) );
-	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), time * 0.015 ), 45.0 ) );	
+	float newTime1	= abs( snoise( coord + vec3( 0.0, -time * ( 0.35 + brightness * 0.001 ), timeSlow ), 15.0 ) );
+	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), timeSlow ), 45.0 ) );	
 	for( int i=1; i<=7; i++ ){
 		float power = pow( 2.0, float(i + 1) );
-		fVal1 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, time * 0.2 ), ( power * ( 10.0 ) * ( newTime1 + 1.0 ) ) );
-		fVal2 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, time * 0.2 ), ( power * ( 25.0 ) * ( newTime2 + 1.0 ) ) );
+		fVal1 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, timeFast ), ( power * ( 10.0 ) * ( newTime1 + 1.0 ) ) );
+		fVal2 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, timeFast ), ( power * ( 25.0 ) * ( newTime2 + 1.0 ) ) );
 	}
 	
 	float corona		= pow( fVal1 * max( 1.1 - fade, 0.0 ), 2.0 ) * 50.0;

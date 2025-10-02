@@ -2,7 +2,7 @@
 
 **Status:** Completed
 **Added:** 2025-10-03
-**Updated:** 2025-10-03
+**Updated:** 2025-10-04
 
 ## Original Request
 
@@ -29,6 +29,7 @@ Star disk shader renders again but appears frozen even though debug telemetry sh
 | 1.1 | Confirm fragment precision qualifier and identify precision limits | Completed    | 2025-10-03 | Shader sets `mediump`; medium precision likely causes freeze. |
 | 1.2 | Apply guarded `highp` precision update                              | Completed    | 2025-10-03 | Switched shader to prefer `highp` with fallback to `mediump`. |
 | 1.3 | Run targeted tests / validation                                     | Completed    | 2025-10-03 | Ran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` and `npx tsc --noEmit`. |
+| 1.4 | Rebase shader time uniforms to prevent float precision stalls       | Completed    | 2025-10-04 | Wrap `iTime` with long-period modulo and reuse scaled derivatives. |
 
 ## Progress Log
 
@@ -37,3 +38,9 @@ Star disk shader renders again but appears frozen even though debug telemetry sh
 - Documented task, analyzed shader precision, and noted plan to favor `highp` with fallback.
 - Updated shader precision guards to request `highp` when available, keeping `mediump` as fallback.
 - Executed targeted Vitest suite and type checks to confirm StarDisk behaviours remain stable.
+
+### 2025-10-04
+
+- Observed animation stall persisting despite upgraded precision; concluded long-running sessions overflow time-based noise arguments.
+- Wrapped `iTime` with a multi-hour modulo and refactored downstream derivatives (`timeLow`, `timeSlow`, `timeFast`) to keep shader inputs numerically stable.
+- Validated Vitest coverage and type checks still pass after time rebasing adjustments.
