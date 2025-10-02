@@ -10,7 +10,6 @@ import {
 import { useFrame, useThree } from '@react-three/fiber';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useOptionalGameState } from '../../game/context.js';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import {
   createMainSequenceStarMaterial,
   updateMainSequenceStarUniforms,
@@ -25,6 +24,7 @@ import {
 import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../utils/starDisk.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
+import { useStarBloom } from '../../hooks/useStarBloom.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -274,7 +274,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     return undefined;
   }, [debugEnabled, removeDebugOverlay]);
 
-  useBloomRegistration(meshRef, { group: 'star', active: enabled && Boolean(shaderMaterial) });
+  useStarBloom(meshRef, enabled, shaderMaterial);
 
   // Make the disk always face the camera (billboard behavior)
   useFrame((state, delta) => {
