@@ -1,70 +1,33 @@
-import { useMemo, useRef, useEffect, useCallback } from 'react';
-import type { Mesh, Texture } from 'three';
+import { useMemo, useRef, useEffect } from 'react';
+import type { Mesh } from 'three';
 import {
   Vector3,
   ShaderMaterial,
-  RepeatWrapping,
-  ClampToEdgeWrapping,
-  LinearFilter,
-  LinearMipmapLinearFilter,
-  NearestFilter,
-  SRGBColorSpace,
   Quaternion,
   MeshBasicMaterial,
   DoubleSide,
 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useOptionalGameState } from '../../game/context.js';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import {
   createMainSequenceStarMaterial,
   updateMainSequenceStarUniforms,
-  disposeMainSequenceStarMaterial,
   type MainSequenceStarUniformUpdate,
 } from '../../renderer/starDiskMaterial.js';
-import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../../assets/starDiskTextures.js';
 import {
   computeStarDiskQuaternion,
   createViewAlignmentScratch,
   computeViewAlignment,
   type ViewAlignment,
 } from '../../renderer/starDiskOrientation.js';
-
-const STAR_TIME_WRAP_SECONDS = 8192;
-
-function wrapStarTime(time: number): { wrapped: number; cycles: number } {
-  if (!Number.isFinite(time)) {
-    return { wrapped: 0, cycles: 0 };
-  }
-  if (!(STAR_TIME_WRAP_SECONDS > 0)) {
-    return { wrapped: time, cycles: 0 };
-  }
-  const period = STAR_TIME_WRAP_SECONDS;
-  const cycles = Math.trunc(time / period);
-  let wrapped = time - cycles * period;
-  if (wrapped < 0) {
-    wrapped += period;
-  }
-  return { wrapped, cycles };
-}
-
-function isCopilotDebugEnabled(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  try {
-    const win = window as Window & { __copilotDebugForce?: boolean };
-    if (win.__copilotDebugForce) {
-      return true;
-    }
-    const search = typeof win.location?.search === 'string' ? win.location.search : '';
-    return /[?&]copilot_debug=1/.test(search);
-  } catch {
-    return false;
-  }
-}
+import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../utils/starDisk.js';
+import { useStarTextures } from '../../hooks/useStarTextures.js';
+import { useStarMaterial } from '../../hooks/useStarMaterial.js';
+import { useStarBloom } from '../../hooks/useStarBloom.js';
+import { useDevShaderCompile } from '../../hooks/useDevShaderCompile.js';
+import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
+import { StarDiskMesh } from './StarDiskMesh.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -91,7 +54,6 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const fallbackHaze = env?.starDisk?.haze;
   const fallbackBoundary = env?.starDisk?.boundary;
   const meshRef = useRef<Mesh>(null);
-  const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const aspectWarnedRef = useRef(false);
   const fallbackTimeRef = useRef(0);
   const lastUniformTimeRef = useRef(0);
@@ -144,50 +106,23 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
 
   const gameState = useOptionalGameState();
   const { gl, scene, camera } = useThree();
-  const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<StarDiskTextureKey, Texture | undefined>;
-  const organicTexture = starTextures.organic;
-  const noiseTexture = starTextures.noiseRgba;
+  const { organic: organicTexture, noise: noiseTexture } = useStarTextures();
   const debugEnabled = useMemo(() => {
     if (typeof window === 'undefined') {
       return false;
     }
     return /[?&]copilot_debug=1/.test(window.location.search);
   }, []);
-  const removeDebugOverlay = useCallback(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-    const overlay = document.getElementById('copilot-star-screen-indicator');
-    if (overlay) {
-      try {
-        overlay.remove();
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
+  const shaderMaterial = useStarMaterial(debugEnabled);
+  const shaderMaterialRef = useRef<ShaderMaterial | null>(shaderMaterial);
 
+  // Update ref when material changes
   useEffect(() => {
-    const maxAniso = Math.min(8, gl.capabilities.getMaxAnisotropy());
-    if (organicTexture) {
-      organicTexture.wrapS = RepeatWrapping;
-      organicTexture.wrapT = ClampToEdgeWrapping;
-      organicTexture.minFilter = LinearMipmapLinearFilter;
-      organicTexture.magFilter = LinearFilter;
-      organicTexture.anisotropy = maxAniso;
-      organicTexture.colorSpace = SRGBColorSpace;
-      organicTexture.needsUpdate = true;
-    }
-    if (noiseTexture) {
-      noiseTexture.wrapS = RepeatWrapping;
-      noiseTexture.wrapT = RepeatWrapping;
-      noiseTexture.minFilter = NearestFilter;
-      noiseTexture.magFilter = NearestFilter;
-      noiseTexture.generateMipmaps = false;
-      noiseTexture.needsUpdate = true;
-    }
-  }, [gl, organicTexture, noiseTexture]);
-
+    shaderMaterialRef.current = shaderMaterial;
+  }, [shaderMaterial]);
+  
+  const removeDebugOverlay = useDebugOverlayCleanup();
+  
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh || typeof (mesh.quaternion as unknown as { copy?: unknown })?.copy !== 'function') {
@@ -202,54 +137,6 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
     return direction.multiplyScalar(-distance).toArray();
   }, [config.direction.x, config.direction.y, config.direction.z, config.distance, defaultDistanceMultiplier]);
-
-  const shaderMaterial = useMemo<ShaderMaterial | null>(() => {
-    try {
-      const mat = createMainSequenceStarMaterial({
-        organic: null,
-        noise: null,
-      });
-      shaderMaterialRef.current = mat;
-      try {
-        if (typeof localStorage !== 'undefined') { localStorage.setItem('copilot_star_material_created', String(Date.now())); }
-      } catch { void 0; }
-      try { if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-star-material-created', '1'); } } catch { void 0; }
-      // DEV: create a transient DOM indicator when the material object is
-      // created so developers can visually confirm that the material was
-      // instantiated (useful when console output is noisy). Enabled in
-      // development or when the debug query param is present.
-      try {
-        if (debugEnabled && typeof document !== 'undefined') {
-          const id = 'copilot-star-material-created-indicator';
-          if (!document.getElementById(id)) {
-            const el = document.createElement('div');
-            el.id = id;
-            el.textContent = 'STAR MATERIAL CREATED';
-            el.style.cssText = 'position:fixed; right:12px; bottom:48px; padding:6px 10px; background:rgba(16,163,127,0.95); color:white; font-size:12px; border-radius:6px; z-index:9999999;';
-            document.body.appendChild(el);
-            setTimeout(() => { try { el.remove(); } catch { /* ignore */ } }, 4000);
-          }
-        }
-      } catch (err) {
-        // swallow debug-only errors
-      }
-      return mat;
-    } catch (error) {
-      console.warn('[StarDisk] Failed to create main sequence star material. Falling back to basic material.', error);
-      shaderMaterialRef.current = null;
-      return null;
-    }
-  }, [debugEnabled]);
-
-  useEffect(() => {
-    const mat = shaderMaterial;
-    return () => {
-      if (shaderMaterialRef.current === mat) {
-        shaderMaterialRef.current = null;
-      }
-      disposeMainSequenceStarMaterial(mat);
-    };
-  }, [shaderMaterial]);
 
   // Ensure the shader material is explicitly assigned to the mesh when
   // available. This guards against render-order or attach timing issues
@@ -273,113 +160,11 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     }
   }, [shaderMaterial]);
 
-  // DEV: Force the renderer to compile the scene/camera once so the
-  // ShaderMaterial's onBeforeCompile hook runs and we can capture
-  // program/link logs (useful when debugging invisible shaders).
-  // This is intentionally gated to development builds only.
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') {
-      return;
-    }
+  useDevShaderCompile(debugEnabled, meshRef, shaderMaterial, gl, scene, camera);
 
-    // Enable in development builds only when explicit debug flag is present.
-    if (!debugEnabled) {
-      return;
-    }
+  useStarDebug(debugEnabled, removeDebugOverlay);
 
-    // If no material or no mesh, there's nothing to compile.
-    if (!shaderMaterial || !meshRef.current) {
-      return;
-    }
-
-    // Poll until the mesh is parented into the scene (or until we give up).
-    let attempts = 0;
-    const pollInterval = 150; // ms
-    const maxAttempts = 20; // ~3s of retries
-    const intervalId = setInterval(() => {
-      attempts += 1;
-      const mesh = meshRef.current;
-      if (mesh && mesh.parent) {
-        try {
-          if (scene && camera && typeof gl.compile === 'function') {
-            (gl as any).compile(scene, camera);
-            // eslint-disable-next-line no-console
-            console.info('[StarDisk][DEV] forced renderer.compile(scene, camera) to trigger shader compilation');
-          } else {
-            // eslint-disable-next-line no-console
-            console.warn('[StarDisk][DEV] Unable to find scene/camera for forced compile');
-          }
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn('[StarDisk][DEV] Forced compile failed', err);
-        }
-        clearInterval(intervalId);
-        return;
-      }
-      if (attempts >= maxAttempts) {
-        // eslint-disable-next-line no-console
-        console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile');
-        clearInterval(intervalId);
-      }
-    }, pollInterval);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [shaderMaterial, gl, scene, camera, debugEnabled]);
-
-  useEffect(() => {
-    const clearDebugWindow = () => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-  const win = window as unknown as Record<string, unknown>;
-      const keys = [
-        '__copilot_setStarLayer',
-        '__copilot_resetStarLayer',
-        '__copilot_setStarBasicMaterial',
-        '__copilot_restoreStarMaterial',
-        '__copilot_forceBasicMaterialActive',
-        '__copilot_forceBasicMaterialColor',
-        '__copilot_forceBasicMaterialApplied',
-        '__copilot_starLayerSetAt',
-        '__copilot_starLayerResetAt',
-        '__copilot_forceStarOpaqueRequest',
-        '__copilot_forceStarOpaque',
-        '__copilot_forceStarOpaqueApplied',
-        '__copilot_forceStarOnTopRequest',
-        '__copilot_star_forceOnTop',
-        '__copilot_forceBasicMaterialRequest',
-        '__copilot_restoreOriginalStarMaterial',
-        '__copilot_restoreOriginalStarMaterialApplied',
-        '__copilot_starMeshStatus',
-        '__copilot_rotateCameraDeltaDeg',
-        '__copilot_rotateAppliedAt',
-      ];
-      for (const key of keys) {
-        if (key in win) {
-          try {
-            delete win[key];
-          } catch {
-            win[key] = undefined;
-          }
-        }
-      }
-    };
-
-    if (debugEnabled) {
-      return () => {
-        clearDebugWindow();
-        removeDebugOverlay();
-      };
-    }
-
-    clearDebugWindow();
-    removeDebugOverlay();
-    return undefined;
-  }, [debugEnabled, removeDebugOverlay]);
-
-  useBloomRegistration(meshRef, { group: 'star', active: enabled && Boolean(shaderMaterial) });
+  useStarBloom(meshRef, enabled, shaderMaterial);
 
   // Make the disk always face the camera (billboard behavior)
   useFrame((state, delta) => {
@@ -1026,32 +811,14 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const showDebugHelpers = debugEnabled;
 
   return (
-    <mesh ref={meshRef} position={localOffset as [number, number, number]}>
-      <circleGeometry args={[defaultSize, 64]} />
-      {shaderMaterial ? (
-        <primitive object={shaderMaterial as unknown as object} attach="material" />
-      ) : (
-        <meshBasicMaterial
-          color={config.color}
-          transparent
-          opacity={defaultOpacity}
-          depthWrite={false}
-          depthTest={true}
-        />
-      )}
-
-      {showDebugHelpers && (
-        <>
-          {/* Dev helper: small red box at the star local origin to validate placement */}
-          <mesh position={[0, 0, 0]} renderOrder={9999}>
-            <boxGeometry args={[Math.max(1, defaultSize * 0.05), Math.max(1, defaultSize * 0.05), Math.max(1, defaultSize * 0.05)]} />
-            <meshBasicMaterial color="red" depthTest={false} depthWrite={false} />
-          </mesh>
-
-          {/* Dev helper: axes for orientation/scale debugging */}
-          <axesHelper args={[Math.max(10, defaultSize * 0.2)]} />
-        </>
-      )}
-    </mesh>
+    <StarDiskMesh
+      meshRef={meshRef}
+      localOffset={localOffset as [number, number, number]}
+      size={defaultSize}
+      shaderMaterial={shaderMaterial}
+      config={config}
+      opacity={defaultOpacity}
+      showDebugHelpers={showDebugHelpers}
+    />
   );
 }
