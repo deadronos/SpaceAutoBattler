@@ -32,6 +32,22 @@ import {
   type ViewAlignment,
 } from '../../renderer/starDiskOrientation.js';
 
+function isCopilotDebugEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  try {
+    const win = window as Window & { __copilotDebugForce?: boolean };
+    if (win.__copilotDebugForce) {
+      return true;
+    }
+    const search = typeof win.location?.search === 'string' ? win.location.search : '';
+    return /[?&]copilot_debug=1/.test(search);
+  } catch {
+    return false;
+  }
+}
+
 interface StarDiskProps {
   config: StarLightConfig;
   /** Size of the star disk billboard in world units */
@@ -61,6 +77,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const aspectWarnedRef = useRef(false);
   const fallbackTimeRef = useRef(0);
   const lastUniformTimeRef = useRef(0);
+  const previousUniformTimeRef = useRef(0);
   const baseQuaternion = useMemo<Quaternion>(() => computeStarDiskQuaternion(config.direction), [
     config.direction.x,
     config.direction.y,
@@ -214,6 +231,28 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
       }
       disposeMainSequenceStarMaterial(mat);
     };
+  }, [shaderMaterial]);
+
+  // Ensure the shader material is explicitly assigned to the mesh when
+  // available. This guards against render-order or attach timing issues
+  // where the <primitive attach="material" /> might not have executed
+  // before the first frame update.
+  useEffect(() => {
+    const mesh = meshRef.current;
+    const mat = shaderMaterial;
+    if (mesh && mat) {
+      try {
+        if (mesh.material !== (mat as any)) {
+          mesh.material = mat as any;
+          // mark needsUpdate to ensure renderer picks up any shader swap
+          try { (mat as any).needsUpdate = true; } catch {
+            /* ignore */
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
   }, [shaderMaterial]);
 
   // DEV: Force the renderer to compile the scene/camera once so the
@@ -458,6 +497,56 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     }
 
     lastUniformTimeRef.current = elapsed;
+
+    // DEV: publish StarDisk uniform telemetry for debugging and correlation with Rapier diagnostics
+    if (isCopilotDebugEnabled()) {
+      const now = Date.now();
+      const deltaTime = elapsed - previousUniformTimeRef.current;
+      const isProgressing = deltaTime > 0;
+      const rapierDiagnostics = gameState?.simulation?.rapierDiagnostics;
+      
+      try {
+        const debugWin = window as Window & {
+          __copilot_starDiskTelemetry?: {
+            iTime: number;
+            deltaTime: number;
+            isProgressing: boolean;
+            timestamp: number;
+            frameCount: number;
+            simTime?: number;
+            renderTime?: number;
+            usedFallback: boolean;
+            rapierPanicCount?: number;
+            lastRapierPanicTick?: number;
+            ticksSinceLastPanic?: number;
+          };
+        };
+        
+        const prevTelemetry = debugWin.__copilot_starDiskTelemetry;
+        const frameCount = (prevTelemetry?.frameCount ?? 0) + 1;
+        
+        debugWin.__copilot_starDiskTelemetry = {
+          iTime: elapsed,
+          deltaTime,
+          isProgressing,
+          timestamp: now,
+          frameCount,
+          simTime: hasSimTime ? simTime as number : undefined,
+          renderTime,
+          usedFallback: !Number.isFinite(candidateTime) || candidateTime <= lastUniformTimeRef.current + EPSILON,
+          rapierPanicCount: rapierDiagnostics?.stepPanics,
+          lastRapierPanicTick: rapierDiagnostics?.lastStepPanicTick !== -1 ? rapierDiagnostics?.lastStepPanicTick : undefined,
+          ticksSinceLastPanic: rapierDiagnostics && rapierDiagnostics.lastStepPanicTick !== -1
+            ? (sim?.lastTickIndex ?? 0) - rapierDiagnostics.lastStepPanicTick
+            : undefined,
+        };
+      } catch {
+        // ignore telemetry publishing errors
+      }
+      
+      previousUniformTimeRef.current = elapsed;
+    }
+
     const rawAspect = viewport.aspect;
     const safeAspect = Number.isFinite(rawAspect) && rawAspect > 0 ? rawAspect : 1;
     if (safeAspect > 8 && !aspectWarnedRef.current) {
@@ -547,6 +636,47 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
       uniformUpdate.noise = noiseTexture;
     }
     updateMainSequenceStarUniforms(mat, uniformUpdate);
+
+    // DEV: diagnostic dump & forced apply — when debug automation sets
+    // `window.__copilot_dumpStarDebug = true` we'll log state and ensure
+    // the shader material is actually assigned to the mesh. This helps
+    // diagnose cases where iTime increases but the disk appears static.
+    if (debugEnabled && debugWin && (debugWin.__copilot_dumpStarDebug === true)) {
+      try {
+        const meshLocal = meshRef.current;
+        const matCurrent = shaderMaterialRef.current;
+        const applied = !!(meshLocal && matCurrent && meshLocal.material === matCurrent);
+        // Lightweight console summary for quick inspection
+        // eslint-disable-next-line no-console
+        console.info('[StarDisk][DBG] dumpStarDebug', { iTime: uniformUpdate.time, applied, materialType: meshLocal ? (meshLocal.material as any)?.type : null, starCompiled: (window as any).__STAR_COMPILED });
+
+        // Try to reassign material if it wasn't applied
+        if (!applied && meshLocal && matCurrent) {
+          try {
+            meshLocal.material = matCurrent as any;
+            matCurrent.needsUpdate = true;
+            // eslint-disable-next-line no-console
+            console.info('[StarDisk][DBG] Reassigned shader material to mesh and flagged needsUpdate');
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[StarDisk][DBG] failed to reassign material', e);
+          }
+        }
+
+        // Publish a small diagnostics snapshot for automation to inspect
+        try {
+          const win = window as any;
+          win.__copilot_starDiskDiagnostics = win.__copilot_starDiskDiagnostics || [];
+          win.__copilot_starDiskDiagnostics.push({ time: Date.now(), iTime: uniformUpdate.time, applied, materialType: meshLocal ? (meshLocal.material as any)?.type : null, starCompiled: (window as any).__STAR_COMPILED });
+          if (win.__copilot_starDiskDiagnostics.length > 20) win.__copilot_starDiskDiagnostics.shift();
+        } catch {
+          /* ignore */
+        }
+      } catch {
+        /* ignore */
+      }
+      try { debugWin.__copilot_dumpStarDebug = false; } catch { /* ignore */ }
+    }
 
     // DEV: allow automation to request the StarDisk be forced on-top at
     // runtime — only when explicit debug mode is enabled via URL.

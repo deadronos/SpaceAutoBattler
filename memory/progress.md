@@ -2,6 +2,7 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-10-02: Implemented StarDisk uniform telemetry monitoring (TASK237) — exposed `window.__copilot_starDiskTelemetry` with iTime progression tracking, frame-to-frame deltas, and Rapier panic correlation fields; added Vitest coverage (5 passing tests) and comprehensive documentation in `docs/star-disk-telemetry.md`. Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`.
 - 2025-10-02: Instrumented Rapier step panic diagnostics (TASK236) — extended `RapierDiagnostics` with panic metadata, wrapped `physicsWorld.step` to record + rethrow panics, published `window.__copilot_rapierPanics` snapshots behind debug flag override, refreshed test fixtures, and added Vitest coverage (`rapier-diagnostics`, `update-game-panic`). Validation: `npm run typecheck`, `npm test` (500 passing, existing Three.js warnings).
 - 2025-10-03: Completed TASK235 Star Disk simulation fallback — added `lastUniformTimeRef` guard, delta-based fallback when simulation stalls, expanded Vitest coverage for stalled/resumed clocks, and reran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` plus `npm run typecheck`.
 - 2025-10-03: Completed TASK234 Star Disk animation restoration — removed debug-only material swap, kept shader attached under `?copilot_debug=1`, added monotonic uniform assertions in `test/vitest/star-disk-debug-lockdown.spec.tsx`, and reran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` plus `npm run typecheck`.

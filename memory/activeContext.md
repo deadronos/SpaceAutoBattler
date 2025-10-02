@@ -2,15 +2,21 @@
 
 Current focuses (short-term):
 
-- Surface Rapier step panic diagnostics (TASK236) so automation can inspect `simulation.rapierDiagnostics` and `window.__copilot_rapierPanics` when physics panics halt StarDisk animation.
-- Ensure StarDisk retains animated shader output even when the `?copilot_debug=1` flag is present (TASK234) and validate `iTime` progression under debug.
-- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
-- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
-- Validate the new projectile/reset queue coverage by sampling Rapier diagnostics after cold-start and reset flows; surface anomalies for follow-up if counters increment.
+- Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
+- Validate Playwright ship hull rendering tests (TASK154) with local build + serve cycle and generate initial baselines
+- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready
+- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default
 
-- Deferred mutation queue (TASK230) now funnels cold-start Rapier mutations through `simulation.deferredMutations`, shares safe kinematic guards across ships/turrets, updates fixtures, and revalidates via `npm run typecheck` + full `npm test` (472 passing). Includes renderer guard for non-finite thruster intensities consumed by thruster glow tests.
-- Deferred carrier fighter spawning (TASK226) by queuing launch blueprints and flushing after iteration to resolve Rapier unsafe aliasing crashes; added Vitest regressions and reran `npm run typecheck` + `npm test`.
-- Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
+Recent changes:
+
+- **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
+  * Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
+  * Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)
+  * Correlates with Rapier diagnostics: panicCount, lastPanicTick, ticksSincePanic
+  * Gated behind `isCopilotDebugEnabled()` for zero overhead when disabled
+  * Created comprehensive documentation in `docs/star-disk-telemetry.md`
+  * Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
+  * Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
