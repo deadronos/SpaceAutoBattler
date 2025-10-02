@@ -7,9 +7,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## In Progress
 
 - [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
-- [TASK228](TASK228-rapier-velocity-sampling.md) — Harden AI velocity sampling to use `ShipComponent.velocity` and avoid Rapier re-entrancy during intent scoring.
-- [TASK231](TASK231-sweep-wrap-rapier-mutators.md) — Sweep repository for Rapier mutators and add deferred/post wrappers + tests. (2025-10-01)
-- [TASK238](TASK238-star-disk-shader-precision.md) — Reopening to wrap StarDisk uniform time on the CPU after shader-only modulo still froze animation. (2025-10-05)
+- [TASK239](TASK239-ring-halo-artifact.md) — Eliminate wedge-shaped ring/halo artifacts (Postprocessing OFF). (2025-10-02)
 
 ## Completed
 
