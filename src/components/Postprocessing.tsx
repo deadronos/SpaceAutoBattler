@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { type EffectComposer, type FXAAEffect, type SelectiveBloomEffect } from 'postprocessing';
-import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget } from 'three';
+import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget, Color } from 'three';
 import { useBloomContext } from '../renderer/BloomProvider.js';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 import {
@@ -18,7 +18,8 @@ type Props = {
 };
 
 export function Postprocessing({ enabled = false }: Props): null {
-  const { gl, scene, camera, size } = useThree();
+  const { gl, scene, camera, size, invalidate } = useThree();
+  const effectiveEnabled = enabled;
   const composerRef = useRef<EffectComposer | null>(null);
   const composerSetupRef = useRef<ComposerSetupResult | null>(null);
   const fxaaRef = useRef<FXAAEffect | null>(null);
@@ -48,7 +49,7 @@ export function Postprocessing({ enabled = false }: Props): null {
   useEffect(() => {
     const renderer = gl as unknown as WebGLRenderer;
 
-    if (!enabled) {
+    if (!effectiveEnabled) {
       cleanupComposer();
       return cleanupComposer;
     }
@@ -110,19 +111,36 @@ export function Postprocessing({ enabled = false }: Props): null {
   useFrame((_, delta) => {
     const composer = composerRef.current;
     if (!composer) return;
-    if (enabled) {
+    if (effectiveEnabled) {
       if (bloomEffectsRef.current.length > 0) {
         for (const effect of bloomEffectsRef.current) {
           effect.blendMode.opacity.value = effect.selection.size > 0 ? 1 : 0;
         }
       }
       try {
+        // Use BloomProvider helper to enable all bloom selection layers on the camera
+        // and restore the previous mask afterwards. This centralizes the logic
+        // inside BloomProvider so tests can assert it deterministically.
+        let prevCameraLayersMask = camera.layers.mask;
+        try {
+          if (bloomCtx && typeof (bloomCtx as any).enableCameraLayers === 'function') {
+            prevCameraLayersMask = (bloomCtx as any).enableCameraLayers(camera as any);
+          }
+        } catch { /* ignore */ }
+
         composer.render(delta);
+
+        // Restore camera layers to previous mask so other systems are unaffected
+        try {
+          camera.layers.mask = prevCameraLayersMask;
+        } catch { /* ignore */ }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn('Postprocessing render failed:', err);
       }
     }
+    // Return true to skip R3F's default render (composer handles rendering)
+    return true;
   }, 1);
 
   return null;

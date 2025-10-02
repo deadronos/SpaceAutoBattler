@@ -46,11 +46,11 @@ describe('createMainSequenceStarMaterial', () => {
     expect(uniforms.iViewAlignment.value.y).toBe(0);
     expect(uniforms.iViewAlignment.value.z).toBe(1);
     expect(uniforms.iHazeParams.value.x).toBe(1);
-    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.3);
-    expect(uniforms.iHazeParams.value.z).toBeCloseTo(2);
-    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
-    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(2, 2);
-    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0, 3);
+    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.5);
+    expect(uniforms.iHazeParams.value.z).toBeCloseTo(1.25);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.875, 2);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(1.75, 2);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.05, 3);
     expect(uniforms.iBoundaryFeather.value.w).toBe(0);
     expect(material.fragmentShader).toContain('void main()');
   });
@@ -61,7 +61,7 @@ describe('createMainSequenceStarMaterial', () => {
 
     expect(uniforms.iChannel0.value.name).toBe('MainSequenceOrganicFallback');
     expect(uniforms.iChannel1.value.name).toBe('MainSequenceNoiseFallback');
-    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.875, 2);
   });
 });
 
@@ -139,11 +139,11 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iViewAlignment.value.y).toBe(0);
     expect(uniforms.iViewAlignment.value.z).toBe(1);
     expect(uniforms.iHazeParams.value.x).toBe(1);
-    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.3);
-    expect(uniforms.iHazeParams.value.z).toBeCloseTo(2);
-    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
-    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(2, 2);
-    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0, 3);
+    expect(uniforms.iHazeParams.value.y).toBeCloseTo(0.5);
+    expect(uniforms.iHazeParams.value.z).toBeCloseTo(1.25);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.875, 2);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(1.75, 2);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.05, 3);
   });
 
   it('disables boundary feathering when legacy values are requested', () => {

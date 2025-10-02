@@ -1,3 +1,5 @@
+// Install GL prototype patches early so we can capture shader compile/link logs in dev.
+import './renderer/webglDebugPrototypePatch.js';
 // Ensure runtime patch for GLTFLoader is applied before any GLTF loads occur.
 import './utils/patchGltfLoader.js';
 import { createRoot } from 'react-dom/client';

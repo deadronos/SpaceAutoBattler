@@ -29,7 +29,13 @@ import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
 import { findNearestEnemy, updateTurrets } from './systems/turrets.js';
 import { resolveProjectiles } from './systems/damage.js';
 import { syncTransforms } from './systems/sync.js';
-import { flushDeferredMutations, flushPostPhysicsMutations } from './simulationQueue.js';
+import {
+  flushDeferredMutations,
+  flushPostPhysicsMutations,
+  recordRapierStepPanic,
+  recordSubsystemFailure,
+} from './simulationQueue.js';
+import { safeSnapshot } from './safeSnapshot.js';
 
 export { updateDecisionSystem, fireProjectile, findNearestEnemy };
 
@@ -45,23 +51,51 @@ export function updateGame(state: GameState, delta: number): void {
 
   state.time += delta;
 
-  updateDecisionSystem(state, delta);
+  const runSafely = (name: string, fn: () => void) => {
+    try {
+      fn();
+    } catch (error) {
+      try {
+        // Capture a small, safe snapshot for diagnostics and continue.
+        const snap = safeSnapshot(state);
+        recordSubsystemFailure(state, name, error, snap);
+  } catch {
+        // Best-effort: don't allow diagnostics to throw and break the tick.
+        try {
+          recordSubsystemFailure(state, name, error);
+        } catch {
+          // swallow
+        }
+      }
+    }
+  };
 
-  prepareShips(state, delta);
-  updateCarrierLaunchSystem(state, delta);
-  updateTurrets(state, delta);
-  updateMotionSystem(state, delta);
-  advanceProjectiles(state, delta);
+  runSafely('updateDecisionSystem', () => updateDecisionSystem(state, delta));
 
-  flushDeferredMutations(state);
+  runSafely('prepareShips', () => prepareShips(state, delta));
+  runSafely('updateCarrierLaunchSystem', () => updateCarrierLaunchSystem(state, delta));
+  runSafely('updateTurrets', () => updateTurrets(state, delta));
+  runSafely('updateMotionSystem', () => updateMotionSystem(state, delta));
+  runSafely('advanceProjectiles', () => advanceProjectiles(state, delta));
 
-  state.physicsWorld.step(state.eventQueue);
+  runSafely('flushDeferredMutations', () => flushDeferredMutations(state));
 
-  flushPostPhysicsMutations(state);
+  try {
+    // EventQueue created with { auto: true } is managed internally by Rapier.
+    // Passing it explicitly to step() causes "recursive use" errors.
+    state.physicsWorld.step();
+  } catch (error) {
+    // Rapier panics are special and we rethrow after recording diagnostics so
+    // upstream code can still handle a fatal physics panic if necessary.
+    recordRapierStepPanic(state, error);
+    throw error;
+  }
 
-  syncTransforms(state);
-  resolveProjectiles(state, delta);
-  updateExplosions(state, delta);
+  runSafely('flushPostPhysicsMutations', () => flushPostPhysicsMutations(state));
+
+  runSafely('syncTransforms', () => syncTransforms(state));
+  runSafely('resolveProjectiles', () => resolveProjectiles(state, delta));
+  runSafely('updateExplosions', () => updateExplosions(state, delta));
 }
 
 export const __aiTestHooks = {

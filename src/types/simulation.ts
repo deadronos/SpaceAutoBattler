@@ -1,6 +1,6 @@
 import type { World as ECSWorld } from 'miniplex';
 import type { RapierModule, RapierWorld, EventQueue } from './core.js';
-import type { GameEntity, GameQueries, ShipEntity, TurretEntity, ProgressionEvent } from './ship.js';
+import type { GameEntity, GameQueries, TurretEntity, ProgressionEvent } from './ship.js';
 import type { AIManagerState, AIBlackboard } from './ai.js';
 import type { ExplosionEvent } from './renderer.js';
 import type { SeededRng } from '../utils/rng.js';
@@ -18,6 +18,30 @@ export interface RapierDiagnostics {
   lastGuardTick: number;
   /** Optional message captured from the last deferred mutation error. */
   lastDeferredMutationError?: string | undefined;
+  /** Total number of Rapier step panics encountered since startup. */
+  stepPanics: number;
+  /** Most recent tick index when a Rapier step panic was observed (-1 if never). */
+  lastStepPanicTick: number;
+  /** Simulation time at which the most recent step panic occurred. */
+  lastStepPanicTime: number;
+  /** Delta seconds for the tick containing the most recent step panic. */
+  lastStepPanicDelta: number;
+  /** Error message captured from the most recent step panic. */
+  lastStepPanicMessage?: string | undefined;
+  /** Stack trace captured from the most recent step panic (if available). */
+  lastStepPanicStack?: string | undefined;
+  /** Wall-clock timestamp (ms) when the most recent step panic snapshot was recorded. */
+  lastStepPanicTimestamp: number;
+  /** Number of subsystem-level failures encountered since startup. */
+  subsystemFailures: number;
+  /** Most recent tick index when a subsystem failure occurred (-1 if never). */
+  lastSubsystemFailureTick: number;
+  /** Error message captured from the most recent subsystem failure (if available). */
+  lastSubsystemFailureMessage?: string | undefined;
+  /** Stack trace captured from the most recent subsystem failure (if available). */
+  lastSubsystemFailureStack?: string | undefined;
+  /** Wall-clock timestamp (ms) when the most recent subsystem failure was recorded. */
+  lastSubsystemFailureTimestamp: number;
 }
 
 export interface SimulationClock {

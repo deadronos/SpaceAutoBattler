@@ -7,11 +7,14 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## In Progress
 
 - [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
-- [TASK228](TASK228-rapier-velocity-sampling.md) — Harden AI velocity sampling to use `ShipComponent.velocity` and avoid Rapier re-entrancy during intent scoring.
-- [TASK231](TASK231-sweep-wrap-rapier-mutators.md) — Sweep repository for Rapier mutators and add deferred/post wrappers + tests. (2025-10-01)
+- [TASK239](TASK239-ring-halo-artifact.md) — Eliminate wedge-shaped ring/halo artifacts (Postprocessing OFF). (2025-10-02)
 
 ## Completed
 
+- [TASK235](TASK235-star-disk-simulation-fallback.md) — Restored star disk animation when the simulation clock stalls without debug helpers enabled. (2025-10-03)
+- [TASK234](TASK234-star-disk-animation.md) — Restored star disk shader animation with debug flag active and added monotonic uniform tests. (2025-10-03)
+- [TASK236](TASK236-rapier-wasm-panic-diagnostics.md) — Captured Rapier step panic diagnostics, wired debug snapshot buffer, and added regression coverage. (2025-10-02)
+- [TASK233](TASK233-star-disk-debug-lockdown.md) — Locked down StarDisk debug helpers so forced-on-top instrumentation only activates with the explicit `?copilot_debug=1` flag and added Vitest coverage. (2025-10-02)
 - [TASK224](TASK224-implement-progression-panel.md) — Implement progression panel overlay with ship XP, levels, and event tracking (ISSUE224). (2025-09-30)
 - [TASK229](TASK229-split-postprocessing.md) — Split Postprocessing composer/effect lifecycle into modular helpers with unit coverage. (2025-09-29)
 - [TASK230](TASK230-rapier-startup-borrow-guard.md) — Deferred Rapier world mutations behind a deterministic queue, shared safe kinematic guards, and refreshed regressions. (2025-09-30)
@@ -19,6 +22,9 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK227](TASK227-shield-bubble-visibility.md) — Restored shield visibility with overlay render order, depth-test disablement, and brighter alpha tuning plus regression coverage (2025-09-29).
 - [TASK154](TASK154-rapier-reset-stability.md) — Implemented deferred reset execution to eliminate Rapier console errors during reset button usage (2025-01-27).
 - [TASK225](TASK225-shield-bubble-visibility.md) — Fixed missing shield bubble rendering when shields regenerate after spawning depleted (2025-02-14).
+- [TASK237](TASK237-star-disk-telemetry-monitoring.md) — Monitor StarDisk uniform telemetry (iTime progression) with Rapier panic correlation for debugging animation freezes (2025-10-02).
+ 
+- [TASK237](TASK237-star-disk-telemetry-monitoring.md) — Monitor StarDisk uniform telemetry (iTime progression) with Rapier panic correlation for debugging animation freezes (2025-10-02).
 - [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
 - [TASK152](TASK152-fix-progression-tests.md) — Hardened Vitest ship stubs with progression defaults; full suite passes (2025-09-29).
 - [TASK145](TASK145-ai-determinism-overhaul.md) — Implement AI determinism-focused scoring, targeting, responsiveness, vertical, and diagnostics improvements per design memo.

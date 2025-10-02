@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { AxesHelper, NoToneMapping, SRGBColorSpace } from 'three';
+import { AxesHelper, NoToneMapping, SRGBColorSpace, type WebGLRenderer } from 'three';
 import { Suspense } from 'react';
 import type React from 'react';
 import { useOptionalGameState } from '../game/context.js';
@@ -18,6 +18,7 @@ import { ShipsLayer } from './layers/ShipsLayer.js';
 import { ProjectilesLayer } from './layers/ProjectilesLayer.js';
 import { TurretsLayer } from './layers/TurretsLayer.js';
 import { StarsField } from './layers/StarsField.js';
+import { installWebGLDebugHooks } from '../renderer/webglDebugWrapper.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
@@ -64,7 +65,11 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
 
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
-  const ppEnabled = useUiStore((s) => s.postprocessingEnabled);
+  // Respect UI toggle, but allow a debug override for automation tests so we
+  // can force the Postprocessing component to mount even when the UI
+  // setting is off. Tests can set `window.__copilot_forcePostprocessingMount = true`.
+  const uiPost = useUiStore((s) => s.postprocessingEnabled);
+  const ppEnabled = typeof window !== 'undefined' && (window as any).__copilot_forcePostprocessingMount === true ? true : uiPost;
 
   if (!state) {
     return <div className="loading-overlay">Preparing simulation…</div>;
@@ -73,12 +78,20 @@ export function Battlefield(): React.ReactElement {
   return (
     <Canvas
       shadows
+      frameloop="always"
       camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: CAMERA_DEFAULTS.far }}
       dpr={[1, 2]}
       onCreated={({ gl }) => {
         gl.outputColorSpace = SRGBColorSpace;
         gl.toneMapping = NoToneMapping;
         gl.toneMappingExposure = 1;
+        // Install dev-only WebGL debug hooks to capture shader compile/link logs
+        // (no-op in production unless ?copilot_debug=1 is present)
+        try {
+          installWebGLDebugHooks(gl as unknown as WebGLRenderer);
+        } catch (e) {
+          // ignore debug-install failures
+        }
       }}
     >
       <StarsField />

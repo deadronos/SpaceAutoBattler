@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StarDisk Telemetry Monitor</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #000;
+      color: #0f0;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #0ff;
+      border-bottom: 2px solid #0ff;
+      padding-bottom: 10px;
+    }
+    .status-box {
+      background: #111;
+      border: 1px solid #0f0;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .status-ok {
+      border-color: #0f0;
+      color: #0f0;
+    }
+    .status-warn {
+      border-color: #ff0;
+      color: #ff0;
+    }
+    .status-error {
+      border-color: #f00;
+      color: #f00;
+    }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      padding: 5px 0;
+      border-bottom: 1px dotted #333;
+    }
+    .metric-label {
+      font-weight: bold;
+    }
+    .metric-value {
+      font-family: monospace;
+    }
+    .instructions {
+      background: #112;
+      border: 1px solid #44f;
+      color: #aaf;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .code {
+      background: #222;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0ff;
+    }
+    button:disabled {
+      background: #555;
+      color: #888;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌟 StarDisk Telemetry Monitor</h1>
+    
+    <div class="instructions">
+      <h3>Setup Instructions:</h3>
+      <ol>
+        <li>Open the SpaceAutoBattler game in another browser tab</li>
+        <li>Open the browser console (F12)</li>
+        <li>Enable debug mode:
+          <div class="code">window.__copilotDebugForce = true;</div>
+        </li>
+        <li>Return to this page and click "Start Monitoring"</li>
+      </ol>
+      <p><strong>Note:</strong> This page monitors the telemetry from the game tab. Both tabs must be open for monitoring to work.</p>
+    </div>
+
+    <button id="startBtn" onclick="startMonitoring()">Start Monitoring</button>
+    <button id="stopBtn" onclick="stopMonitoring()" disabled>Stop Monitoring</button>
+    <button id="clearBtn" onclick="clearHistory()">Clear History</button>
+
+    <div id="status" class="status-box status-ok">
+      <div class="metric">
+        <span class="metric-label">Status:</span>
+        <span class="metric-value" id="monitorStatus">Idle</span>
+      </div>
+    </div>
+
+    <div class="status-box" id="currentMetrics">
+      <h3>Current Metrics</h3>
+      <div class="metric">
+        <span class="metric-label">iTime:</span>
+        <span class="metric-value" id="iTime">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Delta Time:</span>
+        <span class="metric-value" id="deltaTime">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Progressing:</span>
+        <span class="metric-value" id="isProgressing">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Frame Count:</span>
+        <span class="metric-value" id="frameCount">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Using Fallback:</span>
+        <span class="metric-value" id="usedFallback">--</span>
+      </div>
+    </div>
+
+    <div class="status-box" id="rapierMetrics">
+      <h3>Rapier Diagnostics</h3>
+      <div class="metric">
+        <span class="metric-label">Total Panics:</span>
+        <span class="metric-value" id="panicCount">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Last Panic Tick:</span>
+        <span class="metric-value" id="lastPanicTick">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Ticks Since Panic:</span>
+        <span class="metric-value" id="ticksSince">--</span>
+      </div>
+    </div>
+
+    <div class="status-box" id="history">
+      <h3>Event History</h3>
+      <div id="historyLog" style="max-height: 300px; overflow-y: auto; font-size: 11px;"></div>
+    </div>
+  </div>
+
+  <script>
+    let monitorInterval = null;
+    let lastITime = null;
+    let historyEntries = [];
+
+    function log(message, level = 'info') {
+      const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+      const color = level === 'error' ? '#f00' : level === 'warn' ? '#ff0' : '#0f0';
+      const entry = `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+      historyEntries.unshift(entry);
+      if (historyEntries.length > 100) historyEntries.pop();
+      document.getElementById('historyLog').innerHTML = historyEntries.join('');
+    }
+
+    function clearHistory() {
+      historyEntries = [];
+      document.getElementById('historyLog').innerHTML = '';
+      log('History cleared');
+    }
+
+    function updateUI(telemetry) {
+      if (!telemetry) {
+        document.getElementById('monitorStatus').textContent = 'No telemetry available';
+        document.getElementById('status').className = 'status-box status-error';
+        return;
+      }
+
+      // Update current metrics
+      document.getElementById('iTime').textContent = telemetry.iTime.toFixed(3) + 's';
+      document.getElementById('deltaTime').textContent = (telemetry.deltaTime * 1000).toFixed(2) + 'ms';
+      document.getElementById('isProgressing').textContent = telemetry.isProgressing ? '✓ Yes' : '✗ No';
+      document.getElementById('frameCount').textContent = telemetry.frameCount.toLocaleString();
+      document.getElementById('usedFallback').textContent = telemetry.usedFallback ? 'Yes' : 'No';
+
+      // Update Rapier metrics
+      document.getElementById('panicCount').textContent = telemetry.rapierPanicCount ?? '0';
+      document.getElementById('lastPanicTick').textContent = telemetry.lastRapierPanicTick ?? 'None';
+      document.getElementById('ticksSince').textContent = telemetry.ticksSinceLastPanic ?? 'N/A';
+
+      // Determine status
+      let status = 'status-ok';
+      let statusText = 'Operating normally';
+
+      if (!telemetry.isProgressing) {
+        status = 'status-error';
+        statusText = '⚠️ TIME FROZEN';
+        if (lastITime !== telemetry.iTime) {
+          log(`TIME FROZEN at ${telemetry.iTime.toFixed(3)}s`, 'error');
+        }
+      } else if (telemetry.usedFallback) {
+        status = 'status-warn';
+        statusText = 'Using fallback time';
+      }
+
+      if (telemetry.rapierPanicCount > 0 && telemetry.ticksSinceLastPanic < 10) {
+        status = 'status-error';
+        statusText = `⚠️ Recent Rapier panic (${telemetry.ticksSinceLastPanic} ticks ago)`;
+      }
+
+      document.getElementById('status').className = 'status-box ' + status;
+      document.getElementById('monitorStatus').textContent = statusText;
+
+      // Log significant events
+      if (lastITime !== null) {
+        if (!telemetry.isProgressing && telemetry.isProgressing !== false) {
+          log('Animation resumed', 'info');
+        }
+        if (telemetry.rapierPanicCount && lastPanicCount !== telemetry.rapierPanicCount) {
+          log(`New Rapier panic detected! Total: ${telemetry.rapierPanicCount}`, 'error');
+        }
+      }
+
+      lastITime = telemetry.iTime;
+      window.lastPanicCount = telemetry.rapierPanicCount;
+    }
+
+    function poll() {
+      try {
+        // Try to access telemetry from window (if same origin)
+        const telemetry = window.__copilot_starDiskTelemetry;
+        updateUI(telemetry);
+      } catch (e) {
+        log('Error accessing telemetry: ' + e.message, 'error');
+      }
+    }
+
+    function startMonitoring() {
+      if (monitorInterval) return;
+      
+      log('Monitoring started');
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = false;
+      
+      monitorInterval = setInterval(poll, 100);
+      poll(); // Immediate first poll
+    }
+
+    function stopMonitoring() {
+      if (!monitorInterval) return;
+      
+      log('Monitoring stopped');
+      clearInterval(monitorInterval);
+      monitorInterval = null;
+      
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('monitorStatus').textContent = 'Stopped';
+      document.getElementById('status').className = 'status-box';
+    }
+
+    // Initialize
+    log('Telemetry monitor ready');
+    log('Open SpaceAutoBattler and enable debug mode: window.__copilotDebugForce = true', 'info');
+  </script>
+</body>
+</html>
