@@ -25,6 +25,7 @@ import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { useStarBloom } from '../../hooks/useStarBloom.js';
+import { useDevShaderCompile } from '../../hooks/useDevShaderCompile.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -168,60 +169,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     }
   }, [shaderMaterial]);
 
-  // DEV: Force the renderer to compile the scene/camera once so the
-  // ShaderMaterial's onBeforeCompile hook runs and we can capture
-  // program/link logs (useful when debugging invisible shaders).
-  // This is intentionally gated to development builds only.
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') {
-      return;
-    }
-
-    // Enable in development builds only when explicit debug flag is present.
-    if (!debugEnabled) {
-      return;
-    }
-
-    // If no material or no mesh, there's nothing to compile.
-    if (!shaderMaterial || !meshRef.current) {
-      return;
-    }
-
-    // Poll until the mesh is parented into the scene (or until we give up).
-    let attempts = 0;
-    const pollInterval = 150; // ms
-    const maxAttempts = 20; // ~3s of retries
-    const intervalId = setInterval(() => {
-      attempts += 1;
-      const mesh = meshRef.current;
-      if (mesh && mesh.parent) {
-        try {
-          if (scene && camera && typeof gl.compile === 'function') {
-            (gl as any).compile(scene, camera);
-            // eslint-disable-next-line no-console
-            console.info('[StarDisk][DEV] forced renderer.compile(scene, camera) to trigger shader compilation');
-          } else {
-            // eslint-disable-next-line no-console
-            console.warn('[StarDisk][DEV] Unable to find scene/camera for forced compile');
-          }
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn('[StarDisk][DEV] Forced compile failed', err);
-        }
-        clearInterval(intervalId);
-        return;
-      }
-      if (attempts >= maxAttempts) {
-        // eslint-disable-next-line no-console
-        console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile');
-        clearInterval(intervalId);
-      }
-    }, pollInterval);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [shaderMaterial, gl, scene, camera, debugEnabled]);
+  useDevShaderCompile(debugEnabled, meshRef, shaderMaterial, gl, scene, camera);
 
   useEffect(() => {
     const clearDebugWindow = () => {
