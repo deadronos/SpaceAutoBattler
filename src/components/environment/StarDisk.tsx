@@ -32,6 +32,24 @@ import {
   type ViewAlignment,
 } from '../../renderer/starDiskOrientation.js';
 
+const STAR_TIME_WRAP_SECONDS = 8192;
+
+function wrapStarTime(time: number): { wrapped: number; cycles: number } {
+  if (!Number.isFinite(time)) {
+    return { wrapped: 0, cycles: 0 };
+  }
+  if (!(STAR_TIME_WRAP_SECONDS > 0)) {
+    return { wrapped: time, cycles: 0 };
+  }
+  const period = STAR_TIME_WRAP_SECONDS;
+  const cycles = Math.trunc(time / period);
+  let wrapped = time - cycles * period;
+  if (wrapped < 0) {
+    wrapped += period;
+  }
+  return { wrapped, cycles };
+}
+
 function isCopilotDebugEnabled(): boolean {
   if (typeof window === 'undefined') {
     return false;
@@ -486,29 +504,34 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
       candidateTime = Math.max(candidateTime, renderTime);
     }
 
-    let elapsed: number;
-    if (Number.isFinite(candidateTime) && candidateTime > lastUniformTimeRef.current + EPSILON) {
-      elapsed = candidateTime;
-      fallbackTimeRef.current = elapsed;
+    const previousRawTime = lastUniformTimeRef.current;
+    let rawElapsed: number;
+    const usedFallback = !(Number.isFinite(candidateTime) && candidateTime > previousRawTime + EPSILON);
+    if (!usedFallback) {
+      rawElapsed = candidateTime;
+      fallbackTimeRef.current = rawElapsed;
     } else {
-      const base = Math.max(lastUniformTimeRef.current, fallbackTimeRef.current);
+      const base = Math.max(previousRawTime, fallbackTimeRef.current);
       fallbackTimeRef.current = base + fallbackStep;
-      elapsed = fallbackTimeRef.current;
+      rawElapsed = fallbackTimeRef.current;
     }
 
-    lastUniformTimeRef.current = elapsed;
+    lastUniformTimeRef.current = rawElapsed;
+    const { wrapped: wrappedElapsed, cycles: wrapCycles } = wrapStarTime(rawElapsed);
 
     // DEV: publish StarDisk uniform telemetry for debugging and correlation with Rapier diagnostics
     if (isCopilotDebugEnabled()) {
       const now = Date.now();
-      const deltaTime = elapsed - previousUniformTimeRef.current;
+      const deltaTime = rawElapsed - previousUniformTimeRef.current;
       const isProgressing = deltaTime > 0;
       const rapierDiagnostics = gameState?.simulation?.rapierDiagnostics;
-      
+
       try {
         const debugWin = window as Window & {
           __copilot_starDiskTelemetry?: {
             iTime: number;
+            rawTime?: number;
+            wrapCycle?: number;
             deltaTime: number;
             isProgressing: boolean;
             timestamp: number;
@@ -521,19 +544,21 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
             ticksSinceLastPanic?: number;
           };
         };
-        
+
         const prevTelemetry = debugWin.__copilot_starDiskTelemetry;
         const frameCount = (prevTelemetry?.frameCount ?? 0) + 1;
-        
+
         debugWin.__copilot_starDiskTelemetry = {
-          iTime: elapsed,
+          iTime: wrappedElapsed,
+          rawTime: rawElapsed,
+          wrapCycle: wrapCycles,
           deltaTime,
           isProgressing,
           timestamp: now,
           frameCount,
           simTime: hasSimTime ? simTime as number : undefined,
           renderTime,
-          usedFallback: !Number.isFinite(candidateTime) || candidateTime <= lastUniformTimeRef.current + EPSILON,
+          usedFallback,
           rapierPanicCount: rapierDiagnostics?.stepPanics,
           lastRapierPanicTick: rapierDiagnostics?.lastStepPanicTick !== -1 ? rapierDiagnostics?.lastStepPanicTick : undefined,
           ticksSinceLastPanic: rapierDiagnostics && rapierDiagnostics.lastStepPanicTick !== -1
@@ -543,8 +568,8 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
       } catch {
         // ignore telemetry publishing errors
       }
-      
-      previousUniformTimeRef.current = elapsed;
+
+      previousUniformTimeRef.current = rawElapsed;
     }
 
     const rawAspect = viewport.aspect;
@@ -555,7 +580,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     }
     const { width, height } = state.size;
     const uniformUpdate: MainSequenceStarUniformUpdate = {
-      time: elapsed,
+      time: wrappedElapsed,
       resolution: {
         width: Number.isFinite(width) && width > 0 ? width : 1,
         height: Number.isFinite(height) && height > 0 ? height : 1,
