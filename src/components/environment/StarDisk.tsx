@@ -14,7 +14,6 @@ import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import {
   createMainSequenceStarMaterial,
   updateMainSequenceStarUniforms,
-  disposeMainSequenceStarMaterial,
   type MainSequenceStarUniformUpdate,
 } from '../../renderer/starDiskMaterial.js';
 import {
@@ -25,6 +24,7 @@ import {
 } from '../../renderer/starDiskOrientation.js';
 import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../utils/starDisk.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
+import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -51,7 +51,6 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const fallbackHaze = env?.starDisk?.haze;
   const fallbackBoundary = env?.starDisk?.boundary;
   const meshRef = useRef<Mesh>(null);
-  const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
   const aspectWarnedRef = useRef(false);
   const fallbackTimeRef = useRef(0);
   const lastUniformTimeRef = useRef(0);
@@ -111,6 +110,13 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     }
     return /[?&]copilot_debug=1/.test(window.location.search);
   }, []);
+  const shaderMaterial = useStarMaterial(debugEnabled);
+  const shaderMaterialRef = useRef<ShaderMaterial | null>(shaderMaterial);
+
+  // Update ref when material changes
+  useEffect(() => {
+    shaderMaterialRef.current = shaderMaterial;
+  }, [shaderMaterial]);
   const removeDebugOverlay = useCallback(() => {
     if (typeof document === 'undefined') {
       return;
@@ -139,54 +145,6 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
     const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
     return direction.multiplyScalar(-distance).toArray();
   }, [config.direction.x, config.direction.y, config.direction.z, config.distance, defaultDistanceMultiplier]);
-
-  const shaderMaterial = useMemo<ShaderMaterial | null>(() => {
-    try {
-      const mat = createMainSequenceStarMaterial({
-        organic: null,
-        noise: null,
-      });
-      shaderMaterialRef.current = mat;
-      try {
-        if (typeof localStorage !== 'undefined') { localStorage.setItem('copilot_star_material_created', String(Date.now())); }
-      } catch { void 0; }
-      try { if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-star-material-created', '1'); } } catch { void 0; }
-      // DEV: create a transient DOM indicator when the material object is
-      // created so developers can visually confirm that the material was
-      // instantiated (useful when console output is noisy). Enabled in
-      // development or when the debug query param is present.
-      try {
-        if (debugEnabled && typeof document !== 'undefined') {
-          const id = 'copilot-star-material-created-indicator';
-          if (!document.getElementById(id)) {
-            const el = document.createElement('div');
-            el.id = id;
-            el.textContent = 'STAR MATERIAL CREATED';
-            el.style.cssText = 'position:fixed; right:12px; bottom:48px; padding:6px 10px; background:rgba(16,163,127,0.95); color:white; font-size:12px; border-radius:6px; z-index:9999999;';
-            document.body.appendChild(el);
-            setTimeout(() => { try { el.remove(); } catch { /* ignore */ } }, 4000);
-          }
-        }
-      } catch (err) {
-        // swallow debug-only errors
-      }
-      return mat;
-    } catch (error) {
-      console.warn('[StarDisk] Failed to create main sequence star material. Falling back to basic material.', error);
-      shaderMaterialRef.current = null;
-      return null;
-    }
-  }, [debugEnabled]);
-
-  useEffect(() => {
-    const mat = shaderMaterial;
-    return () => {
-      if (shaderMaterialRef.current === mat) {
-        shaderMaterialRef.current = null;
-      }
-      disposeMainSequenceStarMaterial(mat);
-    };
-  }, [shaderMaterial]);
 
   // Ensure the shader material is explicitly assigned to the mesh when
   // available. This guards against render-order or attach timing issues
