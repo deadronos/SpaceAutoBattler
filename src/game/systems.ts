@@ -60,7 +60,9 @@ export function updateGame(state: GameState, delta: number): void {
   flushDeferredMutations(state);
 
   try {
-    state.physicsWorld.step(state.eventQueue);
+    // EventQueue created with { auto: true } is managed internally by Rapier.
+    // Passing it explicitly to step() causes "recursive use" errors.
+    state.physicsWorld.step();
   } catch (error) {
     recordRapierStepPanic(state, error);
     throw error;
