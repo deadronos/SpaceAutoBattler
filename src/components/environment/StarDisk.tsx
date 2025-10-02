@@ -1,20 +1,13 @@
 import { useMemo, useRef, useEffect, useCallback } from 'react';
-import type { Mesh, Texture } from 'three';
+import type { Mesh } from 'three';
 import {
   Vector3,
   ShaderMaterial,
-  RepeatWrapping,
-  ClampToEdgeWrapping,
-  LinearFilter,
-  LinearMipmapLinearFilter,
-  NearestFilter,
-  SRGBColorSpace,
   Quaternion,
   MeshBasicMaterial,
   DoubleSide,
 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useOptionalGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
@@ -24,7 +17,6 @@ import {
   disposeMainSequenceStarMaterial,
   type MainSequenceStarUniformUpdate,
 } from '../../renderer/starDiskMaterial.js';
-import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../../assets/starDiskTextures.js';
 import {
   computeStarDiskQuaternion,
   createViewAlignmentScratch,
@@ -32,6 +24,7 @@ import {
   type ViewAlignment,
 } from '../../renderer/starDiskOrientation.js';
 import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../utils/starDisk.js';
+import { useStarTextures } from '../../hooks/useStarTextures.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -111,9 +104,7 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
 
   const gameState = useOptionalGameState();
   const { gl, scene, camera } = useThree();
-  const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<StarDiskTextureKey, Texture | undefined>;
-  const organicTexture = starTextures.organic;
-  const noiseTexture = starTextures.noiseRgba;
+  const { organic: organicTexture, noise: noiseTexture } = useStarTextures();
   const debugEnabled = useMemo(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -133,27 +124,6 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
       }
     }
   }, []);
-
-  useEffect(() => {
-    const maxAniso = Math.min(8, gl.capabilities.getMaxAnisotropy());
-    if (organicTexture) {
-      organicTexture.wrapS = RepeatWrapping;
-      organicTexture.wrapT = ClampToEdgeWrapping;
-      organicTexture.minFilter = LinearMipmapLinearFilter;
-      organicTexture.magFilter = LinearFilter;
-      organicTexture.anisotropy = maxAniso;
-      organicTexture.colorSpace = SRGBColorSpace;
-      organicTexture.needsUpdate = true;
-    }
-    if (noiseTexture) {
-      noiseTexture.wrapS = RepeatWrapping;
-      noiseTexture.wrapT = RepeatWrapping;
-      noiseTexture.minFilter = NearestFilter;
-      noiseTexture.magFilter = NearestFilter;
-      noiseTexture.generateMipmaps = false;
-      noiseTexture.needsUpdate = true;
-    }
-  }, [gl, organicTexture, noiseTexture]);
 
   useEffect(() => {
     const mesh = meshRef.current;
