@@ -53,21 +53,21 @@ export function useDevShaderCompile(
         try {
           if (scene && camera && typeof gl.compile === 'function') {
             (gl as any).compile(scene, camera);
-            // eslint-disable-next-line no-console
+             
             console.info('[StarDisk][DEV] forced renderer.compile(scene, camera) to trigger shader compilation');
           } else {
-            // eslint-disable-next-line no-console
+             
             console.warn('[StarDisk][DEV] Unable to find scene/camera for forced compile');
           }
         } catch (err) {
-          // eslint-disable-next-line no-console
+           
           console.warn('[StarDisk][DEV] Forced compile failed', err);
         }
         clearInterval(intervalId);
         return;
       }
       if (attempts >= maxAttempts) {
-        // eslint-disable-next-line no-console
+         
         console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile');
         clearInterval(intervalId);
       }
