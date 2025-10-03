@@ -6,8 +6,6 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
-- [TASK239](TASK239-ring-halo-artifact.md) — Eliminate wedge-shaped ring/halo artifacts (Postprocessing OFF). (2025-10-02)
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
 
 ## Completed
