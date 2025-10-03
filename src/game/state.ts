@@ -14,9 +14,12 @@ import { spawnShip, SHIP_STATS } from './ships.js';
 import { unregisterTurret } from './turretRegistry.js';
 import { createDefaultMetrics, resetMetrics } from './metrics.js';
 import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
+import { enqueuePostPhysicsMutation } from './simulationQueue.js';
 
 export async function createGameState(): Promise<GameState> {
-  await Rapier.init();
+  // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
+  // Passing an empty object keeps default behavior and removes the warning.
+  await Rapier.init({});
   const physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
   const eventQueue = new Rapier.EventQueue({ auto: true });
   const world = new ECSWorld<GameEntity>();
@@ -27,12 +30,15 @@ export async function createGameState(): Promise<GameState> {
   // both shapes work and we don't have to update every usage at once.
   const wAny = world as unknown as Record<string, unknown>;
   if (typeof wAny.createEntity === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wAny as any).createEntity = (...args: any[]) => (world as any).add(...args);
   }
   if (typeof wAny.destroyEntity === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wAny as any).destroyEntity = (entity: unknown) => (world as any).remove(entity);
   }
   if (typeof wAny.archetype === 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wAny as any).archetype = (...args: any[]) => (world as any).with(...args);
   }
 
@@ -62,6 +68,7 @@ export async function createGameState(): Promise<GameState> {
     },
     explosions: [],
     explosionPool: [],
+    progressionEvents: new Map(),
     simulation: {
       step: 1 / 20,
       accumulator: 0,
@@ -70,7 +77,27 @@ export async function createGameState(): Promise<GameState> {
       lastTickIndex: 0,
       lastTickStart: 0,
       lastTickDuration: 1 / 20,
-      pendingReset: null,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+        stepPanics: 0,
+        lastStepPanicTick: -1,
+        lastStepPanicTime: 0,
+        lastStepPanicDelta: 0,
+        lastStepPanicMessage: undefined,
+        lastStepPanicStack: undefined,
+        lastStepPanicTimestamp: 0,
+        subsystemFailures: 0,
+        lastSubsystemFailureTick: -1,
+        lastSubsystemFailureMessage: undefined,
+        lastSubsystemFailureStack: undefined,
+        lastSubsystemFailureTimestamp: 0,
+      },
     },
     ai: {
       enabled: AI_CONFIG.v2Enabled,
@@ -326,10 +353,8 @@ export function resetGame(state: GameState): void {
   state.blackboard.allyCentroid.blue.set(0, 0, 0);
   state.blackboard.allyCentroid.red.set(0, 0, 0);
   
-  // Clear pending reset flag to avoid repeated execution
-  if (state.simulation.pendingReset) {
-    state.simulation.pendingReset = null;
-  }
+  // Clear any queued post-step mutations now that the reset executed.
+  state.simulation.postStepMutations.length = 0;
 }
 
 /**
@@ -337,7 +362,13 @@ export function resetGame(state: GameState): void {
  * This avoids Rapier console errors that occur when resetting during active physics stepping.
  */
 export function requestReset(state: GameState): void {
-  state.simulation.pendingReset = () => resetGame(state);
+  const queue = state.simulation.postStepMutations;
+  if (queue.some((fn) => (fn as { __resetTag?: boolean }).__resetTag)) {
+    return;
+  }
+  const op: (() => void) & { __resetTag?: boolean } = () => resetGame(state);
+  op.__resetTag = true;
+  enqueuePostPhysicsMutation(state, op);
 }
 
 

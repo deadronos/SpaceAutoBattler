@@ -2,12 +2,22 @@
 
 Current focuses (short-term):
 
-- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready.
-- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default.
+- Refine AI motion PD tuning (TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
+- Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
+- Validate Playwright ship hull rendering tests (TASK154) with local build + serve cycle and generate initial baselines
+- Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready
+- Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default
 
 Recent changes:
 
-- Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
+- **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
+  - Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
+  - Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)
+  - Correlates with Rapier diagnostics: panicCount, lastPanicTick, ticksSincePanic
+  - Gated behind `isCopilotDebugEnabled()` for zero overhead when disabled
+  - Created comprehensive documentation in `docs/star-disk-telemetry.md`
+  - Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
+  - Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
@@ -29,6 +39,12 @@ Recent changes:
 - Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
 - Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `npm run typecheck`, `npm test`.
 
+Recent alignment notes (2025-10-03)
+
+- Updated memory entries to reflect current `src/` implementations: canonical `GameState` shape, `SeededRng` API, deferred mutation queues, Rapier diagnostics, and AI harness shapes.
+- Reminder: `createGameState()` initialises `state.rng` with seed `1337` by default and systems must prefer `state.rng` over global randomness for determinism.
+- Deferred mutation queues (`state.simulation.deferredMutations` and `state.simulation.postStepMutations`) are used across systems (carrier spawns, projectile instantiation, reset requests) to avoid Rapier mutable-borrow panics; continue to use these patterns in new features.
+
 Next steps:
 
 - Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
@@ -38,10 +54,11 @@ Next steps:
 - Refresh Playwright/visual baselines to cover the texture-enhanced star disk once art direction is approved.
 - Decide whether to enable parallax billboards by default after perf validation; otherwise document the toggle rationale in `docs/`.
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
+- Determine how to visualise `simulation.rapierDiagnostics` inside the developer HUD so guard trips and mutation failures are observable during playtests.
 
 Status updates:
 
 - 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
 - 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
 
-- Updated: 2025-09-29
+- Updated: 2025-10-02

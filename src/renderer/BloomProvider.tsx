@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useRef } from 'react';
 import { Selection } from 'postprocessing';
-import type { Object3D } from 'three';
+import type { Camera, Object3D } from 'three';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 
 export interface BloomRegistrationOptions {
@@ -18,6 +18,17 @@ type BloomCtx = {
   selections: Map<string, Selection>;
   register: (obj: Object3D | null | undefined, options?: BloomRegistrationOptions) => void;
   unregister: (obj: Object3D | null | undefined) => void;
+  /**
+   * Compute the union bitmask of all selection layers.
+   * Useful for telling a Camera which layers must be visible to render
+   * selective-bloom objects (e.g. star layer, muzzle flashes, etc.).
+   */
+  getSelectionLayerMask: () => number;
+  /**
+   * Enable all selection layers on a given camera and return the
+   * camera's previous layers.mask so callers can restore it.
+   */
+  enableCameraLayers: (camera: Camera) => number;
 };
 
 const Ctx = createContext<BloomCtx | null>(null);
@@ -70,7 +81,13 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
         nextLayerRef.current = Math.min(layer + 1, 31);
         map.set(group, selection);
       }
-      selection.exclusive = false;
+  // Keep selection non-exclusive by default for configured groups.
+  // We disable colorWrite on registered meshes below to avoid these
+  // objects from writing into the main color buffer while still
+  // participating in bloom. Setting `exclusive` caused the selective
+  // bloom system to alter main-pass visibility in ways that produced
+  // black mask-like artifacts in some compositor configurations.
+  selection.exclusive = false;
     });
   }, [configuredGroupsArray]);
 
@@ -98,7 +115,11 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       let selection = selectionsRef.current.get(group);
       if (!selection) {
         selection = new Selection();
-        selection.exclusive = true;
+        // Default to non-exclusive so objects remain visible in the main
+        // render pass. Exclusive selections may remove objects from the
+        // main pass which can cause them to disappear when postprocessing
+        // is enabled after the scene has already registered objects.
+        selection.exclusive = false;
         const candidate = nextLayerRef.current;
         const layer = normalizeLayerIndex(candidate);
         if (process.env.NODE_ENV !== 'test') {
@@ -109,13 +130,73 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
         nextLayerRef.current = Math.min(layer + 1, 31);
         selectionsRef.current.set(group, selection);
       }
-      if (selection && !selection.has(obj)) {
+  if (selection && !selection.has(obj)) {
+        // Preserve original layer mask for restoration on unregister.
+        try {
+          (obj as any).traverse((child: any) => {
+            if (!child || !child.isMesh) return;
+            try {
+              if (!child.userData) child.userData = {};
+              if (typeof child.userData.__copilot_bloomOrigLayerMask === 'undefined') {
+                child.userData.__copilot_bloomOrigLayerMask = (child.layers as any).mask;
+              }
+            } catch { /* ignore */ }
+          });
+        } catch { /* ignore traversal errors */ }
+
         selection.add(obj);
+        // Ensure object is still visible in the main (layer 0) pass by
+        // enabling layer 0 in addition to the bloom selection layer.
+        try {
+          (obj as any).traverse((child: any) => {
+            if (!child || !child.layers) return;
+            try { if (typeof child.layers.enable === 'function') child.layers.enable(0); } catch { /* ignore */ }
+          });
+        } catch { /* ignore */ }
         // Objects are automatically assigned to the selection's layer when added
         // No need to manually enable layer 0 as that defeats selective bloom
+        // Additionally, ensure objects registered for bloom do not write
+        // to the main color buffer. Some additive halo/ring shaders can
+        // produce high-contrast masks when they also write to the base
+        // color pass; disabling colorWrite prevents those artifacts while
+        // still allowing depth and bloom contributions. Store previous
+        // material.colorWrite values on object.userData so they can be
+        // restored on unregister.
+        // If postprocessing is enabled, apply colorWrite changes immediately.
+        // Otherwise, store original flags but defer modification until the
+        // composer (postprocessing) is active so objects remain visible when
+        // bloom is disabled.
+        try {
+          (obj as any).traverse((child: any) => {
+            if (!child || !child.isMesh) return;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            const origs: Array<boolean | undefined> = [];
+            for (const m of mats) {
+              try {
+                origs.push(typeof m?.colorWrite === 'boolean' ? m.colorWrite : undefined);
+                if (m && typeof m === 'object') {
+                  try {
+                    // Only modify if provider is enabled and material is transparent
+                    // If material has been explicitly marked as always
+                    // writing color (e.g., rings intended to remain visible
+                    // without bloom), skip changing its colorWrite flag.
+                    const forceWrite = Boolean((m as any).userData && (m as any).userData.__copilot_forceColorWrite);
+                    if (enabled && !forceWrite && (typeof m.transparent === 'boolean' ? m.transparent : false)) {
+                      m.colorWrite = false;
+                    }
+                  } catch { /* ignore */ }
+                }
+              } catch { origs.push(undefined); }
+            }
+            try {
+              if (!child.userData) child.userData = {};
+              child.userData.__copilot_bloomOrigColorWrite = origs;
+            } catch { /* ignore */ }
+          });
+        } catch { /* ignore traversal errors */ }
       }
     },
-    [defaultGroup],
+    [defaultGroup, enabled],
   );
 
   const unregister = React.useCallback((obj: Object3D | null | undefined) => {
@@ -127,7 +208,89 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       selection.delete(obj);
     }
     objectGroupRef.current.delete(obj);
+    // Restore any saved material.colorWrite flags when object is removed
+    try {
+      (obj as any).traverse((child: any) => {
+        if (!child || !child.isMesh) return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        const origs: Array<boolean | undefined> | undefined = child.userData && child.userData.__copilot_bloomOrigColorWrite;
+        if (Array.isArray(origs)) {
+          for (let i = 0; i < mats.length; i++) {
+            const m = mats[i];
+            try {
+              const orig = origs[i];
+              if (typeof orig === 'boolean' && m && typeof m === 'object') {
+                try { m.colorWrite = orig; } catch { /* ignore */ }
+              }
+            } catch { /* ignore */ }
+          }
+        }
+        try { delete child.userData.__copilot_bloomOrigColorWrite; } catch { /* ignore */ }
+      });
+    } catch { /* ignore traversal errors */ }
+    // Restore any saved layer masks so the object returns to its original
+    // layer membership when it is unregistered from bloom.
+    try {
+      (obj as any).traverse((child: any) => {
+        if (!child || !child.layers) return;
+        try {
+          const origMask = child.userData && child.userData.__copilot_bloomOrigLayerMask;
+          if (typeof origMask === 'number') {
+            try { (child.layers as any).mask = origMask; } catch { /* ignore */ }
+          }
+          try { delete child.userData.__copilot_bloomOrigLayerMask; } catch { /* ignore */ }
+        } catch { /* ignore */ }
+      });
+    } catch { /* ignore traversal errors */ }
   }, []);
+
+  // When the provider's enabled state toggles, apply or restore colorWrite
+  // flags for all registered objects so bloom-only behavior only takes
+  // effect when postprocessing is active. This ensures that when postproc
+  // is turned off, halos/rings remain visible in the main color pass.
+  React.useEffect(() => {
+    try {
+      for (const obj of objectGroupRef.current.keys()) {
+        try {
+          (obj as any).traverse((child: any) => {
+            if (!child || !child.isMesh) return;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            const origs: Array<boolean | undefined> | undefined = child.userData && child.userData.__copilot_bloomOrigColorWrite;
+            if (enabled) {
+              // Apply colorWrite=false for transparent materials as needed
+              for (let i = 0; i < mats.length; i++) {
+                const m = mats[i];
+                try {
+                  if (m && typeof m === 'object' && (typeof m.transparent === 'boolean' ? m.transparent : false)) {
+                    // Respect explicit force-write flags so some effects
+                    // (e.g., planetary rings intended to remain visible)
+                    // are not hidden by disabling colorWrite for bloom.
+                    const forceWrite = Boolean((m as any).userData && (m as any).userData.__copilot_forceColorWrite);
+                    if (!forceWrite) {
+                      try { m.colorWrite = false; } catch { /* ignore */ }
+                    }
+                  }
+                } catch { /* ignore */ }
+              }
+            } else {
+              // Restore previously stored originals
+              if (Array.isArray(origs)) {
+                for (let i = 0; i < mats.length; i++) {
+                  const m = mats[i];
+                  try {
+                    const orig = origs[i];
+                    if (typeof orig === 'boolean' && m && typeof m === 'object') {
+                      try { m.colorWrite = orig; } catch { /* ignore */ }
+                    }
+                  } catch { /* ignore */ }
+                }
+              }
+            }
+          });
+        } catch { /* ignore per-object traversal errors */ }
+      }
+    } catch { /* ignore overall */ }
+  }, [enabled]);
 
   const value = useMemo<BloomCtx>(
     () => ({
@@ -136,6 +299,43 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
       selections: selectionsRef.current,
       register,
       unregister,
+      /**
+       * Compute the union bitmask of all selection layers.
+       * Useful for telling a Camera which layers must be visible to render
+       * selective-bloom objects (e.g. star layer, muzzle flashes, etc.).
+       */
+      getSelectionLayerMask(): number {
+        let mask = 0;
+        for (const sel of selectionsRef.current.values()) {
+          const layer = (sel as any).layer;
+          if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+            mask |= (1 << layer);
+          }
+        }
+        return mask;
+      },
+      /**
+       * Enable all selection layers on a given camera and return the
+       * camera's previous layers.mask so callers can restore it.
+       */
+      enableCameraLayers(camera: Camera): number {
+        if (!camera || typeof camera.layers === 'undefined') return 0;
+        const prev = camera.layers.mask;
+        const mask = (() => {
+          let m = 0;
+          for (const sel of selectionsRef.current.values()) {
+            const layer = (sel as any).layer;
+            if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+              m |= (1 << layer);
+            }
+          }
+          return m;
+        })();
+        try {
+          camera.layers.mask = prev | mask;
+        } catch { /* ignore */ }
+        return prev;
+      },
     }),
     [enabled, defaultGroup, register, unregister],
   );

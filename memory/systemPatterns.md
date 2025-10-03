@@ -14,6 +14,9 @@ Common patterns
 
 - createGameState()/disposeGameState() factory: `src/game/state.ts` provides lifecycle for Rapier world, Miniplex world, and seeded RNG.
 - Systems composition: `src/game/systems.ts` composes small, focused functions (prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles) executed each tick via `updateGame(state, delta)`.
+- Safe mutation pattern: Use `state.simulation.deferredMutations` and `state.simulation.postStepMutations` and the helpers in `src/game/simulationQueue.ts` to schedule Rapier-sensitive operations and avoid in-step mutations.
+- Safe kinematics helpers: Prefer `src/game/physics/safeKinematics.ts` wrappers when writing kinematic transforms from systems that may run during physics steps.
+- Testing hooks: Decision and AI subsystems expose test helpers (e.g., `__aiTestHooks`) and exported tick runners so unit tests can assert internal scoring and tie-break behavior without widening the public API.
 - Per-entity buffers: Ship entities maintain a small `shieldRipples` buffer for renderer-driven visual ripples; capped length to avoid unbounded memory growth.
 
 Testing & CI

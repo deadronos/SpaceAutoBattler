@@ -24,9 +24,9 @@ const evaluateBoundaryFeather = (radius: number, params: ReturnType<typeof deriv
 describe('deriveBoundaryUniform', () => {
   it('returns default parameters when no input is provided', () => {
     const params = deriveBoundaryUniform();
-    expect(params.start).toBeCloseTo(0.92, 2);
-    expect(params.exponent).toBeCloseTo(2, 2);
-    expect(params.alphaFloor).toBeCloseTo(0, 3);
+    expect(params.start).toBeCloseTo(0.875, 2);
+    expect(params.exponent).toBeCloseTo(1.75, 2);
+    expect(params.alphaFloor).toBeCloseTo(0.05, 3);
     expect(params.reserved).toBe(0);
   });
 

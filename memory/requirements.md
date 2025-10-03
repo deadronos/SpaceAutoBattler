@@ -1,5 +1,63 @@
 # Requirements — Star Disk Shader Integration
 
+## 2025-10-02 — Rapier WASM Panic Diagnostics (TASK236)
+
+1. **WHEN** `physicsWorld.step` throws a runtime error during a simulation tick, **THE SYSTEM SHALL** record step panic metadata (message, stack, tick index, simulation time, and delta) inside `simulation.rapierDiagnostics` so debugging tools can recover the failure context. *(Acceptance: Vitest spec forces a step throw and asserts the diagnostics capture message, stack, tick index, time, and delta.)*
+2. **WHEN** a Rapier step panic is captured while Copilot debug mode is active, **THE SYSTEM SHALL** append a timestamped snapshot to `window.__copilot_rapierPanics` (trimming to the most recent 20 entries) to enable runtime inspection from Playwright. *(Acceptance: Vitest spec stubs `window` with the debug flag, triggers a panic, and confirms the snapshot buffer length and newest entry contents.)*
+3. **WHEN** multiple Rapier step panics occur within the same simulation tick, **THE SYSTEM SHALL** increment a cumulative counter while updating `lastStepPanicTick` only once and emitting at most one snapshot for that tick to avoid log floods. *(Acceptance: Vitest spec invokes the recorder twice for the same tick and asserts the counter increments while only one snapshot is stored for that tick.)*
+
+## 2025-10-03 — Star Disk Debug Animation Restoration (TASK234)
+
+1. **WHEN** the StarDisk component renders with the `copilot_debug=1` query flag and no forced basic-material override is registered, **THE SYSTEM SHALL** attach the production `MainSequenceStarMaterial` so the animated shader remains visible during debug sessions. *(Acceptance: Vitest component spec mounts `StarDisk` with the query flag and asserts the mesh material remains a `ShaderMaterial` instance after a render frame.)*
+2. **WHEN** the StarDisk render loop executes, **THE SYSTEM SHALL** advance the shader uniform time monotonically so the `iTime` uniform increases on each frame. *(Acceptance: Vitest spec spies on `updateMainSequenceStarUniforms`, advances multiple frames, and verifies successive calls receive strictly increasing `time` values.)*
+
+## 2025-10-03 — Star Disk Simulation Fallback (TASK235)
+
+1. **WHEN** the StarDisk component renders without the debug flag and the simulation clock fails to advance between frames, **THE SYSTEM SHALL** fall back to frame delta accumulation so the shader `iTime` uniform continues increasing, preventing a static star disk. *(Acceptance: Vitest spec stubs a stationary simulation clock and asserts uniform `time` values strictly increase across frames.)*
+2. **WHEN** the simulation clock resumes advancing, **THE SYSTEM SHALL** realign the shader `iTime` uniform with simulation time within the same frame without introducing discontinuities. *(Acceptance: Vitest spec transitions from the fallback path to an advancing simulation and verifies the next uniform update matches the simulation time and remains ≥ the prior fallback value.)*
+
+## 2025-10-02 — Star Disk Debug Lockdown (TASK233)
+
+1. **WHEN** the StarDisk component renders without the `copilot_debug=1` query flag, **THE SYSTEM SHALL** avoid registering any debug helpers on `window` and remove any lingering debug overlays so production builds ship without the instrumentation surface. *(Acceptance: Vitest component spec renders `StarDisk` with a clean `window.location.search` and asserts no `window.__copilot_*` properties or `#copilot-star-screen-indicator` exist after mount.)*
+2. **WHEN** the StarDisk component renders with the `copilot_debug=1` query flag, **THE SYSTEM SHALL** register the existing debug helper functions (layer toggles, material overrides) so automation can drive them while the flag remains present. *(Acceptance: Vitest spec sets `window.location.search='?copilot_debug=1'`, renders `StarDisk`, advances a frame, and confirms helper functions are attached.)*
+3. **WHEN** StarDisk mounts without debug enabled, **THE SYSTEM SHALL** remove any pre-existing `window.__copilot_*` helper functions so prior debug sessions cannot force materials or render order in production. *(Acceptance: Vitest spec seeds helper functions before render, mounts without the flag, and verifies they are cleared.)*
+4. **WHEN** StarDisk unmounts or debug mode is disabled, **THE SYSTEM SHALL** remove any debug overlays and helper functions it previously registered to avoid leaking UI artifacts. *(Acceptance: Vitest spec renders with debug enabled, unmounts, and asserts helpers/overlay are removed.)*
+
+## 2025-09-30 — Rapier Startup Borrow Guard (TASK230)
+
+1. **WHEN** the simulation tick processes deferred world mutations (carrier spawns, queued disposals, projectile instantiation), **THE SYSTEM SHALL** execute those mutations only after all per-frame kinematic writes have completed so Rapier never observes overlapping mutable borrows. *(Acceptance: Vitest regression drives a cold-start tick with queued fighter launches and asserts no Rapier panic is thrown while entities appear after the deferred flush.)*
+2. **WHEN** turret systems update kinematic bodies, **THE SYSTEM SHALL** route translations and rotations through the safe setter that tolerates disposed or concurrently-mutated bodies, returning early on invalid input instead of throwing. *(Acceptance: unit test injects a disposed turret rigid body and verifies the safe wrapper prevents Rapier errors while leaving the remainder of the loop unaffected.)*
+3. **WHEN** a new GameState initialises and advances its first frame, **THE SYSTEM SHALL** guarantee the deferred mutation queue runs exactly once per tick in deterministic insertion order so cold-start fleet spawns succeed without duplicate executions. *(Acceptance: regression inspects the queue order across repeated cold-start ticks and matches captured snapshots from stable seeds.)*
+4. **WHEN** the physics step completes, **THE SYSTEM SHALL** clear deferred mutation queues before the next frame so stale operations cannot re-run on subsequent ticks. *(Acceptance: regression enqueues dummy operations, steps twice, and confirms the operation executes once and the queue is empty before the second tick.)*
+
+**Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`npm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
+
+## 2025-09-30 — Rapier Queue Extensions (TASK230 follow-up)
+
+1. **WHEN** `fireProjectile` is invoked during a simulation tick, **THE SYSTEM SHALL** stage projectile creation via the deferred mutation queue so Rapier rigid body/collider allocation executes at the flush point, preventing nested mutable borrows during turret or AI loops. *(Acceptance: unit test exercises `fireProjectile`, asserts no projectile entity exists before flushing, then verifies creation after `flushDeferredMutations`.)*
+2. **WHEN** `requestReset` schedules a simulation reset, **THE SYSTEM SHALL** enqueue the reset closure into a post-physics deferred queue that executes immediately after `physicsWorld.step`, ensuring resets never run mid-step and leaving the queue empty afterwards. *(Acceptance: refreshed `rapier-reset-stability.spec.ts` inspects queue length before and after `updateGame` and confirms single execution.)*
+3. **WHEN** deferred mutation flushes or safe kinematic guards catch Rapier exceptions or invalid inputs, **THE SYSTEM SHALL** increment counters in `simulation.rapierDiagnostics` and capture the latest failure metadata so diagnostics highlight systems that may need additional guards. *(Acceptance: extended queue and kinematics unit tests force failures and assert diagnostic counters/metadata are updated.)*
+4. **WHEN** pre-physics or post-physics deferred queues complete their flush, **THE SYSTEM SHALL** clear all queued operations so subsequent ticks begin from an empty queue and operations execute at most once. *(Acceptance: queue regression validates both queues report zero length after flush even when new ops are enqueued during execution.)*
+
+## 2025-09-29 — Shield Bubble Visibility Regression (TASK227)
+
+1. **WHEN** a ship entity reports `shield/maxShield ≥ 0.01`, **THE SYSTEM SHALL** render the shield bubble mesh after opaque hull geometry so the bubble remains visible regardless of hull draw order. *(Acceptance: Vitest regression reads `Ship.tsx` to confirm `ShieldBubble` uses a positive `SHIELD_RENDER_ORDER` constant greater than zero.)*
+2. **WHEN** the shield bubble material initialises, **THE SYSTEM SHALL** disable depth testing (or render after the hull) while leaving depth write disabled so the bubble overlays hull pixels without affecting depth buffers. *(Acceptance: unit test exercises the shield material factory and asserts the resulting `ShaderMaterial` has `depthTest === false` and `depthWrite === false`.)*
+3. **WHEN** a carrier or any hull spawns with full shields, **THE SYSTEM SHALL** surface a visible shield bubble within the first render frame, ensuring bloom registration remains active for the `shields` group. *(Acceptance: regression test instantiates a carrier entity and verifies bloom registration plus mesh visibility flag on the first frame.)*
+4. **WHEN** a ship maintains `shield/maxShield ≥ 0.5`, **THE SYSTEM SHALL** keep the shield bubble alpha above a readable floor (≥0.35) so the sphere is unmistakable against the starfield. *(Acceptance: configuration test asserts `SHIELD_TUNING.minAlphaFloor ≥ 0.35` and per-hull `maxAlpha ≥ 0.8`.)*
+
+## 2025-09-29 — Rapier Velocity Sampling Hardening (TASK228)
+
+1. **WHEN** AI scoring or intercept helpers require a ship's movement vector, **THE SYSTEM SHALL** read from `ship.ship.velocity` maintained by the motion system instead of invoking `rigidBody.linvel()` so Rapier is never re-entered during decision ticks. *(Acceptance: unit test exercises `scoreInterceptIntent` with seeded velocities and asserts the helper never calls a mocked `linvel` spy.)*
+2. **WHEN** a ship lacks a populated `ShipComponent.velocity` vector or the components are non-finite, **THE SYSTEM SHALL** return a zero vector without touching Rapier APIs to keep AI calculations stable in harnesses and during disposal frames. *(Acceptance: regression covers a ship with missing velocity and verifies `getShipVelocity` outputs zero without throwing or calling Rapier mocks.)*
+3. **WHEN** tests simulate intercept calculations with moving targets, **THE SYSTEM SHALL** ensure the stored `ShipComponent.velocity` values propagate into intercept scoring so the resulting lead direction matches expectations within a small tolerance. *(Acceptance: Vitest spec seeds interceptor/target velocities and asserts the computed intercept heading reflects the stored velocities.)*
+
+## 2025-09-29 — Carrier Spawn Queue (TASK226)
+
+1. **WHEN** `updateCarrierLaunchSystem` iterates over carriers, **THE SYSTEM SHALL** queue fighter spawn operations and execute them only after the loop completes so Rapier never receives nested borrows that trigger the "recursive use" error. *(Acceptance: new Vitest regression exercises the launch cycle and asserts `spawnShip` is invoked after the carrier loop without throwing.)*
+2. **WHEN** a carrier schedules fighter launches within a tick, **THE SYSTEM SHALL** cap the queued count so the total of existing and newly spawned fighters never exceeds `config.maxActive`. *(Acceptance: the regression test seeds a carrier at the cap and verifies no additional spawns are enqueued or executed.)*
+3. **WHEN** a queued spawn executes, **THE SYSTEM SHALL** append the spawned fighter id to `carrier.activeFighterIds` and refresh the carrier tracking map before the next simulation tick. *(Acceptance: the regression test confirms the dequeued fighter id is recorded and survives a subsequent pruning pass.)*
+
 ## 2025-09-29 — Ship Level Bonus Caps (TASK153)
 
 1. **WHEN** a ship crosses any level threshold above 1, **THE SYSTEM SHALL** recompute `maxHp` and `hp` using the base hull value scaled by the capped hull bonus so the resulting multiplier never exceeds +50%. *(Acceptance: `test/vitest/progression-system.spec.ts` levels a ship to level 11 and asserts `maxHp` equals `baseHp × 1.5` while current `hp` increases by the delta.)*
@@ -122,3 +180,14 @@ These historical requirements described behaviors tied to the deprecated `StarDi
 3. **WHEN** a tracked ship’s shield or health value changes by ≥1% of max, **THE SYSTEM SHALL** animate the corresponding bar width to the new value within 150ms while preserving deterministic easing from the seeded RNG utilities. *(Acceptance: unit test in `test/vitest/hud-overlay-animation.spec.ts` simulates value deltas and checks transition timing and easing seeded outputs.)*
 4. **WHEN** status effects (e.g., jammed, shield-down, engine-disrupted) are active on a ship, **THE SYSTEM SHALL** surface iconography and tooltip text adjacent to the overlay with contrast ratios meeting WCAG 2.1 AA (≥4.5:1) against the in-scene background. *(Acceptance: visual assertion in `test/vitest/hud-status-icons.spec.ts` measures computed contrast and presence of localized tooltip strings.)*
 5. **WHEN** the HUD health-bar toggle is set to `off` or when overlays would overlap critical UI (radar, score banners), **THE SYSTEM SHALL** hide or reposition the overlays while maintaining accessibility-compliant alternatives in the top-level status ledger. *(Acceptance: Playwright regression toggles off the feature and asserts overlays disappear and the ledger updates with textual health summaries.)*
+
+## Implementation mapping (authoritative file references)
+
+- Rapier step panic diagnostics: implemented in `src/game/simulationQueue.ts` and recorded on `state.simulation.rapierDiagnostics` (maps to requirements in TASK236/TASK230).
+- StarDisk shader and debug lockdown/fallbacks: implemented in `src/components/environment/StarDisk.tsx`, `src/renderer/MainSequenceStarMaterial` and related uniforms; harness and visual baselines live under `test/playwright/`.
+- Progression and captain systems: implemented in `src/game/progression.ts` with configuration in `src/config/progression.ts` (maps to progression requirements and tests).
+## 2025-10-03 — Motion PD Tuning (TASK241)
+
+1. **WHEN** a ship hull defines motion.turnKp and motion.turnKd, **THE SYSTEM SHALL** apply those gains when computing angular velocity so the proportional yaw error and derivative damping reflect the hull configuration. *(Acceptance: Vitest spec stubs motion stats with custom gains and asserts the resulting angular acceleration matches the configured values.)*
+2. **WHEN** a ship's yaw error drops below 5° and its angular velocity magnitude falls below the configured settling threshold, **THE SYSTEM SHALL** suppress additional slerp smoothing so the rigid body rotation converges without oscillation. *(Acceptance: motion system spec exercises near-aligned headings and verifies only physics integration adjusts the rotation when velocities are within threshold.)*
+3. **WHEN** motion stats define motion.angularSettlingRate, **THE SYSTEM SHALL** damp residual angular velocity to at most that rate within 0.5 seconds of alignment to prevent visible bobbing. *(Acceptance: Vitest spec simulates repeated updates and asserts angular speed falls below the configured settling rate after 0.5 seconds.)*

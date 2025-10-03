@@ -4,19 +4,26 @@ File: `src/game/aiProfiles.ts`
 
 Summary
 
-- Declares `AI_PROFILES`, a small set of behavior profiles (`brawler`, `kiter`, `escort`, `artillery`) implementing `BehaviorProfile`.
-- Each profile defines desired engagement band, orbit radius, aggression/patience knobs, dodge frequency, per-hull class bias, stylistic tag, and optional retreat gates (hp thresholds).
-- `getDefaultProfileId(hull)` maps `ShipHull` to a default profile (fighters -> escort, corvette/frigate -> brawler, capitals -> artillery).
-- `resolveBehaviorProfile(profileId)` returns the profile or falls back to `brawler` if missing; used heavily by the decision system.
+- Declares `AI_PROFILES`, a small set of behavior profiles (e.g., `brawler`, `kiter`, `escort`, `artillery`) implementing the `BehaviorProfile` type and tuning knobs designers use for combat roles.
 
-Usage
+Primary exports & helpers
 
-- `spawnShip` calls `getDefaultProfileId` to seed each ship's AI component; other systems can override `profileId` to experiment with roles.
-- `updateDecisionSystem` retrieves behavior knobs via `resolveBehaviorProfile` when evaluating intents.
+- `getDefaultProfileId(hull: ShipHull): string` — maps ship hulls to a default behavior profile id used by `spawnShip` during `AIState` construction.
+- `resolveBehaviorProfile(profileId: string): BehaviorProfile` — returns the resolved profile object and falls back to a sane default when the id is missing.
+
+Profile contents
+
+- Each profile encodes desired engagement band (min/max), orbit preferences, aggression/patience weights, dodge frequency, per-hull biases, and optional retreat conditions (hp thresholds). Profiles are plain data (numbers/arrays) to remain deterministic and easy to serialize into fixtures.
+
+Usage and patterns
+
+- `spawnShip` calls `getDefaultProfileId` to populate a ship's AI component. The decision system calls `resolveBehaviorProfile` to read behavior knobs when computing intents.
+- Designs should keep profiles data-only; avoid embedding functions or closures since the decision system expects serializable numeric parameters for determinism and test fixtures.
 
 Follow-ups
 
-- Extend the profile table when adding new roles; keep values deterministic-friendly (plain numbers, no functions).
-- Consider splitting tuning constants into JSON/yaml once designers need to iterate without touching code.
+- When adding new roles, extend `AI_PROFILES` and update `getDefaultProfileId` mappings. If designers need iteration without code edits, consider moving profile tables to JSON/YAML and loading them during bootstrap with a stable parsing step.
 
-Created: 2025-09-22
+References
+
+- `src/game/aiProfiles.ts`, `src/game/aiState.ts`, `src/game/systems/decision`

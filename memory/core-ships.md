@@ -4,20 +4,31 @@ File: `src/game/ships.ts`
 
 Responsibilities
 
-- Defines `SHIP_STATS` per hull and `spawnShip()` which instantiates Rapier rigid bodies/colliders plus ECS entities.
-- Seeds ship combat state (hp/shield regen/cooldowns), model key, muzzle flash buffer, and turret state arrays.
-- Attaches a deterministic AI component per ship (profile id from hull -> behavior profile, initial `AICommand`, `traitSeed` + precomputed trait multipliers for aggression/patience/dodge).
+- Defines `SHIP_STATS` per hull and exposes helpers to instantiate ships (`spawnShip`), spawn initial demo fleets (`spawnInitialFleets`), and spawn single random ships (`spawnRandomShip`).
+- `spawnShip(state, blueprint)` is the canonical entrypoint for creating ship entities in the simulation and performs the following steps:
+  - Looks up hull stats from `SHIP_STATS` and computes derived values (motion stats, armour, shield capacity).
+  - Creates a Rapier `RigidBody` (kinematic) and tuned capsule collider sized to the model conventions.
+  - Initializes the ship's `AIState` and deterministic `traitSeed` using `state.rng` so trait generation remains reproducible.
+  - Seeds progression fields (xp, level, xpToNext) and any captain/subsystem records required for UI and progression systems.
+  - Applies deterministic weapon range variance when enabled via `AI_CONFIG.rangePolicy` using a secondary `SeededRng` derived from the ship's `traitSeed`.
 
-Integration
+Turrets & carrier behavior
 
-- Called by `state.ts` helpers (`spawnInitialFleets`, `spawnRandomShip`, `resetGame`) and tests; relies on `GameState.rapier`, `rng`, and `ai.tickInterval` to configure runtime state.
-- Registers colliders in `GameState.colliderLookup` and turrets through `registerTurret` to keep cascade removal fast.
-- AI profiles are resolved via `getDefaultProfileId` (see `src/game/aiProfiles.ts`); ships spawn ready for the decision system with trait multipliers derived through `generateTraitsFromSeed`.
+- Ships that include `turrets` in their `ShipStats` have turret ECS entities created by `spawnShip`.
+- Turret entities are registered using `registerTurret(state, parentId, turretEntity)` which stores turrets into `state.turretsByShip` for efficient cascade removal.
+- Carrier hulls receive a `CarrierComponent` with `activeFighterIds`, `launchIndex`, and `launchCooldownRemaining` and rely on `updateCarrierLaunchSystem` to enqueue fighter spawns into the deferred queue so launches do not conflict with Rapier iteration.
 
-Tunables
+Integration and testability
 
-- Per-hull stats: hp/shield pools, regen, damage, fire rate, projectile speed/range, move speed, scale, default bullet type, optional turret specs.
-- Collider primitive (capsule) sized for current GLB scale; adjust if art assets change.
-- Profile defaults can be overridden by editing `PROFILE_BY_HULL` in `aiProfiles.ts` for new roles/behaviors.
+- `spawnInitialFleets` and `spawnRandomShip` call into `spawnShip` and rely on `state.rng` for deterministic placement and hull selection.
+- Tests should seed `state.rng` directly to produce predictable ship spawns and verify derived fields such as `ai.traitSeed`, `xpToNext`, turret cooldowns, and `carrier.activeFighterIds` after a launch cycle.
 
-Updated: 2025-09-22
+Notable helpers & tuning
+
+- `createDefaultMotionStats()` — test-friendly fallback motion configuration used across suites.
+- `applyRangeVariance(baseRange, traitSeed, weaponIndex)` — deterministic ± variance applied per-weapon using a derived RNG so per-ship variance does not affect the global RNG stream.
+- Turret colliders are small sensors and non-physics-interacting colliders to enable target and line-of-sight calculations without heavy physics interactions.
+
+References
+
+- `src/game/ships.ts`, `src/config/*` (ship-related tunables), `src/game/turretRegistry.ts`

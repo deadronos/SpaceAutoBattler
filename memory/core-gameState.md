@@ -1,33 +1,64 @@
-# Memory — core-gameState
+# core/gameState
 
-File: `src/game/state.ts`
+Last-Reviewed: 2025-10-03
 
-Responsibilities (summary)
+**Memory name:** core-gameState (authoritative)
 
-- `createGameState()` initializes Rapier, the physics `World`/`EventQueue`, the Miniplex ECS world, seeded RNG, and now wires the AI manager (`state.ai`) plus AI blackboard scaffolding.
-- Lifecycle helpers `destroyEntity(state, entity)` / `disposeGameState(state)` manage Rapier resources, ECS cleanup, turret cascade removal, and now leave AI bookkeeping to be rebuilt next tick.
-- Spawn helpers (`spawnInitialFleets`, `spawnRandomShip`, `resetGame`) create deterministic fleets and reseed per-ship cooldowns/AI traits.
+Summary:
 
-Key data and structures
+- Location: `src/game/state.ts`.
+- Purpose: Canonical GameState factory, lifecycle helpers, and the single source of truth for all runtime simulation data used by systems, tests, and the renderer.
 
-- `GameState` now carries:
-  - Rapier runtime objects (`rapier`, `physicsWorld`, `eventQueue`).
-  - ECS world, entity queries, `colliderLookup`, optional `turretsByShip` registry.
-  - Simulation clock (`time`), `paused`, `timeScale`, and canonical `rng`.
-  - `ai: AIManagerState` (flag, tick interval, max-per-tick budget, accumulator, tick index/cursor, slice count, escort assignments map, runtime metrics).
-  - `blackboard: AIBlackboard` (per-team centroids, posture, nearest-enemy/threat maps, scratch vectors, tick index).
+Primary exports and responsibilities:
 
-Behavior notes
+- `createGameState(): Promise<GameState>`
+  - Initializes Rapier (`await Rapier.init({})`), constructs the Rapier `World` and `EventQueue` (created with `{ auto: true }`), a Miniplex ECS world, and returns a fully-formed `GameState` object ready for use.
+  - Instantiates a deterministic RNG on the state: `state.rng = new SeededRng(1337)` by default.
+  - Creates `state.queries` (ships, projectiles, turrets) and the `simulation` bookkeeping used for fixed-step integration.
 
-- `createGameState` seeds AI defaults from `config.ai` (v2 disabled by default, 10 Hz tick). Blackboard vectors are preallocated to avoid per-tick allocations.
-- `resetGame` now resets AI counters, clears escort assignments/nearest caches, and zeroes centroids/posture in addition to respawning fleets.
-- `spawnShip` attaches an `ai` component per ship (profile id derived from hull, initial `AICommand` heading forward, deterministic `traitSeed` + trait multipliers). Turret entity registration unchanged.
-- `destroyEntity` still clears Rapier handles/turret registries; AI state is transient and rebuilt via `updateDecisionSystem` so no extra teardown is needed.
+- `disposeGameState(state: GameState): void`
+  - Safely tears down the Rapier world, disposes resources and destroys ECS entities via `destroyEntity` to avoid leaking physical bodies or render resources.
 
-Testing & recommendations
+- `destroyEntity(state: GameState, entity: GameEntity): void`
+  - Removes an entity from ECS, unregisters colliders in `state.colliderLookup`, disposes attached resources (rigid bodies, colliders, renderer attachments) and ensures consistent cascade removal.
 
-- Tests toggling AI V2 should assert `state.ai.enabled` and blackboard contents; when flag-off, the legacy systems should behave as before.
-- When spawning ships in tests, inspect `entity.ai` to validate profile assignment or override behavior; any deterministic scenarios should set `state.ai.tickInterval`/`maxPerTick` explicitly.
-- Continue using `registerTurret`/`unregisterTurret` helpers so destroy cascades remain O(1).
+- `spawnInitialFleets(state: GameState): void` and `spawnRandomShip(state, team)`
+  - Helpers to create demo/test fleets and single random ships respectively; rely on `state.rng` and `SHIP_STATS` for deterministic placement and ship variants.
 
-Updated: 2025-09-22
+Key runtime fields and patterns (authoritative)
+
+- Determinism
+  - The canonical seeded RNG `state.rng` provides deterministic randomness for spawning, weapon-range variance, AI tie-breakers, etc. Tests should set/reset the RNG when producing golden fixtures.
+
+- Simulation clock & queues
+  - `state.simulation` contains: `step` (fixed step duration), `accumulator`, `maxSubSteps`, `alpha`, `lastTickIndex`, `lastTickStart`, `lastTickDuration`, and two mutation queues: `deferredMutations` (pre-physics flush) and `postStepMutations` (post-physics flush).
+  - Systems enqueue expensive or Rapier-sensitive operations (spawn/despawn, collider changes) into these queues to avoid Rapier mutable-borrow panics during iteration.
+
+- Rapier integration and diagnostics
+  - `state.rapier` (Rapier module), `state.physicsWorld` (Rapier World), and `state.eventQueue` are created in `createGameState`.
+  - The code records Rapier-related diagnostic counters under `state.simulation.rapierDiagnostics` (deferred mutation failures, guard trips, step panic counters, subsystem failure counts, and last failure metadata) to aid debugging and Playwright/QA introspection.
+
+- AI manager & blackboard
+  - `state.ai` tracks AI v2 manager state: enabled flag, tick interval, max per tick, accumulator, tick cursor, assignment maps (escorts), metrics, interrupts, and interrupt cooldown maps.
+  - `state.blackboard` contains derived team posture, nearest-enemy caches, threat maps, centroid vectors and temp vector pool used for decision computation.
+
+- Turret tracking
+  - `state.turretsByShip` is a Map used to track turret ECS entities per parent ship id to allow efficient cascade removal of turrets when a ship is destroyed.
+
+- Queries & entity ids
+  - `state.queries` exposes Miniplex archetype queries for `ships`, `projectiles`, and `turrets` used by systems.
+  - `state.nextEntityId` and `state.nextExplosionId` provide deterministic id generation for entities and explosion events.
+
+Best practices & constraints
+
+- Keep all runtime state on `GameState` (avoid module-level mutable state).
+- Use queued deferred mutations for any Rapier body/collider changes that might run during system loops; prefer `enqueuePostPhysicsMutation` when the operation must run after physics step.
+- Use `disposeGameState` and `destroyEntity` helpers during tests and integration flows to ensure proper Rapier disposal and avoid panics.
+
+Verification notes
+
+- 2025-10-03: Confirmed fields and structure against `src/game/state.ts` and `src/types/simulation.ts`. Tests and systems rely on `simulation.deferredMutations` and `postStepMutations` to avoid Rapier alias panics; `rapierDiagnostics` is used extensively in regression tests and Playwright debug plumbing.
+
+References
+
+- `src/game/state.ts`, `src/types/simulation.ts`, `src/game/simulationQueue.ts`

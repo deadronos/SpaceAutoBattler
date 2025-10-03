@@ -3,6 +3,7 @@ import { GameProvider } from './game/context.js';
 import { Battlefield } from './components/Battlefield.js';
 import { Hud } from './components/Hud.js';
 import { Controls } from './components/Controls.js';
+import RingDebugPanel from './debug/RingDebugPanel.js';
 
 import type React from 'react';
 
@@ -15,6 +16,7 @@ export function App(): React.ReactElement {
         </div>
         <Hud />
         <Controls />
+        <RingDebugPanel />
       </div>
     </GameProvider>
   );

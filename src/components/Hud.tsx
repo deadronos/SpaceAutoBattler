@@ -6,6 +6,7 @@ import type React from 'react';
 import { AiDebugOverlay } from './AiDebugOverlay.js';
 import { ExplosionDebugOverlay } from './ExplosionDebugOverlay.js';
 import { HudHealthLayer } from './HudHealthLayer.js';
+import { ProgressionPanel } from './ProgressionPanel.js';
 import { useUiStore } from '../game/uiStore.js';
 import { SettingsDrawer, DebugDrawer } from './HudToggleDrawer.js';
 
@@ -31,6 +32,7 @@ export function Hud(): React.ReactElement {
       <HudHealthLayer />
       <AiDebugOverlay />
       <ExplosionDebugOverlay />
+      <ProgressionPanel />
       <div className="hud-panel">
         <div className="hud-panel__header">
           <div>

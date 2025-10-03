@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { updateMotionSystem } from '../../src/game/systems/motion.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
+import { createTestGameState } from './helpers/fixtures.js';
 
 function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
   const shipEntity = {
@@ -62,12 +63,7 @@ function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
 }
 
 function createMockGameState(ships: ShipEntity[]): GameState {
-  return {
-    queries: {
-      ships: { entities: ships },
-    },
-    time: 0,
-  } as any;
+  return createTestGameState({ queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] } }, time: 0 });
 }
 
 describe('Motion System Behavior', () => {
@@ -179,5 +175,76 @@ describe('Motion System Behavior', () => {
       updateMotionSystem(state, 0.016);
     }).not.toThrow();
   });
+  it('honors per-hull turn gains when computing angular velocity', () => {
+    const dt = 0.016;
+
+    const baselineShip = createMockShip('blue', new Vector3(0, 0, 0));
+    baselineShip.ai!.command.heading = new Vector3(1, 0, 0);
+    baselineShip.ship.motion.maxTurnRate = Math.PI * 3;
+    baselineShip.ship.motion.angularAcceleration = 1e6;
+    const baselineState = createMockGameState([baselineShip]);
+    updateMotionSystem(baselineState, dt);
+    const baselineAngularSpeed = baselineShip.ship.angularVelocity.length();
+
+    const tunedShip = createMockShip('blue', new Vector3(0, 0, 0));
+    tunedShip.ai!.command.heading = new Vector3(1, 0, 0);
+    tunedShip.ship.motion.maxTurnRate = Math.PI * 3;
+    tunedShip.ship.motion.angularAcceleration = 1e6;
+    tunedShip.ship.motion.turnKp = (baselineShip.ship.motion.turnKp ?? 4.0) * 1.8;
+    tunedShip.ship.motion.turnKd = (baselineShip.ship.motion.turnKd ?? 0.6) * 0.4;
+    const tunedState = createMockGameState([tunedShip]);
+    updateMotionSystem(tunedState, dt);
+    const tunedAngularSpeed = tunedShip.ship.angularVelocity.length();
+
+    expect(tunedAngularSpeed).toBeGreaterThan(baselineAngularSpeed);
+  });
+
+  it('damps angular velocity within the settling band to the configured rate', () => {
+    const ship = createMockShip('blue', new Vector3(0, 0, 0));
+    const state = createMockGameState([ship]);
+    ship.ai!.command.heading = new Vector3(0, 0, 1);
+    ship.ship.angularVelocity.set(0, 0.6, 0);
+    ship.ship.motion.angularSettlingRate = 0.05;
+    ship.ship.motion.angularSettleToleranceDeg = 8;
+
+    const dt = 0.016;
+    const steps = Math.ceil(0.5 / dt);
+    for (let i = 0; i < steps; i++) {
+      updateMotionSystem(state, dt);
+    }
+
+    expect(ship.ship.angularVelocity.length()).toBeLessThanOrEqual(0.05 + 1e-4);
+  });
+
+  it('skips rotation slerp when the ship is inside the settling band', () => {
+    const ship = createMockShip('blue', new Vector3(0, 0, 0));
+    const state = createMockGameState([ship]);
+    ship.ai!.command.heading = new Vector3(0, 0, 1);
+    ship.ship.motion.smoothing = {
+      ...(ship.ship.motion.smoothing ?? {}),
+      rotationSlerp: 0.6,
+    };
+    ship.ship.motion.angularSettlingRate = 0.05;
+    ship.ship.motion.angularSettleToleranceDeg = 10;
+    ship.ship.angularVelocity.set(0, 0.02, 0);
+
+    const slerpSpy = vi.spyOn(ship.transform.rotation, 'slerp');
+    updateMotionSystem(state, 0.016);
+    expect(slerpSpy).not.toHaveBeenCalled();
+    slerpSpy.mockRestore();
+
+    const turningShip = createMockShip('blue', new Vector3(0, 0, 0));
+    turningShip.ai!.command.heading = new Vector3(1, 0, 0);
+    turningShip.ship.motion.smoothing = {
+      ...(turningShip.ship.motion.smoothing ?? {}),
+      rotationSlerp: 0.6,
+    };
+    const turningSpy = vi.spyOn(turningShip.transform.rotation, 'slerp');
+    updateMotionSystem(createMockGameState([turningShip]), 0.016);
+    expect(turningSpy).toHaveBeenCalled();
+    turningSpy.mockRestore();
+  });
 });
+
+
 

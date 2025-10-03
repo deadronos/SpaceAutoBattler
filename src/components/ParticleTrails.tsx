@@ -37,7 +37,20 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
   // Early out if globally disabled via config
   if (!PARTICLE_TRAILS_CONFIG.enabled) return <></>;
   const meshRef = useRef<InstancedMesh>(null);
-  const particlesRef = useRef<Particle[]>([]);
+  // Build an initial particle pool synchronously so the first useFrame never sees an empty array.
+  const initialParticles = useMemo<Particle[]>(
+    () =>
+      Array.from({ length: PARTICLE_TRAILS_CONFIG.maxParticles }, () => ({
+        position: new Vector3(),
+        velocity: new Vector3(),
+        life: 0,
+        maxLife: PARTICLE_TRAILS_CONFIG.lifetime,
+        scale: 0,
+        shipId: 0,
+      })),
+    []
+  );
+  const particlesRef = useRef<Particle[]>(initialParticles);
   const nextParticleIndex = useRef(0);
   const dummy = useMemo(() => new Object3D(), []);
   const tmpVec = useMemo(() => new Vector3(), []);
@@ -102,16 +115,19 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
     return m;
   }, []);
 
-  // Initialize particle pool
+  // Ensure pool stays in sync if config changes (unlikely at runtime but safe).
   useEffect(() => {
-    particlesRef.current = Array.from({ length: PARTICLE_TRAILS_CONFIG.maxParticles }, () => ({
-      position: new Vector3(),
-      velocity: new Vector3(),
-      life: 0,
-      maxLife: PARTICLE_TRAILS_CONFIG.lifetime,
-      scale: 0,
-      shipId: 0,
-    }));
+    if (particlesRef.current.length !== PARTICLE_TRAILS_CONFIG.maxParticles) {
+      particlesRef.current = Array.from({ length: PARTICLE_TRAILS_CONFIG.maxParticles }, () => ({
+        position: new Vector3(),
+        velocity: new Vector3(),
+        life: 0,
+        maxLife: PARTICLE_TRAILS_CONFIG.lifetime,
+        scale: 0,
+        shipId: 0,
+      }));
+      nextParticleIndex.current = 0;
+    }
   }, []);
 
   const computeThrusterAnchorsWorld = (ship: ShipEntity): Vector3[] => {
@@ -147,9 +163,10 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
   };
 
   useFrame((state, delta) => {
-  if (!meshRef.current) return;
+    if (!meshRef.current) return;
 
     const particles = particlesRef.current;
+    if (!particles || particles.length === 0) return;
     let activeCount = 0;
 
     // Update existing particles
@@ -185,9 +202,11 @@ export function ParticleTrails({ ships }: ParticleTrailProps): React.ReactElemen
       
       if (shouldSpawn) {
         for (const anchor of anchors) {
-          const particle = particles[nextParticleIndex.current];
+          const idx = nextParticleIndex.current % particles.length;
+          const particle = particles[idx];
           nextParticleIndex.current = (nextParticleIndex.current + 1) % PARTICLE_TRAILS_CONFIG.maxParticles;
           
+          if (!particle) continue;
           particle.position.copy(anchor);
           
           // Random velocity backwards from ship with some spread

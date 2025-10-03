@@ -1,0 +1,34 @@
+{
+  "hulls": [
+    {
+      "id": "fighter",
+      "name": "Fighter",
+      "category": "small",
+      "modelPath": "../../../src/assets/gltf/fighter.glb"
+    },
+    {
+      "id": "corvette",
+      "name": "Corvette", 
+      "category": "small",
+      "modelPath": "../../../src/assets/gltf/corvette.glb"
+    },
+    {
+      "id": "frigate",
+      "name": "Frigate",
+      "category": "medium",
+      "modelPath": "../../../src/assets/gltf/frigate.glb"
+    },
+    {
+      "id": "destroyer",
+      "name": "Destroyer",
+      "category": "large",
+      "modelPath": "../../../src/assets/gltf/destroyer.glb"
+    },
+    {
+      "id": "carrier",
+      "name": "Carrier",
+      "category": "large",
+      "modelPath": "../../../src/assets/gltf/carrier.glb"
+    }
+  ]
+}

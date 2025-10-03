@@ -12,10 +12,10 @@ This index lists the short searchable memory summaries generated for the `src/` 
 ## Per-file memories
 
 - [core-gameState.md](./core-gameState.md) — `src/game/state.ts` (GameState factory, Rapier init, entity lifecycle helpers like createGameState, destroyEntity, spawnInitialFleets).
-- [core-systems.md](./core-systems.md) — `src/game/systems.ts` (simulation step: prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles; lightweight AI: nearest-enemy targeting and firing).
-- [core-ships.md](./core-ships.md) — `src/game/ships.ts` (SHIP_STATS, spawnShip, collider registration).
-- [core-physics.md](./core-physics.md) — `src/game/state.ts` & `src/game/systems.ts` (Rapier initialization, main-thread stepping, collision/resolve helpers).
-- [core-assets.md](./core-assets.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer).
+- [core-systems.md](./core-systems.md) — `src/game/systems.ts` (simulation step ordering: prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles; AI decision ordering and exported test hooks).
+- [core-ships.md](./core-ships.md) — `src/game/ships.ts` (SHIP_STATS, spawnShip, turret ECS creation and registration, progression seeding, range variance logic).
+- [core-physics.md](./core-physics.md) — `src/game/state.ts` & `src/game/systems.ts` (Rapier initialization, main-thread stepping, pending reset semantics with `requestReset`).
+- [core-assets.md](./core-assets.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer; `patchGltfLoader` imported in `main.tsx`).
 - [core-rng.md](./core-rng.md) — `src/utils/rng.ts` (seeded deterministic RNG used by simulation and spawn randomization).
 - [core-aiProfiles.md](./core-aiProfiles.md) — `src/game/aiProfiles.ts` (behavior profile definitions + hull-to-profile mapping for AI v2).
 - [core-aiScenarioHarness.md](./core-aiScenarioHarness.md) — `src/game/aiScenarioHarness.ts` (headless scenario runner feeding deterministic AI command logs and fixtures).
@@ -31,6 +31,6 @@ This index lists the short searchable memory summaries generated for the `src/` 
 
 - Keep each memory short (200-800 words) and focused on the file's responsibilities.
 - Link to relevant config files and note key tunables where appropriate.
-- Prefer short examples and references to where the file is used (e.g., `main.ts` or `systems.ts`).
+- Prefer short examples and references to where the file is used (e.g., `main.tsx` or `systems.ts`).
 
-Generated on 2025-09-21 by Copilot agent.
+Audited on 2025-10-03 by Copilot agent.

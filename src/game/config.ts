@@ -72,7 +72,6 @@ const TICK_RATE_EXPERIMENT_ENABLED = TICK_RATE_FORCE_OFF
   : TICK_RATE_FORCE_ON
   ? true
   : true;
-const TICK_RATE_EFFECTIVE = TICK_RATE_EXPERIMENT_ENABLED ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
 
 // Vertical maneuver experiment flags
 const VERTICAL_FORCE_ON = readBooleanEnv('AI_VERTICAL_EXPERIMENT_ON');
@@ -180,19 +179,38 @@ export const AI_CONFIG = {
  * the effective configuration values, allowing for real-time experimentation.
  */
 
-// Lazy import to avoid circular dependency
-let _useUiStore: any = null;
-function getUiStore() {
-  if (_useUiStore === null) {
-    // Dynamic import to avoid circular dependency
-    _useUiStore = require('./uiStore.js').useUiStore;
-  }
-  return _useUiStore;
+interface UiStoreSlice {
+  aiVerticalEnabled: boolean | null | undefined;
+  aiEngagementBoostEnabled: boolean | null | undefined;
+  aiTickRateExperimentEnabled: boolean | null | undefined;
+  aiRangePolicy: string | null | undefined;
 }
 
-export function getEffectiveAIConfig() {
+interface UiStoreLike {
+  getState(): UiStoreSlice;
+}
+
+function resolveUiStore(): UiStoreLike | null {
   try {
-    const uiState = getUiStore().getState();
+    const possibleStore = (globalThis as { __spaceAutobattlerUiStore?: unknown }).__spaceAutobattlerUiStore;
+    if (possibleStore && typeof (possibleStore as { getState?: unknown }).getState === 'function') {
+      return possibleStore as UiStoreLike;
+    }
+  } catch {
+    // ignore resolution errors in non-browser environments
+  }
+  return null;
+}
+
+
+export function getEffectiveAIConfig() {
+  const uiStore = resolveUiStore();
+  if (!uiStore) {
+    return AI_CONFIG;
+  }
+
+  try {
+    const uiState = uiStore.getState();
     return {
       ...AI_CONFIG,
       verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
@@ -201,7 +219,7 @@ export function getEffectiveAIConfig() {
       rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
     };
   } catch {
-    // Fallback to static config if UI store is not available
+    // Fallback to static config if UI store state cannot be read
     return AI_CONFIG;
   }
 }
@@ -223,3 +241,6 @@ export function clampToWorld(v: { x: number; y: number; z: number }): void {
   v.y = Math.min(Math.max(v.y, min), max);
   v.z = Math.min(Math.max(v.z, min), max);
 }
+
+
+

@@ -1,47 +1,39 @@
 # Memory — core-systems
 
-File: `src/game/systems.ts`
+File: `src/game/systems.ts` and `src/game/systems/*`
 
 ## Responsibilities
 
-`updateGame(state, delta)` orchestrates the simulation tick in this exact order (verified against source on 2025-09-24):
+`updateGame(state, delta)` orchestrates the simulation tick. The current ordering (verified in source) is:
 
-1. `updateDecisionSystem` — fixed-rate AI V2 scheduler: rebuild blackboard, assign escorts/VIPs, evaluate round‑robin intent slice when enabled.
-2. `prepareShips` — apply deterministic `AICommand` (heading, thrust, fire gating) or legacy nearest‑enemy steering; shield regen, muzzle flash pruning, embedded turret firing fallback.
-3. `updateCarrierLaunchSystem` — handles carrier launch logic (fighters/drones) before turret & motion so spawned entities participate in same frame.
-4. `updateTurrets` — aim & fire turret ECS entities, cooldown handling.
-5. `updateMotionSystem` — applies physics-based motion/steering toward commanded heading prior to physics step (ensures Rapier sees updated velocities/orientations once per frame).
-6. `advanceProjectiles` — kinematic projectile advancement and world clamp pre-physics (projectiles are not Rapier bodies presently).
+1. `updateDecisionSystem` / `runDecisionTick` — rebuilds the blackboard, assigns escorts/VIPs, and runs a round‑robin decision slice for AI v2 when enabled.
+2. `prepareShips` — applies AI or legacy commands, prunes muzzle flashes, runs shield regen and progression-related per-ship accounting.
+3. `updateCarrierLaunchSystem` — schedules carrier fighter spawns via the deferred mutation queue so spawned fighters appear deterministically after the carrier loop.
+4. `updateTurrets` — updates turret ECS entities, aiming logic, and cooldowns; turret entity lifecycle is registered via `registerTurret`.
+5. `updateMotionSystem` — computes velocities and applies kinematic updates (using safe setter wrappers when appropriate) before the Rapier step.
+6. `advanceProjectiles` — advances non-physics projectiles; projectiles backed by Rapier typically get advanced by the physics step and reconciled after.
 7. `physicsWorld.step(eventQueue)` — Rapier integration step.
-8. `syncTransforms` — copy Rapier body transforms back onto ECS components for renderer.
-9. `resolveProjectiles` — TTL decrement, collision resolution (distance checks), shield absorption, ripple emission, hull damage, entity destruction queue.
+8. `flushPostPhysicsMutations` — run any post-step staged operations (spawns, disposals) and clear queues.
+9. `syncTransforms` — copy Rapier transforms back to ECS components for renderer consumption.
+10. `resolveProjectiles` — apply projectile impacts, shield interactions, damage application, and enqueue any resultant entity removals.
+11. `updateExplosions` — advance explosion events for renderer consumption.
 
-## Key Details
+## Key details
 
-- Blackboard derivation: ally centroids, team posture (`aggressive` | `hold` | `retreat`), nearest-enemy cache, VIP threat mapping (carriers/destroyers treated as VIPs) happens inside `refreshBlackboard` invoked by `updateDecisionSystem`.
-- Role assignment: `assignTeamRoles` maps escort-profile ships to VIP parent ids deterministically (sorted by id), stored in `ai.assignments.escorts`.
-- Intent evaluation: Each ship evaluates candidates (`Attack`, `Kite`, `Escort`, `Intercept`, `Reposition`, `Regroup`, `Flee`) with integer-friendly scores; deterministic tie-break uses ship `traitSeed` hashed with tick index.
-- LOD scheduling: `computeLod` returns 0/1/2 -> next think spacing of 1/2/4 AI ticks to throttle evaluation for far/low-priority ships.
-- Motion: AI heading rotation is rate-limited; `updateMotionSystem` performs gradual turning & thrust acceleration rather than snapping orientation.
-- Embedded turrets: When no separate turret ECS entities exist, `runEmbeddedTurrets` supplies a minimal firing path for base ships to keep combat functional.
-- Metrics: `ai.metrics` tracks last slice size/decisions/skips and cumulative totals; `budgetHits` increments when not all ships processed in a tick.
-- Pools: Hot path reuses shared vectors (`TEMP_DIR`, `TEMP_POS`, etc.) to avoid per-frame allocations.
+- The decision system exports `runDecisionTick` to support harnesses and deterministic unit tests. There is also an internal test surface `__aiTestHooks` that exposes scoring, tie-break helpers, and other evaluators for fine-grained assertions in Vitest.
+- Motion code favors application of velocities to physics using shared temp vectors and safe enqueue paths to avoid Rapier guard errors.
+- Carrier launch scheduling and other world mutation tasks are intentionally enqueued to deferred queues so Rapier sees consistent, non-overlapping modifications.
 
-## Testing Hooks & Harness
+## Testing hooks & harness
 
-- Deterministic hooks (`runDecisionTick`, scorer helpers, `writeCommand`, intercept math helpers, legacy behavior runner) are exported via an internal `__aiTestHooks` object for Vitest suites without widening public APIs.
-- Scenario harness (`src/game/aiScenarioHarness.ts`) uses `runDecisionTick` to produce golden logs (escort, intercept, regroup, bomber intercept, artillery retreat) for regression validation.
+- `__aiTestHooks` and exported `runDecisionTick` are used by the harness (`src/game/aiScenarioHarness.ts`) to produce deterministic logs and kpi snapshots for golden fixtures.
+- Unit tests call small system functions directly (e.g., `prepareShips`, `advanceProjectiles`) with a test `GameState` to isolate behaviors without spinning the full step loop.
 
-## Performance Considerations
+## Performance considerations
 
-- Current nearest-enemy computation is O(N²); monitor for >300 ships and consider spatial partitioning if `ai.metrics.budgetHits` rises.
-- Motion and intent scoring avoid allocations; any new intent should follow same pattern (reusing temps, no closures per tick).
-- HUD `AiDebugOverlay` reads metrics; keep overlay inexpensive (throttling may be added if frame budget tightens).
+- Systems avoid per-frame allocations; reuse pooled vectors and objects in hot loops.
+- The nearest-enemy computation is currently O(N²) and the AI metrics surface includes indicators when budget thresholds are breached (`ai.metrics.budgetHits`). Consider spatial partitioning if entity counts increase.
 
-## Follow-ups / TODOs
+References
 
-- Consider caching nearest-enemy on a frame index keyed map to reduce double distance scans if new systems need similar info.
-- Potential spatial grid or BVH for enemy lookup if perf budget tight with higher entity counts.
-- Evaluate intercept lead accuracy for very slow projectile speeds or extremely fast targets; add fixture if adjustments made.
-
-Updated: 2025-09-24
+- `src/game/systems.ts`, `src/game/systems/*`, `src/game/systems/decision/*`

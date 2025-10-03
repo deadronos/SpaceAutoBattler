@@ -32,6 +32,28 @@ export interface PlanetBodyConfig {
     color?: string;
     opacity?: number;
     rotationSpeed?: number;
+    /** Brightness multiplier applied to the ring base color (artist tweak). */
+    brightness?: number;
+    /** Fresnel highlight strength to control view-dependent rim brightness. */
+    fresnelStrength?: number;
+    /** Optional tint color to bias the ring toward a specific hue (e.g., blue-white). */
+    tintColor?: string;
+    /** Optional tint mix factor (0..1). If unspecified, the renderer will pick a conservative default when postprocessing is off. */
+    tintMix?: number;
+    /** If true, this ring should be rendered only via bloom (artist opt-in). When set the renderer/bloom manager will be allowed to use bloom-only routing for the material. */
+    bloomOnly?: boolean;
+    /** Procedural banding frequency (controls number of visible narrow bands). Higher = more bands. */
+    bandFrequency?: number;
+    /** Strength of banding contrast (0..1). */
+    bandStrength?: number;
+    /** Scale used for subtle positional jitter/irregularity of bands. */
+    bandNoiseScale?: number;
+    /** How much darker bands are compared to base (0..1). */
+    bandDarkness?: number;
+    /** Strength of planet shadowing on the ring (0=no shadow, 1=full shadow). */
+    shadowStrength?: number;
+    /** Soft penumbra size as a fraction of planet radius (0..1). Controls how wide the soft shadow edge is. */
+    penumbra?: number;
   };
 }
 
@@ -88,6 +110,8 @@ export interface StarDiskConfig {
   haze?: StarDiskHazeConfig;
   /** Optional boundary feather configuration for alpha roll-off. */
   boundary?: StarDiskBoundaryConfig;
+  /** Normalized (0..1) radius to define an opaque core for depth pre-pass. */
+  depthCoreRadius?: number;
 }
 
 export interface CelestialEnvironmentConfig {
@@ -148,9 +172,35 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       rings: {
         innerRadius: 2200,
         outerRadius: 3800,
-        color: '#ccaa88',
-        opacity: 0.4,
+        // Move from a warm tint toward a neutral/desaturated grey to match the
+        // photographic reference (more visible without relying on bloom).
+        color: '#9e9e9e',
+        // Higher baseline opacity and modest brightness to make bands readable
+        // without relying on bloom highlights.
+        opacity: 0.85,
         rotationSpeed: 0.001,
+        // Artist-tweakable appearance values for icy, reflective-looking rings
+        // Slightly reduce overall brightness so the banding contrast reads
+        // as grooves rather than blown-out highlights.
+        brightness: 0.95,
+        // Keep a noticeable fresnel highlight but bias it slightly higher
+        // so rim catch highlights remain visible in side-lit views.
+        fresnelStrength: 1.8,
+        // Subtle tint toward neutral; keep small tint mix so the ring stays
+        // mostly grey but can be nudged by artists if desired.
+        tintColor: '#bfbfbf',
+        tintMix: 0.12,
+        // By default rings are visible; artists can opt into bloom-only.
+        bloomOnly: false,
+        // Procedural banding tuned to a dense concentric pattern
+        bandFrequency: 380.0,
+        bandStrength: 0.9,
+        bandNoiseScale: 0.45,
+        bandDarkness: 0.78,
+        // Strong shadowing to give the ring a deep silhouette under the
+        // planet; penumbra widened for a smooth soft edge.
+        shadowStrength: 0.95,
+        penumbra: 0.06,
       },
     },
     {
@@ -189,7 +239,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
   ],
   // Default star disk settings — tune here to change size/opacity/position globally
   starDisk: {
-    size: 12000,
+    size: 30000,
     opacity: 0.9,
     distanceMultiplier: 1.0,
     haze: {
@@ -202,6 +252,10 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       featherExponent: 2.4,
       alphaFloor: 0.02,
     },
+    // Normalized radius for the opaque core used for depth occlusion. A
+    // conservative default derived from boundary.featherStart ensures the
+    // depth pass hides the star's interior while preserving the halo.
+    depthCoreRadius: 0.76,
   },
   features: {
     skysphere: true,

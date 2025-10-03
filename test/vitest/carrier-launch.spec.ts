@@ -6,6 +6,7 @@ vi.mock('../../src/game/ships.js', () => ({
 }));
 
 import { updateCarrierLaunchSystem } from '../../src/game/systems/carriers.js';
+import { flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
 import { spawnShip } from '../../src/game/ships.js';
 import { CARRIER_LAUNCH_CONFIG } from '../../src/config/carriers.js';
 import type {
@@ -52,11 +53,15 @@ describe('carrier launch system', () => {
     const state = createState(ships);
 
     updateCarrierLaunchSystem(state, 0);
+    expect(spawnShipMock).not.toHaveBeenCalled();
+
+    flushPostPhysicsMutations(state);
     expect(spawnShipMock).toHaveBeenCalledTimes(1);
     expect(carrier.carrier?.activeFighterIds.length).toBe(1);
 
     for (let i = 0; i < 10; i += 1) {
       updateCarrierLaunchSystem(state, config.cooldownSeconds);
+      flushPostPhysicsMutations(state);
     }
 
     expect(carrier.carrier?.activeFighterIds.length).toBe(config.maxActive);
@@ -70,12 +75,14 @@ describe('carrier launch system', () => {
     const state = createState(ships);
 
     updateCarrierLaunchSystem(state, 0);
+    flushPostPhysicsMutations(state);
     expect(carrier.carrier?.activeFighterIds.length).toBe(1);
     expect(spawnShipMock).toHaveBeenCalledTimes(1);
 
     ships.splice(1); // drop the spawned fighter from the live ship list
 
     updateCarrierLaunchSystem(state, config.cooldownSeconds);
+    flushPostPhysicsMutations(state);
 
     expect(carrier.carrier?.activeFighterIds.length).toBe(1);
     expect(spawnShipMock).toHaveBeenCalledTimes(2);
@@ -89,6 +96,7 @@ describe('carrier launch system', () => {
     const state = createState(ships);
 
     updateCarrierLaunchSystem(state, 0);
+    flushPostPhysicsMutations(state);
     expect(spawnShipMock).toHaveBeenCalledTimes(1);
 
     const otherFighter = createFighterEntity(9000, {
@@ -102,11 +110,55 @@ describe('carrier launch system', () => {
     ships.push(otherFighter);
 
     updateCarrierLaunchSystem(state, config.cooldownSeconds);
+    flushPostPhysicsMutations(state);
 
     expect(spawnShipMock).toHaveBeenCalledTimes(2);
     expect(carrier.carrier?.activeFighterIds.length).toBe(2);
     const foreignIds = carrier.carrier?.activeFighterIds.filter((id) => id === otherFighter.id) ?? [];
     expect(foreignIds.length).toBe(0);
+  });
+
+  it('does not enqueue launches when the carrier is already at maxActive within the tick', () => {
+    const config = makeConfig({ cooldownSeconds: 0, maxActive: 2 });
+    const carrier = createCarrierEntity(5, config);
+    const fighterA = createFighterEntity(6000, {
+      hull: 'fighter',
+      team: carrier.ship.team,
+      position: new Vector3(),
+      heading: 0,
+      parentCarrierId: carrier.id,
+    });
+    const fighterB = createFighterEntity(6001, {
+      hull: 'fighter',
+      team: carrier.ship.team,
+      position: new Vector3(),
+      heading: 0,
+      parentCarrierId: carrier.id,
+    });
+    carrier.carrier!.activeFighterIds.push(fighterA.id, fighterB.id);
+    const ships: ShipEntity[] = [carrier, fighterA, fighterB];
+    const state = createState(ships);
+
+    updateCarrierLaunchSystem(state, 0);
+    flushPostPhysicsMutations(state);
+
+    expect(spawnShipMock).not.toHaveBeenCalled();
+    expect(carrier.carrier?.activeFighterIds.length).toBe(config.maxActive);
+  });
+
+  it('queues launches for multiple carriers and flushes them deterministically', () => {
+    const config = makeConfig({ cooldownSeconds: 0.1, maxActive: 3 });
+    const carrierA = createCarrierEntity(6, config);
+    const carrierB = createCarrierEntity(7, config);
+    const ships: ShipEntity[] = [carrierA, carrierB];
+    const state = createState(ships);
+
+    updateCarrierLaunchSystem(state, 0);
+    flushPostPhysicsMutations(state);
+
+    expect(spawnShipMock).toHaveBeenCalledTimes(2);
+    expect(carrierA.carrier?.activeFighterIds).toEqual([1000]);
+    expect(carrierB.carrier?.activeFighterIds).toEqual([1001]);
   });
 });
 
@@ -206,6 +258,24 @@ function createState(ships: ShipEntity[]): GameState {
     rng: new SeededRng(1234),
     queries: {
       ships: { entities: ships },
+    },
+    simulation: {
+      step: 1 / 20,
+      accumulator: 0,
+      maxSubSteps: 5,
+      alpha: 0,
+      lastTickIndex: 0,
+      lastTickStart: 0,
+      lastTickDuration: 1 / 20,
+      deferredMutations: [],
+      postStepMutations: [],
+      rapierDiagnostics: {
+        deferredMutationFailures: 0,
+        guardTrips: 0,
+        lastFailureTick: -1,
+        lastGuardTick: -1,
+        lastDeferredMutationError: undefined,
+      },
     },
   } as unknown as GameState;
 }

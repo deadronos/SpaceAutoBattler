@@ -4,9 +4,11 @@ import type {
   CarrierLaunchConfig,
   CarrierLaunchSlot,
   GameState,
+  ShipBlueprint,
   ShipEntity,
 } from '../../types/index.js';
 import { spawnShip } from '../ships.js';
+import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
 
 const TEMP_FORWARD = new Vector3();
 const TEMP_RIGHT = new Vector3();
@@ -50,22 +52,27 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
     for (; spawned < launches; spawned += 1) {
       const slotIndex = (carrier.launchIndex + spawned) % Math.max(1, carrier.config.formation.length);
       const slot = carrier.config.formation[slotIndex] ?? FALLBACK_SLOT;
-      const spawnPosition = computeLaunchPosition(ship, carrier.config, slot, state);
+      const spawnPosition = computeLaunchPosition(ship, carrier.config, slot, state).clone();
       const heading = computeHeadingYaw(ship.transform.rotation);
-      const fighter = spawnShip(state, {
+      const blueprint: ShipBlueprint = {
         hull: 'fighter',
         team: ship.ship.team,
         position: spawnPosition,
         heading,
         parentCarrierId: ship.id,
+      };
+
+      enqueuePostPhysicsMutation(state, () => {
+        const fighter = spawnShip(state, blueprint);
+        carrier.activeFighterIds.push(fighter.id);
+        aliveById.set(fighter.id, fighter);
       });
-      carrier.activeFighterIds.push(fighter.id);
-      aliveById.set(fighter.id, fighter);
     }
 
     carrier.launchIndex += spawned;
     carrier.launchCooldownRemaining = carrier.config.cooldownSeconds;
   }
+
 }
 
 function pruneTrackedFighters(

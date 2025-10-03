@@ -163,9 +163,9 @@ describe('StarDisk component', () => {
 
     runFrame();
 
-    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.92, 2);
-    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(2, 2);
-    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0, 3);
+    expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.875, 2);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(1.75, 2);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.05, 3);
 
     createSpy.mockRestore();
     updateSpy.mockRestore();

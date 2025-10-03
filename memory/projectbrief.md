@@ -10,21 +10,17 @@
 
 **Success criteria:**
 
-- All runtime state lives on the canonical `GameState` type (`src/types/index.ts`).
-- Simulation determinism preserved via the seeded RNG (`src/utils/rng.ts`).
-- Fast unit tests (Vitest) and reproducible CI builds.
+- All runtime state lives on the canonical `GameState` type (see `src/types/simulation.ts`).
+- Simulation determinism preserved via the seeded RNG (`src/utils/rng.ts`) — `createGameState()` currently initialises `state.rng = new SeededRng(1337)`.
+- Use of deferred mutation queues (`simulation.deferredMutations` and `simulation.postStepMutations`) prevents Rapier mutable-borrow errors during in-loop spawns/removals.
 
 **Governance & memory bank:**
 
-- Memory files under `memory/` are the canonical source for decisions, requirements, and designs. All significant changes (requirements, design decisions, and task mappings) should be reflected in the Memory Bank and referenced in PRs.
-
-**Recent updates (summary):**
-
-- 2025-09-25 → 2025-09-29: Delivered a series of renderer and determinism updates including the CelestialEnvironment components, deterministic star-disk textures, Playwright capture workflow for before/after comparisons, and test hardening for ship progression scenarios.
+- Memory files under `memory/` are the canonical source for decisions, requirements, and designs. All significant changes should update the Memory Bank and link to PRs.
 
 **Minimal EARS-style requirements (examples):**
 
-- WHEN a simulation run is executed in CI, THE SYSTEM SHALL use a seeded RNG to produce repeatable outcomes [Acceptance: run the `determinism.spec.ts` suite and compare replay snapshots].
-- WHEN visual regressions are evaluated, THE SYSTEM SHALL produce Playwright before/after captures deterministically given the same seed and debug overrides [Acceptance: `playwright-debug/` captures match saved baselines on the CI job].
+- WHEN a simulation run is executed in CI, THE SYSTEM SHALL use a seeded RNG to produce repeatable outcomes (Acceptance: run the deterministic suite and compare replay snapshots).
+- WHEN physics-related entity changes are necessary mid-tick, THE SYSTEM SHALL enqueue them into the post-step mutation queue to avoid Rapier aliasing errors [Acceptance: regression tests using `requestReset` and carrier launch flows validate no Rapier panics occur].
 
-Generated: 2025-09-29
+Generated: 2025-10-03

@@ -80,11 +80,11 @@ export interface ShieldVisualSettings {
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
-  fighter: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
-  corvette: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
-  frigate: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
-  destroyer: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
-  carrier: { margin: 1.01, hexScale: 60, edgeWidth: 0.3, maxAlpha: 0.7, materialKind: 'hex' },
+  fighter: { margin: 1.1, hexScale: 58, edgeWidth: 0.26, maxAlpha: 0.85, materialKind: 'hex' },
+  corvette: { margin: 1.1, hexScale: 58, edgeWidth: 0.26, maxAlpha: 0.85, materialKind: 'hex' },
+  frigate: { margin: 1.12, hexScale: 58, edgeWidth: 0.26, maxAlpha: 0.85, materialKind: 'hex' },
+  destroyer: { margin: 1.14, hexScale: 60, edgeWidth: 0.28, maxAlpha: 0.9, materialKind: 'hex' },
+  carrier: { margin: 1.16, hexScale: 60, edgeWidth: 0.28, maxAlpha: 0.92, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -164,18 +164,18 @@ export const SHIELD_TUNING: ShieldTuning = {
   enableRedBoost: true,
   redBoostPower: 1.32,
   redBoostMultiplier: 1.45,
-  redTint: '#b22222',
-  edgeAlphaMul: 1.2,
-  fillAlphaMul: 0.35,
-  minAlphaFloor: 0.22,
-  fillTintMul: 0.9,
+  redTint: '#ba2b2b',
+  edgeAlphaMul: 1.45,
+  fillAlphaMul: 0.6,
+  minAlphaFloor: 0.4,
+  fillTintMul: 1.05,
 };
 
 // Team color constants used across renderer and placeholder models.
 // Designers can change these to alter the visual identity of teams.
 export const TEAM_COLORS = {
-  blue: '#77aaff',
-  red: '#ff7788',
+  blue: '#8fc4ff',
+  red: '#ff8193',
 } as const;
 
 // Hull tinting when shields are gone: designers can tune how strong the
@@ -205,7 +205,7 @@ export interface HullTintConfig {
  * - (threshold=0.0, strength=0.30)  => tint only at exact zero but stronger
  */
 export const HULL_TINT: HullTintConfig = {
-  tintThreshold: 1.00,
+  tintThreshold: 0.02,
   tintStrength: 0.35,
 };
 
@@ -367,7 +367,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
   bloomThreshold: 0.1,
   bloomSmoothing: 0.001,
   bloomIntensity: 0.1,
-  bloomIgnoreBackground: true,
+  bloomIgnoreBackground: false,
   bloomDefaultGroup: 'default',
   bloomLayerStart: 11,
   bloomGroups: {
@@ -401,9 +401,9 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
       threshold: 1.0,
     },
     star: {
-      intensity: 1.6,
+      intensity: 2.2,
       smoothing: 0.01,
-      threshold: 1.0,
+      threshold: 1.2,
     },
   },
 };

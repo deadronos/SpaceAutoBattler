@@ -2,7 +2,11 @@
 // trisomie21 (THANKS!)
 // My apologies for the ugly code.
 
+#if defined(GL_FRAGMENT_PRECISION_HIGH)
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform float iTime;
 uniform vec3 iResolution;
@@ -17,6 +21,10 @@ uniform float iStarNorth;
 uniform vec3 iViewAlignment;
 uniform vec3 iHazeParams;
 uniform vec4 iBoundaryFeather;
+// Normalized radius (0..1) inside which we force the star to be fully opaque.
+// This helps create a stable depth core used for occlusion (depth pre-pass)
+// while allowing the outer halo to remain translucent.
+uniform float iDepthCoreRadius;
 
 // Geometry-provided UVs for the billboard (stable in object space)
 varying vec2 vUv;
@@ -119,7 +127,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec3 coord		= vec3( angle, distPolar, time * 0.1 );
 	
 	float newTime1	= abs( snoise( coord + vec3( 0.0, -time * ( 0.35 + brightness * 0.001 ), time * 0.015 ), 15.0 ) );
-	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), time * 0.015 ), 45.0 ) );	
+	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), time * 0.015 ), 45.0 ) );
 	for( int i=1; i<=7; i++ ){
 		float power = pow( 2.0, float(i + 1) );
 		fVal1 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, time * 0.2 ), ( power * ( 10.0 ) * ( newTime1 + 1.0 ) ) );
@@ -160,7 +168,32 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	vec3 haloColor = corona * orange + starGlow * orangeRed;
 	vec3 attenuatedColor = (diskCore + haloColor) * boundaryAttenuation;
 	fragColor.rgb	= attenuatedColor;
-	fragColor.a		= boundaryAttenuation;
+	// If a depth-core radius is provided, smoothly push alpha toward 1.0
+	// for regions inside that radius. This creates a stable opaque core
+	// that depth pre-passes can rely on without producing a hard seam.
+	float planeRadius = length(compensatedPlane);
+	float coreFade = 1.0;
+	if (iDepthCoreRadius > 0.0) {
+	  float edge = 0.02; // soft transition width in normalized plane space
+	  coreFade = smoothstep(iDepthCoreRadius + edge, iDepthCoreRadius, planeRadius);
+	}
+	fragColor.a		= mix(boundaryAttenuation, 1.0, coreFade);
+	
+#ifdef DEPTH_PASS
+    // In the depth-only pass, write depth only for fragments inside the
+    // configured opaque core. Discard fragments outside the core so they
+    // do not write to the depth buffer.
+    if (coreFade < 0.5) discard;
+    // Emit a trivial color; the renderer will be configured to skip color
+    // writes for this material so only depth is affected.
+    fragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    return;
+#endif
+
+// Premultiply RGB by alpha to match the material's premultipliedAlpha=true setting.
+// This ensures correct blending when composited with opaque geometry (e.g., planets),
+// preventing hard edges, halos, or incorrect occlusion artifacts.
+	fragColor.rgb *= fragColor.a;
 }
 
 void main() {
