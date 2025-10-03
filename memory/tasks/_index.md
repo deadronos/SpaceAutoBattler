@@ -7,6 +7,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## In Progress
 
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
+- [TASK243](TASK243-thruster-glow-regression.md) — Restore thruster glow regression coverage and reinstate hook identifiers. (2025-10-04)
 
 ## Completed
 
@@ -91,5 +92,6 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Abandoned
 
 - _None tracked._
+
 
 
