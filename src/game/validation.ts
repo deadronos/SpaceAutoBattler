@@ -26,6 +26,18 @@ export function validateMotionStats(stats: MotionStats): void {
   if (stats.maxLateralAcceleration != null) {
     assertRange('motion.maxLateralAcceleration', stats.maxLateralAcceleration, { min: 0 });
   }
+  if (stats.turnKp != null) {
+    assertRange('motion.turnKp', stats.turnKp, { min: 0 });
+  }
+  if (stats.turnKd != null) {
+    assertRange('motion.turnKd', stats.turnKd, { min: 0 });
+  }
+  if (stats.angularSettlingRate != null) {
+    assertRange('motion.angularSettlingRate', stats.angularSettlingRate, { min: 0 });
+  }
+  if (stats.angularSettleToleranceDeg != null) {
+    assertRange('motion.angularSettleToleranceDeg', stats.angularSettleToleranceDeg, { min: 0, max: 45 });
+  }
   if (stats.maxBankDeg != null) {
     assertRange('motion.maxBankDeg', stats.maxBankDeg, { min: 0, max: 90 });
   }

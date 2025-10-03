@@ -44,6 +44,10 @@ export interface MotionStats {
   turnKp?: number;
   /** Optional derivative gain for yaw control based on current angular velocity (default: 0.6). */
   turnKd?: number;
+  /** Maximum angular velocity the controller should allow once aligned (rad/s). */
+  angularSettlingRate?: number;
+  /** Heading error tolerance that activates settling logic (degrees). */
+  angularSettleToleranceDeg?: number;
   /** Optional maximum lateral acceleration for strafe movement (units/s²). */
   maxLateralAcceleration?: number;
   /** Optional renderer smoothing preferences for this hull. */

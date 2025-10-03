@@ -12,6 +12,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## Completed
 
+- [TASK241](TASK241-motion-pd-tuning.md) — Reduce AI bobbing with hull-specific motion tuning and documentation. (2025-10-03)
 - [TASK235](TASK235-star-disk-simulation-fallback.md) — Restored star disk animation when the simulation clock stalls without debug helpers enabled. (2025-10-03)
 - [TASK234](TASK234-star-disk-animation.md) — Restored star disk shader animation with debug flag active and added monotonic uniform tests. (2025-10-03)
 - [TASK236](TASK236-rapier-wasm-panic-diagnostics.md) — Captured Rapier step panic diagnostics, wired debug snapshot buffer, and added regression coverage. (2025-10-02)
