@@ -40,6 +40,8 @@ export interface PlanetBodyConfig {
     tintColor?: string;
     /** Optional tint mix factor (0..1). If unspecified, the renderer will pick a conservative default when postprocessing is off. */
     tintMix?: number;
+    /** If true, this ring should be rendered only via bloom (artist opt-in). When set the renderer/bloom manager will be allowed to use bloom-only routing for the material. */
+    bloomOnly?: boolean;
   };
 }
 
@@ -167,6 +169,8 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         // Tuned tint so rings remain visible when postprocessing is off
         tintColor: '#d9efff',
         tintMix: 0.9,
+        // By default keep rings visible (not bloom-only); artists can opt-in to bloomOnly.
+        bloomOnly: false,
       },
     },
     {

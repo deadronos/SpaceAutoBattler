@@ -101,6 +101,8 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
           fresnelStrength={config.rings.fresnelStrength}
           tintColor={config.rings.tintColor}
           tintMix={config.rings.tintMix}
+          // Wire bloomOnly through so the ring can opt into bloom-only routing
+          bloomOnly={config.rings.bloomOnly}
           enabled={!hideRingsParam}
         />
       )}

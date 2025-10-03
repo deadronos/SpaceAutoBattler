@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { Color, Shape, ExtrudeGeometry, ShaderMaterial, DoubleSide, AdditiveBlending, NormalBlending } from 'three';
+import { Color, Shape, ExtrudeGeometry, ShaderMaterial, DoubleSide, AdditiveBlending, NormalBlending, MeshBasicMaterial } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
@@ -27,6 +27,8 @@ interface PlanetRingsProps {
   tintColor?: string;
   /** Optional tint mix factor (0..1). When undefined, the renderer chooses a conservative default when postprocessing is off. */
   tintMix?: number;
+  /** If true, the ring is intended to be bloom-only (artists opt-in). When true the renderer/bloom manager may route this object's color contributions to the bloom pass and avoid preserving colorWrite. */
+  bloomOnly?: boolean;
   /** Enable/disable the rings */
   enabled?: boolean;
 }
@@ -42,6 +44,7 @@ export function PlanetRings({
   fresnelStrength = 1.2,
   tintColor,
   tintMix,
+  bloomOnly = false,
   enabled = true,
 }: PlanetRingsProps): React.ReactElement | null {
   const meshRef = useRef<Mesh>(null);
@@ -74,7 +77,7 @@ export function PlanetRings({
   }, [innerRadius, outerRadius, segments]);
 
   const material = useMemo(() => {
-    return new ShaderMaterial({
+    const mat = new ShaderMaterial({
       uniforms: {
         uColor: { value: colorFromConfig(color) },
         uOpacity: { value: opacity },
@@ -117,6 +120,9 @@ export function PlanetRings({
         uniform float uOuterRadius;
         uniform float uFresnelStrength;
         uniform float uBrightness;
+        // Declare tint uniforms used below
+        uniform vec3 uTintColor;
+        uniform float uTintMix;
 
         varying vec2 vUv;
         varying float vRadius;
@@ -166,51 +172,93 @@ export function PlanetRings({
       side: DoubleSide,
       blending: AdditiveBlending,
     });
-  }, [color, opacity, innerRadius, outerRadius, brightness, fresnelStrength, tintColor, tintMix]);
+
+    try {
+      // Ensure this material writes to the main color buffer by default when
+      // bloomOnly is not requested. If bloomOnly is true the material will
+      // intentionally allow the BloomProvider to toggle colorWrite in order
+      // to render the object primarily via bloom.
+      (mat as any).colorWrite = true;
+      if (!(mat as any).userData) (mat as any).userData = {};
+      // forceColorWrite true means "do not let the bloom manager disable
+      // colorWrite". We set it to the inverse of bloomOnly so artists can
+      // opt-in to bloom-only elements.
+      (mat as any).userData.__copilot_forceColorWrite = !(bloomOnly === true);
+      // Also expose an explicit bloomOnly flag for clarity/debugging.
+      (mat as any).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
+    } catch {
+      /* ignore host environment errors */
+    }
+
+    return mat;
+  }, [color, opacity, innerRadius, outerRadius, brightness, fresnelStrength, tintColor, tintMix, bloomOnly]);
+
+  const basicMaterial = useMemo(() => {
+    const color = colorFromConfig(tintColor ?? '#d9efff');
+    const bm = new MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: Math.max(0.45, opacity),
+      depthTest: true,
+      depthWrite: false,
+      side: DoubleSide,
+      blending: NormalBlending,
+    });
+    try {
+      if (!(bm as any).userData) (bm as any).userData = {};
+      // For basic fallback, also respect bloomOnly: if bloomOnly is false
+      // we want the material to remain color-write enabled always.
+      (bm as any).userData.__copilot_forceColorWrite = !(bloomOnly === true);
+      (bm as any).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
+    } catch { /* ignore */ }
+    return bm;
+  }, [tintColor, opacity, bloomOnly]);
 
   // Read global UI flag to detect when postprocessing is disabled.
   const postprocessingEnabled = useUiStore((s) => s.postprocessingEnabled);
 
+  const materialToUse = postprocessingEnabled ? material : basicMaterial;
+
   // Update material blending and tint when postprocessing toggles or props change.
   useEffect(() => {
     try {
-      if ((material as any)?.uniforms) {
+      if ((materialToUse as any)?.uniforms) {
         // Determine the tint mix to apply. Prefer an explicitly provided
         // tintMix; otherwise pick a conservative default when postprocessing
         // is off so the ring remains visible.
         const desiredTintMix = typeof tintMix === 'number' ? tintMix : (postprocessingEnabled ? 0.0 : 0.9);
-        (material as any).uniforms.uTintMix.value = desiredTintMix;
+        (materialToUse as any).uniforms.uTintMix.value = desiredTintMix;
         // Update tint color if changed
-        (material as any).uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
+        (materialToUse as any).uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
         // Adjust brightness/opacity slightly when postprocessing is disabled
-        (material as any).uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
-        (material as any).uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
+        (materialToUse as any).uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
+        (materialToUse as any).uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
         // Switch blending mode to Normal when PP is off so the ring remains
         // visible against the dark background without relying on bloom.
         try {
-          (material as any).blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
+          (materialToUse as any).blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
         } catch { /* ignore */ }
-        try { (material as any).needsUpdate = true; } catch { /* ignore */ }
+        try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
-  }, [material, postprocessingEnabled, opacity, brightness]);
+  }, [materialToUse, postprocessingEnabled, opacity, brightness]);
 
   // Keep uniforms in sync when props change (useful in interactive tweaking)
   useEffect(() => {
     try {
-      if ((material as any)?.uniforms) {
-        (material as any).uniforms.uOpacity.value = opacity;
-        (material as any).uniforms.uInnerRadius.value = innerRadius;
-        (material as any).uniforms.uOuterRadius.value = outerRadius;
-        (material as any).uniforms.uBrightness.value = brightness;
-        (material as any).uniforms.uFresnelStrength.value = fresnelStrength;
+      if ((materialToUse as any)?.uniforms) {
+        (materialToUse as any).uniforms.uOpacity.value = opacity;
+        (materialToUse as any).uniforms.uInnerRadius.value = innerRadius;
+        (materialToUse as any).uniforms.uOuterRadius.value = outerRadius;
+        (materialToUse as any).uniforms.uBrightness.value = brightness;
+        (materialToUse as any).uniforms.uFresnelStrength.value = fresnelStrength;
         // Ensure the material is refreshed for rendering when values change
-        try { (material as any).needsUpdate = true; } catch { /* ignore */ }
+        try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
       }
     } catch {
       /* ignore host environment errors */
     }
-  }, [material, opacity, innerRadius, outerRadius, brightness, fresnelStrength]);
+  }, [materialToUse, opacity, innerRadius, outerRadius, brightness, fresnelStrength]);
 
   // Attach debug helpers once the material exists so we can adjust uniforms
   // and render order from the console during interactive debugging.
@@ -218,14 +266,18 @@ export function PlanetRings({
     if (typeof window !== 'undefined' && /[?&]copilot_debug=1/.test(window.location.search)) {
       try {
         // Use a lightweight effect-like attachment without requiring React's useEffect
-        (window as any).__copilot_ringMaterial = material;
+        (window as any).__copilot_ringMaterial = materialToUse;
         (window as any).__copilot_setRingOpacity = (v: any) => {
           try {
             const n = Number(v);
             if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
-            material.uniforms.uOpacity.value = Math.max(0, Math.min(n, 1));
-            try { (material as any).needsUpdate = true; } catch { /* ignore */ }
-            return { set: true, value: material.uniforms.uOpacity.value };
+            if ((materialToUse as any)?.uniforms) {
+              (materialToUse as any).uniforms.uOpacity.value = Math.max(0, Math.min(n, 1));
+            } else if (typeof (materialToUse as any).opacity === 'number') {
+              (materialToUse as any).opacity = Math.max(0, Math.min(n, 1));
+            }
+            try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
+            return { set: true, value: (materialToUse as any).uniforms?.uOpacity?.value ?? (materialToUse as any).opacity };
           } catch (e) {
             return { set: false, reason: String(e) };
           }
@@ -259,7 +311,7 @@ export function PlanetRings({
 
   // Rings use additive blending and translucent layer ordering to render after
   // opaque geometry (planets, star cores) while respecting depth occlusion.
-  return <mesh ref={meshRef} geometry={geometry} material={material} rotation={[-Math.PI / 2, 0, 0]} renderOrder={RENDER_ORDER_TRANSLUCENT_ADDITIVE} />;
+  return <mesh ref={meshRef} geometry={geometry} material={materialToUse} rotation={[-Math.PI / 2, 0, 0]} renderOrder={RENDER_ORDER_TRANSLUCENT_ADDITIVE} />;
 }
 
 export default PlanetRings;
