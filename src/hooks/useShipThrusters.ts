@@ -29,10 +29,10 @@ export function useShipThrusters(
     const engines: Mesh[] = [];
     const thrusters: ThrusterMaterialEntry[] = [];
 
-    const isEngineName = (value: string | undefined): boolean => {
+    const nameMatch = (value: string | undefined): boolean => {
       if (!value) return false;
-      const lowered = value.toLowerCase();
-      return lowered.includes('engine') || lowered.includes('thruster') || lowered.includes('exhaust');
+      const n = value.toLowerCase();
+      return n.includes('engine') || n.includes('thruster') || n.includes('exhaust');
     };
 
     scene.traverse((object) => {
@@ -40,7 +40,7 @@ export function useShipThrusters(
         return;
       }
 
-      if (!isEngineName(object.name)) {
+      if (!nameMatch(object.name)) {
         return;
       }
 
@@ -53,9 +53,9 @@ export function useShipThrusters(
         }
 
         const baseEmissive = material.emissive.clone();
-        const luminance = baseEmissive.r * 0.299 + baseEmissive.g * 0.587 + baseEmissive.b * 0.114;
+        const emissiveLuminance = baseEmissive.r * 0.299 + baseEmissive.g * 0.587 + baseEmissive.b * 0.114;
         const finalEmissive =
-          luminance < THRUSTER_GLOW_CONFIG.darkEmissiveThreshold
+          emissiveLuminance < THRUSTER_GLOW_CONFIG.darkEmissiveThreshold
             ? new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor)
             : baseEmissive;
 
@@ -208,6 +208,7 @@ export function updateThrusterIntensity(
     }
   }
 }
+
 
 
 
