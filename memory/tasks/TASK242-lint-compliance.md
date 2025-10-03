@@ -1,6 +1,6 @@
 # [TASK242] - Restore lint compliance across config, hooks, and effect updaters
 
-**Status:** In Progress  
+**Status:** Completed  
 **Added:** 2025-10-03  
 **Updated:** 2025-10-03
 
@@ -27,11 +27,11 @@ Diagnose and fix the ESLint errors reported by `npm run lint:fix`, covering unus
 - [x] Replace the CommonJS `require` pattern in `src/game/config.ts` with a resolver registration, remove unused constants, and tighten types.
 - [x] Update AI harness files to use typed intent candidates and environment guards without `any` casts.
 - [x] Refactor `useDevShaderCompile`, `useShipInterpolation`, and `useShipThrusters` to import the needed React/types, remove `any`, and lean on browser-safe env checks.
-- [ ] Run `npx tsc --noEmit` and `npm run lint` (or targeted lint script) to confirm the errors are resolved.
+- [x] Run `npx tsc --noEmit` and `npm run lint` (or targeted lint script) to confirm the errors are resolved.
 
 ## Progress Tracking
 
-**Overall Status:** In Progress - 80%
+**Overall Status:** Completed - 100%
 
 ### Subtasks
 
@@ -41,7 +41,7 @@ Diagnose and fix the ESLint errors reported by `npm run lint:fix`, covering unus
 | 1.2 | Refactor `config.ts` resolver pattern and types                 | Completed     | 2025-10-03 | Added global resolver + typed slice; dropped legacy require. |
 | 1.3 | Tighten AI harness diagnostics typing                           | Completed     | 2025-10-03 | Diagnostics now reuse intent types and avoid `any`. |
 | 1.4 | Update React hooks to avoid globals/`any` usage                 | Completed     | 2025-10-03 | React types imported explicitly; thruster hook strongly typed. |
-| 1.5 | Re-run lint/type checks and document verification               | Not Started   | 2025-10-03 |       |
+| 1.5 | Re-run lint/type checks and document verification               | Completed     | 2025-10-03 | `npx tsc --noEmit` and `npm run lint` now pass cleanly. |
 
 ## Progress Log
 
@@ -59,3 +59,7 @@ Diagnose and fix the ESLint errors reported by `npm run lint:fix`, covering unus
 ### 2025-10-03
 
 - Ran `npx tsc --noEmit` and `npm run lint`; both succeed after the refactors, confirming the lint breakages are resolved.
+
+### 2025-10-03
+
+- Final verification: `npx tsc --noEmit` and `npm run lint` both succeed; task closed.
