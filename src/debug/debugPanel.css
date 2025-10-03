@@ -1,0 +1,32 @@
+.copilot-debug-panel {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  width: 320px;
+  background: rgba(12, 18, 28, 0.85);
+  color: #dfe9f4;
+  padding: 12px;
+  border-radius: 8px;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  z-index: 9999;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.copilot-debug-panel h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+.copilot-debug-panel label {
+  display: block;
+  font-size: 13px;
+  margin: 6px 0;
+}
+.copilot-debug-panel input[type="range"] {
+  width: 100%;
+  margin-top: 6px;
+}
+.copilot-debug-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.8;
+}

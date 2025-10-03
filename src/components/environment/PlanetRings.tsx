@@ -29,6 +29,19 @@ interface PlanetRingsProps {
   tintMix?: number;
   /** If true, the ring is intended to be bloom-only (artists opt-in). When true the renderer/bloom manager may route this object's color contributions to the bloom pass and avoid preserving colorWrite. */
   bloomOnly?: boolean;
+  /** Procedural banding controls */
+  bandFrequency?: number;
+  bandStrength?: number;
+  bandNoiseScale?: number;
+  bandDarkness?: number;
+  /** Planet shadowing controls */
+  planetCenter?: { x: number; y: number; z: number };
+  planetRadius?: number;
+  shadowStrength?: number;
+  /** Penumbra as fraction of planet radius */
+  penumbra?: number;
+  /** World-space directional light vector (points from origin toward the light). */
+  lightDir?: { x: number; y: number; z: number };
   /** Enable/disable the rings */
   enabled?: boolean;
 }
@@ -45,6 +58,15 @@ export function PlanetRings({
   tintColor,
   tintMix,
   bloomOnly = false,
+  bandFrequency = 180.0,
+  bandStrength = 0.6,
+  bandNoiseScale = 0.8,
+  bandDarkness = 0.6,
+  planetCenter = { x: 0, y: 0, z: 0 },
+  planetRadius = 1000,
+  shadowStrength = 0.6,
+  penumbra = 0.04,
+  lightDir = { x: 0.2516, y: 0.1509, z: 0.956 },
   enabled = true,
 }: PlanetRingsProps): React.ReactElement | null {
   const meshRef = useRef<Mesh>(null);
@@ -90,13 +112,26 @@ export function PlanetRings({
         // Optional tint to ensure visibility when postprocessing is off
         uTintColor: { value: colorFromConfig(tintColor ?? '#d9efff') },
         uTintMix: { value: typeof tintMix === 'number' ? tintMix : 0.0 },
+        // Banding
+        uBandFreq: { value: bandFrequency },
+        uBandStrength: { value: bandStrength },
+        uBandNoiseScale: { value: bandNoiseScale },
+        uBandDarkness: { value: bandDarkness },
+        // Planet shadowing (in world-space)
+        uPlanetCenter: { value: [planetCenter.x, planetCenter.y, planetCenter.z] },
+        uPlanetRadius: { value: planetRadius },
+        uShadowStrength: { value: shadowStrength },
+        // Penumbra (normalized fraction of planet radius)
+        uPenumbra: { value: penumbra },
+        // Light direction (world space) — default matches CELESTIAL_ENVIRONMENT but may be overridden by caller
+        uLightDir: { value: [lightDir.x, lightDir.y, lightDir.z] },
       },
       vertexShader: `
         varying vec2 vUv;
         varying float vRadius;
         varying vec3 vNormal;
         varying vec3 vPosView;
-        // Declare uniforms used in the vertex shader
+        varying vec3 vWorldPos;
         uniform float uInnerRadius;
         uniform float uOuterRadius;
 
@@ -109,6 +144,7 @@ export function PlanetRings({
           // Provide transformed normal and view-space position for fresnel calc
           vNormal = normalize(normalMatrix * normal);
           vPosView = (modelViewMatrix * vec4(position, 1.0)).xyz;
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
@@ -120,14 +156,26 @@ export function PlanetRings({
         uniform float uOuterRadius;
         uniform float uFresnelStrength;
         uniform float uBrightness;
-        // Declare tint uniforms used below
         uniform vec3 uTintColor;
         uniform float uTintMix;
+        uniform float uBandFreq;
+        uniform float uBandStrength;
+        uniform float uBandNoiseScale;
+        uniform float uBandDarkness;
+        uniform vec3 uPlanetCenter;
+        uniform float uPlanetRadius;
+        uniform float uShadowStrength;
+        uniform float uPenumbra;
+        uniform vec3 uLightDir;
 
         varying vec2 vUv;
         varying float vRadius;
         varying vec3 vNormal;
         varying vec3 vPosView;
+        varying vec3 vWorldPos;
+
+        // Simple hash/noise helper
+        float hash(float x) { return fract(sin(x) * 43758.5453123); }
 
         void main() {
           float normalizedRadius = vRadius;
@@ -136,9 +184,18 @@ export function PlanetRings({
           float alpha = 1.0 - abs(normalizedRadius - 0.5) * 2.0;
           alpha = smoothstep(0.0, 0.4, alpha) * smoothstep(0.6, 1.0, alpha);
 
+          // Banding: procedural narrow bands via a fast sinusoid + positional jitter
+          float bandPos = normalizedRadius * uBandFreq;
+          float band = sin(bandPos * 6.28318530718);
+          // jitter using a cheap hash based on world position for natural irregularity
+          float jitter = (hash(vWorldPos.x * 12.9898 + vWorldPos.y * 78.233 + vWorldPos.z * 37.719) - 0.5) * uBandNoiseScale;
+          float bandMix = smoothstep(0.1, 0.9, band * 0.5 + 0.5 + jitter * 0.5);
+          // darken bands according to strength/darkness
+          float bandDarken = mix(1.0, 1.0 - uBandDarkness, bandMix * uBandStrength);
+
           // Gentle radial texturing
           float ringPattern = sin(normalizedRadius * 80.0) * 0.03 + 0.97;
-          alpha *= ringPattern;
+          alpha *= ringPattern * bandDarken;
 
           // Edge fade near inner/outer radii
           float edgeFade = smoothstep(0.0, 0.05, normalizedRadius) * smoothstep(0.95, 1.0, normalizedRadius);
@@ -154,14 +211,40 @@ export function PlanetRings({
           vec3 base = uColor * uBrightness;
           vec3 specular = mix(base, vec3(1.0), clamp(highlight * 0.7, 0.0, 1.0));
 
+          // Planet shadow with soft penumbra
+          vec3 L = normalize(-uLightDir);
+          vec3 toCenter = uPlanetCenter - vWorldPos;
+          float t = dot(toCenter, L);
+          float inShadow = 0.0;
+          float penumbraFactor = 0.0;
+          float r2 = uPlanetRadius * uPlanetRadius;
+          float d2 = dot(toCenter, toCenter) - t * t;
+          if (t > 0.0) {
+            if (d2 < r2) {
+              inShadow = 1.0;
+              penumbraFactor = 1.0;
+            } else {
+              // outside but may be within penumbra region
+              float dist = sqrt(d2);
+              float distEdge = dist - uPlanetRadius;
+              float penRad = max(uPenumbra * uPlanetRadius, 1e-6);
+              penumbraFactor = clamp(1.0 - distEdge / penRad, 0.0, 1.0);
+            }
+          }
+
+          float shadowFactor = mix(1.0, 1.0 - uShadowStrength, penumbraFactor);
+
           // Ensure a larger alpha floor so the ring remains visible even
           // when bloom/postprocessing is disabled. Add fresnel contribution
           // to brighten the rim further.
-          alpha = max(alpha, 0.08) + highlight * 0.2;
+          alpha = max(alpha, 0.03) + highlight * 0.18;
 
           // Mix in a tint color to push the ring toward blue-white when
           // postprocessing is disabled or artist requested.
           vec3 finalBase = mix(base, uTintColor, clamp(uTintMix, 0.0, 1.0));
+
+          // apply band darkening and planet shadow to final color
+          finalBase *= bandDarken * shadowFactor;
 
           gl_FragColor = vec4(finalBase, alpha * uOpacity);
         }
@@ -191,7 +274,7 @@ export function PlanetRings({
     }
 
     return mat;
-  }, [color, opacity, innerRadius, outerRadius, brightness, fresnelStrength, tintColor, tintMix, bloomOnly]);
+  }, [color, opacity, innerRadius, outerRadius, brightness, fresnelStrength, tintColor, tintMix, bloomOnly, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir]);
 
   const basicMaterial = useMemo(() => {
     const color = colorFromConfig(tintColor ?? '#d9efff');
@@ -219,31 +302,33 @@ export function PlanetRings({
 
   const materialToUse = postprocessingEnabled ? material : basicMaterial;
 
-  // Update material blending and tint when postprocessing toggles or props change.
+  // Update uniforms and blending when postprocessing toggles or props change.
   useEffect(() => {
     try {
       if ((materialToUse as any)?.uniforms) {
-        // Determine the tint mix to apply. Prefer an explicitly provided
-        // tintMix; otherwise pick a conservative default when postprocessing
-        // is off so the ring remains visible.
         const desiredTintMix = typeof tintMix === 'number' ? tintMix : (postprocessingEnabled ? 0.0 : 0.9);
         (materialToUse as any).uniforms.uTintMix.value = desiredTintMix;
-        // Update tint color if changed
         (materialToUse as any).uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
-        // Adjust brightness/opacity slightly when postprocessing is disabled
         (materialToUse as any).uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
         (materialToUse as any).uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
-        // Switch blending mode to Normal when PP is off so the ring remains
-        // visible against the dark background without relying on bloom.
+        (materialToUse as any).uniforms.uBandFreq.value = bandFrequency;
+        (materialToUse as any).uniforms.uBandStrength.value = bandStrength;
+        (materialToUse as any).uniforms.uBandNoiseScale.value = bandNoiseScale;
+        (materialToUse as any).uniforms.uBandDarkness.value = bandDarkness;
+        (materialToUse as any).uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
+        (materialToUse as any).uniforms.uPlanetRadius.value = planetRadius;
+        (materialToUse as any).uniforms.uShadowStrength.value = shadowStrength;
+        (materialToUse as any).uniforms.uPenumbra.value = penumbra;
+        (materialToUse as any).uniforms.uLightDir.value = [lightDir.x, lightDir.y, lightDir.z];
         try {
           (materialToUse as any).blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
         } catch { /* ignore */ }
         try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
-  }, [materialToUse, postprocessingEnabled, opacity, brightness]);
+  }, [materialToUse, postprocessingEnabled, opacity, brightness, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir]);
 
-  // Keep uniforms in sync when props change (useful in interactive tweaking)
+  // Keep uniforms in sync when props change
   useEffect(() => {
     try {
       if ((materialToUse as any)?.uniforms) {
@@ -252,13 +337,16 @@ export function PlanetRings({
         (materialToUse as any).uniforms.uOuterRadius.value = outerRadius;
         (materialToUse as any).uniforms.uBrightness.value = brightness;
         (materialToUse as any).uniforms.uFresnelStrength.value = fresnelStrength;
-        // Ensure the material is refreshed for rendering when values change
+        (materialToUse as any).uniforms.uBandFreq.value = bandFrequency;
+        (materialToUse as any).uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
+        (materialToUse as any).uniforms.uPlanetRadius.value = planetRadius;
+        (materialToUse as any).uniforms.uPenumbra.value = penumbra;
         try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
       }
     } catch {
       /* ignore host environment errors */
     }
-  }, [materialToUse, opacity, innerRadius, outerRadius, brightness, fresnelStrength]);
+  }, [materialToUse, opacity, innerRadius, outerRadius, brightness, fresnelStrength, bandFrequency, planetCenter, planetRadius, penumbra]);
 
   // Attach debug helpers once the material exists so we can adjust uniforms
   // and render order from the console during interactive debugging.

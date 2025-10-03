@@ -42,6 +42,18 @@ export interface PlanetBodyConfig {
     tintMix?: number;
     /** If true, this ring should be rendered only via bloom (artist opt-in). When set the renderer/bloom manager will be allowed to use bloom-only routing for the material. */
     bloomOnly?: boolean;
+    /** Procedural banding frequency (controls number of visible narrow bands). Higher = more bands. */
+    bandFrequency?: number;
+    /** Strength of banding contrast (0..1). */
+    bandStrength?: number;
+    /** Scale used for subtle positional jitter/irregularity of bands. */
+    bandNoiseScale?: number;
+    /** How much darker bands are compared to base (0..1). */
+    bandDarkness?: number;
+    /** Strength of planet shadowing on the ring (0=no shadow, 1=full shadow). */
+    shadowStrength?: number;
+    /** Soft penumbra size as a fraction of planet radius (0..1). Controls how wide the soft shadow edge is. */
+    penumbra?: number;
   };
 }
 
@@ -171,6 +183,14 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         tintMix: 0.9,
         // By default keep rings visible (not bloom-only); artists can opt-in to bloomOnly.
         bloomOnly: false,
+        // Procedural banding and shadowing defaults tuned for an icy gas-giant look
+        bandFrequency: 220.0,
+        bandStrength: 0.65,
+        bandNoiseScale: 0.7,
+        bandDarkness: 0.6,
+        shadowStrength: 0.7,
+        // Penumbra size as fraction of planet radius (e.g., 0.03 => ~3% of radius)
+        penumbra: 0.04,
       },
     },
     {

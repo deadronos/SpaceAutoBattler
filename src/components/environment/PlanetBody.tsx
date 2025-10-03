@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { useOptionalGameState } from '../../game/context.js';
 import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
-import { PLANET_GEOMETRY_SEGMENTS } from '../../config/environment.js';
+import { PLANET_GEOMETRY_SEGMENTS, CELESTIAL_ENVIRONMENT } from '../../config/environment.js';
 import { PlanetRings } from './PlanetRings.js';
 import { PlanetRimShell } from './PlanetRimShell.js';
 
@@ -101,8 +101,20 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
           fresnelStrength={config.rings.fresnelStrength}
           tintColor={config.rings.tintColor}
           tintMix={config.rings.tintMix}
-          // Wire bloomOnly through so the ring can opt into bloom-only routing
           bloomOnly={config.rings.bloomOnly}
+          // Procedural banding passed through from config
+          bandFrequency={config.rings.bandFrequency}
+          bandStrength={config.rings.bandStrength}
+          bandNoiseScale={config.rings.bandNoiseScale}
+          bandDarkness={config.rings.bandDarkness}
+          // Planet shadowing inputs
+          planetCenter={config.position}
+          planetRadius={config.radius}
+          shadowStrength={config.rings.shadowStrength}
+          // penumbra expressed as normalized fraction of planet radius
+          penumbra={config.rings.penumbra}
+          // Pass the global star direction so the ring shadow faces away from the star
+          lightDir={CELESTIAL_ENVIRONMENT.starLight.direction}
           enabled={!hideRingsParam}
         />
       )}
