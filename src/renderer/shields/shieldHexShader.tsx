@@ -17,7 +17,7 @@ export type ShieldHexMaterialProps = {
 
 export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): ShaderMaterial {
   const { hexScale, edgeWidth, maxAlpha } = getShieldVisuals(hull);
-  return new ShaderMaterial({
+  const mat = new ShaderMaterial({
     transparent: true,
     depthWrite: false,
     depthTest: false,
@@ -172,6 +172,15 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
       }
     `,
   });
+
+  // Mark shield materials as force-write so the selective-bloom provider
+  // will not disable their colorWrite when postprocessing/composer is active.
+  try {
+    if (!mat.userData) mat.userData = {} as any;
+    (mat.userData as any).__copilot_forceColorWrite = true;
+  } catch { /* defensive: ignore in odd test environments */ }
+
+  return mat;
 }
 
 export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team, opacity, ripple, simTime }) => {
