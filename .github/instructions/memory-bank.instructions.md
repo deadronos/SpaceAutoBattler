@@ -87,6 +87,7 @@ flowchart TD
 7. `tasks/` folder
    - Contains individual markdown files for each task
    - Each task has its own dedicated file with format `TASKID-taskname.md`
+   - Task IDs must remain unique across both `memory/tasks` and `memory/tasks/COMPLETED`; check both directories before allocating a number because completed tasks may be archived there.
    - Includes task index file (`_index.md`) listing all tasks with their statuses
    - Preserves complete thought process and history for each task
 
@@ -306,7 +307,7 @@ These detailed progress updates ensure that after memory resets, I can quickly u
 
 When you request **add task** or use the command **create task**, I will:
 
-1. Create a new task file with a unique Task ID in the tasks/ folder
+1. Create a new task file with a unique Task ID that does not conflict with any files in `memory/tasks` or `memory/tasks/COMPLETED`
 2. Document our thought process about the approach
 3. Develop an implementation plan
 4. Set an initial status
