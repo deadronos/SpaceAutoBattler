@@ -1,7 +1,9 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Mesh, Texture } from 'three';
-import { MeshBasicMaterial, ShaderMaterial, Vector3 } from 'three';
+import { MeshBasicMaterial, ShaderMaterial, Vector3, NoBlending } from 'three';
+import fragmentShader from '../../renderer/shaders/mainsequencestar.glsl';
+import vertexShader from '../../renderer/shaders/starDisk.vertex.glsl';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
@@ -129,24 +131,57 @@ export function StarSphere({
   const depthMeshNormalized = Math.min(Math.max(derivedDepthCoreRadius, 0.02), 0.99);
   const depthMeshRadius = radius * depthMeshNormalized * 0.995;
 
-  // Always use a simple depth-only basic material for the depth pass. This
-  // avoids shader-clone artifacts and keeps the depth pre-pass predictable.
-  const depthMaterialRef = useRef<MeshBasicMaterial | null>(null);
+  // Create a shader-driven DEPTH_PASS material when the shader material is
+  // available. The depth material shares the same uniforms object so time/
+  // texture updates apply to both visual and depth passes. This avoids the
+  // duplication and synchronization pitfalls of naive shader cloning.
+  const depthMaterialRef = useRef<ShaderMaterial | MeshBasicMaterial | null>(null);
   useEffect(() => {
     const depthMesh = depthMeshRef.current;
     if (!depthMesh) return;
-    // Dispose previous material if we created one
+
+    // Dispose previous depth material we created
     const prev = depthMaterialRef.current as any;
     if (prev && prev.dispose) {
       try { prev.dispose(); } catch { /* ignore */ }
     }
-    const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true });
-    // Mark that this material should not write into the color buffer when
-    // the renderer supports the feature (we set the flag here for the
-    // renderer to honor at draw time).
-    (basic as any).colorWrite = false;
-    depthMaterialRef.current = basic;
-    try { depthMesh.material = basic as any; } catch { /* ignore */ }
+
+    if (appliedMaterial && (appliedMaterial as any).isShaderMaterial) {
+      try {
+        const shaderMat = appliedMaterial as ShaderMaterial;
+        const depthMat = new ShaderMaterial({
+          vertexShader,
+          fragmentShader,
+          uniforms: shaderMat.uniforms as any,
+          defines: { DEPTH_PASS: '1' },
+          depthWrite: true,
+          depthTest: true,
+          colorWrite: false,
+          blending: NoBlending,
+          transparent: false,
+          premultipliedAlpha: (shaderMat as any).premultipliedAlpha || false,
+        });
+        // Slight polygon offset to reduce z-fighting with the visual mesh
+        depthMat.polygonOffset = true;
+        depthMat.polygonOffsetFactor = -1;
+        depthMat.polygonOffsetUnits = 1;
+        depthMaterialRef.current = depthMat;
+        try { depthMesh.material = depthMat as any; } catch { /* ignore */ }
+      } catch (err) {
+        // Fall back to basic depth-only material if shader material creation fails
+        const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true });
+        (basic as any).colorWrite = false;
+        depthMaterialRef.current = basic;
+        try { depthMesh.material = basic as any; } catch { /* ignore */ }
+      }
+    } else {
+      // No shader available: simple depth-only basic material
+      const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true });
+      (basic as any).colorWrite = false;
+      depthMaterialRef.current = basic;
+      try { depthMesh.material = basic as any; } catch { /* ignore */ }
+    }
+
     return () => {
       const p = depthMaterialRef.current as any;
       if (p && p.dispose) {
@@ -154,7 +189,7 @@ export function StarSphere({
       }
       depthMaterialRef.current = null;
     };
-  }, [radius]);
+  }, [appliedMaterial, fragmentShader, vertexShader, radius]);
 
   // Attempt to enable alpha-to-coverage on the raw GL context and toggle
   // material.alphaToCoverage when supported. This can reduce aliasing on

@@ -178,6 +178,17 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	  coreFade = smoothstep(iDepthCoreRadius + edge, iDepthCoreRadius, planeRadius);
 	}
 	fragColor.a		= mix(boundaryAttenuation, 1.0, coreFade);
+	
+#ifdef DEPTH_PASS
+    // In the depth-only pass, write depth only for fragments inside the
+    // configured opaque core. Discard fragments outside the core so they
+    // do not write to the depth buffer.
+    if (coreFade < 0.5) discard;
+    // Emit a trivial color; the renderer will be configured to skip color
+    // writes for this material so only depth is affected.
+    fragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    return;
+#endif
 
 // Premultiply RGB by alpha to match the material's premultipliedAlpha=true setting.
 // This ensures correct blending when composited with opaque geometry (e.g., planets),
