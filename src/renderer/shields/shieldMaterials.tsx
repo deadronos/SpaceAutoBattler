@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useRef, useEffect } from 'react';
 import { MeshTransmissionMaterial } from '@react-three/drei';
 import type { ShipHull, Team } from '../../types/index.js';
 import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS } from '../../config/renderer.js';
@@ -14,8 +15,19 @@ export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProp
   const cfg = getShieldVisuals(hull);
   const tint = useMemo(() => colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
   const alpha = Math.max(0, Math.min(1, opacity * cfg.maxAlpha));
+  const matRef = useRef<any>(null);
+
+  useEffect(() => {
+    try {
+      if (matRef.current) {
+        if (!matRef.current.userData) matRef.current.userData = {};
+        matRef.current.userData.__copilot_forceColorWrite = true;
+      }
+    } catch { /* ignore */ }
+  }, []);
   return (
     <MeshTransmissionMaterial
+      ref={matRef}
       transparent
       depthWrite={false}
       depthTest={false}
