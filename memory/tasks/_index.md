@@ -6,12 +6,11 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
-- [TASK154](TASK154-playwright-ship-screenshots.md) — Implement Playwright ship mock render tests for deterministic visual validation of hull rendering with scene introspection and screenshot comparison.
-- [TASK239](TASK239-ring-halo-artifact.md) — Eliminate wedge-shaped ring/halo artifacts (Postprocessing OFF). (2025-10-02)
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
 
 ## Completed
 
+- [TASK241](TASK241-motion-pd-tuning.md) — Reduce AI bobbing with hull-specific motion tuning and documentation. (2025-10-03)
 - [TASK235](TASK235-star-disk-simulation-fallback.md) — Restored star disk animation when the simulation clock stalls without debug helpers enabled. (2025-10-03)
 - [TASK234](TASK234-star-disk-animation.md) — Restored star disk shader animation with debug flag active and added monotonic uniform tests. (2025-10-03)
 - [TASK236](TASK236-rapier-wasm-panic-diagnostics.md) — Captured Rapier step panic diagnostics, wired debug snapshot buffer, and added regression coverage. (2025-10-02)
