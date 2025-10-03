@@ -37,9 +37,24 @@ Add an optional `bloomOnly` boolean to the planetary `rings` configuration so ar
 
 ### 2025-10-03
 
-- Added `bloomOnly` to `PlanetBodyConfig.rings` and set conservative default `false` for `gasGiantPrime` in `src/config/environment.ts`.
-- Created this task file and updated `_index.md` to include TASK240 under In Progress.
-- Follow-up work remains: wiring and unit tests.
+- Added `bloomOnly` to `PlanetBodyConfig.rings` and set conservative default `false` for `gasGiantPrime`.
+- Implemented initial wiring for `bloomOnly` into `PlanetRings` and `BloomProvider` (follow-up tests planned).
+- Implemented procedural banding and planet-shadow tests in the ring shader with configurable banding controls.
+- Added soft penumbra and a dev debug panel to tune `shadowStrength` and `penumbra` interactively.
+- Tuned `gasGiantPrime` ring defaults to better match the photographic reference (denser bands, stronger band contrast, darker grooves, stronger shadow and modest penumbra):
+  - color: `#9e9e9e`
+  - opacity: `0.85`
+  - brightness: `0.95`
+  - fresnelStrength: `1.8`
+  - tintColor: `#bfbfbf`, tintMix: `0.12`
+  - bandFrequency: `380.0`
+  - bandStrength: `0.9`
+  - bandNoiseScale: `0.45`
+  - bandDarkness: `0.78`
+  - shadowStrength: `0.95`
+  - penumbra: `0.06`
+
+These changes are in `src/config/environment.ts`. Follow-up: create a small Playwright visual regression capture to compare the tuned defaults with the photographic reference and iterate if necessary.
 
 ## Acceptance Criteria
 

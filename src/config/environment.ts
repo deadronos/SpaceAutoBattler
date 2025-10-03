@@ -172,25 +172,35 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       rings: {
         innerRadius: 2200,
         outerRadius: 3800,
-        color: '#ccaa88',
-        opacity: 0.4,
+        // Move from a warm tint toward a neutral/desaturated grey to match the
+        // photographic reference (more visible without relying on bloom).
+        color: '#9e9e9e',
+        // Higher baseline opacity and modest brightness to make bands readable
+        // without relying on bloom highlights.
+        opacity: 0.85,
         rotationSpeed: 0.001,
         // Artist-tweakable appearance values for icy, reflective-looking rings
-        brightness: 1.8,
-        fresnelStrength: 1.6,
-        // Tuned tint so rings remain visible when postprocessing is off
-        tintColor: '#d9efff',
-        tintMix: 0.9,
-        // By default keep rings visible (not bloom-only); artists can opt-in to bloomOnly.
+        // Slightly reduce overall brightness so the banding contrast reads
+        // as grooves rather than blown-out highlights.
+        brightness: 0.95,
+        // Keep a noticeable fresnel highlight but bias it slightly higher
+        // so rim catch highlights remain visible in side-lit views.
+        fresnelStrength: 1.8,
+        // Subtle tint toward neutral; keep small tint mix so the ring stays
+        // mostly grey but can be nudged by artists if desired.
+        tintColor: '#bfbfbf',
+        tintMix: 0.12,
+        // By default rings are visible; artists can opt into bloom-only.
         bloomOnly: false,
-        // Procedural banding and shadowing defaults tuned for an icy gas-giant look
-        bandFrequency: 220.0,
-        bandStrength: 0.65,
-        bandNoiseScale: 0.7,
-        bandDarkness: 0.6,
-        shadowStrength: 0.7,
-        // Penumbra size as fraction of planet radius (e.g., 0.03 => ~3% of radius)
-        penumbra: 0.04,
+        // Procedural banding tuned to a dense concentric pattern
+        bandFrequency: 380.0,
+        bandStrength: 0.9,
+        bandNoiseScale: 0.45,
+        bandDarkness: 0.78,
+        // Strong shadowing to give the ring a deep silhouette under the
+        // planet; penumbra widened for a smooth soft edge.
+        shadowStrength: 0.95,
+        penumbra: 0.06,
       },
     },
     {
