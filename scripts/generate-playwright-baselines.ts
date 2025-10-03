@@ -1,4 +1,9 @@
 #!/usr/bin/env tsx
+/* eslint-disable */
+// Standalone script: intentionally disable ESLint type-aware checks because
+// scripts/ are not included in the project's tsconfig.json. This file will
+// still be type-checked by tsx when executed locally but linting in the
+// repository CI is suppressed for clarity.
 /**
  * Generate Playwright Baselines
  * 
@@ -40,8 +45,11 @@ const hullArg = args.find(arg => arg.startsWith('--hull='));
 const specificHull = hullArg ? hullArg.split('=')[1] : null;
 
 const hullsToGenerate = specificHull ? [specificHull] : HULLS;
+const GENERATE_STAR_OCCLUSION = args.includes('--star-occlusion');
+const STAR_ROT_ARG = args.find((a) => a.startsWith('--star-rot='));
+const STAR_ROT_DEG = STAR_ROT_ARG ? Number(STAR_ROT_ARG.split('=')[1]) : -15;
 
-async function generateBaseline(browser, hullId) {
+async function generateBaseline(browser: any, hullId: string) {
   const page = await browser.newPage({ viewport: VIEWPORT });
   
   try {
@@ -60,7 +68,7 @@ async function generateBaseline(browser, hullId) {
     
     // Wait for ready
     const readyResult = await page.evaluate(async () => {
-      return await window.__TEST__.waitForReady();
+      return await (window as any).__TEST__.waitForReady();
     });
     
     if (readyResult.error) {
@@ -69,7 +77,7 @@ async function generateBaseline(browser, hullId) {
     
     // Get scene summary for logging
     const summary = await page.evaluate(async () => {
-      return await window.__TEST__.getSceneSummary();
+      return await (window as any).__TEST__.getSceneSummary();
     });
     
     console.log(`  - Meshes: ${summary.meshCount}`);
@@ -88,12 +96,53 @@ async function generateBaseline(browser, hullId) {
     fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
     console.log(`  ✓ Summary saved: ${summaryPath}`);
     
-  } catch (error) {
-    console.error(`  ✗ Failed to generate baseline for ${hullId}:`, error.message);
+  } catch (error: unknown) {
+    console.error(`  ✗ Failed to generate baseline for ${hullId}:`, (error as Error)?.message ?? String(error));
     throw error;
   } finally {
     await page.close();
   }
+}
+
+async function generateStarBaseline(browser: any) {
+  const page = await browser.newPage({ viewport: VIEWPORT });
+   
+  try {
+    console.log(`Generating star occlusion baseline...`);
+    
+    // Ensure postprocessing mounts and request a deterministic rotation on load
+    await page.addInitScript((rotDeg: number) => {
+      try {
+        (window as any).__copilot_forcePostprocessingMount = true;
+        (window as any).__copilot_rotateCameraDeltaDeg = rotDeg;
+      } catch { /* ignore */ }
+    }, STAR_ROT_DEG);
+    
+    // Navigate to the main app in debug mode so the star overlay is present
+    await page.goto(`${BASE_URL}spaceautobattler.html?copilot_debug=1`);
+    
+    // Wait for the star screen indicator overlay used by tests
+    await page.waitForSelector('#copilot-star-screen-indicator', { timeout: 10000 });
+    
+    // Pause the simulation (click Pause UI if present)
+    const pauseButton = page.getByRole('button', { name: 'Pause' });
+    if (await pauseButton.isVisible()) {
+      await pauseButton.click();
+      await page.waitForTimeout(200);
+    }
+    
+    // Capture canvas screenshot
+    const canvas = page.locator('canvas');
+    const baselinePath = path.join(BASELINE_DIR, `star-occlusion.png`);
+    await canvas.screenshot({ path: baselinePath });
+    console.log(`  ✓ Star occlusion baseline saved: ${baselinePath}`);
+   
+  } catch (error: unknown) {
+    console.error(`  ✗ Failed to generate star occlusion baseline:`, (error as Error)?.message ?? String(error));
+    throw error;
+   } finally {
+     await page.close();
+   }
 }
 
 async function main() {
@@ -116,6 +165,7 @@ async function main() {
   }
   
   console.log(`Generating baselines for: ${hullsToGenerate.join(', ')}\n`);
+  if (GENERATE_STAR_OCCLUSION) console.log('Star occlusion baseline: enabled via --star-occlusion');
   console.log(`Base URL: ${BASE_URL}`);
   console.log(`Viewport: ${VIEWPORT.width}x${VIEWPORT.height}\n`);
   
@@ -129,9 +179,14 @@ async function main() {
   });
   
   try {
-    // Generate baselines sequentially
+    // Generate hull baselines sequentially
     for (const hullId of hullsToGenerate) {
       await generateBaseline(browser, hullId);
+    }
+    
+    // Optionally generate star occlusion baseline
+    if (GENERATE_STAR_OCCLUSION) {
+      await generateStarBaseline(browser);
     }
     
     console.log('\n✓ All baselines generated successfully!');

@@ -61,6 +61,8 @@ export interface MainSequenceStarUniformUpdate {
   haze?: StarDiskHazeUniformInput;
   /** Optional boundary feather settings for alpha fade near the rim. */
   boundary?: StarDiskBoundaryUniformInput;
+  /** Optional normalized radius (0..1) to force an opaque depth core inside the star. */
+  depthCoreRadius?: number;
 }
 
 const DEFAULT_RESOLUTION = new Vector3(1, 1, 1);
@@ -156,6 +158,7 @@ interface MainSequenceUniformMap {
   iViewAlignment: { value: Vector3 };
   iHazeParams: { value: Vector3 };
   iBoundaryFeather: { value: Vector4 };
+  iDepthCoreRadius: { value: number };
 }
 
 const DEFAULT_HAZE_SETTINGS: Required<StarDiskHazeUniformInput> = Object.freeze({
@@ -258,6 +261,7 @@ export function createMainSequenceStarMaterial(options: MainSequenceStarMaterial
       iViewAlignment: { value: new Vector3(0, 0, 1) },
       iHazeParams: { value: new Vector3(1, DEFAULT_HAZE_SETTINGS.edgeFadeThreshold, DEFAULT_HAZE_SETTINGS.edgeExponent) },
       iBoundaryFeather: { value: DEFAULT_BOUNDARY_VECTOR.clone() },
+      iDepthCoreRadius: { value: 0 },
     },
   });
 
@@ -569,6 +573,10 @@ export function updateMainSequenceStarUniforms(
   uniforms.iHazeParams.value.set(hazeParams.fade, hazeParams.edgeThreshold, hazeParams.edgeExponent);
   const boundaryParams = deriveBoundaryUniform(update.boundary);
   uniforms.iBoundaryFeather.value.set(boundaryParams.start, boundaryParams.exponent, boundaryParams.alphaFloor, boundaryParams.reserved);
+  if (update.depthCoreRadius !== undefined) {
+    const core = Number.isFinite(update.depthCoreRadius as number) ? Math.min(Math.max(Number(update.depthCoreRadius), 0), 1) : 0;
+    (uniforms as unknown as MainSequenceUniformMap).iDepthCoreRadius.value = core;
+  }
 }
 
 export function disposeMainSequenceStarMaterial(material: ShaderMaterial | null): void {

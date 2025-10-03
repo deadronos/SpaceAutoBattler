@@ -10,13 +10,13 @@ Current focuses (short-term):
 Recent changes:
 
 - **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
-  * Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
-  * Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)
-  * Correlates with Rapier diagnostics: panicCount, lastPanicTick, ticksSincePanic
-  * Gated behind `isCopilotDebugEnabled()` for zero overhead when disabled
-  * Created comprehensive documentation in `docs/star-disk-telemetry.md`
-  * Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
-  * Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
+  - Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
+  - Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)
+  - Correlates with Rapier diagnostics: panicCount, lastPanicTick, ticksSincePanic
+  - Gated behind `isCopilotDebugEnabled()` for zero overhead when disabled
+  - Created comprehensive documentation in `docs/star-disk-telemetry.md`
+  - Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
+  - Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
@@ -37,6 +37,12 @@ Recent changes:
 - Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
 - Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
 - Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `npm run typecheck`, `npm test`.
+
+Recent alignment notes (2025-10-03)
+
+- Updated memory entries to reflect current `src/` implementations: canonical `GameState` shape, `SeededRng` API, deferred mutation queues, Rapier diagnostics, and AI harness shapes.
+- Reminder: `createGameState()` initialises `state.rng` with seed `1337` by default and systems must prefer `state.rng` over global randomness for determinism.
+- Deferred mutation queues (`state.simulation.deferredMutations` and `state.simulation.postStepMutations`) are used across systems (carrier spawns, projectile instantiation, reset requests) to avoid Rapier mutable-borrow panics; continue to use these patterns in new features.
 
 Next steps:
 

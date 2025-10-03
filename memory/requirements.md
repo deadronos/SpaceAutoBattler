@@ -180,3 +180,9 @@ These historical requirements described behaviors tied to the deprecated `StarDi
 3. **WHEN** a tracked ship’s shield or health value changes by ≥1% of max, **THE SYSTEM SHALL** animate the corresponding bar width to the new value within 150ms while preserving deterministic easing from the seeded RNG utilities. *(Acceptance: unit test in `test/vitest/hud-overlay-animation.spec.ts` simulates value deltas and checks transition timing and easing seeded outputs.)*
 4. **WHEN** status effects (e.g., jammed, shield-down, engine-disrupted) are active on a ship, **THE SYSTEM SHALL** surface iconography and tooltip text adjacent to the overlay with contrast ratios meeting WCAG 2.1 AA (≥4.5:1) against the in-scene background. *(Acceptance: visual assertion in `test/vitest/hud-status-icons.spec.ts` measures computed contrast and presence of localized tooltip strings.)*
 5. **WHEN** the HUD health-bar toggle is set to `off` or when overlays would overlap critical UI (radar, score banners), **THE SYSTEM SHALL** hide or reposition the overlays while maintaining accessibility-compliant alternatives in the top-level status ledger. *(Acceptance: Playwright regression toggles off the feature and asserts overlays disappear and the ledger updates with textual health summaries.)*
+
+## Implementation mapping (authoritative file references)
+
+- Rapier step panic diagnostics: implemented in `src/game/simulationQueue.ts` and recorded on `state.simulation.rapierDiagnostics` (maps to requirements in TASK236/TASK230).
+- StarDisk shader and debug lockdown/fallbacks: implemented in `src/components/environment/StarDisk.tsx`, `src/renderer/MainSequenceStarMaterial` and related uniforms; harness and visual baselines live under `test/playwright/`.
+- Progression and captain systems: implemented in `src/game/progression.ts` with configuration in `src/config/progression.ts` (maps to progression requirements and tests).
