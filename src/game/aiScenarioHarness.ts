@@ -1,4 +1,4 @@
-import type { AIIntent, AIState, GameState, ShipEntity } from '../types/index.js';
+import type { GameState, ShipEntity } from '../types/index.js';
 import { SeededRng } from '../utils/rng.js';
 import { AI_CONFIG } from './config.js';
 import { runDecisionTick, __aiTestHooks } from './systems.js';
@@ -6,6 +6,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { resolveBehaviorProfile } from './aiProfiles.js';
 import { aggregateKpis } from './metrics.js';
+import type { IntentCandidate } from './systems/decision/intents.js';
 import type {
   AIScenarioConfig,
   AIScenarioLog,
@@ -63,104 +64,120 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
             const escortTarget = escortAssignment
               ? shipsList.find((candidate) => candidate.id === escortAssignment.vipId) ?? null
               : null;
-            type LocalCandidate = { intent: AIIntent; score: number; target?: ShipEntity | null };
-            const candidates: LocalCandidate[] = [];
+            const typedState = state as unknown as GameState;
+            const typedShip = ship as unknown as ShipEntity;
+            const typedPrimaryTarget = primaryTarget as unknown as ShipEntity | null;
+            const typedEscortTarget = escortTarget as unknown as ShipEntity | null;
+
+            const candidates: IntentCandidate[] = [];
+
             candidates.push({
               intent: 'Attack',
               score: __aiTestHooks.scoreAttackIntent(
-                state as unknown as GameState,
-                ship as unknown as ShipEntity,
+                typedState,
+                typedShip,
                 profile,
-                primaryTarget as unknown as ShipEntity | null,
+                typedPrimaryTarget,
                 state.blackboard.teamPosture[ship.ship.team],
                 ai.traits,
               ),
+              target: typedPrimaryTarget,
             });
             candidates.push({
               intent: 'Kite',
               score: __aiTestHooks.scoreKiteIntent(
-                ship as unknown as ShipEntity,
+                typedShip,
                 profile,
-                primaryTarget as unknown as ShipEntity | null,
+                typedPrimaryTarget,
                 state.blackboard.teamPosture[ship.ship.team],
                 ai.traits,
               ),
+              target: typedPrimaryTarget,
             });
-            if (escortTarget)
+            if (typedEscortTarget) {
               candidates.push({
                 intent: 'Escort',
                 score: __aiTestHooks.scoreEscortIntent(
-                  ship as unknown as ShipEntity,
+                  typedShip,
                   profile,
-                  escortTarget as unknown as ShipEntity,
-                  state as unknown as GameState,
+                  typedEscortTarget,
+                  typedState,
                   ai.traits,
                   escortAssignment,
                 ),
+                target: typedEscortTarget,
               });
-            if (primaryTarget) {
+            }
+            if (typedPrimaryTarget) {
               candidates.push({
                 intent: 'Intercept',
                 score: __aiTestHooks.scoreInterceptIntent(
-                  state as unknown as GameState,
-                  ship as unknown as ShipEntity,
+                  typedState,
+                  typedShip,
                   profile,
-                  primaryTarget as unknown as ShipEntity,
-                  escortTarget as unknown as ShipEntity | null,
+                  typedPrimaryTarget,
+                  typedEscortTarget,
                   state.blackboard.teamPosture[ship.ship.team],
                   ai.traits,
                   escortAssignment,
                 ),
+                target: typedPrimaryTarget,
               });
               candidates.push({
                 intent: 'Reposition',
                 score: __aiTestHooks.scoreRepositionIntent(
-                  state as unknown as GameState,
-                  ship as unknown as ShipEntity,
+                  typedState,
+                  typedShip,
                   profile,
-                  primaryTarget as unknown as ShipEntity,
+                  typedPrimaryTarget,
                   ai.traits,
                   state.blackboard.teamPosture[ship.ship.team],
                 ),
+                target: typedPrimaryTarget,
               });
             } else {
               candidates.push({
                 intent: 'Reposition',
                 score: __aiTestHooks.scoreRepositionIntent(
-                  state as unknown as GameState,
-                  ship as unknown as ShipEntity,
+                  typedState,
+                  typedShip,
                   profile,
                   null,
                   ai.traits,
                   state.blackboard.teamPosture[ship.ship.team],
                 ),
+                target: null,
               });
             }
             candidates.push({
               intent: 'Regroup',
               score: __aiTestHooks.scoreRegroupIntent(
-                state as unknown as GameState,
-                ship as unknown as ShipEntity,
+                typedState,
+                typedShip,
                 profile,
                 state.blackboard.teamPosture[ship.ship.team],
                 ai.traits,
               ),
+              target: null,
             });
             candidates.push({
               intent: 'Flee',
               score: __aiTestHooks.scoreFleeIntent(
-                ship as unknown as ShipEntity,
+                typedShip,
                 profile,
-                primaryTarget as unknown as ShipEntity | null,
+                typedPrimaryTarget,
                 state.blackboard.teamPosture[ship.ship.team],
                 ai.traits,
               ),
+              target: typedPrimaryTarget,
             });
+
             candidates.sort((a, b) => b.score - a.score);
             const chosen = __aiTestHooks.tieBreak(
-              ai as unknown as AIState,
+              ai,
               state.ai.tickIndex,
-              candidates as unknown as any[],
+              candidates,
+              state.ai.metrics,
             );
             lines.push(
               `tick=${state.ai.tickIndex} ship=${ship.id} intent=${ai.intent} lastScore=${ai.lastScore} chosen=${chosen?.intent} candidates=${candidates
@@ -222,3 +239,6 @@ export type {
 } from './aiScenarioHarness/types.js';
 
 export type { AIScenarioTestMetrics } from './aiScenarioHarness/metricsSummary.js';
+
+
+

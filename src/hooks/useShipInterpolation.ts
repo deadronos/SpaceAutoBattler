@@ -1,5 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
+import type { MutableRefObject, RefObject } from 'react';
 import { MathUtils, Quaternion, Vector3, type Group } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { resolveRendererMotionConfig } from '../config/renderer.js';
@@ -33,7 +34,7 @@ export interface SmoothingConfig {
 
 export function useShipInterpolation(
   entity: ShipEntity,
-  groupRef: React.RefObject<Group | null>,
+  groupRef: RefObject<Group | null>,
 ): {
   state: InterpolationState;
   smoothing: SmoothingConfig;
@@ -134,8 +135,8 @@ export function updateInterpolation(
   smoothing: SmoothingConfig,
   alpha: number,
   tickIndex: number,
-  bankValueRef: React.MutableRefObject<number>,
-  lastTickIndexRef: React.MutableRefObject<number>,
+  bankValueRef: MutableRefObject<number>,
+  lastTickIndexRef: MutableRefObject<number>,
 ): void {
   if (tickIndex !== lastTickIndexRef.current) {
     state.prevSimPosition.copy(state.currSimPosition);
@@ -198,3 +199,4 @@ export function updateInterpolation(
     state.finalRotation.multiply(state.bankQuaternion);
   }
 }
+

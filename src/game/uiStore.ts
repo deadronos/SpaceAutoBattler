@@ -107,6 +107,11 @@ export const useUiStore = create<UiState>((set) => ({
   setAiRangePolicy: (v: string | null) => set({ aiRangePolicy: v }),
 }));
 
+const globalWithUiStore = globalThis as { __spaceAutobattlerUiStore?: unknown };
+if (typeof globalThis !== 'undefined') {
+  globalWithUiStore.__spaceAutobattlerUiStore = useUiStore;
+}
+
 export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolean): void {
   if (!state) return;
   if (!state.uiFlags) {
@@ -115,3 +120,4 @@ export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolea
   }
   state.uiFlags.hudHealthBars = enabled;
 }
+

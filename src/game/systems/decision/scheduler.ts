@@ -1,4 +1,4 @@
-import type { GameState, AIMetrics } from '../../../types/index.js';
+import type { AIMetrics } from '../../../types/index.js';
 
 export interface SchedulerState {
   accumulator: number;
@@ -116,7 +116,7 @@ export function processSchedulerTick(
   const shipIndicesToProcess = computeShipIndicesToProcess(totalShips, updatedState.cursor, sliceSize);
   updatedState.cursor = advanceCursor(updatedState.cursor, sliceSize, totalShips);
 
-  const budgetHit = sliceSize < totalShips;
+  const budgetHit = slices > 1;
 
   return {
     tickOccurred: true,
@@ -136,8 +136,7 @@ export function updateSchedulerMetrics(
   metrics: AIMetrics,
   schedulerMetrics: SchedulerTickResult['metrics'],
   decisions: number,
-  skipped: number,
-  slices: number,
+  skipped: number
 ): void {
   metrics.lastTotalShips = schedulerMetrics.totalShips;
   metrics.lastSliceSize = schedulerMetrics.sliceSize;

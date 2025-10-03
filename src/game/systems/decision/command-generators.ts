@@ -1,6 +1,5 @@
 import { Vector3 } from 'three';
 import type {
-  AIState,
   BehaviorProfile,
   EscortAssignment,
   GameState,

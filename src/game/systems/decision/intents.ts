@@ -1,22 +1,15 @@
-import { Vector3 } from 'three';
 import type {
   AIState,
   BehaviorProfile,
   EscortAssignment,
   GameState,
   ShipEntity,
-  EntityId,
 } from '../../../types/index.js';
 import { AI_CONFIG } from '../../config.js';
-import { hashToInt } from './utils.js';
 import {
   quantizeScore,
   getIntentPriority,
   tieBreak,
-  computeInterceptHeadingVector,
-  TEMP_REL_POS,
-  TEMP_POS,
-  TEMP_RNG,
   type IntentCandidate,
 } from './intent-utils.js';
 import { scoreAttackIntent, scoreKiteIntent, scoreFleeIntent } from './combat-intents.js';
@@ -33,7 +26,7 @@ import {
   type CommandResult,
 } from './command-generators.js';
 import { applyVerticalPerturbation } from './vertical-maneuvers.js';
-import { recordFocusDiagnostics, updateBandStickiness } from './metrics-diagnostics.js';
+import { updateBandStickiness } from './metrics-diagnostics.js';
 
 export type { IntentCandidate } from './intent-utils.js';
 export type { CommandResult } from './command-generators.js';

@@ -1,5 +1,4 @@
-import type { GameState, ShipEntity, AIState, BehaviorProfile, EscortAssignment } from '../../../types/index.js';
-import { AI_CONFIG } from '../../config.js';
+import type { GameState, ShipEntity, AIState } from '../../../types/index.js';
 import { aggregateKpis } from '../../metrics.js';
 import {
   refreshBlackboard,
@@ -98,7 +97,7 @@ export function updateDecisionSystem(state: GameState, delta: number): void {
       state.blackboard.teamCounts.blue = 0;
       state.blackboard.teamCounts.red = 0;
     }
-    updateSchedulerMetrics(manager.metrics, schedulerResult.metrics, 0, 0, 1);
+    updateSchedulerMetrics(manager.metrics, schedulerResult.metrics, 0, 0);
     aggregateKpis(manager.metrics, manager.tickIndex);
     return;
   }
@@ -116,7 +115,7 @@ export function updateDecisionSystem(state: GameState, delta: number): void {
   const slices = Math.max(1, Math.ceil(ships.length / Math.max(1, manager.maxPerTick)));
   manager.slices = slices;
 
-  updateSchedulerMetrics(manager.metrics, schedulerResult.metrics, decisions, skipped, slices);
+  updateSchedulerMetrics(manager.metrics, schedulerResult.metrics, decisions, skipped);
   aggregateKpis(manager.metrics, manager.tickIndex);
 }
 

@@ -76,7 +76,6 @@ function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: numbe
 
   const dot = Math.max(-1, Math.min(1, currentForward.dot(desiredForward)));
   const angle = Math.acos(dot);
-  const angularSpeed = angularVelocity.length();
   const withinSettleBand = angle <= settleTolerance;
 
   if (!withinSettleBand) {

@@ -1,5 +1,5 @@
 import type { InstancedMesh } from 'three';
-import { SPARKS_DELAY, SPARKS_CAPACITY } from '../constants.js';
+import { SPARKS_DELAY } from '../constants.js';
 import { clamp01, getCachedColor } from '../derived.js';
 import type { EffectUpdateContext, EffectUpdater } from './types.js';
 

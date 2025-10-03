@@ -1,6 +1,6 @@
 /**
  * Development-only shader compilation hook
- * 
+ *
  * Forces the renderer to compile the scene/camera once so the ShaderMaterial's
  * onBeforeCompile hook runs. This helps capture program/link logs when debugging
  * invisible shaders. Only active in development mode with debug flag enabled.
@@ -9,9 +9,32 @@
 import { useEffect, type RefObject } from 'react';
 import type { Mesh, ShaderMaterial, WebGLRenderer, Scene, Camera } from 'three';
 
+function isProductionEnv(): boolean {
+  try {
+    const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+    if (env?.NODE_ENV === 'production') {
+      return true;
+    }
+  } catch {
+    // ignore env resolution errors
+  }
+
+  if (typeof import.meta !== 'undefined') {
+    const meta = import.meta as { env?: { PROD?: boolean; NODE_ENV?: string } };
+    if (typeof meta.env?.PROD === 'boolean') {
+      return meta.env.PROD;
+    }
+    if (typeof meta.env?.NODE_ENV === 'string') {
+      return meta.env.NODE_ENV === 'production';
+    }
+  }
+  return false;
+}
+
+
 /**
  * Force shader compilation in development mode for debugging.
- * 
+ *
  * @param enabled - Whether dev compile should be attempted (debug flag + NODE_ENV check)
  * @param meshRef - Reference to the mesh (needs to be parented to scene)
  * @param shaderMaterial - The shader material to compile
@@ -28,7 +51,7 @@ export function useDevShaderCompile(
   camera: Camera
 ): void {
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production') {
+    if (isProductionEnv()) {
       return;
     }
 
@@ -52,22 +75,22 @@ export function useDevShaderCompile(
       if (mesh && mesh.parent) {
         try {
           if (scene && camera && typeof gl.compile === 'function') {
-            (gl as any).compile(scene, camera);
-             
+            gl.compile(scene, camera);
+
             console.info('[StarDisk][DEV] forced renderer.compile(scene, camera) to trigger shader compilation');
           } else {
-             
+
             console.warn('[StarDisk][DEV] Unable to find scene/camera for forced compile');
           }
         } catch (err) {
-           
+
           console.warn('[StarDisk][DEV] Forced compile failed', err);
         }
         clearInterval(intervalId);
         return;
       }
       if (attempts >= maxAttempts) {
-         
+
         console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile');
         clearInterval(intervalId);
       }
@@ -78,3 +101,7 @@ export function useDevShaderCompile(
     };
   }, [enabled, shaderMaterial, gl, scene, camera, meshRef]);
 }
+
+
+
+

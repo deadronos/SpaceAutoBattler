@@ -10,7 +10,7 @@ export const updateShockwave: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
+  _capacity: number
 ): number => {
   const { event, time, camera, dummy, color } = ctx;
 

@@ -6,6 +6,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 
 ## In Progress
 
+- [TASK242](TASK242-lint-compliance.md) — Restore lint compliance across config, hooks, and effect updaters. (2025-10-03)
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
 
 ## Completed
@@ -89,3 +90,5 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Abandoned
 
 - _None tracked._
+
+

@@ -12,6 +12,8 @@ import type {
   HarnessShip,
 } from './types.js';
 
+type EnvSource = { process?: { env?: Record<string, string | undefined> } };
+
 export function serializeCommands(state: HarnessGameState): AIScenarioCommandLog[] {
   const ships = state.queries.ships.entities as HarnessShip[];
   return ships
@@ -122,7 +124,8 @@ export function maybeWriteScenarioJson(log: AIScenarioLog, scenarioName: string)
   try {
     const shouldWrite = (() => {
       try {
-        const value = (globalThis as any)?.process?.env?.AI_WRITE_SCENARIO_JSON;
+        const envSource = globalThis as EnvSource;
+        const value = envSource.process?.env?.AI_WRITE_SCENARIO_JSON;
         return value === '1' || value === 'true' || value === 'on';
       } catch {
         return false;
@@ -184,3 +187,5 @@ function clampNumber(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
 }
+
+
