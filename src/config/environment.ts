@@ -32,6 +32,14 @@ export interface PlanetBodyConfig {
     color?: string;
     opacity?: number;
     rotationSpeed?: number;
+    /** Brightness multiplier applied to the ring base color (artist tweak). */
+    brightness?: number;
+    /** Fresnel highlight strength to control view-dependent rim brightness. */
+    fresnelStrength?: number;
+    /** Optional tint color to bias the ring toward a specific hue (e.g., blue-white). */
+    tintColor?: string;
+    /** Optional tint mix factor (0..1). If unspecified, the renderer will pick a conservative default when postprocessing is off. */
+    tintMix?: number;
   };
 }
 
@@ -153,6 +161,12 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
         color: '#ccaa88',
         opacity: 0.4,
         rotationSpeed: 0.001,
+        // Artist-tweakable appearance values for icy, reflective-looking rings
+        brightness: 1.8,
+        fresnelStrength: 1.6,
+        // Tuned tint so rings remain visible when postprocessing is off
+        tintColor: '#d9efff',
+        tintMix: 0.9,
       },
     },
     {

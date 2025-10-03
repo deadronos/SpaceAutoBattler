@@ -97,6 +97,10 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
           color={config.rings.color}
           opacity={config.rings.opacity}
           rotationSpeed={config.rings.rotationSpeed}
+          brightness={config.rings.brightness}
+          fresnelStrength={config.rings.fresnelStrength}
+          tintColor={config.rings.tintColor}
+          tintMix={config.rings.tintMix}
           enabled={!hideRingsParam}
         />
       )}

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { Color, RingGeometry, ShaderMaterial, DoubleSide, AdditiveBlending } from 'three';
+import { Color, Shape, ExtrudeGeometry, ShaderMaterial, DoubleSide, AdditiveBlending, NormalBlending } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
+import { useUiStore } from '../../game/uiStore.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -18,6 +19,14 @@ interface PlanetRingsProps {
   segments?: number;
   /** Rotation speed in radians per second */
   rotationSpeed?: number;
+  /** Brightness multiplier for the ring base color */
+  brightness?: number;
+  /** Fresnel highlight strength (view-dependent) */
+  fresnelStrength?: number;
+  /** Optional tint color to bias the ring color when postprocessing is off */
+  tintColor?: string;
+  /** Optional tint mix factor (0..1). When undefined, the renderer chooses a conservative default when postprocessing is off. */
+  tintMix?: number;
   /** Enable/disable the rings */
   enabled?: boolean;
 }
@@ -29,12 +38,39 @@ export function PlanetRings({
   opacity = 0.6,
   segments = 128,
   rotationSpeed = 0.001,
+  brightness = 1.4,
+  fresnelStrength = 1.2,
+  tintColor,
+  tintMix,
   enabled = true,
 }: PlanetRingsProps): React.ReactElement | null {
   const meshRef = useRef<Mesh>(null);
 
   const geometry = useMemo(() => {
-    return new RingGeometry(innerRadius, outerRadius, segments, 1);
+    // Build a 2D ring shape (circle with a hole) and extrude it to give a small
+    // thickness so the rings become real 3D geometry. This avoids some blending
+    // and sorting issues and provides a subtle silhouette when lit.
+    const outer = new Shape();
+    outer.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+
+    const inner = new Shape();
+    inner.absarc(0, 0, innerRadius, 0, Math.PI * 2, false);
+
+    // Use the outer shape and add the inner as a hole
+    const ringShape = new Shape();
+    ringShape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+    ringShape.holes = [inner];
+
+    const thickness = Math.max((outerRadius - innerRadius) * 0.005, 0.01);
+
+    const extrudeSettings = {
+      depth: thickness,
+      steps: 1,
+      bevelEnabled: false,
+      curveSegments: Math.max(8, Math.floor(segments / 8)),
+    } as const;
+
+    return new ExtrudeGeometry(ringShape, extrudeSettings);
   }, [innerRadius, outerRadius, segments]);
 
   const material = useMemo(() => {
@@ -44,10 +80,19 @@ export function PlanetRings({
         uOpacity: { value: opacity },
         uInnerRadius: { value: innerRadius },
         uOuterRadius: { value: outerRadius },
+        // Fresnel-like highlight strength (view-dependent)
+        uFresnelStrength: { value: fresnelStrength },
+        // Brightness multiplier for base color
+        uBrightness: { value: brightness },
+        // Optional tint to ensure visibility when postprocessing is off
+        uTintColor: { value: colorFromConfig(tintColor ?? '#d9efff') },
+        uTintMix: { value: typeof tintMix === 'number' ? tintMix : 0.0 },
       },
       vertexShader: `
         varying vec2 vUv;
         varying float vRadius;
+        varying vec3 vNormal;
+        varying vec3 vPosView;
         // Declare uniforms used in the vertex shader
         uniform float uInnerRadius;
         uniform float uOuterRadius;
@@ -55,14 +100,13 @@ export function PlanetRings({
         void main() {
           vUv = uv;
           // Compute normalized radius from object-space position instead of UVs.
-          // UVs on RingGeometry contain a seam (U jumps from 1->0) which can
-          // produce abrupt discontinuities in distance-based patterns and lead
-          // to wedge-shaped artifacts when the ring overlays other transparent
-          // billboards (like the StarDisk). Using the vertex position avoids
-          // the seam and yields a smoothly varying radius across the ring.
           float localRadius = length(position.xy);
-          // Normalize localRadius into [0,1] using the provided inner/outer radii.
           vRadius = clamp((localRadius - uInnerRadius) / max((uOuterRadius - uInnerRadius), 1e-6), 0.0, 1.0);
+
+          // Provide transformed normal and view-space position for fresnel calc
+          vNormal = normalize(normalMatrix * normal);
+          vPosView = (modelViewMatrix * vec4(position, 1.0)).xyz;
+
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
@@ -71,47 +115,102 @@ export function PlanetRings({
         uniform float uOpacity;
         uniform float uInnerRadius;
         uniform float uOuterRadius;
+        uniform float uFresnelStrength;
+        uniform float uBrightness;
 
         varying vec2 vUv;
         varying float vRadius;
+        varying vec3 vNormal;
+        varying vec3 vPosView;
 
         void main() {
-          // vRadius is now a normalized [0,1] radius computed from object-space
-          // position which avoids UV seam discontinuities.
           float normalizedRadius = vRadius;
 
           // Base alpha shaped as a bell around the middle of the ring
           float alpha = 1.0 - abs(normalizedRadius - 0.5) * 2.0;
-          // Use monotonic smoothstep ranges (edge0 < edge1)
           alpha = smoothstep(0.0, 0.4, alpha) * smoothstep(0.6, 1.0, alpha);
 
-          // Fine ringing pattern (radial). Keep this gentle so it doesn't create
-          // high-contrast masks that exacerbate blending issues when composited.
+          // Gentle radial texturing
           float ringPattern = sin(normalizedRadius * 80.0) * 0.03 + 0.97;
           alpha *= ringPattern;
 
-          // Edge fade near inner/outer radii — use ordered edges
+          // Edge fade near inner/outer radii
           float edgeFade = smoothstep(0.0, 0.05, normalizedRadius) * smoothstep(0.95, 1.0, normalizedRadius);
           alpha *= edgeFade;
 
-          // Ensure a small alpha floor so the ring remains visible and
-          // does not get completely discarded by the compositor. This
-          // reduces the chance the ring vanishes due to tiny numerical
-          // alpha values while still letting the edges fade gracefully.
-          alpha = max(alpha, 0.02);
-          gl_FragColor = vec4(uColor, alpha * uOpacity);
+          // Fresnel / view-dependent highlight to simulate icy reflectivity
+          vec3 n = normalize(vNormal);
+          vec3 viewDir = normalize(-vPosView);
+          float fresnel = pow(1.0 - max(0.0, dot(n, viewDir)), 3.0);
+          float highlight = fresnel * uFresnelStrength;
+
+          // Apply brightness and mix a small amount of white for specular-ish tint
+          vec3 base = uColor * uBrightness;
+          vec3 specular = mix(base, vec3(1.0), clamp(highlight * 0.7, 0.0, 1.0));
+
+          // Ensure a larger alpha floor so the ring remains visible even
+          // when bloom/postprocessing is disabled. Add fresnel contribution
+          // to brighten the rim further.
+          alpha = max(alpha, 0.08) + highlight * 0.2;
+
+          // Mix in a tint color to push the ring toward blue-white when
+          // postprocessing is disabled or artist requested.
+          vec3 finalBase = mix(base, uTintColor, clamp(uTintMix, 0.0, 1.0));
+
+          gl_FragColor = vec4(finalBase, alpha * uOpacity);
         }
       `,
       transparent: true,
       depthWrite: false,
       depthTest: true,
       side: DoubleSide,
-      // Use additive blending so the ring contributes light instead of darkening
-      // underlying surfaces. This avoids the ring making planets look "transparent"
-      // where they overlap with soft halo fragments.
       blending: AdditiveBlending,
     });
-  }, [color, opacity, innerRadius, outerRadius]);
+  }, [color, opacity, innerRadius, outerRadius, brightness, fresnelStrength, tintColor, tintMix]);
+
+  // Read global UI flag to detect when postprocessing is disabled.
+  const postprocessingEnabled = useUiStore((s) => s.postprocessingEnabled);
+
+  // Update material blending and tint when postprocessing toggles or props change.
+  useEffect(() => {
+    try {
+      if ((material as any)?.uniforms) {
+        // Determine the tint mix to apply. Prefer an explicitly provided
+        // tintMix; otherwise pick a conservative default when postprocessing
+        // is off so the ring remains visible.
+        const desiredTintMix = typeof tintMix === 'number' ? tintMix : (postprocessingEnabled ? 0.0 : 0.9);
+        (material as any).uniforms.uTintMix.value = desiredTintMix;
+        // Update tint color if changed
+        (material as any).uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
+        // Adjust brightness/opacity slightly when postprocessing is disabled
+        (material as any).uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
+        (material as any).uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
+        // Switch blending mode to Normal when PP is off so the ring remains
+        // visible against the dark background without relying on bloom.
+        try {
+          (material as any).blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
+        } catch { /* ignore */ }
+        try { (material as any).needsUpdate = true; } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+  }, [material, postprocessingEnabled, opacity, brightness]);
+
+  // Keep uniforms in sync when props change (useful in interactive tweaking)
+  useEffect(() => {
+    try {
+      if ((material as any)?.uniforms) {
+        (material as any).uniforms.uOpacity.value = opacity;
+        (material as any).uniforms.uInnerRadius.value = innerRadius;
+        (material as any).uniforms.uOuterRadius.value = outerRadius;
+        (material as any).uniforms.uBrightness.value = brightness;
+        (material as any).uniforms.uFresnelStrength.value = fresnelStrength;
+        // Ensure the material is refreshed for rendering when values change
+        try { (material as any).needsUpdate = true; } catch { /* ignore */ }
+      }
+    } catch {
+      /* ignore host environment errors */
+    }
+  }, [material, opacity, innerRadius, outerRadius, brightness, fresnelStrength]);
 
   // Attach debug helpers once the material exists so we can adjust uniforms
   // and render order from the console during interactive debugging.
