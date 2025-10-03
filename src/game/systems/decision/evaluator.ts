@@ -1,4 +1,4 @@
-import type { GameState, ShipEntity, AIState, BehaviorProfile, EscortAssignment, EntityId } from '../../../types/index.js';
+import type { GameState, ShipEntity, AIState, EntityId } from '../../../types/index.js';
 import { AI_CONFIG } from '../../config.js';
 import { resolveBehaviorProfile } from '../../aiProfiles.js';
 import { generateTraitsFromSeed } from '../../aiTraits.js';

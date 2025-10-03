@@ -1,4 +1,3 @@
-import { Vector3 } from 'three';
 import type {
   GameEntity,
   GameState,
@@ -130,3 +129,4 @@ export function resolveProjectiles(state: GameState, delta: number): void {
     destroyEntity(state, entity);
   }
 }
+

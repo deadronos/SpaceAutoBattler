@@ -1,5 +1,5 @@
 import type { InstancedMesh } from 'three';
-import { PLASMA_DELAY, PLASMA_CAPACITY } from '../constants.js';
+import { PLASMA_DELAY } from '../constants.js';
 import { clamp01, getCachedColor } from '../derived.js';
 import type { EffectUpdateContext, EffectUpdater } from './types.js';
 

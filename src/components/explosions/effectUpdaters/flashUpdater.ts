@@ -11,7 +11,7 @@ export const updateFlash: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
+  _capacity: number
 ): number => {
   const { event, time, camera, derived, dummy, color } = ctx;
 

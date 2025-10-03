@@ -180,7 +180,7 @@ describe('Scheduler', () => {
         budgetHit: true,
       };
 
-      updateSchedulerMetrics(metrics, schedulerMetrics, 4, 2, 2);
+      updateSchedulerMetrics(metrics, schedulerMetrics, 4, 2);
 
       expect(metrics.lastTotalShips).toBe(10);
       expect(metrics.lastSliceSize).toBe(6);
@@ -200,7 +200,7 @@ describe('Scheduler', () => {
         budgetHit: false,
       } as any;
 
-      updateSchedulerMetrics(metrics, schedulerMetrics, 5, 1, 1);
+      updateSchedulerMetrics(metrics, schedulerMetrics, 5, 1);
 
       expect(metrics.budgetHits).toBe(3);
     });
