@@ -177,7 +177,11 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
                 if (m && typeof m === 'object') {
                   try {
                     // Only modify if provider is enabled and material is transparent
-                    if (enabled && (typeof m.transparent === 'boolean' ? m.transparent : false)) {
+                    // If material has been explicitly marked as always
+                    // writing color (e.g., rings intended to remain visible
+                    // without bloom), skip changing its colorWrite flag.
+                    const forceWrite = Boolean((m as any).userData && (m as any).userData.__copilot_forceColorWrite);
+                    if (enabled && !forceWrite && (typeof m.transparent === 'boolean' ? m.transparent : false)) {
                       m.colorWrite = false;
                     }
                   } catch { /* ignore */ }
@@ -258,7 +262,13 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
                 const m = mats[i];
                 try {
                   if (m && typeof m === 'object' && (typeof m.transparent === 'boolean' ? m.transparent : false)) {
-                    try { m.colorWrite = false; } catch { /* ignore */ }
+                    // Respect explicit force-write flags so some effects
+                    // (e.g., planetary rings intended to remain visible)
+                    // are not hidden by disabling colorWrite for bloom.
+                    const forceWrite = Boolean((m as any).userData && (m as any).userData.__copilot_forceColorWrite);
+                    if (!forceWrite) {
+                      try { m.colorWrite = false; } catch { /* ignore */ }
+                    }
                   }
                 } catch { /* ignore */ }
               }
