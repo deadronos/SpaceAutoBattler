@@ -1,8 +1,8 @@
 # [TASK244] - Visual smoothing and local visual offsets for ships
 
-**Status:** In Progress  
-**Added:** 2025-10-04  
-**Updated:** 2025-10-04
+**Status:** Completed
+**Added:** 2025-10-04
+**Updated:** 2025-10-05
 
 ## Original Request
 Improve ship visuals by adding robust dt-independent smoothing, per-hull overrides, and an advanced critically-damped bank spring. Provide a global toggle and task out implementation & tests.
@@ -39,21 +39,21 @@ Improve ship visuals by adding robust dt-independent smoothing, per-hull overrid
 | ID | Description | Status | Updated | Notes |
 |---:|-------------|--------|---------|-------|
 | 244.1 | Add `motion.visual` config + global toggle | completed | 2025-10-04 | default mapping for existing ships; shipStats updated; renderer global toggle added |
-| 244.2 | Add `visualRef` child group to `ShipView` | not-started |  | minimal UI change |
+| 244.2 | Add `visualRef` child group to `ShipView` | completed | 2025-10-05 | renderer now writes local offsets to nested group |
 | 244.3 | Convert smoothing to dt-independent exponential filters | completed | 2025-10-04 | `useShipInterpolation` updated to accept `dt`, compute alpha from k, and apply per-frame exponential smoothing; bank spring implemented (critically-damped) |
-| 244.4 | Implement critically-damped bank spring (config) | not-started |  | unit tested |
-| 244.5 | Implement bob/sway minimal safe defaults | not-started |  | clamped & faded amplitude |
-| 244.6 | Wire CCD toggle into Rapier entity creation | not-started |  | opt-in only |
-| 244.7 | Add unit & integration tests | not-started |  | vitest + integration checks |
-| 244.8 | Update docs & memory bank | not-started |  | link design + task files |
+| 244.4 | Implement critically-damped bank spring (config) | completed | 2025-10-05 | analytic spring wired with dt-aware integration |
+| 244.5 | Implement bob/sway minimal safe defaults | completed | 2025-10-05 | local-space bob scaled by speed/turn with amplitude clamp |
+| 244.6 | Wire CCD toggle into Rapier entity creation | completed | 2025-10-05 | main hull body respects `visual.enableCcd` |
+| 244.7 | Add unit & integration tests | completed | 2025-10-05 | Vitest coverage for alpha conversion, spring, bob, toggle |
+| 244.8 | Update docs & memory bank | completed | 2025-10-05 | design + task record refreshed |
 
 ## Acceptance Criteria
-- [ ] Global toggle disables all per-ship smoothing, visuals match physics-interp directly.
-- [ ] Per-hull config overrides exist and default mapping preserves legacy feel where requested.
-- [ ] Smoothing is dt-independent: tests demonstrate consistent behavior across variable dt sequences.
-- [ ] Bank spring option prevents oscillation across dt changes and has bounded settle time.
-- [ ] Bob/sway is local-space, amplitude scales with speed/turn, and clamps/fades correctly.
-- [ ] Collisions/raycasts remain governed by physics pose (visual changes do not influence gameplay correctness).
+- [x] Global toggle disables all per-ship smoothing, visuals match physics-interp directly.
+- [x] Per-hull config overrides exist and default mapping preserves legacy feel where requested.
+- [x] Smoothing is dt-independent: tests demonstrate consistent behavior across variable dt sequences.
+- [x] Bank spring option prevents oscillation across dt changes and has bounded settle time.
+- [x] Bob/sway is local-space, amplitude scales with speed/turn, and clamps/fades correctly.
+- [x] Collisions/raycasts remain governed by physics pose (visual changes do not influence gameplay correctness).
 
 ## Progress Log
 ### 2025-10-04
@@ -69,11 +69,21 @@ Improve ship visuals by adding robust dt-independent smoothing, per-hull overrid
 - Completed subtask `244.3`: converted runtime smoothing to dt-based semantics and wired visual child group.
   - Key files changed:
     - `src/hooks/useShipInterpolation.ts` — pass `dt` from `useFrame`, compute smoothing alpha via `1 - exp(-k*dt)`, added legacy mapping fallback, implemented critically-damped bank spring and bank velocity state.
-    - `src/components/Ship.tsx` — create `rootGroup` and `visualGroup` refs and pass both into the interpolation hook.
+  - `src/components/Ship.tsx` — create `rootGroup` and `visualGroup` refs and pass both into the interpolation hook.
     - `src/components/ship/ShipView.tsx` — render nested `visualRef` group so visual offsets are local to the child.
   - Changed default bank behavior to use critically-damped spring by default for all hulls.
 
-Next: run vitest unit tests for filter convergence and add unit coverage for spring step (subtask `244.7`).
+### 2025-10-05
+
+- Finalized dt-aware smoothing system and local offsets:
+  - Refactored `useShipInterpolation` with exponential `kToAlpha` helper, local offset tracking, critically damped bank spring, and bob amplitude clamps with speed fade.
+  - Added bob offset computation in local space and ensured global toggle/per-hull disable short-circuit smoothing.
+  - Ensured teleports reset smoothing/bank state and that visual offsets are applied on the child group only.
+- Physics integration:
+  - Enabled optional Rapier CCD when `motion.visual.enableCcd` is true during ship spawn.
+- Testing & docs:
+  - Authored Vitest coverage for alpha conversion, dt convergence, critically damped spring stability, global toggle bypass, and bob amplitude limits.
+  - Updated memory/design documentation for rollout and task completion.
 
 ---
 

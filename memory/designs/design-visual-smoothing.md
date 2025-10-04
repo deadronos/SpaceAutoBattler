@@ -81,6 +81,13 @@ Testing and validation
 - Phase 2: Add local visualRef group and migrate visuals to child offsets (ship view change). Add bob/sway minimal implementation and UX clamps.
 - Phase 3: Add critically-damped bank spring option and performance/QA signoff. Switch default to spring if preferred after playtests.
 
+## Implementation Notes (2025-10-05)
+- Introduced a reusable `kToAlpha(k, dt)` helper and refactored `useShipInterpolation` to maintain both world and local visual offsets, updating an inverse root quaternion for reuse and applying smoothing only when the global/per-hull toggles allow it.
+- Critically damped bank spring now preserves a velocity term and resets on teleports, with Vitest coverage ensuring no overshoot across varied deltas.
+- Bob offsets are computed in local space with amplitude scaled by speed and yaw, fading when speed <5% of max and clamped to per-hull `maxAmp`. The child `visualRef` receives only the local offset, keeping the physics root deterministic.
+- Added optional Rapier CCD enablement via `motion.visual.enableCcd` to mitigate tunnelling for fast hulls without impacting ships that keep the flag disabled.
+- Test suite validates dt convergence, toggle bypass behaviour, bob amplitude clamping, and bank spring stability to guard regressions.
+
 ---
 
 Design recorded by: GitHub Copilot

@@ -41,6 +41,9 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
   const bodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
     .setTranslation(position.x, position.y, position.z)
     .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
+  if (stats.motion.visual?.enableCcd) {
+    bodyDesc.setCcdEnabled(true);
+  }
   const body = state.physicsWorld.createRigidBody(bodyDesc);
 
   const colliderDesc = state.rapier.ColliderDesc.capsule(0.8, 0.6)
