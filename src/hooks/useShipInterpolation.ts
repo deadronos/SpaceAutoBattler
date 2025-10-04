@@ -14,8 +14,12 @@ export interface InterpolationState {
   currSimRotation: Quaternion;
   visualPosition: Vector3;
   visualRotation: Quaternion;
+  targetVisualPosition: Vector3;
+  visualLocalOffset: Vector3;
+  visualOffset: Vector3;
   interpPosition: Vector3;
   interpRotation: Quaternion;
+  inverseInterpRotation: Quaternion;
   bankQuaternion: Quaternion;
   forwardAxis: Vector3;
   finalRotation: Quaternion;
@@ -31,6 +35,13 @@ export interface SmoothingConfig {
   bankFactor: number;
   maxBankDeg: number;
   thrusterIntensity: { base: number; range: number };
+}
+
+export function kToAlpha(k: number | undefined, dt: number): number {
+  if (!k || k <= 0 || dt <= 0) {
+    return 0;
+  }
+  return 1 - Math.exp(-k * dt);
 }
 
 export function useShipInterpolation(
@@ -62,9 +73,13 @@ export function useShipInterpolation(
   const currSimPosition = useMemo(() => new Vector3(), []);
   const currSimRotation = useMemo(() => new Quaternion(), []);
   const visualPosition = useMemo(() => new Vector3(), []);
+  const targetVisualPosition = useMemo(() => new Vector3(), []);
+  const visualLocalOffset = useMemo(() => new Vector3(), []);
+  const visualOffset = useMemo(() => new Vector3(), []);
   const visualRotation = useMemo(() => new Quaternion(), []);
   const interpPosition = useMemo(() => new Vector3(), []);
   const interpRotation = useMemo(() => new Quaternion(), []);
+  const inverseInterpRotation = useMemo(() => new Quaternion(), []);
   const bankQuaternion = useMemo(() => new Quaternion(), []);
   const forwardAxis = useMemo(() => new Vector3(0, 0, 1), []);
   const finalRotation = useMemo(() => new Quaternion(), []);
@@ -79,23 +94,42 @@ export function useShipInterpolation(
     currSimRotation,
     visualPosition,
     visualRotation,
+    targetVisualPosition,
+    visualLocalOffset,
+    visualOffset,
     interpPosition,
     interpRotation,
+    inverseInterpRotation,
     bankQuaternion,
     forwardAxis,
     finalRotation,
     get bankValue() { return bankValueRef.current; },
     get lastTickIndex() { return lastTickIndexRef.current; },
   }), [
-    prevSimPosition, prevSimRotation, currSimPosition, currSimRotation,
-    visualPosition, visualRotation, interpPosition, interpRotation,
-    bankQuaternion, forwardAxis, finalRotation
+    prevSimPosition,
+    prevSimRotation,
+    currSimPosition,
+    currSimRotation,
+    visualPosition,
+    visualRotation,
+    targetVisualPosition,
+    visualLocalOffset,
+    visualOffset,
+    interpPosition,
+    interpRotation,
+    inverseInterpRotation,
+    bankQuaternion,
+    forwardAxis,
+    finalRotation,
   ]);
 
   useLayoutEffect(() => {
     prevSimPosition.copy(entity.transform.position);
     currSimPosition.copy(entity.transform.position);
     visualPosition.copy(entity.transform.position);
+    targetVisualPosition.copy(entity.transform.position);
+    visualLocalOffset.set(0, 0, 0);
+    visualOffset.set(0, 0, 0);
     prevSimRotation.copy(entity.transform.rotation);
     currSimRotation.copy(entity.transform.rotation);
     visualRotation.copy(entity.transform.rotation);
@@ -110,6 +144,7 @@ export function useShipInterpolation(
     const sim = state?.simulation;
     const tickIndex = sim?.lastTickIndex ?? lastTickIndexRef.current;
     const alpha = sim ? MathUtils.clamp(sim.alpha, 0, 1) : 1;
+    const time = state?.time ?? 0;
 
     updateInterpolation(
       entity,
@@ -117,6 +152,7 @@ export function useShipInterpolation(
       smoothing,
       alpha,
       dt,
+      time,
       tickIndex,
       bankValueRef,
       bankVelocityRef,
@@ -130,11 +166,12 @@ export function useShipInterpolation(
 
     if (visualRef && visualRef.current) {
       const vRef = visualRef.current;
-      // local position = visualWorld - interpWorld
-      vRef.position.copy(interpolationState.visualPosition).sub(interpolationState.interpPosition);
+      // local position provided as visual offset (local-space)
+      vRef.position.copy(interpolationState.visualOffset);
       // local rotation = interpRotation^-1 * finalRotation
-      const inv = interpolationState.interpRotation.clone().invert();
-      vRef.quaternion.copy(inv).multiply(interpolationState.finalRotation);
+      vRef.quaternion
+        .copy(interpolationState.inverseInterpRotation)
+        .multiply(interpolationState.finalRotation);
       vRef.scale.setScalar(entity.transform.scale);
     }
   });
@@ -151,6 +188,7 @@ export function updateInterpolation(
   smoothing: SmoothingConfig,
   alpha: number,
   dt: number,
+  time: number,
   tickIndex: number,
   bankValueRef: MutableRefObject<number>,
   bankVelocityRef: MutableRefObject<number>,
@@ -169,6 +207,11 @@ export function updateInterpolation(
       state.prevSimRotation.copy(state.currSimRotation);
       state.visualPosition.copy(state.currSimPosition);
       state.visualRotation.copy(state.currSimRotation);
+      state.targetVisualPosition.copy(state.currSimPosition);
+      state.visualLocalOffset.set(0, 0, 0);
+      state.visualOffset.set(0, 0, 0);
+      bankValueRef.current = 0;
+      bankVelocityRef.current = 0;
     }
   } else {
     state.currSimPosition.copy(entity.transform.position);
@@ -176,85 +219,148 @@ export function updateInterpolation(
   }
 
   state.interpPosition.copy(state.prevSimPosition).lerp(state.currSimPosition, alpha);
-  // Position smoothing: prefer new time-constant semantics when available
+  state.interpRotation.copy(state.prevSimRotation).slerp(state.currSimRotation, alpha);
+  state.inverseInterpRotation.copy(state.interpRotation).invert();
+
   const motion = entity.ship.motion;
   const visualCfg: MotionVisualConfig | undefined = motion.visual;
   const globalVisualEnabled = RENDERER_VISUAL_CONFIG.enableShipVisualSmoothing;
+  const visualEnabled = visualCfg?.enabled ?? true;
+  const smoothingEnabled = globalVisualEnabled && visualEnabled;
 
-  const frameDt = RENDERER_VISUAL_CONFIG.legacyFrameDt;
-  const legacyToAlpha = (f: number) => (f <= 0 ? 0 : 1 - Math.pow(1 - f, dt / frameDt));
+  state.targetVisualPosition.copy(state.interpPosition);
+  state.visualLocalOffset.set(0, 0, 0);
 
-  let posAlpha = 1;
-  if (globalVisualEnabled && visualCfg?.position?.k != null && visualCfg.position.k > 0) {
-    posAlpha = 1 - Math.exp(-visualCfg.position.k * Math.max(dt, 1e-6));
-  } else {
-    posAlpha = legacyToAlpha(smoothing.positionLerp);
-  }
+  const frameDt = Math.max(RENDERER_VISUAL_CONFIG.legacyFrameDt, 1e-6);
+  const legacyToAlpha = (f: number) => {
+    if (f <= 0 || dt <= 0) return 0;
+    const clamped = MathUtils.clamp(f, 0, 1);
+    return 1 - Math.pow(1 - clamped, Math.max(dt, 1e-6) / frameDt);
+  };
 
-  if (posAlpha <= 0) {
-    state.visualPosition.copy(state.interpPosition);
-  } else {
-    state.visualPosition.lerp(state.interpPosition, posAlpha);
-  }
+  if (smoothingEnabled && visualCfg?.bob && visualCfg.bob.enabled !== false) {
+    const baseAmp = Math.max(0, visualCfg.bob.baseAmp ?? 0);
+    const freq = Math.max(0, visualCfg.bob.freq ?? 0);
+    const speedScale = Math.max(0, visualCfg.bob.speedScale ?? 0);
+    const maxAmp = Math.max(baseAmp, visualCfg.bob.maxAmp ?? baseAmp);
+    if (freq > 0 && (baseAmp > 0 || speedScale > 0)) {
+      const speed = entity.ship.velocity.length();
+      const maxSpeed = Math.max(motion.maxSpeed, 1e-3);
+      const speedRatio = MathUtils.clamp(speed / maxSpeed, 0, 1);
+      const turnRate = Math.abs(entity.ship.angularVelocity.y);
+      const maxTurn = Math.max(motion.maxTurnRate, 1e-3);
+      const turnRatio = MathUtils.clamp(turnRate / maxTurn, 0, 1);
 
-  state.interpRotation.copy(state.prevSimRotation).slerp(state.currSimRotation, alpha);
-  let rotAlpha = 1;
-  if (globalVisualEnabled && visualCfg?.rotation?.k != null && visualCfg.rotation.k > 0) {
-    rotAlpha = 1 - Math.exp(-visualCfg.rotation.k * Math.max(dt, 1e-6));
-  } else {
-    rotAlpha = legacyToAlpha(smoothing.rotationSlerp);
-  }
+      let amplitude = baseAmp + baseAmp * speedScale * speedRatio;
+      amplitude += baseAmp * 0.25 * turnRatio;
+      amplitude = Math.min(maxAmp, amplitude);
 
-  if (rotAlpha <= 0) {
-    state.visualRotation.copy(state.interpRotation);
-  } else {
-    state.visualRotation.slerp(state.interpRotation, rotAlpha);
-  }
+      if (speedRatio < 0.05) {
+        const fade = speedRatio / 0.05;
+        amplitude *= MathUtils.clamp(fade, 0, 1);
+      }
 
-  const bankFactor = motion.visualBankFactor ?? smoothing.bankFactor;
-  const maxBankDeg = motion.maxBankDeg ?? smoothing.maxBankDeg;
-  const yawRate = entity.ship.angularVelocity.y;
-  let bankDeg = yawRate * bankFactor;
-
-  if (motion.maxLateralAcceleration && motion.maxLateralAcceleration > 0) {
-    const lateralRatio = MathUtils.clamp(
-      entity.ship.lateralAcceleration / motion.maxLateralAcceleration,
-      -1,
-      1,
-    );
-    bankDeg += lateralRatio * maxBankDeg * 0.5;
-  }
-
-  const targetBankRad = MathUtils.degToRad(MathUtils.clamp(bankDeg, -maxBankDeg, maxBankDeg));
-  // Bank smoothing: support critically-damped spring when configured
-  if (globalVisualEnabled && visualCfg?.bank?.useCriticallyDamped && visualCfg.bank.k && visualCfg.bank.k > 0) {
-    const omega = visualCfg.bank.k; // natural frequency
-    // Critically-damped exact integration
-    const x = bankValueRef.current;
-    const v = bankVelocityRef.current;
-    const C1 = x - targetBankRad;
-    const C2 = v + omega * C1;
-    const expTerm = Math.exp(-omega * dt);
-    const xNew = targetBankRad + (C1 + C2 * dt) * expTerm;
-    const vNew = (C2 - omega * (C1 + C2 * dt)) * expTerm;
-    bankValueRef.current = xNew;
-    bankVelocityRef.current = vNew;
-  } else {
-    // fallback to time-constant or legacy per-frame smoothing
-    let bankAlpha = 1;
-    if (globalVisualEnabled && visualCfg?.bank?.k != null && visualCfg.bank.k > 0) {
-      bankAlpha = 1 - Math.exp(-visualCfg.bank.k * Math.max(dt, 1e-6));
-    } else {
-      bankAlpha = legacyToAlpha(smoothing.bankLerp);
+      if (amplitude > 1e-5) {
+        const phase = time * freq * Math.PI * 2;
+        const vertical = Math.sin(phase) * amplitude;
+        const lateralSign = Math.sign(entity.ship.angularVelocity.y);
+        const lateral = Math.cos(phase * 0.5) * amplitude * 0.35 * lateralSign * turnRatio;
+        state.visualLocalOffset.set(lateral, vertical, 0);
+        state.visualOffset.copy(state.visualLocalOffset).applyQuaternion(state.interpRotation);
+        state.targetVisualPosition.add(state.visualOffset);
+        state.visualOffset.set(0, 0, 0);
+      }
     }
-    bankValueRef.current = bankAlpha <= 0 ? targetBankRad : MathUtils.lerp(bankValueRef.current, targetBankRad, bankAlpha);
   }
+
+  if (!smoothingEnabled) {
+    state.visualPosition.copy(state.targetVisualPosition);
+    state.visualRotation.copy(state.interpRotation);
+    bankValueRef.current = 0;
+    bankVelocityRef.current = 0;
+  } else {
+    const posAlpha =
+      visualCfg?.position?.k != null && visualCfg.position.k > 0
+        ? kToAlpha(visualCfg.position.k, dt)
+        : legacyToAlpha(smoothing.positionLerp);
+
+    if (posAlpha <= 0) {
+      state.visualPosition.copy(state.targetVisualPosition);
+    } else if (posAlpha >= 1) {
+      state.visualPosition.copy(state.targetVisualPosition);
+    } else {
+      state.visualPosition.lerp(state.targetVisualPosition, MathUtils.clamp(posAlpha, 0, 1));
+    }
+
+    const rotAlpha =
+      visualCfg?.rotation?.k != null && visualCfg.rotation.k > 0
+        ? kToAlpha(visualCfg.rotation.k, dt)
+        : legacyToAlpha(smoothing.rotationSlerp);
+
+    if (rotAlpha <= 0) {
+      state.visualRotation.copy(state.interpRotation);
+    } else if (rotAlpha >= 1) {
+      state.visualRotation.copy(state.interpRotation);
+    } else {
+      state.visualRotation.slerp(state.interpRotation, MathUtils.clamp(rotAlpha, 0, 1));
+    }
+
+    const bankFactor = motion.visualBankFactor ?? smoothing.bankFactor;
+    const maxBankDeg = visualCfg?.bank?.maxDeg ?? motion.maxBankDeg ?? smoothing.maxBankDeg;
+    const yawRate = entity.ship.angularVelocity.y;
+    let bankDeg = yawRate * bankFactor;
+
+    if (motion.maxLateralAcceleration && motion.maxLateralAcceleration > 0) {
+      const lateralRatio = MathUtils.clamp(
+        entity.ship.lateralAcceleration / motion.maxLateralAcceleration,
+        -1,
+        1,
+      );
+      bankDeg += lateralRatio * maxBankDeg * 0.5;
+    }
+
+    const targetBankRad = MathUtils.degToRad(MathUtils.clamp(bankDeg, -maxBankDeg, maxBankDeg));
+    const safeDt = Math.max(dt, 1e-6);
+
+    if (visualCfg?.bank?.useCriticallyDamped && visualCfg.bank.k && visualCfg.bank.k > 0) {
+      const omega = visualCfg.bank.k;
+      const x = bankValueRef.current;
+      const v = bankVelocityRef.current;
+      const C1 = x - targetBankRad;
+      const C2 = v + omega * C1;
+      const expTerm = Math.exp(-omega * safeDt);
+      const xNew = targetBankRad + (C1 + C2 * safeDt) * expTerm;
+      const vNew = (C2 - omega * (C1 + C2 * safeDt)) * expTerm;
+      bankValueRef.current = xNew;
+      bankVelocityRef.current = vNew;
+    } else {
+      const bankAlpha =
+        visualCfg?.bank?.k != null && visualCfg.bank.k > 0
+          ? kToAlpha(visualCfg.bank.k, dt)
+          : legacyToAlpha(smoothing.bankLerp);
+      if (bankAlpha <= 0) {
+        bankValueRef.current = targetBankRad;
+      } else if (bankAlpha >= 1) {
+        bankValueRef.current = targetBankRad;
+      } else {
+        bankValueRef.current = MathUtils.lerp(bankValueRef.current, targetBankRad, MathUtils.clamp(bankAlpha, 0, 1));
+      }
+      bankVelocityRef.current = 0;
+    }
+  }
+
+  state.visualOffset
+    .copy(state.visualPosition)
+    .sub(state.interpPosition)
+    .applyQuaternion(state.inverseInterpRotation);
 
   state.finalRotation.copy(state.visualRotation);
-  const bankRoll = bankValueRef.current;
-  if (Math.abs(bankRoll) > 1e-4) {
-    state.bankQuaternion.setFromAxisAngle(state.forwardAxis, -bankRoll);
-    state.finalRotation.multiply(state.bankQuaternion);
+  if (smoothingEnabled) {
+    const bankRoll = bankValueRef.current;
+    if (Math.abs(bankRoll) > 1e-4) {
+      state.bankQuaternion.setFromAxisAngle(state.forwardAxis, -bankRoll);
+      state.finalRotation.multiply(state.bankQuaternion);
+    }
   }
 }
 
