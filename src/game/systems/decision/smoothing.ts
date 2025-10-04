@@ -94,7 +94,7 @@ export function smoothHeading(
   // Start with moderate smoothing and adjust by behavior params
   // Lower baseline alpha to make smoothing slightly stronger by default
   // (more weight to historical heading), which reduces jitter.
-  let alpha = 0.28; // baseline ~28% new, 72% old per tick
+  let alpha = 0.2; // baseline ~20% new, 80% old per tick
 
   // Patience adjustment: more patient → more smoothing (lower alpha)
   const patienceFactor = 1 - Math.min(1, patience) * 0.3; // reduce alpha up to 30%
@@ -115,9 +115,27 @@ export function smoothHeading(
   // Clamp alpha to reasonable bounds (allow slightly stronger smoothing)
   alpha = Math.max(0.08, Math.min(0.6, alpha));
 
+  // Ramp-in: if smoothing was just initialized within the last few ticks,
+  // apply stronger smoothing to avoid transient spikes when toggling the
+  // smoothing feature on at runtime (helps make the transition stable).
+  const sinceInit = tickIndex - s.lastHeadingUpdateTick;
+  if (sinceInit > 0 && sinceInit <= 2) {
+    alpha = Math.min(alpha * 0.5, 0.12);
+  }
+
   // Apply exponential moving average (EMA)
   // smoothed = alpha * new + (1 - alpha) * old
   const newHeading = rawHeading.clone();
+  // Prevent extreme single-tick heading changes from causing large spikes
+  // after normalization or when smoothing is first enabled. Clamp the
+  // raw heading delta relative to the stored heading to a small maximum
+  // before applying the EMA.
+  const maxDelta = 0.18; // maximum allowed per-tick vector difference
+  const rawDeltaVec = newHeading.clone().sub(s.lastHeading);
+  const rawDeltaLen = rawDeltaVec.length();
+  if (rawDeltaLen > maxDelta && rawDeltaLen > 1e-6) {
+    newHeading.copy(s.lastHeading).addScaledVector(rawDeltaVec, maxDelta / rawDeltaLen);
+  }
   rawHeading.copy(s.lastHeading).multiplyScalar(1 - alpha).addScaledVector(newHeading, alpha);
 
   // Renormalize to ensure heading remains unit-length

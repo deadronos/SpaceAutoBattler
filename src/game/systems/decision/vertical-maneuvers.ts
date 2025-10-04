@@ -37,7 +37,16 @@ export function applyVerticalPerturbation(
   if (heading.lengthSq() < 1e-6) return;
   const seed = Math.abs(hashToInt(ai.traitSeed ^ ship.id ^ (state.ai.tickIndex * 1229))) + 1;
   TEMP_RNG.reset(seed);
-  const perturb = TEMP_RNG.normal(amplitude * 0.3, 0.05);
+  let perturb = TEMP_RNG.normal(amplitude * 0.3, 0.05);
+  // When smoothing is enabled, attenuate the raw vertical perturbation so
+  // the smoothing filter can more effectively reduce jitter. This avoids
+  // pathological cases where perturbations are large enough to increase
+  // apparent heading variance after filtering.
+  if (getEffectiveAIConfig().smoothingEnabled) {
+    // Reduce perturbation amplitude by ~40% when smoothing active
+    // (empirically chosen to keep behavior similar while improving stability).
+    perturb *= 0.6;
+  }
   heading.y += perturb;
 
   if (target) {

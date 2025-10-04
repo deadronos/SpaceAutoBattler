@@ -118,12 +118,3 @@ export const __aiTestHooks = {
   computeInterceptHeadingVector,
   executeAICommand,
 };
-
-// In the AI command generation logic, locate heading smoothing (usually inside writeCommand or a helper).
-// Find the region similar to:
-if (uiStore.aiSmoothingEnabled && aiState.stickinessHeading) {
-  // Blend current heading with previous stickinessHeading
-  // Increase smoothing factor for stronger effect
-  const smoothingAlpha = 0.5; // Was likely 0.2 or lower before
-  aiState.command.heading.lerp(aiState.stickinessHeading, smoothingAlpha);
-}
