@@ -5,9 +5,9 @@ import type {
   ShipEntity,
   TeamPosture,
 } from '../../../types/index.js';
-import { AI_CONFIG } from '../../config.js';
 import { quantizeScore, computeBandPreferenceBonus, computeThreatBonus } from './intent-utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
+import { getEffectiveAIConfig } from '../../config.js';
 
 export function scoreAttackIntent(
   state: GameState,
@@ -20,16 +20,19 @@ export function scoreAttackIntent(
   if (!target) return 0;
   const dist = ship.transform.position.distanceTo(target.transform.position);
   const aiState = ship.ai;
-  const [desiredMin, desiredMax] = aiState
-    ? computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex)
-    : profile.desiredRange;
+  let desiredMin = profile.desiredRange[0];
+  let desiredMax = profile.desiredRange[1];
+  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex);
+  }
   const mid = (desiredMin + desiredMax) * 0.5;
   const bandError = Math.abs(dist - mid);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
   const aggression = profile.aggression * traits.aggression;
 
-  const isOpeningSalvo = AI_CONFIG.engagementBoostEnabled && state.time < AI_CONFIG.openingSalvoDuration;
-  const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
+  const effectiveCfg = getEffectiveAIConfig();
+  const isOpeningSalvo = effectiveCfg.engagementBoostEnabled && state.time < effectiveCfg.openingSalvoDuration;
+  const aggressionMultiplier = isOpeningSalvo ? effectiveCfg.openingSalvoAggressionBoost : 1.0;
 
   let score = 1000 - bandError * 4.6 + aggression * 120 * aggressionMultiplier;
   score += hpRatio * 80;
@@ -50,7 +53,7 @@ export function scoreAttackIntent(
   const focusLoad = focusMap ? focusMap.get(target.id) ?? 0 : 0;
   const focusBias = focusLoad === 0 ? 40 : Math.max(-80, 35 - focusLoad * 30);
   score += focusBias;
-  if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
+  if (effectiveCfg.engagementBoostEnabled && profile.engagementBias) {
     score += profile.engagementBias;
   }
   return quantizeScore(score);

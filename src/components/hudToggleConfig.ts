@@ -106,4 +106,31 @@ export const DEBUG_TOGGLES: HudToggleDefinition[] = [
       useUiStore.getState().toggleAiTickRateExperiment();
     },
   },
+  {
+    id: 'ai-smoothing',
+    label: 'AI Smoothing',
+    description: 'Low-pass filter commanded heading and thrust',
+    select: (state) => state.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleAiSmoothing?.();
+    },
+  },
+  {
+    id: 'ai-hysteresis',
+    label: 'AI Hysteresis',
+    description: 'Enable hysteresis in desired range checks',
+    select: (state) => state.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleAiHysteresis?.();
+    },
+  },
+  {
+    id: 'ai-vertical-damping',
+    label: 'AI Vertical Damping',
+    description: 'Damp repeated large vertical amplitudes',
+    select: (state) => state.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleAiVerticalDamping?.();
+    },
+  },
 ];

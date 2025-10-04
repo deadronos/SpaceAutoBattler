@@ -5,7 +5,7 @@ import type {
   GameState,
   ShipEntity,
 } from '../../../types/index.js';
-import { AI_CONFIG } from '../../config.js';
+import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { SeededRng } from '../../../utils/rng.js';
 import { hashToInt } from './utils.js';
 import { dampVerticalAmplitude } from './hysteresis.js';
@@ -23,9 +23,11 @@ export function applyVerticalPerturbation(
   if (!AI_CONFIG.verticalEnabled) return;
   let amplitude = profile.verticalManeuver;
   if (amplitude <= 0) return;
-  // Apply damping based on recent vertical amplitude history to reduce
-  // sustained 'bobbing' when repeated high amplitudes are observed.
-  amplitude = dampVerticalAmplitude(ai, profile, amplitude, state.ai.tickIndex);
+  // Optionally apply damping based on recent vertical amplitude history to
+  // reduce sustained 'bobbing' when repeated high amplitudes are observed.
+  if (getEffectiveAIConfig().verticalDampingEnabled) {
+    amplitude = dampVerticalAmplitude(ai, profile, amplitude, state.ai.tickIndex);
+  }
   if (heading.lengthSq() < 1e-6) return;
   const seed = Math.abs(hashToInt(ai.traitSeed ^ ship.id ^ (state.ai.tickIndex * 1229))) + 1;
   TEMP_RNG.reset(seed);

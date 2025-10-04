@@ -5,7 +5,7 @@ import type {
   GameState,
   ShipEntity,
 } from '../../../types/index.js';
-import { AI_CONFIG } from '../../config.js';
+import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import {
   quantizeScore,
   getIntentPriority,
@@ -188,16 +188,20 @@ export function writeCommand(
   }
 
   // Apply low-pass filtering to thrust to reduce acceleration spikes
-  const smoothedThrust = smoothThrust(
-    ai,
-    result.thrust,
-    profile.patience,
-    profile.aggression,
-    ship.ship.hull,
-    state.ai.tickIndex,
-  );
+  if (getEffectiveAIConfig().smoothingEnabled) {
+    const smoothedThrust = smoothThrust(
+      ai,
+      result.thrust,
+      profile.patience,
+      profile.aggression,
+      ship.ship.hull,
+      state.ai.tickIndex,
+    );
+    command.thrust = smoothedThrust;
+  } else {
+    command.thrust = result.thrust;
+  }
 
-  command.thrust = smoothedThrust;
   command.firePrimary = result.firePrimary;
   command.targetId = result.targetId;
 
@@ -215,14 +219,9 @@ export function writeCommand(
   }
 
   // Apply low-pass filtering to heading to reduce steering jitter
-  smoothHeading(
-    ai,
-    heading,
-    profile.patience,
-    profile.aggression,
-    ship.ship.hull,
-    state.ai.tickIndex,
-  );
+  if (getEffectiveAIConfig().smoothingEnabled) {
+    smoothHeading(ai, heading, profile.patience, profile.aggression, ship.ship.hull, state.ai.tickIndex);
+  }
 
   if (target && result.distanceToTarget != null) {
     updateBandStickiness(state, ai, target, result.distanceToTarget, profile.desiredRange, heading);

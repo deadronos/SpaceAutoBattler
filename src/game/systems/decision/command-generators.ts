@@ -9,6 +9,7 @@ import type {
 import { hashToInt } from './utils.js';
 import { computeInterceptHeadingVector, TEMP_REL_POS, TEMP_POS } from './intent-utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
+import { getEffectiveAIConfig } from '../../config.js';
 
 export interface CommandResult {
   thrust: number;
@@ -68,10 +69,12 @@ export function computeRepositionCommand(
       distance = 0;
     }
     const distanceToTarget = ship.transform.position.distanceTo(target.transform.position);
-    const aiState = ship.ai;
-    const [desiredMin, desiredMax] = aiState
-      ? computeEffectiveDesiredRange(aiState, profile, distanceToTarget, state.ai.tickIndex)
-      : profile.desiredRange;
+    let desiredMin = profile.desiredRange[0];
+    let desiredMax = profile.desiredRange[1];
+    if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
+      const aiState = ship.ai;
+      [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, distanceToTarget, state.ai.tickIndex);
+    }
     // desiredMin/desiredMax are computed above using hysteresis when possible
     let shouldFire = distance <= ship.ship.range;
     let thrust: number;
@@ -225,10 +228,12 @@ export function computeAttackCommand(
   if (target) {
     heading.copy(target.transform.position).sub(ship.transform.position).normalize();
     const dist = ship.transform.position.distanceTo(target.transform.position);
-    const aiState = ship.ai;
-    const [desiredMin, desiredMax] = aiState
-      ? computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex)
-      : profile.desiredRange;
+    let desiredMin = profile.desiredRange[0];
+    let desiredMax = profile.desiredRange[1];
+    if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
+      const aiState = ship.ai;
+      [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex);
+    }
     let thrust: number;
     if (dist > desiredMax) {
       thrust = 1;

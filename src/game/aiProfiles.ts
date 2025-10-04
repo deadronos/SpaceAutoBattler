@@ -163,54 +163,16 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
   brawler: {
     desiredRange: [120, 220] as const,
     orbit: 0,
-    aggression: 0.75,
-    patience: 0.4,
-    dodgeFreq: 0.25,
+    aggression: 0.9,
+    patience: 0.3,
+    dodgeFreq: 0.2,
     classBias: {
-      fighter: 15,
-      corvette: 12,
-      frigate: 8,
+      fighter: 20,
+      corvette: 10,
+      frigate: 5,
     },
     style: 'brawler',
-    verticalManeuver: 0.2, // medium hulls: moderate vertical movement
-    elevationPreference: 'follow',
-    bandPreference: 'mid',
-    engagementBias: 20,
-    gates: {
-      hpRetreatPct: 0.3,
-    },
-  },
-  kiter: {
-    desiredRange: [240, 360] as const,
-    orbit: 160,
-    aggression: 0.5,
-    patience: 0.65,
-    dodgeFreq: 0.5,
-    classBias: {
-      destroyer: 10,
-      carrier: 15,
-    },
-    style: 'kiter',
-    verticalManeuver: 0.15, // medium-light hulls: moderate vertical
-    elevationPreference: 'follow',
-    bandPreference: 'outer',
-    engagementBias: 12,
-    gates: {
-      hpRetreatPct: 0.35,
-    },
-  },
-  escort: {
-    desiredRange: [70, 180] as const,
-    orbit: 60,
-    aggression: 0.7,
-    patience: 0.45,
-    dodgeFreq: 0.4,
-    classBias: {
-      fighter: 18,
-      corvette: 12,
-    },
-    style: 'escort',
-    verticalManeuver: 0.4, // light hulls (fighters): high agility, high vertical
+    verticalManeuver: 0.25,
     elevationPreference: 'follow',
     bandPreference: 'mid',
     engagementBias: 25,
@@ -218,21 +180,59 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
       hpRetreatPct: 0.25,
     },
   },
+  kiter: {
+    desiredRange: [240, 360] as const,
+    orbit: 160,
+    aggression: 0.5,
+    patience: 0.7,
+    dodgeFreq: 0.6,
+    classBias: {
+      destroyer: 8,
+      carrier: 12,
+    },
+    style: 'kiter',
+    verticalManeuver: 0.15, // cruiser: 0.15 per issue spec (assuming kiter = cruiser-like)
+    elevationPreference: 'follow',
+    bandPreference: 'outer',
+    engagementBias: 15,
+    gates: {
+      hpRetreatPct: 0.35,
+    },
+  },
+  escort: {
+    desiredRange: [70, 180] as const,
+    orbit: 60,
+    aggression: 0.8,
+    patience: 0.5,
+    dodgeFreq: 0.3,
+    classBias: {
+      fighter: 15,
+      corvette: 10,
+    },
+    style: 'escort',
+    verticalManeuver: 0.5, // fighters: 0.5 per issue spec
+    elevationPreference: 'follow',
+    bandPreference: 'mid',
+    engagementBias: 30,
+    gates: {
+      hpRetreatPct: 0.3,
+    },
+  },
   artillery: {
     desiredRange: [260, 400] as const,
     orbit: 0,
-    aggression: 0.5,
-    patience: 0.75,
-    dodgeFreq: 0.08,
+    aggression: 0.6,
+    patience: 0.7,
+    dodgeFreq: 0.1,
     classBias: {
-      carrier: 20,
-      destroyer: 18,
+      carrier: 25,
+      destroyer: 15,
     },
     style: 'artillery',
-    verticalManeuver: 0.06, // heavy hulls (destroyer/carrier): minimal vertical, high inertia
+    verticalManeuver: 0.05, // artillery: 0.05 per issue spec
     elevationPreference: 'above',
     bandPreference: 'outer',
-    engagementBias: 8,
+    engagementBias: 10,
     gates: {
       hpRetreatPct: 0.4,
     },
