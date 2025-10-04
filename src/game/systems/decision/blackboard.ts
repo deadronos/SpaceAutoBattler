@@ -15,6 +15,11 @@ import { hashToInt } from './utils.js';
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const TEMP_RNG = new SeededRng(1);
 
+/** Reset module-level RNG used for priority/escort jitter. */
+export function resetTempRng(seed?: number): void {
+  TEMP_RNG.reset(seed ?? 1);
+}
+
 export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   const { blackboard } = state;
   const manager = state.ai;

@@ -137,6 +137,10 @@ export const AI_CONFIG = {
   maxPerTick: 60,
   slices: 5,
   verticalEnabled: VERTICAL_EXPERIMENT_ENABLED,
+  // Feature toggles for runtime experiments
+  smoothingEnabled: true,
+  hysteresisEnabled: true,
+  verticalDampingEnabled: true,
   engagementBoostEnabled: ENGAGEMENT_BOOST_ENABLED,
   rangePolicy: RANGE_POLICY_EFFECTIVE,
   openingSalvoDuration: 30,
@@ -184,6 +188,9 @@ interface UiStoreSlice {
   aiEngagementBoostEnabled: boolean | null | undefined;
   aiTickRateExperimentEnabled: boolean | null | undefined;
   aiRangePolicy: string | null | undefined;
+  aiSmoothingEnabled?: boolean | null | undefined;
+  aiHysteresisEnabled?: boolean | null | undefined;
+  aiVerticalDampingEnabled?: boolean | null | undefined;
 }
 
 interface UiStoreLike {
@@ -215,6 +222,9 @@ export function getEffectiveAIConfig() {
       ...AI_CONFIG,
       verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
       engagementBoostEnabled: uiState.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
+      smoothingEnabled: uiState.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled,
+      hysteresisEnabled: uiState.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled,
+      verticalDampingEnabled: uiState.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled,
       tickRateHzExperiment: uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
       rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
     };

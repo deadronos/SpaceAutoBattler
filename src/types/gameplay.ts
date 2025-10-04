@@ -52,6 +52,8 @@ export interface MotionStats {
   maxLateralAcceleration?: number;
   /** Optional renderer smoothing preferences for this hull. */
   smoothing?: MotionSmoothingConfig;
+  /** Optional new visual config using time-constant semantics (preferred). */
+  visual?: MotionVisualConfig;
   /** Visual banking sensitivity (degrees per radian/second yaw by default). */
   visualBankFactor?: number;
   /** Maximum visual banking angle in degrees. */
@@ -68,6 +70,23 @@ export interface MotionSmoothingConfig {
   bankLerp?: number;
   /** Threshold distance that resets interpolation to avoid trails. */
   teleportDistance?: number;
+}
+
+/** Renderer-level visual smoothing and bob/sway configuration (time-constant based). */
+export interface MotionVisualConfig {
+  enabled?: boolean; // master enable for visual smoothing for this hull
+  /** Position smoothing time-constant (seconds^-1). Higher = faster convergence. */
+  position?: { k?: number };
+  /** Rotation smoothing time-constant (seconds^-1). */
+  rotation?: { k?: number };
+  /** Banking smoothing/limits. */
+  bank?: { k?: number; maxDeg?: number; useCriticallyDamped?: boolean };
+  /** Distance threshold that resets interpolation to avoid trails. */
+  teleportDistance?: number;
+  /** Optional bob settings — minimal safe defaults; amplitude is hull/unit aware. */
+  bob?: { enabled?: boolean; baseAmp?: number; freq?: number; speedScale?: number; maxAmp?: number };
+  /** Whether to enable Rapier CCD for this hull's collider (opt-in). */
+  enableCcd?: boolean;
 }
 
 export type DamageType = 'kinetic' | 'plasma' | 'ion' | 'explosive';

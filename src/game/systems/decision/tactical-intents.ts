@@ -13,6 +13,8 @@ import {
   computeThreatBonus,
   getSpeedMagnitude,
 } from './intent-utils.js';
+import { computeEffectiveDesiredRange } from './hysteresis.js';
+import { getEffectiveAIConfig } from '../../config.js';
 
 export function scoreInterceptIntent(
   state: GameState,
@@ -30,7 +32,12 @@ export function scoreInterceptIntent(
   }
 
   const distance = ship.transform.position.distanceTo(target.transform.position);
-  const desiredMax = profile.desiredRange[1];
+  const aiState = ship.ai;
+  let desiredMin = profile.desiredRange[0];
+  let desiredMax = profile.desiredRange[1];
+  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, distance, state.ai.tickIndex);
+  }
   const bandPressure = Math.max(0, distance - desiredMax);
 
   const targetSpeed = getSpeedMagnitude(target);
@@ -44,7 +51,7 @@ export function scoreInterceptIntent(
   let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 * aggressionMultiplier + threatBonus + escortBonus;
   if (posture === 'aggressive') score += 100 * aggressionMultiplier;
   if (posture === 'retreat') score -= 110;
-  score += computeBandPreferenceBonus(distance, profile.desiredRange[0], desiredMax, profile.bandPreference);
+  score += computeBandPreferenceBonus(distance, desiredMin, desiredMax, profile.bandPreference);
   const interceptIndex = state.blackboard.priorityIndex?.[ship.ship.team];
   if (interceptIndex) {
     const interceptRank = interceptIndex.get(target.id);
@@ -82,9 +89,13 @@ export function scoreRepositionIntent(
     return quantizeScore(base);
   }
 
-  const desiredMin = profile.desiredRange[0];
-  const desiredMax = profile.desiredRange[1];
   const distance = ship.transform.position.distanceTo(target.transform.position);
+  const aiState = ship.ai;
+  let desiredMin = profile.desiredRange[0];
+  let desiredMax = profile.desiredRange[1];
+  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, distance, state.ai.tickIndex);
+  }
   const below = Math.max(0, desiredMin - distance);
   const above = Math.max(0, distance - desiredMax);
   let bandError = Math.abs(distance - (desiredMin + desiredMax) * 0.5);

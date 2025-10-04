@@ -46,6 +46,16 @@ export type UiState = {
   setAiTickRateExperimentEnabled: (v: boolean | null) => void;
   aiRangePolicy: string | null; // null = use config default
   setAiRangePolicy: (v: string | null) => void;
+  // New AI behaviour overrides (null = use config default)
+  aiSmoothingEnabled?: boolean | null;
+  toggleAiSmoothing?: () => void;
+  setAiSmoothingEnabled?: (v: boolean | null) => void;
+  aiHysteresisEnabled?: boolean | null;
+  toggleAiHysteresis?: () => void;
+  setAiHysteresisEnabled?: (v: boolean | null) => void;
+  aiVerticalDampingEnabled?: boolean | null;
+  toggleAiVerticalDamping?: () => void;
+  setAiVerticalDampingEnabled?: (v: boolean | null) => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -105,6 +115,22 @@ export const useUiStore = create<UiState>((set) => ({
   setAiTickRateExperimentEnabled: (v: boolean | null) => set({ aiTickRateExperimentEnabled: v }),
   aiRangePolicy: null,
   setAiRangePolicy: (v: string | null) => set({ aiRangePolicy: v }),
+  // New AI behaviour overrides
+  aiSmoothingEnabled: null,
+  toggleAiSmoothing: () => set((s) => ({
+    aiSmoothingEnabled: s.aiSmoothingEnabled === null ? !AI_CONFIG.smoothingEnabled : !s.aiSmoothingEnabled,
+  })),
+  setAiSmoothingEnabled: (v: boolean | null) => set({ aiSmoothingEnabled: v }),
+  aiHysteresisEnabled: null,
+  toggleAiHysteresis: () => set((s) => ({
+    aiHysteresisEnabled: s.aiHysteresisEnabled === null ? !AI_CONFIG.hysteresisEnabled : !s.aiHysteresisEnabled,
+  })),
+  setAiHysteresisEnabled: (v: boolean | null) => set({ aiHysteresisEnabled: v }),
+  aiVerticalDampingEnabled: null,
+  toggleAiVerticalDamping: () => set((s) => ({
+    aiVerticalDampingEnabled: s.aiVerticalDampingEnabled === null ? !AI_CONFIG.verticalDampingEnabled : !s.aiVerticalDampingEnabled,
+  })),
+  setAiVerticalDampingEnabled: (v: boolean | null) => set({ aiVerticalDampingEnabled: v }),
 }));
 
 const globalWithUiStore = globalThis as { __spaceAutobattlerUiStore?: unknown };
