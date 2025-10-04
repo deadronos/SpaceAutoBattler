@@ -24,6 +24,15 @@ function createAI(): AIState {
   } as unknown as AIState;
 }
 
+function meanHeadingDelta(headings: Vector3[]): number {
+  if (headings.length < 2) return 0;
+  let sum = 0;
+  for (let i = 1; i < headings.length; i++) {
+    sum += headings[i].clone().sub(headings[i - 1]).length();
+  }
+  return sum / (headings.length - 1);
+}
+
 describe('smoothing edge cases', () => {
   it('initializes thrust and heading on first tick (thrust-first)', () => {
     const ai = createAI();
@@ -67,5 +76,33 @@ describe('smoothing edge cases', () => {
     expect(reversed.x).toBeCloseTo(-1, 6);
     expect(reversed.y).toBeCloseTo(0, 6);
     expect(reversed.z).toBeCloseTo(0, 6);
+  });
+
+  it('smooths moderate-angle perturbations', () => {
+    const ai = createAI();
+
+    const rawSeq: Vector3[] = [];
+    const smoothSeq: Vector3[] = [];
+
+    // Generate a sequence of moderate vertical perturbations (small Y)
+    for (let t = 0; t < 12; t++) {
+      ai.command.heading.set(0, 0, 1); // base
+      const y = Math.sin(t * 0.9) * 0.18; // moderate perturbation pattern
+      const raw = new Vector3(0, y, 1).normalize();
+      rawSeq.push(raw.clone());
+
+      // Copy and smooth
+      const sm = raw.clone();
+      smoothHeading(ai, sm, 0.5, 0.5, 'fighter', 100 + t);
+      smoothSeq.push(sm.clone());
+    }
+
+    const rawMean = meanHeadingDelta(rawSeq);
+    const smoothMean = meanHeadingDelta(smoothSeq);
+
+    expect(rawSeq.length).toBeGreaterThan(1);
+    expect(rawMean).toBeGreaterThan(0);
+    // Smoothed mean should be smaller than raw mean
+    expect(smoothMean).toBeLessThan(rawMean);
   });
 });

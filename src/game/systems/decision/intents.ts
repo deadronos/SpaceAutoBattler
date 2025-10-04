@@ -26,7 +26,7 @@ import {
   type CommandResult,
 } from './command-generators.js';
 import { applyVerticalPerturbation } from './vertical-maneuvers.js';
-import { computeVerticalClamp } from './vertical-utils.js';
+import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { updateBandStickiness } from './metrics-diagnostics.js';
 import { smoothHeading, smoothThrust } from './smoothing.js';
 

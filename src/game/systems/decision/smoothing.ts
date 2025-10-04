@@ -81,7 +81,10 @@ export function smoothHeading(
   // that expect exact full-forward or full-reverse headings.
   const dot = rawHeading.dot(s.lastHeading);
   const axisAligned = Math.max(Math.abs(rawHeading.x), Math.abs(rawHeading.y), Math.abs(rawHeading.z)) > 0.9999;
-  if (dot < 0.1 || axisAligned) {
+  // Only treat near-reversals (large-angle changes) as instantaneous
+  // discontinuities. Use a conservative threshold so moderate lateral
+  // changes are still smoothed by the EMA.
+  if (dot < -0.5 || axisAligned) {
     s.lastHeading.copy(rawHeading);
     s.lastHeadingUpdateTick = tickIndex;
     return;
@@ -89,7 +92,9 @@ export function smoothHeading(
 
   // Base alpha: higher = less smoothing (faster response)
   // Start with moderate smoothing and adjust by behavior params
-  let alpha = 0.35; // baseline ~35% new, 65% old per tick
+  // Lower baseline alpha to make smoothing slightly stronger by default
+  // (more weight to historical heading), which reduces jitter.
+  let alpha = 0.28; // baseline ~28% new, 72% old per tick
 
   // Patience adjustment: more patient → more smoothing (lower alpha)
   const patienceFactor = 1 - Math.min(1, patience) * 0.3; // reduce alpha up to 30%
@@ -107,8 +112,8 @@ export function smoothHeading(
   }
   // fighters get no additional smoothing (already nimble)
 
-  // Clamp alpha to reasonable bounds
-  alpha = Math.max(0.1, Math.min(0.6, alpha));
+  // Clamp alpha to reasonable bounds (allow slightly stronger smoothing)
+  alpha = Math.max(0.08, Math.min(0.6, alpha));
 
   // Apply exponential moving average (EMA)
   // smoothed = alpha * new + (1 - alpha) * old
@@ -176,7 +181,8 @@ export function smoothThrust(
   }
 
   // Base alpha for thrust (slightly higher than heading for responsiveness)
-  let alpha = 0.4;
+  // Slightly lower thrust baseline so throttle smoothing is a bit stronger
+  let alpha = 0.35;
 
   // Patience: more patient → smoother throttle
   const patienceFactor = 1 - Math.min(1, patience) * 0.25;
@@ -193,8 +199,8 @@ export function smoothThrust(
     alpha *= 0.9;
   }
 
-  // Clamp
-  alpha = Math.max(0.15, Math.min(0.65, alpha));
+  // Clamp (allow slightly stronger thrust smoothing)
+  alpha = Math.max(0.12, Math.min(0.65, alpha));
 
   // EMA
   const smoothedThrust = s.lastThrust * (1 - alpha) + rawThrust * alpha;

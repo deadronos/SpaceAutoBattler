@@ -6,7 +6,7 @@ import type {
   ShipEntity,
 } from '../../../types/index.js';
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
-import { computeVerticalClamp } from './vertical-utils.js';
+import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { SeededRng } from '../../../utils/rng.js';
 import { hashToInt } from './utils.js';
 import { dampVerticalAmplitude } from './hysteresis.js';

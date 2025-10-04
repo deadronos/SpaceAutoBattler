@@ -118,3 +118,25 @@ export const __aiTestHooks = {
   computeInterceptHeadingVector,
   executeAICommand,
 };
+
+function writeCommand(
+  state: GameState,
+  ship: ShipEntity,
+  ai: AIState,
+  profile: BehaviorProfile,
+  target: ShipEntity | null,
+  ...rest
+) {
+  // ...existing code...
+
+  // Smoothing logic for heading
+  const uiStore = useUiStore.getState();
+  const smoothingEnabled = uiStore.aiSmoothingEnabled;
+  // ...existing code...
+  if (smoothingEnabled) {
+    // Increase smoothing factor for stronger blending
+    const smoothingFactor = 0.7; // was likely lower before (e.g. 0.3)
+    ai.command.heading.lerp(ai.stickinessHeading, smoothingFactor);
+  }
+  // ...existing code...
+}
