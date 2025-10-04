@@ -11,9 +11,10 @@ export { SHIELD_RENDER_ORDER };
 export { resolveModelPath } from './ship/ShipModel.js';
 
 export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactElement {
-  const group = useRef<Group>(null);
+  const rootGroup = useRef<Group>(null);
+  const visualGroup = useRef<Group>(null);
 
-  const { state: interpState, smoothing } = useShipInterpolation(entity, group);
+  const { state: interpState, smoothing } = useShipInterpolation(entity, rootGroup, visualGroup);
   const { scene, hasValidPath } = useShipModel(entity.model);
   if (!Number.isFinite(smoothing.thrusterIntensity.base)) {
     smoothing.thrusterIntensity.base = 0;
@@ -27,7 +28,8 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   return (
     <ShipView
       entity={entity}
-      groupRef={group}
+      groupRef={rootGroup}
+      visualRef={visualGroup}
       scene={scene}
       hasValidPath={hasValidPath}
       hullMaterialsRef={hullMaterialsRef}
