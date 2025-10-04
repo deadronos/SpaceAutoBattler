@@ -35,11 +35,12 @@ Improve ship visuals by adding robust dt-independent smoothing, per-hull overrid
    - Update `memory/designs/design-visual-smoothing.md` (this file) and add migration notes. Add config README section and change log for maintainers.
 
 ## Subtasks
+
 | ID | Description | Status | Updated | Notes |
 |---:|-------------|--------|---------|-------|
-| 244.1 | Add `motion.visual` config + global toggle | not-started |  | default mapping for existing ships |
+| 244.1 | Add `motion.visual` config + global toggle | completed | 2025-10-04 | default mapping for existing ships; shipStats updated; renderer global toggle added |
 | 244.2 | Add `visualRef` child group to `ShipView` | not-started |  | minimal UI change |
-| 244.3 | Convert smoothing to dt-independent exponential filters | not-started |  | change `updateInterpolation` signature and logic |
+| 244.3 | Convert smoothing to dt-independent exponential filters | completed | 2025-10-04 | `useShipInterpolation` updated to accept `dt`, compute alpha from k, and apply per-frame exponential smoothing; bank spring implemented (critically-damped) |
 | 244.4 | Implement critically-damped bank spring (config) | not-started |  | unit tested |
 | 244.5 | Implement bob/sway minimal safe defaults | not-started |  | clamped & faded amplitude |
 | 244.6 | Wire CCD toggle into Rapier entity creation | not-started |  | opt-in only |
@@ -56,7 +57,23 @@ Improve ship visuals by adding robust dt-independent smoothing, per-hull overrid
 
 ## Progress Log
 ### 2025-10-04
+
 - Created task and initial implementation plan. Design doc drafted in `memory/designs`.
+- Kickoff: started implementation on subtask `244.1` — add `motion.visual` config shape and global toggle.
+- Completed subtask `244.1`: updated files:
+  - `src/types/gameplay.ts` — added `MotionVisualConfig` and `MotionStats.visual` field.
+  - `src/config/renderer.ts` — added `RENDERER_VISUAL_CONFIG` and `k -> per-frame` mapping (legacy-compatible resolve).
+  - `src/data/shipStats.ts` — replaced per-hull `smoothing` blocks with `visual` blocks using recommended k defaults.
+  - `src/utils/motionUtils.ts` — included `visual` defaults in `createDefaultMotionStats()`.
+  - `src/game/validation.ts` — added validation rules for `motion.visual` fields.
+- Completed subtask `244.3`: converted runtime smoothing to dt-based semantics and wired visual child group.
+  - Key files changed:
+    - `src/hooks/useShipInterpolation.ts` — pass `dt` from `useFrame`, compute smoothing alpha via `1 - exp(-k*dt)`, added legacy mapping fallback, implemented critically-damped bank spring and bank velocity state.
+    - `src/components/Ship.tsx` — create `rootGroup` and `visualGroup` refs and pass both into the interpolation hook.
+    - `src/components/ship/ShipView.tsx` — render nested `visualRef` group so visual offsets are local to the child.
+  - Changed default bank behavior to use critically-damped spring by default for all hulls.
+
+Next: run vitest unit tests for filter convergence and add unit coverage for spring step (subtask `244.7`).
 
 ---
 

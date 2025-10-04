@@ -21,11 +21,13 @@ export function createDefaultMotionStats(): MotionStats {
     maxLateralAcceleration: 8,
     visualBankFactor: 16,
     maxBankDeg: 28,
-    smoothing: {
-      positionLerp: 0.18,
-      rotationSlerp: 0.22,
-      bankLerp: 0.18,
+    visual: {
+      enabled: true,
+      position: { k: 12.0 },
+      rotation: { k: 30.0 },
+      bank: { k: 18.0, maxDeg: 28, useCriticallyDamped: true },
       teleportDistance: 40,
+      bob: { enabled: false, baseAmp: 0.06, freq: 1.2, speedScale: 1.0, maxAmp: 0.2 },
     },
   };
   validateMotionStats(stats);

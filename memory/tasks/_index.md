@@ -7,6 +7,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 ## In Progress
 
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
+- [TASK244](TASK244-visual-smoothing.md) — Design and implement dt-independent visual smoothing with per-hull overrides. (2025-10-04)
 
 ## Completed
 

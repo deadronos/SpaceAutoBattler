@@ -27,8 +27,41 @@ export const RENDERER_MOTION_DEFAULTS: RendererMotionConfig = {
   thrusterIntensity: { base: 0.4, range: 1.2 },
 };
 
+/** Global renderer visual toggles. */
+export const RENDERER_VISUAL_CONFIG = {
+  // Master switch: when false, per-ship visual smoothing is disabled.
+  enableShipVisualSmoothing: true,
+  // Canonical frame time to approximate legacy per-frame mapping (used only for migration/compat).
+  legacyFrameDt: 1 / 60,
+};
+
+function kToFrameLerp(k: number | undefined, frameDt = RENDERER_VISUAL_CONFIG.legacyFrameDt): number {
+  if (!k || k <= 0) return 0;
+  return 1 - Math.exp(-k * frameDt);
+}
+
 export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotionConfig {
+  const visual = motion?.visual;
   const smoothing = motion?.smoothing;
+
+  if (visual) {
+    // Map time-constant semantics to legacy per-frame factors for current runtime compatibility
+    const posK = visual.position?.k ?? 12.0;
+    const rotK = visual.rotation?.k ?? 30.0;
+    const bankK = visual.bank?.k ?? 18.0;
+
+    return {
+      positionLerp: kToFrameLerp(posK),
+      rotationSlerp: kToFrameLerp(rotK),
+      bankLerp: kToFrameLerp(bankK),
+      maxBankDeg: visual.bank?.maxDeg ?? motion?.maxBankDeg ?? RENDERER_MOTION_DEFAULTS.maxBankDeg,
+      bankFactor: motion?.visualBankFactor ?? RENDERER_MOTION_DEFAULTS.bankFactor,
+      teleportDistance: visual.teleportDistance ?? smoothing?.teleportDistance ?? RENDERER_MOTION_DEFAULTS.teleportDistance,
+      thrusterIntensity: RENDERER_MOTION_DEFAULTS.thrusterIntensity,
+    };
+  }
+
+  // Legacy behavior: use smoothing block directly
   return {
     positionLerp: smoothing?.positionLerp ?? RENDERER_MOTION_DEFAULTS.positionLerp,
     rotationSlerp: smoothing?.rotationSlerp ?? RENDERER_MOTION_DEFAULTS.rotationSlerp,

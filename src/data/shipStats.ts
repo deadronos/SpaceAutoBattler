@@ -35,11 +35,15 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
       maxLateralAcceleration: 12,
       visualBankFactor: 20,
       maxBankDeg: 35,
-      smoothing: {
-        positionLerp: 0.2,
-        rotationSlerp: 0.28,
-        bankLerp: 0.2,
+      // New visual config (time-constant k semantics). These map to legacy per-frame
+      // factors for backward compatibility until the renderer is updated.
+      visual: {
+        enabled: true,
+        position: { k: 12.0 },
+        rotation: { k: 30.0 },
+        bank: { k: 18.0, maxDeg: 35, useCriticallyDamped: true },
         teleportDistance: 35,
+        bob: { enabled: false, baseAmp: 0.06, freq: 1.2, speedScale: 1.0, maxAmp: 0.2 },
       },
     },
   },
@@ -73,11 +77,13 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
       maxLateralAcceleration: 9,
       visualBankFactor: 16,
       maxBankDeg: 30,
-      smoothing: {
-        positionLerp: 0.18,
-        rotationSlerp: 0.24,
-        bankLerp: 0.18,
+      visual: {
+        enabled: true,
+        position: { k: 12.0 },
+        rotation: { k: 30.0 },
+        bank: { k: 18.0, maxDeg: 30, useCriticallyDamped: true },
         teleportDistance: 38,
+        bob: { enabled: false, baseAmp: 0.07, freq: 1.1, speedScale: 1.0, maxAmp: 0.25 },
       },
     },
     turrets: [
@@ -139,11 +145,13 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
       maxLateralAcceleration: 6,
       visualBankFactor: 12,
       maxBankDeg: 26,
-      smoothing: {
-        positionLerp: 0.16,
-        rotationSlerp: 0.22,
-        bankLerp: 0.16,
+      visual: {
+        enabled: true,
+        position: { k: 12.0 },
+        rotation: { k: 30.0 },
+        bank: { k: 16.0, maxDeg: 26, useCriticallyDamped: true },
         teleportDistance: 40,
+        bob: { enabled: false, baseAmp: 0.08, freq: 1.0, speedScale: 1.0, maxAmp: 0.3 },
       },
     },
     turrets: [
@@ -218,11 +226,13 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
       maxLateralAcceleration: 4,
       visualBankFactor: 10,
       maxBankDeg: 22,
-      smoothing: {
-        positionLerp: 0.14,
-        rotationSlerp: 0.18,
-        bankLerp: 0.14,
+      visual: {
+        enabled: true,
+        position: { k: 10.0 },
+        rotation: { k: 22.0 },
+        bank: { k: 14.0, maxDeg: 22, useCriticallyDamped: true },
         teleportDistance: 42,
+        bob: { enabled: false, baseAmp: 0.06, freq: 0.9, speedScale: 1.0, maxAmp: 0.25 },
       },
     },
     turrets: [
@@ -310,11 +320,13 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
       maxLateralAcceleration: 2,
       visualBankFactor: 8,
       maxBankDeg: 18,
-      smoothing: {
-        positionLerp: 0.12,
-        rotationSlerp: 0.16,
-        bankLerp: 0.12,
+      visual: {
+        enabled: true,
+        position: { k: 8.0 },
+        rotation: { k: 16.0 },
+        bank: { k: 12.0, maxDeg: 18, useCriticallyDamped: true },
         teleportDistance: 45,
+        bob: { enabled: false, baseAmp: 0.04, freq: 0.8, speedScale: 0.8, maxAmp: 0.18 },
       },
     },
     turrets: [

@@ -56,4 +56,33 @@ export function validateMotionStats(stats: MotionStats): void {
   if (stats.smoothing?.teleportDistance != null) {
     assertRange('motion.smoothing.teleportDistance', stats.smoothing.teleportDistance, { min: 0 });
   }
+
+  // New visual config validations (time-constant semantics)
+  if (stats.visual?.position?.k != null) {
+    assertRange('motion.visual.position.k', stats.visual.position.k, { min: 0 });
+  }
+  if (stats.visual?.rotation?.k != null) {
+    assertRange('motion.visual.rotation.k', stats.visual.rotation.k, { min: 0 });
+  }
+  if (stats.visual?.bank?.k != null) {
+    assertRange('motion.visual.bank.k', stats.visual.bank.k, { min: 0 });
+  }
+  if (stats.visual?.bank?.maxDeg != null) {
+    assertRange('motion.visual.bank.maxDeg', stats.visual.bank.maxDeg, { min: 0, max: 90 });
+  }
+  if (stats.visual?.teleportDistance != null) {
+    assertRange('motion.visual.teleportDistance', stats.visual.teleportDistance, { min: 0 });
+  }
+  if (stats.visual?.bob?.baseAmp != null) {
+    assertRange('motion.visual.bob.baseAmp', stats.visual.bob.baseAmp, { min: 0, max: 10 });
+  }
+  if (stats.visual?.bob?.freq != null) {
+    assertRange('motion.visual.bob.freq', stats.visual.bob.freq, { min: 0, max: 10 });
+  }
+  if (stats.visual?.bob?.speedScale != null) {
+    assertRange('motion.visual.bob.speedScale', stats.visual.bob.speedScale, { min: 0, max: 10 });
+  }
+  if (stats.visual?.bob?.maxAmp != null) {
+    assertRange('motion.visual.bob.maxAmp', stats.visual.bob.maxAmp, { min: 0, max: 10 });
+  }
 }

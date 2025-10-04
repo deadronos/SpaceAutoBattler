@@ -11,6 +11,8 @@ export { SHIELD_RENDER_ORDER };
 export interface ShipViewProps {
   entity: ShipEntity;
   groupRef: RefObject<Group | null>;
+  /** Optional child group that receives purely visual offsets (bob/sway/bank). */
+  visualRef?: RefObject<Group | null>;
   scene: any | null;
   hasValidPath: boolean;
   hullMaterialsRef: RefObject<any[]>;
@@ -22,6 +24,7 @@ export function ShipView({
   scene,
   hasValidPath,
   hullMaterialsRef,
+  visualRef,
 }: ShipViewProps): React.ReactElement {
   const modelRadius = useMemo(() => {
     if (!scene) return FALLBACK_RADIUS_BY_HULL[entity.ship.hull] ?? 2.0;
@@ -35,7 +38,9 @@ export function ShipView({
   if (scene && hasValidPath) {
     return (
       <group ref={groupRef} dispose={null}>
-        <primitive object={scene} />
+        <group ref={visualRef}>
+          <primitive object={scene} />
+        </group>
         <ShieldBubble entity={entity} radius={modelRadius} hullMaterialsRef={hullMaterialsRef} />
       </group>
     );
@@ -43,12 +48,14 @@ export function ShipView({
 
   return (
     <group ref={groupRef} dispose={null}>
-      <mesh castShadow receiveShadow>
-        <coneGeometry args={[0.6, 1.6, 6]} />
-        <meshStandardMaterial 
-          color={entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red)} 
-        />
-      </mesh>
+      <group ref={visualRef}>
+        <mesh castShadow receiveShadow>
+          <coneGeometry args={[0.6, 1.6, 6]} />
+          <meshStandardMaterial 
+            color={entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red)} 
+          />
+        </mesh>
+      </group>
       <ShieldBubble entity={entity} radius={modelRadius} />
     </group>
   );
