@@ -414,9 +414,9 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
       threshold: 0.9,
     },
     shields: {
-      intensity: 0.7,
+      intensity: 0.5,
       smoothing: 0.02,
-      threshold: 0.9,
+      threshold: 1.0,
     },
     projectiles: {
       intensity: 5.25,
@@ -424,7 +424,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
       threshold: 0.9,
     },
     explosions: {
-      intensity: 1.6,
+      intensity: 3.6,
       smoothing: 0.035,
       threshold: 1.0,
     },
@@ -434,7 +434,7 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
       threshold: 1.0,
     },
     star: {
-      intensity: 2.2,
+      intensity: 2.0,
       smoothing: 0.01,
       threshold: 1.2,
     },
