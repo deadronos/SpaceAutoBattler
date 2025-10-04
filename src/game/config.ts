@@ -138,9 +138,9 @@ export const AI_CONFIG = {
   slices: 5,
   verticalEnabled: VERTICAL_EXPERIMENT_ENABLED,
   // Feature toggles for runtime experiments
-  smoothingEnabled: false,
-  hysteresisEnabled: false,
-  verticalDampingEnabled: false,
+  smoothingEnabled: true,
+  hysteresisEnabled: true,
+  verticalDampingEnabled: true,
   engagementBoostEnabled: ENGAGEMENT_BOOST_ENABLED,
   rangePolicy: RANGE_POLICY_EFFECTIVE,
   openingSalvoDuration: 30,
