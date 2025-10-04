@@ -15,6 +15,7 @@ import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
 import { createInstancedMaterial, type InstancedMaterialInfo } from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { InstanceAllocator } from './instanceAllocator.js';
+import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
 
 interface ProjectilesInstancedLayerProps {
   archetype: Archetype<GameEntity, ['projectile']>;
@@ -27,7 +28,7 @@ interface ProjectileGroupState {
   key: string;
   capacity: number;
   allocator: InstanceAllocator<number>;
-  meshRef: React.RefObject<InstancedMesh | null>;
+  meshRef: React.MutableRefObject<InstancedMesh | null>;
   materialInfo: InstancedMaterialInfo;
   geometry: ReturnType<typeof getProjectileGeometry>;
   baseColor: Color;
@@ -87,7 +88,7 @@ export function ProjectilesInstancedLayer({
   const projectiles = useArchetypeEntities<ProjectileEntity>(archetype);
   const groupsRef = useRef<Map<string, ProjectileGroupState>>(new Map());
   const [, forceRender] = useState(0);
-  const warningFrameRef = useRef({ lastFrame: -1 });
+  const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
 
   const ensureGroup = useCallback(
@@ -98,7 +99,7 @@ export function ProjectilesInstancedLayer({
       const geometry = getProjectileGeometry(key);
       const materialInfo = createInstancedMaterial(key);
       const allocator = new InstanceAllocator<number>(resolvedCapacity);
-      const meshRef = React.createRef<InstancedMesh>();
+      const meshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
       const baseColor = new Color(1, 1, 1);
       const group: ProjectileGroupState = {
         key,
@@ -189,10 +190,12 @@ export function ProjectilesInstancedLayer({
       }
     }
 
-    if (saturated && warningFrameRef.current.lastFrame !== frameId) {
-      console.warn('[ProjectilesInstancedLayer] Capacity saturated, clamping projectile render count.');
-      warningFrameRef.current.lastFrame = frameId;
-    }
+    warnOnSaturation({
+      saturated,
+      frameId,
+      state: warningStateRef.current,
+      message: '[ProjectilesInstancedLayer] Capacity saturated, clamping projectile render count.',
+    });
   });
 
   return (

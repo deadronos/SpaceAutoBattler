@@ -22,7 +22,7 @@ describe('computeMuzzleFlashVisuals', () => {
       elapsed: 0.5,
     });
     expect(result.fade).toBeCloseTo(0.5);
-    expect(result.scale).toBeCloseTo(1 * (0.6 + 0.4 * 0.5));
+    expect(result.scale).toBeCloseTo(0.8); // 1 * (0.6 + 0.4 * 0.5)
     expect(result.intensity).toBeCloseTo(0.7 + 0.3 * 0.5);
   });
 

@@ -117,7 +117,7 @@ export class InstanceAllocator<K> {
     let lo = 0;
     let hi = this.free.length;
     while (lo < hi) {
-      const mid = (lo + hi) >>> 1;
+      const mid = (lo + hi) >>> 1; // unsigned shift floors the midpoint for integer math
       const value = this.free[mid];
       if (value > index) {
         lo = mid + 1;

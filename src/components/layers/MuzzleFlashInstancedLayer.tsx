@@ -17,6 +17,7 @@ import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { createInstancedMaterial } from '../../renderer/materialRegistry.js';
 import { InstanceAllocator } from './instanceAllocator.js';
 import { computeMuzzleFlashVisuals } from './muzzleFlashMath.js';
+import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
 
 interface MuzzleFlashInstancedLayerProps {
   archetype: Archetype<GameEntity, ['turret']>;
@@ -53,7 +54,7 @@ export function MuzzleFlashInstancedLayer({
   const turrets = useArchetypeEntities<TurretEntity>(archetype);
   const allocatorRef = useRef(new InstanceAllocator<MuzzleFlash>(capacity));
   const meshRef = useRef<InstancedMesh>(null);
-  const warningFrameRef = useRef({ lastFrame: -1 });
+  const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
   const state = useGameState();
 
@@ -87,6 +88,7 @@ export function MuzzleFlashInstancedLayer({
 
   useFrame(() => {
     frameRef.current += 1;
+    const frameId = frameRef.current;
     const mesh = meshRef.current;
     if (!mesh) return;
 
@@ -157,10 +159,12 @@ export function MuzzleFlashInstancedLayer({
       mesh.instanceColor.needsUpdate = true;
     }
 
-    if (saturated && warningFrameRef.current.lastFrame !== frameRef.current) {
-      console.warn('[MuzzleFlashInstancedLayer] Capacity saturated, clamping muzzle flashes.');
-      warningFrameRef.current.lastFrame = frameRef.current;
-    }
+    warnOnSaturation({
+      saturated,
+      frameId,
+      state: warningStateRef.current,
+      message: '[MuzzleFlashInstancedLayer] Capacity saturated, clamping muzzle flashes.',
+    });
   });
 
   return (
