@@ -1,8 +1,8 @@
 # [TASK001] - Implement grouped ProjectilesInstancedLayer & MuzzleFlashInstancedLayer (Full Implementation)
 
-**Status:** In Progress  
-**Added:** 2025-10-04  
-**Updated:** 2025-10-04
+**Status:** Completed
+**Added:** 2025-10-04
+**Updated:** 2025-10-05
 
 ## Original Request
 
@@ -62,26 +62,25 @@ Implement the full instanced rendering design from `memory/designs/DESIGN001-pro
 
 ## Progress Log
 
-### 2025-10-04
+### 2025-10-05
 
-- Converted the TASK001 PoC task file into the full implementation TASK001 and updated the memory bank to target immediate grouped instancing + muzzle flash pooling. (This change)
-- TASK001 is now In Progress and implementation work has been started (see todo list). 
+- Implemented grouped `ProjectilesInstancedLayer` and pooled `MuzzleFlashInstancedLayer`, integrating bloom registration and per-frame allocation pooling. Added geometry cache utilities, material registry enhancements, allocator unit tests, muzzle flash math tests, and the projectile stress harness (`npm run bench:projectiles`).
+- Removed legacy `Projectile.tsx` rendering path, updated battlefield wiring to mount the new instanced layers, and documented perf harness results for CI gating.
 
 ## Subtasks Table
 
-| ID  | Description                                   | Status        | Updated |
-| --- | --------------------------------------------- | ------------- | ------- |
-| 1.1 | Implement `ProjectilesInstancedLayer`         | In Progress   | 2025-10-04 |
-| 1.2 | Implement `MuzzleFlashInstancedLayer`         | Not Started   | 2025-10-04 |
-| 1.3 | Update `materialRegistry` & geometry cache    | Not Started   | 2025-10-04 |
-| 1.4 | Add unit tests & snapshot smoke tests         | Not Started   | 2025-10-04 |
-| 1.5 | Add perf harness and collect baseline         | Not Started   | 2025-10-04 |
-| 1.6 | Remove legacy `Projectile.tsx` after validation| Not Started   | 2025-10-04 |
+| ID  | Description                                   | Status      | Updated    |
+| --- | --------------------------------------------- | ----------- | ---------- |
+| 1.1 | Implement `ProjectilesInstancedLayer`         | Completed   | 2025-10-05 |
+| 1.2 | Implement `MuzzleFlashInstancedLayer`         | Completed   | 2025-10-05 |
+| 1.3 | Update `materialRegistry` & geometry cache    | Completed   | 2025-10-05 |
+| 1.4 | Add unit tests & snapshot smoke tests         | Completed   | 2025-10-05 |
+| 1.5 | Add perf harness and collect baseline         | Completed   | 2025-10-05 |
+| 1.6 | Remove legacy `Projectile.tsx` after validation| Completed   | 2025-10-05 |
 
 ## Next Steps
 
-- Implement `ProjectilesInstancedLayer` (set as in-progress) and create the supporting modules and tests.
-- Attach perf harness results to this task and update the progress log as tests and benchmarks complete.
+- Monitor perf harness output in CI and iterate on material optimisations as needed.
 
 ---
 
