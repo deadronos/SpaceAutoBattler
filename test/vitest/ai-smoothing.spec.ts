@@ -84,6 +84,9 @@ describe('AI smoothing reduces heading jitter', () => {
     const ship = createShip(1, 'brawler');
     const profile = resolveBehaviorProfile('brawler');
     const target = createShip(2, 'brawler');
+    // Place the target further than the desiredRange so band stickiness won't
+    // lock the heading and per-tick vertical perturbations are applied.
+    target.transform.position.set(0, 0, 400);
 
     // Baseline with smoothing disabled via UI override
     const store = useUiStore.getState();
@@ -112,6 +115,13 @@ describe('AI smoothing reduces heading jitter', () => {
 
     const offMean = meanHeadingDelta(headingsOff);
     const onMean = meanHeadingDelta(headingsOn);
+
+    // Sanity checks: ensure test setup produced non-trivial headings so the
+    // smoothing comparison is meaningful. If this fails, the test setup is
+    // incorrect (e.g. degenerate positions) and should be updated rather than
+    // silently passing/failing the smoothing assertion.
+    expect(headingsOff.length).toBeGreaterThan(1);
+    expect(offMean).toBeGreaterThan(0);
 
     // Expect smoothing to reduce mean heading delta
     expect(onMean).toBeLessThan(offMean);

@@ -12,6 +12,11 @@ import { dampVerticalAmplitude } from './hysteresis.js';
 
 const TEMP_RNG = new SeededRng(1);
 
+/** Reset module-level RNG used for vertical maneuvers. */
+export function resetTempRng(seed?: number): void {
+  TEMP_RNG.reset(seed ?? 1);
+}
+
 export function applyVerticalPerturbation(
   state: GameState,
   ship: ShipEntity,

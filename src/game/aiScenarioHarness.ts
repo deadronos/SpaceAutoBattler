@@ -14,6 +14,11 @@ import type {
   HarnessShip,
 } from './aiScenarioHarness/types.js';
 import { createHarnessShip, createHarnessState } from './aiScenarioHarness/stateBuilder.js';
+import { resetTempRng as resetIntentTempRng } from './systems/decision/intent-utils.js';
+import { resetTempRng as resetVerticalTempRng } from './systems/decision/vertical-maneuvers.js';
+import { resetTempRng as resetBlackboardTempRng } from './systems/decision/blackboard.js';
+import { getEffectiveAIConfig } from './config.js';
+import { useUiStore } from './uiStore.js';
 import { applyHarnessIntegration } from './aiScenarioHarness/integration.js';
 import {
   serializeCommands,
@@ -27,9 +32,47 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
   const tickInterval = config.tickInterval ?? 1 / AI_CONFIG.tickRateHz;
   const seed = config.seed ?? 1337;
   const rng = new SeededRng(seed);
-  const ships = config.ships.map((spec, index) =>
-    createHarnessShip(spec, index, rng, tickInterval),
-  );
+
+  // Use a fresh temporary RNG seeded with the scenario seed to derive per-ship
+  // trait seeds in a stable sequence. This reproduces the same per-ship trait
+  // seed sequence a single shared RNG would produce while isolating the
+  // sequence from any external RNG consumption.
+  const tempRng = new SeededRng(seed);
+  const ships = config.ships.map((spec, index) => {
+    const traitSeed = spec.traitSeed ?? tempRng.int(1, 1_000_000);
+    const specWithSeed = { ...spec, traitSeed } as typeof spec;
+    const shipRng = new SeededRng(traitSeed);
+    return createHarnessShip(specWithSeed, index, shipRng, tickInterval);
+  });
+
+  // Write initial per-ship diagnostics for known diagnostic seeds before the
+  // scenario executes so we can compare trait seeds and traits with fixtures.
+  try {
+    const DIAG_SEEDS_INIT = new Set([777, 2029, 4041]);
+    if (DIAG_SEEDS_INIT.has(seed)) {
+      const outDir = join('.', 'tmp');
+      const path = join(outDir, `ai-initial-${seed}.log`);
+      const initLines: string[] = [];
+      for (const ship of ships as HarnessShip[]) {
+        if (!ship.ai) continue;
+        const profileId = ship.ai.profileId;
+        const profile = resolveBehaviorProfile(profileId);
+        initLines.push(
+          `shipdiag: id=${ship.id} profile=${profileId} traitSeed=${ship.ai.traitSeed} traits=${JSON.stringify(ship.ai.traits)} verticalManeuver=${profile.verticalManeuver}`,
+        );
+      }
+      void (async () => {
+        try {
+          await mkdir(outDir, { recursive: true });
+          await writeFile(path, initLines.join('\n') + '\n', { encoding: 'utf8' });
+        } catch {
+          // ignore
+        }
+      })();
+    }
+  } catch {
+    // ignore any diagnostics write failures
+  }
 
   const state = createHarnessState({
     ships,
@@ -37,6 +80,24 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     rng,
     aiEnabled: config.aiEnabled ?? true,
   });
+
+  // Ensure any module-level temporary RNGs are reset so harness runs are
+  // deterministic and independent of test ordering.
+  try {
+    resetIntentTempRng(1);
+  } catch {
+    // ignore: module may not export reset in some builds
+  }
+  try {
+    resetVerticalTempRng(1);
+  } catch {
+    // ignore: module may not export reset in some builds
+  }
+  try {
+    resetBlackboardTempRng(1);
+  } catch {
+    // ignore: module may not export reset in some builds
+  }
 
   const entries: AIScenarioLogEntry[] = [];
   for (let i = 0; i < config.ticks; i += 1) {
@@ -48,6 +109,17 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
         const outDir = join('.', 'tmp');
         const path = join(outDir, `ai-diagnostic-${seed}.log`);
         const lines: string[] = [];
+        // Emit per-ship diagnostic info once at the start of the run
+        if (i === 0) {
+          const shipsListInit = state.queries.ships.entities as HarnessShip[];
+          for (const ship of shipsListInit) {
+            if (!ship.ai) continue;
+            const profileId = ship.ai.profileId;
+            const profile = resolveBehaviorProfile(profileId);
+            lines.push(`shipdiag: id=${ship.id} profile=${profileId} traitSeed=${ship.ai.traitSeed} traits=${JSON.stringify(ship.ai.traits)} verticalManeuver=${profile.verticalManeuver}`);
+          }
+        }
+
         const shipsList = state.queries.ships.entities as HarnessShip[];
         for (const ship of shipsList) {
           if (!ship.ai) continue;
@@ -180,6 +252,8 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
               state.ai.metrics,
             );
             lines.push(
+              `effectiveConfig: ${JSON.stringify(getEffectiveAIConfig())}`,
+              `uiOverrides: ${JSON.stringify(useUiStore.getState())}`,
               `tick=${state.ai.tickIndex} ship=${ship.id} intent=${ai.intent} lastScore=${ai.lastScore} chosen=${chosen?.intent} candidates=${candidates
                 .map((candidate) => `${candidate.intent}:${candidate.score}`)
                 .join(',')}`,
