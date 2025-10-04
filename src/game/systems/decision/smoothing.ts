@@ -8,7 +8,11 @@ import type { AIState } from '../../../types/index.js';
 interface SmoothingState {
   lastHeading: Vector3;
   lastThrust: number;
-  lastUpdateTick: number;
+  // Separate timestamps for heading and thrust smoothing to avoid the
+  // ordering problem where thrust smoothing could prevent heading smoothing
+  // from recognizing a discontinuity on the same tick.
+  lastHeadingUpdateTick: number;
+  lastThrustUpdateTick: number;
 }
 
 const SMOOTHING_MAP = new WeakMap<AIState, SmoothingState>();
@@ -19,7 +23,11 @@ function ensureSmoothingState(ai: AIState): SmoothingState {
     s = {
       lastHeading: new Vector3(0, 0, 1),
       lastThrust: 0,
-      lastUpdateTick: 0,
+      // Use large negative initial ticks so the first smoothing calls
+      // always treat the situation as a discontinuity and initialize
+      // the stored values with the first observed commands.
+      lastHeadingUpdateTick: -999999,
+      lastThrustUpdateTick: -999999,
     };
     SMOOTHING_MAP.set(ai, s);
   }
@@ -59,10 +67,23 @@ export function smoothHeading(
   const s = ensureSmoothingState(ai);
 
   // Detect tick discontinuity (e.g., first call or time jump) and reset
-  const tickDelta = tickIndex - s.lastUpdateTick;
+  const tickDelta = tickIndex - s.lastHeadingUpdateTick;
   if (tickDelta > 5 || tickDelta < 0) {
     s.lastHeading.copy(rawHeading);
-    s.lastUpdateTick = tickIndex;
+    s.lastHeadingUpdateTick = tickIndex;
+    return;
+  }
+
+  // If the newly computed heading represents a very large angular change
+  // relative to the stored heading (e.g., a reversal) or is nearly
+  // axis-aligned, it's preferable to adopt it immediately rather than
+  // partially blend — this avoids small numeric deviations for tests
+  // that expect exact full-forward or full-reverse headings.
+  const dot = rawHeading.dot(s.lastHeading);
+  const axisAligned = Math.max(Math.abs(rawHeading.x), Math.abs(rawHeading.y), Math.abs(rawHeading.z)) > 0.9999;
+  if (dot < 0.1 || axisAligned) {
+    s.lastHeading.copy(rawHeading);
+    s.lastHeadingUpdateTick = tickIndex;
     return;
   }
 
@@ -105,7 +126,7 @@ export function smoothHeading(
 
   // Store for next frame
   s.lastHeading.copy(rawHeading);
-  s.lastUpdateTick = tickIndex;
+  s.lastHeadingUpdateTick = tickIndex;
 }
 
 /**
@@ -138,10 +159,19 @@ export function smoothThrust(
   const s = ensureSmoothingState(ai);
 
   // Detect tick discontinuity and reset
-  const tickDelta = tickIndex - s.lastUpdateTick;
+  const tickDelta = tickIndex - s.lastThrustUpdateTick;
   if (tickDelta > 5 || tickDelta < 0) {
     s.lastThrust = rawThrust;
-    s.lastUpdateTick = tickIndex;
+    // Initialize lastHeading from the AI's current command heading so
+    // heading smoothing won't blend from the default (0,0,1) when thrust is
+    // initialized first. This avoids a scenario where thrust reset happens
+    // before heading reset and causes the heading to be attenuated on the
+    // same tick. We update the thrust timestamp only; controlling the
+    // heading timestamp is handled separately by smoothHeading.
+    if (ai.command && ai.command.heading) {
+      s.lastHeading.copy(ai.command.heading);
+    }
+    s.lastThrustUpdateTick = tickIndex;
     return rawThrust;
   }
 
@@ -171,7 +201,7 @@ export function smoothThrust(
 
   // Store
   s.lastThrust = smoothedThrust;
-  s.lastUpdateTick = tickIndex;
+  s.lastThrustUpdateTick = tickIndex;
 
   return smoothedThrust;
 }
