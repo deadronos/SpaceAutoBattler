@@ -119,24 +119,11 @@ export const __aiTestHooks = {
   executeAICommand,
 };
 
-function writeCommand(
-  state: GameState,
-  ship: ShipEntity,
-  ai: AIState,
-  profile: BehaviorProfile,
-  target: ShipEntity | null,
-  ...rest
-) {
-  // ...existing code...
-
-  // Smoothing logic for heading
-  const uiStore = useUiStore.getState();
-  const smoothingEnabled = uiStore.aiSmoothingEnabled;
-  // ...existing code...
-  if (smoothingEnabled) {
-    // Increase smoothing factor for stronger blending
-    const smoothingFactor = 0.7; // was likely lower before (e.g. 0.3)
-    ai.command.heading.lerp(ai.stickinessHeading, smoothingFactor);
-  }
-  // ...existing code...
+// In the AI command generation logic, locate heading smoothing (usually inside writeCommand or a helper).
+// Find the region similar to:
+if (uiStore.aiSmoothingEnabled && aiState.stickinessHeading) {
+  // Blend current heading with previous stickinessHeading
+  // Increase smoothing factor for stronger effect
+  const smoothingAlpha = 0.5; // Was likely 0.2 or lower before
+  aiState.command.heading.lerp(aiState.stickinessHeading, smoothingAlpha);
 }
