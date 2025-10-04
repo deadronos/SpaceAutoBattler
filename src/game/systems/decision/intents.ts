@@ -26,6 +26,7 @@ import {
   type CommandResult,
 } from './command-generators.js';
 import { applyVerticalPerturbation } from './vertical-maneuvers.js';
+import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { updateBandStickiness } from './metrics-diagnostics.js';
 import { smoothHeading, smoothThrust } from './smoothing.js';
 
@@ -187,20 +188,10 @@ export function writeCommand(
       break;
   }
 
-  // Apply low-pass filtering to thrust to reduce acceleration spikes
-  if (getEffectiveAIConfig().smoothingEnabled) {
-    const smoothedThrust = smoothThrust(
-      ai,
-      result.thrust,
-      profile.patience,
-      profile.aggression,
-      ship.ship.hull,
-      state.ai.tickIndex,
-    );
-    command.thrust = smoothedThrust;
-  } else {
-    command.thrust = result.thrust;
-  }
+  // Assign raw thrust for now. Thrust smoothing is applied after heading
+  // perturbation so that both heading and thrust smoothing states can be
+  // initialized from the same observed command on the first frame.
+  command.thrust = result.thrust;
 
   command.firePrimary = result.firePrimary;
   command.targetId = result.targetId;
@@ -218,13 +209,32 @@ export function writeCommand(
     applyVerticalPerturbation(state, ship, ai, profile, heading, target);
   }
 
-  // Apply low-pass filtering to heading to reduce steering jitter
+  // Apply low-pass filtering for both thrust and heading to reduce spikes
+  // and jitter. Thrust smoothing is done here after the vertical
+  // perturbation so initialization uses the final perturbed heading.
   if (getEffectiveAIConfig().smoothingEnabled) {
+    const smoothedThrust = smoothThrust(
+      ai,
+      result.thrust,
+      profile.patience,
+      profile.aggression,
+      ship.ship.hull,
+      state.ai.tickIndex,
+    );
+    command.thrust = smoothedThrust;
     smoothHeading(ai, heading, profile.patience, profile.aggression, ship.ship.hull, state.ai.tickIndex);
   }
 
   if (target && result.distanceToTarget != null) {
     updateBandStickiness(state, ai, target, result.distanceToTarget, profile.desiredRange, heading);
+  }
+
+  // Enforce vertical clamp on the final heading after smoothing. Use the
+  // centralized computeVerticalClamp utility so logic is consistent with the
+  // perturbation implementation.
+  if (AI_CONFIG.verticalEnabled) {
+    const clamp = computeVerticalClamp(state, ship, profile, ai, target);
+    heading.y = Math.max(-clamp, Math.min(clamp, heading.y));
   }
 
   if (AI_CONFIG.verticalEnabled && Math.abs(heading.y) > 1e-6 && state.blackboard.verticalDispersion) {

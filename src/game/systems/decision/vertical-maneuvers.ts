@@ -6,6 +6,7 @@ import type {
   ShipEntity,
 } from '../../../types/index.js';
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
+import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { SeededRng } from '../../../utils/rng.js';
 import { hashToInt } from './utils.js';
 import { dampVerticalAmplitude } from './hysteresis.js';
@@ -36,7 +37,16 @@ export function applyVerticalPerturbation(
   if (heading.lengthSq() < 1e-6) return;
   const seed = Math.abs(hashToInt(ai.traitSeed ^ ship.id ^ (state.ai.tickIndex * 1229))) + 1;
   TEMP_RNG.reset(seed);
-  const perturb = TEMP_RNG.normal(amplitude * 0.3, 0.05);
+  let perturb = TEMP_RNG.normal(amplitude * 0.3, 0.05);
+  // When smoothing is enabled, attenuate the raw vertical perturbation so
+  // the smoothing filter can more effectively reduce jitter. This avoids
+  // pathological cases where perturbations are large enough to increase
+  // apparent heading variance after filtering.
+  if (getEffectiveAIConfig().smoothingEnabled) {
+    // Reduce perturbation amplitude by ~40% when smoothing active
+    // (empirically chosen to keep behavior similar while improving stability).
+    perturb *= 0.6;
+  }
   heading.y += perturb;
 
   if (target) {
@@ -50,37 +60,7 @@ export function applyVerticalPerturbation(
     }
   }
 
-  const clampCfg = AI_CONFIG.verticalClamp ?? { default: AI_CONFIG.headingYClamp };
-  const hull = ship.ship.hull;
-  let baseClamp = Number(clampCfg.default ?? AI_CONFIG.headingYClamp);
-  if (hull === 'destroyer' || hull === 'carrier') {
-    baseClamp = Number(clampCfg.heavy ?? baseClamp);
-  } else if (hull === 'fighter' || hull === 'corvette' || profile.style === 'escort') {
-    baseClamp = Number(clampCfg.highAgility ?? baseClamp);
-  }
-
-  const desiredRange = ai.desiredRange ?? profile.desiredRange;
-  let scale = 1;
-  if (target && desiredRange) {
-    const [desiredMin, desiredMax] = desiredRange;
-    const span = Math.max(1, desiredMax - desiredMin);
-    const distance = ship.transform.position.distanceTo(target.transform.position);
-    const midpoint = (desiredMin + desiredMax) * 0.5;
-    const deviation = Math.abs(distance - midpoint);
-    const normalized = deviation / span;
-    scale += Math.min(0.6, normalized * 0.75);
-  }
-
-  const amplitudeScale = 0.8 + Math.min(0.6, amplitude * 0.5);
-  let clamp = baseClamp * scale * amplitudeScale;
-  const heavyCap = Number(clampCfg.default ?? baseClamp);
-  const agilityCap = Number(clampCfg.highAgility ?? clampCfg.default ?? baseClamp);
-  if (hull === 'destroyer' || hull === 'carrier') {
-    clamp = Math.min(clamp, heavyCap);
-  } else {
-    clamp = Math.min(clamp, agilityCap);
-  }
-  clamp = Math.max(0.1, Math.min(clamp, 0.7));
+  const clamp = computeVerticalClamp(state, ship, profile, ai, target);
   heading.y = Math.max(-clamp, Math.min(clamp, heading.y));
 
   const metrics = state.ai?.metrics;
