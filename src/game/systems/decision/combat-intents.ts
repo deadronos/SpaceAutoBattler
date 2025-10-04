@@ -7,6 +7,7 @@ import type {
 } from '../../../types/index.js';
 import { AI_CONFIG } from '../../config.js';
 import { quantizeScore, computeBandPreferenceBonus, computeThreatBonus } from './intent-utils.js';
+import { computeEffectiveDesiredRange } from './hysteresis.js';
 
 export function scoreAttackIntent(
   state: GameState,
@@ -17,9 +18,11 @@ export function scoreAttackIntent(
   traits: AITraits,
 ): number {
   if (!target) return 0;
-  const desiredMin = profile.desiredRange[0];
-  const desiredMax = profile.desiredRange[1];
   const dist = ship.transform.position.distanceTo(target.transform.position);
+  const aiState = ship.ai;
+  const [desiredMin, desiredMax] = aiState
+    ? computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex)
+    : profile.desiredRange;
   const mid = (desiredMin + desiredMax) * 0.5;
   const bandError = Math.abs(dist - mid);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);

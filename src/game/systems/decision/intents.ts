@@ -27,6 +27,7 @@ import {
 } from './command-generators.js';
 import { applyVerticalPerturbation } from './vertical-maneuvers.js';
 import { updateBandStickiness } from './metrics-diagnostics.js';
+import { smoothHeading, smoothThrust } from './smoothing.js';
 
 export type { IntentCandidate } from './intent-utils.js';
 export type { CommandResult } from './command-generators.js';
@@ -186,7 +187,17 @@ export function writeCommand(
       break;
   }
 
-  command.thrust = result.thrust;
+  // Apply low-pass filtering to thrust to reduce acceleration spikes
+  const smoothedThrust = smoothThrust(
+    ai,
+    result.thrust,
+    profile.patience,
+    profile.aggression,
+    ship.ship.hull,
+    state.ai.tickIndex,
+  );
+
+  command.thrust = smoothedThrust;
   command.firePrimary = result.firePrimary;
   command.targetId = result.targetId;
 
@@ -202,6 +213,16 @@ export function writeCommand(
   } else {
     applyVerticalPerturbation(state, ship, ai, profile, heading, target);
   }
+
+  // Apply low-pass filtering to heading to reduce steering jitter
+  smoothHeading(
+    ai,
+    heading,
+    profile.patience,
+    profile.aggression,
+    ship.ship.hull,
+    state.ai.tickIndex,
+  );
 
   if (target && result.distanceToTarget != null) {
     updateBandStickiness(state, ai, target, result.distanceToTarget, profile.desiredRange, heading);

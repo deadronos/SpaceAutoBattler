@@ -8,6 +8,7 @@ import type {
 } from '../../../types/index.js';
 import { hashToInt } from './utils.js';
 import { computeInterceptHeadingVector, TEMP_REL_POS, TEMP_POS } from './intent-utils.js';
+import { computeEffectiveDesiredRange } from './hysteresis.js';
 
 export interface CommandResult {
   thrust: number;
@@ -67,8 +68,11 @@ export function computeRepositionCommand(
       distance = 0;
     }
     const distanceToTarget = ship.transform.position.distanceTo(target.transform.position);
-    const desiredMin = profile.desiredRange[0];
-    const desiredMax = profile.desiredRange[1];
+    const aiState = ship.ai;
+    const [desiredMin, desiredMax] = aiState
+      ? computeEffectiveDesiredRange(aiState, profile, distanceToTarget, state.ai.tickIndex)
+      : profile.desiredRange;
+    // desiredMin/desiredMax are computed above using hysteresis when possible
     let shouldFire = distance <= ship.ship.range;
     let thrust: number;
     if (distance > desiredMax * 1.05) {
@@ -221,8 +225,10 @@ export function computeAttackCommand(
   if (target) {
     heading.copy(target.transform.position).sub(ship.transform.position).normalize();
     const dist = ship.transform.position.distanceTo(target.transform.position);
-    const desiredMin = profile.desiredRange[0];
-    const desiredMax = profile.desiredRange[1];
+    const aiState = ship.ai;
+    const [desiredMin, desiredMax] = aiState
+      ? computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex)
+      : profile.desiredRange;
     let thrust: number;
     if (dist > desiredMax) {
       thrust = 1;
