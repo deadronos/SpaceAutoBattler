@@ -14,21 +14,27 @@ import {
   createBulletHeavyMaterial,
   MuzzleFlashMaterial,
   createMuzzleFlashMaterial,
+  createThrusterGlowMaterial,
+  createShipImpostorMaterial,
 } from './materials/index.js';
 
 export type MaterialKey = string;
 
 type MaterialComponent<P = any> = React.FC<P>;
 
+const NullMaterialComponent: React.FC = () => null;
+
 interface MaterialDefinition<P = any> {
   component: MaterialComponent<P>;
   create?: () => Material;
   supportsInstanceColor?: boolean;
+  supportsInstanceUv?: boolean;
 }
 
 interface MaterialRegistrationOptions {
   create?: () => Material;
   supportsInstanceColor?: boolean;
+  supportsInstanceUv?: boolean;
 }
 
 const registry = new Map<MaterialKey, MaterialDefinition<any>>();
@@ -42,6 +48,7 @@ export function registerMaterial<P>(
     component: comp as MaterialComponent<any>,
     create: options.create,
     supportsInstanceColor: options.supportsInstanceColor,
+    supportsInstanceUv: options.supportsInstanceUv,
   });
 }
 
@@ -53,6 +60,7 @@ export function getMaterial<P = any>(key: MaterialKey): MaterialComponent<P> | u
 export interface InstancedMaterialInfo {
   material: Material;
   supportsInstanceColor: boolean;
+  supportsInstanceUv: boolean;
 }
 
 export function createInstancedMaterial(
@@ -65,6 +73,7 @@ export function createInstancedMaterial(
     return {
       material,
       supportsInstanceColor: entry.supportsInstanceColor ?? false,
+      supportsInstanceUv: entry.supportsInstanceUv ?? false,
     };
   }
   if (fallback) {
@@ -78,11 +87,13 @@ export function createInstancedMaterial(
   return {
     material: defaultMaterial,
     supportsInstanceColor: false,
+    supportsInstanceUv: false,
   };
 }
 
 export interface InstanceFriendlyMaterialOptions {
   requireInstanceColor?: boolean;
+  requireInstanceUv?: boolean;
   fallbackKey?: MaterialKey;
   fallbackFactory?: () => InstancedMaterialInfo;
   onFallback?: (details: InstanceFriendlyFallbackDetails) => void;
@@ -91,7 +102,7 @@ export interface InstanceFriendlyMaterialOptions {
 export interface InstanceFriendlyFallbackDetails {
   requestedKey: MaterialKey;
   resolvedKey: MaterialKey | null;
-  reason: 'missing' | 'no-instance-color';
+  reason: 'missing' | 'no-instance-color' | 'no-instance-uv';
 }
 
 const defaultInstanceColorFactory = (): InstancedMaterialInfo => {
@@ -109,6 +120,7 @@ const defaultInstanceColorFactory = (): InstancedMaterialInfo => {
   return {
     material,
     supportsInstanceColor: true,
+    supportsInstanceUv: true,
   };
 };
 
@@ -118,6 +130,7 @@ export function getInstanceFriendlyMaterial(
 ): InstancedMaterialInfo {
   const {
     requireInstanceColor = false,
+    requireInstanceUv = false,
     fallbackKey,
     fallbackFactory = defaultInstanceColorFactory,
     onFallback,
@@ -125,29 +138,46 @@ export function getInstanceFriendlyMaterial(
 
   const entry = registry.get(key);
   const info = createInstancedMaterial(key, fallbackFactory);
-  if (!requireInstanceColor) {
+  if (!requireInstanceColor && !requireInstanceUv) {
     return info;
   }
 
-  if (info.supportsInstanceColor) {
+  const colorOk = !requireInstanceColor || info.supportsInstanceColor;
+  const uvOk = !requireInstanceUv || info.supportsInstanceUv;
+
+  if (colorOk && uvOk) {
     return info;
   }
 
   if (fallbackKey && fallbackKey !== key) {
     const fallbackInfo = getInstanceFriendlyMaterial(fallbackKey, {
       requireInstanceColor: true,
+      requireInstanceUv: requireInstanceUv,
       fallbackFactory,
       onFallback,
     });
 
-    if (fallbackInfo.supportsInstanceColor) {
-      onFallback?.({ requestedKey: key, resolvedKey: fallbackKey, reason: 'no-instance-color' });
+    const fallbackColorOk = !requireInstanceColor || fallbackInfo.supportsInstanceColor;
+    const fallbackUvOk = !requireInstanceUv || fallbackInfo.supportsInstanceUv;
+
+    if (fallbackColorOk && fallbackUvOk) {
+      const reason: InstanceFriendlyFallbackDetails['reason'] = !colorOk
+        ? 'no-instance-color'
+        : 'no-instance-uv';
+      onFallback?.({ requestedKey: key, resolvedKey: fallbackKey, reason });
       info.material.dispose();
       return fallbackInfo;
     }
   }
 
-  const reason: InstanceFriendlyFallbackDetails['reason'] = entry ? 'no-instance-color' : 'missing';
+  let reason: InstanceFriendlyFallbackDetails['reason'];
+  if (!entry) {
+    reason = 'missing';
+  } else if (!colorOk) {
+    reason = 'no-instance-color';
+  } else {
+    reason = 'no-instance-uv';
+  }
   onFallback?.({ requestedKey: key, resolvedKey: null, reason });
   info.material.dispose();
   return fallbackFactory();
@@ -172,6 +202,16 @@ registerMaterial('explosion:smoke', ExplosionSmokeMaterial);
 registerMaterial('muzzle:flash', MuzzleFlashMaterial, {
   create: createMuzzleFlashMaterial,
   supportsInstanceColor: true,
+});
+registerMaterial('thruster:glow', NullMaterialComponent, {
+  create: createThrusterGlowMaterial,
+  supportsInstanceColor: true,
+  supportsInstanceUv: false,
+});
+registerMaterial('ship:impostor', NullMaterialComponent, {
+  create: createShipImpostorMaterial,
+  supportsInstanceColor: true,
+  supportsInstanceUv: true,
 });
 
 // Re-export shield materials and types for backward compatibility

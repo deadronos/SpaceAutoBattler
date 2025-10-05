@@ -20,52 +20,139 @@ export interface EffectCounts {
   smoke: number;
 }
 
-/**
- * Sets the instance count for a mesh and marks it as needing update.
- */
-export function setInstanceCount(mesh: InstancedMesh, count: number): void {
-  mesh.count = count;
-  mesh.visible = count > 0;
+export type EffectKey = keyof EffectCounts;
+
+interface PoolState {
+  mesh: InstancedMesh | null;
+  capacity: number;
 }
 
-/**
- * Marks the instance matrix as needing an update.
- */
-export function markMatrixDirty(mesh: InstancedMesh): void {
+interface CommitSummary {
+  count: number;
+  saturated: boolean;
+}
+
+const EFFECT_KEYS: EffectKey[] = ['flash', 'shockwave', 'fireball', 'debris', 'sparks', 'plasma', 'smoke'];
+
+function createZeroedCounts(): EffectCounts {
+  return {
+    flash: 0,
+    shockwave: 0,
+    fireball: 0,
+    debris: 0,
+    sparks: 0,
+    plasma: 0,
+    smoke: 0,
+  };
+}
+
+function sanitizeCapacity(value: number | undefined): number {
+  if (!Number.isFinite(value) || (value ?? 0) <= 0) {
+    return 0;
+  }
+  return Math.floor(value as number);
+}
+
+function markMatrixDirty(mesh: InstancedMesh): void {
   mesh.instanceMatrix.needsUpdate = true;
 }
 
-/**
- * Marks the instance color attribute as needing an update if it exists.
- */
-export function markColorDirty(mesh: InstancedMesh): void {
+function markColorDirty(mesh: InstancedMesh): void {
   if (mesh.instanceColor) {
     mesh.instanceColor.needsUpdate = true;
   }
 }
 
-/**
- * Finalizes all mesh updates by setting counts and marking attributes dirty.
- */
-export function finalizeInstancedMeshes(
-  refs: InstancedMeshRefs,
-  counts: EffectCounts
-): void {
-  const meshes: Array<{ mesh: InstancedMesh | null; count: number }> = [
-    { mesh: refs.flash, count: counts.flash },
-    { mesh: refs.shockwave, count: counts.shockwave },
-    { mesh: refs.fireball, count: counts.fireball },
-    { mesh: refs.debris, count: counts.debris },
-    { mesh: refs.sparks, count: counts.sparks },
-    { mesh: refs.plasma, count: counts.plasma },
-    { mesh: refs.smoke, count: counts.smoke },
-  ];
+export class ExplosionsInstancedManager {
+  private pools: Record<EffectKey, PoolState>;
 
-  for (const { mesh, count } of meshes) {
-    if (mesh) {
-      setInstanceCount(mesh, count);
+  private counts: EffectCounts = createZeroedCounts();
+
+  private saturation: Record<EffectKey, boolean> = {
+    flash: false,
+    shockwave: false,
+    fireball: false,
+    debris: false,
+    sparks: false,
+    plasma: false,
+    smoke: false,
+  };
+
+  constructor(capacities: Partial<Record<EffectKey, number>>) {
+    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>((acc, key) => {
+      acc[key] = { mesh: null, capacity: sanitizeCapacity(capacities[key]) };
+      return acc;
+    }, {} as Record<EffectKey, PoolState>);
+  }
+
+  /**
+   * Binds the instanced mesh references for the current frame.
+   * Returns false if any required mesh is missing.
+   */
+  attach(refs: InstancedMeshRefs): boolean {
+    let ready = true;
+    for (const key of EFFECT_KEYS) {
+      const mesh = refs[key];
+      this.pools[key].mesh = mesh;
+      ready &&= Boolean(mesh);
+    }
+    return ready;
+  }
+
+  beginFrame(): void {
+    this.counts = createZeroedCounts();
+    for (const key of EFFECT_KEYS) {
+      this.saturation[key] = false;
+    }
+  }
+
+  getCapacity(key: EffectKey): number {
+    return this.pools[key].capacity;
+  }
+
+  getMesh(key: EffectKey): InstancedMesh {
+    const mesh = this.pools[key].mesh;
+    if (!mesh) {
+      throw new Error(`Instanced mesh for effect "${key}" is not attached.`);
+    }
+    return mesh;
+  }
+
+  getStartIndex(key: EffectKey): number {
+    return this.counts[key];
+  }
+
+  commit(key: EffectKey, summary: CommitSummary): void {
+    this.counts[key] += summary.count;
+    if (summary.saturated) {
+      this.saturation[key] = true;
+    }
+  }
+
+  finalize(): void {
+    for (const key of EFFECT_KEYS) {
+      const { mesh, capacity } = this.pools[key];
+      if (!mesh) {
+        continue;
+      }
+      const count = Math.min(this.counts[key], capacity);
+      mesh.count = count;
+      mesh.visible = count > 0;
       markMatrixDirty(mesh);
       markColorDirty(mesh);
     }
   }
+
+  wasSaturated(key: EffectKey): boolean {
+    return this.saturation[key];
+  }
+
+  anySaturated(): boolean {
+    return EFFECT_KEYS.some((key) => this.saturation[key]);
+  }
+
+  snapshotCounts(): EffectCounts {
+    return { ...this.counts };
+  }
 }
+

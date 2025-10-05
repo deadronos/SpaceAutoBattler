@@ -1,7 +1,8 @@
 # [TASK006] - Instanced Particles & Explosions
 
-**Status:** Not Started  
+**Status:** Completed
 **Added:** 2025-10-05
+**Updated:** 2025-10-05
 
 ## Original Request
 
@@ -35,5 +36,11 @@ Reduce draw calls and CPU overhead caused by large numbers of particle and explo
 - Unit tests for allocation, reclamation, and attribute update correctness.
 - Visual snapshots for heavy explosion scenes (10/100/1000 concurrent effects) within tolerance.
 - Perf harness demonstrates draw-call reduction and improved frame timings.
+
+## Completion Notes
+
+- Implemented `ExplosionsInstancedManager` with pooled counts, saturation tracking, and frame finalisation hooks used by `ExplosionRendererCore`.
+- Added dedicated `DebrisInstancedManager` to centralise debris shard pooling and attribute preparation.
+- Added Vitest coverage for the manager behaviours and debris update saturation paths.
 
 ---

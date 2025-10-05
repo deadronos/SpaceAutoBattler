@@ -1,7 +1,8 @@
 # [TASK009] - Debris & Fragment Instancing
 
-**Status:** Not Started  
+**Status:** Completed
 **Added:** 2025-10-05
+**Updated:** 2025-10-05
 
 ## Original Request
 
@@ -30,5 +31,11 @@ Batch debris fragments produced by explosions or collisions into instanced group
 - Unit tests for pool allocation/reclamation and attribute updates.
 - Visual snapshots for explosion scenes with heavy debris.
 - Perf harness to measure triangle throughput improvements.
+
+## Completion Notes
+
+- Delivered `DebrisInstancedManager` to handle shard attribute preparation, automatic color buffers, and saturation detection.
+- Wired the debris manager through the explosion rendering path and expanded manager tests for saturation handling.
+- Shared instancing infrastructure feeds both explosion pools and LOD impostor flows for consistent warnings.
 
 ---
