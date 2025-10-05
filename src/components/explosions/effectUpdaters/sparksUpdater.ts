@@ -1,7 +1,7 @@
 import type { InstancedMesh } from 'three';
 import { SPARKS_DELAY } from '../constants.js';
 import { clamp01, getCachedColor } from '../derived.js';
-import type { EffectUpdateContext, EffectUpdater } from './types.js';
+import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 
 /**
  * Updates sparks effect instances.
@@ -11,20 +11,26 @@ export const updateSparks: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
-): number => {
+  capacity: number,
+): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
   const sparksT = time - SPARKS_DELAY;
   if (sparksT < 0) {
-    return 0;
+    return EMPTY_EFFECT_RESULT;
   }
 
   let count = 0;
+  let saturated = false;
 
   for (const spark of derived.sparks) {
-    if (sparksT > spark.lifetime || startIndex + count >= capacity) {
+    if (sparksT > spark.lifetime) {
       continue;
+    }
+
+    if (startIndex + count >= capacity) {
+      saturated = true;
+      break;
     }
 
     const sparkProgress = clamp01(sparksT / spark.lifetime);
@@ -49,5 +55,5 @@ export const updateSparks: EffectUpdater = (
     count += 1;
   }
 
-  return count;
+  return { count, saturated };
 };

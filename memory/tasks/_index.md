@@ -8,6 +8,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
 - [TASK244](TASK244-visual-smoothing.md) — Design and implement dt-independent visual smoothing with per-hull overrides. (2025-10-04)
+- [TASK001](TASK001-projectiles-poc-instancedmesh.md) — Implement grouped instanced projectiles & muzzle flashes (2025-10-04)
 
 ## Completed
 
@@ -83,6 +84,11 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 - _None tracked._
 - [TASK232](TASK232-update-memory-bank-tasks.md) — Update memory bank task files and `_index.md` to record progress for the deferred Rapier migration work. (2025-10-01)
+- [TASK006](TASK006-instanced-particles-explosions.md) — Instanced particles & explosions (High priority) (2025-10-05)
+- [TASK007](TASK007-thruster-muzzle-instancing.md) — Thruster & muzzle instancing + bloom registration (High priority) (2025-10-05)
+- [TASK008](TASK008-ship-lod-impostors.md) — Ship LOD impostors & instanced distant-ship rendering (Medium priority) (2025-10-05)
+- [TASK009](TASK009-debris-fragments-instancing.md) — Debris & fragment instancing (Medium priority) (2025-10-05)
+- [TASK010](TASK010-material-texture-atlas.md) — Material & texture atlas for instance-friendly materials (High priority) (2025-10-05)
 
 ## Abandoned
 

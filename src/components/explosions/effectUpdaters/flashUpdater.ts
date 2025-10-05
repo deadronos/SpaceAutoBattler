@@ -1,7 +1,7 @@
 import type { InstancedMesh } from 'three';
 import { FLASH_DURATION } from '../constants.js';
 import { clamp01, easeOutQuad, getCachedColor } from '../derived.js';
-import type { EffectUpdateContext, EffectUpdater } from './types.js';
+import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 
 /**
  * Updates flash effect instances.
@@ -11,12 +11,16 @@ export const updateFlash: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  _capacity: number
-): number => {
+  capacity: number,
+): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, color } = ctx;
 
   if (time > FLASH_DURATION) {
-    return 0;
+    return EMPTY_EFFECT_RESULT;
+  }
+
+  if (startIndex >= capacity) {
+    return { count: 0, saturated: true };
   }
 
   const flashT = clamp01(time / FLASH_DURATION);
@@ -33,5 +37,5 @@ export const updateFlash: EffectUpdater = (
   color.copy(getCachedColor(event.palette.flash)).multiplyScalar(Math.max(0.3, intensity));
   mesh.setColorAt(startIndex, color);
 
-  return 1;
+  return { count: 1, saturated: false };
 };

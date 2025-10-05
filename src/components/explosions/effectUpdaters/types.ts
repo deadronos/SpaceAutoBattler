@@ -16,13 +16,23 @@ export interface EffectUpdateContext {
   color: Color;
 }
 
+export interface EffectUpdateResult {
+  count: number;
+  saturated: boolean;
+}
+
 /**
  * Effect updater function signature.
- * Returns the number of instances used for this effect.
+ * Returns the number of instances used for this effect and whether capacity was saturated.
  */
 export type EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
   capacity: number
-) => number;
+) => EffectUpdateResult;
+
+export const EMPTY_EFFECT_RESULT: EffectUpdateResult = Object.freeze({
+  count: 0,
+  saturated: false,
+});
