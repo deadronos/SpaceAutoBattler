@@ -25,7 +25,7 @@ export interface ShipLODManagerProps {
 
 export type LodLevel = 'near' | 'far';
 
-export const DEFAULT_DISTANCE_THRESHOLD = 1800;
+export const DEFAULT_DISTANCE_THRESHOLD = 8000;
 export const DEFAULT_HYSTERESIS = 80;
 export const DEFAULT_IMPOSTOR_CAPACITY = 256;
 
