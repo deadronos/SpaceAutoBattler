@@ -81,6 +81,78 @@ export function createInstancedMaterial(
   };
 }
 
+export interface InstanceFriendlyMaterialOptions {
+  requireInstanceColor?: boolean;
+  fallbackKey?: MaterialKey;
+  fallbackFactory?: () => InstancedMaterialInfo;
+  onFallback?: (details: InstanceFriendlyFallbackDetails) => void;
+}
+
+export interface InstanceFriendlyFallbackDetails {
+  requestedKey: MaterialKey;
+  resolvedKey: MaterialKey | null;
+  reason: 'missing' | 'no-instance-color';
+}
+
+const defaultInstanceColorFactory = (): InstancedMaterialInfo => {
+  const material = new MeshStandardMaterial({
+    color: '#ffffff',
+    emissive: '#000000',
+    emissiveIntensity: 1,
+    vertexColors: true,
+    transparent: true,
+    opacity: 1,
+    roughness: 0.4,
+    metalness: 0.05,
+  });
+  material.name = 'instance-friendly-fallback';
+  return {
+    material,
+    supportsInstanceColor: true,
+  };
+};
+
+export function getInstanceFriendlyMaterial(
+  key: MaterialKey,
+  options: InstanceFriendlyMaterialOptions = {},
+): InstancedMaterialInfo {
+  const {
+    requireInstanceColor = false,
+    fallbackKey,
+    fallbackFactory = defaultInstanceColorFactory,
+    onFallback,
+  } = options;
+
+  const entry = registry.get(key);
+  const info = createInstancedMaterial(key, fallbackFactory);
+  if (!requireInstanceColor) {
+    return info;
+  }
+
+  if (info.supportsInstanceColor) {
+    return info;
+  }
+
+  if (fallbackKey && fallbackKey !== key) {
+    const fallbackInfo = getInstanceFriendlyMaterial(fallbackKey, {
+      requireInstanceColor: true,
+      fallbackFactory,
+      onFallback,
+    });
+
+    if (fallbackInfo.supportsInstanceColor) {
+      onFallback?.({ requestedKey: key, resolvedKey: fallbackKey, reason: 'no-instance-color' });
+      info.material.dispose();
+      return fallbackInfo;
+    }
+  }
+
+  const reason: InstanceFriendlyFallbackDetails['reason'] = entry ? 'no-instance-color' : 'missing';
+  onFallback?.({ requestedKey: key, resolvedKey: null, reason });
+  info.material.dispose();
+  return fallbackFactory();
+}
+
 // Register built-in materials
 registerMaterial('shield:hex', ShieldHexMaterial);
 registerMaterial('shield:meshtransmission', ShieldTransmissionMaterial);

@@ -1,7 +1,7 @@
 import type { InstancedMesh } from 'three';
 import { SMOKE_DELAY } from '../constants.js';
 import { clamp01, getCachedColor } from '../derived.js';
-import type { EffectUpdateContext, EffectUpdater } from './types.js';
+import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 
 /**
  * Updates smoke effect instances.
@@ -11,20 +11,26 @@ export const updateSmoke: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
-): number => {
+  capacity: number,
+): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
   const smokeT = time - SMOKE_DELAY;
   if (smokeT < 0) {
-    return 0;
+    return EMPTY_EFFECT_RESULT;
   }
 
   let count = 0;
+  let saturated = false;
 
   for (const wisp of derived.smoke) {
-    if (smokeT > wisp.lifetime || startIndex + count >= capacity) {
+    if (smokeT > wisp.lifetime) {
       continue;
+    }
+
+    if (startIndex + count >= capacity) {
+      saturated = true;
+      break;
     }
 
     const wispProgress = clamp01(smokeT / wisp.lifetime);
@@ -48,5 +54,5 @@ export const updateSmoke: EffectUpdater = (
     count += 1;
   }
 
-  return count;
+  return { count, saturated };
 };

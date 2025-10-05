@@ -14,7 +14,7 @@ import type { Archetype, GameEntity, TurretEntity, MuzzleFlash } from '../../typ
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { useGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
-import { createInstancedMaterial } from '../../renderer/materialRegistry.js';
+import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { InstanceAllocator } from './instanceAllocator.js';
 import { computeMuzzleFlashVisuals } from './muzzleFlashMath.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
@@ -58,7 +58,10 @@ export function MuzzleFlashInstancedLayer({
   const frameRef = useRef(0);
   const state = useGameState();
 
-  const materialInfo = useMemo(() => createInstancedMaterial('muzzle:flash'), []);
+  const materialInfo = useMemo(
+    () => getInstanceFriendlyMaterial('muzzle:flash', { requireInstanceColor: true }),
+    [],
+  );
   const geometry = useMemo(() => new SphereGeometry(1, 10, 10), []);
 
   useBloomRegistration(meshRef, { group: 'muzzleFlashes' });

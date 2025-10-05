@@ -59,20 +59,23 @@ describe('shockwaveUpdater', () => {
 
   it('should not create shockwave instance before delay', () => {
     ctx.time = 0.05;
-    const count = updateShockwave(ctx, mesh, 0, 10);
-    expect(count).toBe(0);
+    const result = updateShockwave(ctx, mesh, 0, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should create shockwave instance after delay and within duration', () => {
     ctx.time = 0.2;
-    const count = updateShockwave(ctx, mesh, 0, 10);
-    expect(count).toBe(1);
+    const result = updateShockwave(ctx, mesh, 0, 10);
+    expect(result.count).toBe(1);
+    expect(result.saturated).toBe(false);
   });
 
   it('should not create shockwave instance after duration ends', () => {
     ctx.time = 0.6;
-    const count = updateShockwave(ctx, mesh, 0, 10);
-    expect(count).toBe(0);
+    const result = updateShockwave(ctx, mesh, 0, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should expand shockwave radius over time', () => {
@@ -107,5 +110,11 @@ describe('shockwaveUpdater', () => {
     const intensity2 = color2.r + color2.g + color2.b;
 
     expect(intensity2).toBeLessThan(intensity1);
+  });
+
+  it('reports saturation when start index exceeds capacity', () => {
+    const result = updateShockwave(ctx, mesh, 10, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(true);
   });
 });
