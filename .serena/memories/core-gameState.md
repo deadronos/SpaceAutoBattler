@@ -1,46 +1,58 @@
 # core/gameState
 
-Last-Reviewed: 2025-09-30
+Last-Reviewed: 2025-10-05
 
-**Memory name:** core-gameState (authoritative)
+**Memory name:** core-gameState (authoritative snapshot)
 
 Summary:
 
-- Location: `src/game/state.ts` (note: previously `src/core/gameState.ts` in older versions of the repo)
-- Purpose: Canonical GameState factory and lifecycle helpers used by the simulation and by tests. The module provides deterministic seeded RNG initialization, Rapier physics world setup, Miniplex world for entities, and helper APIs for entity lifecycle.
+- Canonical GameState type definition: `src/types/simulation.ts` (re-exported from `src/types/index.ts`). The authoritative interface is declared in `simulation.ts`.
+- Runtime factory and helpers: `createGameState(opts?: { seed?: number|string })` and lifecycle helpers live in `src/game/state.ts`.
 
-Primary exports and responsibilities:
+Primary exports and responsibilities (source locations):
 
-- `createGameState(opts?: { seed?: string }) : Promise<GameState>`
-  - Asynchronously initializes any WASM dependencies (Rapier), constructs the `GameState` object, sets up the physics world, seeded RNG (`SeededRng` via `src/utils/rng.ts`), and returns the ready-to-use state.
+- `createGameState(opts?): Promise<GameState>` — `src/game/state.ts`
+  - Initializes Rapier WASM, constructs the physics world and entity ECS, creates a seeded RNG instance (`SeededRng` from `src/utils/rng.ts`), and returns a ready `GameState` object.
+- `disposeGameState(state: GameState): void` — `src/game/state.ts`
+  - Tears down Rapier world and frees any pooled renderer/physics resources tied to the state.
+- `destroyEntity(state: GameState, id: number | string): void` — `src/game/state.ts`
+  - Removes entities and their runtime attachments/physics bodies from the `GameState` safely.
+- `spawnInitialFleets(state: GameState, config?): void` — `src/game/ships.ts` / `src/game/state.ts`
+  - Convenience helper used by demo pages and tests to populate the world.
 
-- `disposeGameState(state: GameState): void`
-  - Tears down worker resources and disposes physics world + any pooled renderer resources attached to the state.
+Snapshot of the authoritative `GameState` interface (fields taken from `src/types/simulation.ts`):
 
-- `destroyEntity(state: GameState, id: string): void`
-  - Safely removes an entity and its runtime resources (physics bodies, colliders, instancer references) from the `GameState`.
+- rapier: RapierModule
+- physicsWorld: RapierWorld
+- eventQueue: EventQueue
+- world: ECSWorld<GameEntity>
+- colliderLookup: Map<number, GameEntity>
+- nextEntityId: number
+- nextExplosionId: number
+- time: number
+- queries: GameQueries
+- turretsByShip?: Map<number, Set<TurretEntity>> (optional for tests/mocks)
+- rng: SeededRng
+- paused: boolean
+- timeScale: number
+- simulation: SimulationClock
+- ai: AIManagerState
+- blackboard: AIBlackboard
+- uiFlags: HudUiFlags
+- explosions: ExplosionEvent[]
+- explosionPool: ExplosionEvent[]
+- progressionEvents: Map<number, ProgressionEvent[]>
 
-- `spawnInitialFleets(state: GameState, config?): void`
-  - Convenience for test harnesses and demo pages to populate the world with starter ships for both teams.
+Runtime patterns and verification notes:
 
-Key runtime patterns and notes:
+- All runtime state is stored on the `GameState` object — avoid module-level runtime state.
+- Determinism: use the `SeededRng` instance attached to the `GameState` for any simulation-random decisions.
+- The `GameState` shape is defined in `src/types/simulation.ts` and re-exported by `src/types/index.ts` for convenience.
 
-- All runtime state is stored on the `GameState` object (per repo convention). Avoid module-level runtime state.
-- Determinism is provided via `SeededRng` located at `src/utils/rng.ts`; the simulation must use `state.rng` when deterministic randomness is required.
-- `GameState` may hold an optional `assetPool` reference (renderer attaches this during bootstrap). The renderer is responsible for three.js asset caching and prototype registration.
-- Where functionality changed from earlier repo versions, memory retains a short note that the old path was `src/core/gameState.ts`.
-
-Verification log:
-
-- 2025-09-30: Agent inspection performed against actual source files. Files reviewed: `src/game/state.ts`, `src/utils/rng.ts`, `src/types/index.ts`, `src/game/context.tsx`, `src/game/uiStore.ts`. Actions:
-  - Confirmed `createGameState` implementation initializes Rapier, seeded RNG (`SeededRng` with default seed `1337`), and constructs the `GameState` shape consistent with `src/types/index.ts` `GameState` interface.
-  - Confirmed no module-level runtime state outside of `GameState` factory.
-  - Confirmed `disposeGameState`, `destroyEntity`, and `spawnInitialFleets` exports exist and their responsibilities match the memory description.
-
-References:
-
-- `src/game/state.ts`, `src/types/index.ts`, `src/utils/rng.ts`
+References (checked on 2025-10-05):
+- `src/game/state.ts` (factory and lifecycle helpers)
+- `src/types/simulation.ts` (interface definition)
+- `src/utils/rng.ts` (SeededRng implementation)
 
 Notes:
-
-- This memory is authoritative for the canonical `GameState` responsibilities and locations. Use `read_memory` on `src-files-overview` or `threeRenderer` for renderer-specific integration points.
+- Keep this memory as the authoritative summary for where to find the runtime factory and the canonical GameState type. Update this memory whenever the `GameState` interface or the location of the factory moves.

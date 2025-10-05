@@ -1,3 +1,8 @@
+## 2025-10-05 — Ship LOD Visibility Regression
+
+1. **WHEN** a ship crosses the configured near/far threshold because either its transform or the active camera position changed, **THE SYSTEM SHALL** recompute the LOD partition within the next render frame so full hull meshes mount for near ships. *(Acceptance: `test/components/lod/ShipLODManager.spec.ts` verifies the new partition refresh helper promotes ships to the near cohort after a simulated camera move.)*
+2. **WHEN** the default battle camera loads at startup, **THE SYSTEM SHALL** classify the closest fleet elements as near ships so GLTF hulls render immediately without user interaction. *(Acceptance: unit coverage asserts ships spawned at ±300 units fall into the near set under the default distance threshold constants.)*
+3. **WHEN** distant ships render via instanced impostors, **THE SYSTEM SHALL** keep the impostor mesh visible and billboarded toward the camera while updating per-instance transforms and colors each frame. *(Acceptance: `test/components/lod/ShipLODManager.spec.ts` exercises the impostor helper with a stubbed mesh and asserts visible, count, and quaternion values after an update call.)*
 # Requirements — Star Disk Shader Integration
 
 ## 2025-10-02 — Rapier WASM Panic Diagnostics (TASK236)

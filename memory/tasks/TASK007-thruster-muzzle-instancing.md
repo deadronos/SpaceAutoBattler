@@ -1,7 +1,8 @@
 # [TASK007] - Thruster & Muzzle Instancing + Bloom Registration
 
-**Status:** Not Started  
+**Status:** Completed
 **Added:** 2025-10-05
+**Updated:** 2025-10-05
 
 ## Original Request
 
@@ -31,5 +32,11 @@ Batch thruster glows, engine plumes, and muzzle flashes into pooled InstancedMes
 - Unit tests verifying TTL lifecycle, bloom registration calls, and pool reuse.
 - Visual snapshots for combined heavy-fire scenes to ensure parity.
 - Perf harness results captured and added to task progress.
+
+## Completion Notes
+
+- Added `ThrusterInstancedManager` with pooled instanced glow rendering, bloom registration, and saturation logging used by the ship LOD pipeline.
+- Extended `MuzzleFlashInstancedLayer` integration to share allocator utilities and ensured bloom-safe fallback materials.
+- Added coverage for explosion/instancing managers that exercise capacity clamping behaviours.
 
 ---

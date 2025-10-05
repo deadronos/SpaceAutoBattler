@@ -6,9 +6,9 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## In Progress
 
-- [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (2025-10-03)
-- [TASK244](TASK244-visual-smoothing.md) — Design and implement dt-independent visual smoothing with per-hull overrides. (2025-10-04)
-- [TASK001](TASK001-projectiles-poc-instancedmesh.md) — Implement grouped instanced projectiles & muzzle flashes (2025-10-04)
+- [TASK245](TASK245-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
+
+- [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
 
 ## Completed
 
@@ -35,28 +35,6 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK150](TASK150-update-ai-scenario-fixtures.md) — Refresh AI scenario harness fixtures to align with new deterministic metrics outputs.
 - [TASK143](TASK143-design-ai-improvement-v0.1.1.md) — Implement AI Improvement v0.1.1 vertical engagement, spawn, and range updates per design memo.
 - [TASK144](TASK144-ai-metrics-resilience.md) — Restored percentile helper, Rapier shims, and AI scenario metrics fixtures; `npm test` passes.
-- [TASK142](TASK142-ship-kill-explosionfx.md) — Implement ship kill explosion FX pipeline across simulation, config, renderer, and tests per design memo.
-
-- [TASK141](TASK141-hud-health-overlays.md) — Implemented HUD health overlays with deterministic easing, occlusion safeguards, and Vitest coverage.
-- [TASK140](TASK140-star-disk-boundary-feather.md) — Delivered star disk boundary feather uniforms, shader attenuation, and regression tests.
-- [TASK139](TASK139-star-disk-haze-taper.md) — Implement star disk haze taper with camera-aware gradient fade and updated shader uniforms.
-- [TASK138](TASK138-star-disk-view-compensation.md) — Fix star disk billboarding by locking orientation and adding view-compensation uniforms.
-- [TASK134](TASK134-main-sequence-star-shader.md) — Ported `mainsequencestar` shader, refactored StarDisk material/component, and added unit coverage for uniforms and fallback path.
-- [TASK132](TASK132-planet-shadowing.md) — Planet shadowing enhancement (standard material + rim shell with cast/receive shadows).
-- [TASK131](TASK131-star-disk-render-capture.md) — Automated before/after star disk screenshot captures via Playwright.
-- [TASK130](TASK130-star-disk-radial-spread.md) — Expand star disk radial energy to fill the disc with organic animation.
-- [TASK129](TASK129-star-disk-palette-offsets.md) — Parameterise star disk palette offsets for configurable hue/saturation/lightness skew.
-- [TASK128](TASK128-star-disk-shader-controls.md) — Expose additional star disk shader controls through config and shader uniforms.
-- [TASK127](TASK127-star-disk-fidelity.md) — Refined star disk shader to match fiery reference without washing out texture detail.
-- [TASK125](TASK125-star-disk-textures.md) — Bake procedural star disk textures and integrate them into shader pipeline.
-- [TASK126](TASK126-star-disk-fiery-tuning.md) — Corrected star disk aspect ratio and retuned shader for a hotter corona.
-- [TASK100](COMPLETED/TASK100-memory-bank-summary.md) — Memory-bank summary entry for initial knowledge-base bootstrap.
-- [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) — Implemented Miniplex + Zustand integration with lifecycle hooks and UI store replacement.
-- [TASK136](COMPLETED/TASK136-implement-physical-movement.md) — Implemented Miniplex + deterministic physical movement system, renderer smoothing, and tests.  (Renamed from TASK102 to resolve ID collision.)
-- [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag. (Retained TASK102 identifier.)
-- [TASK103](COMPLETED/TASK103-ai-traits.md) — Added AI trait multipliers with deterministic seeding and coverage.
-- [TASK104](COMPLETED/TASK104-ai-metrics.md) — Instrumented AI metrics and documented rollout.
-- [TASK105](COMPLETED/TASK105-ai-v2-validation.md) — Added determinism/scorer/executor/legacy suites, perf budget script, HUD overlay updates.
 - [TASK106](COMPLETED/TASK106-ai-intercept-reposition.md) — Landed intercept/reposition/regroup scoring and executors with documentation updates.
 - [TASK107](COMPLETED/TASK107-ai-scenario-harness.md) — Authored headless scenario harness with golden log regression tests.
 - [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) — Wired AI V2 rollout automation, env flag toggles, and CI alignment.
