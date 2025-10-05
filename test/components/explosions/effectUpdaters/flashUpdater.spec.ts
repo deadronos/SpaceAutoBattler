@@ -61,14 +61,16 @@ describe('flashUpdater', () => {
   });
 
   it('should create flash instance when within flash duration', () => {
-    const count = updateFlash(ctx, mesh, 0, 10);
-    expect(count).toBe(1);
+    const result = updateFlash(ctx, mesh, 0, 10);
+    expect(result.count).toBe(1);
+    expect(result.saturated).toBe(false);
   });
 
   it('should not create flash instance when time exceeds flash duration', () => {
     ctx.time = 0.15;
-    const count = updateFlash(ctx, mesh, 0, 10);
-    expect(count).toBe(0);
+    const result = updateFlash(ctx, mesh, 0, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should set correct matrix and color for flash instance', () => {
@@ -102,19 +104,26 @@ describe('flashUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const count1 = updateFlash(ctx, mesh, 0, 10);
+    const result1 = updateFlash(ctx, mesh, 0, 10);
     const color1 = new Color();
     mesh.getColorAt(0, color1);
 
     const ctx2 = { ...ctx, event: { ...event } };
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 10);
-    const count2 = updateFlash(ctx2, mesh2, 0, 10);
+    const result2 = updateFlash(ctx2, mesh2, 0, 10);
     const color2 = new Color();
     mesh2.getColorAt(0, color2);
 
-    expect(count1).toBe(count2);
+    expect(result1.count).toBe(result2.count);
+    expect(result1.saturated).toBe(result2.saturated);
     expect(color1.r).toBeCloseTo(color2.r, 5);
     expect(color1.g).toBeCloseTo(color2.g, 5);
     expect(color1.b).toBeCloseTo(color2.b, 5);
+  });
+
+  it('reports saturation when start index exceeds capacity', () => {
+    const result = updateFlash(ctx, mesh, 10, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(true);
   });
 });

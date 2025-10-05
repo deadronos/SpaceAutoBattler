@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Color, InstancedMesh, Object3D, Quaternion, Vector3 } from 'three';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { useGameState } from '../../game/context.js';
+import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
 import {
   DEBRIS_CAPACITY,
   FIREBALL_CAPACITY,
@@ -51,8 +52,12 @@ export function ExplosionRendererCore(): React.ReactElement {
   const tmpQuat = useMemo(() => new Quaternion(), []);
   const tmpVec = useMemo(() => new Vector3(), []);
   const color = useMemo(() => new Color(), []);
+  const warningStateRef = useRef(createSaturationWarningState());
+  const frameRef = useRef(0);
 
   useFrame(({ camera }) => {
+    frameRef.current += 1;
+    const frameId = frameRef.current;
     const refs: InstancedMeshRefs = {
       flash: flashRef.current,
       shockwave: shockwaveRef.current,
@@ -85,6 +90,16 @@ export function ExplosionRendererCore(): React.ReactElement {
       smoke: 0,
     };
 
+    const saturationState: Record<keyof EffectCounts, boolean> = {
+      flash: false,
+      shockwave: false,
+      fireball: false,
+      debris: false,
+      sparks: false,
+      plasma: false,
+      smoke: false,
+    };
+
     for (const event of state.explosions) {
       const time = event.elapsed;
       const derived = getDerived(event);
@@ -100,16 +115,44 @@ export function ExplosionRendererCore(): React.ReactElement {
         color,
       };
 
-      counts.flash += updateFlash(ctx, refs.flash, counts.flash, FLASH_CAPACITY);
-      counts.shockwave += updateShockwave(ctx, refs.shockwave, counts.shockwave, SHOCKWAVE_CAPACITY);
-      counts.fireball += updateFireball(ctx, refs.fireball, counts.fireball, FIREBALL_CAPACITY);
-      counts.debris += updateDebris(ctx, refs.debris, counts.debris, DEBRIS_CAPACITY);
-      counts.sparks += updateSparks(ctx, refs.sparks, counts.sparks, SPARKS_CAPACITY);
-      counts.plasma += updatePlasma(ctx, refs.plasma, counts.plasma, PLASMA_CAPACITY);
-      counts.smoke += updateSmoke(ctx, refs.smoke, counts.smoke, SMOKE_CAPACITY);
+      const flashResult = updateFlash(ctx, refs.flash, counts.flash, FLASH_CAPACITY);
+      counts.flash += flashResult.count;
+      saturationState.flash ||= flashResult.saturated;
+
+      const shockwaveResult = updateShockwave(ctx, refs.shockwave, counts.shockwave, SHOCKWAVE_CAPACITY);
+      counts.shockwave += shockwaveResult.count;
+      saturationState.shockwave ||= shockwaveResult.saturated;
+
+      const fireballResult = updateFireball(ctx, refs.fireball, counts.fireball, FIREBALL_CAPACITY);
+      counts.fireball += fireballResult.count;
+      saturationState.fireball ||= fireballResult.saturated;
+
+      const debrisResult = updateDebris(ctx, refs.debris, counts.debris, DEBRIS_CAPACITY);
+      counts.debris += debrisResult.count;
+      saturationState.debris ||= debrisResult.saturated;
+
+      const sparksResult = updateSparks(ctx, refs.sparks, counts.sparks, SPARKS_CAPACITY);
+      counts.sparks += sparksResult.count;
+      saturationState.sparks ||= sparksResult.saturated;
+
+      const plasmaResult = updatePlasma(ctx, refs.plasma, counts.plasma, PLASMA_CAPACITY);
+      counts.plasma += plasmaResult.count;
+      saturationState.plasma ||= plasmaResult.saturated;
+
+      const smokeResult = updateSmoke(ctx, refs.smoke, counts.smoke, SMOKE_CAPACITY);
+      counts.smoke += smokeResult.count;
+      saturationState.smoke ||= smokeResult.saturated;
     }
 
     finalizeInstancedMeshes(refs, counts);
+
+    const saturated = Object.values(saturationState).some(Boolean);
+    warnOnSaturation({
+      saturated,
+      frameId,
+      state: warningStateRef.current,
+      message: '[ExplosionRendererCore] Capacity saturated, clamping explosion visuals.',
+    });
   });
 
   return (

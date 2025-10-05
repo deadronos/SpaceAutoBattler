@@ -1,6 +1,6 @@
 import type { InstancedMesh } from 'three';
 import { clamp01, getCachedColor } from '../derived.js';
-import type { EffectUpdateContext, EffectUpdater } from './types.js';
+import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 
 /**
  * Updates fireball effect instances.
@@ -10,13 +10,17 @@ export const updateFireball: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  _capacity: number
-): number => {
+  capacity: number,
+): EffectUpdateResult => {
   const { event, time, dummy, color } = ctx;
 
   const fireballT = time - event.fireball.delay;
   if (fireballT < 0 || fireballT > event.fireball.duration) {
-    return 0;
+    return EMPTY_EFFECT_RESULT;
+  }
+
+  if (startIndex >= capacity) {
+    return { count: 0, saturated: true };
   }
 
   const firePhase = clamp01(fireballT / event.fireball.duration);
@@ -34,5 +38,5 @@ export const updateFireball: EffectUpdater = (
   color.copy(hotColor).lerp(coolColor, firePhase * 0.65);
   mesh.setColorAt(startIndex, color);
 
-  return 1;
+  return { count: 1, saturated: false };
 };

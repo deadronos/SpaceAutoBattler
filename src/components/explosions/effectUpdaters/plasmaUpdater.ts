@@ -1,7 +1,7 @@
 import type { InstancedMesh } from 'three';
 import { PLASMA_DELAY } from '../constants.js';
 import { clamp01, getCachedColor } from '../derived.js';
-import type { EffectUpdateContext, EffectUpdater } from './types.js';
+import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 
 /**
  * Updates plasma effect instances.
@@ -11,20 +11,26 @@ export const updatePlasma: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
-): number => {
+  capacity: number,
+): EffectUpdateResult => {
   const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
   const plasmaT = time - PLASMA_DELAY;
   if (plasmaT < 0) {
-    return 0;
+    return EMPTY_EFFECT_RESULT;
   }
 
   let count = 0;
+  let saturated = false;
 
   for (const plume of derived.plasma) {
-    if (plasmaT > plume.lifetime || startIndex + count >= capacity) {
+    if (plasmaT > plume.lifetime) {
       continue;
+    }
+
+    if (startIndex + count >= capacity) {
+      saturated = true;
+      break;
     }
 
     const plumeProgress = clamp01(plasmaT / plume.lifetime);
@@ -50,5 +56,5 @@ export const updatePlasma: EffectUpdater = (
     count += 1;
   }
 
-  return count;
+  return { count, saturated };
 };
