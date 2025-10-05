@@ -1,5 +1,5 @@
 import { useThree, useFrame } from '@react-three/fiber';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Color,
   InstancedBufferAttribute,
@@ -25,9 +25,9 @@ export interface ShipLODManagerProps {
 
 export type LodLevel = 'near' | 'far';
 
-const DEFAULT_DISTANCE_THRESHOLD = 650;
-const DEFAULT_HYSTERESIS = 80;
-const DEFAULT_IMPOSTOR_CAPACITY = 256;
+export const DEFAULT_DISTANCE_THRESHOLD = 1800;
+export const DEFAULT_HYSTERESIS = 80;
+export const DEFAULT_IMPOSTOR_CAPACITY = 256;
 
 export interface LodPartitionResult {
   nearShips: ShipEntity[];
@@ -83,6 +83,90 @@ export function partitionShipsByDistance(
   return { nearShips, farShips };
 }
 
+export function computeLodPartition(
+  ships: readonly ShipEntity[],
+  cameraPosition: Vector3,
+  threshold: number,
+  hysteresis: number,
+  previous: Map<number, LodLevel>,
+): LodPartitionResult {
+  return partitionShipsByDistance(ships, cameraPosition, threshold, hysteresis, previous);
+}
+
+export function partitionsEqual(a: LodPartitionResult, b: LodPartitionResult): boolean {
+  if (a.nearShips.length !== b.nearShips.length || a.farShips.length !== b.farShips.length) {
+    return false;
+  }
+  for (let i = 0; i < a.nearShips.length; i += 1) {
+    if (a.nearShips[i] !== b.nearShips[i]) {
+      return false;
+    }
+  }
+  for (let i = 0; i < a.farShips.length; i += 1) {
+    if (a.farShips[i] !== b.farShips[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export interface PopulateImpostorParams {
+  ships: readonly ShipEntity[];
+  capacity: number;
+  cameraQuaternion: Quaternion;
+  mesh: InstancedMesh | null;
+  temp: {
+    matrix: Matrix4;
+    scale: Vector3;
+    quat: Quaternion;
+    pos: Vector3;
+    color: Color;
+  };
+}
+
+export function populateImpostorInstances({
+  ships,
+  capacity,
+  cameraQuaternion,
+  mesh,
+  temp,
+}: PopulateImpostorParams): { count: number; saturated: boolean } {
+  if (!mesh) {
+    return { count: 0, saturated: false };
+  }
+
+  let index = 0;
+  let saturated = false;
+
+  for (const ship of ships) {
+    if (index >= capacity) {
+      saturated = true;
+      break;
+    }
+
+    temp.pos.copy(ship.transform.position);
+    const scale = Math.max(ship.transform.scale * 6, 4);
+    temp.scale.setScalar(scale);
+    temp.quat.copy(cameraQuaternion);
+    temp.matrix.compose(temp.pos, temp.quat, temp.scale);
+    mesh.setMatrixAt(index, temp.matrix);
+
+    const teamColor = TEAM_COLORS[ship.ship.team] ?? '#a0a0a0';
+    temp.color.set(teamColor);
+    mesh.setColorAt(index, temp.color);
+
+    index += 1;
+  }
+
+  mesh.count = index;
+  mesh.visible = index > 0;
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) {
+    mesh.instanceColor.needsUpdate = true;
+  }
+
+  return { count: index, saturated };
+}
 interface ShipImpostorLayerProps {
   ships: readonly ShipEntity[];
   capacity: number;
@@ -101,11 +185,13 @@ function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): React.R
       }),
     [],
   );
-  const tempMatrix = useMemo(() => new Matrix4(), []);
-  const tempScale = useMemo(() => new Vector3(), []);
-  const tempColor = useMemo(() => new Color('#6fc3ff'), []);
-  const tempQuat = useMemo(() => new Quaternion(), []);
-  const tempPos = useMemo(() => new Vector3(), []);
+  const temp = useMemo(() => ({
+    matrix: new Matrix4(),
+    scale: new Vector3(),
+    quat: new Quaternion(),
+    pos: new Vector3(),
+    color: new Color('#6fc3ff'),
+  }), []);
 
   useEffect(() => {
     const mesh = meshRef.current;
@@ -136,41 +222,17 @@ function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): React.R
   useFrame(({ camera }) => {
     frameRef.current += 1;
     const frameId = frameRef.current;
-    const mesh = meshRef.current;
-    if (!mesh) return;
 
-    let index = 0;
-    let saturated = false;
-
-    for (const ship of ships) {
-      if (index >= capacity) {
-        saturated = true;
-        break;
-      }
-
-      tempPos.copy(ship.transform.position);
-      const scale = Math.max(ship.transform.scale * 6, 4);
-      tempScale.setScalar(scale);
-      tempQuat.copy(camera.quaternion);
-      tempMatrix.compose(tempPos, tempQuat, tempScale);
-      mesh.setMatrixAt(index, tempMatrix);
-
-      const teamColor = TEAM_COLORS[ship.ship.team] ?? '#a0a0a0';
-      tempColor.set(teamColor);
-      mesh.setColorAt(index, tempColor);
-
-      index += 1;
-    }
-
-    mesh.count = index;
-    mesh.visible = index > 0;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
+    const result = populateImpostorInstances({
+      ships,
+      capacity,
+      cameraQuaternion: camera.quaternion,
+      mesh: meshRef.current,
+      temp,
+    });
 
     warnOnSaturation({
-      saturated,
+      saturated: result.saturated,
       frameId,
       state: warningStateRef.current,
       message: '[ShipImpostorLayer] Capacity saturated, clamping distant ship impostors.',
@@ -196,23 +258,50 @@ export function ShipLODManager({
 }: ShipLODManagerProps): React.ReactElement {
   const { camera } = useThree();
   const lodStateRef = useRef(new Map<number, LodLevel>());
+  const shipsRef = useRef<readonly ShipEntity[]>(ships);
+  const thresholdsRef = useRef({ distanceThreshold, hysteresis });
 
-  const cameraSnapshot = useMemo(
-    () => camera.position.clone(),
-    [camera.position.x, camera.position.y, camera.position.z],
+  const [partition, setPartition] = useState<LodPartitionResult>(() =>
+    computeLodPartition(ships, camera.position.clone(), distanceThreshold, hysteresis, lodStateRef.current),
   );
+  const partitionRef = useRef(partition);
 
-  const partition = useMemo(
-    () =>
-      partitionShipsByDistance(
-        ships,
-        cameraSnapshot,
-        distanceThreshold,
-        hysteresis,
+  useEffect(() => {
+    shipsRef.current = ships;
+  }, [ships]);
+
+  useEffect(() => {
+    thresholdsRef.current = { distanceThreshold, hysteresis };
+  }, [distanceThreshold, hysteresis]);
+
+  useEffect(() => {
+    partitionRef.current = partition;
+  }, [partition]);
+
+  const updatePartition = useCallback(
+    (cameraPosition: Vector3) => {
+      const next = computeLodPartition(
+        shipsRef.current,
+        cameraPosition,
+        thresholdsRef.current.distanceThreshold,
+        thresholdsRef.current.hysteresis,
         lodStateRef.current,
-      ),
-    [ships, cameraSnapshot, distanceThreshold, hysteresis],
+      );
+      if (!partitionsEqual(partitionRef.current, next)) {
+        partitionRef.current = next;
+        setPartition(next);
+      }
+    },
+    [],
   );
+
+  useEffect(() => {
+    updatePartition(camera.position.clone());
+  }, [ships, distanceThreshold, hysteresis, updatePartition, camera]);
+
+  useFrame(() => {
+    updatePartition(camera.position);
+  });
 
   return (
     <>
@@ -224,4 +313,5 @@ export function ShipLODManager({
     </>
   );
 }
+
 
