@@ -16,11 +16,7 @@ import {
 import { getDerived } from './derived.js';
 import { useExplosionResources } from './materials.js';
 import { DynamicLightManager } from './DynamicLightManager.js';
-import {
-  finalizeInstancedMeshes,
-  type EffectCounts,
-  type InstancedMeshRefs,
-} from './instancedManager.js';
+import { ExplosionsInstancedManager, type InstancedMeshRefs } from './instancedManager.js';
 import {
   updateDebris,
   updateFireball,
@@ -41,6 +37,17 @@ export function ExplosionRendererCore(): React.ReactElement {
   const sparksRef = useRef<InstancedMesh>(null);
   const plasmaRef = useRef<InstancedMesh>(null);
   const smokeRef = useRef<InstancedMesh>(null);
+  const managerRef = useRef(
+    new ExplosionsInstancedManager({
+      flash: FLASH_CAPACITY,
+      shockwave: SHOCKWAVE_CAPACITY,
+      fireball: FIREBALL_CAPACITY,
+      debris: DEBRIS_CAPACITY,
+      sparks: SPARKS_CAPACITY,
+      plasma: PLASMA_CAPACITY,
+      smoke: SMOKE_CAPACITY,
+    }),
+  );
 
   useBloomRegistration(flashRef, { group: 'explosions' });
   useBloomRegistration(shockwaveRef, { group: 'explosions' });
@@ -68,37 +75,13 @@ export function ExplosionRendererCore(): React.ReactElement {
       smoke: smokeRef.current,
     };
 
-    if (
-      !refs.flash ||
-      !refs.shockwave ||
-      !refs.fireball ||
-      !refs.debris ||
-      !refs.sparks ||
-      !refs.plasma ||
-      !refs.smoke
-    ) {
+    const manager = managerRef.current;
+
+    if (!manager.attach(refs)) {
       return;
     }
 
-    const counts: EffectCounts = {
-      flash: 0,
-      shockwave: 0,
-      fireball: 0,
-      debris: 0,
-      sparks: 0,
-      plasma: 0,
-      smoke: 0,
-    };
-
-    const saturationState: Record<keyof EffectCounts, boolean> = {
-      flash: false,
-      shockwave: false,
-      fireball: false,
-      debris: false,
-      sparks: false,
-      plasma: false,
-      smoke: false,
-    };
+    manager.beginFrame();
 
     for (const event of state.explosions) {
       const time = event.elapsed;
@@ -115,38 +98,55 @@ export function ExplosionRendererCore(): React.ReactElement {
         color,
       };
 
-      const flashResult = updateFlash(ctx, refs.flash, counts.flash, FLASH_CAPACITY);
-      counts.flash += flashResult.count;
-      saturationState.flash ||= flashResult.saturated;
+      const flashMesh = manager.getMesh('flash');
+      const flashStart = manager.getStartIndex('flash');
+      const flashResult = updateFlash(ctx, flashMesh, flashStart, manager.getCapacity('flash'));
+      manager.commit('flash', flashResult);
 
-      const shockwaveResult = updateShockwave(ctx, refs.shockwave, counts.shockwave, SHOCKWAVE_CAPACITY);
-      counts.shockwave += shockwaveResult.count;
-      saturationState.shockwave ||= shockwaveResult.saturated;
+      const shockwaveMesh = manager.getMesh('shockwave');
+      const shockwaveStart = manager.getStartIndex('shockwave');
+      const shockwaveResult = updateShockwave(
+        ctx,
+        shockwaveMesh,
+        shockwaveStart,
+        manager.getCapacity('shockwave'),
+      );
+      manager.commit('shockwave', shockwaveResult);
 
-      const fireballResult = updateFireball(ctx, refs.fireball, counts.fireball, FIREBALL_CAPACITY);
-      counts.fireball += fireballResult.count;
-      saturationState.fireball ||= fireballResult.saturated;
+      const fireballMesh = manager.getMesh('fireball');
+      const fireballStart = manager.getStartIndex('fireball');
+      const fireballResult = updateFireball(
+        ctx,
+        fireballMesh,
+        fireballStart,
+        manager.getCapacity('fireball'),
+      );
+      manager.commit('fireball', fireballResult);
 
-      const debrisResult = updateDebris(ctx, refs.debris, counts.debris, DEBRIS_CAPACITY);
-      counts.debris += debrisResult.count;
-      saturationState.debris ||= debrisResult.saturated;
+      const debrisMesh = manager.getMesh('debris');
+      const debrisStart = manager.getStartIndex('debris');
+      const debrisResult = updateDebris(ctx, debrisMesh, debrisStart, manager.getCapacity('debris'));
+      manager.commit('debris', debrisResult);
 
-      const sparksResult = updateSparks(ctx, refs.sparks, counts.sparks, SPARKS_CAPACITY);
-      counts.sparks += sparksResult.count;
-      saturationState.sparks ||= sparksResult.saturated;
+      const sparksMesh = manager.getMesh('sparks');
+      const sparksStart = manager.getStartIndex('sparks');
+      const sparksResult = updateSparks(ctx, sparksMesh, sparksStart, manager.getCapacity('sparks'));
+      manager.commit('sparks', sparksResult);
 
-      const plasmaResult = updatePlasma(ctx, refs.plasma, counts.plasma, PLASMA_CAPACITY);
-      counts.plasma += plasmaResult.count;
-      saturationState.plasma ||= plasmaResult.saturated;
+      const plasmaMesh = manager.getMesh('plasma');
+      const plasmaStart = manager.getStartIndex('plasma');
+      const plasmaResult = updatePlasma(ctx, plasmaMesh, plasmaStart, manager.getCapacity('plasma'));
+      manager.commit('plasma', plasmaResult);
 
-      const smokeResult = updateSmoke(ctx, refs.smoke, counts.smoke, SMOKE_CAPACITY);
-      counts.smoke += smokeResult.count;
-      saturationState.smoke ||= smokeResult.saturated;
+      const smokeMesh = manager.getMesh('smoke');
+      const smokeStart = manager.getStartIndex('smoke');
+      const smokeResult = updateSmoke(ctx, smokeMesh, smokeStart, manager.getCapacity('smoke'));
+      manager.commit('smoke', smokeResult);
     }
 
-    finalizeInstancedMeshes(refs, counts);
+    manager.finalize();
 
-    const saturated = Object.values(saturationState).some(Boolean);
+    const saturated = manager.anySaturated();
     warnOnSaturation({
       saturated,
       frameId,

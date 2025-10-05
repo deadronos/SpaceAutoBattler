@@ -1,7 +1,8 @@
 # [TASK008] - Ship LOD Impostors & Instanced Distant-Ship Rendering
 
-**Status:** Not Started  
+**Status:** Completed
 **Added:** 2025-10-05
+**Updated:** 2025-10-05
 
 ## Original Request
 
@@ -30,5 +31,11 @@ Reduce triangle throughput by replacing distant high-poly ships with low-poly LO
 - Unit tests verifying deterministic LOD thresholds and transition logic.
 - Visual snapshot tests for large fleet scenes showing acceptable visual differences.
 - Perf harness demonstrates triangle count reduction and frame-time improvements.
+
+## Completion Notes
+
+- Introduced `ShipLODManager` that partitions ships into near and impostor cohorts with hysteresis-aware distance classification.
+- Added instanced billboard impostor layer and thruster pooling, reducing per-ship draw calls for distant fleets.
+- Added unit tests for LOD partition logic to ensure stable transitions around threshold bands.
 
 ---
