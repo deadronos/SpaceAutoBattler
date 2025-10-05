@@ -39,7 +39,7 @@ export class DebrisInstancedManager {
     startIndex: number,
     capacity: number,
   ): EffectUpdateResult {
-    const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
+    const { event, time, derived, dummy, tmpQuat: _tmpQuat, tmpVec: _tmpVec, color } = ctx;
 
     ensureInstanceColor(mesh, capacity);
 
