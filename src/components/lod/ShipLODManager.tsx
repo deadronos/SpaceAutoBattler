@@ -13,6 +13,7 @@ import type { ShipEntity } from '../../types/index.js';
 import { ShipObject } from '../Ship.js';
 import { ThrusterInstancedManager } from '../thrusters/ThrusterInstancedManager.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
+import { TEAM_COLORS } from '../../config/renderer.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
 
 export interface ShipLODManagerProps {
@@ -27,11 +28,6 @@ export type LodLevel = 'near' | 'far';
 const DEFAULT_DISTANCE_THRESHOLD = 650;
 const DEFAULT_HYSTERESIS = 80;
 const DEFAULT_IMPOSTOR_CAPACITY = 256;
-
-const TEAM_COLORS: Record<string, string> = {
-  alliance: '#6fc3ff',
-  reavers: '#ff6f6f',
-};
 
 export interface LodPartitionResult {
   nearShips: ShipEntity[];
@@ -116,6 +112,12 @@ function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): React.R
     if (!mesh) return;
     if (!mesh.instanceColor) {
       mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+      // Initialize all instance colors to a neutral base color so that
+      // shaders never receive undefined / NaN values for unused indices.
+      const base = new Color('#a0a0a0');
+      for (let i = 0; i < capacity; i += 1) {
+        mesh.setColorAt(i, base);
+      }
       mesh.instanceColor.needsUpdate = true;
     }
     return () => {
