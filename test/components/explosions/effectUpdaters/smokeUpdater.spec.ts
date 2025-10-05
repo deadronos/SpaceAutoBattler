@@ -59,21 +59,23 @@ describe('smokeUpdater', () => {
 
   it('should not create smoke before delay', () => {
     ctx.time = 0.1;
-    const count = updateSmoke(ctx, mesh, 0, 100);
-    expect(count).toBe(0);
+    const result = updateSmoke(ctx, mesh, 0, 100);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should create multiple smoke instances', () => {
     ctx.time = 0.5;
-    const count = updateSmoke(ctx, mesh, 0, 100);
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(event.particles.smoke);
+    const result = updateSmoke(ctx, mesh, 0, 100);
+    expect(result.count).toBeGreaterThan(0);
+    expect(result.count).toBeLessThanOrEqual(event.particles.smoke);
+    expect(result.saturated).toBe(false);
   });
 
   it('should respect capacity limits', () => {
     ctx.time = 0.5;
-    const count = updateSmoke(ctx, mesh, 0, 5);
-    expect(count).toBeLessThanOrEqual(5);
+    const result = updateSmoke(ctx, mesh, 0, 5);
+    expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should drift smoke wisps over time', () => {
@@ -109,5 +111,12 @@ describe('smokeUpdater', () => {
     const intensity2 = color2.r + color2.g + color2.b;
 
     expect(intensity2).toBeLessThan(intensity1);
+  });
+
+  it('flags saturation when smoke exceeds capacity', () => {
+    ctx.time = 0.5;
+    const result = updateSmoke(ctx, mesh, 0, 1);
+    expect(result.count).toBeLessThanOrEqual(1);
+    expect(result.saturated).toBe(true);
   });
 });

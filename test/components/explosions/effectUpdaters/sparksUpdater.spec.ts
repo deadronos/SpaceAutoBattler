@@ -59,21 +59,23 @@ describe('sparksUpdater', () => {
 
   it('should not create sparks before delay', () => {
     ctx.time = 0.1;
-    const count = updateSparks(ctx, mesh, 0, 100);
-    expect(count).toBe(0);
+    const result = updateSparks(ctx, mesh, 0, 100);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should create multiple spark instances', () => {
     ctx.time = 0.3;
-    const count = updateSparks(ctx, mesh, 0, 100);
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(event.particles.sparks);
+    const result = updateSparks(ctx, mesh, 0, 100);
+    expect(result.count).toBeGreaterThan(0);
+    expect(result.count).toBeLessThanOrEqual(event.particles.sparks);
+    expect(result.saturated).toBe(false);
   });
 
   it('should respect capacity limits', () => {
     ctx.time = 0.3;
-    const count = updateSparks(ctx, mesh, 0, 5);
-    expect(count).toBeLessThanOrEqual(5);
+    const result = updateSparks(ctx, mesh, 0, 5);
+    expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should face camera', () => {
@@ -93,5 +95,12 @@ describe('sparksUpdater', () => {
     expect(dummy.quaternion.y).toBeCloseTo(camera.quaternion.y, 2);
     expect(dummy.quaternion.z).toBeCloseTo(camera.quaternion.z, 2);
     expect(dummy.quaternion.w).toBeCloseTo(camera.quaternion.w, 2);
+  });
+
+  it('marks saturation when sparks exceed capacity', () => {
+    ctx.time = 0.3;
+    const result = updateSparks(ctx, mesh, 0, 1);
+    expect(result.count).toBeLessThanOrEqual(1);
+    expect(result.saturated).toBe(true);
   });
 });

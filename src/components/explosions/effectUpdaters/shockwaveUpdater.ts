@@ -1,6 +1,6 @@
 import type { InstancedMesh } from 'three';
 import { clamp01, easeOutQuad, getCachedColor } from '../derived.js';
-import type { EffectUpdateContext, EffectUpdater } from './types.js';
+import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 
 /**
  * Updates shockwave effect instances.
@@ -10,13 +10,17 @@ export const updateShockwave: EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  _capacity: number
-): number => {
+  capacity: number,
+): EffectUpdateResult => {
   const { event, time, camera, dummy, color } = ctx;
 
   const shockwaveT = time - event.shockwave.delay;
   if (shockwaveT < 0 || shockwaveT > event.shockwave.duration) {
-    return 0;
+    return EMPTY_EFFECT_RESULT;
+  }
+
+  if (startIndex >= capacity) {
+    return { count: 0, saturated: true };
   }
 
   const phase = clamp01(shockwaveT / event.shockwave.duration);
@@ -34,5 +38,5 @@ export const updateShockwave: EffectUpdater = (
     .multiplyScalar(Math.max(0.2, 1 - phase * 0.9));
   mesh.setColorAt(startIndex, color);
 
-  return 1;
+  return { count: 1, saturated: false };
 };

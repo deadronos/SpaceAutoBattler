@@ -58,21 +58,23 @@ describe('debrisUpdater', () => {
 
   it('should not create debris instances before delay', () => {
     ctx.time = 0.1;
-    const count = updateDebris(ctx, mesh, 0, 100);
-    expect(count).toBe(0);
+    const result = updateDebris(ctx, mesh, 0, 100);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should create multiple debris instances after delay', () => {
     ctx.time = 0.3;
-    const count = updateDebris(ctx, mesh, 0, 100);
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(event.debris.count);
+    const result = updateDebris(ctx, mesh, 0, 100);
+    expect(result.count).toBeGreaterThan(0);
+    expect(result.count).toBeLessThanOrEqual(event.debris.count);
+    expect(result.saturated).toBe(false);
   });
 
   it('should respect capacity limits', () => {
     ctx.time = 0.3;
-    const count = updateDebris(ctx, mesh, 0, 5);
-    expect(count).toBeLessThanOrEqual(5);
+    const result = updateDebris(ctx, mesh, 0, 5);
+    expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should move debris away from explosion center', () => {
@@ -96,13 +98,21 @@ describe('debrisUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const count1 = updateDebris(ctx, mesh, 0, 100);
+    const result1 = updateDebris(ctx, mesh, 0, 100);
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 100);
-    const count2 = updateDebris(ctx2, mesh2, 0, 100);
+    const result2 = updateDebris(ctx2, mesh2, 0, 100);
 
-    expect(count1).toBe(count2);
+    expect(result1.count).toBe(result2.count);
+    expect(result1.saturated).toBe(result2.saturated);
+  });
+
+  it('marks saturation when debris exceed capacity', () => {
+    ctx.time = 0.3;
+    const result = updateDebris(ctx, mesh, 0, 1);
+    expect(result.count).toBeLessThanOrEqual(1);
+    expect(result.saturated).toBe(true);
   });
 });

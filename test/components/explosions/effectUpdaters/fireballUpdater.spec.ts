@@ -58,20 +58,23 @@ describe('fireballUpdater', () => {
 
   it('should not create fireball before delay', () => {
     ctx.time = 0.01;
-    const count = updateFireball(ctx, mesh, 0, 10);
-    expect(count).toBe(0);
+    const result = updateFireball(ctx, mesh, 0, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should create fireball after delay', () => {
     ctx.time = 0.1;
-    const count = updateFireball(ctx, mesh, 0, 10);
-    expect(count).toBe(1);
+    const result = updateFireball(ctx, mesh, 0, 10);
+    expect(result.count).toBe(1);
+    expect(result.saturated).toBe(false);
   });
 
   it('should not create fireball after duration ends', () => {
     ctx.time = 0.7;
-    const count = updateFireball(ctx, mesh, 0, 10);
-    expect(count).toBe(0);
+    const result = updateFireball(ctx, mesh, 0, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should transition color from hot to cool', () => {
@@ -105,5 +108,11 @@ describe('fireballUpdater', () => {
     const scale2 = dummy2.scale.x;
 
     expect(scale2).toBeLessThan(scale1);
+  });
+
+  it('reports saturation when start index exceeds capacity', () => {
+    const result = updateFireball(ctx, mesh, 10, 10);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(true);
   });
 });

@@ -58,21 +58,23 @@ describe('plasmaUpdater', () => {
 
   it('should not create plasma before delay', () => {
     ctx.time = 0.1;
-    const count = updatePlasma(ctx, mesh, 0, 100);
-    expect(count).toBe(0);
+    const result = updatePlasma(ctx, mesh, 0, 100);
+    expect(result.count).toBe(0);
+    expect(result.saturated).toBe(false);
   });
 
   it('should create multiple plasma instances', () => {
     ctx.time = 0.4;
-    const count = updatePlasma(ctx, mesh, 0, 100);
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(event.particles.plasma);
+    const result = updatePlasma(ctx, mesh, 0, 100);
+    expect(result.count).toBeGreaterThan(0);
+    expect(result.count).toBeLessThanOrEqual(event.particles.plasma);
+    expect(result.saturated).toBe(false);
   });
 
   it('should respect capacity limits', () => {
     ctx.time = 0.4;
-    const count = updatePlasma(ctx, mesh, 0, 5);
-    expect(count).toBeLessThanOrEqual(5);
+    const result = updatePlasma(ctx, mesh, 0, 5);
+    expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should move plasma plumes outward', () => {
@@ -94,13 +96,21 @@ describe('plasmaUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const count1 = updatePlasma(ctx, mesh, 0, 100);
+    const result1 = updatePlasma(ctx, mesh, 0, 100);
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 100);
-    const count2 = updatePlasma(ctx2, mesh2, 0, 100);
+    const result2 = updatePlasma(ctx2, mesh2, 0, 100);
 
-    expect(count1).toBe(count2);
+    expect(result1.count).toBe(result2.count);
+    expect(result1.saturated).toBe(result2.saturated);
+  });
+
+  it('flags saturation when plasma count exceeds capacity', () => {
+    ctx.time = 0.4;
+    const result = updatePlasma(ctx, mesh, 0, 1);
+    expect(result.count).toBeLessThanOrEqual(1);
+    expect(result.saturated).toBe(true);
   });
 });
