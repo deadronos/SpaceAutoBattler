@@ -1,13 +1,13 @@
 # src/types/index.ts
 
 Path: src/types/index.ts
-Last-Reviewed: 2025-09-21
+Last-Reviewed: 2025-10-05
 
-Purpose: Canonical TypeScript types for the project including `GameState` and public interfaces used across simulation and renderer.
+Purpose: Central re-export barrel for the project's TypeScript type modules. Use these canonical types across the repo to avoid local duplication.
 
-Key exports/symbols:
-- GameState type
-- Public interfaces for ships, bullets, and assets
+Key points:
+- `src/types/index.ts` re-exports types from more focused files. Notably, `GameState` is re-exported from `./simulation.js` (authoritative definition in `src/types/simulation.ts`).
+- Recommended import pattern: Prefer `import { GameState } from 'src/types';` (the barrel) in higher-level code, but consult `src/types/simulation.ts` when you need to inspect the canonical field list.
 
-Notes:
-- Use these types in all modules; avoid duplicate local type definitions.
+Verification:
+- Confirmed the re-export exists and `GameState`'s authoritative declaration remains in `src/types/simulation.ts`.
