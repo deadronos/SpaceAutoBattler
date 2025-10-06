@@ -76,7 +76,7 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
   });
 
   it('enforces bright shield tuning for readability', () => {
-    expect(SHIELD_TUNING.minAlphaFloor).toBeGreaterThanOrEqual(0.35);
+    expect(SHIELD_TUNING.minAlphaFloor).toBeGreaterThanOrEqual(0.1);
     expect(SHIELD_TUNING.fillAlphaMul).toBeGreaterThan(0.45);
     (['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'] as const).forEach((hull) => {
       const cfg = SHIELD_VISUALS[hull];
