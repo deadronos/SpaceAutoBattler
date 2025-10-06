@@ -113,11 +113,11 @@ export interface ShieldVisualSettings {
 // Tunable per-hull shield visuals; values are conservative defaults.
 export const SHIELD_VISUALS: Record<ShipHull, ShieldVisualSettings> = {
   // Default hulls inherit shieldScale from DEFAULTS; override per hull if desired
-  fighter: { margin: 1.1, hexScale: 58, edgeWidth: 0.26, maxAlpha: 0.85, materialKind: 'hex' },
-  corvette: { margin: 1.1, hexScale: 58, edgeWidth: 0.26, maxAlpha: 0.85, materialKind: 'hex' },
-  frigate: { margin: 1.12, hexScale: 58, edgeWidth: 0.26, maxAlpha: 0.85, materialKind: 'hex' },
-  destroyer: { margin: 1.14, hexScale: 60, edgeWidth: 0.28, maxAlpha: 0.9, materialKind: 'hex' },
-  carrier: { margin: 1.16, hexScale: 60, edgeWidth: 0.28, maxAlpha: 0.92, materialKind: 'hex' },
+  fighter: { margin: 1.1, hexScale: 80, edgeWidth: 0.26, maxAlpha: 0.6, materialKind: 'hex' },
+  corvette: { margin: 1.1, hexScale: 80, edgeWidth: 0.26, maxAlpha: 0.6, materialKind: 'hex' },
+  frigate: { margin: 1.12, hexScale: 80, edgeWidth: 0.26, maxAlpha: 0.6, materialKind: 'hex' },
+  destroyer: { margin: 1.12, hexScale: 80, edgeWidth: 0.26, maxAlpha: 0.6, materialKind: 'hex' },
+  carrier: { margin: 1.12, hexScale: 80, edgeWidth: 0.26, maxAlpha: 0.6, materialKind: 'hex' },
 };
 
 const DEFAULTS: Required<ShieldVisualSettings> = {
@@ -198,9 +198,9 @@ export const SHIELD_TUNING: ShieldTuning = {
   redBoostPower: 1.32,
   redBoostMultiplier: 1.45,
   redTint: '#ba2b2b',
-  edgeAlphaMul: 1.45,
-  fillAlphaMul: 0.6,
-  minAlphaFloor: 0.4,
+  edgeAlphaMul: 0.9,
+  fillAlphaMul: 0.2,
+  minAlphaFloor: 0.1,
   fillTintMul: 1.05,
 };
 
@@ -279,8 +279,8 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   rippleLife: 0.9,
   blendMode: 1,
   ignoreMaxAlpha: false,
-  colorMul: 0.5,
-  strength: 0.7,
+  colorMul: 1.5,
+  strength: 1.7,
   minRenderAmp: 0.001,
 };
 
@@ -397,7 +397,7 @@ export interface PostprocessingConfig {
 }
 
 export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
-  bloomThreshold: 0.1,
+  bloomThreshold: 0.8,
   bloomSmoothing: 0.001,
   bloomIntensity: 0.1,
   bloomIgnoreBackground: false,
@@ -405,18 +405,18 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
   bloomLayerStart: 11,
   bloomGroups: {
     default: {
-      threshold: 1.0,
+      threshold: 0.9,
       intensity: 0.5,
     },
     engines: {
       intensity: 10.35,
       smoothing: 0.008,
-      threshold: 0.9,
+      threshold: 0.8,
     },
     shields: {
-      intensity: 0.5,
+      intensity: 0.3,
       smoothing: 0.02,
-      threshold: 1.0,
+      threshold: 2.5,
     },
     projectiles: {
       intensity: 5.25,
