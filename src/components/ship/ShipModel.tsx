@@ -43,6 +43,14 @@ export function useHullMaterials(
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
         mats.forEach((m: any) => {
           if (m && m.color && typeof m.color.clone === 'function') {
+            // Ensure hull materials remain visible in the main pass by
+            // marking them as force-write. This prevents the selective
+            // bloom provider from disabling their colorWrite via
+            // registration races or overly-broad group registrations.
+            try {
+              if (!m.userData) m.userData = {};
+              (m.userData as any).__copilot_forceColorWrite = true;
+            } catch { /* defensive: ignore odd host objects */ }
             const entry: HullMaterial = {
               material: m,
               originalColor: m.color.clone(),

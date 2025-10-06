@@ -1,7 +1,8 @@
 # [TASK010] - Material & Texture Atlas for Instance-Friendly Materials
 
-**Status:** Not Started  
+**Status:** Completed
 **Added:** 2025-10-05
+**Updated:** 2025-10-05
 
 ## Original Request
 
@@ -30,5 +31,11 @@ Create instance-friendly materials and texture atlas tooling to reduce material/
 - Unit tests for material factory outputs and fallback behavior.
 - Visual smoke tests using atlased textures to validate parity.
 - Perf harness results showing reduced material binds where applicable.
+
+## Completion Notes
+
+- Extended `materialRegistry` with attribute-aware instance material resolution, new thruster/impostor registrations, and richer fallback telemetry.
+- Implemented runtime texture atlas helpers plus a CLI packer (`scripts/tools/texture-atlas.mjs`) for building shared atlases.
+- Added unit tests covering atlas UV transforms and material manager fallbacks.
 
 ---
