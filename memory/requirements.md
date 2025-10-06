@@ -1,3 +1,9 @@
+## 2025-10-06 — Thruster Trail GPU Migration (TASK246)
+
+1. **WHEN** the `ParticleTrails` component initialises with GPU buffers enabled, **THE SYSTEM SHALL** allocate an `InstancedBufferGeometry` populated with spawn position, velocity, lifetime, and scale attributes sized to `PARTICLE_TRAILS_CONFIG.maxParticles`. *(Acceptance: `test/vitest/particle-trails-gpu.spec.tsx` mounts the component with injected resources and asserts each instanced attribute exists with the configured length.)*
+2. **WHEN** a ship's thrust command meets or exceeds the configured minimum throttle during a render frame, **THE SYSTEM SHALL** write the ship's thruster spawn data into the GPU instanced attribute ring buffer using deterministic jitter so the geometry `instanceCount` increases and spawn arrays record the emission timestamp. *(Acceptance: the same Vitest spec advances a frame with a thrusting fighter and verifies the ring buffer slot stores the expected spawn time while `instanceCount` increments.)*
+3. **WHEN** the render loop advances, **THE SYSTEM SHALL** update the shader time uniform on each frame so GPU-driven fading derives from the current clock value without CPU-side particle iteration. *(Acceptance: the Vitest spec drives successive frames and confirms the material `uTime` uniform tracks the clock time monotonically.)*
+
 ## 2025-10-05 — Ship LOD Visibility Regression
 
 1. **WHEN** a ship crosses the configured near/far threshold because either its transform or the active camera position changed, **THE SYSTEM SHALL** recompute the LOD partition within the next render frame so full hull meshes mount for near ships. *(Acceptance: `test/components/lod/ShipLODManager.spec.ts` verifies the new partition refresh helper promotes ships to the near cohort after a simulated camera move.)*

@@ -68,8 +68,10 @@ describe('Thruster glow enhancement', () => {
     
     // Check for particle system functionality
     expect(txt).toContain('ParticleTrails');
-    expect(txt).toContain('InstancedMesh');
-    expect(txt).toContain('computeThrusterAnchors');
+    expect(txt).toContain('createParticleTrailResources');
+    expect(txt).toContain('InstancedBufferGeometry');
+    expect(txt).toContain('ShaderMaterial');
+    expect(txt).toContain('computeThrusterAnchorsWorld');
     expect(txt).toContain('throttle');
     
     // Check it's integrated in Battlefield
