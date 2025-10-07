@@ -6,6 +6,8 @@ import CopyWebpackPlugin from 'copy-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import webpack from 'webpack';
+import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
+import { defineReactCompilerLoaderOption, reactCompilerLoader } from 'react-compiler-webpack';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +42,15 @@ export default (env = {}, argv) => {
       rules: [
         {
           test: /\.tsx?$/,
-          use: 'ts-loader',
+          use: [
+           {loader:'ts-loader', options: { transpileOnly: true }},
+           {loader:reactCompilerLoader,
+            options:defineReactCompilerLoaderOption({
+
+            })
+
+           } 
+          ],
           exclude: /node_modules/
         },
         {
@@ -135,6 +145,12 @@ export default (env = {}, argv) => {
           }
         } catch {
           // swallow; keep original request if anything goes wrong
+        }
+      }),
+      new ForkTsCheckerWebpackPlugin({
+        async: false,
+        typescript: {
+          configFile: path.resolve(__dirname, 'tsconfig.json')
         }
       })
     ],
