@@ -40,18 +40,35 @@ export default (env = {}, argv) => {
     },
     module: {
       rules: [
+        // Rule A: avoid running reactCompilerLoader on renderer and ship-related files
         {
           test: /\.tsx?$/,
+          include: [
+            path.resolve(__dirname, 'src', 'renderer'),
+            path.resolve(__dirname, 'src', 'components', 'ship')
+          ],
           use: [
-           {loader:'ts-loader', options: { transpileOnly: true }},
-           {loader:reactCompilerLoader,
-            options:defineReactCompilerLoaderOption({
-
-            })
-
-           } 
+            { loader: 'ts-loader', options: { transpileOnly: true } }
           ],
           exclude: /node_modules/
+        },
+        // Rule B: apply reactCompilerLoader for the rest of the codebase
+        {
+          test: /\.tsx?$/,
+          exclude: [
+            path.resolve(__dirname, 'src', 'renderer'),
+            path.resolve(__dirname, 'src', 'components', 'ship'),
+            /node_modules/
+          ],
+          use: [
+            { loader: 'ts-loader', options: { transpileOnly: true } },
+            { loader: reactCompilerLoader, options: defineReactCompilerLoaderOption({
+              // minimal options; keep the transform conservative while we test
+              reactRuntime: 'automatic',
+              // preserve JSX primitives and object identity where possible
+              preservePrimitives: true
+            }) }
+          ]
         },
         {
           test: /\.css$/i,
