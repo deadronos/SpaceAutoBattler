@@ -111,12 +111,36 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
       mesh.position.set(0, 0, 0);
       mesh.quaternion.identity();
       
+      // Defensive clamp: prevent accidental enormous shield scales by
+      // limiting the per-axis multiplier to a conservative maximum.
       const r = radius ?? FALLBACK_SHIELD_RADIUS_BY_HULL[entity.ship.hull] ?? 2.0;
       const vs = getShieldVisuals(entity.ship.hull);
-      const sx = Math.max(0.05, vs.shieldScale.x) * r;
-      const sy = Math.max(0.05, vs.shieldScale.y) * r;
-      const sz = Math.max(0.05, vs.shieldScale.z) * r;
+      const MIN_MULT = 0.05;
+      const MAX_MULT = 8.0; // allow up to 8x the model radius as a guard
+      const origMult = { x: vs.shieldScale.x, y: vs.shieldScale.y, z: vs.shieldScale.z };
+      const clampMult = (v: number) => Math.max(MIN_MULT, Math.min(typeof v === 'number' && Number.isFinite(v) ? v : MIN_MULT, MAX_MULT));
+      const mx = clampMult(origMult.x);
+      const my = clampMult(origMult.y);
+      const mz = clampMult(origMult.z);
+      const sx = mx * r;
+      const sy = my * r;
+      const sz = mz * r;
       mesh.scale.set(sx, sy, sz);
+
+      // If any multiplier was clamped, warn so we can track regressions.
+      if (mx !== origMult.x || my !== origMult.y || mz !== origMult.z) {
+        try {
+          console.warn(`[ShieldBubble] Clamped shieldScale for ship ${entity.id} (${entity.ship.hull})`, {
+            radius: r,
+            originalShieldScale: origMult,
+            clampedMult: { x: mx, y: my, z: mz },
+            finalScale: { x: sx, y: sy, z: sz }
+          });
+        } catch (e) {
+          // ignore logging failures in odd environments
+          void e;
+        }
+      }
     }
 
     if (mats && mats.length > 0) {

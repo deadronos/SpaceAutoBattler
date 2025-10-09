@@ -6,6 +6,8 @@ import CopyWebpackPlugin from 'copy-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import webpack from 'webpack';
+import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
+import { defineReactCompilerLoaderOption, reactCompilerLoader } from 'react-compiler-webpack';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +17,27 @@ const VITEST_DEBUG_BENCH = typeof process !== 'undefined' && Boolean(process.env
 export default (env = {}, argv) => {
   const isProd = argv.mode === 'production';
   const shouldAnalyze = env.ANALYZE === 'true' || env.ANALYZE === true;
+
+  // Build a list of paths to exclude from reactCompiler transforms. This
+  // can be overridden via REACT_COMPILER_EXCLUDE env var (comma-separated,
+  // relative to repo root). Defaults to renderer and ship components.
+  const defaultExcludes = [
+    path.resolve(__dirname, 'src', 'renderer'),
+    path.resolve(__dirname, 'src', 'components', 'ship')
+  ];
+  const envExcludes = (process.env.REACT_COMPILER_EXCLUDE || '').split(',').map(s => s.trim()).filter(Boolean);
+  const excludedPaths = envExcludes.length > 0 ? envExcludes.map(p => path.resolve(__dirname, p)) : defaultExcludes;
+
+  // Build a list of paths to explicitly include for reactCompiler transforms. This
+  // can be useful for targeting specific files or directories. If present, only
+  // these paths will be considered for transformation by the reactCompiler.
+  const envIncludes = (process.env.REACT_COMPILER_INCLUDE || '').split(',').map(s => s.trim()).filter(Boolean);
+  const includePaths = envIncludes.length > 0 ? envIncludes.map(p => path.resolve(__dirname, p)) : null;
+
+  // Helpers used for rules
+  const excludedMatcher = (p) => excludedPaths.some(ep => p.startsWith(ep));
+  const includedMatcher = (p) => includePaths ? includePaths.some(ip => p.startsWith(ip)) : false;
+
   return {
     mode: isProd ? 'production' : 'development',
     entry: {
@@ -38,10 +61,29 @@ export default (env = {}, argv) => {
     },
     module: {
       rules: [
+        // Rule A: avoid running reactCompilerLoader on explicitly excluded files
         {
           test: /\.tsx?$/,
-          use: 'ts-loader',
+          include: excludedPaths,
+          use: [
+            { loader: 'ts-loader', options: { transpileOnly: true } }
+          ],
           exclude: /node_modules/
+        },
+        // Rule B: apply reactCompilerLoader for the rest of the codebase
+        {
+          test: /\.tsx?$/,
+          // If explicit REACT_COMPILER_INCLUDE is provided, only transform those paths
+          ...(includePaths ? { include: includePaths } : { exclude: [ ...excludedPaths, /node_modules/ ] }),
+           use: [
+             { loader: 'ts-loader', options: { transpileOnly: true } },
+             { loader: reactCompilerLoader, options: defineReactCompilerLoaderOption({
+               // minimal options; keep the transform conservative while we test
+               reactRuntime: 'automatic',
+               // preserve JSX primitives and object identity where possible
+               preservePrimitives: true
+             }) }
+           ]
         },
         {
           test: /\.css$/i,
@@ -135,6 +177,12 @@ export default (env = {}, argv) => {
           }
         } catch {
           // swallow; keep original request if anything goes wrong
+        }
+      }),
+      new ForkTsCheckerWebpackPlugin({
+        async: false,
+        typescript: {
+          configFile: path.resolve(__dirname, 'tsconfig.json')
         }
       })
     ],
