@@ -53,7 +53,7 @@ export function createHarnessShip(
       cooldown: 0,
       fireRate: spec.fireRate ?? 0.8,
       damage: 8,
-      projectileSpeed: spec.projectileSpeed ?? 30,
+  projectileSpeed: spec.projectileSpeed ?? 40,
       range: spec.range ?? 260,
       speed: spec.speed ?? 40,
       bulletType: spec.bulletType ?? 'bullet:laser',
