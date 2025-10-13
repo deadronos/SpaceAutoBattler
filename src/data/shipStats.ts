@@ -46,6 +46,14 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         bob: { enabled: false, baseAmp: 0.06, freq: 1.2, speedScale: 1.0, maxAmp: 0.2 },
       },
     },
+    sensor: {
+      detectionRange: 520,
+      trackingRange: 680,
+      coneAngle: Math.PI * 0.9,
+      falloff: 0.55,
+    },
+    stealth: 0.25,
+    sensorSignature: 0.85,
   },
   corvette: {
     hull: 'corvette',
@@ -86,6 +94,14 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         bob: { enabled: false, baseAmp: 0.07, freq: 1.1, speedScale: 1.0, maxAmp: 0.25 },
       },
     },
+    sensor: {
+      detectionRange: 620,
+      trackingRange: 760,
+      coneAngle: Math.PI * 0.75,
+      falloff: 0.6,
+    },
+    stealth: 0.1,
+    sensorSignature: 1.05,
     turrets: [
       {
         offset: new Vector3(0.9, 0.2, 0.1),
@@ -154,6 +170,14 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         bob: { enabled: false, baseAmp: 0.08, freq: 1.0, speedScale: 1.0, maxAmp: 0.3 },
       },
     },
+    sensor: {
+      detectionRange: 700,
+      trackingRange: 860,
+      coneAngle: Math.PI * 0.65,
+      falloff: 0.65,
+    },
+    stealth: 0.05,
+    sensorSignature: 1.2,
     turrets: [
       {
         offset: new Vector3(1.2, 0.25, 0.0),
@@ -235,6 +259,14 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         bob: { enabled: false, baseAmp: 0.06, freq: 0.9, speedScale: 1.0, maxAmp: 0.25 },
       },
     },
+    sensor: {
+      detectionRange: 780,
+      trackingRange: 940,
+      coneAngle: Math.PI * 0.6,
+      falloff: 0.7,
+    },
+    stealth: 0,
+    sensorSignature: 1.5,
     turrets: [
       {
         offset: new Vector3(1.6, 0.3, -0.2),
@@ -355,6 +387,14 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
         bob: { enabled: false, baseAmp: 0.04, freq: 0.8, speedScale: 0.8, maxAmp: 0.18 },
       },
     },
+    sensor: {
+      detectionRange: 900,
+      trackingRange: 1100,
+      coneAngle: Math.PI * 0.55,
+      falloff: 0.75,
+    },
+    stealth: 0,
+    sensorSignature: 1.8,
     turrets: [
       {
         offset: new Vector3(2.0, 0.35, 0.0),

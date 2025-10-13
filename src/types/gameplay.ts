@@ -6,6 +6,17 @@ export type ShipHull = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carri
 
 export type StatusEffectTag = 'jammed' | 'shield-down' | 'engine-disrupted' | 'hacked';
 
+export interface SensorProfile {
+  /** Effective range in world units for acquiring new contacts. */
+  detectionRange: number;
+  /** Maximum range in world units to maintain an existing contact before it fades. */
+  trackingRange: number;
+  /** Sensor forward cone angle in radians. */
+  coneAngle: number;
+  /** Falloff factor (0..1) applied when tracking beyond detection range. */
+  falloff: number;
+}
+
 export interface TransformComponent {
   transform: {
     position: Vector3;
@@ -84,7 +95,13 @@ export interface MotionVisualConfig {
   /** Distance threshold that resets interpolation to avoid trails. */
   teleportDistance?: number;
   /** Optional bob settings — minimal safe defaults; amplitude is hull/unit aware. */
-  bob?: { enabled?: boolean; baseAmp?: number; freq?: number; speedScale?: number; maxAmp?: number };
+  bob?: {
+    enabled?: boolean;
+    baseAmp?: number;
+    freq?: number;
+    speedScale?: number;
+    maxAmp?: number;
+  };
   /** Whether to enable Rapier CCD for this hull's collider (opt-in). */
   enableCcd?: boolean;
 }
@@ -114,4 +131,10 @@ export interface ShipStats {
   turrets?: import('./combat.js').TurretSpec[];
   /** Motion characteristics for physics-based movement. */
   motion: MotionStats;
+  /** Baseline sensor profile used for detection and fog-of-war simulation. */
+  sensor: SensorProfile;
+  /** Intrinsic stealth modifier (0..1, higher = harder to detect). */
+  stealth?: number;
+  /** Relative detection signature (1 = baseline, >1 easier to detect). */
+  sensorSignature?: number;
 }
