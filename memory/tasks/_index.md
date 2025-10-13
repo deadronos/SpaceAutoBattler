@@ -13,6 +13,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## Completed
 
+- [TASK247](TASK247-version2-vision.md) — Authored Version 2.0 vision document outlining pillars, feature concepts, and validation plans. (2025-10-13)
 - [TASK242](TASK242-lint-compliance.md) - Restore lint compliance across config, hooks, and effect updaters. (2025-10-03)
 
 - [TASK241](TASK241-motion-pd-tuning.md) — Reduce AI bobbing with hull-specific motion tuning and documentation. (2025-10-03)
@@ -72,6 +73,4 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 ## Abandoned
 
 - _None tracked._
-
-
 

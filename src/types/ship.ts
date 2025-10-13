@@ -1,6 +1,13 @@
 import type { Vector3 } from 'three';
 import type { Collider, RigidBody } from './core.js';
-import type { Team, ShipHull, StatusEffectTag, TransformComponent, MotionStats } from './gameplay.js';
+import type {
+  Team,
+  ShipHull,
+  StatusEffectTag,
+  TransformComponent,
+  MotionStats,
+  SensorProfile,
+} from './gameplay.js';
 import type { DamageType } from './gameplay.js';
 import type {
   SubsystemType,
@@ -75,6 +82,13 @@ export interface ShipComponent {
   motion: MotionStats;
   /** Optional status effects applied to this ship for HUD overlays. */
   effects?: StatusEffectTag[];
+
+  /** Sensor performance characteristics for fog-of-war resolution. */
+  sensor: SensorProfile;
+  /** Intrinsic stealth modifier (0..1, higher = harder to detect). */
+  stealth?: number;
+  /** Relative detection signature (1 = baseline, >1 easier to detect). */
+  sensorSignature?: number;
 
   // Ship Progression System
   /** Experience points accumulated by this ship */

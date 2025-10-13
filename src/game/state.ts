@@ -15,6 +15,7 @@ import { unregisterTurret } from './turretRegistry.js';
 import { createDefaultMetrics, resetMetrics } from './metrics.js';
 import { AI_CONFIG, WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
 import { enqueuePostPhysicsMutation } from './simulationQueue.js';
+import { createDefaultDoctrineState } from './aiDoctrine.js';
 
 export async function createGameState(): Promise<GameState> {
   // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
@@ -111,6 +112,7 @@ export async function createGameState(): Promise<GameState> {
         escorts: new Map(),
       },
       metrics: createDefaultMetrics(),
+      doctrine: createDefaultDoctrineState(),
       interrupts: [],
       interruptState: {
         cooldownTick: new Map(),
@@ -118,6 +120,16 @@ export async function createGameState(): Promise<GameState> {
         lastDamageTick: -1,
         vipThreatAssignments: new Map(),
       },
+    },
+    sensors: {
+      lastUpdateTick: -1,
+      visibilityByTeam: {
+        blue: new Map(),
+        red: new Map(),
+      },
+      decayRate: 0.65,
+      threshold: 0.18,
+      staleDecay: 0.55,
     },
     blackboard: {
       tickIndex: 0,
@@ -145,6 +157,10 @@ export async function createGameState(): Promise<GameState> {
         red: new Map(),
       },
       focusFire: {
+        blue: new Map(),
+        red: new Map(),
+      },
+      visibleEnemies: {
         blue: new Map(),
         red: new Map(),
       },
@@ -279,8 +295,12 @@ export function spawnInitialFleets(state: GameState): void {
   const blueAnchorX = -halfSeparation;
   const redAnchorX = halfSeparation;
   const anchorYOffsetRange = SPAWN_CONFIG.anchorYRandomization ? verticalSpread * 0.5 : 0;
-  const blueAnchorY = SPAWN_CONFIG.anchorYRandomization ? (state.rng.next() - 0.5) * anchorYOffsetRange : 0;
-  const redAnchorY = SPAWN_CONFIG.anchorYRandomization ? (state.rng.next() - 0.5) * anchorYOffsetRange : 0;
+  const blueAnchorY = SPAWN_CONFIG.anchorYRandomization
+    ? (state.rng.next() - 0.5) * anchorYOffsetRange
+    : 0;
+  const redAnchorY = SPAWN_CONFIG.anchorYRandomization
+    ? (state.rng.next() - 0.5) * anchorYOffsetRange
+    : 0;
 
   formation.forEach((hull, index) => {
     const offset = index - (formation.length - 1) / 2;
@@ -352,7 +372,7 @@ export function resetGame(state: GameState): void {
   state.blackboard.teamPosture.red = 'hold';
   state.blackboard.allyCentroid.blue.set(0, 0, 0);
   state.blackboard.allyCentroid.red.set(0, 0, 0);
-  
+
   // Clear any queued post-step mutations now that the reset executed.
   state.simulation.postStepMutations.length = 0;
 }
@@ -370,7 +390,3 @@ export function requestReset(state: GameState): void {
   op.__resetTag = true;
   enqueuePostPhysicsMutation(state, op);
 }
-
-
-
-

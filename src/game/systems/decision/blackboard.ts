@@ -9,6 +9,11 @@ import type {
 import { AI_CONFIG } from '../../config.js';
 import { resolveBehaviorProfile } from '../../aiProfiles.js';
 import { SeededRng } from '../../../utils/rng.js';
+import {
+  ensureDoctrineState,
+  getDoctrineSquadDirectives,
+  getDoctrineThreatModifiers,
+} from '../../aiDoctrine.js';
 import { ensureInterruptState, queueInterrupt } from './interrupts.js';
 import { hashToInt } from './utils.js';
 
@@ -24,6 +29,7 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   const { blackboard } = state;
   const manager = state.ai;
   if (!manager) return;
+  ensureDoctrineState(manager);
   const interruptState = ensureInterruptState(manager);
   const vipAssignments = interruptState.vipThreatAssignments;
   const teamCounts = blackboard.teamCounts ?? (blackboard.teamCounts = { blue: 0, red: 0 });
@@ -32,7 +38,9 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   const seenVip = new Set<number>();
   const shipById = new Map<number, ShipEntity>();
   for (const ship of ships) shipById.set(ship.id, ship);
-  const centroid = blackboard.allyCentroid ?? (blackboard.allyCentroid = { blue: new Vector3(), red: new Vector3() });
+  const centroid =
+    blackboard.allyCentroid ??
+    (blackboard.allyCentroid = { blue: new Vector3(), red: new Vector3() });
   centroid.blue.set(0, 0, 0);
   centroid.red.set(0, 0, 0);
   let blueCount = 0;
@@ -45,6 +53,8 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   if (!blackboard.teamPriority) blackboard.teamPriority = { blue: [], red: [] };
   if (!blackboard.priorityIndex) blackboard.priorityIndex = { blue: new Map(), red: new Map() };
   if (!blackboard.focusFire) blackboard.focusFire = { blue: new Map(), red: new Map() };
+  if (!blackboard.visibleEnemies) blackboard.visibleEnemies = { blue: new Map(), red: new Map() };
+  const visibleEnemies = blackboard.visibleEnemies!;
   if (!blackboard.strengthRatio) blackboard.strengthRatio = { blue: 1, red: 1 };
   if (!blackboard.teamPosture) blackboard.teamPosture = { blue: 'hold', red: 'hold' };
 
@@ -78,12 +88,15 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
 
   for (let i = 0; i < shipsLength; i += 1) {
     const ship = ships[i];
+    const visibleMap = visibleEnemies[ship.ship.team];
+    const requireVisibility = visibleMap.size > 0;
     let bestDist = Number.POSITIVE_INFINITY;
     let bestId: number | undefined;
     for (let j = 0; j < shipsLength; j += 1) {
       if (i === j) continue;
       const other = ships[j];
       if (other.ship.team === ship.ship.team) continue;
+      if (requireVisibility && !visibleMap.has(other.id)) continue;
       const distSq = ship.transform.position.distanceToSquared(other.transform.position);
       if (distSq < bestDist) {
         bestDist = distSq;
@@ -132,34 +145,54 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   }
 
   const weights = AI_CONFIG.threatWeights;
-  const distanceScale = Math.max(1, weights.distanceScale ?? 600);
+  const baseDistanceScale = Math.max(1, weights.distanceScale ?? 600);
+  const threatModifiers: Record<Team, ReturnType<typeof getDoctrineThreatModifiers>> = {
+    blue: getDoctrineThreatModifiers(manager, 'blue'),
+    red: getDoctrineThreatModifiers(manager, 'red'),
+  };
 
   const buildPriority = (team: Team, enemyTeam: Team): void => {
     const list = blackboard.teamPriority[team];
     const indexMap = blackboard.priorityIndex[team];
     const focusMap = blackboard.focusFire[team];
     const centroidVec = blackboard.allyCentroid[team];
+    const mods = threatModifiers[team];
+    const visibilityMap = visibleEnemies[team];
+    const requireVisibility = visibilityMap.size > 0;
+    const distanceScale = Math.max(1, baseDistanceScale * (mods?.distanceScaleMultiplier ?? 1));
+    const focusPenaltyScalar = weights.focusPenalty * (mods?.focusPenaltyMultiplier ?? 1);
+    const vipBonusValue = weights.vipBonus * (mods?.vipBonusMultiplier ?? 1);
     for (let i = 0; i < shipsLength; i += 1) {
       const enemy = ships[i];
       if (enemy.ship.team !== enemyTeam) continue;
+      if (requireVisibility && !visibilityMap.has(enemy.id)) continue;
+      const visibility = visibilityMap.get(enemy.id);
       const distanceSq = enemy.transform.position.distanceToSquared(centroidVec);
       const distance = Math.sqrt(distanceSq);
       const distanceWeight = 1 / (1 + distance / distanceScale);
-      const hullWeight = weights.hull[enemy.ship.hull as keyof typeof weights.hull] ?? 1;
+      const hullBase = weights.hull[enemy.ship.hull as keyof typeof weights.hull] ?? 1;
+      const hullBias = mods?.hullBiasAdd?.[enemy.ship.hull] ?? 0;
+      const hullWeight = Math.max(0.1, hullBase + hullBias);
       const hpWeight = enemy.ship.hp * weights.hpScalar;
       let vipThreat = 0;
       for (const [vipId, threatId] of blackboard.threatToVip.entries()) {
         if (threatId !== enemy.id) continue;
         const vipEntity = shipById.get(vipId);
         if (vipEntity && vipEntity.ship.team === team) {
-          vipThreat += weights.vipBonus;
+          vipThreat += vipBonusValue;
         }
       }
       const focusLoad = focusMap.get(enemy.id) ?? 0;
-      const focusPenalty = focusLoad > 0 ? focusLoad * weights.focusPenalty : 0;
+      const focusPenalty = focusLoad > 0 ? focusLoad * focusPenaltyScalar : 0;
       const baseThreat = hullWeight + hpWeight + vipThreat;
       const adjustedThreat = Math.max(0.1, baseThreat - focusPenalty);
-      const threat = adjustedThreat * distanceWeight;
+      const detectionWeight = visibility
+        ? Math.max(0.35, 0.6 + visibility.strength * 0.6) * (visibility.occluded ? 0.85 : 1)
+        : requireVisibility
+          ? 0
+          : 1;
+      if (detectionWeight <= 0) continue;
+      const threat = adjustedThreat * distanceWeight * detectionWeight;
       list.push({ id: enemy.id, threat, distanceSq, focusLoad });
     }
 
@@ -184,8 +217,19 @@ export function refreshBlackboard(state: GameState, ships: ShipEntity[]): void {
   blackboard.strengthRatio.red = redStrength;
   blackboard.teamPosture.blue = resolvePosture(blueStrength);
   blackboard.teamPosture.red = resolvePosture(redStrength);
+  const directivesBlue = getDoctrineSquadDirectives(manager, 'blue');
+  const directivesRed = getDoctrineSquadDirectives(manager, 'red');
+  if (directivesBlue?.postureOverride) {
+    blackboard.teamPosture.blue = directivesBlue.postureOverride;
+  }
+  if (directivesRed?.postureOverride) {
+    blackboard.teamPosture.red = directivesRed.postureOverride;
+  }
 
-  if (blackboard.verticalDispersion && blackboard.verticalDispersion.lastUpdateTick !== blackboard.tickIndex) {
+  if (
+    blackboard.verticalDispersion &&
+    blackboard.verticalDispersion.lastUpdateTick !== blackboard.tickIndex
+  ) {
     blackboard.verticalDispersion.positionYSamples.length = 0;
     blackboard.verticalDispersion.headingYSamples.length = 0;
     blackboard.verticalDispersion.lastUpdateTick = blackboard.tickIndex;
@@ -236,11 +280,29 @@ export function assignTeamRoles(state: GameState, ships: ShipEntity[]): void {
     const pool = teamEscorts[team].sort(compareById);
     const vipCount = vips.length;
     if (vipCount === 0) continue;
-    for (let i = 0; i < pool.length; i += 1) {
+    const directives = getDoctrineSquadDirectives(state.ai, team);
+    const ratio = directives?.escortReserveRatio;
+    let assignable = pool.length;
+    if (ratio != null) {
+      const clamped = Math.max(0, Math.min(1, ratio));
+      if (clamped <= 0) {
+        assignable = 0;
+      } else {
+        assignable = Math.max(1, Math.round(pool.length * clamped));
+        assignable = Math.min(pool.length, assignable);
+      }
+    }
+    if (assignable === 0) continue;
+    for (let i = 0; i < assignable; i += 1) {
       const escort = pool[i];
       const vip = vips[i % vipCount];
-      const escortProfile = escort.ai ? resolveBehaviorProfile(escort.ai.profileId) : resolveBehaviorProfile('escort');
-      const radiusBase = Math.max(30, (escortProfile.desiredRange[0] + escortProfile.desiredRange[1]) * 0.33);
+      const escortProfile = escort.ai
+        ? resolveBehaviorProfile(escort.ai.profileId)
+        : resolveBehaviorProfile('escort');
+      const radiusBase = Math.max(
+        30,
+        (escortProfile.desiredRange[0] + escortProfile.desiredRange[1]) * 0.33,
+      );
       const offset = computeEscortShellOffset(vip.id, i, pool.length, radiusBase);
       escorts.set(escort.id, {
         vipId: vip.id,

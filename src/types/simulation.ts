@@ -1,7 +1,7 @@
 import type { World as ECSWorld } from 'miniplex';
 import type { RapierModule, RapierWorld, EventQueue } from './core.js';
 import type { GameEntity, GameQueries, TurretEntity, ProgressionEvent } from './ship.js';
-import type { AIManagerState, AIBlackboard } from './ai.js';
+import type { AIManagerState, AIBlackboard, SensorState } from './ai.js';
 import type { ExplosionEvent } from './renderer.js';
 import type { SeededRng } from '../utils/rng.js';
 
@@ -92,6 +92,7 @@ export interface GameState {
   /** Simulation clock bookkeeping used for fixed-step integration and interpolation. */
   simulation: SimulationClock;
   ai: AIManagerState;
+  sensors?: SensorState;
   blackboard: AIBlackboard;
   /** Flags mirrored from the UI store to keep deterministic playback. */
   uiFlags: HudUiFlags;

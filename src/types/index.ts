@@ -21,6 +21,7 @@ export type {
   MotionSmoothingConfig,
   DamageType,
   ShipStats,
+  SensorProfile,
 } from './gameplay.js';
 
 // Combat types
@@ -89,6 +90,15 @@ export type {
   AIKpiSummary,
   AIManagerState,
   AIMetrics,
+  DoctrineCardId,
+  DoctrineCard,
+  DoctrineState,
+  DoctrineProfileModifiers,
+  DoctrineThreatModifiers,
+  DoctrineSquadDirectives,
+  DoctrineSensorModifiers,
+  SensorVisibility,
+  SensorState,
 } from './ai.js';
 
 // Renderer types
