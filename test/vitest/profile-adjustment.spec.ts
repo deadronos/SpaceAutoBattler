@@ -4,18 +4,28 @@ import { AI_CONFIG } from '../../src/game/config.js';
 import type { GameState, ShipEntity, BehaviorProfile } from '../../src/types/index.js';
 
 describe('Profile Adjustment', () => {
-  const mockState = {} as GameState;
+  const mockState = {
+    ai: {
+      tickIndex: 0,
+      tickInterval: 0.5,
+      teams: {
+        blue: {
+          units: [],
+        },
+      },
+    },
+  } as unknown as GameState;
   
   const mockShip = {
-    ship: { hull: 'fighter' },
+    ship: { hull: 'fighter', team: 'blue' },
   } as ShipEntity;
 
   const mockCarrierShip = {
-    ship: { hull: 'carrier' },
+    ship: { hull: 'carrier', team: 'blue' },
   } as ShipEntity;
 
   const mockDestroyerShip = {
-    ship: { hull: 'destroyer' },
+    ship: { hull: 'destroyer', team: 'blue' },
   } as ShipEntity;
 
   const baseProfile: BehaviorProfile = {
@@ -30,14 +40,19 @@ describe('Profile Adjustment', () => {
   };
 
   describe('getEffectiveProfile', () => {
-    it('returns base profile when range policy is not v0.1.1-exp', () => {
+    it('applies doctrine modifiers when range policy is default', () => {
       const originalPolicy = AI_CONFIG.rangePolicy;
       AI_CONFIG.rangePolicy = 'default';
-      
+
       const result = getEffectiveProfile(mockState, mockShip, baseProfile);
-      
-      expect(result).toBe(baseProfile);
-      
+
+      expect(result).not.toBe(baseProfile);
+      expect(result.desiredRange).toEqual([110, 210]);
+      expect(result.aggression).toBeCloseTo(0.63, 5);
+      expect(result.patience).toBeCloseTo(0.72, 5);
+      expect(result.engagementBias).toBe(4);
+      expect(result.bandPreference).toBe('mid');
+
       AI_CONFIG.rangePolicy = originalPolicy;
     });
 
@@ -52,7 +67,7 @@ describe('Profile Adjustment', () => {
 
       const result = getEffectiveProfile(mockState, mockShip, artilleryProfile);
       
-      expect(result.desiredRange).toEqual([130, 250]); // +30, +50
+      expect(result.desiredRange).toEqual([140, 260]); // +30, +50 then doctrine +10
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -68,8 +83,8 @@ describe('Profile Adjustment', () => {
 
       const result = getEffectiveProfile(mockState, mockShip, brawlerProfile);
       
-      // min = max(20, 100-20) = 80, max = max(80+40, 200-10) = 190
-      expect(result.desiredRange).toEqual([80, 190]);
+      // min = max(20, 100-20) = 80, max = max(80+40, 200-10) = 190, doctrine offset +10
+      expect(result.desiredRange).toEqual([90, 200]);
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -85,8 +100,8 @@ describe('Profile Adjustment', () => {
 
       const result = getEffectiveProfile(mockState, mockShip, escortProfile);
       
-      // min = max(15, 100-10) = 90, max = max(90+40, 200) = 200
-      expect(result.desiredRange).toEqual([90, 200]);
+      // min = max(15, 100-10) = 90, max = max(90+40, 200) = 200, doctrine offset +10
+      expect(result.desiredRange).toEqual([100, 210]);
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -102,7 +117,7 @@ describe('Profile Adjustment', () => {
 
       const result = getEffectiveProfile(mockState, mockShip, kiterProfile);
       
-      expect(result.desiredRange).toEqual([110, 230]); // +10, +30
+      expect(result.desiredRange).toEqual([120, 240]); // +10, +30 then doctrine +10
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -113,7 +128,7 @@ describe('Profile Adjustment', () => {
       
       const result = getEffectiveProfile(mockState, mockCarrierShip, baseProfile);
       
-      expect(result.desiredRange).toEqual([90, 220]); // brawler [80,190] + carrier [+10,+30]
+      expect(result.desiredRange).toEqual([100, 230]); // brawler [80,190] + carrier [+10,+30] then doctrine +10
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -124,7 +139,7 @@ describe('Profile Adjustment', () => {
       
       const result = getEffectiveProfile(mockState, mockDestroyerShip, baseProfile);
       
-      expect(result.desiredRange).toEqual([90, 220]); // brawler [80,190] + destroyer [+10,+30]
+      expect(result.desiredRange).toEqual([100, 230]); // brawler [80,190] + destroyer [+10,+30] then doctrine +10
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -141,6 +156,7 @@ describe('Profile Adjustment', () => {
       const result = getEffectiveProfile(mockState, mockShip, narrowProfile);
       
       expect(result.desiredRange[1] - result.desiredRange[0]).toBeGreaterThanOrEqual(40);
+      expect(result.desiredRange).toEqual([90, 130]);
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -157,6 +173,7 @@ describe('Profile Adjustment', () => {
       const result = getEffectiveProfile(mockState, mockShip, lowProfile);
       
       expect(result.desiredRange[0]).toBeGreaterThanOrEqual(10);
+      expect(result.desiredRange).toEqual([30, 70]);
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -173,18 +190,7 @@ describe('Profile Adjustment', () => {
       const result = getEffectiveProfile(mockState, mockShip, invalidProfile);
       
       expect(result.desiredRange[1]).toBeGreaterThan(result.desiredRange[0]);
-      
-      AI_CONFIG.rangePolicy = originalPolicy;
-    });
-
-    it('returns same profile when no changes needed', () => {
-      const originalPolicy = AI_CONFIG.rangePolicy;
-      AI_CONFIG.rangePolicy = 'default'; // Not v0.1.1-exp, so no changes
-      
-      const result = getEffectiveProfile(mockState, mockShip, baseProfile);
-      
-      // Should return the same profile object when no changes
-      expect(result).toBe(baseProfile);
+      expect(result.desiredRange).toEqual([190, 230]);
       
       AI_CONFIG.rangePolicy = originalPolicy;
     });
@@ -192,17 +198,17 @@ describe('Profile Adjustment', () => {
     it('combines style and hull adjustments', () => {
       const originalPolicy = AI_CONFIG.rangePolicy;
       AI_CONFIG.rangePolicy = 'v0.1.1-exp';
-      
+
       const artilleryProfile: BehaviorProfile = {
         ...baseProfile,
         style: 'artillery',
       };
 
       const result = getEffectiveProfile(mockState, mockCarrierShip, artilleryProfile);
-      
-      // Artillery: +30, +50; Carrier: +10, +30; Total: +40, +80
-      expect(result.desiredRange).toEqual([140, 280]);
-      
+
+      // Artillery: +30, +50; Carrier: +10, +30; Doctrine: +10, +10; Total: +50, +90
+      expect(result.desiredRange).toEqual([150, 290]);
+
       AI_CONFIG.rangePolicy = originalPolicy;
     });
   });

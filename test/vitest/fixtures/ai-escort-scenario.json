@@ -6,8 +6,8 @@
     {
       "tick": 1,
       "posture": {
-        "blue": "retreat",
-        "red": "aggressive"
+        "blue": "hold",
+        "red": "hold"
       },
       "commands": [
         {
@@ -22,7 +22,7 @@
             -0.124
           ],
           "lod": 0,
-          "score": 1312.8
+          "score": 1367.6
         },
         {
           "id": 2,
@@ -32,11 +32,11 @@
           "fire": false,
           "heading": [
             1,
-            0.169,
+            0.14,
             0
           ],
           "lod": 1,
-          "score": 1576
+          "score": 1601.4
         },
         {
           "id": 3,
@@ -50,7 +50,7 @@
             -0.212
           ],
           "lod": 0,
-          "score": 1288
+          "score": 1355.8
         },
         {
           "id": 4,
@@ -64,7 +64,7 @@
             0.124
           ],
           "lod": 1,
-          "score": 1339.7
+          "score": 1103.3
         },
         {
           "id": 5,
@@ -78,7 +78,7 @@
             -0.243
           ],
           "lod": 1,
-          "score": 1476.6
+          "score": 883.8
         }
       ],
       "positions": [
@@ -127,15 +127,15 @@
     {
       "tick": 2,
       "posture": {
-        "blue": "retreat",
-        "red": "aggressive"
+        "blue": "hold",
+        "red": "hold"
       },
       "commands": [
         {
           "id": 1,
           "intent": "Attack",
           "targetId": 4,
-          "thrust": 0.35,
+          "thrust": 0.6,
           "fire": true,
           "heading": [
             0.992,
@@ -143,7 +143,7 @@
             -0.124
           ],
           "lod": 0,
-          "score": 1147.4
+          "score": 1201.3
         },
         {
           "id": 2,
@@ -153,11 +153,11 @@
           "fire": false,
           "heading": [
             1,
-            0.169,
+            0.14,
             0
           ],
           "lod": 1,
-          "score": 1576
+          "score": 1601.4
         },
         {
           "id": 3,
@@ -171,7 +171,7 @@
             -0.212
           ],
           "lod": 0,
-          "score": 1216.3
+          "score": 1296.2
         },
         {
           "id": 4,
@@ -185,7 +185,7 @@
             0.124
           ],
           "lod": 1,
-          "score": 1339.7
+          "score": 1103.3
         },
         {
           "id": 5,
@@ -199,7 +199,7 @@
             -0.243
           ],
           "lod": 1,
-          "score": 1476.6
+          "score": 883.8
         }
       ],
       "positions": [
@@ -214,8 +214,8 @@
         {
           "id": 2,
           "position": [
-            -55.07,
-            0.833,
+            -55.049,
+            0.695,
             -40
           ]
         },
@@ -248,15 +248,15 @@
     {
       "tick": 3,
       "posture": {
-        "blue": "retreat",
-        "red": "aggressive"
+        "blue": "hold",
+        "red": "hold"
       },
       "commands": [
         {
           "id": 1,
           "intent": "Attack",
           "targetId": 4,
-          "thrust": 0.35,
+          "thrust": 0.6,
           "fire": true,
           "heading": [
             0.992,
@@ -264,7 +264,7 @@
             -0.124
           ],
           "lod": 0,
-          "score": 1096.2
+          "score": 1149
         },
         {
           "id": 2,
@@ -274,11 +274,11 @@
           "fire": false,
           "heading": [
             1,
-            0.164,
+            0.137,
             0.008
           ],
           "lod": 1,
-          "score": 1432.6
+          "score": 1457.9
         },
         {
           "id": 3,
@@ -292,7 +292,7 @@
             -0.212
           ],
           "lod": 0,
-          "score": 1258.7
+          "score": 1350.6
         },
         {
           "id": 4,
@@ -306,7 +306,7 @@
             0.213
           ],
           "lod": 1,
-          "score": 1654.7
+          "score": 1418.4
         },
         {
           "id": 5,
@@ -320,23 +320,23 @@
             -0.113
           ],
           "lod": 1,
-          "score": 1826.9
+          "score": 1164
         }
       ],
       "positions": [
         {
           "id": 1,
           "position": [
-            2.776,
-            0.106,
-            -0.347
+            3.768,
+            0.144,
+            -0.471
           ]
         },
         {
           "id": 2,
           "position": [
-            -50.14,
-            1.666,
+            -50.097,
+            1.391,
             -40
           ]
         },
@@ -369,8 +369,8 @@
     {
       "tick": 4,
       "posture": {
-        "blue": "retreat",
-        "red": "aggressive"
+        "blue": "hold",
+        "red": "hold"
       },
       "commands": [
         {
@@ -385,7 +385,7 @@
             -0.124
           ],
           "lod": 0,
-          "score": 1046.5
+          "score": 1096.9
         },
         {
           "id": 2,
@@ -395,11 +395,11 @@
           "fire": false,
           "heading": [
             1,
-            0.164,
+            0.137,
             0.008
           ],
           "lod": 1,
-          "score": 1432.6
+          "score": 1457.9
         },
         {
           "id": 3,
@@ -413,7 +413,7 @@
             -0.212
           ],
           "lod": 0,
-          "score": 1301.2
+          "score": 1405.1
         },
         {
           "id": 4,
@@ -427,7 +427,7 @@
             0.213
           ],
           "lod": 1,
-          "score": 1654.7
+          "score": 1418.4
         },
         {
           "id": 5,
@@ -441,24 +441,24 @@
             -0.113
           ],
           "lod": 1,
-          "score": 1826.9
+          "score": 1164
         }
       ],
       "positions": [
         {
           "id": 1,
           "position": [
-            4.165,
-            0.159,
-            -0.521
+            6.148,
+            0.235,
+            -0.768
           ]
         },
         {
           "id": 2,
           "position": [
-            -45.206,
-            2.476,
-            -39.959
+            -45.143,
+            2.068,
+            -39.958
           ]
         },
         {
@@ -490,8 +490,8 @@
     {
       "tick": 5,
       "posture": {
-        "blue": "retreat",
-        "red": "aggressive"
+        "blue": "hold",
+        "red": "hold"
       },
       "commands": [
         {
@@ -506,7 +506,7 @@
             -0.124
           ],
           "lod": 0,
-          "score": 994.3
+          "score": 1044.7
         },
         {
           "id": 2,
@@ -516,11 +516,11 @@
           "fire": false,
           "heading": [
             1,
-            0.155,
+            0.128,
             0.02
           ],
           "lod": 1,
-          "score": 1375.9
+          "score": 1401.1
         },
         {
           "id": 3,
@@ -534,51 +534,51 @@
             -0.212
           ],
           "lod": 0,
-          "score": 1343.6
+          "score": 1459.6
         },
         {
           "id": 4,
-          "intent": "Intercept",
+          "intent": "Attack",
           "targetId": 1,
           "thrust": 1,
-          "fire": true,
+          "fire": false,
           "heading": [
             -0.994,
             -0.063,
             0.113
           ],
           "lod": 0,
-          "score": 1256
+          "score": 1032.4
         },
         {
           "id": 5,
-          "intent": "Intercept",
+          "intent": "Attack",
           "targetId": 1,
-          "thrust": 1,
+          "thrust": 0.35,
           "fire": false,
           "heading": [
-            -0.969,
+            -0.968,
             -0.023,
-            -0.249
+            -0.25
           ],
           "lod": 1,
-          "score": 1410.4
+          "score": 942.1
         }
       ],
       "positions": [
         {
           "id": 1,
           "position": [
-            6.544,
-            0.25,
-            -0.818
+            8.527,
+            0.326,
+            -1.066
           ]
         },
         {
           "id": 2,
           "position": [
-            -40.272,
-            3.286,
+            -40.19,
+            2.745,
             -39.917
           ]
         },
@@ -612,7 +612,7 @@
   "metrics": {
     "kpis": {
       "firstShot": {
-        "samples": 2,
+        "samples": 1,
         "p50": 0.1,
         "p90": 0.1
       },
@@ -656,7 +656,7 @@
         }
       },
       "vertical": {
-        "samples": 2,
+        "samples": 1,
         "aboveThreshold": 0,
         "threshold": 100,
         "ratio": 0
@@ -677,9 +677,9 @@
       },
       "headingAmplitude": {
         "samples": 11,
-        "avg": 0.08631496348926083,
+        "avg": 0.07876619279244854,
         "min": 0.009237877823671666,
-        "max": 0.16894111890582703
+        "max": 0.140441118905827
       },
       "ties": {
         "decisions": 0,
@@ -688,8 +688,7 @@
       }
     },
     "firstShotTimes": [
-      0.1,
-      0.4
+      0.1
     ],
     "intentTimeline": [
       {
@@ -730,8 +729,8 @@
         "tick": 5,
         "time": 0.4,
         "counts": {
-          "Attack": 2,
-          "Intercept": 3
+          "Attack": 4,
+          "Intercept": 1
         },
         "total": 5
       }
@@ -762,12 +761,12 @@
         ],
         "counts": [
           0,
-          1,
+          0,
           0,
           0,
           0
         ],
-        "total": 1
+        "total": 0
       },
       "frigate": {
         "buckets": [
@@ -846,14 +845,14 @@
           300
         ],
         "counts": [
-          1,
+          0,
           0,
           0,
           0,
           0,
           0
         ],
-        "total": 1
+        "total": 0
       },
       "frigate": {
         "buckets": [

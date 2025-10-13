@@ -28,6 +28,73 @@ export interface AITraits {
   dodge: number;
 }
 
+export type DoctrineCardId = 'aggressivePush' | 'elasticDefense' | 'ambush';
+
+export interface DoctrineProfileModifiers {
+  aggressionMultiplier?: number;
+  patienceMultiplier?: number;
+  desiredRangeOffset?: number;
+  desiredRangeScale?: number;
+  bandPreference?: BehaviorProfile['bandPreference'];
+  engagementBiasBonus?: number;
+  orbitMultiplier?: number;
+}
+
+export interface DoctrineThreatModifiers {
+  focusPenaltyMultiplier?: number;
+  vipBonusMultiplier?: number;
+  distanceScaleMultiplier?: number;
+  hullBiasAdd?: Partial<Record<ShipHull, number>>;
+}
+
+export interface DoctrineSquadDirectives {
+  postureOverride?: TeamPosture;
+  escortReserveRatio?: number;
+}
+
+export interface DoctrineSensorModifiers {
+  detectionMultiplier?: number;
+  stealthBonus?: number;
+  contactRetentionMultiplier?: number;
+}
+
+export interface DoctrineCard {
+  id: DoctrineCardId;
+  label: string;
+  description: string;
+  profile?: DoctrineProfileModifiers;
+  threat?: DoctrineThreatModifiers;
+  squad?: DoctrineSquadDirectives;
+  sensor?: DoctrineSensorModifiers;
+}
+
+export interface DoctrineRuntimeState {
+  cardId: DoctrineCardId;
+  expiresAtTick: number | null;
+  lastSwitchTick: number;
+}
+
+export interface DoctrineState {
+  defaultCard: DoctrineCardId;
+  teams: Record<Team, DoctrineRuntimeState>;
+}
+
+export interface SensorVisibility {
+  strength: number;
+  lastSeenTick: number;
+  sourceId: EntityId;
+  occluded: boolean;
+  distance: number;
+}
+
+export interface SensorState {
+  lastUpdateTick: number;
+  visibilityByTeam: Record<Team, Map<EntityId, SensorVisibility>>;
+  decayRate: number;
+  threshold: number;
+  staleDecay: number;
+}
+
 export interface AIState {
   profileId: string;
   intent: AIIntent;
@@ -79,6 +146,7 @@ export interface AIBlackboard {
   teamPriority: Record<Team, PrioritisedTarget[]>;
   priorityIndex: Record<Team, Map<EntityId, number>>;
   focusFire: Record<Team, Map<EntityId, number>>;
+  visibleEnemies?: Record<Team, Map<EntityId, SensorVisibility>>;
   teamCounts?: Record<Team, number>;
   // Vertical dispersion tracking for validation (optional for backward compatibility)
   verticalDispersion?: {
@@ -214,6 +282,7 @@ export interface AIManagerState {
   slices: number;
   assignments: AITeamAssignments;
   metrics: AIMetrics;
+  doctrine?: DoctrineState;
   interrupts?: IntentInterruptEvent[];
   interruptState?: AIInterruptState;
 }
