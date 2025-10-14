@@ -36,6 +36,47 @@ function findAttacker(ships: ShipEntity[], projectile: ProjectileEntity): ShipEn
   return ships.find((s) => s.ship.team === projectile.projectile.team) ?? null;
 }
 
+function normaliseLabelPart(value: string): string {
+  return value.replace(/[-_]+/g, ' ').trim();
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function describeProjectile(projectile: ProjectileEntity): string {
+  const { bulletType, category, damageType } = projectile.projectile;
+
+  if (bulletType) {
+    const segments = bulletType.split(':').filter(Boolean);
+    if (segments.length >= 2) {
+      const [kind, ...rest] = segments;
+      const variant = rest.join(' ');
+      const variantLabel = toTitleCase(normaliseLabelPart(variant));
+      const kindLabel = toTitleCase(normaliseLabelPart(kind));
+      if (variantLabel) {
+        return `${variantLabel} ${kindLabel}`;
+      }
+      return kindLabel;
+    }
+    return toTitleCase(normaliseLabelPart(bulletType));
+  }
+
+  if (category) {
+    return toTitleCase(normaliseLabelPart(category));
+  }
+
+  if (damageType) {
+    return `${toTitleCase(normaliseLabelPart(damageType))} Damage`;
+  }
+
+  return 'Unknown Weapon';
+}
+
 function applyDamageToShip(
   state: GameState,
   projectile: ProjectileEntity,
@@ -81,7 +122,8 @@ function applyDamageToShip(
   if (totalDamageDealt > 0) {
     const attackerShip = findAttacker(ships, projectile);
     if (attackerShip) {
-      awardDamageXp(attackerShip.ship, totalDamageDealt, state, attackerShip.id);
+      const damageSource = describeProjectile(projectile);
+      awardDamageXp(attackerShip.ship, totalDamageDealt, state, attackerShip.id, damageSource);
     }
   }
 
