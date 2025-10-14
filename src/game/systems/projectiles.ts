@@ -17,6 +17,7 @@ export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
 const TEMP_BEAM_DIR = new Vector3();
+const TEMP_BEAM_LOCAL_DIR = new Vector3();
 const TEMP_INV_ROT = new Quaternion();
 const TEMP_BEAM_ORIGIN = new Vector3();
 
@@ -99,6 +100,13 @@ export function advanceProjectiles(state: GameState, delta: number): void {
           );
 
           let worldDirection: Vector3 | null = null;
+          let localDirectionWorld: Vector3 | null = null;
+
+          if (beamState.localDirection && beamState.localDirection.lengthSq() > 1e-6) {
+            localDirectionWorld = TEMP_BEAM_LOCAL_DIR.copy(beamState.localDirection)
+              .applyQuaternion(source.transform.rotation)
+              .normalize();
+          }
           if (beamState.sourceTurretId != null) {
             const turret = turrets.find((t) => t.id === beamState.sourceTurretId);
             if (turret?.direction && turret.direction.lengthSq() > 1e-6) {
@@ -118,10 +126,8 @@ export function advanceProjectiles(state: GameState, delta: number): void {
             }
           }
 
-          if (!worldDirection && beamState.localDirection) {
-            worldDirection = TEMP_BEAM_DIR.copy(beamState.localDirection)
-              .applyQuaternion(source.transform.rotation)
-              .normalize();
+          if (!worldDirection && localDirectionWorld) {
+            worldDirection = localDirectionWorld;
           }
 
           if (worldDirection) {
@@ -129,10 +135,12 @@ export function advanceProjectiles(state: GameState, delta: number): void {
             projectile.transform.rotation.setFromUnitVectors(FORWARD, worldDirection);
             const invRotation = TEMP_INV_ROT.copy(source.transform.rotation).invert();
             if (beamState.localDirection) {
-              beamState.localDirection
-                .copy(worldDirection)
-                .applyQuaternion(invRotation)
-                .normalize();
+              if (worldDirection !== localDirectionWorld) {
+                beamState.localDirection
+                  .copy(worldDirection)
+                  .applyQuaternion(invRotation)
+                  .normalize();
+              }
             } else {
               beamState.localDirection = worldDirection
                 .clone()
