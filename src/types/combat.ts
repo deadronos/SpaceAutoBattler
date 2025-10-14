@@ -2,13 +2,26 @@ import type { Vector3 } from 'three';
 import type { Team } from './gameplay.js';
 import type { DamageType } from './gameplay.js';
 
+export type ProjectileCategory = 'bullet' | 'missile' | 'torpedo' | 'beam';
+
+export interface HomingParams {
+  turnRate: number;
+  lead?: boolean;
+}
+
+export interface BeamVisualConfig {
+  ttl: number;
+  length: number;
+  width: number;
+}
+
 export type { DamageType };
 
 export interface DamageEffectiveness {
   [damageType: string]: {
-    hull: number;         // Effectiveness vs hull HP
-    shield: number;       // Effectiveness vs shield HP
-    armor: number;        // Effectiveness vs armor defense
+    hull: number; // Effectiveness vs hull HP
+    shield: number; // Effectiveness vs shield HP
+    armor: number; // Effectiveness vs armor defense
   };
 }
 
@@ -24,6 +37,24 @@ export interface ProjectileComponent {
   damageType: DamageType;
   /** Entity ID of the ship that fired this projectile */
   sourceId?: number;
+  /** Canonical behaviour category for this projectile. */
+  category: ProjectileCategory;
+  /** Optional targeted entity id for homing logic. */
+  targetId?: number;
+  /** Homing parameters if projectile steers in-flight. */
+  homing?: HomingParams;
+  /** Minimum arming time before detonation (seconds). */
+  armingTime?: number;
+  /** Whether the projectile has passed its arming threshold. */
+  armed?: boolean;
+  /** Radius for area-of-effect detonation (world units). */
+  aoeRadius?: number;
+  /** Simulation time when the projectile spawned. */
+  spawnTime: number;
+  /** Optional beam visuals (for hitscan-style weapons). */
+  beam?: BeamVisualConfig;
+  /** Internal marker used to avoid repeated beam resolution. */
+  hasAppliedBeamDamage?: boolean;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -40,6 +71,8 @@ export interface TurretSpec {
   range: number;
   /** Optional renderer key for projectile visuals. */
   bulletType?: string;
+  /** Optional behaviour category override for spawned projectiles. */
+  projectileCategory?: ProjectileCategory;
   /** Optional arc limits in radians relative to parent forward. */
   minYaw?: number;
   maxYaw?: number;
@@ -47,6 +80,10 @@ export interface TurretSpec {
   maxPitch?: number;
   /** Optional targeting priority for turret AI. */
   priority?: 'any' | 'antiFighter' | 'antiCapital';
+  /** Whether the turret is configured for point-defense. */
+  pointDefense?: boolean;
+  /** Range to scan for point-defense interception (defaults to range). */
+  pointDefenseRange?: number;
 }
 
 /** Runtime turret state (derived from TurretSpec). Lives on the parent ship entity. */

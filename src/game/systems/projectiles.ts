@@ -1,11 +1,17 @@
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../types/index.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
-import { PROJECTILE_CONFIG, DEFAULT_PROJECTILE_CONFIG } from '../../config/projectiles.js';
+import {
+  PROJECTILE_CONFIG,
+  DEFAULT_PROJECTILE_CONFIG,
+  getProjectileCategory,
+  getProjectileBeamConfig,
+} from '../../config/projectiles.js';
 import { getEffectiveStats } from '../progression.js';
 import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+import type { ProjectileCategory } from '../../types/combat.js';
 
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
@@ -13,14 +19,53 @@ export const TEMP_POS = new Vector3();
 
 export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
+  const ships = state.queries.ships.entities as ShipEntity[];
   for (const projectile of projectiles) {
-    const move = projectile.projectile.speed * delta;
+    const component = projectile.projectile;
+    if (!component.armed) {
+      const armingTime = component.armingTime ?? 0;
+      if (armingTime <= 0 || state.time - component.spawnTime >= armingTime) {
+        component.armed = true;
+      }
+    }
+
+    const homing = component.homing;
+    if (homing && component.targetId != null) {
+      const target = ships.find((ship) => ship.id === component.targetId);
+      if (target) {
+        const desired = TEMP_DIR.copy(target.transform.position).sub(projectile.transform.position);
+        if (desired.lengthSq() > 1e-6) {
+          desired.normalize();
+          const currentDir = projectile.direction;
+          const dot = Math.max(-1, Math.min(1, currentDir.dot(desired)));
+          const angle = Math.acos(dot);
+          const maxTurn = Math.max(0, homing.turnRate) * delta;
+          if (angle > 1e-5 && maxTurn > 0) {
+            const t = Math.min(1, maxTurn / angle);
+            currentDir.lerp(desired, t).normalize();
+            projectile.transform.rotation.setFromUnitVectors(FORWARD, currentDir);
+          }
+        }
+      }
+    }
+
+    if (component.category === 'beam') {
+      continue;
+    }
+
+    const move = component.speed * delta;
     const direction = projectile.direction;
     const current = projectile.transform.position;
     const next = TEMP_POS.copy(current).addScaledVector(direction, move);
     clampToWorld(next);
 
-    deferSetNextKinematicTranslation(state, projectile.rigidBody as unknown as KinematicBody, next.x, next.y, next.z);
+    deferSetNextKinematicTranslation(
+      state,
+      projectile.rigidBody as unknown as KinematicBody,
+      next.x,
+      next.y,
+      next.z,
+    );
   }
 }
 
@@ -30,7 +75,11 @@ export function fireProjectile(
   direction: Vector3,
   opts?: {
     originPosition?: Vector3;
-    override?: Partial<Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType'>>;
+    override?: Partial<
+      Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType' | 'damageType'>
+    >;
+    targetId?: number;
+    projectileCategory?: ProjectileCategory;
   },
 ): void {
   const muzzleOffset = origin.transform.scale * 1.6;
@@ -41,11 +90,16 @@ export function fireProjectile(
 
   const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType ?? '';
   const cfg = PROJECTILE_CONFIG[bulletKey] ?? DEFAULT_PROJECTILE_CONFIG;
+  const category = opts?.projectileCategory ?? cfg.category ?? getProjectileCategory(bulletKey);
   const visualScale = cfg.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale;
   const colliderRadius = cfg.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
 
-  let speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
-  if (AI_CONFIG.rangePolicy === 'v0.1.1-exp' && !opts?.override) {
+  const speedOverrides = opts?.override?.projectileSpeed;
+  let speed = speedOverrides ?? origin.ship.projectileSpeed;
+  if (category === 'beam') {
+    speed = 0;
+  }
+  if (AI_CONFIG.rangePolicy === 'v0.1.1-exp' && !speedOverrides) {
     if (origin.ship.hull === 'destroyer' || origin.ship.hull === 'carrier') {
       speed *= 1.05;
     } else if (origin.ship.hull === 'fighter') {
@@ -56,16 +110,26 @@ export function fireProjectile(
       speed *= 0.96;
     }
 
-    const bulletType = origin.ship.bulletType ?? '';
-    if (bulletType.includes('laser')) {
-      speed *= 0.97;
-    } else if (bulletType.includes('heavy') || bulletType.includes('ion')) {
-      speed *= 1.03;
+    const speedAdjustments: Record<string, number> = {
+      'bullet:laser': 0.97,
+      'bullet:heavy': 1.03,
+      'bullet:ion': 1.03,
+    };
+    const adjustment = speedAdjustments[bulletKey];
+    if (adjustment != null) {
+      speed *= adjustment;
     }
   }
-  const damage = (opts?.override?.damage ?? origin.ship.damage) * getEffectiveStats(origin.ship).damageMultiplier;
+  const damageType = opts?.override?.damageType ?? origin.ship.damageType;
+  const damage =
+    (opts?.override?.damage ?? origin.ship.damage) *
+    getEffectiveStats(origin.ship).damageMultiplier;
   const range = opts?.override?.range ?? origin.ship.range;
-  const lifetime = Math.min(range / speed, 30);
+  const beamConfig = category === 'beam' ? getProjectileBeamConfig(bulletKey) : undefined;
+  const lifetime =
+    category === 'beam'
+      ? Math.min(beamConfig?.ttl ?? 0.1, 0.5)
+      : Math.min(range / Math.max(1e-3, speed), 30);
 
   const spawnDirection = direction.clone();
   const rotationComponents = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
@@ -76,8 +140,16 @@ export function fireProjectile(
     ttl: lifetime,
     speed,
     bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
-    damageType: origin.ship.damageType,
+    damageType,
     sourceId: origin.id,
+    category,
+    targetId: opts?.targetId,
+    homing: cfg.homing,
+    armingTime: cfg.armingTime,
+    armed: cfg.armingTime ? cfg.armingTime <= 0 : true,
+    aoeRadius: cfg.aoeRadius,
+    spawnTime: state.time,
+    beam: beamConfig,
   };
 
   enqueuePostPhysicsMutation(state, () => {
@@ -97,7 +169,12 @@ export function fireProjectile(
       collider,
       transform: {
         position: new Vector3(positionComponents.x, positionComponents.y, positionComponents.z),
-        rotation: new Quaternion(rotationComponents.x, rotationComponents.y, rotationComponents.z, rotationComponents.w),
+        rotation: new Quaternion(
+          rotationComponents.x,
+          rotationComponents.y,
+          rotationComponents.z,
+          rotationComponents.w,
+        ),
         scale: visualScale,
       },
       projectile: {
@@ -109,6 +186,14 @@ export function fireProjectile(
         bulletType: projectileData.bulletType,
         damageType: projectileData.damageType,
         sourceId: projectileData.sourceId,
+        category: projectileData.category,
+        targetId: projectileData.targetId,
+        homing: projectileData.homing,
+        armingTime: projectileData.armingTime,
+        armed: projectileData.armed,
+        aoeRadius: projectileData.aoeRadius,
+        spawnTime: projectileData.spawnTime,
+        beam: projectileData.beam,
       },
       direction: spawnDirection.clone(),
     });
