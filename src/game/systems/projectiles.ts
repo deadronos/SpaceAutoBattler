@@ -11,7 +11,7 @@ import { getEffectiveStats } from '../progression.js';
 import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
-import type { ProjectileCategory } from '../../types/combat.js';
+import type { BeamRuntimeState, ProjectileCategory } from '../../types/combat.js';
 
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
@@ -50,6 +50,25 @@ export function advanceProjectiles(state: GameState, delta: number): void {
     }
 
     if (component.category === 'beam') {
+      const beamState = component.beam;
+      if (beamState?.localOrigin && component.sourceId != null) {
+        const source = ships.find((ship) => ship.id === component.sourceId);
+        if (source) {
+          const worldOrigin = TEMP_POS.copy(beamState.localOrigin)
+            .multiplyScalar(source.transform.scale)
+            .applyQuaternion(source.transform.rotation)
+            .add(source.transform.position);
+          clampToWorld(worldOrigin);
+          projectile.transform.position.copy(worldOrigin);
+          deferSetNextKinematicTranslation(
+            state,
+            projectile.rigidBody as unknown as KinematicBody,
+            worldOrigin.x,
+            worldOrigin.y,
+            worldOrigin.z,
+          );
+        }
+      }
       continue;
     }
 
@@ -131,6 +150,36 @@ export function fireProjectile(
       ? Math.min(beamConfig?.ttl ?? 0.1, 0.5)
       : Math.min(range / Math.max(1e-3, speed), 30);
 
+  let beamState: BeamRuntimeState | undefined;
+  if (beamConfig) {
+    beamState = {
+      ttl: beamConfig.ttl,
+      width: beamConfig.width,
+      length: beamConfig.length,
+      maxLength: beamConfig.length,
+    };
+
+    const shipRotation = origin.transform.rotation;
+    const invRotation =
+      typeof (shipRotation as Quaternion).clone === 'function'
+        ? (shipRotation as Quaternion).clone().invert()
+        : new Quaternion(
+            (shipRotation as Quaternion).x ?? 0,
+            (shipRotation as Quaternion).y ?? 0,
+            (shipRotation as Quaternion).z ?? 0,
+            (shipRotation as Quaternion).w ?? 1,
+          ).invert();
+    const localOrigin = startPosition
+      .clone()
+      .sub(origin.transform.position)
+      .applyQuaternion(invRotation);
+    const scale = origin.transform.scale;
+    if (Math.abs(scale) > 1e-5) {
+      localOrigin.divideScalar(scale);
+    }
+    beamState.localOrigin = localOrigin;
+  }
+
   const spawnDirection = direction.clone();
   const rotationComponents = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
   const positionComponents = { x: startPosition.x, y: startPosition.y, z: startPosition.z };
@@ -149,7 +198,7 @@ export function fireProjectile(
     armed: cfg.armingTime ? cfg.armingTime <= 0 : true,
     aoeRadius: cfg.aoeRadius,
     spawnTime: state.time,
-    beam: beamConfig,
+    beam: beamState,
   };
 
   enqueuePostPhysicsMutation(state, () => {

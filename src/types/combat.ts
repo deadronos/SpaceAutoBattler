@@ -15,6 +15,13 @@ export interface BeamVisualConfig {
   width: number;
 }
 
+export interface BeamRuntimeState extends BeamVisualConfig {
+  /** Maximum visual reach of the beam before it fades out. */
+  maxLength: number;
+  /** Optional local-space origin relative to the firing ship. */
+  localOrigin?: Vector3;
+}
+
 export type { DamageType };
 
 export interface DamageEffectiveness {
@@ -52,7 +59,7 @@ export interface ProjectileComponent {
   /** Simulation time when the projectile spawned. */
   spawnTime: number;
   /** Optional beam visuals (for hitscan-style weapons). */
-  beam?: BeamVisualConfig;
+  beam?: BeamRuntimeState;
   /** Internal marker used to avoid repeated beam resolution. */
   hasAppliedBeamDamage?: boolean;
 }

@@ -209,19 +209,20 @@ function resolveBeamImpact(
   const origin = projectile.transform.position;
   const direction = projectile.direction.clone().normalize();
   let closest: ShipEntity | null = null;
-  // Use effectively infinite hit detection range for beams; visuals will be set to hit distance
-  // (or a large fallback if there is no hit).
-  const searchLength = Number.POSITIVE_INFINITY;
+  const maxLength = Math.max(beam.maxLength, beam.length);
+  // Clamp hit detection to the visual reach of the beam so hits align with the rendered segment.
+  const searchLength = Number.isFinite(maxLength) ? maxLength : Number.POSITIVE_INFINITY;
   let closestDistance = searchLength;
 
   for (const ship of ships) {
     // Skip ships on the same team and the originating ship itself to avoid
     // beams hitting their own ship when turret origin sits inside the mesh.
     if (ship.ship.team === projectile.projectile.team) continue;
-    if (projectile.projectile.sourceId != null && ship.id === projectile.projectile.sourceId) continue;
+    if (projectile.projectile.sourceId != null && ship.id === projectile.projectile.sourceId)
+      continue;
     const toShip = TEMP_BEAM_VECTOR.copy(ship.transform.position).sub(origin);
     const along = toShip.dot(direction);
-  if (along < 0 || along > searchLength) continue;
+    if (along < 0 || along > searchLength) continue;
     const radial = TEMP_BEAM_PERP.copy(toShip).addScaledVector(direction, -along);
     const shipRadius = ship.transform.scale * 0.9;
     const combined = shipRadius + beam.width * 0.5;
@@ -234,14 +235,18 @@ function resolveBeamImpact(
   }
 
   if (closest) {
-    const impactPosition = origin.clone().addScaledVector(direction, closestDistance);
-    // Update beam visual length to the actual hit distance so renderer can scale instance.
-    if (projectile.projectile.beam) projectile.projectile.beam.length = closestDistance;
+    const impactDistance = Math.min(closestDistance, maxLength);
+    const impactPosition = origin.clone().addScaledVector(direction, impactDistance);
+    // Update beam visual length to the actual hit distance (clamped to max) so renderer can scale instance.
+    if (projectile.projectile.beam) {
+      const clamped = impactDistance;
+      projectile.projectile.beam.length = clamped;
+    }
     detonateProjectile(state, projectile, impactPosition, ships, manager, toRemove, closest, true);
   } else {
-    // No hit — remove beam immediately since it didn't hit anything.
-    // Without this, orphaned beams remain visible after ships are destroyed.
-    toRemove.add(projectile);
+    if (projectile.projectile.beam) {
+      projectile.projectile.beam.length = maxLength;
+    }
   }
 
   projectile.projectile.hasAppliedBeamDamage = true;
