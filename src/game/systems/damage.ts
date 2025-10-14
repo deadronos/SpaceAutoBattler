@@ -235,17 +235,16 @@ function resolveBeamImpact(
 
   if (closest) {
     const impactPosition = origin.clone().addScaledVector(direction, closestDistance);
-    detonateProjectile(state, projectile, impactPosition, ships, manager, toRemove, closest, false);
-      // Update beam visual length to the actual hit distance so renderer can scale instance.
-      if (projectile.projectile.beam) projectile.projectile.beam.length = closestDistance;
+    // Update beam visual length to the actual hit distance so renderer can scale instance.
+    if (projectile.projectile.beam) projectile.projectile.beam.length = closestDistance;
+    detonateProjectile(state, projectile, impactPosition, ships, manager, toRemove, closest, true);
+  } else {
+    // No hit — remove beam immediately since it didn't hit anything.
+    // Without this, orphaned beams remain visible after ships are destroyed.
+    toRemove.add(projectile);
   }
 
-  if (!closest) {
-    // No hit — set a large visual length fallback to show beam extending outward.
-    if (projectile.projectile.beam) projectile.projectile.beam.length = 2000;
-  }
-
-    projectile.projectile.hasAppliedBeamDamage = true;
+  projectile.projectile.hasAppliedBeamDamage = true;
 }
 
 export function resolveProjectiles(state: GameState, delta: number): void {

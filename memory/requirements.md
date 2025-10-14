@@ -1,3 +1,5 @@
+# Requirements Log
+
 ## 2025-10-14 — Weapon Category Expansion (TASK248)
 
 1. **WHEN** a projectile with `category === 'missile'` or `category === 'torpedo'` is spawned, **THE SYSTEM SHALL** initialise its homing target, arming timer, and any configured AoE radius so guidance and detonation behaviour follow `PROJECTILE_CONFIG`. *(Acceptance: unit tests spawn missiles and torpedoes via `fireProjectile` and assert runtime components match the config values.)*
@@ -5,6 +7,18 @@
 3. **WHEN** a torpedo or missile detonates with an `aoeRadius` configured, **THE SYSTEM SHALL** apply damage to all enemy ships within that radius using effectiveness calculations and XP attribution consistent with existing projectile hits. *(Acceptance: AoE test positions multiple ships inside the radius and confirms cumulative damage plus XP attribution to the source ship.)*
 4. **WHEN** a weapon with `category === 'beam'` fires, **THE SYSTEM SHALL** perform an immediate raycast to apply damage to the first intersected enemy and register a short-lived beam visual so renderer layers display the shot for its configured TTL. *(Acceptance: beam test fires a beam, verifies instant hull reduction on the hit ship, and asserts a beam visual record is enqueued.)*
 5. **WHEN** a turret marked for point-defense detects an incoming missile within its PD range, **THE SYSTEM SHALL** prioritise targeting that projectile over ship targets and attempt to destroy it before it reaches allied ships. *(Acceptance: AI decision test seeds a PD turret, spawns an incoming missile, and asserts the turret selects the missile entity as its active target.)*
+
+## 2025-10-14 — Beam Shader Falloff (TASK249)
+
+1. **WHEN** the beam projectile material factory initialises, **THE SYSTEM SHALL** read the beam shader falloff configuration and populate the shader uniforms for near brightness, far brightness, and falloff exponent with those values. *(Acceptance: renderer unit test instantiates the factory and asserts the material uniforms mirror the config defaults.)*
+2. **WHEN** the instanced beam layer uploads per-projectile data, **THE SYSTEM SHALL** provide a per-instance brightness scalar (defaulting to 1.0) so the shader can modulate intensity per shot without reallocating geometry buffers. *(Acceptance: instanced layer test updates beams without overrides and verifies the new instanced buffer attribute exists and is populated with 1.0.)*
+3. **WHEN** the beam shader shades a fragment, **THE SYSTEM SHALL** apply inverse-squared falloff along the beam length that clamps to the configured near and far brightness bounds raised to the configured exponent. *(Acceptance: shader factory test inspects the compiled fragment shader string and asserts the falloff computation references the uniforms and inverse-squared term.)*
+
+## 2025-10-14 — Beam Shader Instancing Compatibility (TASK250)
+
+1. **WHEN** the beam projectile shader material initialises with instanced colors enabled, **THE SYSTEM SHALL** declare and consume the `instanceColor` attribute inline without referencing unavailable Three.js include chunks so shader compilation succeeds. *(Acceptance: renderer test asserts the vertex shader string contains `attribute vec3 instanceColor;` and omits `#include <instanceColor_pars_vertex>`.)*
+2. **WHEN** a beam projectile renders without per-instance color data, **THE SYSTEM SHALL** default the shader's instance color to white so the beam remains visible. *(Acceptance: renderer test asserts the vertex shader includes the fallback branch assigning `vec3(1.0)` when `USE_INSTANCING_COLOR` is not defined.)*
+3. **WHEN** a ship's shield ratio meets or exceeds the visibility threshold within a frame, **THE SYSTEM SHALL** treat the shield bubble as visible using the latest computed fraction and suppress the "should be visible" warning. *(Acceptance: shield utils test exercises a scenario with a stale prior fraction but a latest fraction above the threshold and expects `validateShieldVisibility` to return null.)*
 
 ## 2025-10-06 — Thruster Trail GPU Migration (TASK246)
 
@@ -17,7 +31,8 @@
 1. **WHEN** a ship crosses the configured near/far threshold because either its transform or the active camera position changed, **THE SYSTEM SHALL** recompute the LOD partition within the next render frame so full hull meshes mount for near ships. *(Acceptance: `test/components/lod/ShipLODManager.spec.ts` verifies the new partition refresh helper promotes ships to the near cohort after a simulated camera move.)*
 2. **WHEN** the default battle camera loads at startup, **THE SYSTEM SHALL** classify the closest fleet elements as near ships so GLTF hulls render immediately without user interaction. *(Acceptance: unit coverage asserts ships spawned at ±300 units fall into the near set under the default distance threshold constants.)*
 3. **WHEN** distant ships render via instanced impostors, **THE SYSTEM SHALL** keep the impostor mesh visible and billboarded toward the camera while updating per-instance transforms and colors each frame. *(Acceptance: `test/components/lod/ShipLODManager.spec.ts` exercises the impostor helper with a stubbed mesh and asserts visible, count, and quaternion values after an update call.)*
-# Requirements — Star Disk Shader Integration
+
+## Requirements — Star Disk Shader Integration
 
 ## 2025-10-02 — Rapier WASM Panic Diagnostics (TASK236)
 
@@ -205,6 +220,7 @@ These historical requirements described behaviors tied to the deprecated `StarDi
 - Rapier step panic diagnostics: implemented in `src/game/simulationQueue.ts` and recorded on `state.simulation.rapierDiagnostics` (maps to requirements in TASK236/TASK230).
 - StarDisk shader and debug lockdown/fallbacks: implemented in `src/components/environment/StarDisk.tsx`, `src/renderer/MainSequenceStarMaterial` and related uniforms; harness and visual baselines live under `test/playwright/`.
 - Progression and captain systems: implemented in `src/game/progression.ts` with configuration in `src/config/progression.ts` (maps to progression requirements and tests).
+
 ## 2025-10-03 — Motion PD Tuning (TASK241)
 
 1. **WHEN** a ship hull defines motion.turnKp and motion.turnKd, **THE SYSTEM SHALL** apply those gains when computing angular velocity so the proportional yaw error and derivative damping reflect the hull configuration. *(Acceptance: Vitest spec stubs motion stats with custom gains and asserts the resulting angular acceleration matches the configured values.)*

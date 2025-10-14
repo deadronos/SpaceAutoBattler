@@ -212,6 +212,7 @@ registerMaterial('torpedo:heavy', TorpedoMaterial, {
 });
 registerMaterial('beam:laser', BeamLaserMaterial, {
   create: createBeamLaserMaterial,
+  supportsInstanceColor: true,
 });
 registerMaterial('explosion:smoke', ExplosionSmokeMaterial);
 registerMaterial('muzzle:flash', MuzzleFlashMaterial, {

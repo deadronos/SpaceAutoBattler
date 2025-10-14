@@ -37,7 +37,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
   const lastT0Ref = useRef<number>(-Infinity);
   const minShieldThreshold = 0.01;
 
-  const [shieldFraction, setShieldFraction] = useState(() => {
+  const [shieldFractionState, setShieldFraction] = useState(() => {
     const result = computeShieldFraction(
       entity.ship.shield,
       entity.ship.maxShield,
@@ -48,13 +48,13 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
     return result.fraction;
   });
 
-  const shieldFractionRef = useRef(shieldFraction);
-  const shieldVisibleRef = useRef(shieldFraction >= minShieldThreshold);
+  const shieldFractionRef = useRef(shieldFractionState);
+  const shieldVisibleRef = useRef(shieldFractionState >= minShieldThreshold);
 
   useEffect(() => {
-    shieldFractionRef.current = shieldFraction;
-    shieldVisibleRef.current = shieldFraction >= minShieldThreshold;
-  }, [shieldFraction, minShieldThreshold]);
+    shieldFractionRef.current = shieldFractionState;
+    shieldVisibleRef.current = shieldFractionState >= minShieldThreshold;
+  }, [shieldFractionState, minShieldThreshold]);
 
   useFrame(() => {
     const mesh = meshRef.current;
@@ -160,16 +160,20 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
     }
   });
 
-  const opacity = Math.max(0, Math.min(1, shieldFraction));
+  const renderFraction = shieldFractionRef.current;
+  const opacity = MathUtils.clamp(renderFraction, 0, 1);
 
-  if (shieldFraction < minShieldThreshold) {
+  if (renderFraction < minShieldThreshold) {
+    const ratio = entity.ship.maxShield > 0 ? entity.ship.shield / entity.ship.maxShield : 0;
+    const latestFraction = Number.isFinite(ratio) ? Math.max(renderFraction, ratio) : renderFraction;
     const warning = validateShieldVisibility(
-      shieldFraction,
+      renderFraction,
       entity.ship.shield,
       entity.ship.maxShield,
       minShieldThreshold,
       entity.id,
-      entity.ship.hull
+      entity.ship.hull,
+      latestFraction
     );
     if (warning) {
       console.warn(`[ShieldBubble] ${warning}`);

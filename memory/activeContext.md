@@ -2,6 +2,7 @@
 
 Current focuses (short-term):
 
+- Resolve beam shader instancing compatibility and shield visibility warnings (TASK250) while keeping renderer regression coverage green.
 - Refine AI motion PD tuning (TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
 - Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
 - Validate Playwright ship hull rendering tests (TASK154) with local build + serve cycle and generate initial baselines
@@ -9,6 +10,8 @@ Current focuses (short-term):
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default
 
 Recent changes:
+
+- **TASK250 (In Progress — 80%)**: Inlined beam shader instancing color declarations (dropping missing Three.js includes), routed `ShieldBubble` visibility through the latest fraction ref, and extended Vitest coverage; validated via `npm run typecheck` and targeted suites.
 
 - **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
   - Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
@@ -61,4 +64,4 @@ Status updates:
 - 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
 - 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
 
-- Updated: 2025-10-02
+- Updated: 2025-10-14

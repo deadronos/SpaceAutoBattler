@@ -52,16 +52,25 @@ export function validateShieldVisibility(
   maxShield: number,
   minThreshold: number,
   shipId: number,
-  hull: ShipHull
+  hull: ShipHull,
+  latestFraction?: number
 ): string | null {
   if (computedFraction >= minThreshold) {
+    return null;
+  }
+
+  const hasLatest = latestFraction != null && Number.isFinite(latestFraction);
+  if (hasLatest && (latestFraction as number) >= minThreshold) {
     return null;
   }
 
   if (shield > 0 && maxShield > 0) {
     const expectedFraction = shield / maxShield;
     if (expectedFraction >= minThreshold) {
-      return `Shield bubble should be visible but isn't for ship ${shipId} (${hull}): shield=${shield}, maxShield=${maxShield}, expectedFraction=${expectedFraction.toFixed(3)}, computedFraction=${computedFraction.toFixed(3)}, threshold=${minThreshold}`;
+      const extraDetail = hasLatest
+        ? `, latestFraction=${(latestFraction as number).toFixed(3)}`
+        : '';
+      return `Shield bubble should be visible but isn't for ship ${shipId} (${hull}): shield=${shield}, maxShield=${maxShield}, expectedFraction=${expectedFraction.toFixed(3)}, computedFraction=${computedFraction.toFixed(3)}, threshold=${minThreshold}${extraDetail}`;
     }
   }
 

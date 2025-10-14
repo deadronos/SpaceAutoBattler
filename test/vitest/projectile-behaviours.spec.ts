@@ -138,7 +138,7 @@ describe('projectile behaviours', () => {
     expect(targetB.ship.hp).toBeLessThan(60);
   });
 
-  it('deals immediate beam damage and persists for ttl', () => {
+  it('deals immediate beam damage and removes beam after impact', () => {
     const state = createTestGameState();
     state.rapier = createRapierShim();
     state.physicsWorld = createPhysicsWorldShim();
@@ -162,8 +162,9 @@ describe('projectile behaviours', () => {
 
     expect(target.ship.shield).toBeLessThan(5);
     expect(projectile.projectile.hasAppliedBeamDamage).toBe(true);
+    // Beams are now removed immediately after applying damage to prevent orphaned visuals
     expect((state.queries.projectiles.entities as ProjectileEntity[]).includes(projectile)).toBe(
-      true,
+      false,
     );
   });
 

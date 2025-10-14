@@ -6,6 +6,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## In Progress
 
+- [TASK250](TASK250-beam-shader-compile-fix.md) — Resolve beam shader compilation failure and shield visibility warnings triggered by stale state. (In Progress — requirements/design pending) (2025-10-14)
 - [TASK248](TASK248-weapon-category-expansion.md) — Extend weapon categories with missiles, torpedoes, beams, and PD targeting per spec. (In Progress — requirements/design logged) (2025-10-14)
 - [TASK246](TASK246-thruster-trails-gpu.md) — Move thruster trails to GPU-managed instanced buffers for scalable rendering. (In Progress — design published, implementation pending) (2025-10-06)
 - [TASK245](TASK245-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
@@ -14,6 +15,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## Completed
 
+- [TASK249](TASK249-beam-shader-falloff.md) — Landed configurable beam shader falloff with shader factory, instanced brightness, and renderer tests. (2025-10-14)
 - [TASK247](TASK247-version2-vision.md) — Authored Version 2.0 vision document outlining pillars, feature concepts, and validation plans. (2025-10-13)
 - [TASK242](TASK242-lint-compliance.md) - Restore lint compliance across config, hooks, and effect updaters. (2025-10-03)
 

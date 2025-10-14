@@ -1,5 +1,44 @@
 import type { BeamVisualConfig, HomingParams, ProjectileCategory } from '../types/combat.js';
 
+export interface BeamShaderFalloffConfig {
+  nearBrightness: number;
+  farBrightness: number;
+  falloffExponent: number;
+  falloffBase: number;
+}
+
+const BEAM_SHADER_FALLOFF_DEFAULTS: BeamShaderFalloffConfig = {
+  nearBrightness: 1.0,
+  farBrightness: 0.5,
+  falloffExponent: 1.2,
+  falloffBase: 2.0,
+};
+
+function resolveNumber(value: number | undefined, fallback: number, min: number, max: number): number {
+  if (!Number.isFinite(value ?? NaN)) return fallback;
+  const clamped = value as number;
+  if (clamped < min) return min;
+  if (clamped > max) return max;
+  return clamped;
+}
+
+function resolveBeamShaderFalloffConfig(overrides?: Partial<BeamShaderFalloffConfig>): BeamShaderFalloffConfig {
+  const near = resolveNumber(overrides?.nearBrightness, BEAM_SHADER_FALLOFF_DEFAULTS.nearBrightness, 0.1, 8);
+  const farCandidate = resolveNumber(overrides?.farBrightness, BEAM_SHADER_FALLOFF_DEFAULTS.farBrightness, 0.0, 8);
+  const far = farCandidate > near ? near : farCandidate;
+  const exponent = resolveNumber(overrides?.falloffExponent, BEAM_SHADER_FALLOFF_DEFAULTS.falloffExponent, 0.1, 6);
+  const base = resolveNumber(overrides?.falloffBase, BEAM_SHADER_FALLOFF_DEFAULTS.falloffBase, 1.0, 4.0);
+
+  return {
+    nearBrightness: near,
+    farBrightness: far,
+    falloffExponent: exponent,
+    falloffBase: base,
+  };
+}
+
+export const PROJECTILE_BEAM_SHADER_CONFIG = resolveBeamShaderFalloffConfig();
+
 export interface ProjectileConfigItem {
   visualScale: number; // transform.scale applied to projectile
   colliderRadius?: number; // collider ball radius (overrides derived)

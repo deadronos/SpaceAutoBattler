@@ -124,6 +124,11 @@ describe('shieldUtils', () => {
       expect(result).toContain('ship 1');
     });
 
+    it('should return null when latest fraction indicates visibility despite stale computed fraction', () => {
+      const result = validateShieldVisibility(0.008, 0.4, 24, 0.01, 3, 'fighter', 0.0167);
+      expect(result).toBeNull();
+    });
+
     it('should return null when shield is 0', () => {
       const result = validateShieldVisibility(0, 0, 100, 0.01, 1, 'fighter');
       expect(result).toBeNull();

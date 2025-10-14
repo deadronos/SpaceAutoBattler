@@ -1,5 +1,5 @@
 import React from 'react';
-import { AdditiveBlending, MeshStandardMaterial } from 'three';
+import { MeshStandardMaterial } from 'three';
 
 const laserProps = {
   color: '#ffd089',
@@ -47,19 +47,6 @@ const torpedoProps = {
   metalness: 0.2,
 };
 
-const beamProps = {
-  color: '#c4f5ff',
-  emissive: '#7ff8ff',
-  emissiveIntensity: 6.5, // stronger emissive for better visibility
-  roughness: 0.05,
-  metalness: 0.0,
-  transparent: true,
-  opacity: 0.98, // slightly higher opacity to make beam more solid
-  depthWrite: false,
-  blending: AdditiveBlending,
-  toneMapped: false,
-};
-
 export const BulletLaserMaterial: React.FC = () => <meshStandardMaterial {...laserProps} />;
 
 export const BulletPlasmaMaterial: React.FC = () => <meshStandardMaterial {...plasmaProps} />;
@@ -71,8 +58,6 @@ export const BulletHeavyMaterial: React.FC = () => <meshStandardMaterial {...hea
 export const MissileMaterial: React.FC = () => <meshStandardMaterial {...missileProps} />;
 
 export const TorpedoMaterial: React.FC = () => <meshStandardMaterial {...torpedoProps} />;
-
-export const BeamLaserMaterial: React.FC = () => <meshStandardMaterial {...beamProps} />;
 
 export function createBulletLaserMaterial(): MeshStandardMaterial {
   return new MeshStandardMaterial(laserProps);
@@ -96,14 +81,4 @@ export function createMissileMaterial(): MeshStandardMaterial {
 
 export function createTorpedoMaterial(): MeshStandardMaterial {
   return new MeshStandardMaterial(torpedoProps);
-}
-
-export function createBeamLaserMaterial(): MeshStandardMaterial {
-  const m = new MeshStandardMaterial(beamProps);
-  // Mark as force color write so BloomProvider does not disable colorWrite
-  // when postprocessing is enabled. Transparent additive beams should still
-  // contribute to the main color pass to remain visible without relying
-  // solely on selective bloom routing.
-  (m as any).userData = { ...(m as any).userData, __copilot_forceColorWrite: true };
-  return m;
 }
