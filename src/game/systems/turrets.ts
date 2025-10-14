@@ -1,5 +1,11 @@
 import { Vector3 } from 'three';
-import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../types/index.js';
+import type {
+  GameState,
+  ProjectileEntity,
+  ShipEntity,
+  TurretEntity,
+  TurretState,
+} from '../../types/index.js';
 import { recordShotMetrics } from '../metrics.js';
 import { fireProjectile, TEMP_DIR, TEMP_POS } from './projectiles.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
@@ -48,6 +54,12 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
         deltaY: target.transform.position.y - ship.transform.position.y,
       });
     }
+    const overrideDamageType =
+      turret.projectileCategory === 'torpedo' || turret.projectileCategory === 'missile'
+        ? 'explosive'
+        : turret.projectileCategory === 'beam'
+          ? 'ion'
+          : ship.ship.damageType;
     fireProjectile(state, ship, toTarget, {
       originPosition: turretOrigin,
       override: {
@@ -55,7 +67,10 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
         projectileSpeed: turret.projectileSpeed,
         range: turret.range,
         bulletType: turret.bulletType,
+        damageType: overrideDamageType,
       },
+      projectileCategory: turret.projectileCategory,
+      targetId: target.id,
     });
     turret.cooldown = turret.fireRate;
   }
@@ -63,10 +78,36 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
 
 export function updateTurrets(state: GameState, delta: number): void {
   const turrets = state.queries.turrets.entities as TurretEntity[];
+  const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   for (const t of turrets) {
     const ship = t.turret.parent;
     const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
-    deferSetNextKinematicTranslation(state, t.rigidBody as unknown as KinematicBody, origin.x, origin.y, origin.z);
+    deferSetNextKinematicTranslation(
+      state,
+      t.rigidBody as unknown as KinematicBody,
+      origin.x,
+      origin.y,
+      origin.z,
+    );
+    let pdTarget: ProjectileEntity | null = null;
+    if (t.turret.pointDefense) {
+      const pdRange = t.turret.pointDefenseRange ?? t.turret.range;
+      let bestDistance = pdRange;
+      for (const projectile of projectiles) {
+        if (projectile.projectile.team === ship.ship.team) continue;
+        if (
+          projectile.projectile.category !== 'missile' &&
+          projectile.projectile.category !== 'torpedo'
+        )
+          continue;
+        const distance = projectile.transform.position.distanceTo(origin);
+        if (distance > pdRange) continue;
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          pdTarget = projectile;
+        }
+      }
+    }
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
@@ -98,6 +139,46 @@ export function updateTurrets(state: GameState, delta: number): void {
       if (best) target = best;
     }
     t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
+
+    if (pdTarget && t.turret.cooldown <= 0) {
+      const pdRange = t.turret.pointDefenseRange ?? t.turret.range;
+      const toProjectile = TEMP_DIR.copy(pdTarget.transform.position).sub(origin);
+      const distPd = toProjectile.length();
+      if (distPd <= pdRange) {
+        if (distPd > 1e-5) toProjectile.divideScalar(distPd);
+        else toProjectile.set(0, 0, 1);
+        const invRot = ship.transform.rotation.clone().invert();
+        const localDir = toProjectile.clone().applyQuaternion(invRot);
+        const yaw = Math.atan2(localDir.x, localDir.z);
+        const pitch = Math.asin(Math.max(-1, Math.min(1, localDir.y)));
+        const minYaw = t.turret.minYaw ?? -Math.PI;
+        const maxYaw = t.turret.maxYaw ?? Math.PI;
+        const minPitch = t.turret.minPitch ?? -Math.PI / 2;
+        const maxPitch = t.turret.maxPitch ?? Math.PI / 2;
+        if (yaw >= minYaw && yaw <= maxYaw && pitch >= minPitch && pitch <= maxPitch) {
+          const overrideDamageType =
+            t.turret.projectileCategory === 'torpedo' || t.turret.projectileCategory === 'missile'
+              ? 'explosive'
+              : t.turret.projectileCategory === 'beam'
+                ? 'ion'
+                : ship.ship.damageType;
+          fireProjectile(state, ship, toProjectile, {
+            originPosition: origin,
+            override: {
+              damage: t.turret.damage,
+              projectileSpeed: t.turret.projectileSpeed,
+              range: pdRange,
+              bulletType: t.turret.bulletType,
+              damageType: overrideDamageType,
+            },
+            projectileCategory: t.turret.projectileCategory,
+          });
+          t.turret.cooldown = t.turret.fireRate;
+          continue;
+        }
+      }
+    }
+
     if (!target || t.turret.cooldown > 0) continue;
     const toTarget = TEMP_DIR.copy(target.transform.position).sub(origin);
     const dist = toTarget.length();
@@ -123,6 +204,12 @@ export function updateTurrets(state: GameState, delta: number): void {
         deltaY: target.transform.position.y - ship.transform.position.y,
       });
     }
+    const overrideDamageType =
+      t.turret.projectileCategory === 'torpedo' || t.turret.projectileCategory === 'missile'
+        ? 'explosive'
+        : t.turret.projectileCategory === 'beam'
+          ? 'ion'
+          : ship.ship.damageType;
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
       override: {
@@ -130,7 +217,10 @@ export function updateTurrets(state: GameState, delta: number): void {
         projectileSpeed: t.turret.projectileSpeed,
         range: t.turret.range,
         bulletType: t.turret.bulletType,
+        damageType: overrideDamageType,
       },
+      projectileCategory: t.turret.projectileCategory,
+      targetId: target.id,
     });
     t.turret.cooldown = t.turret.fireRate;
   }

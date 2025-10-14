@@ -6,6 +6,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## In Progress
 
+- [TASK248](TASK248-weapon-category-expansion.md) — Extend weapon categories with missiles, torpedoes, beams, and PD targeting per spec. (In Progress — requirements/design logged) (2025-10-14)
 - [TASK246](TASK246-thruster-trails-gpu.md) — Move thruster trails to GPU-managed instanced buffers for scalable rendering. (In Progress — design published, implementation pending) (2025-10-06)
 - [TASK245](TASK245-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
 

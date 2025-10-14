@@ -6,7 +6,10 @@ import { recordBandSample, recordShotMetrics } from '../metrics.js';
 import { updateCaptainAbilities, repairSubsystems, getEffectiveStats } from '../progression.js';
 import { fireProjectile } from './projectiles.js';
 import { findNearestEnemy, runEmbeddedTurrets } from './turrets.js';
-import { deferSetNextKinematicTranslation, deferSetNextKinematicRotation } from '../physics/safeKinematics.js';
+import {
+  deferSetNextKinematicTranslation,
+  deferSetNextKinematicRotation,
+} from '../physics/safeKinematics.js';
 
 const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
@@ -52,7 +55,11 @@ export function prepareShips(state: GameState, delta: number): void {
   }
 }
 
-export function executeAICommand(state: GameState, ship: ShipEntity, delta: number): ShipEntity | null {
+export function executeAICommand(
+  state: GameState,
+  ship: ShipEntity,
+  delta: number,
+): ShipEntity | null {
   const ai = ship.ai;
   if (!ai) return runLegacyShipBehavior(state, ship, delta);
   const command = ai.command;
@@ -93,12 +100,27 @@ export function executeAICommand(state: GameState, ship: ShipEntity, delta: numb
   const thrust = Math.min(1, Math.max(0, command.thrust));
   if (thrust > 0) {
     const moveDistance = ship.ship.speed * thrust * delta;
-    const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(heading, moveDistance);
+    const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(
+      heading,
+      moveDistance,
+    );
     clampToWorld(nextPosition);
-    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
+    deferSetNextKinematicTranslation(
+      state,
+      ship.rigidBody as unknown as KinematicBody,
+      nextPosition.x,
+      nextPosition.y,
+      nextPosition.z,
+    );
   } else {
     const p = ship.transform.position;
-    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    deferSetNextKinematicTranslation(
+      state,
+      ship.rigidBody as unknown as KinematicBody,
+      p.x,
+      p.y,
+      p.z,
+    );
   }
 
   let target: ShipEntity | null = null;
@@ -142,19 +164,29 @@ export function executeAICommand(state: GameState, ship: ShipEntity, delta: numb
       deltaY,
     });
 
-    fireProjectile(state, ship, fireDir);
+    fireProjectile(state, ship, fireDir, { targetId: target?.id ?? undefined });
     ship.ship.cooldown = ship.ship.fireRate;
   }
 
   return target;
 }
 
-export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta: number): ShipEntity | null {
+export function runLegacyShipBehavior(
+  state: GameState,
+  ship: ShipEntity,
+  delta: number,
+): ShipEntity | null {
   const target = findNearestEnemy(state, ship);
 
   if (!target) {
     const p = ship.transform.position;
-    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    deferSetNextKinematicTranslation(
+      state,
+      ship.rigidBody as unknown as KinematicBody,
+      p.x,
+      p.y,
+      p.z,
+    );
     return null;
   }
 
@@ -173,12 +205,27 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
       ship.ship.speed * delta,
       Math.max(distance - ship.ship.range * 0.55, 0),
     );
-    const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(direction, moveDistance);
+    const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(
+      direction,
+      moveDistance,
+    );
     clampToWorld(nextPosition);
-    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPosition.x, nextPosition.y, nextPosition.z);
+    deferSetNextKinematicTranslation(
+      state,
+      ship.rigidBody as unknown as KinematicBody,
+      nextPosition.x,
+      nextPosition.y,
+      nextPosition.z,
+    );
   } else {
     const p = ship.transform.position;
-    deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, p.x, p.y, p.z);
+    deferSetNextKinematicTranslation(
+      state,
+      ship.rigidBody as unknown as KinematicBody,
+      p.x,
+      p.y,
+      p.z,
+    );
   }
 
   if (distance <= ship.ship.range && ship.ship.cooldown <= 0) {
@@ -198,7 +245,7 @@ export function runLegacyShipBehavior(state: GameState, ship: ShipEntity, delta:
         deltaY: target.transform.position.y - ship.transform.position.y,
       });
     }
-    fireProjectile(state, ship, direction);
+    fireProjectile(state, ship, direction, { targetId: target?.id ?? undefined });
     ship.ship.cooldown = ship.ship.fireRate;
   }
 
@@ -212,7 +259,14 @@ export function orientTowards(state: GameState, ship: ShipEntity, direction: Vec
   rotation.multiply(banking);
 
   ship.transform.rotation.copy(rotation);
-  deferSetNextKinematicRotation(state, ship.rigidBody as unknown as KinematicBody, rotation.x, rotation.y, rotation.z, rotation.w);
+  deferSetNextKinematicRotation(
+    state,
+    ship.rigidBody as unknown as KinematicBody,
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w,
+  );
 }
 
 export function getShipById(state: GameState, id: number | undefined): ShipEntity | null {
