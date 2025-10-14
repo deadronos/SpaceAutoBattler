@@ -209,9 +209,14 @@ function resolveBeamImpact(
   const origin = projectile.transform.position;
   const direction = projectile.direction.clone().normalize();
   let closest: ShipEntity | null = null;
-  const maxLength = Math.max(beam.maxLength, beam.length);
-  // Clamp hit detection to the visual reach of the beam so hits align with the rendered segment.
-  const searchLength = Number.isFinite(maxLength) ? maxLength : Number.POSITIVE_INFINITY;
+  const visualReach = Math.max(beam.maxLength, beam.length);
+  const rangeLimit = projectile.projectile.range;
+  // Clamp hit detection to the projectile's intended range so hits align with gameplay tuning, but always
+  // allow at least the currently rendered reach to avoid shrinking existing impacts mid-frame.
+  const searchLength =
+    rangeLimit != null && Number.isFinite(rangeLimit)
+      ? Math.max(rangeLimit, visualReach)
+      : Number.POSITIVE_INFINITY;
   let closestDistance = searchLength;
 
   for (const ship of ships) {
@@ -235,17 +240,16 @@ function resolveBeamImpact(
   }
 
   if (closest) {
-    const impactDistance = Math.min(closestDistance, maxLength);
+    const impactDistance = closestDistance;
     const impactPosition = origin.clone().addScaledVector(direction, impactDistance);
     // Update beam visual length to the actual hit distance (clamped to max) so renderer can scale instance.
     if (projectile.projectile.beam) {
-      const clamped = impactDistance;
-      projectile.projectile.beam.length = clamped;
+      projectile.projectile.beam.length = impactDistance;
     }
     detonateProjectile(state, projectile, impactPosition, ships, manager, toRemove, closest, true);
   } else {
     if (projectile.projectile.beam) {
-      projectile.projectile.beam.length = maxLength;
+      projectile.projectile.beam.length = visualReach;
     }
   }
 

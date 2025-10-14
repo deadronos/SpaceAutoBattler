@@ -283,6 +283,7 @@ export function fireProjectile(
     aoeRadius: cfg.aoeRadius,
     spawnTime: state.time,
     beam: beamState,
+    range,
   };
 
   enqueuePostPhysicsMutation(state, () => {
@@ -327,6 +328,7 @@ export function fireProjectile(
         aoeRadius: projectileData.aoeRadius,
         spawnTime: projectileData.spawnTime,
         beam: projectileData.beam,
+        range: projectileData.range,
       },
       direction: spawnDirection.clone(),
     });

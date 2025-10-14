@@ -68,6 +68,8 @@ export interface ProjectileComponent {
   beam?: BeamRuntimeState;
   /** Internal marker used to avoid repeated beam resolution. */
   hasAppliedBeamDamage?: boolean;
+  /** Maximum effective range this projectile can hit (world units). */
+  range?: number;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
