@@ -18,6 +18,7 @@ export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
 const TEMP_BEAM_DIR = new Vector3();
 const TEMP_INV_ROT = new Quaternion();
+const TEMP_BEAM_ORIGIN = new Vector3();
 
 export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
@@ -57,21 +58,45 @@ export function advanceProjectiles(state: GameState, delta: number): void {
       if (component.sourceId != null && beamState) {
         const source = ships.find((ship) => ship.id === component.sourceId);
         if (source) {
-          if (beamState.localOrigin) {
-            const worldOrigin = TEMP_POS.copy(beamState.localOrigin)
+          let worldOrigin: Vector3 | null = null;
+
+          if (beamState.sourceTurretId != null) {
+            const turret = turrets.find((t) => t.id === beamState.sourceTurretId);
+            if (turret) {
+              worldOrigin = TEMP_BEAM_ORIGIN.copy(turret.transform.position);
+            }
+          }
+
+          if (!worldOrigin && beamState.sourceTurretIndex != null) {
+            const embedded = source.turrets?.[beamState.sourceTurretIndex];
+            if (embedded) {
+              worldOrigin = TEMP_BEAM_ORIGIN.copy(embedded.offset)
+                .multiplyScalar(source.transform.scale)
+                .applyQuaternion(source.transform.rotation)
+                .add(source.transform.position);
+            }
+          }
+
+          if (!worldOrigin && beamState.localOrigin) {
+            worldOrigin = TEMP_BEAM_ORIGIN.copy(beamState.localOrigin)
               .multiplyScalar(source.transform.scale)
               .applyQuaternion(source.transform.rotation)
               .add(source.transform.position);
-            clampToWorld(worldOrigin);
-            projectile.transform.position.copy(worldOrigin);
-            deferSetNextKinematicTranslation(
-              state,
-              projectile.rigidBody as unknown as KinematicBody,
-              worldOrigin.x,
-              worldOrigin.y,
-              worldOrigin.z,
-            );
           }
+
+          if (!worldOrigin) {
+            worldOrigin = TEMP_BEAM_ORIGIN.copy(source.transform.position);
+          }
+
+          clampToWorld(worldOrigin);
+          projectile.transform.position.copy(worldOrigin);
+          deferSetNextKinematicTranslation(
+            state,
+            projectile.rigidBody as unknown as KinematicBody,
+            worldOrigin.x,
+            worldOrigin.y,
+            worldOrigin.z,
+          );
 
           let worldDirection: Vector3 | null = null;
           if (beamState.sourceTurretId != null) {
