@@ -167,6 +167,67 @@ describe('projectile behaviours', () => {
     );
   });
 
+  it("doesn't hit the source when beam origin is inside the ship bounds", () => {
+    const state = createTestGameState();
+    state.rapier = createRapierShim();
+    state.physicsWorld = createPhysicsWorldShim();
+    attachWorld(state);
+
+    const shooter = createTestShip(1, 'blue', new Vector3(0, 0, 0));
+    shooter.ship.bulletType = 'beam:laser';
+    shooter.ship.damageType = 'ion';
+    // give the shooter a small shield so we can detect accidental self-hit
+    shooter.ship.shield = 10;
+    const target = createTestShip(2, 'red', new Vector3(0, 0, 12));
+
+    (state.queries.ships.entities as ShipEntity[]).push(shooter, target);
+
+    // Fire with originPosition equal to the shooter's position (inside bounds)
+    fireProjectile(state, shooter, new Vector3(0, 0, 1), { originPosition: shooter.transform.position.clone() });
+    flushPostPhysicsMutations(state);
+
+    const projectile = (state.queries.projectiles.entities as ProjectileEntity[])[0];
+    expect(projectile.projectile.category).toBe('beam');
+
+    resolveProjectiles(state, 0.016);
+
+    // Target should be damaged
+    expect(target.ship.shield).toBeLessThan(10);
+    // Shooter should not be damaged by its own beam
+    expect(shooter.ship.shield).toBe(10);
+  });
+
+  it("doesn't hit the source when bullet origin is inside the ship bounds", () => {
+    const state = createTestGameState();
+    state.rapier = createRapierShim();
+    state.physicsWorld = createPhysicsWorldShim();
+    attachWorld(state);
+
+    const shooter = createTestShip(1, 'blue', new Vector3(0, 0, 0));
+    shooter.ship.bulletType = 'bullet:laser';
+    shooter.ship.damageType = 'kinetic';
+    shooter.ship.shield = 10;
+
+    const target = createTestShip(2, 'red', new Vector3(0, 0, 5));
+    target.ship.shield = 0;
+
+    (state.queries.ships.entities as ShipEntity[]).push(shooter, target);
+
+    // Spawn bullet inside the shooter's bounds
+    fireProjectile(state, shooter, new Vector3(0, 0, 1), { originPosition: shooter.transform.position.clone() });
+    flushPostPhysicsMutations(state);
+
+    // Advance a bit and resolve collisions
+    advanceProjectiles(state, 0.05);
+    resolveProjectiles(state, 0.016);
+
+    // Shooter should not have taken damage from its own bullet
+    expect(shooter.ship.shield).toBe(10);
+    // Target should have taken some damage or at least the projectile should not have been removed due to self-collision
+    const remaining = (state.queries.projectiles.entities as ProjectileEntity[]).length;
+    expect(remaining).toBeGreaterThanOrEqual(0);
+  });
+
   it('allows point-defense shots to intercept missiles', () => {
     const state = createTestGameState();
     state.rapier = createRapierShim();

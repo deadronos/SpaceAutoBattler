@@ -49,12 +49,12 @@ const torpedoProps = {
 
 const beamProps = {
   color: '#c4f5ff',
-  emissive: '#5fe6ff',
-  emissiveIntensity: 4.2,
+  emissive: '#7ff8ff',
+  emissiveIntensity: 6.5, // stronger emissive for better visibility
   roughness: 0.05,
   metalness: 0.0,
   transparent: true,
-  opacity: 0.92,
+  opacity: 0.98, // slightly higher opacity to make beam more solid
   depthWrite: false,
   blending: AdditiveBlending,
   toneMapped: false,
@@ -99,5 +99,11 @@ export function createTorpedoMaterial(): MeshStandardMaterial {
 }
 
 export function createBeamLaserMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(beamProps);
+  const m = new MeshStandardMaterial(beamProps);
+  // Mark as force color write so BloomProvider does not disable colorWrite
+  // when postprocessing is enabled. Transparent additive beams should still
+  // contribute to the main color pass to remain visible without relying
+  // solely on selective bloom routing.
+  (m as any).userData = { ...(m as any).userData, __copilot_forceColorWrite: true };
+  return m;
 }

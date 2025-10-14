@@ -162,8 +162,18 @@ export function ProjectilesInstancedLayer({
       totalAllocated += 1;
       const cfg = getProjectileConfig(projectile.projectile.bulletType);
       const visualMultiplier = cfg.visualMultiplier ?? 1;
-      const scale = projectile.transform.scale * visualMultiplier;
-      TEMP_SCALE.setScalar(scale);
+      const baseScale = projectile.transform.scale * visualMultiplier;
+      // If this projectile is a beam, scale non-uniformly: width for X/Y, length for Z.
+      if (projectile.projectile.category === 'beam' && projectile.projectile.beam) {
+        const beamCfg = projectile.projectile.beam;
+        const width = (beamCfg.width ?? 1) * baseScale;
+        const length = (beamCfg.length ?? 1) * baseScale;
+        // Cylinder geometry was created with length along Z (rotated in geometry creation),
+        // so scale.x/scale.y control diameter and scale.z controls length.
+        TEMP_SCALE.set(width, width, length);
+      } else {
+        TEMP_SCALE.setScalar(baseScale);
+      }
       TEMP_MATRIX.compose(projectile.transform.position, projectile.transform.rotation, TEMP_SCALE);
       mesh.setMatrixAt(index, TEMP_MATRIX);
       mesh.instanceMatrix.needsUpdate = true;

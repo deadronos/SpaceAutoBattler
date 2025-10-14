@@ -34,10 +34,9 @@ export function getProjectileGeometry(bulletType?: string | null): BufferGeometr
       break;
     }
     case 'beam': {
-      const beamCfg = getProjectileBeamConfig(key);
-      const width = Math.max(0.05, beamCfg?.width ?? radius * 2);
-      const length = beamCfg?.length ?? radius * 5;
-      const beam = new CylinderGeometry(width * 0.5, width * 0.5, length, 12, 1, true);
+      // Create a unit beam geometry (1 unit length, 1 unit diameter) and let
+      // the renderer scale each instance non-uniformly to match desired width/length.
+      const beam = new CylinderGeometry(0.5, 0.5, 1, 12, 1, true);
       beam.rotateX(Math.PI / 2);
       geometry = beam;
       break;

@@ -209,13 +209,19 @@ function resolveBeamImpact(
   const origin = projectile.transform.position;
   const direction = projectile.direction.clone().normalize();
   let closest: ShipEntity | null = null;
-  let closestDistance = beam.length;
+  // Use effectively infinite hit detection range for beams; visuals will be set to hit distance
+  // (or a large fallback if there is no hit).
+  const searchLength = Number.POSITIVE_INFINITY;
+  let closestDistance = searchLength;
 
   for (const ship of ships) {
+    // Skip ships on the same team and the originating ship itself to avoid
+    // beams hitting their own ship when turret origin sits inside the mesh.
     if (ship.ship.team === projectile.projectile.team) continue;
+    if (projectile.projectile.sourceId != null && ship.id === projectile.projectile.sourceId) continue;
     const toShip = TEMP_BEAM_VECTOR.copy(ship.transform.position).sub(origin);
     const along = toShip.dot(direction);
-    if (along < 0 || along > beam.length) continue;
+  if (along < 0 || along > searchLength) continue;
     const radial = TEMP_BEAM_PERP.copy(toShip).addScaledVector(direction, -along);
     const shipRadius = ship.transform.scale * 0.9;
     const combined = shipRadius + beam.width * 0.5;
@@ -230,9 +236,16 @@ function resolveBeamImpact(
   if (closest) {
     const impactPosition = origin.clone().addScaledVector(direction, closestDistance);
     detonateProjectile(state, projectile, impactPosition, ships, manager, toRemove, closest, false);
+      // Update beam visual length to the actual hit distance so renderer can scale instance.
+      if (projectile.projectile.beam) projectile.projectile.beam.length = closestDistance;
   }
 
-  projectile.projectile.hasAppliedBeamDamage = true;
+  if (!closest) {
+    // No hit — set a large visual length fallback to show beam extending outward.
+    if (projectile.projectile.beam) projectile.projectile.beam.length = 2000;
+  }
+
+    projectile.projectile.hasAppliedBeamDamage = true;
 }
 
 export function resolveProjectiles(state: GameState, delta: number): void {
@@ -266,7 +279,9 @@ export function resolveProjectiles(state: GameState, delta: number): void {
     let hitShip: ShipEntity | null = null;
 
     for (const ship of ships) {
+      // Don't consider same-team ships or the source ship as collision targets.
       if (ship.ship.team === component.team) continue;
+      if (component.sourceId != null && ship.id === component.sourceId) continue;
       const distance = ship.transform.position.distanceTo(projectile.transform.position);
       const impactRadius = ship.transform.scale * 0.9 + projRadius;
       if (distance > impactRadius) continue;

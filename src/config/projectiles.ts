@@ -64,7 +64,8 @@ export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
     baseGeometryRadius: 0.35,
     visualMultiplier: 1.0,
     category: 'beam',
-    beam: { ttl: 0.12, length: 30, width: 0.9 },
+    // Increase TTL to improve visual visibility (was 0.12)
+    beam: { ttl: 0.45, length: 30, width: 0.9 },
   },
 };
 
