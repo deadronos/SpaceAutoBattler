@@ -26,6 +26,7 @@ import {
 } from './systems/decision/intents.js';
 import { prepareShips, executeAICommand, runLegacyShipBehavior } from './systems/shipControl.js';
 import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
+import { advanceBeamVisuals } from './systems/beamVisuals.js';
 import { findNearestEnemy, updateTurrets } from './systems/turrets.js';
 import { resolveProjectiles } from './systems/damage.js';
 import { syncTransforms } from './systems/sync.js';
@@ -77,6 +78,7 @@ export function updateGame(state: GameState, delta: number): void {
   runSafely('updateTurrets', () => updateTurrets(state, delta));
   runSafely('updateMotionSystem', () => updateMotionSystem(state, delta));
   runSafely('advanceProjectiles', () => advanceProjectiles(state, delta));
+  runSafely('advanceBeamVisuals', () => advanceBeamVisuals(state, delta));
 
   runSafely('flushDeferredMutations', () => flushDeferredMutations(state));
 

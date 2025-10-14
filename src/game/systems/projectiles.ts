@@ -1,5 +1,11 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipEntity, ProjectileEntity, TurretEntity } from '../../types/index.js';
+import type {
+  GameState,
+  ShipEntity,
+  ProjectileEntity,
+  TurretEntity,
+  BeamVisualEntity,
+} from '../../types/index.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import {
   PROJECTILE_CONFIG,
@@ -11,7 +17,9 @@ import { getEffectiveStats } from '../progression.js';
 import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
-import type { BeamRuntimeState, ProjectileCategory } from '../../types/combat.js';
+import type { BeamRuntimeState, ProjectileCategory, DamageType } from '../../types/combat.js';
+import { calculateEffectiveDamage, applySubsystemDamage, awardDamageXp } from '../progression.js';
+import { SeededRng } from '../../utils/rng.js';
 
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
@@ -20,6 +28,108 @@ const TEMP_BEAM_DIR = new Vector3();
 const TEMP_BEAM_LOCAL_DIR = new Vector3();
 const TEMP_INV_ROT = new Quaternion();
 const TEMP_BEAM_ORIGIN = new Vector3();
+const TEMP_BEAM_VECTOR = new Vector3();
+const TEMP_BEAM_PERP = new Vector3();
+const TEMP_IMPACT_DIR = new Vector3();
+
+/**
+ * Perform instant hitscan raycast for beam weapons.
+ * Returns the target ship and impact distance if a hit is detected.
+ */
+function performBeamHitscan(
+  state: GameState,
+  origin: Vector3,
+  direction: Vector3,
+  beamWidth: number,
+  maxRange: number,
+  sourceTeam: string,
+  sourceId: number | null,
+): { target: ShipEntity; distance: number } | null {
+  const ships = state.queries.ships.entities as ShipEntity[];
+  let closest: ShipEntity | null = null;
+  let closestDistance = maxRange;
+
+  for (const ship of ships) {
+    // Skip ships on the same team and the source ship
+    if (ship.ship.team === sourceTeam) continue;
+    if (sourceId != null && ship.id === sourceId) continue;
+
+    const toShip = TEMP_BEAM_VECTOR.copy(ship.transform.position).sub(origin);
+    const along = toShip.dot(direction);
+    if (along < 0 || along > maxRange) continue;
+
+    const radial = TEMP_BEAM_PERP.copy(toShip).addScaledVector(direction, -along);
+    const shipRadius = ship.transform.scale * 0.9;
+    const combined = shipRadius + beamWidth * 0.5;
+
+    if (radial.lengthSq() <= combined * combined) {
+      if (along < closestDistance) {
+        closestDistance = along;
+        closest = ship;
+      }
+    }
+  }
+
+  return closest ? { target: closest, distance: closestDistance } : null;
+}
+
+/**
+ * Apply instant beam damage to a target ship.
+ */
+function applyBeamDamage(
+  state: GameState,
+  target: ShipEntity,
+  damage: number,
+  damageType: string | undefined,
+  impactPosition: Vector3,
+  sourceId: number | null,
+  bulletType: string | undefined,
+): void {
+  const effectiveDamageType: DamageType = (damageType as DamageType) ?? 'kinetic';
+  const damageResult = calculateEffectiveDamage(
+    damage,
+    effectiveDamageType,
+    target.ship.shield,
+    target.ship.armor,
+  );
+
+  if (damageResult.shieldDamage > 0) {
+    target.ship.shield -= damageResult.shieldDamage;
+    const dir = TEMP_IMPACT_DIR.copy(impactPosition).sub(target.transform.position);
+    if (dir.lengthSq() > 1e-5) dir.normalize();
+    else dir.set(0, 0, 1);
+    const strength = Math.min(1, damageResult.shieldDamage / Math.max(1, target.ship.maxShield));
+    const ripple = { dir: dir.clone(), t0: state.time, amp: strength };
+    const list = (target.shieldRipples ??= []);
+    list.push(ripple);
+    if (list.length > 64) list.shift();
+  }
+
+  if (damageResult.armorDamage > 0) {
+    target.ship.armor = Math.max(0, target.ship.armor - damageResult.armorDamage * 0.1);
+  }
+
+  let hullDamage = 0;
+  if (damageResult.hullDamage > 0) {
+    const prevHp = target.ship.hp;
+    target.ship.hp -= damageResult.hullDamage;
+    hullDamage = Math.max(0, prevHp - target.ship.hp);
+    // Use a stable seed for subsystem damage based on source and target IDs
+    const seed = (sourceId ?? 0) * 8191 + target.id;
+    applySubsystemDamage(target.ship, hullDamage, new SeededRng(seed));
+  }
+
+  const totalDamageDealt =
+    damageResult.shieldDamage + damageResult.armorDamage + damageResult.hullDamage;
+  if (totalDamageDealt > 0 && sourceId != null) {
+    const ships = state.queries.ships.entities as ShipEntity[];
+    const attacker = ships.find((s) => s.id === sourceId);
+    if (attacker) {
+      const damageSource = bulletType ?? 'Beam';
+      awardDamageXp(attacker.ship, totalDamageDealt, state, attacker.id, damageSource);
+    }
+  }
+}
 
 export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
@@ -233,6 +343,69 @@ export function fireProjectile(
       ? Math.min(beamConfig?.ttl ?? 0.1, 0.5)
       : Math.min(range / Math.max(1e-3, speed), 30);
 
+  // Handle beam weapons: instant hitscan for damage + visual-only beam entity
+  if (category === 'beam' && beamConfig) {
+    const beamWidth = beamConfig.width;
+    const beamLength = beamConfig.length;
+    const beamTtl = beamConfig.ttl;
+
+    // Perform instant hitscan raycast
+    const hitResult = performBeamHitscan(
+      state,
+      startPosition,
+      direction,
+      beamWidth,
+      range,
+      origin.ship.team,
+      origin.id,
+    );
+
+    // Apply damage instantly if we hit a target
+    let actualLength = beamLength;
+    if (hitResult) {
+      actualLength = hitResult.distance;
+      const impactPosition = startPosition.clone().addScaledVector(direction, actualLength);
+      applyBeamDamage(
+        state,
+        hitResult.target,
+        damage,
+        damageType,
+        impactPosition,
+        origin.id,
+        bulletKey,
+      );
+    }
+
+    // Spawn visual-only beam entity (no physics body)
+    enqueuePostPhysicsMutation(state, () => {
+      state.world.add({
+        id: state.nextEntityId++,
+        transform: {
+          position: startPosition.clone(),
+          rotation: rotation.clone(),
+          scale: visualScale,
+        },
+        direction: direction.clone(),
+        beamVisual: {
+          team: origin.ship.team,
+          ttl: beamTtl,
+          maxTtl: beamTtl,
+          width: beamWidth,
+          length: actualLength,
+          maxLength: beamLength,
+          bulletType: bulletKey,
+          sourceId: origin.id,
+          sourceTurretId: opts?.sourceTurretId,
+          sourceTurretIndex: opts?.sourceTurretIndex,
+          spawnTime: state.time,
+        },
+      });
+    });
+
+    return; // Early return for beam weapons
+  }
+
+  // Non-beam projectiles: continue with normal physics-based projectile creation
   let beamState: BeamRuntimeState | undefined;
   if (beamConfig) {
     beamState = {

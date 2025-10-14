@@ -127,13 +127,14 @@ export interface ShieldRipple {
 
 export interface GameEntity extends TransformComponent {
   id: number;
-  rigidBody: RigidBody;
-  collider: Collider;
+  rigidBody?: RigidBody;
+  collider?: Collider;
   ship?: ShipComponent;
   projectile?: import('./combat.js').ProjectileComponent;
   turret?: import('./combat.js').TurretComponent;
   carrier?: CarrierComponent;
   ai?: import('./ai.js').AIState;
+  beamVisual?: import('./combat.js').BeamVisualComponent;
   /** Unit direction vector used for projectile integration. */
   direction?: Vector3;
   /** Identifier of the model to render for this entity. */
@@ -152,11 +153,16 @@ export type ProjectileEntity = GameEntity & {
   direction: Vector3;
 };
 export type TurretEntity = GameEntity & { turret: import('./combat.js').TurretComponent };
+export type BeamVisualEntity = GameEntity & {
+  beamVisual: import('./combat.js').BeamVisualComponent;
+  direction: Vector3;
+};
 
 export interface GameQueries {
   ships: import('./core.js').Archetype<GameEntity, ['ship']>;
   projectiles: import('./core.js').Archetype<GameEntity, ['projectile']>;
   turrets: import('./core.js').Archetype<GameEntity, ['turret']>;
+  beamVisuals: import('./core.js').Archetype<GameEntity, ['beamVisual']>;
 }
 
 export type { ProgressionEvent };

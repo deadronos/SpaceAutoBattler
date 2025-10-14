@@ -63,7 +63,7 @@ function createMockShip(team: 'red' | 'blue', position: Vector3): ShipEntity {
 }
 
 function createMockGameState(ships: ShipEntity[]): GameState {
-  return createTestGameState({ queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] } }, time: 0 });
+  return createTestGameState({ queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] }, beamVisuals: { entities: [] } }, time: 0 });
 }
 
 describe('Motion System Behavior', () => {

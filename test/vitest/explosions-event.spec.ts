@@ -25,6 +25,7 @@ function makeState(rngValue = 0.42): GameState {
       ships: { entities: [] },
       projectiles: { entities: [] },
       turrets: { entities: [] },
+      beamVisuals: { entities: [] },
     } as any,
     rng: {
       next: () => rngValue,

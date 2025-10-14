@@ -40,7 +40,7 @@ function createState(): GameState {
         lastUpdateTick: -1,
       },
     },
-    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
+    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] }, beamVisuals: { entities: [] } },
     world: {} as never,
     physicsWorld: {} as never,
     eventQueue: {} as never,

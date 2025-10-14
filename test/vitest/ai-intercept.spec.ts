@@ -47,7 +47,7 @@ function createState(): GameState {
       priorityIndex: { blue: new Map(), red: new Map() },
       focusFire: { blue: new Map(), red: new Map() },
     },
-    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
+    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] }, beamVisuals: { entities: [] } },
     world: {} as never,
     physicsWorld: {} as never,
     eventQueue: {} as never,

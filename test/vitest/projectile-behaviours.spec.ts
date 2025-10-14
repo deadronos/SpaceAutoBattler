@@ -17,6 +17,9 @@ function attachWorld(state: GameState): void {
     if (obj.projectile) {
       (state.queries.projectiles.entities as ProjectileEntity[]).push(obj as ProjectileEntity);
     }
+    if (obj.beamVisual) {
+      (state.queries.beamVisuals.entities as import('../../src/types/index.js').BeamVisualEntity[]).push(obj as import('../../src/types/index.js').BeamVisualEntity);
+    }
     if (
       obj.collider &&
       typeof (obj.collider as { isValid?: () => boolean }).isValid !== 'function'
@@ -155,17 +158,16 @@ describe('projectile behaviours', () => {
     fireProjectile(state, shooter, new Vector3(0, 0, 1));
     flushPostPhysicsMutations(state);
 
-    const projectile = (state.queries.projectiles.entities as ProjectileEntity[])[0];
-    expect(projectile.projectile.category).toBe('beam');
+    // Beams now spawn as BeamVisualEntity, not ProjectileEntity
+    const beamVisual = (state.queries.beamVisuals.entities as import('../../src/types/index.js').BeamVisualEntity[])[0];
+    expect(beamVisual).toBeDefined();
+    expect(beamVisual.beamVisual.bulletType).toBe('beam:laser');
 
-    resolveProjectiles(state, 0.016);
-
+    // Damage is applied instantly during fireProjectile, so target shield should already be reduced
     expect(target.ship.shield).toBeLessThan(5);
-    expect(projectile.projectile.hasAppliedBeamDamage).toBe(true);
-    // Beams are now removed immediately after applying damage to prevent orphaned visuals
-    expect((state.queries.projectiles.entities as ProjectileEntity[]).includes(projectile)).toBe(
-      false,
-    );
+
+    // Visual beam entity should persist (not immediately removed)
+    expect((state.queries.beamVisuals.entities as import('../../src/types/index.js').BeamVisualEntity[]).includes(beamVisual)).toBe(true);
   });
 
   it("doesn't hit the source when beam origin is inside the ship bounds", () => {
@@ -187,14 +189,14 @@ describe('projectile behaviours', () => {
     fireProjectile(state, shooter, new Vector3(0, 0, 1), { originPosition: shooter.transform.position.clone() });
     flushPostPhysicsMutations(state);
 
-    const projectile = (state.queries.projectiles.entities as ProjectileEntity[])[0];
-    expect(projectile.projectile.category).toBe('beam');
+    // Beams now spawn as BeamVisualEntity, not ProjectileEntity
+    const beamVisual = (state.queries.beamVisuals.entities as import('../../src/types/index.js').BeamVisualEntity[])[0];
+    expect(beamVisual).toBeDefined();
 
-    resolveProjectiles(state, 0.016);
-
+    // Damage is applied instantly during fireProjectile
     // Target should be damaged
     expect(target.ship.shield).toBeLessThan(10);
-    // Shooter should not be damaged by its own beam
+    // Shooter should not be damaged by its own beam (instant hitscan skips same team)
     expect(shooter.ship.shield).toBe(10);
   });
 

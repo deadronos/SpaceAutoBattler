@@ -53,6 +53,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
       ships: { entities: ships },
       projectiles: { entities: [] },
       turrets: { entities: [] },
+      beamVisuals: { entities: [] },
     },
     world: {} as never,
     physicsWorld: {} as never,

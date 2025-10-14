@@ -53,6 +53,9 @@ describe('findNearestEnemy', () => {
         ships: {
           entities: [origin, farEnemy, nearEnemy, ally],
         },
+        projectiles: { entities: [] },
+        turrets: { entities: [] },
+        beamVisuals: { entities: [] },
       },
     } as unknown as GameState;
 
@@ -69,6 +72,9 @@ describe('findNearestEnemy', () => {
         ships: {
           entities: [origin, ally],
         },
+        projectiles: { entities: [] },
+        turrets: { entities: [] },
+        beamVisuals: { entities: [] },
       },
     } as unknown as GameState;
 

@@ -32,6 +32,7 @@ export type {
   TurretState,
   TurretComponent,
   MuzzleFlash,
+  BeamVisualComponent,
 } from './combat.js';
 
 // Progression types
@@ -57,6 +58,7 @@ export type {
   ShipEntity,
   ProjectileEntity,
   TurretEntity,
+  BeamVisualEntity,
   GameQueries,
 } from './ship.js';
 

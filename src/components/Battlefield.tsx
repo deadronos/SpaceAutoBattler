@@ -16,6 +16,7 @@ import { CelestialEnvironment } from './environment/CelestialEnvironment.js';
 import { BattlefieldSystems } from './BattlefieldSystems.js';
 import { ShipsLayer } from './layers/ShipsLayer.js';
 import { ProjectilesLayer } from './layers/ProjectilesLayer.js';
+import { BeamVisualsLayer } from './layers/BeamVisualsLayer.js';
 import { MuzzleFlashInstancedLayer } from './layers/MuzzleFlashInstancedLayer.js';
 import { TurretsLayer } from './layers/TurretsLayer.js';
 import { StarsField } from './layers/StarsField.js';
@@ -40,6 +41,7 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         <TurretsLayer archetype={state.queries.turrets} />
         <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />
         <ProjectilesLayer archetype={state.queries.projectiles} />
+        <BeamVisualsLayer archetype={state.queries.beamVisuals} />
         <ExplosionsLayer />
         <ParticleTrails ships={ships} />
       </Suspense>

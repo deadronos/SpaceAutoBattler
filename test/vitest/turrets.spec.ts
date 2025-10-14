@@ -112,6 +112,7 @@ function makeStateStub(): GameState {
       ships: { entities: [] },
       projectiles: { entities: [] },
       turrets: { entities: [] },
+      beamVisuals: { entities: [] },
     } as any,
     rng: { next: () => 0.5 } as any,
     paused: false,

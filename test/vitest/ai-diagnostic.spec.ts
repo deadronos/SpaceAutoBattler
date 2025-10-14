@@ -132,7 +132,7 @@ it('diagnostic: escort + bomber + artillery scenarios candidate breakdown', () =
           lastUpdateTick: -1,
         },
       },
-      queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] } },
+      queries: { ships: { entities: ships }, projectiles: { entities: [] }, turrets: { entities: [] }, beamVisuals: { entities: [] } },
       world: { entities: ships },
     };
 

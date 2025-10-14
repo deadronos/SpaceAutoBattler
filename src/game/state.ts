@@ -60,6 +60,7 @@ export async function createGameState(): Promise<GameState> {
       ships: world.with('ship'),
       projectiles: world.with('projectile'),
       turrets: world.with('turret'),
+      beamVisuals: world.with('beamVisual'),
     },
     rng: new SeededRng(1337),
     paused: false,

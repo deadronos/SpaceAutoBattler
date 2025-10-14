@@ -193,10 +193,11 @@ function createStateWithShips(
       },
     },
     queries: {
-      ships: { entities: ships },
+      ships: { entities: [ship] },
       projectiles: { entities: [] },
       turrets: { entities: [] },
-    },
+      beamVisuals: { entities: [] },
+    } as any,
     world: { entities: ships },
     physicsWorld: {} as never,
     eventQueue: {} as never,

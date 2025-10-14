@@ -142,3 +142,29 @@ export interface MuzzleFlash {
   /** Optional bullet type for tinting the flash. */
   bulletType?: string;
 }
+
+/** Visual-only component for rendering beam weapons. No collision or damage logic. */
+export interface BeamVisualComponent {
+  /** Team that fired this beam (for coloring/effects). */
+  team: Team;
+  /** Time remaining before the visual expires (seconds). */
+  ttl: number;
+  /** Maximum TTL for fade calculations. */
+  maxTtl: number;
+  /** Width of the beam cylinder (world units). */
+  width: number;
+  /** Current visual length of the beam (world units). */
+  length: number;
+  /** Maximum length the beam can extend to. */
+  maxLength: number;
+  /** Optional material key for rendering. */
+  bulletType?: string;
+  /** Entity ID of the ship that fired this beam. */
+  sourceId?: number;
+  /** Optional turret entity ID if fired from a turret. */
+  sourceTurretId?: number;
+  /** Optional turret index if fired from an embedded turret. */
+  sourceTurretIndex?: number;
+  /** Simulation time when the beam was spawned. */
+  spawnTime: number;
+}

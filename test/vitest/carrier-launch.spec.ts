@@ -258,6 +258,9 @@ function createState(ships: ShipEntity[]): GameState {
     rng: new SeededRng(1234),
     queries: {
       ships: { entities: ships },
+      projectiles: { entities: [] },
+      turrets: { entities: [] },
+      beamVisuals: { entities: [] },
     },
     simulation: {
       step: 1 / 20,

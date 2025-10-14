@@ -367,8 +367,9 @@ function createStubState(): GameState {
     },
     queries: {
       ships: { entities: ships },
-      projectiles: { entities: projectiles },
+      projectiles: { entities: [] },
       turrets: { entities: [] },
+      beamVisuals: { entities: [] },
     },
     world: worldStub as unknown as GameState['world'],
     physicsWorld: physicsWorldStub as unknown as GameState['physicsWorld'],

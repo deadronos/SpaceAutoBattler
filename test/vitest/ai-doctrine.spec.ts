@@ -45,7 +45,7 @@ function createMockState(): GameState {
       threshold: 0.18,
       staleDecay: 0.55,
     },
-    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] } },
+    queries: { ships: { entities: [] }, projectiles: { entities: [] }, turrets: { entities: [] }, beamVisuals: { entities: [] } },
     world: {} as never,
     physicsWorld: {} as never,
     eventQueue: {} as never,

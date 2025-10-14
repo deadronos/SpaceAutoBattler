@@ -11,9 +11,10 @@ describe('safeSnapshot utilities', () => {
       simulation: { lastTickIndex: 5, lastTickDuration: 0.05, accumulator: 0, deferredMutations: [], postStepMutations: [] },
       world: { entities: [{}, {}, {}] },
       queries: {
-        ships: { entities: [{}, {}] },
+        ships: { entities: [] },
         projectiles: { entities: [] },
         turrets: { entities: [] },
+        beamVisuals: { entities: [] },
       },
       colliderLookup: new Map([[1, {}]]),
       ai: { tickIndex: 2, cursor: 7 },
