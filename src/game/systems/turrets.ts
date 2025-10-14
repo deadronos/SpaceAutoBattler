@@ -36,7 +36,9 @@ function getTurretWorldPosition(ship: ShipEntity, turret: TurretState): Vector3 
 }
 
 export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: ShipEntity): void {
-  for (const turret of ship.turrets ?? []) {
+  const turrets = ship.turrets ?? [];
+  for (let turretIndex = 0; turretIndex < turrets.length; turretIndex += 1) {
+    const turret = turrets[turretIndex];
     if (turret.cooldown > 0) continue;
     const turretOrigin = getTurretWorldPosition(ship, turret);
     const toTarget = TEMP_DIR.copy(target.transform.position).sub(turretOrigin);
@@ -44,6 +46,8 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
+    if (turret.aimDirection) turret.aimDirection.copy(toTarget);
+    else turret.aimDirection = toTarget.clone();
     const metrics = state.ai?.metrics;
     if (metrics) {
       recordShotMetrics(metrics, {
@@ -71,6 +75,7 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
       },
       projectileCategory: turret.projectileCategory,
       targetId: target.id,
+      sourceTurretIndex: turretIndex,
     });
     turret.cooldown = turret.fireRate;
   }
@@ -89,6 +94,7 @@ export function updateTurrets(state: GameState, delta: number): void {
       origin.y,
       origin.z,
     );
+    t.transform.position.copy(origin);
     let pdTarget: ProjectileEntity | null = null;
     if (t.turret.pointDefense) {
       const pdRange = t.turret.pointDefenseRange ?? t.turret.range;
@@ -156,6 +162,10 @@ export function updateTurrets(state: GameState, delta: number): void {
         const minPitch = t.turret.minPitch ?? -Math.PI / 2;
         const maxPitch = t.turret.maxPitch ?? Math.PI / 2;
         if (yaw >= minYaw && yaw <= maxYaw && pitch >= minPitch && pitch <= maxPitch) {
+          const aimDir = t.turret.aimDirection ?? (t.turret.aimDirection = new Vector3(0, 0, 1));
+          aimDir.copy(toProjectile);
+          const entityDir = t.direction ?? (t.direction = new Vector3(0, 0, 1));
+          entityDir.copy(toProjectile);
           const overrideDamageType =
             t.turret.projectileCategory === 'torpedo' || t.turret.projectileCategory === 'missile'
               ? 'explosive'
@@ -172,6 +182,7 @@ export function updateTurrets(state: GameState, delta: number): void {
               damageType: overrideDamageType,
             },
             projectileCategory: t.turret.projectileCategory,
+            sourceTurretId: t.id,
           });
           t.turret.cooldown = t.turret.fireRate;
           continue;
@@ -210,6 +221,10 @@ export function updateTurrets(state: GameState, delta: number): void {
         : t.turret.projectileCategory === 'beam'
           ? 'ion'
           : ship.ship.damageType;
+    const aimDir = t.turret.aimDirection ?? (t.turret.aimDirection = new Vector3(0, 0, 1));
+    aimDir.copy(toTarget);
+    const entityDir = t.direction ?? (t.direction = new Vector3(0, 0, 1));
+    entityDir.copy(toTarget);
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
       override: {
@@ -221,6 +236,7 @@ export function updateTurrets(state: GameState, delta: number): void {
       },
       projectileCategory: t.turret.projectileCategory,
       targetId: target.id,
+      sourceTurretId: t.id,
     });
     t.turret.cooldown = t.turret.fireRate;
   }

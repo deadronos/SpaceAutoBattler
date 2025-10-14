@@ -22,6 +22,10 @@ export interface BeamRuntimeState extends BeamVisualConfig {
   localOrigin?: Vector3;
   /** Optional local-space direction relative to the firing ship's forward. */
   localDirection?: Vector3;
+  /** Optional identifier for the turret entity that spawned this beam. */
+  sourceTurretId?: number;
+  /** Optional index for embedded turrets on the firing ship. */
+  sourceTurretIndex?: number;
 }
 
 export type { DamageType };
@@ -99,6 +103,8 @@ export interface TurretSpec {
 export interface TurretState extends TurretSpec {
   /** Countdown timer until the turret can fire again. */
   cooldown: number;
+  /** Current world-space aim direction for beam alignment and VFX. */
+  aimDirection?: Vector3;
 }
 
 /** ECS component for a turret entity, referencing its parent ship. */
@@ -119,6 +125,8 @@ export interface TurretComponent extends TurretSpec {
   maxPitch?: number;
   /** Targeting priority for turret AI. */
   priority?: 'any' | 'antiFighter' | 'antiCapital';
+  /** Current world-space aim direction for beam alignment and VFX. */
+  aimDirection?: Vector3;
 }
 
 /** Parameters for a short-lived muzzle flash event emitted when a weapon fires. */

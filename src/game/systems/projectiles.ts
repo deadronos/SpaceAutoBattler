@@ -1,5 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipEntity, ProjectileEntity } from '../../types/index.js';
+import type { GameState, ShipEntity, ProjectileEntity, TurretEntity } from '../../types/index.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import {
   PROJECTILE_CONFIG,
@@ -16,10 +16,13 @@ import type { BeamRuntimeState, ProjectileCategory } from '../../types/combat.js
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
+const TEMP_BEAM_DIR = new Vector3();
+const TEMP_INV_ROT = new Quaternion();
 
 export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   const ships = state.queries.ships.entities as ShipEntity[];
+  const turrets = state.queries.turrets.entities as TurretEntity[];
   for (const projectile of projectiles) {
     const component = projectile.projectile;
     if (!component.armed) {
@@ -69,12 +72,48 @@ export function advanceProjectiles(state: GameState, delta: number): void {
               worldOrigin.z,
             );
           }
-          if (beamState.localDirection) {
-            const worldDirection = TEMP_DIR.copy(beamState.localDirection)
+
+          let worldDirection: Vector3 | null = null;
+          if (beamState.sourceTurretId != null) {
+            const turret = turrets.find((t) => t.id === beamState.sourceTurretId);
+            if (turret?.direction && turret.direction.lengthSq() > 1e-6) {
+              worldDirection = TEMP_BEAM_DIR.copy(turret.direction).normalize();
+            } else if (
+              turret?.turret?.aimDirection &&
+              turret.turret.aimDirection.lengthSq() > 1e-6
+            ) {
+              worldDirection = TEMP_BEAM_DIR.copy(turret.turret.aimDirection).normalize();
+            }
+          }
+
+          if (!worldDirection && beamState.sourceTurretIndex != null) {
+            const embedded = source.turrets?.[beamState.sourceTurretIndex];
+            if (embedded?.aimDirection && embedded.aimDirection.lengthSq() > 1e-6) {
+              worldDirection = TEMP_BEAM_DIR.copy(embedded.aimDirection).normalize();
+            }
+          }
+
+          if (!worldDirection && beamState.localDirection) {
+            worldDirection = TEMP_BEAM_DIR.copy(beamState.localDirection)
               .applyQuaternion(source.transform.rotation)
               .normalize();
+          }
+
+          if (worldDirection) {
             projectile.direction.copy(worldDirection);
             projectile.transform.rotation.setFromUnitVectors(FORWARD, worldDirection);
+            const invRotation = TEMP_INV_ROT.copy(source.transform.rotation).invert();
+            if (beamState.localDirection) {
+              beamState.localDirection
+                .copy(worldDirection)
+                .applyQuaternion(invRotation)
+                .normalize();
+            } else {
+              beamState.localDirection = worldDirection
+                .clone()
+                .applyQuaternion(invRotation)
+                .normalize();
+            }
           }
         }
       }
@@ -108,6 +147,8 @@ export function fireProjectile(
     >;
     targetId?: number;
     projectileCategory?: ProjectileCategory;
+    sourceTurretId?: number;
+    sourceTurretIndex?: number;
   },
 ): void {
   const muzzleOffset = origin.transform.scale * 1.6;
@@ -190,6 +231,12 @@ export function fireProjectile(
 
     const localDirection = direction.clone().applyQuaternion(invRotation).normalize();
     beamState.localDirection = localDirection;
+    if (opts?.sourceTurretId != null) {
+      beamState.sourceTurretId = opts.sourceTurretId;
+    }
+    if (opts?.sourceTurretIndex != null) {
+      beamState.sourceTurretIndex = opts.sourceTurretIndex;
+    }
   }
 
   const spawnDirection = direction.clone();
