@@ -51,22 +51,31 @@ export function advanceProjectiles(state: GameState, delta: number): void {
 
     if (component.category === 'beam') {
       const beamState = component.beam;
-      if (beamState?.localOrigin && component.sourceId != null) {
+      if (component.sourceId != null && beamState) {
         const source = ships.find((ship) => ship.id === component.sourceId);
         if (source) {
-          const worldOrigin = TEMP_POS.copy(beamState.localOrigin)
-            .multiplyScalar(source.transform.scale)
-            .applyQuaternion(source.transform.rotation)
-            .add(source.transform.position);
-          clampToWorld(worldOrigin);
-          projectile.transform.position.copy(worldOrigin);
-          deferSetNextKinematicTranslation(
-            state,
-            projectile.rigidBody as unknown as KinematicBody,
-            worldOrigin.x,
-            worldOrigin.y,
-            worldOrigin.z,
-          );
+          if (beamState.localOrigin) {
+            const worldOrigin = TEMP_POS.copy(beamState.localOrigin)
+              .multiplyScalar(source.transform.scale)
+              .applyQuaternion(source.transform.rotation)
+              .add(source.transform.position);
+            clampToWorld(worldOrigin);
+            projectile.transform.position.copy(worldOrigin);
+            deferSetNextKinematicTranslation(
+              state,
+              projectile.rigidBody as unknown as KinematicBody,
+              worldOrigin.x,
+              worldOrigin.y,
+              worldOrigin.z,
+            );
+          }
+          if (beamState.localDirection) {
+            const worldDirection = TEMP_DIR.copy(beamState.localDirection)
+              .applyQuaternion(source.transform.rotation)
+              .normalize();
+            projectile.direction.copy(worldDirection);
+            projectile.transform.rotation.setFromUnitVectors(FORWARD, worldDirection);
+          }
         }
       }
       continue;
@@ -178,6 +187,9 @@ export function fireProjectile(
       localOrigin.divideScalar(scale);
     }
     beamState.localOrigin = localOrigin;
+
+    const localDirection = direction.clone().applyQuaternion(invRotation).normalize();
+    beamState.localDirection = localDirection;
   }
 
   const spawnDirection = direction.clone();

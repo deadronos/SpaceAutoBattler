@@ -20,6 +20,8 @@ export interface BeamRuntimeState extends BeamVisualConfig {
   maxLength: number;
   /** Optional local-space origin relative to the firing ship. */
   localOrigin?: Vector3;
+  /** Optional local-space direction relative to the firing ship's forward. */
+  localDirection?: Vector3;
 }
 
 export type { DamageType };
