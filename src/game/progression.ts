@@ -8,7 +8,7 @@ import type {
   DamageType,
   ShipLevelBonuses,
   ProgressionEvent,
-  GameState
+  GameState,
 } from '../types/index.js';
 import { SeededRng } from '../utils/rng.js';
 import {
@@ -21,7 +21,7 @@ import {
   HULL_ARMOR_VALUES,
   calculateXpForLevel,
   calculateLevelBonus,
-  getDamageEffectiveness
+  getDamageEffectiveness,
 } from '../config/progression.js';
 
 export function createLevelBonusState(): ShipLevelBonuses {
@@ -63,89 +63,105 @@ function recoverBaseStat(current: number, previousBonus: number): number {
 function addProgressionEvent(
   state: GameState | null,
   shipId: number,
-  event: Omit<ProgressionEvent, 'ts'>
+  event: Omit<ProgressionEvent, 'ts'>,
 ): void {
   if (!state) return;
-  
+
   const events = state.progressionEvents.get(shipId) || [];
   const newEvent: ProgressionEvent = {
     ...event,
-    ts: Date.now()
+    ts: Date.now(),
   };
-  
+
   events.push(newEvent);
-  
+
   // Keep only the last N events per ship
   const MAX_EVENTS = 20;
   if (events.length > MAX_EVENTS) {
     events.splice(0, events.length - MAX_EVENTS);
   }
-  
+
   state.progressionEvents.set(shipId, events);
 }
 
 /**
  * Award XP to a ship for dealing damage
  */
-export function awardDamageXp(ship: ShipComponent, damageDealt: number, state?: GameState | null, shipId?: number): void {
+export function awardDamageXp(
+  ship: ShipComponent,
+  damageDealt: number,
+  state?: GameState | null,
+  shipId?: number,
+  damageSource?: string,
+): void {
   const xpGained = damageDealt * XP_CONFIG.damageXpMultiplier;
   ship.xp += xpGained;
-  
+
   // Track progression event
   if (state && shipId !== undefined) {
+    const sourceSuffix = damageSource ? ` (${damageSource})` : '';
     addProgressionEvent(state, shipId, {
       type: 'damage',
       deltaXp: xpGained,
-      details: `${damageDealt.toFixed(1)} damage dealt`
+      details: `${damageDealt.toFixed(1)} damage dealt${sourceSuffix}`,
     });
   }
-  
+
   checkLevelUp(ship, state, shipId);
 }
 
 /**
  * Award XP to a ship for killing an enemy
  */
-export function awardKillXp(ship: ShipComponent, targetMaxHp: number, state?: GameState | null, shipId?: number): void {
+export function awardKillXp(
+  ship: ShipComponent,
+  targetMaxHp: number,
+  state?: GameState | null,
+  shipId?: number,
+): void {
   const xpGained = targetMaxHp * XP_CONFIG.killXpMultiplier;
   ship.xp += xpGained;
-  
+
   // Track progression event
   if (state && shipId !== undefined) {
     addProgressionEvent(state, shipId, {
       type: 'kill',
       deltaXp: xpGained,
-      details: `Enemy destroyed (${targetMaxHp.toFixed(0)} HP)`
+      details: `Enemy destroyed (${targetMaxHp.toFixed(0)} HP)`,
     });
   }
-  
+
   checkLevelUp(ship, state, shipId);
 }
 
 /**
  * Check if a ship should level up and apply bonuses if so
  */
-export function checkLevelUp(ship: ShipComponent, state?: GameState | null, shipId?: number): boolean {
+export function checkLevelUp(
+  ship: ShipComponent,
+  state?: GameState | null,
+  shipId?: number,
+): boolean {
   let leveledUp = false;
-  
+
   while (ship.xp >= ship.xpToNext) {
     const oldLevel = ship.level;
     ship.level += 1;
     ship.xp -= ship.xpToNext;
     ship.xpToNext = calculateXpForLevel(ship.level + 1) - calculateXpForLevel(ship.level);
-    
+
     // Track level-up event
     if (state && shipId !== undefined) {
       addProgressionEvent(state, shipId, {
         type: 'levelup',
-        details: `Level ${oldLevel} → ${ship.level}`
+        details: `Level ${oldLevel} → ${ship.level}`,
       });
     }
-    
+
     applyLevelUpBonuses(ship);
     leveledUp = true;
   }
-  
+
   return leveledUp;
 }
 
@@ -205,25 +221,28 @@ function applyLevelUpBonuses(ship: ShipComponent): void {
  */
 export function generateCaptain(hull: string, shipSeed: number): Captain | undefined {
   const rng = new SeededRng(shipSeed);
-  
+
   let shouldHaveCaptain = false;
   if (hull === 'destroyer') {
     shouldHaveCaptain = rng.next() < CAPTAIN_CONFIG.destroyerCaptainChance;
   } else if (hull === 'carrier') {
     shouldHaveCaptain = rng.next() < CAPTAIN_CONFIG.carrierCaptainChance;
   }
-  
+
   if (!shouldHaveCaptain) return undefined;
-  
+
   const accuracy = rng.range(CAPTAIN_CONFIG.accuracyRange[0], CAPTAIN_CONFIG.accuracyRange[1]);
-  const repairSpeed = rng.range(CAPTAIN_CONFIG.repairSpeedRange[0], CAPTAIN_CONFIG.repairSpeedRange[1]);
-  
+  const repairSpeed = rng.range(
+    CAPTAIN_CONFIG.repairSpeedRange[0],
+    CAPTAIN_CONFIG.repairSpeedRange[1],
+  );
+
   let moraleAbility: MoraleAbility | undefined;
   if (rng.next() < CAPTAIN_CONFIG.moraleAbilityChance) {
     const abilityTypes: MoraleEffectType[] = ['aggression_boost', 'repair_boost', 'accuracy_boost'];
     const selectedType = abilityTypes[Math.floor(rng.next() * abilityTypes.length)];
     const config = MORALE_ABILITIES[selectedType];
-    
+
     moraleAbility = {
       cooldownRemaining: 0,
       maxCooldown: config.cooldown,
@@ -233,7 +252,7 @@ export function generateCaptain(hull: string, shipSeed: number): Captain | undef
       activeUntil: 0,
     };
   }
-  
+
   return {
     accuracy,
     repairSpeed,
@@ -247,7 +266,7 @@ export function generateCaptain(hull: string, shipSeed: number): Captain | undef
 export function createSubsystems(maxHp: number): Record<SubsystemType, Subsystem> {
   const baseHp = Math.floor(maxHp * SUBSYSTEM_CONFIG.baseHpMultiplier);
   const baseRepairRate = baseHp * SUBSYSTEM_CONFIG.baseRepairRateMultiplier;
-  
+
   return {
     engine: {
       hp: baseHp,
@@ -275,14 +294,14 @@ export function createSubsystems(maxHp: number): Record<SubsystemType, Subsystem
  */
 export function updateCaptainAbilities(ship: ShipComponent, gameTime: number, delta: number): void {
   if (!ship.captain?.moraleAbility) return;
-  
+
   const ability = ship.captain.moraleAbility;
-  
+
   // Update cooldown
   if (ability.cooldownRemaining > 0) {
     ability.cooldownRemaining = Math.max(0, ability.cooldownRemaining - delta);
   }
-  
+
   // Check if active effect should expire
   if (ability.isActive && gameTime >= ability.activeUntil) {
     ability.isActive = false;
@@ -297,41 +316,48 @@ export function activateMoraleAbility(ship: ShipComponent, gameTime: number): bo
   if (!ability || ability.cooldownRemaining > 0 || ability.isActive) {
     return false;
   }
-  
+
   ability.isActive = true;
   ability.activeUntil = gameTime + ability.duration;
   ability.cooldownRemaining = ability.maxCooldown;
-  
+
   return true;
 }
 
 /**
  * Apply subsystem damage from a critical hit
  */
-export function applySubsystemDamage(ship: ShipComponent, hullDamage: number, rng: SeededRng): void {
+export function applySubsystemDamage(
+  ship: ShipComponent,
+  hullDamage: number,
+  rng: SeededRng,
+): void {
   if (rng.next() > SUBSYSTEM_CONFIG.criticalHitChance) return;
-  
+
   // Select random subsystem based on weights
   const rand = rng.next();
   let selectedSubsystem: SubsystemType;
-  
+
   if (rand < SUBSYSTEM_CONFIG.targetWeights.weapons) {
     selectedSubsystem = 'weapons';
-  } else if (rand < SUBSYSTEM_CONFIG.targetWeights.weapons + SUBSYSTEM_CONFIG.targetWeights.engine) {
+  } else if (
+    rand <
+    SUBSYSTEM_CONFIG.targetWeights.weapons + SUBSYSTEM_CONFIG.targetWeights.engine
+  ) {
     selectedSubsystem = 'engine';
   } else {
     selectedSubsystem = 'shields';
   }
-  
+
   // Calculate subsystem damage
   const damageRange = SUBSYSTEM_CONFIG.subsystemDamageRange;
   const damageMultiplier = rng.range(damageRange[0], damageRange[1]);
   const subsystemDamage = Math.floor(hullDamage * damageMultiplier);
-  
+
   // Apply damage
   const subsystem = ship.subsystems[selectedSubsystem];
   subsystem.hp = Math.max(0, subsystem.hp - subsystemDamage);
-  
+
   // Update status
   updateSubsystemStatus(subsystem);
 }
@@ -341,7 +367,7 @@ export function applySubsystemDamage(ship: ShipComponent, hullDamage: number, rn
  */
 export function updateSubsystemStatus(subsystem: Subsystem): void {
   const hpRatio = subsystem.hp / Math.max(1, subsystem.maxHp);
-  
+
   if (hpRatio <= SUBSYSTEM_CONFIG.offlineThreshold) {
     subsystem.status = 'offline';
   } else if (hpRatio <= SUBSYSTEM_CONFIG.damagedThreshold) {
@@ -356,13 +382,15 @@ export function updateSubsystemStatus(subsystem: Subsystem): void {
  */
 export function repairSubsystems(ship: ShipComponent, delta: number): void {
   const repairSpeedMultiplier = ship.captain?.repairSpeed ?? 1.0;
-  const moraleBoost = ship.captain?.moraleAbility?.isActive && 
-                     ship.captain.moraleAbility.effect === 'repair_boost' ? 2.0 : 1.0;
-  
+  const moraleBoost =
+    ship.captain?.moraleAbility?.isActive && ship.captain.moraleAbility.effect === 'repair_boost'
+      ? 2.0
+      : 1.0;
+
   // Repair in priority order
   for (const subsystemType of SUBSYSTEM_CONFIG.repairPriority) {
     const subsystem = ship.subsystems[subsystemType];
-    
+
     if (subsystem.hp < subsystem.maxHp) {
       const repairAmount = subsystem.repairRate * repairSpeedMultiplier * moraleBoost * delta;
       subsystem.hp = Math.min(subsystem.maxHp, subsystem.hp + repairAmount);
@@ -382,7 +410,7 @@ export function getEffectiveStats(ship: ShipComponent): {
   const engineMultiplier = getSubsystemMultiplier('engine', ship.subsystems.engine.status);
   const weaponsMultiplier = getSubsystemMultiplier('weapons', ship.subsystems.weapons.status);
   const shieldsMultiplier = getSubsystemMultiplier('shields', ship.subsystems.shields.status);
-  
+
   return {
     speedMultiplier: engineMultiplier,
     damageMultiplier: weaponsMultiplier,
@@ -395,7 +423,7 @@ export function getEffectiveStats(ship: ShipComponent): {
  */
 function getSubsystemMultiplier(subsystemType: SubsystemType, status: Subsystem['status']): number {
   const effects = SUBSYSTEM_EFFECTS[subsystemType];
-  
+
   switch (status) {
     case 'damaged':
       return effects.damaged;
@@ -414,23 +442,23 @@ export function calculateEffectiveDamage(
   baseDamage: number,
   damageType: DamageType,
   targetShield: number,
-  targetArmor: number
+  targetArmor: number,
 ): { shieldDamage: number; armorDamage: number; hullDamage: number } {
   // If target has shields, damage hits shields first
   if (targetShield > 0) {
     const shieldEffectiveness = getDamageEffectiveness(damageType, 'shield');
     const effectiveShieldDamage = baseDamage * shieldEffectiveness;
-    
+
     if (effectiveShieldDamage >= targetShield) {
       // Shield breaks, remaining damage goes to armor/hull
       const remainingDamage = effectiveShieldDamage - targetShield;
       const armorEffectiveness = getDamageEffectiveness(damageType, 'armor');
       const hullEffectiveness = getDamageEffectiveness(damageType, 'hull');
-      
+
       // Armor absorbs some damage
       const armorAbsorption = Math.min(remainingDamage * 0.5, targetArmor * armorEffectiveness);
       const hullDamage = Math.max(0, (remainingDamage - armorAbsorption) * hullEffectiveness);
-      
+
       return {
         shieldDamage: targetShield,
         armorDamage: armorAbsorption,
@@ -448,10 +476,10 @@ export function calculateEffectiveDamage(
     // No shields, damage goes to armor/hull
     const armorEffectiveness = getDamageEffectiveness(damageType, 'armor');
     const hullEffectiveness = getDamageEffectiveness(damageType, 'hull');
-    
+
     const armorAbsorption = Math.min(baseDamage * 0.5, targetArmor * armorEffectiveness);
     const hullDamage = Math.max(0, (baseDamage - armorAbsorption) * hullEffectiveness);
-    
+
     return {
       shieldDamage: 0,
       armorDamage: armorAbsorption,

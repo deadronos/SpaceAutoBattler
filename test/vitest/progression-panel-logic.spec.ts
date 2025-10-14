@@ -45,8 +45,8 @@ describe('Progression Panel Data Transformation', () => {
         ts: Date.now() - 5000,
         type: 'damage',
         deltaXp: 10,
-        details: '15.0 damage dealt'
-      }
+        details: '15.0 damage dealt (Laser Beam)',
+      },
     ]);
 
     // Transform to progression panel format
@@ -61,7 +61,7 @@ describe('Progression Panel Data Transformation', () => {
         level: ship.ship.level,
         xp: ship.ship.xp,
         xpToNext: ship.ship.xpToNext,
-        events: events.slice(-5)
+        events: events.slice(-5),
       });
     }
 
@@ -80,9 +80,9 @@ describe('Progression Panel Data Transformation', () => {
           ts: expect.any(Number),
           type: 'damage',
           deltaXp: 10,
-          details: '15.0 damage dealt'
-        }
-      ]
+          details: '15.0 damage dealt (Laser Beam)',
+        },
+      ],
     });
   });
 
@@ -115,9 +115,9 @@ describe('Progression Panel Data Transformation', () => {
 
     // Should be: Level 2 first, then Level 1 ships ordered by XP
     expect(progressionShips).toEqual([
-      { id: 2, level: 2, xp: 30 },  // Level 2
-      { id: 3, level: 1, xp: 75 },  // Level 1, higher XP
-      { id: 1, level: 1, xp: 50 },  // Level 1, lower XP
+      { id: 2, level: 2, xp: 30 }, // Level 2
+      { id: 3, level: 1, xp: 75 }, // Level 1, higher XP
+      { id: 1, level: 1, xp: 50 }, // Level 1, lower XP
     ]);
   });
 
@@ -128,7 +128,7 @@ describe('Progression Panel Data Transformation', () => {
         ts: Date.now() - (10 - i) * 1000,
         type: 'damage',
         deltaXp: i + 1,
-        details: `Event ${i + 1}`
+        details: `Event ${i + 1}`,
       });
     }
 
