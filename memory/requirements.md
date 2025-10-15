@@ -27,6 +27,12 @@
 3. **WHEN** a beam hits a target closer than the configured minimum visibility distance, **THE SYSTEM SHALL** clamp the beam's rendered length to that minimum while still respecting the configured maximum range to keep the impact visible. *(Acceptance: renderer-layer test spawns a beam with `length` below the threshold and asserts the instance scale Z component equals the minimum, capped by `maxLength`.)*
 4. **WHEN** the beam visuals system cannot find the source ship/turret for a beam entity, **THE SYSTEM SHALL** destroy that beam within the same tick so no orphan visuals linger in the scene. *(Acceptance: system test deletes the source ship before advancing and expects the beam entity collection to no longer contain the beam after one call.)*
 
+## 2025-10-15 — Beam Visual Fade Controls (TASK252)
+
+1. **WHEN** a beam projectile uses the default visual configuration, **THE SYSTEM SHALL** render the beam at full brightness for its entire lifetime so close-range hits remain visible. *(Acceptance: renderer unit test constructs a beam visual without fade overrides and asserts the instance color scalar stays at `1.0` regardless of reported beam length.)*
+2. **WHEN** a beam projectile defines fade parameters in its configuration, **THE SYSTEM SHALL** scale the rendered brightness according to the configured strength and exponent as the beam approaches its maximum length. *(Acceptance: renderer helper test seeds a beam with `fade.strength = 0.5`, `fade.exponent = 2` and verifies the resulting dim factor equals `1 - 0.5 * (length / maxLength) ** 2`.)*
+3. **WHEN** fade parameters are omitted or invalid (non-finite strength/exponent), **THE SYSTEM SHALL** clamp them to safe defaults and fall back to no fade so beam visuals do not disappear unexpectedly. *(Acceptance: configuration resolver test passes NaN/negative values and expects the resolved fade config to report `strength = 0` and `exponent = 1`.)*
+
 ## 2025-10-06 — Thruster Trail GPU Migration (TASK246)
 
 1. **WHEN** the `ParticleTrails` component initialises with GPU buffers enabled, **THE SYSTEM SHALL** allocate an `InstancedBufferGeometry` populated with spawn position, velocity, lifetime, and scale attributes sized to `PARTICLE_TRAILS_CONFIG.maxParticles`. *(Acceptance: `test/vitest/particle-trails-gpu.spec.tsx` mounts the component with injected resources and asserts each instanced attribute exists with the configured length.)*

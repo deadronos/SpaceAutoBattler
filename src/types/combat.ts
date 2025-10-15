@@ -9,10 +9,18 @@ export interface HomingParams {
   lead?: boolean;
 }
 
+export interface BeamFadeConfig {
+  /** Multiplier applied as the beam approaches max length (0 disables fade). */
+  strength: number;
+  /** Exponent controlling the fade curve (1 = linear, higher = sharper tail). */
+  exponent: number;
+}
+
 export interface BeamVisualConfig {
   ttl: number;
   length: number;
   width: number;
+  fade?: BeamFadeConfig;
 }
 
 export interface BeamRuntimeState extends BeamVisualConfig {
@@ -171,4 +179,6 @@ export interface BeamVisualComponent {
   localOrigin?: Vector3;
   /** Ship-local firing direction captured at fire time for alignment. */
   localDirection?: Vector3;
+  /** Optional fade configuration propagated to the renderer. */
+  fade?: BeamFadeConfig;
 }

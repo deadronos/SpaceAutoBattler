@@ -1,4 +1,9 @@
-import type { BeamVisualConfig, HomingParams, ProjectileCategory } from '../types/combat.js';
+import type {
+  BeamFadeConfig,
+  BeamVisualConfig,
+  HomingParams,
+  ProjectileCategory,
+} from '../types/combat.js';
 
 export interface BeamShaderFalloffConfig {
   nearBrightness: number;
@@ -20,6 +25,43 @@ function resolveNumber(value: number | undefined, fallback: number, min: number,
   if (clamped < min) return min;
   if (clamped > max) return max;
   return clamped;
+}
+
+const BEAM_FADE_DEFAULTS: BeamFadeConfig = {
+  strength: 0,
+  exponent: 1,
+};
+
+const MIN_FADE_STRENGTH = 0;
+const MAX_FADE_STRENGTH = 1;
+const MIN_FADE_EXPONENT = 1;
+const MAX_FADE_EXPONENT = 6;
+const DISABLE_FADE_THRESHOLD = 1e-3;
+
+export function resolveBeamFadeConfig(overrides?: BeamFadeConfig | null): BeamFadeConfig | undefined {
+  if (!overrides) {
+    return undefined;
+  }
+
+  const rawStrength = overrides.strength;
+  const rawExponent = overrides.exponent;
+
+  const strength = Number.isFinite(rawStrength ?? NaN)
+    ? Math.min(Math.max(rawStrength as number, MIN_FADE_STRENGTH), MAX_FADE_STRENGTH)
+    : BEAM_FADE_DEFAULTS.strength;
+
+  const exponent = Number.isFinite(rawExponent ?? NaN)
+    ? Math.min(Math.max(rawExponent as number, MIN_FADE_EXPONENT), MAX_FADE_EXPONENT)
+    : BEAM_FADE_DEFAULTS.exponent;
+
+  if (strength <= DISABLE_FADE_THRESHOLD) {
+    return undefined;
+  }
+
+  return {
+    strength,
+    exponent,
+  };
 }
 
 function resolveBeamShaderFalloffConfig(overrides?: Partial<BeamShaderFalloffConfig>): BeamShaderFalloffConfig {
@@ -138,5 +180,16 @@ export function getProjectileCategory(bulletType?: string | null): ProjectileCat
 
 export function getProjectileBeamConfig(bulletType?: string | null): BeamVisualConfig | undefined {
   const config = getProjectileConfig(bulletType);
-  return config.beam;
+  if (!config.beam) {
+    return undefined;
+  }
+  const fade = resolveBeamFadeConfig(config.beam.fade ?? undefined);
+  if (fade) {
+    return { ttl: config.beam.ttl, length: config.beam.length, width: config.beam.width, fade };
+  }
+  return {
+    ttl: config.beam.ttl,
+    length: config.beam.length,
+    width: config.beam.width,
+  };
 }

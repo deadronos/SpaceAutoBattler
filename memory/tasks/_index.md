@@ -15,6 +15,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## Completed
 
+- [TASK252](TASK252-beam-visual-fade-controls.md) — Disabled beam fade by default and added config-driven brightness tuning. (2025-10-15)
 - [TASK251](TASK251-beam-visual-alignment.md) — Realigned beam visuals to stored muzzle metadata, clamped short beams for visibility, and added regression coverage. (2025-10-15)
 - [TASK249](TASK249-beam-shader-falloff.md) — Landed configurable beam shader falloff with shader factory, instanced brightness, and renderer tests. (2025-10-14)
 - [TASK247](TASK247-version2-vision.md) — Authored Version 2.0 vision document outlining pillars, feature concepts, and validation plans. (2025-10-13)

@@ -46,6 +46,43 @@ const TEMP_POS = new Vector3();
 const TEMP_COLOR = new Color();
 const BEAM_BRIGHTNESS_ATTR = 'instanceBeamBrightness';
 
+const MIN_FADE_STRENGTH = 0;
+const MAX_FADE_STRENGTH = 1;
+const MIN_FADE_EXPONENT = 1;
+const MAX_FADE_EXPONENT = 6;
+const DISABLE_FADE_THRESHOLD = 1e-3;
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+function resolveBeamBrightness(
+  beam: NonNullable<ProjectileEntity['projectile']['beam']>,
+): number {
+  const fade = beam.fade;
+  if (!fade) {
+    return 1;
+  }
+  const rawStrength = Number.isFinite(fade.strength ?? NaN) ? (fade.strength as number) : 0;
+  const rawExponent = Number.isFinite(fade.exponent ?? NaN) ? (fade.exponent as number) : 1;
+  const strength = Math.min(Math.max(rawStrength, MIN_FADE_STRENGTH), MAX_FADE_STRENGTH);
+  if (strength <= DISABLE_FADE_THRESHOLD) {
+    return 1;
+  }
+  const exponent = Math.min(Math.max(rawExponent, MIN_FADE_EXPONENT), MAX_FADE_EXPONENT);
+  const maxLength = Number.isFinite(beam.maxLength ?? NaN)
+    ? Math.max(Math.abs(beam.maxLength as number), 1)
+    : 1;
+  const length = Number.isFinite(beam.length ?? NaN) ? Math.max(beam.length as number, 0) : 0;
+  const ratio = clamp01(maxLength > 1e-5 ? length / maxLength : 0);
+  const curve = Math.pow(ratio, exponent);
+  const brightness = 1 - strength * curve;
+  return clamp01(brightness);
+}
+
 export function allocateBeamBrightnessAttribute(
   mesh: InstancedMesh,
   capacity: number,
@@ -240,21 +277,20 @@ export function ProjectilesInstancedLayer({
         TEMP_MATRIX.compose(projectile.transform.position, projectile.transform.rotation, TEMP_SCALE);
       }
       mesh.setMatrixAt(index, TEMP_MATRIX);
+      let brightness = 1;
+      if (projectile.projectile.category === 'beam' && projectile.projectile.beam) {
+        brightness = resolveBeamBrightness(projectile.projectile.beam);
+      }
       // Set instance color when supported. Use team tint and fade with distance for beams.
       if (mesh.instanceColor && group.materialInfo.supportsInstanceColor) {
         const team = projectile.projectile.team ?? 'blue';
         const hex = (TEAM_COLORS as any)[team] ?? '#ffffff';
         TEMP_COLOR.set(hex);
-        if (projectile.projectile.category === 'beam' && projectile.projectile.beam) {
-          const len = projectile.projectile.beam.length ?? 2000;
-          const t = Math.min(len / 2000, 1);
-          const dim = 1 - 0.6 * t; // fade to 40% at max distance
-          TEMP_COLOR.multiplyScalar(dim);
-        }
+        TEMP_COLOR.multiplyScalar(brightness);
         mesh.setColorAt(index, TEMP_COLOR);
       }
       if (group.isBeam && group.brightnessAttr) {
-        group.brightnessAttr.setX(index, 1);
+        group.brightnessAttr.setX(index, brightness);
       }
       mesh.instanceMatrix.needsUpdate = true;
       group.maxIndex = Math.max(group.maxIndex, index);

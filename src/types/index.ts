@@ -33,6 +33,7 @@ export type {
   TurretComponent,
   MuzzleFlash,
   BeamVisualComponent,
+  BeamFadeConfig,
 } from './combat.js';
 
 // Progression types

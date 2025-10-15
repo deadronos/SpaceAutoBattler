@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import type {
+  BeamVisualComponent,
   BeamVisualEntity,
   GameEntity,
   GameState,
@@ -17,6 +18,7 @@ import {
 } from '../../src/game/aiScenarioHarness/rapierShim.js';
 import {
   MIN_VISIBLE_BEAM_LENGTH,
+  computeBeamBrightness,
   resolveBeamRenderLength,
 } from '../../src/components/layers/BeamVisualsInstancedLayer.js';
 
@@ -69,6 +71,19 @@ function expectVectorCloseTo(actual: Vector3, expected: Vector3, precision = 3):
   expect(actual.z).toBeCloseTo(expected.z, precision);
 }
 
+function makeBeamComponent(overrides: Partial<BeamVisualComponent> = {}): BeamVisualComponent {
+  return {
+    team: 'blue',
+    ttl: 0.3,
+    maxTtl: 0.3,
+    width: 1,
+    length: 10,
+    maxLength: 30,
+    spawnTime: 0,
+    ...overrides,
+  };
+}
+
 describe('beam visuals system', () => {
   it('reconstructs world transforms from stored local metadata', () => {
     const state = createTestGameState();
@@ -92,6 +107,7 @@ describe('beam visuals system', () => {
     const localDirection = beam.beamVisual.localDirection?.clone();
     expect(localOrigin).toBeDefined();
     expect(localDirection).toBeDefined();
+    expect(beam.beamVisual.fade).toBeUndefined();
 
     shooter.transform.position.set(12, -3, 5);
     const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 4);
@@ -158,5 +174,35 @@ describe('beam visual render helpers', () => {
   it('recovers gracefully from invalid numeric inputs', () => {
     const result = resolveBeamRenderLength(Number.NaN, Number.POSITIVE_INFINITY, -5);
     expect(result).toBeCloseTo(MIN_VISIBLE_BEAM_LENGTH, 5);
+  });
+});
+
+describe('beam brightness computation', () => {
+  it('returns full brightness when fade is undefined', () => {
+    const brightness = computeBeamBrightness(makeBeamComponent({ length: 5, maxLength: 30 }));
+    expect(brightness).toBeCloseTo(1, 6);
+  });
+
+  it('applies strength and exponent to produce a dimmed brightness', () => {
+    const brightness = computeBeamBrightness(
+      makeBeamComponent({
+        length: 15,
+        maxLength: 30,
+        fade: { strength: 0.5, exponent: 2 },
+      }),
+    );
+    const expected = 1 - 0.5 * Math.pow(0.5, 2);
+    expect(brightness).toBeCloseTo(expected, 6);
+  });
+
+  it('disables fading for invalid strength/exponent values', () => {
+    const brightness = computeBeamBrightness(
+      makeBeamComponent({
+        length: 20,
+        maxLength: 30,
+        fade: { strength: -1, exponent: 0.5 },
+      }),
+    );
+    expect(brightness).toBeCloseTo(1, 6);
   });
 });

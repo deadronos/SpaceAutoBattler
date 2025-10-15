@@ -46,6 +46,43 @@ const BEAM_BRIGHTNESS_ATTR = 'instanceBeamBrightness';
 
 export const MIN_VISIBLE_BEAM_LENGTH = 0.75;
 
+const MIN_FADE_STRENGTH = 0;
+const MAX_FADE_STRENGTH = 1;
+const MIN_FADE_EXPONENT = 1;
+const MAX_FADE_EXPONENT = 6;
+const DISABLE_FADE_THRESHOLD = 1e-3;
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+export function computeBeamBrightness(component: BeamVisualEntity['beamVisual']): number {
+  const fade = component.fade;
+  if (!fade) {
+    return 1;
+  }
+  const rawStrength = Number.isFinite(fade.strength ?? NaN) ? (fade.strength as number) : 0;
+  const rawExponent = Number.isFinite(fade.exponent ?? NaN) ? (fade.exponent as number) : 1;
+  const strength = Math.min(Math.max(rawStrength, MIN_FADE_STRENGTH), MAX_FADE_STRENGTH);
+  if (strength <= DISABLE_FADE_THRESHOLD) {
+    return 1;
+  }
+  const exponent = Math.min(Math.max(rawExponent, MIN_FADE_EXPONENT), MAX_FADE_EXPONENT);
+  const maxLength = Number.isFinite(component.maxLength ?? NaN)
+    ? Math.max(Math.abs(component.maxLength as number), MIN_VISIBLE_BEAM_LENGTH)
+    : MIN_VISIBLE_BEAM_LENGTH;
+  const length = Number.isFinite(component.length ?? NaN)
+    ? Math.max(component.length as number, 0)
+    : 0;
+  const ratio = clamp01(maxLength > 1e-5 ? length / maxLength : 0);
+  const curve = Math.pow(ratio, exponent);
+  const brightness = 1 - strength * curve;
+  return clamp01(brightness);
+}
+
 export function resolveBeamRenderLength(
   rawLength: number,
   width: number,
@@ -247,25 +284,22 @@ export function BeamVisualsInstancedLayer({
       TEMP_MATRIX.compose(TEMP_POS, beamVisual.transform.rotation, TEMP_SCALE);
       mesh.setMatrixAt(index, TEMP_MATRIX);
       
-      // Set instance color with team tint and fade with distance
+      const brightness = computeBeamBrightness(beamVisual.beamVisual);
+
+      // Set instance color with team tint and optional fade brightness
       if (mesh.instanceColor && group.materialInfo.supportsInstanceColor) {
         const team = beamVisual.beamVisual.team ?? 'blue';
         const hex = (TEAM_COLORS as any)[team] ?? '#ffffff';
         TEMP_COLOR.set(hex);
-        
-        // Fade beam based on length
-        const len = beamVisual.beamVisual.length;
-        const maxLen = beamVisual.beamVisual.maxLength;
-        const t = Math.min(len / Math.max(maxLen, 1), 1);
-        const dim = 1 - 0.6 * t; // fade to 40% at max distance
-        TEMP_COLOR.multiplyScalar(dim);
+
+        TEMP_COLOR.multiplyScalar(brightness);
         
         mesh.setColorAt(index, TEMP_COLOR);
       }
       
       // Set brightness attribute
       if (group.brightnessAttr) {
-        group.brightnessAttr.setX(index, 1);
+        group.brightnessAttr.setX(index, brightness);
       }
       
       mesh.instanceMatrix.needsUpdate = true;

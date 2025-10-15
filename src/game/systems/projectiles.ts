@@ -409,6 +409,7 @@ export function fireProjectile(
           width: beamWidth,
           length: actualLength,
           maxLength: beamLength,
+          fade: beamConfig.fade,
           bulletType: bulletKey,
           sourceId: origin.id,
           sourceTurretId: opts?.sourceTurretId,
@@ -431,6 +432,7 @@ export function fireProjectile(
       width: beamConfig.width,
       length: beamConfig.length,
       maxLength: beamConfig.length,
+      fade: beamConfig.fade,
     };
 
     const shipRotation = origin.transform.rotation;
