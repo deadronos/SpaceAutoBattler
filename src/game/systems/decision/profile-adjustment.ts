@@ -1,8 +1,15 @@
 import type { GameState, ShipEntity, BehaviorProfile } from '../../../types/index.js';
 import { AI_CONFIG } from '../../config.js';
+import { applyDoctrineToProfile } from '../../aiDoctrine.js';
 
-export function getEffectiveProfile(state: GameState, ship: ShipEntity, baseProfile: BehaviorProfile): BehaviorProfile {
-  if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp') return baseProfile;
+export function getEffectiveProfile(
+  state: GameState,
+  ship: ShipEntity,
+  baseProfile: BehaviorProfile,
+): BehaviorProfile {
+  if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp') {
+    return applyDoctrineToProfile(state, ship, baseProfile);
+  }
   let [min, max] = baseProfile.desiredRange;
   switch (baseProfile.style) {
     case 'artillery':
@@ -34,10 +41,11 @@ export function getEffectiveProfile(state: GameState, ship: ShipEntity, baseProf
   if (min < 10) min = 10;
   if (max <= min) max = min + 40;
   if (min === baseProfile.desiredRange[0] && max === baseProfile.desiredRange[1]) {
-    return baseProfile;
+    return applyDoctrineToProfile(state, ship, baseProfile);
   }
-  return {
+  const adjusted = {
     ...baseProfile,
     desiredRange: [min, max] as const,
   };
+  return applyDoctrineToProfile(state, ship, adjusted);
 }

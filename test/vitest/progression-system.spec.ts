@@ -62,6 +62,9 @@ describe('Ship Progression System', () => {
           teleportDistance: 42,
         },
       },
+      sensor: { detectionRange: 600, trackingRange: 720, coneAngle: Math.PI * 0.8, falloff: 0.6 },
+      stealth: 0,
+      sensorSignature: 1,
       effects: undefined,
       ...progressionDefaults
     };

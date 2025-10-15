@@ -1,6 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import type { SeededRng } from '../../utils/rng.js';
-import { createDefaultMotionStats } from '../ships.js';
+import { createDefaultMotionStats, SHIP_STATS } from '../ships.js';
 import { createProgressionDefaults, createSubsystems } from '../progression.js';
 import type { AIScenarioShipConfig, HarnessShip } from './types.js';
 import { createHarnessAIState } from './aiDefaults.js';
@@ -53,7 +53,7 @@ export function createHarnessShip(
       cooldown: 0,
       fireRate: spec.fireRate ?? 0.8,
       damage: 8,
-      projectileSpeed: spec.projectileSpeed ?? 30,
+  projectileSpeed: spec.projectileSpeed ?? 40,
       range: spec.range ?? 260,
       speed: spec.speed ?? 40,
       bulletType: spec.bulletType ?? 'bullet:laser',
@@ -61,6 +61,9 @@ export function createHarnessShip(
       angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: createDefaultMotionStats(),
+      sensor: { ...SHIP_STATS[hull].sensor },
+      stealth: SHIP_STATS[hull].stealth ?? 0,
+      sensorSignature: SHIP_STATS[hull].sensorSignature ?? 1,
     },
     model: hull,
     ai,

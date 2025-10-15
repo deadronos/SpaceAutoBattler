@@ -21,15 +21,15 @@ import { generateCaptain, createSubsystems, createLevelBonusState } from './prog
  */
 function applyRangeVariance(baseRange: number, traitSeed: number, weaponIndex = 0): number {
   if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp') return baseRange;
-  
+
   // Create a deterministic seed combining traitSeed and weapon index for consistency
   const rangeSeed = Math.abs((traitSeed ^ (weaponIndex * 7919)) >>> 0) || 1;
   const rng = new SeededRng(rangeSeed);
-  
+
   // Apply ±5% variance
   const variance = 0.05;
   const modifier = 1 + (rng.next() * 2 - 1) * variance;
-  
+
   return Math.round(baseRange * modifier);
 }
 
@@ -52,7 +52,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
   const collider = state.physicsWorld.createCollider(colliderDesc, body);
 
   const aiState = createInitialAIState(state, blueprint.hull);
-  
+
   const entity: ShipEntity = {
     id: state.nextEntityId++,
     rigidBody: body,
@@ -82,7 +82,10 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       angularVelocity: new Vector3(0, 0, 0),
       lateralAcceleration: 0,
       motion: stats.motion,
-      
+      sensor: { ...stats.sensor },
+      stealth: stats.stealth ?? 0,
+      sensorSignature: stats.sensorSignature ?? 1,
+
       xp: 0,
       level: 1,
       xpToNext: calculateXpForLevel(2),

@@ -1,18 +1,15 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { InstancedMesh } from 'three';
-import {
-  Color,
-  DynamicDrawUsage,
-  InstancedBufferAttribute,
-  Matrix4,
-  Vector3,
-} from 'three';
+import { Color, DynamicDrawUsage, InstancedBufferAttribute, Matrix4, Vector3 } from 'three';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { getProjectileConfig } from '../../config/projectiles.js';
 import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
-import { createInstancedMaterial, type InstancedMaterialInfo } from '../../renderer/materialRegistry.js';
+import {
+  createInstancedMaterial,
+  type InstancedMaterialInfo,
+} from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { InstanceAllocator } from './instanceAllocator.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
@@ -39,6 +36,14 @@ const DEFAULT_CAPACITY = 512;
 const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
 const TEMP_MATRIX = new Matrix4();
 const TEMP_SCALE = new Vector3();
+const TEMP_POSITION = new Vector3();
+
+interface ProjectileGeometryMetadata {
+  category?: string;
+  baseRadius?: number;
+  baseWidth?: number;
+  baseLength?: number;
+}
 
 function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.ReactElement {
   const { meshRef, materialInfo, geometry, capacity, baseColor } = group;
@@ -64,9 +69,12 @@ function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.
     };
   }, [meshRef, materialInfo.supportsInstanceColor, capacity, baseColor]);
 
-  useEffect(() => () => {
-    materialInfo.material.dispose();
-  }, [materialInfo.material]);
+  useEffect(
+    () => () => {
+      materialInfo.material.dispose();
+    },
+    [materialInfo.material],
+  );
 
   return (
     <instancedMesh
@@ -162,9 +170,42 @@ export function ProjectilesInstancedLayer({
       totalAllocated += 1;
       const cfg = getProjectileConfig(projectile.projectile.bulletType);
       const visualMultiplier = cfg.visualMultiplier ?? 1;
-      const scale = projectile.transform.scale * visualMultiplier;
-      TEMP_SCALE.setScalar(scale);
-      TEMP_MATRIX.compose(projectile.transform.position, projectile.transform.rotation, TEMP_SCALE);
+      const baseScale = projectile.transform.scale * visualMultiplier;
+      const metadata = (group.geometry.userData.projectile ?? {}) as ProjectileGeometryMetadata;
+      const category =
+        projectile.projectile.category ?? metadata.category ?? cfg.category ?? 'bullet';
+
+      if (category === 'beam' && projectile.projectile.beam) {
+        const beam = projectile.projectile.beam;
+        const baseLength = metadata.baseLength && metadata.baseLength > 0 ? metadata.baseLength : 1;
+        const widthConfig = beam.width ?? cfg.beam?.width ?? metadata.baseWidth ?? baseScale;
+        const baseWidth =
+          metadata.baseWidth && metadata.baseWidth > 0 ? metadata.baseWidth : baseScale;
+        let beamLength =
+          beam.maxLength ?? projectile.projectile.speed * projectile.projectile.maxTtl;
+
+        if (beam.hitPoint) {
+          TEMP_POSITION.copy(beam.hitPoint).sub(projectile.transform.position);
+          beamLength = TEMP_POSITION.length();
+        }
+
+        beamLength = Math.max(0.1, beamLength);
+        const lengthScale = beamLength / baseLength;
+        const widthScale = baseWidth > 0 ? widthConfig / baseWidth : baseScale;
+        TEMP_SCALE.set(widthScale, widthScale, lengthScale);
+        TEMP_POSITION.copy(projectile.transform.position).addScaledVector(
+          projectile.direction,
+          beamLength / 2,
+        );
+        TEMP_MATRIX.compose(TEMP_POSITION, projectile.transform.rotation, TEMP_SCALE);
+      } else {
+        TEMP_SCALE.setScalar(baseScale);
+        TEMP_MATRIX.compose(
+          projectile.transform.position,
+          projectile.transform.rotation,
+          TEMP_SCALE,
+        );
+      }
       mesh.setMatrixAt(index, TEMP_MATRIX);
       mesh.instanceMatrix.needsUpdate = true;
       group.maxIndex = Math.max(group.maxIndex, index);
