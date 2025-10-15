@@ -1,11 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import type {
-  GameState,
-  ShipEntity,
-  ProjectileEntity,
-  TurretEntity,
-  BeamVisualEntity,
-} from '../../types/index.js';
+import type { GameState, ShipEntity, ProjectileEntity, TurretEntity } from '../../types/index.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import {
   PROJECTILE_CONFIG,
@@ -299,6 +293,7 @@ export function fireProjectile(
     ? opts.originPosition.clone()
     : origin.transform.position.clone().addScaledVector(direction, muzzleOffset);
   const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
+  const beamWorldOffset = startPosition.clone().sub(origin.transform.position);
 
   const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType ?? '';
   const cfg = PROJECTILE_CONFIG[bulletKey] ?? DEFAULT_PROJECTILE_CONFIG;
@@ -416,6 +411,7 @@ export function fireProjectile(
           sourceTurretIndex: opts?.sourceTurretIndex,
           spawnTime: state.time,
           localOrigin,
+          worldOffset: beamWorldOffset.clone(),
           localDirection,
         },
       });
@@ -433,6 +429,7 @@ export function fireProjectile(
       length: beamConfig.length,
       maxLength: beamConfig.length,
       fade: beamConfig.fade,
+      worldOffset: beamWorldOffset.clone(),
     };
 
     const shipRotation = origin.transform.rotation;

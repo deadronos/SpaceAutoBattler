@@ -24,7 +24,8 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
       continue;
     }
 
-    // Update beam position and direction to follow source ship/turret
+    // Update beam position and direction to follow source ship translation while
+    // keeping the original firing orientation stable.
     if (beam.beamVisual.sourceId != null) {
       const source = ships.find((ship) => ship.id === beam.beamVisual.sourceId);
       if (!source) {
@@ -36,8 +37,19 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
       let worldOrigin: Vector3 | null = null;
       let usedShipCenterFallback = false;
 
+      const worldOffset = beam.beamVisual.worldOffset;
+      if (
+        worldOffset &&
+        Number.isFinite(worldOffset.x) &&
+        Number.isFinite(worldOffset.y) &&
+        Number.isFinite(worldOffset.z)
+      ) {
+        worldOrigin = TEMP_BEAM_ORIGIN.copy(source.transform.position).add(worldOffset);
+      }
+
       const localOrigin = beam.beamVisual.localOrigin;
       if (
+        !worldOrigin &&
         localOrigin &&
         Number.isFinite(localOrigin.x) &&
         Number.isFinite(localOrigin.y) &&
@@ -74,54 +86,71 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
         usedShipCenterFallback = true;
       }
 
-      // Update direction
-      let worldDirection: Vector3 | null = null;
+      // Resolve the firing direction once; preserve it across frames.
+      const existingDirection = beam.direction;
+      const hasExistingDirection = existingDirection.lengthSq() > 1e-6;
+      let resolvedDirection: Vector3 | null = null;
 
-      const localDirection = beam.beamVisual.localDirection;
-      if (
-        localDirection &&
-        Number.isFinite(localDirection.x) &&
-        Number.isFinite(localDirection.y) &&
-        Number.isFinite(localDirection.z) &&
-        localDirection.lengthSq() > 1e-6
-      ) {
-        worldDirection = TEMP_BEAM_DIR.copy(localDirection)
-          .applyQuaternion(source.transform.rotation)
-          .normalize();
-      }
-
-      if (!worldDirection && beam.beamVisual.sourceTurretId != null) {
-        const turret = turrets.find((t) => t.id === beam.beamVisual.sourceTurretId);
-        if (turret?.direction && turret.direction.lengthSq() > 1e-6) {
-          worldDirection = TEMP_BEAM_DIR.copy(turret.direction).normalize();
-        } else if (turret?.turret?.aimDirection && turret.turret.aimDirection.lengthSq() > 1e-6) {
-          worldDirection = TEMP_BEAM_DIR.copy(turret.turret.aimDirection).normalize();
+      if (hasExistingDirection) {
+        resolvedDirection = TEMP_BEAM_DIR.copy(existingDirection);
+        if (resolvedDirection.lengthSq() > 1e-6) {
+          resolvedDirection.normalize();
+        } else {
+          resolvedDirection = null;
         }
       }
 
-      if (!worldDirection && beam.beamVisual.sourceTurretIndex != null) {
+      if (!resolvedDirection) {
+        const localDirection = beam.beamVisual.localDirection;
+        if (
+          localDirection &&
+          Number.isFinite(localDirection.x) &&
+          Number.isFinite(localDirection.y) &&
+          Number.isFinite(localDirection.z) &&
+          localDirection.lengthSq() > 1e-6
+        ) {
+          resolvedDirection = TEMP_BEAM_DIR.copy(localDirection)
+            .applyQuaternion(source.transform.rotation)
+            .normalize();
+        }
+      }
+
+      if (!resolvedDirection && beam.beamVisual.sourceTurretId != null) {
+        const turret = turrets.find((t) => t.id === beam.beamVisual.sourceTurretId);
+        const turretDirection =
+          turret?.direction && turret.direction.lengthSq() > 1e-6
+            ? turret.direction
+            : turret?.turret?.aimDirection && turret.turret.aimDirection.lengthSq() > 1e-6
+              ? turret.turret.aimDirection
+              : null;
+        if (turretDirection) {
+          resolvedDirection = TEMP_BEAM_DIR.copy(turretDirection).normalize();
+        }
+      }
+
+      if (!resolvedDirection && beam.beamVisual.sourceTurretIndex != null) {
         const embedded = source.turrets?.[beam.beamVisual.sourceTurretIndex];
         if (embedded?.aimDirection && embedded.aimDirection.lengthSq() > 1e-6) {
-          worldDirection = TEMP_BEAM_DIR.copy(embedded.aimDirection).normalize();
+          resolvedDirection = TEMP_BEAM_DIR.copy(embedded.aimDirection).normalize();
         }
       }
 
-      if (!worldDirection) {
-        // Use ship's forward direction
-        worldDirection = TEMP_BEAM_DIR.set(0, 0, 1)
+      if (!resolvedDirection) {
+        // Use ship's forward direction as a final fallback.
+        resolvedDirection = TEMP_BEAM_DIR.set(0, 0, 1)
           .applyQuaternion(source.transform.rotation)
           .normalize();
       }
 
-      if (worldDirection) {
-        beam.direction.copy(worldDirection);
-        beam.transform.rotation.setFromUnitVectors(FORWARD, worldDirection);
+      if (resolvedDirection) {
+        existingDirection.copy(resolvedDirection);
+        beam.transform.rotation.setFromUnitVectors(FORWARD, resolvedDirection);
       }
 
       // If we used ship center fallback, nudge origin forward to approximate a muzzle
-      if (usedShipCenterFallback && worldDirection) {
+      if (usedShipCenterFallback && resolvedDirection) {
         const muzzleOffset = source.transform.scale * 1.6;
-        worldOrigin.addScaledVector(worldDirection, muzzleOffset);
+        worldOrigin.addScaledVector(resolvedDirection, muzzleOffset);
       }
 
       clampToWorld(worldOrigin);

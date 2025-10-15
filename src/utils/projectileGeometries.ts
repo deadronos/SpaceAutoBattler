@@ -2,7 +2,6 @@ import { CapsuleGeometry, CylinderGeometry, SphereGeometry } from 'three';
 import type { BufferGeometry } from 'three';
 import {
   getProjectileBaseRadius,
-  getProjectileBeamConfig,
   getProjectileCategory,
   getProjectileConfig,
 } from '../config/projectiles.js';

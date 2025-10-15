@@ -28,6 +28,8 @@ export interface BeamRuntimeState extends BeamVisualConfig {
   maxLength: number;
   /** Optional local-space origin relative to the firing ship. */
   localOrigin?: Vector3;
+  /** World-space offset from the firing ship position captured at spawn time. */
+  worldOffset?: Vector3;
   /** Optional local-space direction relative to the firing ship's forward. */
   localDirection?: Vector3;
   /** Optional identifier for the turret entity that spawned this beam. */
@@ -177,6 +179,8 @@ export interface BeamVisualComponent {
   spawnTime: number;
   /** Ship-local spawn offset captured at fire time for alignment. */
   localOrigin?: Vector3;
+  /** World-space offset from the ship position captured at fire time. */
+  worldOffset?: Vector3;
   /** Ship-local firing direction captured at fire time for alignment. */
   localDirection?: Vector3;
   /** Optional fade configuration propagated to the renderer. */
