@@ -1,19 +1,16 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { InstancedMesh } from 'three';
-import {
-  Color,
-  DynamicDrawUsage,
-  InstancedBufferAttribute,
-  Matrix4,
-  Vector3,
-} from 'three';
+import { Color, DynamicDrawUsage, InstancedBufferAttribute, Matrix4, Vector3 } from 'three';
 import { TEAM_COLORS } from '../../config/renderer.js';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { getProjectileCategory, getProjectileConfig } from '../../config/projectiles.js';
 import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
-import { createInstancedMaterial, type InstancedMaterialInfo } from '../../renderer/materialRegistry.js';
+import {
+  createInstancedMaterial,
+  type InstancedMaterialInfo,
+} from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { InstanceAllocator } from './instanceAllocator.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
@@ -59,9 +56,7 @@ function clamp01(value: number): number {
   return value;
 }
 
-function resolveBeamBrightness(
-  beam: NonNullable<ProjectileEntity['projectile']['beam']>,
-): number {
+function resolveBeamBrightness(beam: NonNullable<ProjectileEntity['projectile']['beam']>): number {
   const fade = beam.fade;
   if (!fade) {
     return 1;
@@ -146,16 +141,19 @@ function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.
     };
   }, [meshRef, materialInfo.supportsInstanceColor, capacity, baseColor, group]);
 
-  useEffect(() => () => {
-    materialInfo.material.dispose();
-  }, [materialInfo.material]);
+  useEffect(
+    () => () => {
+      materialInfo.material.dispose();
+    },
+    [materialInfo.material],
+  );
 
   return (
     <instancedMesh
       ref={meshRef}
       args={[geometry, materialInfo.material, capacity]}
       matrixAutoUpdate={false}
-      frustumCulled
+      frustumCulled={!group.isBeam}
       visible={false}
     />
   );
@@ -269,12 +267,18 @@ export function ProjectilesInstancedLayer({
         // Offset beam position forward by half its length so it originates from the muzzle
         // instead of being centered on it (cylinder geometry is centered at origin)
         const beamOffset = length * 0.5;
-        TEMP_POS.copy(projectile.transform.position)
-          .addScaledVector(projectile.direction, beamOffset);
+        TEMP_POS.copy(projectile.transform.position).addScaledVector(
+          projectile.direction,
+          beamOffset,
+        );
         TEMP_MATRIX.compose(TEMP_POS, projectile.transform.rotation, TEMP_SCALE);
       } else {
         TEMP_SCALE.setScalar(baseScale);
-        TEMP_MATRIX.compose(projectile.transform.position, projectile.transform.rotation, TEMP_SCALE);
+        TEMP_MATRIX.compose(
+          projectile.transform.position,
+          projectile.transform.rotation,
+          TEMP_SCALE,
+        );
       }
       mesh.setMatrixAt(index, TEMP_MATRIX);
       let brightness = 1;
