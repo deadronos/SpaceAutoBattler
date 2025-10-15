@@ -7,6 +7,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 ## In Progress
 
 - [TASK250](TASK250-beam-shader-compile-fix.md) — Resolve beam shader compilation failure and shield visibility warnings triggered by stale state. (In Progress — requirements/design pending) (2025-10-14)
+- [TASK253](TASK253-beam-projectile-follow.md) — Fix beam projectiles to follow their firing ships (PR #269, branch `codex/review-and-restructure-beam-implementation`) (In Progress — implementation in PR) (2025-10-15)
 - [TASK248](TASK248-weapon-category-expansion.md) — Extend weapon categories with missiles, torpedoes, beams, and PD targeting per spec. (In Progress — requirements/design logged) (2025-10-14)
 - [TASK246](TASK246-thruster-trails-gpu.md) — Move thruster trails to GPU-managed instanced buffers for scalable rendering. (In Progress — design published, implementation pending) (2025-10-06)
 - [TASK245](TASK245-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
@@ -28,8 +29,6 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK233](TASK233-star-disk-debug-lockdown.md) — Locked down StarDisk debug helpers so forced-on-top instrumentation only activates with the explicit `?copilot_debug=1` flag and added Vitest coverage. (2025-10-02)
 - [TASK243](COMPLETED/TASK243-thruster-glow-regression.md) — Restore thruster glow regression coverage and reinstate hook identifiers. (2025-10-04)
 
-- [TASK237](TASK237-star-disk-telemetry-monitoring.md) — Monitor StarDisk uniform telemetry (iTime progression) with Rapier panic correlation for debugging animation freezes (2025-10-02).
- 
 - [TASK237](TASK237-star-disk-telemetry-monitoring.md) — Monitor StarDisk uniform telemetry (iTime progression) with Rapier panic correlation for debugging animation freezes (2025-10-02).
 - [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
 - [TASK152](TASK152-fix-progression-tests.md) — Hardened Vitest ship stubs with progression defaults; full suite passes (2025-09-29).

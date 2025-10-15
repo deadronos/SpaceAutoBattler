@@ -33,6 +33,13 @@
 2. **WHEN** a beam projectile defines fade parameters in its configuration, **THE SYSTEM SHALL** scale the rendered brightness according to the configured strength and exponent as the beam approaches its maximum length. *(Acceptance: renderer helper test seeds a beam with `fade.strength = 0.5`, `fade.exponent = 2` and verifies the resulting dim factor equals `1 - 0.5 * (length / maxLength) ** 2`.)*
 3. **WHEN** fade parameters are omitted or invalid (non-finite strength/exponent), **THE SYSTEM SHALL** clamp them to safe defaults and fall back to no fade so beam visuals do not disappear unexpectedly. *(Acceptance: configuration resolver test passes NaN/negative values and expects the resolved fade config to report `strength = 0` and `exponent = 1`.)*
 
+## 2025-10-15 — Beam Projectile Follow (TASK253)
+
+1. **WHEN** a beam projectile spawns, **THE SYSTEM SHALL** attach `followSourceId`, `localMuzzleOrigin`, `localMuzzleDirection`, and `followStrategy` to the projectile so the runtime can reconstruct origin/direction for hit checks. *(Acceptance: unit test fires a beam and asserts these fields exist and match the spawn-time muzzle metadata.)*
+2. **WHEN** a beam projectile with `followSourceId` and `followStrategy === 'raycast'` advances, **THE SYSTEM SHALL** reconstruct world-space origin/direction from the source transform and perform the hit raycast from the reconstructed origin so damage resolution matches the visual origin. *(Acceptance: system test moves the source between ticks and asserts damage is applied consistent with the reconstructed raycast.)*
+3. **WHEN** the beam projectile cannot resolve its `followSourceId` during a tick, **THE SYSTEM SHALL** destroy the beam within the same tick so no orphaned visuals or mismatched collisions remain. *(Acceptance: system test deletes the source entity after spawn and asserts the beam entity is removed by the next tick.)*
+4. **WHEN** `followStrategy` is unspecified or invalid, **THE SYSTEM SHALL** default to `raycast` semantics and emit a debug log when debug logging is enabled. *(Acceptance: configuration resolver test asserts default selection and presence of the fallback path.)*
+
 ## 2025-10-06 — Thruster Trail GPU Migration (TASK246)
 
 1. **WHEN** the `ParticleTrails` component initialises with GPU buffers enabled, **THE SYSTEM SHALL** allocate an `InstancedBufferGeometry` populated with spawn position, velocity, lifetime, and scale attributes sized to `PARTICLE_TRAILS_CONFIG.maxParticles`. *(Acceptance: `test/vitest/particle-trails-gpu.spec.tsx` mounts the component with injected resources and asserts each instanced attribute exists with the configured length.)*
