@@ -336,6 +336,7 @@ export function fireProjectile(
     (opts?.override?.damage ?? origin.ship.damage) *
     getEffectiveStats(origin.ship).damageMultiplier;
   const range = opts?.override?.range ?? origin.ship.range;
+  const resolvedRange = Number.isFinite(range ?? NaN) ? Math.max(range as number, 0) : 0;
   const beamConfig = category === 'beam' ? getProjectileBeamConfig(bulletKey) : undefined;
   const lifetime =
     category === 'beam'
@@ -378,6 +379,11 @@ export function fireProjectile(
       );
     }
 
+    const maxLength = Math.max(beamLength, actualLength, resolvedRange);
+    if (actualLength > maxLength) {
+      actualLength = maxLength;
+    }
+
     const invRotation = TEMP_INV_ROT.copy(origin.transform.rotation).invert();
     const localOrigin = startPosition
       .clone()
@@ -410,7 +416,7 @@ export function fireProjectile(
           maxTtl: beamTtl,
           width: beamWidth,
           length: actualLength,
-          maxLength: beamLength,
+          maxLength,
           fade: beamConfig.fade,
           bulletType: bulletKey,
           sourceId: origin.id,
@@ -434,7 +440,7 @@ export function fireProjectile(
       ttl: beamConfig.ttl,
       width: beamConfig.width,
       length: beamConfig.length,
-      maxLength: beamConfig.length,
+      maxLength: Math.max(beamConfig.length, resolvedRange),
       fade: beamConfig.fade,
       worldOffset: beamWorldOffset.clone(),
     };
