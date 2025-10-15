@@ -226,13 +226,13 @@ function BeamVisualGroupMeshes({ group }: { group: BeamVisualGroupState }): Reac
         ref={meshRef}
         args={[geometry, materialInfo.material, capacity]}
         matrixAutoUpdate={false}
-        frustumCulled
+        frustumCulled={false}
       />
       <instancedMesh
         ref={impactMeshRef}
         args={[impactGeometry, materialInfo.material, capacity]}
         matrixAutoUpdate={false}
-        frustumCulled
+        frustumCulled={false}
       />
     </>
   );
