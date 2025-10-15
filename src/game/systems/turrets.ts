@@ -55,7 +55,10 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
         projectileSpeed: turret.projectileSpeed,
         range: turret.range,
         bulletType: turret.bulletType,
+        targetId: target.id,
+        projectileCategory: turret.projectileCategory,
       },
+      targetId: target.id,
     });
     turret.cooldown = turret.fireRate;
   }
@@ -66,7 +69,13 @@ export function updateTurrets(state: GameState, delta: number): void {
   for (const t of turrets) {
     const ship = t.turret.parent;
     const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
-    deferSetNextKinematicTranslation(state, t.rigidBody as unknown as KinematicBody, origin.x, origin.y, origin.z);
+    deferSetNextKinematicTranslation(
+      state,
+      t.rigidBody as unknown as KinematicBody,
+      origin.x,
+      origin.y,
+      origin.z,
+    );
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
@@ -130,7 +139,10 @@ export function updateTurrets(state: GameState, delta: number): void {
         projectileSpeed: t.turret.projectileSpeed,
         range: t.turret.range,
         bulletType: t.turret.bulletType,
+        targetId: target.id,
+        projectileCategory: t.turret.projectileCategory,
       },
+      targetId: target.id,
     });
     t.turret.cooldown = t.turret.fireRate;
   }
