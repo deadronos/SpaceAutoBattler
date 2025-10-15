@@ -6,10 +6,25 @@ export type { DamageType };
 
 export interface DamageEffectiveness {
   [damageType: string]: {
-    hull: number;         // Effectiveness vs hull HP
-    shield: number;       // Effectiveness vs shield HP
-    armor: number;        // Effectiveness vs armor defense
+    hull: number; // Effectiveness vs hull HP
+    shield: number; // Effectiveness vs shield HP
+    armor: number; // Effectiveness vs armor defense
   };
+}
+
+export type ProjectileCategory = 'bullet' | 'missile' | 'torpedo' | 'beam';
+
+export interface ProjectileHomingConfig {
+  turnRate: number;
+  lead?: boolean;
+}
+
+export interface ProjectileBeamRuntime {
+  ttl: number;
+  maxLength: number;
+  width?: number;
+  hitPoint?: Vector3;
+  applied?: boolean;
 }
 
 export interface ProjectileComponent {
@@ -24,6 +39,20 @@ export interface ProjectileComponent {
   damageType: DamageType;
   /** Entity ID of the ship that fired this projectile */
   sourceId?: number;
+  /** Canonical simulation category for projectile behaviours. Defaults to 'bullet'. */
+  category?: ProjectileCategory;
+  /** Optional entity id this projectile is attempting to home toward. */
+  targetId?: number;
+  /** Homing behaviour parameters if projectile supports steering. */
+  homing?: ProjectileHomingConfig;
+  /** Minimum arming delay before projectile can detonate or deal damage. */
+  armingTime?: number;
+  /** Timestamp (GameState.time) when projectile spawned. */
+  spawnTime?: number;
+  /** Explosion radius in world units for AoE payloads. */
+  aoeRadius?: number;
+  /** Optional runtime beam data for hitscan projectiles. */
+  beam?: ProjectileBeamRuntime;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
@@ -47,6 +76,8 @@ export interface TurretSpec {
   maxPitch?: number;
   /** Optional targeting priority for turret AI. */
   priority?: 'any' | 'antiFighter' | 'antiCapital';
+  /** Optional canonical projectile category override for behaviour hints. */
+  projectileCategory?: ProjectileCategory;
 }
 
 /** Runtime turret state (derived from TurretSpec). Lives on the parent ship entity. */

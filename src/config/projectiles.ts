@@ -1,34 +1,79 @@
+import type { ProjectileCategory, ProjectileHomingConfig } from '../types/combat.js';
+
+export interface ProjectileBeamConfig {
+  ttl: number;
+  width?: number;
+}
+
 export interface ProjectileConfigItem {
   visualScale: number; // transform.scale applied to projectile
   colliderRadius?: number; // collider ball radius (overrides derived)
   baseGeometryRadius?: number; // base geometry radius in Projectile mesh
   visualMultiplier?: number; // multiplier applied in renderer for fine-tuning
+  category?: ProjectileCategory;
+  homing?: ProjectileHomingConfig;
+  armingTime?: number;
+  aoeRadius?: number;
+  beam?: ProjectileBeamConfig;
 }
 
 export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
   'bullet:laser': {
+    category: 'bullet',
     visualScale: 0.5,
     colliderRadius: 0.5 * 1.2,
     baseGeometryRadius: 0.5,
     visualMultiplier: 1.0,
   },
   'bullet:plasma': {
+    category: 'bullet',
     visualScale: 0.6,
     colliderRadius: 0.6 * 1.2,
     baseGeometryRadius: 0.5,
     visualMultiplier: 1.05,
   },
   'bullet:ion': {
+    category: 'bullet',
     visualScale: 0.5,
     colliderRadius: 0.5 * 1.2,
     baseGeometryRadius: 0.5,
     visualMultiplier: 1.0,
   },
   'bullet:heavy': {
+    category: 'bullet',
     visualScale: 0.7,
     colliderRadius: 0.7 * 1.2,
     baseGeometryRadius: 0.6,
     visualMultiplier: 1.25,
+  },
+  'missile:light': {
+    category: 'missile',
+    visualScale: 0.9,
+    colliderRadius: 0.45,
+    baseGeometryRadius: 0.35,
+    visualMultiplier: 1.1,
+    homing: { turnRate: Math.PI / 2, lead: true },
+    armingTime: 1.2,
+  },
+  'torpedo:standard': {
+    category: 'torpedo',
+    visualScale: 1.2,
+    colliderRadius: 0.7,
+    baseGeometryRadius: 0.5,
+    visualMultiplier: 1.15,
+    armingTime: 0.8,
+    aoeRadius: 12,
+  },
+  'beam:laser': {
+    category: 'beam',
+    visualScale: 0.4,
+    colliderRadius: 0.3,
+    baseGeometryRadius: 0.3,
+    visualMultiplier: 1.0,
+    beam: {
+      ttl: 0.4,
+      width: 0.6,
+    },
   },
 };
 
@@ -41,6 +86,11 @@ export const DEFAULT_PROJECTILE_CONFIG: ProjectileConfigItem = {
 
 export function getProjectileConfig(bulletType?: string | null): ProjectileConfigItem {
   return PROJECTILE_CONFIG[bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
+}
+
+export function getProjectileCategory(bulletType?: string | null): ProjectileCategory {
+  const config = getProjectileConfig(bulletType);
+  return config.category ?? 'bullet';
 }
 
 export function getProjectileBaseRadius(bulletType?: string | null): number {

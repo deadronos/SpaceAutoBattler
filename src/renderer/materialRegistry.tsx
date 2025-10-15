@@ -7,11 +7,17 @@ import {
   BulletPlasmaMaterial,
   BulletIonMaterial,
   BulletHeavyMaterial,
+  MissileLightMaterial,
+  TorpedoStandardMaterial,
+  BeamLaserMaterial,
   ExplosionSmokeMaterial,
   createBulletLaserMaterial,
   createBulletPlasmaMaterial,
   createBulletIonMaterial,
   createBulletHeavyMaterial,
+  createMissileLightMaterial,
+  createTorpedoStandardMaterial,
+  createBeamLaserMaterial,
   MuzzleFlashMaterial,
   createMuzzleFlashMaterial,
   createThrusterGlowMaterial,
@@ -198,6 +204,16 @@ registerMaterial('bullet:ion', BulletIonMaterial, {
 registerMaterial('bullet:heavy', BulletHeavyMaterial, {
   create: createBulletHeavyMaterial,
 });
+registerMaterial('missile:light', MissileLightMaterial, {
+  create: createMissileLightMaterial,
+});
+registerMaterial('torpedo:standard', TorpedoStandardMaterial, {
+  create: createTorpedoStandardMaterial,
+});
+registerMaterial('beam:laser', BeamLaserMaterial, {
+  create: createBeamLaserMaterial,
+  supportsInstanceColor: true,
+});
 registerMaterial('explosion:smoke', ExplosionSmokeMaterial);
 registerMaterial('muzzle:flash', MuzzleFlashMaterial, {
   create: createMuzzleFlashMaterial,
@@ -215,5 +231,9 @@ registerMaterial('ship:impostor', NullMaterialComponent, {
 });
 
 // Re-export shield materials and types for backward compatibility
-export { ShieldHexMaterial, ShieldTransmissionMaterial, createShieldHexShaderMaterial } from './shields/index.js';
+export {
+  ShieldHexMaterial,
+  ShieldTransmissionMaterial,
+  createShieldHexShaderMaterial,
+} from './shields/index.js';
 export type { ShieldHexMaterialProps, ShieldTransmissionMaterialProps } from './shields/index.js';
