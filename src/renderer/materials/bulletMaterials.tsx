@@ -31,20 +31,46 @@ const heavyProps = {
   metalness: 0.2,
 };
 
-export const BulletLaserMaterial: React.FC = () => (
-  <meshStandardMaterial {...laserProps} />
-);
+const missileProps = {
+  color: '#f3ffba',
+  emissive: '#d7ff63',
+  emissiveIntensity: 2.4,
+  roughness: 0.3,
+  metalness: 0.15,
+};
 
-export const BulletPlasmaMaterial: React.FC = () => (
-  <meshStandardMaterial {...plasmaProps} />
-);
+const torpedoProps = {
+  color: '#ffcf9f',
+  emissive: '#ff8e3c',
+  emissiveIntensity: 2.0,
+  roughness: 0.45,
+  metalness: 0.25,
+};
 
-export const BulletIonMaterial: React.FC = () => (
-  <meshStandardMaterial {...ionProps} />
-);
+const beamProps = {
+  color: '#9bd7ff',
+  emissive: '#6fb3ff',
+  emissiveIntensity: 3.5,
+  roughness: 0.1,
+  metalness: 0.05,
+  transparent: true,
+  opacity: 0.9,
+};
 
-export const BulletHeavyMaterial: React.FC = () => (
-  <meshStandardMaterial {...heavyProps} />
+export const BulletLaserMaterial: React.FC = () => <meshStandardMaterial {...laserProps} />;
+
+export const BulletPlasmaMaterial: React.FC = () => <meshStandardMaterial {...plasmaProps} />;
+
+export const BulletIonMaterial: React.FC = () => <meshStandardMaterial {...ionProps} />;
+
+export const BulletHeavyMaterial: React.FC = () => <meshStandardMaterial {...heavyProps} />;
+
+export const MissileLightMaterial: React.FC = () => <meshStandardMaterial {...missileProps} />;
+
+export const TorpedoStandardMaterial: React.FC = () => <meshStandardMaterial {...torpedoProps} />;
+
+export const BeamLaserMaterial: React.FC = () => (
+  <meshStandardMaterial {...beamProps} userData={{ __copilot_forceColorWrite: true }} />
 );
 
 export function createBulletLaserMaterial(): MeshStandardMaterial {
@@ -61,4 +87,23 @@ export function createBulletIonMaterial(): MeshStandardMaterial {
 
 export function createBulletHeavyMaterial(): MeshStandardMaterial {
   return new MeshStandardMaterial(heavyProps);
+}
+
+export function createMissileLightMaterial(): MeshStandardMaterial {
+  return new MeshStandardMaterial(missileProps);
+}
+
+export function createTorpedoStandardMaterial(): MeshStandardMaterial {
+  return new MeshStandardMaterial(torpedoProps);
+}
+
+export function createBeamLaserMaterial(): MeshStandardMaterial {
+  const material = new MeshStandardMaterial(beamProps);
+  material.transparent = true;
+  material.opacity = beamProps.opacity;
+  if (!material.userData) {
+    material.userData = {};
+  }
+  (material.userData as Record<string, unknown>).__copilot_forceColorWrite = true;
+  return material;
 }
