@@ -153,6 +153,7 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
         worldOrigin.addScaledVector(resolvedDirection, muzzleOffset);
       }
 
+
       clampToWorld(worldOrigin);
       beam.transform.position.copy(worldOrigin);
     }

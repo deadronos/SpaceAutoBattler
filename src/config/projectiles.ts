@@ -146,7 +146,7 @@ export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
     visualMultiplier: 1.0,
     category: 'beam',
     // Increase TTL to improve visual visibility (was 0.12)
-    beam: { ttl: 0.45, length: 30, width: 0.9 },
+    beam: { ttl: 2.45, length: 30, width: 0.9 },
   },
 };
 
