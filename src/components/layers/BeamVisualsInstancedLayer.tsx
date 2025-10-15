@@ -35,7 +35,8 @@ interface BeamVisualGroupState {
   allocator: InstanceAllocator<number>;
   meshRef: React.MutableRefObject<InstancedMesh | null>;
   impactMeshRef: React.MutableRefObject<InstancedMesh | null>;
-  materialInfo: InstancedMaterialInfo;
+  bodyMaterialInfo: InstancedMaterialInfo;
+  impactMaterialInfo: InstancedMaterialInfo;
   geometry: ReturnType<typeof getProjectileGeometry>;
   impactGeometry: SphereGeometry;
   baseColor: Color;
@@ -154,6 +155,7 @@ export function allocateBeamBrightnessAttribute(
 
 function initialiseInstancedMesh(
   meshRef: React.MutableRefObject<InstancedMesh | null>,
+  supportsInstanceColor: boolean,
   group: BeamVisualGroupState,
   assignBrightness: (attr: InstancedBufferAttribute) => void,
 ): void {
@@ -163,7 +165,7 @@ function initialiseInstancedMesh(
   mesh.instanceMatrix.setUsage(DynamicDrawUsage);
   mesh.instanceMatrix.needsUpdate = true;
   mesh.visible = false;
-  if (group.materialInfo.supportsInstanceColor && !mesh.instanceColor) {
+  if (supportsInstanceColor && !mesh.instanceColor) {
     mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(group.capacity * 3), 3);
     for (let i = 0; i < group.capacity; i += 1) {
       mesh.setColorAt(i, group.baseColor);
@@ -176,13 +178,13 @@ function initialiseInstancedMesh(
 }
 
 function BeamVisualGroupMeshes({ group }: { group: BeamVisualGroupState }): React.ReactElement {
-  const { meshRef, impactMeshRef, materialInfo, geometry, impactGeometry, capacity } = group;
+  const { meshRef, impactMeshRef, bodyMaterialInfo, impactMaterialInfo, geometry, impactGeometry, capacity } = group;
 
   useBloomRegistration(meshRef, { group: 'projectiles' });
   useBloomRegistration(impactMeshRef, { group: 'projectiles' });
 
   useEffect(() => {
-    initialiseInstancedMesh(meshRef, group, (attr) => {
+    initialiseInstancedMesh(meshRef, group.bodyMaterialInfo.supportsInstanceColor, group, (attr) => {
       group.brightnessAttr = attr;
     });
     return () => {
@@ -197,7 +199,7 @@ function BeamVisualGroupMeshes({ group }: { group: BeamVisualGroupState }): Reac
   }, [meshRef, group]);
 
   useEffect(() => {
-    initialiseInstancedMesh(impactMeshRef, group, (attr) => {
+    initialiseInstancedMesh(impactMeshRef, group.impactMaterialInfo.supportsInstanceColor, group, (attr) => {
       group.impactBrightnessAttr = attr;
     });
     return () => {
@@ -213,24 +215,25 @@ function BeamVisualGroupMeshes({ group }: { group: BeamVisualGroupState }): Reac
 
   useEffect(
     () => () => {
-      materialInfo.material.dispose();
+      bodyMaterialInfo.material.dispose();
+      impactMaterialInfo.material.dispose();
       geometry.dispose();
       impactGeometry.dispose();
     },
-    [materialInfo.material, geometry, impactGeometry],
+    [bodyMaterialInfo.material, impactMaterialInfo.material, geometry, impactGeometry],
   );
 
   return (
     <>
       <instancedMesh
         ref={meshRef}
-        args={[geometry, materialInfo.material, capacity]}
+        args={[geometry, bodyMaterialInfo.material, capacity]}
         matrixAutoUpdate={false}
         frustumCulled={false}
       />
       <instancedMesh
         ref={impactMeshRef}
-        args={[impactGeometry, materialInfo.material, capacity]}
+        args={[impactGeometry, impactMaterialInfo.material, capacity]}
         matrixAutoUpdate={false}
         frustumCulled={false}
       />
@@ -257,11 +260,22 @@ export function BeamVisualsInstancedLayer({
       const resolvedCapacity = Math.max(1, capacityByType?.[key] ?? defaultCapacity);
       const geometry = getProjectileGeometry(key).clone();
       const impactGeometry = new SphereGeometry(0.5, 12, 12);
-      const materialInfo = createInstancedMaterial(key);
-      materialInfo.material.transparent = true;
-      materialInfo.material.depthWrite = false;
-      materialInfo.material.toneMapped = false;
-      materialInfo.material.blending = AdditiveBlending;
+      // Create two materials: body (depthTest=false) and impact (depthTest=true)
+      const bodyMaterialInfo = createInstancedMaterial(key);
+      bodyMaterialInfo.material.transparent = true;
+      bodyMaterialInfo.material.depthWrite = false;
+      bodyMaterialInfo.material.toneMapped = false;
+      bodyMaterialInfo.material.blending = AdditiveBlending;
+  // Beam body should render on top for readability; disable depthTest only on the body material
+  bodyMaterialInfo.material.depthTest = false;
+
+      const impactMaterialInfo = createInstancedMaterial(key);
+      impactMaterialInfo.material.transparent = true;
+      impactMaterialInfo.material.depthWrite = false;
+      impactMaterialInfo.material.toneMapped = false;
+      impactMaterialInfo.material.blending = AdditiveBlending;
+  // Keep impact sphere depth-tested to stay grounded in the scene
+  impactMaterialInfo.material.depthTest = true;
       const allocator = new InstanceAllocator<number>(resolvedCapacity);
       const meshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
       const impactMeshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
@@ -287,7 +301,8 @@ export function BeamVisualsInstancedLayer({
         allocator,
         meshRef,
         impactMeshRef,
-        materialInfo,
+        bodyMaterialInfo,
+        impactMaterialInfo,
         geometry,
         impactGeometry,
         baseColor,
@@ -391,10 +406,10 @@ export function BeamVisualsInstancedLayer({
       const brightness = 1.2 + opacity * 0.6;
       TEMP_COLOR.set(hex).multiplyScalar(brightness);
 
-      if (mesh.instanceColor && group.materialInfo.supportsInstanceColor) {
+      if (mesh.instanceColor && group.bodyMaterialInfo.supportsInstanceColor) {
         mesh.setColorAt(index, TEMP_COLOR);
       }
-      if (impactMesh.instanceColor && group.materialInfo.supportsInstanceColor) {
+      if (impactMesh.instanceColor && group.impactMaterialInfo.supportsInstanceColor) {
         impactMesh.setColorAt(index, TEMP_COLOR);
       }
 
