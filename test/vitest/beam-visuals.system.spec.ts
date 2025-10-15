@@ -105,9 +105,14 @@ describe('beam visuals system', () => {
     expect(beam).toBeDefined();
     const localOrigin = beam.beamVisual.localOrigin?.clone();
     const localDirection = beam.beamVisual.localDirection?.clone();
+    const worldOffset = beam.beamVisual.worldOffset?.clone();
     expect(localOrigin).toBeDefined();
     expect(localDirection).toBeDefined();
+    expect(worldOffset).toBeDefined();
     expect(beam.beamVisual.fade).toBeUndefined();
+
+    const initialDirection = beam.direction.clone();
+    expectVectorCloseTo(initialDirection, new Vector3(0, 0, 1), 5);
 
     shooter.transform.position.set(12, -3, 5);
     const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 4);
@@ -115,19 +120,16 @@ describe('beam visuals system', () => {
 
     advanceBeamVisuals(state, 0.016);
 
-    const expectedOrigin = localOrigin!
-      .clone()
-      .multiplyScalar(shooter.transform.scale)
-      .applyQuaternion(rotation)
-      .add(shooter.transform.position);
-    const expectedDirection = localDirection!.clone().applyQuaternion(rotation).normalize();
+    const expectedOrigin = worldOffset
+      ? shooter.transform.position.clone().add(worldOffset)
+      : beam.transform.position;
 
     expectVectorCloseTo(beam.transform.position, expectedOrigin, 3);
-    expectVectorCloseTo(beam.direction, expectedDirection, 3);
+    expectVectorCloseTo(beam.direction, initialDirection, 5);
     expectVectorCloseTo(
       new Vector3(0, 0, 1).applyQuaternion(beam.transform.rotation),
-      expectedDirection,
-      3,
+      initialDirection,
+      5,
     );
   });
 
