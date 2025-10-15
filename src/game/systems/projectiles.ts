@@ -1,11 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import type {
-  GameState,
-  ShipEntity,
-  ProjectileEntity,
-  TurretEntity,
-  BeamVisualEntity,
-} from '../../types/index.js';
+import type { GameState, ShipEntity, ProjectileEntity, TurretEntity } from '../../types/index.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import {
   PROJECTILE_CONFIG,

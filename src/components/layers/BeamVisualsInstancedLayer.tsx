@@ -2,17 +2,22 @@ import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { InstancedMesh } from 'three';
 import {
+  AdditiveBlending,
   Color,
   DynamicDrawUsage,
   InstancedBufferAttribute,
   Matrix4,
+  SphereGeometry,
   Vector3,
 } from 'three';
 import { TEAM_COLORS } from '../../config/renderer.js';
 import type { Archetype, GameEntity, BeamVisualEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
-import { createInstancedMaterial, type InstancedMaterialInfo } from '../../renderer/materialRegistry.js';
+import {
+  createInstancedMaterial,
+  type InstancedMaterialInfo,
+} from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { InstanceAllocator } from './instanceAllocator.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
@@ -29,19 +34,29 @@ interface BeamVisualGroupState {
   capacity: number;
   allocator: InstanceAllocator<number>;
   meshRef: React.MutableRefObject<InstancedMesh | null>;
+  impactMeshRef: React.MutableRefObject<InstancedMesh | null>;
   materialInfo: InstancedMaterialInfo;
   geometry: ReturnType<typeof getProjectileGeometry>;
+  impactGeometry: SphereGeometry;
   baseColor: Color;
   maxIndex: number;
+  impactMaxIndex: number;
   brightnessAttr?: InstancedBufferAttribute;
+  impactBrightnessAttr?: InstancedBufferAttribute;
 }
 
 const DEFAULT_CAPACITY = 256;
 const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
 const TEMP_MATRIX = new Matrix4();
 const TEMP_SCALE = new Vector3();
+const TEMP_IMPACT_SCALE = new Vector3();
 const TEMP_POS = new Vector3();
+const TEMP_IMPACT_POS = new Vector3();
 const TEMP_COLOR = new Color();
+const TEMP_DIRECTION = new Vector3();
+const TEMP_START = new Vector3();
+const TEMP_END = new Vector3();
+const FORWARD = new Vector3(0, 0, 1);
 const BEAM_BRIGHTNESS_ATTR = 'instanceBeamBrightness';
 
 export const MIN_VISIBLE_BEAM_LENGTH = 0.75;
@@ -51,6 +66,9 @@ const MAX_FADE_STRENGTH = 1;
 const MIN_FADE_EXPONENT = 1;
 const MAX_FADE_EXPONENT = 6;
 const DISABLE_FADE_THRESHOLD = 1e-3;
+const MIN_WORLD_WIDTH = 0.05;
+
+const IMPACT_BASE_SCALE = 0.4;
 
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -64,12 +82,14 @@ export function computeBeamBrightness(component: BeamVisualEntity['beamVisual'])
   if (!fade) {
     return 1;
   }
+
   const rawStrength = Number.isFinite(fade.strength ?? NaN) ? (fade.strength as number) : 0;
   const rawExponent = Number.isFinite(fade.exponent ?? NaN) ? (fade.exponent as number) : 1;
   const strength = Math.min(Math.max(rawStrength, MIN_FADE_STRENGTH), MAX_FADE_STRENGTH);
   if (strength <= DISABLE_FADE_THRESHOLD) {
     return 1;
   }
+
   const exponent = Math.min(Math.max(rawExponent, MIN_FADE_EXPONENT), MAX_FADE_EXPONENT);
   const maxLength = Number.isFinite(component.maxLength ?? NaN)
     ? Math.max(Math.abs(component.maxLength as number), MIN_VISIBLE_BEAM_LENGTH)
@@ -96,6 +116,12 @@ export function resolveBeamRenderLength(
   const maxAllowed = safeMax > 0 ? Math.max(minLength, safeMax) : minLength;
   const effective = Math.max(safeLength, minLength);
   return Math.min(effective, maxAllowed);
+}
+
+function computeBeamOpacity(component: BeamVisualEntity['beamVisual']): number {
+  const baseBrightness = computeBeamBrightness(component);
+  const ttlFade = component.maxTtl > 0 ? clamp01(component.ttl / component.maxTtl) : 1;
+  return clamp01(baseBrightness * ttlFade);
 }
 
 export function allocateBeamBrightnessAttribute(
@@ -126,48 +152,89 @@ export function allocateBeamBrightnessAttribute(
   return attr;
 }
 
-function BeamVisualGroupMesh({ group }: { group: BeamVisualGroupState }): React.ReactElement {
-  const { meshRef, materialInfo, geometry, capacity, baseColor } = group;
+function initialiseInstancedMesh(
+  meshRef: React.MutableRefObject<InstancedMesh | null>,
+  group: BeamVisualGroupState,
+  assignBrightness: (attr: InstancedBufferAttribute) => void,
+): void {
+  const mesh = meshRef.current;
+  if (!mesh) return;
+  mesh.count = 0;
+  mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.visible = false;
+  if (group.materialInfo.supportsInstanceColor && !mesh.instanceColor) {
+    mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(group.capacity * 3), 3);
+    for (let i = 0; i < group.capacity; i += 1) {
+      mesh.setColorAt(i, group.baseColor);
+    }
+    mesh.instanceColor.setUsage(DynamicDrawUsage);
+    mesh.instanceColor.needsUpdate = true;
+  }
+  const attr = allocateBeamBrightnessAttribute(mesh, group.capacity);
+  assignBrightness(attr);
+}
+
+function BeamVisualGroupMeshes({ group }: { group: BeamVisualGroupState }): React.ReactElement {
+  const { meshRef, impactMeshRef, materialInfo, geometry, impactGeometry, capacity } = group;
+
   useBloomRegistration(meshRef, { group: 'projectiles' });
+  useBloomRegistration(impactMeshRef, { group: 'projectiles' });
 
   useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    mesh.count = 0;
-    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
-    mesh.instanceMatrix.needsUpdate = true;
-    if (materialInfo.supportsInstanceColor && !mesh.instanceColor) {
-      mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-      for (let i = 0; i < capacity; i += 1) {
-        mesh.setColorAt(i, baseColor);
-      }
-      mesh.instanceColor.setUsage(DynamicDrawUsage);
-      mesh.instanceColor.needsUpdate = true;
-    }
-    // All beam visuals get brightness attribute
-    group.brightnessAttr = allocateBeamBrightnessAttribute(mesh, capacity);
-    
+    initialiseInstancedMesh(meshRef, group, (attr) => {
+      group.brightnessAttr = attr;
+    });
     return () => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
       if (mesh.instanceColor) {
         mesh.instanceColor = null;
       }
       mesh.geometry.deleteAttribute(BEAM_BRIGHTNESS_ATTR);
       group.brightnessAttr = undefined;
     };
-  }, [meshRef, materialInfo.supportsInstanceColor, capacity, baseColor, group]);
+  }, [meshRef, group]);
 
-  useEffect(() => () => {
-    materialInfo.material.dispose();
-  }, [materialInfo.material]);
+  useEffect(() => {
+    initialiseInstancedMesh(impactMeshRef, group, (attr) => {
+      group.impactBrightnessAttr = attr;
+    });
+    return () => {
+      const mesh = impactMeshRef.current;
+      if (!mesh) return;
+      if (mesh.instanceColor) {
+        mesh.instanceColor = null;
+      }
+      mesh.geometry.deleteAttribute(BEAM_BRIGHTNESS_ATTR);
+      group.impactBrightnessAttr = undefined;
+    };
+  }, [impactMeshRef, group]);
+
+  useEffect(
+    () => () => {
+      materialInfo.material.dispose();
+      geometry.dispose();
+      impactGeometry.dispose();
+    },
+    [materialInfo.material, geometry, impactGeometry],
+  );
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[geometry, materialInfo.material, capacity]}
-      matrixAutoUpdate={false}
-      frustumCulled
-      visible={false}
-    />
+    <>
+      <instancedMesh
+        ref={meshRef}
+        args={[geometry, materialInfo.material, capacity]}
+        matrixAutoUpdate={false}
+        frustumCulled
+      />
+      <instancedMesh
+        ref={impactMeshRef}
+        args={[impactGeometry, materialInfo.material, capacity]}
+        matrixAutoUpdate={false}
+        frustumCulled
+      />
+    </>
   );
 }
 
@@ -189,29 +256,45 @@ export function BeamVisualsInstancedLayer({
       if (existing) return existing;
       const resolvedCapacity = Math.max(1, capacityByType?.[key] ?? defaultCapacity);
       const geometry = getProjectileGeometry(key).clone();
+      const impactGeometry = new SphereGeometry(0.5, 12, 12);
       const materialInfo = createInstancedMaterial(key);
+      materialInfo.material.transparent = true;
+      materialInfo.material.depthWrite = false;
+      materialInfo.material.toneMapped = false;
+      materialInfo.material.blending = AdditiveBlending;
       const allocator = new InstanceAllocator<number>(resolvedCapacity);
       const meshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
+      const impactMeshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
       const baseColor = new Color(1, 1, 1);
-      
-      // Allocate brightness attribute on geometry
-      const array = new Float32Array(resolvedCapacity);
-      array.fill(1);
-      const attr = new InstancedBufferAttribute(array, 1);
+
+      const brightnessArray = new Float32Array(resolvedCapacity);
+      brightnessArray.fill(1);
+      const attr = new InstancedBufferAttribute(brightnessArray, 1);
       attr.setUsage(DynamicDrawUsage);
       attr.needsUpdate = true;
       geometry.setAttribute(BEAM_BRIGHTNESS_ATTR, attr);
-      
+
+      const impactBrightnessArray = new Float32Array(resolvedCapacity);
+      impactBrightnessArray.fill(1);
+      const impactAttr = new InstancedBufferAttribute(impactBrightnessArray, 1);
+      impactAttr.setUsage(DynamicDrawUsage);
+      impactAttr.needsUpdate = true;
+      impactGeometry.setAttribute(BEAM_BRIGHTNESS_ATTR, impactAttr);
+
       const group: BeamVisualGroupState = {
         key,
         capacity: resolvedCapacity,
         allocator,
         meshRef,
+        impactMeshRef,
         materialInfo,
         geometry,
+        impactGeometry,
         baseColor,
         maxIndex: -1,
+        impactMaxIndex: -1,
         brightnessAttr: attr,
+        impactBrightnessAttr: impactAttr,
       };
       groupsRef.current.set(key, group);
       forceRender((n) => n + 1);
@@ -240,6 +323,7 @@ export function BeamVisualsInstancedLayer({
     for (const group of groupsRef.current.values()) {
       group.allocator.beginFrame();
       group.maxIndex = -1;
+      group.impactMaxIndex = -1;
     }
 
     for (const beamVisual of beamVisuals) {
@@ -259,7 +343,8 @@ export function BeamVisualsInstancedLayer({
       }
 
       const mesh = group.meshRef.current;
-      if (!mesh) continue;
+      const impactMesh = group.impactMeshRef.current;
+      if (!mesh || !impactMesh) continue;
 
       totalAllocated += 1;
       const visualScale = Number.isFinite(beamVisual.transform.scale)
@@ -270,62 +355,96 @@ export function BeamVisualsInstancedLayer({
       const lengthRaw = beamVisual.beamVisual.length * visualScale;
       const maxLengthRaw = beamVisual.beamVisual.maxLength * visualScale;
 
-      const renderWidth = Number.isFinite(widthRaw) ? Math.max(Math.abs(widthRaw), 1e-3) : 1e-3;
+      const renderWidth = Number.isFinite(widthRaw)
+        ? Math.max(Math.abs(widthRaw), MIN_WORLD_WIDTH)
+        : MIN_WORLD_WIDTH;
       const renderLength = resolveBeamRenderLength(lengthRaw, renderWidth, maxLengthRaw);
 
-      // Cylinder geometry has length along Z, so X/Y control diameter and Z controls length
-      TEMP_SCALE.set(renderWidth, renderWidth, renderLength);
+      const transform = beamVisual.transform;
+      const direction = beamVisual.direction;
+      if (direction && direction.lengthSq() > 1e-6) {
+        TEMP_DIRECTION.copy(direction).normalize();
+      } else {
+        TEMP_DIRECTION.copy(FORWARD).applyQuaternion(transform.rotation);
+      }
 
-      // Offset beam position forward by half its length so it originates from the muzzle
+      TEMP_START.copy(transform.position);
+      TEMP_END.copy(TEMP_DIRECTION).multiplyScalar(renderLength).add(TEMP_START);
+
       const beamOffset = renderLength * 0.5;
-      TEMP_POS.copy(beamVisual.transform.position)
-        .addScaledVector(beamVisual.direction, beamOffset);
-      
-      TEMP_MATRIX.compose(TEMP_POS, beamVisual.transform.rotation, TEMP_SCALE);
+      TEMP_POS.copy(TEMP_START).addScaledVector(TEMP_DIRECTION, beamOffset);
+
+      TEMP_SCALE.set(renderWidth, renderWidth, renderLength);
+      TEMP_MATRIX.compose(TEMP_POS, transform.rotation, TEMP_SCALE);
       mesh.setMatrixAt(index, TEMP_MATRIX);
-      
-      const brightness = computeBeamBrightness(beamVisual.beamVisual);
 
-      // Set instance color with team tint and optional fade brightness
+      const opacity = computeBeamOpacity(beamVisual.beamVisual);
+
+      TEMP_IMPACT_POS.copy(TEMP_END);
+      const impactScale =
+        Math.max(renderWidth * 0.8, IMPACT_BASE_SCALE) + opacity * renderWidth * 0.9;
+      TEMP_IMPACT_SCALE.setScalar(impactScale);
+      TEMP_MATRIX.compose(TEMP_IMPACT_POS, transform.rotation, TEMP_IMPACT_SCALE);
+      impactMesh.setMatrixAt(index, TEMP_MATRIX);
+      const team = beamVisual.beamVisual.team ?? 'blue';
+      const hex = (TEAM_COLORS as Record<string, string | undefined>)[team] ?? '#ffffff';
+      const brightness = 1.2 + opacity * 0.6;
+      TEMP_COLOR.set(hex).multiplyScalar(brightness);
+
       if (mesh.instanceColor && group.materialInfo.supportsInstanceColor) {
-        const team = beamVisual.beamVisual.team ?? 'blue';
-        const hex = (TEAM_COLORS as any)[team] ?? '#ffffff';
-        TEMP_COLOR.set(hex);
-
-        TEMP_COLOR.multiplyScalar(brightness);
-        
         mesh.setColorAt(index, TEMP_COLOR);
       }
-      
-      // Set brightness attribute
-      if (group.brightnessAttr) {
-        group.brightnessAttr.setX(index, brightness);
+      if (impactMesh.instanceColor && group.materialInfo.supportsInstanceColor) {
+        impactMesh.setColorAt(index, TEMP_COLOR);
       }
-      
+
+      if (group.brightnessAttr) {
+        group.brightnessAttr.setX(index, opacity);
+      }
+      if (group.impactBrightnessAttr) {
+        group.impactBrightnessAttr.setX(index, opacity);
+      }
+
       mesh.instanceMatrix.needsUpdate = true;
+      impactMesh.instanceMatrix.needsUpdate = true;
       group.maxIndex = Math.max(group.maxIndex, index);
+      group.impactMaxIndex = Math.max(group.impactMaxIndex, index);
     }
 
     for (const group of groupsRef.current.values()) {
       const mesh = group.meshRef.current;
-      if (!mesh) continue;
+      const impactMesh = group.impactMeshRef.current;
+      if (!mesh || !impactMesh) continue;
+
       const summary = group.allocator.endFrame();
       if (summary.saturated) saturated = true;
 
       for (const released of summary.released) {
         mesh.setMatrixAt(released, HIDDEN_MATRIX);
+        impactMesh.setMatrixAt(released, HIDDEN_MATRIX);
       }
 
       const maxIndex = Math.max(group.maxIndex, summary.maxIndex);
+      const impactMaxIndex = Math.max(group.impactMaxIndex, summary.maxIndex);
       const count = maxIndex >= 0 ? Math.min(maxIndex + 1, group.capacity) : 0;
+      const impactCount = impactMaxIndex >= 0 ? Math.min(impactMaxIndex + 1, group.capacity) : 0;
       mesh.count = count;
+      impactMesh.count = impactCount;
       mesh.visible = count > 0;
+      impactMesh.visible = impactCount > 0;
       mesh.instanceMatrix.needsUpdate = true;
+      impactMesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) {
         mesh.instanceColor.needsUpdate = true;
       }
+      if (impactMesh.instanceColor) {
+        impactMesh.instanceColor.needsUpdate = true;
+      }
       if (group.brightnessAttr) {
         group.brightnessAttr.needsUpdate = true;
+      }
+      if (group.impactBrightnessAttr) {
+        group.impactBrightnessAttr.needsUpdate = true;
       }
     }
 
@@ -340,7 +459,7 @@ export function BeamVisualsInstancedLayer({
   return (
     <>
       {Array.from(groupsRef.current.values()).map((group) => (
-        <BeamVisualGroupMesh key={group.key} group={group} />
+        <BeamVisualGroupMeshes key={group.key} group={group} />
       ))}
     </>
   );
