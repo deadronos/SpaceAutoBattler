@@ -26,6 +26,8 @@ const TEMP_BEAM_ORIGIN = new Vector3();
 const TEMP_BEAM_VECTOR = new Vector3();
 const TEMP_BEAM_PERP = new Vector3();
 const TEMP_IMPACT_DIR = new Vector3();
+const TEMP_RIGHT = new Vector3();
+const TEMP_UP = new Vector3();
 
 /**
  * Perform instant hitscan raycast for beam weapons.
@@ -368,6 +370,8 @@ export function fireProjectile(
     let actualLength = beamLength;
     let targetId: number | undefined;
     let impactPosition: Vector3 | undefined;
+    let visualWorldDirection: Vector3 | null = null;
+    let debugConeAngleRad: number | null = null;
     if (hitResult) {
       actualLength = hitResult.distance;
       impactPosition = startPosition.clone().addScaledVector(direction, actualLength);
@@ -381,6 +385,8 @@ export function fireProjectile(
         origin.id,
         bulletKey,
       );
+      // For hits, force the visual direction to "look at" the impact position to avoid any disparity
+      visualWorldDirection = impactPosition.clone().sub(startPosition).normalize();
     }
 
     const maxLength = Math.max(beamLength, actualLength, resolvedRange);
@@ -397,12 +403,71 @@ export function fireProjectile(
     if (Math.abs(scale) > 1e-5) {
       localOrigin.divideScalar(scale);
     }
-    const localDirection = direction.clone().applyQuaternion(invRotation);
-    if (localDirection.lengthSq() > 1e-6) {
-      localDirection.normalize();
-    } else {
-      localDirection.set(0, 0, 1);
+    // Decide the visual direction: exact impact for hits, jittered miss within a cone for misses
+    // Base cone is ~8.6 degrees; scale by captain accuracy so better crews "miss less".
+    const BASE_MISS_CONE_ANGLE = 0.15; // radians (~8.6°)
+    const MIN_MISS_CONE_ANGLE = 0.04; // radians (~2.3°) hard lower bound to keep some spread
+    const MAX_MISS_CONE_ANGLE = 0.30; // radians (~17.2°) upper bound to avoid wild visuals
+    if (!visualWorldDirection) {
+      // Compute intended direction to target if known, else use incoming fire direction
+      let intended = direction.clone();
+      if (opts?.targetId != null) {
+        const ships = state.queries.ships.entities as ShipEntity[];
+        const tgt = ships.find((s) => s.id === opts.targetId);
+        if (tgt) {
+          intended.copy(tgt.transform.position).sub(startPosition);
+        }
+      }
+      if (intended.lengthSq() > 1e-6) intended.normalize();
+      else intended.set(0, 0, 1);
+
+      // Seeded RNG for deterministic jitter
+      const seed = origin.id * 8191 + (opts?.targetId ?? 0) * 131 + state.nextEntityId;
+      const rng = new SeededRng(seed);
+
+      // Compute effective accuracy multiplier (captain accuracy × morale accuracy boost if active)
+      let acc = origin.ship.captain?.accuracy ?? 1.0;
+      const morale = origin.ship.captain?.moraleAbility;
+      if (morale?.isActive && morale.effect === 'accuracy_boost') {
+        // Description says: "Increases hit chance by 25%" — apply as a 1.25x accuracy multiplier
+        acc *= 1.25;
+      }
+      // Map accuracy to a cone angle: higher accuracy → tighter cone, lower accuracy → wider cone
+      // Scale the base angle by the inverse of accuracy so better crews have tighter spread
+      const missConeAngle = Math.min(
+        MAX_MISS_CONE_ANGLE,
+        Math.max(MIN_MISS_CONE_ANGLE, BASE_MISS_CONE_ANGLE * (2.0 / (1.0 + acc))),
+      );
+      debugConeAngleRad = missConeAngle;
+
+      // Build an orthonormal basis around intended
+      const safeUp = Math.abs(intended.y) < 0.99 ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
+      TEMP_RIGHT.copy(intended).cross(safeUp);
+      if (TEMP_RIGHT.lengthSq() < 1e-6) {
+        TEMP_RIGHT.set(1, 0, 0).cross(intended);
+      }
+      TEMP_RIGHT.normalize();
+      TEMP_UP.copy(TEMP_RIGHT).cross(intended).normalize();
+
+  const u = rng.next();
+  const v = rng.next();
+      const cosMax = Math.cos(missConeAngle);
+      const cosTheta = (1 - u) + u * cosMax; // uniform over spherical cap
+      const theta = Math.acos(Math.min(1, Math.max(-1, cosTheta)));
+      const phi = 2 * Math.PI * v;
+      const sinTheta = Math.sin(theta);
+      visualWorldDirection = new Vector3()
+        .copy(intended)
+        .multiplyScalar(Math.cos(theta))
+        .addScaledVector(TEMP_RIGHT, Math.cos(phi) * sinTheta)
+        .addScaledVector(TEMP_UP, Math.sin(phi) * sinTheta)
+        .normalize();
     }
+
+    // Derive localDirection from the final visual world direction
+    const localDirection = visualWorldDirection.clone().applyQuaternion(invRotation);
+    if (localDirection.lengthSq() > 1e-6) localDirection.normalize();
+    else localDirection.set(0, 0, 1);
 
     // Spawn visual-only beam entity (no physics body)
     enqueuePostPhysicsMutation(state, () => {
@@ -419,7 +484,7 @@ export function fireProjectile(
             sourceTurretId: opts?.sourceTurretId,
             sourceTurretIndex: opts?.sourceTurretIndex,
             origin: { x: +startPosition.x.toFixed(2), y: +startPosition.y.toFixed(2), z: +startPosition.z.toFixed(2) },
-            direction: { x: +direction.x.toFixed(3), y: +direction.y.toFixed(3), z: +direction.z.toFixed(3) },
+            direction: { x: +visualWorldDirection.x.toFixed(3), y: +visualWorldDirection.y.toFixed(3), z: +visualWorldDirection.z.toFixed(3) },
             width: +beamWidth.toFixed(2),
             length: +actualLength.toFixed(2),
             maxLength: +maxLength.toFixed(2),
@@ -428,6 +493,9 @@ export function fireProjectile(
             targetPos: impactPosition
               ? { x: +impactPosition.x.toFixed(2), y: +impactPosition.y.toFixed(2), z: +impactPosition.z.toFixed(2) }
               : null,
+            coneAngleRad: targetId ? null : debugConeAngleRad != null ? +debugConeAngleRad.toFixed(3) : null,
+            localOrigin: { x: +localOrigin.x.toFixed(3), y: +localOrigin.y.toFixed(3), z: +localOrigin.z.toFixed(3) },
+            localDirection: { x: +localDirection.x.toFixed(3), y: +localDirection.y.toFixed(3), z: +localDirection.z.toFixed(3) },
           });
         } catch {}
       }
@@ -435,10 +503,10 @@ export function fireProjectile(
         id: state.nextEntityId++,
         transform: {
           position: startPosition.clone(),
-          rotation: rotation.clone(),
+          rotation: new Quaternion().setFromUnitVectors(FORWARD, visualWorldDirection),
           scale: visualScale,
         },
-        direction: direction.clone(),
+        direction: visualWorldDirection.clone(),
         beamVisual: {
           team: origin.ship.team,
           ttl: beamTtl,

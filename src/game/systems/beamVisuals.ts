@@ -50,6 +50,13 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
       const source = ships.find((ship) => ship.id === beam.beamVisual.sourceId);
       if (!source) {
         // Source ship destroyed, remove beam
+        if (isCopilotDebugEnabled()) {
+          console.debug('[BeamDebug] source ship not found', {
+            id: beam.id,
+            sourceId: beam.beamVisual.sourceId,
+            totalShips: ships.length,
+          });
+        }
         toRemove.push(beam);
         continue;
       }
