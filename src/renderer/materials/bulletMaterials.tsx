@@ -69,7 +69,9 @@ export const MissileLightMaterial: React.FC = () => <meshStandardMaterial {...mi
 
 export const TorpedoStandardMaterial: React.FC = () => <meshStandardMaterial {...torpedoProps} />;
 
-export const BeamLaserMaterial: React.FC = () => <meshStandardMaterial {...beamProps} />;
+export const BeamLaserMaterial: React.FC = () => (
+  <meshStandardMaterial {...beamProps} userData={{ __copilot_forceColorWrite: true }} />
+);
 
 export function createBulletLaserMaterial(): MeshStandardMaterial {
   return new MeshStandardMaterial(laserProps);
@@ -96,5 +98,12 @@ export function createTorpedoStandardMaterial(): MeshStandardMaterial {
 }
 
 export function createBeamLaserMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(beamProps);
+  const material = new MeshStandardMaterial(beamProps);
+  material.transparent = true;
+  material.opacity = beamProps.opacity;
+  if (!material.userData) {
+    material.userData = {};
+  }
+  (material.userData as Record<string, unknown>).__copilot_forceColorWrite = true;
+  return material;
 }
