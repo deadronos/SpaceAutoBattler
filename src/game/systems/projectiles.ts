@@ -29,6 +29,8 @@ const TEMP_IMPACT_DIR = new Vector3();
 /**
  * Perform instant hitscan raycast for beam weapons.
  * Returns the target ship and impact distance if a hit is detected.
+ * `selfHitPadding` ignores hits within a small distance from the origin to
+ * avoid immediate self-intersections when the muzzle starts inside a collider.
  */
 function performBeamHitscan(
   state: GameState,
@@ -38,6 +40,7 @@ function performBeamHitscan(
   maxRange: number,
   sourceTeam: string,
   sourceId: number | null,
+  selfHitPadding = 0,
 ): { target: ShipEntity; distance: number } | null {
   const ships = state.queries.ships.entities as ShipEntity[];
   let closest: ShipEntity | null = null;
@@ -51,6 +54,7 @@ function performBeamHitscan(
     const toShip = TEMP_BEAM_VECTOR.copy(ship.transform.position).sub(origin);
     const along = toShip.dot(direction);
     if (along < 0 || along > maxRange) continue;
+    if (along <= selfHitPadding) continue;
 
     const radial = TEMP_BEAM_PERP.copy(toShip).addScaledVector(direction, -along);
     const shipRadius = ship.transform.scale * 0.9;
@@ -343,6 +347,8 @@ export function fireProjectile(
     const beamWidth = beamConfig.width;
     const beamLength = beamConfig.length;
     const beamTtl = beamConfig.ttl;
+    const muzzleClearance = startPosition.distanceTo(origin.transform.position);
+    const selfHitPadding = Math.max(0.1, beamWidth * 0.5, muzzleClearance * 0.25);
 
     // Perform instant hitscan raycast
     const hitResult = performBeamHitscan(
@@ -353,6 +359,7 @@ export function fireProjectile(
       range,
       origin.ship.team,
       origin.id,
+      selfHitPadding,
     );
 
     // Apply damage instantly if we hit a target
