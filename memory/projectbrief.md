@@ -11,7 +11,7 @@
 **Success criteria:**
 
 - All runtime state lives on the canonical `GameState` type (see `src/types/simulation.ts`).
-- Simulation determinism preserved via the seeded RNG (`src/utils/rng.ts`) — `createGameState()` currently initialises `state.rng = new SeededRng(1337)`.
+- Simulation determinism preserved via the seeded RNG (`src/utils/rng.ts`) — `createGameState()` currently initialises `state.rng = new SeededRng(1337)`. The runtime `SeededRng` API includes: `reset(seed)`, `next()` → [0..1), `range(min,max)`, `int(min,max)`, `pick(values[])`, and `normal(mean?, stdDev?)` (Box–Muller gaussian samples).
 - Use of deferred mutation queues (`simulation.deferredMutations` and `simulation.postStepMutations`) prevents Rapier mutable-borrow errors during in-loop spawns/removals.
 
 **Governance & memory bank:**

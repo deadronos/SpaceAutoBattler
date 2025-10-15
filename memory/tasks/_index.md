@@ -60,10 +60,10 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK124](TASK124-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
 - [TASK135](TASK135-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
+- [TASK232](TASK232-update-memory-bank-tasks.md) — Updated Memory Bank files to align with current `src/` implementations (types, `createGameState()`, `SeededRng`, and simulation defaults). (2025-10-16)
+
 ## Pending
 
-- _None tracked._
-- [TASK232](TASK232-update-memory-bank-tasks.md) — Update memory bank task files and `_index.md` to record progress for the deferred Rapier migration work. (2025-10-01)
 - [TASK006](TASK006-instanced-particles-explosions.md) — Instanced particles & explosions (High priority) (2025-10-05)
 - [TASK007](TASK007-thruster-muzzle-instancing.md) — Thruster & muzzle instancing + bloom registration (High priority) (2025-10-05)
 - [TASK008](TASK008-ship-lod-impostors.md) — Ship LOD impostors & instanced distant-ship rendering (Medium priority) (2025-10-05)

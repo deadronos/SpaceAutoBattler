@@ -10,11 +10,13 @@ Overview
 - Resource lifecycle: GLTFs loaded via Drei `useGLTF` (cached); dispose of Three.js resources created manually.
 - Hot-path allocation avoidance: Systems avoid per-frame allocations; use temp vectors and pooling where appropriate.
 
+
 Common patterns
 
-- createGameState()/disposeGameState() factory: `src/game/state.ts` provides lifecycle for Rapier world, Miniplex world, and seeded RNG.
+- createGameState()/disposeGameState() factory: `src/game/state.ts` provides lifecycle for Rapier world, Miniplex world, and seeded RNG. `createGameState()` calls `Rapier.init({})`, constructs `physicsWorld` and `eventQueue`, applies small Miniplex backwards-compatible shims (`createEntity`/`destroyEntity`/`archetype`), creates `state.turretsByShip` (Map) for efficient turret cascade removal, and initialises `state.rng = new SeededRng(1337)` and the `simulation` clock (`step = 1/20`, `maxSubSteps = 5`, `lastTickDuration = 1/20`).
 - Systems composition: `src/game/systems.ts` composes small, focused functions (prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles) executed each tick via `updateGame(state, delta)`.
 - Safe mutation pattern: Use `state.simulation.deferredMutations` and `state.simulation.postStepMutations` and the helpers in `src/game/simulationQueue.ts` to schedule Rapier-sensitive operations and avoid in-step mutations.
+- Seeded RNG: The `SeededRng` (see `src/utils/rng.ts`) is a Lehmer-style generator. Use the provided helpers (`reset(seed)`, `next()`, `range(min,max)`, `int(min,max)`, `pick(values)`, `normal(mean, stdDev)`) for all simulation randomness to ensure replay determinism.
 - Safe kinematics helpers: Prefer `src/game/physics/safeKinematics.ts` wrappers when writing kinematic transforms from systems that may run during physics steps.
 - Testing hooks: Decision and AI subsystems expose test helpers (e.g., `__aiTestHooks`) and exported tick runners so unit tests can assert internal scoring and tie-break behavior without widening the public API.
 - Per-entity buffers: Ship entities maintain a small `shieldRipples` buffer for renderer-driven visual ripples; capped length to avoid unbounded memory growth.

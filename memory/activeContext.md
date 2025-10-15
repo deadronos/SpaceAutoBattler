@@ -45,6 +45,8 @@ Recent alignment notes (2025-10-03)
 - Reminder: `createGameState()` initialises `state.rng` with seed `1337` by default and systems must prefer `state.rng` over global randomness for determinism.
 - Deferred mutation queues (`state.simulation.deferredMutations` and `state.simulation.postStepMutations`) are used across systems (carrier spawns, projectile instantiation, reset requests) to avoid Rapier mutable-borrow panics; continue to use these patterns in new features.
 
+- Implementation notes (source-aligned): `createGameState()` constructs `state.turretsByShip = new Map()` to track turret entities per ship for fast cascade removal and initialises `state.simulation` with `step = 1/20`, `maxSubSteps = 5`, and populated `rapierDiagnostics` defaults. Systems should avoid assumptions about fallback turret scans and use `registerTurret`/`unregisterTurret` helpers.
+
 Next steps:
 
 - Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
@@ -61,4 +63,4 @@ Status updates:
 - 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.
 - 2025-09-29: TASK135 completed — cross-references reconciled, `memory/tasks/_index.md` updated, and markdown/link linting run across `memory/` and `memory/tasks/` to remove stale references. Superseded task files were archived under `memory/tasks/COMPLETED/`.
 
-- Updated: 2025-10-02
+- Updated: 2025-10-16

@@ -67,3 +67,9 @@ Memory audit: 2025-09-30 — updated several per-file memories to reflect source
 
 - Updated core memory files in `memory/` to match current `src/` implementations (GameState shape, seeded RNG usage, deferred mutation queues, Rapier diagnostics, AI harness shapes, and system ordering). Verified references to `createGameState`, `SeededRng`, `simulationQueue`, and AI harness exports.
 - Follow-up: consider running markdown linting across the memory folder and normalising list styles (bullets) where inconsistencies remain.
+
+## 2025-10-16 — Memory bank source audit
+
+- Inspected `src/types/*` (notably `simulation.ts`, `core.ts`, `gameplay.ts`, `ship.ts`, `ai.ts`) and `src/game/state.ts` plus `src/utils/rng.ts` to align the Memory Bank with authoritative implementations.
+- Updated `memory/projectbrief.md`, `memory/techContext.md`, `memory/systemPatterns.md`, and `memory/activeContext.md` to record concrete implementation details: `SeededRng` API surface, `createGameState()` defaults and Rapier init behaviour, `state.simulation` clock defaults (`step = 1/20`, `maxSubSteps = 5`), `state.turretsByShip` usage, and shape of `rapierDiagnostics`.
+- Next validation: run `npx tsc --noEmit` and `npm test` locally to confirm no breakages after docs-only edits (no code changes expected). If any CI or test failures appear, record results and follow-up with corrective edits.
