@@ -24,11 +24,13 @@ const vertexShader = /* glsl */ `
     #include <uv_vertex>
     #include <color_vertex>
 
+    // Use local-space Z to compute segment along the beam (0..1 from tail->tip)
+    vSegment = clamp(position.z + 0.5, 0.0, 1.0);
+
     vec3 transformed = position;
     #ifdef USE_INSTANCING
       transformed = (instanceMatrix * vec4(transformed, 1.0)).xyz;
     #endif
-    vSegment = clamp(transformed.z + 0.5, 0.0, 1.0);
     vInstanceBrightness = instanceBeamBrightness;
     #ifdef USE_INSTANCING_COLOR
       vInstanceColor = instanceColor;

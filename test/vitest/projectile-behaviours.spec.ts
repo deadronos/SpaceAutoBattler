@@ -162,6 +162,17 @@ describe('projectile behaviours', () => {
     const beamVisual = (state.queries.beamVisuals.entities as import('../../src/types/index.js').BeamVisualEntity[])[0];
     expect(beamVisual).toBeDefined();
     expect(beamVisual.beamVisual.bulletType).toBe('beam:laser');
+    expect(beamVisual.beamVisual.localOrigin).toBeDefined();
+    expect(beamVisual.beamVisual.localDirection).toBeDefined();
+
+    const localOrigin = beamVisual.beamVisual.localOrigin!;
+    const localDir = beamVisual.beamVisual.localDirection!;
+    expect(localOrigin.x).toBeCloseTo(0, 5);
+    expect(localOrigin.y).toBeCloseTo(0, 5);
+    expect(localOrigin.z).toBeCloseTo(1.6, 5);
+    expect(localDir.x).toBeCloseTo(0, 5);
+    expect(localDir.y).toBeCloseTo(0, 5);
+    expect(localDir.z).toBeCloseTo(1, 5);
 
     // Damage is applied instantly during fireProjectile, so target shield should already be reduced
     expect(target.ship.shield).toBeLessThan(5);

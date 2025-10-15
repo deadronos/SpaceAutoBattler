@@ -376,6 +376,22 @@ export function fireProjectile(
       );
     }
 
+    const invRotation = TEMP_INV_ROT.copy(origin.transform.rotation).invert();
+    const localOrigin = startPosition
+      .clone()
+      .sub(origin.transform.position)
+      .applyQuaternion(invRotation);
+    const scale = origin.transform.scale;
+    if (Math.abs(scale) > 1e-5) {
+      localOrigin.divideScalar(scale);
+    }
+    const localDirection = direction.clone().applyQuaternion(invRotation);
+    if (localDirection.lengthSq() > 1e-6) {
+      localDirection.normalize();
+    } else {
+      localDirection.set(0, 0, 1);
+    }
+
     // Spawn visual-only beam entity (no physics body)
     enqueuePostPhysicsMutation(state, () => {
       state.world.add({
@@ -398,6 +414,8 @@ export function fireProjectile(
           sourceTurretId: opts?.sourceTurretId,
           sourceTurretIndex: opts?.sourceTurretIndex,
           spawnTime: state.time,
+          localOrigin,
+          localDirection,
         },
       });
     });

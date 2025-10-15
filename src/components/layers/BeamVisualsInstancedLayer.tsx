@@ -44,6 +44,23 @@ const TEMP_POS = new Vector3();
 const TEMP_COLOR = new Color();
 const BEAM_BRIGHTNESS_ATTR = 'instanceBeamBrightness';
 
+export const MIN_VISIBLE_BEAM_LENGTH = 0.75;
+
+export function resolveBeamRenderLength(
+  rawLength: number,
+  width: number,
+  maxLength: number,
+): number {
+  const safeLength = Number.isFinite(rawLength) ? Math.max(rawLength, 0) : 0;
+  const safeWidth = Number.isFinite(width) ? Math.max(Math.abs(width), 0) : 0;
+  const safeMax = Number.isFinite(maxLength) ? Math.max(Math.abs(maxLength), 0) : 0;
+
+  const minLength = Math.max(MIN_VISIBLE_BEAM_LENGTH, safeWidth * 0.6);
+  const maxAllowed = safeMax > 0 ? Math.max(minLength, safeMax) : minLength;
+  const effective = Math.max(safeLength, minLength);
+  return Math.min(effective, maxAllowed);
+}
+
 export function allocateBeamBrightnessAttribute(
   mesh: InstancedMesh,
   capacity: number,
@@ -208,17 +225,22 @@ export function BeamVisualsInstancedLayer({
       if (!mesh) continue;
 
       totalAllocated += 1;
-      const visualScale = beamVisual.transform.scale;
-      
-      // Scale non-uniformly: width for X/Y, length for Z
-      const width = beamVisual.beamVisual.width * visualScale;
-      const length = beamVisual.beamVisual.length * visualScale;
-      
+      const visualScale = Number.isFinite(beamVisual.transform.scale)
+        ? beamVisual.transform.scale
+        : 1;
+
+      const widthRaw = beamVisual.beamVisual.width * visualScale;
+      const lengthRaw = beamVisual.beamVisual.length * visualScale;
+      const maxLengthRaw = beamVisual.beamVisual.maxLength * visualScale;
+
+      const renderWidth = Number.isFinite(widthRaw) ? Math.max(Math.abs(widthRaw), 1e-3) : 1e-3;
+      const renderLength = resolveBeamRenderLength(lengthRaw, renderWidth, maxLengthRaw);
+
       // Cylinder geometry has length along Z, so X/Y control diameter and Z controls length
-      TEMP_SCALE.set(width, width, length);
-      
+      TEMP_SCALE.set(renderWidth, renderWidth, renderLength);
+
       // Offset beam position forward by half its length so it originates from the muzzle
-      const beamOffset = length * 0.5;
+      const beamOffset = renderLength * 0.5;
       TEMP_POS.copy(beamVisual.transform.position)
         .addScaledVector(beamVisual.direction, beamOffset);
       

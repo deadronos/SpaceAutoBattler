@@ -167,4 +167,8 @@ export interface BeamVisualComponent {
   sourceTurretIndex?: number;
   /** Simulation time when the beam was spawned. */
   spawnTime: number;
+  /** Ship-local spawn offset captured at fire time for alignment. */
+  localOrigin?: Vector3;
+  /** Ship-local firing direction captured at fire time for alignment. */
+  localDirection?: Vector3;
 }
