@@ -21,7 +21,7 @@ describe('ShieldBubble anchoring (static check)', () => {
     const txt = fs.readFileSync(file, 'utf-8');
     // Ensure shield bubble is conditionally rendered when shields are very low
     expect(txt).toContain('minShieldThreshold');
-    expect(txt).toContain('if (shieldFraction < minShieldThreshold)');
+    expect(txt).toMatch(/if\s*\([^)]*<\s*minShieldThreshold\)/);
     expect(txt).toContain('return <></>;');
   });
 });
