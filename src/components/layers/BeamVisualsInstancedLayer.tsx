@@ -61,6 +61,8 @@ const FORWARD = new Vector3(0, 0, 1);
 const BEAM_BRIGHTNESS_ATTR = 'instanceBeamBrightness';
 
 export const MIN_VISIBLE_BEAM_LENGTH = 0.75;
+// Hard visual cap to avoid screen-spanning beams in edge cases; damage logic is unaffected
+export const MAX_RENDER_BEAM_LENGTH = 150;
 
 const MIN_FADE_STRENGTH = 0;
 const MAX_FADE_STRENGTH = 1;
@@ -114,7 +116,9 @@ export function resolveBeamRenderLength(
   const safeMax = Number.isFinite(maxLength) ? Math.max(Math.abs(maxLength), 0) : 0;
 
   const minLength = Math.max(MIN_VISIBLE_BEAM_LENGTH, safeWidth * 0.6);
-  const maxAllowed = safeMax > 0 ? Math.max(minLength, safeMax) : minLength;
+  // Apply a hard cap for rendering to keep beams from spanning the entire screen in degenerate cases
+  const hardCap = Math.max(minLength, MAX_RENDER_BEAM_LENGTH);
+  const maxAllowed = safeMax > 0 ? Math.min(Math.max(minLength, safeMax), hardCap) : minLength;
   const effective = Math.max(safeLength, minLength);
   return Math.min(effective, maxAllowed);
 }

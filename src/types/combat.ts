@@ -185,4 +185,8 @@ export interface BeamVisualComponent {
   localDirection?: Vector3;
   /** Optional fade configuration propagated to the renderer. */
   fade?: BeamFadeConfig;
+  /** Debug-only: ID of the ship/entity hit by this beam at spawn (if any). */
+  targetId?: number;
+  /** Debug-only: World-space impact position at spawn (if any). */
+  impactPosition?: Vector3;
 }

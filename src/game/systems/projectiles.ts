@@ -14,6 +14,7 @@ import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 import type { BeamRuntimeState, ProjectileCategory, DamageType } from '../../types/combat.js';
 import { calculateEffectiveDamage, applySubsystemDamage, awardDamageXp } from '../progression.js';
 import { SeededRng } from '../../utils/rng.js';
+import { isCopilotDebugEnabled } from '../../utils/starDisk.js';
 
 export const FORWARD = new Vector3(0, 0, 1);
 export const TEMP_DIR = new Vector3();
@@ -365,9 +366,12 @@ export function fireProjectile(
 
     // Apply damage instantly if we hit a target
     let actualLength = beamLength;
+    let targetId: number | undefined;
+    let impactPosition: Vector3 | undefined;
     if (hitResult) {
       actualLength = hitResult.distance;
-      const impactPosition = startPosition.clone().addScaledVector(direction, actualLength);
+      impactPosition = startPosition.clone().addScaledVector(direction, actualLength);
+      targetId = hitResult.target.id;
       applyBeamDamage(
         state,
         hitResult.target,
@@ -402,6 +406,31 @@ export function fireProjectile(
 
     // Spawn visual-only beam entity (no physics body)
     enqueuePostPhysicsMutation(state, () => {
+      const debug = isCopilotDebugEnabled();
+      if (debug) {
+        // Log beam spawn details for diagnostics
+        try {
+          console.debug('[BeamDebug] spawn', {
+            id: state.nextEntityId,
+            time: state.time.toFixed(3),
+            team: origin.ship.team,
+            bulletType: bulletKey,
+            sourceId: origin.id,
+            sourceTurretId: opts?.sourceTurretId,
+            sourceTurretIndex: opts?.sourceTurretIndex,
+            origin: { x: +startPosition.x.toFixed(2), y: +startPosition.y.toFixed(2), z: +startPosition.z.toFixed(2) },
+            direction: { x: +direction.x.toFixed(3), y: +direction.y.toFixed(3), z: +direction.z.toFixed(3) },
+            width: +beamWidth.toFixed(2),
+            length: +actualLength.toFixed(2),
+            maxLength: +maxLength.toFixed(2),
+            ttl: +beamTtl.toFixed(2),
+            targetId: targetId ?? null,
+            targetPos: impactPosition
+              ? { x: +impactPosition.x.toFixed(2), y: +impactPosition.y.toFixed(2), z: +impactPosition.z.toFixed(2) }
+              : null,
+          });
+        } catch {}
+      }
       state.world.add({
         id: state.nextEntityId++,
         transform: {
@@ -426,6 +455,8 @@ export function fireProjectile(
           localOrigin,
           worldOffset: beamWorldOffset.clone(),
           localDirection,
+          targetId,
+          impactPosition: impactPosition ? impactPosition.clone() : undefined,
         },
       });
     });

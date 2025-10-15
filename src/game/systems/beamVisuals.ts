@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import type { GameState, BeamVisualEntity, ShipEntity, TurretEntity } from '../../types/index.js';
 import { clampToWorld } from '../config.js';
+import { isCopilotDebugEnabled } from '../../utils/starDisk.js';
 import { destroyEntity } from '../state.js';
 
 const TEMP_BEAM_ORIGIN = new Vector3();
@@ -20,6 +21,25 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
   for (const beam of beamVisuals) {
     beam.beamVisual.ttl -= delta;
     if (beam.beamVisual.ttl <= 0) {
+      if (isCopilotDebugEnabled()) {
+        try {
+          const d = beam.direction;
+          console.debug('[BeamDebug] expire', {
+            id: beam.id,
+            team: beam.beamVisual.team,
+            sourceId: beam.beamVisual.sourceId,
+            bulletType: beam.beamVisual.bulletType,
+            position: {
+              x: +beam.transform.position.x.toFixed(2),
+              y: +beam.transform.position.y.toFixed(2),
+              z: +beam.transform.position.z.toFixed(2),
+            },
+            direction: d ? { x: +d.x.toFixed(3), y: +d.y.toFixed(3), z: +d.z.toFixed(3) } : null,
+            length: +beam.beamVisual.length.toFixed(2),
+            maxLength: +beam.beamVisual.maxLength.toFixed(2),
+          });
+        } catch {}
+      }
       toRemove.push(beam);
       continue;
     }

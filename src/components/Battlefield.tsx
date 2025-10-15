@@ -21,6 +21,7 @@ import { MuzzleFlashInstancedLayer } from './layers/MuzzleFlashInstancedLayer.js
 import { TurretsLayer } from './layers/TurretsLayer.js';
 import { StarsField } from './layers/StarsField.js';
 import { installWebGLDebugHooks } from '../renderer/webglDebugWrapper.js';
+import BeamDebugOverlay from './debug/BeamDebugOverlay.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
@@ -60,7 +61,13 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         transparent
         opacity={ppEnabled ? undefined : 0.1}
       />
-      <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
+      {/* Show Axes only when debug is enabled to avoid confusion with beam visuals */}
+      {typeof window !== 'undefined' && String(window.location.search).includes('copilot_debug=1') ? (
+        <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
+      ) : null}
+      {typeof window !== 'undefined' && String(window.location.search).includes('copilot_debug=1') ? (
+        <BeamDebugOverlay archetype={state.queries.beamVisuals} />
+      ) : null}
     </>
   );
 
