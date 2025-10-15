@@ -120,9 +120,15 @@ describe('beam visuals system', () => {
 
     advanceBeamVisuals(state, 0.016);
 
-    const expectedOrigin = worldOffset
-      ? shooter.transform.position.clone().add(worldOffset)
-      : beam.transform.position;
+    const expectedOrigin = localOrigin
+      ? localOrigin
+          .clone()
+          .multiplyScalar(shooter.transform.scale)
+          .applyQuaternion(shooter.transform.rotation)
+          .add(shooter.transform.position)
+      : worldOffset
+        ? shooter.transform.position.clone().add(worldOffset)
+        : beam.transform.position;
 
     expectVectorCloseTo(beam.transform.position, expectedOrigin, 3);
     expectVectorCloseTo(beam.direction, initialDirection, 5);

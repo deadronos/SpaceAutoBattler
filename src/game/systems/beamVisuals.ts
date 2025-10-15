@@ -37,19 +37,8 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
       let worldOrigin: Vector3 | null = null;
       let usedShipCenterFallback = false;
 
-      const worldOffset = beam.beamVisual.worldOffset;
-      if (
-        worldOffset &&
-        Number.isFinite(worldOffset.x) &&
-        Number.isFinite(worldOffset.y) &&
-        Number.isFinite(worldOffset.z)
-      ) {
-        worldOrigin = TEMP_BEAM_ORIGIN.copy(source.transform.position).add(worldOffset);
-      }
-
       const localOrigin = beam.beamVisual.localOrigin;
       if (
-        !worldOrigin &&
         localOrigin &&
         Number.isFinite(localOrigin.x) &&
         Number.isFinite(localOrigin.y) &&
@@ -59,6 +48,17 @@ export function advanceBeamVisuals(state: GameState, delta: number): void {
           .multiplyScalar(source.transform.scale)
           .applyQuaternion(source.transform.rotation)
           .add(source.transform.position);
+      }
+
+      const worldOffset = beam.beamVisual.worldOffset;
+      if (
+        !worldOrigin &&
+        worldOffset &&
+        Number.isFinite(worldOffset.x) &&
+        Number.isFinite(worldOffset.y) &&
+        Number.isFinite(worldOffset.z)
+      ) {
+        worldOrigin = TEMP_BEAM_ORIGIN.copy(source.transform.position).add(worldOffset);
       }
 
       // Try turret entity if local metadata unavailable
