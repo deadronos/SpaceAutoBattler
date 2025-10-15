@@ -76,7 +76,16 @@ export function applyProjectileDamage(
       ? ships.find((s) => s.id === projectile.projectile.sourceId)
       : ships.find((s) => s.ship.team === projectile.projectile.team);
     if (attackerShip) {
-      awardDamageXp(attackerShip.ship, totalDamageDealt, state, attackerShip.id);
+      const projectileCategory =
+        projectile.projectile.category ?? getProjectileCategory(projectile.projectile.bulletType);
+      awardDamageXp(
+        attackerShip.ship,
+        totalDamageDealt,
+        state,
+        attackerShip.id,
+        projectile.projectile.bulletType,
+        projectileCategory,
+      );
     }
   }
 

@@ -9,11 +9,32 @@ import {
 
 const geometryCache = new Map<string, BufferGeometry>();
 
+interface ProjectileGeometryMetadata {
+  category: string;
+  baseRadius?: number;
+  baseWidth?: number;
+  baseLength?: number;
+}
+
+function assignGeometryMetadata(
+  geometry: BufferGeometry,
+  metadata: ProjectileGeometryMetadata,
+): void {
+  const existing = (geometry.userData.projectile ?? {}) as ProjectileGeometryMetadata;
+  geometry.userData.projectile = { ...existing, ...metadata };
+}
+
 function createMissileGeometry(config: ProjectileConfigItem): BufferGeometry {
   const radius = config.baseGeometryRadius ?? getProjectileBaseRadius('missile:light');
   const length = Math.max(1, radius * 6);
   const geometry = new CylinderGeometry(radius * 0.5, radius * 0.8, length, 12, 1);
   geometry.rotateX(Math.PI / 2);
+  assignGeometryMetadata(geometry, {
+    category: 'missile',
+    baseRadius: radius,
+    baseWidth: radius * 2,
+    baseLength: length,
+  });
   return geometry;
 }
 
@@ -22,6 +43,12 @@ function createTorpedoGeometry(config: ProjectileConfigItem): BufferGeometry {
   const length = Math.max(1, radius * 7);
   const geometry = new CylinderGeometry(radius * 0.7, radius, length, 12, 1);
   geometry.rotateX(Math.PI / 2);
+  assignGeometryMetadata(geometry, {
+    category: 'torpedo',
+    baseRadius: radius,
+    baseWidth: radius * 2,
+    baseLength: length,
+  });
   return geometry;
 }
 
@@ -32,6 +59,12 @@ function createBeamGeometry(config: ProjectileConfigItem): BufferGeometry {
   const length = Math.max(2, (config.visualScale ?? 1) * 12);
   const geometry = new CylinderGeometry(radius, radius, length, 16, 1, true);
   geometry.rotateX(Math.PI / 2);
+  assignGeometryMetadata(geometry, {
+    category: 'beam',
+    baseRadius: radius,
+    baseWidth: radius * 2,
+    baseLength: length,
+  });
   return geometry;
 }
 
@@ -47,7 +80,14 @@ function createDefaultGeometry(key: string, config: ProjectileConfigItem): Buffe
     return createBeamGeometry(config);
   }
   const radius = getProjectileBaseRadius(key);
-  return new SphereGeometry(radius, 16, 16);
+  const geometry = new SphereGeometry(radius, 16, 16);
+  assignGeometryMetadata(geometry, {
+    category: 'bullet',
+    baseRadius: radius,
+    baseWidth: radius * 2,
+    baseLength: radius * 2,
+  });
+  return geometry;
 }
 
 export function getProjectileGeometry(bulletType?: string | null): BufferGeometry {
