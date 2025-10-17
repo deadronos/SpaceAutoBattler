@@ -583,6 +583,21 @@
 
 .controls-bar button,
 .controls-bar select {
+  /* Make native select visually blend with HUD panels */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 6px 10px 6px 10px;
+  padding-right: 36px; /* room for custom arrow */
+  color: #eaf4ff;
+  position: relative;
+  cursor: pointer;
+}
+
+.controls-bar button {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
@@ -590,8 +605,50 @@
 }
 
 .controls-bar button:hover,
+.controls-bar button:hover,
 .controls-bar select:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.controls-bar .speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative; /* for custom arrow */
+}
+
+/* Draw a custom arrow so the small select control looks consistent */
+.controls-bar .speed::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(234, 244, 255, 0.9);
+  pointer-events: none;
+}
+
+/* Hide the native dropdown arrow for some browsers */
+.controls-bar select::-ms-expand {
+  display: none;
+}
+
+/* Style option list where supported (browsers vary) */
+.controls-bar select option {
+  background: var(--panel-bg);
+  color: #eaf4ff;
+}
+
+/* Selected option visual inside the popup (works in Chromium-based browsers)
+   Keep a subtle blue highlight consistent with other UI elements */
+.controls-bar select option:checked,
+.controls-bar select option:active {
+  background: linear-gradient(90deg, rgba(74,158,255,0.14), rgba(106,182,255,0.14));
+  color: #eaf4ff;
 }
 
 .controls-bar .speed {
@@ -667,6 +724,7 @@
   align-items: center;
   gap: 12px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 
