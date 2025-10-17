@@ -9,6 +9,9 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK246](TASK246-thruster-trails-gpu.md) — Move thruster trails to GPU-managed instanced buffers for scalable rendering. (In Progress — design published, implementation pending) (2025-10-06)
 - [TASK245](TASK245-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
 
+- [TASK248](TASK248-update-memory-bank.md) — Quick memory sync: inspect `src/components/PostprocessingLazy.tsx`, record findings, and update memory bank entries. (In Progress — documentation/update) (2025-10-18)
+- [TASK249](TASK249-update-environment-memory.md) — Expand memory notes for `src/components/environment/*` with component summaries and engineering guidance. (In Progress — documentation) (2025-10-18)
+
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
 
 ## Completed
