@@ -58,6 +58,55 @@ Next steps:
 - Review renderer warnings surfaced during webpack build (asset sizes, dynamic import) and track mitigations if they become problematic.
 - Determine how to visualise `simulation.rapierDiagnostics` inside the developer HUD so guard trips and mutation failures are observable during playtests.
 
+Recent quick maintenance (2025-10-18):
+
+- Inspected `src/components/PostprocessingLazy.tsx` to align memory entries with the current renderer wiring:
+  - `PostprocessingLazy` uses `React.lazy` to dynamically import `./Postprocessing.js` and wraps it in `Suspense` with `fallback={null}`.
+  - The component forwards a boolean prop `enabled={true}` to the lazy-loaded module.
+  - Note: the lazy import references `Postprocessing.js` (JS extension) from a `.tsx` file — this is an intentional interop pattern used across the renderer to allow JS/TS mix and preserve runtime asset names.
+  - No code changes were required; this inspection was recorded in the memory bank and a task file was created (TASK248) to document the update.
+
+  Environment renderer component summaries (2025-10-18):
+
+  - `CelestialEnvironment` (`src/components/environment/CelestialEnvironment.tsx`)
+    - Top-level environment group that wires skysphere, `StarLight` (and star representation), planets, and parallax billboards based on `CELESTIAL_ENVIRONMENT` config.
+    - Uses `Suspense` for skysphere and planet bodies to allow asset loading to suspend rendering.
+
+  - `Skysphere` (`src/components/environment/Skysphere.tsx`)
+    - Loads large equirectangular textures via `useTexture` and renders a large inverted sphere with `meshBasicMaterial` (BackSide). Configures SRGB color space and mipmap filters for quality.
+
+  - `StarLight` (`src/components/environment/StarLight.tsx`)
+    - Wraps ambient + directional lighting and positions a directional light according to `StarLightConfig.direction` and `distance`.
+    - Configures shadow camera extents, biases, and `castShadow`, and mirrors an internal ref to an optional external ref for parent/component coordination.
+
+  - `StarDisk` / `StarDiskMesh` / `StarSphere` (`src/components/environment/StarDisk.tsx`, `StarDiskMesh.tsx`, `StarSphere.tsx`)
+    - Implements the main-sequence star visual: a shader-driven halo/disk with an opaque depth core to guarantee occlusion.
+    - Uses a custom shader pipeline (material creation, uniform updates, time-wrapping, texture hooks) and exposes many debug hooks under `?copilot_debug=1` (telemetry, force-material, layer/opacity controls).
+    - `StarDisk` performs per-frame uniform/time selection (simulation time preferred, fallback to render clock) and publishes `window.__copilot_starDiskTelemetry` when debug is enabled.
+    - `StarDiskMesh` provides core + halo geometry and handles applying shader or fallback materials with explicit renderOrder constants to ensure correct layering.
+    - `StarSphere` is a sphere-based variant that writes depth with a separate depth-only pass (shader-backed depth pass) to create stable occlusion for the visible shader pass.
+
+  - `PlanetBody` (`src/components/environment/PlanetBody.tsx`)
+    - Renders planet geometry using `usePlanetTexture` (texture loader + fallback color) and `meshStandardMaterial` for PBR shading. Supports tilt, deterministic rotation using `state.simulation` time, emissive boost, rim shell and optional rings.
+    - Rings are a separate `PlanetRings` component passed through many config-driven parameters.
+
+  - `PlanetRimShell` (`src/components/environment/PlanetRimShell.tsx`)
+    - Small custom `ShaderMaterial` that computes fresnel-based rim glow using additive blending and double-sided rendering; intended to be attached as a primitive material to a slightly scaled sphere mesh.
+
+  - `PlanetRings` (`src/components/environment/PlanetRings.tsx`)
+    - Procedural ring geometry created with a hole-shaped `Shape` + `ExtrudeGeometry`. Uses a `ShaderMaterial` with many uniforms (banding, tint, shadowing, penumbra, brightness) and a `MeshBasicMaterial` fallback when postprocessing is disabled.
+    - Supports a `bloomOnly` mode via `userData` flags so the bloom manager can route color contributions to bloom pass only.
+
+  - `ParallaxBillboard` (`src/components/environment/ParallaxBillboard.tsx`)
+    - Small, camera-facing plane that shifts position based on camera movement (`useFrame`) and a `parallaxFactor`. Uses `meshBasicMaterial` and `lookAt` to face the camera. Feature-gated via `enabled` prop and global `features` config.
+
+  Notes / Engineering guidance:
+
+  - Depth and occlusion: star visuals intentionally use a small opaque depth core or a depth-only pass (StarSphere) so planets/rings can occlude the star consistently. When adding new halo-like elements follow this pattern (depth core + additive halo) to preserve deterministic occlusion.
+  - Postprocessing fallback: `PlanetRings` exposes both a shader and a `MeshBasicMaterial` fallback and toggles uniforms based on `postprocessingEnabled` from the UI store. When adding shader features consider adding a graceful fallback path so scene remains readable with postprocessing off.
+  - Debugging hooks: several components publish debug helpers/refs onto `window` when `?copilot_debug=1` is present. These are useful for Playwright/automation tests but must remain guarded behind debug checks to avoid production side-effects.
+
+
 Status updates:
 
 - 2025-09-27: Memory bank audit discovered duplicate task IDs and proposed TASK135 to reconcile collisions.

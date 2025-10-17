@@ -56,8 +56,11 @@ Planned actions
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
 - Last audited: 2025-09-30
-
 - 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`.
+
+- 2025-10-18: Quick memory sync (TASK248) — Inspected `src/components/PostprocessingLazy.tsx` and recorded findings in `memory/activeContext.md`. Confirmed lazy import pattern (`React.lazy` + `Suspense`) with `Postprocessing.js` and a forwarded `enabled` prop. Created task record `memory/tasks/TASK248-update-memory-bank.md` and updated `memory/tasks/_index.md` to include TASK248 under In Progress.
+
+- 2025-10-18: Environment memory expansion (TASK249) — Read environment components under `src/components/environment/*` and summarised their roles, APIs, and key implementation notes (skysphere, star disk/sphere, star light, planet body, rim shell, rings, parallax billboards). Updated `memory/activeContext.md` with the summaries and created `memory/tasks/TASK249-update-environment-memory.md`.
 
 - 2025-09-29: Completed TASK135 cross-reference reconciliation and ran markdown/link linting across `memory/` and `memory/tasks/`. Updated `memory/tasks/_index.md` to reflect final mappings and removed superseded references.
 
