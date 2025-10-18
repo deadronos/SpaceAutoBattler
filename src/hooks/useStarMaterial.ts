@@ -10,7 +10,7 @@ import type { ShaderMaterial } from 'three';
 import {
   createMainSequenceStarMaterial,
   disposeMainSequenceStarMaterial,
-} from '../renderer/starDiskMaterial.js';
+} from '../renderer/starMaterial.js';
 
 /**
  * Create and manage the star disk shader material.
@@ -75,7 +75,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
       
       return mat;
     } catch (error) {
-      console.warn('[StarDisk] Failed to create main sequence star material. Falling back to basic material.', error);
+      console.warn('[StarMaterial] Failed to create main sequence star material. Falling back to basic material.', error);
       shaderMaterialRef.current = null;
       return null;
     }

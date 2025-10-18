@@ -41,7 +41,7 @@ afterEach(() => {
 
 describe('StarDisk component', () => {
   it('falls back to mesh basic material when shader creation fails', async () => {
-    const starMaterialModule = await import('../../src/renderer/starDiskMaterial.js');
+    const starMaterialModule = await import('../../src/renderer/starMaterial.js');
     const createSpy = vi
       .spyOn(starMaterialModule, 'createMainSequenceStarMaterial')
       .mockImplementation(() => {
@@ -51,7 +51,7 @@ describe('StarDisk component', () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const { StarDisk } = await import('../../src/components/environment/StarDisk.js');
+    const { StarSphere } = await import('../../src/components/environment/StarSphere.js');
 
     const config = {
       color: '#ffffff',
@@ -61,7 +61,7 @@ describe('StarDisk component', () => {
     };
 
     const { container } = render(
-      <StarDisk config={config} enabled={true} size={500} opacity={0.8} distanceMultiplier={1} />,
+      <StarSphere config={config} enabled={true} size={500} opacity={0.8} distanceMultiplier={1} />,
     );
 
     expect(container.querySelector('meshbasicmaterial')).not.toBeNull();
@@ -89,7 +89,7 @@ describe('StarDisk component', () => {
       });
     const updateSpy = vi.spyOn(starMaterialModule, 'updateMainSequenceStarUniforms');
 
-    const { StarDisk } = await import('../../src/components/environment/StarDisk.js');
+    const { StarSphere } = await import('../../src/components/environment/StarSphere.js');
     const config = {
       color: '#ffffff',
       intensity: 1,
@@ -112,7 +112,7 @@ describe('StarDisk component', () => {
 
     const initialBoundary = { featherStart: 0.9, featherExponent: 2.6, alphaFloor: 0.04 };
     const { rerender } = render(
-      <StarDisk
+      <StarSphere
         config={config}
         enabled={true}
         size={500}
@@ -134,7 +134,7 @@ describe('StarDisk component', () => {
     expect(updateSpy).toHaveBeenCalled();
 
     rerender(
-      <StarDisk
+      <StarSphere
         config={config}
         enabled={true}
         size={500}
@@ -151,7 +151,7 @@ describe('StarDisk component', () => {
     expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.02, 2);
 
     rerender(
-      <StarDisk
+      <StarSphere
         config={config}
         enabled={true}
         size={500}
