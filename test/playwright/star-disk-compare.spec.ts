@@ -4,8 +4,8 @@ import path from 'node:path';
 
 const VIEWPORT = { width: 1280, height: 720 } as const;
 const CAPTURE_DIR = path.resolve('playwright-debug');
-const BEFORE_FILE = 'star-disk-before.png';
-const AFTER_FILE = 'star-disk-after.png';
+const BEFORE_FILE = 'star-sphere-before.png';
+const AFTER_FILE = 'star-sphere-after.png';
 
 const LEGACY_OVERRIDES = {
   textureRadialPower: 1.6,
@@ -18,8 +18,8 @@ const LEGACY_OVERRIDES = {
   timeMultiplier: 0,
 };
 
-test.describe('Star Disk before/after capture', () => {
-  test('captures star disk legacy and fuller-disc presets for documentation', async ({ page, context }) => {
+test.describe('StarSphere before/after capture', () => {
+  test('captures star sphere legacy and fuller-disc presets for documentation', async ({ page, context }) => {
     await fs.mkdir(CAPTURE_DIR, { recursive: true });
     const beforePath = path.join(CAPTURE_DIR, BEFORE_FILE);
     const afterPath = path.join(CAPTURE_DIR, AFTER_FILE);
@@ -37,7 +37,7 @@ test.describe('Star Disk before/after capture', () => {
       await expect(canvas).toBeVisible();
       const pauseButton = page.getByRole('button', { name: 'Pause' });
       if (await pauseButton.isVisible()) {
-        await pauseButton.click();
+        await pauseButton.click({ force: true });
         await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
       }
       await expect
@@ -64,7 +64,7 @@ test.describe('Star Disk before/after capture', () => {
       await expect(canvas).toBeVisible();
       const pauseButton = afterPage.getByRole('button', { name: 'Pause' });
       if (await pauseButton.isVisible()) {
-        await pauseButton.click();
+        await pauseButton.click({ force: true });
         await expect(afterPage.getByRole('button', { name: 'Resume' })).toBeVisible();
       }
       await expect

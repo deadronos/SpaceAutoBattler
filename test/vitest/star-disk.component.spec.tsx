@@ -17,6 +17,7 @@ vi.mock('@react-three/fiber', () => ({
     },
     viewport: { aspect: 1 },
     size: { width: 800, height: 600 },
+    camera: { position: { x: 0, y: 0, z: 100 }, rotation: { z: 0 } },
   }),
 }));
 
@@ -77,7 +78,7 @@ describe('StarDisk component', () => {
   });
 
   it('updates boundary uniforms when boundary props change', async () => {
-    const starMaterialModule = await import('../../src/renderer/starDiskMaterial.js');
+    const starMaterialModule = await import('../../src/renderer/starMaterial.js');
     const originalCreate = starMaterialModule.createMainSequenceStarMaterial;
     let createdMaterial: ShaderMaterial | null = null;
     const createSpy = vi
@@ -105,6 +106,7 @@ describe('StarDisk component', () => {
           camera: { position: { x: 0, y: 0, z: 100 }, rotation: { z: 0 } },
           viewport: { aspect: 1 },
           size: { width: 800, height: 600 },
+          clock: { getElapsedTime: () => 0 },
         },
         0.016,
       );
