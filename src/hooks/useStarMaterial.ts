@@ -1,6 +1,6 @@
 /**
  * Star disk material creation and lifecycle hook
- *
+ * 
  * Manages the shader material lifecycle, including creation, disposal, and fallback
  * to basic material when shader creation fails.
  */
@@ -10,11 +10,11 @@ import type { ShaderMaterial } from 'three';
 import {
   createMainSequenceStarMaterial,
   disposeMainSequenceStarMaterial,
-} from '../renderer/starMaterial.js';
+} from '../renderer/starDiskMaterial.js';
 
 /**
  * Create and manage the star disk shader material.
- *
+ * 
  * @param debugEnabled - Whether debug mode is enabled (for debug indicators)
  * @returns ShaderMaterial instance or null if creation failed
  */
@@ -28,7 +28,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
         noise: null,
       });
       shaderMaterialRef.current = mat;
-
+      
       // Store creation timestamp in localStorage for debugging
       try {
         if (typeof localStorage !== 'undefined') {
@@ -37,7 +37,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
       } catch {
         // Ignore storage errors
       }
-
+      
       // Set DOM attribute for debugging
       try {
         if (typeof document !== 'undefined') {
@@ -46,7 +46,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
       } catch {
         // Ignore DOM errors
       }
-
+      
       // DEV: Create a transient DOM indicator when the material object is
       // created so developers can visually confirm that the material was
       // instantiated (useful when console output is noisy). Enabled in
@@ -58,8 +58,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
             const el = document.createElement('div');
             el.id = id;
             el.textContent = 'STAR MATERIAL CREATED';
-            el.style.cssText =
-              'position:fixed; right:12px; bottom:48px; padding:6px 10px; background:rgba(16,163,127,0.95); color:white; font-size:12px; border-radius:6px; z-index:9999999;';
+            el.style.cssText = 'position:fixed; right:12px; bottom:48px; padding:6px 10px; background:rgba(16,163,127,0.95); color:white; font-size:12px; border-radius:6px; z-index:9999999;';
             document.body.appendChild(el);
             setTimeout(() => {
               try {
@@ -73,13 +72,10 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
       } catch {
         // Swallow debug-only errors
       }
-
+      
       return mat;
     } catch (error) {
-      console.warn(
-        '[StarMaterial] Failed to create main sequence star material. Falling back to basic material.',
-        error,
-      );
+      console.warn('[StarDisk] Failed to create main sequence star material. Falling back to basic material.', error);
       shaderMaterialRef.current = null;
       return null;
     }

@@ -4,7 +4,7 @@ import {
   createMainSequenceStarMaterial,
   updateMainSequenceStarUniforms,
   disposeMainSequenceStarMaterial,
-} from '../../src/renderer/starMaterial.js';
+} from '../../src/renderer/starDiskMaterial.js';
 
 const extractUniforms = (material: ShaderMaterial) =>
   material.uniforms as unknown as {

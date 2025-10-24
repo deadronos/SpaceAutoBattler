@@ -3,9 +3,6 @@ import { CELESTIAL_ENVIRONMENT } from '../../config/environment.js';
 import { PlanetBody } from './PlanetBody.js';
 import { StarLight } from './StarLight.js';
 import { StarSphere } from './StarSphere.js';
-// Note: `StarDisk` is a legacy billboard implementation. We avoid importing
-// it eagerly to reduce bundle size and only load it when an explicit
-// feature flag requests the legacy component.
 import { ParallaxBillboard } from './ParallaxBillboard.js';
 import { Skysphere } from './Skysphere.js';
 import type { DirectionalLight } from 'three';
@@ -25,31 +22,12 @@ export function CelestialEnvironment(): React.ReactElement {
         </Suspense>
       )}
       <StarLight config={starLight}>
-        {/* Prefer the new `StarSphere` implementation by default. If the
-            runtime configuration explicitly requests the legacy StarDisk
-            (`features.starDisk === true`) we dynamically import and render
-            it so existing automation can opt in while we migrate tests/docs.
-        */}
-        {features?.starDisk === true ? (
-          // Dynamic import to avoid bundling StarDisk unless explicitly needed
-          // eslint-disable-next-line react/no-unstable-nested-components
-          (() => {
-            const LegacyStarDisk = require('./StarDisk.js').StarDisk;
-            return (
-              <LegacyStarDisk
-                key={"StarDisk"}
-                config={starLight}
-                enabled={true}
-                size={CELESTIAL_ENVIRONMENT.starDisk?.size}
-                opacity={CELESTIAL_ENVIRONMENT.starDisk?.opacity}
-                distanceMultiplier={CELESTIAL_ENVIRONMENT.starDisk?.distanceMultiplier}
-                haze={CELESTIAL_ENVIRONMENT.starDisk?.haze}
-                boundary={CELESTIAL_ENVIRONMENT.starDisk?.boundary}
-                depthCoreRadius={CELESTIAL_ENVIRONMENT.starDisk?.depthCoreRadius}
-              />
-            );
-          })()
-        ) : (
+        {features?.starDisk !== false && (
+          // StarSphere replaces the old StarDisk billboard. It is parented
+          // under StarLight so it can use the StarLight config to compute
+          // its local offset and orientation. Pass through the global
+          // starDisk appearance settings so the two implementations stay
+          // visually consistent.
           <StarSphere
             key={"StarSphere"}
             config={starLight}
