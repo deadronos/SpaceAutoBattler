@@ -98,7 +98,7 @@
     "lodash": "^4.17.21",
     "lru-cache": "^11.2.2",
     "miniplex": "^2.0.0",
-    "pixi.js": "^8.13.2",
+    "pixi.js": "^8.14.0",
     "playwright": "^1.55.1",
     "postprocessing": "^6.37.8",
     "pyright": "^1.1.405",
